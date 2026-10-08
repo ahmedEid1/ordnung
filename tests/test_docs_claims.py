@@ -42,6 +42,7 @@ from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
 from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
+from ordnung.rules.postcodes import Home, suggest_land_why
 from ordnung.tick import DailyTick
 from test_api_support import api_for
 
@@ -473,14 +474,21 @@ def _flat(text: str) -> str:
     return " ".join(text.split())
 
 
+#: scripts/eval_without_land.py's published results: with the letterhead's Land, without the sender's Land, and
+#: with the state the postcode on the sender's letter suggests confirmed (ADR 0019).
+WITHOUT_LAND = "2026-10-08-claude-sonnet-5-without-land.json"
+#: The splits the README and deadline-rules.md cite (dev is the page's only).
+PUBLISHED_SPLITS = ("test", "holdout", "holdout2", "holdout3")
+
+
 def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> None:
     """M3: README row ⁹, its footnote, the bullet and Limitations, deadline-rules.md and docs/evals.md cite the
     replay without the sender's Land (scripts/eval_without_land.py, as the app runs until the person sets a
     sender's Land): its accuracy per split, no late date, extra misses 1–3 days early — and the numbers with the
     Land it sets them against are the published replays' (rows ⁴, ⁶ and ⁸)."""
     readme = _readme()
-    results = _results("2026-10-06-claude-sonnet-5-without-land.json")
-    assert results["schema"] == "ordnung-eval-without-land/1"
+    results = _results(WITHOUT_LAND)
+    assert results["schema"] == "ordnung-eval-without-land/2"
     assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
     splits = results["splits"]
     assert set(splits) == {"test", "holdout", "holdout2", "holdout3", "dev"}
@@ -579,6 +587,172 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
             f"| `{name}` | " in section
             and f" ({int(numbers['without_land']['due_date_accuracy']['k'])}/" in section
         )
+
+
+def _suggestions(results: dict[str, Any], splits: tuple[str, ...]) -> dict[str, int]:
+    """The suggestion counts of ``splits`` added up: letterhead letters, right, wrong and without one."""
+    counts = [results["splits"][name]["suggestion"] for name in splits]
+    return {
+        "letterhead": sum(c["letterhead_land"] for c in counts),
+        "right": sum(c["right"] for c in counts),
+        "wrong": sum(c["wrong"] for c in counts),
+        "none": sum(sum(c["none"].values()) for c in counts),
+        "not_listed": sum(c["none"]["not_listed"] for c in counts),
+    }
+
+
+def test_the_numbers_with_the_suggested_state_match_their_results_file() -> None:
+    """ADR 0019: README's footnote ⁹ and bullet, deadline-rules.md and docs/evals.md cite the replay with the
+    state the postcode on the sender's letter suggests confirmed: the same numbers as with the letterhead's Land
+    on every split, the suggestions against the letterhead's Land, and no suggestion wrong."""
+    results = _results(WITHOUT_LAND)
+    splits = results["splits"]
+    for name, numbers in splits.items():
+        assert numbers["with_suggestion"] == numbers["with_land"], name
+        assert numbers["changed_with_suggestion"] == [] and numbers["suggestion"]["wrong"] == 0, name
+    counts = ", ".join(
+        str(int(splits[name]["with_suggestion"]["due_date_accuracy"]["k"])) for name in PUBLISHED_SPLITS[:-1]
+    )
+    last = int(splits[PUBLISHED_SPLITS[-1]]["with_suggestion"]["due_date_accuracy"]["k"])
+    scored = {int(splits[name]["with_suggestion"]["due_date_accuracy"]["n"]) for name in PUBLISHED_SPLITS}
+    (n,) = scored
+    published = _suggestions(results, PUBLISHED_SPLITS)
+    # the one letterhead letter without a suggestion has a postcode GeoNames doesn't list
+    assert published["none"] == published["not_listed"] == published["letterhead"] - published["right"] == 1
+    gives = f"the same readings give {counts} and {last} of {n}, the numbers with the letterhead's state"
+    flat = _flat(_readme())
+    footnote = flat.split("⁹ The rows above", 1)[1].split(" What the numbers say", 1)[0]
+    assert f"Confirm the state Ordnung suggests from the postcode on their letter, and {gives}" in footnote
+    assert (
+        f"on the {published['letterhead']} letters whose letterhead names a state, it suggested that state for "
+        f"{published['right']}, another for {published['wrong']}, and none for the one whose postcode GeoNames "
+        "doesn't list"
+    ) in footnote
+    assert (
+        "The letters are synthetic (mostly real postcodes, made-up towns), and the number assumes you say Yes to "
+        "every suggestion."
+    ) in footnote
+    bullet = flat.split("**Without the sender's Land:", 1)[1].split(" - **", 1)[0]
+    assert f"Say Yes to the state Ordnung suggests from the postcode on their letter, and {gives}" in bullet
+    assert "no suggestion was wrong on these letters" in bullet
+    rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
+    (again,) = {
+        _pct(splits[name]["with_suggestion"]["due_date_accuracy"]["value"]) for name in PUBLISHED_SPLITS[:3]
+    }
+    assert (
+        f"with the state the postcode on their letter suggests confirmed, it scores {again} % on each"
+        in rules
+    )
+    section = (
+        (ROOT / "docs" / "evals.md").read_text(encoding="utf-8").split("## Without the sender's Land", 1)[1]
+    )
+    section = section.split("\n## ", 1)[0]
+    assert "| With the suggested state confirmed |" in section
+    every = _suggestions(results, tuple(splits))
+    assert (
+        f"suggested the letterhead's state for {every['right']} of the {every['letterhead']} letters that name "
+        f"one, another state for {every['wrong']}, and none for {every['none']};"
+    ) in _flat(section)
+
+
+def test_adr_0019_states_the_measured_numbers_and_their_bound() -> None:
+    """ADR 0019's Measured: the suggestions on every split against the letterhead's Land, the letters without
+    one by reason, and the one-sided and two-sided 95 % upper bounds of the error rate for 0 wrong of n
+    (Clopper–Pearson: 1 − α^(1/n))."""
+    results = _results(WITHOUT_LAND)
+    every = _suggestions(results, tuple(results["splits"]))
+    others = {
+        reason: sum(
+            s["suggestion"]["not_suggested_without_letterhead_land"][reason]
+            for s in results["splits"].values()
+        )
+        for reason in ("not_listed", "foreign", "no_postcode")
+    }
+    suggested = sum(s["suggestion"]["suggested_without_letterhead_land"] for s in results["splits"].values())
+    entries = sum(s["entries"] for s in results["splits"].values())
+    adr = (ROOT / "docs" / "decisions" / "0019-a-sender-s-land-is-suggested-never-set.md").read_text(
+        encoding="utf-8"
+    )
+    measured = _flat(adr.split("## Measured", 1)[1].split("\n## ", 1)[0])
+    assert every["wrong"] == 0
+    assert (
+        f"On the {every['letterhead']} of the benchmark's {entries} letters whose letterhead names a Land, the "
+        f"postcode suggested that Land for {every['right']}, another Land for none, and none for "
+        f"{every['none']}"
+    ) in measured
+    assert (
+        f"of the other {entries - every['letterhead']}, it suggested a Land for {suggested}; "
+        f"{others['not_listed']} have a postcode GeoNames doesn't list, {others['foreign']} an address abroad and "
+        f"{others['no_postcode']} no postcode"
+    ) in measured
+    splits = results["splits"]
+    scores = ", ".join(
+        str(int(splits[name]["with_suggestion"]["due_date_accuracy"]["k"])) for name in PUBLISHED_SPLITS[:-1]
+    )
+    (n,) = {int(splits[name]["with_suggestion"]["due_date_accuracy"]["n"]) for name in PUBLISHED_SPLITS}
+    dev = splits["dev"]["with_suggestion"]["due_date_accuracy"]
+    assert all(
+        s["with_suggestion"] == s["with_land"] and s["changed_with_suggestion"] == [] for s in splits.values()
+    )
+    assert all(s["with_suggestion"]["dangerous_late_rate"]["k"] == 0 for s in splits.values())
+    assert (
+        f"Every split scores what it scores with the letterhead's Land: {scores} and "
+        f"{int(splits['holdout3']['with_suggestion']['due_date_accuracy']['k'])} of {n} on test, holdout, holdout2 "
+        f"and holdout3, {int(dev['k'])} of {int(dev['n'])} on dev, none late, and no required date differs from the "
+        "letterhead replay."
+    ) in measured
+    lost = sum(
+        s["suggestion"][key]["not_visible"]
+        for s in splits.values()
+        for key in ("none", "not_suggested_without_letterhead_land")
+    )
+    assert lost == 0 and "No letter lost its suggestion to the visible-text rule." in measured
+    right = every["right"]
+    one_sided, two_sided = (f"{(1 - alpha ** (1 / right)) * 100:.1f}" for alpha in (0.05, 0.025))
+    assert (
+        f"0 wrong of {right} puts the rate of wrong suggestions at no more than {one_sided} % with 95 % confidence "
+        f"(one-sided; {two_sided} % two-sided), not at zero."
+    ) in measured
+
+
+def test_the_readme_says_when_ordnung_asks_no_question_about_a_sender_s_state() -> None:
+    """README Limitations: no question for a postcode listed in two states or not at all, for an address that
+    names another country, or against the state the person set for their own town — the lookup's own rules."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "There is no question when the postcode is listed in two states or not at all (many P.O. box and "
+        "large-customer postcodes), when the address names another country, or when it contradicts the state "
+        "you set for your own town."
+    ) in limitation
+    assert suggest_land_why("Am Markt 1, 21039 Musterstadt")[1] == "several_lands"
+    assert suggest_land_why("Am Markt 1, 99999 Musterstadt")[1] == "not_listed"
+    assert suggest_land_why("1 Rue de l'Exemple, 75001 Paris, France")[1] == "foreign"
+    home = Home.of("Am Markt 2, 80331 Musterstadt", "NW")
+    assert suggest_land_why("Am Markt 1, 80331 Musterstadt", home=home)[1] == "home_veto"
+    assert suggest_land_why("Am Markt 1, 80331 Musterstadt")[1] == "suggested"
+
+
+def test_the_readme_credits_geonames_for_the_postcode_data() -> None:
+    """CC BY 4.0 asks for credit, the licence and the changes: README's credit links the licence file the
+    wheel carries (``license-files``)."""
+    readme = _flat(_readme())
+    assert (
+        "Postcode data © [GeoNames](https://www.geonames.org/), [CC BY 4.0]"
+        "(https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode "
+        "([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt))."
+    ) in readme
+    assert (ROOT / "src" / "ordnung" / "rules" / "data" / "LICENSE-GeoNames.txt").is_file()
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert "src/ordnung/rules/data/LICENSE-GeoNames.txt" in project["license-files"]
+
+
+def test_the_spec_no_longer_says_nothing_derives_a_sender_s_land_from_a_postcode() -> None:
+    """SPEC § 21: the postcode on a sender's letter suggests their Land, as a question (ADR 0019); only the
+    person sets it."""
+    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+    assert "nothing derives it from a postcode" not in spec
+    holidays = spec.split("**Holidays.**", 1)[1].split("**", 1)[0]
+    assert "only the person sets" in holidays and "0019-a-sender-s-land-is-suggested-never-set.md" in holidays
 
 
 def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:

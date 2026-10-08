@@ -45,8 +45,9 @@ HOLDOUT2_SPLIT = "holdout2"
 HOLDOUT3_SPLIT = "holdout3"
 #: The held-out splits: a run on any of them is accepted wherever a held-out run is expected.
 HELD_OUT_SPLITS = (HOLDOUT_SPLIT, HOLDOUT2_SPLIT, HOLDOUT3_SPLIT)
-#: The results of ``scripts/eval_without_land.py``: Ordnung replayed with and without the sender's Land.
-WITHOUT_LAND_SCHEMA = "ordnung-eval-without-land/1"
+#: The results of ``scripts/eval_without_land.py``: Ordnung replayed with the letterhead's Land, without the
+#: sender's Land and with the state the postcode on the sender's letter suggests (version 1 had no third replay).
+WITHOUT_LAND_SCHEMA = "ordnung-eval-without-land/2"
 
 #: Categorical slots 1–4 of the reference palette, in this fixed order (validated as a set on the light
 #: surface for adjacent bars; aqua and yellow are below 3:1, so every bar carries its value as text).
@@ -570,8 +571,8 @@ def render_markdown(
     (written after the code freeze, audited blind), shown in a section of their own after the holdout2 one.
     Any of these slots accepts a run on any held-out split; each section is rendered for its run's split.
     ``without_land`` is ``scripts/eval_without_land.py``'s results: Ordnung replayed on
-    each split with and without the sender's Land (see :func:`check_without_land`), shown in a section of its
-    own — the app's numbers until the person sets a sender's Land.
+    each split with, without and with the suggested sender's Land (see :func:`check_without_land`), shown in a
+    section of its own — the app's numbers until the person sets a sender's Land or confirms the suggestion.
     """
     if not runs:
         return render_pending_markdown()
@@ -701,7 +702,8 @@ def _intro(
     if without_land is not None:
         added += (
             f"\n> Ordnung was replayed on {without_land['meta'].get('date')} without the sender's Land, as the app "
-            "runs until the person sets it (“Without the sender's Land”)."
+            "runs until the person sets it, and with the state the postcode on the sender's letter suggests "
+            "(“Without the sender's Land”)."
         )
     return f"""# Benchmark: who gets German deadlines right?
 
@@ -1196,21 +1198,54 @@ held-out**; the sections below describe the published run.
 
 
 def check_without_land(results: Mapping[str, Any]) -> None:
-    """``scripts/eval_without_land.py``'s results (both replays of every split it ran); raises ``ValueError``
-    if not."""
+    """``scripts/eval_without_land.py``'s results (the three replays of every split it ran); raises
+    ``ValueError`` if not."""
     if results.get("schema") != WITHOUT_LAND_SCHEMA or not results.get("splits"):
         raise ValueError(f"not a results file of scripts/eval_without_land.py ({WITHOUT_LAND_SCHEMA})")
 
 
+#: Why the postcode on a letter suggested no state, as the page says it (``ordnung.rules.postcodes.Reason``).
+NO_SUGGESTION_LABELS = {
+    "no_address": "without a sender address",
+    "foreign": "with an address abroad",
+    "no_postcode": "without a postcode",
+    "not_listed": "with a postcode GeoNames doesn't list",
+    "several_lands": "with a postcode in several states",
+    "no_land": "with a postcode listed without a state",
+    "postcodes_disagree": "with postcodes in different states",
+    "not_visible": "with a postcode not in the letter's visible text",
+    "home_veto": "in the person's own town but another state",
+}
+
+
+def _without_suggestion(counts: Mapping[str, int]) -> str:
+    """``25 (16 with a postcode GeoNames doesn't list, 7 with an address abroad, …)``: largest first."""
+    named = sorted(((n, reason) for reason, n in counts.items() if n), key=lambda item: -item[0])
+    reasons = ", ".join(f"{n} {NO_SUGGESTION_LABELS.get(reason, reason)}" for n, reason in named)
+    return f"{sum(counts.values())} ({reasons})" if reasons else "0"
+
+
+def _summed(counts: Sequence[Mapping[str, int]]) -> dict[str, int]:
+    """Reason counts added up over the splits."""
+    total: dict[str, int] = {}
+    for split in counts:
+        for reason, n in split.items():
+            total[reason] = total.get(reason, 0) + n
+    return total
+
+
 def _without_land_section(without_land: Mapping[str, Any]) -> str:
-    """Ordnung as the app runs it until the person sets a sender's Land, beside the benchmark's own setup."""
+    """Ordnung as the app runs it until the person sets a sender's Land, and with the state the postcode on
+    their letter suggests confirmed, beside the benchmark's own setup."""
     meta, splits = without_land["meta"], without_land["splits"]
     rows = [
         [
             f"`{split}`",
             rate(numbers["with_land"]["due_date_accuracy"], counts=True),
             rate(numbers["without_land"]["due_date_accuracy"], counts=True),
-            rate(numbers["without_land"]["dangerous_late_rate"], ci=False),
+            rate(numbers["with_suggestion"]["due_date_accuracy"], counts=True),
+            f"{rate(numbers['without_land']['dangerous_late_rate'], ci=False)} / "
+            f"{rate(numbers['with_suggestion']['dangerous_late_rate'], ci=False)}",
             f"{numbers['letterhead_land']} of {numbers['entries']}",
         ]
         for split, numbers in splits.items()
@@ -1220,25 +1255,54 @@ def _without_land_section(without_land: Mapping[str, Any]) -> str:
             "Split",
             "With the letterhead's Land",
             "Without the sender's Land",
-            "Dangerous late",
+            "With the suggested state confirmed",
+            "Dangerous late (without / suggested)",
             "Letters whose letterhead names a Land",
         ],
         rows,
     )
     changed = [change for numbers in splits.values() for change in numbers["changed"]]
     early = sorted(-change["days_off"] for change in changed if change["direction"] == "early")
-    late = sum(int(numbers["without_land"]["dangerous_late_rate"]["k"]) for numbers in splits.values())
+    late = sum(
+        int(numbers[replay]["dangerous_late_rate"]["k"])
+        for numbers in splits.values()
+        for replay in ("without_land", "with_suggestion")
+    )
     spread = f"{early[0]}–{early[-1]}" if early and early[0] != early[-1] else f"{early[0] if early else 0}"
     late_text = "no date is late" if late == 0 else f"{late} dates are dangerously late"
-    letters = "\n".join(
-        f"- `{change['entry_id']}` ({change['letterhead_land'] or 'no Land'}): {human_date(change['without_land'])} "
-        f"instead of {human_date(change['with_land'])}"
-        + (
+
+    def labelled(change: Mapping[str, Any]) -> str:
+        return (
             ""
             if change["with_land"] == change["expected"]
             else f", the label {human_date(change['expected'])}"
         )
+
+    letters = "\n".join(
+        f"- `{change['entry_id']}` ({change['letterhead_land'] or 'no Land'}): {human_date(change['without_land'])} "
+        f"instead of {human_date(change['with_land'])}{labelled(change)}"
         for change in changed
+    )
+    counts = [numbers["suggestion"] for numbers in splits.values()]
+    letterhead = sum(c["letterhead_land"] for c in counts)
+    right, wrong = sum(c["right"] for c in counts), sum(c["wrong"] for c in counts)
+    none = _summed([c["none"] for c in counts])
+    others = _summed([c["not_suggested_without_letterhead_land"] for c in counts])
+    suggested_others = sum(c["suggested_without_letterhead_land"] for c in counts)
+    moved = [change for numbers in splits.values() for change in numbers["changed_with_suggestion"]]
+    differ = (
+        f"{len(moved)} required date differs" if len(moved) == 1 else f"{len(moved)} required dates differ"
+    )
+    moved_letters = "".join(
+        f"\n- `{change['entry_id']}` ({change['letterhead_land'] or 'no Land'}, suggested "
+        f"{change['suggested_land'] or 'none'}): {human_date(change['with_suggestion'])} instead of "
+        f"{human_date(change['with_land'])}{labelled(change)}"
+        for change in moved
+    )
+    moved_block = (
+        f"\n\nThe dates the suggestion moves (with the letterhead's Land and the suggested one):\n{moved_letters}"
+        if moved
+        else ""
     )
     path = f"evals/results/{results_filename(str(meta.get('date')), str(meta.get('model')), 'without-land')}"
     return f"""## Without the sender's Land
@@ -1246,16 +1310,30 @@ def _without_land_section(without_land: Mapping[str, Any]) -> str:
 Every condition on this page is given the holiday Land the dataset names: for Ordnung, the Land printed on
 the letterhead is the sender's. The app has no such Land: it knows a sender's Land only once the person sets
 it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
-this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
-delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
-commit `{meta.get("commit") or "?"}` ({meta.get("date")}; `python -m scripts.eval_without_land`, results in
-`{path}`); no model was called. **The “without” column is the app's own result for a sender whose Land the
-person has not set.**
+this date?*) or says Yes when Ordnung asks *Is X in Bavaria?* from the postcode on their letter
+([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Until then the rules engine uses
+nationwide holidays and, for a Land authority, the 3-day delivery rule, at lower confidence. These rows replay
+Ordnung's recorded outputs three ways with the code of commit `{meta.get("commit") or "?"}`
+({meta.get("date")}; `python -m scripts.eval_without_land`, results in `{path}`); no model was called.
+**The “without” column is the app's own result for a sender whose Land the person has not set.** The
+“suggested” column gives the engine the state the app's own lookup (`ordnung.rules.postcodes`) suggests from
+the reading's sender address and the letter's visible text, as if the person said Yes to every suggestion: a
+ceiling. Each letter here is its own sender and the benchmark has no address for the person, so the app's
+other checks (letters with signs of a scam, a sender's letters that disagree, the person's own state) are not
+exercised. The letters are synthetic, with mostly real postcodes and made-up towns.
 
 {table}
 
 Without the Land, {len(changed)} dates change; {len(early)} of them come out {spread} days early, and
-{late_text}. The letters (with the Land their letterhead names):
+{late_text}. The postcode on the sender's letter suggested the letterhead's state for {right} of the
+{letterhead} letters that name one, another state for {wrong}, and none for {sum(none.values())}; with every
+suggestion confirmed, {differ} from the letterhead replay.{moved_block}
+
+No suggestion for {_without_suggestion(none)} of the letters whose letterhead names a state, and for
+{_without_suggestion(others)} of the {suggested_others + sum(others.values())} whose letterhead names none;
+the other {suggested_others} got one.
+
+The letters whose date changes without the Land (with the Land their letterhead names):
 
 {letters}"""
 
@@ -1743,8 +1821,8 @@ counts those calls) — with a cost cap of $1 per call so a looping agent would 
 dataset for every condition (the Land printed on the letterhead, about 30 % of letters, else the
 person's): the baselines are told it in the prompt and Ordnung's rules engine receives the letterhead's
 Land as the sender's; none has to infer it. The app does not have it: it knows a sender's Land only once
-the person sets it for that sender, and until then uses nationwide holidays and the 3-day rule, at lower
-confidence (early, never late). The app's own results are the rows “Without the sender's Land”. The baselines' prompts ask for step-by-step working before each date, tell the model to
+the person sets it for that sender or confirms the state Ordnung suggests from the postcode on their letter,
+and until then uses nationwide holidays and the 3-day rule, at lower confidence (early, never late). The app's own results are the rows “Without the sender's Land”. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
 verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
@@ -1829,7 +1907,7 @@ def _reproduce_section(
     if without_land:
         held += (
             "\npython -m scripts.eval_without_land   "
-            "# Ordnung on every split with and without the sender's Land (replayed, no tokens)"
+            "# Ordnung on every split with, without and with the suggested sender's Land (replayed, no tokens)"
         )
         later_held += (
             " The replay without the sender's Land joins it with `--without-land "
@@ -2353,8 +2431,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--without-land",
         type=Path,
         metavar="RUN.json",
-        help="the results of scripts/eval_without_land.py (Ordnung replayed with and without the sender's Land), "
-        "shown in a section of their own",
+        help="the results of scripts/eval_without_land.py (Ordnung replayed with, without and with the suggested "
+        "sender's Land), shown in a section of their own",
     )
     args = parser.parse_args(argv)
     if not args.results and not args.pending:

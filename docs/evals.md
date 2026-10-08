@@ -9,7 +9,7 @@
 > Every condition was also recorded once on the fresh holdout split (2026-09-30): those are the held-out numbers (“Held-out run: the holdout split”).
 > Every condition was also recorded once on the fresh holdout2 split (2026-10-01), written after the release's last change to how letters are read (“Held-out run: the holdout2 split”).
 > Every condition was also recorded once on the fresh holdout3 split (2026-10-06), written after the code freeze and audited blind (“Held-out run: the holdout3 split”).
-> Ordnung was replayed on 2026-10-06 without the sender's Land, as the app runs until the person sets it (“Without the sender's Land”).
+> Ordnung was replayed on 2026-10-08 without the sender's Land, as the app runs until the person sets it, and with the state the postcode on the sender's letter suggests (“Without the sender's Land”).
 > Do not edit by hand — change `evals/report.py` and regenerate.
 
 Ordnung's design bet ([ADR 0002](decisions/0002-llm-reads-code-computes.md)) is that the language
@@ -172,22 +172,36 @@ Ordnung got every dated item of the holdout3 split right.
 Every condition on this page is given the holiday Land the dataset names: for Ordnung, the Land printed on
 the letterhead is the sender's. The app has no such Land: it knows a sender's Land only once the person sets
 it for that sender (*Which state is this sender in?* in the sender's drawer, also reached from a date's *Why
-this date?*). Until then the rules engine uses nationwide holidays and, for a Land authority, the 3-day
-delivery rule, at lower confidence. These rows replay Ordnung's recorded outputs both ways with the code of
-commit `f2c3c1c` (2026-10-06; `python -m scripts.eval_without_land`, results in
-`evals/results/2026-10-06-claude-sonnet-5-without-land.json`); no model was called. **The “without” column is the app's own result for a sender whose Land the
-person has not set.**
+this date?*) or says Yes when Ordnung asks *Is X in Bavaria?* from the postcode on their letter
+([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Until then the rules engine uses
+nationwide holidays and, for a Land authority, the 3-day delivery rule, at lower confidence. These rows replay
+Ordnung's recorded outputs three ways with the code of commit `77b5616`
+(2026-10-08; `python -m scripts.eval_without_land`, results in `evals/results/2026-10-08-claude-sonnet-5-without-land.json`); no model was called.
+**The “without” column is the app's own result for a sender whose Land the person has not set.** The
+“suggested” column gives the engine the state the app's own lookup (`ordnung.rules.postcodes`) suggests from
+the reading's sender address and the letter's visible text, as if the person said Yes to every suggestion: a
+ceiling. Each letter here is its own sender and the benchmark has no address for the person, so the app's
+other checks (letters with signs of a scam, a sender's letters that disagree, the person's own state) are not
+exercised. The letters are synthetic, with mostly real postcodes and made-up towns.
 
-| Split | With the letterhead's Land | Without the sender's Land | Dangerous late | Letters whose letterhead names a Land |
-|---|---|---|---|---|
-| `test` | 98.2 % [94.5–100.0] (55/56) | 85.7 % [74.6–94.7] (48/56) | 0.0 % | 19 of 63 |
-| `holdout` | 98.2 % [94.5–100.0] (55/56) | 89.3 % [80.8–96.5] (50/56) | 0.0 % | 18 of 63 |
-| `holdout2` | 98.2 % [94.5–100.0] (55/56) | 83.9 % [72.9–93.1] (47/56) | 0.0 % | 16 of 63 |
-| `holdout3` | 100.0 % [91.8–100.0] (56/56) | 91.1 % [82.7–98.1] (51/56) | 0.0 % | 16 of 63 |
-| `dev` | 96.0 % [87.5–100.0] (24/25) | 80.0 % [64.3–95.2] (20/25) | 0.0 % | 8 of 28 |
+| Split | With the letterhead's Land | Without the sender's Land | With the suggested state confirmed | Dangerous late (without / suggested) | Letters whose letterhead names a Land |
+|---|---|---|---|---|---|
+| `test` | 98.2 % [94.5–100.0] (55/56) | 85.7 % [74.6–94.7] (48/56) | 98.2 % [94.5–100.0] (55/56) | 0.0 % / 0.0 % | 19 of 63 |
+| `holdout` | 98.2 % [94.5–100.0] (55/56) | 89.3 % [80.8–96.5] (50/56) | 98.2 % [94.5–100.0] (55/56) | 0.0 % / 0.0 % | 18 of 63 |
+| `holdout2` | 98.2 % [94.5–100.0] (55/56) | 83.9 % [72.9–93.1] (47/56) | 98.2 % [94.5–100.0] (55/56) | 0.0 % / 0.0 % | 16 of 63 |
+| `holdout3` | 100.0 % [91.8–100.0] (56/56) | 91.1 % [82.7–98.1] (51/56) | 100.0 % [91.8–100.0] (56/56) | 0.0 % / 0.0 % | 16 of 63 |
+| `dev` | 96.0 % [87.5–100.0] (24/25) | 80.0 % [64.3–95.2] (20/25) | 96.0 % [87.5–100.0] (24/25) | 0.0 % / 0.0 % | 8 of 28 |
 
 Without the Land, 29 dates change; 29 of them come out 1–3 days early, and
-no date is late. The letters (with the Land their letterhead names):
+no date is late. The postcode on the sender's letter suggested the letterhead's state for 76 of the
+77 letters that name one, another state for 0, and none for 1; with every
+suggestion confirmed, 0 required dates differ from the letterhead replay.
+
+No suggestion for 1 (1 with a postcode GeoNames doesn't list) of the letters whose letterhead names a state, and for
+25 (16 with a postcode GeoNames doesn't list, 7 with an address abroad, 2 without a postcode) of the 203 whose letterhead names none;
+the other 178 got one.
+
+The letters whose date changes without the Land (with the Land their letterhead names):
 
 - `test-fine_bussgeld-C1` (NI): Fri 31 Oct 2025 instead of Mon 3 Nov 2025
 - `test-fine_bussgeld-D1` (BY): Thu 4 Jun 2026 instead of Fri 5 Jun 2026
@@ -482,8 +496,8 @@ counts those calls) — with a cost cap of $1 per call so a looping agent would 
 dataset for every condition (the Land printed on the letterhead, about 30 % of letters, else the
 person's): the baselines are told it in the prompt and Ordnung's rules engine receives the letterhead's
 Land as the sender's; none has to infer it. The app does not have it: it knows a sender's Land only once
-the person sets it for that sender, and until then uses nationwide holidays and the 3-day rule, at lower
-confidence (early, never late). The app's own results are the rows “Without the sender's Land”. The baselines' prompts ask for step-by-step working before each date, tell the model to
+the person sets it for that sender or confirms the state Ordnung suggests from the postcode on their letter,
+and until then uses nationwide holidays and the 3-day rule, at lower confidence (early, never late). The app's own results are the rows “Without the sender's Land”. The baselines' prompts ask for step-by-step working before each date, tell the model to
 apply current German law, to choose the earliest plausible date when in doubt and to return no date
 when none can be determined ([`evals/prompts`](../evals/prompts)); the rules-text prompt adds a
 verified summary of the rules condensed from [deadline-rules.md](deadline-rules.md), and the
@@ -530,7 +544,7 @@ python -m evals.run --live --split test --model claude-sonnet-5   # call the mod
 python -m evals.run --split holdout --model claude-sonnet-5 --results-dir /tmp/holdout   # replayed on the checked-out code (not the held-out number)
 python -m evals.run --split holdout2 --model claude-sonnet-5 --results-dir /tmp/holdout2 # replayed on the checked-out code (not the held-out number)
 python -m evals.run --split holdout3 --model claude-sonnet-5 --results-dir /tmp/holdout3 # replayed on the checked-out code (not the held-out number)
-python -m scripts.eval_without_land   # Ordnung on every split with and without the sender's Land (replayed, no tokens)
+python -m scripts.eval_without_land   # Ordnung on every split with, without and with the suggested sender's Land (replayed, no tokens)
 python -m evals.run --split dev --families tax_assessment --limit 5 --no-docs   # a quick look
 ```
 

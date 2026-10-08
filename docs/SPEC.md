@@ -43,7 +43,10 @@ already syncs, nothing merged: §12c).
 *Musterstadt* (NRW → holidays region `NW`), Werkstudent 20 h/week, student residence permit, rented
 flat, phone contract, gym, electricity, health & liability insurance, Deutschlandticket. Reads German
 at B1, prefers English. All organisations are fictional (`Muster…`) and every sample is marked
-SPECIMEN.
+SPECIMEN. Most of the demo's postcodes, Sam's own among them, are in Berlin's range, while Sam's holidays
+region is `NW`: the own-state check of ADR 0019 keeps Ordnung from asking whether the senders in Sam's own
+town are in Berlin, so the demo asks about two senders only, in their details. In real use that check fires
+only when the postcode table and the person's own state disagree, and it only ever removes a question.
 
 ## 2. Release plan (definition of done)
 
@@ -764,7 +767,9 @@ whose adding was stopped before its attachments adds them.
   per letter): `deadline_soon`, `overdue`, `contract_cancel_window`
   (send_by within 60 days), `price_increase_right`, `expiry_soon` (passport/ID 180 d, residence
   permit 90 d — apply before expiry, § 81 Abs. 4 AufenthG), `passport_before_permit`,
-  `followup_due` (a sent letter's follow-up item became due), `please_check`, `dunning_escalation`,
+  `followup_due` (a sent letter's follow-up item became due), `please_check`, `sender_land` (a sender
+  without a state whose letters' postcode suggests one, while one of their open dates may change once it is
+  confirmed: *Is X in Bavaria?*, one per sender; ADR 0019), `dunning_escalation`,
   `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export),
   `proof_missing` (a cancellation or objection sent by Einschreiben has no tracking number and no
   proof two days on — not once an answer *from them* shows it arrived, the person closed the
@@ -1515,7 +1520,8 @@ cookie never on the computer's. Refusals answer `{detail, code}` with the status
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
-(GET detail / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
+(GET detail, with `region_suggestion`: the question about the sender's state for this letter, its `waiting`
+counting this letter's open dates / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
 `documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
@@ -1525,10 +1531,12 @@ readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading de
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
 the person compared with the paper letter; 409 when they changed or the code is refused for another
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
-(PATCH), `parties`, `parties/{id}` (GET; PATCH `{region}`: the Land the person says a sender is in, `null`
-"Don't know" — recomputes the to-dos of that sender's letters), `cases/{id}`, `timeline?from&to`,
-`lanes?from&to`, `dashboard`,
-`suggestions` (GET), `suggestions/{id}` (PATCH status/snooze), `suggestions/review` (POST),
+(PATCH), `parties`, `parties/{id}` (GET, with `region_suggestion`: the state the postcode on their letter
+suggests, computed on read and never stored (ADR 0019); PATCH `{region}`: the Land the person says a sender
+is in, `null` the select's "Don't know" — recomputes the to-dos of that sender's letters; the question's
+*Yes* is this PATCH), `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
+`suggestions` (GET), `suggestions/{id}` (PATCH status/snooze; the question's *Don't know* dismisses the
+sender's `sender_land` Idea here), `suggestions/review` (POST),
 `brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
 `week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
 (POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST), `drafts/{id}` (GET/PATCH/DELETE),
@@ -1892,8 +1900,9 @@ rate, injection resistance, scam recall, latency p50, API-equivalent cost/doc. O
 `evals/results/<date>-<model>-<split>.json`, `docs/evals.md` (tables, chart, failure gallery). CI recomputes
 metrics from recorded outputs with thresholds. Every condition is given the dataset's holiday Land (the one
 the letterhead prints, else the person's); the app has no sender's Land until the person sets it, so
-`scripts/eval_without_land.py` also replays Ordnung without it (`evals/results/<date>-<model>-without-land.json`,
-shown in `docs/evals.md` as "Without the sender's Land"). The extraction prompts are the Ordnung condition's, so a
+`scripts/eval_without_land.py` also replays Ordnung without it, and with the state the postcode on the sender's
+letter suggests confirmed (`ordnung.rules.postcodes`, as if the person said Yes to every suggestion;
+`evals/results/<date>-<model>-without-land.json`, shown in `docs/evals.md` as "Without the sender's Land"). The extraction prompts are the Ordnung condition's, so a
 change to them is recorded again on the benchmark: versions 9 to 11 (labels, actions and consequences
 in the person's language, dates and amounts written as that language writes them, an explanation that
 names a decision window the rules engine computes, the letter's high-stakes kind, a rent's working day,
@@ -2030,8 +2039,10 @@ user-confirmed arrival date; until then fall back to the document date with `low
 
 **Holidays.** Weekend + nationwide holidays always count. Regional holidays count only when the
 region of the place of performance is known: `Party.region`, which only the person sets (*Which state is
-this sender in?* in the sender's drawer, `PATCH parties/{id}`; reading a letter never sets it, and nothing
-derives it from a postcode) — while it is unknown, the engine uses nationwide holidays (earlier date). A
+this sender in?* in the sender's drawer, `PATCH parties/{id}`; reading a letter never sets it). The postcode
+on the sender's letter may suggest it, as a question the person answers (*Is X in Bavaria?*, only for a
+postcode GeoNames lists in exactly one Land; [ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md))
+— while it is unknown, the engine uses nationwide holidays (earlier date). A
 date counted *back* over a regional
 holiday (a period before an event, the safe date of a deadline that never moves) could be earlier
 where it holds: with the region unknown that is flagged (`medium`, "act a working day before it").
