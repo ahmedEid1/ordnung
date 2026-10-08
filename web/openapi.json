@@ -6901,6 +6901,17 @@
               }
             ],
             "title": "Detail"
+          },
+          "needs_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Needs Version"
           }
         },
         "type": "object",
@@ -6909,7 +6920,8 @@
           "version",
           "path",
           "ok",
-          "detail"
+          "detail",
+          "needs_version"
         ],
         "title": "ClaudeStatus"
       },

@@ -123,7 +123,7 @@ sequenceDiagram
 
 Every stage updates the durable `jobs` queue and publishes `job.progress` events, which drive the
 live stepper in the UI. Rate limits pause the whole worker until the reset time instead of failing
-documents, and Claude not installed or not signed in pauses it until a status check sees Claude ready
+documents, and Claude not installed, not signed in or too old pauses it until a status check sees Claude ready
 (the letters wait as *Waiting for Claude*, and a page opened meanwhile is told of the pause when it
 connects; a call that never started carried no letter); a restart resumes queued work.
 

@@ -93,11 +93,15 @@ export function returnLine(name: string, address: string): string {
   return [name.trim(), ...address.split("\n").map((l) => l.trim())].filter(Boolean).join(" · ");
 }
 
-export type ClaudeState = "ready" | "unchecked" | "signed_out" | "missing";
+export type ClaudeState = "ready" | "unchecked" | "signed_out" | "outdated" | "missing";
 
-/** What the Claude check shows: ready · installed but not probed · not signed in · not installed. */
+/**
+ * What the Claude check shows: ready · installed but not probed · not signed in · older than Ordnung needs
+ * (`needs_version`, the server's minimum) · not installed.
+ */
 export function claudeState(c: ClaudeStatus | null | undefined): ClaudeState {
   if (!c || !c.installed) return "missing";
+  if (c.needs_version) return "outdated";
   if (c.ok === true) return "ready";
   if (c.ok === false) return "signed_out";
   return "unchecked";

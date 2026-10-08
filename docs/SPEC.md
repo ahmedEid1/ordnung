@@ -419,7 +419,11 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   and whose fix on a failure points at that model after the sign-in; and checks the database
   read-only (`PRAGMA quick_check`, schema version); its fix names `ordnung restore FILE --force`. A
   `claude` that can't be started (moved, not executable) is reported as not installed, never a crash,
-  and one not found is looked for again at the next call.
+  and one not found is looked for again at the next call. A `claude --version` older than
+  `MIN_CLAUDE_VERSION` (2.1.0, `llm/claude_cli.py`) fails the doctor, makes the app's zero-token status
+  not ready (`ClaudeStatus.needs_version` names the minimum; the app shows the update command) and is
+  refused by the backend before its first call (`ClaudeOutdated`, a kind of not installed: a letter
+  waits); a version that can't be read is only a warning.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -650,11 +654,12 @@ that ran to the end, plus its newest paused or stopped attempt while it is withi
 lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
-Claude not installed or not signed in pauses it too, without an end (`llm.paused` with an empty `until`,
-banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason` "Waiting for
-Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure and ends
-its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`) — and so does each letter
-for Claude claimed meanwhile (put back for 30 s at a time; private and held letters are still read).
+Claude not installed, not signed in or too old pauses it too, without an end (`llm.paused` with an
+empty `until`, banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason`
+"Waiting for Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure
+and ends its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`,
+`paused_outdated`) — and so does each letter for Claude claimed meanwhile (put back for 30 s at a time;
+private and held letters are still read).
 Reading resumes once a Claude status check sees Claude ready: `GET /api/health` (a missing or
 signed-out status is kept 15 s, a ready one 10 min) or the worker's own check every 30 s. A `claude`
 found on PATH is used from then on, so installing Claude needs no restart. A reading that finds Claude
@@ -666,7 +671,9 @@ first — while a letter only Claude can read still waits — and reads each let
 from `GET /api/jobs?active_only=true`; a letter waiting for Claude then shows "This letter waits for
 Claude" with the dates list and *Add a date* instead of the stepper.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
-non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
+non-user-modified extracted rows in one transaction. While a reading of the letter is queued or running,
+reprocess returns that job instead of queuing another, and the worker never claims a letter's job while
+another job of that letter runs. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
 
 **E-mail attachments** (`ingest/attachments.py`, policy in its docstring). When an `.eml` is added,
@@ -1759,7 +1766,9 @@ Pages:
    in use says "Saved · desktop has it"; a banner opens "Which Ordnung do you want to keep?" (both sides with
    their letters, none chosen).
 10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
-   name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
+   name/address (skippable) → Claude check (copyable fixes: Anthropic's installer for the browser's
+   system, the package manager its setup page lists for it, npm last; the paid plan Claude Code needs;
+   `claude update` for one older than 2.1.0; "Continue without AI") → drop zone +
    "Explore the demo instead". Its first step also offers "I already use Ordnung on another computer":
    `/join` (outside the shell) joins a sync folder and brings that Ordnung over, profile included.
 11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
@@ -1952,7 +1961,7 @@ upsert_suggestion(s) · get_suggestion · update_suggestion · list_suggestions(
 # drafts / notes / chat
 add_draft · get_draft · update_draft · list_drafts · delete_draft · add_note · list_notes · add_chat_message · list_chat_messages
 # jobs (queue of record)
-enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
+enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · active_job(doc_id, kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)

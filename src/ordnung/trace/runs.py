@@ -15,7 +15,7 @@ Written policy (ADR 0007):
   readings hash the letter and the reading's number, so a rebuild gives the same ids.
 * **How a reading ended** is a code, never a message that could quote the letter or the model:
   ``done``; ``failed`` with the kind of failure (:data:`FAILURES`); or interrupted — ``paused`` by a
-  usage limit or by Claude not installed or not signed in (:data:`INTERRUPTIONS` says which), or
+  usage limit or by Claude not installed, not signed in or too old (:data:`INTERRUPTIONS` says which), or
   ``stopped`` by a shutdown — and read again later. The view turns codes into the
   sentences of :func:`ending_message`.
 * **What is kept.** A letter keeps its newest :data:`KEPT_READINGS` readings that ran to the end
@@ -73,6 +73,7 @@ INTERRUPTIONS: dict[str, str] = {
     "paused": "Paused: Claude's usage limit was reached. The letter is read again when it resets.",
     "paused_not_installed": "Paused: Claude Code wasn't installed. The letter is read once Claude is ready.",
     "paused_not_signed_in": "Paused: Claude Code wasn't signed in. The letter is read once Claude is ready.",
+    "paused_outdated": "Paused: Claude Code was too old. The letter is read once Claude is ready.",
     "stopped": "Stopped: Ordnung was closed before the letter was finished. It is read again at the next start.",
 }
 

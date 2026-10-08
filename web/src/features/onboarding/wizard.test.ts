@@ -73,21 +73,23 @@ describe("wizard", () => {
   });
 
   it("maps the Claude status to what the check shows", () => {
-    const base = { version: null, path: null, detail: null };
+    const base = { version: null, path: null, detail: null, needs_version: null };
     expect(claudeState(undefined)).toBe("missing");
     expect(claudeState({ ...base, installed: false, ok: null })).toBe("missing");
     expect(claudeState({ ...base, installed: true, ok: true })).toBe("ready");
     expect(claudeState({ ...base, installed: true, ok: false })).toBe("signed_out");
     expect(claudeState({ ...base, installed: true, ok: null })).toBe("unchecked");
+    // older than Ordnung needs: not ready, and not a sign-in problem
+    expect(claudeState({ ...base, installed: true, ok: false, version: "2.0.9 (Claude Code)", needs_version: "2.1.0" })).toBe("outdated");
   });
 
   it("tells a pending or failed health check apart from a missing Claude (UI audit R1-onboarding-6)", () => {
-    const ready = { version: "2.1.4 (Claude Code)", path: null, detail: null, installed: true, ok: true };
+    const ready = { version: "2.1.4 (Claude Code)", path: null, detail: null, needs_version: null, installed: true, ok: true };
     expect(claudeView(undefined, { pending: true, failed: false })).toBe("checking");
     expect(claudeView(undefined, { pending: false, failed: true })).toBe("unknown");
     expect(claudeView(ready, { pending: false, failed: true })).toBe("ready"); // a failed refetch keeps the last answer
     expect(claudeView({ ...ready, installed: false, ok: null }, { pending: false, failed: false })).toBe("missing");
-    const views: ClaudeView[] = ["ready", "unchecked", "signed_out", "missing", "checking", "unknown"];
+    const views: ClaudeView[] = ["ready", "unchecked", "signed_out", "outdated", "missing", "checking", "unknown"];
     expect(views.filter(claudeUsable)).toEqual(["ready", "unchecked"]);
   });
 

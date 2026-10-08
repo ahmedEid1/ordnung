@@ -100,7 +100,14 @@ from ordnung.ingest.text import (
     text_file_pages,
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
-from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, ClaudeTimeout, LLMError
+from ordnung.llm.base import (
+    ClaudeAuthError,
+    ClaudeNotInstalled,
+    ClaudeOutdated,
+    ClaudeRateLimited,
+    ClaudeTimeout,
+    LLMError,
+)
 from ordnung.models import (
     PROOF_SOURCE,
     Direction,
@@ -147,6 +154,8 @@ STAGE_PROGRESS: dict[str, float] = {
     "plan": 0.94,
     "done": 1.0,
 }
+#: The jobs that read a letter (the ingest worker claims these).
+READING_JOBS: tuple[str, ...] = ("ingest", "reprocess")
 MAX_KNOWN_PARTIES = 200
 HIDDEN_TEXT_WARNING = (
     "This document contains invisible text (white, tiny or off-page letters). It was not sent to Claude — "
@@ -605,9 +614,16 @@ def _attachments_message(filename: str, rows: Sequence[EmailAttachment], more: i
 
 
 def reprocess(ctx: AppContext, doc_id: str) -> Job:
-    """Queue a document to be read again, bypassing the model cache (items the person edited stay)."""
-    document = ctx.store.update_document(doc_id, status="queued", error=None)
-    job = ctx.store.enqueue_job("reprocess", doc_id, force=True)
+    """Queue a document to be read again, bypassing the model cache (items the person edited stay).
+    While a reading of it is queued or running, that job is returned instead: asked twice (a double
+    click, the phone as well), Claude still reads the letter once."""
+    store = ctx.store
+    with store.tx():  # one transaction: two requests at once never both find no job
+        waiting = store.active_job(doc_id, READING_JOBS)
+        if waiting is not None:
+            return waiting
+        document = store.update_document(doc_id, status="queued", error=None)
+        job = store.enqueue_job("reprocess", doc_id, force=True)
     announce_job(ctx, job, quiet=unannounced(document))
     return job
 
@@ -1108,6 +1124,8 @@ def failure_code(exc: BaseException) -> str:
 
 def pause_code(exc: ClaudeRateLimited | ClaudeNotInstalled | ClaudeAuthError) -> str:
     """Why a reading paused, as the code its trace keeps (:data:`ordnung.trace.runs.INTERRUPTIONS`)."""
+    if isinstance(exc, ClaudeOutdated):
+        return "paused_outdated"
     if isinstance(exc, ClaudeNotInstalled):
         return "paused_not_installed"
     if isinstance(exc, ClaudeAuthError):

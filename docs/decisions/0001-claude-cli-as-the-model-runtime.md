@@ -19,6 +19,10 @@ are read from `stream-json` stdout; structured outputs are enforced with `--json
   Ordnung never sees or stores credentials (see Anthropic's
   [legal & compliance notes](https://code.claude.com/docs/en/legal-and-compliance): an end user may
   sign in to the unmodified Claude Code binary with their own subscription).
+- Needs Claude Code 2.1.0 or newer (`MIN_CLAUDE_VERSION` in `llm/claude_cli.py`), whose flags every call
+  passes. `ordnung doctor`, the app's zero-token status check and the backend before its first call all
+  compare `claude --version` with it: an older CLI counts as not ready, so letters wait (*Waiting for
+  Claude*) with the update command (`claude update`) instead of failing on a flag it rejects.
 - Least privilege is expressed in flags: `--tools ""` for document reading, only Ordnung's read-only
   MCP tools for Ask, `--setting-sources ""`, `--strict-mcp-config`, `--no-session-persistence`, and
   never `--dangerously-skip-permissions` or `--bare` (which disables subscription login).

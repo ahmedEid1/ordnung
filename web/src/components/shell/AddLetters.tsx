@@ -49,8 +49,8 @@ export function fileKind(f: File): { label: string; icon: LucideIcon } {
 /** How many files (or photo pages) a dialog lists before "Show all". */
 const SHOWN = 8;
 
-/** Why Claude can't read letters now: not installed, or not signed in. */
-export type ClaudeNotReady = Extract<ClaudeState, "missing" | "signed_out">;
+/** Why Claude can't read letters now: not installed, not signed in, or older than Ordnung needs. */
+export type ClaudeNotReady = Extract<ClaudeState, "missing" | "signed_out" | "outdated">;
 
 /** Why Claude can't read letters now, or `null` when it can — or when this session doesn't use Claude
  * (the demo's recordings, a test backend). Letters added meanwhile are stored and wait in the queue:
@@ -58,7 +58,7 @@ export type ClaudeNotReady = Extract<ClaudeState, "missing" | "signed_out">;
 export function claudeNotReady(health: Pick<Health, "backend" | "claude"> | undefined): ClaudeNotReady | null {
   if (health?.backend !== "claude") return null;
   const state = claudeState(health.claude);
-  return state === "missing" || state === "signed_out" ? state : null;
+  return state === "missing" || state === "signed_out" || state === "outdated" ? state : null;
 }
 
 interface AddLettersApi {
@@ -767,10 +767,11 @@ function KeepPrivateSwitch({
   );
 }
 
-/** "Claude isn't installed yet" / "… signed in yet": why the letters wait to be read. */
+/** "Claude isn't installed yet" / "… signed in yet" / "… needs an update": why the letters wait to be read. */
 const NOT_READY: Record<ClaudeNotReady, string> = {
   missing: "Claude isn't installed yet",
   signed_out: "Claude isn't signed in yet",
+  outdated: "Claude Code needs an update",
 };
 
 /**

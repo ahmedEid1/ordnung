@@ -394,12 +394,17 @@ they change — never what is in them. Details in [docs/privacy.md](docs/privacy
 
 ## Install and run
 
-You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters,
-[Claude Code](https://claude.com/claude-code) signed in with your Claude subscription (or an API key).
-Ordnung calls it in headless mode; there is nothing else to configure. Without Claude you can still store
-letters privately, search them and add your own dates (Timeline → Add a date, or on a letter's page). A
-letter added while Claude isn't installed or signed in waits (*Waiting for Claude*) instead of failing, and
-is read once Claude is ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
+You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters, Claude Code 2.1.0 or
+newer, signed in with a paid Claude plan (Pro, Max, Team or Enterprise) or an Anthropic Console account;
+the free Claude plan doesn't include Claude Code. Install [Claude Code](https://claude.com/claude-code)
+with Anthropic's installer — `curl -fsSL https://claude.ai/install.sh | bash` on macOS and Linux,
+`irm https://claude.ai/install.ps1 | iex` in Windows PowerShell; other ways are in its
+[setup guide](https://code.claude.com/docs/en/setup) — and run `claude` once to sign in. Installed this
+way it updates itself; `claude update` updates it at once. Ordnung calls it in headless mode; there is
+nothing else to configure. Without Claude you can still store letters privately, search them and add your own dates
+(Timeline → Add a date, or on a letter's page). A letter added while Claude isn't installed, isn't signed
+in or is older than 2.1.0 waits (*Waiting for Claude*) instead of failing, and is read once Claude is
+ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
 (weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
 runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
 access's network lookups and certificates, autostart entries and backups. The other tests, desktop
@@ -417,8 +422,8 @@ ordnung autostart enable        # start at login; then switch on the morning not
 ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
 ```
 
-`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed or signed
-in, or for its usage limit to pass (it is stored and read once Claude is ready).
+`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed
+in or updated, or for its usage limit to pass (it is stored and read once Claude is ready).
 
 **On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
 choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The

@@ -1683,6 +1683,8 @@ class ClaudeStatus(_Model):
     path: str | None = None
     ok: bool | None = None
     detail: str | None = None
+    #: The oldest Claude Code Ordnung works with, when the installed one is older (``ok`` is then false).
+    needs_version: str | None = None
 
 
 CheckStatus = Literal["ok", "warn", "fail"]

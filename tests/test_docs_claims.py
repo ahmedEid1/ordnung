@@ -36,6 +36,7 @@ from ordnung.drafts.template_letters import TEMPLATES
 from ordnung.ingest.extract import ExtractionInput, extraction_request
 from ordnung.ingest.plan import VerifiedItem
 from ordnung.llm.base import LLMRequest
+from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
@@ -607,6 +608,23 @@ async def test_readme_names_exactly_the_rules_tools() -> None:
     named = set(re.findall(r"`([a-z_]+)`", paragraph))
     listed = {tool.name for tool in await build_rules_server().list_tools()}
     assert named == listed
+
+
+@pytest.mark.parametrize("document", ["README.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"])
+def test_the_claude_code_version_needed_is_the_one_ordnung_checks(document: str) -> None:
+    """README's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the app accept."""
+    assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
+        (ROOT / document).read_text(encoding="utf-8")
+    )
+
+
+def test_readme_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
+    """README's Install: Anthropic's installer per system (no Node.js), and the plans that include Claude Code."""
+    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    assert "curl -fsSL https://claude.ai/install.sh | bash" in install
+    assert "irm https://claude.ai/install.ps1 | iex" in install
+    assert "Node.js" not in install and "`claude update`" in install
+    assert "the free Claude plan doesn't include Claude Code" in install
 
 
 def test_readme_lists_every_template_letter() -> None:

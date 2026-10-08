@@ -1404,10 +1404,11 @@ def test_job_queue_lifecycle(store: Store, clock: Clock) -> None:
     assert (claimed.status, claimed.attempts) == ("running", 1)
     assert must(store.claim_next_job(["review"])).id == review.id
     assert store.claim_next_job([]) is None
-    assert must(store.claim_next_job()).id == second.id
-    assert store.claim_next_job() is None
+    assert store.claim_next_job() is None  # the letter is being read: its second job waits
 
     store.update_job(first.id, status="done", progress=1.0, stage="done")
+    assert must(store.claim_next_job()).id == second.id
+    assert store.claim_next_job() is None
     assert [j.id for j in store.list_jobs(active_only=True)] == [review.id, second.id]
     assert [j.id for j in store.list_jobs()] == [review.id, second.id, first.id]
     assert [j.id for j in store.list_jobs(limit=1)] == [review.id]
@@ -1417,6 +1418,23 @@ def test_job_queue_lifecycle(store: Store, clock: Clock) -> None:
     assert must(store.claim_next_job()).attempts == 2
     with pytest.raises(ValidationError):
         store.enqueue_job("bake")
+
+
+def test_a_letter_is_never_read_twice_at_once(store: Store) -> None:
+    """Two queued readings of one letter: only one is claimed at a time, and other letters' jobs are
+    claimed meanwhile."""
+    letter = add_doc(store)
+    other = add_doc(store, b"another letter", filename="other.pdf")
+    first = store.enqueue_job("reprocess", letter.id, force=True)
+    second = store.enqueue_job("reprocess", letter.id, force=True)
+    theirs = store.enqueue_job("ingest", other.id)
+
+    assert must(store.claim_next_job(["ingest", "reprocess"])).id == first.id
+    assert must(store.claim_next_job(["ingest", "reprocess"])).id == theirs.id
+    assert store.claim_next_job(["ingest", "reprocess"]) is None
+
+    store.update_job(first.id, status="done")
+    assert must(store.claim_next_job(["ingest", "reprocess"])).id == second.id
 
 
 def test_claim_respects_not_before(store: Store) -> None:

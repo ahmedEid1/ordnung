@@ -30,6 +30,7 @@ from ordnung.llm.base import (
     ClaudeAuthError,
     ClaudeBadOutput,
     ClaudeNotInstalled,
+    ClaudeOutdated,
     ClaudeRateLimited,
     ClaudeTimeout,
     LLMError,
@@ -185,6 +186,35 @@ async def test_no_claude_on_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
     with pytest.raises(ClaudeNotInstalled):
         await ClaudeCLIBackend(max_retries=0).complete(letter)
+
+
+async def test_an_old_claude_is_asked_nothing_until_it_is_updated(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest
+) -> None:
+    """Claude Code older than Ordnung needs would reject flags every call passes: the call is refused
+    before anything is sent — like a missing Claude, so a letter waits — and names the update command.
+    Updated while Ordnung runs, the same backend calls it."""
+    fake.play({"transcript": "extract_structured.jsonl"})
+    monkeypatch.setenv("FAKE_CLAUDE_VERSION", "2.0.9 (Claude Code)")
+    backend = ClaudeCLIBackend(max_retries=0)
+    with pytest.raises(ClaudeOutdated) as raised:
+        await backend.complete(letter)
+    assert isinstance(raised.value, ClaudeNotInstalled)
+    message = str(raised.value)
+    assert "2.0.9" in message and "2.1.0 or newer" in message and "“claude update”" in message
+    assert fake.calls == []
+
+    monkeypatch.setenv("FAKE_CLAUDE_VERSION", "2.1.0 (Claude Code)")
+    assert (await backend.complete(letter)).data == ANSWER
+
+
+async def test_a_version_claude_does_not_name_lets_the_call_go_ahead(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest
+) -> None:
+    """``ordnung doctor`` only warns about a ``claude --version`` it can't read: a call isn't refused for it."""
+    fake.play({"transcript": "extract_structured.jsonl"})
+    monkeypatch.setenv("FAKE_CLAUDE_VERSION", "nightly (Claude Code)")
+    assert (await ClaudeCLIBackend(max_retries=0).complete(letter)).data == ANSWER
 
 
 async def test_claude_installed_after_the_backend_was_made_is_found(

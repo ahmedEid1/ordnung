@@ -14,7 +14,7 @@ import { useMockApi } from "@/test/mockFetch";
 import { makeTestQueryClient, renderWithProviders, TEST_HEALTH } from "@/test/render";
 import { CopyCommand } from "./CopyCommand";
 import { OnboardingWizard } from "./OnboardingWizard";
-import { CLAUDE_INSTALL_CMD } from "./options";
+import { CLAUDE_INSTALL, CLAUDE_NPM_INSTALL } from "./options";
 import { ProgressDots } from "./ProgressDots";
 import { StepAddress, StepClaude } from "./Steps";
 import { JOIN_LINK, JOIN_PATH, WIZARD_STEPS, initialDraft } from "./wizard";
@@ -178,7 +178,15 @@ describe("the name & address step", () => {
 });
 
 describe("the Claude check", () => {
-  const claude = (c: Partial<ClaudeStatus>): ClaudeStatus => ({ installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription.", ...c });
+  const claude = (c: Partial<ClaudeStatus>): ClaudeStatus => ({
+    installed: true,
+    version: "2.1.4 (Claude Code)",
+    path: "/usr/local/bin/claude",
+    ok: true,
+    detail: "Signed in with your Claude subscription.",
+    needs_version: null,
+    ...c,
+  });
   const step = (props: Partial<Parameters<typeof StepClaude>[0]>) => (
     <StepClaude claude={undefined} view="missing" checking={false} onRecheck={() => {}} headingRef={() => {}} {...props} />
   );
@@ -215,13 +223,54 @@ describe("the Claude check", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Checked just now — still not found on this computer.");
   });
 
-  it("shows a long install command whole, wrapping after the package scope (R1-onboarding-3)", () => {
-    render(<CopyCommand command={CLAUDE_INSTALL_CMD} label="install Claude Code" />);
-    const code = screen.getByText(CLAUDE_INSTALL_CMD);
+  it("not installed: Anthropic's installer for this computer's system, the other ways, and the plan it needs", async () => {
+    const user = userEvent.setup();
+    render(step({ view: "missing" }));
+    expect(screen.getByRole("status")).toHaveTextContent("Claude isn't installed yet");
+    // jsdom says Linux: its installer first, and the system can be switched
+    expect(screen.getByRole("tab", { name: "Linux", selected: true })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: `Copy command to install Claude Code: ${CLAUDE_INSTALL.linux.command}` })).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Windows" }));
+    expect(screen.getByText(CLAUDE_INSTALL.windows.command)).toBeInTheDocument();
+    expect(screen.getByText("winget install Anthropic.ClaudeCode")).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Mac" }));
+    expect(screen.getByText(CLAUDE_INSTALL.mac.command)).toBeInTheDocument();
+    expect(screen.getByText("brew install --cask claude-code")).toBeInTheDocument();
+    // npm only as the last way, with what it needs
+    expect(screen.getByText(/Node\.js 22 or newer/)).toBeInTheDocument();
+    expect(screen.getByText(CLAUDE_NPM_INSTALL)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Node\.js 18/);
+    expect(document.body).toHaveTextContent("Claude Code needs a paid Claude plan (Pro, Max, Team or Enterprise) or an Anthropic Console account");
+    expect(document.body).toHaveTextContent("the free plan doesn't include it");
+    expect(document.body).toHaveTextContent("Without Claude you can still store letters privately, search them and add your own dates");
+  });
+
+  it("too old: names the version Ordnung needs and the update command, never a sign-in", () => {
+    render(step({ claude: claude({ ok: false, version: "2.0.9 (Claude Code)", needs_version: "2.1.0" }), view: "outdated" }));
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Claude Code needs an update");
+    expect(status).toHaveTextContent("Claude Code 2.0.9 — Ordnung needs 2.1.0 or newer");
+    expect(screen.getByRole("button", { name: "Copy command to update Claude Code: claude update" })).toBeInTheDocument();
+    expect(screen.getByText("brew upgrade claude-code")).toBeInTheDocument();
+    expect(screen.getByText("winget upgrade Anthropic.ClaudeCode")).toBeInTheDocument();
+    expect(screen.queryByText(/sign in/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
+  });
+
+  it("shows the installer command whole, wrapping only inside its address (R1-onboarding-3)", () => {
+    const command = CLAUDE_INSTALL.mac.command;
+    render(<CopyCommand command={command} label="install Claude Code" />);
+    const code = screen.getByText(command);
     expect(code).toHaveClass("whitespace-normal", "[overflow-wrap:anywhere]");
     expect(code).not.toHaveClass("overflow-x-auto");
-    expect(code.innerHTML).toBe("npm install -g @anthropic-ai/<wbr>claude-code");
-    expect(screen.getByRole("button", { name: `Copy command to install Claude Code: ${CLAUDE_INSTALL_CMD}` })).toBeInTheDocument();
+    // never between the two slashes of "https://"
+    expect(code.innerHTML).toBe("curl -fsSL https://<wbr>claude.ai/<wbr>install.sh | bash");
+    expect(screen.getByRole("button", { name: `Copy command to install Claude Code: ${command}` })).toBeInTheDocument();
+  });
+
+  it("shows a long npm command whole, wrapping after the package scope (R1-onboarding-3)", () => {
+    render(<CopyCommand command={CLAUDE_NPM_INSTALL} label="install Claude Code with npm" />);
+    expect(screen.getByText(CLAUDE_NPM_INSTALL).innerHTML).toBe("npm install -g @anthropic-ai/<wbr>claude-code");
   });
 
   it("never breaks a path right after its root slash (no lone “/” at a line's end)", () => {
