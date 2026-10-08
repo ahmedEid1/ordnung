@@ -21,6 +21,8 @@ goes where.
 | Encrypted backups (`ordnung backup`, Settings → Data) | wherever you save the file | Only where you put it — encrypted, so without your passphrase nobody can read it |
 | The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
 | Calendar sync (only if you connect a calendar) | the calendar you connect (Nextcloud, iCloud, mailbox.org, …); the app password in your system's password store | To that calendar's provider: dates, times and alarms (discreet, the default) — or the events' titles, what to do, amounts and who it is with (with details) |
+| Phone access (only if you turn it on) | the certificates in `<data dir>/phone/`; the paired phones (their names, when and from which address they were last used, a hash of each sign-in) in `ordnung.db` | Only to phones you paired, encrypted, on your home network — they show what is on the computer and keep no copy ([below](#phone-access-optional)) |
+| Hand-off sync between your computers (only if you set it up) | an encrypted copy in the folder you choose; this computer's sync state in `<data dir>/sync/`; the passphrase in each computer's password store | Only where your own sync tool takes that folder: encrypted, under names that reveal nothing ([below](#hand-off-sync-between-your-computers-optional)) |
 
 `<data dir>` defaults to your platform's user data folder (e.g. `~/.local/share/ordnung`,
 `~/Library/Application Support/ordnung`, `%LOCALAPPDATA%\ordnung`) and can be changed with
@@ -69,7 +71,10 @@ and sorts them on your computer. Nothing is sent anywhere to build the page, and
 run locally. On screen every number of yours is **hidden until you choose Show** (only its last few
 characters stay visible), so someone looking over your shoulder doesn't read it; *Copy* works without
 showing it. A case's reference — an invoice number, a Kassenzeichen, an Aktenzeichen — is shown as it is:
-its letter and the Pay panel print it in full anyway.
+its letter and the Pay panel print it in full anyway. On a [paired phone](#phone-access-optional) the page
+shows your own numbers with only their last 4 characters, also after *Show* or *Copy*, and so do the
+IBAN in your profile and the numbers *Ask*'s numbers tool hands over for a question asked there: the full
+numbers are on your computer. A letter itself still shows what is printed on it.
 
 The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
 while a letter in your ledger shows it: delete that letter and the number leaves the page. One copy
@@ -113,13 +118,22 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
   database rows are overwritten rather than left behind. Originals and page images are never kept in the
   browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
-  its cache.
+  its cache. A paired phone keeps no copy either: every answer it gets is marked not to be stored, it
+  can't download originals, letter PDFs or the calendar file, and a phone you removed is told to empty its cache and storage
+  the next time it reaches Ordnung (a tab still open there shows what it last showed until it is closed).
   Contracts and letters you drafted stay, without the link to it; your *Ask* conversations stay as
   they are. *Settings → Delete everything* wipes the whole database — and, when a calendar is
   connected for calendar sync, first removes Ordnung's events from it and the app password from your
-  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do).
+  system's password store (if that can't be done, nothing is deleted and Ordnung says what to do; when
+  another of your computers sends to the same calendar through hand-off sync, the events stay there and
+  only this computer's connection goes).
   Encrypted backups you made earlier are files of your own: they still hold what was in Ordnung
-  when you made them, deleted letters included, until you delete them.
+  when you made them, deleted letters included, until you delete them. With [hand-off
+  sync](#hand-off-sync-between-your-computers-optional) on, a deleted letter's encrypted files leave the
+  sync folder once nothing refers to them for 7 days (of Ordnung's clock and of its running time); your
+  sync tool's version history or trash may keep them longer — empty it there too. A kept copy holds what it
+  saved until you delete it. *Delete everything* takes this computer out of sync first; your other
+  computers and the sync folder keep what they have.
 - **Proof of sending stays private** — a receipt, delivery record, fax report or saved e-mail you
   add to a sent letter is stored like any upload with *Keep private — no AI* on: it is never sent to
   Claude, not even when you ask about the letter, and it isn't listed among your letters. One
@@ -156,13 +170,19 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   change it). The demo and the benchmarks keep the model they were recorded with.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
-  there. (The one thing that keeps itself current is calendar sync, and only after you
-  connect a calendar: it updates Ordnung's own events there — see below.)
+  there. (Two things keep themselves current, each only after you turn it on: calendar sync updates
+  Ordnung's own events in the calendar you connected, and hand-off sync keeps the encrypted copy in your
+  sync folder up to date — see below.)
 - **Signed in on this computer** — Ordnung's sign-in cookie is named after its port, so the demo and
   your own Ordnung on another port keep separate sign-ins. Browsers don't keep cookies apart by port,
   though: while you're signed in, your browser also sends Ordnung's sign-in cookie to other programs on
   this computer that serve pages on localhost, on any port. On a shared computer, only open local web
   pages you trust while Ordnung is open.
+- **Signed in on your phone** — a paired phone signs in with a cookie of its own that only that
+  phone's browser holds, never your computer's session token. It works only from your home network,
+  changes by itself at most once an hour, and stops working the moment you remove the phone in
+  Settings → Phone on your computer. Ordnung keeps only a hash of it. Cookies ignore ports here too: if
+  that phone opens another HTTPS service on your computer's address, its browser sends the cookie along.
 
 ## GiroCode (payment QR codes)
 
@@ -174,7 +194,10 @@ letter. When you confirm "These match the letter", the details you compared are 
 activity log in your database (they are what the letter says), so the code stays unlocked until the
 letter is read differently; deleting the letter deletes that entry too (also when you deleted the
 to-do first). Scanning the code hands its
-text to your banking app on your phone, like typing it would.
+text to your banking app on your phone, like typing it would. On a [paired phone](#phone-access-optional),
+which can't scan its own screen, the block offers to copy the details or to save the code as a picture
+that many banking apps can read: the picture is drawn on the phone, shared with your banking app or
+saved on the phone, and stays in your Photos until you delete it.
 
 ## The watched folder
 
@@ -264,8 +287,9 @@ third party** — your calendar provider — so:
   reads or changes anything else in that calendar — a calendar of its own, named "Ordnung", keeps
   things tidy. Once a day (and on *Sync now*) it asks the server which of *its own* events are still
   there, by name, and puts back any that went missing. Disconnecting forgets the password and can
-  remove Ordnung's events first; "Delete everything" always removes them (and forgets the password)
-  before it deletes anything.
+  remove Ordnung's events first; "Delete everything" removes them (and forgets the password) before it
+  deletes anything — unless another of your computers sends to the same calendar through hand-off sync:
+  then the events stay for that computer to keep current.
 - **When.** When you connect, when you press *Sync now*, and every 15 minutes while `ordnung serve`
   runs — only what changed is sent. The activity log notes each sync that sent or removed events.
 - **A restored backup doesn't take over the calendar.** The backup holds the calendar's address and
@@ -277,13 +301,183 @@ third party** — your calendar provider — so:
   UID are a keyed hash (the key stays in your data folder, and a backup carries it), not the to-do's or
   contract's id, which would tell a cancellation deadline from a payment.
 
+## Phone access (optional)
+
+Settings → Phone on your computer lets a phone use Ordnung in its browser over your home Wi-Fi. Your
+letters stay on the computer: the phone shows them, and adds to them, while the computer is on and
+Ordnung runs. Phone access is off until you turn it on, never available in the demo, and can't be turned
+on while Ordnung runs without its session token (`--no-token`). The policy is in
+`ordnung/phone/__init__.py`, the decision in [ADR 0017](decisions/0017-phone-access-over-the-home-network.md).
+
+- **What a phone can do.** Look at everything the everyday pages show, add letters (photos or files)
+  and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists. It can't delete
+  anything, download originals, letter PDFs, the calendar file or your records, change settings, your profile, phone
+  access, calendar sync, the watched folder or backups, decide about letters waiting from your watched
+  folder, let Claude read a letter you kept private, or start the weekly Ideas. The exact list is checked
+  before a request reaches the rest of Ordnung, and anything not on it is refused.
+- **Your letters stay on the computer.** Photos taken on the phone go straight to the computer, every
+  answer the phone gets is marked not to be stored, and the phone keeps no copy. On the phone, *My
+  numbers* and your profile's IBAN show only their last 4 characters ([above](#my-numbers)). A letter
+  shows what is printed on it, though — also a letter you write: one that asks for money back on your
+  account (such as the deposit return) carries your IBAN in full, on the phone too. A single
+  photo is kept on the computer as the phone sent it, with what the camera wrote into it (the time, and
+  the place if the camera records it); Claude only ever sees the page image Ordnung makes from it.
+- **Home network only.** Phone access listens on one address of your computer on your home network and
+  answers only devices on that network — never through a VPN, a tunnel, a container or a virtual
+  machine. Nothing goes over the internet; there is no relay. When Ordnung can read your router's
+  identity (not every system lets it) and your computer wakes up on another network that gives it the
+  same address — many routers use the same addresses — phone access pauses until you choose *This is my
+  home network*. When your computer's address changes, phone access pauses too; moving it to the new
+  address means pairing every phone again. Reserving the address in your router avoids that (on a
+  FRITZ!Box: Heimnetz → Netzwerk → the computer → "Diesem Netzwerkgerät immer die gleiche IPv4-Adresse
+  zuweisen").
+- **Pairing.** *Pair a phone* shows a QR code whose address carries a one-time code after its `#`, the
+  part of an address a browser never sends to a server, so no log or link preview sees it. The code has 10
+  characters, works once, for 10 minutes, and closing the dialog cancels it. A wrong, expired or missing
+  code all get the same answer. One device gets 5 wrong tries for a code and is then locked out of it; 100
+  wrong tries from your network cancel the code, and Settings lists the addresses they came from. A code
+  used twice means two devices had it — someone may have seen your screen — so neither stays paired, and
+  Settings says so. Each new phone appears on your computer at once, with the address it paired from and
+  two check words its own screen shows too ("amber tulip"): a phone showing other words isn't yours. Pair
+  where nobody else can see your screen.
+- **The certificate.** The connection is HTTPS with a certificate Ordnung makes on your computer: no
+  company vouches for it, so the phone warns once that the connection isn't private. Settings shows the
+  certificate's fingerprint, so you can check that it is your computer answering. Its names say nothing
+  about you or Ordnung ("Home network certificate 7K3M"): anyone on your network who connects sees them.
+  It lasts 397 days and is renewed by itself; a phone that clicked through the warning warns once more
+  then. The certificates and their keys are in `<data dir>/phone/`, private to your account like the
+  rest of the data folder and never in the database or a backup. The keys are not encrypted — whoever can
+  read your data folder can read your letters anyway — and the authority's key can vouch for your
+  computer's one address only (below).
+- **Stopping the warning (optional).** On an iPhone or iPad, or an Android phone in Chrome, the phone's
+  Settings page offers to trust the authority that issues the certificate. The phone then opens Ordnung
+  without a warning — and **if it ever warns again, someone else is answering: don't continue**. The
+  authority can vouch for your computer's one address only, never for your router, another device or a
+  website — even for someone who copies its key from a backup of your computer's disk. A new address
+  makes a new authority: install the new one and remove the old. Remove it from the phone, too, after
+  *Start over*, *Delete everything* or removing the phone; the phone's Settings page has the steps. Other
+  phones aren't offered this step and warn once per certificate. Whether each phone really keeps the
+  authority to that one address is still to be checked on real devices.
+- **Signed in.** A paired phone gets a sign-in of its own in a cookie only its browser holds; Ordnung
+  keeps only a hash of it. It works only on your home network, and changes by itself at most once an
+  hour: an old one used again means it was copied, so that phone is signed out, and Settings and the
+  phone say why. *Remove* in Settings → Phone signs a phone out at once: what it was sending still
+  arrives, except an upload still on its way (one that had arrived is filed, and the phone is told so).
+  Turning phone access off does the same, and the phone is told phone access stopped, not that it was
+  removed. A phone not used for 30 days is forgotten; pairing again is one scan. It is refused when it
+  comes back after that, even right after Ordnung or phone access starts again. At most 10 phones can be
+  paired.
+- **Claude from the phone.** A phone uses Claude as your computer does — reading a letter it
+  photographed, *Ask*, writing a letter — through your account on the computer, and the usage log shows
+  it. Each phone may ask 30 questions, start 20 other things that ask Claude and add 30 letters an hour
+  (each letter of an upload counts; photos of one letter count once).
+- **What is logged.** The privacy log notes turning phone access on and off, pausing and resuming it,
+  pairing and removing a phone (and why: by you, unused, a new address, starting over, a code or sign-in
+  used twice), cancelled codes and new certificates. Everything a phone changes says so ("Changed a
+  to-do on Anna's iPhone"; a letter it added comes "from your phone"), the log can be filtered by phone,
+  and the Remove dialog counts a phone's changes of the last 30 days. What a phone only looks at isn't
+  logged; Settings shows when and from which address each phone was last used. Codes, sign-ins and
+  cookies are never logged.
+- **The firewall.** Your computer's firewall may ask whether Python may accept connections. On macOS
+  that rule is for the Python program Ordnung runs with. On Windows, make your Wi-Fi a private network
+  first and allow private networks only, never public. The pairing dialog's *Phone can't connect?* shows
+  the narrowest rule for Windows and for `ufw` on Linux: only this address and port, only from your home
+  network.
+- **Start over, Delete everything and backups.** *Start over* turns phone access off, removes every
+  phone and deletes the certificates. *Delete everything* stops phone access first and removes it with
+  everything else. Backups never carry phone access — no certificates, no paired phones — and a restored
+  copy starts with it off ([below](#encrypted-backups)).
+
+## Hand-off sync between your computers (optional)
+
+Settings → Your computers lets you use the same Ordnung on your laptop and your desktop, one at a time,
+through a folder your own sync tool already keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a
+network drive). It is off until you set it up, never available in the demo, and needs this computer's
+password store. The policy is in `ordnung/sync/__init__.py`, the decision in
+[ADR 0018](decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
+
+- **One computer at a time.** The computer in use saves an encrypted copy into the folder about 2 seconds
+  after a change of yours, 10 seconds after Ordnung's own work (a reading, the day changing), at the latest
+  60 seconds after the first change not yet saved, and again when Ordnung stops. Your other computers are
+  *standing by*: they change nothing — every change there, a paired phone's too, is refused until you
+  choose *Use Ordnung here* — and they read no letters, send no reminders and update no calendar. *Use Ordnung here* brings everything over once your sync tool has delivered it; the computer
+  that was in use switches to standing by when its sync tool tells it.
+- **Only ciphertext goes into the folder.** Every file there is encrypted with AES-256-GCM, under keys that
+  come from a random key your passphrase locks (scrypt, N = 2^18, r = 8: 256 MiB of memory to try one
+  passphrase); its name is a keyed hash, its size is rounded up (by at most 12 %, to at least 4 KiB), and
+  the key file is 92 bytes with nothing readable in it. Not one byte in the folder is plain text: no name,
+  date, sender, file type, the word "Ordnung" or a computer's name.
+- **What your sync provider can see** — anyone with the folder but not the passphrase: that it is an
+  encrypted store, and the name you gave its folder (Ordnung suggests a neutral one, "Vault": a folder
+  called "Ordnung" would tell them which app wrote it — and someone who knows Ordnung's open format can
+  recognise its layout anyway: a 92-byte key file, `h/` and `o/`); how many files there are and roughly
+  how large; how many computers take part (one file each); when things change; and from bursts of new
+  files, roughly how many letters and pages you add. Never
+  your letters' content, their names, senders or dates, or which file is which, and a file it already
+  knows can't be recognised in the folder (the names are keyed). Its version history and trash may keep
+  old encrypted files after Ordnung has removed them.
+- **The passphrase stays in each computer's password store.** You type it once on each computer, and
+  Ordnung keeps it in the system's password store (service "Ordnung sync", an account for this data
+  folder) — never in the folder, its database, `sync/state.json`, a log, a backup or an answer. Opening
+  Settings never reads it; it is read when Ordnung needs the folder's keys (at start, or after you typed it
+  again), to write a kept copy, and when you set sync up. A password store that doesn't keep it safely is
+  refused, as for calendar sync, and there is no file to fall back on. A new sync folder's passphrase must
+  reach about 70 bits by Ordnung's estimate — five unrelated words, like the five-word one Settings
+  suggests — because the key file sits at your provider for years, open to guessing offline (and at least
+  12 characters, as for backups). Without it nobody can open the folder: not your sync provider, not
+  Ordnung's makers, not you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
+- **What stays on each computer.** Only your ledger and your letters' files travel. Never: phone access and
+  the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
+  which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
+  it remembers (only a fingerprint of each file it brought in travels, so a folder both computers watch
+  never brings back a letter you deleted); Claude's pause; the morning notification's bookkeeping; the
+  lock and the running server's session file; and the privacy-log entries of a backup made on that
+  computer, of its phone access and of its watched folder — they name local addresses and paths.
+- **When both computers changed something.** Nothing is merged and nothing is thrown away: Ordnung asks
+  once which computer's Ordnung to keep, and the other one is saved on its own computer as a *kept copy*
+  before anything there is replaced. Work a computer did by itself (a reading finished after you closed
+  the lid, the day changing) never makes it ask; a reading cut off that way is done again on the computer
+  in use, so its Claude tokens are spent twice.
+- **Kept copies** are encrypted backups — the sync passphrase opens them with `ordnung restore` — written to
+  `<data dir>/sync/kept/` before this computer's data is replaced. They stay on this computer, are never
+  synced or deleted by themselves (Settings warns once they take more than 2 GiB), and are lost with this
+  computer's disk and with *Delete everything*.
+- **Nothing half-arrived is used.** A version is brought over only once every file of it has arrived and
+  passed its check: a file still arriving or cut short, an online-only placeholder (iCloud Drive's
+  "Optimise storage", online-only files in Dropbox or OneDrive) and a file that can't be read all count as
+  "not arrived yet", and Settings says what is still on its way. Keep the folder available offline on every
+  computer.
+- **A copied or restored data folder.** A data folder moved or copied to another computer pauses sync
+  until you say *This is the same computer* or *Set up as a new computer*. One put back from an operating
+  system's backup is never taken for new changes: Ordnung keeps it as a kept copy and brings back what it
+  last saved.
+- **Forgetting a lost computer** (Settings → Your computers) removes it from the folder's list, after a
+  kept copy of any changes only it had. It doesn't lock that computer out — it still knows the passphrase.
+  To shut out a lost or stolen computer, set up a new sync folder with a new passphrase.
+- **What is logged.** The privacy log notes starting and stopping sync, joining, each switch ("Ordnung moved
+  here from desktop (3 new letters)"), a late change brought in, a choice, a kept copy and a computer
+  forgotten; only the computer in use writes it, and the entries travel with your data. Routine saves are
+  not logged: Settings says when the last one was.
+- **Disconnect, Delete everything and backups.** Disconnecting saves what isn't saved yet and leaves the
+  folder and your other computers with everything (kept copies stay). *Delete everything* does the same
+  first, then deletes `sync/` with the kept copies and the passphrase from this computer's password store;
+  when another of your computers sends to the same calendar, Ordnung's events stay there. While no other
+  computer has received this one's latest changes, both ask a second time. Backups never carry sync, so a
+  restored copy starts without it.
+- **Tested** with a simulated sync tool (files late, out of order, in pieces, conflict copies, online-only
+  placeholders) and two data folders on one machine. A pass with a real Nextcloud, Syncthing or iCloud Drive
+  folder on two physical computers is still to be done.
+
 ## Encrypted backups
 
 `ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
 Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
 your *Ask* conversations, the usage log and cached model answers), your original files, the page
 images and the letter PDFs. Not in it: the watched folder (those files are your own; what Ordnung
-took from them is), the lock and the running server's session file.
+took from them is), the lock, the running server's session file, phone access — neither its
+certificates nor the paired phones (they are taken out of the backup's copy of the database) — and
+hand-off sync's state (its folder, the computers, the kept copies; the passphrase never was in the data
+folder): a restored copy starts without sync.
 
 - **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
   passphrase with scrypt (N = 2¹⁷, r = 8); the file starts with a versioned header and nothing else
@@ -302,6 +496,8 @@ took from them is), the lock and the running server's session file.
   with the same path on another computer (the same `~/Downloads`) holds other files, so the restored
   copy forgets both: the files in the folder wait unread, and "Read new files with Claude straight
   away" is off until you turn it on again in Settings.
+- **A restored copy doesn't take over phones.** A backup carries no phone access, and a restore
+  removes it from one crafted to: the restored copy starts with phone access off and no paired phones.
 - **Links are never followed — and never silently.** A folder inside the data folder that is a link
   to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
   Settings name it before the backup is made, so you can back it up separately.
@@ -343,11 +539,19 @@ took from them is), the lock and the running server's session file.
   can't be checked this way is refused, with the hint to print it to a new PDF. A refused file leaves
   nothing behind, and a PDF whose objects refer to themselves can't hang the reading of its text: its
   pages are read from their images instead.
-- The local web server listens on `127.0.0.1` by default (another `--host` prints a warning and still
-  needs the token) and requires a session token, same-origin
+- The local web server listens on `127.0.0.1` and answers only requests addressed to this computer
+  (`localhost` or `127.0.0.1`), and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict
   Content-Security-Policy. `ordnung serve` opens your browser through a private local page, so the
   token never appears on a command line other accounts could see.
+- Phone access's listener, while it is on, has checks of its own: HTTPS only, exactly
+  `https://<address>:<port>` as the address asked for (no names, so DNS rebinding fails), only devices
+  in your home network's subnet, `Origin` required on every change and Fetch-Metadata checked, no
+  `.`, `..`, `//` or `\` in a path, no body without a stated length, and every body counted as it
+  arrives. Before a phone is paired it answers only the pairing page, the app's own files and a pairing
+  request of at most 1 KiB; afterwards only what the phone's allow-list names. It takes at most 128
+  connections at once, and logs refusals as counts — never a code, sign-in or cookie
+  ([ADR 0017](decisions/0017-phone-access-over-the-home-network.md)).
 
 ## Using Ordnung from Claude Desktop or Claude Code
 

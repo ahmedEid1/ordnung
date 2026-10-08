@@ -3,7 +3,10 @@
 ``serve`` runs the local web app (API + UI) on 127.0.0.1 with a session token and advertises it in
 ``<data>/server.json`` (:mod:`ordnung.server`) so other commands can find it. ``add``, ``brief`` and
 ``ask`` talk to that server's API when one is running for the data directory; otherwise they run
-in-process under an exclusive data-directory lock. ``demo`` opens the sample life (prebuilt,
+in-process under an exclusive data-directory lock — refused while hand-off sync has another computer
+in use, and saved to the sync folder afterwards (best effort). ``sync`` is hand-off sync between the
+person's computers (:mod:`ordnung.sync`): through the running server's API, or in process under the
+lock after finishing an interrupted take-over. ``demo`` opens the sample life (prebuilt,
 zero tokens), ``doctor`` checks the setup, ``mcp`` is the read-only tool server Ask spawns (stdio —
 nothing else may be printed to stdout), ``openapi`` prints the API schema and ``eval`` runs the
 benchmark in a source checkout.
@@ -237,15 +240,57 @@ async def _bound(ctx: AppContext, work: Callable[[AppContext], Awaitable[T]]) ->
 
 
 def _in_process(paths: Paths, purpose: str, work: Callable[[AppContext], Awaitable[T]]) -> T:
-    """Run ``work`` on an in-process context while holding the data folder's exclusive lock."""
+    """Run ``work`` on an in-process context while holding the data folder's exclusive lock.
+
+    With hand-off sync connected, it is refused while another computer is in use (with how to take
+    over); otherwise its writes are the person's changes, and the sync folder gets them right after
+    (best effort: one line says whether it worked)."""
+    from ordnung.db.store import person_write
     from ordnung.locking import DataDirLock
 
     with DataDirLock(paths.data_dir, purpose=purpose):
+        engine = _sync_engine_if_connected(paths)
+        _refuse_while_standing_by(engine, paths)
         ctx = open_context(paths.data_dir)
         try:
-            return asyncio.run(_bound(ctx, work))
+            with person_write(engine is not None):
+                result = asyncio.run(_bound(ctx, work))
         finally:
             ctx.close()
+        _save_to_sync_folder(engine, paths)
+        return result
+
+
+def _sync_engine_if_connected(paths: Paths) -> Any:
+    """Hand-off sync's engine when sync is connected for this data folder (else ``None``)."""
+    from ordnung.app_context import sync_connected
+    from ordnung.sync.agent import load_engine
+
+    return load_engine() if sync_connected(paths) else None
+
+
+SYNC_TAKE_OVER_HINT = "Run “ordnung sync use-here” to use it on this computer."
+
+
+def _refuse_while_standing_by(engine: Any, paths: Paths) -> None:
+    """Writes are refused on a computer standing by (reads only the sync state file)."""
+    refused = engine.writes_refused(paths) if engine is not None else None
+    if refused:
+        raise _fail(str(refused), SYNC_TAKE_OVER_HINT)
+
+
+def _save_to_sync_folder(engine: Any, paths: Paths) -> None:
+    """Save the command's changes to the sync folder now (best effort; skipped without a keyring)."""
+    if engine is None:
+        return
+    from ordnung.sync.agent import default_secrets
+
+    try:
+        said = engine.push_once(paths, default_secrets())
+    except Exception as exc:  # the change is made here; the server's next start saves it
+        said = f"Not saved to the sync folder yet: {exc}"
+    if said:
+        err_console.print(f"[dim]{escape(str(said))}[/]")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -563,6 +608,22 @@ def serve(
             token_on=not no_token,
             backend="replay" if demo_folder else None,
             demo=demo_folder,
+            prepare=None if demo_folder else lambda: _finish_take_over(folder),
+        )
+
+
+def _finish_take_over(folder: Path) -> None:
+    """``serve``'s ``prepare`` (under the data folder's lock, before the database opens): finish a
+    take-over of hand-off sync that was interrupted — without the passphrase. Never raises: the server
+    then starts standing by and shows the problem."""
+    engine = _sync_engine_if_connected(Paths(folder))
+    if engine is None:
+        return
+    try:
+        engine.resume_interrupted(Paths(folder))
+    except Exception as exc:
+        err_console.print(
+            f"[yellow]![/] Bringing Ordnung over from your other computer didn't finish: {escape(str(exc))}"
         )
 
 
@@ -983,6 +1044,7 @@ def _trace_getter(paths: Paths, doc_id: str, stack: contextlib.ExitStack) -> Cal
     if not paths.db.is_file():
         raise _fail(f"There is no Ordnung data in {paths.data_dir}.", "Pass the folder with --data-dir.")
     stack.enter_context(DataDirLock(paths.data_dir, purpose="ordnung trace"))
+    _refuse_while_standing_by(_sync_engine_if_connected(paths), paths)  # opening it writable migrates
     store = stack.enter_context(Store.open(paths))
     if store.get_document(doc_id) is None:
         raise _fail(
@@ -1615,6 +1677,599 @@ def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None
 
 
 # --------------------------------------------------------------------------------------------------
+# hand-off sync
+# --------------------------------------------------------------------------------------------------
+
+sync_app = typer.Typer(
+    name="sync",
+    help="Hand-off sync: use Ordnung on your computers one at a time, through a folder you already sync.",
+    invoke_without_command=True,
+    add_completion=False,
+    rich_markup_mode="rich",
+)
+app.add_typer(sync_app)
+
+SYNC_PASSPHRASE_WORDING = (
+    "Ordnung keeps this passphrase in this computer's password store, and you type it once on each of "
+    "your computers. Save it in your password manager too: without it nobody can open the copy in the "
+    "sync folder — not your sync provider, not Ordnung's makers, not you."
+)
+SYNC_WAIT_POLL_S = 2.0
+
+
+def _sync_folder(ctx: typer.Context, data_dir: Path | None) -> Path:
+    """The data folder of a ``sync`` command (the demo never syncs)."""
+    from ordnung.demo.loader import is_demo_dir
+    from ordnung.sync import DEMO_MESSAGE
+
+    folder = _folder(ctx, data_dir)
+    if is_demo_dir(folder):
+        raise _fail(DEMO_MESSAGE)
+    return folder
+
+
+def _sync_api(info: ServerInfo, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Ask the running server; a refusal becomes the same :class:`~ordnung.sync.SyncError`."""
+    from typing import cast
+
+    from ordnung.sync import ERROR_STATUS, SyncError, SyncErrorKind
+
+    with _api(info, timeout=None) as client:
+        response = client.request(method, path, json=body)
+    found = _json_object(response)
+    if response.status_code >= 400:
+        code = str(found.get("code") or "")
+        detail = str(found.get("detail") or f"The running Ordnung answered {response.status_code}.")
+        raise SyncError(cast(SyncErrorKind, code if code in ERROR_STATUS else "folder_problem"), detail)
+    return found
+
+
+def _sync_in_process(folder: Path, work: Callable[[Any], Awaitable[T]], *, look: bool = False) -> T:
+    """Run one sync operation here, under the data folder's lock: an interrupted take-over is finished
+    first; ``look`` opens the folder (keyring and scrypt) to see what is there."""
+    from ordnung.locking import DataDirLock
+    from ordnung.sync.agent import NO_ENGINE_MESSAGE, SyncAgent, default_secrets, load_engine
+
+    engine = load_engine()
+    if engine is None:
+        raise _fail(NO_ENGINE_MESSAGE)
+    paths = Paths(folder)
+    with DataDirLock(folder, purpose="ordnung sync"):
+        if paths.sync.is_dir():
+            engine.resume_interrupted(paths)  # never raises (a problem shows in the status)
+        context = open_context(folder)
+        try:
+            agent = SyncAgent(context, engine=engine, secrets=default_secrets())
+
+            async def run() -> T:
+                context.bus.bind_loop(asyncio.get_running_loop())
+                await agent.load(look=look)
+                return await work(agent)
+
+            return asyncio.run(run())
+        finally:
+            context.close()
+
+
+def _sync_status(folder: Path, *, look: bool = False) -> Any:
+    """The status, from the running server or read here (no keyring unless ``look``)."""
+    from ordnung.sync.status import SyncStatus
+
+    info = reachable_server(folder)
+    if info is not None:
+        return SyncStatus.model_validate(_sync_api(info, "GET", "/api/sync"))
+
+    async def read(agent: Any) -> Any:
+        return agent.status()
+
+    return _sync_in_process(folder, read, look=look)
+
+
+def _ago(moment: str | None) -> str:
+    """``2 minutes ago`` for a time of this computer's clock."""
+    from datetime import datetime
+
+    if not moment:
+        return "never"
+    try:
+        then = datetime.fromisoformat(moment)
+    except ValueError:
+        return moment
+    seconds = max(0, int((datetime.now(then.tzinfo) - then).total_seconds()))
+    for size, unit in ((86400, "day"), (3600, "hour"), (60, "minute")):
+        if seconds >= size:
+            count = seconds // size
+            return f"{count} {unit}{'s' if count != 1 else ''} ago"
+    return "just now"
+
+
+def _print_sync_status(status: Any) -> None:
+    if not status.connected:
+        if not status.available:
+            console.print(
+                f"Hand-off sync isn't available here: {escape(status.unavailable or '')}", soft_wrap=True
+            )
+            if status.install_command:
+                console.print(f"  Make it available with: {escape(status.install_command)}", soft_wrap=True)
+            return
+        console.print("This computer doesn't sync. Set it up with: ordnung sync connect FOLDER")
+        return
+    name = escape(status.this_computer or "this computer")
+    others = [computer for computer in status.computers if not computer.this and computer.state != "left"]
+    if status.mode == "in_use":
+        line = f"In use here ({name}). Saved to {escape(status.folder or '')} {_ago(status.last_saved_at)}."
+        received = [computer.name for computer in others if computer.has_latest]
+        if received:
+            line += f" {escape(', '.join(received))} {'has' if len(received) == 1 else 'have'} it."
+        elif others:
+            line += " Your other computers haven't received it yet."
+        console.print(line, soft_wrap=True)
+    elif status.mode == "standing_by":
+        line = f"Standing by: in use on {escape(status.in_use_on or 'another computer')}."
+        if status.arriving is not None:
+            arriving = status.arriving
+            line += f" Still arriving: {arriving.have} of {arriving.need} files are here."
+        elif status.up_to_date:
+            line += " Everything has arrived."
+        console.print(line, soft_wrap=True)
+        if status.take_over_waiting:
+            console.print("  “Use Ordnung here” waits until everything has arrived.")
+    else:
+        console.print(f"Connected as {name}; looking at the sync folder ({escape(status.folder or '')}).")
+    if status.problem is not None:
+        console.print(
+            f"[yellow]![/] {escape(status.problem.title)}: {escape(status.problem.message)}", soft_wrap=True
+        )
+    if status.choice is not None:
+        _print_sync_choice(status.choice)
+    for computer in others:
+        state = computer.state.replace("_", " ")
+        arrived = f", last change arrived {_ago(computer.arrived_at)}" if computer.arrived_at else ""
+        console.print(f"  {computer.key}. {escape(computer.name)} — {state}{arrived}", soft_wrap=True)
+    for notice in status.notices:
+        console.print(f"[dim]{escape(notice.message)}[/]", soft_wrap=True)
+    if status.kept:
+        console.print(
+            f"{len(status.kept)} kept cop{'y' if len(status.kept) == 1 else 'ies'}: ordnung sync kept"
+        )
+
+
+def _print_sync_choice(choice: Any) -> None:
+    console.print("[bold]Which Ordnung do you want to keep?[/] Nothing is lost: the other is kept as a copy.")
+    for side in choice.sides:
+        who = f"This computer ({escape(side.computer)})" if side.this else escape(side.computer)
+        newest = ", ".join(escape(letter.label) for letter in side.newest)
+        added = f", {side.added} added since you last switched" + (f": {newest}" if newest else "")
+        waiting = "" if side.complete else " (still arriving)"
+        console.print(f"  {who}: {side.letters} letters{added}{waiting}", soft_wrap=True)
+        console.print(f"    {escape(_side_contents(side))}", soft_wrap=True)
+        console.print(f"    ordnung sync choose {'this' if side.this else side.key}", soft_wrap=True)
+
+
+def _side_contents(side: Any) -> str:
+    """ "2 open dates and to-dos, 1 done, 1 note — latest: to-do “Renew the passport” (2026-10-07)"."""
+    counts = (
+        f"{side.items} open date{'' if side.items == 1 else 's'} and to-dos, {side.done} done, "
+        f"{side.notes} note{'' if side.notes == 1 else 's'}"
+    )
+    latest = "; ".join(f"{change.kind} “{change.label}” ({change.on})" for change in side.latest)
+    return f"{counts} — latest: {latest}" if latest else counts
+
+
+def _sync_passphrase(*, new: bool) -> str:
+    """The sync passphrase: ``ORDNUNG_SYNC_PASSPHRASE`` or a hidden prompt (twice for a new folder,
+    which must pass :func:`ordnung.sync.passphrase_problem` — a strong one is suggested first, as the
+    web app's setup does)."""
+    from ordnung.sync import PASSPHRASE_ENV, passphrase_problem, suggested_passphrase
+
+    def problem(value: str) -> str | None:
+        if not value:
+            return "The passphrase is empty."
+        return passphrase_problem(value) if new else None
+
+    given = os.environ.get(PASSPHRASE_ENV)
+    if given is not None:
+        wrong = problem(given)
+        if wrong:
+            raise _fail(f"{PASSPHRASE_ENV}: {wrong}")
+        return given
+    if new:
+        err_console.print(
+            "A strong passphrase, made up just now — type it below (or one of your own: five or more words "
+            "that don't belong together), and save it in your password manager:"
+        )
+        err_console.print(f"  [bold]{suggested_passphrase()}[/]", soft_wrap=True)
+    for _ in range(PASSPHRASE_TRIES):
+        value = str(typer.prompt("Passphrase of the sync folder", hide_input=True))
+        wrong = problem(value)
+        if wrong:
+            err_console.print(f"[red]✗[/] {escape(wrong)}")
+            continue
+        if new and str(typer.prompt("Repeat it", hide_input=True)) != value:
+            err_console.print("[red]✗[/] The two passphrases differ. Try again.")
+            continue
+        return value
+    raise _fail("No passphrase was given.")
+
+
+@sync_app.callback()
+def sync_main(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Without a command: the status (as ``ordnung sync status``)."""
+    if ctx.invoked_subcommand is None:
+        with _friendly():
+            _print_sync_status(_sync_status(_sync_folder(ctx, data_dir)))
+
+
+@sync_app.command("status")
+def sync_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Whether this computer is in use or standing by, when it last saved, and the other computers."""
+    with _friendly():
+        _print_sync_status(_sync_status(_sync_folder(ctx, data_dir)))
+
+
+@sync_app.command("connect")
+def sync_connect(
+    ctx: typer.Context,
+    folder: Annotated[
+        str, typer.Argument(help="The folder your sync tool keeps in step (empty, or one to join).")
+    ],
+    name: Annotated[
+        str | None, typer.Option("--name", help="This computer's name (default: its host name).")
+    ] = None,
+    keep: Annotated[
+        str | None,
+        typer.Option(
+            "--keep",
+            help="Joining while this computer has its own letters: keep “this” computer's Ordnung or the "
+            "“folder”'s (the other is kept as an encrypted copy).",
+        ),
+    ] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Set up a new sync folder (the passphrase twice) or join one (once)."""
+    from ordnung.sync.agent import suggested_name
+    from ordnung.sync.status import SyncChoice, SyncFolderInfo
+
+    with _friendly():
+        if keep not in (None, "this", "folder"):
+            raise _fail("--keep is “this” or “folder”.")
+        data = _sync_folder(ctx, data_dir)
+        computer = name or suggested_name()
+        info = reachable_server(data)
+        if info is not None:
+            found = SyncFolderInfo.model_validate(
+                _sync_api(info, "POST", "/api/sync/inspect", {"folder": folder})
+            )
+        else:
+
+            async def inspect(agent: Any) -> Any:
+                return await agent.inspect(folder)
+
+            found = _sync_in_process(data, inspect)
+        if found.kind == "refused":
+            raise _fail(found.problem or "This folder can't be used.", soft_wrap=True)
+        if found.data_folder_synced:
+            err_console.print(
+                "[yellow]![/] Your Ordnung folder itself is inside a synced folder, so your sync tool already "
+                "uploads it unencrypted.",
+                soft_wrap=True,
+            )
+        new = found.kind == "new"
+        console.print(
+            f"{'Setting up a new sync in' if new else 'Joining the sync in'} [bold]{escape(found.folder)}[/] "
+            f"as [bold]{escape(computer)}[/].",
+            soft_wrap=True,
+        )
+        if new:
+            console.print(SYNC_PASSPHRASE_WORDING)
+        passphrase = _sync_passphrase(new=new)
+        body = {"folder": folder, "name": computer, "passphrase": passphrase, "keep": keep}
+        if info is not None:
+            answer = _sync_api(info, "PUT", "/api/sync", body)
+            choice = SyncChoice.model_validate(answer["choice"]) if answer.get("choice") else None
+            status = _sync_status(data)
+        else:
+
+            async def connect(agent: Any) -> tuple[Any, Any]:
+                chosen = await agent.connect(folder, computer, passphrase, keep=keep, secrets=agent.secrets)
+                return chosen, agent.status()
+
+            choice, status = _sync_in_process(data, connect)
+    if choice is not None:
+        _print_sync_choice(choice)
+        raise _fail(
+            "This computer already has its own Ordnung, so nothing was connected yet.",
+            "Run the command again with --keep this or --keep folder.",
+        )
+    console.print("[green]✓[/] " + ("Started syncing." if new else "Joined."))
+    _print_sync_status(status)
+
+
+@sync_app.command("use-here")
+def sync_use_here(
+    ctx: typer.Context,
+    older_copy: Annotated[
+        bool, typer.Option("--older-copy", help="Use the copy this computer has now, without waiting.")
+    ] = False,
+    wait: Annotated[
+        float,
+        typer.Option(
+            "--wait", help="Seconds to wait for your sync tool to bring everything (Ctrl+C cancels)."
+        ),
+    ] = 600.0,
+    data_dir: DataDirOption = None,
+) -> None:
+    """“Use Ordnung here”: bring everything over from your other computer and use it on this one."""
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        info = reachable_server(data)
+        if info is not None:
+            status = _use_here_remote(info, data, older_copy=older_copy, wait=wait)
+        else:
+
+            async def take_over(agent: Any) -> Any:
+                await agent.use_here(older_copy=older_copy)
+                deadline = time.monotonic() + wait
+                while agent.status().take_over_waiting and time.monotonic() < deadline:
+                    await asyncio.sleep(SYNC_WAIT_POLL_S)
+                    await agent.wait_round()
+                return agent.status()
+
+            status = _sync_in_process(data, take_over)
+    if status.mode == "in_use":
+        console.print("[green]✓[/] Ordnung is in use here now.")
+    elif status.choice is not None:
+        _print_sync_choice(status.choice)
+    elif status.take_over_waiting:
+        console.print("Still waiting for your sync tool to bring everything. Run the command again later.")
+    _print_sync_status(status)
+
+
+def _use_here_remote(info: ServerInfo, folder: Path, *, older_copy: bool, wait: float) -> Any:
+    from ordnung.sync.status import SyncStatus
+
+    status = SyncStatus.model_validate(
+        _sync_api(info, "POST", "/api/sync/use-here", {"older_copy": older_copy})
+    )
+    deadline = time.monotonic() + wait
+    try:
+        while status.take_over_waiting and time.monotonic() < deadline:
+            time.sleep(SYNC_WAIT_POLL_S)
+            status = SyncStatus.model_validate(_sync_api(info, "GET", "/api/sync"))
+    except KeyboardInterrupt:  # nothing is applied before everything has arrived
+        _sync_api(info, "POST", "/api/sync/use-here", {"cancel": True})
+        raise
+    return status
+
+
+@sync_app.command("choose")
+def sync_choose(
+    ctx: typer.Context,
+    side: Annotated[str, typer.Argument(help="“this”, or the other computer's name or number.")],
+    yes: Annotated[bool, typer.Option("--yes", help="Don't ask for confirmation.")] = False,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Both computers changed something: keep one computer's Ordnung (the other is kept as a copy)."""
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        status = _sync_status(data, look=True)
+        if status.choice is None:
+            raise _fail("There's nothing to choose.")
+        _print_sync_choice(status.choice)
+        key = _side_key(status.choice, side)
+        if not yes and not typer.confirm("Keep this one?", default=False):
+            raise typer.Exit(1)
+        info = reachable_server(data)
+        if info is not None:
+            from ordnung.sync.status import SyncStatus
+
+            status = SyncStatus.model_validate(_sync_api(info, "POST", "/api/sync/choose", {"keep": key}))
+        else:
+
+            async def choose(agent: Any) -> Any:
+                await agent.choose(key)
+                return agent.status()
+
+            status = _sync_in_process(data, choose, look=True)
+    if status.mode == "in_use":
+        console.print("[green]✓[/] Kept. Ordnung is in use here now.")
+    _print_kept(status, data)
+
+
+def _side_key(choice: Any, side: str) -> int:
+    if side == "this":
+        found = [candidate.key for candidate in choice.sides if candidate.this]
+    elif side.isdigit():
+        found = [candidate.key for candidate in choice.sides if candidate.key == int(side)]
+    else:
+        found = [
+            candidate.key for candidate in choice.sides if candidate.computer == side and not candidate.this
+        ]
+    if len(found) != 1:
+        raise _fail(
+            f"“{side}” isn't one side of the choice." if not found else f"Two computers are called “{side}”.",
+            "Name it by its number (ordnung sync choose NUMBER).",
+        )
+    return found[0]
+
+
+def _print_kept(status: Any, folder: Path) -> None:
+    from ordnung.assistant.mcp_install import shell_join
+
+    for kept in status.kept:
+        console.print(f"  Kept copy: {escape(kept.path)} — {escape(kept.why)}", soft_wrap=True)
+        restore = shell_join(["ordnung", "restore", kept.path, "--data-dir", str(folder) + "-kept"])
+        console.print(f"    Open it with the sync passphrase: {escape(restore)}", soft_wrap=True)
+
+
+@sync_app.command("save")
+def sync_save(
+    ctx: typer.Context,
+    hand_over: Annotated[
+        bool, typer.Option("--hand-over", help="Then stand by, so you can use Ordnung on another computer.")
+    ] = False,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Save to the sync folder now."""
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        info = reachable_server(data)
+        if info is not None:
+            _sync_api(info, "POST", "/api/sync/save", {"hand_over": hand_over})
+        else:
+
+            async def save(agent: Any) -> None:
+                await agent.save(hand_over=hand_over)
+
+            _sync_in_process(data, save, look=True)
+    console.print(
+        "[green]✓[/] Handed over. Use Ordnung on your other computer now."
+        if hand_over
+        else "[green]✓[/] Saved to the sync folder."
+    )
+
+
+@sync_app.command("passphrase")
+def sync_set_passphrase(ctx: typer.Context, data_dir: DataDirOption = None) -> None:
+    """Type the sync passphrase again (the password store lost it)."""
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        passphrase = _sync_passphrase(new=False)
+        info = reachable_server(data)
+        if info is not None:
+            _sync_api(info, "POST", "/api/sync/passphrase", {"passphrase": passphrase})
+        else:
+
+            async def store(agent: Any) -> None:
+                await agent.set_passphrase(passphrase, secrets=agent.secrets)
+
+            _sync_in_process(data, store)
+    console.print("[green]✓[/] Saved in this computer's password store.")
+
+
+@sync_app.command("kept")
+def sync_kept(
+    ctx: typer.Context,
+    delete: Annotated[str | None, typer.Option("--delete", help="Delete this kept copy for good.")] = None,
+    data_dir: DataDirOption = None,
+) -> None:
+    """The kept copies on this computer (encrypted backups of data that was replaced)."""
+    from urllib.parse import quote
+
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        if delete is not None:
+            info = reachable_server(data)
+            if info is not None:
+                with _api(info) as client:
+                    response = client.delete(f"/api/sync/kept/{quote(delete, safe='')}")
+                if response.status_code == 404:
+                    raise _fail(f"There's no kept copy “{delete}”.")
+                _checked(response)
+            else:
+
+                async def remove(agent: Any) -> bool:
+                    return bool(await agent.delete_kept(delete))
+
+                if not _sync_in_process(data, remove):
+                    raise _fail(f"There's no kept copy “{delete}”.")
+            console.print(f"[green]✓[/] Deleted {escape(delete)}.")
+            return
+        status = _sync_status(data)
+    if not status.kept:
+        console.print("There are no kept copies on this computer.")
+        return
+    _print_kept(status, data)
+
+
+@sync_app.command("forget")
+def sync_forget(
+    ctx: typer.Context,
+    computer: Annotated[str, typer.Argument(help="The lost computer's name or number.")],
+    yes: Annotated[bool, typer.Option("--yes", help="Don't ask for confirmation.")] = False,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Remove a lost, stolen or dead computer from sync (its changes nowhere else are kept here first)."""
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        status = _sync_status(data, look=True)
+        others = [found for found in status.computers if not found.this]
+        matches = [
+            found.key
+            for found in others
+            if (computer.isdigit() and found.key == int(computer)) or found.name == computer
+        ]
+        if len(matches) != 1:
+            raise _fail(
+                f"No other computer is called “{computer}”."
+                if not matches
+                else f"Two computers are called “{computer}”.",
+                "Name it by its number (ordnung sync status lists them).",
+            )
+        console.print(
+            f"{escape(computer)} still knows the passphrase. To lock it out of future changes, start a new sync "
+            "folder with a new passphrase (disconnect, then set up again).",
+            soft_wrap=True,
+        )
+        if not yes and not typer.confirm("Remove it from sync?", default=False):
+            raise typer.Exit(1)
+        info = reachable_server(data)
+        if info is not None:
+            _sync_api(info, "DELETE", f"/api/sync/computers/{matches[0]}")
+        else:
+
+            async def forget(agent: Any) -> None:
+                await agent.forget(matches[0])
+
+            _sync_in_process(data, forget, look=True)
+    console.print(f"[green]✓[/] Removed {escape(computer)} from sync.")
+
+
+@sync_app.command("disconnect")
+def sync_disconnect(
+    ctx: typer.Context,
+    keep_passphrase: Annotated[
+        bool, typer.Option("--keep-passphrase", help="Leave the passphrase in the password store.")
+    ] = False,
+    yes: Annotated[bool, typer.Option("--yes", help="Don't ask for confirmation.")] = False,
+    data_dir: DataDirOption = None,
+) -> None:
+    """Stop syncing this computer (the folder and your other computers keep everything)."""
+    from ordnung.sync import SyncError
+
+    with _friendly():
+        data = _sync_folder(ctx, data_dir)
+        body = {"forget_passphrase": not keep_passphrase, "unreceived_ok": yes}
+        for _ in range(2):
+            try:
+                _disconnect(data, body)
+                break
+            except SyncError as exc:
+                if exc.kind != "not_received" or not typer.confirm(
+                    f"{exc} Disconnect anyway?", default=False
+                ):
+                    raise
+                body["unreceived_ok"] = True
+    console.print(
+        "[green]✓[/] This computer stopped syncing. The sync folder and your other computers keep everything."
+    )
+
+
+def _disconnect(folder: Path, body: dict[str, Any]) -> None:
+    info = reachable_server(folder)
+    if info is not None:
+        _sync_api(info, "DELETE", "/api/sync", body)
+        return
+
+    async def leave(agent: Any) -> None:
+        await agent.disconnect(
+            forget_passphrase=bool(body["forget_passphrase"]), unreceived_ok=bool(body["unreceived_ok"])
+        )
+
+    _sync_in_process(folder, leave, look=True)
+
+
+# --------------------------------------------------------------------------------------------------
 # backup and restore
 # --------------------------------------------------------------------------------------------------
 
@@ -1830,6 +2485,11 @@ def restore(
             f"[yellow]![/] The watched folder {escape(result.folder)} starts afresh in this copy: the files in "
             "it wait for you, and “Read new files with Claude straight away” is off until you turn it on "
             "again in Settings → Watched folder.",
+            soft_wrap=True,
+        )
+    if result.moved_aside is not None and (result.moved_aside / Paths(result.moved_aside).sync.name).is_dir():
+        console.print(
+            "  The restored copy isn't connected to sync. Connect it again in Settings → Your computers.",
             soft_wrap=True,
         )
     serve_command = "ordnung serve"

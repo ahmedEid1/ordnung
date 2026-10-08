@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import httpx
 from icalendar import Calendar
 
-from ordnung.calendar.secrets import SecretsUnavailable
+from fakes import MemorySecrets as MemorySecrets  # moved there (sync uses it too); re-exported
 
 CALENDAR_PATH = "/dav/calendars/sam/ordnung/"
 HOME_PATH = "/dav/calendars/sam/"
@@ -278,30 +278,3 @@ def serve_on_loopback(fake: FakeCalDav) -> Iterator[str]:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
-
-
-class MemorySecrets:
-    """A :class:`~ordnung.calendar.secrets.SecretStore` in memory (``unavailable``: none usable)."""
-
-    def __init__(self, unavailable: SecretsUnavailable | None = None) -> None:
-        self.saved: dict[str, str] = {}
-        self.unavailable = unavailable
-
-    def problem(self) -> SecretsUnavailable | None:
-        return self.unavailable
-
-    def _check(self) -> None:
-        if self.unavailable is not None:
-            raise self.unavailable
-
-    def get(self, account: str) -> str | None:
-        self._check()
-        return self.saved.get(account)
-
-    def set(self, account: str, password: str) -> None:
-        self._check()
-        self.saved[account] = password
-
-    def delete(self, account: str) -> None:
-        self._check()
-        self.saved.pop(account, None)

@@ -22,6 +22,8 @@ import { BatchRecapDialog } from "@/features/inbox/BatchRecap";
 import { useReadingBatch } from "@/features/inbox/useReadingBatch";
 import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView } from "@/features/inbox/status";
 import { useTrayByDoc } from "@/features/tour/newMail";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { filesStay } from "@/features/phone/copy";
 import { filterCounts, filterDocuments, groupLetters, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
 
 /**
@@ -33,6 +35,8 @@ export default function InboxPage() {
   const today = useTodayISO();
   const { openPicker } = useAddLetters();
   const touch = useMediaQuery("(pointer: coarse)");
+  // a paired phone sends its letters to the computer: they stay there, not on the phone
+  const phone = usePhoneCompanion();
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get("filter"));
@@ -167,7 +171,7 @@ export default function InboxPage() {
   const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "" };
   const pendingSearch = searching && search.isPending;
   const line = resultLine(view, visible.length, total, pendingSearch);
-  const empty = emptyCopy(view);
+  const empty = emptyCopy(view, phone);
   const onlySearch = Boolean(view.q) && filter === "all" && !kind;
   const clearSearch = () => setQuery("");
   const clearAll = () => {
@@ -304,7 +308,7 @@ export default function InboxPage() {
                     </span>
                     <span className="mt-0.5 flex items-start gap-1.5 text-sm leading-5 text-muted">
                       <Lock className="mt-1 size-3 shrink-0" aria-hidden />
-                      {touch ? "Your files stay on this device." : `${ACCEPTED_SHORT}. Your files stay on this computer.`}
+                      {phone ? filesStay(true) : touch ? "Your files stay on this device." : `${ACCEPTED_SHORT}. ${filesStay(false)}`}
                     </span>
                   </span>
                 </button>

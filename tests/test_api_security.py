@@ -3,10 +3,12 @@ app with its CSP, the server discovery file and the cached Claude status."""
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import os
 import stat
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -269,6 +271,26 @@ async def test_lifespan_starts_and_stops_background_work(data_dir: Path) -> None
         assert not api.ctx.worker.running
 
 
+async def test_shutdown_waits_for_a_server_thread_still_running(data_dir: Path) -> None:
+    """Integration finding: a cancelled tick's calendar sync thread could still read the Store after
+    the lifespan ended (the Store closes then), and sqlite crashed once at a test's teardown."""
+    order: list[str] = []
+    release = threading.Event()
+
+    def lingering() -> None:  # a cancelled task's thread, still running
+        release.wait(5)
+        order.append("thread done")
+
+    async with api_for(data_dir) as api:
+        loop = asyncio.get_running_loop()
+        async with lifespan(api.app):
+            thread = loop.run_in_executor(api.ctx.executor, lingering)
+            loop.call_later(0.3, release.set)
+        order.append("stopped")
+        await thread
+    assert order == ["thread done", "stopped"]
+
+
 # --------------------------------------------------------------------------------------------------
 # server.json
 # --------------------------------------------------------------------------------------------------
@@ -357,3 +379,38 @@ async def test_probe_reports_a_missing_or_signed_out_cli(monkeypatch: pytest.Mon
     signed_out = await probe_claude_cli()
     assert signed_out.installed and signed_out.ok is False
     assert signed_out.version == "2.1.4 (Claude Code)" and "not signed in" in (signed_out.detail or "")
+
+
+# --------------------------------------------------------------------------------------------------
+# phone access: the computer's listener never takes a phone's sign-in, and no request can claim the
+# phone listener (ordnung.phone)
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_the_computer_ignores_phone_cookies(data_dir: Path) -> None:
+    from phone_support import COOKIE, pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
+        signed = await pair(api, phone)
+        async with client_for(api.app) as computer:
+            for name in (COOKIE, "__Host-ordnung_phone_8765", "ordnung_token_8765"):
+                response = await computer.get("/api/profile", headers={"Cookie": f"{name}={signed['token']}"})
+                assert response.status_code == 401, name
+            health = await computer.get("/api/health", headers={"Cookie": f"{COOKIE}={signed['token']}"})
+            assert health.json() == {"version": __version__, "authenticated": False}
+
+
+async def test_a_request_cannot_claim_the_phone_listener(data_dir: Path) -> None:
+    claims = {
+        "ordnung.listener": "phone",
+        "x-ordnung-listener": "phone",
+        "ordnung.device": "phn_000000000000",
+        "X-Forwarded-Proto": "https",
+    }
+    async with api_for(data_dir, token=TOKEN) as api:
+        assert (await api.client.get("/api/profile", headers=claims)).status_code == 401
+        signed_in = {**claims, "Authorization": f"Bearer {TOKEN}"}
+        health = (await api.client.get("/api/health", headers=signed_in)).json()
+        assert health["client"] == "computer" and health["data_dir"] == str(api.ctx.paths.data_dir)
+        pairing = await api.client.post("/api/phone/pair", headers=signed_in, json={"code": "x", "name": "y"})
+        assert (pairing.status_code, pairing.json()["code"]) == (404, "not_phone")

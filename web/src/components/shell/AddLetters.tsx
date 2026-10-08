@@ -1,15 +1,22 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { ChevronLeft, ChevronRight, FileImage, FileStack, FileText, Files, Inbox, Lock, Mail, Upload, X, type LucideIcon } from "lucide-react";
-import { useHealth, useUploadDocuments } from "@/api/hooks";
-import type { Health } from "@/api/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Camera, ChevronLeft, ChevronRight, FileImage, FileStack, FileText, FileUp, Files, Inbox, Lock, Mail, Upload, X, type LucideIcon } from "lucide-react";
+import { invalidateLedger, useHealth, useUploadDocuments } from "@/api/hooks";
+import type { Health, UploadResult } from "@/api/types";
+import type { UploadOptions } from "@/api/endpoints";
 import { seedJob } from "@/api/sse";
 import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { filesStay, theComputer } from "@/features/phone/copy";
+import { isAbort, uploadWithProgress } from "@/features/phone/upload";
 import { isStaticDemo } from "@/mocks/mode";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { Switch } from "@/components/ui/Field";
+import { getOverlayRoot } from "@/components/ui/internal";
 import { formatFileSize } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 
@@ -83,13 +90,65 @@ interface PendingFile {
   file: File;
 }
 
-/** Files waiting for the person's choice; `photos`: several photos, so "one letter?" is asked too. */
+/**
+ * Files waiting for the person's choice; `photos`: several photos, so "one letter?" is asked too. `camera`: pages
+ * photographed one after another on a paired phone ("Photograph a letter"), named by `stamp` — the dialog shows from
+ * the first page on, and asks before they are thrown away.
+ */
 interface Pending {
   files: PendingFile[];
   photos: boolean;
+  camera?: boolean;
+  /** When the first page was photographed ("2026-10-07-0814"): the pages' names. */
+  stamp?: string;
 }
 
 let fileSeq = 0;
+
+/** "2026-10-07-0814": the local minute a letter's first page was photographed. */
+export function photoStamp(now: Date = new Date()): string {
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}-${two(now.getHours())}${two(now.getMinutes())}`;
+}
+
+/** A photo's file extension: from its type ("image/jpeg" → "jpg"), else from its name, else "jpg". */
+function photoExtension(file: File): string {
+  const byType: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" };
+  return byType[file.type] ?? /\.(jpe?g|png|webp|heic|heif)$/i.exec(file.name)?.[1]?.toLowerCase().replace("jpeg", "jpg") ?? "jpg";
+}
+
+/**
+ * Page `n` of a letter photographed at `stamp`: "photo-2026-10-07-0814-p1.jpg". A phone's camera names every photo
+ * "image.jpg"; this tells the pages apart, in the Inbox and on the computer.
+ */
+export function photoName(stamp: string, n: number, file: File): string {
+  return `photo-${stamp}-p${n}.${photoExtension(file)}`;
+}
+
+/** The photographed pages named by their place (after a page was added, moved or removed): p1, p2, … in order. */
+function numberPages(files: PendingFile[], stamp: string): PendingFile[] {
+  return files.map((entry, i) => {
+    const name = photoName(stamp, i + 1, entry.file);
+    return entry.file.name === name ? entry : { ...entry, file: new File([entry.file], name, { type: entry.file.type, lastModified: entry.file.lastModified }) };
+  });
+}
+
+/** A phone's upload in flight: how many files, how far (0–1). */
+interface Sending {
+  count: number;
+  /** Pages of one letter (the camera's), rather than files. */
+  pages: boolean;
+  fraction: number;
+}
+
+/** What the dialog says after a phone's upload ended without the letters (a refusal, no answer, Cancel). */
+interface SendNote {
+  text: string;
+  failed: boolean;
+}
+
+/** Said when "Cancel" stopped a phone's upload. */
+export const SEND_STOPPED = "Sending stopped — nothing was added. The files are still here.";
 
 /** "a.txt", "b.zip and c.doc", "a, b, c and 2 more" — names of skipped files. */
 function nameList(names: string[]): string {
@@ -99,39 +158,94 @@ function nameList(names: string[]): string {
 }
 
 /**
+ * A phone's upload, with progress and a way to stop it (`features/phone/upload.ts`). Its refusals are shown in the
+ * dialog that sent it, which stays open meanwhile (so the photos are never lost to a failed send), never as a toast.
+ */
+function usePhoneUpload() {
+  const qc = useQueryClient();
+  const [sending, setSending] = useState<Sending | null>(null);
+  const abort = useRef<AbortController | null>(null);
+  const mutation = useMutation({
+    mutationFn: ({ files, pages, ...opts }: { files: File[]; pages: boolean } & UploadOptions): Promise<UploadResult> => {
+      const controller = new AbortController();
+      abort.current = controller;
+      setSending({ count: files.length, pages, fraction: 0 });
+      return uploadWithProgress(files, opts, (fraction) => setSending((s) => (s ? { ...s, fraction } : s)), controller.signal);
+    },
+    meta: { silent: true },
+    onSuccess: () => invalidateLedger(qc),
+    onSettled: () => {
+      abort.current = null;
+      setSending(null);
+    },
+  });
+  return { mutation, sending, cancel: () => abort.current?.abort() };
+}
+
+/**
  * Provides the "Add letters" flow: hidden file input, a confirmation with "Keep private — no AI" before
  * anything is sent (docs/privacy.md) — for several photos the "Are these pages of one letter?" dialog —,
  * the upload mutation and seeding the live progress stepper. In the online demo (no backend to keep
  * files) the picker and a drop explain straight away that adding letters needs the app.
+ *
+ * On a paired phone, "Add letters" first asks how: **Photograph a letter** opens the rear camera (a file input with
+ * `capture`, so the page never holds a camera permission) one page at a time — each page joins "Pages of one
+ * letter", named `photo-<day>-<time>-p<n>`, until "Add letter" sends them as one letter in their order — or
+ * **Choose files**. A phone's upload says how far it got and can be stopped; the dialog stays until it is sent.
  */
 export function AddLettersProvider({ children }: { children: ReactNode }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const upload = useUploadDocuments();
+  const phone = usePhoneCompanion();
+  const phoneUpload = usePhoneUpload();
   const notReady = claudeNotReady(useHealth().data);
   const [pending, setPending] = useState<Pending | null>(null);
   const [keepPrivate, setKeepPrivate] = useState(false);
   const [demoNotice, setDemoNotice] = useState(false);
+  const [chooser, setChooser] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
+  const [sendNote, setSendNote] = useState<SendNote | null>(null);
 
+  /** What an upload's answer says beyond the progress cards: kept private, added before, files that failed. */
+  const afterUpload = useCallback(
+    (res: UploadResult, priv: boolean) => {
+      for (const d of res.documents) {
+        if (!priv) seedJob({ job_id: res.jobs.find((j) => j.doc_id === d.id)?.id ?? d.id, doc_id: d.id, stage: "intake", progress: 0, status: "running" });
+      }
+      if (priv) toast.success(`${plural(res.documents.length, "letter")} stored privately`, { description: `Kept on ${theComputer(phone)} only — not sent to Claude.` });
+      if (res.duplicates.length) toast({ title: "Already in your inbox", description: `${plural(res.duplicates.length, "file")} had been added before.` });
+      if (res.errors.length)
+        toast.warn(`${plural(res.errors.length, "file")} couldn't be added`, {
+          description: <span className="[overflow-wrap:anywhere]">{res.errors.map((e) => `${e.filename}: ${e.detail}`).join(" · ")}</span>,
+        });
+    },
+    [phone],
+  );
+
+  // The computer: the dialog closes at once, a failure is the request's toast. A phone: the dialog stays and shows
+  // how far the photos got; it closes once they are on the computer, and says in place why they aren't.
   const send = useCallback(
-    (files: File[], combine: boolean, priv: boolean) => {
-      upload.mutate(
-        { files, combine, private: priv },
+    (files: File[], combine: boolean, priv: boolean, pages = false) => {
+      if (!phone) {
+        upload.mutate({ files, combine, private: priv }, { onSuccess: (res) => afterUpload(res, priv) });
+        setPending(null);
+        return;
+      }
+      setSendNote(null);
+      phoneUpload.mutation.mutate(
+        { files, combine, private: priv, pages },
         {
           onSuccess: (res) => {
-            for (const d of res.documents) {
-              if (!priv) seedJob({ job_id: res.jobs.find((j) => j.doc_id === d.id)?.id ?? d.id, doc_id: d.id, stage: "intake", progress: 0, status: "running" });
-            }
-            if (priv) toast.success(`${plural(res.documents.length, "letter")} stored privately`, { description: "Kept on this computer only — not sent to Claude." });
-            if (res.duplicates.length) toast({ title: "Already in your inbox", description: `${plural(res.duplicates.length, "file")} had been added before.` });
-            if (res.errors.length)
-              toast.warn(`${plural(res.errors.length, "file")} couldn't be added`, {
-                description: <span className="[overflow-wrap:anywhere]">{res.errors.map((e) => `${e.filename}: ${e.detail}`).join(" · ")}</span>,
-              });
+            afterUpload(res, priv);
+            setPending(null);
           },
+          onError: (err) =>
+            setSendNote(isAbort(err) ? { text: SEND_STOPPED, failed: false } : { text: err instanceof Error ? err.message : "Sending didn't work.", failed: true }),
         },
       );
     },
-    [upload],
+    [phone, upload, phoneUpload.mutation, afterUpload],
   );
 
   const addFiles = useCallback((list: File[] | FileList) => {
@@ -153,9 +267,22 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       });
     if (!accepted.length) return;
     setKeepPrivate(false);
+    setSendNote(null);
     setPending({
       files: accepted.map((file) => ({ id: `f${++fileSeq}`, file })),
       photos: accepted.length >= 2 && accepted.every(isImage),
+    });
+  }, []);
+
+  /** Pages from the phone's camera: they join the letter being photographed (or start one). */
+  const addPhotos = useCallback((list: File[] | FileList) => {
+    const shots = Array.from(list).filter(isImage);
+    if (!shots.length) return;
+    setSendNote(null);
+    setPending((p) => {
+      const letter = p?.camera ? p : { files: [], photos: true, camera: true, stamp: photoStamp() };
+      const stamp = letter.stamp ?? photoStamp();
+      return { ...letter, stamp, files: numberPages([...letter.files, ...shots.map((file) => ({ id: `f${++fileSeq}`, file }))], stamp) };
     });
   }, []);
 
@@ -164,7 +291,9 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       if (!p) return p;
       const files = p.files.filter((f) => f.id !== id);
       if (!files.length) return null;
-      // one photo left: nothing to combine any more
+      // the camera's pages keep their dialog (and their names follow their places); other photos: one left,
+      // nothing to combine any more
+      if (p.camera) return { ...p, files: numberPages(files, p.stamp ?? photoStamp()) };
       return { files, photos: p.photos && files.length >= 2 };
     });
   }, []);
@@ -177,60 +306,212 @@ export function AddLettersProvider({ children }: { children: ReactNode }) {
       if (i < 0 || j < 0 || j >= p.files.length) return p;
       const files = [...p.files];
       [files[i], files[j]] = [files[j]!, files[i]!];
-      return { ...p, files };
+      return { ...p, files: p.camera ? numberPages(files, p.stamp ?? photoStamp()) : files };
     });
   }, []);
 
   const openPicker = useCallback(() => {
     if (isStaticDemo()) setDemoNotice(true);
+    // a phone: photograph the letter, or choose files (the computer has no camera worth asking about)
+    else if (phone) setChooser(true);
     else inputRef.current?.click();
-  }, []);
-  const api = useMemo<AddLettersApi>(() => ({ openPicker, addFiles, uploading: upload.isPending }), [openPicker, addFiles, upload.isPending]);
+  }, [phone]);
+  const uploading = upload.isPending || phoneUpload.mutation.isPending;
+  const api = useMemo<AddLettersApi>(() => ({ openPicker, addFiles, uploading }), [openPicker, addFiles, uploading]);
   const files = pending?.files.map((f) => f.file) ?? [];
+  const sending = phoneUpload.sending;
+
+  // while a phone's upload runs, the dialog stays: Cancel stops it. Photos taken here exist nowhere else, so
+  // closing asks before they are thrown away.
+  const close = () => {
+    if (sending) return;
+    if (pending?.camera) setDiscarding(true);
+    else setPending(null);
+  };
+
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      multiple
+      accept={ACCEPT}
+      className="sr-only"
+      tabIndex={-1}
+      aria-hidden
+      onChange={(e) => {
+        if (e.target.files?.length) addFiles(e.target.files);
+        e.target.value = "";
+      }}
+    />
+  );
 
   return (
     <Ctx.Provider value={api}>
       {children}
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        accept={ACCEPT}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-        onChange={(e) => {
-          if (e.target.files?.length) addFiles(e.target.files);
-          e.target.value = "";
-        }}
-      />
+      {phone
+        ? // with the overlays, never under the app while a dialog makes it inert: a tap in the chooser (or "Take
+          // another page") opens them
+          createPortal(
+            <>
+              {fileInput}
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                data-camera=""
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={(e) => {
+                  if (e.target.files?.length) addPhotos(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </>,
+            getOverlayRoot(),
+          )
+        : fileInput}
       <AddDialog
         files={pending && !pending.photos ? pending.files : null}
         notReady={notReady}
         keepPrivate={keepPrivate}
         onKeepPrivate={setKeepPrivate}
         onRemove={removeFile}
-        onClose={() => setPending(null)}
+        onClose={close}
         onAdd={() => {
           if (pending) send(files, false, keepPrivate);
-          setPending(null);
         }}
+        phone={phone}
+        sending={sending}
+        note={sendNote}
+        onCancelSend={phoneUpload.cancel}
       />
       <CombineDialog
         files={pending?.photos ? pending.files : null}
+        camera={Boolean(pending?.camera)}
         notReady={notReady}
         keepPrivate={keepPrivate}
         onKeepPrivate={setKeepPrivate}
         onRemove={removeFile}
         onMove={moveFile}
-        onClose={() => setPending(null)}
+        onClose={close}
         onChoose={(combine) => {
-          if (pending) send(files, combine, keepPrivate);
-          setPending(null);
+          // one letter: its pages are sent ("Sending 3 pages…"); separate letters: files
+          if (pending) send(files, combine, keepPrivate, combine);
+        }}
+        onTakeAnother={() => cameraRef.current?.click()}
+        phone={phone}
+        sending={sending}
+        note={sendNote}
+        onCancelSend={phoneUpload.cancel}
+      />
+      <Dialog
+        open={discarding}
+        onClose={() => setDiscarding(false)}
+        size="sm"
+        title={`Discard ${plural(pending?.files.length ?? 0, "photo")}?`}
+        description="They haven't been sent."
+        footer={
+          <>
+            <Button onClick={() => setDiscarding(false)}>Keep them</Button>
+            <Button
+              variant="danger"
+              icon={X}
+              onClick={() => {
+                setDiscarding(false);
+                setPending(null);
+              }}
+            >
+              Discard
+            </Button>
+          </>
+        }
+      />
+      <AddChooser
+        open={chooser}
+        onClose={() => setChooser(false)}
+        onCamera={() => {
+          setChooser(false);
+          setKeepPrivate(false); // a new letter: the switch starts off, as for any added file
+          cameraRef.current?.click();
+        }}
+        onFiles={() => {
+          setChooser(false);
+          inputRef.current?.click();
         }}
       />
       <DemoNotice open={demoNotice} onClose={() => setDemoNotice(false)} />
     </Ctx.Provider>
+  );
+}
+
+/**
+ * "Add a letter" on a paired phone: photograph it page by page with the rear camera, or choose files (a PDF, a
+ * photo from the gallery, a saved e-mail).
+ */
+function AddChooser({ open, onClose, onCamera, onFiles }: { open: boolean; onClose: () => void; onCamera: () => void; onFiles: () => void }) {
+  const cameraButton = useRef<HTMLButtonElement>(null);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title="Add a letter"
+      description={`Photograph a paper letter page by page, or choose ${ACCEPTED_ONE} on this phone. ${filesStay(true)}`}
+      initialFocus={cameraButton}
+    >
+      <div className="grid gap-2">
+        {/* the input opens from the tap itself (a file chooser opens only in answer to one) */}
+        <Button ref={cameraButton} variant="primary" size="lg" icon={Camera} onClick={onCamera} className="w-full">
+          Photograph a letter
+        </Button>
+        <Button size="lg" icon={FileUp} onClick={onFiles} className="w-full">
+          Choose files
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+/** "Sending 3 pages… 45%" with Cancel: a phone's upload in the dialog that sent it. */
+function SendingBar({ sending, onCancel }: { sending: Sending; onCancel: () => void }) {
+  const percent = Math.round(sending.fraction * 100);
+  const what = plural(sending.count, sending.pages ? "page" : "file");
+  return (
+    <div data-sending="" className="flex w-full items-center gap-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-[13.5px] font-medium tabular-nums text-ink">
+          Sending {what}… {percent}%
+        </p>
+        <div
+          role="progressbar"
+          aria-label={`Sending ${what}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-3"
+        >
+          <div className="h-full rounded-full bg-accent transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${percent}%` }} />
+        </div>
+        <span className="sr-only" role="status">{`Sending ${what} to your computer`}</span>
+      </div>
+      <Button onClick={onCancel}>Cancel</Button>
+    </div>
+  );
+}
+
+/** Why the files weren't sent (or that sending was stopped), at the top of the dialog that sent them. */
+function SendNoteLine({ note }: { note: SendNote | null }) {
+  if (!note) return null;
+  return note.failed ? (
+    <p role="alert" className="mb-3 rounded-xl border border-danger/25 bg-danger-soft px-3.5 py-2.5 text-[13.5px] leading-relaxed text-danger-ink [overflow-wrap:anywhere]">
+      Not sent: {note.text}
+    </p>
+  ) : (
+    <p role="status" className="mb-3 rounded-xl bg-surface-2 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-ink/85">
+      {note.text}
+    </p>
   );
 }
 
@@ -461,14 +742,27 @@ function PageThumbs({ files, onMove, onRemove }: { files: PendingFile[]; onMove:
   );
 }
 
-function KeepPrivateSwitch({ checked, onCheckedChange, several }: { checked: boolean; onCheckedChange: (v: boolean) => void; several: boolean }) {
+function KeepPrivateSwitch({
+  checked,
+  onCheckedChange,
+  several,
+  phone = false,
+  disabled,
+}: {
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+  several: boolean;
+  phone?: boolean;
+  disabled?: boolean;
+}) {
   return (
     <Switch
       className="mt-4 rounded-xl border border-line bg-surface-2/50 p-3"
       checked={checked}
       onCheckedChange={onCheckedChange}
+      disabled={disabled}
       label="Keep private — no AI"
-      description={`Store and search ${several ? "them" : "it"} on this computer only; Claude never sees ${several ? "them" : "it"}.`}
+      description={`Store and search ${several ? "them" : "it"} on ${theComputer(phone)} only; Claude never sees ${several ? "them" : "it"}.`}
     />
   );
 }
@@ -479,14 +773,29 @@ const NOT_READY: Record<ClaudeNotReady, string> = {
   signed_out: "Claude isn't signed in yet",
 };
 
-/** What happens to the files, in the words of the switch's current choice (and whether Claude is ready). */
-export function addDescription(keepPrivate: boolean, several: boolean, notReady: ClaudeNotReady | null = null): string {
+/**
+ * What happens to the files, in the words of the switch's current choice (and whether Claude is ready); `phone`:
+ * said on a paired phone, whose files go to the computer.
+ */
+export function addDescription(keepPrivate: boolean, several: boolean, notReady: ClaudeNotReady | null = null, phone = false): string {
   const [it, its] = several ? ["them", "their"] : ["it", "its"];
+  const where = theComputer(phone);
   if (keepPrivate)
-    return `Stored on this computer only and searchable by ${its} text. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`;
+    return `Stored on ${where} only and searchable by ${its} text. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`;
   if (notReady)
-    return `${NOT_READY[notReady]}, so Ordnung stores ${it} now and reads ${it} as soon as Claude is connected (Settings → Claude connection). Your files stay on this computer.`;
-  return `Claude reads ${it} through your Claude account to find dates, amounts and what to do. Your files stay on this computer.`;
+    return `${NOT_READY[notReady]}, so Ordnung stores ${it} now and reads ${it} as soon as Claude is connected (Settings → Claude connection). ${filesStay(phone)}`;
+  return `Claude reads ${it} through your Claude account to find dates, amounts and what to do. ${filesStay(phone)}`;
+}
+
+/** A phone's upload in the dialog that sends it. */
+interface SendProps {
+  /** On a paired phone (the wording, and an upload that shows its progress here). */
+  phone?: boolean;
+  /** The upload in flight: the footer shows its progress and Cancel instead of the choices. */
+  sending?: Sending | null;
+  /** Why the last try didn't send them, or that it was stopped. */
+  note?: SendNote | null;
+  onCancelSend?: () => void;
 }
 
 /**
@@ -501,6 +810,10 @@ function AddDialog({
   onRemove,
   onClose,
   onAdd,
+  phone = false,
+  sending = null,
+  note = null,
+  onCancelSend = () => {},
 }: {
   files: PendingFile[] | null;
   notReady: ClaudeNotReady | null;
@@ -509,7 +822,7 @@ function AddDialog({
   onRemove: (id: string) => void;
   onClose: () => void;
   onAdd: () => void;
-}) {
+} & SendProps) {
   const addRef = useRef<HTMLButtonElement>(null);
   const count = files?.length ?? 0;
   const several = count > 1;
@@ -517,27 +830,50 @@ function AddDialog({
     <Dialog
       open={Boolean(files)}
       onClose={onClose}
+      hideClose={Boolean(sending)}
+      dismissible={!sending}
       title={several ? `Add ${count} letters?` : "Add this letter?"}
-      description={addDescription(keepPrivate, several, notReady)}
+      description={addDescription(keepPrivate, several, notReady, phone)}
       initialFocus={addRef}
       footer={
-        <>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button ref={addRef} variant="primary" icon={keepPrivate ? Lock : Upload} onClick={onAdd}>
-            {keepPrivate ? "Store privately" : notReady ? "Store now, read later" : several ? "Add letters" : "Add letter"}
-          </Button>
-        </>
+        sending ? (
+          <SendingBar sending={sending} onCancel={onCancelSend} />
+        ) : (
+          <>
+            <Button onClick={onClose}>Cancel</Button>
+            <Button ref={addRef} variant="primary" icon={keepPrivate ? Lock : Upload} onClick={onAdd}>
+              {keepPrivate ? "Store privately" : notReady ? "Store now, read later" : several ? "Add letters" : "Add letter"}
+            </Button>
+          </>
+        )
       }
     >
+      <SendNoteLine note={note} />
       {files ? <FileList files={files} onRemove={onRemove} /> : null}
-      <KeepPrivateSwitch checked={keepPrivate} onCheckedChange={onKeepPrivate} several={several} />
+      <KeepPrivateSwitch checked={keepPrivate} onCheckedChange={onKeepPrivate} several={several} phone={phone} disabled={Boolean(sending)} />
     </Dialog>
   );
 }
 
-/** "Are these pages of one letter?" — shown when several photos are added at once. */
+/**
+ * What "Pages of one letter" says (a paired phone's camera, page by page): how many pages, what comes next, and
+ * where the photos go.
+ */
+export function cameraDescription(pages: number, keepPrivate: boolean, notReady: ClaudeNotReady | null = null): string {
+  const so = `${plural(pages, "page")}. Photograph the next page, or add the letter.`;
+  if (keepPrivate) return `${so} The photos go to your computer only, and Claude never reads them.`;
+  if (notReady) return `${so} ${NOT_READY[notReady]}: your computer stores the letter now and reads it as soon as Claude is connected.`;
+  return `${so} The photos go to your computer and stay there.`;
+}
+
+/**
+ * "Are these pages of one letter?" — shown when several photos are added at once. `camera`: "Pages of one letter",
+ * the phone's camera variant, from its first page on — "Take another page", "Add letter" (one letter, its pages in
+ * this order) or, from two pages, "Separate letters".
+ */
 function CombineDialog({
   files,
+  camera = false,
   notReady,
   keepPrivate,
   onKeepPrivate,
@@ -545,8 +881,14 @@ function CombineDialog({
   onMove,
   onClose,
   onChoose,
+  onTakeAnother = () => {},
+  phone = false,
+  sending = null,
+  note = null,
+  onCancelSend = () => {},
 }: {
   files: PendingFile[] | null;
+  camera?: boolean;
   notReady: ClaudeNotReady | null;
   keepPrivate: boolean;
   onKeepPrivate: (v: boolean) => void;
@@ -554,35 +896,60 @@ function CombineDialog({
   onMove: (id: string, by: -1 | 1) => void;
   onClose: () => void;
   onChoose: (combine: boolean) => void;
-}) {
+  /** The camera variant: photograph the next page (the tap opens the camera). */
+  onTakeAnother?: () => void;
+} & SendProps) {
   const combineRef = useRef<HTMLButtonElement>(null);
   const count = files?.length ?? 0;
+  const footer = sending ? (
+    <SendingBar sending={sending} onCancel={onCancelSend} />
+  ) : camera ? (
+    <>
+      <Button icon={Camera} onClick={onTakeAnother}>
+        Take another page
+      </Button>
+      {count >= 2 ? (
+        <Button variant="ghost" icon={Files} onClick={() => onChoose(false)}>
+          Separate letters
+        </Button>
+      ) : null}
+      <Button ref={combineRef} variant="primary" icon={keepPrivate ? Lock : FileStack} onClick={() => onChoose(true)}>
+        {keepPrivate ? "Store privately" : notReady ? "Store now, read later" : "Add letter"}
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button icon={Files} onClick={() => onChoose(false)}>
+        Separate letters
+      </Button>
+      <Button ref={combineRef} variant="primary" icon={FileStack} onClick={() => onChoose(true)}>
+        Combine into one letter
+      </Button>
+    </>
+  );
   return (
     <Dialog
       open={Boolean(files)}
       onClose={onClose}
-      title="Are these pages of one letter?"
+      hideClose={Boolean(sending)}
+      dismissible={!sending}
+      title={camera ? "Pages of one letter" : "Are these pages of one letter?"}
       description={
-        keepPrivate
-          ? `You added ${count} photos. Combined, they are kept as one letter with its pages in this order — on this computer only.`
-          : notReady
-            ? `You added ${count} photos. ${NOT_READY[notReady]}: Ordnung stores them now, and pages of the same letter are read together as soon as Claude is connected.`
-            : `You added ${count} photos. Pages of the same letter are read together, so dates and amounts are found across pages.`
+        camera
+          ? cameraDescription(count, keepPrivate, notReady)
+          : keepPrivate
+            ? `You added ${count} photos. Combined, they are kept as one letter with its pages in this order — on ${theComputer(phone)} only.`
+            : notReady
+              ? `You added ${count} photos. ${NOT_READY[notReady]}: Ordnung stores them now, and pages of the same letter are read together as soon as Claude is connected.`
+              : `You added ${count} photos. Pages of the same letter are read together, so dates and amounts are found across pages.`
       }
       initialFocus={combineRef}
-      footer={
-        <>
-          <Button icon={Files} onClick={() => onChoose(false)}>
-            Separate letters
-          </Button>
-          <Button ref={combineRef} variant="primary" icon={FileStack} onClick={() => onChoose(true)}>
-            Combine into one letter
-          </Button>
-        </>
-      }
+      footer={footer}
     >
+      <SendNoteLine note={note} />
       {files ? <PageThumbs files={files} onMove={onMove} onRemove={onRemove} /> : null}
-      <KeepPrivateSwitch checked={keepPrivate} onCheckedChange={onKeepPrivate} several />
+      {/* the camera's pages are one letter: "it" */}
+      <KeepPrivateSwitch checked={keepPrivate} onCheckedChange={onKeepPrivate} several={!camera} phone={phone} disabled={Boolean(sending)} />
     </Dialog>
   );
 }

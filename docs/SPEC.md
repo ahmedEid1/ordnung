@@ -33,7 +33,10 @@ has no server, no telemetry and never sees your credentials.*
 
 ### 1.2 Principles
 Local app & data · grounded or flagged · humble automation (suggest, never act) · works without AI
-(manual entry, demo replays) · not legal advice (citations + disclaimer, conservative dates).
+(manual entry, demo replays) · not legal advice (citations + disclaimer, conservative dates) · phone access
+at home, opt-in (a paired phone's browser is a window onto the computer, never a copy: §12b) · hand-off
+between your own computers, opt-in (in use on one at a time, an encrypted copy in a folder the person
+already syncs, nothing merged: §12c).
 
 ### 1.3 Persona for the demo
 **Sam Rivera**, 26, international master's student at the fictional *Hochschule Musterstadt* in
@@ -80,14 +83,24 @@ tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut
                             │   │                                                    │  schema-checked  │  JSON schema)│
  browser SPA ◄── REST+SSE ──┤   ├─ secretary (triggers, review, brief, daily tick)   │                  └─────────────┘
  CLI (Typer)  ─────────────►│   ├─ drafts (compose → checks → DIN 5008 PDF)         │
+ paired phone ◄── HTTPS ───►│   │  (opt-in: home network, own gate, allow-list §12b) │
                             │   └─ assistant (Ask) ── claude -p ── MCP (read-only) ──┼──► SQLite (query_only)
                             │  SQLite (WAL, FTS5) · files/ · derived/                │
-                            └───────────────────────────────────────────────────────┘
+                            │  sync agent + gate (opt-in, §12c) ─────────────────────┼──► sync folder (the person's
+                            └───────────────────────────────────────────────────────┘    Nextcloud / Syncthing / …):
+                                                                                          ciphertext only, keyed names
+                                                                                          ◄──► the person's other computers
 ```
 
 Trust boundaries: documents are **untrusted**; the extraction model has **no tools** and its output
 is schema-validated, verified against the page text and fed to deterministic code; the Ask agent can
-only call Ordnung's **read-only** MCP tools; the UI never renders model output as HTML.
+only call Ordnung's **read-only** MCP tools; the UI never renders model output as HTML. The network is
+a boundary only when the person turns on phone access (§12b): a second listener in the same process
+answers phones paired with a one-time code, on one home-network address, over HTTPS, through its own
+gate and an allow-list checked before routing; the computer's listener (§13) doesn't change. Hand-off sync
+(§12c) adds two: what Ordnung writes into the sync folder is ciphertext under keyed names (the passphrase
+only in the OS keyring), and what comes back from it is untrusted until every object has arrived and
+authenticated.
 
 ### 3.1 Repository layout
 ```
@@ -105,8 +118,11 @@ src/ordnung/            (the main modules; the package itself is the complete li
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
   notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py)
+  phone/ (scope.py, net.py, tls.py, pairing.py, record.py, access.py, actor.py, mask.py)
+  sync/ (crypto.py, folder.py, model.py, lineage.py, decide.py, scrub.py, local.py, scan.py, push.py, pull.py,
+         kept.py, engine.py, agent.py, gate.py, status.py)
   demo/ (loader.py, tour.py, samples/, fixtures/, demo_db/)   # samples + fixtures ship in the wheel
-  api/ (app.py, security.py, deps.py, routes/*.py)
+  api/ (app.py, security.py, deps.py, phone_gate.py, routes/*.py)
   web/dist/                                                     # built SPA (generated)
 web/            React + TS + Vite + Tailwind v4 source
 scripts/        make_sample_life.py (+ scan simulation), capture.sh (README assets; web/scripts/capture.mjs), gen_mock_*.py
@@ -119,7 +135,8 @@ tests/          pytest (+ tests/fake_claude.py, the fake claude CLI)
 Python ≥ 3.11: FastAPI, uvicorn, Pydantic v2, Typer, Rich, sqlite3 (WAL, FTS5), pdfplumber,
 pypdfium2, Pillow + pillow-heif, holidays, python-dateutil, icalendar, fpdf2, rapidfuzz, platformdirs,
 sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`), cryptography
-(backups), keyring (calendar sync's password store), hypothesis (dev).
+(backups, phone access certificates, hand-off sync), keyring (calendar sync's and hand-off sync's password
+store), ifaddr (phone access: the network interfaces with their netmasks), hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
 date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
@@ -1242,9 +1259,217 @@ their docstrings):
   sync waiting (no password, no events claimed, paused) — it never reads or deletes the original's
   password or events. The status (`GET /api/calendar/sync`) never reads the keyring.
   "Delete everything" first removes Ordnung's events from a connected calendar and its password
-  from the keyring (refused, nothing deleted, when that can't be done). httpx, TLS
+  from the keyring (refused, nothing deleted, when that can't be done); the events stay when another
+  computer of hand-off sync sends to the same calendar (§12c). httpx, TLS
   verified, Basic auth, no redirects (same-host redirects only while discovering), 20 s timeout,
   answers ≤ 1 MiB and never with a DTD. Settings previews every event in either mode first.
+
+## 12b. Phone access (optional) — `phone/`
+
+A paired phone uses Ordnung in its browser over the home Wi-Fi, while the computer runs it; the letters
+stay on the computer. The policy is in `ordnung/phone/__init__.py`, each module's docstring holds its part,
+and ADR 0017 records the decision. It follows calendar sync's pattern: opt-in from Settings, unavailable
+in the demo, one meta key, secrets outside the database, Delete everything first, a restored copy
+detached.
+
+- **On and off** (`phone/access.py`). Settings → Phone (`PUT /api/phone {enabled, address?, port?,
+  home_network}`) turns it on: an address from `phone/net.py` (the network interfaces with their netmasks,
+  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never an interface whose name
+  starts with `utun`, `tun`, `tap`, `wg`, `ppp`, `ipsec`, `tailscale`, `zt`, `docker`, `br-`, `veth`,
+  `virbr`, `vboxnet`, `vmnet`, `vEthernet`, `awdl` or `llw`; the default route's address recommended),
+  a port (8767, or the first free one up to 8775; `PUT {port}` takes 1024–65535), the certificates, then
+  the listener. Refusals: 409 `unavailable` in the demo (`ordnung demo`, `serve --demo`, a demo folder)
+  and without a session token (`--no-token`; the tests' hook may still enable it), `not_set_up` before
+  onboarding, `no_network`, `port_busy`; 422 `invalid` for an address that isn't a candidate. Off stops
+  the listener and cancels the code; paired phones stay. A new address or port forgets every phone
+  (`by: "address_changed"`), and a new address makes a new certificate authority. At start the lifespan
+  starts it when the record says on; a failure is a `problem` in Settings, never an exit.
+- **The listener.** A second `uvicorn.Server` for the same app object on the same loop, bound to the
+  saved address and port, never `0.0.0.0`: lifespan off, no proxy headers, no log config or access log,
+  no `server` header, no websockets, `limit_concurrency` 128, keep-alive 5 s, graceful stop 2 s, TLS 1.2
+  or newer. Only `startup()` and `shutdown()`, never `serve()` or `run()`; sse-starlette's
+  `AppStatus.should_exit` is never set. A watcher (every 30 s while on) pauses it when the address is
+  gone (`problem.code = "address_gone"`, or `no_network`) or when the router's fingerprint — the default
+  gateway's address and hardware address, read best effort — differs from the saved one
+  (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
+  resumes when both are back; it never moves to another address by itself. Once a day it renews the
+  server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
+  on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
+  /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.
+- **Certificates** (`phone/tls.py`). An authority (EC P-256, 10 years) with `NameConstraints(permitted:
+  IPAddress(<address>/32), DNSName("invalid"))`, critical, and a neutral name ("Home network certificate
+  7K3M"); a server certificate for the address (397 days, a new key each time, a common name that doesn't
+  look like a host), renewed 30 days before its end or when it doesn't fit (unreadable, another key,
+  another address, another issuer). `<data>/phone/` (0700): `ca.pem`, `ca.key`, `server.pem` (with the
+  chain), `server.key`, 0600, written atomically; never in the database or a backup. Fingerprints are
+  SHA-256 as upper-case byte pairs. No HSTS. `GET /ordnung-certificate.crt` serves the authority (DER)
+  to a paired phone for the optional trust step, which the phone's Settings offers on iOS and iPadOS and
+  in Chrome on Android only.
+- **Pairing** (`phone/pairing.py`). `POST /api/phone/pairing` → `PhonePairing{url, code, expires_at}`
+  with `url = https://<address>:<port>/pair#<CODE>`: 10 characters of Crockford's base 32 (50 bits),
+  valid 10 minutes, once, one at a time, only its SHA-256 kept, in memory; `DELETE /api/phone/pairing`
+  cancels it. `POST /api/phone/pair {code (≤ 32), name (1–40)}` is answered on the phone listener only
+  (404 `not_phone` on the computer's): 422 `wrong_code` "That code didn't match, or it has expired." for a
+  wrong, expired or missing code; after 5 wrong tries one address is locked out of the code (429
+  `too_many`); 100 wrong tries in all cancel it (`phone.pairing_stopped`, notice `pairing_stopped` with the
+  addresses); a code that already paired a phone, coming again, answers 409 `code_used` and removes that
+  phone (`by: "code_reused"`, notice `code_reused`); 409 `too_many_phones` at 10 phones. The gate allows
+  10 pairing requests a minute per address and 60 in all. Success: `PairResult{name, check_words}` and
+  `Set-Cookie: __Host-ordnung_phone_<port>=<token>; HttpOnly; Max-Age=34560000; Path=/; SameSite=strict;
+  Secure`. Names lose control and invisible formatting characters and get " (2)" when taken; the check
+  words are an HMAC of the phone's id with the record's `check_key`. `pairing.opened_at` (with
+  `opened_from`) is set by a `GET /pair` page load (`Sec-Fetch-Dest: document`) while a code is open.
+- **Sign-in.** A 256-bit token per phone; the record keeps its SHA-256, the previous one and the last 8
+  retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
+  for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
+  "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
+  401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
+  `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
+  else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from
+  the gate's first check. Removing a phone (`DELETE /api/phone/devices/{id}`, saved before its answer) or
+  stopping the listener refuses its requests that haven't reached the app yet, cancels its live streams
+  (`/api/events`, Ask), tells an upload still arriving that the client went away (answered 401
+  `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
+  — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
+  listener's own stop, which waits up to 30 s for what is in flight.
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (58)
+  cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
+  profile edits, phone access, backups, deleting, originals, held-letter decisions and hand-off sync
+  stay on the computer, and the calendar files (`calendar.ics`, `items/{id}.ics`, `calendar/exported`)
+  are computer-only too. `classify` runs before routing (HEAD counts as GET; a path several templates
+  match is a phone's only when every match is; no match is refused); `mark_openapi` adds
+  `x-ordnung-phone: true`.
+  Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
+  `/api/backup`, `DELETE /api/data`), and `PATCH /api/documents/{id}` refuses `ai_private: false` from a
+  phone. `/api/health` on a phone: `client: "phone"`, no data folder, no Claude path, no checks, `probe`
+  refused.
+- **The letters stay on the computer.** `no-store` on every API answer; on a phone, *My numbers*
+  (`masked: true`), Ask's `get_my_numbers` (`ORDNUNG_MASKED_NUMBERS`) and the profile's IBAN show the
+  person's own numbers as `•••• 1234` (`phone/mask.py`). Per phone and hour: 30 Ask questions, 20 other
+  model actions (read again, translate, a new letter, the daily note) and 30 letters added (each letter of
+  an upload counts — the gate counts the request, the route the rest; photos of one letter once), then 429
+  `too_many` with `Retry-After`.
+- **Attribution** (`phone/actor.py`). While a phone's request runs, every activity entry it writes says
+  "(on <phone>)" and carries `device` in its data; the gate logs `phone.changed` ("Changed a to-do on
+  Anna's iPhone") for each admitted change; a phone's upload is `source: "phone"` ("… from your phone").
+  `GET /api/activity?device=` filters by phone, and `PhoneDevice.recent_changes` counts the last 30 days.
+- **Record** (`phone/record.py`). Meta `phone_access` (`PhoneRecord`: enabled, address, interface,
+  subnet, port, enabled_at, certificate_changed_at, gateway, check_key, devices — `PhoneDeviceRecord`: id
+  `phn_…`, name, platform, token_sha256, previous_sha256, rotated_at, confirmed_at, retired, paired_at,
+  last_seen_at, last_address). One serialised writer; last use is saved at most every 10 minutes. The
+  code, notices, problems and live requests are memory only. Backups leave the key out of the database
+  snapshot (`_LEFT_OUT_META`, `secure_delete` on); a restore drops it (`detach_phone_access`); Delete
+  everything calls `phone.forget()` first and removes `phone/`; hand-off sync (§12c) leaves it out too.
+- **Privacy log kinds**: `phone.enabled`, `phone.disabled`, `phone.paired`, `phone.removed` (`by`:
+  `computer`, `unused`, `address_changed`, `reset`, `code_reused`, `token_reuse`), `phone.paused`,
+  `phone.resumed`, `phone.certificate`, `phone.pairing_stopped`, `phone.changed`.
+
+## 12c. Hand-off sync between computers (optional) — `sync/`
+
+The person's own computers share one Ordnung, in use on one of them at a time, through a folder the
+person's own sync tool keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a network share). The
+policy is in `ordnung/sync/__init__.py` (with every constant below), each module's docstring holds its
+part, and ADR 0018 records the decision. It follows calendar sync's pattern: opt-in from Settings → Your
+computers (or `ordnung sync connect`), unavailable in the demo and without a usable keyring, the secret
+outside the database, Delete everything leaves first, a restored backup starts without it.
+
+- **The folder, format 1** (`sync/crypto.py`, `sync/folder.py`). `<K>`: the key file, named by its scrypt
+  salt (32 hex), exactly 92 bytes: nonce ‖ AES-256-GCM(KEK, format ‖ vault id ‖ vault key ‖ reserved) with
+  KEK = scrypt(passphrase, N = 2^18, r = 8, p = 1; 256 MiB) — no plaintext field, the KDF fixed for format 1.
+  `h/<H>`: one head per computer (H a keyed hash of a random computer id), rewritten only by its owner;
+  its rename is a save's commit point. `o/<xx>/<30 hex>`: write-once objects named
+  `HMAC(names_key, kind ‖ sha256(content))` — manifests, file-list buckets, 1 MiB database slices, data
+  files. `.<16 hex>.tmp`: a write in progress. Any other name is ignored and never deleted. Sealing:
+  HKDF-SHA256 subkeys of the random vault key; AES-256-GCM STREAM in 1 MiB chunks (the backup container's
+  core) with the name, kind and vault as associated data; plaintext = length ‖ content ‖ zeros, padded with
+  Padmé (at most 12 %) and to at least 4096 bytes; `sealed_size(P) = 23 + P + 16 · max(1, ⌈P / CHUNK⌉)`;
+  content-named kinds take salt and nonce prefix from `HMAC(objects_key, "seal" ‖ name)`, so two writers
+  write the same bytes. Caps before allocating: 64 MiB per head, manifest or bucket, 4 GiB per data file,
+  1,000,000 files. At most 8 computers per folder.
+- **Choosing the folder** (`POST /api/sync/inspect`): refused when relative, a drive root or the home
+  folder, inside or around the data folder or the watched folder, under a missing parent, not writable, or
+  holding anything but a sync folder and known sync-tool files (`.stfolder`, `.dropbox*`, `desktop.ini`,
+  `.DS_Store`, …; the message names up to three). A warning, never a refusal, when the data folder itself
+  sits in a synced folder: the sync tool would upload it unencrypted.
+- **What travels** (`sync/scrub.py`): a scrubbed in-memory snapshot of the database, and `files/`,
+  `derived/` and `drafts/`. Per computer — scrubbed from every save, this computer's own kept on every pull:
+  meta `phone_access`, `calendar_sync`, `inbox_seen`, `inbox_baseline`, `job_interruptions`,
+  `llm_paused_until`, `desktop_notified_on`, `desktop_notify_failed`, `sync_mark`, `sync_person`; settings
+  `inbox_dir`, `inbox_auto_read`, `concurrency`, `desktop_notifications`, `desktop_notify_time`, `demo`,
+  `simulated_today`; privacy-log kinds `backup.created`, `phone.*` and `folder.*`. Merged as a union and
+  left out of the state digest: `own_pdfs` and `folder_taken` (the SHA-256 of every file a watched folder
+  brought in, at most 5,000, so a folder both computers watch never brings a deleted letter back). The
+  calendar's "already sent" record travels under a hashed target and is merged per target. A running
+  reading travels as queued. A database that arrives with the demo's keys is refused.
+- **Versions** (`sync/lineage.py`, `sync/decide.py`). A version records which *person changes* it holds:
+  ranges of per-computer person numbers, plus ranges a choice dropped. `Store` bumps meta `sync_person`
+  inside the transaction of every write made under `PERSON_WRITE` (set by the gate for writes that aren't
+  `NOT_PERSON_CHANGES`, on both listeners, by the watched folder's intake and by the CLI's in-process
+  writes); a save reads it from its own snapshot. Background work never makes a version newer, so it never
+  causes a question. A head may claim a computer's numbers only up to that computer's published `pnum`.
+  Order comes from epochs and lineage, never clocks. `decide(local, view, action)` is pure: save, bring a
+  late change in quietly, ask (a choice), wait, stand by or claim. At start the counters are raised to what
+  the folder shows, and a database older than this computer's last save is a rollback (a kept copy, then
+  that save brought back, with a notice), never a person change.
+- **Saving** (`sync/push.py`), on the computer in use only: 2 s after the person's last write, 10 s after
+  background work's, at the latest 60 s after the first unsaved one, and when Ordnung stops (at most 20 s;
+  the head then says `closed`). Only objects the folder lacks are written; a save whose scrubbed digest
+  equals the last one writes nothing. Every object and the manifest are fsynced before the head is renamed.
+  A failed save is tried again after 30 s, doubling to 15 minutes; after 30 minutes it is a problem.
+- **Reading the folder** (`sync/scan.py`): every 15 s every head is decrypted (the last good copy of each in
+  `sync/heads.json`); a replayed head (`written` below what was seen) is ignored. A standing-by computer
+  authenticates and SHA-checks each new object as it arrives and says it `has` a version only once all of
+  it verified; a short file, an online-only placeholder (a dataless file, an `.icloud` stand-in, Windows'
+  recall attributes), a read error or a timeout is "not arrived", never damage. An object that keeps
+  failing for 10 minutes is damaged: the reader lists it in its head's `wants` (at most 64), and a computer
+  that holds the content writes it again. Every folder operation gives up after 30 s
+  (`folder_unreachable`).
+- **Take-over and pull** (`sync/pull.py`, `sync/agent.py`). *Use Ordnung here* waits until the target has
+  arrived (a waiting take-over ends after 30 minutes, or when the target saves a new change of the
+  person's), stages and verifies everything in `sync/incoming/` with writes still allowed, then fences: the
+  gate refuses writes ("Bringing over changes from …"), the requests already admitted on both listeners
+  finish within 30 s (else the fence lifts and it tries again later), background work stops and its threads
+  drain, and the decision is taken again on a fresh view. Then the kept copy when the person's data would
+  be replaced (Rule K), the journal `sync/pull.json` (the commit point), the files, the database through
+  SQLite's backup API in one transaction (with `sync_mark`), pruning, and the claim (epoch + 1). A pull
+  interrupted after its journal finishes at the next start without the passphrase. The space needed is
+  checked first: the staged database, the database's size × 1.1, the files, the kept copy and 64 MiB.
+- **Kept copies** (`sync/kept.py`): ordinary backups (format v1, the sync passphrase) at
+  `<data>/sync/kept/ordnung-kept-<YYYY-MM-DD-HHMM>[-n].ordnung-backup`, never synced or pruned by
+  themselves, a warning above 2 GiB in all; lost with the disk and with Delete everything.
+- **This computer's state**, `<data>/sync/` (0700; never synced, never in a backup): `state.json`,
+  `files.json`, `heads.json`, `pull.json`, `incoming/`, `kept/`. While it exists the Store is durable
+  (`synchronous=FULL`; `fullfsync` on macOS). A data folder found at another path or on another machine
+  pauses sync (`copied_folder`: *This is the same computer* or *Set up as a new computer*).
+- **The gate** (`sync/gate.py`): a pure ASGI middleware inside `SecurityMiddleware`, so the computer's
+  listener and the phone's both pass it. On a standing-by computer, and while data is brought over, every
+  write outside `/api/sync` (matched by whole path segments) and `ALLOWED_IN_STANDBY` (`POST /api/backup`
+  and the phone admin writes) answers 409 `standby` before any handler runs; background work (the worker,
+  the tick, the watched folder, calendar sync, desktop reminders) doesn't run.
+- **The passphrase** — `KeyringSecrets(service="Ordnung sync", …)`, account `computer:<computer id>`, the
+  same refusals as calendar sync; read at the agent's start, after it is typed again, to write a kept copy
+  and to connect — never by the status. `ORDNUNG_SYNC_PASSPHRASE` feeds the CLI. A new folder's passphrase:
+  12–1024 characters and at least 70 bits by `passphrase_bits` (NFC; runs of letters and runs of digits,
+  split where a lower-case letter meets an upper-case one; each distinct token, case-folded, counts its
+  length × log2 26 or × log2 10 — a run (one character again and again, in order either way, along a
+  keyboard row) one character's worth and 1 bit, one of a few hundred very common words (numbers, months,
+  days, colours, classic passwords) 7 bits, tokens that only make a run together that one run — at most 14
+  bits); setup suggests 5 words (in the CLI too), and the web app counts the same way.
+- **Leaving and forgetting.** Disconnect and Delete everything fence writes, save, write the head `left`
+  with its version kept (the others still bring that version over), forget the passphrase and remove
+  `sync/` (Disconnect keeps `kept/`); while no other computer has this one's latest changes they answer 409
+  `not_received` unless `unreceived_ok`. Delete everything leaves Ordnung's events in a calendar another
+  computer of the sync sends to (`calendar_shared_with`). Forget (`DELETE /api/sync/computers/{key}`)
+  removes a lost computer from the folder, after a kept copy of changes only it had; it doesn't lock that
+  computer out (it still knows the passphrase).
+- **Garbage collection**, at most once a day: an object no head refers to for 7 days of wall clock and
+  7 × 24 h of this computer's running time is deleted; a database slice every live head has moved past
+  goes after a day; never while a head can't be read.
+- **Phone**: the 13 operations are computer-only ("hand-off sync"); a phone reaches only its own computer
+  and can't take over, and a standing-by computer refuses a phone's writes like its own.
+- **Privacy log kinds**: `sync.connected`, `sync.joined`, `sync.taken_over`, `sync.brought_in`,
+  `sync.chosen`, `sync.kept`, `sync.forgot`, `sync.disconnected`; only the computer in use writes them, and
+  they travel with the data. Routine saves are not logged.
 
 ## 13. HTTP API — `api/`
 
@@ -1257,7 +1482,18 @@ when its Claude status is stale, checks Claude again (no model call), uses a `cl
 then on and, once Claude is ready, lets the letters waiting for it be read (§8); and downloading a
 drafted letter's PDF (or a sent letter's Nachweis) records its SHA-256 among the last 200, so the watched
 folder never takes it for a letter received; originals served with `nosniff` and `attachment` unless
-PDF/JPEG/PNG/WEBP; `--no-token` for tests only.
+PDF/JPEG/PNG/WEBP; `--no-token` for tests only. The phone listener (§12b) never reaches these checks: its
+requests are tagged by the listener (an ASGI scope key no client can set) and go to its own gate
+(`api/phone_gate.py`), in order: the listener itself (421), the home network's subnet (403
+`not_home_network`), the exact `<address>:<port>` Host (400 `wrong_host`), no `.`/`..` segment, `//` or
+`\` (400 `bad_path`), no body without a length (411 `length_required`), Fetch-Metadata, `Origin` on
+every change and `X-Ordnung-Client` (403 `cross_site`); then the device cookie — before pairing only
+`/pair`, the build's assets and icon and a pairing POST of at most 1 KiB pass (a GET with a body: 400
+`unexpected_body`), everything else is 401 `phone_not_paired` —, the allow-list (403 `computer_only`),
+`MAX_REQUEST_BYTES` and the per-phone limits, with bodies counted as they arrive (413 `too_large`). Every
+answer there carries `Cross-Origin-Resource-Policy: same-origin` and a `Permissions-Policy`. The
+session token, a bearer header and `?token=` are never accepted on the phone listener, and the device
+cookie never on the computer's. Refusals answer `{detail, code}` with the status `ERROR_STATUS` gives.
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
@@ -1287,11 +1523,18 @@ replay-only demo), `drafts/{id}/proof` (GET the proof overview), `drafts/{id}/tr
 (PATCH kind/day/note — `null` removes the day or the note —, DELETE), `drafts/{id}/proof.pdf` (the Nachweis), `drafts/{id}/answered` (POST
 `{doc_id}` / DELETE), `waiting` (GET), `calls`
 (GET `?party_id&case_id` / POST), `calls/{id}` (PATCH `{kept}` / DELETE),
-`calendar.ics`, `calendar/exported` (POST), `activity`, `usage`, `rules`, `jobs`,
-`events` (SSE), `data` (DELETE `{"confirm": "DELETE"}`: "Delete everything" — a connected
-calendar's events and app password go first (`calendar_events_removed`; 409 and nothing deleted
-when that can't be done), then empties the database in place and removes Ordnung's files, keeping
-the lock and `server.json`; 409 in the demo),
+`calendar.ics`, `calendar/exported` (POST), `activity` (`?device=`: a paired phone's entries), `usage`,
+`rules`, `jobs`,
+`events` (SSE), `phone` (GET: phone access's state — never the code or a sign-in; PUT `{enabled,
+address?, port?, home_network}`), `phone/pairing` (POST: the pairing code and its link, the only answer
+that holds the code; DELETE: cancel it), `phone/devices/{id}` (DELETE: remove a phone), `phone/reset`
+(POST: start over), `phone/pair` (POST `{code, name}`, answered on the phone listener only; §12b),
+`data` (DELETE `{"confirm": "DELETE", "unreceived_ok"}`: "Delete everything" — with hand-off sync on,
+this computer leaves sync first (409 `not_received` unless `unreceived_ok` while no other computer has its
+latest changes); a connected calendar's events and app password go first (`calendar_events_removed`; the
+events stay when another computer of the sync sends to the same calendar: `calendar_shared_with`; 409 and
+nothing deleted when that can't be done), then empties the database in place and removes Ordnung's files,
+keeping the lock and `server.json`; 409 in the demo),
 `calendar/sync` (GET: available here, the connected calendar, the last sync — never the events; the
 preview's length is how many the calendar gets; PUT `{url, username,
 password|null, mode}`: connect or change the mode — checked with the server, the password to the
@@ -1313,7 +1556,23 @@ letters they saw, a held e-mail's held attachments included; ids that no longer 
 `skipped`; *read* is `409` in the replay-only demo; the web app sends more ids in several requests),
 `documents/held/wait` (POST `{doc_ids}`: undo *Keep private* — letters kept private from waiting,
 never read since, wait again; an e-mail with the attachments kept private with it; a letter's
-`DocumentDetail.can_wait_again` says whether it can). `settings` takes `inbox_auto_read` and `model` (trimmed;
+`DocumentDetail.can_wait_again` says whether it can),
+`sync` (§12c; GET: hand-off sync's status, answered from memory — never the folder or the keyring; PUT
+`{folder, name, passphrase, keep}`: set up a new sync folder or join one, `SyncConnected{status, choice}`;
+PATCH `{name?, confirm_same_computer, keep_as_is, abandon_pull, dismiss_notice?}`; DELETE
+`{forget_passphrase, unreceived_ok}`: disconnect), `sync/inspect` (POST `{folder}`: new, existing or refused,
+nothing written), `sync/use-here` (POST `{older_copy, cancel}`), `sync/choose` (POST `{keep}`: a side's
+`key`), `sync/save` (POST `{hand_over}`), `sync/passphrase` (POST `{passphrase}`), `sync/refill` (POST),
+`sync/computers/{key}` (DELETE: forget a lost computer), `sync/kept/{name}` (GET: the kept copy,
+`attachment`, `no-store`; DELETE) — 13 operations, every write computer-only and 409 `unavailable` in the
+demo; refusals `{detail, code}` with the status `ordnung.sync.ERROR_STATUS` gives (`already_connected`,
+`folder`, `name`, `passphrase`, `wrong_passphrase`, `newer_ordnung`, `full`, `not_arrived`, `no_space`
+(507), `not_needed`, `not_received`, `pull_unfinished`, `passphrase_needed`, `folder_problem`, `no_choice`,
+`in_use`, `not_found`, `not_connected`). The passphrase travels only in the request body over loopback and
+is never stored in the database, logged or returned. **While another computer is in use** (or data is being
+brought over), every other write — on the computer's listener and the phone's — answers 409 `standby`
+("Ordnung is in use on desktop. Use it here first (Settings → Your computers).") before any handler runs,
+except `POST /api/backup` and the phone admin writes. `settings` takes `inbox_auto_read` and `model` (trimmed;
 no spaces, not starting with a dash, else 422 with the reason); a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
@@ -1326,15 +1585,22 @@ View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,ba
 `CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
 `FolderStatus`, `FolderPickup`, `DocumentTrace`,
 `TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`. Live event `folder.updated` {state, doc_id?, held?}.
+Hand-off sync's models live next to their routes (`SyncStatus`, `SyncComputer`, `SyncArriving`,
+`SyncProblem` with `actions`, `SyncChoice`, `SyncSide`, `SyncKept`, `SyncNotice`, `SyncFolderInfo`); live event
+`sync.updated` {replaced} (`replaced`: the data was replaced, every page reloads its data).
 
-Contract details: list endpoints answer plain JSON arrays. `health` carries `rules_last_checked`
+Contract details: list endpoints answer plain JSON arrays. `health` carries `client` (`computer` or
+`phone`) and `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
 adds the doctor's `checks` plus one tiny live call, at most once a minute (else `429` +
 `Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`: the tool trace,
 one `text` event without text while the answer is written (its words are never sent before the
 check), then `done` with the checked answer `text`, the check's `note`, `citations[{type,id,label}]`,
 `message_id`, `thread_id` — or `error`. `events` payloads are
-declared per event name in `models.ServerEvents`. `web/openapi.json` (`ordnung openapi`) and the
+declared per event name in `models.ServerEvents`. Every operation a paired phone may call is marked
+`"x-ordnung-phone": true` in the schema, so the web app's tests and mocks use the same allow-list;
+`MyNumbers.masked` says the numbers show only their last 4 characters (on a phone). `web/openapi.json`
+(`ordnung openapi`) and the
 generated `web/src/api/schema.d.ts` are the web app's source of API types (`make openapi`); tests fail
 when they are stale, when a mock route or response differs from the schema, or when a GET endpoint's
 JSON doesn't validate against it.
@@ -1466,32 +1732,69 @@ Pages:
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
    encrypted backup (passphrase twice or a suggested one to copy, then the download; how to
    restore; also offered by "Delete everything"), disclaimer — the static demo explains that it can
-   neither notify, sync a calendar nor back up —,
+   neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
    **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
    restarts the guided tour.
+   **Phone** (§12b): turn on (the address it will use, a choice when there are several, the one-time
+   certificate warning and the firewall said first), the address to copy, problems with their way out
+   (*Use … instead*, *Keep waiting*, *This is my home network*, the next port), *Pair a phone* (a QR code
+   of the pairing link, the code to type, a countdown, steps for iPhone and Android with the
+   certificate's fingerprint, "Your phone reached this computer", the new phone with its address, its
+   check words and *Not you? Remove*, and *Phone can't connect?* after 60 s with the narrowest firewall
+   rule per system), paired phones (last used, from where, active now, Remove with the changes of the
+   last 30 days linked to the privacy log), the certificate (both fingerprints, why a phone warns, how to
+   stop and remove the warning, *Start over*); disabled in the demo and the static demo, with the reason.
+   **Your computers** (§12c): set up (the folder, looked at when the field is left, with the server's reason
+   under it and the warning when the data folder itself is synced; this computer's name; a new folder's
+   passphrase twice with a suggested five-word one and its strength, or the passphrase once to join), then
+   this computer (in use or standing by, the folder, "Saved to the sync folder 2 minutes ago", progress, a
+   problem with its actions, *Save now* or *Use Ordnung here*, *Rename…*, *Disconnect…* asking a second time
+   while no other computer has the latest), the other computers (whether they have the latest, *Forget…*),
+   kept copies (download, delete, the restore command) and notices; the static demo says it has nothing to
+   hand over. On a standing-by computer the **standing-by screen** replaces every page but Settings → Your
+   computers and the privacy log: "Ordnung is in use on desktop", whether everything has arrived, *Use
+   Ordnung here* (focused; never "are you sure?"), or the copy this computer has. The top bar of the computer
+   in use says "Saved · desktop has it"; a banner opens "Which Ordnung do you want to keep?" (both sides with
+   their letters, none chosen).
 10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
    name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
-   "Explore the demo instead".
+   "Explore the demo instead". Its first step also offers "I already use Ordnung on another computer":
+   `/join` (outside the shell) joins a sync folder and brings that Ordnung over, profile included.
 11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
    ending it can be undone, and the Demo badge (or Settings → Data) restarts it. Docked in the
    sidebar when it fits, else a card (wide screens) or a slim bar (phones, tablets, short laptops)
    that never covers the page's end or the focused control. Its ring goes around the step's
    element — on phones, and when that is taller than the screen, around a marked part of it (the
    first envelope, the first Idea).
+12. **On a paired phone** (`Health.client == "phone"`, §12b): `/pair` (outside the shell) reads the code
+   from the link's fragment and clears it, or takes it typed (`XXXXX-XXXXX`), names the phone and pairs
+   it, then shows the two check words; every page the phone may use works as on the computer, without
+   Delete, downloads of originals, PDFs and the calendar file, held-letter decisions or admin requests; Settings says
+   "Settings are on your computer" and offers the optional trust step where it is safe; Plus offers
+   *Photograph a letter* (the camera, page after page, one letter, with upload progress and Cancel) and
+   *Choose files*; the GiroCode block offers to save the code as a picture; a phone removed on the
+   computer lands on `/pair?removed=1` (`token_reuse`, `code_reused` or `unused` with their own words, the
+   first two in the danger tone); offline it says the computer can't be reached.
 
 Design: "calm paper" tokens in `web/src/styles/index.css`; Fraunces display headings; Inter UI;
 dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighter in dark mode.
 
 ## 15. CLI
-`serve [--port 8765] [--no-browser] [--no-token]` · `add FILES… [--combine] [--private]` ·
-`brief` · `ask "…"` · `demo [--serve] [--reset] [--check] [--live] [--no-browser]` · `doctor
+`serve [--data-dir D] [--host 127.0.0.1] [--port 8765] [--no-browser] [--no-token] [--demo]` · `add
+FILES… [--combine] [--private]` · `brief` · `ask "…"` · `demo [--data-dir D] [--serve/--no-serve]
+[--reset] [--check] [--live] [--rebuild] [--no-browser] [--host 127.0.0.1] [--port 8765]` · `doctor
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
 [--dry-run] | disable | status` · `backup [--to FOLDER|FILE.ordnung-backup]` (a folder that
 doesn't exist is refused) · `restore BACKUP [--force] [--check]` ·
+`sync [status]` · `sync connect FOLDER [--name N] [--keep this|folder]` · `sync use-here [--older-copy]
+[--wait SECONDS]` · `sync choose this|NAME [--yes]` · `sync save [--hand-over]` · `sync passphrase` ·
+`sync kept [--delete NAME]` · `sync forget NAME [--yes]` · `sync disconnect [--keep-passphrase] [--yes]`
+(§12c; through a running server's API when there is one, else in process under the data-dir lock; refused
+in a demo folder; `ORDNUNG_SYNC_PASSPHRASE` instead of the prompt) ·
 `openapi` · `trace DOC_ID [--otel]
 [--reading N] [-o FILE]` (a reading as JSON; `--otel`: OpenTelemetry OTLP/JSON with the GenAI
 semantic conventions, no names, every id replaced by a keyed hash made for that file; a letter with no
@@ -1519,6 +1822,16 @@ in; a folder with data needs `--force` and is moved to `<folder>.before-restore-
 restored file's size on disk is checked against the archive's. A restored calendar-sync connection
 starts detached (see calendar sync).
 
+**Sync folder format** (`sync/`, ADR 0018, §12c): format 1 = a 92-byte key file named by its scrypt salt
+(N = 2¹⁸ r = 8 p = 1, 256 MiB, fixed for the format; no plaintext byte), one head per computer in `h/`, and
+write-once objects in `o/xx/` named by a keyed hash of their kind and content; every file but the key file
+is AES-256-GCM STREAM in 1 MiB chunks (the backup container's core) under HKDF subkeys of a random vault
+key, its name, kind and vault bound as associated data, padded with Padmé to at least 4096 bytes. A
+version is a manifest (database slices of 1 MiB, file-list buckets that follow the data folder's layout, a
+summary, the calendar hand-over) named in its writer's head. Heads, manifests and buckets say `format: 1`
+after authentication; a newer format or database schema is refused before anything changes ("Update
+Ordnung on this computer").
+
 ## 16. Demo mode
 `demo_db/` (prebuilt, committed) is copied into the demo data dir and opens instantly; the 3 *New
 mail* letters are ingested live through the real pipeline on the `ReplayBackend` (stages shown ≥
@@ -1526,6 +1839,10 @@ mail* letters are ingested live through the real pipeline on the `ReplayBackend`
 `meta` (shared with the MCP subprocess). `demo --check` rebuilds the demo DB from samples with a
 strict replay backend and asserts: zero misses, stable canonical dump, all fixtures schema-valid,
 all recorded refs/citations resolve. Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild`.
+The demo never syncs: every `/api/sync` write answers 409 `unavailable` (`GET /api/sync`: `available:
+false`), the sync agent never starts, `ordnung sync` refuses a demo folder, a push refuses a demo database
+and a pull refuses a database that carries the demo's keys, and the static demo says it has nothing to
+hand over.
 
 ## 17. Evaluation — `evals/`
 Dataset from the generator with **template families split dev/test** (prompts tuned on dev only),
@@ -1936,7 +2253,9 @@ never overrides a scam sign and never makes an IBAN "known" for the scam checks.
 why in plain words ("No code: this IBAN is not the one Beitragsservice Musterstadt used before …"),
 refused comparisons and a failed reading in the block itself (scrolled clear of the panel's footer,
 focus kept on the button); the copy-by-hand fields stay. On a phone or tablet, which can't scan its own
-screen, the block says to open the letter on a computer or copy the details. The static demo's codes are generated by the same code
+screen, the block says to open the letter on a computer or copy the details; on a phone paired with the
+computer (§12b) it offers to save the code as a picture many banking apps can read (drawn on the phone,
+shared or downloaded, only in the `ready` state) or to copy the details. The static demo's codes are generated by the same code
 (`scripts/gen_mock_girocodes.py`) and point to the sample life's fictional accounts.
 
 **Review scope.** The LLM review may only produce `saving`, `hygiene`, `followup`, `opportunity`

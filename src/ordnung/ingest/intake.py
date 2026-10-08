@@ -28,6 +28,7 @@ import pypdfium2 as pdfium
 from fpdf import FPDF
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
+from ordnung.durable import fsync, fsync_dir, is_durable
 from ordnung.ingest.expansion import ExpansionError, check_pdf_expansion
 from ordnung.ingest.text import (
     PDFIUM_LOCK,
@@ -448,14 +449,23 @@ def _jpeg_bytes(image: Image.Image, quality: int) -> bytes:
 
 
 def _write_atomic(path: Path, data: bytes) -> None:
-    """Write ``data`` to ``path`` atomically, readable by the owner only (``0600``)."""
+    """Write ``data`` to ``path`` atomically, readable by the owner only (``0600``).
+
+    While hand-off sync is on (:func:`ordnung.durable.is_durable`), the file and then its folder are
+    flushed to the disk, so a database row that names the file never outlives it in a power cut."""
     partial = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.part")
+    durable = is_durable()
     try:
         fd = os.open(
             partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), PRIVATE_FILE_MODE
         )
         with os.fdopen(fd, "wb") as handle:
             handle.write(data)
+            if durable:
+                handle.flush()
+                fsync(handle.fileno())
         partial.replace(path)
+        if durable:
+            fsync_dir(path.parent)
     finally:
         partial.unlink(missing_ok=True)

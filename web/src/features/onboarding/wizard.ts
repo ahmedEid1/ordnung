@@ -13,6 +13,10 @@ export const WIZARD_STEPS = [
 /** Index of the "you're all set — add your first letters" screen after the four steps. */
 export const DONE_STEP = WIZARD_STEPS.length;
 
+/** Step 1's other way in (hand-off sync): bring the Ordnung of another computer here instead of setting up a new one. */
+export const JOIN_LINK = "I already use Ordnung on another computer";
+export const JOIN_PATH = "/join";
+
 /** Step 1's heading when someone who has already set Ordnung up opens the wizard again. */
 export const REVISIT_HEADING = "Change your setup";
 

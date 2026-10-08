@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { CalendarCheck, CalendarSearch, Check, ChevronDown, ChevronUp, Link2Off, OctagonAlert, RefreshCw, Unplug } from "lucide-react";
 import { ApiError } from "@/api/client";
-import { useCalendarSync, useCalendarSyncPreview, useConnectCalendarSync, useDisconnectCalendarSync, useDiscoverCalendars, useRunCalendarSync } from "@/api/hooks";
+import { useCalendarSync, useCalendarSyncPreview, useConnectCalendarSync, useDisconnectCalendarSync, useDiscoverCalendars, useRunCalendarSync, useSync } from "@/api/hooks";
 import type { CalendarChoice, CalendarSyncMode, CalendarSyncStatus } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +35,7 @@ import {
   type SyncField,
 } from "./calendarSync";
 import { SaveBar, SettingsCard } from "./SettingsCard";
+import { calendarElsewhereNote, otherComputers } from "./sync";
 
 const TITLE = "Sync with your own calendar";
 const DESCRIPTION =
@@ -229,6 +230,8 @@ function Unavailable({ status }: { status: CalendarSyncStatus }) {
 function Connect({ status }: { status: CalendarSyncStatus }) {
   const discover = useDiscoverCalendars();
   const connect = useConnectCalendarSync();
+  // hand-off sync: the computer in use has no calendar connection while another computer has one (design §6.4)
+  const elsewhere = calendarElsewhereNote(useSync().data, false);
   const [url, setUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -341,6 +344,11 @@ function Connect({ status }: { status: CalendarSyncStatus }) {
       }
     >
       {!status.available ? <Unavailable status={status} /> : null}
+      {status.available && elsewhere ? (
+        <Callout title="Your other computer sends to a calendar" className="mb-5">
+          {elsewhere}
+        </Callout>
+      ) : null}
       {status.available ? (
         <form id="calendar-sync-form" onSubmit={submit} noValidate className="space-y-4">
           <Field id="cal-sync-url" label="Calendar or server address" hint="A calendar's CalDAV address, or just your provider's (Ordnung finds your calendars)." error={errors.url}>
@@ -483,6 +491,9 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
   const where = status.calendar_name ?? hostOf(status.url);
   const last = lastSyncLine(status.last_sync);
   const needsPassword = !status.password_saved || status.paused;
+  // hand-off sync: another computer sends to the same calendar with other details (each switch rewrites the events)
+  const handOff = useSync().data;
+  const otherMode = handOff?.connected ? otherComputers(handOff).find((c) => c.state !== "left" && c.calendar === "different_mode") : undefined;
 
   const saveMode = () =>
     update.mutateAsync({ url: status.url!, username: status.username!, password: null, mode }).then(
@@ -531,6 +542,11 @@ function Connected({ status }: { status: CalendarSyncStatus }) {
       </div>
       {needsPassword ? (
         <PasswordAgain status={status} reason={!status.password_saved ? "The app password isn't saved on this computer" : "Paused: the server refused the app password"} />
+      ) : null}
+      {otherMode ? (
+        <Callout tone="warn" title={`${otherMode.name} sends to this calendar with other details`} className="mt-4">
+          Each time you switch computers, Ordnung's events there are rewritten. Choose the same setting on both computers.
+        </Callout>
       ) : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* paused: the refused password would be tried again — "Save and sync" above is the way on */}

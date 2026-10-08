@@ -143,3 +143,109 @@ def test_wipe_refuses_a_read_only_store(data_dir: Path) -> None:
     Store.open(Paths(data_dir)).close()
     with Store.open(Paths(data_dir), read_only=True) as store, pytest.raises(PermissionError):
         store.wipe()
+
+
+async def test_delete_everything_stops_phone_access_and_removes_its_certificates(data_dir: Path) -> None:
+    from ordnung.phone.record import META_KEY
+    from phone_support import pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _net, servers), phone_client(api) as phone:
+        await pair(api, phone)
+        (data_dir / "notes-of-mine.txt").write_text("mine", encoding="utf-8")
+        assert (data_dir / "phone" / "ca.key").is_file()
+        result = (await api.client.request("DELETE", "/api/data", json=CONFIRM)).json()
+        assert "phone" in result["removed"] and result["kept"] == ["notes-of-mine.txt"]
+        assert not (data_dir / "phone").exists()
+        assert servers.made[-1].stopped == 1
+        assert api.ctx.store.get_meta(META_KEY) is None
+        status = (await api.client.get("/api/phone")).json()
+        assert (status["enabled"], status["listening"], status["devices"]) == (False, False, [])
+        assert (await phone.get("/api/documents")).json()["code"] in ("misdirected", "phone_not_paired")
+
+
+# --------------------------------------------------------------------------------------------------
+# with hand-off sync connected
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.fixture
+def sync_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    from sync_support import fast_sync
+
+    fast_sync(monkeypatch)
+    (tmp_path / "Nextcloud").mkdir()
+    return tmp_path / "Nextcloud" / "Ordnung"
+
+
+async def test_delete_everything_leaves_sync_and_asks_twice_while_no_one_has_the_latest(
+    tmp_path: Path, sync_folder: Path
+) -> None:
+    from sync_fake_engine import FOLDER_FILE, FakeEngine, FakeSession, head_of
+    from sync_support import computer, connect
+
+    engine = FakeEngine()
+    data = tmp_path / "desk"
+    async with computer(data, engine=engine) as api:
+        await connect(api, sync_folder, "desktop")
+        FakeSession(engine, api.ctx.paths).keep_local(api.ctx.paths, "kept")
+        assert (await api.client.post("/api/items", json={"kind": "task", "title": "Pay"})).status_code == 201
+
+        refused = await api.client.request("DELETE", "/api/data", json=CONFIRM)
+        assert refused.status_code == 409 and refused.json()["code"] == "not_received"
+        assert api.ctx.store.list_items(), "nothing was deleted"
+        assert api.app.state.ordnung.background_on, "nothing was stopped either"
+
+        done = await api.client.request("DELETE", "/api/data", json={**CONFIRM, "unreceived_ok": True})
+        assert done.status_code == 200, done.text
+        assert "sync" in done.json()["removed"] and not (data / "sync").exists(), "kept copies go too"
+        head = head_of(sync_folder, "desktop")
+        assert head["state"] == "left" and head["version"], "its last version stays for the others"
+        assert "push:leave" in engine.calls
+        assert engine.keyring(data).saved == {}
+        assert (sync_folder / FOLDER_FILE).is_file(), "the folder and the other computers are untouched"
+        status = (await api.client.get("/api/sync")).json()
+        assert (status["connected"], status["mode"]) == (False, "off")
+        assert api.app.state.ordnung.background_on and api.ctx.worker.running
+        assert api.app.state.ordnung.tick._task is not None
+
+
+async def test_delete_everything_leaves_a_calendar_another_computer_sends_to(
+    tmp_path: Path, sync_folder: Path
+) -> None:
+    from fake_caldav import FakeCalDav, MemorySecrets
+    from ordnung.api.routes import calendar_sync
+    from ordnung.calendar import caldav
+    from sync_fake_engine import FakeEngine, _folder_data, _write_folder
+    from sync_support import computer, connect, eventually
+    from test_api_calendar_sync import CONNECT
+
+    engine, server, secrets = FakeEngine(), FakeCalDav(), MemorySecrets()
+    async with computer(tmp_path / "desk", engine=engine) as api:
+        api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: secrets
+        api.app.dependency_overrides[calendar_sync.get_transport] = server.transport
+        assert (await api.client.put("/api/calendar/sync", json=CONNECT)).status_code == 200
+        await connect(api, sync_folder, "desktop")
+        found = _folder_data(sync_folder)
+        assert found is not None
+        found["heads"]["f" * 32] = {
+            "key": 9,
+            "name": "laptop",
+            "state": "standing_by",
+            "epoch": 0,
+            "version": None,
+            "has": None,
+            "forgotten": [],
+            "calendar": "same",
+        }
+        _write_folder(sync_folder, found)
+        agent = api.app.state.ordnung.sync
+        await eventually(lambda: agent.calendar_shared_with() == "laptop")
+        events = dict(server.resources)
+        done = await api.client.request("DELETE", "/api/data", json={**CONFIRM, "unreceived_ok": True})
+        assert done.status_code == 200, done.text
+        assert (done.json()["calendar_events_removed"], done.json()["calendar_shared_with"]) == (
+            None,
+            "laptop",
+        )
+        assert server.resources == events, "laptop keeps Ordnung's events current"
+        assert caldav.load_state(api.ctx.store) is None and secrets.saved == {}

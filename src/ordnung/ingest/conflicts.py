@@ -780,10 +780,11 @@ def _normalised(text: str) -> str:
     return normalise_with_map(text)[0]
 
 
-def _is_own(statement: _Statement, item: ExtractedItem) -> bool:
-    """Whether the statement is the to-do's own sentence (its quote says it)."""
+def _is_own(statement: _Statement, quote: str) -> bool:
+    """Whether the statement is the to-do's own sentence (its quote, normalised once by the caller, says it: a quote
+    of a long line is never normalised again per statement)."""
     phrase = _normalised(statement.phrase)
-    return bool(phrase) and phrase in _normalised(item.quote)
+    return bool(phrase) and phrase in quote
 
 
 def _found(patterns: dict[str, re.Pattern[str]], text: str) -> set[str]:
@@ -847,6 +848,7 @@ def find_rivals(
         # an optional earlier day ("möglichst bis"): which date must be met is the reading's to tell
         nature = None
     rivals: list[Rival] = []
+    quote: str | None = None  # the to-do's quote, normalised once it is needed
     for statement in letter_statements(pages, blocks=False):
         if statement.letter_date is not None:
             if item.date.type == "relative":
@@ -860,7 +862,11 @@ def find_rivals(
                     )
                 )
             continue
-        if nature is None or statement.spec.nature != nature or _is_own(statement, item):
+        if nature is None or statement.spec.nature != nature:
+            continue
+        if quote is None:
+            quote = _normalised(item.quote)
+        if _is_own(statement, quote):
             continue
         if _other_obligation(statement, item, others):
             continue

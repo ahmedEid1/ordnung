@@ -23,6 +23,23 @@ export const routes: RouteObject[] = [
     handle: { title: "Welcome" } satisfies RouteHandle,
   },
   {
+    // hand-off sync: bring Ordnung over from another computer instead of setting up a new one (outside the shell,
+    // like /welcome: the onboarding redirect would bounce a computer that has nothing yet)
+    path: "/join",
+    lazy: page(() => import("@/pages/JoinPage")),
+    errorElement: <RouteError fullScreen />,
+    hydrateFallbackElement: <BootScreen />,
+    handle: { title: "Bring Ordnung over" } satisfies RouteHandle,
+  },
+  {
+    // a phone pairs here (the QR code's link, or the address typed): outside the shell, which needs a paired phone
+    path: "/pair",
+    lazy: page(() => import("@/pages/PairPage")),
+    errorElement: <RouteError fullScreen />,
+    hydrateFallbackElement: <BootScreen />,
+    handle: { title: "Pair this phone" } satisfies RouteHandle,
+  },
+  {
     path: "/",
     element: <AppLayout />,
     errorElement: <RouteError fullScreen />,

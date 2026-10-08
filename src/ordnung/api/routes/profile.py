@@ -7,6 +7,9 @@ file-system root or Ordnung's own data), take the model every call runs on only 
 Claude Code accepts, and keep the server-controlled ``demo`` and ``simulated_today`` read-only. A new
 inbox folder restarts the folder watcher; choosing Ordnung's own inbox folder (``<data>/inbox``)
 creates it.
+
+A paired phone (:mod:`ordnung.phone`) reads the profile with its IBAN masked to the last 4 characters,
+and never changes settings (403, also behind the phone listener's allow-list).
 """
 
 from __future__ import annotations
@@ -18,19 +21,22 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, require_computer
 from ordnung.api.routes.common import ledger_changed
 from ordnung.api.routes.dates import recompute_all_items
 from ordnung.app_context import AppContext
 from ordnung.config import Paths, private_dir
+from ordnung.db.store import PERSON_WRITE, person_write
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.watcher import folder_chosen
 from ordnung.models import AppSettings, DesktopNotifyMode, Profile
+from ordnung.phone.mask import mask_profile
 from ordnung.rules import normalize_region
 from ordnung.secretary.scam import iban_valid, normalize_iban
+from ordnung.sync import LOCAL_SETTINGS
 
 router = APIRouter(tags=["profile"])
 
@@ -177,9 +183,11 @@ def _merge_profile(ctx: AppContext, patch: ProfilePatch, **extra: Any) -> Profil
 
 
 @router.get("/profile", response_model=Profile)
-def read_profile(store: StoreDep) -> Profile:
-    """The person's profile (name, address, region, language, reminders …)."""
-    return store.get_profile()
+def read_profile(store: StoreDep, request: Request) -> Profile:
+    """The person's profile (name, address, region, language, reminders …); on a phone the IBAN shows
+    only its last 4 characters."""
+    profile = store.get_profile()
+    return mask_profile(profile) if is_phone(request) else profile
 
 
 async def _recompute_if_dates_changed(ctx: AppContext, before: Profile, after: Profile, today: date) -> None:
@@ -284,12 +292,17 @@ def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
         changes["model"] = _checked_model(changes["model"])
     if changes.get("models") is not None:
         changes["models"] = current.models.model_dump() | changes["models"]
-    merged = current.model_dump() | {name: value for name, value in changes.items() if value is not None}
+    before = current.model_dump()
+    merged = before | {name: value for name, value in changes.items() if value is not None}
     if "inbox_dir" in changes:
         merged["inbox_dir"] = changes["inbox_dir"]
-    ctx.store.save_settings(merged)
-    if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
-        folder_chosen(ctx.store)
+    # only this computer's own settings changed (its watched folder, its notifications): not a change
+    # of the person's data that hand-off sync carries, so it never makes a person version
+    synced = any(merged[name] != before[name] for name in merged if name not in LOCAL_SETTINGS)
+    with person_write(PERSON_WRITE.get() and synced):
+        ctx.store.save_settings(merged)
+        if merged["inbox_dir"] != current.inbox_dir:  # chosen now: what is in it waits (also re-chosen)
+            folder_chosen(ctx.store)
     return ctx.reload_settings()
 
 
@@ -300,7 +313,7 @@ def read_settings(store: StoreDep) -> AppSettings:
     return store.get_settings()
 
 
-@router.put("/settings", response_model=AppSettings)
+@router.put("/settings", response_model=AppSettings, dependencies=[Depends(require_computer)])
 async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
     """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
     restarts the folder watcher, a new model counts from the next call to Claude."""

@@ -29,6 +29,9 @@ Written policy (ADR 0007):
   at once. So the restored copy forgets both (the next watch lists the folder as chosen now: what is in
   it waits) and starts with "Read new files with Claude straight away" off until the person turns it
   on again in Settings — also for a backup crafted to turn it on.
+* **A restored copy doesn't take over phones** (:func:`detach_phone_access`). A backup made here never
+  carries phone access, but one crafted to would: the restored copy starts with phone access off and no
+  paired phones.
   Nothing else in the database is changed.
 """
 
@@ -51,6 +54,9 @@ from ordnung.db.store import SETTINGS_META_KEY
 from ordnung.ingest.watcher import BASELINE_META_KEY, SEEN_META_KEY
 from ordnung.locking import LOCK_NAME, DataDirLock, DataDirLocked
 from ordnung.models import CalendarSyncState
+
+#: Phone access's record (``ordnung.phone.record.META_KEY``).
+PHONE_META_KEY = "phone_access"
 
 #: Ordnung's own folders that may exist (empty) in a data folder that still counts as free.
 EMPTY_OK = frozenset({"files", "derived", "drafts", "inbox"})
@@ -194,6 +200,18 @@ def detach_watched_folder(db_path: Path) -> str | None:
         conn.close()
 
 
+def detach_phone_access(db_path: Path) -> bool:
+    """Drop phone access from ``db_path`` (module policy): off, no paired phones. ``True`` when there
+    was a record."""
+    conn = sqlite3.connect(db_path)
+    try:
+        removed = conn.execute("DELETE FROM meta WHERE key = ?", (PHONE_META_KEY,)).rowcount
+        conn.commit()
+        return bool(removed)
+    finally:
+        conn.close()
+
+
 def _staging_dir(target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = target.with_name(f".{target.name}.restoring-{secrets.token_hex(4)}")
@@ -218,6 +236,7 @@ def restore_backup(
             contents = extract_backup(src, passphrase, staging)
         calendar = detach_calendar_sync(staging / DB_NAME)
         watched = detach_watched_folder(staging / DB_NAME)
+        detach_phone_access(staging / DB_NAME)
         for folder in ("files", "derived", "drafts"):
             (staging / folder).mkdir(mode=PRIVATE_DIR_MODE, exist_ok=True)
         # the folder may have filled or a server started while the backup was decrypted

@@ -264,8 +264,10 @@ def _prepare_upload(data: bytes, filename: str, combine_with: Sequence[bytes] | 
 
 
 def _relative(store: Store, path: Path) -> str:
+    """The path stored for a file of the data folder: relative to it, with ``/`` on every system (so a
+    data folder moved between Windows and macOS or Linux — or handed over by sync — still finds it)."""
     try:
-        return str(path.relative_to(store.data_dir))
+        return path.relative_to(store.data_dir).as_posix()
     except ValueError:
         return str(path)
 
@@ -474,6 +476,8 @@ def _added_message(store: Store, filename: str, source: str, hold: bool) -> str:
     parent = store.get_document(parent_id) if parent_id else None
     if source == "folder":
         origin = " from your watched folder"
+    elif source == "phone":
+        origin = " from your phone"
     elif parent is not None:
         origin = f" from the e-mail “{parent.title or parent.filename}”"
     else:

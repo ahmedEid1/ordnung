@@ -9,13 +9,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { act, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
-import { ApiError, request, SERVER_PROBLEM } from "@/api/client";
+import { ApiError, PHONE_UNREACHABLE, request, SERVER_PROBLEM } from "@/api/client";
+import { setClientKind } from "@/api/clientKind";
 import { qk, useHealth } from "@/api/hooks";
 import hooksSource from "@/api/hooks.ts?raw";
 import { OFFLINE_GRACE_MS, __resetEventsForTests, connectEvents } from "@/api/sse";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
+import { PHONE_OFFLINE_DETAIL, PHONE_OFFLINE_TITLE } from "@/features/phone/copy";
+import { pageLoad } from "@/features/phone/platform";
 import { TEST_HEALTH } from "@/test/render";
-import { __resetOfflineForTests, createQueryClient } from "./queryClient";
+import { REMOVED_PHONE_PATH, __resetOfflineForTests, createQueryClient, leaveIfUnpaired, removedPhonePath } from "./queryClient";
 
 let client: QueryClient;
 beforeEach(() => {
@@ -166,9 +169,100 @@ describe("a failed change", () => {
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
+  it("a write refused while another computer is in use (409 standby): one toast with the server's sentence, and the sync status asked again", async () => {
+    const standby = () => new ApiError(409, "Ordnung is in use on sam-desktop. Use it here first (Settings → Your computers).", null, "standby");
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { errorTitle: "Couldn't save your profile" } });
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { errorTitle: "Couldn't add the to-do" } });
+    // not a failure of the action: no "Couldn't …" title, nothing to try again — and one toast however many writes
+    expect(screen.queryByText("Couldn't save your profile")).toBeNull();
+    expect(screen.queryByText("Couldn't add the to-do")).toBeNull();
+    expect(screen.getAllByText("Ordnung is in use on sam-desktop. Use it here first (Settings → Your computers).")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["sync"] });
+    // a form that shows its own errors says it there; the status is asked again all the same
+    act(() => __clearToasts());
+    await waitFor(() => expect(screen.queryByText(/Ordnung is in use on sam-desktop/)).toBeNull());
+    invalidate.mockClear();
+    await run({ mutationFn: () => Promise.reject(standby()), meta: { silent: true } });
+    await act(() => new Promise((r) => setTimeout(r, 20)));
+    expect(screen.queryByText(/Ordnung is in use on sam-desktop/)).toBeNull();
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["sync"] });
+    expect(new ApiError(409, "x", null, "standby").isStandby).toBe(true);
+    expect(new ApiError(409, "x", null, "conflict").isStandby).toBe(false);
+  });
+
   it("every mutation hook names what failed (or handles its errors itself)", () => {
     const blocks = hooksSource.split("useMutation(").slice(1).map((b) => b.split(/\nexport function /)[0]!);
     expect(blocks.length).toBeGreaterThan(20);
     for (const b of blocks) expect(b, b.slice(0, 120)).toMatch(/meta: \{ (errorTitle: "Couldn't [^"]+"|silent: true) \}/);
+  });
+});
+
+describe("on a paired phone", () => {
+  const notPaired = () => new ApiError(401, "This phone isn't paired with Ordnung any more.", null, "phone_not_paired");
+  let assign: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    assign = vi.spyOn(pageLoad, "assign").mockImplementation(() => {});
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it("a phone the computer removed goes to the pairing page, told why — once, however many requests fail", async () => {
+    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
+    await act(() => client.fetchQuery({ queryKey: ["items"], queryFn: () => Promise.reject(notPaired()), retry: false }).catch(() => {}));
+    await act(() => client.getMutationCache().build(client, { mutationFn: () => Promise.reject(notPaired()), meta: { errorTitle: "Couldn't save" } }).execute(undefined).catch(() => {}));
+    expect(assign.mock.calls).toEqual([[REMOVED_PHONE_PATH]]);
+    expect(REMOVED_PHONE_PATH).toBe("/pair?removed=1");
+    // no toast for it: the page is going
+    expect(screen.queryByText("Couldn't save")).toBeNull();
+  });
+
+  it("told the reason the phone listener gave: a copied sign-in, a code two devices used, 30 days unused (review)", () => {
+    const signedOut = (removed: string | null) => new ApiError(401, "This phone isn't paired with Ordnung any more.", null, "phone_not_paired", null, removed);
+    expect(removedPhonePath("token_reuse")).toBe("/pair?removed=token_reuse");
+    expect(removedPhonePath("code_reused")).toBe("/pair?removed=code_reused");
+    expect(removedPhonePath("unused")).toBe("/pair?removed=unused");
+    expect(removedPhonePath("1")).toBe(REMOVED_PHONE_PATH);
+    expect(removedPhonePath(null)).toBe(REMOVED_PHONE_PATH);
+    expect(removedPhonePath("//evil.example")).toBe(REMOVED_PHONE_PATH); // never a path of the answer's own
+    expect(leaveIfUnpaired(signedOut("token_reuse"))).toBe(true);
+    expect(assign.mock.calls).toEqual([["/pair?removed=token_reuse"]]);
+  });
+
+  it("never from the pairing page, which expects the refusal before pairing", () => {
+    window.history.pushState(null, "", "/pair");
+    try {
+      expect(leaveIfUnpaired(notPaired())).toBe(true);
+      expect(assign).not.toHaveBeenCalled();
+    } finally {
+      window.history.pushState(null, "", "/");
+    }
+  });
+
+  it("other refusals stay where they are", () => {
+    expect(leaveIfUnpaired(new ApiError(401, "Open Ordnung with its link."))).toBe(false);
+    expect(leaveIfUnpaired(new ApiError(403, "This works on your computer only.", null, "computer_only"))).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("says it can't reach the computer, and asks about the phone's Wi‑Fi", async () => {
+    setClientKind("phone");
+    client.setQueryData(["dashboard"], { ok: 1 });
+    await act(() => client.fetchQuery({ queryKey: ["dashboard"], queryFn: () => Promise.reject(new ApiError(0, PHONE_UNREACHABLE)), retry: false, staleTime: 0 }).catch(() => {}));
+    expect(screen.getByText(PHONE_OFFLINE_TITLE)).toBeInTheDocument();
+    expect(screen.getByText(PHONE_OFFLINE_DETAIL)).toBeInTheDocument();
+    await act(() => client.getMutationCache().build(client, { mutationFn: () => Promise.reject(new ApiError(0, PHONE_UNREACHABLE)), meta: { errorTitle: "Couldn't save" } }).execute(undefined).catch(() => {}));
+    expect(screen.getByText("Couldn't save")).toBeInTheDocument();
+    expect(screen.getAllByText(PHONE_UNREACHABLE).length).toBeGreaterThan(0);
+  });
+
+  it("a request the computer didn't answer says so in the phone's words", async () => {
+    setClientKind("phone");
+    vi.stubGlobal("fetch", async () => {
+      throw new TypeError("Failed to fetch");
+    });
+    await expect(request("/health")).rejects.toMatchObject({ status: 0, message: PHONE_UNREACHABLE });
+    setClientKind("computer");
+    await expect(request("/health")).rejects.toMatchObject({ status: 0, message: "Ordnung isn't reachable. Is it still running on this computer?" });
   });
 });

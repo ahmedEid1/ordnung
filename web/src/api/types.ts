@@ -348,6 +348,107 @@ export type DueDateSource = Schemas["Item"]["due_date_source"];
 export type TextSource = Schemas["PageInfo"]["text_source"];
 export type RefType = Schemas["SuggestionRef"]["type"];
 
+/** Who is asking (`Health.client`): the browser on the computer Ordnung runs on, or a phone paired over the home network. */
+export const CLIENT_KINDS = ["computer", "phone"] as const;
+export type ClientKind = (typeof CLIENT_KINDS)[number];
+
+/** Why phone access is on but no phone can reach it (`PhoneStatus.problem.code`). */
+export const PHONE_PROBLEM_CODES = ["no_network", "address_gone", "other_network", "port_busy", "failed"] as const;
+export type PhoneProblemCode = (typeof PHONE_PROBLEM_CODES)[number];
+
+/** What the computer must know at once about phone access (`PhoneStatus.notice.code`, shown in the danger tone). */
+export const PHONE_NOTICE_CODES = ["pairing_stopped", "code_reused", "token_reuse"] as const;
+export type PhoneNoticeCode = (typeof PHONE_NOTICE_CODES)[number];
+
+/**
+ * The `code` of every phone-access refusal (`{detail, code}`, `ApiError.code`): the phone listener's gate before
+ * routing and the phone routes after it. Error bodies aren't in the schema, so this mirrors
+ * `ordnung.phone.PhoneErrorCode` by hand (`ERROR_STATUS` there gives each one's status).
+ */
+export const PHONE_ERROR_CODES = [
+  "misdirected",
+  "wrong_host",
+  "bad_path",
+  "unexpected_body",
+  "length_required",
+  "too_large",
+  "not_home_network",
+  "cross_site",
+  "phone_not_paired",
+  "computer_only",
+  "too_many",
+  "unavailable",
+  "not_set_up",
+  "no_network",
+  "port_busy",
+  "not_listening",
+  "too_many_phones",
+  "code_used",
+  "wrong_code",
+  "invalid",
+  "not_phone",
+] as const;
+export type PhoneErrorCode = (typeof PHONE_ERROR_CODES)[number];
+
+/** Why hand-off sync is paused or needs the person (`SyncStatus.problem.code`; the web shows its words, never the code). */
+export const SYNC_PROBLEM_CODES = [
+  "folder_missing",
+  "folder_empty",
+  "folder_other",
+  "folder_full",
+  "folder_unreachable",
+  "online_only",
+  "two_setups",
+  "passphrase_needed",
+  "keyring_unavailable",
+  "keyring_locked",
+  "newer_ordnung",
+  "arrival_stalled",
+  "not_received",
+  "pull_unfinished",
+  "no_space",
+  "damaged",
+  "local_damaged",
+  "copied_folder",
+  "local_rollback",
+  "save_failing",
+  "forgotten",
+] as const;
+export type SyncProblemCode = (typeof SYNC_PROBLEM_CODES)[number];
+
+/** What the person can do about a sync problem (`SyncProblem.actions`, the main one first). */
+export const SYNC_PROBLEM_ACTIONS = ["passphrase", "choose_folder", "refill", "same_computer", "new_computer", "keep_as_is", "abandon"] as const;
+export type SyncProblemAction = (typeof SYNC_PROBLEM_ACTIONS)[number];
+
+/**
+ * The `code` of every hand-off sync refusal (`{detail, code}`, `ApiError.code`): its routes, and the gate's
+ * `standby` for any write while another computer is in use. Error bodies aren't in the schema, so this mirrors
+ * `ordnung.sync.SyncErrorKind` by hand (`ERROR_STATUS` there gives each one's status; a contract test compares).
+ */
+export const SYNC_ERROR_CODES = [
+  "unavailable",
+  "not_connected",
+  "already_connected",
+  "folder",
+  "name",
+  "passphrase",
+  "wrong_passphrase",
+  "newer_ordnung",
+  "full",
+  "folder_problem",
+  "pull_unfinished",
+  "passphrase_needed",
+  "no_space",
+  "no_choice",
+  "not_arrived",
+  "standby",
+  "in_use",
+  "not_received",
+  "not_needed",
+  "not_found",
+] as const;
+export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number];
+
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Same<A, B> = Equal<A, B> extends true ? true : ["enum differs from the API", A, B];
 
@@ -393,6 +494,11 @@ export type EnumContract = [
   Same<JobKind, Schemas["Job"]["kind"]>,
   Same<JobStatus, Schemas["Job"]["status"]>,
   Same<JobStage, Schemas["JobProgressEvent"]["stage"]>,
+  Same<ClientKind, Schemas["Health"]["client"]>,
+  Same<PhoneProblemCode, Schemas["PhoneProblem"]["code"]>,
+  Same<PhoneNoticeCode, Schemas["PhoneNotice"]["code"]>,
+  Same<SyncProblemCode, Schemas["SyncProblem"]["code"]>,
+  Same<SyncProblemAction, Schemas["SyncProblem"]["actions"][number]>,
 ];
 // Referencing the tuple makes every entry resolve (an entry that isn't `true` is a compile error).
 const enumContract: EnumContract extends true[] ? true : never = true;
@@ -508,7 +614,9 @@ export type ClaudeStatus = Schemas["ClaudeStatus"];
 export type DoctorCheck = Schemas["DoctorCheck"];
 /**
  * `GET /api/health` for the signed-in app. `today` is the app's "today" (ISO date) — always use
- * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date.
+ * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date. `client` says who asked:
+ * this computer's browser, or a paired phone (which gets no data folder, Claude path or checks) —
+ * `usePhoneCompanion()` in `features/phone/client.ts`.
  */
 export type Health = Schemas["Health"];
 /** `GET /api/health` without the session token (the endpoint client turns it into a 401 error). */
@@ -618,6 +726,71 @@ export type CalendarSyncFind = Schemas["CalendarSyncFind"];
 export type CalendarChoice = Schemas["CalendarChoice"];
 
 // ------------------------------------------------------------------------------------------------
+// Phone access (Settings → Phone on the computer; pairing on the phone)
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * `GET /api/phone` (computer only): whether phone access can be used here (`available`, never in the demo), is on
+ * (`enabled`) and reachable (`listening`, at `url`), why not (`problem`), what to know at once (`notice`), the
+ * certificate's fingerprints, the open pairing code's progress (never the code) and the paired phones.
+ */
+export type PhoneStatus = Schemas["PhoneStatus"];
+/** Why phone access is on but not listening, in words for the person. */
+export type PhoneProblem = Schemas["PhoneProblem"];
+/** A danger-tone notice: wrong codes stopped a pairing, a code was used twice, a phone's sign-in was used twice. */
+export type PhoneNotice = Schemas["PhoneNotice"];
+/** An address of this computer on a home network (`recommended`: the one it reaches the internet from). */
+export type AddressChoice = Schemas["AddressChoice"];
+/** A paired phone (never its sign-in): name, platform, its two check words, when and where it was last used. */
+export type PhoneDevice = Schemas["PhoneDevice"];
+/** The open pairing code's progress: when it ends, whether a phone opened the page, wrong codes and from where. */
+export type PhonePairingState = Schemas["PhonePairingState"];
+/** `POST /api/phone/pairing`: the QR code's `url` (`https://<address>:<port>/pair#<code>`), the code, its end. */
+export type PhonePairing = Schemas["PhonePairing"];
+/** `POST /api/phone/pair` on the phone: the name it got and the two words both screens show. */
+export type PairResult = Schemas["PairResult"];
+
+// ------------------------------------------------------------------------------------------------
+// Hand-off sync between the person's computers (Settings → Your computers; the standing-by screen)
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * `GET /api/sync` (computer only, from the server's memory — it never reads the folder or the password store):
+ * whether sync can be used here, this computer's `mode` (`in_use` or `standing_by`), what it is busy with, the
+ * computers, what is arriving, a choice to make, a problem, notices and kept copies.
+ */
+export type SyncStatus = Schemas["SyncStatus"];
+/** `off`, `starting`, `in_use` (this computer is the one in use) or `standing_by` (another is: writes are refused). */
+export type SyncMode = SyncStatus["mode"];
+/** `idle`, `saving`, `waiting` (for the sync tool), `bringing_over` (writes refused for a moment) or `keeping`. */
+export type SyncActivity = SyncStatus["activity"];
+/** A computer of this sync as this one sees it (`key` is a small number for the UI, never its id). */
+export type SyncComputer = Schemas["SyncComputer"];
+export type SyncComputerState = SyncComputer["state"];
+/** Calendar sync on another computer compared with this one's. */
+export type SyncCalendarMatch = SyncComputer["calendar"];
+/** A version still arriving from the sync tool (files and bytes; online-only placeholders counted apart). */
+export type SyncArriving = Schemas["SyncArriving"];
+/** Why sync is paused or needs the person: a title and a message for people, and what can be done. */
+export type SyncProblem = Schemas["SyncProblem"];
+/** One computer's Ordnung in a choice: its letters, how many were added since the two last agreed, the newest. */
+export type SyncSide = Schemas["SyncSide"];
+/** Both computers changed something: which computer's Ordnung to keep (`joining`: this one is joining with letters). */
+export type SyncChoice = Schemas["SyncChoice"];
+export type SyncLetter = Schemas["SyncLetter"];
+/** A kept copy: this computer's data saved (an encrypted backup) before it was replaced. */
+export type SyncKept = Schemas["SyncKept"];
+/** Something the person should know about once (dismissed with `PATCH /api/sync`). */
+export type SyncNotice = Schemas["SyncNotice"];
+export type SyncNoticeCode = SyncNotice["code"];
+/** How far a first save, or bringing a version over, has got. */
+export type SyncProgress = Schemas["SyncProgress"];
+/** `POST /api/sync/inspect`: what a folder would be — a new sync, one to join, or refused (and why). */
+export type SyncFolderInfo = Schemas["SyncFolderInfo"];
+/** `PUT /api/sync`: the status, or the choice to answer first (joining with letters on both sides). */
+export type SyncConnected = Schemas["SyncConnected"];
+
+// ------------------------------------------------------------------------------------------------
 // Requests
 // ------------------------------------------------------------------------------------------------
 
@@ -641,6 +814,20 @@ export type CallNotePatch = Schemas["CallNotePatch"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
 export type HeldRequest = Schemas["HeldRequest"];
+/** `PUT /api/phone`: on or off, the address or port (none: the saved or recommended one), "This is my home network". */
+export type PhoneAccessChange = Schemas["PhoneAccessChange"];
+/** `POST /api/phone/pair`: the code as shown or typed (spaces, dashes and case don't matter) and this phone's name. */
+export type PairRequest = Schemas["PairRequest"];
+/** `PUT /api/sync`: set up a new sync folder or join one (the passphrase travels only to this computer's Ordnung). */
+export type SyncConnect = Schemas["SyncConnect"];
+/** `PATCH /api/sync`: rename this computer, answer a problem, or dismiss a notice. */
+export type SyncChange = Schemas["SyncChange"];
+/** `DELETE /api/sync`: disconnect (`unreceived_ok`: the second confirmation). */
+export type SyncDisconnect = Schemas["SyncDisconnect"];
+/** `POST /api/sync/use-here`: "Use Ordnung here" (`older_copy`, or `cancel` a waiting take-over). */
+export type SyncUseHere = Schemas["SyncUseHere"];
+/** `POST /api/sync/save`: save now (`hand_over`: then stand by). */
+export type SyncSave = Schemas["SyncSave"];
 
 export type DocumentListParams = ApiQuery<"/api/documents", "get">;
 export type ItemListParams = ApiQuery<"/api/items", "get">;

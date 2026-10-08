@@ -11,6 +11,9 @@ import { hasLongWord } from "@/features/document/verdict";
 import { PROOF_KIND_COPY, TONES, copyFor } from "@/lib/copy";
 import { protectRefs } from "@/lib/glue";
 import { cn } from "@/lib/utils";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { OnYourComputer } from "@/features/phone/ComputerOnly";
+import { OPEN_ON_COMPUTER, PROOF_ON_COMPUTER } from "@/features/phone/copy";
 import { hasPicture } from "./proof";
 import { RemoveProofDialog } from "./RemoveProofDialog";
 
@@ -51,6 +54,8 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
   const remove = useRemoveProof();
   const navigate = useNavigate();
   const [confirm, setConfirm] = useState(false);
+  // a paired phone shows the proof; downloading and removing it are done on the computer
+  const phone = usePhoneCompanion();
   const pages = Math.max(1, detail.pages.length || doc.pages);
   const letterHref = `/letters/${link.draft_id}`;
   return (
@@ -85,13 +90,19 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
           <ArrowLeft aria-hidden />
           Back to the letter
         </Link>
-        <a href={api.fileUrl(doc.id)} download={doc.filename} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-          <Download aria-hidden />
-          Download the file
-        </a>
-        <Button size="sm" variant="ghost" icon={Trash2} className="text-danger-ink hover:bg-danger-soft hover:text-danger-ink" onClick={() => setConfirm(true)}>
-          Remove this proof
-        </Button>
+        {phone ? (
+          <OnYourComputer className="basis-full">{PROOF_ON_COMPUTER}</OnYourComputer>
+        ) : (
+          <>
+            <a href={api.fileUrl(doc.id)} download={doc.filename} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              <Download aria-hidden />
+              Download the file
+            </a>
+            <Button size="sm" variant="ghost" icon={Trash2} className="text-danger-ink hover:bg-danger-soft hover:text-danger-ink" onClick={() => setConfirm(true)}>
+              Remove this proof
+            </Button>
+          </>
+        )}
       </div>
 
       <Card padding="md">
@@ -112,7 +123,7 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
             ))}
           </div>
         ) : (
-          <p className="text-[14px] text-ink/85">This kind of file has no picture here — download it to open it.</p>
+          <p className="text-[14px] text-ink/85">{phone ? OPEN_ON_COMPUTER : "This kind of file has no picture here — download it to open it."}</p>
         )}
       </Card>
 

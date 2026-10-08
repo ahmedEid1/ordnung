@@ -9,12 +9,21 @@
  *   "Internal Server Error").
  */
 
+import { clientKind } from "./clientKind";
+
 export const API_BASE = "/api";
 
 /** The sentence for a server error that brings no words for a person (what it said is kept as `technical`). */
 export const SERVER_PROBLEM = "Ordnung ran into a problem it didn't expect. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
 /** The sentence for an answer the page can't read (not Ordnung's JSON: a proxy's page, a cut-off body). */
 export const UNREADABLE_ANSWER = "Ordnung's answer couldn't be read. Your letters are safe — try again, and restart Ordnung if it keeps happening.";
+/** Ordnung didn't answer (a network error): the computer's own tab says where it should be running. */
+export const UNREACHABLE = "Ordnung isn't reachable. Is it still running on this computer?";
+/**
+ * Ordnung didn't answer a paired phone: the computer may be off or asleep, Ordnung stopped, or the phone left the
+ * home Wi‑Fi ("Wi‑Fi" with a non-breaking hyphen, U+2011).
+ */
+export const PHONE_UNREACHABLE = "Can't reach your computer. Is it on, with Ordnung running, and is this phone on the same Wi‑Fi?";
 /** The `code` of an answer the page couldn't read ({@link UNREADABLE_ANSWER}). */
 export const UNREADABLE_CODE = "unreadable_answer";
 /** How much of a body that isn't JSON is kept for "Technical details". */
@@ -33,14 +42,20 @@ export class ApiError extends Error {
    * "database is locked", an unexpected error's name) — shown under "Technical details", never as the sentence.
    */
   readonly technical: string | null;
+  /**
+   * `phone_not_paired` from the phone listener: why the computer signed this phone out (`token_reuse`, `code_reused`,
+   * `unused`, or `1` for removed), when it still knows — the pairing page's `?removed=`.
+   */
+  readonly removed: string | null;
 
-  constructor(status: number, message: string, detail?: unknown, code?: string | null, technical?: string | null) {
+  constructor(status: number, message: string, detail?: unknown, code?: string | null, technical?: string | null, removed?: string | null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.detail = detail;
     this.code = code ?? null;
     this.technical = technical ?? null;
+    this.removed = removed ?? null;
   }
 
   /** True for the zero-install hosted demo's "needs Claude" refusal. */
@@ -55,6 +70,15 @@ export class ApiError extends Error {
    */
   get isDemoLimit(): boolean {
     return this.code === "static_demo" || this.code === "demo_replay";
+  }
+
+  /**
+   * True for hand-off sync's refusal of a write while another computer is in use (or while changes are being
+   * brought over): 409 `standby`, said in the server's sentence ("Ordnung is in use on desktop. Use it here
+   * first …"). Nothing was changed.
+   */
+  get isStandby(): boolean {
+    return this.code === "standby";
   }
 }
 
@@ -120,21 +144,29 @@ function clip(text: string): string {
   return line.length > TECHNICAL_MAX ? `${line.slice(0, TECHNICAL_MAX)}…` : line;
 }
 
-async function toApiError(res: Response): Promise<ApiError> {
+/**
+ * An answer that isn't 2xx as an {@link ApiError}: Ordnung's `{detail, code}` in its own words, anything else as a
+ * plain sentence with the raw words kept for "Technical details". Exported for requests made without `fetch` (a
+ * phone's upload with progress, `features/phone/upload.ts`).
+ */
+export async function toApiError(res: Response): Promise<ApiError> {
   let detail: unknown = undefined;
   let code: string | null = null;
   let technical: string | null = null;
+  let removed: string | null = null;
   let json = false;
   try {
     const text = await res.text();
     if (text) {
       try {
-        const body = JSON.parse(text) as { detail?: unknown; code?: unknown; error?: unknown };
+        const body = JSON.parse(text) as { detail?: unknown; code?: unknown; error?: unknown; removed?: unknown };
         json = true;
         detail = body?.detail ?? body;
         if (typeof body?.code === "string") code = body.code;
         // an unexpected error's name (`app.py`), for "Technical details"
         if (typeof body?.error === "string") technical = body.error;
+        // why the computer signed this phone out (the phone listener's `phone_not_paired`)
+        if (typeof body?.removed === "string") removed = body.removed;
       } catch {
         detail = text;
       }
@@ -147,7 +179,7 @@ async function toApiError(res: Response): Promise<ApiError> {
   // Ordnung's own words for the person (a refusal, Claude signed out, the sentence for an unexpected error) — unless
   // a server error says no more than its status ("Internal Server Error")
   if (json && !(res.status >= 500 && (!words || words === res.statusText || REASON_PHRASE.test(words)))) {
-    return new ApiError(res.status, words || fallback, detail, code, technical);
+    return new ApiError(res.status, words || fallback, detail, code, technical, removed);
   }
   // a server error without words for the person, or an answer that isn't Ordnung's JSON: a plain sentence, the raw words kept
   const raw = clip(typeof detail === "string" ? detail : words);
@@ -162,7 +194,7 @@ export async function requestRaw(path: string, opts: RequestOptions = {}): Promi
     res = await fetch(apiPath(path, opts.query), buildInit(opts));
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
-    throw new ApiError(0, "Ordnung isn't reachable. Is it still running on this computer?", err);
+    throw new ApiError(0, clientKind() === "phone" ? PHONE_UNREACHABLE : UNREACHABLE, err);
   }
   if (!res.ok) throw await toApiError(res);
   return res;

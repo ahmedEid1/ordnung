@@ -23,6 +23,12 @@
   done with the database before anything closes or wipes it).
 
 ``run_until_idle()`` processes everything that is due and returns — used by the CLI and tests.
+
+Readings and the Ideas refresh are background work for hand-off sync: they run in a context where the
+person's writes aren't counted (:func:`~ordnung.db.store.background_context`), even when a request of
+theirs queued them. When sync replaces the data under a running server, :meth:`IngestWorker.reload`
+makes the next :meth:`~IngestWorker.start` recover the replaced database's interrupted jobs and read its
+Claude pause again.
 """
 
 from __future__ import annotations
@@ -37,6 +43,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from ordnung.db.store import background_context, person_write
 from ordnung.ingest.pipeline import ingest_document, run_triggers
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
 from ordnung.models import Job
@@ -240,7 +247,18 @@ class IngestWorker:
         self._recover()
         self._stopping = False
         self._wake = asyncio.Event()
-        self._loop_task = asyncio.create_task(self._run(), name="ordnung-ingest-worker")
+        self._loop_task = asyncio.create_task(
+            self._run(), name="ordnung-ingest-worker", context=background_context()
+        )
+
+    def reload(self) -> None:
+        """The database was replaced (hand-off sync brought another computer's Ordnung here) while the
+        worker was stopped: the next :meth:`start` recovers its interrupted jobs and readings, and the
+        Claude pause is read again from it."""
+        if self.running:
+            raise RuntimeError("stop the worker before the database is replaced")
+        self._recovered = False
+        self.paused_until = self._stored_pause()
 
     async def stop(self, grace: float = 10.0) -> None:
         """Stop gracefully: documents in progress get ``grace`` seconds, then go back to the queue."""
@@ -263,15 +281,16 @@ class IngestWorker:
 
     async def run_until_idle(self) -> int:
         """Read every due job until the queue is empty (or paused); returns how many jobs ran."""
-        self._recover()
-        finished = 0
-        while True:
-            self._fill()
-            if not self._active:
-                return finished
-            done, _ = await asyncio.wait(set(self._active), return_when=asyncio.FIRST_COMPLETED)
-            self._active.difference_update(done)
-            finished += len(done)
+        with person_write(False):  # reading is background work, whoever asks for it
+            self._recover()
+            finished = 0
+            while True:
+                self._fill()
+                if not self._active:
+                    return finished
+                done, _ = await asyncio.wait(set(self._active), return_when=asyncio.FIRST_COMPLETED)
+                self._active.difference_update(done)
+                finished += len(done)
 
     def refresh_ideas(self) -> None:
         """Run the triggers in the background after an edit of the ledger: now, or once more right after
@@ -279,7 +298,9 @@ class IngestWorker:
         if self._ideas is not None and not self._ideas.done():
             self._ideas_again = True
             return
-        self._ideas = asyncio.create_task(self._refresh_ideas(), name="ordnung-ideas-refresh")
+        self._ideas = asyncio.create_task(
+            self._refresh_ideas(), name="ordnung-ideas-refresh", context=background_context()
+        )
 
     async def _refresh_ideas(self) -> None:
         self._ideas_again = True
@@ -331,7 +352,9 @@ class IngestWorker:
             job = self.ctx.store.claim_next_job(self.JOB_KINDS)
             if job is None:
                 break
-            task = asyncio.create_task(self._run_job(job), name=f"ordnung-ingest-{job.doc_id}")
+            task = asyncio.create_task(
+                self._run_job(job), name=f"ordnung-ingest-{job.doc_id}", context=background_context()
+            )
             self._active.add(task)
             task.add_done_callback(self._job_finished)
             started += 1
@@ -491,7 +514,9 @@ class IngestWorker:
             if ready:
                 self.claude_ready()
 
-        self._claude_checking = asyncio.create_task(run(), name="ordnung-claude-check")
+        self._claude_checking = asyncio.create_task(
+            run(), name="ordnung-claude-check", context=background_context()
+        )
 
     def _maybe_resume(self) -> None:
         if self.paused_until is not None and not self.is_paused():

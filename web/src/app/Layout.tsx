@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, ScrollRestoration, useLocation, useNavigate, useNavigation } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
-import { useHealth, useProfile } from "@/api/hooks";
+import { useHealth, useProfile, useSync } from "@/api/hooks";
 import { useEventsConnection } from "@/api/sse";
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
@@ -9,6 +9,7 @@ import { MobileTabBar } from "@/components/shell/MobileTabBar";
 import { DropZone } from "@/components/shell/DropZone";
 import { UploadCenter } from "@/components/shell/UploadCenter";
 import { PausedBanner } from "@/components/shell/PausedBanner";
+import { SyncBanner } from "@/components/shell/SyncBanner";
 import { MockBanner } from "@/components/shell/MockBanner";
 import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
@@ -16,6 +17,7 @@ import { PageMetaProvider, useDocumentTitle } from "@/components/shell/page-meta
 import { useRecordOrigin } from "@/components/shell/origin";
 import { Toaster } from "@/components/ui/Toast";
 import { DemoTour } from "@/features/tour/DemoTour";
+import { StandbyScreen, standbyKeepsPage } from "@/features/sync/StandbyScreen";
 import { useBrowserNotifications } from "@/features/notifications/useBrowserNotifications";
 import { BootScreen, HealthUnreachable } from "./screens";
 
@@ -131,35 +133,54 @@ function BrowserNotifications() {
   return null;
 }
 
-/** Redirect first-run users (not onboarded, not demo) to the welcome wizard. */
+/**
+ * Redirect first-run users (not onboarded, not demo) to the welcome wizard. Never on a paired phone: setting
+ * Ordnung up happens on the computer (`POST /api/onboarding` is computer-only), and phone access can only be
+ * turned on there once it is.
+ */
 function useOnboardingRedirect() {
   const { data: health } = useHealth();
   const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   useEffect(() => {
-    if (!health || !profile) return;
+    if (!health || !profile || health.client === "phone") return;
     if (!health.demo && !profile.onboarded && location.pathname !== "/welcome") navigate("/welcome", { replace: true });
   }, [health, profile, location.pathname, navigate]);
 }
 
 /**
- * The app shell: sidebar (tab bar on phones), sticky top bar, "Claude paused" banner, page
+ * The app shell: sidebar (tab bar on phones), sticky top bar, "Claude paused" and hand-off sync banners, page
  * outlet, global drop zone, upload progress + toasts, the People & organisations drawer and the
  * opt-in browser notifications.
  * Waits for `/api/health` so relative dates use the app's today (demo-safe).
+ *
+ * While another computer is in use (hand-off sync), the standing-by screen shows instead of the shell — except on
+ * the pages that stay open then (Settings → Your computers, the privacy log), which show under the sync banner.
  */
 export function AppLayout() {
   useEventsConnection();
   useOnboardingRedirect();
   useRecordOrigin();
   const health = useHealth();
+  // sync is the computer's: a phone never asks (the API refuses it there), so it never shows the screen
+  const sync = useSync(health.data?.client === "computer");
+  const { pathname, search } = useLocation();
 
   // the splash only for the first load: a retry after a failure keeps the "isn't running" card
   // (TanStack resets a query without data to `pending` while it refetches)
   if (health.isPending && health.errorUpdateCount === 0) return <BootScreen />;
   if (!health.data) {
     return <HealthUnreachable error={health.error} retrying={health.isFetching} failures={health.errorUpdateCount} onRetry={() => void health.refetch()} />;
+  }
+
+  if (sync.data?.connected && sync.data.mode === "standing_by" && !standbyKeepsPage(pathname, search)) {
+    return (
+      <>
+        <StandbyScreen status={sync.data} />
+        <Toaster />
+      </>
+    );
   }
 
   return (
@@ -178,6 +199,7 @@ export function AppLayout() {
             <TopBar />
             <MockBanner />
             <PausedBanner />
+            <SyncBanner />
             <main id="main" tabIndex={-1} className="room-for-overlays flex flex-1 flex-col outline-none">
               <Outlet />
             </main>

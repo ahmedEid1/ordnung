@@ -52,8 +52,11 @@ export interface EmptyCopy {
   action: "clear-search" | "clear-filters" | "add" | null;
 }
 
-/** The empty state of a filtered list — it says which filter left it empty and how to get out. */
-export function emptyCopy(v: InboxView): EmptyCopy {
+/**
+ * The empty state of a filtered list — it says which filter left it empty and how to get out (`phone`: on a paired
+ * phone, where the letters are on "your computer").
+ */
+export function emptyCopy(v: InboxView, phone = false): EmptyCopy {
   const plain = !v.q && !v.kindLabel;
   if (plain && v.filter === "check") {
     return {
@@ -66,7 +69,7 @@ export function emptyCopy(v: InboxView): EmptyCopy {
   if (plain && v.filter === "private") {
     return {
       title: "No private letters",
-      description: "Letters you add with “Keep private — no AI” are kept here, on this computer only. Claude never reads them.",
+      description: `Letters you add with “Keep private — no AI” are kept here, on ${phone ? "your" : "this"} computer only. Claude never reads them.`,
       illustration: "letter",
       action: "add",
     };

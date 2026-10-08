@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Bell, CalendarDays, Cpu, Database, FolderInput, MapPin, Plug, Scale, ShieldCheck, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, CalendarDays, Cpu, Database, FolderInput, Laptop, MapPin, Plug, Scale, ShieldCheck, Smartphone, UserRound, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AttentionDot } from "@/components/shell/Sidebar";
 import { SECTION_IDS, SECTION_LABELS, type SectionId } from "./logic";
@@ -11,10 +11,12 @@ const ICONS: Record<SectionId, LucideIcon> = {
   reminders: Bell,
   calendar: CalendarDays,
   folder: FolderInput,
+  phone: Smartphone,
   ai: Cpu,
   claude: Plug,
   privacy: ShieldCheck,
   rules: Scale,
+  computers: Laptop,
   data: Database,
 };
 const SECTIONS = SECTION_IDS.map((id) => ({ id, label: SECTION_LABELS[id], icon: ICONS[id] }));
@@ -39,8 +41,8 @@ export function edgeFade(start: boolean, end: boolean): CSSProperties | undefine
  * - from 56rem: a vertical list next to the section.
  *
  * Each entry is a link (`?section=…`), so sections are linkable and work with Back. A section whose
- * background feature stopped working (the watched folder, calendar sync, the morning notification)
- * carries the same dot as Settings in the app's navigation.
+ * background feature stopped working (the watched folder, calendar sync, the morning notification, phone
+ * access) carries the same dot as Settings in the app's navigation.
  */
 export function SettingsNav({ current, hrefFor, onNavigate }: { current: SectionId; hrefFor: (id: SectionId) => string; onNavigate: (id: SectionId) => void }) {
   const listRef = useRef<HTMLUListElement>(null);

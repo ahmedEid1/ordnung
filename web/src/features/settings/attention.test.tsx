@@ -90,4 +90,86 @@ describe("Needs your attention", () => {
     expect(screen.queryByRole("region", { name: "Needs your attention" })).toBeNull();
     expect(screen.queryByTestId("attention-dot")).toBeNull();
   });
+
+  it("asks nothing on a phone: what stopped is fixed in Settings on the computer, which a phone may not read", async () => {
+    const { srv, calls } = useMockApi({ client: "phone" });
+    const folder = vi.spyOn(api, "folder");
+    renderWithProviders(
+      <>
+        <AttentionCard />
+        <Sidebar />
+      </>,
+    );
+    expect(await screen.findByRole("link", { name: "Settings" })).toHaveAttribute("href", "/settings");
+    expect(screen.queryByRole("region", { name: "Needs your attention" })).toBeNull();
+    expect(folder).not.toHaveBeenCalled();
+    expect(calls.map((c) => c.path).filter((p) => ["/folder", "/calendar/sync", "/reminders/desktop", "/settings", "/phone"].includes(p))).toEqual([]);
+    expect(srv.refused).toEqual([]);
+  });
+
+  it("raises phone access on Today when a code was used twice, and leads to Settings → Phone", async () => {
+    const { srv } = useMockApi();
+    srv.phone.change({ enabled: true });
+    srv.phone.setNotice("code_reused", ["192.168.178.66", "192.168.178.31"]);
+    renderWithProviders(
+      <>
+        <AttentionCard />
+        <Sidebar />
+      </>,
+    );
+    const card = await screen.findByRole("region", { name: "Needs your attention" });
+    expect(within(card).getByText("A pairing code was used twice.")).toBeInTheDocument();
+    expect(within(card).getByText(/Someone else may have seen your screen/)).toBeInTheDocument();
+    const line = within(card).getByText("A pairing code was used twice.").closest("li")!;
+    expect(within(line).getByRole("link", { name: "Open Settings" })).toHaveAttribute("href", "/settings?section=phone");
+    expect(await screen.findByRole("link", { name: "Settings, needs your attention" })).toBeInTheDocument();
+  });
+});
+
+describe("hand-off sync's lines in Needs your attention", () => {
+  const problem = { code: "save_failing" as const, title: "Saving to the sync folder keeps failing", message: "Ordnung couldn't save to the sync folder for 30 minutes.", actions: [] };
+  const choice = { joining: false, sides: [], chosen: null };
+
+  it("a choice to make, then what stopped it — last, in the order of Settings' sections", () => {
+    expect(backgroundProblems({ sync: { connected: true, choice, problem } }).map((p) => [p.section, p.title])).toEqual([
+      ["computers", "Choose which Ordnung to keep"],
+      ["computers", "Saving to the sync folder keeps failing"],
+    ]);
+    expect(backgroundProblems({ sync: { connected: false, choice: null, problem } })).toEqual([]);
+    const all = backgroundProblems({
+      folder: { folder: "/home/sam/Scans", state: "problem", problem: MISSING },
+      phone: { enabled: true, problem: { code: "no_network", detail: "Waiting for a home network." }, notice: null },
+      sync: { connected: true, choice: null, problem },
+    });
+    expect(all.map((p) => p.section)).toEqual(["folder", "phone", "computers"]);
+  });
+
+  it("shows on Today and as a dot on Settings → Your computers", async () => {
+    const { srv } = useMockApi();
+    srv.sync.setUp().bothChanged();
+    renderWithProviders(
+      <>
+        <AttentionCard />
+        <SettingsNav current="profile" hrefFor={(id) => `/settings?section=${id}`} onNavigate={() => {}} />
+      </>,
+    );
+    const card = await screen.findByRole("region", { name: "Needs your attention" });
+    const line = within(card).getByText("Choose which Ordnung to keep.").closest("li")!;
+    expect(within(line).getByRole("link", { name: "Open Settings" })).toHaveAttribute("href", "/settings?section=computers");
+    const nav = screen.getByRole("navigation", { name: "Settings sections" });
+    expect(await within(nav).findByRole("link", { name: "Your computers, needs your attention" })).toBeInTheDocument();
+  });
+});
+
+describe("phone access's line in Needs your attention", () => {
+  const problem = { code: "address_gone" as const, detail: "Paused: this computer isn't on 192.168.178.23 any more." };
+  const notice = { code: "token_reuse" as const, detail: "Anna's iPhone was signed out because its sign-in was used from two places.", at: "2026-10-07T08:00:00Z", addresses: [] };
+
+  it("names a pause while phone access is on, and a notice before it", () => {
+    expect(backgroundProblems({ phone: { enabled: true, problem, notice: null } })).toEqual([{ section: "phone", title: "Phones can't reach Ordnung", detail: problem.detail }]);
+    expect(backgroundProblems({ phone: { enabled: true, problem, notice } })).toEqual([{ section: "phone", title: "A phone was signed out", detail: notice.detail }]);
+    // a notice stays news after phone access was turned off; a pause of something off isn't
+    expect(backgroundProblems({ phone: { enabled: false, problem: null, notice } }).map((p) => p.title)).toEqual(["A phone was signed out"]);
+    expect(backgroundProblems({ phone: { enabled: false, problem, notice: null } })).toEqual([]);
+  });
 });

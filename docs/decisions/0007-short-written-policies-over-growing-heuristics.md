@@ -1,6 +1,7 @@
 # ADR 0007 — Short written policies instead of growing heuristics
 
-**Status:** accepted · **Date:** 2026-09-26
+**Status:** accepted · **Date:** 2026-09-26 · **Updated:** 2026-10-07 (a later feature that changes an
+earlier policy changes its text; hand-off sync's kept copies and the backup policy)
 
 ## Context
 Ordnung was reviewed in rounds by independent agents, each prompted to break something and to prove
@@ -51,3 +52,18 @@ that pin the policy. Cases the policy does not decide are documented limitations
   when a reminder arrives.
 - The pattern generalises: when adversarial review keeps finding new cases in a heuristic, the fix is
   a smaller policy and a clear statement of what it does not do, not a bigger heuristic.
+
+## Later policies, and when one changes another
+Later features that touch the rest of the person's world got their policy the same way: backups,
+reminders and calendar sync (ADR 0013), phone access (ADR 0017), hand-off sync between computers (ADR
+0018), each in its module's docstring. A policy is only worth its text if the text stays true, so a feature
+that changes what an earlier policy promises changes that policy's text in the same change — and says so
+where the reader of the old text will look.
+
+The first case: the backup policy (`ordnung/backup/__init__.py`) said that a backup file is never written
+inside the data folder it backs up. Hand-off sync's *kept copies* are backup files written into
+`<data>/sync/kept/` before a computer's data is replaced. The rule that refuses the data folder belongs to
+`ordnung backup --to` and the browser's download (`destination`), which make backups meant to survive the
+computer; a kept copy only undoes a replacement on this computer. So the backup policy now says both: a
+backup you make is never stored inside the data folder, and a kept copy is, and is lost with this
+computer's disk and with *Delete everything* (ADR 0018).

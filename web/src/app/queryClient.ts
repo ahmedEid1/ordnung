@@ -1,8 +1,11 @@
 import { createElement, Fragment, type ReactNode } from "react";
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
+import { clientKind } from "@/api/clientKind";
 import { TechnicalDetails, technicalDetails } from "@/components/ui/LoadError";
 import { dismissToast, toast } from "@/components/ui/Toast";
+import { PHONE_OFFLINE_DETAIL, PHONE_OFFLINE_TITLE } from "@/features/phone/copy";
+import { pageLoad } from "@/features/phone/platform";
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -29,7 +32,7 @@ function describe(err: unknown): { title: string; description?: ReactNode } {
   if (err instanceof ApiError) {
     if (err.isStaticDemo) return { title: "Not available in the online demo", description: err.message };
     if (err.isDemoLimit) return { title: "Not available in the demo", description: err.message };
-    if (err.status === 0) return { title: "Can't reach Ordnung", description: err.message };
+    if (err.status === 0) return { title: clientKind() === "phone" ? PHONE_OFFLINE_TITLE : "Can't reach Ordnung", description: err.message };
     if (err.status === 429) return { title: "Claude needs a short break", description: err.message };
     return { title: "That didn't work", description: sentence(err) };
   }
@@ -49,11 +52,12 @@ let offline = false;
  */
 export function showOffline(client: QueryClient): void {
   offline = true;
+  const phone = clientKind() === "phone";
   toast({
     id: OFFLINE_TOAST_ID,
     tone: "warn",
-    title: "Can't reach Ordnung",
-    description: "Showing what was last loaded. Is Ordnung still running on this computer?",
+    title: phone ? PHONE_OFFLINE_TITLE : "Can't reach Ordnung",
+    description: phone ? PHONE_OFFLINE_DETAIL : "Showing what was last loaded. Is Ordnung still running on this computer?",
     duration: Infinity,
     action: { label: "Try again", onClick: () => void client.refetchQueries({ type: "active" }) },
   });
@@ -67,9 +71,50 @@ export function showBackOnline(): void {
   toast.success("Back online", { description: "Ordnung is answering again — everything is up to date." });
 }
 
+/** Where a phone the computer no longer knows goes: pairing again, told why. */
+export const REMOVED_PHONE_PATH = "/pair?removed=1";
+/** Why the computer signed a phone out, beyond "removed" (`?removed=…` of the pairing page; the gate's `removed`). */
+export const REMOVED_REASONS = ["token_reuse", "code_reused", "unused"] as const;
+let leaving = false;
+
+/** The pairing page for a phone signed out because of `removed` (the 401's `removed`; anything else: removed). */
+export function removedPhonePath(removed: string | null): string {
+  return removed && (REMOVED_REASONS as readonly string[]).includes(removed) ? `/pair?removed=${removed}` : REMOVED_PHONE_PATH;
+}
+
+/**
+ * A refusal only the phone listener gives, `phone_not_paired`: the computer removed this phone (or forgot it), so
+ * every further request fails the same way. One full page load to the pairing page, which says so — it drops what
+ * the phone still showed. Never from the pairing page itself, which expects this answer before pairing.
+ */
+export function leaveIfUnpaired(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.code !== "phone_not_paired") return false;
+  if (leaving || window.location.pathname === "/pair") return true;
+  leaving = true;
+  pageLoad.assign(removedPhonePath(err.removed));
+  return true;
+}
+
+/** Id of the one toast a write refused on a standing-by computer shows (more refusals replace it). */
+export const STANDBY_TOAST_ID = "sync-standby";
+
+/**
+ * A write refused because another computer is in use (hand-off sync's 409 `standby`): the status is asked again,
+ * so the standing-by screen appears by itself, and one toast says the server's sentence — not as a failure of the
+ * action ("Couldn't save your profile"): nothing was changed, and nothing is wrong. A mutation that shows its
+ * errors itself (`silent`) says it in place; the status is asked again all the same.
+ */
+export function standbyRefusal(client: QueryClient, err: unknown, silent: boolean): boolean {
+  if (!(err instanceof ApiError) || !err.isStandby) return false;
+  void client.invalidateQueries({ queryKey: ["sync"] });
+  if (!silent) toast({ id: STANDBY_TOAST_ID, tone: "info", title: err.message });
+  return true;
+}
+
 /** Test helper. */
 export function __resetOfflineForTests(): void {
   offline = false;
+  leaving = false;
 }
 
 /** Shared QueryClient: local API → short retries, no refetch storms, friendly error toasts. */
@@ -77,6 +122,8 @@ export function createQueryClient(): QueryClient {
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError: (err, query) => {
+        // a phone the computer removed: to the pairing page (every request would fail the same way)
+        if (leaveIfUnpaired(err)) return;
         // background refetch failures of data we already show → one warning until it answers again
         if (query.state.data !== undefined && err instanceof ApiError && err.status === 0) showOffline(client);
       },
@@ -84,6 +131,8 @@ export function createQueryClient(): QueryClient {
     }),
     mutationCache: new MutationCache({
       onError: (err, variables, _ctx, mutation) => {
+        if (leaveIfUnpaired(err)) return;
+        if (standbyRefusal(client, err, Boolean(mutation.meta?.silent))) return;
         if (mutation.meta?.silent) return;
         const { title, description } = describe(err);
         // a demo's limit (the hosted demo, or `ordnung demo` asked to read a new letter): a calm note

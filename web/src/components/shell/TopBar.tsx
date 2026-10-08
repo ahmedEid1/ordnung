@@ -6,6 +6,7 @@ import { useScrolled } from "@/lib/hooks";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
 import { LogoMark } from "./Logo";
 import { SearchBox } from "./SearchBox";
+import { SyncIndicator } from "./SyncIndicator";
 import { useAddLetters } from "./AddLetters";
 import { usePageMeta } from "./page-meta";
 import { DemoBadge } from "./DemoBadge";
@@ -84,6 +85,8 @@ export function TopBar() {
           )}
         </div>
         <DemoBadge compact className="md:hidden max-[360px]:hidden" />
+        {/* hand-off sync, on the computer in use: saved, saving, or not (it leads to Your computers) */}
+        <SyncIndicator className={cn(parent && "max-sm:hidden")} />
         <SearchBox />
         <Button variant="primary" icon={Plus} onClick={openPicker} loading={uploading} className="hidden sm:inline-flex">
           Add letters

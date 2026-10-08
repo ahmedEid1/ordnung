@@ -1,20 +1,19 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
-import { Check, CircleCheck, Copy, Download, Eye, EyeOff, HardDriveDownload, KeyRound, LockKeyhole, Sparkles } from "lucide-react";
+import { CircleCheck, Download, HardDriveDownload, KeyRound, LockKeyhole } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useBackupInfo, useDownloadBackup } from "@/api/hooks";
 import type { BackupInfo } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
-import { Field, Input } from "@/components/ui/Field";
 import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
-import { useClipboard } from "@/features/today/clipboard";
 import { focusWhenReady } from "@/features/today/focus";
 import { formatFileSize } from "@/lib/format";
 import { isStaticDemo } from "@/mocks/mode";
 import { backupContents, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
+import { PassphraseFields } from "./PassphraseFields";
 import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
 
 const ERROR_ID = "backup-error";
@@ -53,7 +52,6 @@ function BackupDialog({
   const firstRef = useRef<HTMLInputElement>(null);
   const submitRef = useRef<HTMLButtonElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
-  const { copy, copied } = useClipboard();
   const min = info?.min_passphrase ?? MIN_PASSPHRASE;
   const busy = download.isPending;
 
@@ -121,7 +119,6 @@ function BackupDialog({
   };
 
   const failed = download.error && !(download.error instanceof DOMException) && !(download.error instanceof ApiError && download.error.status === 422);
-  const type = visible ? "text" : "password";
 
   return (
     <Dialog
@@ -158,62 +155,29 @@ function BackupDialog({
             <span className="[overflow-wrap:anywhere]">{leftOutSentence(info.left_out)}</span>
           </Callout>
         ) : null}
-        <Field
-          id="backup-passphrase"
-          label="Passphrase"
-          hint={suggested ? "Save this passphrase in your password manager (or write it down) before you download." : `At least ${min} characters. A short sentence is easy to remember and hard to guess.`}
-          error={problem?.field === "passphrase" ? problem.message : undefined}
-        >
-          <Input
-            ref={firstRef}
-            type={type}
-            value={passphrase}
-            onChange={(e) => {
-              setPassphrase(e.target.value);
-              setSuggested(false);
-              setProblem(null);
-            }}
-            autoComplete="new-password"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            readOnly={busy}
-            className={visible ? "font-mono" : undefined}
-          />
-        </Field>
-        <Field id="backup-repeat" label="Repeat the passphrase" error={problem?.field === "repeat" ? problem.message : undefined}>
-          <Input
-            type={type}
-            value={repeat}
-            onChange={(e) => {
-              setRepeat(e.target.value);
-              setProblem(null);
-            }}
-            autoComplete="new-password"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            readOnly={busy}
-            className={visible ? "font-mono" : undefined}
-          />
-        </Field>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="ghost" icon={visible ? EyeOff : Eye} onClick={() => setVisible((v) => !v)} aria-pressed={visible} disabled={busy}>
-            {visible ? "Hide passphrase" : "Show passphrase"}
-          </Button>
-          <Button size="sm" variant="ghost" icon={Sparkles} onClick={suggest} disabled={busy}>
-            Suggest a strong one
-          </Button>
-          {suggested ? (
-            // shown as text, a password manager won't offer to save it: copying it is the way there
-            <Button size="sm" variant="ghost" icon={copied === passphrase ? Check : Copy} onClick={() => void copy(passphrase)} disabled={busy}>
-              {copied === passphrase ? "Copied" : "Copy passphrase"}
-            </Button>
-          ) : null}
-          <span className="sr-only" aria-live="polite">
-            {suggested && copied === passphrase ? "Passphrase copied to the clipboard" : ""}
-          </span>
-        </div>
+        <PassphraseFields
+          idPrefix="backup"
+          passphrase={passphrase}
+          onPassphraseChange={(value) => {
+            setPassphrase(value);
+            setSuggested(false);
+            setProblem(null);
+          }}
+          repeat={repeat}
+          onRepeatChange={(value) => {
+            setRepeat(value);
+            setProblem(null);
+          }}
+          problem={problem}
+          visible={visible}
+          onVisibleChange={setVisible}
+          onSuggest={suggest}
+          suggested={suggested}
+          hint={`At least ${min} characters. A short sentence is easy to remember and hard to guess.`}
+          suggestedHint="Save this passphrase in your password manager (or write it down) before you download."
+          busy={busy}
+          firstRef={firstRef}
+        />
         {failed ? (
           <div id={ERROR_ID} tabIndex={-1} className="rounded-xl">
             <Callout tone="danger" title="Couldn't make the backup" alert>
@@ -299,7 +263,8 @@ export function BackupCard({
             size="sm"
           />
         ) : (
-          <p className="flex min-h-5 items-start gap-2 text-sm leading-5 text-muted">
+          // a div, not a p: the loading line is a block (a <div> inside a <p> is invalid HTML)
+          <div className="flex min-h-5 items-start gap-2 text-sm leading-5 text-muted">
             <KeyRound className="mt-0.5 size-4 shrink-0" aria-hidden />
             {info.isPending && !staticDemo ? (
               <Skeleton className="h-4 w-64 max-w-full" />
@@ -312,7 +277,7 @@ export function BackupCard({
               // the online demo has nothing of the visitor's to count
               <span>AES-256 encryption, checked in full when it is restored.</span>
             )}
-          </p>
+          </div>
         )}
         {staticDemo ? (
           <p className="rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">

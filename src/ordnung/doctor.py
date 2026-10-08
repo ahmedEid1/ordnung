@@ -4,7 +4,9 @@ Checks that the ``claude`` CLI is installed and recent enough, that it is signed
 status``, JSON), warns when ``ANTHROPIC_API_KEY`` is set (it overrides the subscription login and
 bills the API), and checks the local machine: SQLite FTS5 + trigram search, a writable data folder,
 the database in it (opened read-only: SQLite's quick check and the schema version), free disk space,
-the bundled letter fonts and the built web app. ``probe=True`` adds one tiny live model call. The
+the bundled letter fonts and the built web app — and, while hand-off sync is connected, the sync folder
+(reachable), the password store (usable), the mode and the age of the last save, never reading the
+passphrase. ``probe=True`` adds one tiny live model call. The
 structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via :func:`claude_status`) and the
 Settings page.
 """
@@ -322,6 +324,81 @@ def disk_check(data_dir: Path) -> DoctorCheck:
     return DoctorCheck(id="disk", label=label, status="ok", detail=detail)
 
 
+SYNC_FOLDER_TIMEOUT_S = 5.0
+SYNC_STALE_S = 24 * 3600
+
+
+def sync_check(data_dir: Path) -> DoctorCheck | None:
+    """Hand-off sync (only when it is connected): the sync folder reachable, the password store usable,
+    whether this computer is in use or standing by, and when it last saved. Never reads the passphrase
+    or opens the folder's files."""
+    from concurrent.futures import ThreadPoolExecutor
+    from concurrent.futures import TimeoutError as FutureTimeout
+    from datetime import datetime
+
+    from ordnung.app_context import sync_connected
+    from ordnung.sync.agent import default_secrets, load_engine
+
+    paths = Paths(data_dir)
+    if not sync_connected(paths):
+        return None
+    label = "Hand-off sync"
+    engine = load_engine()
+    if engine is None:
+        return DoctorCheck(
+            id="sync",
+            label=label,
+            status="warn",
+            detail="This installation of Ordnung can't sync between computers.",
+            fix="Install the same Ordnung version as on your other computers.",
+        )
+    try:
+        summary = engine.local_summary(paths)
+    except Exception as exc:
+        return DoctorCheck(id="sync", label=label, status="warn", detail=f"Its state can't be read: {exc}")
+    if summary is None:
+        return None
+    keyring = default_secrets().problem()
+    if keyring is not None:
+        return DoctorCheck(
+            id="sync", label=label, status="fail", detail=str(keyring), fix=keyring.install or None
+        )
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:  # a hung network share must not hang the doctor
+        reachable = pool.submit(Path(summary.folder).is_dir).result(timeout=SYNC_FOLDER_TIMEOUT_S)
+    except (FutureTimeout, OSError):
+        reachable = False
+    finally:
+        pool.shutdown(wait=False)
+    if not reachable:
+        return DoctorCheck(
+            id="sync",
+            label=label,
+            status="warn",
+            detail=f"The sync folder {summary.folder} can't be reached.",
+            fix="Connect its drive or share, and check that your sync tool runs.",
+        )
+    mode = (
+        "in use here"
+        if summary.mode == "in_use"
+        else f"standing by (in use on {summary.in_use_on or 'another computer'})"
+    )
+    saved = "never saved yet"
+    status: CheckStatus = "ok"
+    if summary.last_saved_at:
+        try:
+            moment = datetime.fromisoformat(summary.last_saved_at)
+            age = (datetime.now(moment.tzinfo) - moment).total_seconds()
+        except ValueError:
+            age = 0.0
+        saved = f"last saved {int(age // 3600)} h ago" if age >= 3600 else "last saved within the hour"
+        if summary.mode == "in_use" and age > SYNC_STALE_S:
+            status = "warn"
+    detail = f"{summary.name}: {mode}, {saved} ({summary.folder})"
+    fix = "Open Settings → Your computers to see why it doesn't save." if status == "warn" else None
+    return DoctorCheck(id="sync", label=label, status=status, detail=detail, fix=fix)
+
+
 def fonts_check() -> DoctorCheck:
     """The DejaVu fonts the letter PDFs are set in."""
     from ordnung.drafts.pdf import FONT_DIR
@@ -373,7 +450,7 @@ def web_ui_check() -> DoctorCheck:
 def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
     """The checks of this computer (no Claude involved)."""
     folder = Path(data_dir).expanduser()
-    return [
+    checks = [
         api_key_check(),
         sqlite_check(),
         fonts_check(),
@@ -382,6 +459,8 @@ def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
         database_check(folder),
         disk_check(folder),
     ]
+    synced = sync_check(folder)
+    return [*checks, synced] if synced is not None else checks
 
 
 async def run_doctor(

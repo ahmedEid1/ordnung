@@ -76,7 +76,8 @@ export interface paths {
         };
         /**
          * Read Profile
-         * @description The person's profile (name, address, region, language, reminders …).
+         * @description The person's profile (name, address, region, language, reminders …); on a phone the IBAN shows
+         *     only its last 4 characters.
          */
         get: operations["read_profile_api_profile_get"];
         /**
@@ -169,7 +170,7 @@ export interface paths {
         };
         /**
          * Activity
-         * @description What Ordnung did, newest first.
+         * @description What Ordnung did, newest first (``device``: what one paired phone did).
          */
         get: operations["activity_api_activity_get"];
         put?: never;
@@ -764,7 +765,8 @@ export interface paths {
         /**
          * My Numbers
          * @description About you (Steuer-ID, SV-Nummer …, with their check digits), identity documents with their expiry,
-         *     one call sheet per organisation and the open cases with their references.
+         *     one call sheet per organisation and the open cases with their references (on a phone, your own
+         *     numbers show only their last 4 characters: ``masked``).
          */
         get: operations["my_numbers_api_numbers_get"];
         put?: never;
@@ -1506,6 +1508,321 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/phone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Phone Status
+         * @description Whether phone access can be used here and is on, its address, certificate, pairing progress and
+         *     the paired phones.
+         */
+        get: operations["phone_status_api_phone_get"];
+        /**
+         * Change Phone Access
+         * @description Turn phone access on (at the chosen or recommended address) or off; a new address or port means
+         *     pairing phones again.
+         */
+        put: operations["change_phone_access_api_phone_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/pairing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Pairing
+         * @description A new pairing code (replacing an open one): one phone, once, within minutes.
+         */
+        post: operations["start_pairing_api_phone_pairing_post"];
+        /**
+         * Cancel Pairing
+         * @description Cancel the open pairing code (the dialog closed).
+         */
+        delete: operations["cancel_pairing_api_phone_pairing_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Phone
+         * @description Remove a paired phone: it is signed out at once and its live connections end.
+         */
+        delete: operations["remove_phone_api_phone_devices__device_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Phone Access
+         * @description Start over: turn phone access off, remove every phone and its certificate (a new one is made
+         *     when it is turned on again).
+         */
+        post: operations["reset_phone_access_api_phone_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/phone/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pair Phone
+         * @description Pair this phone with the code shown on the computer; the answer sets its sign-in cookie.
+         */
+        post: operations["pair_phone_api_phone_pair_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sync Status
+         * @description Whether sync can be used here, this computer's mode, the other computers, a choice, problems,
+         *     notices and kept copies (from memory: never the folder or the password store).
+         */
+        get: operations["sync_status_api_sync_get"];
+        /**
+         * Connect Sync
+         * @description Set up a new sync folder (the passphrase twice in the form) or join an existing one; joining
+         *     while this computer has letters answers the choice first, unless ``keep`` answers it.
+         */
+        put: operations["connect_sync_api_sync_put"];
+        post?: never;
+        /**
+         * Disconnect Sync
+         * @description Disconnect this computer: its last changes are saved first, its head says it left, and
+         *     ``<data>/sync/`` goes (kept copies stay). The folder and the other computers keep everything.
+         */
+        delete: operations["disconnect_sync_api_sync_delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Change Sync
+         * @description Rename this computer, answer a problem, or dismiss a notice.
+         */
+        patch: operations["change_sync_api_sync_patch"];
+        trace?: never;
+    };
+    "/api/sync/inspect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Inspect Sync Folder
+         * @description What ``folder`` would be: a new sync, one to join, or refused (and why). Nothing is written.
+         */
+        post: operations["inspect_sync_folder_api_sync_inspect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/use-here": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Use Sync Here
+         * @description “Use Ordnung here”: bring everything over and make this computer the one in use — or wait until
+         *     it has arrived (``take_over_waiting``), or answer with the choice when both computers changed.
+         */
+        post: operations["use_sync_here_api_sync_use_here_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/choose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Choose Sync
+         * @description Keep the chosen computer's Ordnung; the other one is kept as an encrypted copy on its own
+         *     computer. Choosing makes this computer the one in use.
+         */
+        post: operations["choose_sync_api_sync_choose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save Sync
+         * @description Save into the sync folder now; ``hand_over`` then stands by.
+         */
+        post: operations["save_sync_api_sync_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/passphrase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Passphrase
+         * @description Type the passphrase again: checked against the folder, then kept in the password store.
+         */
+        post: operations["sync_passphrase_api_sync_passphrase_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/refill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refill Sync
+         * @description Fill an emptied sync folder again from this computer (never done by itself: an unmounted share
+         *     looks empty too).
+         */
+        post: operations["refill_sync_api_sync_refill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/computers/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Forget Computer
+         * @description Forget a lost computer: its changes that are nowhere else are kept as a copy here first. It
+         *     still knows the passphrase (a new sync folder locks it out).
+         */
+        delete: operations["forget_computer_api_sync_computers__key__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sync/kept/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Kept
+         * @description A kept copy as a download (open it with ``ordnung restore`` and the sync passphrase). ``name``
+         *     must match :data:`~ordnung.sync.KEPT_RE` and be listed in the status.
+         */
+        get: operations["download_kept_api_sync_kept__name__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Kept
+         * @description Delete a kept copy for good.
+         */
+        delete: operations["delete_kept_api_sync_kept__name__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -1617,6 +1934,32 @@ export interface components {
             data: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * AddressChoice
+         * @description An address of this computer on a home network that phone access could use.
+         */
+        AddressChoice: {
+            /**
+             * Address
+             * @description The IPv4 address (“192.168.178.23”)
+             */
+            address: string;
+            /**
+             * Interface
+             * @description The network interface it belongs to (“en0”, “Wi-Fi”)
+             */
+            interface: string;
+            /**
+             * Subnet
+             * @description Its network (“192.168.178.0/24”): only devices in it are answered
+             */
+            subnet: string;
+            /**
+             * Recommended
+             * @description The address this computer reaches the internet from (never a VPN)
+             */
+            recommended: boolean;
         };
         /**
          * AdviceFact
@@ -2625,9 +2968,14 @@ export interface components {
             kept: string[];
             /**
              * Calendar Events Removed
-             * @description Ordnung's events removed from the connected calendar first (null: none was connected)
+             * @description Ordnung's events removed from the connected calendar first (null: none was connected, or another computer still sends to it)
              */
             calendar_events_removed: number | null;
+            /**
+             * Calendar Shared With
+             * @description Hand-off sync: another computer that sends to the same calendar, so Ordnung's events were left there and only this computer's connection was removed
+             */
+            calendar_shared_with: string | null;
         };
         /**
          * DateSpec
@@ -2688,6 +3036,12 @@ export interface components {
              * @constant
              */
             confirm: "DELETE";
+            /**
+             * Unreceived Ok
+             * @description Hand-off sync: delete although no other computer has this computer's latest changes yet (the second confirmation; otherwise 409 ``not_received``)
+             * @default false
+             */
+            unreceived_ok?: boolean;
         };
         /**
          * DeleteResult
@@ -3366,6 +3720,13 @@ export interface components {
              * @description The doctor's checks — only with ``?probe=1`` (“Run check”)
              */
             checks: components["schemas"]["DoctorCheck"][];
+            /**
+             * Client
+             * @description Who asked: this computer's browser, or a paired phone (which gets no data folder, Claude path or checks)
+             * @default computer
+             * @enum {string}
+             */
+            client: "computer" | "phone";
         };
         /**
          * HeldRequest
@@ -4291,6 +4652,12 @@ export interface components {
             organisations: components["schemas"]["CallSheet"][];
             /** Open Cases */
             open_cases: components["schemas"]["OpenCase"][];
+            /**
+             * Masked
+             * @description The numbers show only their last 4 characters (on a phone): the full ones are on your computer
+             * @default false
+             */
+            masked: boolean;
         };
         /**
          * NotificationText
@@ -4355,6 +4722,38 @@ export interface components {
              * @enum {string}
              */
             text_source: "text" | "transcript" | "none";
+        };
+        /**
+         * PairRequest
+         * @description The code from the computer and the name this phone gets.
+         */
+        PairRequest: {
+            /**
+             * Code
+             * @description As shown or typed; spaces, dashes and case don't matter
+             */
+            code: string;
+            /**
+             * Name
+             * @description This phone's name (“Anna's iPhone”)
+             */
+            name: string;
+        };
+        /**
+         * PairResult
+         * @description The phone is paired: its sign-in cookie comes with this answer.
+         */
+        PairResult: {
+            /**
+             * Name
+             * @description The name it got (“iPhone (2)” when the name was taken)
+             */
+            name: string;
+            /**
+             * Check Words
+             * @description Two words the computer shows next to this phone (“amber tulip”)
+             */
+            check_words: string;
         };
         /** Party */
         Party: {
@@ -4426,6 +4825,229 @@ export interface components {
             iban_valid: boolean | null;
             /** Reference */
             reference: string | null;
+        };
+        /**
+         * PhoneAccessChange
+         * @description Turn phone access on or off; choose the address or port; confirm the home network.
+         */
+        PhoneAccessChange: {
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Address
+             * @description One of ``addresses`` (none: the saved or recommended one)
+             */
+            address?: string | null;
+            /** Port */
+            port?: number | null;
+            /**
+             * Home Network
+             * @description “This is my home network”: the network this computer is on now is home (after ``other_network``)
+             * @default false
+             */
+            home_network?: boolean;
+        };
+        /**
+         * PhoneDevice
+         * @description A paired phone (never its sign-in).
+         */
+        PhoneDevice: {
+            /** Id */
+            id: string;
+            /**
+             * Name
+             * @description The name given when it was paired (“Anna's iPhone”)
+             */
+            name: string;
+            /**
+             * Platform
+             * @description A summary of its browser (“iPhone · Safari”), never the User-Agent
+             */
+            platform: string;
+            /**
+             * Check Words
+             * @description Two words the phone showed when it was paired (“amber tulip”): a phone that shows other words isn't this one
+             */
+            check_words: string;
+            /** Paired At */
+            paired_at: string;
+            /** Last Seen At */
+            last_seen_at: string | null;
+            /**
+             * Last Address
+             * @description The address it was last used from
+             */
+            last_address: string | null;
+            /**
+             * Active
+             * @description It has Ordnung open now (a live connection)
+             */
+            active: boolean;
+            /**
+             * Recent Changes
+             * @description Changes it made in the last 30 days (the privacy log, filtered by ``device``)
+             */
+            recent_changes: number;
+        };
+        /**
+         * PhoneNotice
+         * @description Something the person should know about at once (shown in the danger tone).
+         */
+        PhoneNotice: {
+            /**
+             * Code
+             * @description ``pairing_stopped``: so many wrong codes were typed that the code was cancelled; ``code_reused``: two devices used the same code, so neither is paired; ``token_reuse``: a phone's sign-in was used from two places, so it was signed out
+             * @enum {string}
+             */
+            code: "pairing_stopped" | "code_reused" | "token_reuse";
+            /** Detail */
+            detail: string;
+            /** At */
+            at: string;
+            /**
+             * Addresses
+             * @description The addresses involved
+             */
+            addresses: string[];
+        };
+        /**
+         * PhonePairing
+         * @description A new pairing code: shown on the computer, valid once for a few minutes.
+         */
+        PhonePairing: {
+            /**
+             * Url
+             * @description What the QR code opens: ``https://<address>:<port>/pair#<code>``
+             */
+            url: string;
+            /**
+             * Code
+             * @description The code to type instead (“K7QM2XD9PA”)
+             */
+            code: string;
+            /** Expires At */
+            expires_at: string;
+        };
+        /**
+         * PhonePairingState
+         * @description The pairing code's progress (never the code).
+         */
+        PhonePairingState: {
+            /** Expires At */
+            expires_at: string;
+            /**
+             * Opened At
+             * @description When a phone that isn't paired yet opened the pairing page
+             */
+            opened_at: string | null;
+            /**
+             * Opened From
+             * @description The address that phone opened it from
+             */
+            opened_from: string | null;
+            /**
+             * Wrong Tries
+             * @description Wrong codes typed on the network since this code was made
+             */
+            wrong_tries: number;
+            /**
+             * Wrong From
+             * @description The addresses the wrong codes came from
+             */
+            wrong_from: string[];
+        };
+        /**
+         * PhoneProblem
+         * @description Why phone access is on but not listening, in words for the person (technical text only in logs).
+         */
+        PhoneProblem: {
+            /**
+             * Code
+             * @description ``no_network``: no home network; ``address_gone``: this computer isn't on the saved address any more; ``other_network``: the same address on another network (the router differs); ``port_busy``: another program uses the port; ``failed``: anything else
+             * @enum {string}
+             */
+            code: "no_network" | "address_gone" | "other_network" | "port_busy" | "failed";
+            /** Detail */
+            detail: string;
+        };
+        /**
+         * PhoneStatus
+         * @description What Settings → Phone shows.
+         */
+        PhoneStatus: {
+            /**
+             * Available
+             * @description Phone access can be turned on here (never in the demo)
+             */
+            available: boolean;
+            /**
+             * Unavailable Reason
+             * @description Why not, in words
+             */
+            unavailable_reason: string | null;
+            /**
+             * Enabled
+             * @description Phone access is turned on (the saved choice)
+             */
+            enabled: boolean;
+            /**
+             * Listening
+             * @description Phones can reach it now
+             */
+            listening: boolean;
+            /**
+             * Url
+             * @description “https://192.168.178.23:8767” while listening
+             */
+            url: string | null;
+            /**
+             * Address
+             * @description The address phone access uses
+             */
+            address: string | null;
+            /**
+             * Subnet
+             * @description The home network it answers (“192.168.178.0/24”)
+             */
+            subnet: string | null;
+            /** Port */
+            port: number;
+            /**
+             * Addresses
+             * @description This computer's addresses on home networks now
+             */
+            addresses: components["schemas"]["AddressChoice"][];
+            problem: components["schemas"]["PhoneProblem"] | null;
+            notice: components["schemas"]["PhoneNotice"] | null;
+            /**
+             * Fingerprint
+             * @description The certificate's SHA-256 as upper-case byte pairs (“F2 08 81 E8 …”)
+             */
+            fingerprint: string | null;
+            /**
+             * Ca Fingerprint
+             * @description The SHA-256 of the authority that issues it (what a phone may trust)
+             */
+            ca_fingerprint: string | null;
+            /**
+             * Ca Made At
+             * @description When that authority was made: a new address makes a new one, and phones that trusted the old one should remove it
+             */
+            ca_made_at: string | null;
+            /**
+             * Certificate Until
+             * @description The certificate's last day
+             */
+            certificate_until: string | null;
+            /**
+             * Certificate Changed At
+             * @description When the certificate last changed (phones that don't trust it warn again)
+             */
+            certificate_changed_at: string | null;
+            /** @description The open pairing code's progress */
+            pairing: components["schemas"]["PhonePairingState"] | null;
+            /** Devices */
+            devices: components["schemas"]["PhoneDevice"][];
         };
         /** Profile */
         Profile: {
@@ -5036,6 +5658,618 @@ export interface components {
             type: "document" | "item" | "contract" | "party" | "case" | "draft";
             /** Id */
             id: string;
+        };
+        /**
+         * SyncArriving
+         * @description A version still arriving from the sync tool.
+         */
+        SyncArriving: {
+            /**
+             * From Computer
+             * @description The computer it comes from
+             */
+            from_computer: string;
+            /**
+             * Have
+             * @description Files already here
+             */
+            have: number;
+            /**
+             * Need
+             * @description Files it needs in all
+             */
+            need: number;
+            /** Have Bytes */
+            have_bytes: number;
+            /** Need Bytes */
+            need_bytes: number;
+            /**
+             * Since
+             * @description This computer's clock: when waiting began
+             */
+            since: string;
+            /**
+             * Stalled
+             * @description Nothing more arrived for 30 minutes
+             */
+            stalled: boolean;
+            /**
+             * Online Only
+             * @description Files the sync tool keeps online-only on this computer (placeholders, dataless files): they arrive only once the folder is available offline
+             */
+            online_only: number;
+        };
+        /**
+         * SyncChange
+         * @description Small changes and answers to a problem (each optional).
+         */
+        SyncChange: {
+            /**
+             * Name
+             * @description A new name for this computer
+             */
+            name?: string | null;
+            /**
+             * Confirm Same Computer
+             * @description “This is the same computer” (after the data folder moved or was copied)
+             * @default false
+             */
+            confirm_same_computer?: boolean;
+            /**
+             * Keep As Is
+             * @description “Keep this computer's data as it is” (after it went back in time and the last saved state can't be put back)
+             * @default false
+             */
+            keep_as_is?: boolean;
+            /**
+             * Abandon Pull
+             * @description Give up a take-over that couldn't finish (this computer stands by)
+             * @default false
+             */
+            abandon_pull?: boolean;
+            /**
+             * Dismiss Notice
+             * @description A notice's ``id``
+             */
+            dismiss_notice?: string | null;
+        };
+        /**
+         * SyncChoice
+         * @description Both computers changed something: which computer's Ordnung to keep (the other is kept as a copy).
+         */
+        SyncChoice: {
+            /**
+             * Joining
+             * @description This computer is joining and already has its own letters
+             */
+            joining: boolean;
+            /** Sides */
+            sides: components["schemas"]["SyncSide"][];
+            /**
+             * Chosen
+             * @description The side chosen while it still arrives: kept as soon as it is here (``use-here`` with ``cancel`` stops waiting)
+             */
+            chosen: number | null;
+        };
+        /**
+         * SyncChoose
+         * @description Which computer's Ordnung to keep.
+         */
+        SyncChoose: {
+            /**
+             * Keep
+             * @description The chosen side's ``key``
+             */
+            keep: number;
+        };
+        /**
+         * SyncComputer
+         * @description A computer of this sync, as this computer sees it (never its id).
+         */
+        SyncComputer: {
+            /**
+             * Key
+             * @description A small number for the UI, stable per computer (``choose``, ``forget``)
+             */
+            key: number;
+            /**
+             * Name
+             * @description The name it was given (“anna-thinkpad”)
+             */
+            name: string;
+            /**
+             * This
+             * @description This computer
+             */
+            this: boolean;
+            /**
+             * In Use
+             * @description It is the one in use
+             */
+            in_use: boolean;
+            /**
+             * State
+             * @description What its latest head says: ``in_use``, ``standing_by``, ``closed`` (Ordnung was closed there while in use), ``left`` (it disconnected) or ``unknown`` (its head can't be read now)
+             * @enum {string}
+             */
+            state: "in_use" | "standing_by" | "closed" | "left" | "unknown";
+            /**
+             * Arrived At
+             * @description This computer's clock: when that computer's latest change arrived here
+             */
+            arrived_at: string | null;
+            /**
+             * Has Latest
+             * @description This computer's latest saved version has fully arrived there (null: can't tell, or this computer)
+             */
+            has_latest: boolean | null;
+            /**
+             * App Version
+             * @description The Ordnung version it runs
+             */
+            app_version: string;
+            /**
+             * Calendar
+             * @description Calendar sync there, compared with this computer's: ``none``; ``same`` calendar and mode; ``different_mode`` (the same calendar in another mode); ``other`` (another calendar, or none here)
+             * @enum {string}
+             */
+            calendar: "none" | "same" | "different_mode" | "other";
+        };
+        /**
+         * SyncConnect
+         * @description Set up a new sync folder or join one (the passphrase is checked by the route).
+         */
+        SyncConnect: {
+            /** Folder */
+            folder: string;
+            /**
+             * Name
+             * @description This computer's name (1 to 40 characters)
+             */
+            name: string;
+            /** Passphrase */
+            passphrase: string;
+            /**
+             * Keep
+             * @description Joining while this computer has its own letters: keep this computer's Ordnung, or the folder's (the other is kept as a copy)
+             */
+            keep?: ("this" | "folder") | null;
+        };
+        /**
+         * SyncConnected
+         * @description The result of setting up or joining: the status, or the choice to answer first.
+         */
+        SyncConnected: {
+            status: components["schemas"]["SyncStatus"];
+            /** @description Joining while this computer has its own letters: send ``keep`` to answer (nothing is connected yet) */
+            choice: components["schemas"]["SyncChoice"] | null;
+        };
+        /**
+         * SyncDisconnect
+         * @description Disconnect this computer.
+         */
+        SyncDisconnect: {
+            /**
+             * Forget Passphrase
+             * @description Also remove it from the password store
+             * @default true
+             */
+            forget_passphrase?: boolean;
+            /**
+             * Unreceived Ok
+             * @description Disconnect although no other computer has this computer's latest changes yet (the second confirmation)
+             * @default false
+             */
+            unreceived_ok?: boolean;
+        };
+        /**
+         * SyncFolderInfo
+         * @description What a folder would be for sync (nothing is written).
+         */
+        SyncFolderInfo: {
+            /**
+             * Kind
+             * @description ``new``: missing or empty (apart from sync-tool files): a new sync starts there; ``existing``: a sync to join; ``refused``: it can't be used (``problem`` says why)
+             * @enum {string}
+             */
+            kind: "new" | "existing" | "refused";
+            /**
+             * Folder
+             * @description The folder as Ordnung would use it (resolved)
+             */
+            folder: string;
+            /**
+             * Problem
+             * @description Why it can't be used, for people
+             */
+            problem: string | null;
+            /**
+             * Examples
+             * @description Up to three names of other files found in it
+             */
+            examples: string[];
+            /**
+             * Data Folder Synced
+             * @description Ordnung's data folder itself is inside a synced folder (a warning, never a refusal)
+             */
+            data_folder_synced: boolean;
+            /**
+             * Links Left Out
+             * @description Symbolic links in the data folder that sync leaves out (it never follows links)
+             */
+            links_left_out: string[];
+        };
+        /**
+         * SyncInspect
+         * @description A folder to look at.
+         */
+        SyncInspect: {
+            /** Folder */
+            folder: string;
+        };
+        /**
+         * SyncKept
+         * @description A kept copy: this computer's data saved before it was replaced (an encrypted backup).
+         */
+        SyncKept: {
+            /**
+             * Name
+             * @description Its file name (``ordnung-kept-2026-10-07-0912.ordnung-backup``)
+             */
+            name: string;
+            /**
+             * Path
+             * @description Where it is on this computer (for ``ordnung restore``)
+             */
+            path: string;
+            /** Size */
+            size: number;
+            /**
+             * Created At
+             * @description This computer's clock
+             */
+            created_at: string;
+            /**
+             * Why
+             * @description Why it was kept, for people (“before you kept desktop's Ordnung”)
+             */
+            why: string;
+        };
+        /**
+         * SyncLetter
+         * @description A letter in a side's summary: its title and the calendar date it was added (no clock time).
+         */
+        SyncLetter: {
+            /** Label */
+            label: string;
+            /** Added On */
+            added_on: string;
+        };
+        /**
+         * SyncNotice
+         * @description Something the person should know about once (dismissed with ``PATCH /api/sync``).
+         */
+        SyncNotice: {
+            /** Id */
+            id: string;
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "chosen_elsewhere" | "kept" | "rolled_back" | "take_over_cancelled" | "brought_in" | "pull_abandoned";
+            /**
+             * Message
+             * @description For people
+             */
+            message: string;
+            /**
+             * Kept
+             * @description The kept copy it is about (its name)
+             */
+            kept: string | null;
+            /**
+             * At
+             * @description This computer's clock
+             */
+            at: string;
+        };
+        /**
+         * SyncPassphrase
+         * @description The passphrase typed again (checked against the folder by the route).
+         */
+        SyncPassphrase: {
+            /** Passphrase */
+            passphrase: string;
+        };
+        /**
+         * SyncProblem
+         * @description Why sync is paused or needs the person (the web shows the words, never the code).
+         */
+        SyncProblem: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "folder_missing" | "folder_empty" | "folder_other" | "folder_full" | "folder_unreachable" | "online_only" | "two_setups" | "passphrase_needed" | "keyring_unavailable" | "keyring_locked" | "newer_ordnung" | "arrival_stalled" | "not_received" | "pull_unfinished" | "no_space" | "damaged" | "local_damaged" | "copied_folder" | "local_rollback" | "save_failing" | "forgotten";
+            /**
+             * Title
+             * @description A short title for people
+             */
+            title: string;
+            /**
+             * Message
+             * @description What happened and what to do, for people
+             */
+            message: string;
+            /**
+             * Actions
+             * @description What the person can do about it, the main action first (none: wait, or the message says)
+             */
+            actions: ("passphrase" | "choose_folder" | "refill" | "same_computer" | "new_computer" | "keep_as_is" | "abandon")[];
+        };
+        /**
+         * SyncProgress
+         * @description How far a first save, or bringing a version over, has got.
+         */
+        SyncProgress: {
+            /**
+             * Done
+             * @description Files done
+             */
+            done: number;
+            /**
+             * Total
+             * @description Files in all
+             */
+            total: number;
+            /** Bytes Done */
+            bytes_done: number;
+            /** Bytes Total */
+            bytes_total: number;
+        };
+        /**
+         * SyncSave
+         * @description Save now.
+         */
+        SyncSave: {
+            /**
+             * Hand Over
+             * @description Then stand by, so another computer can take over
+             * @default false
+             */
+            hand_over?: boolean;
+        };
+        /**
+         * SyncSide
+         * @description One computer's Ordnung in a choice.
+         */
+        SyncSide: {
+            /**
+             * Key
+             * @description The computer's ``key`` (what ``choose`` takes)
+             */
+            key: number;
+            /** Computer */
+            computer: string;
+            /** This */
+            this: boolean;
+            /**
+             * Letters
+             * @description Letters in that Ordnung
+             */
+            letters: number;
+            /**
+             * Added
+             * @description Letters added there since the two last agreed
+             */
+            added: number;
+            /**
+             * Newest
+             * @description Up to three letters, newest added first
+             */
+            newest: components["schemas"]["SyncLetter"][];
+            /**
+             * Items
+             * @description Dates and to-dos still open in that Ordnung
+             * @default 0
+             */
+            items: number;
+            /**
+             * Done
+             * @description Dates and to-dos marked done there
+             * @default 0
+             */
+            done: number;
+            /**
+             * Notes
+             * @description Notes there
+             * @default 0
+             */
+            notes: number;
+            /**
+             * Latest
+             * @description Its three latest changes (letters, dates, to-dos, notes, contracts), newest first: what tells two sides apart when their counts are alike
+             */
+            latest: components["schemas"]["SyncSideChange"][];
+            /**
+             * Saved At
+             * @description That computer's clock: when it saved this version
+             */
+            saved_at: string | null;
+            /**
+             * Arrived At
+             * @description This computer's clock: when it arrived here
+             */
+            arrived_at: string | null;
+            /**
+             * Complete
+             * @description It has fully arrived here (choosing one that hasn't waits for it)
+             */
+            complete: boolean;
+            /** @description What is still arriving of it */
+            arriving: components["schemas"]["SyncArriving"] | null;
+        };
+        /**
+         * SyncSideChange
+         * @description One of a side's latest changes: what it was made to, its title and the calendar date.
+         */
+        SyncSideChange: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "letter" | "date" | "to-do" | "note" | "contract";
+            /** Label */
+            label: string;
+            /**
+             * On
+             * @description The calendar date of the change (no clock time)
+             */
+            on: string;
+        };
+        /**
+         * SyncStatus
+         * @description What Settings → Your computers, the top bar and the standing-by screen show.
+         */
+        SyncStatus: {
+            /**
+             * Available
+             * @description Sync can be used on this computer (a password store; never the demo)
+             */
+            available: boolean;
+            /**
+             * Unavailable
+             * @description Why not, in words
+             */
+            unavailable: string | null;
+            /**
+             * Install Command
+             * @description The command that makes it available
+             */
+            install_command: string | null;
+            /**
+             * Connected
+             * @description This computer syncs through a folder
+             */
+            connected: boolean;
+            /**
+             * Mode
+             * @description ``off`` (not connected), ``starting``, ``in_use`` (this computer is the one in use) or ``standing_by`` (another computer is: writes are refused)
+             * @enum {string}
+             */
+            mode: "off" | "starting" | "in_use" | "standing_by";
+            /**
+             * Activity
+             * @description ``idle``, ``saving``, ``waiting`` (for the sync tool), ``bringing_over`` (writes are refused for a moment) or ``keeping`` (writing a kept copy)
+             * @enum {string}
+             */
+            activity: "idle" | "saving" | "waiting" | "bringing_over" | "keeping";
+            progress: components["schemas"]["SyncProgress"] | null;
+            /**
+             * Folder
+             * @description The sync folder on this computer
+             */
+            folder: string | null;
+            /**
+             * This Computer
+             * @description This computer's name
+             */
+            this_computer: string | null;
+            /**
+             * Suggested Name
+             * @description The name offered when setting up (this computer's host name)
+             */
+            suggested_name: string;
+            /**
+             * In Use On
+             * @description The computer in use
+             */
+            in_use_on: string | null;
+            /**
+             * Computers
+             * @description Every computer, this one too
+             */
+            computers: components["schemas"]["SyncComputer"][];
+            /**
+             * Last Saved At
+             * @description This computer's clock: its last save into the folder
+             */
+            last_saved_at: string | null;
+            /**
+             * Pending Changes
+             * @description This computer has changes that aren't in the sync folder yet
+             * @default false
+             */
+            pending_changes: boolean;
+            /**
+             * Others Have Latest
+             * @description Another computer has received everything of this computer's (Disconnect and Delete everything ask twice when not)
+             * @default false
+             */
+            others_have_latest: boolean;
+            /**
+             * Up To Date
+             * @description Standing by: the newest version has fully arrived here
+             * @default false
+             */
+            up_to_date: boolean;
+            /**
+             * Base From
+             * @description Whose version this computer's data is (“the copy this computer has”)
+             */
+            base_from: string | null;
+            /**
+             * Base Arrived At
+             * @description This computer's clock: when it arrived
+             */
+            base_arrived_at: string | null;
+            arriving: components["schemas"]["SyncArriving"] | null;
+            /**
+             * Take Over Waiting
+             * @description “Use Ordnung here” waits until everything has arrived
+             * @default false
+             */
+            take_over_waiting: boolean;
+            /** @description Both computers changed: which to keep */
+            choice: components["schemas"]["SyncChoice"] | null;
+            problem: components["schemas"]["SyncProblem"] | null;
+            /** Notices */
+            notices: components["schemas"]["SyncNotice"][];
+            /**
+             * Kept
+             * @description Kept copies on this computer
+             */
+            kept: components["schemas"]["SyncKept"][];
+            /**
+             * Kept Warning
+             * @description The kept copies take more than 2 GB in all
+             * @default false
+             */
+            kept_warning: boolean;
+            /**
+             * Data Folder Synced
+             * @description Ordnung's data folder itself is inside a synced folder, so the sync tool uploads it unencrypted
+             * @default false
+             */
+            data_folder_synced: boolean;
+        };
+        /**
+         * SyncUseHere
+         * @description “Use Ordnung here”.
+         */
+        SyncUseHere: {
+            /**
+             * Older Copy
+             * @description Use the copy this computer has now instead of waiting for what arrives
+             * @default false
+             */
+            older_copy?: boolean;
+            /**
+             * Cancel
+             * @description Stop a waiting take-over (or a waiting choice)
+             * @default false
+             */
+            cancel?: boolean;
         };
         /**
          * ThreadMessage
@@ -5954,6 +7188,7 @@ export interface components {
             "draft.sent": components["schemas"]["DraftSentEvent"];
             "demo.mail": components["schemas"]["DemoMailEvent"];
             "folder.updated": components["schemas"]["FolderUpdatedEvent"];
+            "sync.updated": components["schemas"]["SyncUpdatedEvent"];
         };
         /**
          * SuggestionsUpdatedEvent
@@ -5997,6 +7232,18 @@ export interface components {
             by_rule?: {
                 [key: string]: number;
             } | null;
+        };
+        /**
+         * SyncUpdatedEvent
+         * @description ``sync.updated``: hand-off sync's status changed (``GET /api/sync``); ``replaced``: this computer's
+         *     data was just replaced (a take-over, a choice, a change brought in), so every page loads again.
+         */
+        SyncUpdatedEvent: {
+            /**
+             * Replaced
+             * @default false
+             */
+            replaced?: boolean;
         };
     };
     responses: never;
@@ -6259,7 +7506,7 @@ export interface operations {
                     "application/json": components["schemas"]["DataDeleted"];
                 };
             };
-            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), or the connected calendar's events couldn't be removed (nothing was deleted). */
+            /** @description The demo can't be deleted (``ordnung demo --reset`` starts it over), the connected calendar's events couldn't be removed (nothing was deleted), or no other computer of hand-off sync has this computer's latest changes yet (``not_received``: send ``unreceived_ok``). */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -6281,6 +7528,8 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                /** @description Only what this paired phone did (its id) */
+                device?: string | null;
             };
             header?: never;
             path?: never;
@@ -8748,6 +9997,741 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    phone_status_api_phone_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+        };
+    };
+    change_phone_access_api_phone_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneAccessChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description The demo or no session token (``unavailable``), Ordnung isn't set up yet (``not_set_up``), no home network (``no_network``) or the port is in use (``port_busy``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The address isn't one of this computer's, or the port is out of range (``invalid``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    start_pairing_api_phone_pairing_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhonePairing"];
+                };
+            };
+            /** @description The demo or no session token (``unavailable``), phone access isn't listening (``not_listening``) or the most phones are paired (``too_many_phones``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancel_pairing_api_phone_pairing_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_phone_api_phone_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description No such phone is paired */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_phone_access_api_phone_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatus"];
+                };
+            };
+            /** @description The demo (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    pair_phone_api_phone_pair_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairResult"];
+                };
+            };
+            /** @description Sent to the computer's own listener, not a phone's (``not_phone``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code paired a phone already, so neither stays paired (``code_used``), the most phones are paired (``too_many_phones``) or phone access is off (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description The code didn't match, or it expired, or there is none (``wrong_code``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Too many tries from this device or the network (``too_many``, see ``Retry-After``) */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sync_status_api_sync_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+        };
+    };
+    connect_sync_api_sync_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncConnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncConnected"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer already syncs (``already_connected``); the folder was set up by a newer Ordnung (``newer_ordnung``); the folder already serves 8 computers (``full``); the folder's key file hasn't fully arrived yet (``not_arrived``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the folder can't be used (``folder``); the name is empty or too long (``name``); a new folder's passphrase is too short or too easy to guess (``passphrase``); the passphrase doesn't open this folder (``wrong_passphrase``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description this computer lacks the space to bring Ordnung over (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disconnect_sync_api_sync_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncDisconnect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); no other computer has this computer's latest changes yet: ``unreceived_ok`` goes on (``not_received``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_sync_api_sync_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to confirm or give up now (``not_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the name is empty or too long (``name``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inspect_sync_folder_api_sync_inspect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncInspect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncFolderInfo"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    use_sync_here_api_sync_use_here_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncUseHere"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the other computer runs a newer Ordnung: update Ordnung here (``newer_ordnung``); a take-over must finish first (``pull_unfinished``); the passphrase isn't in the password store (``passphrase_needed``); the folder has a problem that stops a take-over (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space to take over (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    choose_sync_api_sync_choose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncChoose"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); there's nothing to choose, or no such side (``no_choice``); the chosen side hasn't arrived and can't be waited for (``not_arrived``); the passphrase is needed to keep this computer's copy (``passphrase_needed``); the folder has a problem that stops this (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space for it (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    save_sync_api_sync_save_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["SyncSave"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); another computer is in use (``standby``); the folder can't be written now (``folder_problem``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_passphrase_api_sync_passphrase_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncPassphrase"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the passphrase doesn't open this folder (``wrong_passphrase``) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    refill_sync_api_sync_refill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); the folder isn't empty, or another computer is in use (``not_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    forget_computer_api_sync_computers__key__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
+                };
+            };
+            /** @description no other computer has that number (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``); this computer isn't syncing (``not_connected``); that computer is the one in use (take over first) (``in_use``); its latest changes haven't arrived here, so they can't be kept yet (``not_arrived``); the passphrase is needed to keep its changes (``passphrase_needed``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description this computer lacks the space to keep its changes (``no_space``) */
+            507: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    download_kept_api_sync_kept__name__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The kept copy (an encrypted backup) */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description no kept copy of that name (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_kept_api_sync_kept__name__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description no kept copy of that name (``not_found``) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description the demo, or no usable password store on this computer (``unavailable``) */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

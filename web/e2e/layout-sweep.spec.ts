@@ -321,7 +321,7 @@ const MAIN_PAGES: SweepState[] = [
   { name: "404", enter: (page) => open(page, "/this-page-does-not-exist") },
 ];
 
-const SETTINGS: SweepState[] = ["profile", "region", "reminders", "calendar", "folder", "ai", "claude", "privacy", "rules", "data"].map((section) => ({
+const SETTINGS: SweepState[] = ["profile", "region", "reminders", "calendar", "folder", "phone", "ai", "claude", "privacy", "rules", "computers", "data"].map((section) => ({
   name: `Settings · ${section}`,
   enter: (page) => open(page, `/settings?section=${section}`, "Settings"),
 }));

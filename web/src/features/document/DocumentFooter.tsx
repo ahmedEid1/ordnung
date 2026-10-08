@@ -1,6 +1,7 @@
 /**
  * Provenance + housekeeping: "Read by Claude on 28 Sep 2026 · text of 2 pages", and the actions
- * Reprocess · Download original · Delete (with a confirmation listing what would disappear).
+ * Reprocess · Download original · Delete (with a confirmation listing what would disappear). On a paired phone
+ * the letter stays on the computer: no download, no delete — a line says where to do them.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -14,6 +15,9 @@ import { plural, prefersReducedMotion } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { ComputerOnly, OnYourComputer } from "@/features/phone/ComputerOnly";
+import { DELETE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { isOpenItem, openItemCounts, scamSuggestion } from "./verdict";
 import { useStartDraft } from "./actions";
 
@@ -60,14 +64,15 @@ export function keepTogether(text: string): string {
  * Where the letter went: nowhere while it is private, or while no model call carried it — the API knows
  * (`given_to_model`): a letter that waits, or whose call never started (Claude not installed), was not sent.
  */
-export function sentText(detail: DocumentDetail): string {
+export function sentText(detail: DocumentDetail, phone = false): string {
   if (detail.document.ai_private) return "This letter never left your computer.";
   if (!detail.given_to_model) return "Not sent to Claude. The letter hasn't left your computer.";
-  return "The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on this computer.";
+  return `The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on ${theComputer(phone)}.`;
 }
 
 export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
+  const phone = usePhoneCompanion();
   const navigate = useNavigate();
   const reprocess = useReprocessDocument();
   const del = useDeleteDocument();
@@ -87,7 +92,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
         <Icon className="mt-[3px] size-3.5 shrink-0" aria-hidden />
         <span className="min-w-0 [overflow-wrap:anywhere]">{keepTogether(provenanceText(doc))}</span>
       </p>
-      <p className="mt-2 text-[12px] leading-5 text-muted">{sentText(detail)}</p>
+      <p className="mt-2 text-[12px] leading-5 text-muted">{sentText(detail, phone)}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         {/* a letter that couldn't be read has its "Try again" at the top: no second button for the same thing */}
         {!doc.ai_private && !busy && doc.status !== "failed" ? (
@@ -118,21 +123,24 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
             Draft a reply
           </Button>
         ) : null}
-        <a href={api.fileUrl(doc.id)} download={doc.filename} className={buttonVariants({ size: "sm" })}>
-          <Download aria-hidden />
-          Download original
-        </a>
-        {/* apart from the others at the end of its row — also when it wraps onto a row of its own (UI audit round 1) */}
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={Trash2}
-          className="ml-auto text-danger-ink hover:bg-danger-soft hover:text-danger-ink"
-          onClick={() => setConfirm(true)}
-        >
-          Delete
-        </Button>
+        <ComputerOnly what="Download original · Delete">
+          <a href={api.fileUrl(doc.id)} download={doc.filename} className={buttonVariants({ size: "sm" })}>
+            <Download aria-hidden />
+            Download original
+          </a>
+          {/* apart from the others at the end of its row — also when it wraps onto a row of its own (UI audit round 1) */}
+          <Button
+            size="sm"
+            variant="ghost"
+            icon={Trash2}
+            className="ml-auto text-danger-ink hover:bg-danger-soft hover:text-danger-ink"
+            onClick={() => setConfirm(true)}
+          >
+            Delete
+          </Button>
+        </ComputerOnly>
       </div>
+      {phone ? <OnYourComputer className="mt-3">{DELETE_ON_COMPUTER}</OnYourComputer> : null}
 
       <Dialog
         open={confirm}

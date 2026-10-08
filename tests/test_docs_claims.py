@@ -7,6 +7,7 @@ that makes the docs untrue fails here.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -14,7 +15,8 @@ import shutil
 import subprocess
 import sys
 import tomllib
-from collections.abc import Iterator
+import unicodedata
+from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -22,9 +24,12 @@ from typing import Any
 import pytest
 
 from helpers_secretary import TODAY, seed_ledger
-from ordnung import clock
+from ordnung import clock, sync
+from ordnung.api.app import openapi_schema
 from ordnung.app_context import AppContext, build_context
 from ordnung.assistant.rules_tools import build_rules_server
+from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
+from ordnung.backup.container import MAX_SCRYPT_BYTES
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
 from ordnung.drafts.template_letters import TEMPLATES
@@ -34,14 +39,15 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.tick import DailyTick
+from test_api_support import api_for
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
 
-from evals import conditions  # noqa: E402
+#: The Ordnung path's fingerprint on the frozen code holdout3 was recorded on (2026-10-06, commit 55bedab).
+HOLDOUT3_FROZEN_FINGERPRINT = "822d5316b68df063"
 
 NOW = "2026-09-25T10:00:00Z"
 
@@ -361,8 +367,9 @@ def test_readme_third_held_out_row_matches_its_one_recording() -> None:
         f"date ({_words(early['llm_rules_text'])} early), the model alone {exact['llm_only']} of 56 with "
         f"{_words(late['llm_only'])} late."
     ) in flat
-    # the frozen code: the recording's fingerprint is the one every later replay of the Ordnung path has
-    assert meta["fingerprints"]["ordnung"] == conditions.fingerprint("ordnung", meta["model"])
+    # recorded on the frozen code (fingerprint of the Ordnung path at 55bedab); the code changed after it (the looser
+    # dropped-date check), and a replay on the later code gives the same predictions for every letter
+    assert meta["fingerprints"]["ordnung"] == HOLDOUT3_FROZEN_FINGERPRINT
     signals = {
         signal
         for entry in run["entries"]
@@ -555,8 +562,8 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         "around Christmas), never late"
     ) in limitation
     assert (
-        f"Ordnung scores {test} % (test), {holdout} % (holdout) and {holdout2} % (holdout2), with no late dates"
-        in limitation
+        f"Ordnung scores {test} % (test), {holdout} % (holdout), {holdout2} % (holdout2) and {holdout3} % "
+        "(holdout3), with no late dates" in limitation
     )
     # deadline-rules.md section 5 and the benchmark page, which renders the file itself
     rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
@@ -829,3 +836,770 @@ async def test_weekly_review_can_be_switched_off(store: Store) -> None:
     finally:
         clock.set_today(None)
     assert not result.review_started
+
+
+# --------------------------------------------------------------------------------------------------
+# Phone access — README, docs/privacy.md, ADR 0017, docs/architecture.md and SPEC § 12b
+# --------------------------------------------------------------------------------------------------
+
+_ADR_PHONE = ROOT / "docs" / "decisions" / "0017-phone-access-over-the-home-network.md"
+
+
+def _code(name: str) -> Any:
+    """A constant of Ordnung by its dotted name, imported when a test asks for it."""
+    module, _, attribute = name.rpartition(".")
+    return getattr(importlib.import_module(module), attribute)
+
+
+def _whole(value: float, unit: float = 1) -> int:
+    """``value / unit`` when that is a whole number (a constant the docs give in another unit)."""
+    whole, rest = divmod(value, unit)
+    assert rest == 0, (value, unit)
+    return int(whole)
+
+
+def _per_hour(kind: str) -> int:
+    """How many ``kind`` requests (``ask``, ``model``, ``upload``) one phone may make an hour."""
+    limit, window = _code("ordnung.phone.access.DEVICE_LIMITS")[kind]
+    assert window == 3600
+    return int(limit)
+
+
+def _shown_characters() -> int:
+    """How many characters of a number of the person's a phone shows (``•••• 3000``)."""
+    masked = _code("ordnung.phone.mask.mask_value")("DE89 3704 0044 0532 0130 00")
+    mark, shown = masked.split()
+    assert set(mark) == {"•"} and "DE89370400440532013000".endswith(shown)
+    return len(shown)
+
+
+#: Every number the phone-access docs state, by the name the claims below use, from the constant it
+#: names (P1's modules ``ordnung.phone.{access,pairing,tls,record,mask}``; the rest from the contract).
+_PHONE_NUMBERS: dict[str, Callable[[], object]] = {
+    "port": lambda: _code("ordnung.phone.record.DEFAULT_PORT"),
+    "last_port": lambda: _code("ordnung.phone.access.PORTS")[-1],
+    "connections": lambda: _code("ordnung.phone.access.LIMIT_CONCURRENCY"),
+    "keep_alive_s": lambda: _code("ordnung.phone.access.KEEP_ALIVE_S"),
+    "graceful_s": lambda: _code("ordnung.phone.access.GRACEFUL_STOP_S"),
+    "watch_s": lambda: _whole(_code("ordnung.phone.access.WATCH_INTERVAL_S")),
+    "seen_minutes": lambda: _whole(_code("ordnung.phone.access.SEEN_WRITE_EVERY_S"), 60),
+    "code_length": lambda: _code("ordnung.phone.pairing.CODE_LENGTH"),
+    "code_bits": lambda: (
+        _code("ordnung.phone.pairing.CODE_LENGTH")
+        * (len(_code("ordnung.phone.pairing.CODE_ALPHABET")).bit_length() - 1)
+    ),
+    "code_minutes": lambda: _whole(_code("ordnung.phone.pairing.PAIRING_TTL_S"), 60),
+    "tries_per_device": lambda: _code("ordnung.phone.pairing.PAIRING_TRIES_PER_CLIENT"),
+    "tries_in_all": lambda: _code("ordnung.phone.pairing.PAIRING_TRIES_TOTAL"),
+    "pairs_per_address": lambda: _code("ordnung.phone.pairing.PAIR_POSTS_PER_CLIENT_PER_MINUTE"),
+    "pairs_in_all": lambda: _code("ordnung.phone.pairing.PAIR_POSTS_PER_MINUTE"),
+    "pair_kib": lambda: _whole(_code("ordnung.phone.pairing.PAIR_MAX_BYTES"), 1024),
+    "phones": lambda: _code("ordnung.phone.access.MAX_PHONES"),
+    "idle_days": lambda: _code("ordnung.phone.access.DEVICE_IDLE_DAYS"),
+    "recent_days": lambda: _code("ordnung.phone.access.RECENT_DAYS"),
+    "hourly": lambda: {3600: "an hour"}[_whole(_code("ordnung.phone.access.ROTATE_EVERY_S"))],
+    "grace_s": lambda: _whole(_code("ordnung.phone.access.PREVIOUS_GRACE_S")),
+    "grace_minutes": lambda: _whole(_code("ordnung.phone.access.PREVIOUS_GRACE_S"), 60),
+    "retired": lambda: _code("ordnung.phone.record.RETIRED_KEPT"),
+    "asks": lambda: _per_hour("ask"),
+    "model_actions": lambda: _per_hour("model"),
+    "uploads": lambda: _per_hour("upload"),
+    "leaf_days": lambda: _code("ordnung.phone.tls.LEAF_DAYS"),
+    "renew_days": lambda: _code("ordnung.phone.tls.RENEW_BEFORE_DAYS"),
+    "ca_years": lambda: _whole(_code("ordnung.phone.tls.CA_DAYS"), 365),
+    "shown": _shown_characters,
+    "cookie_max_age": lambda: _code("ordnung.phone.COOKIE_MAX_AGE_S"),
+    "phone_operations": lambda: len(_code("ordnung.phone.scope.PHONE_ROUTES")),
+    "computer_operations": lambda: len(_code("ordnung.phone.scope.COMPUTER_ONLY")),
+}
+
+#: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_PHONE_NUMBERS`, and the sentence
+#: must be in the document (line breaks and indents read as one space).
+_PHONE_CLAIMS: list[tuple[str, str]] = [
+    ("README.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
+    ("docs/privacy.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
+    ("docs/privacy.md", "The code has {code_length} characters, works once, for {code_minutes} minutes"),
+    ("docs/privacy.md", "One device gets {tries_per_device} wrong tries for a code"),
+    ("docs/privacy.md", "{tries_in_all} wrong tries from your network cancel the code"),
+    ("docs/privacy.md", "It lasts {leaf_days} days and is renewed by itself"),
+    ("docs/privacy.md", "changes by itself at most once {hourly}"),
+    ("docs/privacy.md", "A phone not used for {idle_days} days is forgotten"),
+    ("docs/privacy.md", "At most {phones} phones can be paired"),
+    (
+        "docs/privacy.md",
+        "Each phone may ask {asks} questions, start {model_actions} other things that ask Claude and add "
+        "{uploads} letters an hour",
+    ),
+    ("docs/privacy.md", "the Remove dialog counts a phone's changes of the last {recent_days} days"),
+    ("docs/privacy.md", "a pairing request of at most {pair_kib} KiB"),
+    ("docs/privacy.md", "It takes at most {connections} connections at once"),
+    (_ADR_PHONE.name, "a saved port ({port}, or the next free one)"),
+    (_ADR_PHONE.name, "it is limited to {connections} connections"),
+    (_ADR_PHONE.name, "issues a {leaf_days}-day server certificate"),
+    (_ADR_PHONE.name, "a {code_length}-character code ({code_bits} bits)"),
+    (_ADR_PHONE.name, "it works once, for {code_minutes} minutes"),
+    (_ADR_PHONE.name, "One device gets {tries_per_device} wrong tries for a code"),
+    (_ADR_PHONE.name, "{tries_in_all} wrong tries from the whole network cancel the code"),
+    (_ADR_PHONE.name, "It changes at most once {hourly} on a page load"),
+    (_ADR_PHONE.name, "the previous one stays valid for {grace_minutes} minutes"),
+    (_ADR_PHONE.name, "A phone unused for {idle_days} days is forgotten"),
+    (
+        _ADR_PHONE.name,
+        "Each phone may ask Ask {asks} questions, start {model_actions} other things that ask Claude and "
+        "add {uploads} letters an hour",
+    ),
+    (_ADR_PHONE.name, "the Remove dialog counts the changes of the last {recent_days} days"),
+    (_ADR_PHONE.name, "a pairing request of at most {pair_kib} KiB"),
+    (_ADR_PHONE.name, "show only their last {shown} characters"),
+    ("docs/architecture.md", "at most {connections} connections"),
+    ("docs/architecture.md", "a {code_bits}-bit code in the URL fragment, once, for {code_minutes} minutes"),
+    ("docs/architecture.md", "{tries_per_device} wrong tries per device, {tries_in_all} in all"),
+    (
+        "docs/architecture.md",
+        "at most {pairs_per_address} pairing requests a minute per address and {pairs_in_all} in all",
+    ),
+    ("docs/architecture.md", "the pairing request must state a length of at most {pair_kib} KiB"),
+    ("docs/SPEC.md", "a port ({port}, or the first free one up to {last_port}"),
+    (
+        "docs/SPEC.md",
+        "`limit_concurrency` {connections}, keep-alive {keep_alive_s} s, graceful stop {graceful_s} s",
+    ),
+    ("docs/SPEC.md", "A watcher (every {watch_s} s while on)"),
+    ("docs/SPEC.md", "forgets phones unused for {idle_days} days"),
+    ("docs/SPEC.md", "An authority (EC P-256, {ca_years} years)"),
+    ("docs/SPEC.md", "a server certificate for the address ({leaf_days} days"),
+    ("docs/SPEC.md", "renewed {renew_days} days before its end"),
+    (
+        "docs/SPEC.md",
+        "{code_length} characters of Crockford's base 32 ({code_bits} bits), valid {code_minutes} minutes",
+    ),
+    ("docs/SPEC.md", "after {tries_per_device} wrong tries one address is locked out of the code"),
+    ("docs/SPEC.md", "{tries_in_all} wrong tries in all cancel it"),
+    ("docs/SPEC.md", "`too_many_phones` at {phones} phones"),
+    (
+        "docs/SPEC.md",
+        "The gate allows {pairs_per_address} pairing requests a minute per address and {pairs_in_all} in all",
+    ),
+    ("docs/SPEC.md", "Max-Age={cookie_max_age};"),
+    ("docs/SPEC.md", "the previous one and the last {retired} retired ones"),
+    ("docs/SPEC.md", "The gate changes it at most once {hourly}, on a page load"),
+    ("docs/SPEC.md", "stays valid for {grace_s} s after the phone first uses the new one"),
+    (
+        "docs/SPEC.md",
+        "`PHONE_ROUTES` ({phone_operations} operations) and `COMPUTER_ONLY` ({computer_operations})",
+    ),
+    (
+        "docs/SPEC.md",
+        "Per phone and hour: {asks} Ask questions, {model_actions} other model actions (read again, "
+        "translate, a new letter, the daily note) and {uploads} letters added",
+    ),
+    ("docs/SPEC.md", "`PhoneDevice.recent_changes` counts the last {recent_days} days"),
+    ("docs/SPEC.md", "last use is saved at most every {seen_minutes} minutes"),
+    ("docs/SPEC.md", "a pairing POST of at most {pair_kib} KiB"),
+]
+
+_FIELD = re.compile(r"{(\w+)}")
+
+
+def _doc(name: str) -> str:
+    """A document of the claims above, flattened (the ADR by its file name)."""
+    path = _ADR_PHONE if name == _ADR_PHONE.name else ROOT / name
+    return _flat(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize(
+    ("document", "sentence"),
+    _PHONE_CLAIMS,
+    ids=[
+        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence))}"
+        for document, sentence in _PHONE_CLAIMS
+    ],
+)
+def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+    """Every number the phone-access docs state is the constant it names, as the code has it: the
+    pairing code's length, life and tries, the phones, idle and sign-in times, the hourly limits, the
+    certificates' lives, the port and the listener's limits (design § 18.6, with the amendments)."""
+    stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+    assert stated in _doc(document)
+
+
+def _example_path(template: str) -> str:
+    """An ``/api`` path the template matches (each parameter as ``x1``)."""
+    return re.sub(r"{\w+}", "x1", template)
+
+
+def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
+    """Scope review: README and privacy.md said the profile's IBAN shows only its last characters on a
+    phone, while a deposit-return letter written there carries it in full (code writes it into the
+    letter). A letter has to print it, so the docs say so, and ADR 0017 lists it as a known limit with why
+    it isn't masked there."""
+    template = (ROOT / "src" / "ordnung" / "drafts" / "template_letters.py").read_text(encoding="utf-8")
+    assert "auf mein Konto mit der IBAN {iban}." in template  # the letter carries it in full
+    assert "a letter shows what is printed on it, also one you write there that carries your IBAN" in (
+        _flat(_readme())
+    )
+    privacy = _doc("docs/privacy.md")
+    assert "also a letter you write: one that asks for money back on your account" in privacy
+    assert "carries your IBAN in full, on the phone too" in privacy
+    limits = _flat(_ADR_PHONE.read_text(encoding="utf-8").split("## Consequences and known limits", 1)[1])
+    assert "carries the profile's IBAN in full" in limits
+    assert "would make the phone's editor save the mask into the letter" in limits
+
+
+def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
+    """README Limitations: a paired phone "can't change settings, back up or delete" — no settings or
+    backup operation, ``DELETE /api/data`` or any other ``DELETE`` (except taking back "answered",
+    which deletes no data) is a phone's (design § 16.5)."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert "it can't change settings, back up or delete" in limitation
+    assert "It can't delete anything" in _doc("docs/privacy.md")
+    operations = phone_scope.PHONE_ROUTES | phone_scope.COMPUTER_ONLY
+    answered = ("DELETE", "/api/drafts/{draft_id}/answered")
+    refused = {
+        ("GET", "/api/settings"),
+        ("PUT", "/api/settings"),
+        ("GET", "/api/backup"),
+        ("POST", "/api/backup"),
+    } | {operation for operation in operations if operation[0] == "DELETE" and operation != answered}
+    assert ("DELETE", "/api/data") in refused and refused <= operations
+    for method, path in sorted(refused):
+        assert phone_scope.classify(method, _example_path(path)) != "phone", (method, path)
+    assert phone_scope.classify("DELETE", _example_path(answered[1])) == "phone"
+    assert {"settings", "backups", "deleting"} <= set(phone_scope.NEVER_ON_PHONE.values())
+
+
+def test_phone_access_answers_only_on_the_home_network() -> None:
+    """README: the phone uses Ordnung "over your home Wi-Fi"; privacy.md: phone access answers "only
+    devices on that network — never through a VPN, a tunnel, a container or a virtual machine". The
+    address must be a home-network one (no public, shared-carrier, link-local or loopback address), a
+    client must be in its subnet, and a tunnel's interface is never offered (design § 16.5, amendment M2)."""
+    net = importlib.import_module("ordnung.phone.net")
+    assert "over your home Wi-Fi" in _flat(_readme())
+    assert (
+        "answers only devices on that network — never through a VPN, a tunnel, a container or a virtual "
+        "machine"
+    ) in _doc("docs/privacy.md")
+    for address in ("8.8.8.8", "100.64.0.1", "169.254.1.1", "127.0.0.1", "::1"):
+        assert not net.usable(address), address
+    assert net.usable("192.168.1.5") and net.usable("10.0.0.2") and net.usable("172.16.4.9")
+    bound, subnet = "192.168.178.23", "192.168.178.0/24"
+    for client in ("172.17.0.2", "10.8.0.6", "192.168.1.5", "8.8.8.8"):
+        assert not net.client_allowed(client, bound, subnet), client
+    assert net.client_allowed("192.168.178.31", bound, subnet)
+    for interface in ("utun3", "wg0", "tailscale0", "docker0", "vboxnet0", "vEthernet (WSL)"):
+        assert net.is_tunnel(interface), interface
+    for interface in ("en0", "wlan0", "Wi-Fi", "eth0"):
+        assert not net.is_tunnel(interface), interface
+
+
+# --------------------------------------------------------------------------------------------------
+# Hand-off sync — README, docs/privacy.md, ADR 0018 (and 0007), docs/architecture.md and SPEC § 12c
+# --------------------------------------------------------------------------------------------------
+
+_ADR_SYNC = ROOT / "docs" / "decisions" / "0018-hand-off-sync-through-a-folder-you-already-sync.md"
+_ADR_POLICIES = ROOT / "docs" / "decisions" / "0007-short-written-policies-over-growing-heuristics.md"
+_MIB = 1024 * 1024
+_GIB = 1024 * _MIB
+_DAY_S = 24 * 3600
+
+
+def _sync_doc(name: str) -> str:
+    """A document of the hand-off sync claims, flattened (the ADRs by their file names)."""
+    path = {_ADR_SYNC.name: _ADR_SYNC, _ADR_POLICIES.name: _ADR_POLICIES}.get(name, ROOT / name)
+    return _flat(path.read_text(encoding="utf-8"))
+
+
+def _sync_operations() -> int:
+    """How many operations hand-off sync has (``/api/sync`` and ``/api/sync/…``)."""
+    operations = phone_scope.schema_operations(openapi_schema())
+    return len({op for op in operations if op[1].split("/")[:3] == ["", "api", "sync"]})
+
+
+def _superscript(number: int) -> str:
+    return "".join("⁰¹²³⁴⁵⁶⁷⁸⁹"[int(digit)] for digit in str(number))
+
+
+#: Every number the hand-off sync docs state, by the name the claims below use, from the constant it names
+#: (``ordnung.sync``, design §27 with the binding amendments).
+_SYNC_NUMBERS: dict[str, Callable[[], object]] = {
+    "log2_n": lambda: sync.SYNC_KDF.log2_n,
+    "log2_n_sup": lambda: _superscript(sync.SYNC_KDF.log2_n),
+    "r": lambda: sync.SYNC_KDF.r,
+    "p": lambda: sync.SYNC_KDF.p,
+    "kdf_mib": lambda: _whole(sync.SYNC_KDF.memory, _MIB),
+    "key_file_bytes": lambda: sync.KEY_FILE_BYTES,
+    "chunk_mib": lambda: _whole(sync.CHUNK, _MIB),
+    "slice_mib": lambda: _whole(sync.DB_SLICE, _MIB),
+    "min_padded": lambda: sync.MIN_PADDED,
+    "min_padded_kib": lambda: _whole(sync.MIN_PADDED, 1024),
+    "seal_header": lambda: sync.SEAL_HEADER_BYTES,
+    "seal_tag": lambda: sync.SEAL_TAG_BYTES,
+    "record_mib": lambda: _whole(sync.MAX_RECORD_BYTES, _MIB),
+    "file_gib": lambda: _whole(sync.MAX_FILE_BYTES, _GIB),
+    "max_files": lambda: f"{sync.MAX_FILES:,}",
+    "computers": lambda: sync.MAX_COMPUTERS,
+    "folder_taken": lambda: f"{sync.FOLDER_TAKEN_MAX:,}",
+    "person_quiet_s": lambda: _whole(sync.PUSH_PERSON_QUIET_S),
+    "quiet_s": lambda: _whole(sync.PUSH_QUIET_S),
+    "max_wait_s": lambda: _whole(sync.PUSH_MAX_WAIT_S),
+    "shutdown_s": lambda: _whole(sync.SHUTDOWN_PUSH_S),
+    "retry_first_s": lambda: _whole(sync.PUSH_RETRY_S[0]),
+    "retry_last_minutes": lambda: _whole(sync.PUSH_RETRY_S[-1], 60),
+    "failing_minutes": lambda: _whole(sync.FAILING_AFTER_S, 60),
+    "scan_s": lambda: _whole(sync.SCAN_S),
+    "damaged_minutes": lambda: _whole(sync.DAMAGED_AFTER_S, 60),
+    "wants": lambda: sync.WANTS_MAX,
+    "folder_timeout_s": lambda: _whole(sync.FOLDER_OP_TIMEOUT_S),
+    "take_over_minutes": lambda: _whole(sync.TAKE_OVER_WAIT_MAX_S, 60),
+    "fence_s": lambda: _whole(sync.FENCE_WAIT_S),
+    "kept_gib": lambda: _whole(sync.KEPT_WARN_BYTES, _GIB),
+    "gc_days": lambda: _whole(sync.GC_GRACE_S, _DAY_S),
+    "gc_runtime_days": lambda: _whole(sync.GC_GRACE_RUNTIME_S, _DAY_S),
+    "slice_grace": lambda: {1: "a day"}[_whole(sync.SUPERSEDED_SLICE_GRACE_S, _DAY_S)],
+    "bits": lambda: _whole(sync.MIN_PASSPHRASE_BITS),
+    "token_bits": lambda: _whole(sync.TOKEN_BITS_MAX),
+    "words": lambda: sync.SUGGESTED_WORDS,
+    "words_word": lambda: {5: "five"}[sync.SUGGESTED_WORDS],
+    "min_chars": lambda: MIN_PASSPHRASE_CHARS,
+    "max_chars": lambda: MAX_PASSPHRASE_CHARS,
+    "service": lambda: sync.SYNC_SERVICE,
+    "env": lambda: sync.PASSPHRASE_ENV,
+    "operations": _sync_operations,
+}
+
+#: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_SYNC_NUMBERS`, and the sentence must be
+#: in the document (line breaks and indents read as one space).
+_SYNC_CLAIMS: list[tuple[str, str]] = [
+    ("README.md", "take the suggested {words_word}-word passphrase"),
+    (
+        "docs/privacy.md",
+        "saves an encrypted copy into the folder about {person_quiet_s} seconds after a change of yours, "
+        "{quiet_s} seconds after Ordnung's own work",
+    ),
+    ("docs/privacy.md", "at the latest {max_wait_s} seconds after the first change not yet saved"),
+    ("docs/privacy.md", "(scrypt, N = 2^{log2_n}, r = {r}: {kdf_mib} MiB of memory to try one passphrase)"),
+    (
+        "docs/privacy.md",
+        "to at least {min_padded_kib} KiB), and the key file is {key_file_bytes} bytes with nothing readable",
+    ),
+    ("docs/privacy.md", 'service "{service}", an account for this data folder'),
+    (
+        "docs/privacy.md",
+        "must reach about {bits} bits by Ordnung's estimate — {words_word} unrelated words, like the "
+        "{words_word}-word one Settings suggests",
+    ),
+    ("docs/privacy.md", "(and at least {min_chars} characters, as for backups)"),
+    ("docs/privacy.md", "Settings warns once they take more than {kept_gib} GiB"),
+    (
+        "docs/privacy.md",
+        "once nothing refers to them for {gc_days} days (of Ordnung's clock and of its running time)",
+    ),
+    (
+        _ADR_SYNC.name,
+        "scrypt of the passphrase (2^{log2_n}, r {r}, p {p}: {kdf_mib} MiB, the most a backup reader allows)",
+    ),
+    (_ADR_SYNC.name, "AES-256-GCM STREAM in {chunk_mib} MiB chunks"),
+    (
+        _ADR_SYNC.name,
+        "(Padmé, at most 12 %, at least {min_padded_kib} KiB); the {key_file_bytes}-byte key file",
+    ),
+    (
+        _ADR_SYNC.name,
+        "must reach about {bits} bits by a simple, documented estimator (distinct words and digit runs, each "
+        "at most {token_bits} bits;",
+    ),
+    (_ADR_SYNC.name, "in the web app and the CLI — suggests {words_word} random made-up words"),
+    (
+        _ADR_SYNC.name,
+        "for {gc_days} days of its clock and {gc_runtime_days} × 24 hours of its own running time",
+    ),
+    (_ADR_SYNC.name, "goes after {slice_grace}"),
+    (_ADR_SYNC.name, "At most {computers} computers share one folder."),
+    (_ADR_SYNC.name, 'service "{service}", an account per data folder'),
+    ("docs/architecture.md", "(N = 2^{log2_n}, r = {r}: {kdf_mib} MiB) in a {key_file_bytes}-byte key file"),
+    ("docs/SPEC.md", "exactly {key_file_bytes} bytes"),
+    ("docs/SPEC.md", "KEK = scrypt(passphrase, N = 2^{log2_n}, r = {r}, p = {p}; {kdf_mib} MiB)"),
+    ("docs/SPEC.md", "{slice_mib} MiB database slices"),
+    ("docs/SPEC.md", "AES-256-GCM STREAM in {chunk_mib} MiB chunks (the backup container's core)"),
+    (
+        "docs/SPEC.md",
+        "padded with Padmé (at most 12 %) and to at least {min_padded} bytes; `sealed_size(P) = {seal_header} + "
+        "P + {seal_tag} · max(1, ⌈P / CHUNK⌉)`",
+    ),
+    (
+        "docs/SPEC.md",
+        "{record_mib} MiB per head, manifest or bucket, {file_gib} GiB per data file, {max_files} files. At most "
+        "{computers} computers per folder.",
+    ),
+    ("docs/SPEC.md", "at most {folder_taken}, so a folder both computers watch"),
+    (
+        "docs/SPEC.md",
+        "{person_quiet_s} s after the person's last write, {quiet_s} s after background work's, at the latest "
+        "{max_wait_s} s after the first unsaved one, and when Ordnung stops (at most {shutdown_s} s",
+    ),
+    (
+        "docs/SPEC.md",
+        "tried again after {retry_first_s} s, doubling to {retry_last_minutes} minutes; after "
+        "{failing_minutes} minutes it is a problem",
+    ),
+    ("docs/SPEC.md", "every {scan_s} s every head is decrypted"),
+    ("docs/SPEC.md", "keeps failing for {damaged_minutes} minutes is damaged"),
+    ("docs/SPEC.md", "`wants` (at most {wants})"),
+    ("docs/SPEC.md", "Every folder operation gives up after {folder_timeout_s} s"),
+    ("docs/SPEC.md", "a waiting take-over ends after {take_over_minutes} minutes"),
+    ("docs/SPEC.md", "finish within {fence_s} s"),
+    ("docs/SPEC.md", "a warning above {kept_gib} GiB in all"),
+    ("docs/SPEC.md", "{min_chars}–{max_chars} characters and at least {bits} bits by `passphrase_bits`"),
+    ("docs/SPEC.md", "at most {token_bits} bits); setup suggests {words} words"),
+    (
+        "docs/SPEC.md",
+        "an object no head refers to for {gc_days} days of wall clock and {gc_runtime_days} × 24 h of this "
+        "computer's running time",
+    ),
+    ("docs/SPEC.md", "a database slice every live head has moved past goes after {slice_grace}"),
+    ("docs/SPEC.md", '`KeyringSecrets(service="{service}", …)`'),
+    ("docs/SPEC.md", "`{env}` feeds the CLI"),
+    ("docs/SPEC.md", "{operations} operations, every write computer-only"),
+    ("docs/SPEC.md", "**Phone**: the {operations} operations are computer-only"),
+    ("docs/SPEC.md", "(N = 2{log2_n_sup} r = {r} p = {p}, {kdf_mib} MiB, fixed for the format"),
+    ("docs/SPEC.md", "a {key_file_bytes}-byte key file named by its scrypt salt"),
+    ("docs/SPEC.md", "padded with Padmé to at least {min_padded} bytes"),
+]
+
+
+@pytest.mark.parametrize(
+    ("document", "sentence"),
+    _SYNC_CLAIMS,
+    ids=[
+        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
+        for document, sentence in _SYNC_CLAIMS
+    ],
+)
+def test_the_hand_off_sync_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
+    """Every number the hand-off sync docs state is the constant it names, as ``ordnung.sync`` has it: the
+    key file's scrypt, the format's sizes and caps, when saves happen, the scan, arrival and fence timings,
+    the garbage collection's grace, kept copies' warning and the new folder's passphrase rule."""
+    stated = sentence.format(**{name: _SYNC_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+    assert stated in _sync_doc(document)
+
+
+def test_the_sync_key_file_takes_the_most_scrypt_a_backup_reader_allows() -> None:
+    """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond)."""
+    assert sync.SYNC_KDF.memory == MAX_SCRYPT_BYTES
+
+
+def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:
+    """The design's first draft saved "about ten seconds after a change"; the person's change is saved after
+    ``PUSH_PERSON_QUIET_S`` (review finding 33), so no document may promise ten."""
+    assert sync.PUSH_PERSON_QUIET_S < sync.PUSH_QUIET_S
+    for document in ("README.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md", _ADR_SYNC.name):
+        assert "ten seconds after a change" not in _sync_doc(document), document
+
+
+def test_the_passphrase_estimator_is_the_one_the_docs_describe() -> None:
+    """SPEC § 12c: "runs of letters and runs of digits, split where a lower-case letter meets an upper-case
+    one; each distinct token, case-folded, counts its length × log2 26 or × log2 10, at most 14 bits"; the
+    privacy page and ADR 0018: five unrelated words reach about 70 bits."""
+    assert sync.passphrase_tokens("CorrectHorse battery-staple 2024!") == [
+        "Correct",
+        "Horse",
+        "battery",
+        "staple",
+        "2024",
+    ]
+    assert sync.passphrase_bits("ab") == pytest.approx(2 * sync.LETTER_BITS)
+    assert sync.passphrase_bits("2971") == pytest.approx(4 * sync.DIGIT_BITS)
+    assert sync.passphrase_bits("owl") == sync.TOKEN_BITS_MAX  # three letters already count the most
+    # a run (one character again and again, in order, along a keyboard row) about one character, a very
+    # common word 7 bits
+    assert sync.passphrase_bits("1234") == pytest.approx(sync.DIGIT_BITS + 1)
+    assert sync.passphrase_bits("qwertz") == pytest.approx(sync.LETTER_BITS + 1)
+    assert sync.passphrase_bits("zzzz") == pytest.approx(sync.LETTER_BITS + 1)
+    assert sync.passphrase_bits("password") == sync.COMMON_WORD_BITS
+    assert sync.passphrase_bits("verylongword") == sync.TOKEN_BITS_MAX
+    assert sync.passphrase_bits("maple Maple MAPLE") == sync.passphrase_bits("maple")
+    five = "orbit velvet canyon maple thunder"
+    assert sync.passphrase_problem(five) is None
+    assert sync.passphrase_bits(five) >= sync.MIN_PASSPHRASE_BITS
+    assert sync.passphrase_problem("orbit velvet canyon maple") is not None  # four words aren't enough
+    assert sync.passphrase_problem("canyon " * 6) is not None  # one word, again and again
+    # a new folder's passphrase is also a backup's: at least 12 characters
+    assert sync.passphrase_problem("ab cd ef gh") is not None
+    assert unicodedata.normalize("NFC", "Übung") in sync.passphrase_tokens("Übung")
+
+
+def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
+    """docs/privacy.md, "What stays on each computer": only the ledger and the letters' files travel; never
+    phone access, the calendar connection, the watched folder and what it remembers (but the fingerprints
+    of what it brought in), Claude's pause, the morning notification's bookkeeping, nor the privacy-log
+    entries of a backup made there, its phone access and its watched folder (review finding 25)."""
+    text = _sync_doc("docs/privacy.md")
+    assert "Only your ledger and your letters' files travel." in text
+    assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
+    assert {
+        "phone_access",
+        "calendar_sync",
+        "inbox_seen",
+        "inbox_baseline",
+        "llm_paused_until",
+        "desktop_notified_on",
+        "desktop_notify_failed",
+    } <= sync.LOCAL_META
+    assert {"inbox_dir", "inbox_auto_read", "desktop_notifications", "desktop_notify_time"} <= set(
+        sync.LOCAL_SETTINGS
+    )
+    assert "only a fingerprint of each file it brought in travels" in text
+    assert sync.FOLDER_TAKEN_META_KEY in sync.MERGED_META
+    assert (
+        "the privacy-log entries of a backup made on that computer, of its phone access and of its watched folder"
+        in text
+    )
+    assert "backup.created" in sync.LOCAL_ACTIVITY_KINDS
+    assert {"phone.", "folder."} <= set(sync.LOCAL_ACTIVITY_PREFIXES)
+
+
+def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
+    """Review finding 25: the folder reveals bursts of new objects — roughly how many letters and pages are
+    added — never their content; and the amendments' testing limits: a simulated sync tool and two data
+    folders on one machine, no pass yet on two physical computers."""
+    for document in ("docs/privacy.md", _ADR_SYNC.name):
+        text = _sync_doc(document)
+        assert "roughly how many letters and pages" in text, document
+        assert "two physical computers" in text and "still to be done" in text, document
+        assert "simulated sync tool" in text, document
+    assert "roughly how many letters and pages are added" in _flat(sync.__doc__ or "")
+    readme = _flat(_readme())
+    assert "simulated sync tool" in readme and "two physical computers" in readme
+    assert "two data folders on one machine" in readme
+
+
+def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:
+    """Review finding 18: "Forget" removes a lost computer from the folder's list, but it still knows the
+    passphrase — the docs say so, and what does shut it out (a new folder with a new passphrase)."""
+    assert "doesn't lock that computer out" in _sync_doc("docs/privacy.md")
+    assert "set up a new sync folder with a new passphrase" in _sync_doc("docs/privacy.md")
+    assert "does not lock it out" in _sync_doc(_ADR_SYNC.name)
+    assert "it doesn't lock that computer out" in _sync_doc("docs/SPEC.md")
+    assert "Forgetting a lost computer doesn't lock it out" in _flat(_readme())
+
+
+def test_kept_copies_are_where_the_docs_and_the_backup_policy_say() -> None:
+    """Review finding 35: kept copies are backup files inside the data folder (``<data>/sync/kept/``), which the
+    backup policy's "never inside the data folder" now leaves to backups you make; they are lost with the disk
+    and with Delete everything."""
+    from ordnung import backup
+
+    where = f"<data>/{sync.LOCAL_DIR}/{sync.KEPT_DIR}/"
+    policy = _flat(backup.__doc__ or "")
+    assert where in policy and "lost with this computer's disk and with Delete everything" in policy
+    assert "never inside the data folder it backs up" in policy
+    for document in (_ADR_POLICIES.name, _ADR_SYNC.name):
+        assert where in _sync_doc(document), document
+    assert "lost with this computer's disk and with *Delete everything*" in _sync_doc("docs/privacy.md")
+    assert sync.KEPT_RE.match("ordnung-kept-2026-10-07-0912.ordnung-backup")
+    assert sync.KEPT_RE.match("ordnung-kept-2026-10-07-0912-2.ordnung-backup")
+
+
+def test_readme_limitations_say_how_ordnung_moves_between_computers() -> None:
+    """README Limitations: the "no sync between computers" half became how hand-off sync works and what it
+    doesn't do; the phone's half stays (pinned by the phone's own test)."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert "no sync between computers" not in limitation
+    assert (
+        "Ordnung moves between your computers one at a time through a folder you sync yourself; it doesn't "
+        "merge changes made on two computers at once (it asks which to keep)"
+    ) in limitation
+    assert "There is no app-store app." in limitation
+
+
+async def test_sync_demo_never_syncs(data_dir: Path) -> None:
+    """docs/privacy.md, SPEC § 16 and ADR 0018: "The demo never syncs" — the status says so and setting it up
+    is refused before anything is looked at."""
+    assert "The demo never syncs." in _sync_doc(_ADR_SYNC.name)
+    async with api_for(data_dir, demo=True) as api:
+        status = (await api.client.get("/api/sync")).json()
+        assert (status["available"], status["unavailable"], status["connected"]) == (
+            False,
+            sync.DEMO_MESSAGE,
+            False,
+        )
+        body = {"folder": str(data_dir.parent / "sync"), "name": "demo", "passphrase": "x" * 12, "keep": None}
+        refused = await api.client.put("/api/sync", json=body)
+        assert refused.status_code == 409
+        assert refused.json() == {"detail": sync.DEMO_MESSAGE, "code": "unavailable"}
+    assert not (data_dir.parent / "sync").exists()
+
+
+# ---- with the sync engine: what the folder holds ----------------------------------------------------------
+
+
+def _engine() -> Any:
+    """The test harness of the sync engine (``tests/sync_harness.py``, ``tests/fakes.py``)."""
+    pytest.importorskip("ordnung.sync.engine", reason="the sync engine isn't part of this checkout")
+    return importlib.import_module("sync_harness"), importlib.import_module("fakes")
+
+
+def _all_files(root: Path) -> dict[str, bytes]:
+    found: dict[str, bytes] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and not path.is_symlink():
+            found[path.relative_to(root).as_posix()] = path.read_bytes()
+    return found
+
+
+def _ordnung_name(path: str) -> bool:
+    parts = path.split("/")
+    name = parts[-1]
+    if sync.TEMP_RE.match(name):
+        return len(parts) == 1 or parts[0] in (sync.HEADS_DIR, sync.OBJECTS_DIR)
+    if len(parts) == 1:
+        return bool(sync.KEY_FILE_RE.match(name))
+    if len(parts) == 2:
+        return parts[0] == sync.HEADS_DIR and bool(sync.HEAD_RE.match(name))
+    return (
+        len(parts) == 3
+        and parts[0] == sync.OBJECTS_DIR
+        and bool(sync.SHARD_RE.match(parts[1]))
+        and bool(sync.OBJECT_RE.match(name))
+    )
+
+
+#: A passphrase that passes a new folder's rule, with a letter NFC and NFD spell differently.
+_SYNC_PASSPHRASE = "Übermut velvet canyon maple thunder"
+
+
+@pytest.fixture
+def synced(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
+    """A computer with a letter and a note of the person's, connected to a new sync folder and saved."""
+    harness, fakes = _engine()
+    fakes.use_fast_keys(monkeypatch)
+    computer = harness.Computer("anna-laptop", tmp_path / "a", tmp_path / "a-sync")
+    try:
+        computer.db.save_profile({"name": "Sam Rivera", "region": "NW", "onboarded": True})
+        computer.add_letter("Stadtwerke Musterstadt Abschlag 2027")
+        result = computer.connect(unicodedata.normalize("NFD", _SYNC_PASSPHRASE))
+        assert result.connected
+        computer.person_edit("Call Frau Weber about the Abschlag")
+        computer.round()
+        yield computer
+    finally:
+        computer.close()
+
+
+def test_sync_passphrase_is_never_in_the_folder_or_the_data_folder(synced: Any) -> None:
+    """docs/privacy.md: the passphrase is "never in the folder, its database, `sync/state.json`, a log, a
+    backup or an answer" — neither its NFC nor its NFD bytes, in no file and no name of either folder."""
+    needles = {unicodedata.normalize(form, _SYNC_PASSPHRASE).encode() for form in ("NFC", "NFD")} | {
+        _SYNC_PASSPHRASE.split()[1].encode() + b" " + _SYNC_PASSPHRASE.split()[2].encode()
+    }
+    for root in (synced.folder, synced.paths.data_dir):
+        for path, content in _all_files(root).items():
+            for needle in needles:
+                assert needle not in content and needle.decode() not in path, (root, path)
+
+
+def test_sync_folder_holds_no_plaintext(synced: Any) -> None:
+    """docs/privacy.md and ADR 0018: only ciphertext goes into the folder — not the profile's name, a letter's
+    title or text, a note, a file of the data folder, a database or a backup; the key file has 92 bytes."""
+    files = _all_files(synced.folder)
+    assert files
+    originals = [content for content in _all_files(synced.paths.data_dir / "files").values()]
+    needles = [
+        b"Sam Rivera",
+        b"Stadtwerke Musterstadt",
+        b"Sehr geehrte",
+        b"Frau Weber",
+        b"SQLite format 3",
+        b"ORDNUNG-BACKUP",
+        b"%PDF",
+        b"ordnung",
+        b"Ordnung",
+        b"anna-laptop",
+        *(original[100:164] for original in originals),
+    ]
+    for path, content in files.items():
+        for needle in needles:
+            assert needle not in content, (path, needle)
+        if sync.KEY_FILE_RE.match(path):
+            assert len(content) == sync.KEY_FILE_BYTES
+
+
+def test_sync_names_reveal_nothing(synced: Any) -> None:
+    """Every name in the folder is one of Ordnung's meaningless names (design §4.1): no ``doc_`` id, date, file
+    extension, or the SHA-256 that names an original in the data folder."""
+    names = list(_all_files(synced.folder))
+    assert names and all(_ordnung_name(name) for name in names), names
+    shas = {
+        hashlib.sha256(content).hexdigest()
+        for content in _all_files(synced.paths.data_dir / "files").values()
+    }
+    for name in names:
+        if sync.TEMP_RE.match(name.rsplit("/", 1)[-1]):
+            continue  # a write in progress: `.<16 hex>.tmp`
+        flat = name.replace("/", "")
+        assert "doc_" not in name and not re.search(r"\d{4}-\d{2}-\d{2}|\.\w{2,4}$", name), name
+        assert not any(sha[:16] in flat for sha in shas), name
+
+
+def test_sync_never_carries_per_computer_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """docs/privacy.md, "What stays on each computer": a computer that joins keeps its own phone access,
+    calendar connection, watched folder and its memory, and local settings; the other computer's phone
+    certificates, inbox files, session file and lock never arrive."""
+    harness, fakes = _engine()
+    fakes.use_fast_keys(monkeypatch)
+    sim = importlib.import_module("sync_sim")
+    a = harness.Computer("anna-laptop", tmp_path / "a", tmp_path / "a-sync")
+    b = harness.Computer("desktop", tmp_path / "b", tmp_path / "b-sync")
+    try:
+        local = {
+            "phone_access": '{{"enabled": false, "who": "{who}"}}',
+            "inbox_seen": '["{who}-seen"]',
+            "inbox_baseline": '["{who}-baseline"]',
+            "llm_paused_until": "2026-10-0{n}T10:00:00+00:00",
+        }
+        for computer, who, n in ((a, "laptop", 1), (b, "desktop", 2)):
+            for key, value in local.items():
+                computer.db.set_meta(key, value.format(who=who, n=n))
+            computer.db.save_settings(
+                computer.db.get_settings().model_copy(
+                    update={"inbox_dir": f"/home/sam/{who}-scans", "inbox_auto_read": who == "laptop"}
+                )
+            )
+        for name, content in (("phone/ca.pem", b"LAPTOP-PHONE-CERT"), ("inbox/scan.pdf", b"LAPTOP-INBOX")):
+            target = a.paths.data_dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        (a.paths.data_dir / "server.json").write_text('{"token": "LAPTOP-SESSION-TOKEN"}')
+        a.db.save_profile({"name": "Sam Rivera", "region": "NW", "onboarded": True})
+        a.add_letter("Stadtwerke Abschlag 2027")
+        assert a.connect().connected
+        sim.SyncToolSim(a.folder, b.folder, __import__("random").Random(1)).settle()
+        joined = b.connect()
+        assert joined.connected and b.mode == "in_use"
+        assert b.letters() == a.letters()
+        for key, value in local.items():
+            assert b.db.get_meta(key) == value.format(who="desktop", n=2), key
+        settings = b.db.get_settings()
+        assert (settings.inbox_dir, settings.inbox_auto_read) == ("/home/sam/desktop-scans", False)
+        assert b.db.get_profile().name == "Sam Rivera"  # the person's Ordnung did come over
+        received = _all_files(b.paths.data_dir)
+        for content in (b"LAPTOP-PHONE-CERT", b"LAPTOP-INBOX", b"LAPTOP-SESSION-TOKEN"):
+            assert not any(content in data for data in received.values()), content
+        for content in (b"LAPTOP-PHONE-CERT", b"LAPTOP-INBOX", b"LAPTOP-SESSION-TOKEN"):
+            assert not any(content in data for data in _all_files(a.folder).values()), content
+    finally:
+        a.close()
+        b.close()
+
+
+def test_sync_letters_are_not_uploaded_again(synced: Any) -> None:
+    """README: the computer in use saves "a few seconds after each change" — only what changed: a save without
+    changes writes nothing, and a change of the database alone (a to-do marked done, a note) writes no letter
+    file again."""
+    before = _all_files(synced.folder)
+    again = synced.round()
+    assert _all_files(synced.folder) == before, again
+    synced.person_edit("Marked the Abschlag as paid")
+    outcome = synced.round()
+    assert outcome.pushed is not None and outcome.pushed.outcome == "pushed"
+    assert "f" not in outcome.pushed.kinds_written, outcome.pushed.kinds_written

@@ -18,6 +18,7 @@ import {
 } from "@tanstack/react-query";
 import { api, type ProofUpload, type UploadOptions } from "./endpoints";
 import { ApiError } from "./client";
+import { setClientKind } from "./clientKind";
 import type {
   CalendarSyncConnect,
   CalendarSyncFind,
@@ -32,14 +33,18 @@ import type {
   DocumentPatch,
   DraftCreate,
   DraftPatch,
+  Health,
   HeldResult,
   ItemCreate,
   ItemListParams,
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PairRequest,
   PartyDetail,
   PartyPatch,
+  PhoneAccessChange,
+  PhoneStatus,
   ProfilePatch,
   ProofOverview,
   ProofPatch,
@@ -48,6 +53,12 @@ import type {
   SuggestionListParams,
   SuggestionPatch,
   SuggestionRef,
+  SyncChange,
+  SyncConnect,
+  SyncDisconnect,
+  SyncSave,
+  SyncStatus,
+  SyncUseHere,
   TourPatch,
   TransferValues,
 } from "./types";
@@ -112,6 +123,10 @@ export const qk = {
   rules: ["rules"] as const,
   jobs: ["jobs"] as const,
   folder: ["folder"] as const,
+  /** Settings → Phone (computer only). */
+  phone: ["phone"] as const,
+  /** Hand-off sync's status (computer only): Settings → Your computers, the top bar, the standing-by screen. */
+  sync: ["sync"] as const,
   tour: ["demo", "tour"] as const,
   mail: ["demo", "mail"] as const,
   questions: ["demo", "questions"] as const,
@@ -169,10 +184,22 @@ function withTimeout(signal: AbortSignal | undefined, ms: number): AbortSignal |
 export function useHealth() {
   return useQuery({
     queryKey: qk.health,
-    queryFn: ({ signal }) => api.health(withTimeout(signal, HEALTH_TIMEOUT_MS)),
+    queryFn: ({ signal }) => api.health(withTimeout(signal, HEALTH_TIMEOUT_MS)).then(rememberClient, notPairedHere),
     staleTime: 5 * MINUTE,
     retry: 1,
   });
+}
+
+/** Health says who this tab is (`clientKind()`, for code outside React). */
+function rememberClient(health: Health): Health {
+  setClientKind(health.client);
+  return health;
+}
+
+/** Only the phone listener refuses with `phone_not_paired` (a phone that was removed, or never paired). */
+function notPairedHere(err: unknown): never {
+  if (err instanceof ApiError && err.code === "phone_not_paired") setClientKind("phone");
+  throw err;
 }
 
 /** "Run check" (`GET /health?probe=1`): the doctor's checks plus one tiny live call; the answer
@@ -182,7 +209,7 @@ export function useProbeHealth() {
   return useMutation({
     mutationFn: () => api.probeHealth(),
     meta: { errorTitle: "Couldn't run the check" },
-    onSuccess: (health) => qc.setQueryData(qk.health, health),
+    onSuccess: (health) => qc.setQueryData(qk.health, rememberClient(health)),
   });
 }
 
@@ -207,8 +234,9 @@ export function useUpdateProfile() {
   });
 }
 
-export function useSettings() {
-  return useQuery({ queryKey: qk.settings, queryFn: api.settings, staleTime: 10 * MINUTE });
+/** The app's settings (computer only: on a phone pass `enabled: false`). */
+export function useSettings(opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.settings, queryFn: api.settings, staleTime: 10 * MINUTE, enabled: opts.enabled ?? true });
 }
 
 export function useUpdateSettings() {
@@ -223,11 +251,14 @@ export function useUpdateSettings() {
   });
 }
 
-/** "Delete everything": wipes the data folder; afterwards every cached query is stale. */
+/**
+ * "Delete everything": wipes the data folder; afterwards every cached query is stale. `true` is hand-off sync's
+ * second confirmation (no other computer has this one's latest changes yet).
+ */
 export function useDeleteEverything() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => api.deleteEverything(),
+    mutationFn: (unreceivedOk: boolean = false) => api.deleteEverything(unreceivedOk),
     meta: { silent: true },
     onSuccess: () => {
       qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "health" });
@@ -983,8 +1014,13 @@ export function useMarkCalendarExported() {
  * `preview: false` (the check for background problems on every page) skips the texts, which the
  * server builds from the agenda.
  */
-export function useDesktopReminders({ preview = true }: { preview?: boolean } = {}) {
-  return useQuery({ queryKey: ["reminders", "desktop", preview ? "preview" : "status"] as const, queryFn: () => api.desktopReminders(preview), staleTime: 30_000 });
+export function useDesktopReminders({ preview = true, enabled = true }: { preview?: boolean; enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ["reminders", "desktop", preview ? "preview" : "status"] as const,
+    queryFn: () => api.desktopReminders(preview),
+    staleTime: 30_000,
+    enabled,
+  });
 }
 
 /** "Send a test notification" (the answer says whether the system showed it, and why not). */
@@ -1067,8 +1103,9 @@ export function useDisconnectCalendarSync() {
   });
 }
 
-export function useActivity(limit = 100) {
-  return useQuery({ queryKey: [...qk.activity, limit], queryFn: () => api.activity(limit), staleTime: 30_000 });
+/** The privacy log, newest first; `device`: only what one paired phone did. */
+export function useActivity(limit = 100, device: string | null = null) {
+  return useQuery({ queryKey: [...qk.activity, limit, device], queryFn: () => api.activity(limit, device), staleTime: 30_000 });
 }
 
 export function useUsage() {
@@ -1081,6 +1118,249 @@ export function useRules() {
 
 export function useJobs(activeOnly = false) {
   return useQuery({ queryKey: [...qk.jobs, activeOnly], queryFn: () => api.jobs(activeOnly), staleTime: 5_000 });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Phone access (Settings → Phone on the computer; pairing on the phone)
+// ------------------------------------------------------------------------------------------------
+
+/** How often Settings → Phone asks again while the pairing dialog is open (the API sends no event for it). */
+export const PHONE_POLL_MS = 2_000;
+
+/**
+ * Settings → Phone (computer only: on a phone pass `enabled: false`). `poll` asks again every
+ * {@link PHONE_POLL_MS} — while the pairing dialog waits for a phone to open the page, pair, or be stopped.
+ */
+export function usePhone({ enabled = true, poll = false }: { enabled?: boolean; poll?: boolean } = {}) {
+  return useQuery({
+    queryKey: qk.phone,
+    queryFn: api.phone,
+    staleTime: 30_000,
+    enabled,
+    refetchInterval: poll ? PHONE_POLL_MS : false,
+  });
+}
+
+/** A phone-access answer replaces the status shown; the privacy log has a new line. */
+function phoneChanged(qc: QueryClient, status: PhoneStatus) {
+  qc.setQueryData(qk.phone, status);
+  void qc.invalidateQueries({ queryKey: qk.activity });
+}
+
+/** Turn phone access on or off, choose its address or port, or confirm "This is my home network". */
+export function useUpdatePhone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (change: PhoneAccessChange) => api.updatePhone(change),
+    meta: { errorTitle: "Couldn't change phone access" },
+    onSuccess: (status) => phoneChanged(qc, status),
+  });
+}
+
+/**
+ * {@link useUpdatePhone} for the dialog that turns phone access on or moves it to another address: it shows a
+ * refusal in place (no toast, which would wait behind it).
+ */
+export function useChangePhoneAccess() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (change: PhoneAccessChange) => api.updatePhone(change),
+    meta: { silent: true },
+    onSuccess: (status) => phoneChanged(qc, status),
+  });
+}
+
+/**
+ * A new pairing code: the answer is the only place it appears (keep it in the dialog's state, not in a cache). The
+ * pairing dialog shows a refusal itself ("Couldn't make a pairing code"), so no toast.
+ */
+export function useCreatePhonePairing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.createPhonePairing(),
+    meta: { silent: true },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.phone }),
+  });
+}
+
+/** Cancel the open code when the dialog closes (quietly: a code nobody cancelled still ends by itself in minutes). */
+export function useCancelPhonePairing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.cancelPhonePairing(),
+    meta: { silent: true },
+    onSettled: () => void qc.invalidateQueries({ queryKey: qk.phone }),
+  });
+}
+
+/** Remove a paired phone: it is signed out at once (the dialog asking first shows a refusal itself, so no toast). */
+export function useRemovePhone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.removePhone(id),
+    meta: { silent: true },
+    onSuccess: (status) => phoneChanged(qc, status),
+  });
+}
+
+/**
+ * "Start over": phone access off, every phone removed, a new certificate when it is turned on again (its
+ * confirmation dialog shows a refusal itself, so no toast).
+ */
+export function useResetPhone() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.resetPhone(),
+    meta: { silent: true },
+    onSuccess: (status) => phoneChanged(qc, status),
+  });
+}
+
+/** On a phone that isn't paired: pair it with the code (the pairing page shows a refusal itself, so no toast). */
+export function usePairPhone() {
+  return useMutation({ mutationFn: (body: PairRequest) => api.pairPhone(body), meta: { silent: true } });
+}
+
+// ------------------------------------------------------------------------------------------------
+// Hand-off sync (computer only: Settings → Your computers, the standing-by screen, /join)
+// ------------------------------------------------------------------------------------------------
+
+/** How often the sync status is asked again while something is under way (a save, a take-over waiting, a pull). */
+export const SYNC_POLL_MS = 3_000;
+
+/** Something is under way that the status follows (the server also says so with `sync.updated`). */
+export function syncBusy(status: Pick<SyncStatus, "activity" | "take_over_waiting" | "mode"> | undefined): boolean {
+  return Boolean(status && (status.activity !== "idle" || status.take_over_waiting || status.mode === "starting"));
+}
+
+/**
+ * Hand-off sync's status, answered from the server's memory (it never reads the folder or the password store, so
+ * every page may ask). On a phone pass `false`: sync is the computer's (the API refuses it there). Asked again every
+ * {@link SYNC_POLL_MS} while something is under way.
+ */
+export function useSync(enabled = true) {
+  return useQuery({
+    queryKey: qk.sync,
+    queryFn: api.sync,
+    staleTime: 30_000,
+    enabled,
+    refetchInterval: (query) => (syncBusy(query.state.data) ? SYNC_POLL_MS : false),
+  });
+}
+
+/**
+ * This computer's data was just replaced (a take-over, a choice, a change brought in): every cached page is stale,
+ * as after "Delete everything" — except health and sync's own status, which say what to show meanwhile.
+ */
+export function resetAfterReplace(qc: QueryClient): void {
+  qc.removeQueries({ predicate: (q) => !["health", "sync"].includes(String(q.queryKey[0])) });
+  void qc.invalidateQueries();
+}
+
+/** A sync answer replaces the status shown; the privacy log may have a new line. */
+function syncChanged(qc: QueryClient, status: SyncStatus) {
+  qc.setQueryData(qk.sync, status);
+  void qc.invalidateQueries({ queryKey: qk.activity });
+}
+
+/** The answer of a take-over or a choice: in use here now, so what the pages show came from the other computer. */
+function tookOver(qc: QueryClient, status: SyncStatus) {
+  if (status.mode === "in_use") resetAfterReplace(qc);
+  qc.setQueryData(qk.sync, status);
+}
+
+/** What a folder would be for sync (nothing is written); a refusal is shown under the folder field. */
+export function useInspectSyncFolder() {
+  return useMutation({ mutationFn: (folder: string) => api.inspectSyncFolder(folder), meta: { silent: true } });
+}
+
+/**
+ * Set up a new sync folder or join one; a refusal is shown next to the field it concerns (`ApiError.code`). Joining
+ * brings the other computer's Ordnung over (the profile, settings and ledger are asked again).
+ */
+export function useConnectSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SyncConnect) => api.connectSync(body),
+    meta: { silent: true },
+    onSuccess: (result) => {
+      if (result.choice) return; // nothing is connected yet: the choice comes first
+      syncChanged(qc, result.status);
+      void qc.invalidateQueries({ queryKey: qk.profile });
+      void qc.invalidateQueries({ queryKey: qk.settings });
+      void invalidateLedger(qc);
+    },
+  });
+}
+
+/** Rename this computer, answer a problem or dismiss a notice (refusals are shown where it was asked). */
+export function useUpdateSync() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (change: SyncChange) => api.updateSync(change), meta: { silent: true }, onSuccess: (status) => syncChanged(qc, status) });
+}
+
+/** Disconnect this computer (its dialog shows a refusal, and asks again while no other computer has its latest changes). */
+export function useDisconnectSync() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (body: SyncDisconnect) => api.disconnectSync(body), meta: { silent: true }, onSuccess: (status) => syncChanged(qc, status) });
+}
+
+/**
+ * "Use Ordnung here": in use here now (every page loads again: the data came from the other computer), waiting
+ * until everything has arrived, or the choice to make. A refusal is shown on the standing-by screen.
+ */
+export function useTakeOver() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (body: SyncUseHere = {}) => api.takeOver(body), meta: { silent: true }, onSuccess: (status) => tookOver(qc, status) });
+}
+
+/** Which computer's Ordnung to keep (the choice dialog shows a refusal itself). */
+export function useChooseSync() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (keep: number) => api.chooseSync(keep), meta: { silent: true }, onSuccess: (status) => tookOver(qc, status) });
+}
+
+/** "Save now" (and, with `hand_over`, stand by). */
+export function useSaveSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SyncSave = {}) => api.saveSync(body),
+    meta: { errorTitle: "Couldn't save to the sync folder" },
+    onSuccess: (status) => syncChanged(qc, status),
+  });
+}
+
+/** The passphrase typed again (a wrong one is said under its field). */
+export function useSyncPassphrase() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (passphrase: string) => api.syncPassphrase(passphrase), meta: { silent: true }, onSuccess: (status) => syncChanged(qc, status) });
+}
+
+/** "Fill it again from this computer" (an emptied folder; the problem's callout shows a refusal). */
+export function useRefillSync() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: () => api.refillSync(), meta: { silent: true }, onSuccess: (status) => syncChanged(qc, status) });
+}
+
+/** Forget a lost computer (its dialog shows a refusal). */
+export function useForgetComputer() {
+  const qc = useQueryClient();
+  return useMutation({ mutationFn: (key: number) => api.forgetComputer(key), meta: { silent: true }, onSuccess: (status) => syncChanged(qc, status) });
+}
+
+/** A kept copy as a file (the browser saves it). */
+export function useDownloadKept() {
+  return useMutation({ mutationFn: (name: string) => api.downloadKept(name), meta: { errorTitle: "Couldn't download the saved copy" } });
+}
+
+/** Delete a kept copy for good. */
+export function useDeleteKept() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => api.deleteKept(name),
+    meta: { errorTitle: "Couldn't delete the saved copy" },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: qk.sync }),
+  });
 }
 
 // ------------------------------------------------------------------------------------------------

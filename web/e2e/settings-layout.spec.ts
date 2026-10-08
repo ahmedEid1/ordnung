@@ -126,7 +126,7 @@ for (const scheme of ["light", "dark"] as const) {
   test.describe(`forms without axe violations (${scheme})`, () => {
     test.use({ colorScheme: scheme });
 
-    for (const section of ["region", "reminders", "calendar", "ai", "claude"]) {
+    for (const section of ["region", "reminders", "calendar", "ai", "claude", "computers"]) {
       test(`Settings → ${section}`, async ({ page }, testInfo) => {
         await open(page, `/settings?section=${section}`, "Settings");
         await expectAccessible(page, testInfo, `settings-${section}-${scheme}`);

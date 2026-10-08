@@ -30,7 +30,7 @@ from typing import Any, Protocol
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung import clock
-from ordnung.db.store import Store
+from ordnung.db.store import Store, background_context
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.plan import item_contexts
 from ordnung.llm.base import LLMError
@@ -217,7 +217,9 @@ class DailyTick:
         running = self._review is not None and not self._review.done()
         if llm is None or running or not self._review_due(today):
             return False
-        self._review = asyncio.create_task(self._run_review(llm, today), name="ordnung-weekly-review")
+        self._review = asyncio.create_task(
+            self._run_review(llm, today), name="ordnung-weekly-review", context=background_context()
+        )
         return True
 
     async def _run_review(self, llm: LLMService, today: date) -> None:
@@ -256,7 +258,10 @@ class DailyTick:
     def start(self) -> asyncio.Task[None]:
         """Start :meth:`run_forever` on the running loop (idempotent)."""
         if self._task is None or self._task.done():
-            self._task = asyncio.create_task(self.run_forever(), name="ordnung-daily-tick")
+            # background work: the day change is never the person's, even when a request started it
+            self._task = asyncio.create_task(
+                self.run_forever(), name="ordnung-daily-tick", context=background_context()
+            )
         return self._task
 
     async def stop(self) -> None:

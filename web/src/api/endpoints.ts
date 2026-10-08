@@ -34,8 +34,10 @@ import type {
   ItemPatch,
   MarkSentRequest,
   OnboardingRequest,
+  PairRequest,
   PartyPatch,
   PathsWith,
+  PhoneAccessChange,
   ProfilePatch,
   ProofKind,
   ProofPatch,
@@ -44,6 +46,11 @@ import type {
   StreamEvent,
   SuggestionListParams,
   SuggestionPatch,
+  SyncChange,
+  SyncConnect,
+  SyncDisconnect,
+  SyncSave,
+  SyncUseHere,
   TourPatch,
   TrackingUpdate,
   TransferValues,
@@ -116,8 +123,13 @@ export const api = {
   settings: () => call("get", "/api/settings"),
   updateSettings: (settings: SettingsPatch) => call("put", "/api/settings", { body: settings }),
   onboarding: (body: OnboardingRequest) => call("post", "/api/onboarding", { body }),
-  /** "Delete everything": wipes the data folder; the API insists on the typed word `DELETE`. */
-  deleteEverything: () => call("delete", "/api/data", { body: { confirm: "DELETE" } }),
+  /**
+   * "Delete everything": wipes the data folder; the API insists on the typed word `DELETE`. `unreceivedOk` is the
+   * second confirmation hand-off sync asks for while no other computer has this one's latest changes (409
+   * `not_received` without it).
+   */
+  deleteEverything: (unreceivedOk = false) =>
+    call("delete", "/api/data", { body: unreceivedOk ? { confirm: "DELETE", unreceived_ok: true } : { confirm: "DELETE" } }),
 
   // -- documents ---------------------------------------------------------------------------------
   documents: (params: DocumentListParams = {}) => call("get", "/api/documents", { query: { ...params } }),
@@ -309,8 +321,55 @@ export const api = {
   runCalendarSync: () => call("post", "/api/calendar/sync/run"),
   disconnectCalendarSync: (removeEvents: boolean) => call("post", "/api/calendar/sync/disconnect", { body: { remove_events: removeEvents } }),
 
+  // -- phone access ------------------------------------------------------------------------------
+  // On the computer (computer only): Settings → Phone.
+  /** Whether phone access can be used here and is on, its address, certificate, pairing progress and phones. */
+  phone: () => call("get", "/api/phone"),
+  /** Turn phone access on or off, choose its address or port, or say "This is my home network". */
+  updatePhone: (change: PhoneAccessChange) => call("put", "/api/phone", { body: change }),
+  /** A new pairing code (replacing an open one): the only answer that contains it. */
+  createPhonePairing: () => call("post", "/api/phone/pairing"),
+  /** Cancel the open pairing code (the dialog closed); 204. */
+  cancelPhonePairing: () => call("delete", "/api/phone/pairing"),
+  /** Remove a paired phone: it is signed out at once. */
+  removePhone: (id: string) => call("delete", "/api/phone/devices/{device_id}", { params: { device_id: id } }),
+  /** "Start over": off, every phone removed, a new certificate when it is turned on again. */
+  resetPhone: () => call("post", "/api/phone/reset"),
+  // On a phone that isn't paired yet (the only call it may make): the answer sets its sign-in cookie.
+  /** Pair this phone with the code shown on the computer (404 `not_phone` on the computer itself). */
+  pairPhone: (body: PairRequest) => call("post", "/api/phone/pair", { body }),
+
+  // -- hand-off sync (computer only): Settings → Your computers, the standing-by screen, /join ----
+  /** Whether sync can be used here, this computer's mode, the computers, a choice, problems, notices, kept copies. */
+  sync: () => call("get", "/api/sync"),
+  /** What a folder would be: a new sync, one to join, or refused (and why). Nothing is written. */
+  inspectSyncFolder: (folder: string) => call("post", "/api/sync/inspect", { body: { folder } }),
+  /** Set up a new sync folder or join one; the passphrase goes to this computer's Ordnung and its password store only. */
+  connectSync: (body: SyncConnect) => call("put", "/api/sync", { body }),
+  /** Rename this computer, answer a problem ("This is the same computer", …) or dismiss a notice. */
+  updateSync: (change: SyncChange) => call("patch", "/api/sync", { body: change }),
+  /** Disconnect this computer (`unreceived_ok`: although no other computer has its latest changes yet). */
+  disconnectSync: (body: SyncDisconnect = {}) => call("delete", "/api/sync", { body }),
+  /** "Use Ordnung here": take over — or wait until everything has arrived, or answer with the choice. */
+  takeOver: (body: SyncUseHere = {}) => call("post", "/api/sync/use-here", { body }),
+  /** Which computer's Ordnung to keep (a side's `key`); the other one is kept as a copy on its own computer. */
+  chooseSync: (keep: number) => call("post", "/api/sync/choose", { body: { keep } }),
+  /** Save into the sync folder now (`hand_over`: then stand by). */
+  saveSync: (body: SyncSave = {}) => call("post", "/api/sync/save", { body }),
+  /** The passphrase typed again (the password store lost it): checked against the folder, then kept there. */
+  syncPassphrase: (passphrase: string) => call("post", "/api/sync/passphrase", { body: { passphrase } }),
+  /** Fill an emptied sync folder again from this computer (the one in use). */
+  refillSync: () => call("post", "/api/sync/refill"),
+  /** Forget a lost computer (its `key`): its changes that are nowhere else are kept as a copy here first. */
+  forgetComputer: (key: number) => call("delete", "/api/sync/computers/{key}", { params: { key } }),
+  /** A kept copy as a file (an encrypted backup: `ordnung restore` opens it with the sync passphrase). */
+  downloadKept: async (name: string): Promise<Blob> => (await requestRaw(apiRoute("/api/sync/kept/{name}", { name }))).blob(),
+  /** Delete a kept copy for good (204). */
+  deleteKept: (name: string) => call("delete", "/api/sync/kept/{name}", { params: { name } }),
+
   // -- privacy & AI usage ------------------------------------------------------------------------
-  activity: (limit = 100) => call("get", "/api/activity", { query: { limit } }),
+  /** What Ordnung did, newest first; `device`: only what one paired phone did (its id). */
+  activity: (limit = 100, device?: string | null) => call("get", "/api/activity", { query: { limit, device: device ?? undefined } }),
   usage: () => call("get", "/api/usage"),
   rules: () => call("get", "/api/rules"),
   jobs: (activeOnly = false) => call("get", "/api/jobs", { query: { active_only: activeOnly || undefined } }),

@@ -1,17 +1,22 @@
 /**
- * Where the e2e servers run and where their sessions live: the demo, and the real app (`ordnung serve`
- * on its own data folder, port + 1, reading with the fake `claude` of `tests/fake_claude.py`). Shared by
- * `playwright.config.ts`, the global setup and the tests.
+ * Where the e2e servers run and where their sessions live: the demo, the real app (`ordnung serve`
+ * on its own data folder, port + 1, reading with the fake `claude` of `tests/fake_claude.py`), and a second
+ * real app, the other computer of hand-off sync (port + 3). Shared by `playwright.config.ts`, the global setup
+ * and the tests.
  *
  * - `ORDNUNG_E2E_PORT` (default 8799) and `ORDNUNG_E2E_DATA` (default `<tmp>/ordnung-e2e`); the real app
- *   uses the next port and `<data>-real`
+ *   uses the next port and `<data>-real`, its phone access (e2e/real-app-phone.spec.ts) the port after that, and
+ *   hand-off sync's second computer (e2e/real-app-sync.spec.ts) the port after that with `<data>-real-b`; the two
+ *   computers' copies of the synced folder are `<data>-sync-a` and `<data>-sync-b`
  * - `ORDNUNG_BIN`: the `ordnung` executable (default: the repo's `.venv/bin/ordnung`, else `ordnung` on PATH)
- * - `ORDNUNG_E2E_REUSE=1`: reuse servers that are already running on the ports (local debugging)
+ * - `ORDNUNG_E2E_REUSE=1`: reuse servers that are already running on the ports (local debugging); a real app
+ *   started by hand needs `ORDNUNG_PHONE_TEST_ADDRESS=127.0.0.1` for the phone tests (see {@link PHONE_ADDRESS}),
+ *   and both real apps need the e2e password store's environment for the sync tests ({@link keyringEnv})
  * - `PW_CHROMIUM_PATH`: a Chromium executable to use instead of Playwright's download
  */
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -64,3 +69,62 @@ export const REAL_LETTER = join(REPO_DIR, "src", "ordnung", "demo", "samples", "
 export const REAL_READINGS = join(REPO_DIR, "src", "ordnung", "demo", "fixtures", "extract");
 /** The session cookie: the server names it after its port. */
 export const tokenCookie = (baseUrl: string): string => `ordnung_token_${new URL(baseUrl).port}`;
+
+// ------------------------------------------------------------------------------------------------
+// Hand-off sync (e2e/real-app-sync.spec.ts): a second real computer, two views of one synced folder, and a
+// password store for each
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * The second computer: another `ordnung serve` on its own data folder, on the port after phone access's (the real
+ * app is `PORT + 1`, its phone listener `PORT + 2`). The global setup leaves it **not set up** (no profile), as a
+ * new computer is: its welcome page offers "I already use Ordnung on another computer".
+ */
+export const REAL_B_PORT = PORT + 3;
+export const REAL_B_BASE_URL = `http://127.0.0.1:${REAL_B_PORT}`;
+export const REAL_B_DATA_DIR = `${DATA_DIR}-real-b`;
+export const REAL_B_STORAGE_STATE = join(dirname(STORAGE_STATE), "real-app-b.json");
+/**
+ * Each computer's copy of "the" synced folder. A real sync tool (Nextcloud, Syncthing, Dropbox) keeps the two in
+ * step; here `e2e/sync-tool.ts` does, only when a test says so — late, out of order, with conflict copies.
+ */
+export const SYNC_A_DIR = `${DATA_DIR}-sync-a`;
+export const SYNC_B_DIR = `${DATA_DIR}-sync-b`;
+/** `tests/e2e_support/e2e_keyring.py`: a file-backed password store the real servers load (tests only). */
+export const E2E_SUPPORT_DIR = join(REPO_DIR, "tests", "e2e_support");
+export const KEYRING_BACKEND = "e2e_keyring.FileKeyring";
+export const KEYRING_FILE_ENV = "ORDNUNG_E2E_KEYRING_FILE";
+/** Each computer's own password store (a real computer has its own keyring): plain-text JSON, deleted every run. */
+export const REAL_KEYRING = `${REAL_DATA_DIR}-keyring.json`;
+export const REAL_B_KEYRING = `${REAL_B_DATA_DIR}-keyring.json`;
+
+/**
+ * The environment that gives a real server the e2e password store in `file`: `keyring` loads
+ * {@link KEYRING_BACKEND} from {@link E2E_SUPPORT_DIR} (added to any `PYTHONPATH` already set). CI's Ubuntu has no
+ * Secret Service, and Ordnung refuses keyring's `null`/`fail` backends, so without this sync would be unavailable.
+ */
+export function keyringEnv(file: string): Record<string, string> {
+  const pythonPath = [E2E_SUPPORT_DIR, process.env.PYTHONPATH].filter(Boolean).join(delimiter);
+  return { PYTHON_KEYRING_BACKEND: KEYRING_BACKEND, PYTHONPATH: pythonPath, [KEYRING_FILE_ENV]: file };
+}
+
+// ------------------------------------------------------------------------------------------------
+// Phone access of the real app (e2e/real-app-phone.spec.ts): its second listener, HTTPS on loopback
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * The address the real app's phone access listens on. A real computer offers only its home-network addresses
+ * (10/8, 172.16/12, 192.168/16); `ORDNUNG_PHONE_TEST_ADDRESS` (set for the real app's server in
+ * playwright.config.ts) makes this loopback address the only one, so the tests never open a listener to a
+ * network — a server without it refuses this address (422), and the phone tests fail instead of listening on the
+ * LAN.
+ */
+export const PHONE_ADDRESS = "127.0.0.1";
+/** The environment variable that lets the real app's phone access listen on {@link PHONE_ADDRESS} (tests only). */
+export const PHONE_TEST_ADDRESS_ENV = "ORDNUNG_PHONE_TEST_ADDRESS";
+/** Phone access's port: the one after the real app's. */
+export const PHONE_PORT = PORT + 2;
+/** Where a paired phone opens Ordnung (its own certificate: phone contexts ignore HTTPS errors, as a phone clicks through once). */
+export const PHONE_BASE_URL = `https://${PHONE_ADDRESS}:${PHONE_PORT}`;
+/** A phone's sign-in cookie: `__Host-` (Secure, `Path=/`, no Domain), named after the phone listener's port. */
+export const phoneCookie = (baseUrl: string = PHONE_BASE_URL): string => `__Host-ordnung_phone_${new URL(baseUrl).port}`;
