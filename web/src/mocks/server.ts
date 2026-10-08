@@ -374,6 +374,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
         const letter = db.state.drafts.find((x) => x.id === p.draft_id);
         return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
       }),
+    region_suggestion: null,
   };
 }
 
@@ -492,6 +493,7 @@ function partyDetail(db: MockDb, id: string): PartyDetail {
     contracts: db.state.contracts.filter((c) => c.party_id === id),
     cases: db.state.cases.filter((c) => c.party_id === id),
     set_aside: setAside(db, items),
+    region_suggestion: null,
   };
 }
 

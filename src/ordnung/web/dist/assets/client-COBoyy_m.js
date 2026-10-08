@@ -1,0 +1,1 @@
+import{or as e}from"./scale-CwJgVdML.js";function t(){return e().data?.client===`phone`}export{t};

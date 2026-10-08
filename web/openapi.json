@@ -9058,6 +9058,16 @@
             "type": "boolean",
             "title": "Given To Model",
             "default": false
+          },
+          "region_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -9080,7 +9090,8 @@
           "can_wait_again",
           "proof_of",
           "scam_signs",
-          "given_to_model"
+          "given_to_model",
+          "region_suggestion"
         ],
         "title": "DocumentDetail"
       },
@@ -13492,6 +13503,16 @@
             },
             "type": "array",
             "title": "Set Aside"
+          },
+          "region_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -13501,7 +13522,8 @@
           "items",
           "contracts",
           "cases",
-          "set_aside"
+          "set_aside",
+          "region_suggestion"
         ],
         "title": "PartyDetail"
       },
@@ -14893,6 +14915,60 @@
           "id"
         ],
         "title": "RefLink"
+      },
+      "RegionSuggestion": {
+        "properties": {
+          "region": {
+            "type": "string",
+            "title": "Region"
+          },
+          "postcode": {
+            "type": "string",
+            "title": "Postcode"
+          },
+          "doc_id": {
+            "type": "string",
+            "title": "Doc Id"
+          },
+          "waiting": {
+            "type": "integer",
+            "title": "Waiting",
+            "default": 0
+          },
+          "may_be_late": {
+            "type": "boolean",
+            "title": "May Be Late",
+            "default": false
+          },
+          "idea_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idea Id"
+          },
+          "declined": {
+            "type": "boolean",
+            "title": "Declined",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "region",
+          "postcode",
+          "doc_id",
+          "waiting",
+          "may_be_late",
+          "idea_id",
+          "declined"
+        ],
+        "title": "RegionSuggestion",
+        "description": "The Land the postcode on a sender's letter suggests: a question for the person, never set by itself\n(ADR 0019). Computed on read; nothing stores it."
       },
       "Remedy": {
         "properties": {
