@@ -1,0 +1,1 @@
+import{dr as e}from"./dateLabels-DXxdPm_k.js";function t(){return e().data?.client===`phone`}export{t};
