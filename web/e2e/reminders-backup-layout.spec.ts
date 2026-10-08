@@ -112,7 +112,8 @@ for (const [width, height] of [
     const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
     await expect(dialog.getByLabel("Passphrase", { exact: true })).toBeFocused();
     await dialog.getByRole("button", { name: "Suggest a strong one" }).click();
-    await expect(dialog.getByLabel("Passphrase", { exact: true })).toHaveValue(/^[a-z2-9]{5}(-[a-z2-9]{5}){3}$/);
+    // five made-up words, as hand-off sync suggests
+    await expect(dialog.getByLabel("Passphrase", { exact: true })).toHaveValue(/^[a-z]{5}(-[a-z]{5}){4}$/);
     const box = (await dialog.boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width + 0.5);
@@ -278,8 +279,9 @@ test("a backup made in the browser is an encrypted Ordnung backup", async ({ pag
   await open(page, "/settings?section=data", "Settings");
   await page.getByRole("region", { name: "Encrypted backup" }).getByRole("button", { name: "Download encrypted backup…" }).click();
   const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
-  await dialog.getByLabel("Passphrase", { exact: true }).fill("Sam's end-to-end passphrase");
-  await dialog.getByLabel("Repeat the passphrase").fill("Sam's end-to-end passphrase");
+  // strong enough for a new backup (the rule of a new sync folder): five words that don't belong together
+  await dialog.getByLabel("Passphrase", { exact: true }).fill("Sam's orbit velvet canyon maple");
+  await dialog.getByLabel("Repeat the passphrase").fill("Sam's orbit velvet canyon maple");
   // Enter in a field submits: the footer's button belongs to the dialog's form
   const [download] = await Promise.all([page.waitForEvent("download"), dialog.getByLabel("Repeat the passphrase").press("Enter")]);
   expect(download.suggestedFilename()).toMatch(/^ordnung-backup-\d{4}-\d{2}-\d{2}\.ordnung-backup$/);
@@ -346,7 +348,7 @@ for (const scheme of ["light", "dark"] as const) {
       const dialog = page.getByRole("dialog", { name: "Download an encrypted backup" });
       await dialog.getByLabel("Passphrase", { exact: true }).fill("too short");
       await dialog.getByRole("button", { name: "Download backup" }).click();
-      await expect(dialog.getByText(/Use at least 12 characters/)).toBeVisible();
+      await expect(dialog.getByText(/Use a passphrase of at least 12 characters/)).toBeVisible();
       await settle(page);
       await expectAccessible(page, testInfo, `backup-dialog-${scheme}`);
     });

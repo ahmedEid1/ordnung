@@ -667,6 +667,7 @@ describe("Claude connection", () => {
         path: null,
         ok: null,
         detail: null,
+        needs_version: null,
       },
     });
     renderWithProviders(<SettingsPage />, {
@@ -699,6 +700,7 @@ describe("Claude connection", () => {
         ok: false,
         detail:
           "Claude Code is installed but not signed in. Run `claude` once and sign in.",
+        needs_version: null,
       },
     });
     renderWithProviders(<SettingsPage />, {
@@ -729,6 +731,7 @@ describe("Claude connection", () => {
         path: "/usr/local/bin/claude",
         ok: true,
         detail: null,
+        needs_version: null,
       },
     });
     renderWithProviders(<SettingsPage />, {
@@ -759,6 +762,7 @@ describe("Claude connection", () => {
         path: null,
         ok: null,
         detail: null,
+        needs_version: null,
       },
     });
     renderWithProviders(<SettingsPage />, {
@@ -773,6 +777,46 @@ describe("Claude connection", () => {
       screen.getByText(/^Installed it\? The check finds it/),
     ).toBeInTheDocument();
     expect(screen.queryByText("Signed in")).not.toBeInTheDocument();
+    // Anthropic's installer (jsdom says Linux), and the plan Claude Code needs
+    expect(
+      screen.getByText("curl -fsSL https://claude.ai/install.sh | bash"),
+    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Node\.js 18/);
+    expect(document.body).toHaveTextContent(
+      "Claude Code needs a paid Claude plan (Pro, Max, Team or Enterprise) or an Anthropic Console account",
+    );
+  });
+
+  it("too old: names the version Ordnung needs and how to update, never “not signed in”", async () => {
+    useMockApi();
+    const client = withHealth({
+      backend: "claude_cli",
+      claude: {
+        installed: true,
+        version: "2.0.9 (Claude Code)",
+        path: "/usr/local/bin/claude",
+        ok: false,
+        detail:
+          "Claude Code 2.0.9 is too old: Ordnung needs 2.1.0 or newer. Run “claude update” in a terminal to update it.",
+        needs_version: "2.1.0",
+      },
+    });
+    renderWithProviders(<SettingsPage />, {
+      route: "/settings?section=claude",
+      client,
+    });
+    const status = await screen.findByText("Claude Code needs an update");
+    const box = status.closest("[role=status]") as HTMLElement;
+    expect(box).toHaveTextContent("Ordnung needs 2.1.0 or newer");
+    expect(screen.getByText("2.0.9")).toBeInTheDocument();
+    expect(screen.queryByText("Signed in")).not.toBeInTheDocument();
+    expect(screen.queryByText(/not signed in/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Copy command to update Claude Code: claude update",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run check" })).toBeEnabled();
   });
 });
 

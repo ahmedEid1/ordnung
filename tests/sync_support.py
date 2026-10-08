@@ -35,6 +35,7 @@ FAST = {
     "START_DECIDE_S": 3.0,
     "FENCE_WAIT_S": 1.0,
     "FOLDER_OP_TIMEOUT_S": 1.0,
+    "UNREACHABLE_SCAN_S": 1.0,
     "SHUTDOWN_PUSH_S": 2.0,
     "PUSH_RETRY_S": (0.05,),
 }

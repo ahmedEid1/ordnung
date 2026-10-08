@@ -22,9 +22,11 @@ computer doesn't sync, and after it is set up again (:func:`kept_copies`).
 from __future__ import annotations
 
 import contextlib
+import errno
 import json
 import os
 import stat
+import threading
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -32,6 +34,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
+from ordnung import durable
 from ordnung.backup import write_backup_file
 from ordnung.backup.archive import BackupStream
 from ordnung.backup.container import BackupError
@@ -66,7 +69,8 @@ def read_index(folder: Path) -> dict[str, KeptInfo]:
 
 
 def write_index(folder: Path, infos: Iterable[KeptInfo], *, gone: Iterable[str] = ()) -> None:
-    """Merge ``infos`` into the record (``gone``: names deleted), written atomically (best effort)."""
+    """Merge ``infos`` into the record (``gone``: names deleted), written atomically and durably (the
+    file and its folder ``fsync``-ed). Best effort: a failure leaves the old record and no ``.part``."""
     record = read_index(folder)
     record.update({info.name: info for info in infos})
     for name in gone:
@@ -76,14 +80,18 @@ def write_index(folder: Path, infos: Iterable[KeptInfo], *, gone: Iterable[str] 
     with contextlib.suppress(OSError):
         folder.mkdir(parents=True, exist_ok=True)
         target = folder / KEPT_INDEX
-        partial = folder / f".{KEPT_INDEX}.{os.getpid()}.part"
+        partial = folder / f".{KEPT_INDEX}.{os.getpid()}.{threading.get_ident()}.part"
         body = json.dumps([info.model_dump() for info in record.values()], indent=1)
-        fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, PRIVATE_FILE_MODE)
-        with os.fdopen(fd, "w", encoding="utf-8") as out:
-            out.write(body)
-            out.flush()
-            os.fsync(out.fileno())
-        partial.replace(target)
+        try:
+            fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, PRIVATE_FILE_MODE)
+            with os.fdopen(fd, "w", encoding="utf-8") as out:
+                out.write(body)
+                out.flush()
+                durable.fsync(out.fileno())
+            partial.replace(target)
+        finally:
+            partial.unlink(missing_ok=True)
+        durable.fsync_dir(folder)
 
 
 def kept_copies(folder: Path, infos: Sequence[KeptInfo] = ()) -> list[tuple[KeptInfo, Path, int]]:
@@ -179,14 +187,20 @@ def keep_staged(session: Session, staged: Staged, why: str) -> KeptInfo:
     target = folder / name
     partial = target.with_name(f".{name}.{os.getpid()}.part")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
-    fd = os.open(partial, flags, PRIVATE_FILE_MODE)
     try:
+        fd = os.open(partial, flags, PRIVATE_FILE_MODE)
         with os.fdopen(fd, "wb") as out:
             for chunk in stream:
                 out.write(chunk)
             out.flush()
             os.fsync(out.fileno())
         partial.replace(target)
+    except OSError as exc:
+        if exc.errno == errno.ENOSPC:
+            raise SyncError(
+                "no_space", f"This computer has no room to keep a copy of {staged.from_name}'s changes."
+            ) from exc
+        raise
     finally:
         with contextlib.suppress(FileNotFoundError):
             partial.unlink()

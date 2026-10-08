@@ -3,13 +3,13 @@ import { SAM, TODAY, ts } from "./constants";
 import { FOLDER_PATH } from "./folder";
 
 export const HEALTH: Health = {
-  version: "0.1.0",
+  version: "0.2.0",
   data_dir: "~/.local/share/ordnung-demo",
   demo: true,
   simulated_today: TODAY,
   today: TODAY,
   backend: "replay",
-  claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription." },
+  claude: { installed: true, version: "2.1.4 (Claude Code)", path: "/usr/local/bin/claude", ok: true, detail: "Signed in with your Claude subscription.", needs_version: null },
   model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],

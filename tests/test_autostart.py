@@ -70,7 +70,8 @@ def test_linux_writes_a_systemd_user_unit_and_the_enable_link(tmp_path: Path) ->
     ):
         assert line in lines
     assert entry.link.is_symlink() and entry.link.readlink() == entry.path
-    assert entry.path.stat().st_mode & 0o777 == 0o600
+    if os.name == "posix":  # Windows has no such modes
+        assert entry.path.stat().st_mode & 0o777 == 0o600
     assert entry.start_now == "systemctl --user daemon-reload && systemctl --user restart ordnung.service"
     assert entry.stop_now == "systemctl --user stop ordnung.service"
 

@@ -11,9 +11,12 @@ from typing import Any
 import pytest
 
 from fakes import use_fast_keys
-from ordnung.db.store import PERSON_META_KEY
+from ordnung.backup import restore_backup
+from ordnung.config import Paths
+from ordnung.db.store import PERSON_META_KEY, Store
 from ordnung.sync.local import load_state
-from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync, status
+from sync_faults import copy_tree
+from sync_support import PASSPHRASE, RealEngine, agent_of, computer, connect, eventually, fast_sync, status
 from test_api_support import Api
 
 pytestmark = pytest.mark.usefixtures("fast")
@@ -21,7 +24,9 @@ pytestmark = pytest.mark.usefixtures("fast")
 
 @pytest.fixture
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
-    fast_sync(monkeypatch)
+    # the real engine's calls (sealing, a copy of the database) can take seconds on a busy CI runner
+    # measuring coverage: one over the fake engine's 1 s limit left its thread busy, and a save was refused
+    fast_sync(monkeypatch, FOLDER_OP_TIMEOUT_S=10.0)
     use_fast_keys(monkeypatch)
 
 
@@ -123,32 +128,38 @@ async def test_set_up_join_stand_by_take_over_and_leave(tmp_path: Path) -> None:
         assert any(path.name.startswith("o") for path in folder.iterdir())  # the folder keeps everything
 
 
-async def test_both_changed_the_person_chooses_and_this_computer_s_data_is_kept(tmp_path: Path) -> None:
-    engine = RealEngine()
+async def _both_changed(tmp_path: Path, a: Api, b: Api) -> None:
+    """desktop sets up, laptop joins through its own copy of the folder before the sync tool brings
+    the claim back, and each saves a change the other lacks: desktop stands by, laptop is asked."""
     here, there = tmp_path / "desk-view" / "Ordnung", tmp_path / "lap-view" / "Ordnung"
     here.parent.mkdir()
     there.parent.mkdir()
+    await connect(a, here, "desktop")
+    assert (await _add_todo(a, "Common")).status_code == 201
+    await _saved(a)
+    there.mkdir()
+    _catch_up(here, there)
+    await connect(b, there, "laptop")  # the sync tool doesn't bring laptop's claim back yet
+    assert agent_of(a).mode == "in_use" and agent_of(b).mode == "in_use"
+    assert (await _add_todo(a, "Only on the desktop")).status_code == 201
+    assert (await _add_todo(b, "Only on the laptop")).status_code == 201
+    await _saved(a)
+    await _saved(b)
+
+    _catch_up(here, there)
+    _catch_up(there, here)
+    # laptop claimed last: desktop stands by; laptop, in use, is asked which Ordnung to keep
+    await eventually(lambda: agent_of(a).mode == "standing_by", within=10)
+    await eventually(lambda: agent_of(b).choice is not None, within=10)
+
+
+async def test_both_changed_the_person_chooses_and_this_computer_s_data_is_kept(tmp_path: Path) -> None:
+    engine = RealEngine()
     async with (
         computer(tmp_path / "desk", engine=engine) as a,
         computer(tmp_path / "lap", engine=engine) as b,
     ):
-        await connect(a, here, "desktop")
-        assert (await _add_todo(a, "Common")).status_code == 201
-        await _saved(a)
-        there.mkdir()
-        _catch_up(here, there)
-        await connect(b, there, "laptop")  # the sync tool doesn't bring laptop's claim back yet
-        assert agent_of(a).mode == "in_use" and agent_of(b).mode == "in_use"
-        assert (await _add_todo(a, "Only on the desktop")).status_code == 201
-        assert (await _add_todo(b, "Only on the laptop")).status_code == 201
-        await _saved(a)
-        await _saved(b)
-
-        _catch_up(here, there)
-        _catch_up(there, here)
-        # laptop claimed last: desktop stands by; laptop, in use, is asked which Ordnung to keep
-        await eventually(lambda: agent_of(a).mode == "standing_by", within=10)
-        await eventually(lambda: agent_of(b).choice is not None, within=10)
+        await _both_changed(tmp_path, a, b)
         sides = {side["computer"]: side for side in (await status(b))["choice"]["sides"]}
         assert set(sides) == {"desktop", "laptop"} and sides["laptop"]["this"]
         assert sides["desktop"]["complete"]
@@ -167,6 +178,77 @@ async def test_both_changed_the_person_chooses_and_this_computer_s_data_is_kept(
         assert download.status_code == 200 and download.content.startswith(b"ORDNUNG")
 
 
+async def test_keeping_this_side_then_forgetting_the_other_computer_keeps_its_changes_here(
+    tmp_path: Path,
+) -> None:
+    """The choice kept this computer's own side; the other computer is then lost: forgetting it keeps
+    its changes, found nowhere else, as a copy here — and the copy can be opened, then deleted."""
+    engine = RealEngine()
+    async with (
+        computer(tmp_path / "desk", engine=engine) as a,
+        computer(tmp_path / "lap", engine=engine) as b,
+    ):
+        await _both_changed(tmp_path, a, b)
+        sides = {side["computer"]: side for side in (await status(b))["choice"]["sides"]}
+        chosen = await b.client.post("/api/sync/choose", json={"keep": sides["laptop"]["key"]})
+        assert chosen.status_code == 200, chosen.text
+        found = chosen.json()
+        assert found["mode"] == "in_use" and found["choice"] is None and found["problem"] is None
+        assert found["kept"] == [], "laptop's own data stays: nothing of it was replaced"
+        titles = await _titles(b)
+        assert {"Common", "Only on the laptop"} <= titles and "Only on the desktop" not in titles
+
+        forgotten = await b.client.delete(f"/api/sync/computers/{_computer(found, 'desktop')['key']}")
+        assert forgotten.status_code == 200, forgotten.text
+        shown = forgotten.json()
+        assert [entry["name"] for entry in shown["computers"]] == ["laptop"]
+        (kept,) = shown["kept"]
+        assert kept["why"] == "desktop's changes, before it was removed"
+        download = await b.client.get(f"/api/sync/kept/{kept['name']}")
+        assert download.status_code == 200
+        copy = tmp_path / "copy.ordnung-backup"
+        copy.write_bytes(download.content)
+        restore_backup(copy, PASSPHRASE, tmp_path / "opened")
+        with Store.open(Paths(tmp_path / "opened")) as opened:
+            restored = {row["title"] for row in opened._conn().execute("SELECT title FROM items")}
+        assert "Only on the desktop" in restored
+
+        assert (await b.client.delete(f"/api/sync/kept/{kept['name']}")).status_code == 204
+        assert (await status(b))["kept"] == []
+        assert not (tmp_path / "lap" / "sync" / "kept" / kept["name"]).exists()
+        assert (await b.client.delete(f"/api/sync/kept/{kept['name']}")).status_code == 404
+
+
+async def test_data_that_went_back_in_time_is_kept_as_it_is_when_its_saved_state_is_gone(
+    tmp_path: Path,
+) -> None:
+    """A local rollback is put back from this computer's last saved state; when that isn't in the folder
+    any more, the person is asked, and keeping the data as it is ends the pause."""
+    engine = RealEngine()
+    (tmp_path / "Nextcloud").mkdir()
+    folder, desk = tmp_path / "Nextcloud" / "Ordnung", tmp_path / "desk"
+    async with computer(desk, engine=engine) as a:
+        await connect(a, folder, "desktop")
+        assert (await _add_todo(a, "Before the backup")).status_code == 201
+        await _saved(a)
+    copy_tree(desk, tmp_path / "os-backup")
+    async with computer(desk, engine=engine) as a:
+        assert (await _add_todo(a, "After the backup")).status_code == 201
+        await _saved(a)
+    copy_tree(tmp_path / "os-backup", desk)  # the data folder is put back from the OS backup
+    shutil.rmtree(folder / "o")  # and the last saved state is gone from the folder
+    async with computer(desk, engine=engine) as a:
+        found = await eventually(lambda: agent_of(a).problem, within=10)
+        assert found.code == "local_rollback" and found.actions == ["keep_as_is"]
+        kept = await a.client.patch("/api/sync", json={"keep_as_is": True})
+        assert kept.status_code == 200, kept.text
+        assert kept.json()["problem"] is None and kept.json()["mode"] == "in_use"
+        titles = await _titles(a)
+        assert "Before the backup" in titles and "After the backup" not in titles
+        again = await a.client.patch("/api/sync", json={"keep_as_is": True})
+        assert again.status_code == 409 and again.json()["code"] == "not_needed"
+
+
 def test_the_command_line_takes_over_saves_and_refuses_with_the_real_engine(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -177,7 +259,6 @@ def test_the_command_line_takes_over_saves_and_refuses_with_the_real_engine(
     from ordnung import cli, clock, sync
     from ordnung.app_context import build_context
     from ordnung.sync import agent as agent_module
-    from sync_support import PASSPHRASE
 
     engine, keyring = RealEngine(), MemorySecrets()
     monkeypatch.setattr(agent_module, "load_engine", lambda: engine)

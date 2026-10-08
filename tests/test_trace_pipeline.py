@@ -27,7 +27,13 @@ from ordnung.app_context import AppContext, build_context
 from ordnung.ingest.gaps import CHECK_SLOT
 from ordnung.ingest.pipeline import add_file, ingest_document, reprocess
 from ordnung.ingest.verify import READING_INCOMPLETE
-from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited, LLMRequest
+from ordnung.llm.base import (
+    ClaudeAuthError,
+    ClaudeNotInstalled,
+    ClaudeOutdated,
+    ClaudeRateLimited,
+    LLMRequest,
+)
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import DocumentTrace, TraceSpan
 from ordnung.trace.compare import compare_traces
@@ -263,13 +269,14 @@ async def test_a_paused_reading_says_so(ctx: AppContext, router: Router) -> None
     [
         (ClaudeNotInstalled("The “claude” command was not found."), "paused_not_installed"),
         (ClaudeAuthError("Claude Code is not signed in."), "paused_not_signed_in"),
+        (ClaudeOutdated("Claude Code 2.0.9 is too old."), "paused_outdated"),
     ],
-    ids=["not-installed", "signed-out"],
+    ids=["not-installed", "signed-out", "outdated"],
 )
 async def test_a_reading_waiting_for_claude_is_paused_never_failed(
     ctx: AppContext, router: Router, error: Exception, code: str
 ) -> None:
-    """Claude not installed or not signed in pauses the reading like a usage limit: the pipeline puts the
+    """Claude not installed, not signed in or too old pauses the reading like a usage limit: the pipeline puts the
     letter back (``queued``, no error), announces no failure, and the trace ends ``paused`` with why — so the
     letter is never shown as failed while it waits."""
     router.errors["extract"] = lambda: error

@@ -11,8 +11,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { focusWhenReady } from "@/features/today/focus";
 import { formatFileSize } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
-import { backupContents, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, suggestPassphrase, type PassphraseProblem } from "./backup";
+import { backupContents, backupStrengthLine, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, type PassphraseProblem } from "./backup";
+import { suggestPassphrase } from "./passphrase";
 import { PassphraseFields } from "./PassphraseFields";
 import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
 
@@ -25,9 +27,9 @@ interface SavedBackup {
 }
 
 /**
- * "Download an encrypted backup": a passphrase typed twice (or a suggested one), then the local
- * server makes the backup and the browser saves it. The passphrase goes only to this computer's
- * Ordnung and is forgotten when the dialog closes.
+ * "Download an encrypted backup": a passphrase typed twice (or a suggested one) — as strong as a new sync
+ * folder's, its strength said while it is typed — then the local server makes the backup and the browser
+ * saves it. The passphrase goes only to this computer's Ordnung and is forgotten when the dialog closes.
  */
 function BackupDialog({
   open,
@@ -53,6 +55,7 @@ function BackupDialog({
   const submitRef = useRef<HTMLButtonElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
   const min = info?.min_passphrase ?? MIN_PASSPHRASE;
+  const strength = suggested ? null : backupStrengthLine(passphrase, min);
   const busy = download.isPending;
 
   const reset = () => {
@@ -173,8 +176,15 @@ function BackupDialog({
           onVisibleChange={setVisible}
           onSuggest={suggest}
           suggested={suggested}
-          hint={`At least ${min} characters. A short sentence is easy to remember and hard to guess.`}
+          hint="Five or more words that don't belong together — or take the suggested one."
           suggestedHint="Save this passphrase in your password manager (or write it down) before you download."
+          status={
+            strength ? (
+              <p aria-live="polite" className={cn("text-[13px] leading-5", strength.tone === "ok" ? "text-ok-ink" : "text-warn-ink")}>
+                {strength.text}
+              </p>
+            ) : null
+          }
           busy={busy}
           firstRef={firstRef}
         />

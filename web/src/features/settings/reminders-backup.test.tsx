@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -10,7 +12,8 @@ import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
 import { NB_HYPHEN } from "@/lib/glue";
-import { backupSummary, failureSentence, leftOutSentence, passphraseProblem, restoreCommand, restoreCommandPieces, suggestPassphrase } from "./backup";
+import { backupStrengthLine, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, WEAK_PASSPHRASE_MESSAGE } from "./backup";
+import { MIN_PASSPHRASE_BITS, passphraseBits } from "./passphrase";
 import { deleteCalendarNote } from "./calendarSync";
 import { autostartLabel, failureDetail, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
 
@@ -102,28 +105,62 @@ describe("desktop notification helpers", () => {
   });
 });
 
+/** The backup policy as the server has it (`ordnung.backup`): the web app says the same before asking it. */
+const BACKUP_POLICY = readFileSync(resolve(__dirname, "../../../../src/ordnung/backup/__init__.py"), "utf8");
+const STRONG = "orbit velvet canyon maple thunder";
+
 describe("backup helpers", () => {
-  it("checks the passphrase policy and the repeat", () => {
-    expect(passphraseProblem("short", "short")).toEqual({ field: "passphrase", message: "Use at least 12 characters — a short sentence works well." });
+  it("checks the passphrase policy — a new sync folder's strength — and the repeat", () => {
+    expect(passphraseProblem("short", "short")).toEqual({ field: "passphrase", message: "Use a passphrase of at least 12 characters — five or more words that don't belong together work well." });
     expect(passphraseProblem("a".repeat(1025), "a".repeat(1025))?.field).toBe("passphrase");
-    expect(passphraseProblem("a long enough one", "a long enough 0ne")).toEqual({ field: "repeat", message: "The two passphrases differ." });
-    expect(passphraseProblem("a long enough one", "a long enough one")).toBeNull();
+    // long enough, but too easy to guess: a short sentence of common words, four words, one word again and again
+    for (const guessable of ["a long enough one", "the cat sat on the mat today", "correct horse battery staple", "canyon ".repeat(6)]) {
+      expect(passphraseProblem(guessable, guessable)).toEqual({ field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE });
+      expect(passphraseBits(guessable)).toBeLessThan(MIN_PASSPHRASE_BITS);
+    }
+    expect(passphraseProblem(STRONG, `${STRONG}s`)).toEqual({ field: "repeat", message: "The two passphrases differ." });
+    expect(passphraseProblem(STRONG, STRONG)).toBeNull();
+    expect(passphraseProblem(STRONG)).toBeNull();
     expect(passphraseProblem("twenty chars exactly", "twenty chars exactly", 24)?.message).toMatch(/at least 24/);
   });
 
-  it("suggests unambiguous random passphrases without modulo bias", () => {
-    const value = suggestPassphrase();
-    expect(value).toMatch(/^[a-hjkmnp-z2-9]{5}(-[a-hjkmnp-z2-9]{5}){3}$/);
-    expect(suggestPassphrase()).not.toBe(value);
-    // bytes ≥ 248 (the biased tail for 31 letters) are skipped, the rest map in order
-    let calls = 0;
-    const fixed = suggestPassphrase((bytes) => {
-      calls += 1;
-      bytes.fill(calls === 1 ? 255 : 0);
-      return bytes;
-    });
-    expect(calls).toBe(2);
-    expect(fixed).toBe("aaaaa-aaaaa-aaaaa-aaaaa");
+  it("still takes a passphrase Ordnung 0.1.0 suggested, but not a pattern in its shape", () => {
+    // four random groups of five letters and digits: the estimator counts one with few digits as four words
+    for (const earlier of ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]) {
+      expect(passphraseProblem(earlier, earlier)).toBeNull();
+      expect(backupStrengthLine(earlier)?.tone).toBe("ok");
+    }
+    for (const pattern of ["water-water-water-water", "abcde-fghjk-mnpqr-stuvw", "after-these-three-seven", "Fsumn-hqfzc-jgtck-crjwz"]) {
+      expect(passphraseProblem(pattern, pattern)).toEqual({ field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE });
+    }
+    // the server's shape, character for character
+    expect(/^EARLIER_SUGGESTION = re\.compile\(r"(.+)"\)$/m.exec(BACKUP_POLICY)?.[1]).toBe("[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}");
+  });
+
+  it("refuses in the server's words", () => {
+    const weak = /^WEAK_PASSPHRASE_MESSAGE = \(\s*((?:"[^"]*"\s*)+)\)/m.exec(BACKUP_POLICY)?.[1] ?? "";
+    expect([...weak.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("")).toBe(WEAK_PASSPHRASE_MESSAGE);
+    const short = /def length_problem[\s\S]*?return \(\s*((?:f?"[^"]*"\s*)+)\)/.exec(BACKUP_POLICY)?.[1] ?? "";
+    const min = Number(/^MIN_PASSPHRASE_CHARS = (\d+)$/m.exec(BACKUP_POLICY)?.[1]);
+    expect(min).toBe(MIN_PASSPHRASE);
+    expect([...short.matchAll(/"([^"]*)"/g)].map((m) => m[1]).join("").replace("{MIN_PASSPHRASE_CHARS}", String(min))).toBe(passphraseProblem("short")?.message);
+  });
+
+  it("says how strong a new passphrase is while it is typed", () => {
+    expect(backupStrengthLine("")).toBeNull();
+    expect(backupStrengthLine("correct horse battery staple")).toEqual({ tone: "warn", text: expect.stringContaining("add one more word") });
+    expect(backupStrengthLine("cat dog")?.text).toContain("add 3 more words");
+    expect(backupStrengthLine(STRONG)).toEqual({ tone: "ok", text: "Strong enough for a backup kept on another drive or in the cloud." });
+  });
+
+  it("the mock server refuses what the real one refuses", async () => {
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    const post = (passphrase: string) => srv.handle("POST", "/backup", new URLSearchParams(), { passphrase });
+    const weak = await post("a long enough passphrase");
+    expect(weak.status).toBe(422);
+    expect(((await weak.json()) as { detail: string }).detail).toBe(WEAK_PASSPHRASE_MESSAGE);
+    expect((await post("short")).status).toBe(422);
+    expect((await post(STRONG)).status).toBe(200);
   });
 
   it("summarises what a backup holds", () => {
@@ -388,9 +425,18 @@ describe("encrypted backup card", () => {
     expect(first).toHaveAttribute("autocomplete", "new-password");
 
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
-    expect(first).toHaveAccessibleDescription(/Use at least 12 characters/);
+    expect(first).toHaveAccessibleDescription(/Use a passphrase of at least 12 characters/);
+    // long enough, but too easy to guess: said while typing, and refused before the server is asked
     await user.type(first, "a long enough one");
-    await user.type(within(dialog).getByLabelText("Repeat the passphrase"), "a long enough 0ne");
+    expect(within(dialog).getByText(/^Too easy to guess yet: add 3 more words/)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText("Repeat the passphrase"), "a long enough one");
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    expect(first).toHaveAccessibleDescription(WEAK_PASSPHRASE_MESSAGE);
+    await user.clear(first);
+    await user.type(first, STRONG);
+    expect(within(dialog).getByText("Strong enough for a backup kept on another drive or in the cloud.")).toBeInTheDocument();
+    await user.clear(within(dialog).getByLabelText("Repeat the passphrase"));
+    await user.type(within(dialog).getByLabelText("Repeat the passphrase"), `${STRONG}s`);
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
     expect(within(dialog).getByLabelText("Repeat the passphrase")).toHaveAccessibleDescription("The two passphrases differ.");
     expect(calls.some((c) => c.path === "/backup" && c.method === "POST")).toBe(false);
@@ -398,7 +444,9 @@ describe("encrypted backup card", () => {
     await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
     expect(first).toHaveAttribute("type", "text");
     const suggested = (first as HTMLInputElement).value;
-    expect(suggested).toMatch(/^[a-z2-9]{5}(-[a-z2-9]{5}){3}$/);
+    // five made-up words, as hand-off sync suggests: always strong enough
+    expect(suggested).toMatch(/^[bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz](-[bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz][aeiou][bdfgjklmnprstvz]){4}$/);
+    expect(passphraseProblem(suggested, suggested)).toBeNull();
     expect(within(dialog).getByLabelText("Repeat the passphrase")).toHaveValue(suggested);
     expect(first).toHaveAccessibleDescription(/Save this passphrase in your password manager/);
 
@@ -435,8 +483,8 @@ describe("encrypted backup card", () => {
     const card = await openBackupCard();
     await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
     const dialog = await screen.findByRole("dialog");
-    await user.type(within(dialog).getByLabelText("Passphrase"), "a long enough one");
-    await user.type(within(dialog).getByLabelText("Repeat the passphrase"), "a long enough one");
+    await user.type(within(dialog).getByLabelText("Passphrase"), STRONG);
+    await user.type(within(dialog).getByLabelText("Repeat the passphrase"), STRONG);
     // (Enter submits too — the footer button belongs to the form; user-event can't see that, e2e does)
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
     await waitFor(() => expect(within(dialog).getByLabelText("Passphrase")).toHaveAccessibleDescription("Use a passphrase of at most 1024 characters."));

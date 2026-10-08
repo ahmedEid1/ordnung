@@ -117,7 +117,8 @@ def test_a_damaged_original_is_never_sealed(anna: Computer) -> None:  # finding 
     anna.connect()
     anna.add_letter("rotting")
     original = next(p for p in anna.paths.files.rglob("*.pdf"))
-    original.write_bytes(original.read_bytes()[:-1] + b"!")
+    data = original.read_bytes()
+    original.write_bytes(data[:-1] + bytes([data[-1] ^ 0xFF]))  # always a change: the end is random
     with pytest.raises(LocalDamaged):
         anna.s.push(anna.db)
 

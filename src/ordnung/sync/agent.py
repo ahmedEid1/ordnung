@@ -56,7 +56,8 @@ period, then once more at the end (head ``closed``), each at most
 
 **Never raises out of the loop.** Every failure becomes a :class:`~ordnung.sync.status.SyncProblem`
 (logged with codes and counts only — never the passphrase, a letter's name or a path inside
-``files/``), and the server keeps working. A waiting take-over gives up after
+``files/``), and the server keeps working. While the folder doesn't answer (``folder_unreachable``)
+it is looked at every :data:`~ordnung.sync.UNREACHABLE_SCAN_S`. A waiting take-over gives up after
 :data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`, or when the computer it waits for saves a new change of
 the person's, and says why.
 
@@ -116,6 +117,7 @@ from ordnung.sync import (
     STANDBY_MESSAGE,
     START_DECIDE_S,
     TAKE_OVER_WAIT_MAX_S,
+    UNREACHABLE_SCAN_S,
     WAIT_POLL_S,
     WATCH_S,
     NotArrived,
@@ -957,7 +959,13 @@ class SyncAgent:
                 try:
                     await self._periodic()
                 finally:
-                    self._next_scan = time.monotonic() + (WAIT_POLL_S if self._waiting else SCAN_S)
+                    self._next_scan = time.monotonic() + self._look_again_in()
+
+    def _look_again_in(self) -> float:
+        """Seconds until the next look: less often while the folder doesn't answer (a hung share)."""
+        if self.problem is not None and self.problem.code == "folder_unreachable":
+            return UNREACHABLE_SCAN_S
+        return WAIT_POLL_S if self._waiting else SCAN_S
 
     async def _sleep(self) -> None:
         assert self._wake is not None

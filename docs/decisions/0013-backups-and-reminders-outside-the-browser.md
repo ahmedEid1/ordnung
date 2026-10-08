@@ -1,6 +1,7 @@
 # ADR 0013 — Backups and reminders that work while Ordnung is closed
 
-**Status:** accepted · **Date:** 2026-09-27
+**Status:** accepted · **Date:** 2026-09-27 · **Updated:** 2026-10-08 (a new backup's passphrase and key
+costs are a new sync folder's)
 
 ## Context
 Until now reminders were a calendar file and browser notifications that only appear while a tab is
@@ -67,15 +68,27 @@ dependency for four requests). Policy: `ordnung/calendar/caldav.py`.
 
 **The backup is one authenticated, versioned file.** AES-256-GCM in the STREAM construction (1 MiB
 chunks; nonce = random prefix ‖ counter ‖ last flag; the header as associated data), a key from
-scrypt (N = 2¹⁷, r = 8, p = 1) split by HKDF into a data key and a header-MAC key, and a header that
-starts with a magic and a version byte. Chosen over one-shot AES-GCM (the whole backup in memory),
-over a zip with a password (weak or unauthenticated in common tools) and over a new dependency
-(`cryptography` already ships with `pdfminer.six`). What it buys: a wrong passphrase is told apart
-from a changed file before anything is decrypted; a newer format is refused before a key is
-derived; every changed, cut, reordered or appended byte fails; and a crafted header can't make
-scrypt use more than 256 MiB of memory (128·r·N) or p > 2 — the key is derived before the header
-MAC can reject anything, so the reader caps the cost, not only each parameter. The database snapshot is SQLite's online backup, taken in memory, so the copy
+scrypt (N = 2¹⁸, r = 8, p = 1: 256 MiB, as for a sync folder's key file) split by HKDF into a data key and
+a header-MAC key, and a header that starts with a magic and a version byte. Chosen over one-shot
+AES-GCM (the whole backup in memory), over a zip with a password (weak or unauthenticated in common
+tools) and over a new dependency (`cryptography` already ships with `pdfminer.six`). What it buys: a
+wrong passphrase is told apart from a changed file before anything is decrypted; a newer format is
+refused before a key is derived; every changed, cut, reordered or appended byte fails; and a crafted
+header can't make scrypt use more than 256 MiB of memory (128·r·N) or p > 2 — the key is derived
+before the header MAC can reject anything, so the reader caps the cost, not only each parameter. The database snapshot is SQLite's online backup, taken in memory, so the copy
 is consistent while Ordnung runs and no plaintext touches the disk. Policy: `ordnung/backup/`.
+
+**A new backup's passphrase is as strong as a new sync folder's.** A backup goes where a sync folder's key
+file goes — another drive, a cloud folder — and whoever copies it can guess at it offline for years, so
+the rule is the same (ADR 0018). A new backup's passphrase must reach about 70 bits by the estimator a new
+sync folder's meets (`ordnung/passphrase.py`), besides 12–1024 characters, and the CLI and the web app
+suggest five random made-up words. It is checked where a passphrase is chosen (`ordnung backup`, the
+download); a kept copy of hand-off sync uses the sync passphrase, judged when its folder was set up. Two
+exceptions keep backups that worked before the rule working: what Ordnung 0.1.0's dialog suggested (four
+random groups of five letters and digits, about 99 bits) still counts as strong, and a passphrase a script
+gives in `ORDNUNG_BACKUP_PASSPHRASE` that falls short gets a warning, not a refusal, so a scheduled backup
+is still made (12 characters are still required). The key costs went from 2¹⁷ to sync's 2¹⁸ with the same
+change: the header records them, so a backup made with the earlier ones opens as before.
 
 **Restore proves everything before it replaces anything.** It extracts into a staging folder next to
 the target under a name policy (regular files: `ordnung.db`, `manifest.json`, paths under `files/`,
@@ -94,7 +107,11 @@ it on again — also when a crafted backup switched it on.
   another drive or in the cloud without trusting it.
 - A lost passphrase loses the backup — stated before a passphrase is asked for (the dialog's
   description, the CLI's line before the prompt); Ordnung never stores it. The web app offers a
-  random one, with a Copy button, to put into a password manager.
+  random one, with a Copy button, to put into a password manager; the CLI prints one before the prompt.
+- A passphrase that is long but easy to guess (a short sentence of common words) is refused for a new
+  backup; from `ORDNUNG_BACKUP_PASSPHRASE` in a script it gets a warning. The estimator counts words, so
+  many random passwords from a password manager are refused too: symbols don't count, and a run of
+  letters counts as one word at most (16 random letters, digits and symbols almost never reach 70 bits).
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at

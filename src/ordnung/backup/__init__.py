@@ -7,9 +7,18 @@ AES-256-GCM in authenticated chunks, a key from scrypt, a versioned header). Res
 replaces a data folder that holds data unless asked to, and then moves it aside instead of deleting
 it (:mod:`ordnung.backup.restore`).
 
-The passphrase policy for *new* backups: at least :data:`MIN_PASSPHRASE_CHARS` characters and at most
-:data:`MAX_PASSPHRASE_CHARS`; nothing else is judged (a long sentence is a good passphrase).
-Ordnung never stores it: without it the backup can't be opened, by anyone.
+The passphrase policy for *new* backups (:func:`passphrase_problem`): at least
+:data:`MIN_PASSPHRASE_CHARS` characters and at most :data:`MAX_PASSPHRASE_CHARS`, and about
+:data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits by :func:`~ordnung.passphrase.passphrase_bits` — the
+rule of a new sync folder, for the same reason: a backup on another drive or in a cloud folder can be
+copied and guessed at offline for years. It is checked where a passphrase is chosen (``ordnung backup``,
+the browser's download), and both of them suggest a strong one. The estimator counts words, so a random
+password often falls short (symbols don't count, a run of letters counts as one word at most); what
+Ordnung 0.1.0 suggested still counts as strong (:func:`earlier_suggestion`), and a passphrase a script
+gives in ``ORDNUNG_BACKUP_PASSPHRASE`` that falls short only gets a warning, so a scheduled backup is
+still made (its length is checked as ever). Its key takes a sync folder's scrypt costs
+(:data:`DEFAULT_KDF`); a backup made with the earlier, cheaper ones (2^17) opens as before, since the
+header records them. Ordnung never stores the passphrase: without it the backup can't be opened, by anyone.
 
 Where a backup you make goes (:func:`destination`: ``ordnung backup --to``; the browser downloads its
 own): into a folder that exists (under the default name), or as a new file with an extension
@@ -20,16 +29,19 @@ becoming a file of that name on the internal disk.
 
 Writing a backup file (:func:`write_backup_file`): never over an existing file; the file is written under
 a temporary name next to its destination, private to its owner (``0600``), and renamed into place only
-once the last chunk is sealed. It doesn't check where: the one backup file Ordnung writes inside the data
-folder is hand-off sync's *kept copy* (:mod:`ordnung.sync.kept`, ADR 0018) — this computer's data saved
-in ``<data>/sync/kept/`` with the sync passphrase before it is replaced. A kept copy undoes a replacement
-on this computer; it is never synced, and it is lost with this computer's disk and with Delete everything.
+once the last chunk is sealed. It checks only the passphrase's length (:func:`length_problem`), and
+not where: the one backup file Ordnung writes inside the data folder is hand-off sync's *kept copy*
+(:mod:`ordnung.sync.kept`, ADR 0018) — this computer's data saved in ``<data>/sync/kept/`` with the sync
+passphrase before it is replaced (that passphrase was judged when its folder was set up, so a kept copy is
+never refused for it). A kept copy undoes a replacement on this computer; it is never synced, and it is
+lost with this computer's disk and with Delete everything.
 """
 
 from __future__ import annotations
 
 import contextlib
 import os
+import re
 from datetime import date
 from pathlib import Path
 
@@ -45,12 +57,15 @@ from ordnung.backup.container import (
     read_header,
 )
 from ordnung.backup.restore import RestoreResult, TargetInUse, TargetNotFree, restore_backup
+from ordnung.passphrase import COMMON_WORDS, MIN_PASSPHRASE_BITS, is_run, passphrase_bits
 
 __all__ = [
     "DEFAULT_KDF",
+    "EARLIER_SUGGESTION",
     "FILE_SUFFIX",
     "MAX_PASSPHRASE_CHARS",
     "MIN_PASSPHRASE_CHARS",
+    "WEAK_PASSPHRASE_MESSAGE",
     "BackupContents",
     "BackupError",
     "DamagedBackup",
@@ -63,7 +78,9 @@ __all__ = [
     "WrongPassphrase",
     "backup_file_name",
     "check_backup",
+    "earlier_suggestion",
     "estimate",
+    "length_problem",
     "links_left_out",
     "passphrase_problem",
     "read_header",
@@ -74,6 +91,14 @@ __all__ = [
 
 MIN_PASSPHRASE_CHARS = 12
 MAX_PASSPHRASE_CHARS = 1024
+WEAK_PASSPHRASE_MESSAGE = (
+    "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the "
+    "cloud: it counts words, and random characters count for little. Use five or more words that don't "
+    "belong together, each of three letters or more — or take the suggested one."
+)
+#: What Ordnung 0.1.0's backup dialog suggested: four groups of five of 31 letters and digits, drawn at
+#: random (``k7qmx-3vxdp-9tawr-2emnb``: about 99 bits, though the estimator counts each group as a word).
+EARLIER_SUGGESTION = re.compile(r"[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}")
 FILE_SUFFIX = ".ordnung-backup"
 PRIVATE_FILE_MODE = 0o600
 
@@ -83,15 +108,35 @@ def backup_file_name(day: date) -> str:
     return f"ordnung-backup-{day.isoformat()}{FILE_SUFFIX}"
 
 
-def passphrase_problem(passphrase: str) -> str | None:
-    """Why ``passphrase`` can't protect a new backup (``None`` if it can)."""
+def length_problem(passphrase: str) -> str | None:
+    """Why ``passphrase`` is too short or too long for any backup file (``None`` if it isn't)."""
     if len(passphrase) < MIN_PASSPHRASE_CHARS:
         return (
-            f"Use a passphrase of at least {MIN_PASSPHRASE_CHARS} characters — a short sentence works well."
+            f"Use a passphrase of at least {MIN_PASSPHRASE_CHARS} characters — five or more words that "
+            "don't belong together work well."
         )
     if len(passphrase) > MAX_PASSPHRASE_CHARS:
         return f"Use a passphrase of at most {MAX_PASSPHRASE_CHARS} characters."
     return None
+
+
+def earlier_suggestion(passphrase: str) -> bool:
+    """``passphrase`` is one Ordnung 0.1.0 could have suggested (:data:`EARLIER_SUGGESTION`): four
+    different groups, none a run, a keyboard walk or a common word."""
+    if not EARLIER_SUGGESTION.fullmatch(passphrase):
+        return False
+    groups = passphrase.split("-")
+    return len(set(groups)) == len(groups) and not any(is_run(g) or g in COMMON_WORDS for g in groups)
+
+
+def passphrase_problem(passphrase: str) -> str | None:
+    """Why ``passphrase`` can't protect a new backup (``None`` if it can): :func:`length_problem`, then
+    about :data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits, or a suggestion of Ordnung 0.1.0's
+    (:func:`earlier_suggestion`; see the module policy)."""
+    problem = length_problem(passphrase)
+    if problem is not None or earlier_suggestion(passphrase):
+        return problem
+    return WEAK_PASSPHRASE_MESSAGE if passphrase_bits(passphrase) < MIN_PASSPHRASE_BITS else None
 
 
 def _names_a_folder(to: str | Path) -> bool:
@@ -126,7 +171,7 @@ def write_backup_file(
     data_dir: Path, target: Path, passphrase: str, *, kdf: KdfParams = DEFAULT_KDF
 ) -> BackupContents:
     """Write the backup of ``data_dir`` to ``target`` atomically (see the module policy)."""
-    problem = passphrase_problem(passphrase)
+    problem = length_problem(passphrase)
     if problem:
         raise BackupError(problem)
     partial = target.with_name(f".{target.name}.{os.getpid()}.part")

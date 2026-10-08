@@ -107,6 +107,10 @@ class ClaudeNotInstalled(LLMError):
     pass
 
 
+class ClaudeOutdated(ClaudeNotInstalled):
+    """The installed Claude Code is older than Ordnung needs: like a missing one, it is never called."""
+
+
 class ClaudeAuthError(LLMError):
     pass
 

@@ -126,8 +126,23 @@ def test_two_backups_of_the_same_data_differ() -> None:
 
 
 def test_the_default_key_costs_are_the_documented_ones() -> None:
-    assert container.DEFAULT_KDF == KdfParams(log2_n=17, r=8, p=1)
+    """A new backup's key costs what a new sync folder's key file does: 2^18, r 8, p 1 (256 MiB)."""
+    assert container.DEFAULT_KDF == KdfParams(log2_n=18, r=8, p=1)
     assert container.CHUNK_SIZE == 1024 * 1024
+
+
+def test_a_backup_sealed_with_the_real_key_costs_records_them_and_opens() -> None:
+    """The one round trip with the real scrypt costs (every other test here uses cheap ones)."""
+    sealed = seal(b"real costs", kdf=container.DEFAULT_KDF)
+    assert read_header(io.BytesIO(sealed)).kdf == KdfParams(log2_n=18, r=8, p=1)
+    assert open_all(sealed) == b"real costs"
+
+
+def test_a_backup_sealed_with_the_old_key_costs_still_opens() -> None:
+    """Backups written before the costs went up (2^17) keep opening: the header says which costs to use."""
+    sealed = seal(b"made last year", kdf=KdfParams(log2_n=17, r=8, p=1))
+    assert read_header(io.BytesIO(sealed)).kdf == KdfParams(log2_n=17, r=8, p=1)
+    assert open_all(sealed) == b"made last year"
 
 
 def test_the_passphrase_is_read_in_unicode_nfc() -> None:
@@ -247,7 +262,8 @@ def test_key_settings_up_to_256_mib_and_p_2_are_read(log2_n: int, r: int, p: int
 
 
 def test_the_documented_bound_is_the_checked_one() -> None:
-    assert container.DEFAULT_KDF.memory == 128 * 1024 * 1024  # what a written backup costs
+    # what a written backup costs: the most a reader allows
+    assert container.DEFAULT_KDF.memory == container.MAX_SCRYPT_BYTES == 256 * 1024 * 1024
     assert "256 MiB" in (container.__doc__ or "") and "gigabytes" not in (container.__doc__ or "")
 
 

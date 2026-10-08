@@ -24,7 +24,7 @@ export const TEST_HEALTH: Health = {
   simulated_today: TEST_TODAY,
   today: TEST_TODAY,
   backend: "fake",
-  claude: { installed: true, version: "test", path: null, ok: true, detail: null },
+  claude: { installed: true, version: "test", path: null, ok: true, detail: null, needs_version: null },
   model_pinned: null,
   rules_last_checked: "2026-09-25",
   checks: [],

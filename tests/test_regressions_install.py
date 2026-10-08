@@ -15,12 +15,14 @@ import socket
 import subprocess
 import tomllib
 from pathlib import Path
+from typing import Any
 
 import pytest
 from packaging.requirements import Requirement
 from packaging.version import Version
 from typer.testing import CliRunner
 
+import ordnung
 from ordnung import cli, config, doctor
 from ordnung.api import app as app_module
 from ordnung.cli import app
@@ -194,3 +196,112 @@ def test_ci_installs_the_samples_library_versions() -> None:
         assert pins[name] == manifest["generator"]["environment"][name], name
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     assert workflow.count('uv pip install -e ".[dev]" -c constraints.txt') >= 2
+
+
+# --------------------------------------------------------------------------------------------------
+# the version: one place, above every earlier install, and what an update needs
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_package_takes_its_version_from_init_py() -> None:
+    """The release audit: pyproject and ``ordnung/__init__.py`` each said 0.1.0 for 691 commits. The
+    Python package reads its version from ``__init__.py``. A release also changes its copies, which tests
+    compare with it: ``web/package.json`` (``npm version`` in ``web/``), the mocks' health answer,
+    ``web/openapi.json`` (``make openapi``), the demo snapshot (``ordnung demo --rebuild``) and the built
+    web app (``make build-web``); and it adds a CHANGELOG entry."""
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert "version" not in pyproject["project"]
+    assert "version" in pyproject["project"]["dynamic"]
+    assert pyproject["tool"]["hatch"]["version"]["path"] == "src/ordnung/__init__.py"
+
+
+def test_the_version_is_above_the_one_every_earlier_install_reports() -> None:
+    """pip, and so ``pipx upgrade``, keeps a git install whose version didn't go up: every install
+    before the first numbered release reports 0.1.0."""
+    assert Version(ordnung.__version__) > Version("0.1.0")
+
+
+def test_the_installed_version_is_the_package_version() -> None:
+    """What pip, pipx and uv compare is the installed metadata: it must be ``ordnung.__version__``.
+    A development install made before a version change fails here until it is installed again
+    (``make install``)."""
+    assert importlib.metadata.version("ordnung") == ordnung.__version__
+
+
+def test_the_web_app_states_the_package_version() -> None:
+    """The web app's package and the static demo's health answer say the app's version too
+    (``web/openapi.json`` is checked by the OpenAPI contract test)."""
+    package = json.loads((ROOT / "web/package.json").read_text(encoding="utf-8"))
+    lock = json.loads((ROOT / "web/package-lock.json").read_text(encoding="utf-8"))
+    mock = (ROOT / "web/src/mocks/data/system.ts").read_text(encoding="utf-8")
+    assert package["version"] == ordnung.__version__
+    assert lock["version"] == lock["packages"][""]["version"] == ordnung.__version__
+    health = mock.split("export const HEALTH: Health = {", 1)[1].split("\n};", 1)[0]
+    assert f'\n  version: "{ordnung.__version__}",' in health
+
+
+def test_the_changelog_names_this_version_and_the_package_links_to_it() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    repository = "https://github.com/ahmedEid1/ordnung"
+    assert project["urls"]["Repository"] == repository
+    assert project["urls"]["Issues"] == f"{repository}/issues"
+    assert project["urls"]["Changelog"] == f"{repository}/blob/main/CHANGELOG.md"
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert re.search(rf"^## {re.escape(ordnung.__version__)} — \d{{4}}-\d{{2}}-\d{{2}}$", changelog, re.M)
+
+
+def test_the_readme_says_how_to_update() -> None:
+    """The README installed from git but never said how to update; ``pipx upgrade`` alone keeps the old
+    code when the version didn't change (measured with pipx 1.17 on its pip backend)."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    updating = readme.split("### Updating", 1)[1].split("\n## ", 1)[0]
+    for command in ("pipx reinstall ordnung", "uv tool upgrade ordnung", "ordnung doctor"):
+        assert command in updating, command
+
+
+# --------------------------------------------------------------------------------------------------
+# macOS and Windows
+# --------------------------------------------------------------------------------------------------
+
+
+def _ci_jobs() -> dict[str, Any]:
+    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    return dict(workflow["jobs"])
+
+
+def test_ci_runs_the_platform_code_on_macos_and_windows() -> None:
+    """The release audit: every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
+    computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
+    outside pull requests and without failing the run while it is new; every test it names exists."""
+    job = _ci_jobs()["other-systems"]
+    assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
+    assert job["runs-on"] == "${{ matrix.os }}"
+    assert job["if"] == "github.event_name != 'pull_request'"
+    assert job["continue-on-error"] is True
+    tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
+    named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
+    assert "tests/test_platform_smoke.py" in named
+    for name in named:
+        pattern, _, test = name.partition("::")
+        files = list(ROOT.glob(pattern))
+        assert files, f"{name} names no test file"
+        assert not test or f"def {test}(" in files[0].read_text(encoding="utf-8"), f"{name} names no test"
+
+
+def test_the_installed_wheel_reports_the_package_version_in_ci() -> None:
+    for name in ("wheel", "other-systems"):
+        script = "\n".join(step.get("run", "") for step in _ci_jobs()[name]["steps"])
+        assert "src/ordnung/__init__.py" in script and 'ordnung" --version' in script, name
+        assert 'test "$reported" = "ordnung $version"' in script, name
+
+
+def test_a_windows_checkout_keeps_every_file_byte_for_byte() -> None:
+    """Git for Windows checks text files out with CRLF line ends unless the repository says otherwise, and
+    so does pip's clone for ``pipx install git+…``. The demo's snapshot is stamped with a hash of the
+    fixtures' bytes, so there ``ordnung demo`` rebuilt the demo and ``ordnung demo --check`` failed
+    (reproduced with a clone made with ``core.autocrlf=true``)."""
+    files = ["src/ordnung/demo/samples/manifest.json", "src/ordnung/demo/asks.json", "README.md"]
+    files.append(next((ROOT / "src/ordnung/demo/fixtures").rglob("*.json")).relative_to(ROOT).as_posix())
+    attributes = _git("check-attr", "text", "--", *files).stdout.splitlines()
+    assert attributes == [f"{name}: text: unset" for name in files]

@@ -2656,6 +2656,8 @@ export interface components {
             ok: boolean | null;
             /** Detail */
             detail: string | null;
+            /** Needs Version */
+            needs_version: string | null;
         };
         /** ComputationReceipt */
         ComputationReceipt: {
@@ -9991,7 +9993,7 @@ export interface operations {
                     "application/octet-stream": unknown;
                 };
             };
-            /** @description The passphrase is too short or too long (the rule, never the value) */
+            /** @description The passphrase is too short, too long or too easy to guess (the rule, never the value) */
             422: {
                 headers: {
                     [name: string]: unknown;

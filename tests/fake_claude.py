@@ -3,9 +3,9 @@
 
 It stands in for ``claude -p --input-format stream-json --output-format stream-json``: it reads the
 request (one stream-json user message) from stdin and prints the lines of a transcript to stdout
-verbatim — a normal answer, an error result, a broken or oversized line. ``--version`` and
-``auth status`` answer like the real CLI. What a call does is set by the JSON file named in
-``FAKE_CLAUDE_SCENARIO``::
+verbatim — a normal answer, an error result, a broken or oversized line. ``--version`` (the one in
+``FAKE_CLAUDE_VERSION``, else 2.1.5) and ``auth status`` answer like the real CLI. What a call does is
+set by the JSON file named in ``FAKE_CLAUDE_SCENARIO``::
 
     {"log": "<file>", "calls": [{...}, {...}]}
 
@@ -38,7 +38,7 @@ def main(argv: list[str]) -> int:
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         stream.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
     if argv == ["--version"]:
-        print("2.1.5 (Claude Code)")
+        print(os.environ.get("FAKE_CLAUDE_VERSION", "2.1.5 (Claude Code)"))
         return 0
     if argv[:2] == ["auth", "status"]:
         print(json.dumps({"loggedIn": True, "authMethod": "claude.ai"}))

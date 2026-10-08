@@ -8,7 +8,8 @@ import { Glossary } from "@/components/ui/Glossary";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/utils";
 import { CopyCommand } from "./CopyCommand";
-import { BUNDESLAENDER, CLAUDE_INSTALL_CMD, CLAUDE_LOGIN_CMD, LANGUAGES, PRIVACY_STATEMENT } from "./options";
+import { InstallClaude, UpdateClaude } from "./InstallClaude";
+import { BUNDESLAENDER, CLAUDE_LOGIN_CMD, CLAUDE_PLAN_NOTE, LANGUAGES, PRIVACY_STATEMENT } from "./options";
 import { REVISIT_HEADING, WIZARD_STEPS, claudeUsable, returnLine, stepLabel, type ClaudeView, type OnboardingDraft } from "./wizard";
 
 /**
@@ -266,15 +267,27 @@ const VIEW_COPY: Record<ClaudeView, { title: string; text: string }> = {
   ready: { title: "Claude is ready", text: "Signed in and working." },
   unchecked: { title: "Claude is installed", text: "Found on this computer. The sign-in is checked when the first letter is read." },
   signed_out: { title: "Claude is installed, but not signed in", text: "Start it once in your terminal and sign in with your Claude account, then check again." },
-  missing: { title: "Claude isn't installed yet", text: "Install Claude Code once in your terminal (it needs Node.js 18 or newer), then sign in." },
+  outdated: { title: "Claude Code needs an update", text: "The version on this computer is older than Ordnung needs. Update it in your terminal, then check again." },
+  missing: { title: "Claude isn't installed yet", text: "Install Claude Code once in your terminal, then sign in." },
   checking: { title: "Looking for Claude on this computer…", text: "This takes a moment." },
   unknown: { title: "Couldn't check for Claude", text: "Ordnung didn't answer the check. Check again — or continue without AI and connect Claude later in Settings." },
 };
+
+/** A numbered step's title. */
+function FixStep({ n, children }: { n: number; children: ReactNode }) {
+  return (
+    <p className="mb-2 flex items-start gap-2 text-[14px] font-medium text-ink">
+      <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-bold text-on-accent">{n}</span>
+      {children}
+    </p>
+  );
+}
 
 /** After "Check again": what the check found, when it found the same as before. */
 const STILL: Partial<Record<ClaudeView, string>> = {
   missing: "Checked just now — still not found on this computer.",
   signed_out: "Checked just now — still not signed in.",
+  outdated: "Checked just now — still the older version.",
   unknown: "Checked just now — Ordnung still didn't answer.",
 };
 
@@ -293,8 +306,12 @@ export function StepClaude({
 }) {
   const [rechecked, setRechecked] = useState(false);
   const good = claudeUsable(view);
-  const needsFix = view === "missing" || view === "signed_out";
-  const version = good ? programVersion(claude?.version) : null;
+  const needsFix = view === "missing" || view === "signed_out" || view === "outdated";
+  const version = good
+    ? programVersion(claude?.version)
+    : view === "outdated" && claude?.needs_version
+      ? `${programVersion(claude.version) ?? "Claude Code"} — Ordnung needs ${claude.needs_version} or newer`
+      : null;
   const copy = VIEW_COPY[view];
   const note = rechecked ? (checking ? "Checking again…" : STILL[view]) : undefined;
   return (
@@ -329,25 +346,29 @@ export function StepClaude({
         </div>
       </div>
 
-      {needsFix ? (
+      {view === "outdated" ? (
         <ol className="space-y-4">
-          {view === "missing" ? (
-            <li>
-              <p className="mb-2 flex items-start gap-2 text-[14px] font-medium text-ink">
-                <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-bold text-on-accent">1</span>
-                Install Claude Code
-              </p>
-              <CopyCommand command={CLAUDE_INSTALL_CMD} label="install Claude Code" />
-            </li>
-          ) : null}
           <li>
-            <p className="mb-2 flex items-start gap-2 text-[14px] font-medium text-ink">
-              <span className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-accent text-[12px] font-bold text-on-accent">{view === "missing" ? 2 : 1}</span>
-              Start it once and sign in with your Claude account
-            </p>
-            <CopyCommand command={CLAUDE_LOGIN_CMD} label="sign in" />
+            <FixStep n={1}>Update Claude Code</FixStep>
+            <UpdateClaude />
           </li>
         </ol>
+      ) : needsFix ? (
+        <>
+          <ol className="space-y-4">
+            {view === "missing" ? (
+              <li>
+                <FixStep n={1}>Install Claude Code</FixStep>
+                <InstallClaude />
+              </li>
+            ) : null}
+            <li>
+              <FixStep n={view === "missing" ? 2 : 1}>Start it once and sign in with your Claude account</FixStep>
+              <CopyCommand command={CLAUDE_LOGIN_CMD} label="sign in" />
+            </li>
+          </ol>
+          <p className="text-[13px] leading-relaxed text-muted">{CLAUDE_PLAN_NOTE}</p>
+        </>
       ) : null}
 
       {needsFix || view === "unknown" ? (
@@ -367,8 +388,8 @@ export function StepClaude({
           <p className="flex items-start gap-2 text-[13px] leading-relaxed text-muted">
             <Terminal className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
-              Without Claude you can still store letters privately, search them and add your own dates. Reading letters and Ideas need Claude — you can
-              connect it later in Settings.
+              Without Claude you can still store letters privately, search them and add your own dates, with reminders. Reading letters and Ideas need
+              Claude — you can connect it later in Settings.
             </span>
           </p>
         </>

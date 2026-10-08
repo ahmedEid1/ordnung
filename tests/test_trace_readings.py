@@ -6,6 +6,7 @@ an older reading's key facts are not named after the newest one's."""
 
 from __future__ import annotations
 
+import asyncio
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -93,10 +94,8 @@ async def test_a_reading_the_process_did_not_finish_is_stopped_at_the_next_start
 
 async def test_two_readings_of_one_letter_at_once_get_their_own_numbers(ctx: AppContext) -> None:
     doc_id = await read(ctx)
-    assert ctx.worker.concurrency >= 2
-    reprocess(ctx, doc_id)
-    reprocess(ctx, doc_id)
-    await ctx.worker.run_until_idle()
+    # the worker never runs two readings of one letter at once (its jobs wait for each other): read directly
+    await asyncio.gather(*(pipeline.ingest_document(ctx, doc_id, force=True) for _ in range(2)))
     runs = document_trace(ctx.store, doc_id).runs
     assert [run.reading for run in runs] == [3, 2, 1]
     assert [run.model_calls for run in runs] == [1, 1, 1]

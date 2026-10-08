@@ -12,8 +12,9 @@ standing by (``up_to_date``, ``arriving``, ``choice``) and "Use Ordnung here" (`
 
 Hooks for tests: :func:`withhold` / :func:`deliver` mark a version as not arrived / arrived;
 :attr:`FakeEngine.hang` makes every folder call block until it is set; :attr:`FakeEngine.fail_push`
-makes saves fail; :attr:`FakeEngine.calls` records each call's name; :attr:`FakeEngine.on_apply`
-runs inside :meth:`FakeSession.apply` (to prove writes are fenced).
+makes saves fail; :attr:`FakeEngine.calls` records each call's name, and :meth:`FakeEngine.calls_of`
+one computer's calls (two computers share one engine); :attr:`FakeEngine.on_apply` runs inside
+:meth:`FakeSession.apply` (to prove writes are fenced).
 
 The real engine (``ordnung/sync/engine.py``, package P1) replaces it at integration.
 """
@@ -340,18 +341,25 @@ class FakeEngine:
 
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.made: list[tuple[Path, str]] = []  # (the caller's data folder, the call)
         self.hang: threading.Event | None = None
         self.fail_push: BaseException | None = None
         self.on_apply: Callable[[], None] | None = None
         self.resumed = 0
         self.keyrings: dict[Path, MemorySecrets] = {}
 
+    def calls_of(self, data_dir: Path) -> list[str]:
+        """The calls the computer whose data folder is ``data_dir`` made (two share one engine)."""
+        here = Path(data_dir).resolve()
+        return [name for caller, name in self.made if caller == here]
+
     def keyring(self, data_dir: Path) -> MemorySecrets:
         """The password store of the computer whose data folder is ``data_dir``."""
         return self.keyrings.setdefault(Path(data_dir).resolve(), MemorySecrets())
 
-    def _call(self, name: str) -> None:
+    def _call(self, name: str, paths: Paths) -> None:
         self.calls.append(name)
+        self.made.append((paths.data_dir.resolve(), name))
         if self.hang is not None:
             self.hang.wait()
 
@@ -407,7 +415,7 @@ class FakeEngine:
         self.resumed += 1
 
     def inspect_folder(self, value: str, paths: Paths, settings: AppSettings) -> FolderInfo:
-        self._call("inspect_folder")
+        self._call("inspect_folder", paths)
         folder = Path(value).expanduser()
         if not folder.is_absolute():
             return FolderInfo("refused", value, problem="Choose a folder by its full path.")
@@ -438,7 +446,7 @@ class FakeEngine:
         keep: Literal["this", "folder"] | None,
         store: Store | None = None,
     ) -> Connected:
-        self._call("connect")
+        self._call("connect", paths)
         with _FOLDER_LOCK:
             data = _folder_data(folder)
             created = data is None
@@ -513,7 +521,7 @@ class FakeEngine:
         return {"joining": True, "sides": sides}
 
     def open_session(self, paths: Paths, secrets: SecretStore) -> FakeSession:
-        self._call("open_session")
+        self._call("open_session", paths)
         state = _state(paths)
         if state is None:
             raise sync.SyncError("not_connected", sync.NOT_CONNECTED_MESSAGE)
@@ -538,7 +546,7 @@ class FakeEngine:
         return "Saved to the sync folder."
 
     def set_passphrase(self, paths: Paths, secrets: SecretStore, passphrase: str) -> None:
-        self._call("set_passphrase")
+        self._call("set_passphrase", paths)
         state = _state(paths)
         assert state is not None
         data = _folder_data(Path(state["folder"]))
@@ -557,7 +565,7 @@ class FakeEngine:
         dismiss_notice: str | None = None,
         notice: tuple[str, str, str | None] | None = None,
     ) -> None:
-        self._call("change")
+        self._call("change", paths)
         state = _state(paths)
         assert state is not None
         if name is not None:
@@ -581,7 +589,7 @@ class FakeEngine:
     def disconnect(
         self, paths: Paths, secrets: SecretStore, *, forget_passphrase: bool, store: Store | None = None
     ) -> None:
-        self._call("disconnect")
+        self._call("disconnect", paths)
         state = _state(paths)
         if state is None:
             return
@@ -772,7 +780,7 @@ class FakeSession:
         return Path(self.state["folder"])
 
     def scan(self) -> View:
-        self.engine._call("scan")
+        self.engine._call("scan", self.paths)
         state = self.state
         folder = Path(state["folder"])
         if not folder.is_dir():
@@ -815,7 +823,7 @@ class FakeSession:
         return View(computers, None, heads=heads, versions=versions, holder=holder)
 
     def local_view(self, store: Store) -> Local:
-        self.engine._call("local_view")
+        self.engine._call("local_view", self.paths)
         state = self.state
         data = _folder_data(self.folder) or {"versions": {}}
         base = data["versions"].get(state["base"]) if state["base"] else None
@@ -835,7 +843,7 @@ class FakeSession:
         )
 
     def push(self, store: Store, *, reason: str, hand_over: bool = False) -> None:
-        self.engine._call(f"push:{reason}")
+        self.engine._call(f"push:{reason}", self.paths)
         if self.engine.fail_push is not None:
             raise self.engine.fail_push
         if store.get_settings().demo:
@@ -898,7 +906,7 @@ class FakeSession:
             _write_state(self.paths, state)
 
     def stage(self, target: VersionRef) -> Staged:
-        self.engine._call("stage")
+        self.engine._call("stage", self.paths)
         data = _folder_data(self.folder)
         assert data is not None
         version = data["versions"][target.id]
@@ -912,11 +920,11 @@ class FakeSession:
         return Staged(target.id, incoming)
 
     def discard(self, staged: Staged) -> None:
-        self.engine._call("discard")
+        self.engine._call("discard", self.paths)
         shutil.rmtree(staged.path, ignore_errors=True)
 
     def keep_local(self, paths: Paths, why: str) -> Kept:
-        self.engine._call("keep_local")
+        self.engine._call("keep_local", self.paths)
         kept_dir = paths.sync / sync.KEPT_DIR
         kept_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y-%m-%d-%H%M")
@@ -937,7 +945,7 @@ class FakeSession:
         return Kept(name)
 
     def apply(self, staged: Staged, store: Store) -> None:
-        self.engine._call("apply")
+        self.engine._call("apply", self.paths)
         if self.engine.on_apply is not None:
             self.engine.on_apply()
         staged_db = staged.path / "ordnung.db"
@@ -987,7 +995,7 @@ class FakeSession:
             _write_folder(self.folder, data)
 
     def claim(self) -> None:
-        self.engine._call("claim")
+        self.engine._call("claim", self.paths)
         with _FOLDER_LOCK:
             data = _folder_data(self.folder)
             assert data is not None
@@ -1004,7 +1012,7 @@ class FakeSession:
             _write_state(self.paths, state)
 
     def choose(self, store: Store, key: int) -> Chosen:
-        self.engine._call("choose")
+        self.engine._call("choose", self.paths)
         data = _folder_data(self.folder)
         assert data is not None
         state = self.state
@@ -1026,7 +1034,7 @@ class FakeSession:
         )
 
     def forget(self, key: int) -> None:
-        self.engine._call("forget")
+        self.engine._call("forget", self.paths)
         with _FOLDER_LOCK:
             data = _folder_data(self.folder)
             assert data is not None
@@ -1035,7 +1043,7 @@ class FakeSession:
             _write_folder(self.folder, data)
 
     def refill(self, store: Store) -> None:
-        self.engine._call("refill")
+        self.engine._call("refill", self.paths)
         state = self.state
         with _FOLDER_LOCK:
             _write_folder(
@@ -1062,7 +1070,7 @@ class FakeSession:
             _write_state(self.paths, state)
 
     def gc(self) -> None:
-        self.engine._call("gc")
+        self.engine._call("gc", self.paths)
 
     def keep_as_is(self, store: Store) -> None:
-        self.engine._call("keep_as_is")
+        self.engine._call("keep_as_is", self.paths)

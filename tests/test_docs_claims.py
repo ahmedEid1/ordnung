@@ -29,13 +29,14 @@ from ordnung.api.app import openapi_schema
 from ordnung.app_context import AppContext, build_context
 from ordnung.assistant.rules_tools import build_rules_server
 from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
-from ordnung.backup.container import MAX_SCRYPT_BYTES
+from ordnung.backup.container import DEFAULT_KDF, MAX_SCRYPT_BYTES
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
 from ordnung.drafts.template_letters import TEMPLATES
 from ordnung.ingest.extract import ExtractionInput, extraction_request
 from ordnung.ingest.plan import VerifiedItem
 from ordnung.llm.base import LLMRequest
+from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
@@ -609,6 +610,23 @@ async def test_readme_names_exactly_the_rules_tools() -> None:
     assert named == listed
 
 
+@pytest.mark.parametrize("document", ["README.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"])
+def test_the_claude_code_version_needed_is_the_one_ordnung_checks(document: str) -> None:
+    """README's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the app accept."""
+    assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
+        (ROOT / document).read_text(encoding="utf-8")
+    )
+
+
+def test_readme_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
+    """README's Install: Anthropic's installer per system (no Node.js), and the plans that include Claude Code."""
+    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    assert "curl -fsSL https://claude.ai/install.sh | bash" in install
+    assert "irm https://claude.ai/install.ps1 | iex" in install
+    assert "Node.js" not in install and "`claude update`" in install
+    assert "the free Claude plan doesn't include Claude Code" in install
+
+
 def test_readme_lists_every_template_letter() -> None:
     """README's *template letters* list has one entry per template the composer offers."""
     listed = _readme().split("*template letters* — ", 1)[1].split(" · ", 1)[0]
@@ -1070,14 +1088,15 @@ def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
 
 def test_phone_access_answers_only_on_the_home_network() -> None:
     """README: the phone uses Ordnung "over your home Wi-Fi"; privacy.md: phone access answers "only
-    devices on that network — never through a VPN, a tunnel, a container or a virtual machine". The
-    address must be a home-network one (no public, shared-carrier, link-local or loopback address), a
-    client must be in its subnet, and a tunnel's interface is never offered (design § 16.5, amendment M2)."""
+    devices on that network — never through a VPN or a tunnel, nor through a container's or a virtual
+    machine's network unless your router is on it". The address must be a home-network one (no public,
+    shared-carrier, link-local or loopback address), a client must be in its subnet, and a tunnel's
+    interface is never offered, a virtual one only on the router's network (design § 16.5, amendment M2)."""
     net = importlib.import_module("ordnung.phone.net")
     assert "over your home Wi-Fi" in _flat(_readme())
     assert (
-        "answers only devices on that network — never through a VPN, a tunnel, a container or a virtual "
-        "machine"
+        "answers only devices on that network — never through a VPN or a tunnel, nor through a container's "
+        "or a virtual machine's network unless your router is on it"
     ) in _doc("docs/privacy.md")
     for address in ("8.8.8.8", "100.64.0.1", "169.254.1.1", "127.0.0.1", "::1"):
         assert not net.usable(address), address
@@ -1090,6 +1109,11 @@ def test_phone_access_answers_only_on_the_home_network() -> None:
         assert net.is_tunnel(interface), interface
     for interface in ("en0", "wlan0", "Wi-Fi", "eth0"):
         assert not net.is_tunnel(interface), interface
+    external = net.Interface("vEthernet (External)", "192.168.178.20", 24, "Hyper-V Virtual Ethernet Adapter")
+    docker = net.Interface("docker0", "172.17.0.1", 16, "")
+    offered = net.candidate_addresses([external, docker], default="192.168.178.20", router="192.168.178.1")
+    assert [c.address for c in offered] == ["192.168.178.20"]
+    assert not net.candidate_addresses([external, docker], default="192.168.178.20", router="10.0.0.1")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1150,6 +1174,7 @@ _SYNC_NUMBERS: dict[str, Callable[[], object]] = {
     "damaged_minutes": lambda: _whole(sync.DAMAGED_AFTER_S, 60),
     "wants": lambda: sync.WANTS_MAX,
     "folder_timeout_s": lambda: _whole(sync.FOLDER_OP_TIMEOUT_S),
+    "unreachable_minutes": lambda: _whole(sync.UNREACHABLE_SCAN_S, 60),
     "take_over_minutes": lambda: _whole(sync.TAKE_OVER_WAIT_MAX_S, 60),
     "fence_s": lambda: _whole(sync.FENCE_WAIT_S),
     "kept_gib": lambda: _whole(sync.KEPT_WARN_BYTES, _GIB),
@@ -1246,6 +1271,10 @@ _SYNC_CLAIMS: list[tuple[str, str]] = [
     ("docs/SPEC.md", "keeps failing for {damaged_minutes} minutes is damaged"),
     ("docs/SPEC.md", "`wants` (at most {wants})"),
     ("docs/SPEC.md", "Every folder operation gives up after {folder_timeout_s} s"),
+    (
+        "docs/SPEC.md",
+        "while the folder doesn't answer its heads are read every {unreachable_minutes} minutes",
+    ),
     ("docs/SPEC.md", "a waiting take-over ends after {take_over_minutes} minutes"),
     ("docs/SPEC.md", "finish within {fence_s} s"),
     ("docs/SPEC.md", "a warning above {kept_gib} GiB in all"),
@@ -1286,6 +1315,64 @@ def test_the_hand_off_sync_docs_state_the_code_s_numbers(document: str, sentence
 def test_the_sync_key_file_takes_the_most_scrypt_a_backup_reader_allows() -> None:
     """ADR 0018: scrypt "256 MiB, the most a backup reader allows" — and no more (a reader refuses beyond)."""
     assert sync.SYNC_KDF.memory == MAX_SCRYPT_BYTES
+
+
+_ADR_BACKUP = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside-the-browser.md"
+
+#: Every number the backup docs state about a new backup's passphrase and key (``ordnung.backup``).
+_BACKUP_NUMBERS: dict[str, Callable[[], object]] = {
+    "log2_n_sup": lambda: _superscript(DEFAULT_KDF.log2_n),
+    "r": lambda: DEFAULT_KDF.r,
+    "p": lambda: DEFAULT_KDF.p,
+    "kdf_mib": lambda: _whole(DEFAULT_KDF.memory, _MIB),
+    "bits": lambda: _whole(sync.MIN_PASSPHRASE_BITS),
+    "words_word": lambda: {5: "five"}[sync.SUGGESTED_WORDS],
+    "min_chars": lambda: MIN_PASSPHRASE_CHARS,
+    "max_chars": lambda: MAX_PASSPHRASE_CHARS,
+}
+
+#: ``(document, sentence)`` as :data:`_SYNC_CLAIMS`, filled in from :data:`_BACKUP_NUMBERS`.
+_BACKUP_CLAIMS: list[tuple[str, str]] = [
+    (
+        _ADR_BACKUP.name,
+        "a key from scrypt (N = 2{log2_n_sup}, r = {r}, p = {p}: {kdf_mib} MiB, as for a sync",
+    ),
+    (_ADR_BACKUP.name, "A new backup's passphrase must reach about {bits} bits by the estimator"),
+    (
+        "docs/privacy.md",
+        "passphrase with scrypt (N = 2{log2_n_sup}, r = {r}: {kdf_mib} MiB of memory to try one",
+    ),
+    (
+        "docs/privacy.md",
+        "At least {min_chars} characters and about {bits} bits by Ordnung's estimate — {words_word} unrelated "
+        "words, like the {words_word}-word one Ordnung suggests",
+    ),
+    ("docs/SPEC.md", "scrypt parameters N = 2{log2_n_sup} r = {r} p = {p} when written"),
+    (
+        "docs/SPEC.md",
+        "A new backup's passphrase: {min_chars}–{max_chars} characters and at least {bits} bits",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("document", "sentence"),
+    _BACKUP_CLAIMS,
+    ids=[
+        f"{Path(document).stem.split('-')[0]}-{'-'.join(_FIELD.findall(sentence)) or 'text'}"
+        for document, sentence in _BACKUP_CLAIMS
+    ],
+)
+def test_the_backup_docs_state_the_code_s_passphrase_rule_and_key_costs(document: str, sentence: str) -> None:
+    """A new backup's passphrase meets a new sync folder's rule, and its key takes the same scrypt costs: the
+    docs say so with the numbers ``ordnung.backup`` uses."""
+    stated = sentence.format(**{name: _BACKUP_NUMBERS[name]() for name in _FIELD.findall(sentence)})
+    path = _ADR_BACKUP if document == _ADR_BACKUP.name else ROOT / document
+    assert stated in _flat(path.read_text(encoding="utf-8"))
+
+
+def test_a_new_backup_takes_the_key_costs_of_a_new_sync_folder() -> None:
+    assert DEFAULT_KDF == sync.SYNC_KDF
 
 
 def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:

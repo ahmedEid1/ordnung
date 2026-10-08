@@ -93,7 +93,8 @@ for (const [width, height] of [
       await openWizard(page);
       await toStep(page, 4);
       await expect(page.getByRole("status").filter({ hasText: "Claude isn't installed yet" })).toBeVisible();
-      const command = page.locator("code").filter({ hasText: "npm install -g @anthropic-ai/claude-code" });
+      // Anthropic's installer for the browser's system (the PowerShell one on Windows)
+      const command = page.locator("code").filter({ hasText: /^(curl -fsSL https:\/\/claude\.ai\/install\.sh \| bash|irm https:\/\/claude\.ai\/install\.ps1 \| iex)$/ });
       expect(await command.evaluate((el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight)).toBe(true);
       const copy = page.getByRole("button", { name: /^Copy command to install Claude Code/ });
       const c = await box(command);

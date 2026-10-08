@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
-import { CLAUDE_INSTALL_CMD, CLAUDE_LOGIN_CMD } from "@/features/onboarding/options";
-import { claudeState } from "@/features/onboarding/wizard";
+import { InstallClaude, UpdateClaude } from "@/features/onboarding/InstallClaude";
+import { CLAUDE_LOGIN_CMD, CLAUDE_PLAN_NOTE } from "@/features/onboarding/options";
+import { claudeState, type ClaudeState } from "@/features/onboarding/wizard";
 import { cn } from "@/lib/utils";
 import { BreakablePath } from "./DataSection";
 import { FIELD_WIDTH, SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
@@ -151,20 +152,34 @@ function ModelCard({ settings, pinned }: { settings: AppSettings; pinned: string
   );
 }
 
-/** The install / sign-in commands, numbered. */
-function FixSteps({ missing, children }: { missing: boolean; children?: ReactNode }) {
+/** Why Claude can't read letters, for the fix steps. */
+type NotReady = Extract<ClaudeState, "missing" | "signed_out" | "outdated">;
+
+/** The install / sign-in commands — or the update — numbered, with the plan Claude Code needs. */
+function FixSteps({ state, children }: { state: NotReady; children?: ReactNode }) {
+  const missing = state === "missing";
   return (
     <ol className="space-y-4">
-      {missing ? (
+      {state === "outdated" ? (
         <li>
-          <p className="mb-2 text-[14px] font-medium text-ink">1. Install Claude Code</p>
-          <CopyCommand command={CLAUDE_INSTALL_CMD} label="install Claude Code" />
+          <p className="mb-2 text-[14px] font-medium text-ink">1. Update Claude Code</p>
+          <UpdateClaude />
         </li>
-      ) : null}
-      <li>
-        <p className="mb-2 text-[14px] font-medium text-ink">{missing ? "2." : "1."} Start it once and sign in with your Claude account</p>
-        <CopyCommand command={CLAUDE_LOGIN_CMD} label="sign in" />
-      </li>
+      ) : (
+        <>
+          {missing ? (
+            <li>
+              <p className="mb-2 text-[14px] font-medium text-ink">1. Install Claude Code</p>
+              <InstallClaude />
+            </li>
+          ) : null}
+          <li>
+            <p className="mb-2 text-[14px] font-medium text-ink">{missing ? "2." : "1."} Start it once and sign in with your Claude account</p>
+            <CopyCommand command={CLAUDE_LOGIN_CMD} label="sign in" />
+          </li>
+          <li className="text-[13.5px] text-muted">{CLAUDE_PLAN_NOTE}</li>
+        </>
+      )}
       {children}
     </ol>
   );
@@ -181,8 +196,8 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
 
   const rows: [string, ReactNode][] = [
     ["Claude Code", c.installed ? (bareVersion(c.version) ?? "Installed") : "Not found"],
-    // whether you're signed in can only be checked once Claude is there
-    ["Signed in", !c.installed ? null : c.ok === true ? "Yes — working" : c.ok === false ? "No" : "Not checked yet"],
+    // whether you're signed in can only be checked once Claude is there, and recent enough to ask
+    ["Signed in", !c.installed || state === "outdated" ? null : c.ok === true ? "Yes — working" : c.ok === false ? "No" : "Not checked yet"],
     ["Found at", c.path ? <BreakablePath path={c.path} /> : null],
     ["Ordnung", `Version ${health.version}`],
   ];
@@ -196,7 +211,9 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
           ? "Claude is installed"
           : state === "signed_out"
             ? "Claude is installed, but not signed in"
-            : "Claude isn't installed";
+            : state === "outdated"
+              ? "Claude Code needs an update"
+              : "Claude isn't installed";
   const body: ReactNode =
     replay && state !== "ready" ? (
       "Everything you see was read by Claude once and recorded. To read your own letters, install Ordnung and connect Claude — the steps are below."
@@ -208,9 +225,12 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
       <>
         Open a terminal, run <code className={code}>claude</code> once and sign in with your Claude account. Then run the check again.
       </>
+    ) : state === "outdated" ? (
+      `Ordnung needs ${c.needs_version} or newer. Update it, then run the check again.`
     ) : (
-      "Install it once in your terminal (it needs Node.js 18 or newer), then sign in."
+      "Install it once in a terminal, then sign in."
     );
+  const fix: NotReady | null = state === "missing" || state === "signed_out" || state === "outdated" ? state : null;
 
   return (
     <section aria-labelledby="set-claude">
@@ -267,19 +287,19 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
 
         <ModelCard settings={settings} pinned={health.model_pinned} />
 
-        {(state === "missing" || state === "signed_out") && replay ? (
+        {fix && replay ? (
           <details className="card group overflow-clip">
             <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-[14px] font-medium text-ink transition-colors hover:bg-surface-2/60 sm:px-5 [&::-webkit-details-marker]:hidden">
               <ChevronRight className="size-4 shrink-0 text-muted transition-transform group-open:rotate-90" aria-hidden />
               Connect Claude for your own letters
             </summary>
             <div className="border-t border-line px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-              <FixSteps missing={state === "missing"} />
+              <FixSteps state={fix} />
             </div>
           </details>
-        ) : state === "missing" || state === "signed_out" ? (
+        ) : fix ? (
           <SettingsCard title="How to fix it" id="set-claude-fix" description="Open a terminal (Terminal on a Mac, PowerShell on Windows) and run:">
-            <FixSteps missing={state === "missing"}>
+            <FixSteps state={fix}>
               <li className="text-[13.5px] text-muted">Then come back here and press “Run check”.</li>
             </FixSteps>
           </SettingsCard>

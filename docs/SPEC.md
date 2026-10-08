@@ -419,7 +419,11 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   and whose fix on a failure points at that model after the sign-in; and checks the database
   read-only (`PRAGMA quick_check`, schema version); its fix names `ordnung restore FILE --force`. A
   `claude` that can't be started (moved, not executable) is reported as not installed, never a crash,
-  and one not found is looked for again at the next call.
+  and one not found is looked for again at the next call. A `claude --version` older than
+  `MIN_CLAUDE_VERSION` (2.1.0, `llm/claude_cli.py`) fails the doctor, makes the app's zero-token status
+  not ready (`ClaudeStatus.needs_version` names the minimum; the app shows the update command) and is
+  refused by the backend before its first call (`ClaudeOutdated`, a kind of not installed: a letter
+  waits); a version that can't be read is only a warning.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -650,11 +654,12 @@ that ran to the end, plus its newest paused or stopped attempt while it is withi
 lays its spans out from the recorded latencies and hashes its trace ids, so a rebuild stores the same trace.
 
 Rate limits pause the worker globally (`paused_until`, SSE `llm.paused` banner); jobs stay queued.
-Claude not installed or not signed in pauses it too, without an end (`llm.paused` with an empty `until`,
-banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason` "Waiting for
-Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure and ends
-its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`) — and so does each letter
-for Claude claimed meanwhile (put back for 30 s at a time; private and held letters are still read).
+Claude not installed, not signed in or too old pauses it too, without an end (`llm.paused` with an
+empty `until`, banner "Waiting for Claude"). The letter goes back to the queue with `waiting_reason`
+"Waiting for Claude: …" instead of failing — the pipeline puts it back to `queued`, announces no failure
+and ends its reading's trace `paused` (`paused_not_installed`, `paused_not_signed_in`,
+`paused_outdated`) — and so does each letter for Claude claimed meanwhile (put back for 30 s at a time;
+private and held letters are still read).
 Reading resumes once a Claude status check sees Claude ready: `GET /api/health` (a missing or
 signed-out status is kept 15 s, a ready one 10 min) or the worker's own check every 30 s. A `claude`
 found on PATH is used from then on, so installing Claude needs no restart. A reading that finds Claude
@@ -666,7 +671,9 @@ first — while a letter only Claude can read still waits — and reads each let
 from `GET /api/jobs?active_only=true`; a letter waiting for Claude then shows "This letter waits for
 Claude" with the dates list and *Add a date* instead of the stepper.
 On startup `running` jobs return to `queued`. Reprocess = `force` (skip cache read) and replaces
-non-user-modified extracted rows in one transaction. "Keep private (no AI)" skips stages 3–4, and so
+non-user-modified extracted rows in one transaction. While a reading of the letter is queued or running,
+reprocess returns that job instead of queuing another, and the worker never claims a letter's job while
+another job of that letter runs. "Keep private (no AI)" skips stages 3–4, and so
 does a *held* letter (§ 8.1), which ends `held` and publishes no stage events until the person answers.
 
 **E-mail attachments** (`ingest/attachments.py`, policy in its docstring). When an `.eml` is added,
@@ -1274,9 +1281,14 @@ detached.
 
 - **On and off** (`phone/access.py`). Settings → Phone (`PUT /api/phone {enabled, address?, port?,
   home_network}`) turns it on: an address from `phone/net.py` (the network interfaces with their netmasks,
-  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never an interface whose name
-  starts with `utun`, `tun`, `tap`, `wg`, `ppp`, `ipsec`, `tailscale`, `zt`, `docker`, `br-`, `veth`,
-  `virbr`, `vboxnet`, `vmnet`, `vEthernet`, `awdl` or `llw`; the default route's address recommended),
+  read with `ifaddr`; an IPv4 address in 10/8, 172.16/12 or 192.168/16; never a tunnel or VPN — a name,
+  or on Windows the adapter's description, matching `TUNNEL_INTERFACES` (`utun`, `tun`, `tap`, `wg`,
+  `ppp`, `ipsec`, `tailscale`, `zt`, `cscotun`, `gpd`, `nordlynx`, `proton`, "WireGuard", "Wintun",
+  "TAP-", "VPN", "AnyConnect", "PANGP", "Fortinet", "ZeroTier" …); a container's or virtual machine's
+  network — `VIRTUAL_INTERFACES` (`docker`, `br-`, `veth`, `virbr`, `vboxnet`, `vmnet`, `vEthernet`,
+  `lxdbr`, `cni`, `podman`, `bridge`, "Hyper-V", "VirtualBox", "VMware" …) — only when the default
+  gateway is in its subnet; recommended: the address whose subnet holds the default gateway, else the
+  default route's address),
   a port (8767, or the first free one up to 8775; `PUT {port}` takes 1024–65535), the certificates, then
   the listener. Refusals: 409 `unavailable` in the demo (`ordnung demo`, `serve --demo`, a demo folder)
   and without a session token (`--no-token`; the tests' hook may still enable it), `not_set_up` before
@@ -1292,7 +1304,9 @@ detached.
   gone (`problem.code = "address_gone"`, or `no_network`) or when the router's fingerprint — the default
   gateway's address and hardware address, read best effort — differs from the saved one
   (`other_network`; *This is my home network* sends `home_network: true`, which saves the new one), and
-  resumes when both are back; it never moves to another address by itself. Once a day it renews the
+  resumes when both are back; it never moves to another address by itself. With no fingerprint saved
+  (unreadable when turned on), the first one read while the computer has the address — by the watcher,
+  at start or on resuming — is saved; a saved one is never replaced by itself. Once a day it renews the
   server certificate when due and forgets phones unused for 30 days (`by: "unused"`); starting or turning
   on phone access sweeps them too, and the gate refuses (and forgets) one that comes back. `POST
   /api/phone/reset` (*Start over*): off, every phone removed (`by: "reset"`), `<data>/phone/` deleted.
@@ -1322,7 +1336,10 @@ detached.
 - **Sign-in.** A 256-bit token per phone; the record keeps its SHA-256, the previous one and the last 8
   retired ones. The gate changes it at most once an hour, on a page load; the previous one stays valid
   for 120 s after the phone first uses the new one; a retired one seen again removes the phone (`by:
-  "token_reuse"`, notice `token_reuse`). The cookie is re-set on every page load. An unknown cookie gets
+  "token_reuse"`, notice `token_reuse`). A page load with the current sign-in re-sets the cookie; one with
+  the previous sign-in gets a new one only when the current one is unused and older than 120 s (the phone
+  never got it), else its answer sets no cookie — so two page loads that cross the change make one new
+  sign-in between them, whichever answer the browser applies last. An unknown cookie gets
   401 `phone_not_paired` with `removed` (a page load: 303 to `/pair?removed=…`) — `token_reuse`,
   `code_reused` or `unused` while the computer remembers why that sign-in was signed out (memory only),
   else `1` — with `Clear-Site-Data: "cache", "storage"` and an expired cookie. A request is in flight from
@@ -1423,7 +1440,8 @@ outside the database, Delete everything leaves first, a restored backup starts w
   recall attributes), a read error or a timeout is "not arrived", never damage. An object that keeps
   failing for 10 minutes is damaged: the reader lists it in its head's `wants` (at most 64), and a computer
   that holds the content writes it again. Every folder operation gives up after 30 s
-  (`folder_unreachable`).
+  (`folder_unreachable`); until the call that hangs returns, the next ones give up at once (no second
+  thread), and while the folder doesn't answer its heads are read every 3 minutes.
 - **Take-over and pull** (`sync/pull.py`, `sync/agent.py`). *Use Ordnung here* waits until the target has
   arrived (a waiting take-over ends after 30 minutes, or when the target saves a new change of the
   person's), stages and verifies everything in `sync/incoming/` with writes still allowed, then fences: the
@@ -1730,9 +1748,9 @@ Pages:
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
-   encrypted backup (passphrase twice or a suggested one to copy, then the download; how to
-   restore; also offered by "Delete everything"), disclaimer — the static demo explains that it can
-   neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
+   encrypted backup (passphrase twice with a suggested five-word one to copy and its strength, then the
+   download; how to restore; also offered by "Delete everything"), disclaimer — the static demo explains
+   that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
    **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also
@@ -1759,7 +1777,9 @@ Pages:
    in use says "Saved · desktop has it"; a banner opens "Which Ordnung do you want to keep?" (both sides with
    their letters, none chosen).
 10. **Onboarding wizard** (first run): welcome + privacy → region/language/student-permit →
-   name/address (skippable) → Claude check (copyable fixes; "Continue without AI") → drop zone +
+   name/address (skippable) → Claude check (copyable fixes: Anthropic's installer for the browser's
+   system, the package manager its setup page lists for it, npm last; the paid plan Claude Code needs;
+   `claude update` for one older than 2.1.0; "Continue without AI") → drop zone +
    "Explore the demo instead". Its first step also offers "I already use Ordnung on another computer":
    `/join` (outside the shell) joins a sync folder and brings that Ordnung over, profile included.
 11. **Demo tour**: 4 steps (New mail → Idea arrives → Ask → Timeline), skippable, tracked in meta;
@@ -1809,14 +1829,18 @@ or `drafts/` (or one of them being a link) is never followed and is named by `ba
 `GET /api/backup` (`left_out`) before the backup is made.
 
 **Backup format** (`backup/`, ADR 0013): one file = header (`ORDNUNG-BACKUP\n`, format version,
-scrypt parameters N = 2¹⁷ r = 8 p = 1 — a reader accepts at most 256 MiB of scrypt memory and p ≤ 2 —
-salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
+scrypt parameters N = 2¹⁸ r = 8 p = 1 when written (2¹⁷ before; the header says which) — a reader accepts
+at most 256 MiB of scrypt memory and p ≤ 2 — salt, nonce prefix, chunk size, HMAC-SHA256 header MAC) +
 AES-256-GCM STREAM chunks of 1 MiB (nonce = prefix ‖ counter ‖ last flag, the header as associated
 data) holding a tar of `ordnung.db` (online-backup snapshot, in memory), `files/`, `derived/`,
 `drafts/` and a `manifest.json` (versions, row count per table, size and SHA-256 per file).
-Passphrase ≥ 12 characters (NFC). Restore: newer format → refused before any key is derived;
-wrong passphrase → refused at the header MAC; any other change → refused; the archive is extracted
-under a strict name policy into a staging folder next to the target, read to its authenticated
+A new backup's passphrase: 12–1024 characters and at least 70 bits by `passphrase_bits`, as a new sync
+folder's (§12c; `ordnung/passphrase.py`), checked by `ordnung backup` and `POST /api/backup` (the CLI and
+the web app suggest five made-up words); read in NFC. What 0.1.0's dialog suggested (`EARLIER_SUGGESTION`:
+four different random groups of five of 31 letters and digits) also passes, and below 70 bits
+`ORDNUNG_BACKUP_PASSPHRASE` only warns (the length is still required). Restore: newer format → refused
+before any key is derived; wrong passphrase → refused at the header MAC; any other change → refused; the
+archive is extracted under a strict name policy into a staging folder next to the target, read to its authenticated
 end, checked against the manifest (`integrity_check`, schema not newer, row counts), then swapped
 in; a folder with data needs `--force` and is moved to `<folder>.before-restore-<time>`. Each
 restored file's size on disk is checked against the archive's. A restored calendar-sync connection
@@ -1952,7 +1976,7 @@ upsert_suggestion(s) · get_suggestion · update_suggestion · list_suggestions(
 # drafts / notes / chat
 add_draft · get_draft · update_draft · list_drafts · delete_draft · add_note · list_notes · add_chat_message · list_chat_messages
 # jobs (queue of record)
-enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
+enqueue_job(kind, doc_id, force=False) · claim_next_job(kinds) · active_job(doc_id, kinds) · update_job(id, **f) · get_job · list_jobs(active_only) · requeue_running_jobs()
 # activity / accounting / cache
 log_activity(kind, message, ref_type, ref_id, data) · list_activity(limit, *, kinds, data) · last_activity(ref_type, ref_id, kinds)
 log_llm_call(purpose, model, backend, usage, ok, error, cache_hit, …, request_key, prompt_name, prompt_version, served_model, job_id, stage, span_id, repair_of, outcome) → id · usage_stats(recent)

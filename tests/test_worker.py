@@ -414,6 +414,45 @@ async def test_claude_installed_while_ordnung_runs_reads_the_waiting_letter(
         context.close()
 
 
+async def test_an_old_claude_makes_letters_wait_until_it_is_updated(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Claude Code older than Ordnung needs counts as not ready: the letter waits with the update command and
+    nothing is sent to that Claude. Updated while Ordnung runs, the next status check reads the letter."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/bin{os.pathsep}/usr/bin")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    install_fake_claude(bin_dir, tmp_path, TAX_LETTER.extraction(), monkeypatch)
+    monkeypatch.setenv("FAKE_CLAUDE_VERSION", "2.0.9 (Claude Code)")
+    context = build_context(data_dir, backend="claude")
+    app = create_app(context, token=None)
+    app.state.ordnung.claude.missing_ttl_s = 0.0
+    try:
+        async with client_for(app) as client:
+            status = (await client.get("/api/health")).json()["claude"]
+            assert (status["installed"], status["ok"], status["needs_version"]) == (True, False, "2.1.0")
+            document = await add_file(context, TAX_LETTER.pdf(), "tax.pdf")
+            await context.worker.run_until_idle()
+            assert context.worker.waiting_for_claude == worker.OUTDATED_REASON
+            (job,) = context.store.list_jobs(active_only=True)
+            reason = job.waiting_reason or ""
+            assert job.status == "queued" and reason.startswith("Waiting for Claude: Claude Code isn't ")
+            assert "2.1.0 or newer" in reason and "“claude update”" in reason
+            assert not (tmp_path / "calls.jsonl").exists()  # nothing was sent to the old Claude
+
+            monkeypatch.setenv("FAKE_CLAUDE_VERSION", "2.1.5 (Claude Code)")
+            status = (await client.get("/api/health")).json()["claude"]
+            assert (status["ok"], status["needs_version"]) == (True, None)
+            assert context.worker.waiting_for_claude is None
+            assert await context.worker.run_until_idle() == 1
+            read = context.store.get_document(document.id)
+            assert read is not None and read.status in ("processed", "needs_review") and read.title
+    finally:
+        context.close()
+
+
 async def test_a_missing_or_signed_out_claude_is_kept_only_briefly() -> None:
     """The API's status check: someone installing Claude (or signing in) while Ordnung runs is seen at
     the next check, not ten minutes later; every fresh status reaches the listener."""

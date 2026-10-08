@@ -385,9 +385,15 @@ class CountingFs:
 class HangingFs:
     """:class:`~ordnung.sync.folder.FsOps` whose ``hang`` operations block until :meth:`release`."""
 
-    def __init__(self, hang: Iterable[str] = ("stat", "listdir"), inner: FsOps | None = None) -> None:
+    def __init__(
+        self,
+        hang: Iterable[str] = ("stat", "listdir"),
+        inner: FsOps | None = None,
+        paths: Iterable[Path] | None = None,
+    ) -> None:
         self.inner: FsOps = inner or RealFs()
         self.hang = set(hang)
+        self.paths = None if paths is None else set(paths)  # None: every path hangs
         self.released = threading.Event()
 
     def release(self) -> None:
@@ -399,7 +405,8 @@ class HangingFs:
             return method
 
         def blocked(*args: Any) -> Any:
-            self.released.wait()
+            if self.paths is None or (args and args[0] in self.paths):
+                self.released.wait()
             return method(*args)
 
         return blocked

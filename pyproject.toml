@@ -1,6 +1,8 @@
 [project]
 name = "ordnung"
-version = "0.1.0"
+# the package's version is __version__ in src/ordnung/__init__.py ([tool.hatch.version]); a release
+# changes the web app's and the demo's copies too (tests/test_regressions_install.py)
+dynamic = ["version"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 readme = "README.md"
 license = "MIT"
@@ -80,10 +82,16 @@ ordnung = "ordnung.cli:app"
 [project.urls]
 Homepage = "https://github.com/ahmedEid1/ordnung"
 Documentation = "https://github.com/ahmedEid1/ordnung/tree/main/docs"
+Repository = "https://github.com/ahmedEid1/ordnung"
+Issues = "https://github.com/ahmedEid1/ordnung/issues"
+Changelog = "https://github.com/ahmedEid1/ordnung/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/ordnung/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ordnung"]
@@ -91,7 +99,7 @@ artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.hatch.build.targets.sdist]
 # no tests: they need the whole checkout (evals/, scripts/, web/)
-include = ["src/ordnung", "README.md", "LICENSE", "docs"]
+include = ["src/ordnung", "README.md", "CHANGELOG.md", "LICENSE", "docs"]
 artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.ruff]

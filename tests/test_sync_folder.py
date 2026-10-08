@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+import errno
+import io
 import os
+import sys
 import threading
 import time
 from pathlib import Path
+from typing import Any, BinaryIO
 
 import pytest
 
@@ -15,8 +19,10 @@ from ordnung.config import Paths
 from ordnung.models import AppSettings
 from ordnung.sync import KEY_FILE_RE, SyncError
 from ordnung.sync.folder import (
+    MAX_STUCK,
     FileInfo,
     FolderUnreachable,
+    RealFs,
     SyncFolder,
     TimedFs,
     data_folder_synced,
@@ -79,8 +85,8 @@ def test_folder_rules(tmp_path: Path, paths: Paths) -> None:
 
 
 def test_a_folder_that_cant_be_written_is_refused(tmp_path: Path, paths: Paths) -> None:
-    if os.geteuid() == 0:
-        pytest.skip("root writes anywhere")
+    if sys.platform == "win32" or os.geteuid() == 0:
+        pytest.skip("root (and Windows: no folder modes) writes anywhere")
     locked = tmp_path / "locked"
     locked.mkdir()
     locked.chmod(0o500)
@@ -123,7 +129,8 @@ def test_names_in_the_folder_follow_the_patterns(anna: Computer) -> None:
             assert len(rel.name) == 32
         else:
             assert len(rel.parts[1]) == 2 and len(rel.name) == 30
-        assert os.stat(path).st_mode & 0o077 == 0
+        if os.name == "posix":  # Windows has no such modes
+            assert os.stat(path).st_mode & 0o077 == 0
 
 
 def test_own_temp_files_go_foreign_names_stay(anna: Computer) -> None:  # I7, I9, F16
@@ -276,6 +283,20 @@ def test_an_icloud_placeholder_sibling_is_online_only(tmp_path: Path) -> None:
     assert folder.shard("ab")[name].online_only
 
 
+def _folder_threads() -> int:
+    return sum(thread.name == "ordnung-sync-folder" for thread in threading.enumerate())
+
+
+def _problem_once_answered(computer: Computer) -> object:
+    """A round's problem once the hung call returned (it ends on its own thread a moment after release)."""
+    deadline = time.monotonic() + 2
+    while True:
+        found = getattr(computer.round().decision, "problem", None)
+        if found is None or time.monotonic() > deadline:
+            return found
+        time.sleep(0.01)
+
+
 def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:  # finding 22
     hanging = HangingFs(hang=("stat",))
     timed = TimedFs(hanging, timeout=0.2)
@@ -285,7 +306,14 @@ def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:  # finding 22
         folder.is_dir()
     assert time.monotonic() - started < 2
     hanging.release()
-    assert folder.is_dir()  # a fresh thread answers again
+    deadline = time.monotonic() + 2
+    while True:  # once the hung call returns, its thread answers again
+        try:
+            assert folder.is_dir()
+            break
+        except FolderUnreachable:
+            assert time.monotonic() < deadline
+            time.sleep(0.01)
 
 
 def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
@@ -299,6 +327,109 @@ def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
     finally:
         hanging.release()
     threading.Event().wait(0.05)
+
+
+def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: Computer) -> None:
+    """Audit: every look at a hung folder used to leave one more thread stuck in it. A path whose call
+    hangs is unreachable at once, at most MAX_STUCK calls hang, and once they return their threads go."""
+    anna.connect()
+    hanging = HangingFs(hang=("listdir", "stat"))
+    anna.s.folder.fs = TimedFs(hanging, timeout=0.2)
+    anna.s.scanner.folder = anna.s.folder
+    before = _folder_threads()
+    try:
+        for _ in range(10):
+            started = time.monotonic()
+            outcome = anna.round()
+            assert outcome.decision.problem.code == "folder_unreachable"  # type: ignore[attr-defined]
+        assert time.monotonic() - started < 0.2, "unreachable at once, without waiting for a timeout"
+        assert _folder_threads() <= before + MAX_STUCK
+    finally:
+        hanging.release()
+    assert _problem_once_answered(anna) is None
+    deadline = time.monotonic() + 2
+    while _folder_threads() > before + 1:  # a released thread takes the next call, or ends
+        assert time.monotonic() < deadline
+        time.sleep(0.01)
+
+
+def test_one_hung_file_holds_up_only_calls_on_that_file(tmp_path: Path) -> None:
+    """Review: one read that hangs (an online-only file the provider doesn't bring) stopped every later
+    call, this computer's own saves included. Calls on that file give up at once; others go on."""
+    stalled = tmp_path / "stalled"
+    stalled.write_bytes(b"x")
+    hanging = HangingFs(hang=("open_read",), paths=[stalled])
+    timed = TimedFs(hanging, timeout=0.2)
+    before = _folder_threads()
+    try:
+        with pytest.raises(FolderUnreachable):
+            timed.open_read(stalled)
+        for _ in range(5):
+            started = time.monotonic()
+            with pytest.raises(FolderUnreachable):
+                timed.open_read(stalled)
+            assert time.monotonic() - started < 0.2, "the same file gives up at once"
+        with timed.open_new(tmp_path / "saved") as handle:
+            handle.write(b"saved")
+            timed.fsync(handle)
+        assert (tmp_path / "saved").read_bytes() == b"saved"
+        assert _folder_threads() <= before + 2  # the hung call's, and the one that goes on
+    finally:
+        hanging.release()
+
+
+def test_a_handle_left_behind_by_a_hung_call_doesn_t_hold_up_the_next_call(tmp_path: Path) -> None:
+    """Review: a temp file's fsync hangs on a dead share and its handle is given up with bytes still
+    buffered. Once the fsync returns, the handle's last flush must not run in front of the next call."""
+    returned = threading.Event()
+
+    class DeadShare(io.RawIOBase):
+        writes = 0
+
+        def writable(self) -> bool:
+            return True
+
+        def write(self, data: Any) -> int:
+            DeadShare.writes += 1
+            if DeadShare.writes == 1:
+                returned.wait()  # hangs past the deadline, then the share fails
+                raise OSError(errno.EIO, "I/O error")
+            time.sleep(1.0)  # the given-up handle's last flush hangs too
+            return len(data)
+
+    class Fs(RealFs):
+        def open_new(self, path: Path) -> BinaryIO:
+            return io.BufferedWriter(DeadShare())  # type: ignore[return-value]
+
+        def fsync(self, handle: BinaryIO) -> None:
+            handle.flush()
+
+    timed = TimedFs(Fs(), timeout=0.2)
+    handle = timed.open_new(tmp_path / ".temp")
+    handle.write(b"sealed head")
+    with pytest.raises(FolderUnreachable):
+        timed.fsync(handle)
+    with pytest.raises(FolderUnreachable):
+        handle.close()  # its path is stuck: given up at once
+    del handle
+    returned.set()
+    time.sleep(0.05)
+    started = time.monotonic()
+    assert timed.stat(tmp_path).st_mode
+    assert time.monotonic() - started < 0.2
+
+
+def test_calls_hung_on_many_files_hold_a_bounded_number_of_threads(tmp_path: Path) -> None:
+    hanging = HangingFs(hang=("stat",))
+    timed = TimedFs(hanging, timeout=0.05)
+    before = _folder_threads()
+    try:
+        for n in range(MAX_STUCK + 5):
+            with pytest.raises(FolderUnreachable):
+                timed.stat(tmp_path / f"file-{n}")
+        assert _folder_threads() <= before + MAX_STUCK
+    finally:
+        hanging.release()
 
 
 def test_sync_error_kinds_have_statuses() -> None:

@@ -1877,12 +1877,17 @@ class Store:
         """Atomically take the oldest due queued job (optionally of ``kinds``) and mark it running.
 
         Due means ``not_before`` is unset or has passed. ``attempts`` is incremented. Two workers can
-        never claim the same job. Returns ``None`` when nothing is due.
+        never claim the same job, and a document's job waits while another of its jobs runs (a letter
+        is never read twice at once). Returns ``None`` when nothing is due.
         """
         where = _Where()
         where.add("status = 'queued'")
         where.add("(not_before IS NULL OR not_before <= ?)", real_now_iso())  # back-off is real time
         where.within("kind", None if kinds is None else list(kinds))
+        where.add(
+            "(doc_id IS NULL OR doc_id NOT IN "
+            "(SELECT doc_id FROM jobs WHERE status = 'running' AND doc_id IS NOT NULL))"
+        )
         with self.tx() as conn:
             row = conn.execute(
                 f"SELECT id, attempts FROM jobs {where.sql()} ORDER BY created_at, rowid LIMIT 1",
@@ -1905,6 +1910,15 @@ class Store:
     def latest_job(self, doc_id: str) -> Job | None:
         """The newest job of a document (``None`` if it never had one)."""
         return self._one(_JOBS, "doc_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1", (doc_id,))
+
+    def active_job(self, doc_id: str, kinds: Iterable[str]) -> Job | None:
+        """The oldest job of ``kinds`` a document has that is still queued, running or waiting."""
+        where = _Where()
+        where.add("doc_id = ?", doc_id)
+        where.within("kind", list(kinds))
+        where.within("status", _ACTIVE_JOB_STATUSES)
+        found = self._many(_JOBS, f"{where.sql()} ORDER BY created_at, rowid LIMIT 1", where.params)
+        return found[0] if found else None
 
     def list_jobs(self, active_only: bool = False, limit: int | None = None) -> list[Job]:
         """Jobs, newest first; ``active_only`` keeps queued, running and waiting ones."""

@@ -5,8 +5,8 @@ context, the store and the app's "today" through the ``*Dep`` aliases below. The
 API's own background tasks (the on-demand Ideas review), the watched folder (started by the
 lifespan, restarted when its setting changes) and the cached Claude CLI status shown by
 ``GET /api/health`` (never with a model call; probed at most every 10 minutes while Claude is ready,
-every 15 seconds while it is not found or not signed in, so installing it counts at once). "Run check"
-(``GET /api/health?probe=1``) runs the doctor with one tiny live call, at most once a minute.
+every 15 seconds while it is not found, not signed in or too old, so installing it counts at once).
+"Run check" (``GET /api/health?probe=1``) runs the doctor with one tiny live call, at most once a minute.
 
 Every fresh status reaches the running app: a ``claude`` found on PATH becomes the one the model
 backend runs (it looked for the CLI only when Ordnung started), and once Claude is ready the letters
@@ -112,11 +112,23 @@ def _status_detail(installed: bool, signed_in: bool | None) -> str:
 
 
 async def probe_claude_cli() -> ClaudeStatus:
-    """Check the local ``claude`` CLI without spending tokens: ``--version`` and ``auth status``."""
+    """Check the local ``claude`` CLI without spending tokens: ``--version`` and ``auth status``. One older
+    than ``ordnung doctor`` allows (:data:`~ordnung.llm.claude_cli.MIN_CLAUDE_VERSION`) is not ready; a
+    version that can't be read doesn't count (the doctor only warns about it)."""
     path = claude_cli.find_claude()
     if path is None:
         return ClaudeStatus(installed=False, detail=_status_detail(False, None))
     version, auth = await asyncio.gather(claude_cli.version(path), claude_cli.auth_status(path))
+    old = claude_cli.too_old(version)
+    if old is not None:
+        return ClaudeStatus(
+            installed=True,
+            version=version,
+            path=path,
+            ok=False,
+            detail=claude_cli.outdated_message(old),
+            needs_version=claude_cli.version_text(claude_cli.MIN_CLAUDE_VERSION),
+        )
     signed_in = _signed_in(auth)
     return ClaudeStatus(
         installed=True, version=version, path=path, ok=signed_in, detail=_status_detail(True, signed_in)
