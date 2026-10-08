@@ -17,12 +17,14 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from typing import Final, Literal
+from typing import Final, Literal, NamedTuple
 
 from ordnung.models import ComputationReceipt, ComputationStep, Confidence, DateNature, DateSpec, PeriodUnit
 from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import (
+    LAND_DAYS_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
+    VWVFG_FOUR_DAY_FROM,
     DeliveryChannel,
     DeliveryScope,
     resolve_delivery,
@@ -108,6 +110,35 @@ TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
 #: Words for the app's person (who answers the app); the rules tools put them in their own voice.
 TOLD_ARRIVAL: Final = "You told us it arrived on"
 ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
+
+
+class LandWait(NamedTuple):
+    """What confirming a sender's Land may do to one date (:func:`waits_for_sender_land`)."""
+
+    waits: bool
+    """Confirming the Land may change the date."""
+    may_be_late: bool
+    """It is counted backwards: until the Land is confirmed it may be a day late."""
+
+
+def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
+    """Whether confirming ``region`` (a Land code) as the sender's Land may change a date, read from its
+    receipt's warnings, which the engine wrote without the Land.
+
+    A regional holiday it couldn't place (:data:`REGION_UNKNOWN`) may move the date; counted backwards
+    (:data:`REGION_EARLIER`) the date shown may then be a day late. The 3-day delivery rule
+    (:data:`~ordnung.rules.delivery.LAND_DAYS_UNCONFIRMED`) changes only for a Land whose authorities use the
+    4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HB, SL and TH, confirming changes
+    nothing. "May": the holiday in a warning need not be one in ``region``.
+    """
+    waits = may_be_late = False
+    for warning in warnings:
+        earlier = REGION_EARLIER in warning
+        four_days = warning == LAND_DAYS_UNCONFIRMED and region in VWVFG_FOUR_DAY_FROM
+        waits = waits or earlier or four_days or warning.startswith(REGION_UNKNOWN)
+        may_be_late = may_be_late or earlier
+    return LandWait(waits, may_be_late)
+
 
 #: A notice whose written date is the day the contract should END, not the day the notice must arrive
 #: (walkthrough of phase 2: "rechtzeitig zum 31.03.2027 zu kündigen" was filed as "must arrive by 31 Mar"):

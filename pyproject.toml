@@ -6,7 +6,7 @@ dynamic = ["version"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt"]
+license-files = ["LICENSE", "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt", "src/ordnung/rules/data/LICENSE-GeoNames.txt"]
 requires-python = ">=3.11"
 authors = [{ name = "Ahmed Hobeishy" }]
 keywords = ["ai", "agent", "claude", "personal-assistant", "paperwork", "deadlines", "germany", "local-first", "mcp"]
