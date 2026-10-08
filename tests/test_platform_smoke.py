@@ -36,10 +36,9 @@ def test_the_network_interfaces_can_be_listed(monkeypatch: pytest.MonkeyPatch) -
     found = net.interfaces()
     assert isinstance(found, list)
     for row in found:
-        name, address, prefix = row[:3]
-        assert isinstance(name, str)
-        ipaddress.IPv4Address(address)
-        assert prefix is None or isinstance(prefix, int)
+        assert isinstance(row.name, str) and isinstance(row.description, str)
+        ipaddress.IPv4Address(row.address)
+        assert row.prefix is None or isinstance(row.prefix, int)
 
 
 def test_the_addresses_phone_access_offers(
