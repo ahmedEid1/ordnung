@@ -19,6 +19,8 @@ export interface ReceiptModel {
   dueLabel: string;
   /** Label of the send-by date: "Transfer by" for money you send, else "Send by" (the default). */
   sendByLabel?: string;
+  /** Whose date it is: a date counted without their state says so, with the way to choose it. */
+  partyId: string | null;
 }
 
 /** A transfer leaves your account by its send-by date; a letter is posted by it. */
@@ -60,6 +62,7 @@ export function receiptForItem(item: Item): ReceiptModel {
       computed: true,
       dueLabel: dueLabelFor(item),
       sendByLabel: sendByLabelFor(item),
+      partyId: item.party_id,
     };
   }
   const warnings = evidence && (evidence.grounding === "unverified" || !evidence.value_consistent)
@@ -81,6 +84,7 @@ export function receiptForItem(item: Item): ReceiptModel {
     computed: false,
     dueLabel: dueLabelFor(item),
     sendByLabel: sendByLabelFor(item),
+    partyId: item.party_id,
   };
 }
 
@@ -99,5 +103,6 @@ export function receiptForContract(contract: Contract): ReceiptModel | null {
     evidence: contract.evidence[0] ?? null,
     computed: true,
     dueLabel: "Cancel by",
+    partyId: contract.party_id,
   };
 }

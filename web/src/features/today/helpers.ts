@@ -46,6 +46,9 @@ export function ideaActionLabel(s: Suggestion, opts: IdeaActionOptions = {}): st
   return null;
 }
 
+/** The Idea asking for a sender's state (`secretary.sender_land.RULE_ID`): "Answer" opens their details at the question. */
+const SENDER_LAND_RULE = "sender_land";
+
 /** Where an Idea's primary action leads (or null when it acts in place). */
 export function ideaHref(s: Suggestion): string | null {
   const a = s.action;
@@ -65,7 +68,8 @@ export function ideaHref(s: Suggestion): string | null {
       case "contract":
         return contractHref(a.target_id);
       case "party":
-        return `?party=${id}`;
+        // at the State heading, the question next (never on Yes)
+        return s.rule_id === SENDER_LAND_RULE ? `?party=${id}&state=ask` : `?party=${id}`;
       case "draft":
         return `/letters/${id}`;
       default:

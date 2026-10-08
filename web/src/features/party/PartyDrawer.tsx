@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { useReducedMotion } from "motion/react";
 import {
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useCalls, useDrafts, useNumbers, useParty, useUpdateParty } from "@/api/hooks";
-import type { CallSheet, Contract, Document, Item, ItemAside, Party } from "@/api/types";
+import type { CallSheet, Contract, Document, Item, ItemAside, Party, RegionSuggestion } from "@/api/types";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
@@ -43,7 +43,7 @@ import { CONTRACT_CATEGORY_COPY, copyFor, DRAFT_KIND_COPY, documentKindLabel, pa
 import { glueText } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { isIncomingMoney } from "@/lib/payments";
-import { usePartyDrawer } from "@/lib/party-drawer";
+import { usePartyDrawer, useStateRequest } from "@/lib/party-drawer";
 import { useToday } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { contractHref } from "@/features/contracts/links";
@@ -51,6 +51,8 @@ import { isRollingContract } from "@/features/contracts/model";
 import { actionDate, asideNote, countdownMode, dateRole, identifierDisplay, identifierStyle, keepNumbersTogether, looksAbroad, partyTodos, repeatsLabel } from "./model";
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
 import { CallNotes } from "./CallNotes";
+import { SenderLandQuestion } from "./SenderLandQuestion";
+import { senderLandLine } from "./sender-land";
 import { WebsiteLink } from "./WebsiteLink";
 
 /** To-dos listed before "Show N more". */
@@ -469,14 +471,31 @@ function Header({ party }: { party: Party }) {
   );
 }
 
+/** The State section's heading: where "Answer" on an Idea lands (`?state=ask`). */
+const STATE_HEADING = "pty-region";
+
 /**
  * "Which state is this sender in?" — the Land decides which public holidays the dates of its letters skip
  * and, for a Land authority, how many days its post takes to count as delivered. Nothing Ordnung reads tells
- * it for sure, so only the person sets it; until then nationwide holidays and the 3-day rule count, at lower
- * confidence: an earlier date, never a later one. Saved on change: the server recomputes its letters' dates.
+ * it for sure: the postcode on their letter may suggest it, asked above the picker (ADR 0019), but it is
+ * never set by itself and the picker is never preselected. Until the person sets it, nationwide holidays and
+ * the 3-day rule count, at lower confidence: an earlier date, never a later one. Saved on change (or with
+ * Yes): the server recomputes its letters' dates.
+ *
+ * Opened at their state (`?state=`): `ask` focuses the heading — the question comes next, and a stray Enter
+ * there confirms nothing — and `choose` the picker, without the question ("Other state…" on a letter).
  */
-function SenderLand({ party }: { party: Party }) {
+function SenderLand({ party, suggestion }: { party: Party; suggestion: RegionSuggestion | null }) {
   const update = useUpdateParty();
+  const { asked, done } = useStateRequest();
+  // "Other state…": the question rests for this visit
+  const [other, setOther] = useState(asked === "choose");
+  const picker = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (!asked) return;
+    (asked === "choose" ? picker.current : document.getElementById(STATE_HEADING))?.focus();
+    done();
+  }, [asked, done]);
   const shown = update.isPending ? (update.variables.patch.region ?? "") : (party.region ?? "");
   const choose = (value: string) =>
     update.mutate(
@@ -490,14 +509,39 @@ function SenderLand({ party }: { party: Party }) {
         },
       },
     );
+  const chooseOther = () => {
+    setOther(true);
+    const select = picker.current;
+    select?.focus();
+    try {
+      select?.showPicker?.();
+    } catch {
+      // not every browser opens a select's list from code: the focused picker is enough
+    }
+  };
   return (
-    <Section title="State" id="pty-region">
+    <Section title="State" id={STATE_HEADING}>
+      {!party.region && suggestion && !other ? (
+        <SenderLandQuestion
+          party={party}
+          suggestion={suggestion}
+          update={update}
+          onOther={chooseOther}
+          // the question leaves with the saved state: the picker, now showing it, takes the keyboard
+          focusAfterYes={() => picker.current}
+          // the question stays, without "Don't know": the heading takes the keyboard (never Yes)
+          focusAfterDontKnow={() => document.getElementById(STATE_HEADING)}
+          className="mb-3 rounded-xl border border-line bg-surface px-3.5 py-3"
+        >
+          {senderLandLine(suggestion)}
+        </SenderLandQuestion>
+      ) : null}
       <Field
         label="Which state is this sender in?"
         hint="Their deadlines skip that state's public holidays. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule: an earlier date, never a later one."
       >
         {/* German names, as letterheads print them */}
-        <Select value={shown} onChange={(e) => choose(e.target.value)} className="sm:max-w-xs">
+        <Select ref={picker} value={shown} onChange={(e) => choose(e.target.value)} className="sm:max-w-xs">
           <option value="">Don't know</option>
           {BUNDESLAENDER.map((b) => (
             <option key={b.code} value={b.code}>
@@ -668,7 +712,8 @@ export function PartyDrawer() {
           <JumpLinks links={jumps} />
           {party.aliases.length ? <p className="-mt-3 mb-6 break-words text-[13px] leading-5 text-muted">Also known as {party.aliases.join(", ")}</p> : null}
 
-          {looksAbroad(party) ? null : <SenderLand party={party} />}
+          {/* a sender whose stored address (their first letter's) has no postcode keeps it when a later letter suggests one */}
+          {looksAbroad(party) && !data.region_suggestion ? null : <SenderLand key={`state-${party.id}`} party={party} suggestion={data.region_suggestion} />}
 
           <PartyNumbers party={party} copier={{ copy, copied }} />
 

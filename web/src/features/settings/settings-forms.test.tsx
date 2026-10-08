@@ -585,9 +585,12 @@ describe("Region & language", () => {
     expect(state).toHaveAccessibleDescription(
       /Payments you make count the holidays of Nordrhein-Westfalen \(North Rhine-Westphalia\)\./,
     );
-    // a letter's deadlines follow its sender's state, which only the person sets (nationwide until then)
+    // a letter's deadlines follow its sender's state, which only the person sets — or confirms when Ordnung asks
+    // (from the postcode on their letter); nationwide until then
     expect(
-      screen.getByText(/Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state/),
+      screen.getByText(
+        "Where you live decides the holidays for payments you make. Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state or answer Ordnung's question about it.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("Language for explanations").tagName).toBe(
       "SELECT",

@@ -1,4 +1,4 @@
-import type { Party } from "@/api/types";
+import type { Party, RegionSuggestion } from "@/api/types";
 import { ts } from "./constants";
 
 type P = Omit<Party, "aliases" | "identifiers" | "address" | "email" | "phone" | "website" | "notes" | "region" | "ibans" | "created_at" | "updated_at"> &
@@ -40,7 +40,7 @@ export const PARTIES: Party[] = [
     kind: "telecom",
     aliases: ["FunkNetz"],
     identifiers: [{ label: "Kundennummer", value: "7700 4412 09" }],
-    address: "Postfach 10 20 30, 12340 Musterstadt",
+    address: "Wellenweg 7, 12351 Beispielhausen",
     email: "kuendigung@funknetz.example",
     website: "funknetz.example",
   }),
@@ -125,7 +125,7 @@ export const PARTIES: Party[] = [
     name: "TechMarkt Online GmbH",
     kind: "retailer",
     identifiers: [{ label: "Kundennummer", value: "TM-883120" }],
-    address: "Handelsstraße 50, 12341 Musterstadt",
+    address: "Handelsstraße 88, 12353 Beispielburg",
     email: "buchhaltung@techmarkt.example",
     ibans: ["DE70123478000048213000"],
   }),
@@ -194,6 +194,17 @@ export const PARTIES: Party[] = [
     region: "NW", // set, like Muster Tech's: the court payment order's generated receipts count NRW's holidays
   }),
 ];
+
+/**
+ * The state the postcode on a sender's letter suggests (`region_suggestion`, ADR 0019), as the real demo has it:
+ * FunkNetz and TechMarkt, whose letters show Berlin postcodes. The other senders' postcodes are the person's own
+ * town (the server's own-Land check keeps them quiet) or not in the postcode table. No demo date waits for a state,
+ * so the question is asked in their details only. The server fills `idea_id` and `declined` from their Idea.
+ */
+export const REGION_SUGGESTIONS: Readonly<Record<string, Omit<RegionSuggestion, "idea_id" | "declined">>> = {
+  pty_funknetz: { region: "BE", postcode: "12351", doc_id: "doc_phone", waiting: 0, may_be_late: false },
+  pty_techmarkt: { region: "BE", postcode: "12353", doc_id: "doc_tm_dunning", waiting: 0, may_be_late: false },
+};
 
 /** Parties that only exist after a New-mail letter was opened. */
 export const TRAY_ONLY_PARTIES = new Set(["pty_finanzamt", "pty_mahngericht"]);

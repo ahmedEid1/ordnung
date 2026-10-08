@@ -68,7 +68,8 @@ export default defineConfig({
   // Same browser every time, only to fix the order: the guided tour runs first, on the untouched demo
   // (before other tests open New-mail letters); then every page, then the layout sweep (every page and key
   // state at 320–1920 px in light and dark: e2e/layout-sweep.spec.ts), then the layout guards (with the
-  // feedback components: toasts, stepper, receipts — and the app shell), and last the high-stakes
+  // feedback components: toasts, stepper, receipts — the app shell, and a sender's state suggested from the postcode
+  // on their letter: Yes on the demo is set back), and last the high-stakes
   // letters, which re-file demo letters (PATCH kind) and so add the law's to-dos to the shared demo.
   // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
   // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
@@ -89,7 +90,7 @@ export default defineConfig({
     },
     {
       name: "layout",
-      testMatch: /(layout|feedback|shell)\.spec\.ts$/,
+      testMatch: /(layout|feedback|shell|sender-land)\.spec\.ts$/,
       testIgnore: [/girocode-layout\.spec\.ts$/, REAL_APP_SPECS],
       use: desktop,
     },
