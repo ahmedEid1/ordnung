@@ -223,3 +223,50 @@ def test_whatever_passed_before_still_passes() -> None:
     ):
         assert passphrase.word_bits(five) >= MIN_PASSPHRASE_BITS
         assert sync.passphrase_problem(five) is None
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+#: Every number the docs state about the count of random characters, as ``ordnung.passphrase`` has it.
+_NUMBERS: dict[str, Callable[[], object]] = {
+    "min_chars": lambda: passphrase.RANDOM_MIN_CHARS,
+    "lower": lambda: passphrase.LOWER_ALPHABET,
+    "upper": lambda: passphrase.UPPER_ALPHABET,
+    "digits": lambda: passphrase.DIGIT_ALPHABET,
+    "other": lambda: passphrase.OTHER_ALPHABET,
+    "pattern": lambda: passphrase.PATTERN_CHARS,
+    "digit_run": lambda: passphrase.DIGIT_RUN_CHARS,
+    "word": lambda: passphrase.WORD_LETTERS,
+    "share": lambda: round(passphrase.WORDS_SHARE * 100),
+    "apple": lambda: round(passphrase.APPLE_PASSWORD_BITS),
+    "fourteen": lambda: round(passphrase.random_bits("kT9xVbq2MzRw7p")),  # 14 random letters and digits
+}
+
+#: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_NUMBERS`; line breaks and indents
+#: read as one space.
+_CLAIMS: list[tuple[str, str]] = [
+    (
+        "docs/SPEC.md",
+        "Random characters (`random_bits`): {min_chars} characters or more without a space count their "
+        "length × log2 of the alphabet they use ({lower} lower-case letters, {upper} upper-case, {digits} "
+        "digits, {other} other characters, each if used)",
+    ),
+    ("docs/SPEC.md", "a very common word of {pattern} letters or more"),
+    ("docs/SPEC.md", "{digit_run} digits in a row, {pattern} in a run or along a keyboard row or column"),
+    ("docs/SPEC.md", "{pattern} characters again, or words ({word} letters or more"),
+    ("docs/SPEC.md", "those of {pattern} or more making up {share} %"),
+    ("docs/SPEC.md", "count Apple's {apple} bits"),
+    ("src/ordnung/passphrase.py", "(14 letters and digits: about {fourteen} bits)"),
+    ("CHANGELOG.md", "14 random letters and digits are about {fourteen} bits"),
+    (
+        "docs/decisions/0013-backups-and-reminders-outside-the-browser.md",
+        "14 random letters and digits are about {fourteen} bits",
+    ),
+]
+
+
+@pytest.mark.parametrize(("document", "sentence"), _CLAIMS)
+def test_the_docs_state_the_estimator_s_numbers(document: str, sentence: str) -> None:
+    stated = sentence.format(**{name: count() for name, count in _NUMBERS.items()})
+    text = " ".join((ROOT / document).read_text(encoding="utf-8").split())
+    assert stated in text

@@ -19,6 +19,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- A password manager's strong random password now protects a new backup or a new sync folder. 0.2.0
+  counted only words, so symbols and capitals counted nothing and many such passwords were refused. Now
+  random characters count by the alphabet they use (14 random letters and digits are about 83 bits),
+  unless they show a pattern people make: a common word, also in leetspeak, a year or a date, a run or a
+  keyboard walk, a repeat, or a few words with a digit added. Apple's strong passwords
+  ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that passed before, still pass.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds
