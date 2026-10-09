@@ -16,6 +16,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- The web app's licence notices ship with it: `THIRD-PARTY-NOTICES.txt`, next to the built app and among
+  the package's licence files, names every package and font the app bundles (the Inter and Fraunces
+  fonts are under the SIL Open Font License) with its licence text.
 
 ### Fixed
 

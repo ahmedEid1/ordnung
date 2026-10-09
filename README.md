@@ -675,4 +675,8 @@ fictional and marked SPECIMEN.
 
 MIT licensed. See [LICENSE](LICENSE). Postcode data © [GeoNames](https://www.geonames.org/),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode
-([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)).
+([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)). The web app bundles
+open-source packages and the Inter and Fraunces fonts under their own licences (MIT, ISC and the
+SIL Open Font License 1.1); their notices ship with it in
+[`THIRD-PARTY-NOTICES.txt`](src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt), written when the web app is
+built. The Python packages Ordnung runs on are not bundled: pip installs each with its own licence.

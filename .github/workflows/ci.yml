@@ -271,12 +271,14 @@ jobs:
           cd web && npm ci && npx playwright install --with-deps chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
-        # Playwright counts hold. Only this job has both, so here they must run instead of skipping.
+        # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
+        # so here they must run instead of skipping.
         env:
           ORDNUNG_REQUIRE_MOCK_CHECK: "1"
         run: >-
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
+          tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
       - name: Build UI
         run: cd web && npm run build
       - name: Playwright (the demo; then the real app reading with a fake Claude)
