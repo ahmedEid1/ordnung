@@ -137,15 +137,12 @@ def test_rules_branch_coverage_is_a_ci_gate() -> None:
 
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
-    """README.md:232 says 'mypy (strict on the core)': pyproject.toml gives the rules engine the
-    per-module checks of ``mypy --strict``."""
+    """README's quality table says the rules engine has "`mypy` strict on it": pyproject.toml gives the whole
+    package, the rules engine with it, every check of ``mypy --strict``, and no module is let off."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    strict = [o for o in mypy.get("overrides", []) if "ordnung.rules.*" in o["module"]]
-    assert strict and all(
-        strict[0].get(flag) is True
-        for flag in ("disallow_untyped_defs", "disallow_any_generics", "warn_return_any", "strict_equality")
-    )
-    assert strict[0].get("implicit_reexport") is False
+    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung"]
+    assert "overrides" not in mypy
+    assert "`mypy` strict on it" in _readme()
 
 
 def test_demo_check_runs_in_ci() -> None:

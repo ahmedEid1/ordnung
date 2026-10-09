@@ -47,7 +47,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal
+from typing import Literal, cast
 
 from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
@@ -259,7 +259,7 @@ def followup_item_id(draft_id: str) -> str:
 
 def kind_info(kind: str) -> ProofKindInfo:
     """What a proof kind shows (unknown kinds read as "other")."""
-    return PROOF_KINDS.get(kind, PROOF_KINDS["other"])  # type: ignore[call-overload]
+    return PROOF_KINDS.get(cast(ProofKind, kind), PROOF_KINDS["other"])
 
 
 def what_it_shows(kind: str, note: str | None) -> tuple[str, str]:

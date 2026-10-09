@@ -23,7 +23,7 @@ from __future__ import annotations
 import importlib
 import inspect
 from collections.abc import Callable
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -88,7 +88,7 @@ def optional_demo_function(name: str) -> Callable[..., Any] | None:
             continue
         function = getattr(module, name, None)
         if callable(function):
-            return function
+            return cast(Callable[..., Any], function)
     return None
 
 

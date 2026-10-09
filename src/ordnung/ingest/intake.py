@@ -315,7 +315,8 @@ def _pdf_page_image(pdf: pdfium.PdfDocument, index: int) -> Image.Image:
         width, height = page.get_size()  # already rotated by /Rotate, clipped to the CropBox
         bitmap = page.render(scale=PAGE_LONG_SIDE / max(width, height), may_draw_forms=True)
         try:
-            return bitmap.to_pil().convert("RGB")
+            image: Image.Image = bitmap.to_pil()
+            return image.convert("RGB")
         finally:
             bitmap.close()
     finally:

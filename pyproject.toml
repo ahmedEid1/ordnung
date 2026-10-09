@@ -114,29 +114,13 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B", "SIM", "PTH"]
 
+# The whole package gets every check of `mypy --strict` (evals/ and the tests aren't type-checked).
 [tool.mypy]
 python_version = "3.11"
 files = ["src/ordnung"]
+strict = true
 ignore_missing_imports = true
-warn_unused_ignores = true
-check_untyped_defs = true
-no_implicit_optional = true
 plugins = ["pydantic.mypy"]
-
-# The pure core (date rules, recurrence, calendar, clock, ids) gets the checks of `mypy --strict`
-# (`strict` itself is global-only; warn_redundant_casts and warn_unused_configs are too).
-[[tool.mypy.overrides]]
-module = ["ordnung.rules.*", "ordnung.recurrence", "ordnung.calendar.*", "ordnung.clock", "ordnung.ids", "ordnung.money.*"]
-disallow_any_generics = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_decorators = true
-warn_return_any = true
-implicit_reexport = false
-strict_equality = true
-extra_checks = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
