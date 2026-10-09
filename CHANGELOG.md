@@ -19,6 +19,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- A PDF that hides a decompression bomb behind ASCII85 or ASCIIHex data with a stray character in it is
+  refused at upload, as other bombs are. The check read such data strictly and counted nothing, while
+  PDFium, which shows the letter, reads it up to (ASCII85) or past (ASCIIHex) that character. The check's
+  LZW, RunLength, ASCII85 and ASCIIHex decoding now has tests of its own, compared with PDFium's.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds

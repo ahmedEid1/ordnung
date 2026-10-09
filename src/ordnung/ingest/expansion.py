@@ -79,6 +79,14 @@ _REGULAR_RE = re.compile(rb"[^\x00\t\n\x0c\r ()<>\[\]{}/%]*")
 _STRING_RE = re.compile(rb"[()\\]")
 _INTEGER_RE = re.compile(rb"[+-]?\d+")
 _LINE_END_RE = re.compile(rb"\r\n|\n|\r")
+# ASCII85 as PDFium reads it: whitespace is skipped, and the data ends at the first character that is neither
+# a digit (! to u) nor z. A vertical tab is skipped too, as Python's decoder (and so pdfminer) skips it.
+_A85_LEAD_RE = re.compile(rb"\s*<?\s*~")  # pdfminer skips it; PDFium then reads nothing
+_A85_END_RE = re.compile(rb"[^!-uz\t\n\x0b\r ]")
+_A85_SPACE_RE = re.compile(rb"[\t\n\x0b\r ]+")
+_A85_DROPPED_RE = re.compile(rb"(?<![!-u])((?:[!-u]{5})*)[!-u]{1,4}(?=z)")  # a group a z cuts short: dropped
+_A85_TOKEN_RE = re.compile(rb"z+|[!-u]{1,5}")
+_NOT_HEX_RE = re.compile(rb"[^0-9A-Fa-f]+")
 _DICT_WINDOW = 64 * 1024
 _MAX_DICTIONARY = 8 * 1024 * 1024  # a stream's dictionary is a few hundred bytes in a real PDF
 _MAX_DEPTH = 64
@@ -537,19 +545,41 @@ def _pixels(header: bytes) -> int:
 # --------------------------------------------------------------------------------------------------
 
 
-def _pre_decoded(data: bytes, start: int, name: bytes) -> tuple[bytes | None, bool]:
-    """ASCII85/ASCIIHex data from ``start`` to its end marker, decoded (it only shrinks), and whether
-    the marker was found."""
-    end_marker = b"~>" if name in _ASCII85 else b">"
-    end = data.find(end_marker, start)
-    raw = data[start : end if end != -1 else len(data)]
+def _pre_decoded(data: bytes, start: int, name: bytes) -> tuple[bytes, bool]:
+    """ASCII85/ASCIIHex data from ``start`` decoded as PDFium decodes it (at most four times as long: an
+    ASCII85 ``z`` is four zero bytes), and whether its end came before the end of ``data``. ASCII85 ends at
+    the first character that can't be part of it (the ``~`` of ``~>`` too), and a ``<~`` in front is
+    skipped, as pdfminer does; ASCIIHex ends at ``>`` and skips any character that isn't a hex digit.
+    Python's own decoders refuse data with a stray character, which PDFium decodes all the same."""
+    if name in _ASCII85:
+        lead = _A85_LEAD_RE.match(data, start)
+        at = lead.end() if lead else start
+        end = _A85_END_RE.search(data, at)
+        digits = _A85_SPACE_RE.sub(b"", data[at : end.start() if end else len(data)])
+        return _ascii85(_A85_DROPPED_RE.sub(rb"\1", digits)), end is not None
+    end_at = data.find(b">", start)
+    digits = _NOT_HEX_RE.sub(b"", data[start : end_at if end_at != -1 else len(data)])
+    return binascii.unhexlify(digits + b"0" * (len(digits) % 2)), end_at != -1
+
+
+def _ascii85(digits: bytes) -> bytes:
+    """ASCII85 digits and ``z`` (each ``z`` between two groups) decoded as PDFium does: a group above
+    2**32 - 1, which Python refuses, keeps its last 32 bits."""
     try:
-        if name in _ASCII85:
-            return base64.a85decode(raw.strip().removeprefix(b"<~")), end != -1
-        digits = re.sub(rb"\s", b"", raw)
-        return binascii.unhexlify(digits + b"0" * (len(digits) % 2)), end != -1
+        return base64.a85decode(digits)
     except ValueError:
-        return None, end != -1
+        pass
+    out = bytearray()
+    for found in _A85_TOKEN_RE.finditer(digits):
+        token = found.group()
+        if token[0] == ord("z"):
+            out += bytes(4 * len(token))
+            continue
+        value = 0
+        for digit in token + b"u" * (5 - len(token)):  # a last group of 2–4 digits gives 1–3 bytes
+            value = value * 85 + digit - 33
+        out += (value & 0xFFFFFFFF).to_bytes(4, "big")[: len(token) - 1]
+    return bytes(out)
 
 
 def _stages(filters: list[bytes], early_change: int) -> list[_Stage]:
@@ -594,12 +624,10 @@ def _measured(
     """:func:`expanded_size`, and whether the data ran out before the filters reached their end."""
     source = data
     names = list(filters)
-    bounded = False  # the data ends at an ASCII85/ASCIIHex end marker
+    bounded = False  # ASCII85/ASCIIHex data whose end came before the end of the bytes
     if names and (names[0] in _ASCII85 or names[0] in _ASCII_HEX):
-        decoded, bounded = _pre_decoded(data, start, names.pop(0))
-        if decoded is None:
-            return 0, 0, not bounded
-        source, start = decoded, 0
+        source, bounded = _pre_decoded(data, start, names.pop(0))
+        start = 0
     stages = _stages(names, early_change)
     if not stages:
         return 0, 0, False
