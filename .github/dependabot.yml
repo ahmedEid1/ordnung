@@ -1,0 +1,28 @@
+# Weekly update pull requests for the workflow's actions and the web app's packages: minor and patch
+# updates together in one pull request per ecosystem, each major update on its own.
+# Python is left out on purpose: CI and `make install` install the versions pinned in constraints.txt,
+# which `make constraints` writes (CONTRIBUTING.md says how to refresh it).
+# A pull request for web/ changes package-lock.json, so CI's check of the committed web build fails
+# until `make build-web` is run and src/ordnung/web/dist committed on that branch.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "github_actions"]
+    groups:
+      actions-minor-and-patch:
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ["dependencies", "javascript"]
+    open-pull-requests-limit: 5
+    groups:
+      web-minor-and-patch:
+        update-types: ["minor", "patch"]

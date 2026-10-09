@@ -1,8 +1,10 @@
-"""What every copy of Ordnung needs besides the code: the web build's licence notices.
+"""What every copy of Ordnung and every contributor needs besides the code: the web build's licence
+notices, the security policy, the issue forms, the Node pin and the dependency updates.
 
 Written by a release audit: the build stripped every licence comment and no notices file shipped (the
 fonts' SIL Open Font License and the MIT and ISC licences of the bundled code need their notice to
-travel with copies).
+travel with copies), nothing said how to report a vulnerability privately, nothing warned a bug reporter
+against attaching real letters, contributors had no Node pin, and pins moved only by hand.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
 NOTICES = "THIRD-PARTY-NOTICES.txt"
+GITHUB = "https://github.com/ahmedEid1/ordnung"
 
 _needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 #: Skipped without Node and the web app's packages, except where ``ORDNUNG_REQUIRE_MOCK_CHECK=1`` (CI's
@@ -172,3 +175,107 @@ def test_the_readme_says_where_the_bundled_licences_are() -> None:
     disclaimer = readme.split("## Disclaimer", 1)[1]
     assert f"src/ordnung/web/dist/{NOTICES}" in disclaimer
     assert "SIL Open Font License" in disclaimer
+
+
+# --------------------------------------------------------------------------------------------------
+# reporting a vulnerability, a bug or an idea
+# --------------------------------------------------------------------------------------------------
+
+
+def test_security_problems_are_reported_privately() -> None:
+    policy = _text("SECURITY.md")
+    assert f"{GITHUB}/security/advisories/new" in policy
+    assert "Report a vulnerability" in policy
+    assert "private vulnerability reporting" in policy.lower()  # the owner has to turn it on
+    for part in ("phone", "sync folder", "backup", "127.0.0.1", "MCP"):
+        assert part in policy, part
+    assert re.search(r"\*\*Never (send|include|attach) real letters", policy)
+    config = _yaml(".github/ISSUE_TEMPLATE/config.yml")
+    assert config["blank_issues_enabled"] is False
+    assert any(link["url"] == f"{GITHUB}/blob/main/SECURITY.md" for link in config["contact_links"])
+
+
+def _form(path: str) -> dict[str, Any]:
+    form = _yaml(path)
+    assert form["name"] and form["description"], path
+    ids = [element["id"] for element in form["body"] if "id" in element]
+    assert len(ids) == len(set(ids)), path
+    return dict(form)
+
+
+def _warns_against_real_letters(form: dict[str, Any]) -> bool:
+    return any(
+        element["type"] == "markdown"
+        and re.search(r"\*\*Never attach real letters", element["attributes"]["value"])
+        for element in form["body"]
+    )
+
+
+def test_the_bug_report_asks_for_the_version_and_the_doctor_and_warns_against_real_letters() -> None:
+    form = _form(".github/ISSUE_TEMPLATE/bug_report.yml")
+    assert _warns_against_real_letters(form)
+    fields = {element["id"]: element for element in form["body"] if "id" in element}
+    for field, command in (("version", "ordnung --version"), ("doctor", "ordnung doctor")):
+        assert command in json.dumps(fields[field]["attributes"]), field
+        assert fields[field]["validations"]["required"] is True, field
+    assert "ordnung demo" in json.dumps(form)
+    options = fields["no-personal-data"]["attributes"]["options"]
+    assert all(option["required"] is True for option in options)
+
+
+def test_the_feature_request_warns_against_real_letters_too() -> None:
+    assert _warns_against_real_letters(_form(".github/ISSUE_TEMPLATE/feature_request.yml"))
+
+
+# --------------------------------------------------------------------------------------------------
+# contributing: the Node pin, the checks and the dependency updates
+# --------------------------------------------------------------------------------------------------
+
+
+def test_contributors_get_the_node_versions_the_readme_requires() -> None:
+    """README: Node.js 20.19+ or 22.12+ (what Vite 8 needs). The web app's package says so, and
+    `.nvmrc` picks the line CI tests on."""
+    assert "Node.js 20.19+ or 22.12+" in _text("README.md")
+    package = json.loads(_text("web/package.json"))
+    lock = json.loads(_text("web/package-lock.json"))
+    assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
+    assert lock["packages"][""]["engines"] == package["engines"]
+    nvmrc = _text(".nvmrc").strip()
+    assert nvmrc in ("20", "22")
+    steps = [step for job in _yaml(".github/workflows/ci.yml")["jobs"].values() for step in job["steps"]]
+    node = [step["with"] for step in steps if str(step.get("uses", "")).startswith("actions/setup-node@")]
+    assert node
+    for setup in node:
+        assert setup.get("node-version-file") == ".nvmrc" or str(setup.get("node-version")) == nvmrc, setup
+
+
+def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_to_make_constraints() -> None:
+    updates = _yaml(".github/dependabot.yml")["updates"]
+    assert {(update["package-ecosystem"], update["directory"]) for update in updates} == {
+        ("github-actions", "/"),
+        ("npm", "/web"),
+    }
+    for update in updates:
+        assert update["schedule"]["interval"] == "weekly"
+        assert update["labels"]
+        groups = list(update["groups"].values())
+        assert any(sorted(group["update-types"]) == ["minor", "patch"] for group in groups)
+    contributing = _text("CONTRIBUTING.md")
+    assert "make constraints" in contributing and "CONSTRAINTS_ARGS=--upgrade" in contributing
+
+
+def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() -> None:
+    """The checks CONTRIBUTING.md lists are CI's commands with CI's thresholds, word for word."""
+    contributing = _text("CONTRIBUTING.md")
+    for command in ("make install", "make check", "make e2e", "make build-web", "make openapi"):
+        assert command in contributing, command
+    checks = contributing.split("## Checks", 1)[1].split("\n## ", 1)[0]
+    listed = [" ".join(line.split()) for line in checks.splitlines() if line.startswith(".venv/bin/")]
+    jobs = _yaml(".github/workflows/ci.yml")["jobs"]
+    ci = "\n".join(" ".join(step.get("run", "").split()) for job in jobs.values() for step in job["steps"])
+    for needed in ("--cov=ordnung.rules", "ordnung eval", "evals.ask", "ordnung demo --check"):
+        assert any(needed in command for command in listed), needed
+    for command in listed:
+        assert command in ci, command
+    assert re.search(r"\*\*Never (commit|attach|paste|share)[^*]*real letters", contributing)
+    assert "SECURITY.md" in contributing

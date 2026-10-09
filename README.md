@@ -486,7 +486,8 @@ client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-fr
 and `--remove-ledger` takes that entry out again.
 
 **From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them):
+(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](CONTRIBUTING.md) has
+the checks CI runs and how to send a change:
 
 ```bash
 make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
@@ -653,6 +654,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/deadline-rules.md](docs/deadline-rules.md): every rule the engine applies, with its source
 - [docs/privacy.md](docs/privacy.md): what is stored where and what each feature sends
 - [docs/evals.md](docs/evals.md) and [docs/evals-ask.md](docs/evals-ask.md): the two benchmarks
+- [CONTRIBUTING.md](CONTRIBUTING.md): working on Ordnung; [SECURITY.md](SECURITY.md): reporting a
+  vulnerability privately
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to

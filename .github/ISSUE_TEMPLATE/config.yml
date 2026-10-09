@@ -1,0 +1,6 @@
+# Every issue goes through a form, so everyone sees the warning about real letters first.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/ahmedEid1/ordnung/blob/main/SECURITY.md
+    about: Privately, never in an issue. SECURITY.md says how.
