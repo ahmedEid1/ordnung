@@ -26,9 +26,7 @@ issues (policy: :mod:`ordnung.phone`).
 
 from __future__ import annotations
 
-import contextlib
 import ipaddress
-import os
 import secrets
 import shutil
 from dataclasses import dataclass
@@ -42,6 +40,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 from ordnung.config import private_dir
+from ordnung.durable import write_atomic
 
 CA_DAYS = 3650
 LEAF_DAYS = 397
@@ -86,16 +85,7 @@ def _tag() -> str:
 
 def _write_private(path: Path, data: bytes) -> None:
     """Write ``data`` to ``path`` atomically, readable by its owner only (never through a link)."""
-    partial = path.with_name(f".{path.name}.{secrets.token_hex(4)}.part")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
-    fd = os.open(partial, flags, _FILE_MODE)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-        partial.replace(path)
-    finally:
-        with contextlib.suppress(FileNotFoundError):
-            partial.unlink()
+    write_atomic(path, data, mode=_FILE_MODE, sync=False)
 
 
 def _pem_key(key: ec.EllipticCurvePrivateKey) -> bytes:

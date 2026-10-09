@@ -45,6 +45,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from ordnung import durable
 from ordnung.backup.archive import BackupContents, check_backup, estimate, links_left_out, write_backup
 from ordnung.backup.container import (
     DEFAULT_KDF,
@@ -182,7 +183,7 @@ def write_backup_file(
         with os.fdopen(fd, "wb") as out:
             contents = write_backup(data_dir, out, passphrase, kdf=kdf)
             out.flush()
-            os.fsync(out.fileno())
+            durable.fsync(out.fileno())  # F_FULLFSYNC on macOS
         if target.exists():  # appeared while the backup was written
             raise BackupError(f"{target} already exists. Choose another name, or move the old backup first.")
         partial.replace(target)
