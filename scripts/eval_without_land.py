@@ -9,13 +9,15 @@ them; with the sender's Land taken away (``RuleContext.region`` is ``None``; the
 with the state the postcode suggests confirmed (``RuleContext.region`` is what
 ``ordnung.rules.postcodes.suggest_land_why`` gives for the reading's sender, as if the person said Yes to every
 suggestion) — and writes the numbers, how the suggestions compare with the letterhead's Land, and every date
-that differs to ``evals/results/<date>-<model>-without-land.json``. It is a replay only: no model is called,
-and a missing recording is an error. ``evals/conditions.py`` is not changed (it is part of the benchmark's
-fingerprint), and the per-letter cache goes to a temporary folder, never ``evals/results/cache``.
+that differs to ``evals/results/<date>-<model>-without-land.json`` (``--out``: another folder, as CI does to
+compare a replay with the published file). It is a replay only: no model is called, and a missing recording
+is an error. ``evals/conditions.py`` is not changed (it is part of the benchmark's fingerprint), and the
+per-letter cache goes to a temporary folder, never ``evals/results/cache``.
 
 Run it from the repository root::
 
     .venv/bin/python -m scripts.eval_without_land [--date YYYY-MM-DD] [--splits test holdout holdout2 holdout3 dev]
+        [--out FOLDER]
 """
 
 from __future__ import annotations
@@ -260,8 +262,8 @@ async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, A
     }
 
 
-def results_path(run_date: str, model: str) -> Path:
-    return RESULTS_DIR / report.results_filename(run_date, model, "without-land")
+def results_path(run_date: str, model: str, folder: Path = RESULTS_DIR) -> Path:
+    return folder / report.results_filename(run_date, model, "without-land")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -271,9 +273,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--model", default=DEFAULT_MODEL, help=f"the recordings' model (default: {DEFAULT_MODEL})"
     )
     parser.add_argument("--splits", nargs="+", choices=SPLITS, default=list(SPLITS), help="splits to replay")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_DIR,
+        metavar="FOLDER",
+        help=f"folder for the results file (default: {RESULTS_DIR.parent.name}/{RESULTS_DIR.name})",
+    )
     args = parser.parse_args(argv)
     results = asyncio.run(build(args.splits, args.model, args.run_date))
-    path = report.write_json(results_path(args.run_date, args.model), results)
+    path = report.write_json(results_path(args.run_date, args.model, args.out), results)
     for split, numbers in results["splits"].items():
         suggestion = numbers["suggestion"]
         print(
