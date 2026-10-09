@@ -83,6 +83,21 @@ def test_case_accents_and_punctuation_do_not_count() -> None:
     assert not is_the_person("U. Rivera", SAM)
 
 
+@pytest.mark.parametrize(
+    ("addressee", "profile_name"),
+    [
+        ("Ayşe Öztürk", "Ayse Ozturk"),
+        ("Jürgen Müller", "Jurgen Muller"),
+        ("Jurgen Muller", "Jürgen Müller"),
+        ("Mueller", "Max Müller"),
+        ("Herrn Ö. Öztürk", "Ömer Ozturk"),
+    ],
+)
+def test_an_umlaut_may_be_written_as_a_plain_vowel_or_with_an_e(addressee: str, profile_name: str) -> None:
+    assert is_the_person(addressee, profile_name)
+    assert addressed_to(_letter(), _reading(addressee), profile_name) is None
+
+
 def test_nothing_is_said_without_something_to_compare() -> None:
     letter = _letter()
     assert addressed_to(letter, _reading("Alex Rivera"), "") is None  # the profile has no name yet

@@ -8,7 +8,7 @@ whose letter it is: it stays filed, reminded and counted as the person's, and no
 1. Nothing is said for a letter that isn't one received (``direction == "incoming"``), has no stored
    reading, or whose reading names no one; nor while the profile has no name, as there is nothing to
    compare with.
-2. Names are compared word by word. Case, accents (ä = ae, ß = ss) and punctuation don't count, and
+2. Names are compared word by word. Case, accents (ä = ae or a, ß = ss) and punctuation don't count, and
    neither do the titles Dr. and Prof. The addressee's leading courtesy words (Herr, Herrn, Frau, An,
    z. Hd., Mr, Mrs, Ms, Mx, Miss) are left out. Whatever follows "c/o" is where the letter goes, not who
    it is for.
@@ -47,13 +47,24 @@ _HOUSEHOLD_SIGN: Final = re.compile(r"[&+]|\S\s+u\.\s+\S", re.IGNORECASE)
 _CARE_OF: Final = re.compile(r"\bc\s*/\s*o\b", re.IGNORECASE)
 
 
-def _fold(text: str) -> str:
-    folded = unicodedata.normalize("NFKC", text).casefold().translate(_TRANSLIT)
+def _fold(text: str, *, umlauts: bool = True) -> str:
+    """``text`` without case and accents: ä is ae (``umlauts``) or a, ß is ss."""
+    folded = unicodedata.normalize("NFKC", text).casefold()
+    folded = folded.translate(_TRANSLIT) if umlauts else folded
     return "".join(char for char in unicodedata.normalize("NFKD", folded) if not unicodedata.combining(char))
 
 
 def _words(text: str) -> list[str]:
     return [word for word in _WORD.findall(_fold(text)) if word not in _TITLES]
+
+
+def _spellings(text: str) -> list[tuple[str, ...]]:
+    """Each word of a name with the ways it is spelled: an umlaut written with an e or as a plain vowel
+    ("Müller" is "Mueller" and "Muller")."""
+    words, plain = _WORD.findall(_fold(text)), _WORD.findall(_fold(text, umlauts=False))
+    if len(plain) != len(words):
+        plain = words
+    return [(word, other) for word, other in zip(words, plain, strict=True) if word not in _TITLES]
 
 
 def _for_whom(addressee: str) -> str:
@@ -73,11 +84,13 @@ def _names_others(addressee: str) -> bool:
     return bool(_HOUSEHOLD_SIGN.search(addressee)) or any(word in _HOUSEHOLD for word in _words(addressee))
 
 
-def _same_word(a: str, b: str) -> bool:
-    return a == b or (len(a) == 1 and b.startswith(a)) or (len(b) == 1 and a.startswith(b))
+def _same_word(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
+    return any(
+        x == y or (len(x) == 1 and y.startswith(x)) or (len(y) == 1 and x.startswith(y)) for x in a for y in b
+    )
 
 
-def _within(words: list[str], others: list[str]) -> bool:
+def _within(words: list[tuple[str, ...]], others: list[tuple[str, ...]]) -> bool:
     return all(any(_same_word(word, other) for other in others) for word in words)
 
 
@@ -87,7 +100,7 @@ def is_the_person(addressee: str, profile_name: str) -> bool:
     for_whom = _for_whom(addressee)
     if _names_others(for_whom):
         return False
-    theirs, mine = _words(_without_courtesy(for_whom)), _words(profile_name)
+    theirs, mine = _spellings(_without_courtesy(for_whom)), _spellings(profile_name)
     if not theirs or not mine:
         return True
     return _within(theirs, mine) or _within(mine, theirs)
