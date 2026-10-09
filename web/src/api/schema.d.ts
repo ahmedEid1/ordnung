@@ -213,7 +213,8 @@ export interface paths {
          * @description Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
          *     it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
          *     added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
-         *     letter, never here.
+         *     letter, never here. The scanner's text counts only on pages without text of their own and is never
+         *     returned (ADR 0020).
          */
         get: operations["list_documents_api_documents_get"];
         put?: never;
