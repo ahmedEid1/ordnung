@@ -85,6 +85,7 @@ suggests it next (:func:`next_prompt_day`).
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -527,12 +528,12 @@ def _never_read(doc: Document) -> bool:
 
 
 def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
-    pending = pending_items(ledger)
+    open_by_doc = Counter(item.doc_id for item in pending_items(ledger))
     fresh = [doc for doc in ledger.documents.values() if window.after(doc.created_at)]
     unread = [doc for doc in ledger.documents.values() if not window.after(doc.created_at) and is_unread(doc)]
 
     def open_count(doc: Document) -> int:
-        return sum(1 for item in pending if item.doc_id == doc.id)
+        return open_by_doc[doc.id]
 
     def row(doc: Document) -> WeekEntry:
         count = open_count(doc)

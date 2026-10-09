@@ -144,7 +144,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q"
 markers = [
-  "slow: replays every recorded reading, or times pages against a wall-clock budget; CI runs these once, without coverage (-m slow)",
+  "slow: replays every recorded reading, times pages against a wall-clock budget, or counts the lines a page runs (sys.settrace, which coverage uses too); CI runs these once, without coverage (-m slow)",
 ]
 
 [tool.coverage.run]

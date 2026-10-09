@@ -461,6 +461,23 @@ def test_dunning_escalation(store: Store, ids: dict[str, str]) -> None:
     assert ideas(store, "dunning_escalation") == []
 
 
+def test_a_reminder_refers_to_its_senders_latest_invoice_before_it(store: Store, ids: dict[str, str]) -> None:
+    """The reminder (of 18 Sep) refers to TechMarkt's latest invoice dated on or before it (20 Aug): not an
+    older one, not a later one, nor another sender's."""
+    tech = store.get_document(ids["doc_dunning"]).party_id  # type: ignore[union-attr]
+    other = store.add_party(name="Elektro Beispiel GmbH", kind="retailer").id
+    for label, day, party in (
+        ("july", "2026-07-02", tech),
+        ("later", "2026-09-20", tech),
+        ("other", "2026-09-10", other),
+    ):
+        add_doc(
+            store, f"invoice-{label}", kind="invoice", title=f"Invoice {label}", doc_date=day, party_id=party
+        )
+    (idea,) = ideas(store, "dunning_escalation")
+    assert {ref.id for ref in idea.refs if ref.type == "document"} == {ids["doc_dunning"], ids["doc_invoice"]}
+
+
 def test_scam_warning_quotes_both_accounts(store: Store, ids: dict[str, str]) -> None:
     found = ideas(store, "scam_warning")
     assert len(found) == 1

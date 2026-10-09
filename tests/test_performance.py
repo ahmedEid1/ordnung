@@ -10,9 +10,11 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import re
+import sys
 import threading
 import time
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import contextmanager
 from datetime import date, timedelta
 from pathlib import Path
@@ -29,6 +31,8 @@ from ordnung.ingest import pipeline
 from ordnung.ingest.pipeline import add_file
 from ordnung.models import DocumentExtraction, Evidence, Identifier, PaymentDetails
 from ordnung.secretary import triggers
+from ordnung.secretary.week import pending_items
+from ordnung.views import weekly_session
 from test_api_support import Api, api_for, client_for
 
 TODAY = date(2026, 9, 28)
@@ -38,6 +42,10 @@ SENDERS = 97
 BUDGET_S = 1.5
 #: Seconds for every request of a page together.
 PAGE_BUDGET_S = 3.0
+#: Letters of the small and the large library of the growth check: four times the letters (and senders).
+GROWTH_LETTERS = (100, 400)
+#: How much more work the large library may take: about four times as much, never sixteen.
+GROWTH_LIMIT = 5.5
 
 _PARTY_KINDS = ("utility", "telecom", "insurer", "health_insurer", "retailer", "landlord", "bank", "gym")
 _SENDER_WORDS = ("Stadtwerke", "Netz", "Versicherung", "Kasse", "Handel", "Wohnen", "Bank", "Fitness")
@@ -323,6 +331,72 @@ async def test_pages_answer_in_time(api: Api) -> None:
             slow[url] = round(took, 2)
     assert not slow, f"slower than {BUDGET_S}s with {LETTERS} letters: {slow}"
     assert total < PAGE_BUDGET_S, f"{total:.2f}s for every ledger page with {LETTERS} letters"
+
+
+# --------------------------------------------------------------------------------------------------
+# The work grows with the library, never with its square
+# --------------------------------------------------------------------------------------------------
+
+
+def lines_run(work: Callable[[], object], package: str = str(Path("ordnung") / "secretary")) -> int:
+    """How many lines of ``package`` ``work`` runs: a measure of its work that doesn't depend on the machine."""
+    count = 0
+
+    def line(frame: Any, event: str, arg: Any) -> Any:
+        nonlocal count
+        count += event == "line"
+        return line
+
+    def call(frame: Any, event: str, arg: Any) -> Any:
+        return line if package in frame.f_code.co_filename else None
+
+    sys.settrace(call)
+    try:
+        work()
+    finally:
+        sys.settrace(None)
+    return count
+
+
+@pytest.mark.slow  # counts lines with sys.settrace, the hook coverage uses
+def test_the_ideas_refresh_and_the_week_page_grow_with_the_letters_not_their_square(tmp_path: Path) -> None:
+    """Four times the letters and senders take about four times the work: no letter's or sender's to-dos are
+    found by looking through every to-do. The Week page counted each new letter's open to-dos that way, and
+    the Ideas refresh (after every reading) looked through every to-do for each letter before asking whether
+    it was a payment reminder, and through every letter for each reminder and each sender."""
+    work: dict[int, tuple[int, int]] = {}
+    for letters in GROWTH_LETTERS:
+        with Store.open(Paths(tmp_path / str(letters))) as store:
+            fill_inbox(store, letters, senders=letters // 4)
+            # twice: the second run changes nothing, so the counted one reads the rows already loaded
+            triggers.run_and_reconcile(store, TODAY)
+            triggers.run_and_reconcile(store, TODAY)
+            ideas = lines_run(lambda: triggers.run_and_reconcile(store, TODAY))
+            weekly_session(store, TODAY)
+            week = lines_run(lambda: weekly_session(store, TODAY))
+            work[letters] = (ideas, week)
+    (small_ideas, small_week), (large_ideas, large_week) = (work[letters] for letters in GROWTH_LETTERS)
+    assert large_ideas / small_ideas < GROWTH_LIMIT, work
+    assert large_week / small_week < GROWTH_LIMIT, work
+
+
+def test_the_week_page_counts_each_new_letters_open_to_dos(inbox: Path) -> None:
+    """Every letter of the big inbox is new this week (a bulk import): each row the step shows says how many of
+    its letter's to-dos are open, or that it has none."""
+    with Store.open(Paths(inbox)) as store:
+        open_by_letter: dict[str, int] = {}
+        for item in pending_items(triggers.Ledger(store, TODAY)):
+            open_by_letter[item.doc_id or ""] = open_by_letter.get(item.doc_id or "", 0) + 1
+        new = next(step for step in weekly_session(store, TODAY).steps if step.id == "new")
+    counted = 0
+    for entry in new.entries:
+        found = re.fullmatch(r"(\d+) open to-dos?", entry.note or "")
+        if found:
+            assert int(found[1]) == open_by_letter[entry.doc_id or ""], entry
+            counted += 1
+        elif entry.note == "Nothing to do — filed.":
+            assert entry.doc_id not in open_by_letter, entry
+    assert counted and new.more > 0, new
 
 
 # --------------------------------------------------------------------------------------------------

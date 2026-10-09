@@ -564,6 +564,8 @@ class Ledger:
         self._replies: dict[str, Document | None] = {}
         self._call_notes: list[CallNote] | None = None
         self._price_windows: list[PriceIncreaseWindow] | None = None
+        self._items_by_doc: dict[str, list[Item]] | None = None
+        self._items_by_party: dict[str, list[Item]] | None = None
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -577,6 +579,25 @@ class Ledger:
     def active_items(self) -> list[Item]:
         """Open (or woken-up snoozed) items."""
         return [item for item in self.items if is_active(item, self.today)]
+
+    def items_of(self, doc_id: str) -> list[Item]:
+        """A letter's to-dos, whatever their status, in ledger order (indexed once per Ledger: a page or the Ideas
+        refresh that looks at every letter's to-dos never scans every to-do for each letter)."""
+        if self._items_by_doc is None:
+            self._items_by_doc = {}
+            for item in self.items:
+                if item.doc_id:
+                    self._items_by_doc.setdefault(item.doc_id, []).append(item)
+        return self._items_by_doc.get(doc_id, [])
+
+    def items_of_party(self, party_id: str) -> list[Item]:
+        """A sender's to-dos, whatever their status, in ledger order (indexed once per Ledger, as :meth:`items_of`)."""
+        if self._items_by_party is None:
+            self._items_by_party = {}
+            for item in self.items:
+                if item.party_id:
+                    self._items_by_party.setdefault(item.party_id, []).append(item)
+        return self._items_by_party.get(party_id, [])
 
     def actionable_items(self) -> list[Item]:
         """Active items that are safe to present as something to do (none :meth:`is_set_aside`)."""
@@ -608,10 +629,14 @@ class Ledger:
                 for doc in self.documents.values()
                 if doc.kind in PAYMENT_DEMAND_KINDS and not self.scam_reasons(doc)
             ]
+            in_case: dict[str, list[Document]] = {}  # a reminder covers only letters of its own case
+            for doc in self.documents.values():
+                if doc.case_id:
+                    in_case.setdefault(doc.case_id, []).append(doc)
             self._rows.covered = {
                 doc.id: reminder
                 for reminder in sorted(reminders, key=lambda d: (d.doc_date or "", d.created_at, d.id))
-                for doc in self.documents.values()
+                for doc in in_case.get(reminder.case_id or "", [])
                 if reminder_covers(reminder, doc)
             }
         return self._rows.covered
@@ -1625,15 +1650,21 @@ def please_check(ledger: Ledger) -> list[Suggestion]:
     return ideas
 
 
-def _earlier_invoice(ledger: Ledger, dunning: Document) -> Document | None:
+def _invoices_by_sender(ledger: Ledger) -> dict[str, list[Document]]:
+    """Dated invoices by sender (party id)."""
+    invoices: dict[str, list[Document]] = {}
+    for doc in ledger.documents.values():
+        if doc.kind == "invoice" and doc.party_id and doc.doc_date:
+            invoices.setdefault(doc.party_id, []).append(doc)
+    return invoices
+
+
+def _earlier_invoice(dunning: Document, invoices: dict[str, list[Document]]) -> Document | None:
+    """The sender's latest invoice dated on or before the reminder (:func:`_invoices_by_sender`)."""
     candidates = [
         doc
-        for doc in ledger.documents.values()
-        if doc.kind == "invoice"
-        and doc.party_id
-        and doc.party_id == dunning.party_id
-        and doc.doc_date
-        and (dunning.doc_date is None or doc.doc_date <= dunning.doc_date)
+        for doc in invoices.get(dunning.party_id or "", [])
+        if dunning.doc_date is None or (doc.doc_date or "") <= dunning.doc_date
     ]
     return max(candidates, key=lambda doc: (doc.doc_date or "", doc.id), default=None)
 
@@ -1661,12 +1692,14 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
     court payment order, a public body's is collected by the body itself (:data:`PUBLIC_CREDITOR_KINDS`)."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    active = ledger.active_items()
+    invoices = _invoices_by_sender(ledger)
     for doc in ledger.documents.values():
+        if doc.kind != "dunning":
+            continue
         payments = [
             i
-            for i in active
-            if i.doc_id == doc.id
+            for i in ledger.items_of(doc.id)
+            if is_active(i, today)
             and i.kind == "payment"
             and i.due_date
             # a date code took from the letter is to be checked: never a "Pay" nudge
@@ -1674,7 +1707,7 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             and not ledger.is_superseded_by_reminder(i)
             and not ledger.is_covered_by_attachment(i)
         ]
-        if doc.kind != "dunning" or not payments or ledger.scam_reasons(doc):
+        if not payments or ledger.scam_reasons(doc):
             continue  # letters with scam signs get a scam warning instead of "pay"
         payment = min(payments, key=lambda i: (action_day(i) or today, i.id))
         act = action_day(payment) or today
@@ -1686,7 +1719,7 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             if days < 0
             else f"Pay {who} reminder{amount} by {day_label(act, today)}"
         )
-        invoice = _earlier_invoice(ledger, doc)
+        invoice = _earlier_invoice(doc, invoices)
         invoice_day = parse_day(invoice.doc_date) if invoice else None
         party = ledger.parties.get(doc.party_id) if doc.party_id else None
         body = _sentences(
@@ -1798,12 +1831,13 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
     document's warnings."""
     ideas: list[Suggestion] = []
     today = ledger.today
-    active = ledger.active_items()
     for doc in ledger.documents.values():
         reasons = ledger.scam_signs(doc)
         if not reasons:
             continue
-        pay_days = [action_day(i) for i in active if i.doc_id == doc.id and i.kind == "payment"]
+        pay_days = [
+            action_day(i) for i in ledger.items_of(doc.id) if is_active(i, today) and i.kind == "payment"
+        ]
         due = min((day for day in pay_days if day is not None), default=None)
         body = _sentences(
             *reasons,
