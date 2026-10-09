@@ -1,0 +1,1 @@
+import{f as e,h as t}from"./index-COOdxyWX.js";import{n,r,t as i}from"./reduced-motion-2fDGfAC9.js";var a=t(e(),1);function o(){!n.current&&i();let[e]=(0,a.useState)(r.current);return e}export{o as t};
