@@ -23,7 +23,8 @@ if str(ROOT) not in sys.path:
 
 from evals import conditions, report  # noqa: E402
 from evals.records import load_manifest, select_entries  # noqa: E402
-from evals.run import DEFAULT_MODEL, MANIFEST_PATH  # noqa: E402
+from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR  # noqa: E402
+from scripts import eval_without_land  # noqa: E402
 from scripts.eval_without_land import (  # noqa: E402
     changed_dates,
     changed_with_suggestion,
@@ -366,6 +367,31 @@ def test_the_published_replay_keeps_the_first_version_s_two_replays() -> None:
     for split, numbers in first.items():
         for key in ("entries", "letterhead_land", "with_land", "without_land", "changed"):
             assert second[split][key] == numbers[key], (split, key)
+
+
+def test_out_writes_the_results_into_that_folder_and_nothing_into_evals_results(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI replays the splits with ``--out`` to a temporary folder and compares them with the published file;
+    without ``--out`` the file still goes to ``evals/results``."""
+
+    async def replayed(splits: list[str], model: str, run_date: str) -> dict[str, Any]:
+        return {
+            "schema": report.WITHOUT_LAND_SCHEMA,
+            "meta": {"date": run_date, "model": model},
+            "splits": {},
+        }
+
+    monkeypatch.setattr(eval_without_land, "build", replayed)
+    before = sorted(RESULTS_DIR.iterdir())
+    assert (
+        eval_without_land.main(["--date", "2026-10-08", "--splits", "dev", "--out", str(tmp_path / "out")])
+        == 0
+    )
+    name = report.results_filename("2026-10-08", DEFAULT_MODEL, "without-land")
+    assert json.loads((tmp_path / "out" / name).read_text(encoding="utf-8"))["meta"]["date"] == "2026-10-08"
+    assert sorted(RESULTS_DIR.iterdir()) == before
+    assert eval_without_land.results_path("2026-10-08", DEFAULT_MODEL) == RESULTS_DIR / name
 
 
 @pytest.mark.slow

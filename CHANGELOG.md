@@ -16,6 +16,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
+  sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
+  own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
+  Weekly, it fails once the rules were last checked against the law more than 90 days ago, and checks that a
+  freshly installed Claude Code (the newest, and 2.1.0) still takes every flag Ordnung passes, without
+  signing in.
 
 ### Fixed
 
@@ -32,6 +38,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   as its other files are; before, they could still sit in the drive's cache.
 - A big library stays quick: the weekly review, and the Ideas worked out again after each letter is read,
   no longer slow down with the square of the number of letters and senders.
+- A PDF that hides a decompression bomb behind ASCII85 or ASCIIHex data with a stray character in it is
+  refused at upload, as other bombs are. The check read such data strictly and counted nothing, while
+  PDFium, which shows the letter, reads it up to (ASCII85) or past (ASCIIHex) that character. The check's
+  LZW, RunLength, ASCII85 and ASCIIHex decoding now has tests of its own, compared with PDFium's.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds

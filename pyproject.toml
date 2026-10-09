@@ -134,3 +134,9 @@ markers = [
 [tool.coverage.run]
 source = ["ordnung"]
 omit = ["src/ordnung/web/*"]
+branch = true
+
+[tool.coverage.report]
+# the whole package's floor (line and branch coverage of `pytest -m "not slow" --cov=ordnung`), a little under
+# what it measures; CI adds floors for ordnung/sync and ordnung/phone, and keeps the rules engine at 100 %
+fail_under = 94
