@@ -1,7 +1,8 @@
 /**
  * The strength of a new passphrase — a new backup's and a new sync folder's alike: the server's estimator
- * (`src/ordnung/passphrase.py`), counted the same way, and the five made-up words both suggest. The numbers mirrored
- * here are pinned to it by `sync.test.tsx`.
+ * (`src/ordnung/passphrase.py`, whose description says how it counts), counted the same way, and the five made-up
+ * words both suggest. The numbers mirrored here are pinned to it by `sync.test.tsx` and `passphrase.test.ts`, and both
+ * estimators are held to the same vectors (`passphraseVectors.json`).
  */
 
 /** A new backup's or sync folder's passphrase needs about this many bits by {@link passphraseBits} (`MIN_PASSPHRASE_BITS`). */
@@ -21,6 +22,8 @@ const DIGIT_BITS = Math.log2(10);
 const COMMON_WORD_BITS = 7;
 /** Keyboard rows (`KEYBOARD_ROWS`): a token along one, either way, is a walk. */
 export const KEYBOARD_ROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm", "qwertzuiop", "asdfghjklöä", "yxcvbnm", "azertyuiop", "qsdfghjklm", "wxcvbn", "1234567890"];
+/** Keyboard columns, QWERTY and QWERTZ (`KEYBOARD_COLUMNS`): four along one is a walk in random characters. */
+export const KEYBOARD_COLUMNS = ["1qaz", "1qay", "2wsx", "3edc", "4rfv", "5tgb", "6yhn", "6zhn", "7ujm"];
 /** Very common words, case-folded (`COMMON_WORDS_TEXT`, word for word). */
 export const COMMON_WORDS_TEXT =
   "a about after all also an and any are as at back be because but by can come could day did do even " +
@@ -40,8 +43,30 @@ export const COMMON_WORDS_TEXT =
   "princess football master shadow test ordnung";
 export const COMMON_WORDS = new Set(COMMON_WORDS_TEXT.split(" "));
 
+/** Random characters count from this many on (`RANDOM_MIN_CHARS`). */
+export const RANDOM_MIN_CHARS = 12;
+/** The alphabet random characters count: lower-case letters, upper-case, digits, other characters, each if used (`LOWER_ALPHABET` …). */
+export const LOWER_ALPHABET = 26;
+export const UPPER_ALPHABET = 26;
+export const DIGIT_ALPHABET = 10;
+export const OTHER_ALPHABET = 33;
+/** A very common word, a run, a keyboard walk or a repeat makes a pattern from this many characters on (`PATTERN_CHARS`) … */
+export const PATTERN_CHARS = 4;
+/** … digits in a row from this many (`DIGIT_RUN_CHARS`) … */
+export const DIGIT_RUN_CHARS = 5;
+/** … a word from this many letters (`WORD_LETTERS`) … */
+export const WORD_LETTERS = 3;
+/** … and words when those of {@link PATTERN_CHARS} letters or more make up this share (`WORDS_SHARE`). */
+export const WORDS_SHARE = 0.6;
+/** Leetspeak undone before looking for a very common word (`LEETSPEAK`). */
+export const LEETSPEAK: Record<string, string> = { "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", $: "s" };
+/** A word has one of these, also with an accent (`VOWELS`). */
+export const VOWELS = "aeiouy";
+/** Apple's own figure for its strong passwords (`APPLE_PASSWORD_BITS`). */
+export const APPLE_PASSWORD_BITS = 71;
+
 /**
- * The tokens {@link passphraseBits} counts (`ordnung.passphrase.passphrase_tokens`): the passphrase in Unicode NFC cut
+ * The tokens {@link wordBits} counts (`ordnung.passphrase.passphrase_tokens`): the passphrase in Unicode NFC cut
  * into runs of letters and runs of digits (anything else only separates them), and a run of letters cut again
  * before an upper-case letter that follows a lower-case one ("CorrectHorse" is two).
  */
@@ -100,19 +125,158 @@ function tokenBits(token: string): number {
 }
 
 /**
- * The estimated entropy of a passphrase in bits (`ordnung.passphrase.passphrase_bits`): each *distinct* token (compared
+ * The words' count of a passphrase in bits (`ordnung.passphrase.word_bits`): each *distinct* token (compared
  * case-folded) counts its length times log2 26 (letters) or log2 10 (digits), at most {@link TOKEN_BITS_MAX} — a
  * token is at best a word from a large list; a run, a keyboard walk or a repeated character about one character, a
  * very common word 7 bits, and tokens that only make a run together ("a b c d …") that one run. Five unrelated words
  * of three or more letters reach 70.
  */
-export function passphraseBits(passphrase: string): number {
+export function wordBits(passphrase: string): number {
   const tokens = passphraseTokens(passphrase).map(casefold);
   const joined = tokens.join("");
   if (tokens.length > 1 && isRun(joined)) return perChar(joined) + 1;
   let bits = 0;
   for (const token of new Set(tokens)) bits += tokenBits(token);
   return bits;
+}
+
+/** Every `length` characters in a row of `lines`, either way (`_pieces`). */
+function pieces(lines: string[], length: number): string[] {
+  const found = new Set<string>();
+  for (const row of lines) {
+    for (const line of [[...row], [...row].reverse()]) for (let at = 0; at + length <= line.length; at++) found.add(line.slice(at, at + length).join(""));
+  }
+  return [...found];
+}
+
+const PATTERN_WORDS = [...COMMON_WORDS].filter((word) => [...word].length >= PATTERN_CHARS);
+const WALKS = pieces([...KEYBOARD_ROWS, ...KEYBOARD_COLUMNS, "abcdefghijklmnopqrstuvwxyz"], PATTERN_CHARS);
+const DIGITS_IN_ORDER = pieces(["0123456789"], PATTERN_CHARS);
+const DATE = /\p{Nd}{1,2}[./-]\p{Nd}{1,2}[./-]\p{Nd}{2}/u;
+const APPLE_SHAPE = /^[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}$/;
+const SPACE = /[\p{Z}\t\n\v\f\r]/u;
+
+/** The runs of characters (code points) of `chars` that `keep` keeps (`_runs`). */
+function runs(chars: string[], keep: (char: string) => boolean): string[][] {
+  const found: string[][] = [];
+  let current: string[] = [];
+  for (const char of chars) {
+    if (keep(char)) {
+      current.push(char);
+      continue;
+    }
+    if (current.length) found.push(current);
+    current = [];
+  }
+  if (current.length) found.push(current);
+  return found;
+}
+
+/** The letters of `chars` are lower case, upper case or capitalised, as people type a word (`_plain_case`). */
+function plainCase(chars: string[]): boolean {
+  const letters = chars.filter((char) => LETTER.test(char));
+  return (
+    letters.every((char) => LOWER.test(char)) ||
+    letters.every((char) => UPPER.test(char)) ||
+    (UPPER.test(letters[0]!) && letters.slice(1).every((char) => LOWER.test(char)))
+  );
+}
+
+/** One of `found` is in `lowered` (`chars` in lower case, character by character) where `chars`' letters are in plain case (`_spelled`). */
+function spelled(lowered: string[], chars: string[], found: string[]): boolean {
+  for (const piece of found) {
+    const length = [...piece].length;
+    for (let at = 0; at + length <= lowered.length; at++) {
+      if (lowered.slice(at, at + length).join("") === piece && plainCase(chars.slice(at, at + length))) return true;
+    }
+  }
+  return false;
+}
+
+/** `part` can be a word (`_word`): at least {@link WORD_LETTERS} letters, lower case or capitalised, with a vowel. */
+function isWord(part: string): boolean {
+  const chars = [...part];
+  const shaped = chars.every((char) => LOWER.test(char)) || (UPPER.test(chars[0]!) && chars.slice(1).every((char) => LOWER.test(char)));
+  return chars.length >= WORD_LETTERS && shaped && chars.some((char) => VOWELS.includes(char.toLowerCase().normalize("NFD")[0]!));
+}
+
+/** The words of `chars`: the parts of each run of letters that is made only of words (`_words`). */
+function words(chars: string[]): string[] {
+  const found: string[] = [];
+  for (const run of runs(chars, (char) => LETTER.test(char))) {
+    const parts = passphraseTokens(run.join(""));
+    if (parts.every(isWord)) found.push(...parts);
+  }
+  return found;
+}
+
+/**
+ * The first pattern people make that `passphrase` shows (`ordnung.passphrase.human_pattern`; null: none): "a very
+ * common word", "a year or a date", "five digits in a row", "a run or a keyboard walk", "a repeat" or "words".
+ */
+export function humanPattern(passphrase: string): string | null {
+  const chars = [...passphrase.normalize("NFC")];
+  // lower case character by character, so a piece found lies where it lies in the text
+  const lowered = chars.map((char) => {
+    const lower = char.toLowerCase();
+    return [...lower].length === 1 ? lower : char;
+  });
+  const unleet = lowered.map((char) => LEETSPEAK[char] ?? char);
+  if (spelled(lowered, chars, PATTERN_WORDS) || spelled(unleet, chars, PATTERN_WORDS)) return "a very common word";
+  const digitRuns = runs(chars, (char) => DIGIT.test(char));
+  const years = digitRuns.some((run) => run.some((_, at) => at + 4 <= run.length && ["19", "20"].includes(run.slice(at, at + 2).join(""))));
+  if (years || DATE.test(chars.join(""))) return "a year or a date";
+  if (digitRuns.some((run) => run.length >= DIGIT_RUN_CHARS)) return "five digits in a row";
+  const digits = digitRuns.map((run) => run.join("")).join("");
+  let again = false;
+  for (let at = 0; at + PATTERN_CHARS <= chars.length; at++) {
+    if (new Set(lowered.slice(at, at + PATTERN_CHARS)).size === 1 && plainCase(chars.slice(at, at + PATTERN_CHARS))) again = true;
+  }
+  if (again || spelled(lowered, chars, WALKS) || DIGITS_IN_ORDER.some((piece) => digits.includes(piece))) return "a run or a keyboard walk";
+  const grams = new Set<string>();
+  for (let at = 0; at + PATTERN_CHARS <= lowered.length; at++) {
+    const gram = lowered.slice(at, at + PATTERN_CHARS).join("");
+    if (grams.has(gram)) return "a repeat";
+    grams.add(gram);
+  }
+  const found = words(chars);
+  const long = found.filter((word) => [...word].length >= PATTERN_CHARS);
+  const longLetters = long.reduce((sum, word) => sum + [...word].length, 0);
+  if (long.length >= 2 || found.length >= 3 || longLetters >= WORDS_SHARE * chars.length) return "words";
+  return null;
+}
+
+/**
+ * The random characters' count of a passphrase in bits (`ordnung.passphrase.random_bits`): its length times log2 of
+ * the alphabet it uses — 0 below {@link RANDOM_MIN_CHARS} characters, with a space, or with a pattern people make.
+ */
+export function randomBits(passphrase: string): number {
+  const chars = [...passphrase.normalize("NFC")];
+  if (chars.length < RANDOM_MIN_CHARS || chars.some((char) => SPACE.test(char)) || humanPattern(passphrase) !== null) return 0;
+  const alphabet =
+    (chars.some((char) => LOWER.test(char)) ? LOWER_ALPHABET : 0) +
+    (chars.some((char) => UPPER.test(char)) ? UPPER_ALPHABET : 0) +
+    (chars.some((char) => DIGIT.test(char)) ? DIGIT_ALPHABET : 0) +
+    (chars.some((char) => !(LOWER.test(char) || UPPER.test(char) || DIGIT.test(char))) ? OTHER_ALPHABET : 0);
+  return chars.length * Math.log2(alphabet);
+}
+
+/** `passphrase` has the shape of Apple's strong passwords, "kuvGis-hihvo6-quzbyc" (`ordnung.passphrase.apple_password`). */
+export function applePassword(passphrase: string): boolean {
+  if (!APPLE_SHAPE.test(passphrase)) return false;
+  if ((passphrase.match(/[A-Z]/g) ?? []).length !== 1 || (passphrase.match(/[0-9]/g) ?? []).length !== 1) return false;
+  return passphrase
+    .toLowerCase()
+    .split("-")
+    .every((group) => [...group].every((char, at) => (/[0-9]/.test(char) ? at === 0 || at === 5 : VOWELS.includes(char) === (at === 1 || at === 4))));
+}
+
+/**
+ * The estimated entropy of a passphrase in bits (`ordnung.passphrase.passphrase_bits`): the larger of
+ * {@link wordBits} and {@link randomBits}, or {@link APPLE_PASSWORD_BITS} for one of Apple's strong passwords.
+ */
+export function passphraseBits(passphrase: string): number {
+  return Math.max(wordBits(passphrase), randomBits(passphrase), applePassword(passphrase) ? APPLE_PASSWORD_BITS : 0);
 }
 
 /** Strong enough for a new backup or sync folder (a hair below 70 from floating point still counts, as in Python's sum). */
@@ -138,8 +302,8 @@ export function passphraseStrength(passphrase: string, enough: string, minChars:
 }
 
 /** Easy to say and type: consonants and vowels that can't be mistaken for one another when read aloud. */
-const CONSONANTS = "bdfgjklmnprstvz";
-const VOWELS = "aeiou";
+const SUGGEST_CONSONANTS = "bdfgjklmnprstvz";
+const SUGGEST_VOWELS = "aeiou";
 
 /** One letter of `alphabet`, drawn from `bytes` without modulo bias (null: this byte was rejected). */
 function draw(alphabet: string, byte: number): string | null {
@@ -162,7 +326,7 @@ export function suggestPassphrase(random: (bytes: Uint8Array) => Uint8Array = (b
   for (let draws = 0; words.length < SUGGESTED_WORDS; draws++) {
     if (draws >= MAX_DRAWS) throw new Error("The system's random numbers keep repeating, so no passphrase can be suggested.");
     for (const byte of random(new Uint8Array(32))) {
-      const letter = draw(word.length % 2 === 0 ? CONSONANTS : VOWELS, byte);
+      const letter = draw(word.length % 2 === 0 ? SUGGEST_CONSONANTS : SUGGEST_VOWELS, byte);
       if (letter === null) continue;
       word += letter;
       if (word.length < 5) continue;

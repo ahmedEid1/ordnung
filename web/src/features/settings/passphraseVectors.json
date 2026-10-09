@@ -1,0 +1,780 @@
+{
+  "weak": [
+    {
+      "kind": "word and year",
+      "passphrase": "Sommerurlaub2019!",
+      "bits": 27.287712,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "P@ssw0rd123!",
+      "bits": 35.745175,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "word and year",
+      "passphrase": "Passwort2024",
+      "bits": 20.287712,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "word and year",
+      "passphrase": "Summer2024!!",
+      "bits": 20.287712,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "word and digits in order",
+      "passphrase": "Hallo123456789",
+      "bits": 11.321928,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "keyboard walk and digits in order",
+      "passphrase": "Qwertz123456!",
+      "bits": 10.022368,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "name and year",
+      "passphrase": "Michael1985!!",
+      "bits": 27.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "date",
+      "passphrase": "15.03.1987",
+      "bits": 26.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "date",
+      "passphrase": "1987-03-15",
+      "bits": 26.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "date",
+      "passphrase": "15031987",
+      "bits": 14.0,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "word and date",
+      "passphrase": "Geburtstag15.03.1987!",
+      "bits": 40.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and date",
+      "passphrase": "Anna15.03.87!",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "date and word",
+      "passphrase": "31/12/1999#Party",
+      "bits": 40.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "date and word",
+      "passphrase": "24122023Weihnachten",
+      "bits": 28.0,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "date and name",
+      "passphrase": "15.03.87!Anna",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "word and date",
+      "passphrase": "Hochzeit#12.06.2015",
+      "bits": 40.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "names and year",
+      "passphrase": "Thomas+Sabine1990",
+      "bits": 41.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "names and years",
+      "passphrase": "Max2012Lena2014!",
+      "bits": 54.575425,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and year",
+      "passphrase": "Lukas2015!",
+      "bits": 27.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and year",
+      "passphrase": "Marie-Claire1999#",
+      "bits": 41.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and year",
+      "passphrase": "Jennifer1992!",
+      "bits": 27.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "club and year",
+      "passphrase": "Bayern1900!",
+      "bits": 27.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "names and year",
+      "passphrase": "Oma&Opa1950!",
+      "bits": 41.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "names and year",
+      "passphrase": "Mia_Sophie_2018",
+      "bits": 41.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and digits",
+      "passphrase": "Anna.Bergmann77",
+      "bits": 34.643856,
+      "pattern": "words"
+    },
+    {
+      "kind": "names and digits",
+      "passphrase": "0815Anna!Bert",
+      "bits": 41.287712,
+      "pattern": "words"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "P@ssw0rd!",
+      "bits": 31.423247,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of common words",
+      "passphrase": "H@ll0W3lt2024!",
+      "bits": 48.134207,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "S0mm3r2024!",
+      "bits": 38.733327,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "W1nt3r!2023",
+      "bits": 38.733327,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "G3h31m!!G3h31m",
+      "bits": 24.067103,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "D4rk$h4d0w!",
+      "bits": 30.146055,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "M0nk3y#2020",
+      "bits": 38.733327,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "Sunsh1n3!!",
+      "bits": 25.344296,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "L3tM31n!!",
+      "bits": 28.767543,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "Adm1n!str4t0r",
+      "bits": 52.067103,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "Dr4g0n!123",
+      "bits": 29.767543,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of common words",
+      "passphrase": "1L0v3Y0u!!",
+      "bits": 28.767543,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "Pa$$w0rd!xyz",
+      "bits": 32.524566,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "W3lc0m3!H0me",
+      "bits": 37.146055,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "Pr1nc3ss#88",
+      "bits": 41.490351,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of a common word",
+      "passphrase": "F00tb4ll!Fan",
+      "bits": 47.467983,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak of common words",
+      "passphrase": "S3cr3t!Gr33n",
+      "bits": 42.868862,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "leetspeak, too short",
+      "passphrase": "Tr0ub4dor&3",
+      "bits": 42.767543,
+      "pattern": null
+    },
+    {
+      "kind": "keyboard walk",
+      "passphrase": "qwertzuiop",
+      "bits": 5.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk and year",
+      "passphrase": "Qwertz!2024",
+      "bits": 18.988152,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "keyboard walk",
+      "passphrase": "asdfghjkl123",
+      "bits": 10.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard columns",
+      "passphrase": "1qay2wsx3edc",
+      "bits": 43.666224,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard columns",
+      "passphrase": "1Qay2Wsx3Edc!",
+      "bits": 43.666224,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard columns",
+      "passphrase": "!QAZ2wsx#EDC4rfv",
+      "bits": 54.344296,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard columns",
+      "passphrase": "1qaz2wsx3edc4rfv",
+      "bits": 60.988152,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk backwards",
+      "passphrase": "Ytrewq!654321",
+      "bits": 10.022368,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "keyboard walk",
+      "passphrase": "zxcvbnm,.-",
+      "bits": 5.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk",
+      "passphrase": "Asdf1234!Asdf",
+      "bits": 10.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk backwards",
+      "passphrase": "Mnbvcxy123!",
+      "bits": 10.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk backwards",
+      "passphrase": "Poiuztrewq!1",
+      "bits": 9.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "abcabcabcabc",
+      "bits": 14.0,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Passwort!Passwort!",
+      "bits": 7.0,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Xk9#Xk9#Xk9#",
+      "bits": 12.722808,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "aaaaaaaaaaaaaaa1!",
+      "bits": 9.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Tim!Tim!Tim!Tim!",
+      "bits": 14.0,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "ababababAB12!",
+      "bits": 30.044736,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Hund7Hund7Hund7",
+      "bits": 17.321928,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Schalke04!Schalke04!",
+      "bits": 20.643856,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "names",
+      "passphrase": "Hannah!Otto!Anna",
+      "bits": 42.0,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Ferienhaus!!",
+      "bits": 14.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Schmetterling7!",
+      "bits": 17.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Kartoffelsalat!",
+      "bits": 14.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Sicherheit!123",
+      "bits": 18.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Michael1234!",
+      "bits": 18.321928,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Bahnhofstr.12!",
+      "bits": 20.643856,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word and a little",
+      "passphrase": "Deutschland2006!",
+      "bits": 27.287712,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "words",
+      "passphrase": "correct horse battery staple",
+      "bits": 56.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "words",
+      "passphrase": "CorrectHorseBatteryStaple",
+      "bits": 56.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "correct horse battery staple!",
+      "bits": 56.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "CorrectHorseBatteryStaple1!",
+      "bits": 59.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Correct-Horse7-Battery",
+      "bits": 45.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Correct-horse7-battery-staple!",
+      "bits": 59.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Garden-flower-tiger7",
+      "bits": 45.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Tiger-Horse7!",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Kaffee&Kuchen",
+      "bits": 28.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Katze2Hund5Maus",
+      "bits": 48.643856,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Hund+Katze+Maus=3",
+      "bits": 45.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Bergsee#Alpen5",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Mausi&Schatzi!",
+      "bits": 28.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Mein1.Auto!",
+      "bits": 24.321928,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Ich-liebe-dich-2!",
+      "bits": 31.321928,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Mein-Hund-Bello!",
+      "bits": 35.0,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Zuhause#Berlin7",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "ILoveMyDog!123",
+      "bits": 39.321928,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Fussball!Verein1",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words and a little",
+      "passphrase": "Borussia#Dortmund09",
+      "bits": 34.643856,
+      "pattern": "words"
+    },
+    {
+      "kind": "names and a little",
+      "passphrase": "Michael!Anna",
+      "bits": 28.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "names and a little",
+      "passphrase": "Anna+Ben+Leo!7",
+      "bits": 45.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "places",
+      "passphrase": "Hamburg-Berlin-München",
+      "bits": 42.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "place and postcode",
+      "passphrase": "Kiel#24103!Ost",
+      "bits": 42.0,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "e-mail address",
+      "passphrase": "Lisa.Mueller@web.de",
+      "bits": 51.400879,
+      "pattern": "words"
+    },
+    {
+      "kind": "e-mail address",
+      "passphrase": "anna.schmidt1987@gmx.de",
+      "bits": 64.688592,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "phone number",
+      "passphrase": "+491701234567",
+      "bits": 14.0,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "IBAN",
+      "passphrase": "DE89370400440532013000",
+      "bits": 23.400879,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "abcdefg12345!",
+      "bits": 10.022368,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "Abcd1234!Abcd",
+      "bits": 10.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "0123456789Ab!",
+      "bits": 13.722808,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "9876543210!Xy",
+      "bits": 13.722808,
+      "pattern": "five digits in a row"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "Zyxwvuts!987",
+      "bits": 10.022368,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "Ab12Cd34Ef56",
+      "bits": 48.134207,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "sequence",
+      "passphrase": "A1b2C3d4E5f6",
+      "bits": 48.134207,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "word again",
+      "passphrase": "Ordnung!Ordnung",
+      "bits": 7.0,
+      "pattern": "a very common word"
+    }
+  ],
+  "strong": [
+    {
+      "kind": "password manager (the audit's example)",
+      "passphrase": "Xk9#mQ2!vR7@pL4$",
+      "bits": 105.11769,
+      "pattern": null
+    },
+    {
+      "kind": "Bitwarden",
+      "passphrase": "Y6RxXbTu4w36Pa",
+      "bits": 83.358748,
+      "pattern": null
+    },
+    {
+      "kind": "Bitwarden",
+      "passphrase": "uMXjymPmCUWD7D",
+      "bits": 83.358748,
+      "pattern": null
+    },
+    {
+      "kind": "Bitwarden",
+      "passphrase": "MU8QwK0NVMWIq0",
+      "bits": 83.358748,
+      "pattern": null
+    },
+    {
+      "kind": "Bitwarden",
+      "passphrase": "oSe74qr6tpK3kR",
+      "bits": 83.358748,
+      "pattern": null
+    },
+    {
+      "kind": "Bitwarden",
+      "passphrase": "xiTPVGzd1BvdoH",
+      "bits": 83.358748,
+      "pattern": null
+    },
+    {
+      "kind": "1Password",
+      "passphrase": "u3wu6tIj?&pu+Vj@vt%F",
+      "bits": 131.397112,
+      "pattern": null
+    },
+    {
+      "kind": "1Password",
+      "passphrase": "Fs)x}WF?DsOJ+_s2[((a",
+      "bits": 131.397112,
+      "pattern": null
+    },
+    {
+      "kind": "1Password",
+      "passphrase": "SVhfEmm{]Ick-~f]I#>3",
+      "bits": 131.397112,
+      "pattern": null
+    },
+    {
+      "kind": "1Password",
+      "passphrase": "/[/)1V*4TwN>[967-UgI",
+      "bits": 131.397112,
+      "pattern": null
+    },
+    {
+      "kind": "1Password",
+      "passphrase": "}7;2e)EI{PhB8[K?7ja.",
+      "bits": 131.397112,
+      "pattern": null
+    },
+    {
+      "kind": "Chrome",
+      "passphrase": "tUM6sT5YTUxgt6h",
+      "bits": 89.312945,
+      "pattern": null
+    },
+    {
+      "kind": "Chrome",
+      "passphrase": "qheR5P9GvawyMre",
+      "bits": 89.312945,
+      "pattern": null
+    },
+    {
+      "kind": "Chrome",
+      "passphrase": "7D3XzUdg3HuwdZJ",
+      "bits": 89.312945,
+      "pattern": null
+    },
+    {
+      "kind": "Chrome",
+      "passphrase": "4Tgk7gdNccnCqpX",
+      "bits": 89.312945,
+      "pattern": null
+    },
+    {
+      "kind": "Chrome",
+      "passphrase": "DPvrnLDWLzn6ksK",
+      "bits": 89.312945,
+      "pattern": null
+    },
+    {
+      "kind": "Apple",
+      "passphrase": "zijrag-ceRga2-pacnun",
+      "bits": 71.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "Apple",
+      "passphrase": "xuwduh-cidrIs-fobsy6",
+      "bits": 71.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "Apple",
+      "passphrase": "quGjeg-cyzdew-hewfe6",
+      "bits": 71.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "Apple",
+      "passphrase": "rabnoh-nerhuv-tYzwi3",
+      "bits": 71.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "Apple",
+      "passphrase": "zemhor-3utCam-jutsut",
+      "bits": 71.0,
+      "pattern": "words"
+    }
+  ]
+}

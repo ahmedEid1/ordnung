@@ -6,14 +6,41 @@ cloud folder, a sync folder's key file at the person's sync provider — open to
 one's passphrase needs about :data:`MIN_PASSPHRASE_BITS` bits by :func:`passphrase_bits`
 (:func:`ordnung.backup.passphrase_problem`, :func:`ordnung.sync.passphrase_problem`, each with its own
 words), and both suggest :data:`SUGGESTED_WORDS` random made-up words (:func:`suggested_passphrase`).
-The web app counts the same way (``web/src/features/settings/passphrase.ts``).
+The web app counts the same way (``web/src/features/settings/passphrase.ts``); both are held to the same
+vectors (``web/src/features/settings/passphraseVectors.json``).
+
+The estimate is the largest of these counts, so none adds to another:
+
+* **Words** (:func:`word_bits`): each distinct word or run of digits counts at most
+  :data:`TOKEN_BITS_MAX`, a run or a very common word little, symbols and case nothing. Five unrelated
+  words reach :data:`MIN_PASSPHRASE_BITS`.
+* **Random characters** (:func:`random_bits`), what a password manager makes: :data:`RANDOM_MIN_CHARS`
+  characters or more without a space count their length × log2 of the alphabet they use — 26 lower-case
+  letters, 26 upper-case, 10 digits and 33 other characters, each if used (14 letters and digits: about
+  83 bits) — unless they show a pattern people make (:func:`human_pattern`); then they count nothing
+  this way. The patterns: a very common word of four letters or more, also with leetspeak undone
+  ("P@ssw0rd"); a year, a date or five digits in a row; a run of four ("abcd", "aaaa", "4321", the
+  digits alone too: "a1b2c3d4") or four along a keyboard row or column ("qwer", "1qay"); four
+  characters again; or words — two of four letters or more, three of any length, or words of four
+  letters or more making up 60 % of it, a word being three letters or more, lower case or capitalised,
+  with a vowel. Letters make a pattern only in the case people type (lower, upper, capitalised): a
+  generator's mixed case rarely spells one.
+* **Apple's strong passwords** ("kuvGis-hihvo6-quzbyc", :func:`apple_password`): their made-up words
+  look like words to both counts, so their shape counts Apple's own figure,
+  :data:`APPLE_PASSWORD_BITS`.
+
+What it can't see: words it doesn't know, written in leetspeak ("Fl0w3r-G@rd3n7"), read as random
+characters; and now and then a password manager's password spells a pattern by chance and counts as
+words only (fewer than 1 in 100 of each generator's, ``tests/test_passphrase_strength.py``).
 """
 
 from __future__ import annotations
 
 import itertools
 import math
+import re
 import unicodedata
+from collections.abc import Callable, Iterable
 
 #: A new backup's or sync folder's passphrase needs about this many bits by :func:`passphrase_bits` …
 MIN_PASSPHRASE_BITS = 70.0
@@ -38,6 +65,9 @@ KEYBOARD_ROWS: tuple[str, ...] = (
     "wxcvbn",
     "1234567890",
 )
+#: Keyboard columns (QWERTY and QWERTZ): four along one, either way, is a walk in random characters
+#: (:func:`human_pattern`; the words' count looks along the rows only).
+KEYBOARD_COLUMNS: tuple[str, ...] = ("1qaz", "1qay", "2wsx", "3edc", "4rfv", "5tgb", "6yhn", "6zhn", "7ujm")
 #: Very common words, case-folded (the web app reads this very text): English and German short words,
 #: numbers, months, days, seasons, colours and the classic passwords. Each counts
 #: :data:`COMMON_WORD_BITS`.
@@ -64,9 +94,32 @@ COMMON_WORDS_TEXT = (
 )
 COMMON_WORDS: frozenset[str] = frozenset(COMMON_WORDS_TEXT.split())
 
+#: Random characters count from this many on (:func:`random_bits`), the length a new passphrase needs anyway.
+RANDOM_MIN_CHARS = 12
+#: The alphabet random characters count: lower-case letters, upper-case letters, digits and other
+#: characters (symbols, and letters without case), each if the passphrase uses one.
+LOWER_ALPHABET = 26
+UPPER_ALPHABET = 26
+DIGIT_ALPHABET = 10
+OTHER_ALPHABET = 33
+#: A very common word, a run, a keyboard walk or a repeat makes a pattern from this many characters on …
+PATTERN_CHARS = 4
+#: … digits in a row from this many …
+DIGIT_RUN_CHARS = 5
+#: … a word from this many letters …
+WORD_LETTERS = 3
+#: … and words make a pattern when those of :data:`PATTERN_CHARS` letters or more make up this share.
+WORDS_SHARE = 0.6
+#: Leetspeak undone before looking for a very common word ("P@ssw0rd").
+LEETSPEAK = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
+#: A word has one of these (also with an accent: "ä", "é").
+VOWELS = "aeiouy"
+#: Apple's own figure for its strong passwords (:func:`apple_password`): "71 bits of entropy".
+APPLE_PASSWORD_BITS = 71.0
+
 
 def passphrase_tokens(passphrase: str) -> list[str]:
-    """The tokens :func:`passphrase_bits` counts: the passphrase in Unicode NFC is cut into runs of
+    """The tokens :func:`word_bits` counts: the passphrase in Unicode NFC is cut into runs of
     letters and runs of digits (every other character only separates them), and a run of letters is
     cut again before an upper-case letter that follows a lower-case one ("CorrectHorse" is two)."""
     tokens: list[str] = []
@@ -110,7 +163,7 @@ def is_run(token: str) -> bool:
 
 
 def token_bits(token: str) -> float:
-    """What one case-folded token counts (:func:`passphrase_bits`)."""
+    """What one case-folded token counts (:func:`word_bits`)."""
     if is_run(token):
         return _per_char(token) + 1.0  # about one character, and which way it runs
     if token in COMMON_WORDS:
@@ -118,8 +171,9 @@ def token_bits(token: str) -> float:
     return min(len(token) * _per_char(token), TOKEN_BITS_MAX)
 
 
-def passphrase_bits(passphrase: str) -> float:
-    """The estimated entropy of a passphrase, in bits — a simple estimator, with a short list.
+def word_bits(passphrase: str) -> float:
+    """The words' count of a passphrase, in bits (:func:`passphrase_bits`) — a simple estimator, with a
+    short list.
 
     Each *distinct* token (:func:`passphrase_tokens`, compared case-folded) counts its length times
     :data:`LETTER_BITS` (letters) or :data:`DIGIT_BITS` (digits), at most :data:`TOKEN_BITS_MAX`: a
@@ -128,14 +182,172 @@ def passphrase_bits(passphrase: str) -> float:
     (:data:`COMMON_WORDS`) :data:`COMMON_WORD_BITS`; and tokens that only make such a run together ("a b c
     d …") count as that one run. So five unrelated words of three or more letters reach
     :data:`MIN_PASSPHRASE_BITS`; a repeated word, a long run of one kind, a pattern ("aaa bbb ccc", "abc
-    def ghi", "qwerty asdfgh"), the months or a short sentence of common words don't. The web app counts
-    the same way.
+    def ghi", "qwerty asdfgh"), the months or a short sentence of common words don't.
     """
     tokens = [token.casefold() for token in passphrase_tokens(passphrase)]
     joined = "".join(tokens)
     if len(tokens) > 1 and is_run(joined):
         return _per_char(joined) + 1.0
     return sum(token_bits(token) for token in dict.fromkeys(tokens))
+
+
+def _pieces(lines: Iterable[str], length: int) -> tuple[str, ...]:
+    """Every ``length`` characters in a row of ``lines``, either way."""
+    return tuple(
+        sorted(
+            {
+                line[at : at + length]
+                for row in lines
+                for line in (row, row[::-1])
+                for at in range(len(line) - length + 1)
+            }
+        )
+    )
+
+
+_PATTERN_WORDS = tuple(sorted(word for word in COMMON_WORDS if len(word) >= PATTERN_CHARS))
+_WALKS = _pieces((*KEYBOARD_ROWS, *KEYBOARD_COLUMNS, "abcdefghijklmnopqrstuvwxyz"), PATTERN_CHARS)
+_DIGITS_IN_ORDER = _pieces(("0123456789",), PATTERN_CHARS)
+_DATE = re.compile(r"\d{1,2}[./-]\d{1,2}[./-]\d\d")
+_APPLE_SHAPE = re.compile(r"[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}")
+
+
+def _runs(text: str, keep: Callable[[str], bool]) -> list[str]:
+    """The runs of characters of ``text`` that ``keep`` keeps."""
+    runs: list[str] = []
+    current = ""
+    for char in text:
+        if keep(char):
+            current += char
+            continue
+        if current:
+            runs.append(current)
+        current = ""
+    if current:
+        runs.append(current)
+    return runs
+
+
+def _plain_case(text: str) -> bool:
+    """The letters of ``text`` are lower case, upper case or capitalised, as people type a word."""
+    letters = [char for char in text if char.isalpha()]
+    return (
+        all(char.islower() for char in letters)
+        or all(char.isupper() for char in letters)
+        or (letters[0].isupper() and all(char.islower() for char in letters[1:]))
+    )
+
+
+def _spelled(lowered: str, text: str, pieces: Iterable[str]) -> bool:
+    """One of ``pieces`` is in ``lowered`` (``text`` in lower case, character by character) where
+    ``text``'s letters are in plain case (:func:`_plain_case`)."""
+    for piece in pieces:
+        at = lowered.find(piece)
+        while at >= 0:
+            if _plain_case(text[at : at + len(piece)]):
+                return True
+            at = lowered.find(piece, at + 1)
+    return False
+
+
+def _word(part: str) -> bool:
+    """``part`` (of a run of letters, cut as :func:`passphrase_tokens` cuts it) can be a word: at least
+    :data:`WORD_LETTERS` letters, lower case or capitalised, with a vowel."""
+    lower = all(char.islower() for char in part)
+    capitalised = part[0].isupper() and all(char.islower() for char in part[1:])
+    vowel = any(unicodedata.normalize("NFD", char.lower())[0] in VOWELS for char in part)
+    return len(part) >= WORD_LETTERS and (lower or capitalised) and vowel
+
+
+def _words(text: str) -> list[str]:
+    """The words of ``text``: the parts of each run of letters that is made only of words."""
+    found: list[str] = []
+    for run in _runs(text, str.isalpha):
+        parts = passphrase_tokens(run)
+        if all(_word(part) for part in parts):
+            found.extend(parts)
+    return found
+
+
+def _is_space(char: str) -> bool:
+    return unicodedata.category(char).startswith("Z") or char in "\t\n\v\f\r"
+
+
+def human_pattern(passphrase: str) -> str | None:
+    """The first pattern people make that ``passphrase`` shows, as :func:`random_bits` looks for them
+    (``None``: none): "a very common word", "a year or a date", "five digits in a row", "a run or a
+    keyboard walk", "a repeat" or "words" (the module's description says which is which)."""
+    text = unicodedata.normalize("NFC", passphrase)
+    # lower case character by character, so a piece found lies where it lies in the text
+    lowered = "".join(char.lower() if len(char.lower()) == 1 else char for char in text)
+    unleet = "".join(LEETSPEAK.get(char, char) for char in lowered)
+    if _spelled(lowered, text, _PATTERN_WORDS) or _spelled(unleet, text, _PATTERN_WORDS):
+        return "a very common word"
+    digit_runs = _runs(text, str.isdecimal)
+    years = any(run[at : at + 2] in ("19", "20") for run in digit_runs for at in range(len(run) - 3))
+    if years or _DATE.search(text):
+        return "a year or a date"
+    if any(len(run) >= DIGIT_RUN_CHARS for run in digit_runs):
+        return "five digits in a row"
+    digits = "".join(digit_runs)
+    again = any(
+        len(set(lowered[at : at + PATTERN_CHARS])) == 1 and _plain_case(text[at : at + PATTERN_CHARS])
+        for at in range(len(text) - PATTERN_CHARS + 1)
+    )
+    if again or _spelled(lowered, text, _WALKS) or any(piece in digits for piece in _DIGITS_IN_ORDER):
+        return "a run or a keyboard walk"
+    pieces = [lowered[at : at + PATTERN_CHARS] for at in range(len(lowered) - PATTERN_CHARS + 1)]
+    if len(set(pieces)) < len(pieces):
+        return "a repeat"
+    words = _words(text)
+    long_words = [word for word in words if len(word) >= PATTERN_CHARS]
+    if len(long_words) >= 2 or len(words) >= 3 or sum(map(len, long_words)) >= WORDS_SHARE * len(text):
+        return "words"
+    return None
+
+
+def random_bits(passphrase: str) -> float:
+    """The random characters' count of a passphrase, in bits (:func:`passphrase_bits`): its length times
+    log2 of the alphabet it uses (:data:`LOWER_ALPHABET` lower-case letters, :data:`UPPER_ALPHABET`
+    upper-case, :data:`DIGIT_ALPHABET` digits, :data:`OTHER_ALPHABET` other characters, each if used) —
+    0 below :data:`RANDOM_MIN_CHARS` characters, with a space, or with a pattern people make
+    (:func:`human_pattern`)."""
+    text = unicodedata.normalize("NFC", passphrase)
+    if len(text) < RANDOM_MIN_CHARS or any(_is_space(char) for char in text) or human_pattern(text):
+        return 0.0
+    alphabet = (
+        LOWER_ALPHABET * any(char.islower() for char in text)
+        + UPPER_ALPHABET * any(char.isupper() for char in text)
+        + DIGIT_ALPHABET * any(char.isdecimal() for char in text)
+        + OTHER_ALPHABET * any(not (char.islower() or char.isupper() or char.isdecimal()) for char in text)
+    )
+    return len(text) * math.log2(alphabet)
+
+
+def apple_password(passphrase: str) -> bool:
+    """``passphrase`` has the shape of Apple's strong passwords ("kuvGis-hihvo6-quzbyc"): three groups of
+    six joined by hyphens, each two made-up syllables (consonant, vowel, consonant), with one capital and
+    one digit, at a group's first or last place."""
+    if not _APPLE_SHAPE.fullmatch(passphrase):
+        return False
+    if sum(char.isupper() for char in passphrase) != 1 or sum(char.isdigit() for char in passphrase) != 1:
+        return False
+    for group in passphrase.lower().split("-"):
+        for at, char in enumerate(group):
+            if char.isdigit():
+                if at not in (0, 5):
+                    return False
+            elif (char in VOWELS) != (at in (1, 4)):
+                return False
+    return True
+
+
+def passphrase_bits(passphrase: str) -> float:
+    """The estimated entropy of a passphrase, in bits: the larger of :func:`word_bits` and
+    :func:`random_bits`, or :data:`APPLE_PASSWORD_BITS` for one of Apple's strong passwords
+    (:func:`apple_password`) — the module's description says how each counts."""
+    apple = APPLE_PASSWORD_BITS if apple_password(passphrase) else 0.0
+    return max(word_bits(passphrase), random_bits(passphrase), apple)
 
 
 #: Easy to say and type: consonants and vowels that can't be mistaken for one another when read aloud
