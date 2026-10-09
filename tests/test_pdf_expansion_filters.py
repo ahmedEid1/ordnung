@@ -148,20 +148,27 @@ _PAGES = b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
 _TRAILER = b"\nendstream\nendobj\ntrailer\n<< /Root 1 0 R /Size 6 >>\n%%EOF\n"
 
 
+_IMAGE_PAGE = (
+    b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R "
+    b"/Resources << /XObject << /Im1 5 0 R >> >> >>\nendobj\n"
+)
+_TEXT_PAGE = (
+    b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R "
+    b"/Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
+    b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
+)
+
+
 def _image_pdf(filters: bytes, data: bytes, width: int, height: int = 1, parameters: bytes = b"") -> bytes:
     """A page that shows one grey image whose data is ``data`` through ``filters``."""
     content = b"q %d 0 0 %d 0 0 cm /Im1 Do Q" % (width, height)
-    return (
-        _HEADER + _PAGES + b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R "
-        b"/Resources << /XObject << /Im1 5 0 R >> >> >>\nendobj\n"
-        + b"4 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n"
-        % (len(content), content)
-        + b"5 0 obj\n<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray "
-        b"/BitsPerComponent 8 /Length %d /Filter %s %s >>\nstream\n"
-        % (width, height, len(data), filters, parameters)
-        + data
-        + _TRAILER
+    page_content = b"4 0 obj\n<< /Length %d >>\nstream\n%s\nendstream\nendobj\n" % (len(content), content)
+    image = b"5 0 obj\n<< /Type /XObject /Subtype /Image /Width %d /Height %d /ColorSpace /DeviceGray " % (
+        width,
+        height,
     )
+    image += b"/BitsPerComponent 8 /Length %d /Filter %s %s >>\nstream\n" % (len(data), filters, parameters)
+    return _HEADER + _PAGES + _IMAGE_PAGE + page_content + image + data + _TRAILER
 
 
 def _pdfium_decodes(filters: bytes, data: bytes, parameters: bytes = b"") -> bytes:
@@ -178,14 +185,8 @@ def _pdfium_decodes(filters: bytes, data: bytes, parameters: bytes = b"") -> byt
 
 def _page(filters: bytes, data: bytes, parameters: bytes = b"") -> bytes:
     """A one-page letter whose page content is ``data`` through ``filters``, in Helvetica."""
-    return (
-        _HEADER + _PAGES + b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Contents 4 0 R "
-        b"/Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n"
-        b"5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"
-        + b"4 0 obj\n<< /Length %d /Filter %s %s >>\nstream\n" % (len(data), filters, parameters)
-        + data
-        + _TRAILER
-    )
+    content = b"4 0 obj\n<< /Length %d /Filter %s %s >>\nstream\n" % (len(data), filters, parameters)
+    return _HEADER + _PAGES + _TEXT_PAGE + content + data + _TRAILER
 
 
 def _pdfium_text(pdf: bytes) -> str:
