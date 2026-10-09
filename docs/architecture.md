@@ -530,7 +530,8 @@ page (`DocumentDetail.addressed_to`) from the addressee its stored reading names
 isn't the profile's person; `Document`, the letter list and what Ask reads stay as they are. A letter can go
 out in that name when the person chooses it (`POST /api/drafts` `sender_name`): its sender block, signature,
 PDF author and Nachweis use it, `drafts.sent_profile` keeps it (only the name until the letter is sent), and
-the drafting model is never given it, so the draft's cache key is unchanged.
+code never adds it to the draft request, so the draft's cache key is unchanged (the related letter's title
+and summary, sent as read, often name the person or the addressee).
 
 **Migrations** (`db/migrate.py`): numbered SQL files — 0001 the v1 schema, 0002 proof of sending and
 call notes, 0003 reading traces, 0004 a contract's notice day and a fixed-term job's early notice, 0005

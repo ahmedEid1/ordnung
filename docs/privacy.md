@@ -47,7 +47,7 @@ privacy settings before processing sensitive documents.
 | **Weekly Ideas** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa |
 | **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name |
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
-| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it. Neither your name nor the name a letter goes out in is sent, unless you typed it into your wishes or the letter |
+| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it. Ordnung doesn't add your name, or the name a letter goes out in, to the request. The related letter's title and summary are sent as they were read, though, and they often name you or the person the letter was addressed to |
 
 Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
 the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
@@ -509,9 +509,12 @@ folder): a restored copy starts without sync.
 - **Ordnung notes each backup, and says when it's time for a new one.** Settings → Data says when the last
   one was made: from Settings, from `ordnung backup` (a scheduled one too), or the one a restored copy came
   from. When it is more than 30 days old, or there is none, the weekly review ends by saying so, and
-  `ordnung doctor` warns. While hand-off sync is connected, its copy in your sync folder counts too. Kept
-  copies don't (they are on this disk), nor do Time Machine, File History or other backups of the whole
-  computer: Ordnung can't see them. The note is a privacy-log entry that stays on this computer, and the
+  `ordnung doctor` warns. A backup from Settings counts once your browser has received it, also if you then
+  cancel saving the file. While hand-off sync is connected, its copy in your sync folder counts too: it
+  counts because your sync tool copies that folder off this computer, and Ordnung can't check that it does.
+  Kept copies don't (they are on this disk), nor do Time Machine, File History or other backups of the whole
+  computer: Ordnung can't see them. Backups made with `ordnung backup` before Ordnung noted them have no
+  note, so they don't count. The note is a privacy-log entry that stays on this computer, and the
   reminder is Ordnung's own words, never sent to Claude. Nothing is backed up by itself.
 - **A restored copy doesn't take over the watched folder.** The backup remembers which files of your
   watched folder were already there and which were picked up — on the computer it came from. A folder

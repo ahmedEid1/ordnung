@@ -106,7 +106,9 @@ it on again — also when a crafted backup switched it on.
 for a local-first app the data folder may be the person's only copy. So Ordnung notes every backup it
 knows of: a privacy-log row for one made from Settings or with `ordnung backup` (a scheduled one too), and
 one for the backup a restored copy came from, dated by that backup's own manifest. Hand-off sync's last
-save counts as a copy while this computer saves into the sync folder or stands by while another one does.
+save counts as a copy while this computer saves into the sync folder or stands by while another one does:
+the sync tool copies that folder off this computer, which Ordnung can't check, so the docs say so. A backup
+made from Settings is noted once the server has sent it; whether the browser saved the file can't be known.
 Kept copies don't (they are on the same disk), nor do backups of the whole computer such as Time Machine or
 File History, which Ordnung can't see. When there are letters and the newest copy is more than 30 days old,
 or there is none, Settings → Data says so in the warning tone and the weekly review ends with a reminder

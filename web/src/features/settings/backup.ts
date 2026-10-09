@@ -129,12 +129,13 @@ export interface CopyLine {
 
 /**
  * Settings' line about the last backup: "Last backup: 3 days ago (Tue 6 Oct 2026)." — in warning colours, with "time
- * for a new one", only when the server says one is due; "No backup made on this computer yet." otherwise.
+ * for a new one", only when the server says one is due; "Ordnung has no record of a backup made on this computer."
+ * otherwise (a backup made with `ordnung backup` before Ordnung noted backups left no record).
  */
 export function lastBackupLine(copy: BackupCopy, formatDate: (value: string) => string): CopyLine {
   const tone = copy.due ? "warn" : "muted";
   if (!copy.last_backup_at) {
-    const none = "No backup made on this computer yet.";
+    const none = "Ordnung has no record of a backup made on this computer.";
     return copy.due ? { tone, lead: none, rest: "" } : { tone, lead: "", rest: none };
   }
   const day = formatDate(copy.last_backup_at);
@@ -155,7 +156,7 @@ export function syncCopyLine(copy: BackupCopy, now: DateInput = new Date()): str
 export function weekReminderText(copy: BackupCopy, formatDate: (value: string) => string, phone: boolean): string {
   const where = phone ? "your computer" : "this computer";
   const why = `keeps your letters if ${where} breaks or is lost.`;
-  if (copy.days === null) return `You haven't made a backup on ${where} yet. A backup ${why}`;
+  if (copy.days === null) return `Ordnung has no record of a backup made on ${where}. A backup ${why}`;
   if (backupIsNewest(copy)) return `Your last backup was ${copyAge(copy.days)} (${formatDate(copy.last_backup_at!)}). A new one ${why}`;
   return `Hand-off sync last saved a copy ${copyAge(copy.days)} (${formatDate(copy.sync_saved_at!)}). A backup ${why}`;
 }

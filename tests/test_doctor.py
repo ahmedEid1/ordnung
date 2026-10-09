@@ -378,7 +378,7 @@ def test_nothing_to_back_up_yet(tmp_path: Path) -> None:
 def test_letters_and_no_backup_warn_with_the_command(tmp_path: Path) -> None:
     check = doctor.backup_check(_folder_with_a_letter(tmp_path))
     assert check is not None and check.status == "warn"
-    assert check.detail == "No backup made with Ordnung on this computer yet"
+    assert check.detail == "Ordnung has no record of a backup made on this computer"
     assert check.fix is not None and "`ordnung backup --to FOLDER`" in check.fix
     assert "Settings → Data → Download encrypted backup" in check.fix and "can't see them" in check.fix
 

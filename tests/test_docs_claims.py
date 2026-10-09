@@ -1517,8 +1517,8 @@ def _draft_call(backend: FakeBackend) -> str:
 
 
 async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppContext, FakeBackend]) -> None:
-    """docs/privacy.md: your address is never sent, nor your name; drafting sends the recipient's name (first
-    line)."""
+    """docs/privacy.md: your address is never sent, and Ordnung doesn't add your name (the related letter's title and
+    summary, sent as read, may still name you); drafting sends the recipient's name (first line)."""
     ctx, backend = draft_ctx
     contract = _phone_contract(ctx.store)
     draft = await compose(ctx, "cancellation", contract_id=contract, instructions="Bitte bestätigen")
@@ -1528,7 +1528,8 @@ async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppCo
     assert "10115 Berlin" not in sent
     assert "Sam Rivera" in draft.sender_block and "Rivera" not in sent
     letters = _privacy_feature_row("Letters")
-    assert "Neither your name nor the name a letter goes out in is sent" in letters
+    assert "Ordnung doesn't add your name, or the name a letter goes out in, to the request" in letters
+    assert "The related letter's title and summary are sent as they were read" in letters
 
 
 async def test_a_letter_in_someone_else_s_name_never_sends_that_name(

@@ -466,7 +466,7 @@ describe("the ending's backup reminder", () => {
     const { user } = await renderWeek("/week?step=file");
     await user.click(screen.getByRole("button", { name: /^Finish/ }));
     expect(await screen.findByText("Time for a backup")).toBeInTheDocument();
-    expect(screen.getByText("You haven't made a backup on your computer yet. A backup keeps your letters if your computer breaks or is lost.")).toBeInTheDocument();
+    expect(screen.getByText("Ordnung has no record of a backup made on your computer. A backup keeps your letters if your computer breaks or is lost.")).toBeInTheDocument();
     expect(screen.getByText("Make one on your computer: Settings → Data → Download encrypted backup.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Back up now" })).toBeNull();
   });

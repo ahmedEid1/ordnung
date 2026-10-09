@@ -501,7 +501,7 @@ def backup_check(data_dir: Path) -> DoctorCheck | None:
         detail = "Hand-off sync: the computer in use keeps an encrypted copy in the sync folder"
         return DoctorCheck(id="backup", label=label, status="ok", detail=detail)
     if copy.days is None:
-        detail = "No backup made with Ordnung on this computer yet"
+        detail = "Ordnung has no record of a backup made on this computer"
         return DoctorCheck(id="backup", label=label, status="warn", detail=detail, fix=BACKUP_FIX)
     made = reminder.parse_moment(copy.last_backup_at)
     saved = reminder.parse_moment(copy.sync_saved_at)

@@ -17,14 +17,18 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   your child, "Familie …"), its page shows *Addressed to …* under its title. A reply, objection, template
   letter or cancellation you write from it still starts in your name: its *From* field says who the letter
   was addressed to, and one press (*Reply in Alex Rivera's name*) fills in that name; *Use my name* goes
-  back. The letter's sender block, signature, PDF and proof of sending then use it. The name isn't sent to
-  Claude. Everything else about the letter stays yours: its dates, reminders and numbers.
+  back. The letter's sender block, signature, PDF and proof of sending then use it, and so does a name you
+  type into the letter's *From* later. Ordnung doesn't add the name to what it sends Claude, but the related
+  letter's title and summary, sent as read, often name the person it was addressed to. Everything else about
+  the letter stays yours: its dates, reminders and numbers.
 - **Ordnung reminds you to back up, and says what to do if your computer is lost.** It now notes every
   encrypted backup — from Settings → Data, from `ordnung backup` (a scheduled one too) and the backup a
   restored copy came from — and Settings → Data says when the last one was made. When it is more than 30 days
-  old, or there is none, the weekly review ends by saying so. While hand-off sync is connected, its copy in
-  your sync folder counts too; backups of the whole computer (Time Machine, File History) don't, because
-  Ordnung can't see them. `ordnung doctor` (and *Run check* in Settings) adds two checks that only ever warn:
+  old, or there is none, the weekly review ends by saying so. A backup from Settings counts once your
+  browser has received it, also if you then cancel saving the file. While hand-off sync is connected, its
+  copy in your sync folder counts too, because your sync tool copies that folder elsewhere (Ordnung can't
+  check that it does); backups of the whole computer (Time Machine, File History) don't, because Ordnung
+  can't see them. `ordnung doctor` (and *Run check* in Settings) adds two checks that only ever warn:
   your last backup and, on macOS and Linux, whether the disk under the data folder is encrypted (FileVault,
   LUKS, as a best effort). [docs/privacy.md](docs/privacy.md#if-your-computer-is-lost-or-stolen) has a
   checklist for a lost or stolen computer: before, a backup and disk encryption (BitLocker or Device
@@ -108,6 +112,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   change how they repeat.
 - On a computer still on 0.2.0, a letter written in someone else's name prints your name under its signature
   until it is marked as sent. Print such letters on an updated computer.
+- Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and
+  says so until the next one, which counts.
 
 ## 0.2.0 — 2026-10-08
 

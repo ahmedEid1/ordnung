@@ -95,7 +95,7 @@ for (const [width, height] of [
     // never as a warning there, since the demo never says one is due
     const { last_copy } = await apiGet<{ last_copy: { last_backup_at: string | null; due: boolean } }>(page, "/api/backup");
     expect(last_copy.due).toBe(false);
-    if (last_copy.last_backup_at === null) await expect(card.getByText("No backup made on this computer yet.")).toBeVisible();
+    if (last_copy.last_backup_at === null) await expect(card.getByText("Ordnung has no record of a backup made on this computer.")).toBeVisible();
     else await expect(card).toContainText("Last backup: today");
     await inside(card.getByText(/^(No backup made on this computer yet\.|Last backup:)/).first(), card);
     await inside(card.getByText(/^ordnung restore /), card);

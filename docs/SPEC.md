@@ -1121,7 +1121,10 @@ request, which has one month from receipt).
 A letter can go out in another name (`POST /api/drafts` `sender_name`; the composer offers the answered
 letter's addressee, `DocumentDetail.addressed_to`, and starts with the profile's name): its sender block,
 signature, PDF author and Nachweis use it, and it is kept in `drafts.sent_profile` (the name only until the
-letter is sent). The model is never given it, nor the profile's name, so the draft's cache key never depends on it.
+letter is sent; an edit to the sender block of a letter not sent yet makes its first line the signer, or clears
+it for the profile's own name: `compose.signer_of_block`). Code never adds it, nor the profile's name, to the
+draft request, so the draft's cache key never depends on it; the related letter's title and summary are sent as
+read and often name the person or the addressee.
 
 **Proof of sending** (`drafts/tracking.py`, `drafts/proof.py` = the policy, `drafts/sent.py` = the
 service; migration 0002). A registered letter (only it: marked again with another channel, the number

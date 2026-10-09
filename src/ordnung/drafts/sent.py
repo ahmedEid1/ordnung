@@ -26,8 +26,10 @@ stores and reads.
 * **Who signs a letter** (``drafts.sent_profile``, read by :func:`letter_profile`) is who its PDF names as
   its sender. It is set when a letter is written in someone else's name (the person chose it,
   :func:`ordnung.drafts.compose.letter_signer`: only the name counts until it is sent, so the contact
-  lines stay current) and when it is marked as sent (name, e-mail and phone as it went out, the name
-  kept from when it was written). A letter in the person's own name has none until it is sent. An
+  lines stay current), follows the first line of the sender block the person edits before it is sent
+  (:func:`ordnung.drafts.compose.signer_of_block`), and is set when it is marked as sent (name, e-mail and
+  phone as it went out, the name kept from before). A letter in the person's own name has none until it
+  is sent. An
   older version (0.2.x) reads it only for sent letters: there an unsent letter in someone else's name
   prints the profile's name under its signature, and marking it sent there keeps the stored signer.
 * **Delete means delete** (ADR 0014). Removing a proof deletes its file for good when it was added as

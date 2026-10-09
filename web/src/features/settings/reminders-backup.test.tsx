@@ -226,9 +226,9 @@ describe("the newest copy kept elsewhere", () => {
   });
 
   it("says plainly when no backup was made — in warning colours only when one is due", () => {
-    expect(lastBackupLine(copy({ due: true }), longDate)).toEqual({ tone: "warn", lead: "No backup made on this computer yet.", rest: "" });
+    expect(lastBackupLine(copy({ due: true }), longDate)).toEqual({ tone: "warn", lead: "Ordnung has no record of a backup made on this computer.", rest: "" });
     // no letters yet, or the demo: nothing to warn about
-    expect(lastBackupLine(copy(), longDate)).toEqual({ tone: "muted", lead: "", rest: "No backup made on this computer yet." });
+    expect(lastBackupLine(copy(), longDate)).toEqual({ tone: "muted", lead: "", rest: "Ordnung has no record of a backup made on this computer." });
   });
 
   it("counts days for the backup only when it is the newest copy", () => {
@@ -249,13 +249,13 @@ describe("the newest copy kept elsewhere", () => {
       "Your last backup was 47 days ago (Sun 23 Aug). A new one keeps your letters if this computer breaks or is lost.",
     );
     expect(weekReminderText(copy({ due: true }), shortDate, false)).toBe(
-      "You haven't made a backup on this computer yet. A backup keeps your letters if this computer breaks or is lost.",
+      "Ordnung has no record of a backup made on this computer. A backup keeps your letters if this computer breaks or is lost.",
     );
     expect(weekReminderText(copy({ last_backup_at: "2026-07-01T09:00:00Z", sync_saved_at: "2026-09-04T09:00:00+02:00", days: 35, due: true }), shortDate, false)).toBe(
       "Hand-off sync last saved a copy 35 days ago (Fri 4 Sep). A backup keeps your letters if this computer breaks or is lost.",
     );
     expect(weekReminderText(copy({ due: true }), shortDate, true)).toBe(
-      "You haven't made a backup on your computer yet. A backup keeps your letters if your computer breaks or is lost.",
+      "Ordnung has no record of a backup made on your computer. A backup keeps your letters if your computer breaks or is lost.",
     );
   });
 });
@@ -484,7 +484,7 @@ describe("encrypted backup card", () => {
     await waitFor(() => expect(card).toHaveTextContent(/Now: \d+ letters · \d+ files · about [\d.]+ MB/));
     expect(within(card).getByRole("button", { name: /Copy command to restore the backup: ordnung restore ordnung-backup-\d{4}-\d{2}-\d{2}\.ordnung-backup/ })).toBeInTheDocument();
     // the demo never says a backup is due: the plain words, not a warning
-    const none = await within(card).findByText("No backup made on this computer yet.");
+    const none = await within(card).findByText("Ordnung has no record of a backup made on this computer.");
     expect(none.closest("p")).toHaveClass("text-muted");
     expect(none.closest("p")).not.toHaveClass("text-warn-ink");
   });
@@ -517,14 +517,14 @@ describe("encrypted backup card", () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
     const user = userEvent.setup();
     const card = await openBackupCard();
-    expect(await within(card).findByText("No backup made on this computer yet.")).toBeInTheDocument();
+    expect(await within(card).findByText("Ordnung has no record of a backup made on this computer.")).toBeInTheDocument();
     await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
     const dialog = await screen.findByRole("dialog");
     await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
     expect(await within(card).findByText("today (Mon 28 Sep 2026).")).toBeInTheDocument();
     expect(within(card).getByText("Last backup:")).toBeInTheDocument();
-    expect(within(card).queryByText("No backup made on this computer yet.")).toBeNull();
+    expect(within(card).queryByText("Ordnung has no record of a backup made on this computer.")).toBeNull();
     click.mockRestore();
   });
 
@@ -678,7 +678,7 @@ describe("encrypted backup card", () => {
     // no "Now: 22 letters" next to "it keeps nothing", no command for a file that can't be downloaded
     await new Promise((r) => setTimeout(r, 50));
     expect(card).not.toHaveTextContent(/Now:/);
-    expect(card).not.toHaveTextContent(/No backup made|Last backup/);
+    expect(card).not.toHaveTextContent(/Ordnung has no record|Last backup/);
     expect(within(card).queryByRole("button", { name: /Copy command to restore/ })).not.toBeInTheDocument();
   });
 
