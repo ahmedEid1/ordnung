@@ -101,7 +101,9 @@ async def test_first_tick_runs_the_whole_day(ctx: Ctx, backend: FakeBackend) -> 
 
 
 async def test_a_failed_weekly_review_is_reported_like_one_asked_for(ctx: Ctx, backend: FakeBackend) -> None:
-    """The weekly review publishes ``review.failed``, as the review asked for in the app does."""
+    """The weekly review publishes ``review.failed``, as the review asked for in the app does — and, as no
+    one is waiting for it in the app, says so in the activity log (Settings → Privacy & AI usage), why
+    included (audit, batch A review: the event alone reached no one)."""
 
     def busy(_: LLMRequest) -> dict[str, Any]:
         raise ClaudeTimeout("Claude didn't answer in time.")
@@ -115,6 +117,10 @@ async def test_a_failed_weekly_review_is_reported_like_one_asked_for(ctx: Ctx, b
 
     assert ("review.failed", {"error": "Claude didn't answer in time."}) in ctx.bus.events
     assert ctx.store.get_meta("last_review_at") is None  # it is tried again on the next check
+    [logged] = ctx.store.list_activity(limit=None, kinds=["review.failed"])
+    assert logged.message == (
+        "The weekly review couldn't write Ideas: Claude didn't answer in time. Ordnung tries again tomorrow."
+    )
 
 
 async def test_same_day_tick_does_nothing(ctx: Ctx, backend: FakeBackend) -> None:
