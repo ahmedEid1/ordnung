@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER, record_events
 from ordnung import clock, models
 from ordnung.api.app import openapi_json, openapi_schema
+from ordnung.api.routes.drafts import DraftCreate
 from ordnung.ingest import pipeline
 from test_api_support import TODAY, api_for
 
@@ -209,6 +210,54 @@ def test_party_and_letter_details_carry_a_region_suggestion(schema: dict[str, An
         assert "region_suggestion" in components[name]["required"], name
         assert getattr(models, name).model_fields["region_suggestion"].default is None, name
     assert "region_suggestion" not in models.Party.model_fields
+
+
+def test_backup_info_and_weekly_session_carry_the_newest_copy(schema: dict[str, Any]) -> None:
+    """The newest copy kept elsewhere: always on the backup's info, on the weekly session only when a
+    reminder is due (``null`` otherwise). Never named ``copy``, which would hide ``BaseModel.copy``."""
+    components = schema["components"]["schemas"]
+    copy = components["BackupCopy"]
+    assert set(copy["properties"]) == {
+        "last_backup_at",
+        "last_backup_restored",
+        "sync_saved_at",
+        "sync_standing_by",
+        "days",
+        "due",
+        "due_after_days",
+    }
+    assert set(copy["required"]) == set(copy["properties"])
+    info = components["BackupInfo"]
+    assert info["properties"]["last_copy"]["$ref"] == "#/components/schemas/BackupCopy"
+    assert "last_copy" in info["required"] and "copy" not in info["properties"]
+    week = components["WeeklySession"]
+    assert week["properties"]["backup"]["anyOf"] == [
+        {"$ref": "#/components/schemas/BackupCopy"},
+        {"type": "null"},
+    ]
+    assert "backup" in week["required"]
+    assert models.WeeklySession.model_fields["backup"].default is None
+    nothing_known = models.BackupCopy()
+    assert (nothing_known.last_backup_at, nothing_known.days, nothing_known.due) == (None, None, False)
+    assert nothing_known.due_after_days == 30
+
+
+def test_a_letter_detail_says_who_it_is_addressed_to(schema: dict[str, Any]) -> None:
+    """Worked out on read for the letter's page only: the letter itself has no such field."""
+    detail = schema["components"]["schemas"]["DocumentDetail"]
+    assert detail["properties"]["addressed_to"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "addressed_to" in detail["required"]
+    assert models.DocumentDetail.model_fields["addressed_to"].default is None
+    assert "addressed_to" not in models.Document.model_fields
+
+
+def test_a_letter_can_be_asked_for_in_another_name(schema: dict[str, Any]) -> None:
+    """``sender_name`` is optional, one line of at most 120 characters."""
+    create = schema["components"]["schemas"]["DraftCreate"]
+    assert "sender_name" not in create.get("required", [])
+    field = create["properties"]["sender_name"]
+    assert field["anyOf"] == [{"type": "string", "maxLength": 120}, {"type": "null"}]
+    assert DraftCreate.model_fields["sender_name"].default is None
 
 
 def test_job_stages_match_the_pipeline() -> None:

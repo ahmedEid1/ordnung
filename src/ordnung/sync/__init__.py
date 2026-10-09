@@ -291,9 +291,10 @@ LOCAL_SETTINGS: tuple[str, ...] = (
 SYNCED_SETTINGS: tuple[str, ...] = ("models", "model", "llm_brief", "llm_review")
 
 #: Privacy-log rows that stay on the computer that wrote them (scrubbed from pushes, left out of the
-#: digest, carried over from the live database on pull): a backup made here, this computer's phone
-#: access and its watched folder (which names a local path).
-LOCAL_ACTIVITY_KINDS: frozenset[str] = frozenset({"backup.created"})
+#: digest, carried over from the live database on pull): a backup made or restored here (what Settings
+#: counts as this computer's newest copy, :mod:`ordnung.backup.reminder`), this computer's phone access
+#: and its watched folder (which names a local path).
+LOCAL_ACTIVITY_KINDS: frozenset[str] = frozenset({"backup.created", "backup.restored"})
 LOCAL_ACTIVITY_PREFIXES: tuple[str, ...] = ("phone.", "folder.")
 
 #: The data-folder entries that travel; nothing else of the data folder is ever walked.

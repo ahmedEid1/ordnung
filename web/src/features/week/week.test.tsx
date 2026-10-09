@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { api } from "@/api/endpoints";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
+import type { BackupCopy, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { MOCK_WEEK, MOCK_WEEK_DEADLINES } from "@/mocks/data/numbers";
 import { mockWeek, nextPromptDay } from "@/mocks/numbers";
 import { renderWithProviders } from "@/test/render";
@@ -401,6 +401,89 @@ describe("the session page", () => {
     await renderWeek();
     expect(screen.getByText(/And 4 more\./)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See all in the Inbox" })).toHaveAttribute("href", "/inbox");
+  });
+});
+
+/** The newest copy as the server sends it on the session only when a backup is due (`WeeklySession.backup`). */
+const DUE_BACKUP: BackupCopy = {
+  last_backup_at: "2026-08-12T09:00:00Z",
+  last_backup_restored: false,
+  sync_saved_at: null,
+  sync_standing_by: false,
+  days: 47,
+  due: true,
+  due_after_days: 30,
+};
+
+/** The mock server's `/week` answers, with `backup` set (the real server sets it only when one is due). */
+function backupDue(srv: MockServer, backup: BackupCopy = DUE_BACKUP): void {
+  const handle = srv.handle.bind(srv);
+  srv.handle = async (method, path, query, body, signal) => {
+    const res = await handle(method, path, query, body, signal);
+    if (!path.startsWith("/week")) return res;
+    const week = (await res.json()) as WeeklySession;
+    return new Response(JSON.stringify({ ...week, backup }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+}
+
+describe("the ending's backup reminder", () => {
+  it("says when it is time for a backup, under the ending, with a link to make one", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
+    noLettersWaiting(srv);
+    backupDue(srv);
+    const { user } = await renderWeek("/week?step=file");
+    // not before the ending: the steps come first
+    expect(screen.queryByText("Time for a backup")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    const heading = await screen.findByRole("heading", { name: "All clear for today" });
+    // the focus still lands on the ending's heading; the reminder follows it
+    expect(heading).toHaveFocus();
+    const title = screen.getByText("Time for a backup");
+    expect(heading.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText("Your last backup was 47 days ago (Wed 12 Aug). A new one keeps your letters if this computer breaks or is lost.")).toBeInTheDocument();
+    expect(screen.getByText("Backups of the whole computer, such as Time Machine, don't count here: Ordnung can't see them.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back up now" })).toHaveAttribute("href", "/settings?section=data");
+    // outside the centred card: it stays left-aligned
+    expect(screen.getByRole("region", { name: "All clear for today" })).not.toContainElement(title);
+  });
+
+  it("says nothing when no backup is due", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today;
+    noLettersWaiting(srv);
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    await screen.findByRole("heading", { name: "All clear for today" });
+    expect(screen.queryByText("Time for a backup")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Back up now" })).toBeNull();
+  });
+
+  it("on a paired phone, says where to make one on the computer — no link", async () => {
+    const { srv } = useMockApi({ client: "phone" });
+    noLettersWaiting(srv);
+    backupDue(srv, { ...DUE_BACKUP, last_backup_at: null, days: null });
+    const { user } = await renderWeek("/week?step=file");
+    await user.click(screen.getByRole("button", { name: /^Finish/ }));
+    expect(await screen.findByText("Time for a backup")).toBeInTheDocument();
+    expect(screen.getByText("Ordnung has no record of a backup made on your computer. A backup keeps your letters if your computer breaks or is lost.")).toBeInTheDocument();
+    expect(screen.getByText("Make one on your computer: Settings → Data → Download encrypted backup.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Back up now" })).toBeNull();
+  });
+
+  it("shows under “Nothing to review” too", async () => {
+    useMockApi();
+    const quiet = { ...MOCK_WEEK, overdue: 0, steps: MOCK_WEEK.steps.map((s) => ({ ...s, entries: [], more: 0 })), backup: DUE_BACKUP };
+    vi.spyOn(api, "week").mockResolvedValue(quiet);
+    renderWithProviders(
+      <AddLettersProvider>
+        <WeekView />
+      </AddLettersProvider>,
+      { route: "/week" },
+    );
+    expect(await screen.findByRole("heading", { name: "Nothing to review this week" })).toBeInTheDocument();
+    expect(screen.getByText("Time for a backup")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back up now" })).toHaveAttribute("href", "/settings?section=data");
   });
 });
 

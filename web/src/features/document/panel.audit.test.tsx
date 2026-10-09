@@ -4,8 +4,10 @@
  */
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { toast } from "@/components/ui/Toast";
+import { useMockApi } from "@/test/mockFetch";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { qk } from "@/api/hooks";
 import type { Contract, DocumentDetail, Draft, Evidence, Item } from "@/api/types";
@@ -257,6 +259,47 @@ describe("To-dos & dates", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByLabelText("New date for Pay the fee")).toBeNull();
     await waitFor(() => expect(more).toHaveFocus());
+  });
+
+  describe("repeating dates (audit item 26)", () => {
+    const rule = { interval: 1, unit: "months" as const, working_day: 3, day_of_month: null };
+    const own = () => makeItem({ id: "itm_own", kind: "reminder", title: "UStVA", origin: "manual", grounding: "user", evidence: [], ...due("2026-10-05"), recurrence: rule });
+    const read = () => makeItem({ id: "itm_rent", kind: "payment", title: "Pay the rent", ...due("2026-10-05"), recurrence: rule });
+
+    it("names a rule's working day; a date of your own has 'Edit', which opens its dialog, where a letter's to-do has 'Change date'", async () => {
+      renderWithProviders(<ItemsList items={[own(), read()]} docId="doc_1" />, { client: client() });
+      const user = userEvent.setup();
+      for (const title of ["UStVA", "Pay the rent"]) expect(within(screen.getByText(title).closest("li")!).getByText("every month on the 3rd working day")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "More actions for UStVA" }));
+      const edit = await screen.findByRole("menuitem", { name: "Edit" });
+      expect(screen.queryByRole("menuitem", { name: "Change date" })).toBeNull();
+      await user.click(edit);
+      const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+      expect(within(dialog).getByLabelText("Which working day?")).toHaveValue("3");
+      await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await user.click(screen.getByRole("button", { name: "More actions for Pay the rent" }));
+      expect(await screen.findByRole("menuitem", { name: "Change date" })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitem", { name: "Edit" })).toBeNull();
+    });
+
+    it("says where a repeating to-do moved on to when marked done, and that only this one moves when its date changes", async () => {
+      const { srv } = useMockApi();
+      srv.db.state.items.push(own(), read());
+      const success = vi.spyOn(toast, "success");
+      const user = userEvent.setup();
+      renderWithProviders(<ItemsList items={[own(), read()]} docId="doc_1" />, { client: client() });
+      await user.click(screen.getByRole("button", { name: "Mark “UStVA” as done" }));
+      // the mock moves your own repeating date on as the API does: Mon 2, Tue 3, Wed 4 Nov
+      await waitFor(() => expect(success).toHaveBeenCalledWith("Marked as done", expect.objectContaining({ description: "UStVA · Next: Wed 4 Nov" })));
+
+      await user.click(screen.getByRole("button", { name: "More actions for Pay the rent" }));
+      await user.click(await screen.findByRole("menuitem", { name: "Change date" }));
+      fireEvent.change(await screen.findByLabelText("New date for Pay the rent"), { target: { value: "2026-10-08" } });
+      await user.click(screen.getByRole("button", { name: "Save date" }));
+      await waitFor(() => expect(success).toHaveBeenCalledWith("Date changed to Thu 8 Oct", expect.objectContaining({ description: "Only this one moves — the ones after keep their day." })));
+      success.mockRestore();
+    });
   });
 
   it("knows a payment made in person", () => {

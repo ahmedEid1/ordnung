@@ -5,15 +5,17 @@
  * things are overdue". Nothing is paid, sent or closed for the person: each row links to where they act
  * (Pay and Confirm right here). "Finish" remembers the review. One name everywhere — "Weekly review" —
  * on Today, the page, its ending and its messages. URL state: `?step=now|new|check|pay|post|waiting|decide|file`.
+ * When it's time for a backup (`WeeklySession.backup`, set by the server only then), the ending says so below it.
  */
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { ArrowLeft, ArrowRight, Check, CircleCheck, Plus, Sparkles, TriangleAlert } from "lucide-react";
 import { useDocuments, useWeek, useWeekDone } from "@/api/hooks";
-import type { WeekEntry, WeekStep, WeeklySession } from "@/api/types";
+import type { BackupCopy, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
 import { Button, buttonVariants } from "@/components/ui/Button";
+import { Callout } from "@/components/ui/Callout";
 import { Card } from "@/components/ui/Card";
 import { Countdown } from "@/components/ui/Countdown";
 import { Disclaimer } from "@/components/ui/Disclaimer";
@@ -22,6 +24,8 @@ import { LoadError } from "@/components/ui/LoadError";
 import { Money } from "@/components/ui/Money";
 import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { Stepper } from "@/components/ui/Stepper";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { weekReminderText } from "@/features/settings/backup";
 import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, plural, prefersReducedMotion } from "@/lib/utils";
@@ -344,6 +348,37 @@ function NothingToReview({ week }: { week: WeeklySession }) {
   );
 }
 
+/** Where Settings' backup lives (Settings → Data). */
+const BACKUP_HREF = "/settings?section=data";
+
+/**
+ * The ending's "Time for a backup" (`WeeklySession.backup`: no copy kept elsewhere within 30 days) — code's words, after
+ * the ending in the page's order, outside its centred card. A paired phone can't make a backup: it says where to.
+ */
+function BackupReminder({ copy }: { copy: BackupCopy | null | undefined }) {
+  const phone = usePhoneCompanion();
+  const formatDate = useFormatDate();
+  if (!copy) return null;
+  return (
+    <Callout
+      tone="warn"
+      title="Time for a backup"
+      className="mt-6"
+      action={
+        phone ? undefined : (
+          <Link to={BACKUP_HREF} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Back up now
+          </Link>
+        )
+      }
+    >
+      <p>{weekReminderText(copy, (value) => formatDate(value), phone)}</p>
+      <p className="mt-1 text-[13.5px] text-muted">Backups of the whole computer, such as Time Machine, don't count here: Ordnung can't see them.</p>
+      {phone ? <p className="mt-1">Make one on your computer: Settings → Data → Download encrypted backup.</p> : null}
+    </Callout>
+  );
+}
+
 function WeekSkeleton() {
   return (
     <div aria-busy="true" className="@container">
@@ -445,6 +480,7 @@ export function WeekView() {
             go(steps.findIndex((s) => s.id === id));
           }}
         />
+        <BackupReminder copy={week.backup} />
         <Disclaimer variant="block" className="mt-8" />
       </>
     );
@@ -454,6 +490,7 @@ export function WeekView() {
       <>
         {header}
         <NothingToReview week={week} />
+        <BackupReminder copy={week.backup} />
         {week.next_deadline ? <Disclaimer variant="block" className="mt-8" /> : null}
       </>
     );

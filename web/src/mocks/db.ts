@@ -9,6 +9,7 @@ import type {
   Contract,
   ContractComputation,
   Dashboard,
+  DateSpec,
   Document,
   Draft,
   Evidence,
@@ -18,6 +19,7 @@ import type {
   LaneBar,
   MailTrayItem,
   Party,
+  Recurrence,
   Suggestion,
   TimelineEntry,
   TimelineMarker,
@@ -43,7 +45,8 @@ import { LETTERS } from "./data/letters";
 import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
-import { item as makeItem } from "./data/helpers";
+import { item as makeItem, spec } from "./data/helpers";
+import { dayStep, sameRule, steps } from "@/features/items/repeat";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 import { paysOnSite } from "@/features/document/item-meta";
 import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
@@ -103,6 +106,92 @@ const nowTs = () => {
   return day ? `${day}${real.slice(10)}` : real;
 };
 
+/** The fields of a to-do the person may change (`PATCH /api/items/{id}`). */
+const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
+
+/** The `keys` a request body sends, and only those. */
+function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<T> {
+  const out: Record<string, unknown> = {};
+  if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
+  return out as Partial<T>;
+}
+
+/**
+ * Germany's nationwide public holidays the mock's own dates can meet: the API counts the working days of a date added
+ * without a letter by these (`ingest.plan.own_context`). The mock has no Land and no rent's Monday-to-Friday.
+ */
+const NATIONWIDE_HOLIDAYS = new Set([
+  "2026-10-03",
+  "2026-12-25",
+  "2026-12-26",
+  "2027-01-01",
+  "2027-03-26",
+  "2027-03-29",
+  "2027-05-01",
+  "2027-05-06",
+  "2027-05-17",
+  "2027-10-03",
+  "2027-12-25",
+  "2027-12-26",
+  "2028-01-01",
+]);
+const isHoliday = (d: Date) => NATIONWIDE_HOLIDAYS.has(iso(d));
+
+/** `start`'s month `months` later, on `start`'s day (a 31st is a shorter month's last day: 31 Jan → 28 Feb → 31 Mar). */
+function monthsOn(start: Date, months: number, day = start.getDate()): Date {
+  const first = new Date(start.getFullYear(), start.getMonth() + months, 1);
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  return new Date(first.getFullYear(), first.getMonth(), Math.min(day, last));
+}
+
+/**
+ * The `n`th working day (Monday to Saturday, no public holiday) of `month`'s month; -1: its last Monday to Friday that
+ * is no public holiday, 24 or 31 December (`ordnung.recurrence`, point 8).
+ */
+function workingDayOf(month: Date, n: number): Date {
+  if (n === -1) {
+    let d = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    const closed = (x: Date) => x.getDay() === 0 || x.getDay() === 6 || isHoliday(x) || (x.getMonth() === 11 && (x.getDate() === 24 || x.getDate() === 31));
+    while (closed(d)) d = addDays(d, -1);
+    return d;
+  }
+  let d = new Date(month.getFullYear(), month.getMonth(), 1);
+  for (let left = n; ; d = addDays(d, 1)) {
+    if (d.getDay() !== 0 && !isHoliday(d) && --left === 0) return d;
+  }
+}
+
+/**
+ * The first occurrence of a schedule that starts at `start` with `rule` that is on or after `notBefore` and after
+ * `after` (the occurrence marked done): a working day in each of its months from `start`'s month, else a day of the
+ * month on or after `start`, else `start`'s day stepped by the rule (points 2, 3, 4, 8 and 10 of `ordnung.recurrence`).
+ */
+function occurrenceOf(rule: Recurrence, start: string, notBefore: string, after: string | null = null): string {
+  const first = parseISO(start);
+  const days = dayStep(rule);
+  const { months, workingDay, day } = steps(rule);
+  for (let k = 0; k < 1200; k++) {
+    let at: Date;
+    if (days !== null) at = addDays(first, k * days);
+    else if (workingDay !== null) at = workingDayOf(monthsOn(first, k * months!, 1), workingDay);
+    else if (day !== null) at = monthsOn(first, k * months!, day);
+    else at = monthsOn(first, k * months!);
+    const date = iso(at);
+    if (date >= notBefore && (after === null || date > after) && (day === null || date >= start)) return date;
+  }
+  return start;
+}
+
+/** A rule as sent (`ItemCreate.recurrence`, its defaults left out) as the API stores it; `null`: none. */
+function asRule(rule: unknown): Recurrence | null {
+  if (!rule || typeof rule !== "object") return null;
+  const r = rule as Partial<Recurrence>;
+  return { interval: r.interval ?? 1, unit: r.unit ?? "months", working_day: r.working_day ?? null, day_of_month: r.day_of_month ?? null };
+}
+
+/** What `DateSpec.nature` a to-do added by hand has (the API's `date_nature`). */
+const natureOf = (kind: Item["kind"]): DateSpec["nature"] => (kind === "payment" ? "payment" : kind === "appointment" ? "appointment" : "other");
+
 export interface MockState {
   health: Health;
   profile: Profile;
@@ -129,6 +218,8 @@ export interface MockState {
   calls: CallNote[];
   /** readings added in this session ("Read again"); others follow from the letter (`data/traces.ts`) */
   readings: Record<string, ReadingSeed[]>;
+  /** when the newest encrypted backup was downloaded in this session (`null`: none yet), as `BackupInfo.last_copy` says */
+  lastBackupAt: string | null;
 }
 
 /**
@@ -145,6 +236,14 @@ function timelineSubtitle(i: Item): string | null {
 
 export class MockDb {
   state: MockState;
+  /** The date each of the person's own repeating dates stood at when last marked done, for its "Undo". */
+  private marked = new Map<string, string>();
+  /**
+   * The date of the occurrence a date of the person's own stands in for once moved alone (the API's "Moved by you
+   * from", recurrence.py point 7): marked done, the date after that one comes. Also kept for the Undo of done.
+   */
+  private standsFor = new Map<string, string>();
+  private markedStandsFor = new Map<string, string>();
 
   constructor() {
     clockDay = () => this.today;
@@ -169,6 +268,7 @@ export class MockDb {
       proofs: clone(PROOFS),
       calls: clone(CALL_NOTES),
       readings: {},
+      lastBackupAt: null,
     };
   }
 
@@ -268,17 +368,20 @@ export class MockDb {
     if (body.doc_id && !this.document(body.doc_id)) return { status: 404, message: "Unknown letter." };
     const now = nowTs();
     const amount = body.amount ?? null;
+    const recurrence = asRule(body.recurrence);
     const item = makeItem({
       id,
       kind: body.kind,
       title,
       description: body.description ?? null,
-      due_date: body.due_date ?? null,
+      // a repeating date is placed by its rule at once, from the date given (where its schedule starts)
+      due_date: body.due_date && recurrence ? occurrenceOf(recurrence, body.due_date, this.today) : (body.due_date ?? null),
+      date_spec: body.due_date && recurrence ? spec({ date: body.due_date, nature: natureOf(body.kind) }) : null,
       due_time: body.due_time ?? null,
       amount,
       currency: amount !== null ? (body.currency ?? "EUR") : null,
       direction: body.kind === "payment" ? (body.direction ?? "out") : (body.direction ?? null),
-      recurrence: (body.recurrence as Item["recurrence"] | undefined) ?? null,
+      recurrence,
       priority: body.priority ?? "normal",
       area: body.area ?? "other",
       party_id: body.party_id ?? null,
@@ -296,6 +399,55 @@ export class MockDb {
     });
     this.state.items.push(item);
     return { item };
+  }
+
+  /**
+   * The person edits a to-do (`PATCH /api/items/{id}`): only the fields they may change, and it is theirs from then on
+   * (`user_modified`); a date they give is theirs too, and done or open again stamps or clears when it was done.
+   * `null`: no such to-do (the API's 404).
+   *
+   * A repeating date of the person's own follows its schedule as the API's does: marked done it moves on to its next
+   * date and stays open, and set open again ("Undo") it goes back; a new rule, or its rule sent with a date, starts the
+   * schedule again there. (A repeating to-do read from a letter still closes when marked done: the mock has no engine
+   * to move it.)
+   */
+  patchItem(id: string, body: unknown): Item | null {
+    const it = this.state.items.find((i) => i.id === id);
+    if (!it) return null;
+    const patch = pick<Item>(body, ITEM_PATCHABLE);
+    const before = { status: it.status, due_date: it.due_date, recurrence: it.recurrence };
+    if ("recurrence" in patch) patch.recurrence = asRule(patch.recurrence);
+    const own = it.origin === "manual";
+    const restart = own && patch.recurrence != null && ("due_date" in patch || !sameRule(patch.recurrence, before.recurrence));
+    Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
+    if (patch.due_date) it.due_date_source = "manual";
+    if (patch.status === "done") it.completed_at = nowTs();
+    if (patch.status === "open") it.completed_at = null;
+    if (restart || ("recurrence" in patch && patch.recurrence == null)) this.standsFor.delete(id); // stands in for nothing
+    else if (own && before.recurrence && patch.due_date && before.due_date && !this.standsFor.has(id)) {
+      this.standsFor.set(id, before.due_date); // only this one moves
+    }
+    if (restart && it.due_date) {
+      it.date_spec = spec({ date: it.due_date, nature: natureOf(it.kind) });
+      it.due_date = occurrenceOf(it.recurrence!, it.due_date, this.today);
+    }
+    const rule = it.recurrence;
+    const start = it.date_spec?.date ?? it.due_date;
+    if (own && rule && start && it.due_date && patch.status === "done" && before.status !== "done") {
+      const stood = this.standsFor.get(id);
+      this.marked.set(id, it.due_date);
+      if (stood) this.markedStandsFor.set(id, stood);
+      else this.markedStandsFor.delete(id);
+      this.standsFor.delete(id);
+      Object.assign(it, { status: "open", completed_at: null, due_date: occurrenceOf(rule, start, this.today, stood ?? it.due_date) });
+    } else if (own && patch.status === "open" && before.status === "open" && this.marked.has(id)) {
+      it.due_date = this.marked.get(id)!;
+      this.marked.delete(id);
+      const stood = this.markedStandsFor.get(id);
+      if (stood) this.standsFor.set(id, stood);
+      this.markedStandsFor.delete(id);
+    }
+    return it;
   }
 
   log(kind: string, message: string, ref_type: string | null = null, ref_id: string | null = null, data: Record<string, unknown> = {}) {
@@ -734,4 +886,4 @@ function prio(p: string): number {
   return { low: 0, normal: 1, high: 2, critical: 3 }[p as "low"] ?? 1;
 }
 
-export { daysFrom, iso as isoDate, nowTs };
+export { daysFrom, iso as isoDate, nowTs, pick };

@@ -56,13 +56,13 @@ import type {
 } from "@/api/types";
 import { HIGH_STAKES_KINDS, type HighStakesKind } from "@/api/types";
 import { ibanLooksValid, normalizeIban } from "@/lib/format";
-import { MockDb, letterFor, nowTs } from "./db";
+import { MockDb, letterFor, nowTs, pick } from "./db";
 import { emit } from "./events";
 import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { draftChecks, phoneGuidance } from "./data/drafts";
+import { draftChecks, mockSigner, notesForBlock, phoneGuidance, signerNote } from "./data/drafts";
 import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
@@ -76,7 +76,7 @@ const COURT_OBJECTION_RECIPIENT =
   "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht).";
 import { SAM, sha } from "./data/constants";
 import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
-import { TRAY_DOCUMENTS } from "./data/documents";
+import { TRAY_DOCUMENTS, addressedTo } from "./data/documents";
 import { EMAIL_ATTACHMENTS, SUGGESTED_INBOX } from "./data/folder";
 import {
   BACKUP_STATIC_MESSAGE,
@@ -398,6 +398,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
         return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
       }),
     region_suggestion: regionSuggestion(db, db.party(d.party_id), d),
+    addressed_to: addressedTo(id),
   };
 }
 
@@ -540,6 +541,9 @@ const isTemplateKind = (kind: string): kind is TemplateDraftKind => TEMPLATE_KIN
 
 /** A template letter (fixed text only, as the real app writes it without Claude). */
 function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDraftKind }): Draft {
+  // the name the person chose to write in (none: Sam's own), as the API's compose
+  const signer = mockSigner(body.sender_name);
+  const signerName = signer ?? SAM.name;
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
   const details = body.details ?? {};
@@ -594,16 +598,17 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
     case_id: contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
-    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}`,
+    sender_block: `${signerName}\n${SAM.street}\n${SAM.city}`,
     recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (details.recipient ?? "").trim(),
     place_date: `Musterstadt, ${format(parseISO(db.today), "dd.MM.yyyy")}`,
     subject: letter.subject,
     body: body_de,
-    body_translation: [`Subject: ${letter.subjectEn}`, ["Dear Sir or Madam,", ...letter.paragraphsEn].join("\n\n"), `Yours faithfully\n${SAM.name}`].join("\n\n"),
+    body_translation: [`Subject: ${letter.subjectEn}`, ["Dear Sir or Madam,", ...letter.paragraphsEn].join("\n\n"), `Yours faithfully\n${signerName}`].join("\n\n"),
     enclosures: [],
     notes_for_user: [
       "The demo uses Ordnung's fixed sentences only. With Claude connected, it also writes a short polite paragraph in your words.",
       ...letter.notes,
+      ...(signer ? [signerNote(signer)] : []),
       "Based on the law as of 25 September 2026. Not legal advice. Not reviewed by a lawyer.",
     ],
     checks: [],
@@ -622,6 +627,9 @@ const STATUTORY_REMEDY: Record<string, string> = { court_payment_order: "Widersp
 
 function composeDraft(db: MockDb, body: DraftCreate): Draft {
   if (isTemplateKind(body.kind)) return composeTemplateDraft(db, { ...body, kind: body.kind });
+  // the name the person chose to write in (none: Sam's own), as the API's compose
+  const signer = mockSigner(body.sender_name);
+  const signerName = signer ?? SAM.name;
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
   // a notice without notice period has no hardship objection: its card offers none (compose.objection_remedy)
@@ -643,8 +651,8 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
   const endEn = endDate ? format(parseISO(endDate), "d MMM yyyy") : null;
   if (body.kind === "cancellation") {
     subject = `Kündigung ${contract ? `– ${contract.name}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`.trim();
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${signerName}`;
   } else if (body.kind === "objection" && doc?.kind && STATUTORY_REMEDY[doc.kind]) {
     const dDate = doc.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "";
     // the application to suspend enforcement only when ticked, and only against an enforcement order (templates.objection)
@@ -656,21 +664,21 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     subject = `${remedy} gegen ${doc.kind === "landlord_notice" ? "Ihre" : "den"} ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
     bodyDe =
       doc.kind === "landlord_notice"
-        ? `Sehr geehrte Damen und Herren,\n\nhiermit widerspreche ich Ihrer Kündigung${dDate ? ` vom ${dDate}` : ""} des Mietverhältnisses und verlange die Fortsetzung des Mietverhältnisses (§ 574 BGB).\n\nDie Gründe teile ich Ihnen auf Wunsch gesondert mit.\n\nMit freundlichen Grüßen\n\n${SAM.name}`
-        : `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? `, ${refLabel} ${ref},` : ""} ${remedy} ein.\n\n${doc.kind === "court_payment_order" ? "Ich widerspreche dem geltend gemachten Anspruch insgesamt." : "Eine Begründung reiche ich nach."}${suspendDe}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
+        ? `Sehr geehrte Damen und Herren,\n\nhiermit widerspreche ich Ihrer Kündigung${dDate ? ` vom ${dDate}` : ""} des Mietverhältnisses und verlange die Fortsetzung des Mietverhältnisses (§ 574 BGB).\n\nDie Gründe teile ich Ihnen auf Wunsch gesondert mit.\n\nMit freundlichen Grüßen\n\n${signerName}`
+        : `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? `, ${refLabel} ${ref},` : ""} ${remedy} ein.\n\n${doc.kind === "court_payment_order" ? "Ich widerspreche dem geltend gemachten Anspruch insgesamt." : "Eine Begründung reiche ich nach."}${suspendDe}\n\nMit freundlichen Grüßen\n\n${signerName}`;
     bodyEn =
       doc.kind === "landlord_notice"
-        ? `Dear Sir or Madam,\n\nI hereby object to your notice terminating the tenancy and request that the tenancy be continued (§ 574 BGB).\n\nI will give you my reasons separately on request.\n\nYours faithfully\n\n${SAM.name}`
-        : `Dear Sir or Madam,\n\nI hereby lodge an objection (${remedy}) against the ${noun}${ref ? `, ${refLabel} ${ref}` : ""}.\n\n${doc.kind === "court_payment_order" ? "I object to the entire claim." : "I will submit the reasons separately."}${suspendEn}\n\nYours faithfully\n\n${SAM.name}`;
+        ? `Dear Sir or Madam,\n\nI hereby object to your notice terminating the tenancy and request that the tenancy be continued (§ 574 BGB).\n\nI will give you my reasons separately on request.\n\nYours faithfully\n\n${signerName}`
+        : `Dear Sir or Madam,\n\nI hereby lodge an objection (${remedy}) against the ${noun}${ref ? `, ${refLabel} ${ref}` : ""}.\n\n${doc.kind === "court_payment_order" ? "I object to the entire claim." : "I will submit the reasons separately."}${suspendEn}\n\nYours faithfully\n\n${signerName}`;
   } else if (body.kind === "objection") {
     const dDate = doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "…";
     subject = `Einspruch gegen den Bescheid vom ${dDate}${ref ? ` – ${refLabel} ${ref}` : ""}`;
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.suspend_enforcement ? "Ich beantrage die Aussetzung der Vollziehung.\n\n" : ""}${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.suspend_enforcement ? "I apply for suspension of enforcement (Aussetzung der Vollziehung).\n\n" : ""}${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.suspend_enforcement ? "Ich beantrage die Aussetzung der Vollziehung.\n\n" : ""}${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.suspend_enforcement ? "I apply for suspension of enforcement (Aussetzung der Vollziehung).\n\n" : ""}${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${signerName}`;
   } else {
     subject = `Ihr Schreiben${doc?.doc_date ? ` vom ${format(parseISO(doc.doc_date), "dd.MM.yyyy")}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${signerName}`;
   }
   const statutory = body.kind === "objection" && doc?.kind ? STATUTORY_OBJECTIONS[doc.kind] : undefined;
   const letterDeadline = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open");
@@ -708,14 +716,17 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
-    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
+    sender_block: `${signerName}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
     recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (body.details?.recipient ?? "").trim(),
     place_date: placeDate,
     subject,
     body: bodyDe,
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
-    notes_for_user: statutory ? [...statutory.notes] : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
+    notes_for_user: [
+      ...(statutory ? statutory.notes : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : []),
+      ...(signer ? [signerNote(signer)] : []),
+    ],
     checks: [],
     send_guidance: guidance,
     sent_channel: null,
@@ -858,7 +869,6 @@ function askStream(ctx: Ctx): Response {
 // Routes
 // ------------------------------------------------------------------------------------------------
 
-const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
 /** A letter filed as another kind than it was read as: the online demo has no rules engine to follow it. */
 export function refiledNote(read: Document["kind"], chosen: Document["kind"]): string {
   return (
@@ -871,12 +881,6 @@ const DOC_PATCHABLE = ["title", "kind", "area", "doc_date", "received_date", "pa
 
 function withoutNulls(src: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries((src ?? {}) as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined));
-}
-
-function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<T> {
-  const out: Record<string, unknown> = {};
-  if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
-  return out as Partial<T>;
 }
 
 /** NW's public holidays the gym's four weeks can end on (the mock has no holiday calendar). */
@@ -1628,15 +1632,7 @@ const routes: [string, string, Handler][] = [
   [
     "PATCH",
     "/items/:id",
-    ({ db, params, body }) => {
-      const it = db.state.items.find((i) => i.id === params.id) ?? notFound("Unknown to-do.");
-      const patch = pick<Item>(body, ITEM_PATCHABLE);
-      Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
-      if (patch.due_date) it.due_date_source = "manual";
-      if (patch.status === "done") it.completed_at = nowTs();
-      if (patch.status === "open") it.completed_at = null;
-      return it;
-    },
+    ({ db, params, body }) => db.patchItem(params.id!, body) ?? notFound("Unknown to-do."),
   ],
   [
     "DELETE",
@@ -1809,7 +1805,10 @@ const routes: [string, string, Handler][] = [
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
       // like the API: a sent letter stays as it went out
       if (d.status === "sent") throw new HttpError(409, "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you sent. To write again, start a new letter.");
-      Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
+      const edits = pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]);
+      Object.assign(d, edits, { updated_at: nowTs() });
+      // like the API: the From block's first line is who signs it
+      if (typeof edits.sender_block === "string") d.notes_for_user = notesForBlock(d.notes_for_user, edits.sender_block);
       d.checks = checksFor(db, d);
       return d;
     },
@@ -1952,12 +1951,16 @@ const routes: [string, string, Handler][] = [
   [
     "POST",
     "/backup",
-    ({ body, opts }) => {
+    ({ db, body, opts }) => {
       if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
       const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
       // the server's policy (`ordnung.backup.passphrase_problem`), in its words
       const problem = backupPassphraseProblem(typeof passphrase === "string" ? passphrase : "");
       if (problem) throw new HttpError(422, problem.message);
+      // noted like the API's made backup: the newest copy (`BackupInfo.last_copy`) and a `backup.created` row
+      const { letters, files } = mockBackupInfo(db);
+      db.state.lastBackupAt = nowTs();
+      db.log("backup.created", `Made an encrypted backup (${letters} letters, ${files} files)`);
       return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],

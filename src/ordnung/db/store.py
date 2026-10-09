@@ -2054,6 +2054,17 @@ class Store:
         found = self._many(_ACTIVITY, f"{where.sql()} ORDER BY id DESC LIMIT 1", where.params)
         return found[0] if found else None
 
+    def newest_backup(self) -> tuple[str | None, bool]:
+        """When the newest encrypted backup this data folder knows was made, and whether it is the one
+        this copy was restored from (:func:`ordnung.backup.reminder.newest_backup`)."""
+        from ordnung.backup.reminder import newest_backup
+
+        return newest_backup(self._conn())
+
+    def has_letters(self) -> bool:
+        """Whether any letter is kept, the trash included (as a backup counts them)."""
+        return bool(self._conn().execute("SELECT EXISTS(SELECT 1 FROM documents)").fetchone()[0])
+
     def log_llm_call(
         self,
         purpose: str,

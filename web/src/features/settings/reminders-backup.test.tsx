@@ -12,7 +12,9 @@ import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
 import { NB_HYPHEN } from "@/lib/glue";
-import { backupStrengthLine, backupSummary, earlierSuggestion, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, WEAK_PASSPHRASE_MESSAGE } from "./backup";
+import type { BackupCopy } from "@/api/types";
+import { formatDate } from "@/lib/format";
+import { backupStrengthLine, backupSummary, copyAge, earlierSuggestion, failureSentence, lastBackupLine, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, syncCopyLine, WEAK_PASSPHRASE_MESSAGE, weekReminderText } from "./backup";
 import { MIN_PASSPHRASE_BITS, passphraseBits } from "./passphrase";
 import { deleteCalendarNote } from "./calendarSync";
 import { autostartLabel, failureDetail, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
@@ -190,6 +192,71 @@ describe("backup helpers", () => {
     expect(failureSentence(new Error("There is no Ordnung database in /x."))).toBe("There is no Ordnung database in /x.");
     expect(failureSentence(new Error("  "))).toBe("Ordnung didn't answer. Is it still running?");
     expect(failureSentence("not an error")).toBe("Ordnung didn't answer. Is it still running?");
+  });
+});
+
+/** `BackupCopy` as the server sends it (`ordnung.backup.reminder`): nothing known, never due, unless given. */
+function copy(fields: Partial<BackupCopy> = {}): BackupCopy {
+  return { last_backup_at: null, last_backup_restored: false, sync_saved_at: null, sync_standing_by: false, days: null, due: false, due_after_days: 30, ...fields };
+}
+const longDate = (value: string) => formatDate(value, { withYear: "always" });
+const shortDate = (value: string) => formatDate(value, { withYear: "never" });
+
+describe("the newest copy kept elsewhere", () => {
+  it("counts calendar days as the server does", () => {
+    expect(copyAge(0)).toBe("today");
+    expect(copyAge(1)).toBe("yesterday");
+    expect(copyAge(2)).toBe("2 days ago");
+    expect(copyAge(47)).toBe("47 days ago");
+  });
+
+  it("says when the last backup was made, and when it is time for a new one", () => {
+    expect(lastBackupLine(copy({ last_backup_at: "2026-10-06T09:00:00Z", days: 3 }), longDate)).toEqual({ tone: "muted", lead: "Last backup:", rest: "3 days ago (Tue 6 Oct 2026)." });
+    expect(lastBackupLine(copy({ last_backup_at: "2026-08-23T09:00:00Z", days: 47, due: true }), longDate)).toEqual({
+      tone: "warn",
+      lead: "Last backup:",
+      rest: "47 days ago (Sun 23 Aug 2026) — time for a new one.",
+    });
+    expect(lastBackupLine(copy({ last_backup_at: "2026-09-27T09:00:00Z", last_backup_restored: true, days: 12 }), longDate).rest).toBe(
+      "12 days ago (Sun 27 Sep 2026) — the one this copy was restored from.",
+    );
+    expect(lastBackupLine(copy({ last_backup_at: "2026-08-23T09:00:00Z", last_backup_restored: true, days: 47, due: true }), longDate).rest).toBe(
+      "47 days ago (Sun 23 Aug 2026) — the one this copy was restored from, and time for a new one.",
+    );
+  });
+
+  it("says plainly when no backup was made — in warning colours only when one is due", () => {
+    expect(lastBackupLine(copy({ due: true }), longDate)).toEqual({ tone: "warn", lead: "Ordnung has no record of a backup made on this computer.", rest: "" });
+    // no letters yet, or the demo: nothing to warn about
+    expect(lastBackupLine(copy(), longDate)).toEqual({ tone: "muted", lead: "", rest: "Ordnung has no record of a backup made on this computer." });
+  });
+
+  it("counts days for the backup only when it is the newest copy", () => {
+    // hand-off sync saved since: the server's days are the sync save's, so the backup line names its day only
+    const both = copy({ last_backup_at: "2026-08-23T09:00:00Z", sync_saved_at: "2026-10-09T08:00:00+02:00", days: 0 });
+    expect(lastBackupLine(both, longDate)).toEqual({ tone: "muted", lead: "Last backup:", rest: "Sun 23 Aug 2026." });
+    expect(syncCopyLine(both, "2026-10-09T10:00:00+02:00")).toBe("Hand-off sync also keeps an encrypted copy in your sync folder (last saved 2 h ago).");
+  });
+
+  it("says hand-off sync's copy while connected, and nothing otherwise", () => {
+    expect(syncCopyLine(copy({ sync_standing_by: true }))).toBe("Hand-off sync: the computer in use keeps an encrypted copy in your sync folder.");
+    expect(syncCopyLine(copy())).toBeNull();
+    expect(syncCopyLine(copy({ last_backup_at: "2026-10-06T09:00:00Z", days: 3 }))).toBeNull();
+  });
+
+  it("words the weekly review's reminder for each newest copy, and for a phone", () => {
+    expect(weekReminderText(copy({ last_backup_at: "2026-08-23T09:00:00Z", days: 47, due: true }), shortDate, false)).toBe(
+      "Your last backup was 47 days ago (Sun 23 Aug). A new one keeps your letters if this computer breaks or is lost.",
+    );
+    expect(weekReminderText(copy({ due: true }), shortDate, false)).toBe(
+      "Ordnung has no record of a backup made on this computer. A backup keeps your letters if this computer breaks or is lost.",
+    );
+    expect(weekReminderText(copy({ last_backup_at: "2026-07-01T09:00:00Z", sync_saved_at: "2026-09-04T09:00:00+02:00", days: 35, due: true }), shortDate, false)).toBe(
+      "Hand-off sync last saved a copy 35 days ago (Fri 4 Sep). A backup keeps your letters if this computer breaks or is lost.",
+    );
+    expect(weekReminderText(copy({ due: true }), shortDate, true)).toBe(
+      "Ordnung has no record of a backup made on your computer. A backup keeps your letters if your computer breaks or is lost.",
+    );
   });
 });
 
@@ -399,13 +466,13 @@ describe("desktop notification card", () => {
 // Settings → Data → encrypted backup
 // ------------------------------------------------------------------------------------------------
 
-async function openBackupCard() {
+async function openBackupCard(client = makeTestQueryClient()) {
   renderWithProviders(
     <>
       <SettingsPage />
       <Toaster />
     </>,
-    { route: "/settings?section=data" },
+    { route: "/settings?section=data", client },
   );
   return screen.findByRole("region", { name: "Encrypted backup" });
 }
@@ -416,6 +483,70 @@ describe("encrypted backup card", () => {
     const card = await openBackupCard();
     await waitFor(() => expect(card).toHaveTextContent(/Now: \d+ letters · \d+ files · about [\d.]+ MB/));
     expect(within(card).getByRole("button", { name: /Copy command to restore the backup: ordnung restore ordnung-backup-\d{4}-\d{2}-\d{2}\.ordnung-backup/ })).toBeInTheDocument();
+    // the demo never says a backup is due: the plain words, not a warning
+    const none = await within(card).findByText("Ordnung has no record of a backup made on this computer.");
+    expect(none.closest("p")).toHaveClass("text-muted");
+    expect(none.closest("p")).not.toHaveClass("text-warn-ink");
+  });
+
+  it("says when the last backup was made — and once it is old, that it is time for a new one", async () => {
+    const { srv } = useMockApi();
+    let last_copy = copy({ last_backup_at: "2026-08-12T09:00:00Z", days: 47, due: true });
+    const handle = srv.handle.bind(srv);
+    srv.handle = async (method, path, query, body, signal) => {
+      const res = await handle(method, path, query, body, signal);
+      if (method !== "GET" || path !== "/backup") return res;
+      const info = (await res.json()) as Record<string, unknown>;
+      return new Response(JSON.stringify({ ...info, last_copy }), { status: 200, headers: { "Content-Type": "application/json" } });
+    };
+    const client = makeTestQueryClient();
+    const card = await openBackupCard(client);
+    const line = await within(card).findByText(/47 days ago \(Wed 12 Aug 2026\) — time for a new one\./);
+    expect(line.closest("p")).toHaveClass("text-warn-ink");
+    expect(within(card).getByText("Last backup:")).toBeInTheDocument();
+    last_copy = copy({ sync_standing_by: true, due: false });
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["backup", "info"] });
+    });
+    expect(await within(card).findByText("Hand-off sync: the computer in use keeps an encrypted copy in your sync folder.")).toBeInTheDocument();
+  });
+
+  it("after a download the card says the last backup was made today", async () => {
+    useMockApi();
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:backup", revokeObjectURL: () => {} }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const card = await openBackupCard();
+    expect(await within(card).findByText("Ordnung has no record of a backup made on this computer.")).toBeInTheDocument();
+    await user.click(within(card).getByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    expect(await within(card).findByText("today (Mon 28 Sep 2026).")).toBeInTheDocument();
+    expect(within(card).getByText("Last backup:")).toBeInTheDocument();
+    expect(within(card).queryByText("Ordnung has no record of a backup made on this computer.")).toBeNull();
+    click.mockRestore();
+  });
+
+  it("after a download the weekly review and the privacy log are asked again", async () => {
+    useMockApi();
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:backup", revokeObjectURL: () => {} }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const client = makeTestQueryClient();
+    // what other pages loaded before: the review's ending may still say a backup is due
+    client.setQueryData(qk.week, { backup: copy({ due: true }) });
+    client.setQueryData(qk.activity, []);
+    const card = await openBackupCard(client);
+    await user.click(await within(card).findByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
+    expect(client.getQueryState(qk.week)?.isInvalidated).toBe(false);
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    await within(card).findByText("today (Mon 28 Sep 2026).");
+    expect(client.getQueryState(qk.week)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(qk.activity)?.isInvalidated).toBe(true);
+    click.mockRestore();
   });
 
   it("asks for a passphrase twice, refuses a short or different one, then downloads", async () => {
@@ -547,6 +678,7 @@ describe("encrypted backup card", () => {
     // no "Now: 22 letters" next to "it keeps nothing", no command for a file that can't be downloaded
     await new Promise((r) => setTimeout(r, 50));
     expect(card).not.toHaveTextContent(/Now:/);
+    expect(card).not.toHaveTextContent(/Ordnung has no record|Last backup/);
     expect(within(card).queryByRole("button", { name: /Copy command to restore/ })).not.toBeInTheDocument();
   });
 

@@ -4,9 +4,11 @@ Checks that the ``claude`` CLI is installed and recent enough, that it is signed
 status``, JSON), warns when ``ANTHROPIC_API_KEY`` is set (it overrides the subscription login and
 bills the API), and checks the local machine: SQLite FTS5 + trigram search, a writable data folder,
 the database in it (opened read-only: SQLite's quick check and the schema version), free disk space,
-the bundled letter fonts and the built web app — and, while hand-off sync is connected, the sync folder
-(reachable), the password store (usable), the mode and the age of the last save, never reading the
-passphrase. ``probe=True`` adds one tiny live model call. The
+the bundled letter fonts and the built web app; when the last copy kept elsewhere was made (a backup, or
+hand-off sync's save: :mod:`ordnung.backup.reminder`) and whether the disk under the data folder is
+encrypted (:mod:`ordnung.encryption`, on macOS and Linux) — both only ever warn — and, while hand-off sync
+is connected, the sync folder (reachable), the password store (usable), the mode and the age of the last
+save, never reading the passphrase. ``probe=True`` adds one tiny live model call. The
 structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via :func:`claude_status`) and the
 Settings page.
 """
@@ -15,16 +17,21 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import os
 import shutil
 import sqlite3
 import sys
 import tempfile
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
 
+from ordnung import clock, encryption
+from ordnung.backup import reminder
 from ordnung.config import Paths, web_dist_dir
 from ordnung.db.migrate import SchemaError, applied_versions, current_version, discover
 from ordnung.llm import claude_cli
@@ -341,23 +348,38 @@ SYNC_FOLDER_TIMEOUT_S = 5.0
 SYNC_STALE_S = 24 * 3600
 
 
+class _NoSyncEngine(Exception):
+    """Hand-off sync is connected, but this installation of Ordnung can't sync."""
+
+
+def _sync_summary(paths: Paths) -> Any:
+    """Hand-off sync's state on this computer (``<data>/sync/state.json``) while it is connected —
+    ``None`` when it isn't; raises :class:`_NoSyncEngine`, or whatever reading the state raised."""
+    from ordnung.app_context import sync_connected
+    from ordnung.sync.agent import load_engine
+
+    if not sync_connected(paths):
+        return None
+    engine = load_engine()
+    if engine is None:
+        raise _NoSyncEngine
+    return engine.local_summary(paths)
+
+
 def sync_check(data_dir: Path) -> DoctorCheck | None:
     """Hand-off sync (only when it is connected): the sync folder reachable, the password store usable,
     whether this computer is in use or standing by, and when it last saved. Never reads the passphrase
     or opens the folder's files."""
     from concurrent.futures import ThreadPoolExecutor
     from concurrent.futures import TimeoutError as FutureTimeout
-    from datetime import datetime
 
-    from ordnung.app_context import sync_connected
-    from ordnung.sync.agent import default_secrets, load_engine
+    from ordnung.sync.agent import default_secrets
 
     paths = Paths(data_dir)
-    if not sync_connected(paths):
-        return None
     label = "Hand-off sync"
-    engine = load_engine()
-    if engine is None:
+    try:
+        summary = _sync_summary(paths)
+    except _NoSyncEngine:
         return DoctorCheck(
             id="sync",
             label=label,
@@ -365,8 +387,6 @@ def sync_check(data_dir: Path) -> DoctorCheck | None:
             detail="This installation of Ordnung can't sync between computers.",
             fix="Install the same Ordnung version as on your other computers.",
         )
-    try:
-        summary = engine.local_summary(paths)
     except Exception as exc:
         return DoctorCheck(id="sync", label=label, status="warn", detail=f"Its state can't be read: {exc}")
     if summary is None:
@@ -410,6 +430,132 @@ def sync_check(data_dir: Path) -> DoctorCheck | None:
     detail = f"{summary.name}: {mode}, {saved} ({summary.folder})"
     fix = "Open Settings → Your computers to see why it doesn't save." if status == "warn" else None
     return DoctorCheck(id="sync", label=label, status=status, detail=detail, fix=fix)
+
+
+BACKUP_FIX = (
+    "Run `ordnung backup --to FOLDER` with a folder on another drive or in the cloud (or Settings → Data → "
+    "Download encrypted backup). Backups of the whole computer (Time Machine, File History) don't count: "
+    "Ordnung can't see them."
+)
+
+
+def _is_demo(data_dir: Path, conn: sqlite3.Connection) -> bool:
+    """A demo folder: its marker, or the demo setting in its database."""
+    from ordnung.db.store import SETTINGS_META_KEY
+    from ordnung.demo.loader import is_demo_dir
+
+    if is_demo_dir(data_dir):
+        return True
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (SETTINGS_META_KEY,)).fetchone()
+    try:
+        settings = json.loads(row[0]) if row is not None else None
+    except ValueError:
+        return False
+    return isinstance(settings, dict) and settings.get("demo") is True
+
+
+def _days_words(days: int) -> str:
+    return "today" if days == 0 else "yesterday" if days == 1 else f"{days} days ago"
+
+
+def backup_check(data_dir: Path) -> DoctorCheck | None:
+    """When the last copy kept elsewhere was made — a backup made or restored here, or hand-off sync's
+    save (:mod:`ordnung.backup.reminder`) — warning when there is none within 30 days. ``None`` for a
+    folder without a database, a demo folder, or a database that can't be read (the database check says
+    why). Never fails; days count in this computer's zone."""
+    label = "Backup"
+    folder = Path(data_dir)
+    db = Paths(folder).db
+    if not db.is_file():
+        return None
+    try:
+        with contextlib.closing(sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+            if _is_demo(folder, conn):
+                return None
+            last_backup, restored = reminder.newest_backup(conn)
+            has_letters = bool(conn.execute("SELECT EXISTS(SELECT 1 FROM documents)").fetchone()[0])
+    except sqlite3.Error:
+        return None
+    try:
+        summary = _sync_summary(Paths(folder))
+    except Exception:  # the sync row says why
+        summary = None
+    sync = (
+        reminder.SyncCopy.of(connected=True, mode=summary.mode, saved_at=summary.last_saved_at)
+        if summary is not None
+        else None
+    )
+    zone = datetime.now().astimezone().tzinfo or UTC
+    copy = reminder.backup_copy(
+        last_backup=last_backup,
+        restored=restored,
+        sync=sync,
+        has_letters=has_letters,
+        demo=False,
+        zone=zone,
+        today=clock.today(),
+    )
+    if not has_letters:
+        return DoctorCheck(id="backup", label=label, status="ok", detail="Nothing to back up yet")
+    if copy.sync_standing_by:
+        detail = "Hand-off sync: the computer in use keeps an encrypted copy in the sync folder"
+        return DoctorCheck(id="backup", label=label, status="ok", detail=detail)
+    if copy.days is None:
+        detail = "Ordnung has no record of a backup made on this computer"
+        return DoctorCheck(id="backup", label=label, status="warn", detail=detail, fix=BACKUP_FIX)
+    made = reminder.parse_moment(copy.last_backup_at)
+    saved = reminder.parse_moment(copy.sync_saved_at)
+    if made is not None and (saved is None or made >= saved):
+        detail = f"Last backup {_days_words(copy.days)} ({made.astimezone(zone).date().isoformat()})"
+        if copy.last_backup_restored:
+            detail += ", the one this copy was restored from"
+    else:
+        detail = f"Hand-off sync saved an encrypted copy {_days_words(copy.days)}"
+    if copy.due:
+        return DoctorCheck(id="backup", label=label, status="warn", detail=detail, fix=BACKUP_FIX)
+    return DoctorCheck(id="backup", label=label, status="ok", detail=detail)
+
+
+#: What disk encryption looked for or found, in the doctor's words when it is on.
+_ENCRYPTED = {
+    "FileVault": "FileVault is on",
+    "LUKS": "The disk under the data folder is encrypted (LUKS)",
+}
+FILEVAULT_FIX = "Turn it on in System Settings → Privacy & Security → FileVault."
+LINUX_ENCRYPTION_FIX = (
+    "Most Linux installers offer to encrypt the disk; adding it later means reinstalling or `cryptsetup "
+    "reencrypt`, so back up first. Encrypted another way (fscrypt, ZFS)? Then this is fine."
+)
+
+
+def disk_encryption_check(
+    data_dir: Path, *, probe: Callable[[Path], encryption.Encryption | None] | None = None
+) -> DoctorCheck | None:
+    """Whether the disk under the data folder is encrypted (:mod:`ordnung.encryption`, a best effort):
+    on is fine, off or "couldn't tell" warn — never a failure. ``None`` where Ordnung can't tell on this
+    system (Windows, WSL, others). It describes this computer, so a demo folder gets it too."""
+    label = "Disk encryption"
+    found = (probe or encryption.disk_encryption)(Path(data_dir))
+    if found is None:
+        return None
+    mac = found.what == "FileVault"
+    if found.answer == "on":
+        detail = _ENCRYPTED.get(found.what, f"The data folder is on an encrypted file system ({found.what})")
+        return DoctorCheck(id="disk_encryption", label=label, status="ok", detail=detail)
+    if found.answer == "off":
+        detail = (
+            "FileVault is off: whoever has this Mac can read your letters, tax ID and IBANs."
+            if mac
+            else "Ordnung found no disk encryption (LUKS) under the data folder."
+        )
+    else:
+        what = "FileVault is on" if mac else "the disk under the data folder is encrypted"
+        reason = f": {found.reason}" if found.reason else ""
+        detail = f"Ordnung couldn't tell whether {what}{reason}."
+    fix = FILEVAULT_FIX if mac else LINUX_ENCRYPTION_FIX
+    if found.answer == "unknown" and mac:
+        fix = "Check it in System Settings → Privacy & Security → FileVault."
+    return DoctorCheck(id="disk_encryption", label=label, status="warn", detail=detail, fix=fix)
 
 
 def fonts_check() -> DoctorCheck:
@@ -461,9 +607,10 @@ def web_ui_check() -> DoctorCheck:
 
 
 def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
-    """The checks of this computer (no Claude involved)."""
+    """The checks of this computer (no Claude involved), in the order shown; the backup, disk-encryption
+    and sync rows only where they apply."""
     folder = Path(data_dir).expanduser()
-    checks = [
+    checks: list[DoctorCheck | None] = [
         api_key_check(),
         sqlite_check(),
         fonts_check(),
@@ -471,9 +618,11 @@ def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
         data_dir_check(folder),
         database_check(folder),
         disk_check(folder),
+        backup_check(folder),
+        disk_encryption_check(folder),
+        sync_check(folder),
     ]
-    synced = sync_check(folder)
-    return [*checks, synced] if synced is not None else checks
+    return [check for check in checks if check is not None]
 
 
 async def run_doctor(

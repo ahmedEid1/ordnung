@@ -2416,9 +2416,17 @@ def backup(
             if not exact:
                 console.print("[dim]Ordnung is running: the backup is taken alongside it.[/]")
             contents = backups.write_backup_file(folder, target, passphrase)
+        # outside the lock and never a failure: the backup is made either way
+        unnoted = backups.note_backup_made(folder, contents)
     console.print(
         f"[green]✓[/] Saved an encrypted backup: {escape(_contents_line(contents))}", soft_wrap=True
     )
+    if unnoted is not None:
+        console.print(
+            f"[dim]Ordnung couldn't note this backup in its privacy log ({escape(unnoted)}); Settings won't "
+            "count it.[/]",
+            soft_wrap=True,
+        )
     console.print(f"  {escape(str(target))}", soft_wrap=True)
     console.print("  Keep the passphrase somewhere safe (a password manager): you need it to restore.")
     console.print(f"  Restore it with: ordnung restore {escape(shell_quoted(str(target)))}", soft_wrap=True)

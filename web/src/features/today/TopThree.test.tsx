@@ -161,6 +161,18 @@ describe("the Pay panel", () => {
     await waitFor(() => expect(document.activeElement).toBe(within(top).getByRole("heading", { name: "Pay TechMarkt reminder" })));
   });
 
+  it("says where a repeating payment of your own moved on to once paid (audit item 26)", async () => {
+    const { srv } = useMockApi();
+    // as if added by hand, every month from Wed 30 Sep
+    Object.assign(srv.db.state.items.find((i) => i.id === "itm_tm_dunning")!, { origin: "manual", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
+    const { top, user } = await renderToday();
+    await user.click(within(top).getByRole("button", { name: "Pay: TechMarkt reminder" }));
+    const panel = await screen.findByRole("dialog", { name: "Pay: TechMarkt reminder" });
+    await user.click(within(panel).getByRole("button", { name: "Mark as paid" }));
+    const toast = (await screen.findByText("Marked as paid")).closest<HTMLElement>("li[data-toast]")!;
+    expect(toast).toHaveTextContent("Pay TechMarkt reminder · Next: Fri 30 Oct");
+  });
+
   it("says it's paid and moves focus on even when the card leaves before every list is refreshed (review round 4: a slow refresh lost both)", async () => {
     useMockApi();
     // the letter's details are refreshed last: the card leaves with the refreshed Top 3, before the mark-as-paid
