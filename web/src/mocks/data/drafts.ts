@@ -118,6 +118,20 @@ export function phoneGuidance(): SendGuidance {
   };
 }
 
+/**
+ * The name a letter goes out in when the person chose another than Sam's (`compose.letter_signer`): one line of at
+ * most 120 characters; none when it is left out, empty or Sam's own name (case and spaces don't count).
+ */
+export function mockSigner(senderName: string | null | undefined): string | null {
+  const name = (senderName ?? "").split(/\s+/).filter(Boolean).join(" ").slice(0, 120).trim();
+  return name && name.toLowerCase() !== SAM.name.toLowerCase() ? name : null;
+}
+
+/** The API's note on a letter that goes out in someone else's name (`compose.signer_note`). */
+export function signerNote(name: string): string {
+  return `This letter goes out in the name of ${name}, so ${name} signs it.`;
+}
+
 /** A stored draft with the checks the API would have run on it. */
 function withChecks(d: Omit<Draft, "checks">, facts: Pick<CheckFacts, "references" | "letterDate">): Draft {
   const channel = d.send_guidance?.channels.find((c) => c.channel === d.sent_channel);

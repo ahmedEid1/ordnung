@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Link, useBlocker, useNavigate } from "react-router";
 import { Check, ChevronRight, CircleCheck, Download, Ellipsis, FilePen, FileCheck2, ListChecks, PenLine, Save, Send, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { api } from "@/api/endpoints";
-import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
+import { useDeleteDraft, useDocuments, useContracts, useDraftProof, useMarkDraftSent, useParties, useProfile, useTranslateDraft, useUpdateDraft } from "@/api/hooks";
 import { ApiError } from "@/api/client";
 import type { Draft, SendChannelKind } from "@/api/types";
 import { Button, IconButton, buttonVariants } from "@/components/ui/Button";
@@ -33,10 +33,12 @@ import {
   checksSummary,
   draftTitle,
   editableOf,
+  firstLine,
   followUpDate,
   notesToShow,
   pdfFileName,
   plainText,
+  sameName,
   sendChoices,
   sentVia,
   versioned,
@@ -194,6 +196,7 @@ export function LetterView({ draft }: { draft: Draft }) {
   const markSent = useMarkDraftSent();
   const remove = useDeleteDraft();
   const translate = useTranslateDraft();
+  const ownName = useProfile().data?.name?.trim() ?? "";
 
   const saved = useMemo(() => editableOf(draft), [draft]);
   const [form, setForm] = useState<EditableFields>(saved);
@@ -387,6 +390,8 @@ export function LetterView({ draft }: { draft: Draft }) {
         onRetranslate={() => void retranslate()}
         retranslating={translate.isPending}
         readOnly={isSent}
+        // a letter that goes out in someone else's name: its sender isn't "you"
+        senderLabel={ownName && firstLine(form.sender_block) && !sameName(firstLine(form.sender_block), ownName) ? "From" : "From (you)"}
       />
       {notes.length ? (
         <Callout tone="info" title="Good to know">

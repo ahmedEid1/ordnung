@@ -167,6 +167,30 @@ describe("a sent letter", () => {
   });
 });
 
+describe("a letter in someone else's name", () => {
+  it("labels its sender block “From”, not “From (you)”", async () => {
+    const { srv } = useMockApi();
+    srv.db.applyTrayDocument("doc_tax");
+    const res = await srv.handle("POST", "/drafts", new URLSearchParams(), { kind: "objection", doc_id: "doc_tax", sender_name: "Alex Rivera" });
+    const draft = (await res.json()) as Draft;
+    const user = userEvent.setup();
+    renderLetter(draft.id);
+    await user.click(await screen.findByRole("button", { name: "Edit sender, recipient & date" }));
+    expect(screen.getByRole("textbox", { name: "From" })).toHaveValue(draft.sender_block);
+    expect(screen.queryByText("From (you)")).toBeNull();
+    const notes = screen.getByText("This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.");
+    expect(notes.closest("li")).not.toBeNull();
+  });
+
+  it("keeps “From (you)” for a letter in your own name", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderLetter("drf_phone");
+    await user.click(await screen.findByRole("button", { name: "Edit sender, recipient & date" }));
+    expect(screen.getByRole<HTMLTextAreaElement>("textbox", { name: "From (you)" }).value).toMatch(/^Sam Rivera\n/);
+  });
+});
+
 describe("status actions", () => {
   it("“Mark as ready to send” says so, with Undo", async () => {
     const { calls } = useMockApi();

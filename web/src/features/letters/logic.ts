@@ -251,6 +251,12 @@ export function firstLine(block: string | null | undefined): string {
   return (block ?? "").split("\n").map((l) => l.trim()).find(Boolean) ?? "";
 }
 
+/** The same name when only case and spaces differ — as the API decides whether a letter goes out in another name. */
+export function sameName(a: string, b: string): boolean {
+  const plain = (name: string) => name.split(/\s+/).filter(Boolean).join(" ").toLowerCase();
+  return plain(a) === plain(b);
+}
+
 const KIND_TITLE: Record<DraftKind, string> = {
   cancellation: "Cancellation",
   objection: "Objection",
