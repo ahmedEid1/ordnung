@@ -220,6 +220,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
 | **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | 100 % [91.8–100] | **0 %** | yes |
+| **Ordnung**, the three held-out splits together¹¹ | 97.0 % [94.3–99.4] | **1.2 %** (2 of 168) | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -290,6 +291,10 @@ one letter was redrawn before the recording so that it tells the old and the new
 date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them.
 The code has changed since (the looser dropped-date check, the phone companion and hand-off sync); replayed on
 the current code, the same recording gives the same prediction for every letter (`tests/test_holdout3_replay.py`).
+¹¹ Rows ⁵, ⁷ and ¹⁰ together, each split as recorded once: 189 letters (33 photos, 36 adversarial; 168 dated
+obligations), the interval bootstrapped over all of them. On the same letters the agent with the calculator got
+167 of 168 right (one late), the rules-text prompt 154 (one late) and the model alone 136 (13 late)
+([docs/evals.md](docs/evals.md#held-out-splits-pooled)).
 
 What the numbers say:
 
@@ -343,6 +348,11 @@ What the numbers say:
   letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
   rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
   late. Neither the completeness re-ask nor the reading check was needed on these letters.
+- **All three held-out splits together: 97.0 %.** Pooled (row ¹¹), Ordnung is clearly ahead of the
+  rules-text prompt (+5.4 points, 95 % interval +0.6 to +10.6) and of the model alone (+16.1 points, 95 %
+  interval +9.8 to +23.1), and the agent with the calculator is level with it or ahead (−2.4 points, 95 %
+  interval −5.3 to 0.0 for Ordnung): on these letters too, accuracy does not decide between the pipeline and
+  the agent.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
@@ -598,6 +608,9 @@ More in [docs/architecture.md](docs/architecture.md).
 - Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
   the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
   Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
+- The app's own text is in English only: buttons, receipts, Ideas and notifications. Ordnung reads German
+  letters, and what Claude writes for you (explanations, translations, Ask's answers) follows the language you
+  choose in Settings; letters to German offices stay in German.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
@@ -635,11 +648,20 @@ More in [docs/architecture.md](docs/architecture.md).
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
   sends no reminders and reads no letters, and calendar sync is connected on each computer.
+- Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app password
+  (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get the calendar
+  file: a snapshot whose alarms fire, but dates from letters read later reach it only when you download and import
+  the file again (Today's Ideas say when there are new ones).
 - Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
   online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
   iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
   knows the passphrase): a new sync folder with a new passphrase does, and changing the passphrase isn't
   possible yet.
+- Hand-off sync saves the database in 1 MiB slices and uploads every slice a save changed, which adds up on a
+  large library: measured on a generated library of 1,500 letters and 80 MiB of database, reading one more
+  letter changed 29 of its 80 slices, about 29 MiB to upload. Ordnung deletes replaced slices after a day, but your
+  provider's version history and trash may keep them longer: on a metered connection or a small quota, turn
+  version history off for the sync folder if your provider lets you, and empty its trash now and then.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in

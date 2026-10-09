@@ -22,6 +22,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Weekly, it fails once the rules were last checked against the law more than 90 days ago, and checks that a
   freshly installed Claude Code (the newest, and 2.1.0) still takes every flag Ordnung passes, without
   signing in.
+- **The benchmark page pools the three held-out splits** into one table with tighter intervals, and each
+  held-out split now also shows how the rest of each letter was read, the adversarial letters and what its one
+  recording cost ([docs/evals.md](docs/evals.md)). Scam letters are scored as the app decides too, beside the
+  benchmark's looser rule: in the app, an IBAN that only fails its checksum is no scam sign on its own.
+- README's Limitations now say that the app's own text is in English only, that Google Calendar and Outlook.com
+  get the calendar file rather than live sync, and how much one hand-off sync save can upload on a large library.
 
 ### Fixed
 
