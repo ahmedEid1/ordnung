@@ -109,18 +109,19 @@ authenticated.
 ```
 src/ordnung/            (the main modules; the package itself is the complete list)
   cli.py  config.py  clock.py  ids.py  models.py  events.py  app_context.py  views.py  tick.py
-  payments.py  numbers.py  girocode.py  recurrence.py  doctor.py  locking.py  server.py
+  payments.py  numbers.py  girocode.py  recurrence.py  doctor.py  encryption.py  locking.py  server.py
   db/ (migrations/NNNN_*.sql, migrate.py, store.py)
   llm/ (base.py, claude_cli.py, replay.py, fake.py, runtime.py, schemas.py, prompts/*.md)
   rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
           routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
   ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py,
            held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py)
-  secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py)
+  secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py,
+              addressee.py)
   assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
-  notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py)
+  notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py, reminder.py)
   phone/ (scope.py, net.py, tls.py, pairing.py, record.py, access.py, actor.py, mask.py)
   sync/ (crypto.py, folder.py, model.py, lineage.py, decide.py, scrub.py, local.py, scan.py, push.py, pull.py,
          kept.py, engine.py, agent.py, gate.py, status.py)
