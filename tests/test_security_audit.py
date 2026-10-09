@@ -425,6 +425,19 @@ def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() ->
     assert time.monotonic() - started < 5
 
 
+@pytest.mark.parametrize("filters", [b"/A85/Fl", b"/AHx/Fl"])
+def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly(filters: bytes) -> None:
+    """Audit (batch A review): each stream's ASCII85 data was decoded up front, to the first character
+    that can't be part of it, and ``N 0 obj<</Filter[/A85/Fl]>>stream`` is ASCII85 itself, so thousands of
+    such objects made one run, decoded again for each stream: 100 KB took 45 s. Now ASCII85 and ASCIIHex
+    are decoded as the filter behind them reads, and what they read counts against the budget."""
+    unit = b"%d 0 obj<</Filter[" + filters + b"]>>stream\n"
+    data = b"%PDF-1.4\n" + b"".join(unit % number for number in range(1, 3000)) + b"~>\nendstream endobj\n"
+    started = time.monotonic()
+    expansion.check_pdf_expansion(data)  # nothing in it expands
+    assert time.monotonic() - started < 5
+
+
 def test_unusual_but_valid_syntax_is_accepted() -> None:
     """Comments and nested, escaped parentheses in dictionaries, an indirect /Length and /Filter, a hex
     string, an escaped name and CR line ends: an ordinary letter's content is measured and passes."""

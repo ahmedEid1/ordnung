@@ -18,11 +18,11 @@ comments, ``#xx`` escapes in names, nesting, any length up to :data:`_MAX_DICTIO
 keyword after it starts the data; an indirect ``/Filter`` is looked up. For damaged files the
 ``stream`` keyword with the dictionary in front of it counts too (up to :data:`_MAX_LOOSE_STREAMS`
 of them without any ``N G obj`` in front). The expanding filters Flate, LZW (with either
-``/EarlyChange``) and RunLength — also chained, or behind ASCII85/ASCIIHex — are measured; each filter
-ends at its own end-of-data marker, so no ``/Length`` or ``endstream`` has to be trusted. A filter chain
-counts up to its first other filter, so chains that differ only after it are measured once. Image codecs
-(DCT, JPX, JBIG2, CCITT) are bounded by the pixel check. A PDF whose structure can't be read within
-those bounds is rejected.
+``/EarlyChange``) and RunLength — also chained, or behind ASCII85/ASCIIHex, which are decoded only as
+far as the filters behind them read — are measured; each filter ends at its own end-of-data marker, so
+no ``/Length`` or ``endstream`` has to be trusted. A filter chain counts up to its first other filter,
+so chains that differ only after it are measured once. Image codecs (DCT, JPX, JBIG2, CCITT) are bounded
+by the pixel check. A PDF whose structure can't be read within those bounds is rejected.
 
 Encrypted PDFs that open without a password (banks and insurers often send edit-protected ones) are
 decrypted by PDFium before it decodes them, so their streams are measured both as stored and as
@@ -43,6 +43,7 @@ import bisect
 import functools
 import hashlib
 import io
+import itertools
 import re
 import zlib
 from collections.abc import Callable, Iterable, Iterator
@@ -545,21 +546,83 @@ def _pixels(header: bytes) -> int:
 # --------------------------------------------------------------------------------------------------
 
 
+class _Ascii85:
+    """ASCII85 as PDFium decodes it, fed in pieces (a ``<~`` in front is skipped by :func:`_measured`, as
+    pdfminer does): whitespace is skipped, the data ends at the first character that can't be part of it
+    (the ``~`` of ``~>`` too), a group a ``z`` cuts short is dropped, and a group above 2**32 - 1 keeps its
+    last 32 bits. Python's own decoder refuses data with a stray character, which PDFium decodes all the
+    same. ``ended``: its end came; :meth:`close` decodes the last group when the data runs out first, and
+    either ``finished`` it."""
+
+    def __init__(self) -> None:
+        self.finished = self.ended = False
+        self._pending = b""  # digits of a group not complete yet
+
+    def feed(self, chunk: bytes) -> Iterator[bytes]:
+        if self.finished:
+            return
+        end = _A85_END_RE.search(chunk)
+        if end:
+            chunk, self.finished, self.ended = chunk[: end.start()], True, True
+        digits = self._pending + _A85_SPACE_RE.sub(b"", chunk)
+        cut = len(digits)
+        if not self.finished:  # keep a group not complete yet: a z or more digits may follow
+            after_z = digits.rfind(b"z") + 1
+            cut = after_z + (len(digits) - after_z) // 5 * 5
+        self._pending = digits[cut:]
+        if cut:
+            yield _ascii85(_A85_DROPPED_RE.sub(rb"\1", digits[:cut]))
+
+    def close(self) -> Iterator[bytes]:
+        self.finished, digits, self._pending = True, self._pending, b""
+        if digits:
+            yield _ascii85(digits)
+
+
+class _AsciiHex:
+    """ASCIIHex as PDFium decodes it, fed in pieces: it ends at ``>``, skips any character that isn't a
+    hex digit, and a last odd digit counts as followed by 0. ``ended``, ``finished`` and :meth:`close` as
+    for :class:`_Ascii85`."""
+
+    def __init__(self) -> None:
+        self.finished = self.ended = False
+        self._odd = b""
+
+    def feed(self, chunk: bytes) -> Iterator[bytes]:
+        if self.finished:
+            return
+        end = chunk.find(b">")
+        if end != -1:
+            chunk, self.finished, self.ended = chunk[:end], True, True
+        digits = self._odd + _NOT_HEX_RE.sub(b"", chunk)
+        cut = len(digits) if self.finished else len(digits) // 2 * 2
+        self._odd = digits[cut:]
+        if cut:
+            yield binascii.unhexlify(digits[:cut] + b"0" * (cut % 2))
+
+    def close(self) -> Iterator[bytes]:
+        self.finished, digits, self._odd = True, self._odd, b""
+        if digits:
+            yield binascii.unhexlify(digits + b"0")
+
+
+def _ascii_stage(name: bytes) -> _Ascii85 | _AsciiHex | None:
+    return _Ascii85() if name in _ASCII85 else _AsciiHex() if name in _ASCII_HEX else None
+
+
+def _last_group(stages: list[_Stage], ascii: _Ascii85 | _AsciiHex) -> Iterator[bytes]:
+    """The last group of ASCII data that ran out before its end, through the ``stages`` behind it."""
+    yield from _through(stages, b"".join(ascii.close()))
+
+
 def _pre_decoded(data: bytes, start: int, name: bytes) -> tuple[bytes, bool]:
-    """ASCII85/ASCIIHex data from ``start`` decoded as PDFium decodes it (at most four times as long: an
-    ASCII85 ``z`` is four zero bytes), and whether its end came before the end of ``data``. ASCII85 ends at
-    the first character that can't be part of it (the ``~`` of ``~>`` too), and a ``<~`` in front is
-    skipped, as pdfminer does; ASCIIHex ends at ``>`` and skips any character that isn't a hex digit.
-    Python's own decoders refuse data with a stray character, which PDFium decodes all the same."""
-    if name in _ASCII85:
-        lead = _A85_LEAD_RE.match(data, start)
-        at = lead.end() if lead else start
-        end = _A85_END_RE.search(data, at)
-        digits = _A85_SPACE_RE.sub(b"", data[at : end.start() if end else len(data)])
-        return _ascii85(_A85_DROPPED_RE.sub(rb"\1", digits)), end is not None
-    end_at = data.find(b">", start)
-    digits = _NOT_HEX_RE.sub(b"", data[start : end_at if end_at != -1 else len(data)])
-    return binascii.unhexlify(digits + b"0" * (len(digits) % 2)), end_at != -1
+    """ASCII85 (``name``) or ASCIIHex data from ``start`` decoded whole, as :class:`_Ascii85` and
+    :class:`_AsciiHex` decode it in pieces, and whether its end came before the end of ``data``."""
+    stage = _ascii_stage(name)
+    assert stage is not None
+    lead = _A85_LEAD_RE.match(data, start) if name in _ASCII85 else None
+    out = b"".join(stage.feed(data[lead.end() if lead else start :]))
+    return out + b"".join(stage.close()), stage.ended
 
 
 def _ascii85(digits: bytes) -> bytes:
@@ -621,30 +684,42 @@ def expanded_size(
 def _measured(
     data: bytes, start: int, filters: list[bytes], limit: int, early_change: int
 ) -> tuple[int, int, bool]:
-    """:func:`expanded_size`, and whether the data ran out before the filters reached their end."""
-    source = data
+    """:func:`expanded_size`, and whether the data ran out before the filters reached their end. Leading
+    ASCII85 or ASCIIHex data is decoded as the filters behind it read it — in pieces from :data:`_PROBE`
+    bytes that double up to :data:`_READ_CHUNK` — so data that runs on into the next streams is decoded
+    only as far as they read, and the bytes read, which count against the budget, are those as stored."""
     names = list(filters)
-    bounded = False  # ASCII85/ASCIIHex data whose end came before the end of the bytes
-    if names and (names[0] in _ASCII85 or names[0] in _ASCII_HEX):
-        source, bounded = _pre_decoded(data, start, names.pop(0))
-        start = 0
+    ascii = _ascii_stage(names[0]) if names else None
+    if ascii is not None:
+        names.pop(0)
+        lead = _A85_LEAD_RE.match(data, start) if isinstance(ascii, _Ascii85) else None
+        start = lead.end() if lead else start
     stages = _stages(names, early_change)
     if not stages:
         return 0, 0, False
+    first = stages[0]
+    if ascii is not None:
+        stages = [ascii, *stages]
     total = 0
     position = start
-    view = memoryview(source)
+    piece = _PROBE if ascii is not None else _READ_CHUNK
+    view = memoryview(data)
     try:
-        while position < len(source) and not stages[0].finished:
-            chunk = bytes(view[position : position + _READ_CHUNK])
-            position += _READ_CHUNK
-            for piece in _through(stages, chunk):
-                total += len(piece)
+        while position < len(data) and not first.finished and not (ascii and ascii.finished):
+            chunk = bytes(view[position : position + piece])
+            position += piece
+            piece = min(2 * piece, _READ_CHUNK)
+            pieces = _through(stages, chunk)
+            if ascii is not None and position >= len(data):  # the data ran out: its last group too
+                pieces = itertools.chain(pieces, _last_group(stages[1:], ascii))
+            for out in pieces:
+                total += len(out)
                 if limit and total > limit:
                     return total, position - start, False
     except zlib.error:
-        return total, min(position, len(source)) - start, False
-    return total, min(position, len(source)) - start, not stages[0].finished and not bounded
+        return total, min(position, len(data)) - start, False
+    bounded = ascii is not None and ascii.ended  # its end came before the end of the bytes
+    return total, min(position, len(data)) - start, not first.finished and not bounded
 
 
 def _measured_part(chain: tuple[bytes, ...]) -> tuple[bytes, ...]:

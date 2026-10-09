@@ -332,6 +332,28 @@ def test_ascii85_and_asciihex_data_is_decoded_as_pdfium_decodes_it(filters: byte
     assert expansion._pre_decoded(data, 0, name)[0] == _pdfium_decodes(filters, data)
 
 
+@pytest.mark.parametrize("size", [1, 3, 7, 4096])
+@pytest.mark.parametrize(
+    ("name", "data"),
+    [
+        pytest.param(b"A85", A85[:7] + b"z" + A85[7:] + b"~>", id="ascii85 with z inside a group"),
+        pytest.param(b"A85", A85[:500] + b"v" + A85[500:], id="ascii85 up to a character outside it"),
+        pytest.param(b"A85", b"uuuuu" + base64.a85encode(bytes(64) + LETTER), id="ascii85 without its end"),
+        pytest.param(b"A85", A85[:-3], id="ascii85 ending in a short group"),
+        pytest.param(b"AHx", binascii.hexlify(LETTER, b" ", 31) + b"g>", id="hex"),
+        pytest.param(b"AHx", b"4142434", id="hex with an odd number of digits, without its end"),
+    ],
+)
+def test_ascii_data_fed_in_pieces_decodes_as_it_does_whole(size: int, name: bytes, data: bytes) -> None:
+    """The check decodes ASCII85 and ASCIIHex as the filter behind it reads, a piece at a time: a group
+    split between pieces, a z after it, the end in a piece of its own decode as the whole data does."""
+    stage = expansion._ascii_stage(name)
+    assert stage is not None
+    out = b"".join(b"".join(stage.feed(data[at : at + size])) for at in range(0, len(data), size))
+    out += b"".join(stage.close())
+    assert out == expansion._pre_decoded(data, 0, name)[0] == _pdfium_decodes(b"/" + name, data)
+
+
 @pytest.mark.parametrize(
     "data",
     [
