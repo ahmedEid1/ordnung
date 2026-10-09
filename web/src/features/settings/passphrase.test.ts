@@ -2,7 +2,8 @@
  * The passphrase estimator counts as the server's (`src/ordnung/passphrase.py`): both are held to the same vectors
  * (`passphraseVectors.json`, which `tests/test_passphrase_strength.py` reads too) — what people make up stays
  * refused, a password manager's random password passes — and each to a seeded corpus of what four password managers
- * generate, 99 % of each passing.
+ * generate, nearly all of each passing (97–99 %, measured with a small margin: a run of random letters that reads
+ * like a word counts as one, the price of refusing "Andreas!88#Xy" and "Schm3tt3rl1ng!").
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -46,7 +47,16 @@ function constant(name: string): string {
 
 /** How many passwords of each generator the corpus holds, and how many of them must pass (as on the server). */
 const SAMPLES = 2000;
-const PASSING = 0.99;
+const PASSING: Record<string, number> = {
+  Bitwarden: 0.97,
+  "1Password": 0.96,
+  Chrome: 0.98,
+  Apple: 0.99,
+};
+const SIXTEEN_PASSING: Record<string, number> = {
+  "capital and small letters": 0.99,
+  "capital and small letters and digits": 0.97,
+};
 
 /** A seeded random number in [0, 1) (mulberry32): the same corpus on every run. */
 function seeded(seed: number): () => number {
@@ -146,7 +156,7 @@ describe("the shared vectors (the server's test reads the same file)", () => {
 
 describe("a password manager's random password", () => {
   it.each(Object.keys(GENERATORS))(
-    "%s: 99 % of a seeded corpus passes",
+    "%s: nearly all of a seeded corpus passes",
     (name) => {
       const random = seeded(
         [...name].reduce((sum, c) => sum * 31 + c.codePointAt(0)!, SAMPLES),
@@ -160,7 +170,7 @@ describe("a password manager's random password", () => {
       expect(
         refused.length,
         refused.slice(0, 10).join(" "),
-      ).toBeLessThanOrEqual((1 - PASSING) * SAMPLES);
+      ).toBeLessThanOrEqual((1 - PASSING[name]!) * SAMPLES);
     },
   );
 
@@ -168,7 +178,7 @@ describe("a password manager's random password", () => {
     "capital and small letters",
     "capital and small letters and digits",
   ])(
-    "of 16 %s: 99 % of a seeded corpus passes, as the refusal says",
+    "of 16 %s: nearly all of a seeded corpus passes, as the refusal says",
     (sets) => {
       const random = seeded(
         [...sets].reduce((sum, c) => sum * 31 + c.codePointAt(0)!, 16),
@@ -184,7 +194,7 @@ describe("a password manager's random password", () => {
       expect(
         refused.length,
         refused.slice(0, 10).join(" "),
-      ).toBeLessThanOrEqual((1 - PASSING) * SAMPLES);
+      ).toBeLessThanOrEqual((1 - SIXTEEN_PASSING[sets]!) * SAMPLES);
     },
   );
 
@@ -204,7 +214,9 @@ describe("a password manager's random password", () => {
       20 * Math.log2(95),
       9,
     );
-    expect(randomBits("k7qmx3vxdp9t")).toBeCloseTo(12 * Math.log2(36), 9);
+    expect(randomBits("k8qmx2vxdp9t")).toBeCloseTo(12 * Math.log2(36), 9);
+    // with leetspeak digits the letters read as a word ("ktqmxevxdp"): counted as one, never as chance
+    expect(randomBits("k7qmx3vxdp9t")).toBeLessThan(12 * Math.log2(36));
     expect(randomBits("kT9xVbq2MzR")).toBe(0);
     expect(randomBits("kT9xVbq 2MzRw7p")).toBe(0);
     expect(passphraseBits("Xk9#mQ2!vR7@pL4$")).toBeCloseTo(

@@ -130,6 +130,8 @@ SHIFTED_KEYS: tuple[dict[str, str], ...] = (
 LEETSPEAK = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
 #: A word has one of these (also with an accent: "ä", "é").
 VOWELS = "aeiouy"
+#: A word spelled in leetspeak counts as that word from this many letters (shorter ones turn up by chance).
+LEET_WORD_LETTERS = 5
 #: Apple's own figure for its strong passwords (:func:`apple_password`): "71 bits of entropy".
 APPLE_PASSWORD_BITS = 71.0
 
@@ -178,6 +180,12 @@ def is_run(token: str) -> bool:
     return any(token in row or token in row[::-1] for row in KEYBOARD_ROWS)
 
 
+def _fold(token: str) -> str:
+    """A token case-folded as the web app folds it: upper case, then lower ("ß" is "ss", and a dotless "Dıe" is
+    "die", which :meth:`str.casefold` leaves as typed)."""
+    return token.upper().lower()
+
+
 def token_bits(token: str) -> float:
     """What one case-folded token counts (:func:`word_bits`)."""
     if is_run(token):
@@ -200,7 +208,7 @@ def word_bits(passphrase: str) -> float:
     :data:`MIN_PASSPHRASE_BITS`; a repeated word, a long run of one kind, a pattern ("aaa bbb ccc", "abc
     def ghi", "qwerty asdfgh"), the months or a short sentence of common words don't.
     """
-    tokens = [token.casefold() for token in passphrase_tokens(passphrase)]
+    tokens = [_fold(token) for token in passphrase_tokens(passphrase)]
     joined = "".join(tokens)
     if len(tokens) > 1 and is_run(joined):
         return _per_char(joined) + 1.0
@@ -317,10 +325,18 @@ def _word(part: str) -> bool:
 
 def _words(text: str) -> tuple[list[str], bool]:
     """The words of ``text``, in the case people type (:func:`_as_typed`): the parts of each run of letters
-    that is made only of words — and whether every run is."""
+    that is made only of words — and whether every run is (beside a word as typed, runs shorter than
+    :data:`WORD_LETTERS` don't count either way)."""
     found: list[str] = []
     every = True
+    # beside a word as typed, one or two letters ("Andreas!88#Xy") are neither a word nor a sign of chance
+    plain = any(
+        len(run) >= WORD_LETTERS and all(_word(part) for part in passphrase_tokens(run))
+        for run in _runs(text, str.isalpha)
+    )
     for run in _runs(_as_typed(text), str.isalpha):
+        if plain and len(run) < WORD_LETTERS:
+            continue
         parts = passphrase_tokens(run)
         if all(_word(part) for part in parts):
             found.extend(parts)
@@ -388,7 +404,8 @@ def random_bits(passphrase: str) -> float:
     upper-case, :data:`DIGIT_ALPHABET` digits, :data:`OTHER_ALPHABET` other characters, each if used) —
     0 below :data:`RANDOM_MIN_CHARS` characters, with a space, or with a pattern people make
     (:func:`human_pattern`). When it has words and every letter is in one ("Max#Richter#94"), only the
-    other characters count so; the words and the runs of digits count as :func:`token_bits` counts each."""
+    other characters count so; the words and the runs of digits count as :func:`token_bits` counts each. Words
+    spelled in leetspeak (:data:`LEETSPEAK`) count as the words they spell."""
     text = unicodedata.normalize("NFC", passphrase)
     if len(text) < RANDOM_MIN_CHARS or any(_is_space(char) for char in text) or human_pattern(text):
         return 0.0
@@ -400,11 +417,17 @@ def random_bits(passphrase: str) -> float:
     )
     per_char = math.log2(alphabet)
     words, every = _words(text)
+    unleet = "".join(LEETSPEAK.get(char, char) for char in text)
+    if not (words and every) and unleet != text:
+        # words spelled in leetspeak ("Schm3tt3rl1ng!") count as the words they spell
+        leet_words, leet_every = _words(unleet)
+        if leet_words and leet_every and any(len(word) >= LEET_WORD_LETTERS for word in leet_words):
+            text, words, every = unleet, leet_words, leet_every
     if not (words and every):
         return len(text) * per_char
     others = sum(not (char.isalpha() or char.isdecimal()) for char in text)
     return (
-        sum(token_bits(word.casefold()) for word in words)
+        sum(token_bits(_fold(word)) for word in words)
         + sum(token_bits(run) for run in _runs(text, str.isdecimal))
         + others * per_char
     )

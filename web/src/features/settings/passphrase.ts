@@ -77,6 +77,8 @@ export const PATTERN_CHARS = 4;
 export const DIGIT_RUN_CHARS = 5;
 /** … a word from this many letters (`WORD_LETTERS`) … */
 export const WORD_LETTERS = 3;
+/** A word spelled in leetspeak counts as that word from this many letters (`LEET_WORD_LETTERS`). */
+export const LEET_WORD_LETTERS = 5;
 /** … and words when those of {@link PATTERN_CHARS} letters or more make up this share (`WORDS_SHARE`). */
 export const WORDS_SHARE = 0.6;
 /** Characters again exactly as typed make a repeat from this many on, "Ab1!Ab1?" (`REPEAT_CHARS`). */
@@ -155,7 +157,7 @@ export function passphraseTokens(passphrase: string): string[] {
   return tokens;
 }
 
-/** Unicode case folding as Python's `str.casefold()` does it, close enough for telling words apart ("ß" is "ss"). */
+/** Case folding as the server folds (`_fold`): upper case, then lower ("ß" is "ss", a dotless "Dıe" is "die"). */
 function casefold(token: string): string {
   return token.toUpperCase().toLowerCase();
 }
@@ -356,7 +358,14 @@ function isWord(part: string): boolean {
 function words(chars: string[]): [string[], boolean] {
   const found: string[] = [];
   let every = true;
+  // beside a word as typed, one or two letters ("Andreas!88#Xy") are neither a word nor a sign of chance
+  const plain = runs(chars, (char) => LETTER.test(char)).some(
+    (run) =>
+      run.length >= WORD_LETTERS &&
+      passphraseTokens(run.join("")).every(isWord),
+  );
   for (const run of runs(asTyped(chars), (char) => LETTER.test(char))) {
+    if (plain && run.length < WORD_LETTERS) continue;
     const parts = passphraseTokens(run.join(""));
     if (parts.every(isWord)) found.push(...parts);
     else every = false;
@@ -470,14 +479,29 @@ export function randomBits(passphrase: string): number {
       ? OTHER_ALPHABET
       : 0);
   const perChar = Math.log2(alphabet);
-  const [found, every] = words(chars);
+  let [found, every] = words(chars);
+  let counted = chars;
+  const unleet = chars.map((char) => LEETSPEAK[char] ?? char);
+  if (
+    (!found.length || !every) &&
+    unleet.some((char, at) => char !== chars[at])
+  ) {
+    // words spelled in leetspeak ("Schm3tt3rl1ng!") count as the words they spell
+    const [leetFound, leetEvery] = words(unleet);
+    if (
+      leetFound.length &&
+      leetEvery &&
+      leetFound.some((word) => [...word].length >= LEET_WORD_LETTERS)
+    )
+      [counted, found, every] = [unleet, leetFound, leetEvery];
+  }
   if (!found.length || !every) return chars.length * perChar;
-  const others = chars.filter(
+  const others = counted.filter(
     (char) => !LETTER.test(char) && !DIGIT.test(char),
   ).length;
   let bits = others * perChar;
   for (const word of found) bits += tokenBits(casefold(word));
-  for (const run of runs(chars, (char) => DIGIT.test(char)))
+  for (const run of runs(counted, (char) => DIGIT.test(char)))
     bits += tokenBits(run.join(""));
   return bits;
 }

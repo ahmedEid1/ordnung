@@ -821,6 +821,126 @@
       "passphrase": "!\"§$%&/()=?`*'",
       "bits": 0.0,
       "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Andreas!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Michael!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Sabine!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Sophie!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Stefan!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Thomas!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Jürgen!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Müller!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Fischer!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Schmidt!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Bärchen!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "a name, then symbols, digits and two letters",
+      "passphrase": "Schatzi!88#Xy",
+      "bits": 33.783567,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "Schm3tt3rl1ng!",
+      "bits": 48.846494,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "S0nn3nbl4m3!",
+      "bits": 42.767543,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "D0rtmund#09!",
+      "bits": 37.105496,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "M@ximilian#88!",
+      "bits": 40.353423,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "Fl0w3r-G@rd3n7",
+      "bits": 47.569302,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "F3l1x!d3r!K@t3r",
+      "bits": 48.139711,
+      "pattern": null
+    },
+    {
+      "kind": "leetspeak of a word not on the common list",
+      "passphrase": "Sch@tzi#2!Kq",
+      "bits": 40.722808,
+      "pattern": null
+    },
+    {
+      "kind": "common words typed with a dotless ı",
+      "passphrase": "Dıe Sonne scheınt heute",
+      "bits": 42.0,
+      "pattern": "a very common word"
     }
   ],
   "strong": [
