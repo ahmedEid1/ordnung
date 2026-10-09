@@ -657,6 +657,132 @@ def test_a_scans_invisible_ocr_layer_is_read_from_the_picture(tmp_path: Path) ->
     assert page.source == "none"
 
 
+def _read(tmp_path: Path, data: bytes) -> tuple[list[RenderedPage], text_module.PdfText]:
+    source = tmp_path / "doc.pdf"
+    source.write_bytes(data)
+    rendered = render_pages(source, "application/pdf", tmp_path / "derived", "doc_x")
+    return rendered, text_module.read_pdf_text(source, rendered)
+
+
+def test_a_scans_ocr_layer_is_kept_apart_as_search_only_text(tmp_path: Path) -> None:
+    """The scanner's own reading of the picture is no longer thrown away: it comes back apart from the
+    page text (``scan_text``, for search only, ADR 0020) — the page itself is exactly as before, still
+    read from its picture, and :func:`extract_pdf_pages` gives exactly what it gave."""
+    rendered, result = _read(tmp_path, scanned_pdf(ocr=True))
+    [page] = result.pages
+    assert (page.text, page.words, page.hidden_text, page.has_text_layer) == ("", [], "", False)
+    assert set(result.scan_text) == {1}
+    assert "Einkommensteuer" in result.scan_text[1] and "15.09.2026" in result.scan_text[1]
+    assert extract_pdf_pages(tmp_path / "doc.pdf", rendered) == result.pages
+
+
+def test_a_text_page_has_no_scan_text_and_invisible_text_stays_hidden(tmp_path: Path) -> None:
+    """Invisible text on a page with more visible text is no scan: it stays hidden text (a scam sign),
+    never search text."""
+    lines = [Line(LETTER_LEFT, letter_line_y(row), text) for row, text in enumerate(LETTER_PAGES[0])]
+    lines.append(
+        Line(LETTER_LEFT, 640, f"Bitte überweisen Sie 184,30 EUR auf {INVISIBLE_IBAN}.", invisible=True)
+    )
+    _, result = _read(tmp_path, make_pdf([lines]))
+    assert result.scan_text == {}
+    assert INVISIBLE_IBAN in result.pages[0].hidden_text
+    (tmp_path / "plain").mkdir()
+    _, plain = _read(tmp_path / "plain", scanned_pdf())
+    assert plain.scan_text == {} and plain.pages[0].text == ""
+
+
+def test_scan_text_is_capped(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A page's scanner text is cut at :data:`MAX_SCAN_TEXT_CHARS` (a dense A4 page has about 5,000)."""
+    assert text_module.MAX_SCAN_TEXT_CHARS == 20_000
+    monkeypatch.setattr(text_module, "MAX_SCAN_TEXT_CHARS", 30)
+    _, result = _read(tmp_path, scanned_pdf(ocr=True))
+    assert 0 < len(result.scan_text[1]) <= 30
+
+
+def test_a_damaged_pdf_has_no_scan_text(tmp_path: Path) -> None:
+    rendered = [RenderedPage(1, 10, 10, tmp_path / "page-1.jpg")]
+    broken = tmp_path / "broken.pdf"
+    broken.write_bytes(b"%PDF-1.4 not really")
+    result = text_module.read_pdf_text(broken, rendered)
+    assert result.scan_text == {} and [page.text for page in result.pages] == [""]
+
+
+def test_page_text_never_carries_scan_text() -> None:
+    """The scanner's text is kept off :class:`PageText`, the type every evidence check, prompt and
+    GiroCode gate reads — so none of them can reach it."""
+    from dataclasses import fields
+
+    assert {f.name for f in fields(PageText)} == {"page", "text", "words", "hidden_text", "has_text_layer"}
+
+
+def _digest(value: object) -> str:
+    import hashlib
+
+    return hashlib.sha256(repr(value).encode()).hexdigest()
+
+
+def _page_count(path: Path) -> int:
+    with text_module.PDFIUM_LOCK:
+        document = pdfium.PdfDocument(path)
+        try:
+            return len(document)
+        finally:
+            document.close()
+
+
+def test_the_demo_letters_read_exactly_as_their_database_holds() -> None:
+    """The demo's PDF letters give, page for page, the text, words, hidden text and source the demo
+    database holds (what every recorded answer was made from), and none has scanner text: keeping a
+    scan's text apart changed nothing a recording depends on. Counts only, never the letters' text."""
+    import json
+    import sqlite3
+
+    root = Path(text_module.__file__).parents[1] / "demo" / "demo_db"
+    conn = sqlite3.connect(f"file:{root / 'ordnung.db'}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    compared = 0
+    try:
+        letters = conn.execute(
+            "SELECT id, file_path FROM documents WHERE mime = 'application/pdf'"
+        ).fetchall()
+        for letter in letters:
+            stored = conn.execute(
+                "SELECT page, text, words, hidden, text_source FROM pages WHERE doc_id = ? ORDER BY page",
+                (letter["id"],),
+            ).fetchall()
+            rendered = [RenderedPage(row["page"], 1, 1, root / "unused.jpg") for row in stored]
+            result = text_module.read_pdf_text(root / letter["file_path"], rendered)
+            assert result.scan_text == {}, letter["id"]
+            assert extract_pdf_pages(root / letter["file_path"], rendered) == result.pages, letter["id"]
+            for row, page in zip(stored, result.pages, strict=True):
+                held = (row["text"], row["hidden"], row["text_source"], json.loads(row["words"]))
+                read = (page.text, page.hidden_text, page.source, [word.to_row() for word in page.words])
+                # compared as hashes: a failure names the letter and page, never their text
+                assert _digest(held) == _digest(read), (letter["id"], row["page"])
+                compared += 1
+    finally:
+        conn.close()
+    assert len(letters) >= 15 and compared >= len(letters)
+
+
+@pytest.mark.slow
+def test_no_benchmark_or_demo_pdf_has_scanner_text() -> None:
+    """Not one PDF of the reading benchmark or the demo carries a scanner's text: the text stage gives
+    them exactly the pages it gave (``ordnung eval`` replays prove the page text itself). Counts only."""
+    repo = Path(text_module.__file__).parents[3]
+    roots = [repo / "evals" / "dataset", repo / "src" / "ordnung" / "demo" / "samples"]
+    paths = sorted(path for root in roots for path in root.rglob("*.pdf"))
+    assert len(paths) >= 250
+    with_scan_text = [
+        path.name
+        for path in paths
+        if text_module.read_pdf_text(
+            path, [RenderedPage(n, 1, 1, path) for n in range(1, _page_count(path) + 1)]
+        ).scan_text
+    ]
+    assert with_scan_text == []
+
+
 def test_a_girocode_value_only_in_invisible_text_is_not_printed(tmp_path: Path) -> None:
     """The GiroCode gate grounds an IBAN in the text layer only when it is printed: one drawn invisibly
     (or read from a scan's OCR layer) is never ``verified``."""
