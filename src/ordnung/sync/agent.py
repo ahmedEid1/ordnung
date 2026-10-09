@@ -52,7 +52,9 @@ write this computer's head as ``left`` with its version kept, so the other compu
 version over (critique finding 2); both need a second confirmation (``not_received``) while no other
 computer has this one's latest changes. Shutting down saves before background work gets its grace
 period, then once more at the end (head ``closed``), each at most
-:data:`~ordnung.sync.SHUTDOWN_PUSH_S`.
+:data:`~ordnung.sync.SHUTDOWN_PUSH_S`; within the last one's bound it also waits for an engine call that
+outlived its limit, so no thread of the agent's still uses the database once Ordnung has stopped
+(Windows can't delete or replace an open file).
 
 **Never raises out of the loop.** Every failure becomes a :class:`~ordnung.sync.status.SyncProblem`
 (logged with codes and counts only — never the passphrase, a letter's name or a path inside
@@ -153,6 +155,8 @@ T = TypeVar("T")
 
 NO_ENGINE_MESSAGE = "This installation of Ordnung can't sync between computers."
 LOCK_POLL_S = 0.02
+#: How often stopping looks whether the engine's thread is done (as the server's drain does).
+ENGINE_POLL_S = 0.05
 BUSY_MESSAGE = "The sync folder doesn't answer yet. Try again in a moment."
 NAME_MESSAGE = f"Give this computer a name of 1 to {NAME_MAX_CHARS} characters."
 NO_CHOICE_MESSAGE = "There's nothing to choose (any more)."
@@ -899,19 +903,40 @@ class SyncAgent:
     async def close(self) -> None:
         """Ordnung stops (background work already stopped): the last save, the head says ``closed``
         (at most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`, waiting for a running operation at most as
-        long); the loop ends. The store stays open. Never raises."""
+        long); the loop ends, and an engine call still running is waited for until
+        :data:`~ordnung.sync.SHUTDOWN_PUSH_S` after the start. The store stays open. Never raises."""
+        deadline = time.monotonic() + SHUTDOWN_PUSH_S
         self._closing = True
         self.notify()
         await self._shutdown_push("shutdown")
+        await self._let_go(deadline)
+
+    async def dispose(self) -> None:
+        """Let go without a last save (the command line after its operation; an app whose lifespan never
+        ran): the loop ends, the read-only connection closes and an engine call still running is waited
+        for, at most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`. The store stays open. Never raises."""
+        self._closing = True
+        await self._let_go(time.monotonic() + SHUTDOWN_PUSH_S)
+
+    async def _let_go(self, deadline: float) -> None:
         task, self._task = self._task, None
         if task is not None and not task.done():
             task.cancel()
             await asyncio.wait({task})  # its outcome isn't ours; a cancel of close() itself still is
-        if self._watch is not None:
-            with contextlib.suppress(Exception):
-                self._watch.close()
-            self._watch = None
+        self._close_watch()
+        # a call that outlived its limit may still read the database, and the store closes next
+        while self._thread.busy:
+            if time.monotonic() >= deadline:  # a hung share: a daemon thread never keeps Ordnung running
+                log.warning("sync: an operation was still running when Ordnung stopped")
+                break
+            await asyncio.sleep(ENGINE_POLL_S)
         self._thread.retire()
+
+    def _close_watch(self) -> None:
+        watch, self._watch = self._watch, None
+        if watch is not None:
+            with contextlib.suppress(Exception):
+                watch.close()
 
     async def _shutdown_push(self, reason: PushReason) -> None:
         if not self.connected or self.mode != "in_use" or self.engine is None:
@@ -984,7 +1009,7 @@ class SyncAgent:
                 self._watch = sqlite3.connect(uri, uri=True, check_same_thread=False, timeout=1.0)
             return int(self._watch.execute("PRAGMA data_version").fetchone()[0])
         except sqlite3.Error:
-            self._watch = None
+            self._close_watch()
             return None
 
     def _watch_changes(self, now: float) -> None:

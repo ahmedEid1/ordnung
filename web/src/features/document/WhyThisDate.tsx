@@ -18,10 +18,15 @@ import { dueDateLabel, sendByLabel } from "./dateLabels";
 
 /**
  * How the rules engine says a date waits for the sender's Land: a regional holiday may move it
- * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts), or a Land authority's own delivery rule may
- * (`rules.delivery`: "… we couldn't confirm this sender's, so we counted 3 days").
+ * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts; counted backwards it says `REGION_EARLIER`: the date
+ * may then be a day late), or a Land authority's own delivery rule may (`rules.delivery`: "… we couldn't confirm
+ * this sender's, so we counted 3 days").
  */
-const LAND_UNKNOWN = { start: "Holiday region unknown", threeDays: "couldn't confirm this sender's" } as const;
+export const LAND_UNKNOWN = {
+  start: "Holiday region unknown",
+  earlier: "where the deadline would be earlier",
+  threeDays: "couldn't confirm this sender's",
+} as const;
 
 /** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
 const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
@@ -113,16 +118,20 @@ export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">,
 
 /**
  * "Ordnung doesn't know which state … is in" and the way to choose it (the sender's drawer, with its State picker).
+ * What that means follows the receipt's `warnings`: counted forward the date may be a few days early; counted
+ * backwards over a holiday of some Länder (`LAND_UNKNOWN.earlier`) it may be a day late, so act a working day before.
  * The receipt closes first (`close`): on a phone it is a modal sheet, which would keep the keyboard from the drawer
  * opened over it (final check of the fix wave: Tab went round the sheet's three buttons, never to the State picker).
  */
-function SenderLandNote({ party, close }: { party: Party; close?: () => void }) {
+export function SenderLandNote({ party, warnings, close }: { party: Party; warnings: readonly string[]; close?: () => void }) {
   const drawer = usePartyDrawer();
+  const late = warnings.some((w) => w.includes(LAND_UNKNOWN.earlier));
   return (
     <p className="flex items-start gap-1.5 text-sm leading-relaxed text-muted">
       <MapPin className="mt-1 size-3.5 shrink-0" aria-hidden />
       <span>
-        Ordnung doesn't know which state {party.name} is in, so this date may be a few days early.{" "}
+        Ordnung doesn't know which state {party.name} is in, so this date may be{" "}
+        {late ? "a day late: act a working day before it." : "a few days early."}{" "}
         <button
           type="button"
           onClick={() => {
@@ -190,7 +199,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
       defaultShowRules={defaultShowRules}
       advice={adviceFor(area, docKind, party?.kind)}
     >
-      {landless ? <SenderLandNote party={landless} close={close} /> : null}
+      {landless ? <SenderLandNote party={landless} warnings={receipt.warnings} close={close} /> : null}
     </Receipt>
   );
 }

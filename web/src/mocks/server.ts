@@ -38,7 +38,9 @@ import type {
   PairRequest,
   PhoneAccessChange,
   Profile,
+  Party,
   PartyDetail,
+  RegionSuggestion,
   ReviewStarted,
   StreamEvent,
   Suggestion,
@@ -96,7 +98,7 @@ import {
   mockDiscoverCalendars,
   mockRunCalendarSync,
 } from "./data/calendarSync";
-import { PARTIES } from "./data/parties";
+import { PARTIES, REGION_SUGGESTIONS } from "./data/parties";
 import { doc as makeDoc, item as makeItem } from "./data/helpers";
 import { isOpenItem } from "@/features/document/verdict";
 import { compareBase } from "@/features/document/trace/copy";
@@ -334,6 +336,27 @@ const readingsOf = (db: MockDb, d: Document) => db.state.readings[d.id] ?? defau
 const READING_GONE = "That reading of the letter isn't kept any more — Ordnung keeps the last five.";
 const NOTHING_TO_COMPARE = "There is nothing to compare yet: this letter has been read only once.";
 
+/** The Idea asking for a sender's state (`secretary.sender_land.RULE_ID`). */
+const SENDER_LAND_RULE = "sender_land";
+
+/**
+ * Like `secretary.sender_land.region_suggestion`: the state the postcode on a sender's letter suggests, worked out
+ * on read and never stored (the demo's from `REGION_SUGGESTIONS`) — none once their state is set, or on a letter
+ * that isn't an incoming one of theirs. `idea_id` and `declined` follow the sender's Idea, so dismissing it
+ * ("Don't know") is what declines.
+ */
+function regionSuggestion(db: MockDb, party: Party | null, doc?: Document): RegionSuggestion | null {
+  const known = party && !party.region ? REGION_SUGGESTIONS[party.id] : undefined;
+  if (!party || !known || (doc && (doc.party_id !== party.id || doc.direction !== "incoming"))) return null;
+  const idea = db.state.suggestions.find(
+    (x) =>
+      x.rule_id === SENDER_LAND_RULE &&
+      ["new", "snoozed", "dismissed"].includes(x.status) &&
+      x.refs.some((r) => r.type === "party" && r.id === party.id),
+  );
+  return { ...known, idea_id: idea?.id ?? null, declined: idea?.status === "dismissed" };
+}
+
 function documentDetail(db: MockDb, id: string): DocumentDetail {
   const d = db.document(id) ?? notFound("This letter doesn't exist (anymore).");
   const items = db.state.items.filter((i) => i.doc_id === id);
@@ -374,6 +397,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
         const letter = db.state.drafts.find((x) => x.id === p.draft_id);
         return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
       }),
+    region_suggestion: regionSuggestion(db, db.party(d.party_id), d),
   };
 }
 
@@ -492,6 +516,7 @@ function partyDetail(db: MockDb, id: string): PartyDetail {
     contracts: db.state.contracts.filter((c) => c.party_id === id),
     cases: db.state.cases.filter((c) => c.party_id === id),
     set_aside: setAside(db, items),
+    region_suggestion: regionSuggestion(db, party),
   };
 }
 

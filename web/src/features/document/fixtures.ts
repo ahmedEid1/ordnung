@@ -149,6 +149,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     scam_signs: [],
     // as the API says: a letter that was read was given to Claude
     given_to_model: Boolean(document.ai_processed_at),
+    region_suggestion: null,
     ...d,
   };
 }

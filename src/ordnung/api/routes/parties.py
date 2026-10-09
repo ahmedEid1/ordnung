@@ -2,9 +2,10 @@
 (Bundesland) a sender is in, which only the person can tell Ordnung.
 
 A sender's Land decides the holidays of the dates its letters set and, for a Land authority, its delivery
-rule (SPEC § 21 "Holidays"). Reading a letter never sets it; until the person does, those dates use
-nationwide holidays and the 3-day rule at lower confidence — early, never late. Setting it (or "Don't know")
-recomputes that sender's letters' to-dos, as a new home region recomputes every letter's.
+rule (SPEC § 21 "Holidays"). Reading a letter never sets it; the postcode on their letter may suggest it, as a
+question (``region_suggestion``, ADR 0019). Until the person sets it, those dates use nationwide holidays and
+the 3-day rule at lower confidence — early, never late. Setting it (or "Don't know") recomputes that sender's
+letters' to-dos, as a new home region recomputes every letter's.
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ from ordnung.db.store import Store
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import Party, PartyDetail
 from ordnung.rules import normalize_region
+from ordnung.secretary.sender_land import region_suggestion
+from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["parties"])
 
@@ -69,6 +72,7 @@ def get_party(party_id: str, store: StoreDep, today: TodayDep) -> PartyDetail:
         contracts=contracts_with_computations(store, store.list_contracts(party_id=party_id), today),
         cases=store.list_cases(party_id=party_id),
         set_aside=set_aside(store, items, today),
+        region_suggestion=region_suggestion(Ledger(store, today), party),
     )
 
 

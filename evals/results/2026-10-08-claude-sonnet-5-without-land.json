@@ -1,0 +1,989 @@
+{
+ "schema": "ordnung-eval-without-land/2",
+ "meta": {
+  "date": "2026-10-08",
+  "model": "claude-sonnet-5",
+  "condition": "ordnung",
+  "backend": "replay",
+  "commit": "77b5616",
+  "fingerprint": "2815b67fb75ed232",
+  "script": "scripts/eval_without_land.py",
+  "note": "The Ordnung condition's recorded outputs replayed with the checked-out code three times: as the benchmark runs it (the Land the letterhead names is the sender's holiday region); with the sender's Land unknown, as in the app until the person sets it for that sender: nationwide holidays and, for a Land authority, the 3-day delivery rule; and with the state the postcode on the sender's letter suggests confirmed, as if the person said Yes to every suggestion (ordnung.rules.postcodes.suggest_land_why on the reading's sender address and the letter's visible text; no own-Land check, as the benchmark has no profile address). The person's own Land is kept. No model was called."
+ },
+ "splits": {
+  "test": {
+   "entries": 63,
+   "letterhead_land": 19,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.8571428571428571,
+     "ci": [
+      0.7457627118644068,
+      0.9473684210526315
+     ],
+     "k": 48.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.14285714285714285,
+     "ci": [
+      0.05263157894736842,
+      0.2542372881355932
+     ],
+     "k": 8.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 19,
+    "right": 19,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 36,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 2,
+     "no_postcode": 1,
+     "not_listed": 5,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "test-fine_bussgeld-C1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "NI",
+     "expected": "2025-11-03",
+     "with_land": "2025-11-03",
+     "without_land": "2025-10-31",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -3
+    },
+    {
+     "entry_id": "test-fine_bussgeld-D1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "BY",
+     "expected": "2026-06-05",
+     "with_land": "2026-06-05",
+     "without_land": "2026-06-04",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "test-municipal_decision-C1",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-11-03",
+     "with_land": "2026-11-03",
+     "without_land": "2026-11-02",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "test-municipal_decision-C1-photo",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2026-11-03",
+     "with_land": "2026-11-03",
+     "without_land": "2026-11-02",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "test-municipal_decision-C2",
+     "family": "municipal_decision",
+     "letterhead_land": "HH",
+     "expected": "2026-06-04",
+     "with_land": "2026-06-04",
+     "without_land": "2026-06-03",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "test-municipal_decision-D2",
+     "family": "municipal_decision",
+     "letterhead_land": "NW",
+     "expected": "2026-01-27",
+     "with_land": "2026-01-27",
+     "without_land": "2026-01-26",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "test-tax_assessment-C1",
+     "family": "tax_assessment",
+     "letterhead_land": "NI",
+     "expected": "2025-12-03",
+     "with_land": "2025-12-03",
+     "without_land": "2025-12-01",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -2
+    }
+   ],
+   "changed_with_suggestion": []
+  },
+  "holdout": {
+   "entries": 63,
+   "letterhead_land": 18,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.8928571428571429,
+     "ci": [
+      0.8076923076923077,
+      0.9649122807017544
+     ],
+     "k": 50.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.10714285714285714,
+     "ci": [
+      0.03508771929824561,
+      0.19230769230769232
+     ],
+     "k": 6.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 18,
+    "right": 18,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 38,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 1,
+     "no_postcode": 1,
+     "not_listed": 5,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "holdout-fine_bussgeld-F1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "MV",
+     "expected": "2027-03-09",
+     "with_land": "2027-03-09",
+     "without_land": "2027-03-08",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout-municipal_decision-E1",
+     "family": "municipal_decision",
+     "letterhead_land": "BW",
+     "expected": "2025-09-10",
+     "with_land": "2025-09-10",
+     "without_land": "2025-09-09",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout-municipal_decision-F1",
+     "family": "municipal_decision",
+     "letterhead_land": "NW",
+     "expected": "2027-11-02",
+     "with_land": "2027-11-02",
+     "without_land": "2027-11-01",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout-municipal_decision-F2",
+     "family": "municipal_decision",
+     "letterhead_land": "HH",
+     "expected": "2026-05-06",
+     "with_land": "2026-05-06",
+     "without_land": "2026-05-05",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout-social_decision-F1",
+     "family": "social_decision",
+     "letterhead_land": "BY",
+     "expected": "2027-05-28",
+     "with_land": "2027-05-28",
+     "without_land": "2027-05-27",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ],
+   "changed_with_suggestion": []
+  },
+  "holdout2": {
+   "entries": 63,
+   "letterhead_land": 16,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.8392857142857143,
+     "ci": [
+      0.7287750385208013,
+      0.9310344827586207
+     ],
+     "k": 47.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.16071428571428573,
+     "ci": [
+      0.06896551724137931,
+      0.2712249614791989
+     ],
+     "k": 9.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 0.9821428571428571,
+     "ci": [
+      0.9454545454545454,
+      1.0
+     ],
+     "k": 55.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.017857142857142856,
+     "ci": [
+      0.0,
+      0.05454545454545454
+     ],
+     "k": 1.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 16,
+    "right": 15,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 1,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 42,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 2,
+     "no_postcode": 0,
+     "not_listed": 3,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "holdout2-adversarial-conflicting_dates-2",
+     "family": "adversarial",
+     "letterhead_land": "BW",
+     "expected": "2025-08-12",
+     "with_land": "2025-08-12",
+     "without_land": "2025-08-11",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-adversarial-injection_visible-1",
+     "family": "adversarial",
+     "letterhead_land": "HH",
+     "expected": "2026-12-10",
+     "with_land": "2026-12-10",
+     "without_land": "2026-12-09",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-fine_bussgeld-G1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "SN",
+     "expected": "2026-11-19",
+     "with_land": "2026-11-19",
+     "without_land": "2026-11-18",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-municipal_decision-G1",
+     "family": "municipal_decision",
+     "letterhead_land": "BW",
+     "expected": "2027-01-07",
+     "with_land": "2027-01-07",
+     "without_land": "2027-01-05",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -2
+    },
+    {
+     "entry_id": "holdout2-municipal_decision-G2",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2025-08-06",
+     "with_land": "2025-08-06",
+     "without_land": "2025-08-05",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-municipal_decision-G2-photo",
+     "family": "municipal_decision",
+     "letterhead_land": "SH",
+     "expected": "2025-08-06",
+     "with_land": "2025-08-06",
+     "without_land": "2025-08-05",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-social_decision-H1",
+     "family": "social_decision",
+     "letterhead_land": "BE",
+     "expected": "2025-05-09",
+     "with_land": "2025-05-09",
+     "without_land": "2025-05-08",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout2-tax_assessment-G1",
+     "family": "tax_assessment",
+     "letterhead_land": "TH",
+     "expected": "2027-09-21",
+     "with_land": "2027-09-21",
+     "without_land": "2027-09-20",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ],
+   "changed_with_suggestion": []
+  },
+  "holdout3": {
+   "entries": 63,
+   "letterhead_land": 16,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 1.0,
+     "ci": [
+      0.9179901967742088,
+      1.0
+     ],
+     "k": 56.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.9107142857142857,
+     "ci": [
+      0.8269230769230769,
+      0.9814814814814815
+     ],
+     "k": 51.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.08928571428571429,
+     "ci": [
+      0.018518518518518517,
+      0.17307692307692307
+     ],
+     "k": 5.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 1.0,
+     "ci": [
+      0.9179901967742088,
+      1.0
+     ],
+     "k": 56.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    },
+    "early_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.08200980322579113
+     ],
+     "k": 0.0,
+     "n": 56.0,
+     "docs": 53
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 16,
+    "right": 16,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 44,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 2,
+     "no_postcode": 0,
+     "not_listed": 1,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "holdout3-adversarial-conflicting_dates-2",
+     "family": "adversarial",
+     "letterhead_land": "NW",
+     "expected": "2027-09-01",
+     "with_land": "2027-09-01",
+     "without_land": "2027-08-31",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-fine_bussgeld-I1",
+     "family": "fine_bussgeld",
+     "letterhead_land": "SL",
+     "expected": "2027-11-02",
+     "with_land": "2027-11-02",
+     "without_land": "2027-11-01",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-municipal_decision-I1",
+     "family": "municipal_decision",
+     "letterhead_land": "MV",
+     "expected": "2026-01-13",
+     "with_land": "2026-01-13",
+     "without_land": "2026-01-12",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-municipal_decision-J1",
+     "family": "municipal_decision",
+     "letterhead_land": "BY",
+     "expected": "2027-12-01",
+     "with_land": "2027-12-01",
+     "without_land": "2027-11-30",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "holdout3-tax_assessment-I1",
+     "family": "tax_assessment",
+     "letterhead_land": "MV",
+     "expected": "2027-03-09",
+     "with_land": "2027-03-09",
+     "without_land": "2027-03-08",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ],
+   "changed_with_suggestion": []
+  },
+  "dev": {
+   "entries": 28,
+   "letterhead_land": 8,
+   "with_land": {
+    "due_date_accuracy": {
+     "value": 0.96,
+     "ci": [
+      0.875,
+      1.0
+     ],
+     "k": 24.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.16817922405261618
+     ],
+     "k": 0.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "early_rate": {
+     "value": 0.04,
+     "ci": [
+      0.0,
+      0.125
+     ],
+     "k": 1.0,
+     "n": 25.0,
+     "docs": 23
+    }
+   },
+   "without_land": {
+    "due_date_accuracy": {
+     "value": 0.8,
+     "ci": [
+      0.6427857142857144,
+      0.9523809523809523
+     ],
+     "k": 20.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.16817922405261618
+     ],
+     "k": 0.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "early_rate": {
+     "value": 0.2,
+     "ci": [
+      0.047619047619047616,
+      0.357214285714286
+     ],
+     "k": 5.0,
+     "n": 25.0,
+     "docs": 23
+    }
+   },
+   "with_suggestion": {
+    "due_date_accuracy": {
+     "value": 0.96,
+     "ci": [
+      0.875,
+      1.0
+     ],
+     "k": 24.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "dangerous_late_rate": {
+     "value": 0.0,
+     "ci": [
+      0.0,
+      0.16817922405261618
+     ],
+     "k": 0.0,
+     "n": 25.0,
+     "docs": 23
+    },
+    "early_rate": {
+     "value": 0.04,
+     "ci": [
+      0.0,
+      0.125
+     ],
+     "k": 1.0,
+     "n": 25.0,
+     "docs": 23
+    }
+   },
+   "suggestion": {
+    "letterhead_land": 8,
+    "right": 8,
+    "wrong": 0,
+    "none": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 0,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    },
+    "suggested_without_letterhead_land": 18,
+    "not_suggested_without_letterhead_land": {
+     "no_address": 0,
+     "foreign": 0,
+     "no_postcode": 0,
+     "not_listed": 2,
+     "several_lands": 0,
+     "no_land": 0,
+     "postcodes_disagree": 0,
+     "not_visible": 0,
+     "home_veto": 0
+    }
+   },
+   "changed": [
+    {
+     "entry_id": "dev-municipal_decision-A1",
+     "family": "municipal_decision",
+     "letterhead_land": "NW",
+     "expected": "2025-06-20",
+     "with_land": "2025-06-20",
+     "without_land": "2025-06-18",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -2
+    },
+    {
+     "entry_id": "dev-municipal_decision-B1",
+     "family": "municipal_decision",
+     "letterhead_land": "BY",
+     "expected": "2026-01-07",
+     "with_land": "2026-01-07",
+     "without_land": "2026-01-05",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -2
+    },
+    {
+     "entry_id": "dev-social_decision-B1",
+     "family": "social_decision",
+     "letterhead_land": "SN",
+     "expected": "2025-11-20",
+     "with_land": "2025-11-20",
+     "without_land": "2025-11-19",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    },
+    {
+     "entry_id": "dev-tax_assessment-A1",
+     "family": "tax_assessment",
+     "letterhead_land": "NW",
+     "expected": "2026-06-05",
+     "with_land": "2026-06-05",
+     "without_land": "2026-06-04",
+     "outcome": "wrong",
+     "direction": "early",
+     "days_off": -1
+    }
+   ],
+   "changed_with_suggestion": []
+  }
+ }
+}

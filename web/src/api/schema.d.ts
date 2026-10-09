@@ -3297,6 +3297,7 @@ export interface components {
              * @default false
              */
             given_to_model: boolean;
+            region_suggestion: components["schemas"]["RegionSuggestion"] | null;
         };
         /**
          * DocumentPatch
@@ -4805,6 +4806,7 @@ export interface components {
             cases: components["schemas"]["Case"][];
             /** Set Aside */
             set_aside: components["schemas"]["ItemAside"][];
+            region_suggestion: components["schemas"]["RegionSuggestion"] | null;
         };
         /**
          * PartyPatch
@@ -5381,6 +5383,36 @@ export interface components {
             type: string;
             /** Id */
             id: string;
+        };
+        /**
+         * RegionSuggestion
+         * @description The Land the postcode on a sender's letter suggests: a question for the person, never set by itself
+         *     (ADR 0019). Computed on read; nothing stores it.
+         */
+        RegionSuggestion: {
+            /** Region */
+            region: string;
+            /** Postcode */
+            postcode: string;
+            /** Doc Id */
+            doc_id: string;
+            /**
+             * Waiting
+             * @default 0
+             */
+            waiting: number;
+            /**
+             * May Be Late
+             * @default false
+             */
+            may_be_late: boolean;
+            /** Idea Id */
+            idea_id: string | null;
+            /**
+             * Declined
+             * @default false
+             */
+            declined: boolean;
         };
         /** Remedy */
         Remedy: {

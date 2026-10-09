@@ -470,6 +470,23 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     expect(missing).toEqual([]);
   });
 
+  it("a sender's and a letter's details carry the state their postcode suggests in the API's shape, none once it is set", async () => {
+    const problems: string[] = [];
+    const answers: unknown[] = [];
+    for (const run of [() => api.party("pty_funknetz"), () => api.document("doc_phone"), () => api.updateParty("pty_funknetz", { region: "BE" }), () => api.party("pty_funknetz")]) {
+      const before = exchanges.length;
+      answers.push(await run());
+      const { method, url, response } = exchanges[before]!;
+      const match = operationFor(method, url.pathname)!;
+      problems.push(...(await responseProblems(match.op, response)).map((p) => `${method} ${url.pathname}: ${p}`));
+    }
+    expect(problems).toEqual([]);
+    const [party, letter, , set] = answers as [{ region_suggestion: unknown }, { region_suggestion: unknown }, unknown, { region_suggestion: unknown }];
+    expect(party.region_suggestion).toMatchObject({ region: "BE", postcode: "12351", doc_id: "doc_phone" });
+    expect(letter.region_suggestion).toMatchObject({ region: "BE", postcode: "12351" });
+    expect(set.region_suggestion).toBeNull();
+  });
+
   it("the mock streams Ask answers exactly like the API (default message events, checked `done`)", async () => {
     const events = await drain(api.ask({ question: "What did the Finanzamt send me?" }));
     const done = events.at(-1)!;

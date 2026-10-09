@@ -174,9 +174,17 @@ async def test_the_automatic_rollback_repair_is_fenced(
     the version to put back is staged is in the kept copy (it used to be in neither)."""
     from ordnung.sync import engine as core
     from sync_support import PASSPHRASE as SERVER_PASSPHRASE
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+    )
 
-    fast_sync(monkeypatch)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)
     real = RealEngine()
     (tmp_path / "Nextcloud").mkdir()
     folder, desk = tmp_path / "Nextcloud" / "Vault", tmp_path / "desk"
@@ -239,10 +247,18 @@ async def test_a_write_admitted_when_another_computer_takes_over_goes_out_as_a_l
     finishes even later is pushed from standing by: the computer in use brings it in (F21)."""
     import asyncio
 
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+    )
 
     late = finishes == "after the fence gave up"
-    fast_sync(monkeypatch, FENCE_WAIT_S=0.2 if late else 2.0)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS, FENCE_WAIT_S=0.2 if late else 2.0)
     real = RealEngine()
     folder, desk, lap = await _desktop_in_use_laptop_standing_by(tmp_path, real)
     async with computer(desk, engine=real) as a, computer(lap, engine=real) as b:
@@ -392,9 +408,19 @@ async def test_after_a_save_the_other_computer_has_it_only_once_it_does(
 ) -> None:
     """The top bar's "has it" and the second confirmation of Disconnect and Delete everything are worked
     out against the version just saved (they used to read the last look's, made before the save)."""
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+    )
 
-    fast_sync(monkeypatch, SCAN_S=60.0, WATCH_S=60.0)  # no look of its own between the steps below
+    fast_sync(
+        monkeypatch, **REAL_ENGINE_TIMINGS, SCAN_S=60.0, WATCH_S=60.0
+    )  # no look of its own between the steps below
     real = RealEngine()
     folder, desk, lap = await _desktop_in_use_laptop_standing_by(tmp_path, real)
     async with computer(desk, engine=real) as a:
@@ -428,9 +454,17 @@ async def test_after_a_save_the_other_computer_has_it_only_once_it_does(
 async def test_leaving_asks_twice_when_its_last_save_made_a_version_no_other_computer_has(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+    )
 
-    fast_sync(monkeypatch, SCAN_S=60.0, WATCH_S=60.0)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS, SCAN_S=60.0, WATCH_S=60.0)
     real = RealEngine()
     folder, desk, lap = await _desktop_in_use_laptop_standing_by(tmp_path, real)
     async with computer(desk, engine=real) as a:
@@ -467,9 +501,19 @@ async def test_a_change_shows_as_unsaved_at_once_and_a_save_s_own_commit_doesn_t
     seconds before the save), and the save's own bookkeeping commit doesn't make it "not saved" again."""
     import asyncio
 
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+    )
 
-    fast_sync(monkeypatch, PUSH_PERSON_QUIET_S=30.0, PUSH_QUIET_S=30.0, PUSH_MAX_WAIT_S=60.0)
+    fast_sync(
+        monkeypatch, **REAL_ENGINE_TIMINGS, PUSH_PERSON_QUIET_S=30.0, PUSH_QUIET_S=30.0, PUSH_MAX_WAIT_S=60.0
+    )
     (tmp_path / "Nextcloud").mkdir()
     async with computer(tmp_path / "desk", engine=RealEngine()) as api:
         await connect(api, tmp_path / "Nextcloud" / "Vault", "desktop")
@@ -506,9 +550,9 @@ async def test_kept_copies_stay_listed_after_disconnect_and_after_setting_sync_u
     import asyncio
 
     from ordnung.sync import KEPT_DIR
-    from sync_support import RealEngine, agent_of, computer, connect, fast_sync, status
+    from sync_support import REAL_ENGINE_TIMINGS, RealEngine, agent_of, computer, connect, fast_sync, status
 
-    fast_sync(monkeypatch)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)
     real = RealEngine()
     (tmp_path / "Nextcloud").mkdir()
     desk = tmp_path / "desk"
@@ -547,10 +591,19 @@ async def test_the_two_sides_of_a_choice_tell_their_to_dos_and_latest_changes_ap
 ) -> None:
     """Both computers changed only to-dos (no new letter): each side says its open and done to-dos and
     its latest changes, so the person doesn't choose blind (both used to read "1 letter: …")."""
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync, status
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+        status,
+    )
     from test_sync_real_engine import _catch_up
 
-    fast_sync(monkeypatch)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)
     real = RealEngine()
     here, there = tmp_path / "desk-view" / "Vault", tmp_path / "lap-view" / "Vault"
     here.parent.mkdir()
@@ -781,9 +834,18 @@ async def test_after_the_computer_in_use_leaves_no_computer_is_in_use(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The standing-by computer used to say Ordnung was in use on itself once the other one left."""
-    from sync_support import RealEngine, agent_of, computer, connect, eventually, fast_sync, status
+    from sync_support import (
+        REAL_ENGINE_TIMINGS,
+        RealEngine,
+        agent_of,
+        computer,
+        connect,
+        eventually,
+        fast_sync,
+        status,
+    )
 
-    fast_sync(monkeypatch)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)
     real = RealEngine()
     folder, desk, lap = await _desktop_in_use_laptop_standing_by(tmp_path, real)
     async with computer(desk, engine=real) as a, computer(lap, engine=real) as b:

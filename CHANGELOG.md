@@ -3,6 +3,33 @@
 What changed in each version of Ordnung, newest first. `ordnung --version` shows the one you have, and
 [Updating](README.md#updating) says how to get the newest.
 
+## Unreleased
+
+### Added
+
+- **Ordnung suggests a sender's state from the postcode on their letter.** A sender's state decides which
+  public holidays move the dates of their letters; until you set it, Ordnung counts only nationwide
+  holidays, so a date can come out a day or two early, or a day late when it is counted backwards from an
+  event (its *Why this date?* then says to act a working day before it). Now it asks *Is X in Bavaria?*
+  with the postcode it read, in the sender's details, and on the letter and in Today's Ideas when one of
+  their dates may change. It never sets the state without you: *Yes* sets it (with Undo), *Don't know*
+  leaves their dates as counted without it
+  ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
+  computer. Postcode data © GeoNames, CC BY 4.0.
+
+### Fixed
+
+- Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
+  ordnung serve"), as on Linux and macOS, and so does restore's.
+- Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds
+  for a running sync operation before closing the database, instead of leaving it open. An operation still
+  running after that (on a share that stopped answering) may still hold it.
+
+### Upgrading
+
+- A computer still on 0.2.0 that receives the new question by hand-off sync shows it among its Ideas but
+  never takes it away once it no longer applies. Update both computers.
+
 ## 0.2.0 — 2026-10-08
 
 The first numbered release. Every install before it reports 0.1.0, the version of the first commit

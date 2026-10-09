@@ -8,6 +8,10 @@ The lock is an OS file lock on ``<data>/.ordnung.lock`` (``fcntl.flock`` on POSI
 on Windows): the operating system releases it when the holder exits, even after a crash, so a stale
 lock can never block anyone. ``flock`` locks belong to the open file, so two locks taken inside one
 process conflict too.
+
+On Windows the lock is a byte lock on byte 0, and no other handle may read a locked byte, so the holder
+note (``pid N: command``) starts at byte 1. Byte 0 is the byte 0.2.0 locks too, so either version keeps
+the other out.
 """
 
 from __future__ import annotations
@@ -21,9 +25,14 @@ from types import TracebackType
 
 LOCK_NAME = ".ordnung.lock"
 _POLL_S = 0.1
+_HOLDER_MAX = 512
+#: where the holder note starts: after byte 0, the byte Windows locks
+_NOTE_AT = 1
 
 if sys.platform == "win32":  # pragma: no cover - exercised on Windows only
     import msvcrt
+
+    _READ_AT = _NOTE_AT  # byte 0 is locked for every other handle
 
     def _try_lock(fd: int) -> bool:
         os.lseek(fd, 0, os.SEEK_SET)
@@ -39,6 +48,8 @@ if sys.platform == "win32":  # pragma: no cover - exercised on Windows only
 
 else:
     import fcntl
+
+    _READ_AT = 0  # advisory locks: a note an earlier version wrote from byte 0 reads too
 
     def _try_lock(fd: int) -> bool:
         try:
@@ -111,7 +122,8 @@ class DataDirLock:
         os.close(fd)
 
     def _write_holder(self, fd: int) -> None:
-        note = f"pid {os.getpid()}: {self.purpose}".encode()
+        # the line break fills byte 0, the locked byte on Windows; stripped, the note reads as before
+        note = f"\npid {os.getpid()}: {self.purpose}".encode()[: _NOTE_AT + _HOLDER_MAX]
         with contextlib.suppress(OSError):
             os.ftruncate(fd, 0)
             os.lseek(fd, 0, os.SEEK_SET)
@@ -129,8 +141,9 @@ class DataDirLock:
 def _read_holder(fd: int) -> str | None:
     """The holder note (``pid N: command``) of a lock file, if it can be read."""
     try:
-        os.lseek(fd, 0, os.SEEK_SET)
-        text = os.read(fd, 512).decode("utf-8", "replace").strip()
+        os.lseek(fd, _READ_AT, os.SEEK_SET)
+        text = os.read(fd, _HOLDER_MAX).decode("utf-8", "replace").strip()
     except OSError:
         return None
-    return text or None
+    # read from byte 1, 0.2.0's note (written from byte 0) is cut: no holder rather than a wrong one
+    return text if text.startswith("pid ") else None

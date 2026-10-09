@@ -866,7 +866,7 @@ def test_a_lock_held_by_another_process_blocks_until_it_exits(data_dir: Path) ->
     other = subprocess.Popen([sys.executable, "-c", code, str(data_dir)], stdout=subprocess.PIPE, text=True)
     try:
         assert other.stdout is not None and other.stdout.readline().strip() == "held"
-        with pytest.raises(DataDirLocked, match="other"):
+        with pytest.raises(DataDirLocked, match=r"\(pid \d+: other\)"):
             DataDirLock(data_dir).acquire()
     finally:
         other.kill()

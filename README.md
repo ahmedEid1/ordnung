@@ -268,15 +268,21 @@ instructions on how to object state, Ordnung files that deadline itself, at low 
 check"; here it has nothing to add. Both were written because of that missed date, so this row is not
 held-out; the row above stays the held-out number. The row counts the extra call's cost and time, and
 neither fires on any other letter of the five splits or the demo. In the app, until you set the sender's
-Land, that letter's date comes out a day earlier (Wed 9 Dec instead of Thu 10 Dec 2026).
+Land or say Yes to the state Ordnung suggests for it, that letter's date comes out a day earlier (Wed 9 Dec
+instead of Thu 10 Dec 2026).
 ⁹ The rows above give Ordnung's engine the Land printed on the letterhead as the sender's (19 of the test
 split's 63 letters name one). The app knows a sender's Land only once you set it for that sender (*Which
-state is this sender in?* in its drawer); until then it uses nationwide holidays and the 3-day delivery rule,
-at lower confidence. Replayed that way on the same recorded readings
-([`scripts/eval_without_land.py`](scripts/eval_without_land.py), no model called), Ordnung scores 85.7 % on
-the test split, 89.3 % on the holdout split and 83.9 % on the holdout2 split, against 98.2 % on each with the
-Land (rows ⁴, ⁶ and ⁸), and 91.1 % on the holdout3 split, against 100 % with it (row ¹⁰). Every extra miss is
-1–3 days early; none is late.
+state is this sender in?* in its drawer) or say Yes when Ordnung asks *Is X in Bavaria?* from the postcode on
+their letter ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)); until then it uses
+nationwide holidays and the 3-day delivery rule, at lower confidence. Replayed that way on the same recorded
+readings ([`scripts/eval_without_land.py`](scripts/eval_without_land.py), no model called), Ordnung scores
+85.7 % on the test split, 89.3 % on the holdout split and 83.9 % on the holdout2 split, against 98.2 % on each
+with the Land (rows ⁴, ⁶ and ⁸), and 91.1 % on the holdout3 split, against 100 % with it (row ¹⁰). Every extra
+miss is 1–3 days early; none is late. Confirm the state Ordnung suggests from the postcode on their letter, and
+the same readings give 55, 55, 55 and 56 of 56, the numbers with the letterhead's state: on the 69 letters
+whose letterhead names a state, it suggested that state for 68, another for 0, and none for the one whose
+postcode GeoNames doesn't list. The letters are synthetic (mostly real postcodes, made-up towns), and the
+number assumes you say Yes to every suggestion.
 ¹⁰ 63 more new letters (11 photos, 12 adversarial; 56 dated obligations), written after the code freeze by an
 agent that read neither the reading code, the rules engine, the prompts nor any result. Two more agents each
 derived every deadline from the letters and the law before seeing the labels, and both matched all of them;
@@ -326,10 +332,13 @@ What the numbers say:
   leaves it out. Here the second answer, recorded once, was complete: the same readings give 55 of 56 and
   no late date (row ⁸, not held-out any more).
 - **Without the sender's Land: 85.7 %, and still no late date.** The benchmark tells Ordnung the Land on
-  the letterhead; the app knows it only once you set it for that sender, and until then counts a Land
-  authority's letter with nationwide holidays and the 3-day rule. Replayed that way, the same readings give
-  48 of 56 on the test split, 50 on the holdout split, 47 on the holdout2 split and 51 on the holdout3
-  split; every extra miss is 1–3 days early (row ⁹).
+  the letterhead; the app knows it only once you set it for that sender or answer Ordnung's question about
+  it, and until then counts a Land authority's letter with nationwide holidays and the 3-day rule. Replayed
+  that way, the same readings give 48 of 56 on the test split, 50 on the holdout split, 47 on the holdout2
+  split and 51 on the holdout3 split; every extra miss is 1–3 days early (row ⁹). Say Yes to the state
+  Ordnung suggests from the postcode on their letter, and the same readings give 55, 55, 55 and 56 of 56, the
+  numbers with the letterhead's state; no suggestion was wrong on the 69 letters whose letterhead names a
+  state.
 - **Held out a third time, after the code freeze: 100 %, no late date.** On a third split of 63 new
   letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
   rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
@@ -537,7 +546,7 @@ flowchart LR
 
 | Part | Where | What it does |
 |---|---|---|
-| Rules engine | [`src/ordnung/rules/`](src/ordnung/rules) | Pure functions: delivery fictions, §§ 187–193 BGB, holidays, contract terms, high-stakes letters, send-by dates, receipts with citations |
+| Rules engine | [`src/ordnung/rules/`](src/ordnung/rules) | Pure functions: delivery fictions, §§ 187–193 BGB, holidays, contract terms, high-stakes letters, send-by dates, receipts with citations; the state a postcode suggests ([`rules/postcodes.py`](src/ordnung/rules/postcodes.py), GeoNames data, [ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)) |
 | Pipeline | [`src/ordnung/ingest/`](src/ordnung/ingest) | Text layer or photo transcription, extraction to a schema, quote and digit verification, linking to parties, threads and contracts |
 | Ledger | [`src/ordnung/db/`](src/ordnung/db) | SQLite (WAL, FTS5 + trigram), migrations, delete-means-delete |
 | Secretary | [`src/ordnung/secretary/`](src/ordnung/secretary) | Today's note, Ideas and their triggers, scam signs, the GiroCode policy, the weekly review, Waiting for |
@@ -572,12 +581,17 @@ More in [docs/architecture.md](docs/architecture.md).
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
 - Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which
-  state is this sender in?* in its drawer, also offered under a date's *Why this date?*). Until then, for
-  letters from a Land authority it uses nationwide public holidays and the 3-day delivery rule at lower
-  confidence, so a date can come out a few days early (1–3 on the benchmark's letters, up to 5 around
-  Christmas), never late. The benchmark's Ordnung rows are given the Land printed on the letterhead.
-  Without it, Ordnung scores 85.7 % (test), 89.3 % (holdout), 83.9 % (holdout2) and 91.1 % (holdout3),
-  with no late dates (row ⁹).
+  state is this sender in?* in its drawer, also offered under a date's *Why this date?*) or answer *Is X in
+  Bavaria?*, which Ordnung asks from the postcode on their letter: in their details, and on the letter and
+  among Today's Ideas when one of their dates may depend on it. Until then, for letters from a Land
+  authority it uses nationwide public holidays and the 3-day delivery rule at lower confidence, so a date
+  can come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late. The
+  benchmark's Ordnung rows are given the Land printed on the letterhead. Without it, Ordnung scores 85.7 %
+  (test), 89.3 % (holdout), 83.9 % (holdout2) and 91.1 % (holdout3), with no late dates (row ⁹). There is
+  no question when the postcode is listed in two states or not at all (many P.O. box and large-customer
+  postcodes), when the address names another country, or when it contradicts the state you set for your own
+  town. A suggestion can be wrong (a central mail centre in another state, a misread digit): the question
+  shows the postcode so you can check.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
   above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
   megapixels, are refused; take the photo at normal resolution.
@@ -642,8 +656,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0017 phone access over the home network](docs/decisions/0017-phone-access-over-the-home-network.md) and
-  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md)
+  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md) and
+  [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)
 
 ## How this was built
 
@@ -659,4 +673,6 @@ Ordnung is not a law firm and gives no legal advice. Deadlines it computes are e
 reasoning shown so you can check them. All organisations, people and letters in the demo are
 fictional and marked SPECIMEN.
 
-MIT licensed. See [LICENSE](LICENSE).
+MIT licensed. See [LICENSE](LICENSE). Postcode data © [GeoNames](https://www.geonames.org/),
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode
+([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)).

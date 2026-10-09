@@ -35,7 +35,7 @@ export function RegionSection({ profile }: { profile: Profile }) {
       <SectionHeading
         id="set-region"
         title="Region & language"
-        description="Where you live decides the holidays for payments you make. Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state in its details."
+        description="Where you live decides the holidays for payments you make. Letters from authorities use their own state's holidays, or nationwide ones until you set the sender's state or answer Ordnung's question about it."
       />
       <SettingsCard footer={<SaveBar dirty={dirty} saving={update.isPending} onSave={save} onDiscard={() => setForm(saved)} />}>
         <div className="grid gap-6">

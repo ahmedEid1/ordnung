@@ -1,5 +1,6 @@
 """The People & organisations drawer's data: which open to-dos are set aside instead of listed as due, and the
-Land (Bundesland) the person tells Ordnung a sender is in, which dates that sender's letters."""
+Land (Bundesland) the person tells Ordnung a sender is in, which dates that sender's letters — and which the
+postcode on their letter may suggest, as a question (ADR 0019)."""
 
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from ordnung.rules import normalize_region
 from ordnung.rules.calendar_de import NATIONWIDE_LABEL, REGION_NAMES
 from ordnung.rules.deadlines import REGION_UNKNOWN
 from ordnung.secretary import triggers
+from ordnung.secretary.sender_land import idea_id
 from test_api_support import Api, ApiRouter, api_for
 
 
@@ -164,13 +166,18 @@ def test_to_dos_of_a_letter_with_scam_signs_are_set_aside(
 NOTICE = "Gegen diesen Bescheid können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch einlegen."
 
 
+#: The city's address on its letters: a Leipzig postcode, so a Saxon one.
+CITY_ADDRESS = "Rathausplatz 1, 04109 Beispielhausen"
+
+
 def _decision(marker: str, sender: str) -> Letter:
-    """A city's fee decision dated Wed 14 Oct 2026 with a one-month objection; nothing on it names its Land."""
+    """A city's fee decision dated Wed 14 Oct 2026 with a one-month objection; nothing on it names its Land,
+    only its postcode suggests one."""
     return Letter(
         marker=marker,
         pages=(
             (
-                f"{sender} · Ordnungsamt · Rathausplatz 1 · 12345 Beispielhausen",
+                f"{sender} · Ordnungsamt · Rathausplatz 1 · 04109 Beispielhausen",
                 f"SPECIMEN {marker}",
                 "Datum: 14.10.2026",
                 "Bescheid über eine Sondernutzungsgebühr",
@@ -186,7 +193,7 @@ def _decision(marker: str, sender: str) -> Letter:
             "title": "Fee decision",
             "summary": "A fee for using the pavement.",
             "explanation": "You can object within a month.",
-            "sender": {"name": sender, "kind": "authority"},
+            "sender": {"name": sender, "kind": "authority", "address": CITY_ADDRESS},
             "document_date": "2026-10-14",
             "remedy": {"type": "widerspruch", "quote": NOTICE},
             "items": [
@@ -261,6 +268,9 @@ async def test_the_land_the_person_sets_for_a_sender_dates_its_letters(
         # the words the letter page's "Choose their state" keys on (web/src/features/document/WhyThisDate.tsx)
         assert any("couldn't confirm this sender's" in w for w in unknown.computation.warnings)
         assert REGION_UNKNOWN == "Holiday region unknown"
+        # its postcode suggests Saxony: a question, and the Land stays unset
+        asked = (await api.client.get(f"/api/parties/{party_id}")).json()
+        assert asked["party"]["region"] is None and asked["region_suggestion"]["region"] == "SN"
 
         async def set_land(region: str | None) -> Item:
             response = await api.client.patch(f"/api/parties/{party_id}", json={"region": region})
@@ -268,6 +278,7 @@ async def test_the_land_the_person_sets_for_a_sender_dates_its_letters(
             assert response.json()["region"] == normalize_region(region)
             detail = (await api.client.get(f"/api/parties/{party_id}")).json()
             assert detail["party"]["region"] == normalize_region(region)
+            assert (detail["region_suggestion"] is None) == (region is not None)
             return _objection(api, doc_id)
 
         saxony = await set_land("sn")
@@ -304,3 +315,48 @@ async def test_a_sender_s_land_is_one_bundesland_or_not_known(data_dir: Path) ->
         again = await api.client.patch(url, json={"region": "nw"})
         assert again.status_code == 200 and again.json() == first.json()  # unchanged: nothing recomputed
         assert (await api.client.patch(url, json={"region": None})).json()["region"] is None
+
+
+async def test_the_postcode_on_their_letter_asks_and_never_sets_the_land(
+    data_dir: Path, mid_october: None
+) -> None:
+    """The drawer and the letter carry the question, and reading them moves no date. "Don't know" in the State
+    select of a sender without a Land records nothing (the question's own "Don't know" dismisses its Idea); Yes
+    sets the Land, which recomputes the letter's dates and expires the Idea."""
+    async with api_for(data_dir, router=_router(CITY)) as api:
+        store = api.ctx.store
+        doc_id, party_id = await _read(api, CITY)
+        before = store.list_items()
+
+        detail = (await api.client.get(f"/api/parties/{party_id}")).json()
+        letter = (await api.client.get(f"/api/documents/{doc_id}")).json()
+
+        question = {
+            "region": "SN",
+            "postcode": "04109",
+            "doc_id": doc_id,
+            "waiting": 1,  # Saxony's authorities count 4 days, Ordnung 3 until it is confirmed
+            "may_be_late": False,
+            "idea_id": idea_id(party_id, "SN"),
+            "declined": False,
+        }
+        assert detail["party"]["region"] is None and letter["party"]["region"] is None
+        assert detail["region_suggestion"] == letter["region_suggestion"] == question
+        assert store.list_items() == before
+        idea = store.get_suggestion(idea_id(party_id, "SN"))
+        assert idea is not None and idea.status == "new"
+        assert idea.title == "Is Stadt Beispielhausen in Saxony?"
+
+        logged = store.list_activity(limit=None)
+        unset = await api.client.patch(f"/api/parties/{party_id}", json={"region": None})
+        assert unset.status_code == 200 and unset.json()["region"] is None
+        assert store.list_items() == before and store.list_activity(limit=None) == logged
+        idea = store.get_suggestion(idea_id(party_id, "SN"))
+        assert idea is not None and idea.status == "new"
+
+        assert (await api.client.patch(f"/api/parties/{party_id}", json={"region": "SN"})).status_code == 200
+        assert _objection(api, doc_id).due_date == "2026-11-19"
+        assert (await api.client.get(f"/api/parties/{party_id}")).json()["region_suggestion"] is None
+        assert (await api.client.get(f"/api/documents/{doc_id}")).json()["region_suggestion"] is None
+        idea = store.get_suggestion(idea_id(party_id, "SN"))
+        assert idea is not None and idea.status == "expired"

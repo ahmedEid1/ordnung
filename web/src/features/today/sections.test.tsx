@@ -17,7 +17,8 @@ import { makeTestQueryClient, renderWithProviders, TEST_TODAY } from "@/test/ren
 import { useMockApi } from "@/test/mockFetch";
 import { createMockServer } from "@/mocks/server";
 import { ComingUp } from "./ComingUp";
-import { comingUpMeta, ideaActionLabel, noteText, payActionFor, recentLetterDate, sortRecentLetters } from "./helpers";
+import { comingUpMeta, ideaActionLabel, ideaHref, noteText, payActionFor, recentLetterDate, sortRecentLetters } from "./helpers";
+import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { RecentLetters } from "./RecentLetters";
 import { actionFromItem, type TodayAction } from "./selection";
 import { TodayView } from "./TodayView";
@@ -146,6 +147,48 @@ describe("Ideas", () => {
     expect(ideaActionLabel(pay)).toBe("Open letter");
     expect(ideaActionLabel(idea({ id: "s", action: { ...pay.action!, target_type: "contract" } }))).toBe("Open contract");
     expect(ideaActionLabel(idea({ id: "s", action: { ...pay.action!, label: "Check passport" } }))).toBe("Check passport");
+  });
+
+  it("“Answer” on a sender's state opens their details at the question (`state=ask`); other Ideas about a sender just open them", () => {
+    const land = idea({
+      id: "sug_land",
+      kind: "deadline",
+      rule_id: "sender_land",
+      action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_techmarkt", label: "Answer" },
+    });
+    expect(ideaActionLabel(land)).toBe("Answer");
+    expect(ideaHref(land)).toBe("?party=pty_techmarkt&state=ask");
+    expect(ideaHref({ ...land, rule_id: "contract_review" })).toBe("?party=pty_techmarkt");
+  });
+
+  it("“Answer” takes the keyboard to the sender's State heading, not to Yes", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.suggestions.unshift({
+      ...srv.db.state.suggestions[0]!,
+      id: "sug_land_funknetz",
+      kind: "deadline",
+      priority: "high",
+      title: "Is FunkNetz Mobil GmbH in Berlin?",
+      body: "12351 is on their letter.",
+      status: "new",
+      rule_id: "sender_land",
+      refs: [{ type: "party", id: "pty_funknetz" }],
+      action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_funknetz", label: "Answer" },
+    });
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(
+      <>
+        <TodayView />
+        <PartyDrawer />
+      </>,
+    );
+    const ideas = await screen.findByRole("region", { name: "Ideas from your secretary" });
+    const card = within(ideas).getByRole("heading", { level: 3, name: "Is FunkNetz Mobil GmbH in Berlin?" }).closest("article")!;
+    await user.click(within(card).getByRole("button", { name: "Answer" }));
+    const drawer = await screen.findByRole("dialog", { name: "FunkNetz Mobil GmbH" });
+    await waitFor(() => expect(within(drawer).getByRole("heading", { name: "State" })).toHaveFocus());
+    expect(within(drawer).getByRole("group", { name: "Is FunkNetz Mobil GmbH in Berlin? (12351 on their letter)" })).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).toBe("?party=pty_funknetz"));
   });
 
   it("keeps its toggle, moves focus to the first new Idea, and says what changed once", async () => {

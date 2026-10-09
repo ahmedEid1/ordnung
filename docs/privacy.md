@@ -55,6 +55,11 @@ blank, or without the deadline to object the letter's instructions state) it is 
 left out ([ADR 0016](decisions/0016-an-incomplete-reading-is-asked-for-once-more.md)). A letter you
 delete while it is being read is not sent again.
 
+Ordnung's question about a sender's state (*Is X in Bavaria?*) comes from the postcode on their letter,
+looked up on your computer in a table of German postcodes that ships with Ordnung (GeoNames); nothing is
+sent or downloaded for it ([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Like
+every Idea's, its title (the sender's name and the state) is part of what *Weekly Ideas* sends.
+
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
 every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do

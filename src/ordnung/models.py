@@ -1380,6 +1380,26 @@ class ProofLink(_Model):
     kind: ProofKind
 
 
+class RegionSuggestion(_Model):
+    """The Land the postcode on a sender's letter suggests: a question for the person, never set by itself
+    (ADR 0019). Computed on read; nothing stores it."""
+
+    #: the Land's code ("BY")
+    region: str
+    #: the 5 digits, as on the letter ("80331")
+    postcode: str
+    #: the newest letter that shows it
+    doc_id: str
+    #: open dates that may change once it is confirmed (a party's: the sender's; a letter's: that letter's)
+    waiting: int = 0
+    #: one of them is counted backwards: without the Land it may be a day late
+    may_be_late: bool = False
+    #: the sender's ``sender_land`` Idea (new, snoozed or dismissed), if there is one
+    idea_id: str | None = None
+    #: that Idea is dismissed ("Don't know" or "Not relevant")
+    declined: bool = False
+
+
 class DocumentDetail(_Model):
     document: Document
     advice: LetterAdvice | None = None
@@ -1413,6 +1433,8 @@ class DocumentDetail(_Model):
     #: Whether Claude ever had the letter: it was read, or a model call carried it
     #: (:meth:`ordnung.db.store.Store.given_to_model`); ``False``: "Not sent to Claude".
     given_to_model: bool = False
+    #: The Land the postcode on this letter suggests for its sender, while they have none.
+    region_suggestion: RegionSuggestion | None = None
 
 
 class TrackingInfo(_Model):
@@ -1514,6 +1536,8 @@ class PartyDetail(_Model):
     cases: list[Case] = Field(default_factory=list)
     #: open items of ``items`` the drawer lists apart as "older or replaced" (Today leaves them out)
     set_aside: list[ItemAside] = Field(default_factory=list)
+    #: the Land the postcode on their letters suggests, while they have none
+    region_suggestion: RegionSuggestion | None = None
 
 
 class CaseDetail(_Model):

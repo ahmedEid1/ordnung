@@ -1,0 +1,19 @@
+Postcode data: GeoNames postal codes for Germany
+
+postcodes_de.tsv in this folder is built from GeoNames' postal code file for Germany,
+https://download.geonames.org/export/zip/DE.zip, by scripts/make_postcode_table.py in Ordnung's
+repository. Its header names the date and the sha256 of the DE.txt it was built from.
+
+© GeoNames, https://www.geonames.org/
+
+Licensed under the Creative Commons Attribution 4.0 International licence (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/ (legal code:
+https://creativecommons.org/licenses/by/4.0/legalcode).
+
+Changed by Ordnung: one row per postcode with the Länder (German states) of all its rows, GeoNames'
+admin1 codes mapped to two-letter Land codes, and every other column (place names, districts,
+coordinates, accuracy) removed.
+
+GeoNames provides the data "as is", without warranty or any representation of accuracy, timeliness
+or completeness. Ordnung only asks whether a sender is in the Land a postcode suggests; it never sets
+a Land by itself.

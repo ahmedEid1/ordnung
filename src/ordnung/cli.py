@@ -1744,8 +1744,11 @@ def _sync_in_process(folder: Path, work: Callable[[Any], Awaitable[T]], *, look:
 
             async def run() -> T:
                 context.bus.bind_loop(asyncio.get_running_loop())
-                await agent.load(look=look)
-                return await work(agent)
+                try:
+                    await agent.load(look=look)
+                    return await work(agent)
+                finally:
+                    await agent.dispose()  # it lets go of the database before the lock is given back
 
             return asyncio.run(run())
         finally:

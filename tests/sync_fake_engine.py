@@ -40,6 +40,7 @@ from ordnung.config import Paths
 from ordnung.db.store import _WRITE_LOCK, PERSON_META_KEY, Store
 from ordnung.models import AppSettings
 from ordnung.sync.agent import UseHere
+from ordnung.sync.folder import RealFs
 
 FOLDER_FILE = "fake-sync.json"
 VERSIONS = "versions"
@@ -198,7 +199,9 @@ def _folder_data(folder: Path) -> dict[str, Any] | None:
 def _write_atomic(path: Path, text: str) -> None:
     temp = path.with_name(f".{path.name}.{threading.get_ident()}.part")
     temp.write_text(text)
-    temp.replace(path)
+    RealFs().replace(
+        temp, path
+    )  # retried as Ordnung's own: on Windows a file a reader has open can't be replaced
 
 
 def _write_folder(folder: Path, data: dict[str, Any]) -> None:

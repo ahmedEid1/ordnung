@@ -80,6 +80,7 @@ from ordnung.rules.routing import (
     short_notice,
 )
 from ordnung.secretary.girocode_gate import document_girocodes
+from ordnung.secretary.sender_land import region_suggestion
 from ordnung.secretary.triggers import Ledger
 
 router = APIRouter(tags=["documents"])
@@ -288,9 +289,13 @@ def letter_card(store: Store, document: Document, today: date) -> LetterAdvice |
 def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     """The document viewer's data: the letter, its pages, to-dos, contracts, sender, thread, related
     letters, Ideas, drafts, the to-dos that are not one to act on (``set_aside``, as on Today), a
-    GiroCode (or why there is none) per payment, for a high-stakes letter its "get advice" card, and
-    for an e-mail what became of its attachments (for an attachment: the e-mail it came with)."""
+    GiroCode (or why there is none) per payment, for a high-stakes letter its "get advice" card, for
+    an e-mail what became of its attachments (for an attachment: the e-mail it came with), and while
+    the sender has no Land the one the postcode on their letters suggests, with this letter's dates
+    that may change (``region_suggestion``)."""
     document = require(store.get_document(doc_id), NOT_FOUND)
+    ledger = Ledger(store, today)
+    party = store.get_party(document.party_id) if document.party_id else None
     items = _with_reminder_notes(store, store.list_items(doc_id=doc_id), today)
     linked = {item.contract_id for item in items if item.contract_id}
     contracts = [
@@ -306,7 +311,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         pages=_page_infos(store, doc_id),
         items=items,
         contracts=contracts_with_computations(store, contracts, today),
-        party=store.get_party(document.party_id) if document.party_id else None,
+        party=party,
         case=store.get_case(document.case_id) if document.case_id else None,
         related=_related(store, document),
         suggestions=_ideas_about(store, doc_id, items),
@@ -318,8 +323,9 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         email=email_of(store, document),
         can_wait_again=was_kept_from_waiting(store, document),
         proof_of=_proof_of(store, doc_id),
-        scam_signs=Ledger(store, today).scam_signs(document) if document.direction == "incoming" else [],
+        scam_signs=ledger.scam_signs(document) if document.direction == "incoming" else [],
         given_to_model=store.given_to_model(doc_id),
+        region_suggestion=region_suggestion(ledger, party, doc_id=doc_id) if party is not None else None,
     )
 
 
