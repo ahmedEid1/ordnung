@@ -16,6 +16,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
+  sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
+  own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
+  Weekly, it fails once the rules were last checked against the law more than 90 days ago, and checks that a
+  freshly installed Claude Code (the newest, and 2.1.0) still takes every flag Ordnung passes, without
+  signing in.
 
 ### Fixed
 
