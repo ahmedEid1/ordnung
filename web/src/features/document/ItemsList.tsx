@@ -7,7 +7,7 @@
 import { Link } from "react-router";
 import { ArrowRight, CalendarPlus, Check, Ellipsis, History, ListTodo, Pencil, Repeat, RotateCcw, Scale, ShieldAlert, X } from "lucide-react";
 import { useState, type KeyboardEvent } from "react";
-import type { Document, Item, ItemAside, Recurrence } from "@/api/types";
+import type { Document, Item, ItemAside } from "@/api/types";
 import { cn } from "@/lib/utils";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
@@ -18,7 +18,8 @@ import { Menu } from "@/components/ui/Menu";
 import { ModelText } from "@/components/ui/ModelText";
 import { Money } from "@/components/ui/Money";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { AddDateButton, type DateLetter } from "@/features/items/AddDateDialog";
+import { AddDateButton, EditDateDialog, type DateLetter } from "@/features/items/AddDateDialog";
+import { repeatLabel } from "@/features/items/repeat";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { EvidenceChip } from "./EvidenceChip";
 import { useEvidence } from "./EvidenceContext";
@@ -38,12 +39,6 @@ import { READING_CHECK_SLOT } from "./Warnings";
 /** The letters a set-aside note names (the payment reminder that replaced this letter's payment). */
 type NoteDocs = readonly Pick<Document, "id" | "doc_date" | "received_date">[];
 const NONE: readonly never[] = [];
-
-export function recurrenceLabel(r: Recurrence | null | undefined): string | null {
-  if (!r) return null;
-  const unit = { days: "day", weeks: "week", months: "month", years: "year" }[r.unit];
-  return r.interval === 1 ? `every ${unit}` : `every ${r.interval} ${unit}s`;
-}
 
 function download(href: string, name: string) {
   const a = document.createElement("a");
@@ -125,7 +120,7 @@ export function ItemsList({
             scam && isOpenItem(it) ? (
               <ScamRow key={it.id} item={it} docId={docId} pages={pages} />
             ) : (
-              <ItemRow key={it.id} item={it} docId={docId} pages={pages} aside={isOpenItem(it) ? aside.get(it.id) : undefined} documents={documents} />
+              <ItemRow key={it.id} item={it} docId={docId} pages={pages} aside={isOpenItem(it) ? aside.get(it.id) : undefined} documents={documents} letter={letter} />
             ),
           )}
         </ul>
@@ -239,6 +234,7 @@ function ItemRow({
   pages,
   aside,
   documents = NONE,
+  letter,
 }: {
   item: Item;
   docId: string;
@@ -246,16 +242,21 @@ function ItemRow({
   /** Set aside by the server (an open to-do only): no countdown, a note on why. */
   aside?: ItemAside;
   documents?: NoteDocs;
+  /** The letter, named in "Edit your date". */
+  letter?: Pick<Document, "title" | "filename">;
 }) {
   const { markDone, reopen, dismiss, changeDate, pending } = useItemActions();
   const { hover } = useEvidence();
   // a to-do's calendar file stays on the computer (ADR 0017): a phone shows the date, never the download
   const phone = usePhoneCompanion();
   const [editing, setEditing] = useState(false);
+  // a date of the person's own is edited whole — what, when, how it repeats — in "Edit your date"
+  const [editingOwn, setEditingOwn] = useState(false);
+  const own = item.origin === "manual";
   const [date, setDate] = useState(item.due_date ?? "");
   const open = isOpenItem(item);
   const { ev, anchorId } = evidenceOf(item, docId);
-  const rec = recurrenceLabel(item.recurrence);
+  const rec = repeatLabel(item.recurrence);
   const role = itemDateRole(item);
   const menuId = `item-actions-${item.id}`;
 
@@ -395,7 +396,7 @@ function ItemRow({
         heading={item.title}
         items={[
           ...(item.due_date && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
-          { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
+          own ? { label: "Edit", icon: Pencil, onSelect: () => setEditingOwn(true) } : { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
           open ? { label: "Mark done", icon: Check, onSelect: () => markDone(item) } : { label: "Reopen", icon: RotateCcw, onSelect: () => reopen(item) },
           "separator" as const,
           { label: "Not a real to-do", icon: X, onSelect: () => dismiss(item), danger: true },
@@ -403,6 +404,7 @@ function ItemRow({
       >
         <IconButton id={menuId} icon={Ellipsis} label={`More actions for ${item.title}`} size="sm" className="absolute top-2 right-2.5 opacity-70 group-hover:opacity-100 focus-visible:opacity-100 sm:right-3.5" />
       </Menu>
+      {own ? <EditDateDialog item={item} open={editingOwn} onClose={() => setEditingOwn(false)} letter={letter ?? null} /> : null}
     </li>
   );
 }
