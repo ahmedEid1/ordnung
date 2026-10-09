@@ -97,7 +97,7 @@ for (const [width, height] of [
     expect(last_copy.due).toBe(false);
     if (last_copy.last_backup_at === null) await expect(card.getByText("Ordnung has no record of a backup made on this computer.")).toBeVisible();
     else await expect(card).toContainText("Last backup: today");
-    await inside(card.getByText(/^(No backup made on this computer yet\.|Last backup:)/).first(), card);
+    await inside(card.getByText(/^(Ordnung has no record of a backup made on this computer\.|Last backup:)/).first(), card);
     await inside(card.getByText(/^ordnung restore /), card);
     // the date in the file name is never split over two lines (it is copied by hand sometimes)
     const dateLines = await card.getByText(/^ordnung restore /).evaluate((code) => {
