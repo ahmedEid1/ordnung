@@ -47,7 +47,7 @@ privacy settings before processing sensitive documents.
 | **Weekly Ideas** (weekly; can be switched off in Settings) | a compact summary of open to-dos, contracts, recent letter summaries and warnings, the organisations involved, and your language, region and whether you are on a student visa |
 | **Secretary's note** (optional) | today's agenda (titles, dates, amounts, organisations) and your first name |
 | **Ask** | your question and the last few messages of the conversation; the assistant then reads what it needs through Ordnung's **read-only** tools (search results, document excerpts) |
-| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it |
+| **Letters** | the related letter's title, date, summary and reference numbers, the contract's name and customer number, the letter's fixed wording (with your addresses and IBAN replaced by placeholders), the recipient's name (first line only) and your instructions — including facts you typed for a template letter, such as a defect's description. *Translate again* sends the letter's subject and text as they stand, with your profile's address and IBAN, the sender block's address, every IBAN and the addresses a template letter wrote replaced by placeholders; other text you typed into the letter yourself is sent as you wrote it. Neither your name nor the name a letter goes out in is sent, unless you typed it into your wishes or the letter |
 
 Reading a letter can send its text more than once, never anything more: when Claude's answer doesn't fit
 the form it is asked once more with the problems listed, and when its reading comes back incomplete (almost
@@ -437,8 +437,8 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
   it remembers (only a fingerprint of each file it brought in travels, so a folder both computers watch
   never brings back a letter you deleted); Claude's pause; the morning notification's bookkeeping; the
-  lock and the running server's session file; and the privacy-log entries of a backup made on that
-  computer, of its phone access and of its watched folder — they name local addresses and paths.
+  lock and the running server's session file; and the privacy-log entries of a backup made or restored on
+  that computer, of its phone access and of its watched folder — they name local addresses and paths.
 - **When both computers changed something.** Nothing is merged and nothing is thrown away: Ordnung asks
   once which computer's Ordnung to keep, and the other one is saved on its own computer as a *kept copy*
   before anything there is replaced. Work a computer did by itself (a reading finished after you closed
@@ -459,7 +459,8 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   last saved.
 - **Forgetting a lost computer** (Settings → Your computers) removes it from the folder's list, after a
   kept copy of any changes only it had. It doesn't lock that computer out — it still knows the passphrase.
-  To shut out a lost or stolen computer, set up a new sync folder with a new passphrase.
+  To shut out a lost or stolen computer, set up a new sync folder with a new passphrase
+  ([what else to do](#if-your-computer-is-lost-or-stolen)).
 - **What is logged.** The privacy log notes starting and stopping sync, joining, each switch ("Ordnung moved
   here from desktop (3 new letters)"), a late change brought in, a choice, a kept copy and a computer
   forgotten; only the computer in use writes it, and the entries travel with your data. Routine saves are
@@ -505,6 +506,13 @@ folder): a restored copy starts without sync.
   every file must match the backup's own list of hashes and row counts. It never replaces a data
   folder that holds data unless you add `--force`, and then moves the old folder aside instead of
   deleting it. `ordnung restore FILE --check` verifies a backup without restoring anything.
+- **Ordnung notes each backup, and says when it's time for a new one.** Settings → Data says when the last
+  one was made: from Settings, from `ordnung backup` (a scheduled one too), or the one a restored copy came
+  from. When it is more than 30 days old, or there is none, the weekly review ends by saying so, and
+  `ordnung doctor` warns. While hand-off sync is connected, its copy in your sync folder counts too. Kept
+  copies don't (they are on this disk), nor do Time Machine, File History or other backups of the whole
+  computer: Ordnung can't see them. The note is a privacy-log entry that stays on this computer, and the
+  reminder is Ordnung's own words, never sent to Claude. Nothing is backed up by itself.
 - **A restored copy doesn't take over the watched folder.** The backup remembers which files of your
   watched folder were already there and which were picked up — on the computer it came from. A folder
   with the same path on another computer (the same `~/Downloads`) holds other files, so the restored
@@ -515,6 +523,47 @@ folder): a restored copy starts without sync.
 - **Links are never followed — and never silently.** A folder inside the data folder that is a link
   to somewhere else (originals moved to a bigger drive) is not in the backup; `ordnung backup` and
   Settings name it before the backup is made, so you can back it up separately.
+
+## If your computer is lost or stolen
+
+Ordnung keeps your letters, the numbers in them (your tax ID, your IBAN) and your ledger in the data folder:
+private to your account, but not encrypted by Ordnung. What a lost laptop costs you depends on two things
+you set up before: a copy kept somewhere else, and an encrypted disk.
+
+**Before:**
+
+- **Back up** to another drive or to the cloud, and keep the passphrase in your password manager. A
+  scheduled `ordnung backup` with `ORDNUNG_BACKUP_PASSPHRASE` keeps the copy current; Settings → Data and
+  the weekly review say when the last one is more than 30 days old.
+- **Encrypt the disk.** On a Mac, turn on FileVault (System Settings → Privacy & Security → FileVault). On
+  Windows, turn on BitLocker, or Device encryption on Windows Home: Settings → Privacy & security → Device
+  encryption, or BitLocker Drive Encryption in the Control Panel. On Linux, disk encryption (LUKS) is
+  usually chosen when the system is installed. On a Mac and on Linux, `ordnung doctor` (and *Run check* in
+  Settings) says what it found, as a best effort; on Windows it doesn't check, so look yourself.
+
+**After**, from another computer:
+
+1. **Get your letters back.** Install Ordnung on the new computer and run `ordnung restore FILE` with your
+   newest backup. The restored copy starts without phone access, hand-off sync or the calendar's password,
+   and notes which backup it came from. With hand-off sync, your other computer already has everything:
+   choose *Use Ordnung here* there.
+2. **Shut the lost computer out of hand-off sync.** *Forget* only takes it off the list: it still knows the
+   passphrase. On the computer you use now, disconnect and set up a new sync folder with a new passphrase
+   (Settings → Your computers); disconnect your other computers too and connect them to the new folder. Then
+   delete the old folder, and its version history at your provider.
+3. **Sign the lost computer out of Claude.** Claude Code on it stays signed in to your Claude account.
+   Anthropic's help pages say how to sign out everywhere and remove Claude Code's sign-in
+   ([How do I log out of all active sessions?](https://support.claude.com/en/articles/10310342-how-do-i-log-out-of-all-active-sessions)),
+   and how to end one device's session
+   ([Managing your active sessions](https://support.claude.com/en/articles/13124001-managing-your-active-sessions)).
+   If Claude Code used an API key, revoke that key in the Claude Console.
+4. **Your phones.** The restored copy has no paired phones. On a phone that trusts Ordnung's certificate
+   authority (the optional step that stops the warning), remove it: the lost computer holds its key. Then
+   pair the phone again from the new computer.
+5. **Calendar sync.** Revoke the app password at your calendar provider (it was in the lost computer's
+   password store), then connect again with a new one.
+6. **If the disk wasn't encrypted,** whoever has it can read your letters, your IBAN and tax ID among them.
+   Watch your account for direct debits you didn't agree to and tell your bank — it can take them back.
 
 ## Hardening built into every model call
 

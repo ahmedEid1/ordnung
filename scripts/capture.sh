@@ -2,6 +2,7 @@
 # README screenshots and the demo video, captured from a fresh demo (`make capture`).
 # Needs the Python venv, the web app's node_modules and ffmpeg. PW_CHROMIUM_PATH selects a Chromium.
 # The court payment order comes from the app's mock mode (see web/scripts/capture.mjs).
+# Pairing a phone and Your computers come from the real app (see web/e2e/readme-pictures.spec.ts).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -46,5 +47,12 @@ if [ -f "$OUT/video/demo.webm" ]; then
     "fps=$GIF_FPS,scale=$GIF_WIDTH:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
     "$OUT/demo.gif"
   rm -rf "$OUT/video"
+fi
+# Phone access and hand-off sync, which the demo never offers: two pictures from the real app, on the e2e suite's
+# own servers, started here (never a running Ordnung) on ports 8807-8810 with throwaway data folders in a new
+# temporary folder (web/e2e/readme-pictures.spec.ts). CAPTURE_REAL=0 leaves them out; CAPTURE_REAL_PORT moves them.
+if [ "${CAPTURE_REAL:-1}" != 0 ]; then
+  (cd web && env -u ORDNUNG_E2E_REUSE ORDNUNG_CAPTURE_OUT="$OUT" ORDNUNG_E2E_DATA="$(mktemp -d)/ordnung" \
+    ORDNUNG_E2E_PORT="${CAPTURE_REAL_PORT:-$((PORT + 10))}" npx playwright test --project pictures)
 fi
 ls -la "$OUT"
