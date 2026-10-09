@@ -4,8 +4,10 @@ A due date the person sets becomes ``due_date_source="manual"`` (with a send-by 
 engine) and marks the to-do ``user_modified`` so reading the letter again never overwrites it.
 Status changes (done, snoozed until a day, dismissed …) are explicit clicks; nothing here changes a
 status on its own — except that a recurring to-do marked done moves on to its next occurrence and
-stays open, and set open again ("Undo") goes back to it (:mod:`ordnung.recurrence`). After every
-edit or deletion the letter's "Please check" is brought up to date.
+stays open, and set open again ("Undo") goes back to it (:mod:`ordnung.recurrence`). A to-do added
+by hand that repeats on a working day or a day of the month is dated by its rule at once, and its
+schedule starts again at its date when it gets a new rule or its rule together with a date (point 2).
+After every edit or deletion the letter's "Please check" is brought up to date.
 """
 
 from __future__ import annotations
@@ -36,6 +38,8 @@ from ordnung.models import (
 )
 from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
+    SCHEDULE_FIELDS,
+    first_scheduled,
     kept_occurrence,
     mark_done,
     over_the_law,
@@ -197,10 +201,13 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
     )
     if due is not None and body.recurrence is not None:
         dates["date_spec"] = schedule_spec(due, nature)
-    item = store.add_item(
-        **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
-    )
-    return _follow_schedule(store, item, today)
+    with store.tx():
+        item = store.add_item(
+            **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
+        )
+        if body.recurrence is not None:
+            item = _scheduled_start(store, item, today)
+        return _follow_schedule(store, item, today)
 
 
 @router.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
@@ -234,7 +241,30 @@ def _status_fields(item: Item, changes: dict[str, Any], today: date) -> dict[str
     return fields
 
 
-def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
+def _restarts(item: Item, patch: ItemPatch) -> bool:
+    """Whether an edit starts the schedule of a to-do not read from a letter again at its date (recurrence.py,
+    point 2): it starts repeating, repeats by a new rule, or is sent its rule together with a date ("from this
+    date on"). A date sent alone stands in for one occurrence (point 7)."""
+    sent = patch.model_fields_set
+    if item.origin == "extracted" or "recurrence" not in sent or patch.recurrence is None:
+        return False
+    return "due_date" in sent or not same_rule(patch.recurrence, item.recurrence)
+
+
+def _scheduled_start(store: Store, item: Item, today: date) -> Item:
+    """Where the schedule of a to-do not read from a letter starts (points 2, 8 and 10): a rule with a working
+    day dates it in the month its date names, one with a day of the month on the first such day on or after
+    its date (:func:`~ordnung.recurrence.first_scheduled`); any other rule starts on the date itself."""
+    if item.recurrence is None or item.due_date is None:
+        return item
+    ctx = item_context(store, item, today)
+    first = first_scheduled(item, ctx, postal_buffer_days=postal_buffer(store.get_profile()))
+    if first is None:
+        return item
+    return store.update_item(item.id, **{name: getattr(first, name) for name in SCHEDULE_FIELDS})
+
+
+def _schedule_fields(item: Item, fields: dict[str, Any], *, restart: bool) -> dict[str, Any]:
     """Where a recurring to-do's schedule starts (recurrence.py, point 2): a to-do whose DateSpec gives
     no date (added by hand, or undated in its letter) keeps the first date it gets as a fixed DateSpec
     (its day of the month; the letter's words kept), and so does a to-do added by hand that starts
@@ -252,7 +282,7 @@ def _schedule_fields(item: Item, fields: dict[str, Any]) -> dict[str, Any]:
         if "due_date" not in fields and item.due_date_source == "computed":
             return {}
         return {"date_spec": spec.model_copy(update={"type": "fixed", "date": due})}
-    if spec is None or (item.origin != "extracted" and not same_rule(recurrence, item.recurrence)):
+    if spec is None or restart:
         return {"date_spec": schedule_spec(due, date_nature(item.kind, spec))}
     return {}
 
@@ -303,6 +333,7 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     fields: dict[str, Any] = {name: changes[name] for name in _CONTENT_FIELDS if name in changes}
     if "recurrence" in fields:  # the rule as read, so the same rule sent again compares equal to it
         fields["recurrence"] = patch.recurrence
+    restart = _restarts(item, patch)
     if "due_date" in changes:
         nature = date_nature(item.kind, item.date_spec)
         fields |= manual_date_fields(
@@ -315,11 +346,11 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
             in_person=pays_on_site(item.model_copy(update=fields)),
             collected=is_collected_or_incoming(item.model_copy(update=fields)),
         )
-        replaced = replaced_occurrence(item)
+        replaced = None if restart else replaced_occurrence(item)  # a new start stands in for nothing
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
             fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7
         fields["computation"] = over_the_law(item, fields["due_date"], fields["computation"])  # point 8
-    fields |= _schedule_fields(item, fields)
+    fields |= _schedule_fields(item, fields, restart=restart)
     if "due_date" in changes and fields["computation"] is not None and replaced_occurrence(item) is None:
         fields["computation"] = _kept_day_stands_in(store, item.model_copy(update=fields), today)
     if fields:
@@ -333,6 +364,8 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     done = item.status != "done" and fields.get("status") == "done"
     with store.tx():
         updated = store.update_item(item_id, **fields)
+        if restart:
+            updated = _scheduled_start(store, updated, today)
         updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
         refresh_review_status(store, updated.doc_id)
     return updated
