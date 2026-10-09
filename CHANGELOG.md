@@ -10,9 +10,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every month on its day, every
   month on a working day (the 3rd, the last …), every 3 or 6 months, or every year. A repeating date shows its
   next day, moves on when you mark it done or once its day has passed, and is never overdue because a month
-  went by. Your own dates can be edited later, also the ones without a letter: open them from Timeline, or
-  choose *Edit* on the letter's page. When you change the day of one that repeats, you choose whether only
-  that one moves or every one after it; *Remove* stops it, with Undo.
+  went by. Your own dates can be edited later: choose *Edit* on the letter's page, or open one without a
+  letter from Timeline. When you change the day of one that repeats, you choose whether only that one moves
+  or every one after it (one on a working day moves alone); *Remove* stops it, with Undo.
 - **A letter addressed to someone else says so.** When a letter names someone other than you (your partner,
   your child, "Familie …"), its page shows *Addressed to …* under its title. A reply, objection, template
   letter or cancellation you write from it still starts in your name: its *From* field says who the letter
@@ -107,7 +107,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A computer still on 0.2.0 shows the repeating dates you add on a newer one and moves them on, but can't
   change how they repeat.
 - On a computer still on 0.2.0, a letter written in someone else's name prints your name under its signature
-  while it is unsent. Mark such letters sent on an updated computer.
+  until it is marked as sent. Print such letters on an updated computer.
 
 ## 0.2.0 — 2026-10-08
 

@@ -1730,7 +1730,7 @@ Pages:
    person's own to-do (`POST /api/items`, origin `manual`), also on a letter kept private or one Claude
    couldn't read. The same dialog edits it later (*Edit* on the letter's page, or its Timeline row when it
    has no letter): changing the day of a repeating one asks whether only that one moves or every one after
-   it, and *Remove* dismisses it with Undo. A repeating to-do's row says how it repeats.
+   it (one on a working day moves alone), and *Remove* dismisses it with Undo. A repeating to-do's row says how it repeats.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
    check", usually no notice period in the letter) offers "Check the letter" and "Add notice

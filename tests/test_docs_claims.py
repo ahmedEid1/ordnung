@@ -33,6 +33,7 @@ from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
 from ordnung.backup.container import DEFAULT_KDF, MAX_SCRYPT_BYTES
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
+from ordnung.drafts.sent import letter_profile
 from ordnung.drafts.template_letters import TEMPLATES
 from ordnung.ingest.extract import ExtractionInput, extraction_request
 from ordnung.ingest.plan import VerifiedItem, own_context
@@ -1531,7 +1532,6 @@ async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppCo
     assert "Neither your name nor the name a letter goes out in is sent" in letters
 
 
-@pytest.mark.xfail(strict=False, reason="until B1 integration")
 async def test_a_letter_in_someone_else_s_name_never_sends_that_name(
     draft_ctx: tuple[AppContext, FakeBackend],
 ) -> None:
@@ -1542,6 +1542,25 @@ async def test_a_letter_in_someone_else_s_name_never_sends_that_name(
     draft = await compose(ctx, "cancellation", contract_id=contract, sender_name="Alex Rivera")
     assert draft.sender_block.splitlines()[0] == "Alex Rivera"
     assert "Rivera" not in _draft_call(backend)
+
+
+async def test_the_changelog_says_what_0_2_0_prints_for_a_letter_in_someone_else_s_name(
+    draft_ctx: tuple[AppContext, FakeBackend],
+) -> None:
+    """CHANGELOG, Upgrading: a letter written in someone else's name keeps that name as its signer from the start
+    (``drafts.sent_profile``), which 0.2.0 reads only once the letter is sent — and its marking keeps a stored
+    signer. So only an unsent letter's PDF made on 0.2.0 shows the person's own name under the signature."""
+    ctx, _ = draft_ctx
+    contract = _phone_contract(ctx.store)
+    draft = await compose(ctx, "cancellation", contract_id=contract, sender_name="Alex Rivera")
+    signer = ctx.store.get_sent_signer(draft.id)
+    assert signer is not None and signer.name == "Alex Rivera"
+    assert letter_profile(ctx.store, draft).name == "Alex Rivera"
+    upgrading = _flat((ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1])
+    assert (
+        "On a computer still on 0.2.0, a letter written in someone else's name prints your name under its "
+        "signature until it is marked as sent. Print such letters on an updated computer."
+    ) in upgrading
 
 
 async def test_weekly_review_can_be_switched_off(store: Store) -> None:
@@ -2180,7 +2199,6 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     assert {"phone.", "folder."} <= set(sync.LOCAL_ACTIVITY_PREFIXES)
 
 
-@pytest.mark.xfail(strict=False, reason="until B1 integration")
 def test_the_note_of_a_restore_stays_on_that_computer_too() -> None:
     """docs/privacy.md, "What stays on each computer": the privacy-log entry a restore writes (``backup.restored``)
     is local like a backup's, so the backup reminder counts only copies this computer made or came from."""
@@ -2246,7 +2264,6 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     assert "Time Machine" in limitations and "BitLocker" in limitations
 
 
-@pytest.mark.xfail(strict=False, reason="until B1 integration")
 def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
     """``ordnung.backup.reminder`` reminds after the days the docs state, counting the backups made here and the
     one a restored copy came from."""
@@ -2256,7 +2273,6 @@ def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
     assert set(reminder.BACKUP_KINDS) == {"backup.created", "backup.restored"}
 
 
-@pytest.mark.xfail(strict=False, reason="until B1 integration")
 def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
     data_dir: Path, store: Store
 ) -> None:
