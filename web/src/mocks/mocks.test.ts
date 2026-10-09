@@ -6,6 +6,7 @@ import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type {
   Activity,
+  BackupInfo,
   Contract,
   Dashboard,
   DocumentDetail,
@@ -470,6 +471,53 @@ describe("mock dataset", () => {
     // refused as the API refuses it
     expect((await post({ kind: "reminder", title: "x", doc_id: "doc_nope" })).status).toBe(404);
     expect((await post({ kind: "reminder", title: "  " })).status).toBe(422);
+  });
+
+  it("edits a to-do in the mock database as PATCH /items/:id does: the fields a person may change, theirs from then on", async () => {
+    const s = srv();
+    const { origin, grounding } = s.db.state.items.find((i) => i.id === "itm_parking")!;
+    const edited = s.db.patchItem("itm_parking", { due_date: "2026-10-20", title: "Pay the fine", origin: "rule", grounding: "unverified" });
+    expect(edited).toMatchObject({ id: "itm_parking", due_date: "2026-10-20", title: "Pay the fine", due_date_source: "manual", user_modified: true });
+    expect(edited).toMatchObject({ origin, grounding });
+    expect(s.db.patchItem("itm_parking", { status: "done" })?.completed_at?.slice(0, 10)).toBe(s.db.today);
+    expect(s.db.patchItem("itm_parking", { status: "open" })?.completed_at).toBeNull();
+    expect(s.db.patchItem("itm_nope", { status: "done" })).toBeNull();
+    expect((await s.handle("PATCH", "/items/itm_nope", new URLSearchParams(), { status: "done" })).status).toBe(404);
+    const res = await s.handle("PATCH", "/items/itm_parking", new URLSearchParams(), { status: "done" });
+    expect(((await res.json()) as Item).status).toBe("done");
+  });
+
+  it("notes a backup made here as the newest copy and in the activity, and never reminds in the demo", async () => {
+    const s = srv();
+    expect((await get<BackupInfo>(s, "/backup")).last_copy).toEqual({
+      last_backup_at: null,
+      last_backup_restored: false,
+      sync_saved_at: null,
+      sync_standing_by: false,
+      days: null,
+      due: false,
+      due_after_days: 30,
+    });
+    const made = await s.handle("POST", "/backup", new URLSearchParams(), { passphrase: "orbit velvet canyon maple thunder" });
+    expect(made.status).toBe(200);
+    const info = await get<BackupInfo>(s, "/backup");
+    expect(info.last_copy.last_backup_at?.slice(0, 10)).toBe(s.db.today);
+    expect(info.last_copy).toMatchObject({ days: 0, due: false });
+    const [newest] = await get<Activity[]>(s, "/activity");
+    expect(newest).toMatchObject({ kind: "backup.created", message: `Made an encrypted backup (${info.letters} letters, ${info.files} files)` });
+    s.db.state.lastBackupAt = "2026-08-01T09:00:00Z";
+    expect((await get<BackupInfo>(s, "/backup")).last_copy).toMatchObject({ days: 58, due: false });
+    // a refused passphrase makes no backup, so nothing is noted
+    const before = s.db.state.activity.length;
+    expect((await s.handle("POST", "/backup", new URLSearchParams(), { passphrase: "short" })).status).toBe(422);
+    expect(s.db.state.activity.length).toBe(before);
+    expect(s.db.state.lastBackupAt).toBe("2026-08-01T09:00:00Z");
+  });
+
+  it("names no one else as a letter's addressee, and the weekly session asks for no backup (Sam's demo is one person)", async () => {
+    const s = srv();
+    for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).addressed_to, d.id).toBeNull();
+    expect((await get<WeeklySession>(s, "/week")).backup).toBeNull();
   });
 
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {

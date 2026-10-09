@@ -19,7 +19,7 @@ from ordnung.drafts import pdf, sent
 from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
 from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.own_files import remember_own_file
-from ordnung.models import Draft, DraftKind, LetterDetails
+from ordnung.models import Draft, DraftKind, LetterDetails, OneLine
 
 router = APIRouter(tags=["drafts"])
 
@@ -52,6 +52,15 @@ class DraftCreate(BaseModel):
         description=(
             "an objection also applies to suspend enforcement (einstweilige Einstellung at a court, "
             "Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order"
+        ),
+    )
+    sender_name: OneLine | None = Field(
+        default=None,
+        max_length=120,
+        description=(
+            "the name the letter goes out in and is signed with (the web app offers the answered "
+            "letter's addressed_to; the person chooses it); left out, empty or the profile's own "
+            "name: the profile's name"
         ),
     )
 

@@ -103,6 +103,16 @@ const nowTs = () => {
   return day ? `${day}${real.slice(10)}` : real;
 };
 
+/** The fields of a to-do the person may change (`PATCH /api/items/{id}`). */
+const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
+
+/** The `keys` a request body sends, and only those. */
+function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<T> {
+  const out: Record<string, unknown> = {};
+  if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
+  return out as Partial<T>;
+}
+
 export interface MockState {
   health: Health;
   profile: Profile;
@@ -129,6 +139,8 @@ export interface MockState {
   calls: CallNote[];
   /** readings added in this session ("Read again"); others follow from the letter (`data/traces.ts`) */
   readings: Record<string, ReadingSeed[]>;
+  /** when the newest encrypted backup was downloaded in this session (`null`: none yet), as `BackupInfo.last_copy` says */
+  lastBackupAt: string | null;
 }
 
 /**
@@ -169,6 +181,7 @@ export class MockDb {
       proofs: clone(PROOFS),
       calls: clone(CALL_NOTES),
       readings: {},
+      lastBackupAt: null,
     };
   }
 
@@ -296,6 +309,22 @@ export class MockDb {
     });
     this.state.items.push(item);
     return { item };
+  }
+
+  /**
+   * The person edits a to-do (`PATCH /api/items/{id}`): only the fields they may change, and it is theirs from then on
+   * (`user_modified`); a date they give is theirs too, and done or open again stamps or clears when it was done.
+   * `null`: no such to-do (the API's 404).
+   */
+  patchItem(id: string, body: unknown): Item | null {
+    const it = this.state.items.find((i) => i.id === id);
+    if (!it) return null;
+    const patch = pick<Item>(body, ITEM_PATCHABLE);
+    Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
+    if (patch.due_date) it.due_date_source = "manual";
+    if (patch.status === "done") it.completed_at = nowTs();
+    if (patch.status === "open") it.completed_at = null;
+    return it;
   }
 
   log(kind: string, message: string, ref_type: string | null = null, ref_id: string | null = null, data: Record<string, unknown> = {}) {
@@ -734,4 +763,4 @@ function prio(p: string): number {
   return { low: 0, normal: 1, high: 2, critical: 3 }[p as "low"] ?? 1;
 }
 
-export { daysFrom, iso as isoDate, nowTs };
+export { daysFrom, iso as isoDate, nowTs, pick };

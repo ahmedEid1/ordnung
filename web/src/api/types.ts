@@ -712,6 +712,8 @@ export type DesktopTestResult = Schemas["DesktopTestResult"];
 export type DesktopMode = NonNullable<Schemas["DesktopTestRequest"]["mode"]>;
 /** `GET /api/backup`: what an encrypted backup made now would hold. */
 export type BackupInfo = Schemas["BackupInfo"];
+/** The newest copy kept elsewhere and whether it is time for a backup (`BackupInfo.last_copy`, `WeeklySession.backup`). */
+export type BackupCopy = Schemas["BackupCopy"];
 /** `GET /api/calendar/sync`: calendar sync (CalDAV) — available here, the connected calendar, the last sync. */
 export type CalendarSyncStatus = Schemas["CalendarSyncStatus"];
 export type CalendarSyncReport = Schemas["CalendarSyncReport"];

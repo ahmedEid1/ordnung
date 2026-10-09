@@ -81,6 +81,18 @@ async def test_objection_draft_flow(data_dir: Path) -> None:
         assert (await api.client.get(f"/api/drafts/{draft['id']}/preview.png")).status_code == 404
 
 
+async def test_a_letter_can_be_asked_for_in_a_name_of_one_short_line(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        assert (await api.client.put("/api/profile", json=PROFILE)).status_code == 200
+        invoice = await _letter(api, INVOICE_LETTER.pdf())
+        ask = {"kind": "general_reply", "doc_id": invoice}
+        too_long = await api.client.post("/api/drafts", json={**ask, "sender_name": "A" * 121})
+        assert too_long.status_code == 422
+        yours = await api.client.post("/api/drafts", json={**ask, "sender_name": "Sam\nRivera"})
+        assert yours.status_code == 201, yours.text
+        assert yours.json()["sender_block"].startswith("Sam Rivera\n")
+
+
 async def test_letters_that_cannot_be_drafted_or_sent(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         invoice = await _letter(api, INVOICE_LETTER.pdf())

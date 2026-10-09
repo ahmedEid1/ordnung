@@ -490,7 +490,10 @@ export interface paths {
         put?: never;
         /**
          * Create Item
-         * @description Add a to-do or date by hand.
+         * @description Add a to-do or date by hand. One that repeats on a working day or a day of the month is dated
+         *     at once at its first occurrence: the Nth working day of the month ``due_date`` names, or the first
+         *     such day of the month on or after ``due_date``; one already past moves on to the first occurrence
+         *     from today. Any other rule starts on ``due_date``.
          */
         post: operations["create_item_api_items_post"];
         delete?: never;
@@ -542,7 +545,13 @@ export interface paths {
         head?: never;
         /**
          * Update Item
-         * @description Edit a to-do: done / snoozed / dismissed, a date of your own, title and notes.
+         * @description Edit a to-do: done / snoozed / dismissed, a date of your own, how it repeats, title and notes.
+         *
+         *     For a to-do not read from a letter, ``recurrence`` sent together with ``due_date`` starts its
+         *     schedule again at that date, and a new rule sent alone starts it again at its current date; a
+         *     working day or a day of the month is dated from there at once. ``{"recurrence": null}`` stops it
+         *     repeating and keeps its date. A date sent alone stands in for one occurrence. To-dos read from a
+         *     letter keep following their letter's schedule.
          */
         patch: operations["update_item_api_items__item_id__patch"];
         trace?: never;
@@ -2101,6 +2110,51 @@ export interface components {
             command: string | null;
         };
         /**
+         * BackupCopy
+         * @description The newest copy of this Ordnung kept elsewhere — an encrypted backup or hand-off sync's last
+         *     save — and whether to remind the person. Code's words, never sent to a model.
+         */
+        BackupCopy: {
+            /**
+             * Last Backup At
+             * @description The newest encrypted backup this data folder knows: made here (Settings → Data, `ordnung backup`) or the one this copy was restored from
+             */
+            last_backup_at: string | null;
+            /**
+             * Last Backup Restored
+             * @description That newest backup is the one this copy was restored from
+             * @default false
+             */
+            last_backup_restored: boolean;
+            /**
+             * Sync Saved At
+             * @description While hand-off sync is connected: this computer's last save into the sync folder (its clock)
+             */
+            sync_saved_at: string | null;
+            /**
+             * Sync Standing By
+             * @description Another computer is in use and saves
+             * @default false
+             */
+            sync_standing_by: boolean;
+            /**
+             * Days
+             * @description Calendar days since the newer of the two (none: neither)
+             */
+            days: number | null;
+            /**
+             * Due
+             * @description Time to remind: letters exist, not the demo, and no copy within due_after_days
+             * @default false
+             */
+            due: boolean;
+            /**
+             * Due After Days
+             * @default 30
+             */
+            due_after_days: number;
+        };
+        /**
          * BackupInfo
          * @description What a backup made now would hold.
          */
@@ -2140,6 +2194,8 @@ export interface components {
              * @default 1
              */
             format_version: number;
+            /** @description The newest copy kept elsewhere (a backup, or hand-off sync's last save) and whether it is time for a backup */
+            last_copy: components["schemas"]["BackupCopy"];
         };
         /**
          * BackupRequest
@@ -3298,6 +3354,8 @@ export interface components {
              */
             given_to_model: boolean;
             region_suggestion: components["schemas"]["RegionSuggestion"] | null;
+            /** Addressed To */
+            addressed_to: string | null;
         };
         /**
          * DocumentPatch
@@ -3475,6 +3533,11 @@ export interface components {
              * @default false
              */
             suspend_enforcement?: boolean;
+            /**
+             * Sender Name
+             * @description the name the letter goes out in and is signed with (the web app offers the answered letter's addressed_to; the person chooses it); left out, empty or the profile's own name: the profile's name
+             */
+            sender_name?: string | null;
         };
         /**
          * DraftPatch
@@ -6995,6 +7058,8 @@ export interface components {
              * @default 0
              */
             due_today: number;
+            /** @description The newest copy kept elsewhere, only when it is time for a backup */
+            backup: components["schemas"]["BackupCopy"] | null;
         };
         /**
          * BriefUpdatedEvent

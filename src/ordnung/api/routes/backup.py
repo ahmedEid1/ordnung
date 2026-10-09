@@ -30,6 +30,7 @@ from ordnung.api.deps import CtxDep, require_computer
 from ordnung.app_context import AppContext
 from ordnung.backup.archive import BackupStream
 from ordnung.backup.container import FORMAT_VERSION
+from ordnung.models import BackupCopy
 
 router = APIRouter(tags=["backup"])
 
@@ -52,6 +53,11 @@ class BackupInfo(BaseModel):
     )
     min_passphrase: int = backups.MIN_PASSPHRASE_CHARS
     format_version: int = FORMAT_VERSION
+    last_copy: BackupCopy = Field(
+        default_factory=BackupCopy,
+        description="The newest copy kept elsewhere (a backup, or hand-off sync's last save) and whether "
+        "it is time for a backup",
+    )
 
 
 class BackupRequest(BaseModel):

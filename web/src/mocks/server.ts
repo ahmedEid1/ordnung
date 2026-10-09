@@ -56,7 +56,7 @@ import type {
 } from "@/api/types";
 import { HIGH_STAKES_KINDS, type HighStakesKind } from "@/api/types";
 import { ibanLooksValid, normalizeIban } from "@/lib/format";
-import { MockDb, letterFor, nowTs } from "./db";
+import { MockDb, letterFor, nowTs, pick } from "./db";
 import { emit } from "./events";
 import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
@@ -76,7 +76,7 @@ const COURT_OBJECTION_RECIPIENT =
   "An objection to a court order goes to the court that issued it — sent to the claimant, it doesn't stop the order (§ 694, § 700 ZPO). This letter's sender isn't a court in Ordnung: type the court's name and address as the order and its yellow envelope show them (for a Mahnbescheid usually a central Mahngericht).";
 import { SAM, sha } from "./data/constants";
 import { mockNumbers, mockWeek, mockWeekDismiss, mockWeekDone } from "./numbers";
-import { TRAY_DOCUMENTS } from "./data/documents";
+import { TRAY_DOCUMENTS, addressedTo } from "./data/documents";
 import { EMAIL_ATTACHMENTS, SUGGESTED_INBOX } from "./data/folder";
 import {
   BACKUP_STATIC_MESSAGE,
@@ -398,6 +398,7 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
         return letter ? [{ draft_id: letter.id, subject: letter.subject, proof_id: p.id, kind: p.kind }] : [];
       }),
     region_suggestion: regionSuggestion(db, db.party(d.party_id), d),
+    addressed_to: addressedTo(id),
   };
 }
 
@@ -858,7 +859,6 @@ function askStream(ctx: Ctx): Response {
 // Routes
 // ------------------------------------------------------------------------------------------------
 
-const ITEM_PATCHABLE = ["title", "description", "due_date", "due_time", "amount", "status", "snoozed_until", "priority", "area", "location", "recurrence"] as const;
 /** A letter filed as another kind than it was read as: the online demo has no rules engine to follow it. */
 export function refiledNote(read: Document["kind"], chosen: Document["kind"]): string {
   return (
@@ -871,12 +871,6 @@ const DOC_PATCHABLE = ["title", "kind", "area", "doc_date", "received_date", "pa
 
 function withoutNulls(src: unknown): Record<string, unknown> {
   return Object.fromEntries(Object.entries((src ?? {}) as Record<string, unknown>).filter(([, v]) => v !== null && v !== undefined));
-}
-
-function pick<T extends object>(src: unknown, keys: readonly string[]): Partial<T> {
-  const out: Record<string, unknown> = {};
-  if (src && typeof src === "object") for (const k of keys) if (k in src) out[k] = (src as Record<string, unknown>)[k];
-  return out as Partial<T>;
 }
 
 /** NW's public holidays the gym's four weeks can end on (the mock has no holiday calendar). */
@@ -1628,15 +1622,7 @@ const routes: [string, string, Handler][] = [
   [
     "PATCH",
     "/items/:id",
-    ({ db, params, body }) => {
-      const it = db.state.items.find((i) => i.id === params.id) ?? notFound("Unknown to-do.");
-      const patch = pick<Item>(body, ITEM_PATCHABLE);
-      Object.assign(it, patch, { updated_at: nowTs(), user_modified: true });
-      if (patch.due_date) it.due_date_source = "manual";
-      if (patch.status === "done") it.completed_at = nowTs();
-      if (patch.status === "open") it.completed_at = null;
-      return it;
-    },
+    ({ db, params, body }) => db.patchItem(params.id!, body) ?? notFound("Unknown to-do."),
   ],
   [
     "DELETE",
@@ -1952,12 +1938,16 @@ const routes: [string, string, Handler][] = [
   [
     "POST",
     "/backup",
-    ({ body, opts }) => {
+    ({ db, body, opts }) => {
       if (opts.staticDemo) throw new HttpError(403, BACKUP_STATIC_MESSAGE, "static_demo");
       const passphrase = (body as { passphrase?: unknown } | null)?.passphrase;
       // the server's policy (`ordnung.backup.passphrase_problem`), in its words
       const problem = backupPassphraseProblem(typeof passphrase === "string" ? passphrase : "");
       if (problem) throw new HttpError(422, problem.message);
+      // noted like the API's made backup: the newest copy (`BackupInfo.last_copy`) and a `backup.created` row
+      const { letters, files } = mockBackupInfo(db);
+      db.state.lastBackupAt = nowTs();
+      db.log("backup.created", `Made an encrypted backup (${letters} letters, ${files} files)`);
       return new Response(mockBackupFile(), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
     },
   ],

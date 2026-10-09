@@ -205,7 +205,10 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
 
 @router.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
 async def create_item(body: ItemCreate, ctx: CtxDep, today: TodayDep) -> Item:
-    """Add a to-do or date by hand."""
+    """Add a to-do or date by hand. One that repeats on a working day or a day of the month is dated
+    at once at its first occurrence: the Nth working day of the month ``due_date`` names, or the first
+    such day of the month on or after ``due_date``; one already past moves on to the first occurrence
+    from today. Any other rule starts on ``due_date``."""
     item = await asyncio.to_thread(_create, ctx.store, body, today)
     await ledger_changed(ctx, item_id=item.id)
     return item
@@ -337,7 +340,13 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
 
 @router.patch("/items/{item_id}", response_model=Item)
 async def update_item(item_id: str, patch: ItemPatch, ctx: CtxDep, today: TodayDep) -> Item:
-    """Edit a to-do: done / snoozed / dismissed, a date of your own, title and notes."""
+    """Edit a to-do: done / snoozed / dismissed, a date of your own, how it repeats, title and notes.
+
+    For a to-do not read from a letter, ``recurrence`` sent together with ``due_date`` starts its
+    schedule again at that date, and a new rule sent alone starts it again at its current date; a
+    working day or a day of the month is dated from there at once. ``{"recurrence": null}`` stops it
+    repeating and keeps its date. A date sent alone stands in for one occurrence. To-dos read from a
+    letter keep following their letter's schedule."""
     item = await asyncio.to_thread(_update, ctx.store, item_id, patch, today)
     await ledger_changed(ctx, item_id=item.id)
     return item

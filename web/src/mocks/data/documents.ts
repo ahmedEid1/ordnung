@@ -590,3 +590,11 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     ],
   }),
 };
+
+/**
+ * Who a letter is addressed to when that isn't Sam (`DocumentDetail.addressed_to`; the API works it out on read from
+ * the letter's reading). Sam's mock life is one person, so no letter names anyone else.
+ */
+export function addressedTo(_docId: string): string | null {
+  return null;
+}
