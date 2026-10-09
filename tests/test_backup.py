@@ -353,13 +353,14 @@ def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> N
     assert passphrase not in backups.WEAK_PASSPHRASE_MESSAGE
 
 
-def test_the_refusal_doesn_t_call_a_random_password_guessable() -> None:
-    """Audit: a 16-character password from a password manager counts less than five words (symbols don't
-    count, and a run of letters counts as one word at most), so it is refused — and the refusal called it
-    too easy to guess. It says what Ordnung counts instead."""
-    assert backups.passphrase_problem("Xk9#mQ2!vR7@pL4$") == backups.WEAK_PASSPHRASE_MESSAGE
+def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> None:
+    """Audit: a 16-character password from a password manager counted less than five words (symbols didn't
+    count, and a run of letters counted as one word at most), so it was refused (0.2.0 review). Its random
+    characters count now, and the refusal no longer says they count for little; it names both ways."""
+    assert backups.passphrase_problem("Xk9#mQ2!vR7@pL4$") is None
+    assert "count for little" not in backups.WEAK_PASSPHRASE_MESSAGE
     assert "too easy to guess" not in backups.WEAK_PASSPHRASE_MESSAGE
-    assert "random characters" in backups.WEAK_PASSPHRASE_MESSAGE
+    assert "password manager" in backups.WEAK_PASSPHRASE_MESSAGE
 
 
 #: Suggestions of Ordnung 0.1.0's backup dialog: four groups of five of 31 letters and digits (about 99 bits)
@@ -388,12 +389,20 @@ def test_every_suggestion_ordnung_0_1_0_made_still_protects_a_new_backup() -> No
         "water-water-water-water",
         "abcde-fghjk-mnpqr-stuvw",
         "after-these-three-seven",
-        "Fsumn-hqfzc-jgtck-crjwz",
     ],
 )
 def test_a_pattern_in_the_shape_of_an_earlier_suggestion_is_still_refused(passphrase: str) -> None:
-    """A group again, a run, a keyboard walk or common words: not what 0.1.0 drew (nor upper case)."""
+    """A group again, a run, a keyboard walk or common words: not what 0.1.0 drew."""
+    assert not backups.earlier_suggestion(passphrase)
     assert backups.passphrase_problem(passphrase) == backups.WEAK_PASSPHRASE_MESSAGE
+
+
+def test_an_earlier_suggestion_with_a_capital_passes_as_random_characters() -> None:
+    """0.1.0 drew no upper case, so a capital takes a passphrase out of its shape; it used to be refused
+    then (four words by the count of words). Its letters are random, though, so they count as random
+    characters now."""
+    assert not backups.earlier_suggestion("Fsumn-hqfzc-jgtck-crjwz")
+    assert backups.passphrase_problem("Fsumn-hqfzc-jgtck-crjwz") is None
 
 
 @pytest.mark.parametrize(
