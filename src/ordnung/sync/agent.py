@@ -495,6 +495,10 @@ class _EngineThread:
         def settle(result: Any, error: BaseException | None) -> None:
             if future.done():
                 return
+            if isinstance(error, StopIteration):  # a future refuses it, and the caller would wait forever
+                stopped = RuntimeError("a sync engine call raised StopIteration")
+                stopped.__cause__ = error
+                error = stopped
             if error is not None:
                 future.set_exception(error)
             else:
