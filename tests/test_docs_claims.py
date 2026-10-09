@@ -1318,7 +1318,6 @@ def test_readme_tour_shows_phone_access_and_hand_off_sync() -> None:
     ) in spec
 
 
-@pytest.mark.xfail(strict=False, reason="until B1 integration")
 def test_readme_tour_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
     """The two pictures from the real app are PNGs of 1440×900 like the rest of the tour, and small (each about
     120 KB when they were first made)."""
