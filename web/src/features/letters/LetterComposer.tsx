@@ -32,6 +32,7 @@ import {
   objectionCheck,
   objectionDeadline,
   objectionDocuments,
+  namesHousehold,
   sameName,
   usableDocuments,
   type ComposerPrefill,
@@ -723,7 +724,11 @@ function TemplateRecipient({
 /**
  * The From field of a letter answering one addressed to someone else (`DocumentDetail.addressed_to`). It starts with
  * the person's own name: the addressee's is one press away, and "Use my name" goes back — offered, never set (a
- * child's letter answered in the child's name would be the worse mistake). The name never goes to Claude.
+ * child's letter answered in the child's name would be the worse mistake). A household ("Familie Rivera") has no
+ * one-press name: the person is among the people named and signs as themselves. A press keeps the keyboard in place
+ * (focus moves to the button that took the pressed one's place) and a status line says whose name it now is. Code
+ * never adds the name to the draft request (the related letter's title and summary, sent as read, may still name the
+ * addressee).
  */
 function SignerField({
   addressee,
@@ -739,6 +744,24 @@ function SignerField({
   /** The field holds a name that isn't the person's own. */
   othersName: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const theirsRef = useRef<HTMLButtonElement>(null);
+  const mineRef = useRef<HTMLButtonElement>(null);
+  // after a press, the button that took the pressed one's place (else the field) gets the focus
+  const focusNext = useRef<"theirs" | "mine" | null>(null);
+  const [said, setSaid] = useState("");
+  useEffect(() => {
+    const next = focusNext.current;
+    if (!next) return;
+    focusNext.current = null;
+    ((next === "theirs" ? theirsRef.current : mineRef.current) ?? inputRef.current)?.focus();
+  }, [value]);
+  const press = (name: string, next: "theirs" | "mine", line: string) => {
+    focusNext.current = next;
+    setSaid(line);
+    onChange(name);
+  };
+  const household = namesHousehold(addressee);
   return (
     <div className="mt-4" data-signer>
       <Field
@@ -749,21 +772,29 @@ function SignerField({
           </span>
         }
       >
-        <Input value={value} onChange={(e) => onChange(e.target.value)} maxLength={120} autoComplete="off" spellCheck={false} />
+        <Input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} maxLength={120} autoComplete="off" spellCheck={false} />
       </Field>
       <div className="mt-2 flex flex-wrap gap-2">
-        {!sameName(value, addressee) ? (
+        {!household && !sameName(value, addressee) ? (
           // an element, not a string: the Button truncates a string label, and a long name wraps at 320 px instead
-          <Button size="sm" className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left" onClick={() => onChange(addressee)}>
+          <Button
+            ref={theirsRef}
+            size="sm"
+            className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
+            onClick={() => press(addressee, "mine", `The letter now goes out in the name of ${addressee}.`)}
+          >
             <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Reply in {addressee}'s name</span>
           </Button>
         ) : null}
         {ownName && !sameName(value, ownName) ? (
-          <Button size="sm" variant="ghost" onClick={() => onChange(ownName)}>
+          <Button ref={mineRef} size="sm" variant="ghost" onClick={() => press(ownName, "theirs", "The letter now goes out in your name.")}>
             Use my name
           </Button>
         ) : null}
       </div>
+      <p role="status" className="sr-only">
+        {said}
+      </p>
     </div>
   );
 }

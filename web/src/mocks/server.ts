@@ -62,7 +62,7 @@ import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { draftChecks, mockSigner, phoneGuidance, signerNote } from "./data/drafts";
+import { draftChecks, mockSigner, notesForBlock, phoneGuidance, signerNote } from "./data/drafts";
 import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
@@ -1805,7 +1805,10 @@ const routes: [string, string, Handler][] = [
       const d = db.state.drafts.find((x) => x.id === params.id) ?? notFound("Unknown letter.");
       // like the API: a sent letter stays as it went out
       if (d.status === "sent") throw new HttpError(409, "This letter was sent: its text stays as it went out, so the PDF and the Nachweis show what you sent. To write again, start a new letter.");
-      Object.assign(d, pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]), { updated_at: nowTs() });
+      const edits = pick<Draft>(body, ["subject", "body", "body_translation", "sender_block", "recipient_block", "place_date", "enclosures", "status"]);
+      Object.assign(d, edits, { updated_at: nowTs() });
+      // like the API: the From block's first line is who signs it
+      if (typeof edits.sender_block === "string") d.notes_for_user = notesForBlock(d.notes_for_user, edits.sender_block);
       d.checks = checksFor(db, d);
       return d;
     },

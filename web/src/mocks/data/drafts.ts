@@ -132,6 +132,19 @@ export function signerNote(name: string): string {
   return `This letter goes out in the name of ${name}, so ${name} signs it.`;
 }
 
+/**
+ * A letter's notes once its sender block was edited (`compose.signer_of_block`): the block's first line is who signs
+ * it, so the note on someone else's name follows that line — gone for Sam's own name, before the law line otherwise.
+ */
+export function notesForBlock(notes: readonly string[], senderBlock: string): string[] {
+  const first = senderBlock.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+  const signer = mockSigner(first);
+  const kept = notes.filter((n) => !n.startsWith("This letter goes out in the name of "));
+  if (!signer) return kept;
+  const at = kept.length && kept[kept.length - 1]!.startsWith("Based on the law as of") ? kept.length - 1 : kept.length;
+  return [...kept.slice(0, at), signerNote(signer), ...kept.slice(at)];
+}
+
 /** A stored draft with the checks the API would have run on it. */
 function withChecks(d: Omit<Draft, "checks">, facts: Pick<CheckFacts, "references" | "letterDate">): Draft {
   const channel = d.send_guidance?.channels.find((c) => c.channel === d.sent_channel);

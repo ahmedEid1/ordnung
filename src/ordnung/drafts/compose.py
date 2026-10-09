@@ -1271,6 +1271,26 @@ def signer_note(signer: str) -> str:
     return f"This letter goes out in the name of {signer}, so {signer} signs it."
 
 
+def signer_of_block(store: Store, draft: Draft, block: str) -> dict[str, object]:
+    """The changes that keep who signs a letter not sent yet in step with its edited sender block: its
+    first line is the name it goes out in (the profile's, or someone else's kept as the signer, with
+    the note saying so) — so the PDF's signature and author, and the Nachweis once it is sent, never
+    name another sender than the block."""
+    profile = store.get_profile()
+    first = next((line.strip() for line in block.splitlines() if line.strip()), "")
+    signer = letter_signer(first, profile)
+    kept = store.get_sent_signer(draft.id)
+    before = kept.name if kept is not None and kept.name else None
+    if signer == before:
+        return {}
+    notes = [note for note in draft.notes_for_user if before is None or note != signer_note(before)]
+    if signer is not None:
+        last = len(notes) - 1 if notes and notes[-1].startswith("Based on the law as of") else len(notes)
+        notes.insert(last, signer_note(signer))
+    named = SentSigner(name=signer, email=profile.email, phone=profile.phone) if signer else None
+    return {"sent_profile": named, "notes_for_user": notes}
+
+
 def _notes(
     plan: Plan, written: Written, fallback_used: bool, sources: Sources, signer: str | None = None
 ) -> list[str]:

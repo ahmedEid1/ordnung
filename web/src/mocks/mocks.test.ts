@@ -554,6 +554,17 @@ describe("mock dataset", () => {
     }
   });
 
+  it("keeps who signs in step with the From line edited later, as the API does: the note follows its first line", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    const theirs = (await (await s.handle("POST", "/drafts", new URLSearchParams(), { kind: "objection", doc_id: "doc_tax", sender_name: "Alex Rivera" })).json()) as Draft;
+    const note = "This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.";
+    const edit = async (sender_block: string) => (await (await s.handle("PATCH", `/drafts/${theirs.id}`, new URLSearchParams(), { sender_block })).json()) as Draft;
+    expect((await edit(theirs.sender_block.replace("Alex Rivera", "Sam Rivera"))).notes_for_user.join(" ")).not.toContain("goes out in the name of");
+    const again = await edit(theirs.sender_block);
+    expect(again.notes_for_user.filter((n) => n === note)).toHaveLength(1);
+  });
+
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {
     const s = createMockServer({ staticDemo: true, latency: 0 });
     const res = await s.handle("POST", "/suggestions/review", new URLSearchParams(), {});

@@ -187,6 +187,44 @@ async def test_the_name_a_letter_goes_out_in_never_reaches_claude(
             assert "Sam Rivera" not in req.prompt and "Sam Rivera" not in req.system
 
 
+async def test_the_from_line_decides_who_signs_a_letter_not_sent_yet(data_dir: Path) -> None:
+    """Edited after drafting, the sender block's first line is who signs: the PDF's signature and author,
+    the note and, once sent, the Nachweis follow it — back to the person's own name, or to another."""
+    async with api_for(data_dir) as api:
+        assert (await api.client.put("/api/profile", json=PROFILE)).status_code == 200
+        invoice = await _letter(api, INVOICE_LETTER.pdf())
+        ask = {"kind": "general_reply", "doc_id": invoice}
+        theirs = (await api.client.post("/api/drafts", json={**ask, "sender_name": ALEX})).json()
+        back = await api.client.patch(
+            f"/api/drafts/{theirs['id']}", json={"sender_block": "Sam Rivera\nMusterweg 1\n12345 Musterstadt"}
+        )
+        assert back.status_code == 200, back.text
+        assert SIGNER_NOTE not in back.json()["notes_for_user"]
+        assert api.ctx.store.get_sent_signer(theirs["id"]) is None
+        text, metadata = _pdf_text((await api.client.get(f"/api/drafts/{theirs['id']}/pdf")).content)
+        assert "Sam Rivera" in text.split("Mit freundlichen Grüßen", 1)[1]
+        assert ALEX not in text and metadata["Author"] == "Sam Rivera"
+        sent = await api.client.post(
+            f"/api/drafts/{theirs['id']}/sent", json={"channel": "letter", "date": TODAY}
+        )
+        assert sent.status_code == 200, sent.text
+        proof, _ = _pdf_text((await api.client.get(f"/api/drafts/{theirs['id']}/proof.pdf")).content)
+        assert "Sam Rivera" in proof and ALEX not in proof
+
+        mine = (await api.client.post("/api/drafts", json=ask)).json()
+        other = await api.client.patch(
+            f"/api/drafts/{mine['id']}", json={"sender_block": "Alex Rivera\nMusterweg 1\n12345 Musterstadt"}
+        )
+        notes = other.json()["notes_for_user"]
+        assert SIGNER_NOTE in notes and notes[-1].startswith("Based on the law as of")
+        text, metadata = _pdf_text((await api.client.get(f"/api/drafts/{mine['id']}/pdf")).content)
+        assert ALEX in text.split("Mit freundlichen Grüßen", 1)[1] and metadata["Author"] == ALEX
+        assert "Sam Rivera" not in text
+        body_only = await api.client.patch(f"/api/drafts/{mine['id']}", json={"subject": "Ihre Rechnung"})
+        assert body_only.json()["notes_for_user"].count(SIGNER_NOTE) == 1
+        assert api.ctx.store.get_sent_signer(mine["id"]) is not None
+
+
 @pytest.mark.parametrize("name", ["", "   ", "sam  RIVERA", "Sam\nRivera"])
 async def test_a_sender_name_that_is_yours_changes_nothing(data_dir: Path, name: str) -> None:
     async with api_for(data_dir) as api:

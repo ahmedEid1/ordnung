@@ -16,7 +16,14 @@ from ordnung.api.deps import CtxDep, StoreDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, require
 from ordnung.db.store import Store
 from ordnung.drafts import pdf, sent
-from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
+from ordnung.drafts.compose import (
+    MAX_INSTRUCTIONS,
+    compose,
+    mark_sent,
+    refresh_checks,
+    retranslate,
+    signer_of_block,
+)
 from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.own_files import remember_own_file
 from ordnung.models import Draft, DraftKind, LetterDetails, OneLine
@@ -135,9 +142,11 @@ def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
     draft = require(store.get_draft(draft_id), NOT_FOUND)
     if draft.status == "sent":
         raise HTTPException(status.HTTP_409_CONFLICT, SENT_IS_FINAL)
-    changes = {
+    changes: dict[str, object] = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
+    if isinstance(block := changes.get("sender_block"), str):
+        changes |= signer_of_block(store, draft, block)  # its first line is who signs it
     with store.tx():
         if changes:
             store.update_draft(draft_id, **changes)

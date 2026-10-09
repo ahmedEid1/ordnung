@@ -257,6 +257,17 @@ export function sameName(a: string, b: string): boolean {
   return plain(a) === plain(b);
 }
 
+const HOUSEHOLD_WORDS = new Set(["und", "and", "familie", "family", "eheleute", "ehepaar"]);
+
+/**
+ * Whether an addressee names more than one person ("Familie Rivera", "Sam und Alex Rivera", "Alex & Sam Rivera") — the
+ * household test of `secretary/addressee.py`. The person is among them, so a letter has no one-press name to go out in.
+ */
+export function namesHousehold(addressee: string): boolean {
+  if (/[&+]|\S\s+u\.\s+\S/i.test(addressee)) return true;
+  return (addressee.toLowerCase().match(/\p{L}+/gu) ?? []).some((word) => HOUSEHOLD_WORDS.has(word));
+}
+
 const KIND_TITLE: Record<DraftKind, string> = {
   cancellation: "Cancellation",
   objection: "Objection",

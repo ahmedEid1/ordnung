@@ -310,6 +310,38 @@ describe("a letter addressed to someone else: their name is offered, never set",
     expect(within(dialog).queryByRole("button", { name: "Use my name" })).toBeNull();
   });
 
+  it("keeps the keyboard where it was: a press moves focus to the button that took its place, and says whose name it is", async () => {
+    const { user, dialog, from } = await openObjection(useMockApi({ full: true }));
+    within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }).focus();
+    await user.keyboard("{Enter}");
+    expect(from).toHaveValue("Alex Rivera");
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Use my name" }));
+    const signer = dialog.querySelector("[data-signer]") as HTMLElement;
+    expect(within(signer).getByRole("status")).toHaveTextContent("The letter now goes out in the name of Alex Rivera.");
+    await user.keyboard("{Enter}");
+    expect(from).toHaveValue("Sam Rivera");
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }));
+    expect(within(signer).getByRole("status")).toHaveTextContent("The letter now goes out in your name.");
+  });
+
+  it("offers no one-press name for a household: you are among the people named and sign as yourself", async () => {
+    useMockApi({ full: true });
+    for (const household of ["Familie Rivera", "Sam und Alex Rivera", "Alex & Sam Rivera"]) {
+      ADDRESSEES.doc_tax = household;
+      const user = userEvent.setup();
+      const { unmount } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+      const dialog = await screen.findByRole("dialog", { name: "New letter" });
+      const from = await within(dialog).findByRole("textbox", { name: "From" });
+      expect(from).toHaveAccessibleDescription(`This letter was addressed to ${household}.`);
+      expect(within(dialog).queryByRole("button", { name: /^Reply in/ })).toBeNull();
+      await user.clear(from);
+      await user.type(from, "Alex Rivera");
+      expect(within(dialog).queryByRole("button", { name: /^Reply in/ })).toBeNull();
+      expect(within(dialog).getByRole("button", { name: "Use my name" })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("writes the letter in your name unless you chose theirs: the request is as before", async () => {
     const { user, dialog, calls, router } = await openObjection(useMockApi({ full: true }));
     await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
