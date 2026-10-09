@@ -1964,7 +1964,8 @@ links to the docs, how it was built (Claude Code as pair programmer; correctness
 examples, evals), disclaimer. Its numeric claims are checked by `tests/test_docs_claims.py`. Screenshots,
 the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`) on
 a fresh demo; the court order comes from the mock data (`?mock=full`), since the recorded demo has
-none, and the README says so. `docs/`: architecture, deadline-rules (with citations), privacy
+none, and the phone pairing and Your computers pictures from the real app (`web/e2e/readme-pictures.spec.ts`),
+since the demo has neither, and the README says so. `docs/`: architecture, deadline-rules (with citations), privacy
 (data-flow table), evals, evals-ask, decisions/ADRs.
 
 ## 20. Changes from v1 (review outcomes)

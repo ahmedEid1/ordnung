@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tomllib
@@ -1235,6 +1236,73 @@ def test_readme_demo_has_25_letters_three_in_new_mail() -> None:
     ]
     assert "Musterstadt: 25 letters" in _readme() and len(documents) == 25
     assert "three unopened letters" in _readme() and sum(1 for d in documents if d.get("tray")) == 3
+
+
+#: README's two pictures that come from the real app, not the demo: the demo never opens itself to a network
+#: and never syncs (``web/e2e/readme-pictures.spec.ts``, run by ``make capture``).
+_REAL_APP_PICTURES = ("pair-phone.png", "your-computers.png")
+
+
+def _images(markdown: str) -> list[tuple[str, str | None]]:
+    """Every ``<img>`` in ``markdown``: its ``src`` and its ``alt`` (``None`` when it has none)."""
+    found = []
+    for tag in re.findall(r"<img\b[^>]*>", markdown):
+        src = re.search(r'\bsrc="([^"]*)"', tag)
+        alt = re.search(r'\balt="([^"]*)"', tag)
+        assert src, tag
+        found.append((src.group(1), alt.group(1) if alt else None))
+    return found
+
+
+def _tour() -> str:
+    return _readme().split("\n## A tour\n", 1)[1].split("\n## ", 1)[0]
+
+
+def test_readme_tour_shows_phone_access_and_hand_off_sync() -> None:
+    """README's tour pictures phone access and hand-off sync, in a row of their own with alt text that names
+    neither the pairing code nor the two words (both change on every capture); a footnote says the pictures
+    come from the real app and which spec makes them. The "Also" list no longer repeats the two."""
+    tour = _tour()
+    images = dict(_images(tour))
+    for name in _REAL_APP_PICTURES:
+        alt = images.get(f"docs/assets/{name}")
+        assert alt and alt.strip(), name
+    assert "two check words" in images["docs/assets/pair-phone.png"]
+    footnote = tour.split("\n‡ ", 1)[1].split("\n\n", 1)[0]
+    assert "[`web/e2e/readme-pictures.spec.ts`](web/e2e/readme-pictures.spec.ts)" in footnote
+    assert "`make capture`" in footnote and "127.0.0.1" in footnote
+    assert "Everything else, apart from the two pictures marked ‡, is `ordnung demo`." in _flat(tour)
+    assert tour.count("‡") == 4  # two cells, the sentence above and the footnote
+    also = tour.split("**Also:**", 1)[1]
+    assert "*your phone at home*" not in also and "*hand-off between your computers*" not in also
+    spec = _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+    assert (
+        "the phone pairing and Your computers pictures from the real app (`web/e2e/readme-pictures.spec.ts`), "
+        "since the demo has neither"
+    ) in spec
+
+
+@pytest.mark.xfail(strict=False, reason="until B1 integration")
+def test_readme_tour_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
+    """The two pictures from the real app are PNGs of 1440×900 like the rest of the tour, and small (each about
+    120 KB when they were first made)."""
+    for name in _REAL_APP_PICTURES:
+        data = (ROOT / "docs" / "assets" / name).read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", name
+        assert struct.unpack(">II", data[16:24]) == (1440, 900), name
+        assert len(data) <= 400_000, name
+
+
+def test_readme_pictures_exist_and_have_alt_text() -> None:
+    """Every picture README shows from ``docs/assets`` is a file in the repo and has alt text (the logo's is empty:
+    it is decorative). The two from the real app are checked by the test above."""
+    images = [(src, alt) for src, alt in _images(_readme()) if src.startswith("docs/assets/")]
+    assert len(images) >= 15
+    for src, alt in images:
+        assert alt is not None, src
+        assert alt.strip() or src == "docs/assets/logo.svg", src
+        if Path(src).name not in _REAL_APP_PICTURES:
+            assert (ROOT / src).is_file(), src
 
 
 def _claimed(pattern: str) -> int:
