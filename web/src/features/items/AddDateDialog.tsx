@@ -4,24 +4,32 @@
  * (feature audit G1: Settings and the wizard promised "add your own dates" with nowhere to do it). It is posted as
  * a to-do added by hand (`POST /api/items`): reading the letter again never changes it, and it is on Today, the
  * Timeline, the calendar file and the reminders like the dates Ordnung reads ("Your own reminders" for a reminder).
+ *
+ * It can repeat (audit item 26): every month on its day or on a working day, every 3 or 6 months, every year. A
+ * repeating date is one entry at its next date; the server dates it by its rule and moves it on when it is marked
+ * done. "Edit your date" (`EditDateDialog`, the same form) changes one later — what it says, how it repeats, which
+ * dates move — or removes it (`status: dismissed`, with Undo).
  */
-import { useId, useState, type FormEvent } from "react";
-import { CalendarPlus, Check, Plus } from "lucide-react";
-import type { Document, ItemCreate, ItemKind } from "@/api/types";
-import { useCreateItem, useDeleteItem, useDocuments } from "@/api/hooks";
+import { useId, useState, type FormEvent, type RefObject } from "react";
+import { CalendarPlus, CalendarX2, Check, Plus } from "lucide-react";
+import type { Document, Item, ItemCreate, ItemKind, ItemPatch } from "@/api/types";
+import { useCreateItem, useDeleteItem, useDocuments, useUpdateItem } from "@/api/hooks";
 import { Button, type ButtonProps } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { toast } from "@/components/ui/Toast";
+import { ordinal } from "@/features/contracts/model";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { ITEM_KIND_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { parseMoney } from "@/lib/money";
+import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
+import { DEFAULT_WORKING_DAY, WORKING_DAYS, repeatChoiceLabel, repeatChoiceOf, repeatLabel, repeatOptions, repeatRule, steps, type RepeatChoice } from "./repeat";
 
-/** The letter a date is for: it joins that letter's to-dos, with its sender, thread and area. */
-export type DateLetter = Pick<Document, "id" | "title" | "filename" | "party_id" | "case_id" | "area">;
+/** The letter a date is for: it joins that letter's to-dos, with its sender, thread and area (its kind: a lease's rent). */
+export type DateLetter = Pick<Document, "id" | "title" | "filename" | "party_id" | "case_id" | "area"> & Partial<Pick<Document, "kind">>;
 
 /** The kinds a person adds, the plainest first ("Your own reminders" in Settings → Reminders). */
 export const ADD_KINDS: readonly { kind: ItemKind; label: string }[] = [
@@ -40,9 +48,15 @@ export interface DateDraft {
   amount: string;
   /** The letter chosen on Timeline (`""`: none). */
   docId: string;
+  /** How it repeats ("Repeats"). */
+  repeat: RepeatChoice;
+  /** With "Every month on a working day": which one (-1: the last). */
+  workingDay: number;
+  /** Editing a date that repeats on its day, given a new date: only this one moves, or every one after it too. */
+  moves: "this" | "after";
 }
 
-const EMPTY: DateDraft = { title: "", date: "", kind: "reminder", amount: "", docId: "" };
+const EMPTY: DateDraft = { title: "", date: "", kind: "reminder", amount: "", docId: "", repeat: "never", workingDay: DEFAULT_WORKING_DAY, moves: "this" };
 /** The longest title the API takes. */
 export const TITLE_MAX = 300;
 /** The fields in order: the first one with a problem gets focus when adding fails. */
@@ -58,12 +72,19 @@ export function dateProblems(d: DateDraft): Partial<Record<Problem, string>> {
   return out;
 }
 
-/** The to-do the API is sent: the person's words, and the letter's sender, thread and area when it is for one. */
+const cleanTitle = (title: string) => title.replace(/\s+/g, " ").trim();
+const amountOf = (d: DateDraft) => (d.amount.trim() ? parseMoney(d.amount) : null);
+
+/**
+ * The to-do the API is sent: the person's words, and the letter's sender, thread and area when it is for one; how it
+ * repeats only when it repeats.
+ */
 export function dateBody(d: DateDraft, letter: DateLetter | null): ItemCreate {
-  const amount = d.amount.trim() ? parseMoney(d.amount) : null;
+  const amount = amountOf(d);
+  const recurrence = repeatRule(d.repeat, d.workingDay);
   return {
     kind: d.kind,
-    title: d.title.replace(/\s+/g, " ").trim(),
+    title: cleanTitle(d.title),
     due_date: d.date,
     amount,
     currency: amount !== null ? "EUR" : null,
@@ -73,7 +94,76 @@ export function dateBody(d: DateDraft, letter: DateLetter | null): ItemCreate {
     party_id: letter?.party_id ?? null,
     case_id: letter?.case_id ?? null,
     area: letter?.area ?? "other",
+    ...(recurrence ? { recurrence } : {}),
   };
+}
+
+/** Where a repeating date's schedule starts — its day of the month ("on the 14th"), not a shorter month's. */
+const startOf = (item: Item): string | null => item.date_spec?.date ?? item.due_date ?? null;
+/** An amount as the field shows it ("1500,50"), which it reads back as it was. */
+const amountText = (amount: number | null) => (amount == null ? "" : amount.toFixed(2).replace(".", ","));
+
+/** The form an edit starts from: the date as it is. */
+export function draftOf(item: Item): DateDraft {
+  const { choice, workingDay } = repeatChoiceOf(item.recurrence, startOf(item));
+  return { title: item.title, date: item.due_date ?? "", kind: item.kind, amount: amountText(item.amount), docId: item.doc_id ?? "", repeat: choice, workingDay, moves: "this" };
+}
+
+/** Whether the draft repeats otherwise than the date does. */
+function repeatChanged(d: DateDraft, item: Item): boolean {
+  const was = repeatChoiceOf(item.recurrence, startOf(item));
+  return d.repeat !== was.choice || (d.repeat === "working_day" && d.workingDay !== was.workingDay);
+}
+
+/**
+ * Whether "Which dates move?" is asked: the date changed, it repeats on its day (a working day has no day to move: a
+ * new date is only this one) and "Repeats" stayed as it was (a new rule starts at the date shown anyway).
+ */
+export function asksWhichMove(d: DateDraft, item: Item): boolean {
+  if (!item.recurrence || steps(item.recurrence).workingDay !== null) return false;
+  return d.date !== (item.due_date ?? "") && !repeatChanged(d, item);
+}
+
+/**
+ * What "Save" sends (`PATCH /api/items/{id}`): only what changed. A new rule starts at the date shown (with it, when
+ * that changed too) and "Doesn't repeat" stops it; a new date alone stands in for this one only, and sent with the
+ * same rule ("This one and every one after") the schedule starts again there (`ordnung.recurrence`, points 2 and 7).
+ */
+export function patchFor(d: DateDraft, item: Item): ItemPatch {
+  const patch: ItemPatch = {};
+  const title = cleanTitle(d.title);
+  if (title !== item.title) patch.title = title;
+  const amount = amountOf(d);
+  if (amount !== (item.amount ?? null)) patch.amount = amount;
+  if (d.date !== (item.due_date ?? "")) patch.due_date = d.date;
+  if (repeatChanged(d, item)) patch.recurrence = repeatRule(d.repeat, d.workingDay, item.recurrence);
+  else if (d.moves === "after" && asksWhichMove(d, item)) patch.recurrence = item.recurrence;
+  return patch;
+}
+
+/**
+ * The toast's line: "UStVA — Mon 5 Oct, repeats every month on the 3rd working day", from the server's answer — with
+ * the year when it isn't this one (a yearly date given in the past moves on to next year).
+ */
+function savedLine(item: Item, today: string): string {
+  const rule = repeatLabel(item.recurrence);
+  if (!item.due_date) return item.title;
+  return `${item.title} — ${formatDate(item.due_date, { style: "short", today })}${rule ? `, repeats ${rule}` : ""}`;
+}
+
+/**
+ * How "Which working day?" counts, as the server does — the last one is the month's last Monday to Friday (a bank
+ * closing day isn't one); a lease's rent counts Monday to Friday (`recurrence.py`, point 8) — and where the first one
+ * is: in the month of "When?" (or the next once it has passed), or the next one from today for a month gone by.
+ */
+function workingDayHint(date: string, workingDay: number, today: string, rent: boolean): string {
+  const counted =
+    workingDay === -1
+      ? "The month's last Monday to Friday that isn't a public holiday, nor 24 or 31 December."
+      : `Counted from the 1st of each month: ${rent ? "Monday to Friday (rent)" : "Monday to Saturday"}, without public holidays.`;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return `${counted} The first one is in the month of the day you choose, or in the next month once that one's has passed.`;
+  if (date.slice(0, 7) < today.slice(0, 7)) return `${counted} The first one is the next one from today.`;
+  return `${counted} The first one is in ${formatDate(date, { style: "month" })}, or in the next month once ${formatDate(date, { style: "month" }).split(" ")[0]}'s has passed.`;
 }
 
 const letterName = (d: Pick<Document, "title" | "filename">) => d.title || d.filename;
@@ -97,97 +187,221 @@ function KindChoice({ name, kind, label, checked, onChange }: { name: string; ki
   );
 }
 
+/** One answer to "Which dates move?": the row is its label; a native radio, with the focus ring on the row. */
+function MoveChoice({ name, checked, onChange, children }: { name: string; checked: boolean; onChange: () => void; children: string }) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-[14px] leading-5 transition-colors",
+        "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
+        checked ? "border-accent/60 bg-accent-soft/50 text-ink" : "border-line text-ink hover:border-line-strong",
+      )}
+    >
+      {/* a 24 px target (WCAG 2.5.8) around the 16 px circle drawn under it */}
+      <span className="relative -my-0.5 grid size-6 shrink-0 place-items-center">
+        <input type="radio" name={name} checked={checked} onChange={onChange} className="peer absolute inset-0 m-0 size-6 cursor-pointer appearance-none rounded-full outline-none" />
+        <span aria-hidden className="pointer-events-none size-4 rounded-full border border-control-border bg-surface transition-[border] peer-checked:border-[5px] peer-checked:border-accent" />
+      </span>
+      <span className="min-w-0">{children}</span>
+    </label>
+  );
+}
+
 export interface AddDateDialogProps {
   open: boolean;
   onClose: () => void;
   /** The letter it is for (a letter's page): not asked for. Without one (Timeline) a letter can be chosen. */
   letter?: DateLetter | null;
+  /**
+   * A date of the person's own to edit ("Edit your date"): the form starts from it; its kind and letter stay as they
+   * are (the API's `ItemPatch` has neither). `letter` then only names its letter.
+   */
+  item?: Item | null;
+  /** Where focus goes on close when the element that opened it is gone (a Timeline row that moved to another month). */
+  returnFocus?: RefObject<HTMLElement | null>;
 }
 
-export function AddDateDialog({ open, onClose, letter = null }: AddDateDialogProps) {
+export function AddDateDialog({ open, onClose, letter = null, item = null, returnFocus }: AddDateDialogProps) {
   const ids = useId();
   const fieldId = (k: keyof DateDraft) => `${ids}-${k}`;
   const create = useCreateItem();
+  const update = useUpdateItem();
   const remove = useDeleteItem();
   const phone = usePhoneCompanion();
+  const today = useTodayISO();
   // every letter, kept private and unread ones too — asked for only once the dialog is open on Timeline
-  const letters = useDocuments({}, { enabled: open && !letter });
-  const [d, setD] = useState<DateDraft>(EMPTY);
+  const letters = useDocuments({}, { enabled: open && !letter && !item });
+  const [d, setD] = useState<DateDraft>(() => (item ? draftOf(item) : EMPTY));
   const [tried, setTried] = useState(false);
-  // opened again: a fresh form (not the last date's words)
+  // opened again: a fresh form (not the last date's words), or the date to edit as it is now
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setD(EMPTY);
+      setD(item ? draftOf(item) : EMPTY);
       setTried(false);
     }
   }
   const problems = dateProblems(d);
   const shown = tried ? problems : {};
-  const set = (k: keyof DateDraft) => (e: { target: { value: string } }) => setD((prev) => ({ ...prev, [k]: e.target.value }));
+  const set = (k: "title" | "date" | "amount" | "docId") => (e: { target: { value: string } }) => setD((prev) => ({ ...prev, [k]: e.target.value }));
   const chosen = letter ?? letters.data?.find((l) => l.id === d.docId) ?? null;
+  const busy = create.isPending || update.isPending;
+  const options = repeatOptions(d.date, item?.recurrence, item ? startOf(item) : null);
+  const asksMove = item ? asksWhichMove(d, item) : false;
+
+  const added = (created: Item) => {
+    toast.success("Date added", {
+      description: savedLine(created, today),
+      // undone by deleting it, which a paired phone leaves to the computer
+      undo: phone ? undefined : () => remove.mutate(created.id),
+    });
+    onClose();
+  };
+
+  const save = (own: Item) => {
+    const patch = patchFor(d, own);
+    if (!Object.keys(patch).length) return onClose();
+    update.mutate(
+      { id: own.id, patch },
+      {
+        onSuccess: (saved) => {
+          // no Undo: a deliberate step with Cancel, and the dialog changes it back
+          toast.success("Date saved", { description: savedLine(saved, today) });
+          onClose();
+        },
+      },
+    );
+  };
+
+  // dismissed, not deleted: it ends the series, a paired phone may do it, and "Undo" brings it back as it was (open,
+  // done, or snoozed to its day)
+  const removeIt = (own: Item) => {
+    if (busy) return;
+    const back: ItemPatch =
+      own.status === "snoozed" && own.snoozed_until
+        ? { status: "snoozed", snoozed_until: own.snoozed_until }
+        : { status: own.status === "done" ? "done" : "open" };
+    update.mutate(
+      { id: own.id, patch: { status: "dismissed" } },
+      {
+        onSuccess: () => {
+          toast({
+            title: "Removed from your dates",
+            description: `“${own.title}” won't remind you any more.`,
+            undo: () => update.mutate({ id: own.id, patch: back }),
+          });
+          onClose();
+        },
+      },
+    );
+  };
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (create.isPending) return;
+    if (busy) return;
     setTried(true);
     const first = FIELDS.find((k) => problems[k]);
     if (first) {
       document.getElementById(fieldId(first))?.focus();
       return;
     }
-    create.mutate(dateBody(d, chosen), {
-      onSuccess: (item) => {
-        toast.success("Date added", {
-          description: `${item.title} — ${formatDate(d.date, { style: "short" })}`,
-          // undone by deleting it, which a paired phone leaves to the computer
-          undo: phone ? undefined : () => remove.mutate(item.id),
-        });
-        onClose();
-      },
-    });
+    if (item) save(item);
+    else create.mutate(dateBody(d, chosen), { onSuccess: added });
   };
+
+  const after =
+    item && d.repeat === "current"
+      ? `${repeatLabel(item.recurrence)} from ${formatDate(d.date, { style: "short" })}`
+      : repeatChoiceLabel(d.repeat, d.date)
+          .replace(/ \(or the month's last day\)$/, "")
+          .replace(/^E/, "e");
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      title="Add a date"
+      returnFocus={returnFocus}
+      title={item ? "Edit your date" : "Add a date"}
       description={
-        letter
-          ? `For “${letterName(letter)}”. A date you add stays as you set it.`
-          : "A reminder, a payment or an appointment of your own. It shows on Today and here like the dates Ordnung reads."
+        item
+          ? letter
+            ? `For “${letterName(letter)}”.`
+            : "A date you added yourself."
+          : letter
+            ? `For “${letterName(letter)}”. A date you add stays as you set it.`
+            : "A reminder, a payment or an appointment of your own. It shows on Today and here like the dates Ordnung reads."
       }
       footer={
         <>
+          {item ? (
+            <Button variant="ghost" icon={CalendarX2} onClick={() => removeIt(item)} className="sm:mr-auto">
+              Remove
+            </Button>
+          ) : null}
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" form={`${ids}-form`} variant="primary" icon={CalendarPlus} loading={create.isPending}>
-            Add date
+          <Button type="submit" form={`${ids}-form`} variant="primary" icon={item ? Check : CalendarPlus} loading={busy}>
+            {item ? "Save" : "Add date"}
           </Button>
         </>
       }
     >
-      <form id={`${ids}-form`} onSubmit={submit} noValidate aria-label="Add a date" className="space-y-4">
+      <form id={`${ids}-form`} onSubmit={submit} noValidate aria-label={item ? "Edit your date" : "Add a date"} className="space-y-4">
         <Field id={fieldId("title")} label="What is it?" error={shown.title}>
           <Input value={d.title} onChange={set("title")} maxLength={TITLE_MAX} placeholder="e.g. Renew the residence permit" autoComplete="off" required autoFocus />
         </Field>
-        <Field id={fieldId("date")} label="When?" error={shown.date}>
+        {/* the date of a repeating one is its next date: the ones after it follow the rule */}
+        <Field id={fieldId("date")} label={item && d.repeat !== "never" ? "Next date" : "When?"} error={shown.date}>
           <Input type="date" value={d.date} onChange={set("date")} className="w-44" required />
         </Field>
-        {/* min-w-0: a fieldset is as wide as its widest row by default */}
-        <fieldset className="min-w-0">
-          <legend className="mb-1.5 text-sm font-medium text-ink">Kind</legend>
-          <div className="flex flex-wrap gap-2">
-            {ADD_KINDS.map((k) => (
-              <KindChoice key={k.kind} name={`${ids}-kind`} kind={k.kind} label={k.label} checked={d.kind === k.kind} onChange={() => setD((prev) => ({ ...prev, kind: k.kind }))} />
+        <Field id={fieldId("repeat")} label="Repeats" className="sm:max-w-sm">
+          <Select value={d.repeat} onChange={(e) => setD((prev) => ({ ...prev, repeat: e.target.value as RepeatChoice }))}>
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
-          </div>
-        </fieldset>
+          </Select>
+        </Field>
+        {d.repeat === "working_day" ? (
+          <Field id={fieldId("workingDay")} label="Which working day?" hint={workingDayHint(d.date, d.workingDay, today, d.kind === "payment" && chosen?.kind === "rent_lease")} className="sm:max-w-sm">
+            <Select value={String(d.workingDay)} onChange={(e) => setD((prev) => ({ ...prev, workingDay: Number(e.target.value) }))} className="sm:max-w-40">
+              {WORKING_DAYS.map((n) => (
+                <option key={n} value={n}>
+                  {n === -1 ? "Last" : ordinal(n)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : null}
+        {asksMove ? (
+          // min-w-0: a fieldset is as wide as its widest row by default
+          <fieldset className="min-w-0">
+            <legend className="mb-1.5 text-sm font-medium text-ink">Which dates move?</legend>
+            <div className="space-y-2">
+              <MoveChoice name={`${ids}-moves`} checked={d.moves === "this"} onChange={() => setD((prev) => ({ ...prev, moves: "this" }))}>
+                {`Only this one (${formatDate(d.date, { style: "short" })})`}
+              </MoveChoice>
+              <MoveChoice name={`${ids}-moves`} checked={d.moves === "after"} onChange={() => setD((prev) => ({ ...prev, moves: "after" }))}>
+                {`This one and every one after (${after})`}
+              </MoveChoice>
+            </div>
+          </fieldset>
+        ) : null}
+        {item ? null : (
+          <fieldset className="min-w-0">
+            <legend className="mb-1.5 text-sm font-medium text-ink">Kind</legend>
+            <div className="flex flex-wrap gap-2">
+              {ADD_KINDS.map((k) => (
+                <KindChoice key={k.kind} name={`${ids}-kind`} kind={k.kind} label={k.label} checked={d.kind === k.kind} onChange={() => setD((prev) => ({ ...prev, kind: k.kind }))} />
+              ))}
+            </div>
+          </fieldset>
+        )}
         <Field id={fieldId("amount")} label="Amount" optional error={shown.amount} hint={moneyReadBack(d.amount)} className="sm:max-w-56">
           <MoneyInput value={d.amount} onChange={set("amount")} />
         </Field>
-        {letter ? null : (
+        {letter || item ? null : (
           <Field id={fieldId("docId")} label="Letter" optional hint="The date is listed with that letter too.">
             <Select value={d.docId} onChange={set("docId")}>
               <option value="">No letter</option>
@@ -202,6 +416,18 @@ export function AddDateDialog({ open, onClose, letter = null }: AddDateDialogPro
       </form>
     </Dialog>
   );
+}
+
+/**
+ * "Edit your date": a date of the person's own, changed later (on a letter's page, its row's "Edit"; on Timeline, the
+ * row of one with no letter).
+ *
+ * @example <EditDateDialog item={item} open={open} onClose={close} letter={doc} />
+ */
+export function EditDateDialog({ item, letter = null, ...rest }: Omit<AddDateDialogProps, "item" | "letter"> & { item: Item; letter?: Pick<Document, "title" | "filename"> | null }) {
+  // only its name is shown: nothing is filed with the letter again
+  const named = letter ? { id: item.doc_id ?? "", party_id: null, case_id: null, area: item.area, title: letter.title, filename: letter.filename } : null;
+  return <AddDateDialog {...rest} item={item} letter={named} />;
 }
 
 /**

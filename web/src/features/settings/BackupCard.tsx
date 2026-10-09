@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
-import { CircleCheck, Download, HardDriveDownload, KeyRound, LockKeyhole } from "lucide-react";
+import { CircleCheck, Download, HardDriveDownload, History, KeyRound, LockKeyhole, RefreshCw } from "lucide-react";
 import { ApiError } from "@/api/client";
 import { useBackupInfo, useDownloadBackup } from "@/api/hooks";
-import type { BackupInfo } from "@/api/types";
+import type { BackupCopy, BackupInfo } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
@@ -10,10 +10,10 @@ import { LoadError } from "@/components/ui/LoadError";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { focusWhenReady } from "@/features/today/focus";
-import { formatFileSize } from "@/lib/format";
+import { formatDate, formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
-import { backupContents, backupStrengthLine, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, type PassphraseProblem } from "./backup";
+import { backupContents, backupStrengthLine, backupSummary, failureSentence, lastBackupLine, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, saveBlob, syncCopyLine, type PassphraseProblem } from "./backup";
 import { suggestPassphrase } from "./passphrase";
 import { PassphraseFields } from "./PassphraseFields";
 import { FOOTER_ACTION, SettingsCard } from "./SettingsCard";
@@ -215,7 +215,34 @@ function RestoreCommandText({ fileName }: { fileName: string }) {
 }
 
 /**
- * Settings → Data: "Encrypted backup" — what it holds, the download, and how to restore it. `open`
+ * When the newest copy kept elsewhere was made (`BackupInfo.last_copy`): the last backup — in warning colours only once
+ * the server says one is due — and hand-off sync's copy while it is connected. Static text, so no live region.
+ */
+function LastCopy({ copy }: { copy: BackupCopy }) {
+  const line = lastBackupLine(copy, (value) => formatDate(value, { withYear: "always" }));
+  const sync = syncCopyLine(copy);
+  return (
+    <div className="space-y-1.5">
+      <p className={cn("flex items-start gap-2 text-sm leading-5", line.tone === "warn" ? "text-warn-ink" : "text-muted")}>
+        <History className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span className="min-w-0">
+          {line.lead ? <span className={cn("font-medium", line.tone === "warn" ? "text-warn-ink" : "text-ink")}>{line.lead}</span> : null}
+          {line.lead && line.rest ? " " : null}
+          {line.rest ? <span>{line.rest}</span> : null}
+        </span>
+      </p>
+      {sync ? (
+        <p className="flex items-start gap-2 text-sm leading-5 text-muted">
+          <RefreshCw className="mt-0.5 size-4 shrink-0" aria-hidden />
+          <span className="min-w-0">{sync}</span>
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Settings → Data: "Encrypted backup" — what it holds, when the last copy was made, the download, and how to restore it. `open`
  * and `onOpenChange` let the page open the dialog (the "Delete everything" dialog offers it).
  */
 export function BackupCard({
@@ -289,6 +316,7 @@ export function BackupCard({
             )}
           </div>
         )}
+        {info.data && !staticDemo ? <LastCopy copy={info.data.last_copy} /> : null}
         {staticDemo ? (
           <p className="rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">
             Not available in the online demo — it keeps nothing on your computer. Install Ordnung to back up your own letters.

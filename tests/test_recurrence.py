@@ -12,8 +12,10 @@ Realistic histories through the API are in
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -54,6 +56,9 @@ from ordnung.secretary.triggers import is_overdue
 MONTHLY = Recurrence(interval=1, unit="months")
 TODAY = date(2026, 9, 28)
 BUFFER = 3
+REPEAT_LABELS_FILE = (
+    Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "items" / "repeatLabels.json"
+)
 
 
 def nationwide(store: Store, item: Item, today: date) -> RuleContext:
@@ -114,6 +119,15 @@ def test_month_steps_keep_the_original_day() -> None:
 def test_describe() -> None:
     assert describe(MONTHLY) == "every month"
     assert describe(Recurrence(interval=3, unit="months")) == "every 3 months"
+
+
+def test_the_repeat_words_are_shared_with_the_web() -> None:
+    """Audit item 26: the web said "every month" for "every month on the 3rd working day". Its ``repeatLabel``
+    and :func:`describe` read the same pairs (the web's test reads this file too), so they say the same."""
+    pairs = json.loads(REPEAT_LABELS_FILE.read_text(encoding="utf-8"))
+    assert pairs, "no shared repeat words"
+    for rule, label in pairs:
+        assert describe(Recurrence(**rule)) == label, rule
 
 
 def test_rules_that_give_the_same_dates_are_one_rule() -> None:

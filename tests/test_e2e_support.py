@@ -158,3 +158,53 @@ def test_the_e2e_sync_tool_knows_ordnung_s_names_as_ordnung_does() -> None:
     ]
     for path in candidates:
         assert any(p.match(path) for p in patterns) == _ordnung_name(path), path
+
+
+def _js_regex(literal: str) -> re.Pattern[str]:
+    """A JavaScript regex literal of ``web/playwright.config.ts`` (``/…/``, no flags) as Python's."""
+    return re.compile(literal[1:-1].replace("\\/", "/"))
+
+
+def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
+    """README's pictures of phone access and hand-off sync come from the real app, which the demo never offers:
+    ``make capture`` runs their spec in a Playwright project of its own, after every other one, on throwaway
+    servers it starts itself (never a running Ordnung: ``ORDNUNG_E2E_REUSE`` is unset) on ports clear of the
+    demo's capture and the e2e suite. The spec writes its two pictures only when ``ORDNUNG_CAPTURE_OUT`` is set
+    (CI never sets it, so there it is skipped), and turns phone access on at the loopback address only."""
+    capture = (ROOT / "scripts" / "capture.sh").read_text(encoding="utf-8")
+    end = capture.find("npx playwright test --project pictures)")
+    assert end > 0, "scripts/capture.sh runs the pictures project"
+    command = capture[capture.rindex("(cd web && ", 0, end) + len("(cd web && ") : end]
+    assert command.startswith("env -u ORDNUNG_E2E_REUSE ")
+    assert 'ORDNUNG_CAPTURE_OUT="$OUT"' in command
+    assert 'ORDNUNG_E2E_DATA="$(mktemp -d)/ordnung"' in command  # its data folders: new, never one of yours
+    assert "PORT=${CAPTURE_PORT:-8797}" in capture
+    # the demo's capture is on 8797; the pictures' servers on 8807 (demo), 8808 (real app), 8809 (its phone
+    # access) and 8810 (the second computer); the e2e suite's default is 8799–8802
+    assert 'ORDNUNG_E2E_PORT="${CAPTURE_REAL_PORT:-$((PORT + 10))}"' in command
+    assert capture.index("--project pictures") < capture.index('ls -la "$OUT"')
+
+    config = (ROOT / "web" / "playwright.config.ts").read_text(encoding="utf-8")
+    block = config.split("projects: [", 1)[1].split("\n  ],", 1)[0]
+    projects = re.findall(r'name: "([\w-]+)"', block)
+    assert projects[-2:] == ["real-app", "pictures"], projects
+    constants = dict(re.findall(r"^const (\w+) = (/.+/);$", config, re.M))
+    assert constants["PICTURES_SPEC"] == r"/readme-pictures\.spec\.ts$/"
+    pictures = block.split('name: "pictures"', 1)[1].split("\n", 1)[0]
+    assert "testMatch: PICTURES_SPEC" in pictures and "baseURL: REAL_BASE_URL" in pictures
+    assert 'colorScheme: "light"' in pictures
+    # the spec runs in that project only: no other project's files match its name
+    matches = [
+        _js_regex(constants.get(found, found))
+        for found in re.findall(r"testMatch: (/[^,]+/|\w+)", block)
+        if found != "PICTURES_SPEC"
+    ]
+    assert len(matches) == len(projects) - 1
+    assert not any(pattern.search("readme-pictures.spec.ts") for pattern in matches)
+
+    spec = (E2E / "readme-pictures.spec.ts").read_text(encoding="utf-8")
+    assert '"pair-phone.png"' in spec and '"your-computers.png"' in spec
+    assert "const OUT = process.env.ORDNUNG_CAPTURE_OUT" in spec
+    assert re.search(r'^test\.skip\(!OUT, "[^"]+"\);$', spec, re.M)
+    assert "address: PHONE_ADDRESS" in spec
+    assert '"the pictures asked no model"' in spec

@@ -79,6 +79,7 @@ from ordnung.rules.routing import (
     notice_without_period,
     short_notice,
 )
+from ordnung.secretary.addressee import addressed_to
 from ordnung.secretary.girocode_gate import document_girocodes
 from ordnung.secretary.sender_land import region_suggestion
 from ordnung.secretary.triggers import Ledger
@@ -292,7 +293,8 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
     GiroCode (or why there is none) per payment, for a high-stakes letter its "get advice" card, for
     an e-mail what became of its attachments (for an attachment: the e-mail it came with), and while
     the sender has no Land the one the postcode on their letters suggests, with this letter's dates
-    that may change (``region_suggestion``)."""
+    that may change (``region_suggestion``), and who the letter is addressed to when that isn't the
+    profile's person (``addressed_to``, worked out on read: :mod:`ordnung.secretary.addressee`)."""
     document = require(store.get_document(doc_id), NOT_FOUND)
     ledger = Ledger(store, today)
     party = store.get_party(document.party_id) if document.party_id else None
@@ -326,6 +328,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         scam_signs=ledger.scam_signs(document) if document.direction == "incoming" else [],
         given_to_model=store.given_to_model(doc_id),
         region_suggestion=region_suggestion(ledger, party, doc_id=doc_id) if party is not None else None,
+        addressed_to=addressed_to(document, store.get_extraction(doc_id), store.get_profile().name),
     )
 
 

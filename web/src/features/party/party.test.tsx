@@ -209,7 +209,7 @@ describe("People & organisations drawer", () => {
     Object.assign(items.find((i) => i.id === "itm_tm_invoice")!, { status: "open", description: null, title: "Pay TechMarkt invoice TM-2026-0048213" });
     items.push(
       item({ id: "itm_tm_old", kind: "payment", title: "Security deposit (Kaution)", amount: 1560, due_date: "2025-10-01", filed_on: "2026-09-26", party_id: "pty_techmarkt" }),
-      item({ id: "itm_tm_cashback", kind: "payment", direction: "in", title: "Monthly cashback", amount: 4.5, recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null }, party_id: "pty_techmarkt" }),
+      item({ id: "itm_tm_cashback", kind: "payment", direction: "in", title: "Monthly cashback", amount: 4.5, recurrence: { interval: 1, unit: "months", working_day: 2, day_of_month: null }, party_id: "pty_techmarkt" }),
     );
     const user = userEvent.setup();
     renderWithProviders(<PartyDrawer />, { route: "/?party=pty_techmarkt" });
@@ -221,9 +221,9 @@ describe("People & organisations drawer", () => {
     expect(within(list).queryByText(/TM.2026.0048213/)).toBeNull(); // (on screen with non-breaking hyphens)
     expect(within(list).queryByText(/Security deposit/)).toBeNull();
     expect(list).not.toHaveTextContent(/overdue/);
-    // money in: a plus, "to you", and its schedule instead of "No date"
+    // money in: a plus, "to you", and its schedule — with the working day it names — instead of "No date"
     const cashback = within(list).getByText("Monthly cashback").closest("li")!;
-    expect(cashback).toHaveTextContent("Every month");
+    expect(cashback).toHaveTextContent("Every month on the 2nd working day");
     expect(cashback).toHaveTextContent("+€4.50 to you");
     expect(cashback).not.toHaveTextContent("No date");
     // the rest sits in a closed disclosure, with the reason

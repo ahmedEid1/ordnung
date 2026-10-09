@@ -35,6 +35,9 @@ describe("party to-dos", () => {
     expect(countdownMode(pay({ id: "i" }))).toBe("due");
     expect(repeatsLabel({ interval: 1, unit: "months", working_day: null, day_of_month: null })).toBe("Every month");
     expect(repeatsLabel({ interval: 3, unit: "months", working_day: null, day_of_month: null })).toBe("Every 3 months");
+    // the day a rule names, as the letter's page and the server say it (audit item 26: "Every month" for both)
+    expect(repeatsLabel({ interval: 1, unit: "months", working_day: 3, day_of_month: null })).toBe("Every month on the 3rd working day");
+    expect(repeatsLabel({ interval: 1, unit: "months", working_day: null, day_of_month: 31 })).toBe("Every month on the last day");
     expect(repeatsLabel(null)).toBeNull();
   });
 

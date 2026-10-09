@@ -8,11 +8,14 @@ import type { DraftKind, Item } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { useConfirmItem, useCreateDraft, useUpdateItem } from "@/api/hooks";
 import { toast } from "@/components/ui/Toast";
+import { doneLine } from "@/features/items/repeat";
 import { formatDate } from "@/lib/format";
+import { useTodayISO } from "@/lib/today";
 
 export function useItemActions() {
   const update = useUpdateItem();
   const confirm = useConfirmItem();
+  const today = useTodayISO();
 
   /** Done, with Undo; `title` names what was done ("Marked as paid" after the Pay panel, as on Today). */
   const markDone = useCallback(
@@ -20,14 +23,14 @@ export function useItemActions() {
       update.mutate(
         { id: item.id, patch: { status: "done" } },
         {
-          onSuccess: () =>
+          onSuccess: (moved) =>
             toast.success(title, {
-              description: item.title,
+              description: doneLine(item, moved, today),
               undo: () => update.mutate({ id: item.id, patch: { status: "open" } }),
             }),
         },
       ),
-    [update],
+    [update, today],
   );
 
   const reopen = useCallback((item: Item) => update.mutate({ id: item.id, patch: { status: "open" } }), [update]);
@@ -56,7 +59,8 @@ export function useItemActions() {
           onSuccess: () => {
             onDone?.();
             toast.success(`Date changed to ${formatDate(date, { style: "short" })}`, {
-              description: "You set this date yourself, so Ordnung won't overwrite it.",
+              // a repeating to-do's new date stands in for this one only (ordnung.recurrence, point 7)
+              description: item.recurrence ? "Only this one moves — the ones after keep their day." : "You set this date yourself, so Ordnung won't overwrite it.",
               undo: item.due_date ? () => update.mutate({ id: item.id, patch: { due_date: item.due_date } }) : undefined,
             });
           },

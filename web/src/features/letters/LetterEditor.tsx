@@ -70,6 +70,8 @@ export interface LetterEditorProps {
   onRetranslate?: () => void;
   retranslating?: boolean;
   readOnly?: boolean;
+  /** the sender block's label: "From (you)", or "From" for a letter that goes out in someone else's name */
+  senderLabel?: string;
 }
 
 /** A sent letter's text: plain paragraphs — nothing that looks like it can still be edited. */
@@ -81,7 +83,7 @@ function ReadOnlyText({ text, className, label }: { text: string; className?: st
   );
 }
 
-function GermanPane({ value, onChange, language, enclosures, readOnly, className }: Omit<LetterEditorProps, "translation" | "translationStale" | "onRetranslate" | "retranslating"> & { className?: string }) {
+function GermanPane({ value, onChange, language, enclosures, readOnly, senderLabel = "From (you)", className }: Omit<LetterEditorProps, "translation" | "translationStale" | "onRetranslate" | "retranslating"> & { className?: string }) {
   const [showBlocks, setShowBlocks] = useState(false);
   const blocksId = useId();
   const set = (k: keyof EditableFields) => (e: { target: { value: string } }) => onChange({ ...value, [k]: e.target.value });
@@ -104,8 +106,8 @@ function GermanPane({ value, onChange, language, enclosures, readOnly, className
           {readOnly ? (
             <>
               <div>
-                <p className={blockLabel} lang="en">From (you)</p>
-                <ReadOnlyText text={value.sender_block} label="From (you)" className="mt-1 text-[13.5px] leading-6" />
+                <p className={blockLabel} lang="en">{senderLabel}</p>
+                <ReadOnlyText text={value.sender_block} label={senderLabel} className="mt-1 text-[13.5px] leading-6" />
               </div>
               <div>
                 <p className={blockLabel} lang="en">To</p>
@@ -120,7 +122,7 @@ function GermanPane({ value, onChange, language, enclosures, readOnly, className
             <>
               <label className={cn(FIELD_ROW, blockLabel)}>
                 <span lang="en" className={FIELD_LABEL}>
-                  From (you)
+                  {senderLabel}
                 </span>
                 <AutoTextarea value={value.sender_block} onChange={set("sender_block")} minRows={3} className={cn(fieldCls, "mt-1 text-[13.5px] font-normal leading-6")} />
               </label>

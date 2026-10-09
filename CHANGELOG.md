@@ -7,6 +7,33 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Added
 
+- **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every month on its day, every
+  month on a working day (the 3rd, the last …), every 3 or 6 months, or every year. A repeating date shows its
+  next day, moves on when you mark it done or once its day has passed, and is never overdue because a month
+  went by. Your own dates can be edited later: choose *Edit* on the letter's page, or open one without a
+  letter from Timeline. When you change the day of one that repeats, you choose whether only that one moves
+  or every one after it (one on a working day moves alone); *Remove* stops it, with Undo.
+- **A letter addressed to someone else says so.** When a letter names someone other than you (your partner,
+  your child, "Familie …"), its page shows *Addressed to …* under its title. A reply, objection, template
+  letter or cancellation you write from it still starts in your name: its *From* field says who the letter
+  was addressed to, and one press (*Reply in Alex Rivera's name*) fills in that name; *Use my name* goes
+  back. The letter's sender block, signature, PDF and proof of sending then use it, and so does a name you
+  type into the letter's *From* later. Ordnung doesn't add the name to what it sends Claude, but the related
+  letter's title and summary, sent as read, often name the person it was addressed to. Everything else about
+  the letter stays yours: its dates, reminders and numbers.
+- **Ordnung reminds you to back up, and says what to do if your computer is lost.** It now notes every
+  encrypted backup — from Settings → Data, from `ordnung backup` (a scheduled one too) and the backup a
+  restored copy came from — and Settings → Data says when the last one was made. When it is more than 30 days
+  old, or there is none, the weekly review ends by saying so. A backup from Settings counts once your
+  browser has received it, also if you then cancel saving the file. While hand-off sync is connected, its
+  copy in your sync folder counts too, because your sync tool copies that folder elsewhere (Ordnung can't
+  check that it does); backups of the whole computer (Time Machine, File History) don't, because Ordnung
+  can't see them. `ordnung doctor` (and *Run check* in Settings) adds two checks that only ever warn:
+  your last backup and, on macOS and Linux, whether the disk under the data folder is encrypted (FileVault,
+  LUKS, as a best effort). [docs/privacy.md](docs/privacy.md#if-your-computer-is-lost-or-stolen) has a
+  checklist for a lost or stolen computer: before, a backup and disk encryption (BitLocker or Device
+  encryption on Windows); after, restore your backup, a new sync folder with a new passphrase, sign out of
+  Claude, your phones and the calendar.
 - **Ordnung suggests a sender's state from the postcode on their letter.** A sender's state decides which
   public holidays move the dates of their letters; until you set it, Ordnung counts only nationwide
   holidays, so a date can come out a day or two early, or a day late when it is counted backwards from an
@@ -39,6 +66,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- A to-do added through the API with a working-day rule stayed on the day it was given until that day passed;
+  it is now dated by its rule at once.
+- A to-do that repeats on a working day ("bis zum 3. Werktag") says so on its letter's page and in the
+  sender's details; it said only "every month".
 - A password manager's strong random password with capital and small letters now protects a new backup or
   a new sync folder. 0.2.0 counted only words, so symbols and capitals counted nothing and many such
   passwords were refused. Now random characters count by the alphabet they use (14 random letters and
@@ -77,6 +108,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 - A computer still on 0.2.0 that receives the new question by hand-off sync shows it among its Ideas but
   never takes it away once it no longer applies. Update both computers.
+- A computer still on 0.2.0 shows the repeating dates you add on a newer one and moves them on, but can't
+  change how they repeat.
+- On a computer still on 0.2.0, a letter written in someone else's name prints your name under its signature
+  until it is marked as sent. Print such letters on an updated computer.
+- Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and
+  says so until the next one, which counts.
 
 ## 0.2.0 — 2026-10-08
 

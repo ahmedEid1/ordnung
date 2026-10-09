@@ -1435,6 +1435,10 @@ class DocumentDetail(_Model):
     given_to_model: bool = False
     #: The Land the postcode on this letter suggests for its sender, while they have none.
     region_suggestion: RegionSuggestion | None = None
+    #: Who the letter is addressed to, as read, when that isn't the profile's person (``None``: it is
+    #: them, the reading names no one, it isn't an incoming letter that was read, or the profile has no
+    #: name yet). Worked out on read for this page, never stored: the letter itself has no such field.
+    addressed_to: str | None = None
 
 
 class TrackingInfo(_Model):
@@ -2054,6 +2058,34 @@ class WeekStep(_Model):
     total_other_currencies: dict[str, float] = Field(default_factory=dict)
 
 
+class BackupCopy(_Model):
+    """The newest copy of this Ordnung kept elsewhere — an encrypted backup or hand-off sync's last
+    save — and whether to remind the person. Code's words, never sent to a model."""
+
+    last_backup_at: str | None = Field(
+        default=None,
+        description="The newest encrypted backup this data folder knows: made here (Settings → Data, "
+        "`ordnung backup`) or the one this copy was restored from",
+    )
+    last_backup_restored: bool = Field(
+        default=False, description="That newest backup is the one this copy was restored from"
+    )
+    sync_saved_at: str | None = Field(
+        default=None,
+        description="While hand-off sync is connected: this computer's last save into the sync folder "
+        "(its clock)",
+    )
+    sync_standing_by: bool = Field(default=False, description="Another computer is in use and saves")
+    days: int | None = Field(
+        default=None, description="Calendar days since the newer of the two (none: neither)"
+    )
+    due: bool = Field(
+        default=False,
+        description="Time to remind: letters exist, not the demo, and no copy within due_after_days",
+    )
+    due_after_days: int = 30
+
+
 class WeeklySession(_Model):
     """The guided weekly review: seven steps (and *Act now* first when something is overdue or due
     today), how it ends and whether Today should suggest it."""
@@ -2075,6 +2107,9 @@ class WeeklySession(_Model):
     )
     due_today: int = Field(
         default=0, description="How many days to act from today on are today (the ending counts them)"
+    )
+    backup: BackupCopy | None = Field(
+        default=None, description="The newest copy kept elsewhere, only when it is time for a backup"
     )
 
 

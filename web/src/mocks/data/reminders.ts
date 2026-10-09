@@ -7,7 +7,7 @@
  * showing a notification or making a backup is refused there with a friendly message.
  */
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { AutostartInfo, BackupInfo, DesktopMode, DesktopReminders, NotificationText } from "@/api/types";
+import type { AutostartInfo, BackupCopy, BackupInfo, DesktopMode, DesktopReminders, NotificationText } from "@/api/types";
 import type { MockDb } from "../db";
 
 export const DESKTOP_STATIC_MESSAGE =
@@ -136,6 +136,24 @@ export function mockBackupInfo(db: MockDb): BackupInfo {
     left_out: [],
     min_passphrase: 12,
     format_version: 1,
+    last_copy: mockLastCopy(db),
+  };
+}
+
+/**
+ * The newest copy kept elsewhere, as the mock knows it: a backup downloaded in this session (calendar days counted to the
+ * mock's today). The mock has no hand-off sync, and like the real demo it never says a backup is due.
+ */
+function mockLastCopy(db: MockDb): BackupCopy {
+  const at = db.state.lastBackupAt;
+  return {
+    last_backup_at: at,
+    last_backup_restored: false,
+    sync_saved_at: null,
+    sync_standing_by: false,
+    days: at === null ? null : Math.max(0, differenceInCalendarDays(parseISO(db.today), parseISO(at.slice(0, 10)))),
+    due: false,
+    due_after_days: 30,
   };
 }
 

@@ -8,16 +8,20 @@ import os
 import sqlite3
 import stat
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from helpers_secretary import add_doc
 from ordnung import doctor
 from ordnung.api import deps
 from ordnung.config import Paths
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import Store
 from ordnung.doctor import DoctorReport, parse_version, run_doctor, run_doctor_sync
+from ordnung.encryption import Encryption
 from ordnung.llm.base import ClaudeNotInstalled, LLMRequest
 from ordnung.llm.claude_cli import ClaudeCLIBackend, ProbeResult
 
@@ -248,7 +252,22 @@ def test_the_database_check(tmp_path: Path) -> None:
         store.set_meta("probe", "1")
     healthy = doctor.database_check(data_dir)
     assert healthy.status == "ok" and healthy.detail == f"Schema version {latest_version()}"
-    assert doctor.local_checks(data_dir)[-2] == healthy
+    found = {check.id: check for check in doctor.local_checks(data_dir)}
+    assert found["database"] == healthy
+
+
+def test_this_computers_checks_end_with_disk_backup_and_encryption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir = tmp_path / "data"
+    with Store.open(Paths(data_dir)) as store:
+        add_doc(store, "letter")
+    monkeypatch.setattr(doctor.encryption, "disk_encryption", lambda path: Encryption("on", "LUKS"))
+    ids = [check.id for check in doctor.local_checks(data_dir)]
+    assert ids[-4:] == ["database", "disk", "backup", "disk_encryption"]
+    # where Ordnung can't tell, there is no row at all
+    monkeypatch.setattr(doctor.encryption, "disk_encryption", lambda path: None)
+    assert [check.id for check in doctor.local_checks(data_dir)][-1] == "backup"
 
 
 def test_a_damaged_database_points_to_a_backup(tmp_path: Path) -> None:
@@ -311,3 +330,187 @@ async def test_claude_status_for_the_health_endpoint(isolated_path: Path) -> Non
     fake_claude(isolated_path)
     status = await doctor.claude_status()
     assert status.installed and status.ok and status.version == "2.1.5"
+
+
+# --------------------------------------------------------------------------------------------------
+# the last backup and disk encryption (warn only)
+# --------------------------------------------------------------------------------------------------
+
+
+def _folder_with_a_letter(tmp_path: Path) -> Path:
+    data_dir = tmp_path / "data"
+    with Store.open(Paths(data_dir)) as store:
+        add_doc(store, "letter")
+    return data_dir
+
+
+def _note(data_dir: Path, kind: str, ts: str, data: str = "{}") -> None:
+    with contextlib.closing(sqlite3.connect(Paths(data_dir).db)) as conn, conn:
+        conn.execute(
+            "INSERT INTO activity (ts, kind, message, data) VALUES (?, ?, ?, ?)", (ts, kind, "note", data)
+        )
+
+
+def _iso(days_ago: int) -> str:
+    return (datetime.now(UTC) - timedelta(days=days_ago)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def test_no_backup_row_without_a_database_or_in_the_demo(tmp_path: Path) -> None:
+    assert doctor.backup_check(tmp_path / "nothing") is None
+    data_dir = _folder_with_a_letter(tmp_path)
+    (data_dir / ".ordnung-demo").write_text(json.dumps({"kind": "ordnung-demo", "version": "1"}))
+    assert doctor.backup_check(data_dir) is None
+    (data_dir / ".ordnung-demo").unlink()
+    with Store.open(Paths(data_dir)) as store:
+        store.save_settings(store.get_settings().model_copy(update={"demo": True}))
+    assert doctor.backup_check(data_dir) is None
+
+
+def test_nothing_to_back_up_yet(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    with Store.open(Paths(data_dir)):
+        pass
+    check = doctor.backup_check(data_dir)
+    assert check is not None and check.id == "backup" and check.label == "Backup"
+    assert check.status == "ok" and check.detail == "Nothing to back up yet"
+
+
+def test_letters_and_no_backup_warn_with_the_command(tmp_path: Path) -> None:
+    check = doctor.backup_check(_folder_with_a_letter(tmp_path))
+    assert check is not None and check.status == "warn"
+    assert check.detail == "Ordnung has no record of a backup made on this computer"
+    assert check.fix is not None and "`ordnung backup --to FOLDER`" in check.fix
+    assert "Settings → Data → Download encrypted backup" in check.fix and "can't see them" in check.fix
+
+
+def test_a_recent_backup_is_fine_and_an_old_one_warns(tmp_path: Path) -> None:
+    data_dir = _folder_with_a_letter(tmp_path)
+    _note(data_dir, "backup.created", _iso(40))
+    old = doctor.backup_check(data_dir)
+    assert old is not None and old.status == "warn" and old.detail.startswith("Last backup 40 days ago (")
+    assert old.fix is not None and "ordnung backup" in old.fix
+    _note(data_dir, "backup.created", _iso(3))
+    recent = doctor.backup_check(data_dir)
+    assert recent is not None and recent.status == "ok" and recent.fix is None
+    day = (datetime.now(UTC) - timedelta(days=3)).astimezone().date().isoformat()
+    assert recent.detail == f"Last backup 3 days ago ({day})"
+
+
+def test_the_backup_a_copy_was_restored_from_counts(tmp_path: Path) -> None:
+    data_dir = _folder_with_a_letter(tmp_path)
+    _note(data_dir, "backup.restored", _iso(0), json.dumps({"made_at": _iso(1)}))
+    check = doctor.backup_check(data_dir)
+    assert check is not None and check.status == "ok"
+    assert check.detail.startswith("Last backup yesterday (")
+    assert check.detail.endswith("), the one this copy was restored from")
+
+
+def _connected(monkeypatch: pytest.MonkeyPatch, mode: str, saved_at: str | None) -> None:
+    from ordnung import app_context
+    from ordnung.sync import agent
+
+    summary = SimpleNamespace(mode=mode, last_saved_at=saved_at)
+    monkeypatch.setattr(app_context, "sync_connected", lambda paths: True)
+    monkeypatch.setattr(agent, "load_engine", lambda: SimpleNamespace(local_summary=lambda paths: summary))
+
+
+def test_hand_off_syncs_recent_save_counts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    data_dir = _folder_with_a_letter(tmp_path)
+    _connected(monkeypatch, "in_use", datetime.now().astimezone().isoformat(timespec="seconds"))
+    check = doctor.backup_check(data_dir)
+    assert check is not None and check.status == "ok"
+    assert check.detail == "Hand-off sync saved an encrypted copy today"
+
+
+def test_standing_by_the_computer_in_use_keeps_the_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir = _folder_with_a_letter(tmp_path)
+    _connected(monkeypatch, "standing_by", None)
+    check = doctor.backup_check(data_dir)
+    assert check is not None and check.status == "ok"
+    assert check.detail == "Hand-off sync: the computer in use keeps an encrypted copy in the sync folder"
+
+
+def test_a_sync_state_that_cant_be_read_is_no_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from ordnung import app_context
+    from ordnung.sync import agent
+
+    def unreadable(paths: Paths) -> None:
+        raise OSError("state.json is gone")
+
+    monkeypatch.setattr(app_context, "sync_connected", lambda paths: True)
+    monkeypatch.setattr(agent, "load_engine", lambda: SimpleNamespace(local_summary=unreadable))
+    check = doctor.backup_check(_folder_with_a_letter(tmp_path))
+    assert check is not None and check.status == "warn"
+
+
+def test_a_database_that_cant_be_read_has_no_backup_row(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    Paths(data_dir).db.write_bytes(b"not a database at all" * 100)
+    assert doctor.backup_check(data_dir) is None  # the database check says what is wrong
+
+
+@pytest.mark.parametrize(
+    ("found", "status", "detail", "fix"),
+    [
+        (Encryption("on", "FileVault"), "ok", "FileVault is on", None),
+        (Encryption("on", "LUKS"), "ok", "The disk under the data folder is encrypted (LUKS)", None),
+        (
+            Encryption("on", "eCryptfs"),
+            "ok",
+            "The data folder is on an encrypted file system (eCryptfs)",
+            None,
+        ),
+        (
+            Encryption("off", "FileVault"),
+            "warn",
+            "FileVault is off: whoever has this Mac can read your letters, tax ID and IBANs.",
+            "System Settings → Privacy & Security → FileVault",
+        ),
+        (
+            Encryption("off", "LUKS"),
+            "warn",
+            "Ordnung found no disk encryption (LUKS) under the data folder.",
+            "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
+        ),
+        (
+            Encryption("unknown", "FileVault", "`fdesetup status` didn't answer"),
+            "warn",
+            "Ordnung couldn't tell whether FileVault is on: `fdesetup status` didn't answer.",
+            "System Settings → Privacy & Security → FileVault",
+        ),
+        (
+            Encryption("unknown", "LUKS", "lsblk isn't installed"),
+            "warn",
+            "Ordnung couldn't tell whether the disk under the data folder is encrypted: lsblk isn't installed.",
+            "Encrypted another way (fscrypt, ZFS)? Then this is fine.",
+        ),
+    ],
+)
+def test_disk_encryption_only_ever_warns(
+    tmp_path: Path, found: Encryption, status: str, detail: str, fix: str | None
+) -> None:
+    check = doctor.disk_encryption_check(tmp_path, probe=lambda path: found)
+    assert check is not None and check.id == "disk_encryption" and check.label == "Disk encryption"
+    assert check.status == status and check.detail == detail
+    if fix is None:
+        assert check.fix is None
+    else:
+        assert check.fix is not None and fix in check.fix
+
+
+def test_no_disk_encryption_row_where_ordnung_cant_tell(tmp_path: Path) -> None:
+    assert doctor.disk_encryption_check(tmp_path, probe=lambda path: None) is None
+
+
+def test_the_disk_encryption_probe_looks_at_the_data_folder(tmp_path: Path) -> None:
+    seen: list[Path] = []
+
+    def probe(path: Path) -> Encryption:
+        seen.append(path)
+        return Encryption("on", "LUKS")
+
+    doctor.disk_encryption_check(tmp_path / "data", probe=probe)
+    assert seen == [tmp_path / "data"]

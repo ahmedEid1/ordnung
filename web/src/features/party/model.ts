@@ -3,6 +3,7 @@
  * dates, and how to show identifiers so they wrap cleanly.
  */
 import type { Document, Item, ItemAside, Party, Recurrence } from "@/api/types";
+import { repeatLabel } from "@/features/items/repeat";
 import { formatDate, type DateInput } from "@/lib/format";
 import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 
@@ -42,11 +43,9 @@ export function countdownMode(item: Pick<Item, "kind" | "direction">): "due" | "
   return item.kind === "appointment" || item.kind === "milestone" || item.kind === "reminder" || isIncomingMoney(item) ? "event" : "due";
 }
 
-/** "Every month", "Every 3 months", "Every year" (null for one-off items). */
+/** "Every month", "Every 3 months", "Every month on the 3rd working day" (null for one-off items): `repeatLabel`'s words. */
 export function repeatsLabel(r: Recurrence | null | undefined): string | null {
-  if (!r) return null;
-  const unit = { days: "day", weeks: "week", months: "month", years: "year" }[r.unit];
-  return r.interval === 1 ? `Every ${unit}` : `Every ${r.interval} ${unit}s`;
+  return repeatLabel(r, { capital: true });
 }
 
 export interface PartyTodos {

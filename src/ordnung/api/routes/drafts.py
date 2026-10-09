@@ -16,10 +16,17 @@ from ordnung.api.deps import CtxDep, StoreDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, replay_only, require
 from ordnung.db.store import Store
 from ordnung.drafts import pdf, sent
-from ordnung.drafts.compose import MAX_INSTRUCTIONS, compose, mark_sent, refresh_checks, retranslate
+from ordnung.drafts.compose import (
+    MAX_INSTRUCTIONS,
+    compose,
+    mark_sent,
+    refresh_checks,
+    retranslate,
+    signer_of_block,
+)
 from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.own_files import remember_own_file
-from ordnung.models import Draft, DraftKind, LetterDetails
+from ordnung.models import Draft, DraftKind, LetterDetails, OneLine
 
 router = APIRouter(tags=["drafts"])
 
@@ -52,6 +59,15 @@ class DraftCreate(BaseModel):
         description=(
             "an objection also applies to suspend enforcement (einstweilige Einstellung at a court, "
             "Aussetzung der Vollziehung at an authority); ignored for other letters and a court payment order"
+        ),
+    )
+    sender_name: OneLine | None = Field(
+        default=None,
+        max_length=120,
+        description=(
+            "the name the letter goes out in and is signed with (the web app offers the answered "
+            "letter's addressed_to; the person chooses it); left out, empty or the profile's own "
+            "name: the profile's name"
         ),
     )
 
@@ -106,6 +122,7 @@ async def create_draft(body: DraftCreate, ctx: CtxDep) -> Draft:
         language=body.language,
         details=body.details,
         suspend_enforcement=body.suspend_enforcement,
+        sender_name=body.sender_name,
     )
 
 
@@ -125,9 +142,11 @@ def _edit(store: Store, draft_id: str, patch: DraftPatch) -> Draft:
     draft = require(store.get_draft(draft_id), NOT_FOUND)
     if draft.status == "sent":
         raise HTTPException(status.HTTP_409_CONFLICT, SENT_IS_FINAL)
-    changes = {
+    changes: dict[str, object] = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
+    if isinstance(block := changes.get("sender_block"), str):
+        changes |= signer_of_block(store, draft, block)  # its first line is who signs it
     with store.tx():
         if changes:
             store.update_draft(draft_id, **changes)

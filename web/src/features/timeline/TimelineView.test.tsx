@@ -5,7 +5,7 @@ import { qk } from "@/api/hooks";
 import type { Contract, Item, Lane, Party, Profile, TimelineEntry } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
-import { createMockServer } from "@/mocks/server";
+import { createMockServer, type MockServer } from "@/mocks/server";
 import { makeTestQueryClient, renderWithProviders, TEST_TODAY } from "@/test/render";
 import { defaultLaneRange } from "@/features/lanes/scale";
 import { TimelineView } from "./TimelineView";
@@ -28,9 +28,10 @@ afterEach(() => {
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
-async function seededClient(edit?: { lanes?: Lane[]; timeline?: TimelineEntry[] }) {
+async function seededClient(edit?: { lanes?: Lane[]; timeline?: TimelineEntry[]; setup?: (srv: MockServer) => void }) {
   const srv = createMockServer({ staticDemo: false, latency: 0 });
   srv.openAllMail();
+  edit?.setup?.(srv);
   const get = async <T,>(path: string, q = "") => (await (await srv.handle("GET", path, new URLSearchParams(q), undefined)).json()) as T;
   const { from, to } = defaultLaneRange(TEST_TODAY);
   const qc = makeTestQueryClient();
@@ -177,6 +178,55 @@ describe("Timeline page", () => {
     fireEvent.click(within(lanesRegion).getByRole("button", { name: /^Rent · Mon 5 Oct.*Shows it in the list below/ }));
     const row = container.querySelector("[data-date='2026-10-05'] > *");
     expect(row?.className).toMatch(/bg-marker/);
+  });
+});
+
+describe("your own dates and repeating ones (audit item 26)", () => {
+  const ownDate = (srv: MockServer) => {
+    srv.db.addItem("itm_own_vat", { kind: "reminder", title: "UStVA", due_date: "2026-10-14", recurrence: { interval: 1, unit: "months", working_day: 3 } });
+  };
+
+  it("opens a date of your own without a letter from its row — a real button — and gives focus back to it", async () => {
+    const client = await seededClient({ setup: ownDate });
+    const user = userEvent.setup();
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    const list = screen.getByRole("region", { name: "Every date" });
+    const row = within(list).getByRole("button", { name: /UStVA/ });
+    expect(row.tagName).toBe("BUTTON");
+    expect(row).toHaveAttribute("type", "button");
+    expect(row).toHaveAttribute("aria-haspopup", "dialog");
+    // placed by its rule: the 3rd working day of October
+    expect(row.closest("li")).toHaveAttribute("data-date", "2026-10-05");
+    await user.click(row);
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    expect(dialog).toHaveAccessibleDescription("A date you added yourself.");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(row).toHaveFocus());
+  });
+
+  it("says how each repeating date repeats; a date read from a letter still links to its page", async () => {
+    const client = await seededClient({ setup: ownDate });
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    const list = screen.getByRole("region", { name: "Every date" });
+    expect(within(list).getByRole("button", { name: /UStVA/ })).toHaveTextContent("Repeats every month on the 3rd working day");
+    const instalment = within(list).getAllByRole("link", { name: /Electricity instalment/ })[0]!;
+    expect(instalment).toHaveTextContent("Repeats every month");
+    // a to-do read from a letter is never edited here: no button for one without a page either
+    const rent = within(list).getAllByText("Rent for October")[0]!.closest("li")!;
+    expect(within(rent).queryByRole("button")).toBeNull();
+    expect(rent).toHaveTextContent("Repeats every month");
+  });
+
+  it("puts how a date repeats on a line of its own that is never cut short (a phone has no hover for the rest)", async () => {
+    const client = await seededClient({ setup: ownDate });
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    const list = screen.getByRole("region", { name: "Every date" });
+    const row = within(list).getByRole("button", { name: /UStVA/ });
+    const line = within(row).getByText("Repeats every month on the 3rd working day");
+    for (let el: HTMLElement | null = line; el && el !== row; el = el.parentElement) {
+      expect(el.className).not.toMatch(/truncate|line-clamp/);
+    }
   });
 });
 

@@ -13,12 +13,17 @@ the key and is never stored, logged or echoed: a passphrase against the policy (
 and about 70 bits by Ordnung's estimate, as a new sync folder's: :func:`ordnung.backup.passphrase_problem`)
 is refused with the rule, not the value, and request-validation errors never reach this field because it
 accepts any string. The same backup as ``ordnung backup``.
+
+``GET /api/backup`` also says when the newest copy kept elsewhere was made — a backup, or hand-off sync's
+last save — and whether it is time for a backup (``last_copy``, :mod:`ordnung.backup.reminder`); a made
+backup is noted in the privacy log (``backup.created``, local to this computer) once its stream is sealed.
 """
 
 from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -26,10 +31,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import backup as backups
 from ordnung import clock
-from ordnung.api.deps import CtxDep, require_computer
+from ordnung.api.deps import ApiState, CtxDep, StateDep, TodayDep, require_computer
 from ordnung.app_context import AppContext
+from ordnung.backup import reminder
 from ordnung.backup.archive import BackupStream
 from ordnung.backup.container import FORMAT_VERSION
+from ordnung.models import BackupCopy
 
 router = APIRouter(tags=["backup"])
 
@@ -52,6 +59,11 @@ class BackupInfo(BaseModel):
     )
     min_passphrase: int = backups.MIN_PASSPHRASE_CHARS
     format_version: int = FORMAT_VERSION
+    last_copy: BackupCopy = Field(
+        default_factory=BackupCopy,
+        description="The newest copy kept elsewhere (a backup, or hand-off sync's last save) and whether "
+        "it is time for a backup",
+    )
 
 
 class BackupRequest(BaseModel):
@@ -62,7 +74,23 @@ class BackupRequest(BaseModel):
     passphrase: str
 
 
-def _info(ctx: AppContext) -> BackupInfo:
+async def last_copy(state: ApiState, today: date) -> BackupCopy:
+    """The newest copy kept elsewhere and whether it is time for a backup (:mod:`ordnung.backup.reminder`):
+    hand-off sync's save as the agent knows it (read here, on the event loop — never its folder), then the
+    data folder's newest backup in a thread. Never due in the demo."""
+    agent = state.sync
+    summary = agent.summary
+    sync = reminder.SyncCopy.of(
+        connected=agent.connected,
+        mode=agent.mode,
+        saved_at=summary.last_saved_at if summary is not None else None,
+    )
+    return await asyncio.to_thread(
+        reminder.for_store, state.ctx.store, sync=sync, demo=agent.is_demo, today=today
+    )
+
+
+def _info(ctx: AppContext, copy: BackupCopy) -> BackupInfo:
     files, size = backups.estimate(ctx.paths.data_dir)
     counts = ctx.store.counts()
     return BackupInfo(
@@ -72,23 +100,22 @@ def _info(ctx: AppContext) -> BackupInfo:
         bytes=size,
         file_name=backups.backup_file_name(clock.today()),
         left_out=backups.links_left_out(ctx.paths.data_dir),
+        last_copy=copy,
     )
 
 
 @router.get("/backup", response_model=BackupInfo, dependencies=[Depends(require_computer)])
-async def backup_info(ctx: CtxDep) -> BackupInfo:
+async def backup_info(state: StateDep, today: TodayDep) -> BackupInfo:
     """What an encrypted backup would hold now, and how long its passphrase must be."""
-    return await asyncio.to_thread(_info, ctx)
+    copy = await last_copy(state, today)
+    return await asyncio.to_thread(_info, state.ctx, copy)
 
 
 def _stream(ctx: AppContext, backup: BackupStream) -> Iterator[bytes]:
     yield from backup
     contents = backup.contents
     if contents is not None:
-        ctx.store.log_activity(
-            "backup.created",
-            f"Made an encrypted backup ({contents.letters} letters, {contents.files} files)",
-        )
+        ctx.store.log_activity("backup.created", backups.backup_message(contents))
 
 
 @router.post(

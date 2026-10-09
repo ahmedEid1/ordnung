@@ -1,6 +1,6 @@
 /** Settings → Data → the encrypted backup: pure helpers (the policy lives in `src/ordnung/backup`). */
-import type { BackupInfo } from "@/api/types";
-import { formatFileSize } from "@/lib/format";
+import type { BackupCopy, BackupInfo } from "@/api/types";
+import { formatFileSize, formatTimeAgo, tryParseDate, type DateInput } from "@/lib/format";
 import { NB_HYPHEN } from "@/lib/glue";
 import { COMMON_WORDS, isRun, passphraseStrength, strongEnough } from "./passphrase";
 
@@ -102,4 +102,61 @@ export function saveBlob(blob: Blob, name: string): void {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ------------------------------------------------------------------------------------------------
+// the newest copy kept elsewhere (`BackupInfo.last_copy`, `WeeklySession.backup`: `ordnung.backup.reminder`)
+// ------------------------------------------------------------------------------------------------
+
+/** "today", "yesterday", "N days ago": calendar days, as the server counts them (`BackupCopy.days`). */
+export function copyAge(days: number): string {
+  return days === 0 ? "today" : days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+/** The backup is the newest copy (not hand-off sync's later save): the server's `days` are then its. */
+function backupIsNewest(copy: BackupCopy): boolean {
+  const made = tryParseDate(copy.last_backup_at);
+  const saved = tryParseDate(copy.sync_saved_at);
+  return made !== null && (saved === null || made.getTime() >= saved.getTime());
+}
+
+export interface CopyLine {
+  tone: "muted" | "warn";
+  /** the words in bold ("Last backup:"), or "" */
+  lead: string;
+  rest: string;
+}
+
+/**
+ * Settings' line about the last backup: "Last backup: 3 days ago (Tue 6 Oct 2026)." — in warning colours, with "time
+ * for a new one", only when the server says one is due; "Ordnung has no record of a backup made on this computer."
+ * otherwise (a backup made with `ordnung backup` before Ordnung noted backups left no record).
+ */
+export function lastBackupLine(copy: BackupCopy, formatDate: (value: string) => string): CopyLine {
+  const tone = copy.due ? "warn" : "muted";
+  if (!copy.last_backup_at) {
+    const none = "Ordnung has no record of a backup made on this computer.";
+    return copy.due ? { tone, lead: none, rest: "" } : { tone, lead: "", rest: none };
+  }
+  const day = formatDate(copy.last_backup_at);
+  const when = backupIsNewest(copy) && copy.days !== null ? `${copyAge(copy.days)} (${day})` : day;
+  const notes = [copy.last_backup_restored ? "the one this copy was restored from" : "", copy.due ? "time for a new one" : ""].filter(Boolean);
+  const joined = notes.join(", and ");
+  return { tone, lead: "Last backup:", rest: joined ? `${when} — ${joined}.` : `${when}.` };
+}
+
+/** Hand-off sync's copy in the sync folder, while it is connected (null: it isn't, or it never saved). */
+export function syncCopyLine(copy: BackupCopy, now: DateInput = new Date()): string | null {
+  if (copy.sync_standing_by) return "Hand-off sync: the computer in use keeps an encrypted copy in your sync folder.";
+  if (!tryParseDate(copy.sync_saved_at)) return null;
+  return `Hand-off sync also keeps an encrypted copy in your sync folder (last saved ${formatTimeAgo(copy.sync_saved_at!, now)}).`;
+}
+
+/** The weekly review's reminder, once a backup is due: when the newest copy was made, and why a new one helps. */
+export function weekReminderText(copy: BackupCopy, formatDate: (value: string) => string, phone: boolean): string {
+  const where = phone ? "your computer" : "this computer";
+  const why = `keeps your letters if ${where} breaks or is lost.`;
+  if (copy.days === null) return `Ordnung has no record of a backup made on ${where}. A backup ${why}`;
+  if (backupIsNewest(copy)) return `Your last backup was ${copyAge(copy.days)} (${formatDate(copy.last_backup_at!)}). A new one ${why}`;
+  return `Hand-off sync last saved a copy ${copyAge(copy.days)} (${formatDate(copy.sync_saved_at!)}). A backup ${why}`;
 }

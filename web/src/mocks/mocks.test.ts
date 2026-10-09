@@ -6,6 +6,7 @@ import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type {
   Activity,
+  BackupInfo,
   Contract,
   Dashboard,
   DocumentDetail,
@@ -20,7 +21,7 @@ import type {
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
 import { needsArrivalDate } from "@/features/document/verdict";
-import { TRAY_DOCUMENTS } from "./data/documents";
+import { ADDRESSEES, TRAY_DOCUMENTS } from "./data/documents";
 import { BRIEF_TEXT, PROFILE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECK_LABELS, DRAFTS } from "./data/drafts";
@@ -470,6 +471,98 @@ describe("mock dataset", () => {
     // refused as the API refuses it
     expect((await post({ kind: "reminder", title: "x", doc_id: "doc_nope" })).status).toBe(404);
     expect((await post({ kind: "reminder", title: "  " })).status).toBe(422);
+  });
+
+  it("edits a to-do in the mock database as PATCH /items/:id does: the fields a person may change, theirs from then on", async () => {
+    const s = srv();
+    const { origin, grounding } = s.db.state.items.find((i) => i.id === "itm_parking")!;
+    const edited = s.db.patchItem("itm_parking", { due_date: "2026-10-20", title: "Pay the fine", origin: "rule", grounding: "unverified" });
+    expect(edited).toMatchObject({ id: "itm_parking", due_date: "2026-10-20", title: "Pay the fine", due_date_source: "manual", user_modified: true });
+    expect(edited).toMatchObject({ origin, grounding });
+    expect(s.db.patchItem("itm_parking", { status: "done" })?.completed_at?.slice(0, 10)).toBe(s.db.today);
+    expect(s.db.patchItem("itm_parking", { status: "open" })?.completed_at).toBeNull();
+    expect(s.db.patchItem("itm_nope", { status: "done" })).toBeNull();
+    expect((await s.handle("PATCH", "/items/itm_nope", new URLSearchParams(), { status: "done" })).status).toBe(404);
+    const res = await s.handle("PATCH", "/items/itm_parking", new URLSearchParams(), { status: "done" });
+    expect(((await res.json()) as Item).status).toBe("done");
+  });
+
+  it("notes a backup made here as the newest copy and in the activity, and never reminds in the demo", async () => {
+    const s = srv();
+    expect((await get<BackupInfo>(s, "/backup")).last_copy).toEqual({
+      last_backup_at: null,
+      last_backup_restored: false,
+      sync_saved_at: null,
+      sync_standing_by: false,
+      days: null,
+      due: false,
+      due_after_days: 30,
+    });
+    const made = await s.handle("POST", "/backup", new URLSearchParams(), { passphrase: "orbit velvet canyon maple thunder" });
+    expect(made.status).toBe(200);
+    const info = await get<BackupInfo>(s, "/backup");
+    expect(info.last_copy.last_backup_at?.slice(0, 10)).toBe(s.db.today);
+    expect(info.last_copy).toMatchObject({ days: 0, due: false });
+    const [newest] = await get<Activity[]>(s, "/activity");
+    expect(newest).toMatchObject({ kind: "backup.created", message: `Made an encrypted backup (${info.letters} letters, ${info.files} files)` });
+    s.db.state.lastBackupAt = "2026-08-01T09:00:00Z";
+    expect((await get<BackupInfo>(s, "/backup")).last_copy).toMatchObject({ days: 58, due: false });
+    // a refused passphrase makes no backup, so nothing is noted
+    const before = s.db.state.activity.length;
+    expect((await s.handle("POST", "/backup", new URLSearchParams(), { passphrase: "short" })).status).toBe(422);
+    expect(s.db.state.activity.length).toBe(before);
+    expect(s.db.state.lastBackupAt).toBe("2026-08-01T09:00:00Z");
+  });
+
+  it("names no one else as a letter's addressee, and the weekly session asks for no backup (Sam's demo is one person)", async () => {
+    const s = srv();
+    for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).addressed_to, d.id).toBeNull();
+    expect((await get<WeeklySession>(s, "/week")).backup).toBeNull();
+  });
+
+  it("says who a letter is addressed to when a test names someone else, as the API works it out", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    ADDRESSEES.doc_tax = "Alex Rivera";
+    try {
+      expect((await get<DocumentDetail>(s, "/documents/doc_tax")).addressed_to).toBe("Alex Rivera");
+      expect((await get<DocumentDetail>(s, "/documents/doc_tm_invoice")).addressed_to).toBeNull();
+    } finally {
+      delete ADDRESSEES.doc_tax;
+    }
+    expect((await get<DocumentDetail>(s, "/documents/doc_tax")).addressed_to).toBeNull();
+  });
+
+  it("writes a letter in the name the person chose, as the API does: sender block, signature and a note", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    const post = async (body: Record<string, unknown>) => (await (await s.handle("POST", "/drafts", new URLSearchParams(), body)).json()) as Draft;
+    const theirs = await post({ kind: "objection", doc_id: "doc_tax", sender_name: "  Alex  Rivera " });
+    expect(theirs.sender_block.split("\n")[0]).toBe("Alex Rivera");
+    expect(theirs.body.endsWith("Alex Rivera")).toBe(true);
+    expect(theirs.body_translation.endsWith("Alex Rivera")).toBe(true);
+    expect(theirs.body + theirs.body_translation).not.toContain("Sam Rivera");
+    expect(theirs.notes_for_user).toContain("This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.");
+    const template = await post({ kind: "data_access", party_id: "pty_funknetz", sender_name: "Alex Rivera" });
+    expect(template.sender_block.split("\n")[0]).toBe("Alex Rivera");
+    expect(template.notes_for_user).toContain("This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.");
+    // the person's own name, or none: as without it
+    for (const sender_name of [undefined, "", " sam  RIVERA "]) {
+      const yours = await post({ kind: "objection", doc_id: "doc_tax", sender_name });
+      expect(yours.sender_block.split("\n")[0]).toBe("Sam Rivera");
+      expect(yours.notes_for_user.join(" ")).not.toContain("goes out in the name of");
+    }
+  });
+
+  it("keeps who signs in step with the From line edited later, as the API does: the note follows its first line", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    const theirs = (await (await s.handle("POST", "/drafts", new URLSearchParams(), { kind: "objection", doc_id: "doc_tax", sender_name: "Alex Rivera" })).json()) as Draft;
+    const note = "This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.";
+    const edit = async (sender_block: string) => (await (await s.handle("PATCH", `/drafts/${theirs.id}`, new URLSearchParams(), { sender_block })).json()) as Draft;
+    expect((await edit(theirs.sender_block.replace("Alex Rivera", "Sam Rivera"))).notes_for_user.join(" ")).not.toContain("goes out in the name of");
+    const again = await edit(theirs.sender_block);
+    expect(again.notes_for_user.filter((n) => n === note)).toHaveLength(1);
   });
 
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {

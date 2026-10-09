@@ -11,7 +11,10 @@ limits, not bugs):
    ``date_spec`` gives before a weekend or holiday moves it: a fixed date as written, or a relative
    one counted in its letter's context (:func:`first_occurrence`). A to-do whose DateSpec gives no
    date (added by hand, or undated in its letter) gets a fixed one at the first date the person gives
-   it. (A relative DateSpec that gives no date in its context runs from the item's current date.)
+   it. (A relative DateSpec that gives no date in its context runs from the item's current date.) A
+   to-do not read from a letter starts its schedule again at its date when it starts repeating, gets a
+   new rule, or is sent its rule together with a date; with a working day or a day of the month it is
+   dated from there at once (points 8 and 10, :func:`first_scheduled`).
 3. As days pass (:func:`roll_forward`), an open or snoozed recurring item whose date is before today
    moves to the first occurrence on or after today (after a date set by hand: point 7). Nothing else
    changes; a second run changes nothing.
@@ -651,9 +654,10 @@ def first_scheduled(
     starts: str | None = None,
     reasons: Sequence[str] = (),
 ) -> Item | None:
-    """Points 8 and 10 when a letter is read or its dates are recomputed: an item whose rule has a working
-    day or a day of the month (:func:`schedule_rule`) at its schedule's first occurrence
-    (:func:`first_occurrence`), with its dates and receipt from the engine — an undated one starts in the
+    """Points 8 and 10 when a letter is read or its dates are recomputed, or when a to-do not read from a
+    letter starts its schedule (point 2): an item whose rule has a working day or a day of the month
+    (:func:`schedule_rule`) at its schedule's first occurrence (:func:`first_occurrence`), with its dates and
+    receipt from the engine — an undated one starts in the
     current month (a working day) or on its day after its letter's date (a day of the month), or at its
     contract's start (``starts``) if that is later (no rent before the tenancy begins; a day of the month
     without a letter date starts there), and is graded by ``reasons``, what its quote leaves out

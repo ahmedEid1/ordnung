@@ -2387,7 +2387,8 @@ export const MOCK_WEEK: WeeklySession = {
       "completed_at": null
     }
   },
-  "due_today": 0
+  "due_today": 0,
+  "backup": null
 };
 
 /** Every day to act from the demo's today on, the earliest first (`week.deadlines`): the ending's

@@ -23,6 +23,15 @@ stores and reads.
   sender (:class:`~ordnung.models.SentSigner`), so the PDF and the Nachweis show that even after the
   profile changed; the text of a sent letter can't be edited (the API refuses it). A letter "sent" by a
   cancel button, portal or e-mail went out as text, not as this letter — the Nachweis says so.
+* **Who signs a letter** (``drafts.sent_profile``, read by :func:`letter_profile`) is who its PDF names as
+  its sender. It is set when a letter is written in someone else's name (the person chose it,
+  :func:`ordnung.drafts.compose.letter_signer`: only the name counts until it is sent, so the contact
+  lines stay current), follows the first line of the sender block the person edits before it is sent
+  (:func:`ordnung.drafts.compose.signer_of_block`), and is set when it is marked as sent (name, e-mail and
+  phone as it went out, the name kept from before). A letter in the person's own name has none until it
+  is sent. An
+  older version (0.2.x) reads it only for sent letters: there an unsent letter in someone else's name
+  prints the profile's name under its signature, and marking it sent there keeps the stored signer.
 * **Delete means delete** (ADR 0014). Removing a proof deletes its file for good when it was added as
   proof and no other proof uses it; deleting a letter deletes its proofs and their files the same way,
   unless the person keeps the files (they become their own documents). The web app's confirmation
@@ -426,10 +435,15 @@ def unmark_answered(store: Store, draft_id: str) -> Draft:
 
 def letter_profile(store: Store, draft: Draft) -> Profile:
     """The profile the letter's PDF uses: today's, with what the letter showed of the sender when it was
-    marked as sent (name, e-mail, phone) — so a sent letter prints as it went out."""
+    marked as sent (name, e-mail, phone) — so a sent letter prints as it went out. A letter not sent yet
+    that goes out in someone else's name takes only that name: its contact lines stay current."""
     profile = store.get_profile()
-    signer = store.get_sent_signer(draft.id) if draft.status == "sent" else None
-    return profile.model_copy(update=signer.model_dump()) if signer is not None else profile
+    signer = store.get_sent_signer(draft.id)
+    if signer is None:
+        return profile
+    if draft.status != "sent":
+        return profile.model_copy(update={"name": signer.name}) if signer.name else profile
+    return profile.model_copy(update=signer.model_dump())
 
 
 # --------------------------------------------------------------------------------------------------

@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import { ArrowDown, ArrowUp, ChevronRight, ChevronsUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ChevronsUp, Pencil } from "lucide-react";
 import type { TimelineEntry } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { DateLeaf } from "@/components/ui/DateLeaf";
@@ -26,6 +26,13 @@ export interface TimelineListProps {
   today: string;
   /** link for an entry (null: not clickable) */
   hrefFor: (e: TimelineEntry) => string | null;
+  /**
+   * What pressing an entry without a link does (null: nothing): a date of the person's own with no letter and no
+   * contract opens "Edit your date". The row is then a real button.
+   */
+  openFor?: (e: TimelineEntry) => (() => void) | null;
+  /** How an entry's to-do repeats ("Repeats every month on the 3rd working day"), on a line of its own under its detail. */
+  repeatsFor?: (e: TimelineEntry) => string | null;
   /** entry to scroll to and highlight (e.g. after clicking a lane marker) */
   highlight?: { id: string; nonce: number } | null;
   /** header content (title + filters) */
@@ -43,7 +50,21 @@ const TOP_BAR_H = 56;
 /** Room the phone tab bar (`h-16`) takes at the bottom of the viewport, plus a little air. */
 const TAB_BAR_ROOM = 72;
 
-function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: string; href: string | null; highlighted: boolean }) {
+function Entry({
+  e,
+  today,
+  href,
+  open,
+  repeats,
+  highlighted,
+}: {
+  e: TimelineEntry;
+  today: string;
+  href: string | null;
+  open: (() => void) | null;
+  repeats: string | null;
+  highlighted: boolean;
+}) {
   const past = isPastEntry(e, today);
   const status = entryStatus(e, today);
   const role = entryRole(e);
@@ -78,6 +99,8 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
             {detail}
           </span>
         ) : null}
+        {/* how it repeats: a line of its own, wrapped and never cut short (a touch screen shows no title) */}
+        {repeats ? <span className="mt-0.5 block break-words text-sm leading-5 text-muted">{repeats}</span> : null}
         {amount || pill ? (
           <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
             {amount}
@@ -89,6 +112,9 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
       {pill ? <span className="hidden shrink-0 sm:flex">{pill}</span> : null}
       {href ? (
         <ChevronRight className="size-4 shrink-0 self-center text-faint transition-colors group-hover:text-muted" aria-hidden />
+      ) : open ? (
+        // a date of your own opens "Edit your date": a pencil where a link has its chevron
+        <Pencil className="size-4 shrink-0 self-center text-faint transition-colors group-hover:text-muted" aria-hidden />
       ) : (
         <span className="w-4 shrink-0" aria-hidden />
       )}
@@ -96,16 +122,22 @@ function Entry({ e, today, href, highlighted }: { e: TimelineEntry; today: strin
   );
   const cls = cn(
     "group flex items-start gap-3 px-4 py-3 transition-colors duration-500 sm:items-center sm:px-5 sm:py-2.5",
-    highlighted ? "bg-marker/45" : href && "hover:bg-surface-2/70",
+    highlighted ? "bg-marker/45" : (href || open) && "hover:bg-surface-2/70",
   );
+  const focusRing = "outline-none focus-visible:bg-surface-2 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent";
   const sr = <span className="sr-only">{formatDate(e.date, { style: "long" })}: </span>;
   return (
     <li data-entry-id={e.id} data-date={e.date}>
       {href ? (
-        <Link to={href} className={cn(cls, "outline-none focus-visible:bg-surface-2 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent")}>
+        <Link to={href} className={cn(cls, focusRing)}>
           {sr}
           {inner}
         </Link>
+      ) : open ? (
+        <button type="button" aria-haspopup="dialog" onClick={open} className={cn(cls, focusRing, "w-full cursor-pointer text-left")}>
+          {sr}
+          {inner}
+        </button>
       ) : (
         <div className={cls}>
           {sr}
@@ -157,7 +189,7 @@ function MonthHeader({ g }: { g: MonthGroup }) {
   );
 }
 
-export function TimelineList({ groups, today, hrefFor, highlight, header, empty, scrollKey = "", className }: TimelineListProps) {
+export function TimelineList({ groups, today, hrefFor, openFor, repeatsFor, highlight, header, empty, scrollKey = "", className }: TimelineListProps) {
   const wide = useIsTabletUp();
   const scroller = useRef<HTMLDivElement | null>(null);
   const card = useRef<HTMLElement | null>(null);
@@ -288,7 +320,7 @@ export function TimelineList({ groups, today, hrefFor, highlight, header, empty,
                 <ol className="divide-y divide-line/70">
                   {g.entries.map((e, i) => (
                     <FragmentWithToday key={e.id} show={g.todayIndex === i} today={today}>
-                      <Entry e={e} today={today} href={hrefFor(e)} highlighted={highlight?.id === e.id} />
+                      <Entry e={e} today={today} href={hrefFor(e)} open={openFor?.(e) ?? null} repeats={repeatsFor?.(e) ?? null} highlighted={highlight?.id === e.id} />
                     </FragmentWithToday>
                   ))}
                   {g.todayIndex !== null && g.todayIndex >= g.entries.length ? (

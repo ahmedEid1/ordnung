@@ -590,3 +590,17 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
     ],
   }),
 };
+
+/**
+ * Letters addressed to someone else than Sam, by id, as the API's addressee policy would name them. Sam's mock life is
+ * one person, so it is empty; a test names someone (and takes it back afterwards).
+ */
+export const ADDRESSEES: Record<string, string> = {};
+
+/**
+ * Who a letter is addressed to when that isn't Sam (`DocumentDetail.addressed_to`; the API works it out on read from
+ * the letter's reading).
+ */
+export function addressedTo(docId: string): string | null {
+  return ADDRESSEES[docId] ?? null;
+}

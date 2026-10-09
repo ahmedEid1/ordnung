@@ -1,7 +1,7 @@
 # ADR 0013 — Backups and reminders that work while Ordnung is closed
 
 **Status:** accepted · **Date:** 2026-09-27 · **Updated:** 2026-10-08 (a new backup's passphrase and key
-costs are a new sync folder's)
+costs are a new sync folder's), 2026-10-09 (Ordnung says when the last copy is old)
 
 ## Context
 Until now reminders were a calendar file and browser notifications that only appear while a tab is
@@ -102,6 +102,26 @@ the same path elsewhere holds other files. So the restored copy forgets both (ev
 waits for the person) and starts with reading new arrivals at once switched off until the person turns
 it on again — also when a crafted backup switched it on.
 
+**Ordnung says when the last copy is old, in its own words.** A backup only helps when it is recent, and
+for a local-first app the data folder may be the person's only copy. So Ordnung notes every backup it
+knows of: a privacy-log row for one made from Settings or with `ordnung backup` (a scheduled one too), and
+one for the backup a restored copy came from, dated by that backup's own manifest. Hand-off sync's last
+save counts as a copy while this computer saves into the sync folder or stands by while another one does:
+the sync tool copies that folder off this computer, which Ordnung can't check, so the docs say so. A backup
+made from Settings is noted once the server has sent it; whether the browser saved the file can't be known.
+Kept copies don't (they are on the same disk), nor do backups of the whole computer such as Time Machine or
+File History, which Ordnung can't see. When there are letters and the newest copy is more than 30 days old,
+or there is none, Settings → Data says so in the warning tone and the weekly review ends with a reminder
+(never in the demo, nor on a computer standing by); `ordnung doctor` warns too. The reminder is code's
+words on those three places and never an Idea: Ideas' titles go to the model in the daily note and the
+weekly Ideas review, travel with hand-off sync while backups are per computer, and reach paired phones,
+which can't make a backup. Both privacy-log rows stay on their computer (`sync.LOCAL_ACTIVITY_KINDS`).
+The CLI writes its row with plain SQLite, never into a database newer than it knows, and a failure to write
+it never fails the backup. The doctor also says, on macOS and Linux and as a best effort, whether the disk
+under the data folder is encrypted, only reading what the system reports (`ordnung/encryption.py`); on
+Windows that answer would rest on values Microsoft doesn't document, so there is no check and the docs say
+where BitLocker is. Both checks only ever warn. Policy: `ordnung/backup/reminder.py`.
+
 ## Consequences
 - Reminders reach the person with the browser closed, and the backup is something they can put on
   another drive or in the cloud without trusting it.
@@ -119,6 +139,9 @@ it on again — also when a crafted backup switched it on.
   nothing and many such passwords were refused.
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
+- Someone who backs up only with Time Machine or File History sees the reminder at the end of each weekly
+  review once 30 days have passed: Ordnung can't tell those backups exist. A scheduled `ordnung backup`
+  quiets it.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at
   the next change in Ordnung, and puts back one they deleted there at the next daily check —
   Ordnung's dates are changed in Ordnung. Two Ordnungs syncing one calendar (both connected by
