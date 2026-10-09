@@ -24,6 +24,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds
   for a running sync operation before closing the database, instead of leaving it open. An operation still
   running after that (on a share that stopped answering) may still hold it.
+- Windows: once Ordnung has stopped, its database is closed. Hand-off sync's thread, which ends as Ordnung
+  stops, could still be closing its connection a moment later, so the data folder couldn't be deleted or
+  replaced right away.
 
 ### Upgrading
 
