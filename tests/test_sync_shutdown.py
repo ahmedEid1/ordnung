@@ -31,6 +31,7 @@ from ordnung import cli, sync
 from ordnung.app_context import build_context
 from ordnung.cli import app
 from ordnung.config import Paths
+from ordnung.db import store as store_module
 from ordnung.db.store import Store
 from ordnung.sync import agent as agent_module
 from sync_fake_engine import FakeEngine, FakeSession
@@ -189,6 +190,38 @@ async def test_stopping_waits_no_longer_than_the_shutdown_limit(
             hang.set()
     assert took and took[0] <= agent_module.SHUTDOWN_PUSH_S + 1
     assert STILL_RUNNING in caplog.messages
+
+
+async def test_the_sync_thread_has_ended_and_closed_its_connection_when_the_app_stops(
+    tmp_path: Path, folder: Path, connections: Callable[[Path], list[str]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hand-off sync's thread ends as Ordnung stops, and its connection to the database is closed as it
+    ends. On a busy runner that end came after the app had stopped and the store had closed, so
+    ordnung.db was still open; on Windows copying a data folder back over it failed (the Windows CI job).
+    The stop waits for the thread to end, here made to take a while."""
+    sync_thread: list[int] = []
+    as_a_thread_ends = store_module._close_ended_thread_connection
+
+    def ending_slowly(store_ref: Any, conn: sqlite3.Connection, pid: int) -> None:
+        if threading.get_ident() in sync_thread:
+            time.sleep(0.3)
+        as_a_thread_ends(store_ref, conn, pid)
+
+    monkeypatch.setattr(store_module, "_close_ended_thread_connection", ending_slowly)
+    desk = tmp_path / "desk"
+    db = Paths(desk).db
+    async with computer(desk, engine=FakeEngine(), start=False) as api:
+        agent = agent_of(api)
+        async with lifespan(api.app):
+            await connect(api, folder, "desktop")
+            thread = agent._thread._thread
+            assert thread is not None and thread.ident is not None
+            sync_thread.append(thread.ident)
+            assert "ordnung.db (opened on ordnung-sync)" in connections(db)
+        assert not thread.is_alive(), "the app stopped before hand-off sync's thread had ended"
+        assert "ordnung.db (opened on ordnung-sync)" not in connections(db)
+    assert connections(db) == []
+    assert _open_files(db) == []
 
 
 async def test_a_computer_that_never_started_closes_its_agent(
