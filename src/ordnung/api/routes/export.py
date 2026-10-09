@@ -10,12 +10,14 @@ it holds every original, like a letter's own file.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
+from ordnung import letters_zip
 from ordnung.api.deps import StoreDep, TodayDep, require_computer
 from ordnung.api.routes.common import IsoDate, require
 
@@ -76,5 +78,15 @@ async def export_letters(
     """
     _checked_until(year, until)
     if party_id is not None:
-        require(store.get_party(party_id), UNKNOWN_SENDER)
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Exporting letters isn't ready yet.")
+        require(await asyncio.to_thread(store.get_party, party_id), UNKNOWN_SENDER)
+    choice = letters_zip.Choice(
+        year=year, until=date.fromisoformat(until) if until else None, tax=tax, party_id=party_id
+    )
+    # every name is worked out before the first byte; the stream then only reads files
+    entries = await asyncio.to_thread(letters_zip.plan, store, choice)
+    name = letters_zip.zip_name(choice, today)
+    return StreamingResponse(
+        letters_zip.LettersZip(entries),
+        media_type=ZIP_TYPE,
+        headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"},
+    )
