@@ -10,7 +10,8 @@ Code older than ``MIN_CLAUDE_VERSION``. This script fails when
    standard input, a fresh home folder and none of the variables that sign Claude Code in, so it has nothing
    to send and no account to send it with: it stops at the sign-in, or earlier, at an option it can't read;
 3. the same list with one made-up flag (:data:`CANARY`) isn't refused, so a quiet answer to the real list
-   proves nothing.
+   proves nothing (checked only when the real list drew no refusal: Claude Code stops at the first option
+   it can't read, so it never reaches the made-up one).
 
 A flag that ``claude --help`` no longer lists is only a warning (a flag can be hidden and still work).
 
@@ -103,6 +104,8 @@ def _run(argv: Sequence[str], home: Path) -> str:
         )
     except subprocess.TimeoutExpired:
         return f"error: {Path(argv[0]).name} did not finish within {TIMEOUT_S} s"
+    except OSError as exc:
+        return f"error: could not start {argv[0]}: {exc.strerror or exc}"
     return done.stdout + done.stderr
 
 
@@ -115,17 +118,19 @@ def check(binary: str) -> tuple[list[str], list[str], str]:
         home.mkdir()
         printed = _run([binary, "--version"], home).strip()
         found = parse_version(printed)
+        if printed.startswith("error: could not start"):
+            return [printed.removeprefix("error: ")], warnings, printed
         if found is None or found < MIN_CLAUDE_VERSION:
             problems.append(
                 f"claude --version printed {printed!r}: Ordnung needs {version_text(MIN_CLAUDE_VERSION)} or newer"
             )
         argv = ordnung_argv(binary, Path(work) / "data")
         flags = _flags(argv)
-        problems += [
-            f"Claude Code refused Ordnung's arguments: {line}" for line in refusals(_run(argv, home), flags)
-        ]
-        canary = refusals(_run([*argv, CANARY], home), [CANARY])
-        if not any(CANARY in line for line in canary):
+        refused = refusals(_run(argv, home), flags)
+        problems += [f"Claude Code refused Ordnung's arguments: {line}" for line in refused]
+        # Claude Code stops at the first option it can't read: only a list it took reaches the made-up flag
+        canary = [] if refused else refusals(_run([*argv, CANARY], home), [CANARY])
+        if not refused and not any(CANARY in line for line in canary):
             problems.append(
                 f"Claude Code didn't refuse the made-up flag {CANARY}, so its answer proves nothing"
             )
@@ -146,7 +151,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if binary is None:
         print(f"error: claude not found ({args.claude or 'ORDNUNG_CLAUDE_BIN or PATH'})", file=sys.stderr)
         return 1
-    problems, warnings, version = check(binary)
+    problems, warnings, version = check(str(Path(binary).absolute()))  # it runs in a folder of its own
     for warning in warnings:
         print(f"warning: {warning}")
     for problem in problems:
