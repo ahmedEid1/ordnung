@@ -37,7 +37,7 @@ from fpdf.enums import XPos, YPos
 from PIL import Image
 
 from ordnung.drafts.templates import closing
-from ordnung.ingest.intake import PDFIUM_LOCK
+from ordnung.ingest.text import PDFIUM_LOCK
 from ordnung.models import Draft, Profile
 
 FONT_DIR = Path(__file__).resolve().parent / "fonts"

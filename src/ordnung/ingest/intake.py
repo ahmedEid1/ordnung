@@ -15,9 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import io
-import os
 import re
-import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -28,7 +26,7 @@ import pypdfium2 as pdfium
 from fpdf import FPDF
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
-from ordnung.durable import fsync, fsync_dir, is_durable
+from ordnung.durable import write_atomic
 from ordnung.ingest.expansion import ExpansionError, check_pdf_expansion
 from ordnung.ingest.text import (
     PDFIUM_LOCK,
@@ -317,7 +315,8 @@ def _pdf_page_image(pdf: pdfium.PdfDocument, index: int) -> Image.Image:
         width, height = page.get_size()  # already rotated by /Rotate, clipped to the CropBox
         bitmap = page.render(scale=PAGE_LONG_SIDE / max(width, height), may_draw_forms=True)
         try:
-            return bitmap.to_pil().convert("RGB")
+            image: Image.Image = bitmap.to_pil()
+            return image.convert("RGB")
         finally:
             bitmap.close()
     finally:
@@ -453,19 +452,4 @@ def _write_atomic(path: Path, data: bytes) -> None:
 
     While hand-off sync is on (:func:`ordnung.durable.is_durable`), the file and then its folder are
     flushed to the disk, so a database row that names the file never outlives it in a power cut."""
-    partial = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.part")
-    durable = is_durable()
-    try:
-        fd = os.open(
-            partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), PRIVATE_FILE_MODE
-        )
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-            if durable:
-                handle.flush()
-                fsync(handle.fileno())
-        partial.replace(path)
-        if durable:
-            fsync_dir(path.parent)
-    finally:
-        partial.unlink(missing_ok=True)
+    write_atomic(path, data, mode=PRIVATE_FILE_MODE)

@@ -1306,7 +1306,7 @@ def _validate_request(kind: str, language: str) -> tuple[DraftKind, LetterLangua
         )
     if language not in templates.LETTER_LANGUAGES:
         raise DraftError("Letters can be written in German or English.")
-    return cast(DraftKind, kind), cast(LetterLanguage, language)
+    return cast(DraftKind, kind), language
 
 
 async def compose(

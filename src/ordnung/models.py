@@ -2190,7 +2190,7 @@ class SuggestionsUpdatedEvent(_Event):
 
 
 class ReviewFailedEvent(_Event):
-    """``review.failed``: the on-demand review could not run."""
+    """``review.failed``: a review for Ideas (asked for, or the weekly one) could not run."""
 
     error: str
 

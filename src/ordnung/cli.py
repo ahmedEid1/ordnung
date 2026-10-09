@@ -1711,9 +1711,7 @@ def _sync_folder(ctx: typer.Context, data_dir: Path | None) -> Path:
 
 def _sync_api(info: ServerInfo, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
     """Ask the running server; a refusal becomes the same :class:`~ordnung.sync.SyncError`."""
-    from typing import cast
-
-    from ordnung.sync import ERROR_STATUS, SyncError, SyncErrorKind
+    from ordnung.sync import ERROR_STATUS, SyncError
 
     with _api(info, timeout=None) as client:
         response = client.request(method, path, json=body)
@@ -1721,7 +1719,7 @@ def _sync_api(info: ServerInfo, method: str, path: str, body: dict[str, Any] | N
     if response.status_code >= 400:
         code = str(found.get("code") or "")
         detail = str(found.get("detail") or f"The running Ordnung answered {response.status_code}.")
-        raise SyncError(cast(SyncErrorKind, code if code in ERROR_STATUS else "folder_problem"), detail)
+        raise SyncError(code if code in ERROR_STATUS else "folder_problem", detail)
     return found
 
 
@@ -2081,6 +2079,7 @@ def sync_choose(
 
 
 def _side_key(choice: Any, side: str) -> int:
+    found: list[int]
     if side == "this":
         found = [candidate.key for candidate in choice.sides if candidate.this]
     elif side.isdigit():

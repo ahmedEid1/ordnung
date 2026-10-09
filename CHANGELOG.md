@@ -25,6 +25,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   unless they show a pattern people make: a common word, also in leetspeak, a year or a date, a run or a
   keyboard walk, a repeat, or a few words with a digit added. Apple's strong passwords
   ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that passed before, still pass.
+- When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
+  not the computer's.
+- The app no longer has a design-system page at `/dev/ui`; it stays in the demos and in development.
+- macOS: backups, and the copies hand-off sync keeps, are flushed to the disk itself before Ordnung goes on,
+  as its other files are; before, they could still sit in the drive's cache.
+- A big library stays quick: the weekly review, and the Ideas worked out again after each letter is read,
+  no longer slow down with the square of the number of letters and senders.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds

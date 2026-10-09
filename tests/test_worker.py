@@ -13,6 +13,7 @@ import threading
 from collections.abc import Callable, Iterator
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -111,6 +112,27 @@ async def test_rate_limit_pauses_the_worker_and_keeps_the_job(ctx: AppContext, r
     assert paused and paused[0]["until"] == ctx.worker.paused_until.isoformat()
 
     assert await ctx.worker.run_until_idle() == 0  # still paused: nothing is claimed
+
+
+async def test_the_usage_limit_names_the_resume_time_in_the_profile_zone(
+    ctx: AppContext, router: Router
+) -> None:
+    """The waiting reason says when reading continues in the person's time zone, not the computer's."""
+    zone = "Pacific/Kiritimati"  # UTC+14: no test machine runs in it
+    ctx.store.save_profile(ctx.store.get_profile().model_copy(update={"timezone": zone}))
+    reset = (datetime.now(UTC) + timedelta(hours=2)).replace(second=0, microsecond=0)
+    router.errors["extract"] = lambda: ClaudeRateLimited("Usage limit reached.", reset_at=reset.isoformat())
+    document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+
+    await ctx.worker.run_until_idle()
+
+    job = next(job for job in ctx.store.list_jobs() if job.doc_id == document.id)
+    local = reset.astimezone(ZoneInfo(zone)).strftime("%H:%M")
+    assert job.waiting_reason is not None and job.waiting_reason.endswith(f"continues at about {local}.")
+
+
+def test_an_unknown_profile_zone_names_the_resume_time_in_the_computers_zone() -> None:
+    assert worker.clock_time(NOW, "Not/AZone") == NOW.astimezone().strftime("%H:%M")
 
 
 async def test_worker_resumes_after_the_pause(ctx: AppContext, router: Router) -> None:

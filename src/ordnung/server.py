@@ -21,6 +21,7 @@ from pydantic import BaseModel, ValidationError
 
 from ordnung import __version__
 from ordnung.clock import real_now_iso
+from ordnung.durable import write_atomic
 
 SERVER_FILE = "server.json"
 DEFAULT_HOST = "127.0.0.1"
@@ -74,15 +75,7 @@ def server_file(data_dir: str | Path) -> Path:
 def write_server_info(data_dir: str | Path, info: ServerInfo) -> Path:
     """Write ``server.json`` atomically with owner-only permissions (0600)."""
     path = server_file(data_dir)
-    partial = path.with_name(f".{SERVER_FILE}.{os.getpid()}.part")
-    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(info.model_dump_json(indent=2))
-        partial.replace(path)
-    finally:
-        with contextlib.suppress(FileNotFoundError):
-            partial.unlink()
+    write_atomic(path, info.model_dump_json(indent=2).encode("utf-8"), sync=False)
     return path
 
 

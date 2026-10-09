@@ -81,8 +81,11 @@ def _service_stream(
         return events
     # a replayed answer would appear all at once: stream it at a reading pace, like the real thing
     paced = optional_demo_function("paced_replay")
-    safe = friendly(events, demo=True, question=question, ctx=state.ctx)
-    return paced(safe) if paced is not None else safe
+    safe: AsyncIterator[LLMStreamEvent] = friendly(events, demo=True, question=question, ctx=state.ctx)
+    if paced is None:
+        return safe
+    shown: AsyncIterator[LLMStreamEvent] = paced(safe)
+    return shown
 
 
 async def answer_events(

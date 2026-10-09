@@ -47,7 +47,7 @@ import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, BinaryIO, Literal, Protocol, TypeVar
+from typing import Any, BinaryIO, Literal, Protocol, TypeVar, cast
 
 from ordnung import durable
 from ordnung.config import Paths
@@ -262,7 +262,7 @@ class _Deadline:
                 raise FolderUnreachable()
         if result.error is not None:
             raise result.error
-        return result.value
+        return cast(T, result.value)  # what ``call`` returned
 
 
 @dataclass

@@ -23,7 +23,7 @@ from typer.testing import CliRunner
 
 from helpers_secretary import seed_ledger
 from ordnung import backup as backups
-from ordnung import clock, sync
+from ordnung import clock, durable, sync
 from ordnung.backup import archive
 from ordnung.backup.archive import DB_NAME, MANIFEST_NAME, Manifest, ManifestFile, check_backup, write_backup
 from ordnung.backup.container import (
@@ -460,6 +460,18 @@ def test_a_failed_backup_leaves_no_file(life: Path, tmp_path: Path, monkeypatch:
     with pytest.raises(OSError):
         backups.write_backup_file(life, tmp_path / "b", PASS, kdf=FAST)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["life"]
+
+
+def test_a_backup_reaches_the_disk_with_ordnung_s_own_flush(
+    life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Audit: the backup was flushed with a plain ``os.fsync``, which on macOS leaves it in the drive's
+    cache; ``durable.fsync`` asks for ``F_FULLFSYNC`` there."""
+    flushed: list[int] = []
+    real = durable.fsync
+    monkeypatch.setattr(durable, "fsync", lambda fd: (flushed.append(fd), real(fd)))
+    backups.write_backup_file(life, tmp_path / "b", PASS, kdf=FAST)
+    assert flushed
 
 
 # --------------------------------------------------------------------------------------------------

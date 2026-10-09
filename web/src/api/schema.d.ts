@@ -7178,7 +7178,7 @@ export interface components {
         };
         /**
          * ReviewFailedEvent
-         * @description ``review.failed``: the on-demand review could not run.
+         * @description ``review.failed``: a review for Ideas (asked for, or the weekly one) could not run.
          */
         ReviewFailedEvent: {
             /** Error */

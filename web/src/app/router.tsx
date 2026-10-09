@@ -82,7 +82,7 @@ export const routes: RouteObject[] = [
           },
           { path: "ask", lazy: page(() => import("@/pages/AskPage")), handle: { title: "Ask" } satisfies RouteHandle },
           { path: "settings", lazy: page(() => import("@/pages/SettingsPage")), handle: { title: "Settings" } satisfies RouteHandle },
-          { path: "dev/ui", lazy: page(() => import("./UiGallery")), handle: { title: "Design system" } satisfies RouteHandle },
+          { path: "dev/ui", lazy: page(() => import("./DevUiPage")), handle: { title: "Design system" } satisfies RouteHandle },
           { path: "*", element: <NotFound />, handle: { title: "Not found" } satisfies RouteHandle },
         ],
       },

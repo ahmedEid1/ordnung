@@ -884,6 +884,10 @@ class SyncAgent:
                 await self._continue_waiting(session)
             return self._waiting is not None
 
+    def _in_use(self) -> bool:
+        """Whether this computer is the one in use, read afresh (a step awaited just before may have changed it)."""
+        return self.mode == "in_use"
+
     def _adopt(self, summary: LocalSummary) -> None:
         self.summary = summary
         self.connected = True
@@ -1206,7 +1210,7 @@ class SyncAgent:
     def _problem_code(self, exc: BaseException) -> SyncProblemCode:
         stated = getattr(exc, "problem", None)
         if isinstance(stated, str) and stated in PROBLEMS:
-            return cast(SyncProblemCode, stated)
+            return stated
         if isinstance(exc, SecretsUnavailable):
             return "keyring_unavailable" if self.secrets.problem() is not None else "keyring_locked"
         if isinstance(exc, SyncError):
@@ -1241,7 +1245,7 @@ class SyncAgent:
             return
         message = getattr(found, "message", None)
         self.problem = problem(
-            cast(SyncProblemCode, code),
+            code,
             name=decision.from_name or self._other_name(),
             message=message if isinstance(message, str) else None,
             in_use=self.mode == "in_use",
@@ -1736,7 +1740,7 @@ class SyncAgent:
                         await self._take_over(session, UseHere())
                     finally:
                         self._joining = False
-                if self.mode == "in_use":
+                if self._in_use():  # taking over made it the one in use
                     await self._log_now(
                         "sync.joined",
                         f"Brought Ordnung over from {self._other_name() or 'your other computer'} and started "

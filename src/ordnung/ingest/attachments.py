@@ -111,7 +111,7 @@ def email_attachments(data: bytes) -> EmailParts:
     Raises :class:`~ordnung.ingest.intake.IntakeError` for an e-mail nested too deeply to parse.
     """
     try:
-        message = cast(EmailMessage, email.message_from_bytes(data, policy=email.policy.default))
+        message = email.message_from_bytes(data, policy=email.policy.default)
     except RecursionError:  # the standard library's parser recurses once per nesting level
         raise IntakeError(TOO_DEEP) from None
     leaves = list(_leaves(message))

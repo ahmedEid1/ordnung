@@ -28,7 +28,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from functools import lru_cache
 
-import holidays
+from holidays.countries.germany import Germany
 
 NATIONWIDE_LABEL = "Germany (nationwide holidays only)"
 
@@ -147,7 +147,7 @@ def _holidays_for(code: str | None, year: int) -> dict[date, str]:
         other = _holidays_for(second, year)
         return {day: name for day, name in _holidays_for(first, year).items() if day in other}
     # German names whatever the system locale (the library would translate them from LANG/LANGUAGE)
-    calendar = holidays.Germany(subdiv=code, years=year, language="de")
+    calendar = Germany(subdiv=code, years=year, language="de")
     return dict(calendar.items())
 
 
@@ -164,7 +164,7 @@ def is_holiday(d: date, region: str | None = None) -> bool:
 
 @lru_cache(maxsize=256)
 def _partial_holidays_for(code: str, year: int) -> dict[date, str]:
-    found = dict(holidays.Germany(subdiv=code, years=year, categories=("catholic",), language="de"))
+    found = dict(Germany(subdiv=code, years=year, categories=("catholic",), language="de"))
     found.update({date(year, month, day): name for month, day, name in _MORE_PARTIAL_HOLIDAYS.get(code, ())})
     return found
 

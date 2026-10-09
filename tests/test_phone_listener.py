@@ -22,6 +22,7 @@ import uvicorn
 from sse_starlette.sse import AppStatus
 
 from ordnung.api.app import create_app
+from ordnung.api.sse import PING_SECONDS
 from ordnung.app_context import build_context
 from ordnung.llm.fake import FakeBackend
 from ordnung.phone import cookie_name
@@ -30,6 +31,10 @@ from ordnung.phone.net import TEST_ADDRESS_ENV
 from test_api_support import ApiRouter
 
 TOKEN = "listener-test-token"
+#: A phone's live stream ends at once when it is removed or phone access goes off, long before the next ping
+STREAM_ENDS_S = PING_SECONDS / 3
+#: What a slow runner may add to a stop that waits for uvicorn's graceful shutdown
+SLOW_RUNNER_S = 3.0
 LOOPBACK = "127.0.0.1"
 
 
@@ -97,6 +102,18 @@ async def _read_events(phone: httpx.AsyncClient) -> int:
     return lines
 
 
+async def _streaming(pc: httpx.AsyncClient, within: float = 10.0) -> dict[str, Any]:
+    """The paired phone once its live stream is open (``active``), however slow the runner."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + within
+    while True:
+        device: dict[str, Any] = (await pc.get("/api/phone")).json()["devices"][0]
+        if device["active"]:
+            return device
+        assert loop.time() < deadline, "the phone's live stream never opened"
+        await asyncio.sleep(0.05)
+
+
 async def test_a_phone_listener_runs_next_to_the_computer_s(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -120,24 +137,20 @@ async def test_a_phone_listener_runs_next_to_the_computer_s(
             assert (await phone.get("/api/health")).json()["client"] == "phone"
 
             reader = asyncio.create_task(_read_events(phone))
-            await asyncio.sleep(0.3)
+            device = await _streaming(pc)
             assert not reader.done()
-            device = (await pc.get("/api/phone")).json()["devices"][0]
-            assert device["active"] is True
-            removed_at = asyncio.get_running_loop().time()
             assert (await pc.delete(f"/api/phone/devices/{device['id']}")).status_code == 200
-            await asyncio.wait_for(reader, 1.0)
-            assert asyncio.get_running_loop().time() - removed_at < 1.0
+            await asyncio.wait_for(reader, STREAM_ENDS_S)
             assert (await phone.get("/api/health")).status_code == 401
             assert (await pc.get("/api/health")).json()["client"] == "computer"
 
             await _pair(pc, phone, port)
             reader = asyncio.create_task(_read_events(phone))
-            await asyncio.sleep(0.3)
+            await _streaming(pc)
             off_at = asyncio.get_running_loop().time()
             assert (await pc.put("/api/phone", json={"enabled": False})).json()["listening"] is False
-            assert asyncio.get_running_loop().time() - off_at <= GRACEFUL_STOP_S + 0.5
-            await asyncio.wait_for(reader, 1.0)
+            assert asyncio.get_running_loop().time() - off_at <= GRACEFUL_STOP_S + SLOW_RUNNER_S
+            await asyncio.wait_for(reader, STREAM_ENDS_S)
         async with _phone(status["url"], data_dir) as late:
             with pytest.raises(httpx.ConnectError):
                 await late.get("/api/health")

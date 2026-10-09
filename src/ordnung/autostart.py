@@ -44,7 +44,6 @@ Written policy (ADR 0007):
 
 from __future__ import annotations
 
-import contextlib
 import os
 import plistlib
 import re
@@ -54,6 +53,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from ordnung.durable import write_atomic
 from ordnung.server import DEFAULT_PORT
 
 System = Literal["linux", "macos", "windows"]
@@ -314,16 +314,8 @@ def location(
 
 def _write_atomically(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    partial = path.with_name(f".{path.name}.{os.getpid()}.part")
-    # bytes through a binary descriptor: in text mode Windows would turn the .cmd's \r\n into \r\r\n
-    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_BINARY", 0), ENTRY_MODE)
-    try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(content.encode("utf-8"))
-        partial.replace(path)
-    finally:
-        with contextlib.suppress(FileNotFoundError):
-            partial.unlink()
+    # bytes as they are: in text mode Windows would turn the .cmd's \r\n into \r\r\n
+    write_atomic(path, content.encode("utf-8"), mode=ENTRY_MODE, sync=False)
 
 
 def _read(path: Path) -> str:
