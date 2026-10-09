@@ -40,6 +40,8 @@ import {
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } };
 /** The real app's specs: these files run in the project "real-app" only. */
 const REAL_APP_SPECS = /real-app-[\w-]+\.spec\.ts$/;
+/** README's two pictures from the real app: made only by `make capture` (it sets ORDNUNG_CAPTURE_OUT), else skipped. */
+const PICTURES_SPEC = /readme-pictures\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -74,9 +76,10 @@ export default defineConfig({
   // The GiroCode guards run between the two: they change the parking fine's amount (PATCH) to ask for the
   // paper letter again, and an edited to-do stays marked as edited when its amount is set back — Ask's
   // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
-  // Then dates of the person's own (e2e/add-date.spec.ts: added to the shared demo, then taken away), and last
-  // the real app: e2e/real-app-*.spec.ts, against `ordnung serve` (real-app-sync.spec.ts with the second one).
-  // One worker runs projects in order.
+  // Then dates of the person's own (e2e/add-date.spec.ts: added to the shared demo, then taken away), then
+  // the real app: e2e/real-app-*.spec.ts, against `ordnung serve` (real-app-sync.spec.ts with the second one);
+  // and last README's two pictures from the real app (e2e/readme-pictures.spec.ts), which run only for
+  // `make capture`. One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: desktop },
     { name: "pages", testMatch: /pages\.spec\.ts$/, use: desktop },
@@ -98,6 +101,7 @@ export default defineConfig({
     { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: desktop },
     { name: "add-date", testMatch: /add-date\.spec\.ts$/, use: desktop },
     { name: "real-app", testMatch: REAL_APP_SPECS, use: { ...desktop, baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE } },
+    { name: "pictures", testMatch: PICTURES_SPEC, use: { ...desktop, baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE, colorScheme: "light" } },
   ],
   webServer: [
     {
