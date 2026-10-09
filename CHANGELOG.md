@@ -45,10 +45,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   digits are about 83 bits), unless they show a pattern people make: a common word, also in leetspeak; a
   year or a date, also with `_`, `#` or the like between its parts; a run or a keyboard walk, also typed
   with Shift; a repeat; or words, also in capitals, with caps lock on, in alternating case or in another
-  script. A name or a word with digits and symbols ("Max#Richter#94") counts as its words and digits.
-  Random small letters alone look like one long word, so they still count as one. Apple's strong
-  passwords ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that passed before,
-  still pass.
+  script. A name or a word with digits and symbols ("Max#Richter#94"), also with a stray letter or two
+  ("Andreas!88#Xy"), counts as its words and digits, and so does a word spelled in leetspeak
+  ("Schm3tt3rl1ng!"). Random small letters alone look like one long word, so they still count as one.
+  Apple's strong passwords ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that
+  passed before, still pass, except words typed with a dotless ı for an i ("Dıe"): they now count as the
+  words they are, as the web app already counted them.
 - When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
   not the computer's.
 - When the weekly review can't write Ideas (Claude didn't answer, or its limit is reached), Settings → Privacy

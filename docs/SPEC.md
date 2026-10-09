@@ -1474,7 +1474,7 @@ outside the database, Delete everything leaves first, a restored backup starts w
   and to connect — never by the status. `ORDNUNG_SYNC_PASSPHRASE` feeds the CLI. A new folder's passphrase:
   12–1024 characters and at least 70 bits by `passphrase_bits`, the largest of three counts. Words
   (`word_bits`; NFC; runs of letters and runs of digits, split where a lower-case letter meets an
-  upper-case one; each distinct token, case-folded, counts its length × log2 26 or × log2 10 — a run (one
+  upper-case one; each distinct token, case-folded (upper case, then lower: a dotless ı is an i), counts its length × log2 26 or × log2 10 — a run (one
   character again and again, in order either way, along a keyboard row) one character's worth and 1 bit,
   one of a few hundred very common words (numbers, months, days, colours, classic passwords) 7 bits,
   tokens that only make a run together that one run — at most 14 bits); setup suggests 5 words (in the CLI
@@ -1488,7 +1488,9 @@ outside the database, Delete everything leaves first, a restored backup starts w
   letter outside a–z: two of 4 letters or more, three, or those of 4 or more making up 60 %) — letters
   counting only in plain case, once caps lock's or alternating case is undone. When every letter is in a
   word, only the characters outside words and runs of digits count this way; each word and run of digits
-  counts as a token. Apple's strong passwords (`apple_password`: three groups of two
+  counts as a token. Beside a word as typed, runs of one or two letters ("Andreas!88#Xy") count as neither
+  words nor chance, and letters that make words only with leetspeak undone, one of them 5 letters or more
+  ("Schm3tt3rl1ng!"), count as those words. Apple's strong passwords (`apple_password`: three groups of two
   consonant-vowel-consonant syllables joined by hyphens, one capital, one digit at a group's edge) count
   Apple's 71 bits. The web app counts the same way, held to the same vectors
   (`web/src/features/settings/passphraseVectors.json`).
