@@ -169,6 +169,25 @@ describe("Edit your date", () => {
     expect(srv.db.state.items.find((i) => i.id === "itm_own")).toMatchObject({ status: "open", due_date: "2026-10-10" });
   });
 
+  it("brings a date that was done back as done with Undo, not as an open to-do", async () => {
+    const { user, patches, srv } = useEditDialog(own({ recurrence: null, date_spec: null, status: "done", completed_at: "2026-09-20T10:00:00Z" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    const shown = (await screen.findByText("Removed from your dates")).closest<HTMLElement>("li[data-toast]")!;
+    await user.click(within(shown).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(patches()).toEqual([{ status: "dismissed" }, { status: "done" }]));
+    expect(srv.db.state.items.find((i) => i.id === "itm_own")).toMatchObject({ status: "done" });
+  });
+
+  it("brings a snoozed date back snoozed to its day with Undo", async () => {
+    const { user, patches } = useEditDialog(own({ status: "snoozed", snoozed_until: "2026-10-03" }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    await user.click(within(dialog).getByRole("button", { name: "Remove" }));
+    const shown = (await screen.findByText("Removed from your dates")).closest<HTMLElement>("li[data-toast]")!;
+    await user.click(within(shown).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(patches()).toEqual([{ status: "dismissed" }, { status: "snoozed", snoozed_until: "2026-10-03" }]));
+  });
+
   it("closes without a call when nothing changed", async () => {
     const { user, calls, onClose } = useEditDialog(own());
     const dialog = await screen.findByRole("dialog", { name: "Edit your date" });

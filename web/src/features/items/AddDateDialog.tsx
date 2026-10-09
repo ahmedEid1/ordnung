@@ -24,11 +24,12 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { ITEM_KIND_COPY } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { parseMoney } from "@/lib/money";
+import { useTodayISO } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { DEFAULT_WORKING_DAY, WORKING_DAYS, repeatChoiceLabel, repeatChoiceOf, repeatLabel, repeatOptions, repeatRule, steps, type RepeatChoice } from "./repeat";
 
-/** The letter a date is for: it joins that letter's to-dos, with its sender, thread and area. */
-export type DateLetter = Pick<Document, "id" | "title" | "filename" | "party_id" | "case_id" | "area">;
+/** The letter a date is for: it joins that letter's to-dos, with its sender, thread and area (its kind: a lease's rent). */
+export type DateLetter = Pick<Document, "id" | "title" | "filename" | "party_id" | "case_id" | "area"> & Partial<Pick<Document, "kind">>;
 
 /** The kinds a person adds, the plainest first ("Your own reminders" in Settings → Reminders). */
 export const ADD_KINDS: readonly { kind: ItemKind; label: string }[] = [
@@ -140,17 +141,28 @@ export function patchFor(d: DateDraft, item: Item): ItemPatch {
   return patch;
 }
 
-/** The toast's line: "UStVA — Mon 5 Oct, repeats every month on the 3rd working day", from the server's answer. */
-function savedLine(item: Item): string {
+/**
+ * The toast's line: "UStVA — Mon 5 Oct, repeats every month on the 3rd working day", from the server's answer — with
+ * the year when it isn't this one (a yearly date given in the past moves on to next year).
+ */
+function savedLine(item: Item, today: string): string {
   const rule = repeatLabel(item.recurrence);
   if (!item.due_date) return item.title;
-  return `${item.title} — ${formatDate(item.due_date, { style: "short" })}${rule ? `, repeats ${rule}` : ""}`;
+  return `${item.title} — ${formatDate(item.due_date, { style: "short", today })}${rule ? `, repeats ${rule}` : ""}`;
 }
 
-/** How "Which working day?" counts, and the month the first one is in (the month of "When?"). */
-function workingDayHint(date: string): string {
-  const counted = "Counted from the 1st of each month: Monday to Saturday, without public holidays (rent: Monday to Friday).";
+/**
+ * How "Which working day?" counts, as the server does — the last one is the month's last Monday to Friday (a bank
+ * closing day isn't one); a lease's rent counts Monday to Friday (`recurrence.py`, point 8) — and where the first one
+ * is: in the month of "When?" (or the next once it has passed), or the next one from today for a month gone by.
+ */
+function workingDayHint(date: string, workingDay: number, today: string, rent: boolean): string {
+  const counted =
+    workingDay === -1
+      ? "The month's last Monday to Friday that isn't a public holiday, nor 24 or 31 December."
+      : `Counted from the 1st of each month: ${rent ? "Monday to Friday (rent)" : "Monday to Saturday"}, without public holidays.`;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return `${counted} The first one is in the month of the day you choose, or in the next month once that one's has passed.`;
+  if (date.slice(0, 7) < today.slice(0, 7)) return `${counted} The first one is the next one from today.`;
   return `${counted} The first one is in ${formatDate(date, { style: "month" })}, or in the next month once ${formatDate(date, { style: "month" }).split(" ")[0]}'s has passed.`;
 }
 
@@ -216,6 +228,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
   const update = useUpdateItem();
   const remove = useDeleteItem();
   const phone = usePhoneCompanion();
+  const today = useTodayISO();
   // every letter, kept private and unread ones too — asked for only once the dialog is open on Timeline
   const letters = useDocuments({}, { enabled: open && !letter && !item });
   const [d, setD] = useState<DateDraft>(() => (item ? draftOf(item) : EMPTY));
@@ -239,7 +252,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
 
   const added = (created: Item) => {
     toast.success("Date added", {
-      description: savedLine(created),
+      description: savedLine(created, today),
       // undone by deleting it, which a paired phone leaves to the computer
       undo: phone ? undefined : () => remove.mutate(created.id),
     });
@@ -254,16 +267,21 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
       {
         onSuccess: (saved) => {
           // no Undo: a deliberate step with Cancel, and the dialog changes it back
-          toast.success("Date saved", { description: savedLine(saved) });
+          toast.success("Date saved", { description: savedLine(saved, today) });
           onClose();
         },
       },
     );
   };
 
-  // dismissed, not deleted: it ends the series, a paired phone may do it, and "Undo" sets it open again
+  // dismissed, not deleted: it ends the series, a paired phone may do it, and "Undo" brings it back as it was (open,
+  // done, or snoozed to its day)
   const removeIt = (own: Item) => {
     if (busy) return;
+    const back: ItemPatch =
+      own.status === "snoozed" && own.snoozed_until
+        ? { status: "snoozed", snoozed_until: own.snoozed_until }
+        : { status: own.status === "done" ? "done" : "open" };
     update.mutate(
       { id: own.id, patch: { status: "dismissed" } },
       {
@@ -271,7 +289,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
           toast({
             title: "Removed from your dates",
             description: `“${own.title}” won't remind you any more.`,
-            undo: () => update.mutate({ id: own.id, patch: { status: "open" } }),
+            undo: () => update.mutate({ id: own.id, patch: back }),
           });
           onClose();
         },
@@ -346,7 +364,7 @@ export function AddDateDialog({ open, onClose, letter = null, item = null, retur
           </Select>
         </Field>
         {d.repeat === "working_day" ? (
-          <Field id={fieldId("workingDay")} label="Which working day?" hint={workingDayHint(d.date)} className="sm:max-w-sm">
+          <Field id={fieldId("workingDay")} label="Which working day?" hint={workingDayHint(d.date, d.workingDay, today, d.kind === "payment" && chosen?.kind === "rent_lease")} className="sm:max-w-sm">
             <Select value={String(d.workingDay)} onChange={(e) => setD((prev) => ({ ...prev, workingDay: Number(e.target.value) }))} className="sm:max-w-40">
               {WORKING_DAYS.map((n) => (
                 <option key={n} value={n}>

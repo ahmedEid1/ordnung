@@ -107,12 +107,58 @@ describe("Repeats", () => {
     const which = within(dialog).getByLabelText("Which working day?");
     expect(which).toHaveValue("3");
     expect(within(which).getAllByRole("option").map((o) => o.textContent)).toEqual(["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th", "Last"]);
-    expect(which).toHaveAccessibleDescription(/^Counted from the 1st of each month: Monday to Saturday, without public holidays \(rent: Monday to Friday\)\. The first one is in October 2026, or in the next month once October's has passed\.$/);
+    expect(which).toHaveAccessibleDescription(/^Counted from the 1st of each month: Monday to Saturday, without public holidays\. The first one is in October 2026, or in the next month once October's has passed\.$/);
     await user.click(within(dialog).getByRole("button", { name: "Add date" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/items")).toBe(true));
     expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ recurrence: { interval: 1, unit: "months", working_day: 3 } });
     // the day it falls on (the server's, here the mock's), not the day typed
     await waitFor(() => expect(success).toHaveBeenCalledWith("Date added", expect.objectContaining({ description: "UStVA — Mon 5 Oct, repeats every month on the 3rd working day" })));
+  });
+});
+
+describe("what the dialog says about a working day and the day saved", () => {
+  function useOpenDialog(letter: Parameters<typeof AddDateDialog>[0]["letter"] = null) {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<AddDateDialog open onClose={() => {}} letter={letter} />, { client: makeTestQueryClient() });
+    return { user, found: () => screen.findByRole("dialog", { name: "Add a date" }) };
+  }
+
+  it("the last working day: the month's last Monday to Friday, as the server counts it", async () => {
+    const { user, found } = useOpenDialog();
+    const dialog = await found();
+    await fill(user, dialog, { title: "UStVA", date: "2026-10-14" });
+    await user.selectOptions(within(dialog).getByLabelText("Repeats"), "Every month on a working day");
+    await user.selectOptions(within(dialog).getByLabelText("Which working day?"), "Last");
+    expect(within(dialog).getByLabelText("Which working day?")).toHaveAccessibleDescription(
+      /^The month's last Monday to Friday that isn't a public holiday, nor 24 or 31 December\. The first one is in October 2026/,
+    );
+  });
+
+  it("a day months back: the first one is the next one from today", async () => {
+    const { user, found } = useOpenDialog();
+    const dialog = await found();
+    await fill(user, dialog, { title: "UStVA", date: "2026-03-01" });
+    await user.selectOptions(within(dialog).getByLabelText("Repeats"), "Every month on a working day");
+    expect(within(dialog).getByLabelText("Which working day?")).toHaveAccessibleDescription(/ The first one is the next one from today\.$/);
+  });
+
+  it("rent on a lease's page: Monday to Friday, as the server counts a lease's rent", async () => {
+    const { user, found } = useOpenDialog(makeDoc({ id: "doc_lease", kind: "rent_lease", title: "Lease" }));
+    const dialog = await found();
+    await fill(user, dialog, { title: "Rent", date: "2026-11-01", kind: "Payment" });
+    await user.selectOptions(within(dialog).getByLabelText("Repeats"), "Every month on a working day");
+    expect(within(dialog).getByLabelText("Which working day?")).toHaveAccessibleDescription(/^Counted from the 1st of each month: Monday to Friday \(rent\), without public holidays\./);
+  });
+
+  it("names the year when the day saved is in another year", async () => {
+    const success = vi.spyOn(toast, "success");
+    const { user, found } = useOpenDialog();
+    const dialog = await found();
+    await fill(user, dialog, { title: "Car insurance", date: "2026-03-01" });
+    await user.selectOptions(within(dialog).getByLabelText("Repeats"), "Every year on 1 March");
+    await user.click(within(dialog).getByRole("button", { name: "Add date" }));
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Date added", expect.objectContaining({ description: "Car insurance — Mon 1 Mar 2027, repeats every year" })));
   });
 });
 

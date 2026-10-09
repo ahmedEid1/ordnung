@@ -100,6 +100,17 @@ async def test_stopping_a_repeat_keeps_its_date_and_done_is_done_for_good(data_d
         assert (done["status"], done["due_date"]) == ("done", "2026-10-15")
 
 
+async def test_a_date_that_stopped_repeating_no_longer_says_it_repeats(data_dir: Path) -> None:
+    """Its "Why this date?" (and the calendar file's) is that of a date you set: the date it stood at."""
+    async with api_for(data_dir) as api:
+        item = await _add(api, "2026-10-01", THIRD_WORKING_DAY)
+        stopped = await _patch(api, item, recurrence=None)
+        assert (stopped["recurrence"], stopped["due_date"]) == (None, "2026-10-05")
+        receipt = stopped["computation"]
+        assert receipt["due_date"] == "2026-10-05" and receipt["summary"] == "You set this date yourself."
+        assert not any("Repeats" in step["label"] for step in receipt["steps"])
+
+
 async def test_a_date_sent_with_its_rule_moves_every_one_after_it(data_dir: Path) -> None:
     """Point 2 vs point 7: the date alone stands in for one occurrence (paid, the 10th again); sent with its
     rule, the schedule starts again there (paid, the 15th of the next month)."""

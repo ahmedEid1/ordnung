@@ -73,6 +73,21 @@ describe("your own repeating dates in the mock", () => {
     expect((await patch(s, changed.id, { status: "done" })).status).toBe("done");
   });
 
+  it("moved alone, stand in for the date they replace: marked done, the next one after that comes, as in the API", async () => {
+    const s = srv();
+    // a monthly fee paid early: the 10th moved to the 5th, then paid — November's is next, not October's again
+    const fee = await add(s, "2026-10-10", MONTHLY);
+    await patch(s, fee.id, { due_date: "2026-10-05" });
+    expect(await patch(s, fee.id, { status: "done" })).toMatchObject({ status: "open", due_date: "2026-11-10" });
+    // Undo: back to the moved date, still standing in for the 10th
+    expect((await patch(s, fee.id, { status: "open" })).due_date).toBe("2026-10-05");
+    expect((await patch(s, fee.id, { status: "done" })).due_date).toBe("2026-11-10");
+    // a working day moved later: November's 3rd working day (Wed 4 Nov) still comes after it
+    const ustva = await add(s, "2026-10-01", THIRD_WORKING_DAY);
+    await patch(s, ustva.id, { due_date: "2026-11-10" });
+    expect((await patch(s, ustva.id, { status: "done" })).due_date).toBe("2026-11-04");
+  });
+
   it("are removed with dismissed, and set open again just as they were", async () => {
     const s = srv();
     const ustva = await add(s, "2026-10-01", THIRD_WORKING_DAY);

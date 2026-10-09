@@ -31,7 +31,7 @@ export interface TimelineListProps {
    * contract opens "Edit your date". The row is then a real button.
    */
   openFor?: (e: TimelineEntry) => (() => void) | null;
-  /** How an entry's to-do repeats ("Repeats every month on the 3rd working day"), added to its detail line. */
+  /** How an entry's to-do repeats ("Repeats every month on the 3rd working day"), on a line of its own under its detail. */
   repeatsFor?: (e: TimelineEntry) => string | null;
   /** entry to scroll to and highlight (e.g. after clicking a lane marker) */
   highlight?: { id: string; nonce: number } | null;
@@ -69,7 +69,7 @@ function Entry({
   const status = entryStatus(e, today);
   const role = entryRole(e);
   const kind = copyFor(TIMELINE_TYPE_COPY, e.type);
-  const detail = [entryDetail(e), e.time ? formatTime(e.time) : null, repeats].filter(Boolean).join(" · ") || null;
+  const detail = [entryDetail(e), e.time ? formatTime(e.time) : null].filter(Boolean).join(" · ") || null;
   const meta = [role, e.party_name, detail].filter(Boolean).join(" · ");
   const amount = e.amount && e.type !== "contract" ? <Money amount={e.amount} currency={e.currency} tone={past ? "muted" : "default"} className="text-base" /> : null;
   const pill = status ? (
@@ -99,6 +99,8 @@ function Entry({
             {detail}
           </span>
         ) : null}
+        {/* how it repeats: a line of its own, wrapped and never cut short (a touch screen shows no title) */}
+        {repeats ? <span className="mt-0.5 block break-words text-sm leading-5 text-muted">{repeats}</span> : null}
         {amount || pill ? (
           <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 sm:hidden">
             {amount}

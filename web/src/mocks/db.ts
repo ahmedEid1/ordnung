@@ -238,6 +238,12 @@ export class MockDb {
   state: MockState;
   /** The date each of the person's own repeating dates stood at when last marked done, for its "Undo". */
   private marked = new Map<string, string>();
+  /**
+   * The date of the occurrence a date of the person's own stands in for once moved alone (the API's "Moved by you
+   * from", recurrence.py point 7): marked done, the date after that one comes. Also kept for the Undo of done.
+   */
+  private standsFor = new Map<string, string>();
+  private markedStandsFor = new Map<string, string>();
 
   constructor() {
     clockDay = () => this.today;
@@ -417,6 +423,10 @@ export class MockDb {
     if (patch.due_date) it.due_date_source = "manual";
     if (patch.status === "done") it.completed_at = nowTs();
     if (patch.status === "open") it.completed_at = null;
+    if (restart || ("recurrence" in patch && patch.recurrence == null)) this.standsFor.delete(id); // stands in for nothing
+    else if (own && before.recurrence && patch.due_date && before.due_date && !this.standsFor.has(id)) {
+      this.standsFor.set(id, before.due_date); // only this one moves
+    }
     if (restart && it.due_date) {
       it.date_spec = spec({ date: it.due_date, nature: natureOf(it.kind) });
       it.due_date = occurrenceOf(it.recurrence!, it.due_date, this.today);
@@ -424,11 +434,18 @@ export class MockDb {
     const rule = it.recurrence;
     const start = it.date_spec?.date ?? it.due_date;
     if (own && rule && start && it.due_date && patch.status === "done" && before.status !== "done") {
+      const stood = this.standsFor.get(id);
       this.marked.set(id, it.due_date);
-      Object.assign(it, { status: "open", completed_at: null, due_date: occurrenceOf(rule, start, this.today, it.due_date) });
+      if (stood) this.markedStandsFor.set(id, stood);
+      else this.markedStandsFor.delete(id);
+      this.standsFor.delete(id);
+      Object.assign(it, { status: "open", completed_at: null, due_date: occurrenceOf(rule, start, this.today, stood ?? it.due_date) });
     } else if (own && patch.status === "open" && before.status === "open" && this.marked.has(id)) {
       it.due_date = this.marked.get(id)!;
       this.marked.delete(id);
+      const stood = this.markedStandsFor.get(id);
+      if (stood) this.standsFor.set(id, stood);
+      this.markedStandsFor.delete(id);
     }
     return it;
   }

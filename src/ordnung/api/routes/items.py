@@ -334,11 +334,15 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     if "recurrence" in fields:  # the rule as read, so the same rule sent again compares equal to it
         fields["recurrence"] = patch.recurrence
     restart = _restarts(item, patch)
-    if "due_date" in changes:
+    # a date of your own that stops repeating keeps the date it stood at, as a date you set: its receipt no
+    # longer tells how it repeats ("Why this date?", the calendar file)
+    stops = item.origin != "extracted" and item.recurrence is not None and "recurrence" in fields
+    stops = stops and fields["recurrence"] is None
+    if "due_date" in changes or (stops and item.due_date is not None):
         nature = date_nature(item.kind, item.date_spec)
         fields |= manual_date_fields(
             store,
-            changes["due_date"],
+            changes.get("due_date", item.due_date),
             today,
             nature=nature,
             party_id=item.party_id,
@@ -346,10 +350,12 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
             in_person=pays_on_site(item.model_copy(update=fields)),
             collected=is_collected_or_incoming(item.model_copy(update=fields)),
         )
-        replaced = None if restart else replaced_occurrence(item)  # a new start stands in for nothing
+        # a new start, or no more repeats, stands in for nothing
+        replaced = None if restart or stops else replaced_occurrence(item)
         if item.recurrence is not None and fields["computation"] is not None and replaced is not None:
             fields["computation"] = standing_in(fields["computation"], replaced)  # recurrence.py, point 7
-        fields["computation"] = over_the_law(item, fields["due_date"], fields["computation"])  # point 8
+        if not stops:
+            fields["computation"] = over_the_law(item, fields["due_date"], fields["computation"])  # point 8
     fields |= _schedule_fields(item, fields, restart=restart)
     if "due_date" in changes and fields["computation"] is not None and replaced_occurrence(item) is None:
         fields["computation"] = _kept_day_stands_in(store, item.model_copy(update=fields), today)

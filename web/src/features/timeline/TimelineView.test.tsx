@@ -217,6 +217,17 @@ describe("your own dates and repeating ones (audit item 26)", () => {
     expect(within(rent).queryByRole("button")).toBeNull();
     expect(rent).toHaveTextContent("Repeats every month");
   });
+
+  it("puts how a date repeats on a line of its own that is never cut short (a phone has no hover for the rest)", async () => {
+    const client = await seededClient({ setup: ownDate });
+    renderWithProviders(<TimelineView />, { client, route: "/timeline" });
+    const list = screen.getByRole("region", { name: "Every date" });
+    const row = within(list).getByRole("button", { name: /UStVA/ });
+    const line = within(row).getByText("Repeats every month on the 3rd working day");
+    for (let el: HTMLElement | null = line; el && el !== row; el = el.parentElement) {
+      expect(el.className).not.toMatch(/truncate|line-clamp/);
+    }
+  });
 });
 
 describe("phones", () => {
