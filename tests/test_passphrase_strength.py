@@ -54,7 +54,7 @@ def bitwarden(chosen: random.Random) -> str:
 
 
 def one_password(chosen: random.Random) -> str:
-    """1Password's default: 20 letters, digits and symbols (about 129 bits)."""
+    """1Password's default: 20 letters, digits and symbols (about 130 bits)."""
     return _random_characters(
         chosen, 20, string.ascii_uppercase, string.ascii_lowercase, string.digits, SYMBOLS
     )
