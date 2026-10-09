@@ -8,6 +8,7 @@ import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import InboxPage from "@/pages/InboxPage";
+import { LettersList } from "./LettersList";
 import { markLetterSeen, resetSeenLetters } from "./seen";
 
 let srv: MockServer;
@@ -150,5 +151,24 @@ describe("Inbox letters list", () => {
     expect(within(rowOf(link)).queryByText("New")).toBeNull();
     // still on top: it did just arrive
     expect(screen.getAllByRole("heading", { level: 3 })[0]).toHaveTextContent(/^Just read/);
+  });
+
+  it("adds a page's own note as the last line of a letter's row, only where the page has one", async () => {
+    const [tax, other] = [srv.db.document("doc_payslip")!, srv.db.document("doc_library")!];
+    renderWithProviders(
+      <LettersList
+        groups={[{ key: "y2025", label: "Tax letters", docs: [tax, other] }]}
+        parties={new Map()}
+        open={new Map()}
+        note={(d) => (d.id === tax.id ? <span>Wage tax certificate attached</span> : null)}
+      />,
+    );
+    const row = rowOf(await screen.findByRole("link", { name: tax.title! }));
+    // one line under everything else in the row, in both the stacked and the table layout
+    const line = within(row).getByText("Wage tax certificate attached").closest("[data-letter-note]")!;
+    expect(line).not.toBeNull();
+    expect(line.parentElement!.lastElementChild).toBe(line);
+    expect(within(row).getAllByText("Wage tax certificate attached")).toHaveLength(1);
+    expect(rowOf(screen.getByRole("link", { name: other.title! })).querySelector("[data-letter-note]")).toBeNull();
   });
 });

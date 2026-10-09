@@ -59,6 +59,7 @@ from ordnung.models import (
     Direction,
     Document,
     DocumentDetail,
+    DocumentListEntry,
     DocumentStatus,
     Item,
     Job,
@@ -66,6 +67,7 @@ from ordnung.models import (
     LetterKind,
     PageInfo,
     ProofLink,
+    SearchFoundIn,
     Suggestion,
 )
 from ordnung.phone import PhoneRefusal
@@ -149,7 +151,7 @@ class DeleteResult(BaseModel):
 # --------------------------------------------------------------------------------------------------
 
 
-@router.get("/documents", response_model=list[Document])
+@router.get("/documents", response_model=list[DocumentListEntry])
 def list_documents(
     store: StoreDep,
     q: str | None = None,
@@ -161,10 +163,12 @@ def list_documents(
     private: bool | None = None,
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[Document]:
-    """Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
-    (``source="proof"``) are listed with their letter, never here."""
-    return store.list_documents(
+) -> list[DocumentListEntry]:
+    """Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
+    it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
+    added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
+    letter, never here."""
+    docs = store.list_documents(
         q=q,
         kind=kind,
         party_id=party_id,
@@ -176,6 +180,8 @@ def list_documents(
         ai_private=private,
         exclude_source=PROOF_SOURCE,
     )
+    found_in: SearchFoundIn | None = "letter" if q and q.strip() else None
+    return [DocumentListEntry.model_construct(**dict(doc), found_in=found_in) for doc in docs]
 
 
 def _page_infos(store: Store, doc_id: str) -> list[PageInfo]:
@@ -329,6 +335,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         given_to_model=store.given_to_model(doc_id),
         region_suggestion=region_suggestion(ledger, party, doc_id=doc_id) if party is not None else None,
         addressed_to=addressed_to(document, store.get_extraction(doc_id), store.get_profile().name),
+        scan_text_pages=[],
     )
 
 

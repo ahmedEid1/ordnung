@@ -142,6 +142,12 @@ def parse_day(value: str | None) -> date | None:
         return None
 
 
+def letter_day(doc: Document) -> date | None:
+    """The day a letter is filed under by year (the tax year, the export's folders): the date printed on
+    it, else the day it arrived (``None``: neither is known)."""
+    return parse_day(doc.doc_date) or parse_day(doc.received_date)
+
+
 def parse_timestamp(value: str | None) -> datetime | None:
     """ISO-8601 timestamp (``Z`` allowed) → aware datetime; ``None`` for missing or malformed values."""
     if not value:
@@ -1921,7 +1927,9 @@ def iban_misprint(ledger: Ledger) -> list[Suggestion]:
 
 
 def tax_documents(ledger: Ledger) -> list[Suggestion]:
-    """January–July: collect last year's tax-relevant letters for the tax return."""
+    """January–July: collect last year's tax-relevant letters for the tax return. They are counted by
+    :func:`letter_day`, as the Tax year page files them, and "See the documents" opens that page
+    (``target_type="tax_year"``, ``target_id`` the year)."""
     today = ledger.today
     if today.month > TAX_SEASON_LAST_MONTH:
         return []
@@ -1930,7 +1938,7 @@ def tax_documents(ledger: Ledger) -> list[Suggestion]:
         (
             doc
             for doc in ledger.documents.values()
-            if doc.tax_relevant and (parse_day(doc.doc_date) or date.min).year == year
+            if doc.tax_relevant and (letter_day(doc) or date.min).year == year
         ),
         key=lambda doc: (doc.doc_date or "", doc.id),
     )
@@ -1955,7 +1963,7 @@ def tax_documents(ledger: Ledger) -> list[Suggestion]:
             kind="tax",
             priority="normal",
             refs=[_ref("document", doc.id) for doc in docs[:10]],
-            action=_open("document", docs[0].id, "See the documents"),
+            action=_open("tax_year", str(year), "See the documents"),
             due_date=date(today.year, 7, 31),
         )
     ]

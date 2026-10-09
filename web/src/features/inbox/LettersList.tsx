@@ -9,7 +9,7 @@
  * in full in its tooltip), and from 64rem the letter's summary next to the sender.
  */
 import { Link } from "react-router";
-import { useId, useMemo } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { ListTodo, Lock, ShieldAlert } from "lucide-react";
 import type { Document, MailTrayItem, Party } from "@/api/types";
 import { useSuggestions } from "@/api/hooks";
@@ -39,10 +39,13 @@ export function LettersList({
   groups,
   parties,
   open,
+  note,
 }: {
   groups: LetterGroup[];
   parties: Map<string, Party>;
   open: Map<string, OpenSummary>;
+  /** The page's own line about a letter (the Tax year page: its tax note), the last line of its row; null: none. */
+  note?: (doc: Document) => ReactNode | null;
 }) {
   const tray = useTrayByDoc();
   const justRead = useOpenedTrayDocs();
@@ -85,6 +88,7 @@ export function LettersList({
                     tray={item}
                     isNew={Boolean(item) && !isReading(d) && !seen.has(d.id)}
                     scam={scams.has(d.id)}
+                    note={note?.(d) ?? null}
                   />
                 );
               })}
@@ -156,6 +160,7 @@ function LetterRow({
   tray,
   isNew,
   scam,
+  note,
 }: {
   doc: Document;
   party: Party | null;
@@ -163,6 +168,7 @@ function LetterRow({
   tray?: MailTrayItem;
   isNew: boolean;
   scam?: boolean;
+  note?: ReactNode;
 }) {
   const today = useTodayISO();
   const describedBy = useId();
@@ -246,6 +252,11 @@ function LetterRow({
               <span className="text-muted">{`${protectRefs(next.title)}${NBSP}·`}</span>{" "}
               <ActionCountdown action={action} variant="text" className="text-[12.5px]" />
             </p>
+          ) : null}
+          {note != null && note !== false ? (
+            <div data-letter-note className="mt-1.5 min-w-0 break-words text-[12.5px] text-muted">
+              {note}
+            </div>
           ) : null}
         </div>
         <div className="hidden min-w-0 @4xl:block">{doc.kind ? <KindBadge docKind={doc.kind} /> : null}</div>

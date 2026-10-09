@@ -1,6 +1,7 @@
 """The person's profile, the app settings and the first-run onboarding.
 
-``PUT`` merges the fields sent into the stored values (the web app sends partial objects). A new
+``PUT`` merges the fields sent into the stored values (the web app sends partial objects; ``moved_on``
+— the day the person said they moved in — is cleared with ``""``, like the other text fields). A new
 holiday region, country or postal buffer recomputes the dates of every letter's to-dos (contracts
 are recomputed on read anyway). Settings guard the watched inbox folder (never the home folder, a
 file-system root or Ordnung's own data), take the model every call runs on only as an id or alias
@@ -71,6 +72,12 @@ class ProfilePatch(BaseModel):
     iban: str | None = Field(
         default=None, max_length=50, description="your account, for refunds (empty: none)"
     )
+    moved_on: str | None = Field(
+        default=None, max_length=10, description="the day you moved in (YYYY-MM-DD; empty: no move)"
+    )
+    old_address: str | None = Field(
+        default=None, max_length=1000, description="your address before that move (empty: none)"
+    )
 
     @field_validator("name")
     @classmethod
@@ -108,6 +115,17 @@ class ProfilePatch(BaseModel):
         if not iban_valid(iban):
             raise ValueError("That IBAN isn't valid — check it against your bank card or banking app.")
         return iban
+
+    @field_validator("moved_on")
+    @classmethod
+    def _move_day(cls, value: str | None) -> str | None:
+        """An ISO day, normalised; empty clears the move (stored as no move: ``None``)."""
+        if value is None or not value.strip():
+            return value if value is None else ""
+        try:
+            return date.fromisoformat(value.strip()).isoformat()
+        except ValueError as exc:
+            raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
 
     @field_validator("region")
     @classmethod
@@ -179,6 +197,8 @@ def _merge_profile(ctx: AppContext, patch: ProfilePatch, **extra: Any) -> Profil
     changes = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
+    if changes.get("moved_on") == "":
+        changes["moved_on"] = None  # "" clears the move
     return ctx.store.save_profile(current.model_dump() | changes | extra)
 
 

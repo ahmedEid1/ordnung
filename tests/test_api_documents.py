@@ -19,7 +19,7 @@ from ordnung import clock
 from ordnung.api.routes.documents import document_detail
 from ordnung.db.store import Store
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
-from ordnung.models import DocumentDetail
+from ordnung.models import Document, DocumentDetail
 from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for, lifespan
 
 TEXT_LETTER = (
@@ -199,6 +199,23 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
         assert (await api.client.get(f"/api/documents/{doc_id}/pages/9.jpg")).status_code == 404
         missing = await api.client.get("/api/documents/doc_nothinghere")
         assert missing.status_code == 404 and "exist" in missing.json()["detail"]
+
+
+async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) -> None:
+    """``found_in`` is worked out for the list only (the letter itself has no such field): ``null`` when
+    the list wasn't searched. A letter with page text of its own has no scanner text kept."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        listed = (await api.client.get("/api/documents")).json()
+        assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
+        assert set(listed[0]) == set(Document.model_fields) | {"found_in"}
+        blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
+        assert [row["found_in"] for row in blank] == [None]
+        found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()
+        assert [(row["id"], row["found_in"]) for row in found] == [(doc_id, "letter")]
+        assert all(type(d) is Document for d in api.ctx.store.list_documents())
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["scan_text_pages"] == []
 
 
 async def test_other_originals_are_downloads(data_dir: Path) -> None:

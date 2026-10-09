@@ -161,6 +161,32 @@ describe("Ideas", () => {
     expect(ideaHref({ ...land, rule_id: "contract_review" })).toBe("?party=pty_techmarkt");
   });
 
+  it("“See the documents” on the tax Idea opens that year's tax letters", () => {
+    const tax = idea({
+      id: "sug_tax",
+      kind: "tax",
+      rule_id: "tax_documents",
+      action: { type: "open", draft_kind: null, target_type: "tax_year", target_id: "2025", label: "See the documents" },
+    });
+    expect(ideaActionLabel(tax)).toBe("See the documents");
+    expect(ideaHref(tax)).toBe("/inbox/taxes?year=2025");
+    expect(ideaHref({ ...tax, action: { ...tax.action!, target_id: "25/26" } })).toBe("/inbox/taxes");
+  });
+
+  it("“Write the letter” on a moving-checklist row opens a new-address letter to that sender, filled in", () => {
+    const tell = idea({
+      id: "sug_move",
+      kind: "hygiene",
+      rule_id: "moved_house",
+      action: { type: "open", draft_kind: null, target_type: "party", target_id: "pty_funknetz", label: "Write the letter" },
+    });
+    expect(ideaHref(tell)).toBe("/letters?kind=address_change&to=pty_funknetz");
+    // the row to register at the Bürgeramt acts in place
+    expect(ideaHref({ ...tell, action: { type: "none", draft_kind: null, target_type: null, target_id: null, label: "Not needed" } })).toBeNull();
+    // any other Idea about a sender still opens their details
+    expect(ideaHref({ ...tell, rule_id: "contract_review" })).toBe("?party=pty_funknetz");
+  });
+
   it("“Answer” takes the keyboard to the sender's State heading, not to Yes", async () => {
     const { srv } = useMockApi();
     srv.db.state.suggestions.unshift({

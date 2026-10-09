@@ -48,7 +48,7 @@ export function installMocks(opts: { latency?: number; full?: boolean } = {}): M
   };
 
   installMockEventSource();
-  setAssetResolver((path) => srv.resolveAsset(path));
+  setAssetResolver((path, query) => srv.resolveAsset(path, query));
   Object.assign(window, { __ordnungMock: srv, __ordnungMockEmit: emit });
   return srv;
 }

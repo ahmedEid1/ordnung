@@ -10,6 +10,7 @@ import type {
   Contract,
   Dashboard,
   DocumentDetail,
+  DocumentListEntry,
   Draft,
   Evidence,
   Item,
@@ -17,6 +18,7 @@ import type {
   RuleInfo,
   TimelineEntry,
   ListedItem,
+  Profile,
   WeeklySession,
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
@@ -518,6 +520,37 @@ describe("mock dataset", () => {
     const s = srv();
     for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).addressed_to, d.id).toBeNull();
     expect((await get<WeeklySession>(s, "/week")).backup).toBeNull();
+  });
+
+  it("says where a search found each letter, keeps no scanner text and knows of no move, like the API before them", async () => {
+    const s = srv();
+    const all = await get<DocumentListEntry[]>(s, "/documents");
+    expect(all.length).toBeGreaterThan(10);
+    expect(all.every((d) => d.found_in === null)).toBe(true);
+    const found = await get<DocumentListEntry[]>(s, "/documents", "q=Stadtwerke");
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((d) => d.found_in === "letter")).toBe(true);
+    expect((await get<DocumentListEntry[]>(s, "/documents", "q=%20%20")).every((d) => d.found_in === null)).toBe(true);
+    for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).scan_text_pages, d.id).toEqual([]);
+    expect([PROFILE.moved_on, PROFILE.old_address]).toEqual([null, ""]);
+  });
+
+  it("clears a move with an empty day, as the API does (null: no move told)", async () => {
+    const s = srv();
+    const put = async (body: Record<string, unknown>) => (await (await s.handle("PUT", "/profile", new URLSearchParams(), body)).json()) as Profile;
+    expect(await put({ moved_on: "2026-09-21", old_address: "Alte Straße 1\n12345 Musterstadt" })).toMatchObject({ moved_on: "2026-09-21" });
+    expect(await put({ name: "Sam Rivera" })).toMatchObject({ moved_on: "2026-09-21", old_address: "Alte Straße 1\n12345 Musterstadt" });
+    expect(await put({ moved_on: "", old_address: "" })).toMatchObject({ moved_on: null, old_address: "" });
+  });
+
+  it("answers the letters' ZIP link with an empty ZIP (the demo keeps no originals to export)", () => {
+    const url = srv().resolveAsset("/documents.zip", { year: 2025, until: "2026-05-31", tax: true })!;
+    expect(url).toMatch(/^data:application\/zip;base64,/);
+    const bytes = Buffer.from(url.split(",")[1]!, "base64");
+    // the 22-byte end record of a ZIP with no entries: a file any unzip tool opens
+    expect(bytes.length).toBe(22);
+    expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x05, 0x06]);
+    expect(bytes.subarray(4).every((b) => b === 0)).toBe(true);
   });
 
   it("says who a letter is addressed to when a test names someone else, as the API works it out", async () => {

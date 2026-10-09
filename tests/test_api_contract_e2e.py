@@ -24,7 +24,10 @@ from ordnung import clock
 from ordnung.api.routes import calendar_sync, sync
 from test_api_support import TODAY, Api, api_for, sse_messages
 
-NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
+NOT_CALLED = {
+    "/api/events": "an endless event stream (tested in test_api_ledger)",
+    "/api/documents.zip": "not written yet: answers 501 until the export lands",
+}
 
 
 @pytest.fixture(autouse=True)

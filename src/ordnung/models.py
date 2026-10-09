@@ -858,6 +858,11 @@ class Profile(_Model):
     onboarded: bool = False
     #: The person's own account, only for letters that ask for money back (e.g. the deposit).
     iban: str = ""
+    #: The day the person said they moved in at ``address`` (ISO ``YYYY-MM-DD``; ``None``: no move told).
+    #: Set only by the person ("I moved" in Settings → Profile), never guessed from a letter.
+    moved_on: str | None = None
+    #: The address before that move, for the new-address letter. Like ``address``, never put into a prompt.
+    old_address: str = ""
 
     @property
     def known_region(self) -> str | None:
@@ -1371,6 +1376,23 @@ class ListedItem(Item):
     aside: ItemAside | None = None
 
 
+#: Where a search of the letters found one: ``letter`` — its own words (title, file name, Claude's
+#: reading, page text, sender); ``scanner_text`` — only in the text a scanner added to a page nobody has
+#: read, which Ordnung hasn't checked.
+SearchFoundIn = Literal["letter", "scanner_text"]
+
+
+class DocumentListEntry(Document):
+    """A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never
+    stored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.
+
+    ``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the
+    list wasn't searched.
+    """
+
+    found_in: SearchFoundIn | None = None
+
+
 class ProofLink(_Model):
     """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
 
@@ -1439,6 +1461,9 @@ class DocumentDetail(_Model):
     #: them, the reading names no one, it isn't an incoming letter that was read, or the profile has no
     #: name yet). Worked out on read for this page, never stored: the letter itself has no such field.
     addressed_to: str | None = None
+    #: The pages (1-based) whose text came only from the scanner that made the file (no text of their own),
+    #: kept for search only: never shown as the letter's words, never checked, never sent to Claude.
+    scan_text_pages: list[int] = Field(default_factory=list)
 
 
 class TrackingInfo(_Model):

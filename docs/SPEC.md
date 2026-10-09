@@ -1366,7 +1366,7 @@ detached.
   `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
   — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
   listener's own stop, which waits up to 30 s for what is in flight.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (58)
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (59)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
   profile edits, phone access, backups, deleting, originals, held-letter decisions and hand-off sync
   stay on the computer, and the calendar files (`calendar.ics`, `items/{id}.ics`, `calendar/exported`)

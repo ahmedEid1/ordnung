@@ -20,6 +20,7 @@ import type {
   MailTrayItem,
   Party,
   Recurrence,
+  SearchFoundIn,
   Suggestion,
   TimelineEntry,
   TimelineMarker,
@@ -874,6 +875,14 @@ export class MockDb {
       .filter((x) => x.score > 0)
       .sort((a, b) => b.score - a.score);
     return scored.map((x) => x.d);
+  }
+
+  /**
+   * Where a search (`q`) found a letter, as `GET /api/documents` says it (`found_in`): its own words — no
+   * scanner text is kept here yet; null when the list wasn't searched.
+   */
+  foundIn(_doc: Document, q: string | null): SearchFoundIn | null {
+    return q?.trim() ? "letter" : null;
   }
 
   /** Items dated after the last calendar export (drives the "N new dates" Idea). */

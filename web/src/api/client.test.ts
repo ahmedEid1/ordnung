@@ -130,6 +130,16 @@ describe("client", () => {
     expect(api.thumbnailUrl("doc_1")).toBe("data:/documents/doc_1/thumbnail.jpg");
     expect(assetUrl("/calendar.ics")).toBe("/api/calendar.ics");
   });
+
+  it("builds the letters' ZIP link from the export choice, and hands the choice to the resolver", () => {
+    expect(api.lettersZipUrl({ year: 2025, until: "2026-05-31", tax: true })).toBe("/api/documents.zip?year=2025&until=2026-05-31&tax=true");
+    expect(api.lettersZipUrl({ party_id: "pty_fa", tax: false })).toBe("/api/documents.zip?tax=false&party_id=pty_fa");
+    expect(api.lettersZipUrl({})).toBe("/api/documents.zip");
+    const seen: unknown[] = [];
+    setAssetResolver((p, query) => (seen.push([p, query]), p === "/documents.zip" ? "data:application/zip;base64," : null));
+    expect(api.lettersZipUrl({ year: 2025 })).toBe("data:application/zip;base64,");
+    expect(seen).toEqual([["/documents.zip", { year: 2025 }]]);
+  });
 });
 
 describe("server events", () => {
