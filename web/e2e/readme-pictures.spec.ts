@@ -42,6 +42,8 @@ const FOLDERS = {
   a: join(SYNC_ROOT, COMPUTERS.a, "Nextcloud", "Ordnung"),
   b: join(SYNC_ROOT, COMPUTERS.b, "Nextcloud", "Ordnung"),
 };
+/** What the picture shows for the desktop's sync folder: a made-up home, never this computer's. */
+const SHOWN_FOLDER = "/home/sam/Nextcloud/Ordnung";
 /** Every call the stand-in Claude got this run (e2e/global-setup.ts writes it empty). */
 const CLAUDE_CALLS = `${REAL_DATA_DIR}-claude-calls.jsonl`;
 const CLIENT = { "X-Ordnung-Client": "web" };
@@ -224,6 +226,17 @@ test("your-computers.png: this computer in use, the other standing by with its l
     const text = await b.getByRole("main").innerText();
     expect(text, "the folder shown is the throwaway one").toContain(FOLDERS.b);
     expect(text, "no path of this computer's").not.toContain(homedir());
+    // the throwaway folder's temporary path says nothing to a reader: the picture shows a typical one in its place
+    // (the path is drawn in pieces that may break at any slash, so the whole <code> that holds it is replaced)
+    await b.evaluate(
+      ([from, to]) => {
+        for (const code of document.querySelectorAll("main code")) {
+          if (code.textContent === from) code.textContent = to;
+        }
+      },
+      [FOLDERS.b, SHOWN_FOLDER] as const,
+    );
+    expect(await b.getByRole("main").innerText()).toContain(SHOWN_FOLDER);
     const path = join(OUT, "your-computers.png");
     await b.screenshot({ path });
     saved("your-computers.png", path);

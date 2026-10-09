@@ -125,8 +125,8 @@ until you open `?mock=0`.
 ([`web/e2e/readme-pictures.spec.ts`](web/e2e/readme-pictures.spec.ts), part of `make capture`). The phone is
 Chromium emulating a Pixel 7 on the same computer, so its address shows as 127.0.0.1 (at home it is your
 phone's address on your Wi-Fi), and a stand-in for the sync tool copies the folder between the two
-computers. The phone picture puts three moments side by side: the code, the paired phone, and the computer
-once it paired.
+computers; the picture shows a typical path for that folder instead of its temporary one. The phone picture
+puts three moments side by side: the code, the paired phone, and the computer once it paired.
 
 **Also:** *one inbox* — a watched folder for your scanner or phone app, and e-mails (`.eml`) whose PDF
 and photo attachments become letters; new files wait on your computer until you choose *Read these* or
