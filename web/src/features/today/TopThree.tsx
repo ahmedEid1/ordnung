@@ -28,6 +28,7 @@ import { toast } from "@/components/ui/Toast";
 import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
+import { doneLine } from "@/features/items/repeat";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
@@ -150,6 +151,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
   const update = useUpdateItem();
   const navigate = useNavigate();
   const focus = useContext(TopFocusContext);
+  const today = useTodayISO();
   const pay = doc.data?.document.payment;
   const item = action.item;
   const code = item ? doc.data?.girocodes.find((g) => g.item_id === item.id) : undefined;
@@ -164,12 +166,13 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
     // (review round 4 of phase 2: no "Marked as paid", no Undo, focus lost — on a busy machine)
     focus?.leaving(action.key);
     update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
-      () => {
+      (moved) => {
         close();
         toast({
           tone: "success",
           title: "Marked as paid",
-          description: item.title,
+          // a repeating one stays open at its next date: "… · Next: Wed 4 Nov"
+          description: doneLine(item, moved, today),
           undo: async () => {
             await update.mutateAsync({ id: item.id, patch: { status: "open" } });
             focus?.returning(action.key);
@@ -244,6 +247,7 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
   const navigate = useNavigate();
   const update = useUpdateItem();
   const focus = useContext(TopFocusContext);
+  const today = useTodayISO();
   const verb = verbFor(action);
   const label = verbLabel(verb.label, action.title);
 
@@ -268,11 +272,11 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
         // as for "Mark as paid": the card can leave before the call's callbacks would run
         focus?.leaving(action.key);
         update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
-          () =>
+          (moved) =>
             toast({
               tone: "success",
               title: "Marked as done",
-              description: item.title,
+              description: doneLine(item, moved, today),
               undo: async () => {
                 await update.mutateAsync({ id: item.id, patch: { status: "open" } });
                 focus?.returning(action.key);

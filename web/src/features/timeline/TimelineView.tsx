@@ -7,7 +7,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Lock, Plus, X } from "lucide-react";
 import { useContracts, useItems, useLanes, useParties, useTimeline } from "@/api/hooks";
-import type { Item, RefLink, TimelineMarker } from "@/api/types";
+import type { Item, RefLink, TimelineEntry, TimelineMarker } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
 import { Button } from "@/components/ui/Button";
@@ -19,7 +19,8 @@ import { formatDate } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
 import { LanesChart, defaultLaneRange, refTarget, type LaneSelection, type LaneTarget } from "@/features/lanes";
-import { AddDateButton } from "@/features/items/AddDateDialog";
+import { AddDateButton, EditDateDialog } from "@/features/items/AddDateDialog";
+import { repeatLabel } from "@/features/items/repeat";
 import { CalendarExport } from "./CalendarExport";
 import { TimelineFilters } from "./TimelineFilters";
 import { TimelineList } from "./TimelineList";
@@ -141,6 +142,28 @@ export function TimelineView() {
 
   const hrefFor = useCallback((e: (typeof entries)[number]) => refTarget(e.ref, itemsById)?.href ?? null, [itemsById]);
 
+  // A date of the person's own with no page (no letter, no contract) opens "Edit your date" from its row; the
+  // dialog keeps the date it opened with while it closes. Focus goes back to the row, or to the list's heading
+  // when the row moved to another month.
+  const [editing, setEditing] = useState<{ item: Item; open: boolean } | null>(null);
+  const listHeading = useRef<HTMLHeadingElement | null>(null);
+  const ownItem = useCallback((e: TimelineEntry) => (e.ref?.type === "item" ? itemsById.get(e.ref.id) : undefined), [itemsById]);
+  const openFor = useCallback(
+    (e: TimelineEntry) => {
+      const item = ownItem(e);
+      if (!item || item.origin !== "manual" || refTarget(e.ref, itemsById)) return null;
+      return () => setEditing({ item, open: true });
+    },
+    [ownItem, itemsById],
+  );
+  const repeatsFor = useCallback(
+    (e: TimelineEntry) => {
+      const rule = repeatLabel(ownItem(e)?.recurrence);
+      return rule ? `Repeats ${rule}` : null;
+    },
+    [ownItem],
+  );
+
   // A retry of a failed load starts over as "pending" (and forgets the error): remember the error,
   // so the message stays on screen, worded the same, while "Try again" runs.
   const loaded = Boolean(lanesQ.data && timelineQ.data);
@@ -241,12 +264,14 @@ export function TimelineView() {
           groups={groups}
           today={today}
           hrefFor={hrefFor}
+          openFor={openFor}
+          repeatsFor={repeatsFor}
           highlight={highlight}
           scrollKey={String(filters.showPast)}
           header={
             <div className="flex flex-col gap-3 border-b border-line px-4 pb-4 pt-4 sm:px-5 sm:pt-5">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 id="timeline-list-title" className="display text-[21px] font-semibold leading-tight text-ink sm:text-[23px]">
+                <h2 id="timeline-list-title" ref={listHeading} tabIndex={-1} className="display text-[21px] font-semibold leading-tight text-ink outline-none sm:text-[23px]">
                   Every date
                 </h2>
                 <span className="text-sm text-muted">
@@ -284,6 +309,9 @@ export function TimelineView() {
           }
         />
       )}
+      {editing ? (
+        <EditDateDialog item={editing.item} open={editing.open} onClose={() => setEditing((was) => was && { ...was, open: false })} returnFocus={listHeading} />
+      ) : null}
     </>
   );
 }
