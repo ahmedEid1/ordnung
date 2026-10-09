@@ -924,6 +924,8 @@ async def test_week_endpoints(data_dir: Path) -> None:
         seed_ledger(api.ctx.store)
         body: dict[str, Any] = (await api.client.get("/api/week")).json()
         assert body["due"] is True and body["last_session"] is None
+        # letters and no backup made on this computer: the ending says it is time for one
+        assert body["backup"]["due"] is True and body["backup"]["last_backup_at"] is None
         assert [step["id"] for step in body["steps"]] == [
             "now",
             "new",
@@ -938,14 +940,27 @@ async def test_week_endpoints(data_dir: Path) -> None:
         dismissed = (await api.client.post("/api/week/dismiss")).json()
         assert dismissed["due"] is False and dismissed["last_session"] is None
         assert api.ctx.store.get_meta(DISMISSED_KEY) is not None
+        assert dismissed["backup"]["due"] is True
 
         done = (await api.client.post("/api/week/done")).json()
         assert done["due"] is False and done["last_session"] == "2026-09-28"
+        # Finish answers the session the page shows: its ending says it too
+        assert done["backup"]["due"] is True
         activity = (await api.client.get("/api/activity")).json()
         assert activity[0]["kind"] == "week.done" and activity[0]["message"] == "Weekly review done"
         # writes need the client header like every other change
         refused = await api.client.post("/api/week/done", headers={"X-Ordnung-Client": ""})
         assert refused.status_code in (400, 403)
+        # a backup made: nothing more to say (and nothing at all while none is due)
+        api.ctx.store.log_activity("backup.created", "Made an encrypted backup (3 letters, 0 files)")
+        assert (await api.client.get("/api/week")).json()["backup"] is None
+
+
+async def test_the_demos_weekly_review_never_asks_for_a_backup(data_dir: Path) -> None:
+    async with api_for(data_dir, demo=True) as api:
+        seed_ledger(api.ctx.store)
+        assert (await api.client.get("/api/week")).json()["backup"] is None
+        assert (await api.client.post("/api/week/done")).json()["backup"] is None
 
 
 # --------------------------------------------------------------------------------------------------

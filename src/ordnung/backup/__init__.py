@@ -35,13 +35,23 @@ not where: the one backup file Ordnung writes inside the data folder is hand-off
 passphrase before it is replaced (that passphrase was judged when its folder was set up, so a kept copy is
 never refused for it). A kept copy undoes a replacement on this computer; it is never synced, and it is
 lost with this computer's disk and with Delete everything.
+
+Each backup made is noted in the data folder's privacy log, so Settings and the weekly review can say when
+the last one was made (:mod:`ordnung.backup.reminder`): the browser's download by its route,
+``ordnung backup`` by :func:`note_backup_made`, and a restored copy notes the backup it came from
+(:func:`~ordnung.backup.restore.note_restored`). The note from the command line is written with plain
+SQLite, never by opening the store — that would bring an older database up to date as a side effect of a
+backup — and not at all into a database a newer Ordnung wrote. A note that can't be written never fails the
+backup: the file is made; Settings just won't count it.
 """
 
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import re
+import sqlite3
 from datetime import date
 from pathlib import Path
 
@@ -58,6 +68,9 @@ from ordnung.backup.container import (
     read_header,
 )
 from ordnung.backup.restore import RestoreResult, TargetInUse, TargetNotFree, restore_backup
+from ordnung.clock import now_iso
+from ordnung.config import Paths
+from ordnung.db.migrate import current_version, latest_version
 from ordnung.passphrase import COMMON_WORDS, MIN_PASSPHRASE_BITS, is_run, passphrase_bits
 
 __all__ = [
@@ -78,11 +91,13 @@ __all__ = [
     "TargetNotFree",
     "WrongPassphrase",
     "backup_file_name",
+    "backup_message",
     "check_backup",
     "earlier_suggestion",
     "estimate",
     "length_problem",
     "links_left_out",
+    "note_backup_made",
     "passphrase_problem",
     "read_header",
     "restore_backup",
@@ -192,3 +207,39 @@ def write_backup_file(
         with contextlib.suppress(FileNotFoundError):
             partial.unlink()
     return contents
+
+
+def backup_message(contents: BackupContents) -> str:
+    """The privacy-log words of a backup made here — the browser's download and ``ordnung backup`` alike."""
+    return f"Made an encrypted backup ({contents.letters} letters, {contents.files} files)"
+
+
+#: How long noting a backup waits for a busy database (a running Ordnung writing) before giving up.
+NOTE_TIMEOUT_S = 10.0
+
+
+def note_backup_made(data_dir: Path, contents: BackupContents) -> str | None:
+    """Note a backup made by ``ordnung backup`` in ``data_dir``'s privacy log (see the module policy):
+    ``None`` once noted, else why it wasn't."""
+    try:
+        conn = sqlite3.connect(Paths(data_dir).db, timeout=NOTE_TIMEOUT_S)
+    except sqlite3.Error as exc:
+        return str(exc)
+    try:
+        if current_version(conn) > latest_version():
+            return "a newer version of Ordnung wrote its database"
+        with conn:
+            conn.execute(
+                "INSERT INTO activity (ts, kind, message, data) VALUES (?, ?, ?, ?)",
+                (
+                    now_iso(),
+                    "backup.created",
+                    backup_message(contents),
+                    json.dumps({"made_at": contents.manifest.created_at}),
+                ),
+            )
+    except sqlite3.Error as exc:
+        return str(exc)
+    finally:
+        conn.close()
+    return None

@@ -4,13 +4,14 @@
  * look: nothing scrolls sideways at 320 px, the notification preview and long calendar addresses
  * wrap inside their cards, focus is never hidden under the fixed bars, the passphrase and
  * disconnect dialogs fit a phone as a sheet, all pass axe in light and dark mode — and a backup
- * made through the browser really is an Ordnung backup file. Settings → Your computers says that the
- * demo never syncs (hand-off sync's two real computers are e2e/real-app-sync.spec.ts).
+ * made through the browser really is an Ordnung backup file, after which the card says the last backup
+ * was made today. Settings → Your computers says that the demo never syncs (hand-off sync's two real
+ * computers are e2e/real-app-sync.spec.ts).
  */
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiGet, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
 
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
@@ -90,6 +91,13 @@ for (const [width, height] of [
     await open(page, "/settings?section=data", "Settings");
     const card = page.getByRole("region", { name: "Encrypted backup" });
     await expect(card).toContainText(/Now: \d+ letters · \d+ files · about/);
+    // when the last backup was made: none yet in the demo (until this file's own download, further down) — and
+    // never as a warning there, since the demo never says one is due
+    const { last_copy } = await apiGet<{ last_copy: { last_backup_at: string | null; due: boolean } }>(page, "/api/backup");
+    expect(last_copy.due).toBe(false);
+    if (last_copy.last_backup_at === null) await expect(card.getByText("No backup made on this computer yet.")).toBeVisible();
+    else await expect(card).toContainText("Last backup: today");
+    await inside(card.getByText(/^(No backup made on this computer yet\.|Last backup:)/).first(), card);
     await inside(card.getByText(/^ordnung restore /), card);
     // the date in the file name is never split over two lines (it is copied by hand sometimes)
     const dateLines = await card.getByText(/^ordnung restore /).evaluate((code) => {
@@ -290,6 +298,8 @@ test("a backup made in the browser is an encrypted Ordnung backup", async ({ pag
   expect(bytes.length).toBeGreaterThan(100_000); // the demo's letters and page images, encrypted
   expect(bytes.includes(Buffer.from("Sam Rivera"))).toBe(false);
   await expect(page.getByRole("region", { name: "Encrypted backup" }).getByRole("status")).toContainText(`Downloaded ${download.suggestedFilename()}`);
+  // the server noted it: the card asks again and says when
+  await expect(page.getByRole("region", { name: "Encrypted backup" })).toContainText("Last backup: today");
 });
 
 /** `ordnung.sync.DEMO_MESSAGE`: the demo's answer to hand-off sync (tests/test_e2e_support.py keeps the two equal). */

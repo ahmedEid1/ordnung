@@ -4,6 +4,7 @@ archives inside a validly encrypted file, and the ``ordnung backup`` / ``ordnung
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import io
 import json
@@ -101,6 +102,23 @@ def row_counts(folder: Path) -> dict[str, int]:
         conn.close()
 
 
+def restored_rows(rows: dict[str, int]) -> dict[str, int]:
+    """A restored copy's rows: the backup's, plus its privacy-log note of the backup it came from."""
+    return {**rows, "activity": rows["activity"] + 1}
+
+
+def backup_notes(folder: Path) -> list[tuple[str, str, dict[str, Any]]]:
+    """The privacy log's backup rows of a data folder: kind, message and data, oldest first."""
+    conn = sqlite3.connect(folder / DB_NAME)
+    try:
+        rows = conn.execute(
+            "SELECT kind, message, data FROM activity WHERE kind LIKE 'backup.%' ORDER BY id"
+        ).fetchall()
+    finally:
+        conn.close()
+    return [(kind, message, json.loads(data)) for kind, message, data in rows]
+
+
 def make_backup(folder: Path, out: Path, passphrase: str = PASS) -> Path:
     backups.write_backup_file(folder, out, passphrase, kdf=FAST)
     return out
@@ -118,8 +136,14 @@ def test_round_trip_is_byte_for_byte_with_the_same_rows(life: Path, tmp_path: Pa
     restored = result.target
     assert restored == tmp_path / "restored" and result.moved_aside is None
     assert file_digests(restored) == before_files
-    assert row_counts(restored) == before_rows
+    # the same rows, and one more: the restored copy notes the backup it came from
+    assert row_counts(restored) == restored_rows(before_rows)
     assert result.contents.manifest.tables == before_rows
+    ((kind, message, data),) = backup_notes(restored)
+    assert kind == "backup.restored" and data == {"made_at": result.contents.manifest.created_at}
+    assert message.startswith("Restored from an encrypted backup made on ")
+    assert message.endswith(f"({result.contents.letters} letters, {result.contents.files} files)")
+    assert backup_notes(life) == []  # the backed-up folder itself is untouched
     assert result.contents.files == len(before_files) == 5
     # the restored folder is a working Ordnung data folder
     store = Store.open(Paths(restored))
@@ -209,7 +233,7 @@ def test_the_demo_life_round_trips(tmp_path: Path) -> None:
     backup = make_backup(demo, tmp_path / "demo.ordnung-backup")
     restored = restore_backup(backup, PASS, tmp_path / "back").target
     assert file_digests(restored) == file_digests(demo)
-    assert row_counts(restored) == row_counts(demo)
+    assert row_counts(restored) == restored_rows(row_counts(demo))
     assert row_counts(restored)["documents"] > 20
 
 
@@ -448,7 +472,7 @@ def test_a_backup_made_with_the_old_key_costs_still_restores(life: Path, tmp_pat
     with backup.open("rb") as src:
         assert read_header(src).kdf == old
     result = restore_backup(backup, PASS, tmp_path / "restored")
-    assert row_counts(result.target) == row_counts(life)
+    assert row_counts(result.target) == restored_rows(row_counts(life))
     assert file_digests(result.target) == file_digests(life)
 
 
@@ -770,7 +794,7 @@ def test_force_moves_the_old_folder_aside(life: Path, tmp_path: Path) -> None:
     assert file_digests(target) == file_digests(life)
     again = restore_backup(backup, PASS, target, force=True, now=lambda: STAMP)
     assert again.moved_aside == tmp_path / "mine.before-restore-20260928-093000-2"
-    assert row_counts(again.moved_aside) == row_counts(life)
+    assert row_counts(again.moved_aside) == restored_rows(row_counts(life))  # the first restored copy
 
 
 def test_never_under_a_running_ordnung(life: Path, tmp_path: Path) -> None:
@@ -835,14 +859,66 @@ def test_backup_and_restore_commands(life: Path, tmp_path: Path, pinned_today: N
     assert checked.exit_code == 0, checked.output
     assert "complete and opens with this passphrase" in checked.output
 
+    # the backup is noted in the privacy log, in the words of the browser's download
+    contents = check_backup(backup, PASS)
+    assert backup_notes(life) == [
+        ("backup.created", backups.backup_message(contents), {"made_at": contents.manifest.created_at})
+    ]
+    assert "couldn't note" not in result.output
+
     restored = invoke("restore", str(backup), "--data-dir", str(tmp_path / "back"))
     assert restored.exit_code == 0, restored.output
     assert f"Restored {letters} letters" in restored.output
+    # the copy notes the backup it came from, made then (the backup's own note came after its snapshot)
+    notes = backup_notes(tmp_path / "back")
+    assert [(kind, data) for kind, _, data in notes] == [
+        ("backup.restored", {"made_at": contents.manifest.created_at})
+    ]
     assert file_digests(tmp_path / "back") == file_digests(life)
     # not the default folder: the command to start it names the folder, or it would open another one
     assert f"Start Ordnung with: ordnung serve --data-dir {tmp_path / 'back'}" in restored.output
     assert "Calendar sync" not in restored.output  # none was connected
     assert "Not in the backup" not in result.output  # nothing was left out
+
+
+def test_restore_check_notes_nothing(life: Path, tmp_path: Path) -> None:
+    backup = make_backup(life, tmp_path / "b.ordnung-backup")
+    checked = invoke("restore", str(backup), "--check")
+    assert checked.exit_code == 0, checked.output
+    assert backup_notes(life) == []
+
+
+def test_a_backup_of_a_newer_database_is_made_but_not_noted(
+    life: Path, tmp_path: Path, pinned_today: None
+) -> None:
+    """Never a write into a layout this Ordnung doesn't know: the backup is made, the note is left out."""
+    with contextlib.closing(sqlite3.connect(life / DB_NAME)) as conn, conn:
+        conn.execute(f"PRAGMA user_version = {latest_version() + 1}")
+    result = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "ordnung-backup-2026-09-28.ordnung-backup").is_file()
+    assert backup_notes(life) == []
+    assert "Ordnung couldn't note this backup in its privacy log" in result.output
+    assert "a newer version of Ordnung wrote its database" in result.output
+
+
+def test_a_note_that_cant_be_written_keeps_the_backup(
+    life: Path, tmp_path: Path, pinned_today: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real_connect = sqlite3.connect
+
+    def connect(database: Any, *args: Any, **kwargs: Any) -> sqlite3.Connection:
+        if kwargs.get("timeout") == backups.NOTE_TIMEOUT_S:
+            raise sqlite3.OperationalError("attempt to write a readonly database")
+        return real_connect(database, *args, **kwargs)
+
+    monkeypatch.setattr(backups.sqlite3, "connect", connect)
+    result = invoke("backup", "--data-dir", str(life), "--to", str(tmp_path))
+    assert result.exit_code == 0, result.output
+    assert check_backup(tmp_path / "ordnung-backup-2026-09-28.ordnung-backup", PASS).letters
+    assert "attempt to write a readonly database" in result.output
+    assert "Settings won't count it" in result.output
+    assert backup_notes(life) == []
 
 
 def test_a_restored_calendar_connection_starts_detached(life: Path, tmp_path: Path) -> None:
