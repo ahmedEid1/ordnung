@@ -979,7 +979,7 @@ def test_the_pooled_held_out_table_adds_up_the_three_recordings() -> None:
     ordnung = pooled["metrics"]["ordnung"]
     late = ordnung["dangerous_late_rate"]
     assert (
-        f"| **Ordnung**, the three held-out splits together¹¹ | {_with_interval(ordnung['due_date_accuracy'])} "
+        f"| **Ordnung**, the three later held-out splits together¹¹ | {_with_interval(ordnung['due_date_accuracy'])} "
         f"| **{_pct(late['value'])} %** ({int(late['k'])} of {int(late['n'])}) | yes |"
     ) in readme
     flat = _flat(readme)
@@ -1012,11 +1012,19 @@ def test_the_pooled_held_out_table_adds_up_the_three_recordings() -> None:
     )
     assert text["ci"][0] > 0 and alone["ci"][0] > 0 and tool["ci"][0] < 0 <= tool["ci"][1]
     assert (
-        f"**All three held-out splits together: {_pct(ordnung['due_date_accuracy']['value'])} %.** Pooled (row ¹¹), "
-        f"Ordnung is clearly ahead of the rules-text prompt ({points('llm_rules_text')}) and of the model alone "
+        f"**The three later held-out splits together: {_pct(ordnung['due_date_accuracy']['value'])} %.** Pooled "
+        f"(row ¹¹), Ordnung is ahead of the rules-text prompt ({points('llm_rules_text')}) and of the model alone "
         f"({points('llm_only')}), and the agent with the calculator is level with it or ahead "
         f"({points('llm_rules_tool')} for Ordnung)"
     ) in flat
+    # the first held-out run (the test split) isn't pooled, and there the rules-text prompt was ahead
+    first = _results("2026-09-25-sonnet-test.json")["metrics"]
+    assert first["llm_rules_text"]["due_date_accuracy"]["k"] > first["ordnung"]["due_date_accuracy"]["k"]
+    assert (
+        "On the first held-out run, on the test split, the rules-text prompt scored higher than Ordnung"
+        in flat
+    )
+    assert "clearly ahead" not in flat
 
 
 def test_scam_letters_are_also_scored_as_the_app_decides() -> None:
@@ -1078,10 +1086,15 @@ def test_readme_limitations_say_the_interface_is_english() -> None:
     purpose and the web app has no translation library); what Claude writes follows the chosen language."""
     limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
     assert (
-        "The app's own text is in English only: buttons, receipts, Ideas and notifications. Ordnung reads German "
-        "letters, and what Claude writes for you (explanations, translations, Ask's answers) follows the language "
-        "you choose in Settings; letters to German offices stay in German."
+        "The app's own text is in English only: buttons, receipts, the Ideas Ordnung's own rules make, and "
+        "notifications. Ordnung reads German letters, and what Claude writes for you (explanations, translations, "
+        "Ask's answers, Today's note and the weekly review's Ideas) follows the language you choose in Settings; "
+        "letters to German offices stay in German."
     ) in limitation
+    # audit (batch A review): the weekly review's Ideas and Today's note are Claude's, in the chosen language
+    for module, prompt in (("secretary/review.py", "review_system"), ("secretary/brief.py", "brief_system")):
+        source = " ".join((ROOT / "src" / "ordnung" / module).read_text(encoding="utf-8").split())
+        assert re.search(rf'"{prompt}",[^)]*language_name=language_name\(', source), module
     assert '<html lang="en">' in (ROOT / "web" / "index.html").read_text(encoding="utf-8")
     assert "English on purpose (the UI is English" in (ROOT / "src/ordnung/rules/explain.py").read_text(
         encoding="utf-8"
@@ -1140,13 +1153,21 @@ def test_readme_limitations_say_how_much_one_save_can_upload() -> None:
     and the provider's version history and trash may keep them."""
     churn = _churn()
     slice_mib = _whole(sync.DB_SLICE, _MIB)
+    # audit (batch A review): it said "after a day", but that is only for slices every computer has moved
+    # past, and the grace counts Ordnung's running time too (the engine collects garbage so)
+    assert sync.GC_GRACE_S == sync.GC_GRACE_RUNTIME_S
+    week = {7: "a week"}[_whole(sync.GC_GRACE_RUNTIME_S, _DAY_S)]
+    collect = (ROOT / "src" / "ordnung" / "sync" / "engine.py").read_text(encoding="utf-8")
+    assert "(SUPERSEDED_SLICE_GRACE_S, SUPERSEDED_SLICE_GRACE_S)" in collect
+    assert "if not all(past(head, ref) for head in live)" in collect
     limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
     assert (
         f"Hand-off sync saves the database in {slice_mib} MiB slices and uploads every slice a save changed, which "
         f"adds up on a large library: measured on a generated library of {churn['letters']:,} letters and "
         f"{churn['mib']} MiB of database, reading one more letter changed {churn['changed']} of its {churn['slices']} "
-        f"slices, about {churn['changed'] * slice_mib} MiB to upload. Ordnung deletes replaced slices after "
-        f"{_SYNC_NUMBERS['slice_grace']()}, but your provider's version history and trash may keep them longer: on "
+        f"slices, about {churn['changed'] * slice_mib} MiB to upload. Once every computer has caught up, Ordnung "
+        f"deletes replaced slices after {_SYNC_NUMBERS['slice_grace']()} of its running time (until then, after "
+        f"{week} of it), but your provider's version history and trash may keep them longer: on "
         "a metered connection or a small quota, turn version history off for the sync folder if your provider lets "
         "you, and empty its trash now and then."
     ) in limitation

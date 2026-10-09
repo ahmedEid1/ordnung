@@ -23,10 +23,10 @@ make web-dev     # the Vite dev server with hot reload (it sends /api to `make s
 make demo        # the sample life with recorded answers: no Claude needed, zero tokens
 ```
 
-Reading your own letters needs Claude Code, signed in (see the README). The tests don't call Claude
-(only the `live` ones do, and only with `ORDNUNG_LIVE_TESTS=1`): they use a fake model backend, the
-end-to-end tests a fake `claude` (`tests/fake_claude.py`), and the demo and benchmarks replay
-recorded answers.
+Reading your own letters needs Claude Code, signed in (see the README). The tests never call Claude:
+they use a fake model backend, the end-to-end tests a fake `claude` (`tests/fake_claude.py`), and the
+demo and benchmarks replay recorded answers. Once a week CI checks that a freshly installed Claude Code
+still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without signing in.
 
 ## Checks
 

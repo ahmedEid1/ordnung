@@ -43,7 +43,7 @@ body:
     id: doctor
     attributes:
       label: What `ordnung doctor` prints
-      description: It checks Claude Code, search, fonts, the web app and your data folder, and makes no model call. It shows folder paths, which can contain your user name; replace it if you like.
+      description: It checks Claude Code, search, fonts, the web app and your data folder, and makes no model call. It shows folder paths and, with hand-off sync, your computers' names (often with your first name, like Annas-MacBook-Pro); replace any name in them before you send it.
       render: text
     validations:
       required: true

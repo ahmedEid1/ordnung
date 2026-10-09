@@ -13,8 +13,8 @@ public.
 
 The button is there only while private vulnerability reporting is turned on for the repository: the
 owner turns it on once, in the repository's security settings. If you can't find it, open an issue
-titled "Security contact" that says nothing else, and you will be given a private way to send the
-report.
+with the **Security contact** form, which asks for nothing about the problem, and you will be given a
+private way to send the report.
 
 Please include:
 
@@ -27,8 +27,9 @@ Please include:
 **Never send real letters or personal data**, yours or anyone else's: no scans, photos or e-mails of
 real letters, no names, addresses, IBANs, tax or case numbers, no `ordnung.db`, data folder, backup
 file or sync folder from real use, no passphrases, session tokens, pairing codes or phone keys. A
-plain `ordnung trace` holds the letter's text, so don't send one of a real letter either. If a real
-letter is the only way to show the problem, describe it; we will ask for a made-up one.
+plain `ordnung trace` names the letter's sender, to-dos, threads and contracts and shows its dates, so
+don't send one of a real letter either. If a real letter is the only way to show the problem,
+describe it; we will ask for a made-up one.
 
 ## What is in scope
 

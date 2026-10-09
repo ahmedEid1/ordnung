@@ -1,0 +1,20 @@
+name: Security contact
+description: Ask for a private way to report a security problem, when the Security tab has no Report a vulnerability button. Nothing about the problem goes here.
+title: "Security contact"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Don't describe the problem here.** Issues are public, for everyone, for good. Open this only
+        when the repository's **Security** tab has no **Report a vulnerability** button: you will be given
+        a private way to send the report, and [SECURITY.md](https://github.com/ahmedEid1/ordnung/blob/main/SECURITY.md)
+        says what to put in it.
+
+        **Never attach real letters or personal data**, here or in the report.
+  - type: checkboxes
+    id: nothing-about-the-problem
+    attributes:
+      label: Before you open it
+      options:
+        - label: This issue says nothing about the problem itself.
+          required: true

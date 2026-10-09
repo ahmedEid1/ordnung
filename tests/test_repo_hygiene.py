@@ -170,6 +170,20 @@ def test_the_wheel_lists_the_notices_among_its_licence_files() -> None:
     assert "src/ordnung/web/dist/**" in pyproject["tool"]["hatch"]["build"]["targets"]["wheel"]["artifacts"]
 
 
+def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
+    """Audit (batch A review): the wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
+    code and fonts, the DejaVu fonts (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)."""
+    pyproject = tomllib.loads(_text("pyproject.toml"))
+    expression = set(pyproject["project"]["license"].split(" AND "))
+    notices = _text(f"src/ordnung/web/dist/{NOTICES}")
+    named = {part for line in re.findall(r"^Licence: (.+)$", notices, re.M) for part in line.split(" AND ")}
+    assert named and named <= expression, named - expression
+    assert "License: bitstream-vera" in _text("src/ordnung/drafts/fonts/LICENSE-DejaVu.txt")
+    assert "Bitstream-Vera" in expression
+    assert "CC BY 4.0" in _text("src/ordnung/rules/data/LICENSE-GeoNames.txt")
+    assert "CC-BY-4.0" in expression
+
+
 def test_the_readme_says_where_the_bundled_licences_are() -> None:
     readme = _text("README.md")
     disclaimer = readme.split("## Disclaimer", 1)[1]
@@ -193,6 +207,21 @@ def test_security_problems_are_reported_privately() -> None:
     config = _yaml(".github/ISSUE_TEMPLATE/config.yml")
     assert config["blank_issues_enabled"] is False
     assert any(link["url"] == f"{GITHUB}/blob/main/SECURITY.md" for link in config["contact_links"])
+
+
+def test_without_private_reporting_a_security_contact_issue_asks_for_nothing_about_the_problem() -> None:
+    """Audit (batch A review): SECURITY.md's fallback was an issue "that says nothing else", but blank
+    issues are off and the bug form requires what happened and the steps. A form of its own asks for
+    nothing but a box ticked to say the issue tells nothing about the problem."""
+    form = _form(".github/ISSUE_TEMPLATE/security_contact.yml")
+    assert form["title"] == "Security contact"
+    fields = [element for element in form["body"] if element["type"] != "markdown"]
+    assert [field["type"] for field in fields] == ["checkboxes"]
+    assert all(option["required"] is True for option in fields[0]["attributes"]["options"])
+    assert _warns_against_real_letters(form)
+    policy = " ".join(_text("SECURITY.md").split())
+    assert "**Security contact** form" in policy
+    assert "says nothing else" not in policy
 
 
 def _form(path: str) -> dict[str, Any]:
@@ -219,6 +248,8 @@ def test_the_bug_report_asks_for_the_version_and_the_doctor_and_warns_against_re
         assert command in json.dumps(fields[field]["attributes"]), field
         assert fields[field]["validations"]["required"] is True, field
     assert "ordnung demo" in json.dumps(form)
+    # doctor's sync line names this computer and the other one ("Annas-MacBook-Pro"), and the folders
+    assert "computers' names" in fields["doctor"]["attributes"]["description"]
     options = fields["no-personal-data"]["attributes"]["options"]
     assert all(option["required"] is True for option in options)
 
@@ -262,6 +293,23 @@ def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_t
         assert any(sorted(group["update-types"]) == ["minor", "patch"] for group in groups)
     contributing = _text("CONTRIBUTING.md")
     assert "make constraints" in contributing and "CONSTRAINTS_ARGS=--upgrade" in contributing
+
+
+def test_every_environment_variable_contributing_names_is_read_somewhere() -> None:
+    """Audit (batch A review): CONTRIBUTING named ``ORDNUNG_LIVE_TESTS=1`` for tests that call Claude,
+    though no such tests were left and nothing read the variable."""
+    named = set(re.findall(r"\bORDNUNG_[A-Z_]+\b", _text("CONTRIBUTING.md")))
+    code = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace")
+        for folder in ("src/ordnung", "tests", "scripts", "evals", ".github")
+        for path in (ROOT / folder).rglob("*")
+        if path.suffix in {".py", ".yml", ".yaml", ".ts", ".mjs"}
+        and "dist" not in path.parts
+        and path != Path(__file__).resolve()
+    )
+    for variable in named:
+        assert re.search(rf"\b{variable}\b", code), variable
+    assert "never call Claude" in " ".join(_text("CONTRIBUTING.md").split())
 
 
 def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() -> None:

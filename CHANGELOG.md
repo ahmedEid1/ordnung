@@ -30,9 +30,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   get the calendar file rather than live sync, and how much one hand-off sync save can upload on a large library.
 - The web app's licence notices ship with it: `THIRD-PARTY-NOTICES.txt`, next to the built app and among
   the package's licence files, names every package and font the app bundles (the Inter and Fraunces
-  fonts are under the SIL Open Font License) with its licence text.
-- [SECURITY.md](SECURITY.md) says how to report a security problem privately. A bug report now goes
-  through a form that asks for `ordnung --version` and `ordnung doctor` and warns never to attach a
+  fonts are under the SIL Open Font License) with its licence text. The package's licence expression now
+  names every licence it ships: `MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0`.
+- [SECURITY.md](SECURITY.md) says how to report a security problem privately (where GitHub's private
+  reporting is off, a *Security contact* issue form asks for nothing about the problem). A bug report now
+  goes through a form that asks for `ordnung --version` and `ordnung doctor` and warns never to attach a
   real letter, and [CONTRIBUTING.md](CONTRIBUTING.md) says how to work on Ordnung.
 
 ### Fixed
@@ -48,6 +50,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that passed before, still pass.
 - When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
   not the computer's.
+- When the weekly review can't write Ideas (Claude didn't answer, or its limit is reached), Settings → Privacy
+  & AI usage says so and that Ordnung tries again tomorrow; before, only Ordnung's log did.
 - The app no longer has a design-system page at `/dev/ui`; it stays in the demos and in development.
 - macOS: backups, and the copies hand-off sync keeps, are flushed to the disk itself before Ordnung goes on,
   as its other files are; before, they could still sit in the drive's cache.

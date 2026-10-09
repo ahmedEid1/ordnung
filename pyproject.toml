@@ -5,7 +5,9 @@ name = "ordnung"
 dynamic = ["version"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 readme = "README.md"
-license = "MIT"
+# Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
+# notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
+license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
 # the web build's notices: the licences of the code and fonts it bundles (web/scripts/third-party-notices.mjs)
 license-files = [
   "LICENSE",
