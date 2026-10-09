@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, get_args
+from typing import TYPE_CHECKING, Any, cast, get_args
 
 from ordnung.models import (
     DocumentStatus,
@@ -79,7 +79,7 @@ def reading_end(root: TraceSpanRecord) -> ReadingEnd:
     """How a reading ended (its ``ended`` attribute; readings stored before it: from its status)."""
     ended = root.attributes.get("ended")
     if ended in ("done", "failed", "paused", "stopped"):
-        return ended
+        return cast(ReadingEnd, ended)
     if root.status == "ok":
         return "done"
     return "failed" if root.attributes.get("result") == "failed" else "stopped"

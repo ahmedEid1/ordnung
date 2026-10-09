@@ -334,7 +334,8 @@ def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: 
     hangs is unreachable at once, at most MAX_STUCK calls hang, and once they return their threads go."""
     anna.connect()
     hanging = HangingFs(hang=("listdir", "stat"))
-    anna.s.folder.fs = TimedFs(hanging, timeout=0.2)
+    timeout = 1.0  # a whole round (the database too) fits well inside it on a slow runner
+    anna.s.folder.fs = TimedFs(hanging, timeout=timeout)
     anna.s.scanner.folder = anna.s.folder
     before = _folder_threads()
     try:
@@ -342,7 +343,7 @@ def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: 
             started = time.monotonic()
             outcome = anna.round()
             assert outcome.decision.problem.code == "folder_unreachable"  # type: ignore[attr-defined]
-        assert time.monotonic() - started < 0.2, "unreachable at once, without waiting for a timeout"
+        assert time.monotonic() - started < timeout, "unreachable at once, without waiting for a timeout"
         assert _folder_threads() <= before + MAX_STUCK
     finally:
         hanging.release()

@@ -42,22 +42,66 @@ jobs:
           .venv/bin/ruff format --check src tests scripts evals
       - name: Type check
         run: .venv/bin/mypy
-      - name: Tests
+      - name: Tests (and pyproject.toml's coverage floor for the whole package)
         env:
           # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
           ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
         run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
-      - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
+      - name: Coverage floors of hand-off sync and phone access (read from the run above)
         if: matrix.python == '3.12'
+        run: |
+          .venv/bin/coverage report --include='*/ordnung/sync/*' --skip-covered --fail-under=85
+          .venv/bin/coverage report --include='*/ordnung/phone/*' --skip-covered --fail-under=89
+
+  backend-slow:
+    name: Backend, slow checks (Python 3.12)
+    # the slow tests, the replayed benchmarks and demo --check: in the 3.12 leg of "backend" they took the job
+    # to 36 of its 45 minutes, so a slow runner could time it out
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Install (the versions in constraints.txt)
+        run: |
+          uv venv .venv
+          uv pip install -e ".[dev]" -c constraints.txt
+      - name: Slow tests (every recorded reading replayed, and the page timing; once, without coverage)
         run: .venv/bin/pytest -m slow
       - name: Rules engine keeps 100 % line and branch coverage
-        if: matrix.python == '3.12'
         run: .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
       - name: Benchmark (replayed, deterministic)
-        if: matrix.python == '3.12'
-        run: .venv/bin/ordnung eval --min-accuracy 0.95 --max-dangerous-late 0
+        # the gates of this step and the next ask for as many right dates as the published replay of the
+        # current code gives on each split, and none dangerously late ("with_land" in the file the step after
+        # them compares with; tests/test_ci_workflow.py checks each gate against it)
+        run: .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
+      - name: Benchmark replayed on the holdout, holdout2 and dev splits (Ordnung alone, no model calls)
+        run: |
+          .venv/bin/ordnung eval --split holdout --conditions ordnung --min-accuracy 0.98 --max-dangerous-late 0 --quiet
+          .venv/bin/ordnung eval --split holdout2 --conditions ordnung --min-accuracy 0.98 --max-dangerous-late 0 --quiet
+          .venv/bin/ordnung eval --split dev --conditions ordnung --min-accuracy 0.96 --max-dangerous-late 0 --quiet
+      - name: The replay without the sender's Land gives the published numbers
+        env:
+          PUBLISHED: evals/results/2026-10-08-claude-sonnet-5-without-land.json
+        # every split replayed three ways (scripts/eval_without_land.py) into a temporary folder, then compared
+        # with the published file, split by split
+        run: |
+          .venv/bin/python -m scripts.eval_without_land --date "$(basename "$PUBLISHED" | cut -c1-10)" \
+            --out "$RUNNER_TEMP/without-land"
+          .venv/bin/python - "$PUBLISHED" "$RUNNER_TEMP/without-land/$(basename "$PUBLISHED")" <<'EOF'
+          import json
+          import sys
+
+          published, replayed = (json.load(open(path, encoding="utf-8"))["splits"] for path in sys.argv[1:])
+          differ = sorted(name for name in published.keys() | replayed.keys() if published.get(name) != replayed.get(name))
+          for name in differ:
+              print(f"{name}: the replay doesn't give the published numbers", file=sys.stderr)
+          sys.exit(1 if differ else 0)
+          EOF
       - name: Ask benchmark (replayed, deterministic)
-        if: matrix.python == '3.12'
         # thresholds and the one known attack (the rent's own amount in a comparison): see the notes in
         # docs/evals-ask.md; --check-docs fails when the committed page or results file is not what this
         # replay writes
@@ -65,7 +109,6 @@ jobs:
           .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
           --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
       - name: Demo rebuilds identically from the samples and recordings
-        if: matrix.python == '3.12'
         run: .venv/bin/ordnung demo --check
 
   lowest:
@@ -107,6 +150,53 @@ jobs:
         run: .venv/bin/pytest -m "not slow" --deselect tests/test_openapi_contract.py::test_web_openapi_json_is_current
       - name: Demo rebuilds identically
         run: .venv/bin/ordnung demo --check
+
+  rules-age:
+    name: Rules checked against the law in the last 90 days
+    # weekly: fails once LAST_CHECKED (src/ordnung/rules/catalog.py) is more than 90 days old, and names the
+    # pending changes to re-check (scripts/check_rules_age.py); pull requests never fail on it
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          uv venv .venv
+          uv pip install -e . -c constraints.txt
+      - name: LAST_CHECKED is at most 90 days old
+        run: .venv/bin/python -m scripts.check_rules_age
+
+  claude-code:
+    name: Claude Code takes Ordnung's flags (${{ matrix.claude }})
+    # weekly: installs the real Claude Code the way the README says (Anthropic's installer), the newest and the
+    # oldest Ordnung takes, and checks every flag Ordnung passes (scripts/check_claude_flags.py) without signing
+    # in: no account, nothing on its input, no tokens. While the job is new a failure shows here without
+    # failing the run.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        claude: [latest, "2.1.0"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.12"
+      - name: Install Ordnung
+        run: |
+          uv venv .venv
+          uv pip install -e . -c constraints.txt
+      - name: Install Claude Code with Anthropic's installer
+        run: curl -fsSL https://claude.ai/install.sh | bash -s ${{ matrix.claude }}
+      - name: Claude Code takes every flag Ordnung passes (not signed in)
+        run: .venv/bin/python -m scripts.check_claude_flags --claude "$HOME/.local/bin/claude"
 
   audit:
     name: Dependency audit
@@ -271,12 +361,14 @@ jobs:
           cd web && npm ci && npx playwright install --with-deps chromium
       - name: Checks that need both toolchains (node + web/node_modules and the Python package)
         # the static demo's My numbers and weekly session match the Python code; the README's Vitest and
-        # Playwright counts hold. Only this job has both, so here they must run instead of skipping.
+        # Playwright counts hold; a web build ships the licences of what it bundles. Only this job has both,
+        # so here they must run instead of skipping.
         env:
           ORDNUNG_REQUIRE_MOCK_CHECK: "1"
         run: >-
           .venv/bin/pytest -q tests/test_mock_numbers.py
           tests/test_docs_claims.py::test_readme_vitest_and_playwright_counts_hold
+          tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
       - name: Build UI
         run: cd web && npm run build
       - name: Playwright (the demo; then the real app reading with a fake Claude)

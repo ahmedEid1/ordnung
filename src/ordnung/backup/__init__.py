@@ -12,9 +12,9 @@ The passphrase policy for *new* backups (:func:`passphrase_problem`): at least
 :data:`~ordnung.passphrase.MIN_PASSPHRASE_BITS` bits by :func:`~ordnung.passphrase.passphrase_bits` — the
 rule of a new sync folder, for the same reason: a backup on another drive or in a cloud folder can be
 copied and guessed at offline for years. It is checked where a passphrase is chosen (``ordnung backup``,
-the browser's download), and both of them suggest a strong one. The estimator counts words, so a random
-password often falls short (symbols don't count, a run of letters counts as one word at most); what
-Ordnung 0.1.0 suggested still counts as strong (:func:`earlier_suggestion`), and a passphrase a script
+the browser's download), and both of them suggest a strong one. The estimator counts words, or a
+password manager's random characters by the alphabet they use; what Ordnung 0.1.0 suggested still
+counts as strong (:func:`earlier_suggestion`), and a passphrase a script
 gives in ``ORDNUNG_BACKUP_PASSPHRASE`` that falls short only gets a warning, so a scheduled backup is
 still made (its length is checked as ever). Its key takes a sync folder's scrypt costs
 (:data:`DEFAULT_KDF`); a backup made with the earlier, cheaper ones (2^17) opens as before, since the
@@ -45,6 +45,7 @@ import re
 from datetime import date
 from pathlib import Path
 
+from ordnung import durable
 from ordnung.backup.archive import BackupContents, check_backup, estimate, links_left_out, write_backup
 from ordnung.backup.container import (
     DEFAULT_KDF,
@@ -93,8 +94,9 @@ MIN_PASSPHRASE_CHARS = 12
 MAX_PASSPHRASE_CHARS = 1024
 WEAK_PASSPHRASE_MESSAGE = (
     "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the "
-    "cloud: it counts words, and random characters count for little. Use five or more words that don't "
-    "belong together, each of three letters or more — or take the suggested one."
+    "cloud. Use five or more words that don't belong together, each of three letters or more, or a "
+    "password manager's random password of 16 characters or more with capital and small letters — or take "
+    "the suggested one."
 )
 #: What Ordnung 0.1.0's backup dialog suggested: four groups of five of 31 letters and digits, drawn at
 #: random (``k7qmx-3vxdp-9tawr-2emnb``: about 99 bits, though the estimator counts each group as a word).
@@ -182,7 +184,7 @@ def write_backup_file(
         with os.fdopen(fd, "wb") as out:
             contents = write_backup(data_dir, out, passphrase, kdf=kdf)
             out.flush()
-            os.fsync(out.fileno())
+            durable.fsync(out.fileno())  # F_FULLFSYNC on macOS
         if target.exists():  # appeared while the backup was written
             raise BackupError(f"{target} already exists. Choose another name, or move the old backup first.")
         partial.replace(target)

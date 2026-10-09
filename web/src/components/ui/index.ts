@@ -1,6 +1,6 @@
 /**
  * Ordnung design system. Small, composable, accessible components built on the "calm paper"
- * tokens in `styles/index.css`. See the live gallery at `/dev/ui` (in dev and mock mode).
+ * tokens in `styles/index.css`. See the live gallery at `/dev/ui` (in development, mock mode and the demos).
  */
 export { Button, IconButton, buttonVariants, type ButtonProps, type ButtonVariant, type ButtonSize, type IconButtonProps } from "./Button";
 export { Spinner } from "./Spinner";

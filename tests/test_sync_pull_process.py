@@ -81,11 +81,11 @@ def test_kill_during_apply(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         return child
 
     # a run left alone: how long the take-over takes, so the kills spread over all of it
-    child = launch()
-    started = time.monotonic()
-    assert child.stdout is not None and child.stdout.readline().strip() == "done"
-    span = time.monotonic() - started
-    assert child.wait() == 0
+    with launch() as child:  # each child's pipe closes as it ends
+        started = time.monotonic()
+        assert child.stdout is not None and child.stdout.readline().strip() == "done"
+        span = time.monotonic() - started
+        assert child.wait() == 0
     conn = sqlite3.connect(f"{(data / 'ordnung.db').resolve().as_uri()}?mode=ro", uri=True)
     try:
         assert conn.execute("SELECT value FROM meta WHERE key = ?", (SYNC_MARK_KEY,)).fetchone()[0] == target
@@ -93,10 +93,10 @@ def test_kill_during_apply(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
         conn.close()
     outcomes = {"old": 0, "new": 0}
     for _run in range(200):
-        child = launch()
-        time.sleep(rng.uniform(0, span * 1.2))
-        child.send_signal(signal.SIGKILL)
-        child.wait()
+        with launch() as child:
+            time.sleep(rng.uniform(0, span * 1.2))
+            child.send_signal(signal.SIGKILL)
+            child.wait()
         conn = sqlite3.connect(f"{(data / 'ordnung.db').resolve().as_uri()}?mode=ro", uri=True)
         try:
             assert conn.execute("PRAGMA integrity_check").fetchall() == [("ok",)]

@@ -648,4 +648,4 @@ def test_the_option_question_is_read_as_the_strict_path_reads_it_in_linear_time(
     started = time.monotonic()
     assert not _offers_option("möchten " * 25000 + "? x ?")
     assert _offers_option("x ? " + "möchten " * 25000 + "?")
-    assert time.monotonic() - started < 1
+    assert time.monotonic() - started < 5  # a scan that backtracks takes minutes

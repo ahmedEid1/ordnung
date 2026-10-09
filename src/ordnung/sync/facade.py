@@ -92,6 +92,7 @@ from ordnung.sync.kept import kept_copies, write_index
 from ordnung.sync.local import Local, clean_name, in_use_on, keyring_account, load_state, machine_id
 from ordnung.sync.model import Lineage, Notice, Summary
 from ordnung.sync.pull import Staged, abandon, removed_letters, resume_interrupted, unfinished
+from ordnung.sync.push import PushResult
 from ordnung.sync.scan import Completeness, FolderView, HeadView, Problem
 from ordnung.sync.scrub import summary as live_summary
 from ordnung.sync.status import (
@@ -569,7 +570,7 @@ class RealSession:
         view = self.inner.view
         return view is not None and view.holder is not None and view.holder != self.inner.state.computer
 
-    def push(self, store: Store, *, reason: str, hand_over: bool = False) -> core.PushResult | None:
+    def push(self, store: Store, *, reason: str, hand_over: bool = False) -> PushResult | None:
         inner = self.inner
         state = inner.state
         if not inner.started and reason != "shutdown":
@@ -588,7 +589,7 @@ class RealSession:
         if hand_over:
             if self._held_elsewhere():
                 # another computer took over (R3): stand by whatever happens to the late save
-                late: core.PushResult | None = None
+                late: PushResult | None = None
                 try:
                     late = inner.push(store, head_state="standing_by")
                 finally:

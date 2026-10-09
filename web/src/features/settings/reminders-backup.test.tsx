@@ -12,7 +12,7 @@ import type { DesktopReminders } from "@/api/types";
 import { mockNotification } from "@/mocks/data/reminders";
 import { createMockServer } from "@/mocks/server";
 import { NB_HYPHEN } from "@/lib/glue";
-import { backupStrengthLine, backupSummary, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, WEAK_PASSPHRASE_MESSAGE } from "./backup";
+import { backupStrengthLine, backupSummary, earlierSuggestion, failureSentence, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, WEAK_PASSPHRASE_MESSAGE } from "./backup";
 import { MIN_PASSPHRASE_BITS, passphraseBits } from "./passphrase";
 import { deleteCalendarNote } from "./calendarSync";
 import { autostartLabel, failureDetail, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
@@ -122,6 +122,11 @@ describe("backup helpers", () => {
     expect(passphraseProblem(STRONG, STRONG)).toBeNull();
     expect(passphraseProblem(STRONG)).toBeNull();
     expect(passphraseProblem("twenty chars exactly", "twenty chars exactly", 24)?.message).toMatch(/at least 24/);
+    // a password manager's random password: its characters count, not only its words (0.2.0 review)
+    expect(passphraseProblem("Xk9#mQ2!vR7@pL4$", "Xk9#mQ2!vR7@pL4$")).toBeNull();
+    expect(backupStrengthLine("Xk9#mQ2!vR7@pL4$")).toEqual({ tone: "ok", text: "Strong enough for a backup kept on another drive or in the cloud." });
+    expect(WEAK_PASSPHRASE_MESSAGE).toContain("password manager");
+    expect(WEAK_PASSPHRASE_MESSAGE).not.toContain("count for little");
   });
 
   it("still takes a passphrase Ordnung 0.1.0 suggested, but not a pattern in its shape", () => {
@@ -130,9 +135,12 @@ describe("backup helpers", () => {
       expect(passphraseProblem(earlier, earlier)).toBeNull();
       expect(backupStrengthLine(earlier)?.tone).toBe("ok");
     }
-    for (const pattern of ["water-water-water-water", "abcde-fghjk-mnpqr-stuvw", "after-these-three-seven", "Fsumn-hqfzc-jgtck-crjwz"]) {
+    for (const pattern of ["water-water-water-water", "abcde-fghjk-mnpqr-stuvw", "after-these-three-seven"]) {
       expect(passphraseProblem(pattern, pattern)).toEqual({ field: "passphrase", message: WEAK_PASSPHRASE_MESSAGE });
     }
+    // a capital takes it out of 0.1.0's shape (it drew none), but its letters are random: they count as random characters now
+    expect(earlierSuggestion("Fsumn-hqfzc-jgtck-crjwz")).toBe(false);
+    expect(passphraseProblem("Fsumn-hqfzc-jgtck-crjwz", "Fsumn-hqfzc-jgtck-crjwz")).toBeNull();
     // the server's shape, character for character
     expect(/^EARLIER_SUGGESTION = re\.compile\(r"(.+)"\)$/m.exec(BACKUP_POLICY)?.[1]).toBe("[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}");
   });

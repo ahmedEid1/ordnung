@@ -50,15 +50,15 @@ from email.message import EmailMessage, MIMEPart
 from html.parser import HTMLParser
 from io import BufferedReader
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple
 
-import pdfplumber
 import pypdfium2 as pdfium
 import pypdfium2.raw as raw
 from pdfminer.pdfdocument import PDFDocument, PDFStandardSecurityHandler, PDFStandardSecurityHandlerV4
 from pdfminer.pdfinterp import PDFResourceManager
 from pdfminer.pdfparser import PDFParser, PDFSyntaxError
 from pdfminer.pdftypes import PDFObjRef
+from pdfplumber.pdf import PDF
 from PIL import ImageColor, ImageFont
 
 from ordnung.config import PACKAGE_DIR
@@ -290,7 +290,7 @@ class _Document(PDFDocument):
         return found
 
 
-class _PDF(pdfplumber.PDF):
+class _PDF(PDF):
     """pdfplumber's PDF over :class:`_Document` (pdfplumber's own constructor makes an unbounded one),
     without the document information, which nothing reads."""
 
@@ -308,7 +308,7 @@ class _PDF(pdfplumber.PDF):
         self.metadata = {}
 
 
-def open_pdf(path: Path) -> pdfplumber.PDF:
+def open_pdf(path: Path) -> PDF:
     """The PDF at ``path`` for reading its text layer, on a lookup-bounded document (module docstring)."""
     stream = path.open("rb")
     try:
@@ -932,7 +932,7 @@ def _clean_text(text: str) -> str:
 
 def _email_document(data: bytes) -> TextDocument:
     """Headers (From, To, Cc, Date, Subject), the body and attachment names of an e-mail."""
-    message = cast(EmailMessage, email.message_from_bytes(data, policy=email.policy.default))
+    message = email.message_from_bytes(data, policy=email.policy.default)
     lines = [
         f"{name}: {value}" for name in ("From", "To", "Cc", "Date", "Subject") if (value := message.get(name))
     ]

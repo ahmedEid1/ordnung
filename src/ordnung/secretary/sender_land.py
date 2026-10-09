@@ -176,9 +176,8 @@ def _open_dates(ledger: Ledger, party: Party, doc_id: str | None) -> list[_Dated
         _Dated(
             SuggestionRef(type="item", id=item.id), action_day(item), tuple(item.computation.warnings), item
         )
-        for item in ledger.items
-        if (item.doc_id == doc_id if doc_id is not None else item.party_id == party.id)
-        and item.computation is not None
+        for item in (ledger.items_of(doc_id) if doc_id is not None else ledger.items_of_party(party.id))
+        if item.computation is not None
         and _may_wait(item.computation.warnings)
         and _recomputed_by_land(item)
         and is_active(item, ledger.today)

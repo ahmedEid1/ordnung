@@ -982,7 +982,8 @@ class FakeSession:
         data = _folder_data(self.folder)
         assert data is not None
         state = self.state
-        source_head = next(head for head in data["heads"].values() if head["version"] == staged.version)
+        # the computer that saved this version (its head may have moved on to a newer one since)
+        source_head = data["heads"][data["versions"][staged.version]["computer"]]
         state.update(
             base=staged.version,
             pushed=counter(store),

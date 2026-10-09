@@ -16,14 +16,62 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
+  sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
+  own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
+  Weekly, it fails once the rules were last checked against the law more than 90 days ago, and checks that a
+  freshly installed Claude Code (the newest, and 2.1.0) still takes every flag Ordnung passes, without
+  signing in.
+- **The benchmark page pools the three held-out splits** into one table with tighter intervals, and each
+  held-out split now also shows how the rest of each letter was read, the adversarial letters and what its one
+  recording cost ([docs/evals.md](docs/evals.md)). Scam letters are scored as the app decides too, beside the
+  benchmark's looser rule: in the app, an IBAN that only fails its checksum is no scam sign on its own.
+- README's Limitations now say that the app's own text is in English only, that Google Calendar and Outlook.com
+  get the calendar file rather than live sync, and how much one hand-off sync save can upload on a large library.
+- The web app's licence notices ship with it: `THIRD-PARTY-NOTICES.txt`, next to the built app and among
+  the package's licence files, names every package and font the app bundles (the Inter and Fraunces
+  fonts are under the SIL Open Font License) with its licence text. The package's licence expression now
+  names every licence it ships: `MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0`.
+- [SECURITY.md](SECURITY.md) says how to report a security problem privately (where GitHub's private
+  reporting is off, a *Security contact* issue form asks for nothing about the problem). A bug report now
+  goes through a form that asks for `ordnung --version` and `ordnung doctor` and warns never to attach a
+  real letter, and [CONTRIBUTING.md](CONTRIBUTING.md) says how to work on Ordnung.
 
 ### Fixed
 
+- A password manager's strong random password with capital and small letters now protects a new backup or
+  a new sync folder. 0.2.0 counted only words, so symbols and capitals counted nothing and many such
+  passwords were refused. Now random characters count by the alphabet they use (14 random letters and
+  digits are about 83 bits), unless they show a pattern people make: a common word, also in leetspeak; a
+  year or a date, also with `_`, `#` or the like between its parts; a run or a keyboard walk, also typed
+  with Shift; a repeat; or words, also in capitals, with caps lock on, in alternating case or in another
+  script. A name or a word with digits and symbols ("Max#Richter#94"), also with a stray letter or two
+  ("Andreas!88#Xy"), counts as its words and digits, and so does a word spelled in leetspeak
+  ("Schm3tt3rl1ng!"). Random small letters alone look like one long word, so they still count as one.
+  Apple's strong passwords ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that
+  passed before, still pass, except words typed with a dotless ı for an i ("Dıe"): they now count as the
+  words they are, as the web app already counted them.
+- When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
+  not the computer's.
+- When the weekly review can't write Ideas (Claude didn't answer, or its limit is reached), Settings → Privacy
+  & AI usage says so and that Ordnung tries again tomorrow; before, only Ordnung's log did.
+- The app no longer has a design-system page at `/dev/ui`; it stays in the demos and in development.
+- macOS: backups, and the copies hand-off sync keeps, are flushed to the disk itself before Ordnung goes on,
+  as its other files are; before, they could still sit in the drive's cache.
+- A big library stays quick: the weekly review, and the Ideas worked out again after each letter is read,
+  no longer slow down with the square of the number of letters and senders.
+- A PDF that hides a decompression bomb behind ASCII85 or ASCIIHex data with a stray character in it is
+  refused at upload, as other bombs are. The check read such data strictly and counted nothing, while
+  PDFium, which shows the letter, reads it up to (ASCII85) or past (ASCIIHex) that character. The check's
+  LZW, RunLength, ASCII85 and ASCIIHex decoding now has tests of its own, compared with PDFium's.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds
   for a running sync operation before closing the database, instead of leaving it open. An operation still
   running after that (on a share that stopped answering) may still hold it.
+- Windows: once Ordnung has stopped, its database is closed. Hand-off sync's thread, which ends as Ordnung
+  stops, could still be closing its connection a moment later, so the data folder couldn't be deleted or
+  replaced right away.
 
 ### Upgrading
 

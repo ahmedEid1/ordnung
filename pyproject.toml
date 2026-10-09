@@ -5,8 +5,16 @@ name = "ordnung"
 dynamic = ["version"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 readme = "README.md"
-license = "MIT"
-license-files = ["LICENSE", "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt", "src/ordnung/rules/data/LICENSE-GeoNames.txt"]
+# Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
+# notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
+license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
+# the web build's notices: the licences of the code and fonts it bundles (web/scripts/third-party-notices.mjs)
+license-files = [
+  "LICENSE",
+  "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt",
+  "src/ordnung/rules/data/LICENSE-GeoNames.txt",
+  "src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt",
+]
 requires-python = ">=3.11"
 authors = [{ name = "Ahmed Hobeishy" }]
 keywords = ["ai", "agent", "claude", "personal-assistant", "paperwork", "deadlines", "germany", "local-first", "mcp"]
@@ -114,29 +122,13 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B", "SIM", "PTH"]
 
+# The whole package gets every check of `mypy --strict` (evals/ and the tests aren't type-checked).
 [tool.mypy]
 python_version = "3.11"
 files = ["src/ordnung"]
+strict = true
 ignore_missing_imports = true
-warn_unused_ignores = true
-check_untyped_defs = true
-no_implicit_optional = true
 plugins = ["pydantic.mypy"]
-
-# The pure core (date rules, recurrence, calendar, clock, ids) gets the checks of `mypy --strict`
-# (`strict` itself is global-only; warn_redundant_casts and warn_unused_configs are too).
-[[tool.mypy.overrides]]
-module = ["ordnung.rules.*", "ordnung.recurrence", "ordnung.calendar.*", "ordnung.clock", "ordnung.ids", "ordnung.money.*"]
-disallow_any_generics = true
-disallow_subclassing_any = true
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-disallow_untyped_decorators = true
-warn_return_any = true
-implicit_reexport = false
-strict_equality = true
-extra_checks = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -144,10 +136,15 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q"
 markers = [
-  "live: calls the real claude CLI (skipped unless ORDNUNG_LIVE_TESTS=1)",
-  "slow: replays every recorded reading, or times pages against a wall-clock budget; CI runs these once, without coverage (-m slow)",
+  "slow: replays every recorded reading, times pages against a wall-clock budget, counts the lines a page runs (sys.settrace, which coverage uses too), or builds the web app; CI runs these once, without coverage (-m slow)",
 ]
 
 [tool.coverage.run]
 source = ["ordnung"]
 omit = ["src/ordnung/web/*"]
+branch = true
+
+[tool.coverage.report]
+# the whole package's floor (line and branch coverage of `pytest -m "not slow" --cov=ordnung`), a little under
+# what it measures; CI adds floors for ordnung/sync and ordnung/phone, and keeps the rules engine at 100 %
+fail_under = 94

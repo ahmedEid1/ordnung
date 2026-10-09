@@ -47,7 +47,8 @@ class ReplayBackend:
         path = fixture_path(self.root, req)
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        recorded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        return recorded
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         rec = self._load(req)

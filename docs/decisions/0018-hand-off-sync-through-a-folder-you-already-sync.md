@@ -40,10 +40,11 @@ plaintext byte, so the folder holds none at all. Objects named by their content 
 prefix from a keyed hash of the name, so two computers writing the same object write the same bytes and
 the sync tool never makes a conflict copy of it. A new folder's passphrase must reach about 70 bits by a
 simple, documented estimator (distinct words and digit runs, each at most 14 bits; one character again and
-again, a run in order, a keyboard walk or one of a few hundred very common words counts little), and setup
-— in the web app and the CLI — suggests five random made-up words: the key file sits at the provider
-indefinitely, open to offline guessing. Ordnung suggests a neutral name for the folder ("Vault"): the
-provider sees the folder's name. Chosen over
+again, a run in order, a keyboard walk or one of a few hundred very common words counts little; a password
+manager's random password counts its length × log2 of the alphabet it uses, unless it shows such a pattern
+or reads as words), and setup — in the web app and the CLI — suggests five random made-up words: the key
+file sits at the provider indefinitely, open to offline guessing. Ordnung suggests a neutral name for the
+folder ("Vault"): the provider sees the folder's name. Chosen over
 one encrypted backup file per push (every push would re-send every letter, and the backup header names
 the app) and over plain content hashes as names (they would let anyone confirm that a known PDF is
 there).

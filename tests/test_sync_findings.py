@@ -281,7 +281,6 @@ def test_finding_11_durable_while_syncing(tmp_path: Path, monkeypatch: pytest.Mo
         monkeypatch.setattr(durable, "fsync", lambda fd: calls.append(fd))
         from ordnung.ingest import intake
 
-        monkeypatch.setattr(intake, "fsync", lambda fd: calls.append(fd))
         intake._write_atomic(tmp_path / "d" / "files" / "x.bin", b"original")
         assert calls  # the file reached the disk before a row could name it
     finally:

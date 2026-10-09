@@ -121,12 +121,12 @@ and photo attachments become letters; new files wait on your computer until you 
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
-or more unrelated words) with a restore that checks every byte · *hand-off between your computers*
-(optional) — an encrypted copy in a folder you already sync (Nextcloud, Syncthing, Dropbox, iCloud
-Drive); Ordnung is in use on one computer at a time, *Use Ordnung here* brings everything over, and nothing
-is merged · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools · *your phone at
-home* — pair it with a QR code, then photograph letters, tick off to-dos and read Claude's explanations in
-its browser over your home Wi-Fi.
+or more unrelated words, or a password manager's random password with capital and small letters) with a
+restore that checks every byte · *hand-off between your computers* (optional) — an encrypted copy in a
+folder you already sync (Nextcloud, Syncthing, Dropbox, iCloud Drive); Ordnung is in use on one computer
+at a time, *Use Ordnung here* brings everything over, and nothing is merged · *Claude Desktop and Claude
+Code* can use the deadline engine as MCP tools · *your phone at home* — pair it with a QR code, then
+photograph letters, tick off to-dos and read Claude's explanations in its browser over your home Wi-Fi.
 
 ## The model reads, code computes
 
@@ -220,6 +220,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
 | **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | 100 % [91.8–100] | **0 %** | yes |
+| **Ordnung**, the three later held-out splits together¹¹ | 97.0 % [94.3–99.4] | **1.2 %** (2 of 168) | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -290,6 +291,12 @@ one letter was redrawn before the recording so that it tells the old and the new
 date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them.
 The code has changed since (the looser dropped-date check, the phone companion and hand-off sync); replayed on
 the current code, the same recording gives the same prediction for every letter (`tests/test_holdout3_replay.py`).
+¹¹ Rows ⁵, ⁷ and ¹⁰ together, each split as recorded once: 189 letters (33 photos, 36 adversarial; 168 dated
+obligations), the interval bootstrapped over all of them. On the same letters the agent with the calculator got
+167 of 168 right (one late), the rules-text prompt 154 (one late) and the model alone 136 (13 late)
+([docs/evals.md](docs/evals.md#held-out-splits-pooled)). The first held-out run, on the test split (the
+table's first three rows), is not among them, and each split was recorded with the code and prompts of its
+day.
 
 What the numbers say:
 
@@ -343,6 +350,12 @@ What the numbers say:
   letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
   rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
   late. Neither the completeness re-ask nor the reading check was needed on these letters.
+- **The three later held-out splits together: 97.0 %.** Pooled (row ¹¹), Ordnung is ahead of the
+  rules-text prompt (+5.4 points, 95 % interval +0.6 to +10.6) and of the model alone (+16.1 points, 95 %
+  interval +9.8 to +23.1), and the agent with the calculator is level with it or ahead (−2.4 points, 95 %
+  interval −5.3 to 0.0 for Ordnung): on these letters too, accuracy does not decide between the pipeline and
+  the agent. On the first held-out run, on the test split, the rules-text prompt scored higher than Ordnung
+  (the table's first rows), so with that run counted too, Ordnung's lead over it is smaller.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for
@@ -486,7 +499,8 @@ client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-fr
 and `--remove-ledger` takes that entry out again.
 
 **From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them):
+(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](CONTRIBUTING.md) has
+the checks CI runs and how to send a change:
 
 ```bash
 make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
@@ -570,7 +584,7 @@ More in [docs/architecture.md](docs/architecture.md).
 | Tests | 9,300+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 1,800+ Vitest tests; 400+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
 | Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI; hand-off sync's standing-by screen, which only two real computers show, is checked at 320 px in their story ([`web/e2e/real-app-sync.spec.ts`](web/e2e/real-app-sync.spec.ts)) |
-| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), rules coverage, `ordnung demo --check`, the thresholds of both benchmarks (replayed, no model calls), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), and a check that the committed web build matches its sources. Not yet a gate: weekly and on main, the wheel and the tests of the code that differs per system on macOS and Windows |
+| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), line and branch coverage floors (100 % for the rules engine; the whole package, hand-off sync and phone access each a little under what they measure), `ordnung demo --check`, both benchmarks replayed with no model calls: Ask at its thresholds, and reading letters at its published numbers on the test, holdout, holdout2 and dev splits and without the sender's Land (row ⁹), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), a check that the committed web build matches its sources, and, weekly, that the rules were checked against the law in the last 90 days. Not yet a gate: weekly and on main, the wheel and the tests of the code that differs per system on macOS and Windows; weekly, whether Claude Code, installed fresh (the newest, and 2.1.0), still takes every flag Ordnung passes |
 | Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
 
 ## Limitations
@@ -598,6 +612,10 @@ More in [docs/architecture.md](docs/architecture.md).
 - Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
   the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
   Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
+- The app's own text is in English only: buttons, receipts, the Ideas Ordnung's own rules make, and
+  notifications. Ordnung reads German letters, and what Claude writes for you (explanations, translations,
+  Ask's answers, Today's note and the weekly review's Ideas) follows the language you choose in Settings;
+  letters to German offices stay in German.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
@@ -635,11 +653,21 @@ More in [docs/architecture.md](docs/architecture.md).
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
   sends no reminders and reads no letters, and calendar sync is connected on each computer.
+- Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app password
+  (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get the calendar
+  file: a snapshot whose alarms fire, but dates from letters read later reach it only when you download and import
+  the file again (Today's Ideas say when there are new ones).
 - Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
   online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
   iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
   knows the passphrase): a new sync folder with a new passphrase does, and changing the passphrase isn't
   possible yet.
+- Hand-off sync saves the database in 1 MiB slices and uploads every slice a save changed, which adds up on a
+  large library: measured on a generated library of 1,500 letters and 80 MiB of database, reading one more
+  letter changed 29 of its 80 slices, about 29 MiB to upload. Once every computer has caught up, Ordnung deletes
+  replaced slices after a day of its running time (until then, after a week of it), but your provider's version
+  history and trash may keep them longer: on a metered connection or a small quota, turn version history off for
+  the sync folder if your provider lets you, and empty its trash now and then.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in
@@ -653,6 +681,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/deadline-rules.md](docs/deadline-rules.md): every rule the engine applies, with its source
 - [docs/privacy.md](docs/privacy.md): what is stored where and what each feature sends
 - [docs/evals.md](docs/evals.md) and [docs/evals-ask.md](docs/evals-ask.md): the two benchmarks
+- [CONTRIBUTING.md](CONTRIBUTING.md): working on Ordnung; [SECURITY.md](SECURITY.md): reporting a
+  vulnerability privately
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
@@ -675,4 +705,8 @@ fictional and marked SPECIMEN.
 
 MIT licensed. See [LICENSE](LICENSE). Postcode data © [GeoNames](https://www.geonames.org/),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode
-([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)).
+([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)). The web app bundles
+open-source packages and the Inter and Fraunces fonts under their own licences (MIT, ISC and the
+SIL Open Font License 1.1); their notices ship with it in
+[`THIRD-PARTY-NOTICES.txt`](src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt), written when the web app is
+built. The Python packages Ordnung runs on are not bundled: pip installs each with its own licence.

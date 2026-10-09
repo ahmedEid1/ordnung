@@ -26,7 +26,6 @@ import errno
 import json
 import os
 import stat
-import threading
 from collections.abc import Iterable, Sequence
 from datetime import datetime
 from pathlib import Path
@@ -79,19 +78,8 @@ def write_index(folder: Path, infos: Iterable[KeptInfo], *, gone: Iterable[str] 
         return
     with contextlib.suppress(OSError):
         folder.mkdir(parents=True, exist_ok=True)
-        target = folder / KEPT_INDEX
-        partial = folder / f".{KEPT_INDEX}.{os.getpid()}.{threading.get_ident()}.part"
         body = json.dumps([info.model_dump() for info in record.values()], indent=1)
-        try:
-            fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, PRIVATE_FILE_MODE)
-            with os.fdopen(fd, "w", encoding="utf-8") as out:
-                out.write(body)
-                out.flush()
-                durable.fsync(out.fileno())
-            partial.replace(target)
-        finally:
-            partial.unlink(missing_ok=True)
-        durable.fsync_dir(folder)
+        durable.write_atomic(folder / KEPT_INDEX, body.encode("utf-8"), mode=PRIVATE_FILE_MODE, sync=True)
 
 
 def kept_copies(folder: Path, infos: Sequence[KeptInfo] = ()) -> list[tuple[KeptInfo, Path, int]]:
@@ -193,7 +181,7 @@ def keep_staged(session: Session, staged: Staged, why: str) -> KeptInfo:
             for chunk in stream:
                 out.write(chunk)
             out.flush()
-            os.fsync(out.fileno())
+            durable.fsync(out.fileno())
         partial.replace(target)
     except OSError as exc:
         if exc.errno == errno.ENOSPC:

@@ -529,14 +529,21 @@ def _close_ended_thread_connection(store_ref: weakref.ref[Store], conn: sqlite3.
     Never in a forked child (``pid`` is the process that opened ``conn``): a fork that runs Python
     before its exec (uvloop's, starting ``claude``) drops the parent's other threads there, and
     closing their connections could wait forever on a SQLite mutex another thread held at the fork —
-    and the parent, waiting for the exec, with it."""
+    and the parent, waiting for the exec, with it.
+
+    Closed under the store's lock, as :meth:`Store.close` closes: a thread may end while the store closes
+    (hand-off sync's thread as Ordnung stops), and the store's close must not return while this connection
+    is still being closed — on Windows the database couldn't be deleted or replaced then."""
     if os.getpid() != pid:
         return
     store = store_ref()
-    if store is not None:
-        with store._connections_lock, contextlib.suppress(ValueError):
+    if store is None:
+        conn.close()
+        return
+    with store._connections_lock:
+        with contextlib.suppress(ValueError):
             store._connections.remove(conn)
-    conn.close()
+        conn.close()
 
 
 class Store:
@@ -638,12 +645,15 @@ class Store:
         return self.paths.data_dir
 
     def close(self) -> None:
-        """Close every connection this store opened (in any thread). The store is unusable after."""
+        """Close every connection this store opened (in any thread). The store is unusable after.
+
+        When it returns, none of them is open — also one a thread that is ending was closing meanwhile
+        (it closes under the same lock)."""
         with self._connections_lock:
             self._closed = True
             connections, self._connections = self._connections, []
-        for conn in connections:
-            conn.close()
+            for conn in connections:
+                conn.close()
 
     def wipe(self) -> None:
         """Start over with an empty database ("Delete everything").

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * A hash of everything the production build is made from (sources, styles, public files, the
- * lockfile and build config; tests excluded). `vite build` stores it in the build's
- * `build-info.json`, and CI checks the committed build against the sources:
+ * lockfile, build config and the notices script; tests excluded). `vite build` stores it in the
+ * build's `build-info.json`, and CI checks the committed build against the sources, and that it has
+ * its third-party notices (scripts/third-party-notices.mjs):
  *
  *   node scripts/source-hash.mjs                                  # print the hash
  *   node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json
@@ -11,15 +12,26 @@
  * The built app is committed (src/ordnung/web/dist) so `pip install git+…` works without Node.
  */
 import { createHash } from "node:crypto";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { NOTICES_FILE } from "./third-party-notices.mjs";
 
 export const WEB_DIR = resolve(fileURLToPath(new URL("..", import.meta.url)));
 /** The committed build's `build-info.json` (what `--check` reads when no file is given). */
 const COMMITTED_BUILD_INFO = join(WEB_DIR, "..", "src", "ordnung", "web", "dist", "build-info.json");
 
-const ROOTS = ["src", "public", "index.html", "package-lock.json", "vite.config.ts", "tsconfig.json", "tsconfig.app.json", "tsconfig.node.json"];
+const ROOTS = [
+  "src",
+  "public",
+  "index.html",
+  "package-lock.json",
+  "vite.config.ts",
+  "tsconfig.json",
+  "tsconfig.app.json",
+  "tsconfig.node.json",
+  "scripts/third-party-notices.mjs",
+];
 const EXCLUDED = [/\.test\.tsx?$/, /^src\/test\//];
 
 function files(path) {
@@ -59,6 +71,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (built !== current) {
       console.error(
         `The committed web build (${file}) is out of date with web/: rebuild it with \`make build-web\` and commit src/ordnung/web/dist.`,
+      );
+      process.exit(1);
+    }
+    if (!existsSync(join(dirname(file), NOTICES_FILE))) {
+      console.error(
+        `The committed web build (${file}) has no ${NOTICES_FILE}: rebuild it with \`make build-web\` and commit src/ordnung/web/dist.`,
       );
       process.exit(1);
     }

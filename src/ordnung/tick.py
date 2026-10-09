@@ -227,6 +227,14 @@ class DailyTick:
             ideas = await run_review(self.ctx.store, llm, today)
         except LLMError as exc:
             log.warning("weekly review failed: %s", exc)
+            self._publish("review.failed", error=str(exc))  # as the review asked for in the app
+            # no one waits for this one in the app: the activity log says it couldn't run
+            reason = str(exc).strip() or "Claude didn't answer."
+            reason += "" if reason.endswith((".", "!", "?")) else "."
+            self.ctx.store.log_activity(
+                "review.failed",
+                f"The weekly review couldn't write Ideas: {reason} Ordnung tries again tomorrow.",
+            )
             return
         self._publish("suggestions.updated", reason="review", created=len(ideas))
 

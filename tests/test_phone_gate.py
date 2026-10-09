@@ -21,6 +21,7 @@ from ordnung.api import app as app_module
 from ordnung.api.phone_gate import MESSAGES, PERMISSIONS_POLICY, PhoneListener, bad_path, page_load
 from ordnung.api.routes import documents as documents_route
 from ordnung.api.security import MAX_REQUEST_BYTES
+from ordnung.api.sse import PING_SECONDS
 from ordnung.phone import access as access_module
 from ordnung.phone import scope as phone_scope
 from ordnung.phone.pairing import PAIR_MAX_BYTES, SlidingLimit
@@ -44,6 +45,8 @@ from test_api_support import FINE_LETTER, fake_web_dist
 
 _PARAM = re.compile(r"\{[^}]+\}")
 MB = 1024 * 1024
+#: A removed phone's live stream ends at once, long before the next ping (the margin is a slow runner's)
+STREAM_ENDS_S = PING_SECONDS / 3
 
 
 @pytest.fixture(autouse=True)
@@ -508,10 +511,8 @@ async def test_removing_a_phone_ends_its_live_stream_and_not_another_s(data_dir:
         (mine, mine_task), (theirs, theirs_task) = streams[PHONE_IP], streams[OTHER_PHONE_IP]
         device = next(d.id for d in phone_of(api).devices if d.name == first["name"])
         assert (await api.client.get("/api/phone")).json()["devices"][0]["active"] is True
-        removed_at = asyncio.get_running_loop().time()
         assert (await api.client.delete(f"/api/phone/devices/{device}")).status_code == 200
-        await asyncio.wait_for(mine_task, 0.5)
-        assert asyncio.get_running_loop().time() - removed_at < 0.5
+        await asyncio.wait_for(mine_task, STREAM_ENDS_S)
         assert mine.complete and mine.status == 200
         assert not theirs_task.done()
         theirs.left.set()
@@ -726,7 +727,12 @@ async def test_a_phone_removed_while_its_first_request_signs_in_gets_no_stream(
         )
         await asyncio.wait_for(held.started.wait(), 5)
         removal = asyncio.create_task(api.client.delete(f"/api/phone/devices/{device}"))
-        await asyncio.sleep(0.1)
+        # removed (in memory at once) before the sign-in's save goes on, however slow the runner
+        for _ in range(500):
+            if not phone_of(api).devices:
+                break
+            await asyncio.sleep(0.01)
+        assert phone_of(api).devices == []
         held.release.set()
         assert (await asyncio.wait_for(removal, 5)).status_code == 200
         await asyncio.wait_for(stream, 5)

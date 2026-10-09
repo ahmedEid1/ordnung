@@ -119,7 +119,7 @@ def _ordnung_entries(ctx: AppContext) -> frozenset[str]:
 
 
 def _is_ordnung_entry(name: str, known: frozenset[str]) -> bool:
-    # ``.server.json.<pid>.part``: an interrupted atomic write of server.json
+    # ``.server.json.<pid>.<thread>.part``: an interrupted atomic write of server.json
     return name in known or (name.startswith(f".{SERVER_FILE}.") and name.endswith(".part"))
 
 

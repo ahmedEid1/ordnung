@@ -41,7 +41,7 @@ from evals.metrics import (  # noqa: E402
     tool_backing,
     wilson_interval,
 )
-from evals.records import Entry, PredictedItem, Prediction, ToolUse, TruthItem  # noqa: E402
+from evals.records import CallRecord, Entry, PredictedItem, Prediction, ToolUse, TruthItem  # noqa: E402
 
 # --------------------------------------------------------------------------------------------------
 # Builders
@@ -545,6 +545,28 @@ def test_evaluate_scores_every_condition_and_compares_them() -> None:
     assert comparison["dangerous_late_rate_diff"]["value"] == pytest.approx(-2 / 3)
     for key in ("extraction", "adversarial", "latency_ms", "cost_usd", "tokens", "taxonomy"):
         assert key in ours
+
+
+def test_costs_add_up_exactly_in_any_order() -> None:
+    """The letters are read concurrently and finish in any order: a letter's cost and the total and mean over
+    letters are the exactly rounded sums (``math.fsum``), the same in every order and on every Python."""
+    costs = (0.1, 0.2, 0.3)  # the built-in sum on Python 3.11: 0.6000000000000001 in this order, 0.6 reversed
+    letter = make_entry("test-a")
+    calls = [CallRecord(purpose="extract", cost_usd=cost) for cost in costs]
+    assert prediction(letter, [item()], calls=calls).cost_usd == 0.6
+    assert prediction(letter, [item()], calls=calls[::-1]).cost_usd == 0.6
+
+    entries = [make_entry(f"test-{name}") for name in "abc"]
+    predictions = {
+        e.id: prediction(e, [item()], calls=[CallRecord(purpose="extract", cost_usd=cost)])
+        for e, cost in zip(entries, costs, strict=True)
+    }
+    forward, backward = (
+        evaluate(order, {"llm_only": predictions}, resamples=10).metrics["llm_only"]["cost_usd"]
+        for order in (entries, entries[::-1])
+    )
+    assert forward == backward
+    assert forward["total"] == 0.6 and forward["mean"] == 0.6 / 3
 
 
 def test_warning_mentions_ignore_negated_clauses() -> None:

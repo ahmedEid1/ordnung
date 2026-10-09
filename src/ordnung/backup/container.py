@@ -126,7 +126,7 @@ class KdfParams:
     @property
     def memory(self) -> int:
         """Bytes of memory scrypt needs with these parameters."""
-        return 128 * self.r * 2**self.log2_n
+        return 128 * self.r * (1 << self.log2_n)
 
     def check(self) -> None:
         """Refuse parameters outside what a reader accepts (module doc: at most 256 MiB, ``p`` ≤ 2)."""

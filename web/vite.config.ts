@@ -8,6 +8,8 @@ import { fileURLToPath, URL } from "node:url";
 import type { Plugin } from "vite";
 // @ts-expect-error -- a plain ES module script, shared with CI's freshness check
 import { sourceHash } from "./scripts/source-hash.mjs";
+// @ts-expect-error -- a plain ES module script, like the one above
+import { thirdPartyNotices } from "./scripts/third-party-notices.mjs";
 
 const API = process.env.ORDNUNG_API ?? "http://127.0.0.1:8765";
 const OUT_DIR = "../src/ordnung/web/dist";
@@ -29,7 +31,8 @@ function buildInfo(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), buildInfo()],
+  // thirdPartyNotices writes THIRD-PARTY-NOTICES.txt: the licences of what the build bundles
+  plugins: [react(), tailwindcss(), buildInfo(), thirdPartyNotices()],
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

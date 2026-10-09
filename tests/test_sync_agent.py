@@ -461,6 +461,39 @@ async def test_a_change_made_while_staging_stops_a_quiet_pull(tmp_path: Path, fo
         assert a.ctx.store.get_meta("weekly_session_at") == "2026-10-07"
 
 
+async def test_a_version_is_brought_over_when_its_computer_saved_again_after_it_was_staged(
+    tmp_path: Path, folder: Path
+) -> None:
+    """The fake engine looked for the computer a version came from among the heads still at that version,
+    and found none when that computer had saved again meanwhile (as desktop's loop does on a slow runner)."""
+    engine = FakeEngine()
+    desk, lap = _dirs(tmp_path)
+    original_stage = FakeSession.stage
+
+    async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
+        await connect(a, folder, "desktop")
+        assert (await _add_todo(a, "Pay the gym")).status_code == 201
+        await agent_of(a).save()  # ahead of the laptop: its join brings desktop's version over
+        desktop = agent_of(a)._session
+        assert desktop is not None
+
+        def stage_then_desktop_saves(session: Any, target: Any) -> Any:
+            staged = original_stage(session, target)
+            if session.paths.data_dir == lap:  # laptop joins: desktop saves a change meanwhile
+                with person_write():
+                    a.ctx.store.set_meta("weekly_session_at", "2026-10-07")
+                desktop.push(a.ctx.store, reason="change")
+            return staged
+
+        FakeSession.stage = stage_then_desktop_saves  # type: ignore[method-assign]
+        try:
+            await connect(b, folder, "laptop")
+        finally:
+            FakeSession.stage = original_stage  # type: ignore[method-assign]
+        assert "apply" in engine.calls_of(lap)
+        assert (await status(b))["base_from"] == "desktop"
+
+
 # --------------------------------------------------------------------------------------------------
 # waiting for the sync tool
 # --------------------------------------------------------------------------------------------------
@@ -665,6 +698,24 @@ async def test_a_hanging_folder_never_holds_up_shutdown(tmp_path: Path, folder: 
     elapsed = asyncio.get_running_loop().time() - started
     engine.hang.set()
     assert elapsed < 4 * agent_module.SHUTDOWN_PUSH_S + 1
+
+
+async def test_an_engine_call_that_raises_stop_iteration_fails_instead_of_waiting_forever() -> None:
+    """An asyncio future refuses StopIteration (a bare ``next()`` in the engine's code), and the loop only
+    logged that: the agent waited for the call forever, here a take-over in its apply."""
+
+    def empty() -> None:
+        next(iter(()))
+
+    thread = agent_module._EngineThread()
+    try:
+        async with asyncio.timeout(5):
+            with pytest.raises(RuntimeError) as raised:
+                await thread.call(empty)
+        assert isinstance(raised.value.__cause__, StopIteration)
+        assert not thread.busy
+    finally:
+        thread.retire()
 
 
 # --------------------------------------------------------------------------------------------------

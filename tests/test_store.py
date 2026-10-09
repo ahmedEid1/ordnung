@@ -7,6 +7,7 @@ import os
 import random
 import sqlite3
 import threading
+import time
 import weakref
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
@@ -262,6 +263,42 @@ def test_the_ended_thread_finalizer_does_nothing_under_another_pid(store: Store)
     store_module._close_ended_thread_connection(weakref.ref(store), mine, os.getpid() + 1)
     assert store._connections == [mine]
     assert mine.execute("SELECT 1").fetchone()[0] == 1
+
+
+def test_closing_waits_for_the_connection_of_a_thread_that_is_ending(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A thread's connection is closed as the thread ends, which can be while the store closes: the app
+    stops just as hand-off sync's thread ends. ``close()`` returned while that connection was still being
+    closed, so the database stayed open after the store had closed; on Windows, where an open file can't
+    be deleted, copying a data folder back over one whose app had just stopped failed ("being used by
+    another process"). Here the ending thread takes a while to close it (a busy runner, a last flush)."""
+    main = threading.get_ident()
+    closing = threading.Event()
+
+    class SlowToClose(sqlite3.Connection):
+        closed = False
+
+        def close(self) -> None:
+            if threading.get_ident() != main and not self.closed:
+                closing.set()
+                time.sleep(0.3)
+            super().close()
+            self.closed = True
+
+    real_connect = sqlite3.connect
+    monkeypatch.setattr(
+        sqlite3, "connect", lambda *args, **kwargs: real_connect(*args, **{"factory": SlowToClose, **kwargs})
+    )
+    store = Store.open(Paths(tmp_path / "data"))
+    theirs: list[sqlite3.Connection] = []
+    ending = threading.Thread(target=lambda: theirs.append(store._conn()))
+    ending.start()
+    assert closing.wait(10), "the thread ended without closing its connection"
+    store.close()
+    assert isinstance(theirs[0], SlowToClose)
+    assert theirs[0].closed, "close() returned while a connection of the store was still open"
+    ending.join()
 
 
 @pytest.mark.skipif(not hasattr(os, "fork"), reason="needs fork()")

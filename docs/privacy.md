@@ -428,9 +428,10 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   again), to write a kept copy, and when you set sync up. A password store that doesn't keep it safely is
   refused, as for calendar sync, and there is no file to fall back on. A new sync folder's passphrase must
   reach about 70 bits by Ordnung's estimate — five unrelated words, like the five-word one Settings
-  suggests — because the key file sits at your provider for years, open to guessing offline (and at least
-  12 characters, as for backups). Without it nobody can open the folder: not your sync provider, not
-  Ordnung's makers, not you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
+  suggests, or a password manager's random password with capital and small letters — because the key
+  file sits at your provider for years, open to guessing offline (and at least 12 characters, as for
+  backups). Without it nobody can open the folder: not your sync provider, not Ordnung's makers, not
+  you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
 - **What stays on each computer.** Only your ledger and your letters' files travel. Never: phone access and
   the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
   which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
@@ -492,13 +493,13 @@ folder): a restored copy starts without sync.
   unencrypted copy is written to disk.
 - **Your passphrase stays yours.** At least 12 characters and about 70 bits by Ordnung's estimate — five
   unrelated words, like the five-word one Ordnung suggests — the rule of a new sync folder, because a
-  backup on another drive or in the cloud can be copied and guessed at offline for years. The estimate
-  counts words, so a random password from a password manager often falls short (symbols don't count); one
-  Ordnung 0.1.0 suggested still counts as strong, and one a script gives in `ORDNUNG_BACKUP_PASSPHRASE`
-  that falls short gets a warning, so a scheduled backup is still made. Ordnung never
-  stores or logs it and can't recover it — without it the backup can't be opened, by anyone. In the
-  browser the passphrase goes only to the Ordnung on this computer (in the request body, never in a web
-  address).
+  backup on another drive or in the cloud can be copied and guessed at offline for years. A password
+  manager's random password counts by the characters it uses, unless it shows a pattern people make (a
+  word and a year, a keyboard walk); one Ordnung 0.1.0 suggested still counts as strong, and one a script
+  gives in `ORDNUNG_BACKUP_PASSPHRASE` that falls short gets a warning, so a scheduled backup is still
+  made. Ordnung never stores or logs it and can't recover it — without it the backup can't be opened, by
+  anyone. In the browser the passphrase goes only to the Ordnung on this computer (in the request body,
+  never in a web address).
 - **Restoring checks everything.** `ordnung restore` refuses a wrong passphrase, a file that was
   changed, cut short or reordered, a newer format, and anything in the archive Ordnung never writes;
   every file must match the backup's own list of hashes and row counts. It never replaces a data

@@ -53,8 +53,9 @@ version over (critique finding 2); both need a second confirmation (``not_receiv
 computer has this one's latest changes. Shutting down saves before background work gets its grace
 period, then once more at the end (head ``closed``), each at most
 :data:`~ordnung.sync.SHUTDOWN_PUSH_S`; within the last one's bound it also waits for an engine call that
-outlived its limit, so no thread of the agent's still uses the database once Ordnung has stopped
-(Windows can't delete or replace an open file).
+outlived its limit, then for the engine's thread to end (its connection to the database closes with it),
+so no thread of the agent's still uses or holds the database once Ordnung has stopped (Windows can't
+delete or replace an open file).
 
 **Never raises out of the loop.** Every failure becomes a :class:`~ordnung.sync.status.SyncProblem`
 (logged with codes and counts only — never the passphrase, a letter's name or a path inside
@@ -157,6 +158,10 @@ NO_ENGINE_MESSAGE = "This installation of Ordnung can't sync between computers."
 LOCK_POLL_S = 0.02
 #: How often stopping looks whether the engine's thread is done (as the server's drain does).
 ENGINE_POLL_S = 0.05
+#: Stopping lets the engine's idle thread end and waits for that at most this long, looking every
+#: ``THREAD_END_POLL_S``: the thread's connection to the database closes as it ends.
+THREAD_END_WAIT_S = 1.0
+THREAD_END_POLL_S = 0.005
 BUSY_MESSAGE = "The sync folder doesn't answer yet. Try again in a moment."
 NAME_MESSAGE = f"Give this computer a name of 1 to {NAME_MAX_CHARS} characters."
 NO_CHOICE_MESSAGE = "There's nothing to choose (any more)."
@@ -456,13 +461,16 @@ class _EngineThread:
         """A call is still running or waiting (perhaps one that timed out)."""
         return self._pending > 0
 
-    def retire(self) -> None:
+    def retire(self) -> threading.Thread | None:
         """Let the thread end (Ordnung stops); a later call starts a new one. A thread with a call
-        still running is left to it: being a daemon, it never keeps the process from exiting."""
+        still running is left to it: being a daemon, it never keeps the process from exiting. Returns
+        the thread that ends (``None``: none was idle)."""
         with self._count:
             if self._pending == 0 and self._thread is not None:
                 self._queue.put(None)  # the idle thread takes it first: still one call at a time
-                self._thread = None
+                ending, self._thread = self._thread, None
+                return ending
+        return None
 
     def _run(self) -> None:
         while True:
@@ -487,6 +495,10 @@ class _EngineThread:
         def settle(result: Any, error: BaseException | None) -> None:
             if future.done():
                 return
+            if isinstance(error, StopIteration):  # a future refuses it, and the caller would wait forever
+                stopped = RuntimeError("a sync engine call raised StopIteration")
+                stopped.__cause__ = error
+                error = stopped
             if error is not None:
                 future.set_exception(error)
             else:
@@ -876,6 +888,10 @@ class SyncAgent:
                 await self._continue_waiting(session)
             return self._waiting is not None
 
+    def _in_use(self) -> bool:
+        """Whether this computer is the one in use, read afresh (a step awaited just before may have changed it)."""
+        return self.mode == "in_use"
+
     def _adopt(self, summary: LocalSummary) -> None:
         self.summary = summary
         self.connected = True
@@ -904,7 +920,8 @@ class SyncAgent:
         """Ordnung stops (background work already stopped): the last save, the head says ``closed``
         (at most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`, waiting for a running operation at most as
         long); the loop ends, and an engine call still running is waited for until
-        :data:`~ordnung.sync.SHUTDOWN_PUSH_S` after the start. The store stays open. Never raises."""
+        :data:`~ordnung.sync.SHUTDOWN_PUSH_S` after the start, then the engine's idle thread for
+        :data:`THREAD_END_WAIT_S` at most. The store stays open. Never raises."""
         deadline = time.monotonic() + SHUTDOWN_PUSH_S
         self._closing = True
         self.notify()
@@ -914,7 +931,8 @@ class SyncAgent:
     async def dispose(self) -> None:
         """Let go without a last save (the command line after its operation; an app whose lifespan never
         ran): the loop ends, the read-only connection closes and an engine call still running is waited
-        for, at most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`. The store stays open. Never raises."""
+        for, at most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`, then the engine's idle thread ends (as in
+        :meth:`close`). The store stays open. Never raises."""
         self._closing = True
         await self._let_go(time.monotonic() + SHUTDOWN_PUSH_S)
 
@@ -930,7 +948,14 @@ class SyncAgent:
                 log.warning("sync: an operation was still running when Ordnung stopped")
                 break
             await asyncio.sleep(ENGINE_POLL_S)
-        self._thread.retire()
+        ending = self._thread.retire()
+        # its connection to the database closes as it ends, on its own thread: before the store closes,
+        # never a moment after (Windows can't delete or replace a database that is still open)
+        until = time.monotonic() + THREAD_END_WAIT_S
+        while ending is not None and ending.is_alive():  # a thread's end can't set an asyncio event
+            if time.monotonic() >= until:
+                break
+            await asyncio.sleep(THREAD_END_POLL_S)
 
     def _close_watch(self) -> None:
         watch, self._watch = self._watch, None
@@ -1189,7 +1214,7 @@ class SyncAgent:
     def _problem_code(self, exc: BaseException) -> SyncProblemCode:
         stated = getattr(exc, "problem", None)
         if isinstance(stated, str) and stated in PROBLEMS:
-            return cast(SyncProblemCode, stated)
+            return stated
         if isinstance(exc, SecretsUnavailable):
             return "keyring_unavailable" if self.secrets.problem() is not None else "keyring_locked"
         if isinstance(exc, SyncError):
@@ -1224,7 +1249,7 @@ class SyncAgent:
             return
         message = getattr(found, "message", None)
         self.problem = problem(
-            cast(SyncProblemCode, code),
+            code,
             name=decision.from_name or self._other_name(),
             message=message if isinstance(message, str) else None,
             in_use=self.mode == "in_use",
@@ -1719,7 +1744,7 @@ class SyncAgent:
                         await self._take_over(session, UseHere())
                     finally:
                         self._joining = False
-                if self.mode == "in_use":
+                if self._in_use():  # taking over made it the one in use
                     await self._log_now(
                         "sync.joined",
                         f"Brought Ordnung over from {self._other_name() or 'your other computer'} and started "
