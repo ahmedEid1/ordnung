@@ -231,6 +231,10 @@ describe("a password manager's random password", () => {
       9,
     );
     expect(randomBits("kT9xVbq2MzRw7p")).toBeCloseTo(14 * Math.log2(62), 9);
+    expect(randomBits("7#3$9%1&5*2(4)8!6?0;")).toBeCloseTo(
+      20 * Math.log2(10 + 33),
+      9,
+    );
   });
 
   it.each([

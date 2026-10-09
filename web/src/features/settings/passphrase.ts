@@ -449,8 +449,8 @@ export function humanPattern(passphrase: string): string | null {
 /**
  * The random characters' count of a passphrase in bits (`ordnung.passphrase.random_bits`): its length times log2 of
  * the alphabet it uses — 0 below {@link RANDOM_MIN_CHARS} characters, with a space, or with a pattern people make.
- * When every letter is in a word ("Max#Richter#94"), only the other characters count so; the words and the runs of
- * digits count as a token each.
+ * When it has words and every letter is in one ("Max#Richter#94"), only the other characters count so; the words
+ * and the runs of digits count as a token each.
  */
 export function randomBits(passphrase: string): number {
   const chars = [...passphrase.normalize("NFC")];
@@ -471,7 +471,7 @@ export function randomBits(passphrase: string): number {
       : 0);
   const perChar = Math.log2(alphabet);
   const [found, every] = words(chars);
-  if (!every) return chars.length * perChar;
+  if (!found.length || !every) return chars.length * perChar;
   const others = chars.filter(
     (char) => !LETTER.test(char) && !DIGIT.test(char),
   ).length;

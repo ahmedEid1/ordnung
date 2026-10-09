@@ -233,6 +233,8 @@ def test_words_with_digits_and_symbols_count_as_words_not_random_characters() ->
     assert passphrase.random_bits("Schatzi#0815!") < MIN_PASSPHRASE_BITS
     # a letter that isn't in a word: random characters, as a password manager's
     assert passphrase.random_bits("kT9xVbq2MzRw7p") == pytest.approx(14 * math.log2(62))
+    # and without letters there are no words to count
+    assert passphrase.random_bits("7#3$9%1&5*2(4)8!6?0;") == pytest.approx(20 * math.log2(10 + 33))
 
 
 def test_letters_count_as_a_pattern_only_in_the_case_people_type() -> None:

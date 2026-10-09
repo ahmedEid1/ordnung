@@ -387,8 +387,8 @@ def random_bits(passphrase: str) -> float:
     log2 of the alphabet it uses (:data:`LOWER_ALPHABET` lower-case letters, :data:`UPPER_ALPHABET`
     upper-case, :data:`DIGIT_ALPHABET` digits, :data:`OTHER_ALPHABET` other characters, each if used) —
     0 below :data:`RANDOM_MIN_CHARS` characters, with a space, or with a pattern people make
-    (:func:`human_pattern`). When every letter is in a word ("Max#Richter#94"), only the other characters
-    count so; the words and the runs of digits count as :func:`token_bits` counts each."""
+    (:func:`human_pattern`). When it has words and every letter is in one ("Max#Richter#94"), only the
+    other characters count so; the words and the runs of digits count as :func:`token_bits` counts each."""
     text = unicodedata.normalize("NFC", passphrase)
     if len(text) < RANDOM_MIN_CHARS or any(_is_space(char) for char in text) or human_pattern(text):
         return 0.0
@@ -400,7 +400,7 @@ def random_bits(passphrase: str) -> float:
     )
     per_char = math.log2(alphabet)
     words, every = _words(text)
-    if not every:
+    if not (words and every):
         return len(text) * per_char
     others = sum(not (char.isalpha() or char.isdecimal()) for char in text)
     return (
