@@ -45,7 +45,7 @@ if args == ["--help"]:
     sys.exit(0)
 for arg in args:
     if arg.startswith("-") and arg not in KNOWN and {strict!r}:
-        print(f"error: unknown option '{{arg}}'", file=sys.stderr)
+        print(f"Error: unknown option '{{arg}}'", file=sys.stderr)
         sys.exit(1)
 print('{{"type":"result","is_error":true,"result":"Not logged in · Please run /login"}}')
 sys.exit(1)
@@ -105,7 +105,7 @@ def test_a_flag_claude_no_longer_takes_fails_the_check(
     claude, _ = _fake(tmp_path, known=[flag for flag in FLAGS if flag != "--max-budget-usd"])
     assert main(["--claude", str(claude)]) == 1
     printed = capsys.readouterr()
-    assert "error: unknown option '--max-budget-usd'" in printed.out + printed.err
+    assert "Error: unknown option '--max-budget-usd'" in printed.out + printed.err
 
 
 def test_a_claude_that_never_refuses_an_option_fails_the_check(
