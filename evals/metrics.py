@@ -1053,11 +1053,14 @@ def _pair(value: tuple[int, int]) -> tuple[float, float]:
 def _stats(values: Sequence[float]) -> dict[str, float | None]:
     if not values:
         return {"mean": None, "p50": None, "p95": None, "total": 0.0}
+    # math.fsum is exactly rounded: the letters finish in any order (concurrent), and the built-in sum of floats
+    # changed in Python 3.12, so its last digits differed by order and by version (as evals/ask/metrics.py)
+    total = math.fsum(values)
     return {
-        "mean": sum(values) / len(values),
+        "mean": total / len(values),
         "p50": percentile(values, 50),
         "p95": percentile(values, 95),
-        "total": float(sum(values)),
+        "total": total,
     }
 
 

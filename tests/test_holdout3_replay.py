@@ -47,7 +47,8 @@ def test_holdout3_s_recording_gives_the_same_predictions_on_the_current_code(tmp
     replayed = json.loads(next(out.glob("*-holdout3.json")).read_text(encoding="utf-8"))
     recorded = json.loads(RECORDING.read_text(encoding="utf-8"))
     after_metrics, before_metrics = dict(replayed["metrics"]["ordnung"]), dict(recorded["metrics"]["ordnung"])
-    # the cost is a sum of floats in the order the letters finished (concurrent): equal up to rounding
+    # the recording added its costs up in the order the letters finished (concurrent), before the totals used
+    # math.fsum: equal up to rounding (a replay's totals are now the same in any order)
     after_cost, before_cost = after_metrics.pop("cost_usd"), before_metrics.pop("cost_usd")
     assert after_cost.keys() == before_cost.keys()
     assert all(math.isclose(after_cost[key], before_cost[key], rel_tol=1e-12) for key in before_cost)

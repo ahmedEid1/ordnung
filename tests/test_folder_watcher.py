@@ -486,14 +486,15 @@ async def test_picked_up_files_are_remembered_in_the_database(ctx: AppContext, i
     assert file_key(inbox, "a.pdf", (info.st_size, info.st_mtime_ns)) in stored
 
 
-async def test_stopping_is_quick_and_can_be_repeated(ctx: AppContext) -> None:
+async def test_stopping_ends_the_watch_when_asked_and_can_be_repeated(ctx: AppContext) -> None:
     folder_watcher = FolderWatcher(ctx, **FAST)
     await folder_watcher.start()
     await eventually(lambda: folder_watcher.state == "watching")
-    started = time.monotonic()
+    task = folder_watcher._task
     await folder_watcher.stop()
     await folder_watcher.stop()
-    assert time.monotonic() - started < 2.0
+    # it ended on its own when asked, never cancelled once the stop's grace ran out
+    assert task is not None and task.done() and not task.cancelled()
     assert (folder_watcher.state, folder_watcher.running) == ("off", False)
 
 

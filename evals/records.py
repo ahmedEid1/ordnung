@@ -12,6 +12,7 @@ they must round-trip through ``model_dump(mode="json")``.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Iterable, Sequence
 from datetime import date
 from pathlib import Path
@@ -348,7 +349,8 @@ class Prediction(BaseModel):
 
     @property
     def cost_usd(self) -> float:
-        return sum(call.cost_usd for call in self.calls)
+        # exactly rounded: the same total in any order and on any Python (the built-in sum of floats changed in 3.12)
+        return math.fsum(call.cost_usd for call in self.calls)
 
     @property
     def latency_ms(self) -> int:
