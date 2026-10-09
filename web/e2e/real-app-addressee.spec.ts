@@ -78,16 +78,16 @@ async function checkView(page: Page, testInfo: TestInfo, name: string): Promise<
 }
 
 test("a letter addressed to someone else says so, and a reply offers their name without choosing it", async ({ page }, testInfo) => {
-  const upload = await page.request.post("/api/documents", {
-    headers: { "X-Ordnung-Client": "web" },
-    multipart: { files: { name: FILE, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
-  });
-  expect(upload.status(), await upload.text()).toBe(201);
-  const letter = await readLetter(page);
   const before = await apiGet<{ name: string }>(page, "/api/profile");
-  const drafts = (await apiGet<unknown[]>(page, "/api/drafts")).length;
   expect(before.name, "the real app's person is the demo persona").toBe(ADDRESSEE);
+  const drafts = (await apiGet<unknown[]>(page, "/api/drafts")).length;
   try {
+    const upload = await page.request.post("/api/documents", {
+      headers: { "X-Ordnung-Client": "web" },
+      multipart: { files: { name: FILE, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
+    });
+    expect(upload.status(), await upload.text()).toBe(201);
+    const letter = await readLetter(page);
     await apiSend(page, "PUT", "/api/profile", { name: RENAMED });
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: width === 320 ? 640 : 800 });
@@ -122,8 +122,11 @@ test("a letter addressed to someone else says so, and a reply offers their name 
     }
     expect(await apiGet<unknown[]>(page, "/api/drafts"), "nothing was drafted").toHaveLength(drafts);
   } finally {
+    // as the other real-app specs expect it: the person's own name, and no such letter
     await apiSend(page, "PUT", "/api/profile", { name: before.name });
-    await apiSend(page, "DELETE", `/api/documents/${letter.id}?purge=true`);
+    for (const added of (await apiGet<Letter[]>(page, "/api/documents")).filter((d) => d.filename === FILE)) {
+      await apiSend(page, "DELETE", `/api/documents/${added.id}?purge=true`);
+    }
   }
   expect((await apiGet<{ name: string }>(page, "/api/profile")).name).toBe(ADDRESSEE);
   expect((await apiGet<Letter[]>(page, "/api/documents")).map((d) => d.filename)).not.toContain(FILE);
