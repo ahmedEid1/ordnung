@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Recurrence } from "@/api/types";
 import { makeItem } from "@/features/document/fixtures";
 import REPEAT_LABELS from "./repeatLabels.json";
-import { nextNote, repeatChoiceOf, repeatLabel, repeatOptions, repeatRule, type RepeatChoice } from "./repeat";
+import { nextNote, repeatChoiceOf, repeatLabel, repeatOptions, repeatRule, sameRule, type RepeatChoice } from "./repeat";
 
 const rule = (r: Partial<Recurrence>): Recurrence => ({ interval: 1, unit: "months", working_day: null, day_of_month: null, ...r });
 
@@ -72,6 +72,19 @@ describe("repeatRule and repeatChoiceOf", () => {
     expect(repeatChoiceOf(rule({ day_of_month: 14 }), "2026-10-14").choice).toBe("month");
     expect(repeatChoiceOf(rule({ day_of_month: 1 }), "2026-10-14").choice).toBe("current");
     expect(repeatChoiceOf(null, "2026-10-14")).toEqual({ choice: "never", workingDay: 3 });
+  });
+});
+
+describe("sameRule", () => {
+  it("says rules that give the same dates are one rule, as the server's same_rule does", () => {
+    expect(sameRule(rule({ unit: "years" }), rule({ interval: 12 }))).toBe(true);
+    expect(sameRule(rule({ interval: 2, unit: "weeks" }), rule({ interval: 14, unit: "days" }))).toBe(true);
+    expect(sameRule(rule({ interval: 0 }), rule({}))).toBe(true);
+    expect(sameRule(rule({ working_day: 3 }), rule({}))).toBe(false);
+    expect(sameRule(rule({ working_day: 3 }), rule({ working_day: 3, day_of_month: 15 }))).toBe(true);
+    expect(sameRule(rule({ unit: "years" }), rule({}))).toBe(false);
+    expect(sameRule(rule({}), null)).toBe(false);
+    expect(sameRule(null, undefined)).toBe(true);
   });
 });
 
