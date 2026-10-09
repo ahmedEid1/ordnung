@@ -115,6 +115,7 @@ async def create_draft(body: DraftCreate, ctx: CtxDep) -> Draft:
         language=body.language,
         details=body.details,
         suspend_enforcement=body.suspend_enforcement,
+        sender_name=body.sender_name,
     )
 
 

@@ -42,6 +42,7 @@ from ordnung.drafts.template_letters import (
 from ordnung.drafts.templates import STATUTORY_REMEDIES, LetterLanguage, LetterParts, RemedyKind
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number
 from ordnung.ids import new_id
+from ordnung.ingest.link import party_name
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss
 from ordnung.llm.prompts import render
 from ordnung.llm.schemas import draft_schema, draft_translation_schema
@@ -324,9 +325,22 @@ def recipient_block(kind: str, sources: Sources, details: LetterDetails | None =
     return "\n".join(_party_lines(sources.party))
 
 
-def sender_block(profile: Profile) -> str:
-    """The person's name and postal address."""
-    return "\n".join(line for line in [profile.name.strip(), *address_lines(profile.address)] if line)
+def sender_block(profile: Profile, name: str | None = None) -> str:
+    """The person's name and postal address; ``name``: the name the letter goes out in instead
+    (:func:`letter_signer`), with the profile's address."""
+    first = name or profile.name.strip()
+    return "\n".join(line for line in [first, *address_lines(profile.address)] if line)
+
+
+def letter_signer(sender_name: str | None, profile: Profile) -> str | None:
+    """The name a letter goes out in and is signed with when the person chose another than the
+    profile's (``None``: left out, empty or the profile's own name — case and spaces don't count). One
+    line of at most :data:`~ordnung.ingest.link.MAX_PARTY_NAME` characters. Code only: never given to
+    the model, so the draft request and its recordings stay the same."""
+    name = party_name(sender_name or "")
+    if not name or name.casefold() == " ".join(profile.name.split()).casefold():
+        return None
+    return name
 
 
 def place_date(profile: Profile, today: date, language: LetterLanguage) -> str:
@@ -1039,17 +1053,19 @@ def _lowercase_start(paragraph: str) -> str:
     return paragraph[:1].lower() + paragraph[1:] if first in _LOWERCASE_STARTERS else paragraph
 
 
-def free_paragraphs(text: str, *, signer: str = "") -> tuple[list[str], bool]:
-    """Model free text as paragraphs: salutations, closings and signatures dropped, sentences citing
-    a § removed (second value: whether any were), at most :data:`MAX_FREE_TEXT` characters."""
+def free_paragraphs(text: str, *, signers: tuple[str, ...] = ()) -> tuple[list[str], bool]:
+    """Model free text as paragraphs: salutations, closings and signatures (a line that is one of
+    ``signers``) dropped, sentences citing a § removed (second value: whether any were), at most
+    :data:`MAX_FREE_TEXT` characters."""
     paragraphs: list[str] = []
     removed = False
     used = 0
+    names = {name for name in signers if name}
     for block in _PARAGRAPH_BREAK.split(text.strip()):
         lines = [
             line.strip()
             for line in block.splitlines()
-            if line.strip() and not _FRAME_LINE_RE.match(line) and line.strip() != signer
+            if line.strip() and not _FRAME_LINE_RE.match(line) and line.strip() not in names
         ]
         sentences = split_sentences(" ".join(lines))
         kept = [sentence for sentence in sentences if "§" not in sentence]
@@ -1067,9 +1083,9 @@ def _single_lines(values: list[str], *, limit: int, max_chars: int) -> tuple[str
     return tuple(dict.fromkeys(value for value in cleaned if value and len(value) <= max_chars))[:limit]
 
 
-def _written_from(output: DraftOutput, plan: Plan, signer: str) -> Written:
+def _written_from(output: DraftOutput, plan: Plan, signers: tuple[str, ...]) -> Written:
     """The model's answer as the letter uses it, with the person's values back where it repeated a
-    placeholder (:func:`private_values`)."""
+    placeholder (:func:`private_values`), and a signature line with one of ``signers`` dropped."""
     output = output.model_copy(
         update={
             "subject": _unmasked(output.subject, plan.private),
@@ -1078,7 +1094,7 @@ def _written_from(output: DraftOutput, plan: Plan, signer: str) -> Written:
             "notes_for_user": [_unmasked(note, plan.private) for note in output.notes_for_user],
         }
     )
-    paragraphs, removed = free_paragraphs(output.body, signer=signer)
+    paragraphs, removed = free_paragraphs(output.body, signers=signers)
     if plan.language == "de" and not plan.letter.paragraphs and paragraphs:
         paragraphs[0] = _lowercase_start(paragraphs[0])
     subject = " ".join(output.subject.split())
@@ -1100,9 +1116,18 @@ def _written_from(output: DraftOutput, plan: Plan, signer: str) -> Written:
 
 
 async def write_with_model(
-    ctx: AppContext, plan: Plan, sources: Sources, recipient: str, instructions: str
+    ctx: AppContext,
+    plan: Plan,
+    sources: Sources,
+    recipient: str,
+    instructions: str,
+    *,
+    signer: str | None = None,
 ) -> Written:
-    """Ask the model for free text, translation and notes; a code fallback when it can't be used."""
+    """Ask the model for free text, translation and notes; a code fallback when it can't be used.
+
+    ``signer`` (:func:`letter_signer`) never reaches the request: a signature line with it, or with the
+    profile's name, is only dropped from the answer."""
     if sources.document is not None and sources.document.ai_private:
         return Written(failure="private")
     request = draft_request(plan, sources, recipient, instructions, ctx.settings)
@@ -1118,7 +1143,7 @@ async def write_with_model(
     if output is None:
         log.warning("draft: the model's answer didn't match the schema; using the fixed text only")
         return Written(failure="unreadable")
-    return _written_from(output, plan, sources.profile.name.strip())
+    return _written_from(output, plan, (sources.profile.name.strip(), signer or ""))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1241,7 +1266,14 @@ def _kind_notes(plan: Plan, sources: Sources) -> list[str]:
     return notes
 
 
-def _notes(plan: Plan, written: Written, fallback_used: bool, sources: Sources) -> list[str]:
+def signer_note(signer: str) -> str:
+    """The note on a letter that goes out in someone else's name (:func:`letter_signer`)."""
+    return f"This letter goes out in the name of {signer}, so {signer} signs it."
+
+
+def _notes(
+    plan: Plan, written: Written, fallback_used: bool, sources: Sources, signer: str | None = None
+) -> list[str]:
     notes: list[str] = []
     if written.failure == "private":
         notes.append("This letter's source is kept private, so it was drafted without AI.")
@@ -1267,6 +1299,8 @@ def _notes(plan: Plan, written: Written, fallback_used: bool, sources: Sources) 
     if fallback_used and plan.translation_language not in ("de", "en"):
         notes.append("The translation is in English because the AI translation wasn't available.")
     notes.extend(written.notes)
+    if signer is not None:
+        notes.append(signer_note(signer))
     checked = templates.format_date(date.fromisoformat(LAST_CHECKED), "en")
     notes.append(f"Based on the law as of {checked}. Not legal advice. Not reviewed by a lawyer.")
     return notes
@@ -1320,13 +1354,17 @@ async def compose(
     language: str = "de",
     suspend_enforcement: bool = False,
     details: LetterDetails | None = None,
+    sender_name: str | None = None,
 ) -> Draft:
     """Draft, check and store a letter; raises :class:`DraftError` when it can't be drafted as asked.
 
     ``suspend_enforcement`` (the person ticked it; never read from the free-text wishes, where "don't
     suspend enforcement" would read the same) adds the application to suspend enforcement to an
     objection. ``details`` are the facts a template letter needs
-    (:data:`~ordnung.drafts.template_letters.TEMPLATES`).
+    (:data:`~ordnung.drafts.template_letters.TEMPLATES`). ``sender_name``: the name the letter goes out
+    in when the person chose another than the profile's (:func:`letter_signer`): its sender block,
+    signature, PDF author and Nachweis use it, and it is kept as the letter's signer
+    (:func:`ordnung.drafts.sent.letter_profile`). It is never given to the model.
     """
     draft_kind, letter_language = _validate_request(kind, language)
     store, today = ctx.store, local_today(ctx.store)
@@ -1346,9 +1384,9 @@ async def compose(
         details=details,
     )
     recipient = recipient_block(draft_kind, sources, details)
-    written = await write_with_model(ctx, plan, sources, recipient, instructions)
-    signer = sources.profile.name.strip()
-    translation, fallback_used = _translation(plan, written, signer)
+    signer = letter_signer(sender_name, sources.profile)  # None: the profile's name
+    written = await write_with_model(ctx, plan, sources, recipient, instructions, signer=signer)
+    translation, fallback_used = _translation(plan, written, signer or sources.profile.name.strip())
     now = now_iso()
     draft = Draft(
         id=new_id("drf"),
@@ -1358,21 +1396,26 @@ async def compose(
         case_id=sources.case_id,
         doc_id=sources.document.id if sources.document else None,
         contract_id=sources.contract.id if sources.contract else None,
-        sender_block=sender_block(sources.profile),
+        sender_block=sender_block(sources.profile, name=signer),
         recipient_block=recipient,
         place_date=place_date(sources.profile, today, letter_language),
         subject=plan.letter.subject or written.subject or "",
         body=_letter_text(plan.letter, _body_paragraphs(plan, written)),
         body_translation=translation,
         enclosures=list(written.enclosures),
-        notes_for_user=_notes(plan, written, fallback_used, sources),
+        notes_for_user=_notes(plan, written, fallback_used, sources, signer),
         send_guidance=plan.guidance,
         created_at=now,
         updated_at=now,
     )
     draft.checks = run_checks(draft, check_context(store, sources, draft))
+    # in someone else's name: kept as the letter's signer (only the name counts until it is sent)
+    profile = sources.profile
+    signed: dict[str, SentSigner] = (
+        {"sent_profile": SentSigner(name=signer, email=profile.email, phone=profile.phone)} if signer else {}
+    )
     with store.tx():
-        stored = store.add_draft(**draft.model_dump())
+        stored = store.add_draft(**draft.model_dump(), **signed)
         store.log_activity(
             "draft.created",
             f"Drafted a letter: {stored.subject or _KIND_LABELS[draft_kind]}",
@@ -1576,7 +1619,8 @@ def mark_sent(
     before anything is saved): ``None`` keeps the stored number, an empty one (the person emptied the
     field) removes it, and marked again with another channel the letter's stored number goes. The first
     marking keeps what the PDF shows of the sender (:class:`SentSigner`), so the letter prints as it
-    went out even after the profile changes.
+    went out even after the profile changes: the name it was written in (someone else's, kept since
+    :func:`compose`, or the profile's) with the profile's e-mail and phone of that day.
     """
     store = ctx.store
     draft = store.get_draft(draft_id)
@@ -1607,9 +1651,13 @@ def mark_sent(
         extra["tracking_number"] = tracking
     elif channel != "registered_letter" or tracking_number is not None:
         extra["tracking_number"] = None
-    if store.get_sent_signer(draft_id) is None:
+    kept = store.get_sent_signer(draft_id)
+    if draft.status != "sent" or kept is None:
+        # the first marking: the name it was written in (someone else's, kept since it was written),
+        # with today's contact lines; marked again, it stays as it went out
         profile = store.get_profile()
-        extra["sent_profile"] = SentSigner(name=profile.name, email=profile.email, phone=profile.phone)
+        name = kept.name if kept is not None and kept.name else profile.name
+        extra["sent_profile"] = SentSigner(name=name, email=profile.email, phone=profile.phone)
     with store.tx():
         updated = store.update_draft(
             draft_id, status="sent", sent_at=day.isoformat(), sent_channel=channel, checks=checks, **extra

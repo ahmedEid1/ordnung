@@ -1,4 +1,5 @@
-"""Letters: fixed templates, compose (model only for free text + translation), objection gate, mark_sent."""
+"""Letters: fixed templates, compose (model only for free text + translation), objection gate, a letter in
+someone else's name, mark_sent."""
 
 from __future__ import annotations
 
@@ -21,9 +22,10 @@ from ordnung.drafts.compose import (
     place_date,
     refresh_checks,
 )
+from ordnung.drafts.sent import letter_profile
 from ordnung.llm.base import LLMError, LLMRequest, LLMResponse
 from ordnung.llm.fake import FakeBackend
-from ordnung.models import DateSpec, Draft, Identifier, Profile, Remedy
+from ordnung.models import DateSpec, Draft, Identifier, Profile, Remedy, SentSigner
 
 TODAY = date(2026, 9, 28)
 
@@ -254,7 +256,7 @@ def test_place_date_uses_profile_town() -> None:
 
 def test_free_paragraphs_drop_frame_lines_and_citations() -> None:
     text = "Sehr geehrte Damen und Herren,\n\nDas ist falsch nach § 999 BGB. Bitte melden Sie sich.\n\nMit freundlichen Grüßen\nSam"
-    paragraphs, removed = free_paragraphs(text, signer="Sam")
+    paragraphs, removed = free_paragraphs(text, signers=("Sam",))
     assert paragraphs == ["Bitte melden Sie sich."]
     assert removed
 
@@ -453,6 +455,75 @@ async def test_refresh_checks_after_an_edit(ctx: AppContext, ids: dict[str, str]
     assert not _check(rechecked, "citations_known")
     ctx.store.update_draft(draft.id, body=draft.body + "\n\nSiehe § 355 AO.")  # in the letter itself
     assert _check(refresh_checks(ctx.store, draft.id), "citations_known")
+
+
+async def test_a_letter_in_someone_elses_name_is_signed_by_them(ctx: AppContext, ids: dict[str, str]) -> None:
+    draft = await compose(ctx, "cancellation", contract_id=ids["phone"], sender_name="Alex  Rivera")
+    assert draft.sender_block == "Alex Rivera\nMusterweg 5\n12345 Musterstadt"
+    # the model's own sign-off with the profile's name is dropped as before
+    assert draft.body.endswith("Vielen Dank für die gute Zusammenarbeit.")
+    assert "Sam Rivera" not in draft.body
+    assert "This letter goes out in the name of Alex Rivera, so Alex Rivera signs it." in draft.notes_for_user
+    # only the name counts until it is sent: the contact lines stay the profile's
+    assert ctx.store.get_sent_signer(draft.id) == SentSigner(
+        name="Alex Rivera", email="sam@example.org", phone="+49 170 1234567"
+    )
+    assert letter_profile(ctx.store, draft).name == "Alex Rivera"
+
+
+async def test_a_fallback_translation_is_signed_with_the_name_chosen(data_dir: Path) -> None:
+    clock.set_today(TODAY)
+    context = build_context(data_dir, backend_obj=FailingBackend())
+    try:
+        store = context.store
+        store.save_profile(
+            Profile(name="Sam Rivera", address="Musterweg 5, 12345 Musterstadt", language="en")
+        )
+        party = store.add_party(name="FitMuster Studio", kind="gym", address="Sportweg 1, 12345 Musterstadt")
+        contract = store.add_contract(name="FitMuster Premium", category="gym", party_id=party.id)
+        draft = await compose(context, "cancellation", contract_id=contract.id, sender_name="Alex Rivera")
+    finally:
+        context.close()
+        clock.set_today(None)
+    assert draft.body_translation.endswith("Yours faithfully\nAlex Rivera")
+
+
+async def test_an_unsent_letter_takes_only_the_name_it_goes_out_in(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name="Alex Rivera")
+    profile = ctx.store.get_profile()
+    ctx.store.save_profile(profile.model_copy(update={"email": "new@example.org", "phone": "+49 30 999"}))
+    shown = letter_profile(ctx.store, draft)
+    assert (shown.name, shown.email, shown.phone) == ("Alex Rivera", "new@example.org", "+49 30 999")
+    assert shown.address == profile.address
+
+
+async def test_marking_sent_keeps_the_name_and_takes_the_contact_lines_of_that_day(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name="Alex Rivera")
+    profile = ctx.store.get_profile()
+    ctx.store.save_profile(profile.model_copy(update={"email": "new@example.org", "phone": "+49 30 999"}))
+    mark_sent(ctx, draft.id, "letter", TODAY)
+    kept = SentSigner(name="Alex Rivera", email="new@example.org", phone="+49 30 999")
+    assert ctx.store.get_sent_signer(draft.id) == kept
+    ctx.store.save_profile(profile.model_copy(update={"name": "Someone Else", "email": "x@example.org"}))
+    mark_sent(ctx, draft.id, "registered_letter", TODAY)  # marked again: as it went out the first time
+    assert ctx.store.get_sent_signer(draft.id) == kept
+
+
+async def test_a_letter_in_your_own_name_keeps_no_signer_until_it_is_sent(
+    ctx: AppContext, ids: dict[str, str]
+) -> None:
+    draft = await compose(ctx, "objection", doc_id=ids["tax"], sender_name=" sam rivera ")
+    assert draft.sender_block.startswith("Sam Rivera\n")
+    assert ctx.store.get_sent_signer(draft.id) is None
+    assert not any("goes out in the name of" in note for note in draft.notes_for_user)
+    mark_sent(ctx, draft.id, "letter", TODAY)
+    assert ctx.store.get_sent_signer(draft.id) == SentSigner(
+        name="Sam Rivera", email="sam@example.org", phone="+49 170 1234567"
+    )
 
 
 # --------------------------------------------------------------------------------------------------
