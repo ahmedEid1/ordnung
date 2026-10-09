@@ -32,6 +32,7 @@ import {
   objectionCheck,
   objectionDeadline,
   objectionDocuments,
+  sameName,
   usableDocuments,
   type ComposerPrefill,
 } from "./logic";
@@ -719,6 +720,54 @@ function TemplateRecipient({
   );
 }
 
+/**
+ * The From field of a letter answering one addressed to someone else (`DocumentDetail.addressed_to`). It starts with
+ * the person's own name: the addressee's is one press away, and "Use my name" goes back — offered, never set (a
+ * child's letter answered in the child's name would be the worse mistake). The name never goes to Claude.
+ */
+function SignerField({
+  addressee,
+  ownName,
+  value,
+  onChange,
+  othersName,
+}: {
+  addressee: string;
+  ownName: string;
+  value: string;
+  onChange: (name: string) => void;
+  /** The field holds a name that isn't the person's own. */
+  othersName: boolean;
+}) {
+  return (
+    <div className="mt-4" data-signer>
+      <Field
+        label="From"
+        hint={
+          <span className="[overflow-wrap:anywhere]">
+            This letter was addressed to {addressee}.{othersName ? <> It goes out in the name of {value.trim()}, who signs it.</> : null}
+          </span>
+        }
+      >
+        <Input value={value} onChange={(e) => onChange(e.target.value)} maxLength={120} autoComplete="off" spellCheck={false} />
+      </Field>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {!sameName(value, addressee) ? (
+          // an element, not a string: the Button truncates a string label, and a long name wraps at 320 px instead
+          <Button size="sm" className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left" onClick={() => onChange(addressee)}>
+            <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Reply in {addressee}'s name</span>
+          </Button>
+        ) : null}
+        {ownName && !sameName(value, ownName) ? (
+          <Button size="sm" variant="ghost" onClick={() => onChange(ownName)}>
+            Use my name
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: ComposerPrefill | null; onClose: () => void }) {
   const navigate = useNavigate();
   const today = useTodayISO();
@@ -857,6 +906,20 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const addressee = check.ok ? check.remedy?.addressee?.trim() || null : null;
   const addresseeElsewhere = addressee && !(recipient && addressee.toLowerCase().startsWith(recipient.name.toLowerCase())) ? addressee : null;
 
+  // the letter answered (a cancellation's: its contract's letter, as the request's doc_id) was addressed to someone
+  // else: the From field offers their name, starting with the person's own — never filled in for them (ADR 0019)
+  const answeredId = kind === "cancellation" ? (contract?.source_doc_id ?? null) : docId;
+  const answeredQ = useDocument(kind && answeredId ? answeredId : undefined);
+  const letterAddressee = answeredQ.data?.document.id === answeredId ? (answeredQ.data?.addressed_to ?? null) : null;
+  const ownName = profileQ.data?.name?.trim() ?? "";
+  // what the person typed or chose, per answered letter: switching letters never carries one person's name to another
+  const [signers, setSigners] = useState<Record<string, string>>({});
+  const signer = answeredId && answeredId in signers ? signers[answeredId]! : ownName;
+  const setSigner = (name: string) => {
+    if (answeredId) setSigners((s) => ({ ...s, [answeredId]: name }));
+  };
+  const othersName = Boolean(signer.trim()) && !sameName(signer, ownName);
+
   // what the template form starts with: the contract's name (never a letter's title, which is Ordnung's
   // English summary, not what was ordered), the profile's address
   const templateValues: DetailValues = !template
@@ -935,6 +998,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         instructions: instructions.trim() || undefined,
         language,
         suspend_enforcement: kind === "objection" && canSuspend(doc) ? suspend : undefined,
+        // only a name the person chose: their own (or an emptied field) leaves the request as without the field
+        sender_name: letterAddressee && othersName ? signer.trim() : undefined,
         details: template
           ? detailsPayload(template, templateValues, recipientId ? null : typedRecipient)
           : courtTyped
@@ -1364,6 +1429,10 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                   {recipient.address ? <span className="block text-[12.5px] text-muted">{recipient.address}</span> : null}
                 </span>
               </div>
+            ) : null}
+
+            {letterAddressee && !objectionBlocked && !refusal && !nothing ? (
+              <SignerField addressee={letterAddressee} ownName={ownName} value={signer} onChange={setSigner} othersName={othersName} />
             ) : null}
           </section>
         ) : null}

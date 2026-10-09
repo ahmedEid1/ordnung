@@ -100,6 +100,32 @@ async def test_a_letter_says_whether_it_was_given_to_claude(data_dir: Path) -> N
         assert detail["document"]["status"] == "processed" and detail["given_to_model"] is True
 
 
+async def test_a_letter_addressed_to_someone_else_says_so(data_dir: Path) -> None:
+    """Worked out on read from the reading's addressee and the profile's name (``secretary.addressee``):
+    nothing is written, and the letter list doesn't carry it."""
+    router = ApiRouter()
+    router.payloads[TAX_LETTER.marker]["recipient_name"] = "Frau Alex Rivera"
+    router.payloads[INVOICE_LETTER.marker]["recipient_name"] = "Herrn Sam Rivera"
+    async with api_for(data_dir, router=router) as api:
+        tax = await _read_letter(api, TAX_LETTER.pdf())
+        invoice = await _read_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        before = (await api.client.get(f"/api/documents/{tax}")).json()
+        assert before["addressed_to"] is None  # the profile has no name yet: nothing to compare with
+        profile = {"name": "Sam Rivera", "address": "Musterweg 1\n12345 Musterstadt"}
+        assert (await api.client.put("/api/profile", json=profile)).status_code == 200
+
+        detail = (await api.client.get(f"/api/documents/{tax}")).json()
+        assert detail["addressed_to"] == "Alex Rivera"
+        assert detail["document"]["updated_at"] == before["document"]["updated_at"]
+        assert (await api.client.get(f"/api/documents/{invoice}")).json()["addressed_to"] is None
+        assert all("addressed_to" not in row for row in (await api.client.get("/api/documents")).json())
+
+        renamed = {**profile, "name": "Alex Rivera"}
+        assert (await api.client.put("/api/profile", json=renamed)).status_code == 200
+        assert (await api.client.get(f"/api/documents/{tax}")).json()["addressed_to"] is None
+        assert (await api.client.get(f"/api/documents/{invoice}")).json()["addressed_to"] == "Sam Rivera"
+
+
 async def test_duplicates_rejections_and_partial_uploads(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())

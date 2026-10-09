@@ -355,6 +355,13 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
               ) : null}
             </span>
           ) : null}
+          {/* who the letter is for, as read, when that isn't the person (the API's addressee policy): plain words,
+              wrapped anywhere on a phone; the letter stays the person's */}
+          {detail.addressed_to ? (
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              Addressed to <span className="text-ink/85">{detail.addressed_to}</span>
+            </span>
+          ) : null}
         </div>
         {/* money and dates the app's way, units and reference numbers kept whole ("MV-" / "2025-0412", "184.30" / "€") */}
         {doc.summary ? (

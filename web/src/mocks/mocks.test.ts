@@ -21,7 +21,7 @@ import type {
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
 import { needsArrivalDate } from "@/features/document/verdict";
-import { TRAY_DOCUMENTS } from "./data/documents";
+import { ADDRESSEES, TRAY_DOCUMENTS } from "./data/documents";
 import { BRIEF_TEXT, PROFILE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
 import { CHECK_LABELS, DRAFTS } from "./data/drafts";
@@ -518,6 +518,40 @@ describe("mock dataset", () => {
     const s = srv();
     for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).addressed_to, d.id).toBeNull();
     expect((await get<WeeklySession>(s, "/week")).backup).toBeNull();
+  });
+
+  it("says who a letter is addressed to when a test names someone else, as the API works it out", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    ADDRESSEES.doc_tax = "Alex Rivera";
+    try {
+      expect((await get<DocumentDetail>(s, "/documents/doc_tax")).addressed_to).toBe("Alex Rivera");
+      expect((await get<DocumentDetail>(s, "/documents/doc_tm_invoice")).addressed_to).toBeNull();
+    } finally {
+      delete ADDRESSEES.doc_tax;
+    }
+    expect((await get<DocumentDetail>(s, "/documents/doc_tax")).addressed_to).toBeNull();
+  });
+
+  it("writes a letter in the name the person chose, as the API does: sender block, signature and a note", async () => {
+    const s = srv();
+    s.db.applyTrayDocument("doc_tax");
+    const post = async (body: Record<string, unknown>) => (await (await s.handle("POST", "/drafts", new URLSearchParams(), body)).json()) as Draft;
+    const theirs = await post({ kind: "objection", doc_id: "doc_tax", sender_name: "  Alex  Rivera " });
+    expect(theirs.sender_block.split("\n")[0]).toBe("Alex Rivera");
+    expect(theirs.body.endsWith("Alex Rivera")).toBe(true);
+    expect(theirs.body_translation.endsWith("Alex Rivera")).toBe(true);
+    expect(theirs.body + theirs.body_translation).not.toContain("Sam Rivera");
+    expect(theirs.notes_for_user).toContain("This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.");
+    const template = await post({ kind: "data_access", party_id: "pty_funknetz", sender_name: "Alex Rivera" });
+    expect(template.sender_block.split("\n")[0]).toBe("Alex Rivera");
+    expect(template.notes_for_user).toContain("This letter goes out in the name of Alex Rivera, so Alex Rivera signs it.");
+    // the person's own name, or none: as without it
+    for (const sender_name of [undefined, "", " sam  RIVERA "]) {
+      const yours = await post({ kind: "objection", doc_id: "doc_tax", sender_name });
+      expect(yours.sender_block.split("\n")[0]).toBe("Sam Rivera");
+      expect(yours.notes_for_user.join(" ")).not.toContain("goes out in the name of");
+    }
   });
 
   it("refuses Claude-only actions in the static demo with a friendly message", async () => {

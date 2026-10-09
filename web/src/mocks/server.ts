@@ -62,7 +62,7 @@ import { renderLetter, svgDataUrl, PAGE_H, PAGE_W } from "./pages";
 import { icsDataUrl, itemsToIcs } from "./ics";
 import { BRIEF_TEXT, DEMO_CHECKS, RULES, USAGE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
-import { draftChecks, phoneGuidance } from "./data/drafts";
+import { draftChecks, mockSigner, phoneGuidance, signerNote } from "./data/drafts";
 import { ADVICE_ARRIVED_BY_KIND, ADVICE_BY_DOC, ADVICE_BY_KIND } from "./data/advice";
 import { ORDER_RECEIPTS, STATUTORY_OBJECTIONS } from "./data/highStakes";
 import { courtChannels, isCourtName, templateLetter, templateRefusal } from "./data/templateLetters";
@@ -541,6 +541,9 @@ const isTemplateKind = (kind: string): kind is TemplateDraftKind => TEMPLATE_KIN
 
 /** A template letter (fixed text only, as the real app writes it without Claude). */
 function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDraftKind }): Draft {
+  // the name the person chose to write in (none: Sam's own), as the API's compose
+  const signer = mockSigner(body.sender_name);
+  const signerName = signer ?? SAM.name;
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
   const details = body.details ?? {};
@@ -595,16 +598,17 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
     case_id: contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
-    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}`,
+    sender_block: `${signerName}\n${SAM.street}\n${SAM.city}`,
     recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (details.recipient ?? "").trim(),
     place_date: `Musterstadt, ${format(parseISO(db.today), "dd.MM.yyyy")}`,
     subject: letter.subject,
     body: body_de,
-    body_translation: [`Subject: ${letter.subjectEn}`, ["Dear Sir or Madam,", ...letter.paragraphsEn].join("\n\n"), `Yours faithfully\n${SAM.name}`].join("\n\n"),
+    body_translation: [`Subject: ${letter.subjectEn}`, ["Dear Sir or Madam,", ...letter.paragraphsEn].join("\n\n"), `Yours faithfully\n${signerName}`].join("\n\n"),
     enclosures: [],
     notes_for_user: [
       "The demo uses Ordnung's fixed sentences only. With Claude connected, it also writes a short polite paragraph in your words.",
       ...letter.notes,
+      ...(signer ? [signerNote(signer)] : []),
       "Based on the law as of 25 September 2026. Not legal advice. Not reviewed by a lawyer.",
     ],
     checks: [],
@@ -623,6 +627,9 @@ const STATUTORY_REMEDY: Record<string, string> = { court_payment_order: "Widersp
 
 function composeDraft(db: MockDb, body: DraftCreate): Draft {
   if (isTemplateKind(body.kind)) return composeTemplateDraft(db, { ...body, kind: body.kind });
+  // the name the person chose to write in (none: Sam's own), as the API's compose
+  const signer = mockSigner(body.sender_name);
+  const signerName = signer ?? SAM.name;
   const contract = body.contract_id ? db.state.contracts.find((c) => c.id === body.contract_id) : undefined;
   const doc = body.doc_id ? db.document(body.doc_id) : null;
   // a notice without notice period has no hardship objection: its card offers none (compose.objection_remedy)
@@ -644,8 +651,8 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
   const endEn = endDate ? format(parseISO(endDate), "d MMM yyyy") : null;
   if (body.kind === "cancellation") {
     subject = `Kündigung ${contract ? `– ${contract.name}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`.trim();
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit kündige ich den oben genannten Vertrag fristgerecht${endDe ? ` zum ${endDe}` : ""}, hilfsweise zum nächstmöglichen Zeitpunkt.\n\nBitte bestätigen Sie mir den Eingang dieser Kündigung und das Beendigungsdatum schriftlich.\n\nMit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby cancel the above contract with due notice${endEn ? ` effective ${endEn}` : ""}, or alternatively at the next possible date.\n\nPlease confirm receipt of this cancellation and the end date in writing.\n\nKind regards\n\n${signerName}`;
   } else if (body.kind === "objection" && doc?.kind && STATUTORY_REMEDY[doc.kind]) {
     const dDate = doc.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "";
     // the application to suspend enforcement only when ticked, and only against an enforcement order (templates.objection)
@@ -657,21 +664,21 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     subject = `${remedy} gegen ${doc.kind === "landlord_notice" ? "Ihre" : "den"} ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
     bodyDe =
       doc.kind === "landlord_notice"
-        ? `Sehr geehrte Damen und Herren,\n\nhiermit widerspreche ich Ihrer Kündigung${dDate ? ` vom ${dDate}` : ""} des Mietverhältnisses und verlange die Fortsetzung des Mietverhältnisses (§ 574 BGB).\n\nDie Gründe teile ich Ihnen auf Wunsch gesondert mit.\n\nMit freundlichen Grüßen\n\n${SAM.name}`
-        : `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? `, ${refLabel} ${ref},` : ""} ${remedy} ein.\n\n${doc.kind === "court_payment_order" ? "Ich widerspreche dem geltend gemachten Anspruch insgesamt." : "Eine Begründung reiche ich nach."}${suspendDe}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
+        ? `Sehr geehrte Damen und Herren,\n\nhiermit widerspreche ich Ihrer Kündigung${dDate ? ` vom ${dDate}` : ""} des Mietverhältnisses und verlange die Fortsetzung des Mietverhältnisses (§ 574 BGB).\n\nDie Gründe teile ich Ihnen auf Wunsch gesondert mit.\n\nMit freundlichen Grüßen\n\n${signerName}`
+        : `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den ${noun}${dDate ? ` vom ${dDate}` : ""}${ref ? `, ${refLabel} ${ref},` : ""} ${remedy} ein.\n\n${doc.kind === "court_payment_order" ? "Ich widerspreche dem geltend gemachten Anspruch insgesamt." : "Eine Begründung reiche ich nach."}${suspendDe}\n\nMit freundlichen Grüßen\n\n${signerName}`;
     bodyEn =
       doc.kind === "landlord_notice"
-        ? `Dear Sir or Madam,\n\nI hereby object to your notice terminating the tenancy and request that the tenancy be continued (§ 574 BGB).\n\nI will give you my reasons separately on request.\n\nYours faithfully\n\n${SAM.name}`
-        : `Dear Sir or Madam,\n\nI hereby lodge an objection (${remedy}) against the ${noun}${ref ? `, ${refLabel} ${ref}` : ""}.\n\n${doc.kind === "court_payment_order" ? "I object to the entire claim." : "I will submit the reasons separately."}${suspendEn}\n\nYours faithfully\n\n${SAM.name}`;
+        ? `Dear Sir or Madam,\n\nI hereby object to your notice terminating the tenancy and request that the tenancy be continued (§ 574 BGB).\n\nI will give you my reasons separately on request.\n\nYours faithfully\n\n${signerName}`
+        : `Dear Sir or Madam,\n\nI hereby lodge an objection (${remedy}) against the ${noun}${ref ? `, ${refLabel} ${ref}` : ""}.\n\n${doc.kind === "court_payment_order" ? "I object to the entire claim." : "I will submit the reasons separately."}${suspendEn}\n\nYours faithfully\n\n${signerName}`;
   } else if (body.kind === "objection") {
     const dDate = doc?.doc_date ? format(parseISO(doc.doc_date), "dd.MM.yyyy") : "…";
     subject = `Einspruch gegen den Bescheid vom ${dDate}${ref ? ` – ${refLabel} ${ref}` : ""}`;
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.suspend_enforcement ? "Ich beantrage die Aussetzung der Vollziehung.\n\n" : ""}${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.suspend_enforcement ? "I apply for suspension of enforcement (Aussetzung der Vollziehung).\n\n" : ""}${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nhiermit lege ich gegen den Bescheid vom ${dDate}${ref ? `, ${refLabel} ${ref},` : ""} Einspruch ein. Eine Begründung reiche ich nach.\n\n${body.suspend_enforcement ? "Ich beantrage die Aussetzung der Vollziehung.\n\n" : ""}${body.instructions ? "Die Aufwendungen für meinen Laptop (1.049,00 EUR) nutze ich überwiegend beruflich; eine Bestätigung meines Arbeitgebers füge ich bei.\n\n" : ""}Mit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nI hereby file an objection (Einspruch) against the decision of ${doc?.doc_date ? format(parseISO(doc.doc_date), "d MMM yyyy") : "…"}${ref ? `, ${refLabel} ${ref}` : ""}. I will submit my reasons separately.\n\n${body.suspend_enforcement ? "I apply for suspension of enforcement (Aussetzung der Vollziehung).\n\n" : ""}${body.instructions ? "I use my laptop (€1,049.00) mainly for work; I enclose a confirmation from my employer.\n\n" : ""}Kind regards\n\n${signerName}`;
   } else {
     subject = `Ihr Schreiben${doc?.doc_date ? ` vom ${format(parseISO(doc.doc_date), "dd.MM.yyyy")}` : ""}${ref ? ` – ${refLabel} ${ref}` : ""}`;
-    bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${SAM.name}`;
-    bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${SAM.name}`;
+    bodyDe = `Sehr geehrte Damen und Herren,\n\nvielen Dank für Ihr Schreiben. ${body.instructions ? "Ich habe dazu folgende Frage: …" : "Bitte teilen Sie mir mit, wie wir weiter verfahren."}\n\nMit freundlichen Grüßen\n\n${signerName}`;
+    bodyEn = `Dear Sir or Madam,\n\nthank you for your letter. ${body.instructions ? "I have the following question: …" : "Please let me know how we proceed."}\n\nKind regards\n\n${signerName}`;
   }
   const statutory = body.kind === "objection" && doc?.kind ? STATUTORY_OBJECTIONS[doc.kind] : undefined;
   const letterDeadline = db.state.items.find((i) => i.doc_id === doc?.id && i.kind === "deadline" && i.status === "open");
@@ -709,14 +716,17 @@ function composeDraft(db: MockDb, body: DraftCreate): Draft {
     case_id: body.case_id ?? contract?.case_id ?? doc?.case_id ?? null,
     doc_id: body.doc_id ?? null,
     contract_id: body.contract_id ?? null,
-    sender_block: `${SAM.name}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
+    sender_block: `${signerName}\n${SAM.street}\n${SAM.city}\n${SAM.email}`,
     recipient_block: party ? `${party.name}\n${(party.address ?? "").replace(/, /g, "\n")}` : (body.details?.recipient ?? "").trim(),
     place_date: placeDate,
     subject,
     body: bodyDe,
     body_translation: bodyEn,
     enclosures: body.kind === "objection" && body.instructions ? ["Bestätigung des Arbeitgebers"] : [],
-    notes_for_user: statutory ? [...statutory.notes] : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : [],
+    notes_for_user: [
+      ...(statutory ? statutory.notes : body.kind === "objection" ? ["An objection is free. It only needs to arrive in time — reasons can follow later."] : []),
+      ...(signer ? [signerNote(signer)] : []),
+    ],
     checks: [],
     send_guidance: guidance,
     sent_channel: null,

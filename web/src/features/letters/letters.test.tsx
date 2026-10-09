@@ -20,6 +20,7 @@ import {
   parsePrefill,
   pdfFileName,
   rankChannels,
+  sameName,
   sendChoices,
   sentVia,
   sortChecks,
@@ -27,6 +28,7 @@ import {
 } from "./logic";
 import { SendGuidancePanel, instantPhrase, notEnoughPhrase, sameDayPhrase } from "./SendGuidancePanel";
 import { STATUTORY_OBJECTIONS } from "@/mocks/data/highStakes";
+import { ADDRESSEES } from "@/mocks/data/documents";
 
 /** Render `ui` at `route` under a real `:id` route pattern (so useParams works). */
 function renderAt(ui: ReactElement, pattern: string, route: string) {
@@ -103,6 +105,12 @@ describe("objections only where the letter allows them (SPEC §21)", () => {
 
 describe("draft helpers", () => {
   const draft = { kind: "cancellation", recipient_block: "FunkNetz Mobil GmbH\nPostfach 10 20 30", created_at: "2026-09-27T18:10:00Z" } as Draft;
+
+  it("takes two names as the same when only case and spaces differ, as the API does", () => {
+    expect(sameName(" sam  RIVERA ", "Sam Rivera")).toBe(true);
+    expect(sameName("Alex Rivera", "Sam Rivera")).toBe(false);
+    expect(sameName("", "Sam Rivera")).toBe(false);
+  });
 
   it("titles, file names and the 21-day follow-up", () => {
     expect(draftTitle(draft)).toBe("Cancellation to FunkNetz Mobil GmbH");
@@ -267,6 +275,90 @@ describe("Letters page", () => {
     expect(within(dialog).getByRole("radio", { name: /Cancel a contract/ })).toBeChecked();
     expect(await within(dialog).findByRole("radio", { name: /FunkNetz Allnet L/ })).toBeChecked();
     expect(within(dialog).getByRole("button", { name: /Write the letter/ })).toBeEnabled();
+  });
+});
+
+describe("a letter addressed to someone else: their name is offered, never set", () => {
+  afterEach(() => {
+    delete ADDRESSEES.doc_tax;
+    delete ADDRESSEES.doc_mahnbescheid;
+  });
+
+  /** The composer for an objection to the tax assessment, addressed (in these tests) to Alex Rivera. */
+  async function openObjection(mock: ReturnType<typeof useMockApi>) {
+    ADDRESSEES.doc_tax = "Alex Rivera";
+    const user = userEvent.setup();
+    const rendered = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    const from = await within(dialog).findByRole("textbox", { name: "From" });
+    return { ...mock, ...rendered, user, dialog, from };
+  }
+
+  const drafted = (calls: { method: string; path: string; body: unknown }[]) =>
+    calls.find((c) => c.method === "POST" && c.path === "/drafts")?.body as Record<string, unknown> | undefined;
+
+  it("starts with your own name, says who the letter was addressed to, and fills in their name only when asked", async () => {
+    const { user, dialog, from } = await openObjection(useMockApi({ full: true }));
+    expect(from).toHaveValue("Sam Rivera");
+    expect(from).toHaveAccessibleDescription(/This letter was addressed to Alex Rivera\./);
+    expect(within(dialog).queryByRole("button", { name: "Use my name" })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }));
+    expect(from).toHaveValue("Alex Rivera");
+    expect(within(dialog).queryByRole("button", { name: "Reply in Alex Rivera's name" })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Use my name" }));
+    expect(from).toHaveValue("Sam Rivera");
+    expect(within(dialog).queryByRole("button", { name: "Use my name" })).toBeNull();
+  });
+
+  it("writes the letter in your name unless you chose theirs: the request is as before", async () => {
+    const { user, dialog, calls, router } = await openObjection(useMockApi({ full: true }));
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    expect(drafted(calls)).toMatchObject({ kind: "objection", doc_id: "doc_tax" });
+    expect(drafted(calls)).not.toHaveProperty("sender_name");
+  });
+
+  it("sends the name you chose, and the drafted letter is signed with it", async () => {
+    const { user, dialog, calls, router } = await openObjection(useMockApi({ full: true }));
+    await user.click(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }));
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    expect(drafted(calls)).toMatchObject({ kind: "objection", doc_id: "doc_tax", sender_name: "Alex Rivera" });
+  });
+
+  it("remembers the name per letter answered: choosing another letter never carries one person's name to it", async () => {
+    ADDRESSEES.doc_mahnbescheid = "Kim Rivera";
+    const { user, dialog } = await openObjection(useMockApi({ full: true }));
+    await user.click(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }));
+    await user.click(within(dialog).getByRole("radio", { name: /Court payment order/ }));
+    await within(dialog).findByRole("button", { name: "Reply in Kim Rivera's name" });
+    expect(within(dialog).getByRole("textbox", { name: "From" })).toHaveValue("Sam Rivera");
+    await user.click(within(dialog).getByRole("radio", { name: /Income tax assessment/ }));
+    await within(dialog).findByRole("button", { name: "Use my name" });
+    expect(within(dialog).getByRole("textbox", { name: "From" })).toHaveValue("Alex Rivera");
+  });
+
+  it("works the same on a paired phone, which may write letters", async () => {
+    const { user, dialog, calls, srv, router, from } = await openObjection(useMockApi({ full: true, client: "phone" }));
+    expect(from).toHaveValue("Sam Rivera");
+    await user.click(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" }));
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    expect(drafted(calls)).toMatchObject({ sender_name: "Alex Rivera" });
+    expect(srv.refused).toEqual([]);
+  });
+
+  it("has no From field for a letter addressed to you", async () => {
+    const { calls } = useMockApi({ full: true });
+    const user = userEvent.setup();
+    const { router } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    // the letter's own page data has come (its objection deadline is from it)
+    await within(dialog).findByText(/Deadline:/);
+    expect(within(dialog).queryByRole("textbox", { name: "From" })).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: /Write the letter/ }));
+    await waitFor(() => expect(router.state.location.pathname).toMatch(/^\/letters\/drf_/));
+    expect(drafted(calls)).not.toHaveProperty("sender_name");
   });
 });
 
