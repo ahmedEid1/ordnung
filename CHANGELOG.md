@@ -16,6 +16,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- **The benchmark page pools the three held-out splits** into one table with tighter intervals, and each
+  held-out split now also shows how the rest of each letter was read, the adversarial letters and what its one
+  recording cost ([docs/evals.md](docs/evals.md)). Scam letters are scored as the app decides too, beside the
+  benchmark's looser rule: in the app, an IBAN that only fails its checksum is no scam sign on its own.
 
 ### Fixed
 

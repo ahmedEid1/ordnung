@@ -220,6 +220,7 @@ rate of 0 or 100 %, see [docs/evals.md](docs/evals.md)).
 | **Ordnung**, second held-out split with the re-ask and the reading check⁸ | 98.2 % [94.5–100] | **0 %** | no |
 | **Ordnung** as the app runs it, without the sender's Land⁹ | 85.7 % [74.6–94.7] | **0 %** | no |
 | **Ordnung**, on a third held-out split, written after the code freeze¹⁰ | 100 % [91.8–100] | **0 %** | yes |
+| **Ordnung**, the three held-out splits together¹¹ | 97.0 % [94.3–99.4] | **1.2 %** (2 of 168) | yes |
 
 <p align="center"><img src="docs/assets/eval-due-date-accuracy.png" width="720" alt="Due-date accuracy with 95 % confidence intervals, for all letters, text PDFs and phone photos. Left, the held-out run: Ordnung 89 %, LLM only 82 %, LLM + rules text 93 %. Right, after the engine fix (not held-out): Ordnung re-scored 98 %, LLM + rules tool 100 %"></p>
 
@@ -290,6 +291,10 @@ one letter was redrawn before the recording so that it tells the old and the new
 date stayed the same). Recorded once on Sonnet 5 with every condition on 6 October, nothing tuned on them.
 The code has changed since (the looser dropped-date check, the phone companion and hand-off sync); replayed on
 the current code, the same recording gives the same prediction for every letter (`tests/test_holdout3_replay.py`).
+¹¹ Rows ⁵, ⁷ and ¹⁰ together, each split as recorded once: 189 letters (33 photos, 36 adversarial; 168 dated
+obligations), the interval bootstrapped over all of them. On the same letters the agent with the calculator got
+167 of 168 right (one late), the rules-text prompt 154 (one late) and the model alone 136 (13 late)
+([docs/evals.md](docs/evals.md#held-out-splits-pooled)).
 
 What the numbers say:
 
@@ -343,6 +348,11 @@ What the numbers say:
   letters (row ¹⁰), Ordnung got all 56 dated deadlines right, and so did the agent with the calculator. The
   rules-text prompt scored 53 of 56 with no late date (three early), the model alone 47 of 56 with five
   late. Neither the completeness re-ask nor the reading check was needed on these letters.
+- **All three held-out splits together: 97.0 %.** Pooled (row ¹¹), Ordnung is clearly ahead of the
+  rules-text prompt (+5.4 points, 95 % interval +0.6 to +10.6) and of the model alone (+16.1 points, 95 %
+  interval +9.8 to +23.1), and the agent with the calculator is level with it or ahead (−2.4 points, 95 %
+  interval −5.3 to 0.0 for Ordnung): on these letters too, accuracy does not decide between the pipeline and
+  the agent.
 
 Method, per-family results, error analysis and a failure gallery: [docs/evals.md](docs/evals.md). In a
 source checkout, `ordnung eval` re-scores the recorded outputs of the prompts the app uses now (for

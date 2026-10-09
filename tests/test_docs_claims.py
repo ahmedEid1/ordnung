@@ -761,6 +761,321 @@ def test_the_spec_no_longer_says_nothing_derives_a_sender_s_land_from_a_postcode
     assert "only the person sets" in holidays and "0019-a-sender-s-land-is-suggested-never-set.md" in holidays
 
 
+# --------------------------------------------------------------------------------------------------
+# docs/evals.md: rendered from the results files alone
+# --------------------------------------------------------------------------------------------------
+
+#: The results files docs/evals.md is rendered from, by ``render_markdown``'s argument (``python -m evals.report``
+#: takes the same files: the published run, its re-scoring, the prompt-now runs, each held-out run with its
+#: re-scoring, the replay without the sender's Land).
+EVALS_PAGE_FILES: dict[str, str | list[str]] = {
+    "runs": ["2026-09-25-sonnet-test.json"],
+    "rescored": "2026-09-25-sonnet-test-rescored.json",
+    "prompt_runs": ["2026-09-30-claude-sonnet-5-test.json", "2026-09-30-claude-sonnet-5-dev.json"],
+    "holdout_run": "2026-09-30-claude-sonnet-5-holdout.json",
+    "holdout_rescored": "2026-09-30-claude-sonnet-5-holdout-rescored.json",
+    "holdout2_run": "2026-10-01-claude-sonnet-5-holdout2.json",
+    "holdout2_rescored": "2026-10-06-claude-sonnet-5-holdout2-rescored.json",
+    "holdout3_run": "2026-10-06-claude-sonnet-5-holdout3.json",
+    "without_land": WITHOUT_LAND,
+}
+#: The three held-out recordings, each made once: the page's held-out rows.
+HELD_OUT_FILES = {
+    "holdout": "2026-09-30-claude-sonnet-5-holdout.json",
+    "holdout2": "2026-10-01-claude-sonnet-5-holdout2.json",
+    "holdout3": "2026-10-06-claude-sonnet-5-holdout3.json",
+}
+
+
+def _evals_page() -> str:
+    return (ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+
+
+def _evals_section(page: str, heading: str) -> str:
+    """The text under ``## {heading}``, up to the next ``## `` heading."""
+    return page.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def _held_out_runs() -> dict[str, dict[str, Any]]:
+    return {split: _results(name) for split, name in HELD_OUT_FILES.items()}
+
+
+def test_the_benchmark_page_is_what_its_results_files_render() -> None:
+    """docs/evals.md says "Do not edit by hand": rendered again from its results files with the current
+    ``evals/report.py``, it is the committed page, every number on it included."""
+    from evals import report
+
+    loaded: dict[str, Any] = {
+        key: [_results(name) for name in value] if isinstance(value, list) else _results(value)
+        for key, value in EVALS_PAGE_FILES.items()
+    }
+    prompt_note = next(
+        run["meta"]["prompt_note"] for run in loaded["prompt_runs"] if run["meta"].get("prompt_note")
+    )
+    runs = loaded.pop("runs")
+    rendered = report.render_markdown(
+        runs, chart="assets/eval-due-date-accuracy.png", prompt_note=prompt_note, **loaded
+    )
+    assert rendered == _evals_page(), (
+        "regenerate docs/evals.md with python -m evals.report (see its Reproduce)"
+    )
+
+
+def test_the_benchmark_method_names_every_held_out_split() -> None:
+    """Method → Splits names the holdout3 split (variants I and J, written after the code freeze, audited blind,
+    recorded once), as evals/generate.py writes it, and every split with adversarial letters."""
+    from evals import generate
+
+    method = _flat(_evals_section(_evals_page(), "Method"))
+    assert "an adversarial set in the test split and in each held-out split" in method
+    assert (
+        "Template variants A/B are the dev split, C/D the test split, E/F the holdout split, G/H the holdout2 split "
+        "and I/J the holdout3 split; the test split and each held-out split have their own adversarial letters, "
+        "dev has none"
+    ) in method
+    assert (
+        "The holdout3 split is a third such sample, written after the code freeze, its labels audited blind, and "
+        "recorded once; no prompt and no code change was informed by it."
+    ) in method
+    assert "I and J to ``holdout3``" in _flat(generate.__doc__ or "")
+    assert "The held-out letters keep the families" in method
+
+
+def test_each_held_out_section_states_its_recording_cost_from_its_results_file() -> None:
+    """Every held-out section says what its one recording cost, as the results file's own cost totals add up
+    (API-equivalent, per condition) — said once: the holdout and holdout2 notes, written by hand with their
+    recordings, state the same sentence, and holdout3, recorded without a note, gets it from its file."""
+    from evals.records import SHORT_LABELS
+
+    page = _evals_page()
+    for split, run in _held_out_runs().items():
+        costs = {condition: m["cost_usd"]["total"] for condition, m in run["metrics"].items()}
+        sentence = (
+            f"Recording cost ${sum(costs.values()):.2f} (API-equivalent): "
+            + ", ".join(f"{SHORT_LABELS[condition]} ${cost:.2f}" for condition, cost in costs.items())
+            + "."
+        )
+        section = _flat(_evals_section(page, f"Held-out run: the {split} split"))
+        assert section.count(sentence) == 1, (split, sentence)
+    assert "Recording cost $16.48 (API-equivalent)" in _flat(
+        _evals_section(page, "Held-out run: the holdout3 split")
+    )
+
+
+def test_each_held_out_section_shows_the_rest_of_the_letter_and_the_adversarial_letters() -> None:
+    """The held-out sections publish more than due dates: each has the published run's "Reading the rest of the
+    letter" and "Adversarial letters" tables, from its own results file."""
+    from evals import report
+
+    page = _evals_page()
+    for split, run in _held_out_runs().items():
+        section = _evals_section(page, f"Held-out run: the {split} split")
+        rest = section.split(f"### Reading the rest of the letter ({split})", 1)[1].split("\n### ", 1)[0]
+        adversarial = section.split(f"### Adversarial letters ({split})", 1)[1]
+        conditions = list(run["metrics"])
+        for key, label in report.EXTRACTION_LABELS.items():
+            cells = " | ".join(
+                report.rate(run["metrics"][c]["extraction"].get(key), counts=True) for c in conditions
+            )
+            assert f"| {label} | {cells} |" in rest, (split, key)
+        for key in (
+            "injection_resisted",
+            "conflicting_dates_handled",
+            "missing_date_handled",
+            "scam_flagged",
+        ):
+            cells = " | ".join(
+                report.rate(run["metrics"][c]["adversarial"].get(key), ci=False, counts=True)
+                for c in conditions
+            )
+            assert f"| {report.ADVERSARIAL_LABELS[key]} | {cells} |" in adversarial, (split, key)
+
+
+def test_each_held_out_section_counts_the_right_dates_that_came_from_a_wrong_reading() -> None:
+    """A right date can come from a reading that differs from the truth's in a way that does not change the date:
+    each held-out section counts them for Ordnung (``taxonomy.lucky_reading``) and names the letters and what
+    differed, from the results file."""
+    page = _evals_page()
+    for split, run in _held_out_runs().items():
+        lucky = [
+            (entry["id"], item["reading_diffs"])
+            for entry in run["entries"]
+            for item in entry["conditions"]["ordnung"]["score"]["items"]
+            if item["outcome"] == "correct" and item["reading_diffs"]
+        ]
+        assert len(lucky) == run["metrics"]["ordnung"]["taxonomy"]["lucky_reading"]
+        section = _flat(_evals_section(page, f"Held-out run: the {split} split"))
+        if lucky:
+            named = ", ".join(f"`{entry}` ({', '.join(f'`{d}`' for d in diffs)})" for entry, diffs in lucky)
+            assert (
+                f"{len(lucky)} of Ordnung's right dates came from a reading that differed from the truth's in a way "
+                f"that did not change the date: {named}."
+            ) in section, split
+    assert _held_out_runs()["holdout3"]["metrics"]["ordnung"]["taxonomy"]["lucky_reading"] == 2
+
+
+def test_pooling_one_held_out_split_gives_its_own_numbers() -> None:
+    """The pooled table bootstraps the letters' stored scores as the scorer does: pooled alone, each held-out run
+    gives exactly the due-date accuracy, late rate and paired differences its results file holds."""
+    from evals import report
+
+    for run in _held_out_runs().values():
+        pooled = report.pooled_held_out([run])
+        for condition, metrics in run["metrics"].items():
+            for key in ("due_date_accuracy", "dangerous_late_rate", "early_rate", "missed_rate"):
+                assert pooled["metrics"][condition][key] == metrics[key], (condition, key)
+        assert pooled["comparisons"] == run["comparisons"]
+
+
+def test_only_held_out_runs_of_different_splits_bootstrapped_alike_are_pooled() -> None:
+    """A page with one held-out run has no pooled table; two runs of one split, a run without per-letter scores or
+    runs bootstrapped with another seed are refused rather than pooled."""
+    from evals import report
+
+    third = _held_out_runs()["holdout3"]
+    assert report._pooled_section([third]) == ""
+    other_seed = {**third, "meta": {**third["meta"], "split": "holdout2", "seed": 1}}
+    no_scores = {**third, "meta": {**third["meta"], "split": "holdout2"}, "entries": []}
+    for bad, why in (
+        ([third, third], "different held-out splits"),
+        ([third, other_seed], "different seeds"),
+        ([third, no_scores], "no per-letter scores"),
+    ):
+        with pytest.raises(ValueError, match=why):
+            report.pooled_held_out(bad)
+
+
+def test_the_pooled_held_out_table_adds_up_the_three_recordings() -> None:
+    """docs/evals.md "Held-out splits pooled": the three held-out recordings together, as recorded — per
+    condition, the exact dates and late dates their results files hold, added up, with intervals over all their
+    letters and the paired differences; README's row ¹¹, its footnote and its bullet say the same."""
+    from evals import report
+
+    runs = _held_out_runs()
+    pooled = report.pooled_held_out(list(runs.values()))
+    section = _evals_section(_evals_page(), "Held-out splits pooled")
+    letters = sum(run["meta"]["entries"] for run in runs.values())
+    items = sum(run["meta"]["scored_items"] for run in runs.values())
+    assert (
+        f"{letters} letters ({sum(run['meta']['photos'] for run in runs.values())} phone photos, "
+        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial), {items} required items with a "
+        "known date"
+    ) in _flat(section)
+    counts: dict[str, tuple[int, int]] = {}
+    for condition in report.CONDITIONS:
+        k = sum(int(run["metrics"][condition]["due_date_accuracy"]["k"]) for run in runs.values())
+        late = sum(int(run["metrics"][condition]["dangerous_late_rate"]["k"]) for run in runs.values())
+        metrics = pooled["metrics"][condition]
+        assert (metrics["due_date_accuracy"]["k"], metrics["due_date_accuracy"]["n"]) == (k, items)
+        assert metrics["dangerous_late_rate"]["k"] == late
+        assert (
+            f"| **{report._label(condition)}** | {report.rate(metrics['due_date_accuracy'])} | {k}/{items} | "
+            f"{report.rate(metrics['dangerous_late_rate'], ci=False, counts=True)} |"
+        ) in section
+        counts[condition] = (k, late)
+    for key, value in pooled["comparisons"].items():
+        first, second = (report._label(name) for name in key.split("-vs-", 1))
+        assert f"- {first} − {second}: accuracy {report.diff(value['due_date_accuracy_diff'])}" in section
+    assert counts["ordnung"] == (163, 2) and counts["llm_rules_tool"] == (167, 1)
+    # README: row ¹¹, its footnote and its bullet
+    readme = _readme()
+    ordnung = pooled["metrics"]["ordnung"]
+    late = ordnung["dangerous_late_rate"]
+    assert (
+        f"| **Ordnung**, the three held-out splits together¹¹ | {_with_interval(ordnung['due_date_accuracy'])} "
+        f"| **{_pct(late['value'])} %** ({int(late['k'])} of {int(late['n'])}) | yes |"
+    ) in readme
+    flat = _flat(readme)
+    assert (
+        f"¹¹ Rows ⁵, ⁷ and ¹⁰ together, each split as recorded once: {letters} letters "
+        f"({sum(run['meta']['photos'] for run in runs.values())} photos, "
+        f"{sum(run['meta']['adversarial'] for run in runs.values())} adversarial; {items} dated obligations), the "
+        "interval bootstrapped over all of them."
+    ) in flat
+    assert (
+        f"On the same letters the agent with the calculator got {counts['llm_rules_tool'][0]} of {items} right "
+        f"({_words(counts['llm_rules_tool'][1])} late), the rules-text prompt {counts['llm_rules_text'][0]} "
+        f"({_words(counts['llm_rules_text'][1])} late) and the model alone {counts['llm_only'][0]} "
+        f"({_words(counts['llm_only'][1])} late)"
+    ) in flat
+
+    def signed(value: float) -> str:
+        """Points as README's prose writes them: a minus sign, a plus sign, a plain 0.0."""
+        text = f"{value * 100:+.1f}"
+        return "0.0" if text in ("+0.0", "-0.0") else text.replace("-", "−")
+
+    def points(name: str) -> str:
+        value = pooled["comparisons"][f"ordnung-vs-{name}"]["due_date_accuracy_diff"]
+        low, high = value["ci"]
+        return f"{signed(value['value'])} points, 95 % interval {signed(low)} to {signed(high)}"
+
+    text, alone, tool = (
+        pooled["comparisons"][f"ordnung-vs-{name}"]["due_date_accuracy_diff"]
+        for name in ("llm_rules_text", "llm_only", "llm_rules_tool")
+    )
+    assert text["ci"][0] > 0 and alone["ci"][0] > 0 and tool["ci"][0] < 0 <= tool["ci"][1]
+    assert (
+        f"**All three held-out splits together: {_pct(ordnung['due_date_accuracy']['value'])} %.** Pooled (row ¹¹), "
+        f"Ordnung is clearly ahead of the rules-text prompt ({points('llm_rules_text')}) and of the model alone "
+        f"({points('llm_only')}), and the agent with the calculator is level with it or ahead "
+        f"({points('llm_rules_tool')} for Ordnung)"
+    ) in flat
+
+
+def test_scam_letters_are_also_scored_as_the_app_decides() -> None:
+    """The benchmark counts a scam warning when any warning names a scam (negations aside) or Ordnung's code finds
+    an IBAN that fails its checksum; the app shows scam signs for hidden text or a warning its own test calls
+    one (``is_scam_warning``), and an IBAN that only fails its checksum is none. Both are on the page for
+    Ordnung, on every split; on holdout3 the app catches 1 of the 3 scam letters, the benchmark's rule 2."""
+    from evals import report
+
+    from ordnung.secretary.triggers import is_scam_warning
+
+    page = _evals_page()
+    sections = {split: _evals_section(page, f"Held-out run: the {split} split") for split in HELD_OUT_FILES}
+    sections["test"] = _evals_section(page, "Adversarial letters")
+    runs = {**_held_out_runs(), "test": _results("2026-09-25-sonnet-test.json")}
+    found: dict[str, tuple[int, int, int, int]] = {}
+    for split, run in runs.items():
+        scam, alarms = [0, 0], [0, 0]
+        for entry in run["entries"]:
+            condition = entry["conditions"]["ordnung"]
+            prediction, checks = condition["prediction"], condition["score"]["adversarial"]
+            answered = not prediction.get("failed") and not prediction.get("error")
+            shows = answered and (
+                bool(prediction.get("hidden_text"))
+                or any(map(is_scam_warning, prediction.get("warnings") or []))
+            )
+            if "scam_flagged" in checks:
+                scam = [scam[0] + shows, scam[1] + 1]
+            elif checks.get("scam_false_alarm") is not None:
+                alarms = [alarms[0] + shows, alarms[1] + 1]
+        found[split] = (*scam, *alarms)
+        for key, (k, n) in (("scam_flagged_app", scam), ("scam_false_alarm_app", alarms)):
+            cell = report.rate({"value": k / n, "k": k, "n": n}, ci=False, counts=True)
+            others = " | ".join("n/a (not the app)" for _ in list(run["metrics"])[1:])
+            row = f"| {report.ADVERSARIAL_LABELS[key]} | {cell} | {others} |"
+            assert row in sections[split], (split, key)
+    assert found["holdout3"] == (1, 3, 0, 51)
+    bench = runs["holdout3"]["metrics"]["ordnung"]["adversarial"]
+    assert (bench["scam_flagged"]["k"], bench["scam_false_alarm"]["k"]) == (2, 1)
+
+
+def test_the_app_s_scam_rule_ignores_a_checksum_note_but_not_hidden_text() -> None:
+    """``app_scam_sign`` is the app's decision on a reading: a warning only about an IBAN's checksum is no scam
+    sign; one that names a scam is, and so is hidden text; a letter without an answer shows nothing."""
+    from evals import report
+
+    from ordnung.secretary.scam import invalid_iban_message
+
+    checksum = invalid_iban_message("DE00 1234 5678 9012 3456 78")
+    assert not report.app_scam_sign({"warnings": [checksum], "signals": ["invalid_iban"]})
+    assert report.app_scam_sign({"warnings": ["This looks like a scam: do not pay."]})
+    assert report.app_scam_sign({"warnings": [], "hidden_text": True})
+    assert not report.app_scam_sign({"warnings": ["This looks like a scam."], "failed": "no valid answer"})
+    assert not report.app_scam_sign(None)
+
+
 def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
     """README "The model reads, code computes" shows "part of its recorded answer" for the demo's tax assessment:
     every key and value of it is in that recording (``src/ordnung/demo/fixtures/extract/85ae2aa7….json``)."""
