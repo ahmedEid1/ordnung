@@ -425,6 +425,12 @@ your own sync tool receives only encrypted files with meaningless names: the pas
 computer's password store, and the provider learns how many files there are, roughly how large, and when
 they change — never what is in them. Details in [docs/privacy.md](docs/privacy.md).
 
+Ordnung doesn't encrypt the data folder itself, so turn on your disk's encryption: FileVault on a Mac,
+BitLocker or Device encryption on Windows (Settings → Privacy & security → Device encryption, or BitLocker
+Drive Encryption in the Control Panel), LUKS on Linux. Keep an encrypted backup somewhere else too; Ordnung
+reminds you when the last one is more than 30 days old. If your computer is lost or stolen,
+[here is what to do](docs/privacy.md#if-your-computer-is-lost-or-stolen).
+
 ## Install and run
 
 You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters, Claude Code 2.1.0 or
@@ -434,10 +440,10 @@ with Anthropic's installer — `curl -fsSL https://claude.ai/install.sh | bash` 
 `irm https://claude.ai/install.ps1 | iex` in Windows PowerShell; other ways are in its
 [setup guide](https://code.claude.com/docs/en/setup) — and run `claude` once to sign in. Installed this
 way it updates itself; `claude update` updates it at once. Ordnung calls it in headless mode; there is
-nothing else to configure. Without Claude you can still store letters privately, search them and add your own dates
-(Timeline → Add a date, or on a letter's page). A letter added while Claude isn't installed, isn't signed
-in or is older than 2.1.0 waits (*Waiting for Claude*) instead of failing, and is read once Claude is
-ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
+nothing else to configure. Without Claude you can still store letters privately, search them and add your own
+dates (Timeline → Add a date, or on a letter's page), also ones that repeat. A letter added while Claude isn't
+installed, isn't signed in or is older than 2.1.0 waits (*Waiting for Claude*) instead of failing, and is read
+once Claude is ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
 (weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
 runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
 access's network lookups and certificates, autostart entries and backups. The other tests, desktop
@@ -446,7 +452,7 @@ macOS or Windows.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
-ordnung doctor                  # checks Claude, the search index, fonts, your data folder and its database
+ordnung doctor                  # checks Claude, search, fonts, your data folder and database, your last backup, disk encryption
 ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
@@ -644,6 +650,10 @@ More in [docs/architecture.md](docs/architecture.md).
   date: Ordnung doesn't invent a start. A letter read before extraction prompt version 12 holds no day of
   the month, no last working day and no statutory notice periods; *Read again* reads it with the current
   prompt.
+- A repeating date is one entry at its next day: Timeline, Today, the calendar file and a synced calendar show
+  that one, and it moves on when you mark it done or its day has passed. A date you add without a letter counts
+  working days with the nationwide public holidays only, so where your Land has a holiday of its own, its
+  working day can come out a day early, or a day late for "the last working day".
 - The check for incomplete readings works from the letter's text with fixed rules, in German and English
   wording only. When the letter's dates or periods disagree, or its own date can't be read, it files the
   to-do without a date for you to fill in. Besides the objection deadline it catches a fixed pay-by or send-by
@@ -657,9 +667,11 @@ More in [docs/architecture.md](docs/architecture.md).
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
-- One person's Ordnung, in use on one computer at a time. A phone you pair in Settings → Phone can use it in
-  its browser over your home Wi-Fi while the computer is on: the letters stay on the computer, the phone
-  warns once about Ordnung's own certificate, and it can't change settings, back up or delete. There is no
+- One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
+  child) says so, and a reply to it can go out in their name, but its dates, reminders and numbers count as
+  yours. A phone you pair in Settings → Phone can use it in its browser over your home Wi-Fi while the
+  computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
+  and it can't change settings, back up or delete. There is no
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
   sends no reminders and reads no letters, and calendar sync is connected on each computer.
@@ -670,7 +682,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
   online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
   iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
-  knows the passphrase): a new sync folder with a new passphrase does, and changing the passphrase isn't
+  knows the passphrase): a new sync folder with a new passphrase does
+  ([what else to do](docs/privacy.md#if-your-computer-is-lost-or-stolen)), and changing the passphrase isn't
   possible yet.
 - Hand-off sync saves the database in 1 MiB slices and uploads every slice a save changed, which adds up on a
   large library: measured on a generated library of 1,500 letters and 80 MiB of database, reading one more
@@ -678,6 +691,10 @@ More in [docs/architecture.md](docs/architecture.md).
   replaced slices after a day of its running time (until then, after a week of it), but your provider's version
   history and trash may keep them longer: on a metered connection or a small quota, turn version history off for
   the sync folder if your provider lets you, and empty its trash now and then.
+- Ordnung can't see backups of the whole computer (Time Machine, File History), so the weekly review reminds
+  you to back up even when you make those; a scheduled `ordnung backup` counts. Its disk-encryption check is a
+  best effort on macOS (FileVault) and Linux (LUKS and encrypted folders such as eCryptfs; not fscrypt or
+  ZFS's own encryption). On Windows it doesn't check: see that BitLocker or Device encryption is on yourself.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in

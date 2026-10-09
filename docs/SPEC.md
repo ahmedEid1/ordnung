@@ -426,7 +426,11 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   `MIN_CLAUDE_VERSION` (2.1.0, `llm/claude_cli.py`) fails the doctor, makes the app's zero-token status
   not ready (`ClaudeStatus.needs_version` names the minimum; the app shows the update command) and is
   refused by the backend before its first call (`ClaudeOutdated`, a kind of not installed: a letter
-  waits); a version that can't be read is only a warning.
+  waits); a version that can't be read is only a warning. Two more checks of this computer only ever warn:
+  `backup` (the newest copy kept elsewhere, `backup/reminder.py`; left out for a demo folder or one without
+  a database) and `disk_encryption` (whether the disk under the data folder is encrypted, read from
+  `fdesetup` on macOS and `findmnt`/`lsblk` on Linux by `encryption.py`, a best effort; left out on other
+  systems).
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -1113,6 +1117,10 @@ writing or at online-mahnantrag.de, never by e-mail — nor any other letter to 
 only has to be sent in time).
 Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
 request, which has one month from receipt).
+A letter can go out in another name (`POST /api/drafts` `sender_name`; the composer offers the answered
+letter's addressee, `DocumentDetail.addressed_to`, and starts with the profile's name): its sender block,
+signature, PDF author and Nachweis use it, and it is kept in `drafts.sent_profile` (the name only until the
+letter is sent). The model is never given it, nor the profile's name, so the draft's cache key never depends on it.
 
 **Proof of sending** (`drafts/tracking.py`, `drafts/proof.py` = the policy, `drafts/sent.py` = the
 service; migration 0002). A registered letter (only it: marked again with another channel, the number
@@ -1418,8 +1426,8 @@ outside the database, Delete everything leaves first, a restored backup starts w
   meta `phone_access`, `calendar_sync`, `inbox_seen`, `inbox_baseline`, `job_interruptions`,
   `llm_paused_until`, `desktop_notified_on`, `desktop_notify_failed`, `sync_mark`, `sync_person`; settings
   `inbox_dir`, `inbox_auto_read`, `concurrency`, `desktop_notifications`, `desktop_notify_time`, `demo`,
-  `simulated_today`; privacy-log kinds `backup.created`, `phone.*` and `folder.*`. Merged as a union and
-  left out of the state digest: `own_pdfs` and `folder_taken` (the SHA-256 of every file a watched folder
+  `simulated_today`; privacy-log kinds `backup.created`, `backup.restored`, `phone.*` and `folder.*`.
+  Merged as a union and left out of the state digest: `own_pdfs` and `folder_taken` (the SHA-256 of every file a watched folder
   brought in, at most 5,000, so a folder both computers watch never brings a deleted letter back). The
   calendar's "already sent" record travels under a hashed target and is merged per target. A running
   reading travels as queued. A database that arrives with the demo's keys is refused.
@@ -1537,13 +1545,18 @@ cookie never on the computer's. Refusals answer `{detail, code}` with the status
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
 (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
 (GET detail, with `region_suggestion`: the question about the sender's state for this letter, its `waiting`
-counting this letter's open dates / PATCH / DELETE), `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
+counting this letter's open dates, and `addressed_to`: who the letter is addressed to, as read, when that
+isn't the profile's person — `secretary/addressee.py`, worked out on read / PATCH / DELETE),
+`documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
 `documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
 `base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
-`traces` (every kept reading, for the data export), `items` (GET/POST),
-`items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`),
+`traces` (every kept reading, for the data export), `items` (GET/POST; a rule with a working day or a day
+of the month dates the new to-do at its first occurrence at once),
+`items/{id}` (PATCH/DELETE; PATCH with `due_date` sets `due_date_source=manual`, `user_modified`; for a
+to-do not read from a letter, `recurrence` sent with `due_date` starts its schedule again at that date and
+`{recurrence: null}` stops it repeating),
 `items/{id}/confirm` (POST: grounding=user), `items/{id}/girocode/confirm` (POST: the transfer details
 the person compared with the paper letter; 409 when they changed or the code is refused for another
 reason), `items/{id}.ics`, `contracts` (GET), `contracts/{id}`
@@ -1553,9 +1566,11 @@ is in, `null` the select's "Don't know" — recomputes the to-dos of that sender
 *Yes* is this PATCH), `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze; the question's *Don't know* dismisses the
 sender's `sender_land` Idea here), `suggestions/review` (POST),
-`brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers), `week` (GET: the weekly session),
-`week/done` and `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
-(POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST), `drafts/{id}` (GET/PATCH/DELETE),
+`brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers),
+`week` (GET: the weekly session, with `backup` only when it is time for one), `week/done` and
+`week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
+(POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST; POST `sender_name`: the name the letter goes out in
+and is signed with, left out: the profile's), `drafts/{id}` (GET/PATCH/DELETE),
 `drafts/{id}/pdf`, `drafts/{id}/preview.png` (the PDF's pages as one image: the print preview),
 `drafts/{id}/sent` (POST),
 `drafts/{id}/translate` (POST: translate the edited letter again, purpose `draft`; 409 in the
@@ -1588,7 +1603,8 @@ keyring, then sent), `calendar/sync/preview?mode=` (every event as it would be s
 `reminders/desktop` (GET: the notification tool, today's text in each mode, left out with
 `?preview=false`, the last day shown, the
 last failure, whether it is the demo, the start-at-login entry and the command for this folder), `reminders/desktop/test` (POST `{mode}`: show it now), `backup` (GET: what a
-backup would hold; POST `{passphrase}`: the encrypted backup file, streamed while it is made — the
+backup would hold, and `last_copy`: the newest copy kept elsewhere and whether it is time for a new one;
+POST `{passphrase}`: the encrypted backup file, streamed while it is made — the
 passphrase is never stored, logged or echoed),
 `demo/tour` (GET tour state), `demo/mail` (GET tray, POST `{id}` → ingest a tray letter),
 `folder` (GET: the watched folder, its state or problem, `auto_read`, `can_read`, how many letters
@@ -1679,7 +1695,8 @@ Pages:
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
    **"From your folder — not read yet"**: the held letters (an e-mail's attachments under it), with
    *Read these N* and *Keep private*; held letters are in no other group or filter.
-3. **Document viewer** — verdict card first; page images with highlight overlays (click fact → scroll
+3. **Document viewer** — verdict card first (its meta row adds "Addressed to …" when the letter was
+   addressed to someone else); page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
    banner; a scam letter's bank details say why there is no GiroCode); the Pay panel with the payment's
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
@@ -1707,9 +1724,12 @@ Pages:
    about the flat (lease, landlord, running costs, broadcasting fee) are shown under Home even when
    they were read under "residence", which is the residence-permit area. Timeline and every letter's
    "To-dos & dates" have "Add a date": what it is, the day, the kind (reminder, deadline, payment,
-   appointment, to-do, expiry date), an optional amount and, on Timeline, an optional letter. It is the
+   appointment, to-do, expiry date), an optional amount and, on Timeline, an optional letter, and
+   *Repeats* (every month on its day or on a working day, every 3 or 6 months, every year). It is the
    person's own to-do (`POST /api/items`, origin `manual`), also on a letter kept private or one Claude
-   couldn't read.
+   couldn't read. The same dialog edits it later (*Edit* on the letter's page, or its Timeline row when it
+   has no letter): changing the day of a repeating one asks whether only that one moves or every one after
+   it, and *Remove* dismisses it with Undo. A repeating to-do's row says how it repeats.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
    check", usually no notice period in the letter) offers "Check the letter" and "Add notice
@@ -1758,8 +1778,9 @@ Pages:
    ("All clear for today" when the next day to act is tomorrow),
    "N things to do today" or "N things are overdue" with a link to each step that holds them (and the
    day Today suggests the next session). With nothing in any step it says so ("Nothing to review yet"
-   with Add letters). Today shows one gentle prompt (Start · Not now) when the session is due, else a
-   quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
+   with Add letters). When it is time for a backup, the ending adds "Time for a backup" with a link to
+   Settings → Data (on a paired phone, where to make one). Today shows one gentle prompt (Start · Not now)
+   when the session is due, else a quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
    The model job that suggests Ideas once a week is *Weekly Ideas* ("Privacy & AI usage" and its
    activity), so "Weekly review" names only this session.
 9. **Settings** — profile & address, region (affects holidays), language, reminders (lead times,
@@ -1772,9 +1793,9 @@ Pages:
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
-   encrypted backup (passphrase twice with a suggested five-word one to copy and its strength, then the
-   download; how to restore; also offered by "Delete everything"), disclaimer — the static demo explains
-   that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
+   encrypted backup (when the last one was made; passphrase twice with a suggested five-word one to copy and
+   its strength, then the download; how to restore; also offered by "Delete everything"), disclaimer — the
+   static demo explains that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
    **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also

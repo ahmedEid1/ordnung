@@ -398,6 +398,17 @@ flowchart LR
   writes it to a file atomically, the API sends it as the HTTP response while it is made. Restore is
   all or nothing (`backup/restore.py`). The format and its policies are in
   [ADR 0013](decisions/0013-backups-and-reminders-outside-the-browser.md).
+- **The backup reminder** (`backup/reminder.py`, a written policy) works out on read the newest copy kept
+  elsewhere: the privacy-log row of a backup made here (the web download, and `ordnung backup`, which writes
+  its row with plain SQLite and never into a newer database), the row a restore writes with the backup's own
+  date, or hand-off sync's last save while this computer saves into the folder or stands by.
+  `GET /api/backup` returns it (`BackupInfo.last_copy`); `GET /api/week` and `POST /api/week/done|dismiss`
+  add it (`WeeklySession.backup`) only when it is time — letters, not the demo, no copy within 30 days —
+  while `views.weekly_session` stays as it is. Both rows stay on their computer
+  (`sync.LOCAL_ACTIVITY_KINDS`), and the reminder is never an Idea, so the daily note and the weekly Ideas
+  review send the model nothing new. `ordnung doctor` adds two rows that only warn: `backup`, and
+  `disk_encryption` (`encryption.py`: `fdesetup` on macOS, `findmnt` and `lsblk` on Linux, argument lists
+  with a timeout; no row on other systems).
 
 ## Moving between computers: hand-off sync
 
@@ -513,6 +524,13 @@ started — one whose CLI never started carried nothing —, a cached answer or 
 the document's status — the letter page's *Not sent to Claude* reads it too; removing a proof deletes
 its file for good
 ([ADR 0014](decisions/0014-proof-files-are-deleted-for-good.md)).
+
+**Who a letter is for** (`secretary/addressee.py`, a written policy) is worked out on read for the letter's
+page (`DocumentDetail.addressed_to`) from the addressee its stored reading names, and shown only when that
+isn't the profile's person; `Document`, the letter list and what Ask reads stay as they are. A letter can go
+out in that name when the person chooses it (`POST /api/drafts` `sender_name`): its sender block, signature,
+PDF author and Nachweis use it, `drafts.sent_profile` keeps it (only the name until the letter is sent), and
+the drafting model is never given it, so the draft's cache key is unchanged.
 
 **Migrations** (`db/migrate.py`): numbered SQL files — 0001 the v1 schema, 0002 proof of sending and
 call notes, 0003 reading traces, 0004 a contract's notice day and a fixed-term job's early notice, 0005

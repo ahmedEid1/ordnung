@@ -35,12 +35,12 @@ from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
 from ordnung.drafts.template_letters import TEMPLATES
 from ordnung.ingest.extract import ExtractionInput, extraction_request
-from ordnung.ingest.plan import VerifiedItem
+from ordnung.ingest.plan import VerifiedItem, own_context
 from ordnung.llm.base import LLMRequest
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
-from ordnung.models import DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.models import BackupCopy, DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
 from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.postcodes import Home, suggest_land_why
@@ -1127,6 +1127,41 @@ def test_readme_limitations_say_google_and_outlook_get_a_snapshot() -> None:
     assert "new date{'s' if count != 1 else ''} since your last calendar update" in triggers
 
 
+def _limitations() -> str:
+    return _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+
+
+def test_a_date_you_add_without_a_letter_counts_nationwide_holidays_only(store: Store) -> None:
+    """README Limitations: a date you add yourself, without a letter, counts its working days with the nationwide
+    public holidays only — not your Land's, even once your profile names it (``ingest.plan.own_context``) — and a
+    repeating date is one entry at its next day."""
+    store.save_profile(Profile(name="Sam Rivera", language="en", region="BY"))
+    item = store.add_item(kind="task", title="VAT return", origin="manual", due_date="2026-10-05")
+    rules = own_context(store, item, date(2026, 9, 25))
+    assert rules.region is None and rules.recipient_region is None
+    assert (
+        "A date you add without a letter counts working days with the nationwide public holidays only, so where your "
+        "Land has a holiday of its own"
+    ) in _limitations()
+    assert "A repeating date is one entry at its next day" in _limitations()
+    assert (
+        "add your own dates (Timeline → Add a date, or on a letter's page), also ones that repeat"
+        in _flat(_readme())
+    )
+
+
+def test_readme_says_a_letter_for_someone_else_still_counts_as_yours() -> None:
+    """README Limitations: a letter addressed to someone else says so and can be answered in their name, but it is
+    filed as yours — there is one person's Ordnung, and My numbers takes a number as yours by its label and the
+    letter, never by the addressee."""
+    assert (
+        "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
+        "child) says so, and a reply to it can go out in their name, but its dates, reminders and numbers count "
+        "as yours."
+    ) in _limitations()
+    assert "recipient_name" not in (ROOT / "src/ordnung/numbers.py").read_text(encoding="utf-8")
+
+
 def _churn() -> dict[str, int]:
     """Finding 21's measurement, as ``ordnung.sync.push`` records it: the generated library's letters, its
     database's MiB and slices, and the slices one more reading changed."""
@@ -1427,6 +1462,13 @@ def test_reading_a_letter_sends_only_the_names_of_known_organisations() -> None:
     assert "X1234567" not in sent and "10482" not in sent
 
 
+def _privacy_feature_row(feature: str) -> str:
+    """docs/privacy.md's row for ``feature`` in "What is sent to Claude, per feature"."""
+    text = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (row,) = [line for line in text.splitlines() if line.startswith(f"| **{feature}** |")]
+    return row
+
+
 @pytest.fixture
 def draft_ctx(data_dir: Path) -> Iterator[tuple[AppContext, FakeBackend]]:
     answer = {
@@ -1444,19 +1486,18 @@ def draft_ctx(data_dir: Path) -> Iterator[tuple[AppContext, FakeBackend]]:
     clock.set_today(None)
 
 
-async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppContext, FakeBackend]) -> None:
-    """docs/privacy.md: your address is never sent; drafting sends the recipient's name (first line)."""
-    ctx, backend = draft_ctx
-    ctx.store.save_profile(
+def _phone_contract(store: Store) -> str:
+    """Sam Rivera's profile with an address, and a mobile contract to cancel: its id."""
+    store.save_profile(
         Profile(name="Sam Rivera", address="Beispielweg 5\n12345 Musterstadt", language="en", region="NW")
     )
-    telecom = ctx.store.add_party(
+    telecom = store.add_party(
         name="FunkNetz Mobile",
         kind="telecom",
         address="Funkallee 1\n10115 Berlin",
         identifiers=[Identifier(label="Kundennummer", value="4711-0815")],
     ).id
-    contract = ctx.store.add_contract(
+    return store.add_contract(
         name="FunkNetz Mobil",
         category="mobile",
         party_id=telecom,
@@ -1467,12 +1508,40 @@ async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppCo
         notice_value=1,
         notice_unit="months",
     ).id
+
+
+def _draft_call(backend: FakeBackend) -> str:
+    """What the one ``draft`` call sent to Claude: its prompt and system prompt."""
+    (request,) = [call for call in backend.calls if isinstance(call, LLMRequest) and call.purpose == "draft"]
+    return request.prompt + request.system
+
+
+async def test_drafting_a_letter_never_sends_your_address(draft_ctx: tuple[AppContext, FakeBackend]) -> None:
+    """docs/privacy.md: your address is never sent, nor your name; drafting sends the recipient's name (first
+    line)."""
+    ctx, backend = draft_ctx
+    contract = _phone_contract(ctx.store)
     draft = await compose(ctx, "cancellation", contract_id=contract, instructions="Bitte bestätigen")
     assert "Beispielweg 5" in draft.sender_block  # the letter itself has the address
-    (request,) = [call for call in backend.calls if isinstance(call, LLMRequest) and call.purpose == "draft"]
-    sent = request.prompt + request.system
+    sent = _draft_call(backend)
     assert "Beispielweg 5" not in sent and "12345 Musterstadt" not in sent
     assert "10115 Berlin" not in sent
+    assert "Sam Rivera" in draft.sender_block and "Rivera" not in sent
+    letters = _privacy_feature_row("Letters")
+    assert "Neither your name nor the name a letter goes out in is sent" in letters
+
+
+@pytest.mark.xfail(strict=False, reason="until B1 integration")
+async def test_a_letter_in_someone_else_s_name_never_sends_that_name(
+    draft_ctx: tuple[AppContext, FakeBackend],
+) -> None:
+    """docs/privacy.md: the name a letter goes out in (``sender_name``, offered when the letter it answers was
+    addressed to someone else) heads its sender block, and Claude isn't given it."""
+    ctx, backend = draft_ctx
+    contract = _phone_contract(ctx.store)
+    draft = await compose(ctx, "cancellation", contract_id=contract, sender_name="Alex Rivera")
+    assert draft.sender_block.splitlines()[0] == "Alex Rivera"
+    assert "Rivera" not in _draft_call(backend)
 
 
 async def test_weekly_review_can_be_switched_off(store: Store) -> None:
@@ -2104,11 +2173,111 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     assert "only a fingerprint of each file it brought in travels" in text
     assert sync.FOLDER_TAKEN_META_KEY in sync.MERGED_META
     assert (
-        "the privacy-log entries of a backup made on that computer, of its phone access and of its watched folder"
-        in text
-    )
+        "the privacy-log entries of a backup made or restored on that computer, of its phone access and of its "
+        "watched folder"
+    ) in text
     assert "backup.created" in sync.LOCAL_ACTIVITY_KINDS
     assert {"phone.", "folder."} <= set(sync.LOCAL_ACTIVITY_PREFIXES)
+
+
+@pytest.mark.xfail(strict=False, reason="until B1 integration")
+def test_the_note_of_a_restore_stays_on_that_computer_too() -> None:
+    """docs/privacy.md, "What stays on each computer": the privacy-log entry a restore writes (``backup.restored``)
+    is local like a backup's, so the backup reminder counts only copies this computer made or came from."""
+    assert {"backup.created", "backup.restored"} <= sync.LOCAL_ACTIVITY_KINDS
+
+
+def _privacy_section(heading: str) -> str:
+    """docs/privacy.md's ``## heading`` section, flattened."""
+    text = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    return _flat(text.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0])
+
+
+#: Anthropic's help pages on signing out everywhere and on each device's sessions (their menus change, so the
+#: checklist links them rather than naming menus).
+CLAUDE_SIGN_OUT_PAGES = (
+    "https://support.claude.com/en/articles/10310342-how-do-i-log-out-of-all-active-sessions",
+    "https://support.claude.com/en/articles/13124001-managing-your-active-sessions",
+)
+
+
+def test_the_lost_computer_checklist_says_what_to_do_without_legal_periods() -> None:
+    """docs/privacy.md, "If your computer is lost or stolen": before, a backup kept elsewhere and an encrypted disk
+    (BitLocker or Device encryption on Windows, which Ordnung doesn't check); after, restore the backup, a new sync
+    folder with a new passphrase, sign out of Claude by Anthropic's own help pages, the phones' certificate
+    authority, the calendar's app password, and the bank account. It states no legal periods and no menu of
+    Claude's; README, the changelog and the hand-off sync section link to it."""
+    section = _privacy_section("If your computer is lost or stolen")
+    for words in (
+        "`ordnung restore FILE`",
+        "set up a new sync folder with a new passphrase",
+        *CLAUDE_SIGN_OUT_PAGES,
+        "certificate authority",
+        "app password",
+        "FileVault",
+        "BitLocker",
+        "Device encryption",
+        "LUKS",
+        "your account for direct debits you didn't agree to and tell your bank — it can take them back",
+    ):
+        assert words in section, words
+    assert "§" not in section and "BGB" not in section
+    assert "Settings → Claude Code" not in section and "Settings → Account" not in section
+    link = "docs/privacy.md#if-your-computer-is-lost-or-stolen"
+    assert link in _readme()
+    assert link in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "(#if-your-computer-is-lost-or-stolen)" in _sync_doc("docs/privacy.md")
+
+
+def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
+    """The reminder comes once the newest copy kept elsewhere is more than ``BackupCopy.due_after_days`` old, or
+    there is none; Ordnung can't see backups of the whole computer, so they don't count."""
+    days = BackupCopy().due_after_days
+    assert days == 30
+    documents = {
+        "docs/privacy.md": _privacy_section("Encrypted backups"),
+        "CHANGELOG.md": _flat((ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1]),
+        _ADR_BACKUP.name: _flat(_ADR_BACKUP.read_text(encoding="utf-8")),
+    }
+    for name, text in documents.items():
+        assert f"more than {days} days old" in text, name
+        assert "Time Machine" in text and "File History" in text, name
+    limitations = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert "Time Machine" in limitations and "BitLocker" in limitations
+
+
+@pytest.mark.xfail(strict=False, reason="until B1 integration")
+def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
+    """``ordnung.backup.reminder`` reminds after the days the docs state, counting the backups made here and the
+    one a restored copy came from."""
+    from ordnung.backup import reminder
+
+    assert reminder.DUE_AFTER_DAYS == BackupCopy().due_after_days
+    assert set(reminder.BACKUP_KINDS) == {"backup.created", "backup.restored"}
+
+
+@pytest.mark.xfail(strict=False, reason="until B1 integration")
+def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
+    data_dir: Path, store: Store
+) -> None:
+    """README: ``ordnung doctor`` checks your last backup and disk encryption — after the disk's row, and only
+    ever as warnings (CI's doctor gate fails only on ``fail``). On Windows there is no disk-encryption row: the
+    docs say where BitLocker is instead."""
+    from ordnung import doctor
+
+    seed_ledger(store)  # letters, and no backup yet
+    checks = doctor.local_checks(data_dir)
+    ids = [check.id for check in checks]
+    by_id = {check.id: check for check in checks}
+    assert ids.index("disk") < ids.index("backup")
+    assert by_id["backup"].status == "warn" and "ordnung backup" in (by_id["backup"].fix or "")
+    if sys.platform in ("darwin", "linux"):
+        assert ids.index("backup") < ids.index("disk_encryption")
+        assert by_id["disk_encryption"].status in ("ok", "warn")
+    else:
+        assert "disk_encryption" not in ids
+    (line,) = [line for line in _readme().splitlines() if line.startswith("ordnung doctor ")]
+    assert "your last backup" in line and "disk encryption" in line
 
 
 def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
