@@ -110,10 +110,13 @@ it on again — also when a crafted backup switched it on.
   random one, with a Copy button, to put into a password manager; the CLI prints one before the prompt.
 - A passphrase that is long but easy to guess (a short sentence of common words) is refused for a new
   backup; from `ORDNUNG_BACKUP_PASSPHRASE` in a script it gets a warning. A password manager's random
-  password passes: the estimator counts words, or random characters by the alphabet they use (14 random
-  letters and digits are about 83 bits) unless they show a pattern people make (a common word, a year, a
-  run, a keyboard walk, a repeat, words), and Apple's strong passwords by their shape. In 0.2.0 it counted
-  words only, so symbols and capitals counted nothing and many such passwords were refused.
+  password with capital and small letters passes: the estimator counts words, or random characters by the
+  alphabet they use (14 random letters and digits are about 83 bits) unless they show a pattern people
+  make (a common word, a year or a date, a run, a keyboard walk also typed with Shift, a repeat, words also
+  in capitals, caps lock's or alternating case), and Apple's strong passwords by their shape. When every
+  letter is in a word, only the other characters count as random ones. Random small letters alone look
+  like one long word and count as one. In 0.2.0 it counted words only, so symbols and capitals counted
+  nothing and many such passwords were refused.
 - The browser download holds the whole backup in memory before saving it (a Blob); very large data
   folders are better backed up with `ordnung backup`.
 - Calendar sync overwrites an event of Ordnung's that the person edited in their calendar app at

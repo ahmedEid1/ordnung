@@ -37,11 +37,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
-- A password manager's strong random password now protects a new backup or a new sync folder. 0.2.0
-  counted only words, so symbols and capitals counted nothing and many such passwords were refused. Now
-  random characters count by the alphabet they use (14 random letters and digits are about 83 bits),
-  unless they show a pattern people make: a common word, also in leetspeak, a year or a date, a run or a
-  keyboard walk, a repeat, or a few words with a digit added. Apple's strong passwords
+- A password manager's strong random password with capital and small letters now protects a new backup or
+  a new sync folder. 0.2.0 counted only words, so symbols and capitals counted nothing and many such
+  passwords were refused. Now random characters count by the alphabet they use (14 random letters and
+  digits are about 83 bits), unless they show a pattern people make: a common word, also in leetspeak; a
+  year or a date, whatever separates its parts; a run or a keyboard walk, also typed with Shift; a repeat;
+  or words, also in capitals, with caps lock on, in alternating case or in another script. A name or a
+  word with digits and symbols ("Max#Richter#94") counts as its words and digits. Random small letters
+  alone look like one long word, so they still count as one. Apple's strong passwords
   ("xxxxxx-xxxxxx-xxxxxx") count too. Five unrelated words, and everything that passed before, still pass.
 - When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
   not the computer's.

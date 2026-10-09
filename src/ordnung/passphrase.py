@@ -19,19 +19,26 @@ The estimate is the largest of these counts, so none adds to another:
   letters, 26 upper-case, 10 digits and 33 other characters, each if used (14 letters and digits: about
   83 bits) — unless they show a pattern people make (:func:`human_pattern`); then they count nothing
   this way. The patterns: a very common word of four letters or more, also with leetspeak undone
-  ("P@ssw0rd"); a year, a date or five digits in a row; a run of four ("abcd", "aaaa", "4321", the
-  digits alone too: "a1b2c3d4") or four along a keyboard row or column ("qwer", "1qay"); four
-  characters again; or words — two of four letters or more, three of any length, or words of four
-  letters or more making up 60 % of it, a word being three letters or more, lower case or capitalised,
-  with a vowel. Letters make a pattern only in the case people type (lower, upper, capitalised): a
-  generator's mixed case rarely spells one.
+  ("P@ssw0rd"); a year, a date (its parts apart by any character but a letter or a digit, "24_12_88",
+  or by the same letter twice, "24x12x88") or five digits in a row; a run of four ("abcd", "aaaa",
+  "4321", the digits alone too: "a1b2c3d4") or four along a keyboard row or column ("qwer", "1qay"),
+  also typed with Shift ("!QAZ", "!@#$") or as letters standing alone ("Q!W@E#R$"); four characters
+  again, or three again as typed ("Ab1!Ab1?"); or words — two of four letters or more, three of any
+  length, or words of four letters or more making up 60 % of it, a word being three letters or more,
+  lower case or capitalised, with a vowel or a letter outside a–z (Cyrillic, Arabic …). Letters make a
+  pattern only in the case people type (lower, upper, capitalised, and caps lock's or alternating case
+  undone: "pASSWORT", "PaSsWoRd"): a generator's mixed case rarely spells one. And when every letter is
+  in a word ("Max#Richter#94", "Familie#8312"), the words and runs of digits count as the words' count
+  counts them and only the other characters as random ones.
 * **Apple's strong passwords** ("kuvGis-hihvo6-quzbyc", :func:`apple_password`): their made-up words
   look like words to both counts, so their shape counts Apple's own figure,
   :data:`APPLE_PASSWORD_BITS`.
 
-What it can't see: words it doesn't know, written in leetspeak ("Fl0w3r-G@rd3n7"), read as random
-characters; and now and then a password manager's password spells a pattern by chance and counts as
-words only (fewer than 1 in 100 of each generator's, ``tests/test_passphrase_strength.py``).
+What it can't see: words it doesn't know, written in leetspeak ("Fl0w3r-G@rd3n7") or with a few random
+letters added ("Andreas!88#Xy"), read as random characters; random small letters alone, which look like
+one long word, count as words; the words' count, as in 0.2.0, cuts a word in alternating case at each
+capital ("lIeBlInG" is five tokens); and now and then a password manager's password spells a pattern by chance
+and counts as words only (fewer than 1 in 100 of each generator's, ``tests/test_passphrase_strength.py``).
 """
 
 from __future__ import annotations
@@ -39,6 +46,7 @@ from __future__ import annotations
 import itertools
 import math
 import re
+import string
 import unicodedata
 from collections.abc import Callable, Iterable
 
@@ -110,6 +118,14 @@ DIGIT_RUN_CHARS = 5
 WORD_LETTERS = 3
 #: … and words make a pattern when those of :data:`PATTERN_CHARS` letters or more make up this share.
 WORDS_SHARE = 0.6
+#: Characters again exactly as typed make a repeat from this many on ("Ab1!Ab1?").
+REPEAT_CHARS = 3
+#: What Shift gives on the digit row of a US and a German keyboard, undone before looking for a keyboard
+#: walk: one typed with Shift is a walk too ("!QAZ@WSX", "!@#$").
+SHIFTED_KEYS: tuple[dict[str, str], ...] = (
+    {"!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6", "&": "7", "*": "8", "(": "9", ")": "0"},
+    {"!": "1", '"': "2", "§": "3", "$": "4", "%": "5", "&": "6", "/": "7", "(": "8", ")": "9", "=": "0"},
+)
 #: Leetspeak undone before looking for a very common word ("P@ssw0rd").
 LEETSPEAK = {"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"}
 #: A word has one of these (also with an accent: "ä", "é").
@@ -208,7 +224,9 @@ def _pieces(lines: Iterable[str], length: int) -> tuple[str, ...]:
 _PATTERN_WORDS = tuple(sorted(word for word in COMMON_WORDS if len(word) >= PATTERN_CHARS))
 _WALKS = _pieces((*KEYBOARD_ROWS, *KEYBOARD_COLUMNS, "abcdefghijklmnopqrstuvwxyz"), PATTERN_CHARS)
 _DIGITS_IN_ORDER = _pieces(("0123456789",), PATTERN_CHARS)
-_DATE = re.compile(r"\d{1,2}[./-]\d{1,2}[./-]\d\d")
+#: A date in a passphrase's shape (:func:`_shape`): day, month and year apart by any character but a letter
+#: or a digit ("24_12_88"), or by the same letter twice between groups of two digits ("24x12x88").
+_DATE = re.compile(r"9{1,2}_9{1,2}_99|99([^9_])99\1(?:99)")
 _APPLE_SHAPE = re.compile(r"[A-Za-z0-9]{6}-[A-Za-z0-9]{6}-[A-Za-z0-9]{6}")
 
 
@@ -228,14 +246,48 @@ def _runs(text: str, keep: Callable[[str], bool]) -> list[str]:
     return runs
 
 
+def _shape(text: str) -> str:
+    """``text`` with each digit as "9" and each character that is neither a letter nor a digit as "_"."""
+    return "".join("9" if char.isdecimal() else char if char.isalpha() else "_" for char in text)
+
+
+def _upper(text: str) -> list[bool]:
+    """For each letter of ``text`` that has a case, whether it is upper case."""
+    return [char.isupper() for char in text if char.islower() or char.isupper()]
+
+
 def _plain_case(text: str) -> bool:
-    """The letters of ``text`` are lower case, upper case or capitalised, as people type a word."""
-    letters = [char for char in text if char.isalpha()]
-    return (
-        all(char.islower() for char in letters)
-        or all(char.isupper() for char in letters)
-        or (letters[0].isupper() and all(char.islower() for char in letters[1:]))
-    )
+    """The letters of ``text`` are lower case, upper case or capitalised, as people type a word (letters
+    without case, as in Arabic, fit any)."""
+    upper = _upper(text)
+    return not any(upper) or all(upper) or (upper[0] and not any(upper[1:]))
+
+
+def _as_typed(text: str) -> str:
+    """``text`` with its letters in the case people type words in, character by character: in lower case
+    when every run of letters alternates, one of them :data:`PATTERN_CHARS` letters or more ("PaSsWoRd"),
+    and with each letter's case swapped when capitals are more and every run is in capitals after its
+    first letter (capitals, or caps lock's "pASSWORT")."""
+
+    def changed(char: str, to: str) -> str:
+        return to if len(to) == 1 else char
+
+    runs = [_upper(run) for run in _runs(text, str.isalpha)]
+    if any(len(upper) >= PATTERN_CHARS for upper in runs) and all(
+        all(a != b for a, b in itertools.pairwise(upper)) for upper in runs
+    ):
+        return "".join(changed(char, char.lower()) if char.isupper() else char for char in text)
+    capitals = sum(map(sum, runs))
+    if all(all(upper[1:]) for upper in runs) and capitals > sum(map(len, runs)) - capitals:
+        return "".join(
+            changed(char, char.lower())
+            if char.isupper()
+            else changed(char, char.upper())
+            if char.islower()
+            else char
+            for char in text
+        )
+    return text
 
 
 def _spelled(lowered: str, text: str, pieces: Iterable[str]) -> bool:
@@ -252,21 +304,29 @@ def _spelled(lowered: str, text: str, pieces: Iterable[str]) -> bool:
 
 def _word(part: str) -> bool:
     """``part`` (of a run of letters, cut as :func:`passphrase_tokens` cuts it) can be a word: at least
-    :data:`WORD_LETTERS` letters, lower case or capitalised, with a vowel."""
-    lower = all(char.islower() for char in part)
-    capitalised = part[0].isupper() and all(char.islower() for char in part[1:])
-    vowel = any(unicodedata.normalize("NFD", char.lower())[0] in VOWELS for char in part)
-    return len(part) >= WORD_LETTERS and (lower or capitalised) and vowel
+    :data:`WORD_LETTERS` letters, lower case or capitalised (letters without case fit), with a vowel or a
+    letter outside a–z (the words of other scripts don't show by these vowels)."""
+    upper = _upper(part)
+    vowel = any(
+        (base := unicodedata.normalize("NFD", char.lower())[0]) in VOWELS
+        or base not in string.ascii_lowercase
+        for char in part
+    )
+    return len(part) >= WORD_LETTERS and not any(upper[1:]) and vowel
 
 
-def _words(text: str) -> list[str]:
-    """The words of ``text``: the parts of each run of letters that is made only of words."""
+def _words(text: str) -> tuple[list[str], bool]:
+    """The words of ``text``, in the case people type (:func:`_as_typed`): the parts of each run of letters
+    that is made only of words — and whether every run is."""
     found: list[str] = []
-    for run in _runs(text, str.isalpha):
+    every = True
+    for run in _runs(_as_typed(text), str.isalpha):
         parts = passphrase_tokens(run)
         if all(_word(part) for part in parts):
             found.extend(parts)
-    return found
+        else:
+            every = False
+    return found, every
 
 
 def _is_space(char: str) -> bool:
@@ -278,28 +338,44 @@ def human_pattern(passphrase: str) -> str | None:
     (``None``: none): "a very common word", "a year or a date", "five digits in a row", "a run or a
     keyboard walk", "a repeat" or "words" (the module's description says which is which)."""
     text = unicodedata.normalize("NFC", passphrase)
+    typed = _as_typed(text)
     # lower case character by character, so a piece found lies where it lies in the text
     lowered = "".join(char.lower() if len(char.lower()) == 1 else char for char in text)
     unleet = "".join(LEETSPEAK.get(char, char) for char in lowered)
-    if _spelled(lowered, text, _PATTERN_WORDS) or _spelled(unleet, text, _PATTERN_WORDS):
+    if _spelled(lowered, typed, _PATTERN_WORDS) or _spelled(unleet, typed, _PATTERN_WORDS):
         return "a very common word"
     digit_runs = _runs(text, str.isdecimal)
     years = any(run[at : at + 2] in ("19", "20") for run in digit_runs for at in range(len(run) - 3))
-    if years or _DATE.search(text):
+    if years or _DATE.search(_shape(text)):
         return "a year or a date"
     if any(len(run) >= DIGIT_RUN_CHARS for run in digit_runs):
         return "five digits in a row"
     digits = "".join(digit_runs)
+    # the letters that stand alone between other characters ("Q!W@E#R$")
+    letters = [
+        at
+        for at, char in enumerate(text)
+        if char.isalpha() and not text[at - 1 : at].isalpha() and not text[at + 1 : at + 2].isalpha()
+    ]
     again = any(
-        len(set(lowered[at : at + PATTERN_CHARS])) == 1 and _plain_case(text[at : at + PATTERN_CHARS])
+        len(set(lowered[at : at + PATTERN_CHARS])) == 1 and _plain_case(typed[at : at + PATTERN_CHARS])
         for at in range(len(text) - PATTERN_CHARS + 1)
     )
-    if again or _spelled(lowered, text, _WALKS) or any(piece in digits for piece in _DIGITS_IN_ORDER):
+    walk = (
+        any(
+            _spelled("".join(keys.get(char, char) for char in lowered), typed, _WALKS)
+            for keys in ({}, *SHIFTED_KEYS)
+        )
+        or _spelled("".join(lowered[at] for at in letters), "".join(typed[at] for at in letters), _WALKS)
+        or any(piece in digits for piece in _DIGITS_IN_ORDER)
+    )
+    if again or walk:
         return "a run or a keyboard walk"
     pieces = [lowered[at : at + PATTERN_CHARS] for at in range(len(lowered) - PATTERN_CHARS + 1)]
-    if len(set(pieces)) < len(pieces):
+    exact = [text[at : at + REPEAT_CHARS] for at in range(len(text) - REPEAT_CHARS + 1)]
+    if len(set(pieces)) < len(pieces) or len(set(exact)) < len(exact):
         return "a repeat"
-    words = _words(text)
+    words, _ = _words(text)
     long_words = [word for word in words if len(word) >= PATTERN_CHARS]
     if len(long_words) >= 2 or len(words) >= 3 or sum(map(len, long_words)) >= WORDS_SHARE * len(text):
         return "words"
@@ -311,7 +387,8 @@ def random_bits(passphrase: str) -> float:
     log2 of the alphabet it uses (:data:`LOWER_ALPHABET` lower-case letters, :data:`UPPER_ALPHABET`
     upper-case, :data:`DIGIT_ALPHABET` digits, :data:`OTHER_ALPHABET` other characters, each if used) —
     0 below :data:`RANDOM_MIN_CHARS` characters, with a space, or with a pattern people make
-    (:func:`human_pattern`)."""
+    (:func:`human_pattern`). When every letter is in a word ("Max#Richter#94"), only the other characters
+    count so; the words and the runs of digits count as :func:`token_bits` counts each."""
     text = unicodedata.normalize("NFC", passphrase)
     if len(text) < RANDOM_MIN_CHARS or any(_is_space(char) for char in text) or human_pattern(text):
         return 0.0
@@ -321,7 +398,16 @@ def random_bits(passphrase: str) -> float:
         + DIGIT_ALPHABET * any(char.isdecimal() for char in text)
         + OTHER_ALPHABET * any(not (char.islower() or char.isupper() or char.isdecimal()) for char in text)
     )
-    return len(text) * math.log2(alphabet)
+    per_char = math.log2(alphabet)
+    words, every = _words(text)
+    if not every:
+        return len(text) * per_char
+    others = sum(not (char.isalpha() or char.isdecimal()) for char in text)
+    return (
+        sum(token_bits(word.casefold()) for word in words)
+        + sum(token_bits(run) for run in _runs(text, str.isdecimal))
+        + others * per_char
+    )
 
 
 def apple_password(passphrase: str) -> bool:

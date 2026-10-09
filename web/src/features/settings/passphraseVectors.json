@@ -647,6 +647,180 @@
       "passphrase": "Ordnung!Ordnung",
       "bits": 7.0,
       "pattern": "a very common word"
+    },
+    {
+      "kind": "name and birthday",
+      "passphrase": "Anna_24_12_88!",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "word and birthday",
+      "passphrase": "Hund_24_12_88",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "name and birthday",
+      "passphrase": "Laura#28_05_81&",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "names and two digits",
+      "passphrase": "Max#Richter#94",
+      "bits": 47.783567,
+      "pattern": null
+    },
+    {
+      "kind": "names and two digits",
+      "passphrase": "Tom_Müller_88",
+      "bits": 47.783567,
+      "pattern": null
+    },
+    {
+      "kind": "names and two digits",
+      "passphrase": "Max_Mustermann_88",
+      "bits": 47.783567,
+      "pattern": null
+    },
+    {
+      "kind": "word and PIN",
+      "passphrase": "Schatzi#0815!",
+      "bits": 40.427424,
+      "pattern": null
+    },
+    {
+      "kind": "word and PIN",
+      "passphrase": "Familie#8312",
+      "bits": 33.857568,
+      "pattern": null
+    },
+    {
+      "kind": "repeat",
+      "passphrase": "Ab1!Ab1?Ab1#",
+      "bits": 12.722808,
+      "pattern": "a repeat"
+    },
+    {
+      "kind": "a word in capitals",
+      "passphrase": "BUNDESKANZLERIN",
+      "bits": 14.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word in capitals",
+      "passphrase": "LIEBLINGSMENSCH",
+      "bits": 14.0,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word in capitals and a little",
+      "passphrase": "SCHMETTERLING1!",
+      "bits": 17.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "a word in capitals and a little",
+      "passphrase": "GEBURTSTAG1!",
+      "bits": 17.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words in capitals",
+      "passphrase": "ANNA_KATZE_7",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "words in capitals",
+      "passphrase": "STERNELEHMANN9%",
+      "bits": 17.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "caps lock",
+      "passphrase": "pASSWORT#88!x",
+      "bits": 30.044736,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "caps lock",
+      "passphrase": "sCHMETTERLING1!",
+      "bits": 22.022368,
+      "pattern": "words"
+    },
+    {
+      "kind": "alternating case",
+      "passphrase": "PaSsWoRd!2#4",
+      "bits": 44.247374,
+      "pattern": "a very common word"
+    },
+    {
+      "kind": "alternating case",
+      "passphrase": "fUsSbAlL!2#4",
+      "bits": 41.846494,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "alternating case",
+      "passphrase": "fUsSbAlL#Xq7",
+      "bits": 47.925446,
+      "pattern": "words"
+    },
+    {
+      "kind": "Cyrillic words",
+      "passphrase": "ПарольМосква1",
+      "bits": 31.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "Cyrillic name and birthday",
+      "passphrase": "Наташа_24_12_88",
+      "bits": 33.931569,
+      "pattern": "a year or a date"
+    },
+    {
+      "kind": "Arabic words",
+      "passphrase": "كلمةالسرمحمد1",
+      "bits": 17.321928,
+      "pattern": "words"
+    },
+    {
+      "kind": "keyboard columns with Shift",
+      "passphrase": "!QAZ@WSX#EDC",
+      "bits": 33.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard columns with Shift",
+      "passphrase": "!QAZ@WSX#EDC$RFV",
+      "bits": 47.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk with Shift",
+      "passphrase": "Q!W@E#R$T%Y^",
+      "bits": 5.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "keyboard walk with Shift",
+      "passphrase": "!Q@W#E$R%T^Y",
+      "bits": 5.70044,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "digit row with Shift",
+      "passphrase": "!@#$%^&*()_+-=",
+      "bits": 0.0,
+      "pattern": "a run or a keyboard walk"
+    },
+    {
+      "kind": "digit row with Shift (German)",
+      "passphrase": "!\"§$%&/()=?`*'",
+      "bits": 0.0,
+      "pattern": "a run or a keyboard walk"
     }
   ],
   "strong": [

@@ -23,6 +23,8 @@ import {
   PATTERN_CHARS,
   RANDOM_MIN_CHARS,
   randomBits,
+  REPEAT_CHARS,
+  SHIFTED_KEYS,
   UPPER_ALPHABET,
   VOWELS,
   WORD_LETTERS,
@@ -31,7 +33,10 @@ import {
 } from "./passphrase";
 
 /** The server's estimator, whose numbers these are. */
-const ESTIMATOR = readFileSync(resolve(__dirname, "../../../../src/ordnung/passphrase.py"), "utf8");
+const ESTIMATOR = readFileSync(
+  resolve(__dirname, "../../../../src/ordnung/passphrase.py"),
+  "utf8",
+);
 
 function constant(name: string): string {
   const m = new RegExp(`^${name}(?::[^=]+)? = (.+)$`, "m").exec(ESTIMATOR);
@@ -56,27 +61,47 @@ function seeded(seed: number): () => number {
 }
 
 type Random = () => number;
-const choice = (random: Random, from: string) => from[Math.floor(random() * from.length)]!;
+const choice = (random: Random, from: string) =>
+  from[Math.floor(random() * from.length)]!;
 const UPPER = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const LOWER = "abcdefghijklmnopqrstuvwxyz";
 const DIGITS = "0123456789";
 const SYMBOLS = "!#$%&()*+,-./:;<=>?@[]^_{|}~";
 
 /** `length` characters from `sets` together, at least one of each — as the generators make sure. */
-function randomCharacters(random: Random, length: number, ...sets: string[]): string {
+function randomCharacters(
+  random: Random,
+  length: number,
+  ...sets: string[]
+): string {
   for (;;) {
-    const drawn = Array.from({ length }, () => choice(random, sets.join(""))).join("");
-    if (sets.every((set) => [...drawn].some((c) => set.includes(c)))) return drawn;
+    const drawn = Array.from({ length }, () =>
+      choice(random, sets.join("")),
+    ).join("");
+    if (sets.every((set) => [...drawn].some((c) => set.includes(c))))
+      return drawn;
   }
 }
 
 /** Apple's: three groups of two made-up syllables (consonant, vowel, consonant), a digit before or after a hyphen or at the end, a capital. */
 function apple(random: Random): string {
-  const groups = Array.from({ length: 3 }, () => Array.from({ length: 6 }, (_, i) => choice(random, i === 1 || i === 4 ? "aeiouy" : "bcdfghjkmnpqrstvwxz")));
-  const spots: [number, number][] = [[0, 5], [1, 0], [1, 5], [2, 0], [2, 5]];
+  const groups = Array.from({ length: 3 }, () =>
+    Array.from({ length: 6 }, (_, i) =>
+      choice(random, i === 1 || i === 4 ? "aeiouy" : "bcdfghjkmnpqrstvwxz"),
+    ),
+  );
+  const spots: [number, number][] = [
+    [0, 5],
+    [1, 0],
+    [1, 5],
+    [2, 0],
+    [2, 5],
+  ];
   const [g, at] = spots[Math.floor(random() * spots.length)]!;
   groups[g]![at] = choice(random, DIGITS);
-  const letters = groups.flatMap((group, gi) => group.flatMap((c, i) => (/[a-z]/.test(c) ? [[gi, i] as const] : [])));
+  const letters = groups.flatMap((group, gi) =>
+    group.flatMap((c, i) => (/[a-z]/.test(c) ? [[gi, i] as const] : [])),
+  );
   const [lg, li] = letters[Math.floor(random() * letters.length)]!;
   groups[lg]![li] = groups[lg]![li]!.toUpperCase();
   return groups.map((group) => group.join("")).join("-");
@@ -84,44 +109,147 @@ function apple(random: Random): string {
 
 const GENERATORS: Record<string, (random: Random) => string> = {
   Bitwarden: (random) => randomCharacters(random, 14, UPPER, LOWER, DIGITS),
-  "1Password": (random) => randomCharacters(random, 20, UPPER, LOWER, DIGITS, SYMBOLS),
-  Chrome: (random) => randomCharacters(random, 15, "abcdefghijkmnpqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789"),
+  "1Password": (random) =>
+    randomCharacters(random, 20, UPPER, LOWER, DIGITS, SYMBOLS),
+  Chrome: (random) =>
+    randomCharacters(
+      random,
+      15,
+      "abcdefghijkmnpqrstuvwxyz",
+      "ABCDEFGHJKLMNPQRSTUVWXYZ",
+      "23456789",
+    ),
   Apple: apple,
 };
 
 describe("the shared vectors (the server's test reads the same file)", () => {
-  it.each(VECTORS.weak)("refuses what people make up: $passphrase ($kind)", ({ passphrase, bits, pattern }) => {
-    expect(passphraseBits(passphrase)).toBeCloseTo(bits, 5);
-    expect(passphraseBits(passphrase)).toBeLessThan(MIN_PASSPHRASE_BITS);
-    expect(humanPattern(passphrase)).toBe(pattern);
-  });
+  it.each(VECTORS.weak)(
+    "refuses what people make up: $passphrase ($kind)",
+    ({ passphrase, bits, pattern }) => {
+      expect(passphraseBits(passphrase)).toBeCloseTo(bits, 5);
+      expect(passphraseBits(passphrase)).toBeLessThan(MIN_PASSPHRASE_BITS);
+      expect(humanPattern(passphrase)).toBe(pattern);
+    },
+  );
 
-  it.each(VECTORS.strong)("takes a password manager's password: $passphrase ($kind)", ({ passphrase, bits, pattern }) => {
-    expect(passphraseBits(passphrase)).toBeCloseTo(bits, 5);
-    expect(passphraseBits(passphrase)).toBeGreaterThanOrEqual(MIN_PASSPHRASE_BITS);
-    expect(humanPattern(passphrase)).toBe(pattern);
-  });
+  it.each(VECTORS.strong)(
+    "takes a password manager's password: $passphrase ($kind)",
+    ({ passphrase, bits, pattern }) => {
+      expect(passphraseBits(passphrase)).toBeCloseTo(bits, 5);
+      expect(passphraseBits(passphrase)).toBeGreaterThanOrEqual(
+        MIN_PASSPHRASE_BITS,
+      );
+      expect(humanPattern(passphrase)).toBe(pattern);
+    },
+  );
 });
 
 describe("a password manager's random password", () => {
-  it.each(Object.keys(GENERATORS))("%s: 99 % of a seeded corpus passes", (name) => {
-    const random = seeded([...name].reduce((sum, c) => sum * 31 + c.codePointAt(0)!, SAMPLES));
-    const passwords = Array.from({ length: SAMPLES }, () => GENERATORS[name]!(random));
-    const refused = passwords.filter((p) => passphraseBits(p) < MIN_PASSPHRASE_BITS);
-    expect(refused.length, refused.slice(0, 10).join(" ")).toBeLessThanOrEqual((1 - PASSING) * SAMPLES);
+  it.each(Object.keys(GENERATORS))(
+    "%s: 99 % of a seeded corpus passes",
+    (name) => {
+      const random = seeded(
+        [...name].reduce((sum, c) => sum * 31 + c.codePointAt(0)!, SAMPLES),
+      );
+      const passwords = Array.from({ length: SAMPLES }, () =>
+        GENERATORS[name]!(random),
+      );
+      const refused = passwords.filter(
+        (p) => passphraseBits(p) < MIN_PASSPHRASE_BITS,
+      );
+      expect(
+        refused.length,
+        refused.slice(0, 10).join(" "),
+      ).toBeLessThanOrEqual((1 - PASSING) * SAMPLES);
+    },
+  );
+
+  it.each([
+    "capital and small letters",
+    "capital and small letters and digits",
+  ])(
+    "of 16 %s: 99 % of a seeded corpus passes, as the refusal says",
+    (sets) => {
+      const random = seeded(
+        [...sets].reduce((sum, c) => sum * 31 + c.codePointAt(0)!, 16),
+      );
+      const passwords = Array.from({ length: SAMPLES }, () =>
+        sets.endsWith("digits")
+          ? randomCharacters(random, 16, UPPER, LOWER, DIGITS)
+          : randomCharacters(random, 16, UPPER, LOWER),
+      );
+      const refused = passwords.filter(
+        (p) => passphraseBits(p) < MIN_PASSPHRASE_BITS,
+      );
+      expect(
+        refused.length,
+        refused.slice(0, 10).join(" "),
+      ).toBeLessThanOrEqual((1 - PASSING) * SAMPLES);
+    },
+  );
+
+  it("of small letters alone looks like one long word, so it counts as words", () => {
+    const random = seeded(26);
+    const passwords = Array.from({ length: 200 }, () =>
+      randomCharacters(random, 16, LOWER),
+    );
+    expect(
+      passwords.filter((p) => humanPattern(p) === "words").length,
+    ).toBeGreaterThanOrEqual(180);
   });
 
   it("counts its length times the alphabet it uses, from 12 characters on and without a space", () => {
     expect(randomBits("kT9xVbq2MzRw7p")).toBeCloseTo(14 * Math.log2(62), 9);
-    expect(randomBits("u3wu6tIj?&pu+Vj@vt%F")).toBeCloseTo(20 * Math.log2(95), 9);
+    expect(randomBits("u3wu6tIj?&pu+Vj@vt%F")).toBeCloseTo(
+      20 * Math.log2(95),
+      9,
+    );
     expect(randomBits("k7qmx3vxdp9t")).toBeCloseTo(12 * Math.log2(36), 9);
     expect(randomBits("kT9xVbq2MzR")).toBe(0);
     expect(randomBits("kT9xVbq 2MzRw7p")).toBe(0);
-    expect(passphraseBits("Xk9#mQ2!vR7@pL4$")).toBeCloseTo(16 * Math.log2(95), 9);
+    expect(passphraseBits("Xk9#mQ2!vR7@pL4$")).toBeCloseTo(
+      16 * Math.log2(95),
+      9,
+    );
   });
 
   it("is never counted less than its words", () => {
-    for (const vector of [...VECTORS.weak, ...VECTORS.strong]) expect(passphraseBits(vector.passphrase)).toBeGreaterThanOrEqual(wordBits(vector.passphrase));
+    for (const vector of [...VECTORS.weak, ...VECTORS.strong])
+      expect(passphraseBits(vector.passphrase)).toBeGreaterThanOrEqual(
+        wordBits(vector.passphrase),
+      );
+  });
+
+  it("counts words with digits and symbols as words when every letter is in one", () => {
+    const everyCharacter = Math.log2(26 + 26 + 10 + 33);
+    expect(randomBits("Max#Richter#94")).toBeCloseTo(
+      14 + 14 + 2 * Math.log2(10) + 2 * everyCharacter,
+      9,
+    );
+    expect(randomBits("Familie#8312")).toBeCloseTo(
+      14 + 4 * Math.log2(10) + everyCharacter,
+      9,
+    );
+    expect(randomBits("kT9xVbq2MzRw7p")).toBeCloseTo(14 * Math.log2(62), 9);
+  });
+
+  it.each([
+    ["Laura#28_05_81&", "a year or a date"],
+    ["Anna24x12x88!", "a year or a date"],
+    ["!QAZ@WSX#EDC", "a run or a keyboard walk"],
+    ['!"§$%&/()=?`', "a run or a keyboard walk"],
+    ["Q!W@E#R$T%Y^", "a run or a keyboard walk"],
+    ["Ab1!Ab1?Ab1#", "a repeat"],
+    ["BUNDESKANZLERIN", "words"],
+    ["sCHMETTERLING1!", "words"],
+    ["pASSWORT#88!x", "a very common word"],
+    ["PaSsWoRd!2#4", "a very common word"],
+    ["fUsSbAlL#Xq7", "words"],
+    ["ПарольМосква1", "words"],
+    ["كلمةالسرمحمد1", "words"],
+  ])("finds what people make in %s: %s", (madeUp, pattern) => {
+    expect(humanPattern(madeUp)).toBe(pattern);
+    expect(randomBits(madeUp)).toBe(0);
   });
 
   it("takes letters as a pattern only in the case people type", () => {
@@ -137,7 +265,13 @@ describe("a password manager's random password", () => {
   it("knows Apple's strong passwords by their shape", () => {
     expect(applePassword("kuvGis-hihvo6-quzbyc")).toBe(true);
     expect(passphraseBits("kuvGis-hihvo6-quzbyc")).toBe(APPLE_PASSWORD_BITS);
-    for (const other of ["kuvgis-hihvo6-quzbyc", "kuvGis-hihvoq-quzbyc", "kuvGis-hih6oq-quzbyc", "Garden-flower-tiger7", "kuvGis-hihvo6"]) {
+    for (const other of [
+      "kuvgis-hihvo6-quzbyc",
+      "kuvGis-hihvoq-quzbyc",
+      "kuvGis-hih6oq-quzbyc",
+      "Garden-flower-tiger7",
+      "kuvGis-hihvo6",
+    ]) {
       expect(applePassword(other), other).toBe(false);
       expect(passphraseBits(other), other).toBeLessThan(MIN_PASSPHRASE_BITS);
     }
@@ -153,11 +287,34 @@ describe("a password manager's random password", () => {
     expect(Number(constant("DIGIT_RUN_CHARS"))).toBe(DIGIT_RUN_CHARS);
     expect(Number(constant("WORD_LETTERS"))).toBe(WORD_LETTERS);
     expect(Number(constant("WORDS_SHARE"))).toBe(WORDS_SHARE);
+    expect(Number(constant("REPEAT_CHARS"))).toBe(REPEAT_CHARS);
+    const shifted =
+      /^SHIFTED_KEYS: tuple\[dict\[str, str\], \.\.\.\] = \(([\s\S]*?)\n\)/m.exec(
+        ESTIMATOR,
+      )?.[1] ?? "";
+    const layouts = [...shifted.matchAll(/\{([^}]*)\}/g)].map((m) =>
+      Object.fromEntries(
+        [...m[1]!.matchAll(/(?:"([^"]+)"|'([^']+)'): "([^"]+)"/g)].map((k) => [
+          k[1] ?? k[2],
+          k[3],
+        ]),
+      ),
+    );
+    expect(layouts).toEqual(SHIFTED_KEYS);
     expect(Number(constant("APPLE_PASSWORD_BITS"))).toBe(APPLE_PASSWORD_BITS);
     expect(constant("VOWELS")).toBe(JSON.stringify(VOWELS));
-    const columns = /^KEYBOARD_COLUMNS: tuple\[str, \.\.\.\] = \(([^)]*)\)/m.exec(ESTIMATOR)?.[1] ?? "";
-    expect([...columns.matchAll(/"([^"]*)"/g)].map((m) => m[1])).toEqual(KEYBOARD_COLUMNS);
+    const columns =
+      /^KEYBOARD_COLUMNS: tuple\[str, \.\.\.\] = \(([^)]*)\)/m.exec(
+        ESTIMATOR,
+      )?.[1] ?? "";
+    expect([...columns.matchAll(/"([^"]*)"/g)].map((m) => m[1])).toEqual(
+      KEYBOARD_COLUMNS,
+    );
     const leet = /^LEETSPEAK = \{([^}]*)\}/m.exec(ESTIMATOR)?.[1] ?? "";
-    expect(Object.fromEntries([...leet.matchAll(/"([^"]+)": "([^"]+)"/g)].map((m) => [m[1], m[2]]))).toEqual(LEETSPEAK);
+    expect(
+      Object.fromEntries(
+        [...leet.matchAll(/"([^"]+)": "([^"]+)"/g)].map((m) => [m[1], m[2]]),
+      ),
+    ).toEqual(LEETSPEAK);
   });
 });

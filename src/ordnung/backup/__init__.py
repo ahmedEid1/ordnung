@@ -95,7 +95,8 @@ MAX_PASSPHRASE_CHARS = 1024
 WEAK_PASSPHRASE_MESSAGE = (
     "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the "
     "cloud. Use five or more words that don't belong together, each of three letters or more, or a "
-    "password manager's random password of 16 characters or more — or take the suggested one."
+    "password manager's random password of 16 characters or more with capital and small letters — or take "
+    "the suggested one."
 )
 #: What Ordnung 0.1.0's backup dialog suggested: four groups of five of 31 letters and digits, drawn at
 #: random (``k7qmx-3vxdp-9tawr-2emnb``: about 99 bits, though the estimator counts each group as a word).

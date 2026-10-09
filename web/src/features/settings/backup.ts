@@ -10,7 +10,7 @@ export const MAX_PASSPHRASE = 1024;
 
 /** The server's refusal of a new backup's passphrase that falls short of the strength (`WEAK_PASSPHRASE_MESSAGE`), said before asking it. */
 export const WEAK_PASSPHRASE_MESSAGE =
-  "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the cloud. Use five or more words that don't belong together, each of three letters or more, or a password manager's random password of 16 characters or more — or take the suggested one.";
+  "Ordnung can't count this passphrase as strong enough for a backup kept on another drive or in the cloud. Use five or more words that don't belong together, each of three letters or more, or a password manager's random password of 16 characters or more with capital and small letters — or take the suggested one.";
 
 /** What Ordnung 0.1.0's backup dialog suggested (`EARLIER_SUGGESTION`): four groups of five of 31 letters and digits, drawn at random (about 99 bits). */
 const EARLIER_SUGGESTION = /^[a-hjkmnp-z2-9]{5}(?:-[a-hjkmnp-z2-9]{5}){3}$/;

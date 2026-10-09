@@ -428,10 +428,10 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   again), to write a kept copy, and when you set sync up. A password store that doesn't keep it safely is
   refused, as for calendar sync, and there is no file to fall back on. A new sync folder's passphrase must
   reach about 70 bits by Ordnung's estimate — five unrelated words, like the five-word one Settings
-  suggests, or a password manager's random password — because the key file sits at your provider for
-  years, open to guessing offline (and at least 12 characters, as for backups). Without it nobody can
-  open the folder: not your sync provider, not Ordnung's makers, not you. Changing it isn't possible
-  yet; a new sync folder with a new passphrase is.
+  suggests, or a password manager's random password with capital and small letters — because the key
+  file sits at your provider for years, open to guessing offline (and at least 12 characters, as for
+  backups). Without it nobody can open the folder: not your sync provider, not Ordnung's makers, not
+  you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
 - **What stays on each computer.** Only your ledger and your letters' files travel. Never: phone access and
   the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
   which events were already sent travels, so nothing is sent twice); the watched folder, its path and what

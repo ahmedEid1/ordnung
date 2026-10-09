@@ -1481,10 +1481,14 @@ outside the database, Delete everything leaves first, a restored backup starts w
   too). Random characters (`random_bits`): 12 characters or more without a space count their length ×
   log2 of the alphabet they use (26 lower-case letters, 26 upper-case, 10 digits, 33 other characters,
   each if used), unless `human_pattern` finds a pattern people make — a very common word of 4 letters or
-  more (also with leetspeak undone), a year, a date, 5 digits in a row, 4 in a run or along a keyboard row
-  or column (the digits alone too), 4 characters again, or words (3 letters or more, lower case or
-  capitalised, with a vowel: two of 4 letters or more, three, or those of 4 or more making up 60 %) —
-  letters counting only in plain case. Apple's strong passwords (`apple_password`: three groups of two
+  more (also with leetspeak undone), a year, a date (apart by any character but a letter or a digit, or by
+  the same letter twice), 5 digits in a row, 4 in a run or along a keyboard row or column (the digits
+  alone too, also typed with Shift on a US or German keyboard, or as letters standing alone), 4 characters
+  again, 3 again as typed, or words (3 letters or more, lower case or capitalised, with a vowel or a
+  letter outside a–z: two of 4 letters or more, three, or those of 4 or more making up 60 %) — letters
+  counting only in plain case, once caps lock's or alternating case is undone. When every letter is in a
+  word, only the characters outside words and runs of digits count this way; each word and run of digits
+  counts as a token. Apple's strong passwords (`apple_password`: three groups of two
   consonant-vowel-consonant syllables joined by hyphens, one capital, one digit at a group's edge) count
   Apple's 71 bits. The web app counts the same way, held to the same vectors
   (`web/src/features/settings/passphraseVectors.json`).

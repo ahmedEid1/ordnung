@@ -121,12 +121,12 @@ and photo attachments become letters; new files wait on your computer until you 
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
-or more unrelated words, or a password manager's random password) with a restore that checks every
-byte · *hand-off between your computers* (optional) — an encrypted copy in a folder you already sync
-(Nextcloud, Syncthing, Dropbox, iCloud Drive); Ordnung is in use on one computer at a time, *Use Ordnung
-here* brings everything over, and nothing is merged · *Claude Desktop and Claude Code* can use the
-deadline engine as MCP tools · *your phone at home* — pair it with a QR code, then photograph letters, tick
-off to-dos and read Claude's explanations in its browser over your home Wi-Fi.
+or more unrelated words, or a password manager's random password with capital and small letters) with a
+restore that checks every byte · *hand-off between your computers* (optional) — an encrypted copy in a
+folder you already sync (Nextcloud, Syncthing, Dropbox, iCloud Drive); Ordnung is in use on one computer
+at a time, *Use Ordnung here* brings everything over, and nothing is merged · *Claude Desktop and Claude
+Code* can use the deadline engine as MCP tools · *your phone at home* — pair it with a QR code, then
+photograph letters, tick off to-dos and read Claude's explanations in its browser over your home Wi-Fi.
 
 ## The model reads, code computes
 

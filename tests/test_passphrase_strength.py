@@ -1,9 +1,11 @@
 """How strong a new passphrase is (``ordnung.passphrase``, ADR 0013 and 0018): a password manager's random
-password protects a new backup or sync folder — a seeded corpus of what four of them generate, 99 % of each
-or more — while what people make up is still refused (dates, names and years, leetspeak of common words,
-keyboard walks, repeats, words with a digit added) and whatever passed before still passes. The vectors
-are shared with the web app's estimator (``web/src/features/settings/passphraseVectors.json``), which its
-own test holds to the same numbers."""
+password with capital and small letters protects a new backup or sync folder — a seeded corpus of what four
+of them generate, 99 % of each or more — while what people make up is still refused (dates with any
+separator, names and years, names or words with digits and symbols, leetspeak of common words, words in
+capitals, with caps lock or in alternating case, words in other scripts, keyboard walks also typed with
+Shift, repeats) and whatever passed before still passes. The vectors are shared with the web app's
+estimator (``web/src/features/settings/passphraseVectors.json``), which its own test holds to the same
+numbers."""
 
 from __future__ import annotations
 
@@ -93,6 +95,20 @@ def corpus(name: str) -> list[str]:
     return [GENERATORS[name](chosen) for _ in range(SAMPLES)]
 
 
+#: What the refusal of a new backup's passphrase promises passes: 16 random characters with capital and
+#: small letters (and digits, or symbols, if the generator adds them).
+SIXTEEN: dict[str, tuple[str, ...]] = {
+    "capital and small letters": (string.ascii_uppercase, string.ascii_lowercase),
+    "capital and small letters and digits": (string.ascii_uppercase, string.ascii_lowercase, string.digits),
+    "capital and small letters, digits and symbols": (
+        string.ascii_uppercase,
+        string.ascii_lowercase,
+        string.digits,
+        SYMBOLS,
+    ),
+}
+
+
 @pytest.mark.parametrize("name", list(GENERATORS))
 def test_a_password_manager_s_random_password_protects_a_new_backup_and_sync_folder(name: str) -> None:
     """Audit (0.2.0 review): the estimator counted words only — symbols nothing, case nothing, a run of
@@ -107,10 +123,33 @@ def test_a_password_manager_s_random_password_protects_a_new_backup_and_sync_fol
         assert backups.passphrase_problem(password) is None, password
 
 
+@pytest.mark.parametrize("sets", list(SIXTEEN))
+def test_sixteen_random_capital_and_small_letters_pass_as_the_refusal_says(sets: str) -> None:
+    """The refusal of a new backup's passphrase suggests "a password manager's random password of 16
+    characters or more with capital and small letters": 99 % of such passwords must pass."""
+    chosen = random.Random(f"sixteen {sets}")
+    passwords = [_random_characters(chosen, 16, *SIXTEEN[sets]) for _ in range(SAMPLES)]
+    refused = [p for p in passwords if passphrase_bits(p) < MIN_PASSPHRASE_BITS]
+    assert len(refused) <= (1 - PASSING) * SAMPLES, refused[:10]
+    assert "16 characters or more with capital and small letters" in backups.WEAK_PASSPHRASE_MESSAGE
+
+
+def test_random_small_letters_alone_count_as_words() -> None:
+    """Audit (batch A review): 16 random small letters can't be told from a long word ("bundeskanzlerin")
+    without a dictionary, so they count as one word and are refused — the refusal asks for capital and
+    small letters, rather than promising that any random password of 16 characters passes."""
+    chosen = random.Random("sixteen small letters")
+    passwords = [_random_characters(chosen, 16, string.ascii_lowercase) for _ in range(200)]
+    assert sum(passphrase.human_pattern(p) == "words" for p in passwords) >= 0.9 * len(passwords)
+    assert sum(passphrase_bits(p) < MIN_PASSPHRASE_BITS for p in passwords) >= 0.95 * len(passwords)
+    assert "capital and small letters" in backups.WEAK_PASSPHRASE_MESSAGE
+
+
 @pytest.mark.parametrize("vector", VECTORS["weak"], ids=[v["passphrase"] for v in VECTORS["weak"]])
 def test_what_people_make_up_is_still_refused(vector: dict[str, Any]) -> None:
-    """Dates, names and years, leetspeak of common words, keyboard walks, repeats, a few words with a digit
-    or a symbol added: none reaches the bits a new backup or sync folder needs."""
+    """Dates, names and years, names or words with digits and symbols, leetspeak of common words, words in
+    capitals, caps lock or alternating case, keyboard walks also typed with Shift, repeats, a few words with
+    a digit or a symbol added: none reaches the bits a new backup or sync folder needs."""
     weak = vector["passphrase"]
     assert passphrase_bits(weak) < MIN_PASSPHRASE_BITS
     assert sync.passphrase_problem(weak) is not None
@@ -154,19 +193,46 @@ def test_random_characters_count_their_length_times_the_alphabet_they_use() -> N
         ("k7L0vej2QxZ9", "a very common word"),  # leetspeak undone
         ("xT1985kQ9vWz", "a year or a date"),
         ("xT3.7.85kQ9v", "a year or a date"),
+        ("Laura#28_05_81&", "a year or a date"),  # any separator that isn't a letter or a digit
+        ("Anna24x12x88!", "a year or a date"),  # the same letter twice between two-digit groups
         ("xT73829kQ9vW", "five digits in a row"),
         ("xTqwerkQ9vW7", "a run or a keyboard walk"),
         ("xTaaaakQ9vW7", "a run or a keyboard walk"),
         ("x1T2k3Q4v9Wz", "a run or a keyboard walk"),  # the digits alone: 1234
+        ("!QAZ@WSX#EDC", "a run or a keyboard walk"),  # with Shift: 1qaz
+        ('!"§$%&/()=?`', "a run or a keyboard walk"),  # with Shift on a German keyboard: 1234
+        ("Q!W@E#R$T%Y^", "a run or a keyboard walk"),  # the letters alone: qwerty
         ("xT9kQ2xT9kQ2", "a repeat"),
+        ("Ab1!Ab1?Ab1#", "a repeat"),  # three characters again, as typed
         ("Tiger7#Horse", "words"),
         ("Anna+Ben+Leo!7", "words"),
         ("Ferienhaus!!", "words"),
+        ("BUNDESKANZLERIN", "words"),  # in capitals
+        ("sCHMETTERLING1!", "words"),  # with caps lock
+        ("pASSWORT#88!x", "a very common word"),
+        ("PaSsWoRd!2#4", "a very common word"),  # in alternating case
+        ("fUsSbAlL#Xq7", "words"),
+        ("ПарольМосква1", "words"),  # Cyrillic: no vowels from a-z
+        ("كلمةالسرمحمد1", "words"),  # Arabic: no case
     ],
 )
 def test_a_pattern_people_make_takes_the_count_of_random_characters_away(made_up: str, pattern: str) -> None:
     assert passphrase.human_pattern(made_up) == pattern
     assert passphrase.random_bits(made_up) == 0
+
+
+def test_words_with_digits_and_symbols_count_as_words_not_random_characters() -> None:
+    """Audit (batch A review): a name or a word or two with digits and symbols ("Max#Richter#94",
+    "Familie#8312") showed no pattern, so every character counted as random. When every letter is in a
+    word, the words and runs of digits count as tokens and only the other characters as random ones."""
+    every_character = math.log2(26 + 26 + 10 + 33)
+    assert passphrase.random_bits("Max#Richter#94") == pytest.approx(
+        14 + 14 + 2 * math.log2(10) + 2 * every_character
+    )
+    assert passphrase.random_bits("Familie#8312") == pytest.approx(14 + 4 * math.log2(10) + every_character)
+    assert passphrase.random_bits("Schatzi#0815!") < MIN_PASSPHRASE_BITS
+    # a letter that isn't in a word: random characters, as a password manager's
+    assert passphrase.random_bits("kT9xVbq2MzRw7p") == pytest.approx(14 * math.log2(62))
 
 
 def test_letters_count_as_a_pattern_only_in_the_case_people_type() -> None:
@@ -237,6 +303,7 @@ _NUMBERS: dict[str, Callable[[], object]] = {
     "pattern": lambda: passphrase.PATTERN_CHARS,
     "digit_run": lambda: passphrase.DIGIT_RUN_CHARS,
     "word": lambda: passphrase.WORD_LETTERS,
+    "repeat": lambda: passphrase.REPEAT_CHARS,
     "share": lambda: round(passphrase.WORDS_SHARE * 100),
     "apple": lambda: round(passphrase.APPLE_PASSWORD_BITS),
     "fourteen": lambda: round(passphrase.random_bits("kT9xVbq2MzRw7p")),  # 14 random letters and digits
@@ -253,7 +320,7 @@ _CLAIMS: list[tuple[str, str]] = [
     ),
     ("docs/SPEC.md", "a very common word of {pattern} letters or more"),
     ("docs/SPEC.md", "{digit_run} digits in a row, {pattern} in a run or along a keyboard row or column"),
-    ("docs/SPEC.md", "{pattern} characters again, or words ({word} letters or more"),
+    ("docs/SPEC.md", "{pattern} characters again, {repeat} again as typed, or words ({word} letters or more"),
     ("docs/SPEC.md", "those of {pattern} or more making up {share} %"),
     ("docs/SPEC.md", "count Apple's {apple} bits"),
     ("src/ordnung/passphrase.py", "(14 letters and digits: about {fourteen} bits)"),
