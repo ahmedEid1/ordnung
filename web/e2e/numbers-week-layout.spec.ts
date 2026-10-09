@@ -216,6 +216,52 @@ test("Finish ends with “All clear …” (answered by the test: the demo keeps
   await expect(page.getByRole("link", { name: "Back to Today" })).toBeVisible();
 });
 
+/** `WeeklySession.backup` as the server sends it once a backup is due (the demo never sends one: answered by the test). */
+const DUE_BACKUP = {
+  last_backup_at: "2026-08-12T09:00:00Z",
+  last_backup_restored: false,
+  sync_saved_at: null,
+  sync_standing_by: false,
+  days: 47,
+  due: true,
+  due_after_days: 30,
+};
+
+for (const scheme of ["light", "dark"] as const) {
+  test.describe(`the ending's backup reminder (${scheme})`, () => {
+    test.use({ colorScheme: scheme });
+
+    for (const width of [320, 1280]) {
+      test(`at ${width}px it follows the ending, wraps on screen and links to Settings`, async ({ page }, testInfo) => {
+        await page.setViewportSize({ width, height: 800 });
+        await page.route("**/api/week/done", async (route) => {
+          const week = await (await page.request.get("/api/week")).json();
+          await route.fulfill({ json: { ...week, due: false, backup: DUE_BACKUP } });
+        });
+        await open(page, "/week?step=file", "Weekly review");
+        await page.getByRole("button", { name: /^Finish/ }).click();
+        const done = page.getByRole("heading", { level: 2, name: /^(All clear|One thing|\d+ things?)/ });
+        await expect(done).toBeFocused();
+        const main = page.getByRole("main");
+        const text = main.getByText("Your last backup was 47 days ago (Wed 12 Aug). A new one keeps your letters if this computer breaks or is lost.");
+        await expect(main.getByText("Time for a backup")).toBeVisible();
+        await expect(text).toBeVisible();
+        const link = main.getByRole("link", { name: "Back up now" });
+        await expect(link).toHaveAttribute("href", "/settings?section=data");
+        const box = (await link.boundingBox())!;
+        expect(box.height).toBeGreaterThanOrEqual(24);
+        // after the ending in the page's order: the keyboard reaches it from the focused heading
+        expect(await done.evaluate((h, l) => Boolean(h.compareDocumentPosition(l!) & Node.DOCUMENT_POSITION_FOLLOWING), await link.elementHandle())).toBe(true);
+        const callout = (await text.boundingBox())!;
+        expect(callout.x).toBeGreaterThanOrEqual(0);
+        expect(callout.x + callout.width).toBeLessThanOrEqual(width + 0.5);
+        expect(await outOfBounds(page)).toEqual([]);
+        await expectAccessible(page, testInfo, `week-backup-${scheme}-${width}`);
+      });
+    }
+  });
+}
+
 test("Today suggests the weekly review once, with real targets", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");

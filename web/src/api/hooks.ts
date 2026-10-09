@@ -1028,16 +1028,27 @@ export function useTestDesktopNotification() {
   return useMutation({ mutationFn: (mode: DesktopMode) => api.testDesktopNotification(mode), meta: { errorTitle: "Couldn't send a test notification" } });
 }
 
-/** What an encrypted backup made now would hold (letters, files, size). */
+const BACKUP_INFO_KEY = ["backup", "info"] as const;
+
+/** What an encrypted backup made now would hold (letters, files, size), and when the newest copy was made. */
 export function useBackupInfo() {
-  return useQuery({ queryKey: ["backup", "info"] as const, queryFn: api.backupInfo, staleTime: 30_000 });
+  return useQuery({ queryKey: BACKUP_INFO_KEY, queryFn: api.backupInfo, staleTime: 30_000 });
 }
 
-/** The encrypted backup as a Blob; its errors are shown in the backup dialog, next to the passphrase. */
+/**
+ * The encrypted backup as a Blob; its errors are shown in the backup dialog, next to the passphrase. Once made, Settings'
+ * "Last backup" line, the weekly review's reminder and the privacy log are asked again (the server noted the backup).
+ */
 export function useDownloadBackup() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ passphrase, signal }: { passphrase: string; signal?: AbortSignal }) => api.downloadBackup(passphrase, signal),
     meta: { silent: true },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: BACKUP_INFO_KEY });
+      void qc.invalidateQueries({ queryKey: qk.week });
+      void qc.invalidateQueries({ queryKey: qk.activity });
+    },
   });
 }
 
