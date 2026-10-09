@@ -188,6 +188,7 @@ def test_scrub_removes_what_stays_here(store: Store) -> None:
         AppSettings(inbox_dir="/home/anna/Scans", inbox_auto_read=True, concurrency=4, model="opus")
     )
     store.log_activity("backup.created", "Made a backup")
+    store.log_activity("backup.restored", "Restored from a backup", data={"made_at": "2026-09-27T08:00:00Z"})
     store.log_activity("phone.paired", "Paired Anna's iPhone at 192.168.1.20")
     store.log_activity("folder.problem", "Ordnung can't read /home/anna/Scans")
     store.log_activity("document.added", "Added “Rechnung”")
@@ -265,6 +266,7 @@ def test_the_digest_ignores_noise_and_sees_real_edits(store: Store) -> None:
     with person_write():
         store.set_meta("profile", store.get_meta("profile") or "{}")  # a write of the same value
     store.log_activity("backup.created", "Made a backup")  # finding 5c
+    store.log_activity("backup.restored", "Restored from a backup", data={"made_at": "2026-09-27T08:00:00Z"})
     conn = store._conn()
     conn.execute("VACUUM")
     conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")

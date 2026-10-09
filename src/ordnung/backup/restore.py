@@ -32,6 +32,10 @@ Written policy (ADR 0007):
 * **A restored copy doesn't take over phones** (:func:`detach_phone_access`). A backup made here never
   carries phone access, but one crafted to would: the restored copy starts with phone access off and no
   paired phones.
+* **A restored copy notes the backup it came from** (:func:`note_restored`): one privacy-log row,
+  ``backup.restored``, with the time the backup was made (``data.made_at``), so Settings and the weekly
+  review count that backup as the newest copy (:mod:`ordnung.backup.reminder`). Like a backup made here,
+  the row stays on this computer (hand-off sync never sends it).
   Nothing else in the database is changed.
 """
 
@@ -50,10 +54,12 @@ from pathlib import Path
 from ordnung.backup.archive import DB_NAME, BackupContents, extract_backup
 from ordnung.backup.container import BackupError
 from ordnung.calendar import caldav
+from ordnung.clock import now_iso
 from ordnung.db.store import SETTINGS_META_KEY
 from ordnung.ingest.watcher import BASELINE_META_KEY, SEEN_META_KEY
 from ordnung.locking import LOCK_NAME, DataDirLock, DataDirLocked
 from ordnung.models import CalendarSyncState
+from ordnung.rules.explain import fmt_date
 
 #: Phone access's record (``ordnung.phone.record.META_KEY``).
 PHONE_META_KEY = "phone_access"
@@ -212,6 +218,35 @@ def detach_phone_access(db_path: Path) -> bool:
         conn.close()
 
 
+def restored_message(contents: BackupContents) -> str:
+    """The privacy-log words of a restore: the day the backup was made (this computer's zone) and what
+    it held."""
+    held = f"({contents.letters} letters, {contents.files} files)"
+    try:
+        made = datetime.fromisoformat(contents.manifest.created_at).astimezone()
+    except ValueError:
+        return f"Restored from an encrypted backup {held}"
+    return f"Restored from an encrypted backup made on {fmt_date(made.date())} {held}"
+
+
+def note_restored(db_path: Path, contents: BackupContents) -> None:
+    """Note in the restored database ``db_path`` the backup it came from (module policy)."""
+    conn = sqlite3.connect(db_path)
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO activity (ts, kind, message, data) VALUES (?, ?, ?, ?)",
+                (
+                    now_iso(),
+                    "backup.restored",
+                    restored_message(contents),
+                    json.dumps({"made_at": contents.manifest.created_at}),
+                ),
+            )
+    finally:
+        conn.close()
+
+
 def _staging_dir(target: Path) -> Path:
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = target.with_name(f".{target.name}.restoring-{secrets.token_hex(4)}")
@@ -237,6 +272,7 @@ def restore_backup(
         calendar = detach_calendar_sync(staging / DB_NAME)
         watched = detach_watched_folder(staging / DB_NAME)
         detach_phone_access(staging / DB_NAME)
+        note_restored(staging / DB_NAME, contents)
         for folder in ("files", "derived", "drafts"):
             (staging / folder).mkdir(mode=PRIVATE_DIR_MODE, exist_ok=True)
         # the folder may have filled or a server started while the backup was decrypted

@@ -6,7 +6,9 @@ from __future__ import annotations
 import logging
 import sys
 from collections.abc import Iterator
+from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -252,6 +254,11 @@ async def test_backup_info(data_dir: Path) -> None:
         assert info["file_name"] == "ordnung-backup-2026-09-28.ordnung-backup"
         assert info["min_passphrase"] == 12 and info["format_version"] == 1
         assert info["left_out"] == []
+        # letters and no backup made yet: time for one
+        copy = info["last_copy"]
+        assert copy["last_backup_at"] is None and copy["days"] is None
+        assert copy["due"] is True and copy["due_after_days"] == 30
+        assert copy["sync_saved_at"] is None and copy["sync_standing_by"] is False
         # a link is never followed — and Settings says what that leaves out
         (api.ctx.paths.drafts / "elsewhere").symlink_to(data_dir.parent)
         assert (await api.client.get("/api/backup")).json()["left_out"] == ["drafts/elsewhere"]
@@ -279,6 +286,35 @@ async def test_the_backup_download_restores(data_dir: Path, tmp_path: Path, fast
         assert [entry.path for entry in contents.manifest.files] == ["files/ab/letter.pdf"]
         logged = [a for a in api.ctx.store.list_activity(limit=10) if a.kind == "backup.created"]
         assert logged and "letters" in logged[0].message
+        assert logged[0].message == backups.backup_message(contents)
+        # Settings now says when: today, and no reminder
+        copy = (await api.client.get("/api/backup")).json()["last_copy"]
+        assert copy["last_backup_at"] == logged[0].ts and copy["last_backup_restored"] is False
+        assert copy["days"] == 0 and copy["due"] is False
+
+
+async def test_the_demo_never_says_a_backup_is_due(data_dir: Path) -> None:
+    async with api_for(data_dir, demo=True) as api:
+        seed_ledger(api.ctx.store)
+        copy = (await api.client.get("/api/backup")).json()["last_copy"]
+        assert copy["last_backup_at"] is None and copy["due"] is False
+
+
+async def test_hand_off_syncs_recent_save_counts_as_a_copy(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        seed_ledger(api.ctx.store)
+        agent = api.app.state.ordnung.sync
+        saved = datetime.now().astimezone().isoformat(timespec="seconds")
+        agent.connected, agent.mode = True, "in_use"
+        agent.summary = SimpleNamespace(last_saved_at=saved)
+        copy = (await api.client.get("/api/backup")).json()["last_copy"]
+        assert copy["sync_saved_at"] == saved and copy["sync_standing_by"] is False
+        assert copy["last_backup_at"] is None and copy["due"] is False
+        agent.mode, agent.summary = "standing_by", SimpleNamespace(last_saved_at=None)
+        copy = (await api.client.get("/api/backup")).json()["last_copy"]
+        assert copy["sync_standing_by"] is True and copy["due"] is False
+        agent.connected = False  # disconnected: its old saves count no more
+        assert (await api.client.get("/api/backup")).json()["last_copy"]["due"] is True
 
 
 async def test_a_weak_passphrase_is_refused_without_echoing_it(
