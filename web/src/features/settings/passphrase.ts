@@ -184,10 +184,19 @@ function plainCase(chars: string[]): boolean {
 
 /** One of `found` is in `lowered` (`chars` in lower case, character by character) where `chars`' letters are in plain case (`_spelled`). */
 function spelled(lowered: string[], chars: string[], found: string[]): boolean {
+  const text = lowered.join("");
+  // which character starts at each UTF-16 offset of `text` (a piece found starts at one)
+  const start = new Map<number, number>();
+  let offset = 0;
+  lowered.forEach((char, index) => {
+    start.set(offset, index);
+    offset += char.length;
+  });
   for (const piece of found) {
     const length = [...piece].length;
-    for (let at = 0; at + length <= lowered.length; at++) {
-      if (lowered.slice(at, at + length).join("") === piece && plainCase(chars.slice(at, at + length))) return true;
+    for (let at = text.indexOf(piece); at >= 0; at = text.indexOf(piece, at + 1)) {
+      const index = start.get(at);
+      if (index !== undefined && plainCase(chars.slice(index, index + length))) return true;
     }
   }
   return false;
