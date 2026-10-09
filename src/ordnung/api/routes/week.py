@@ -13,6 +13,7 @@ import asyncio
 from datetime import date
 
 from fastapi import APIRouter
+from starlette.concurrency import run_in_threadpool
 
 from ordnung import views
 from ordnung.api.deps import ApiState, StateDep, TodayDep
@@ -33,7 +34,9 @@ async def _with_backup(session: WeeklySession, state: ApiState, today: date) -> 
 async def weekly_session(state: StateDep, today: TodayDep) -> WeeklySession:
     """New letters, values to check, payments this week, letters to post, replies awaited, decisions in
     the next 30 days and what to file — and the next day to act ("All clear until …")."""
-    session = await asyncio.to_thread(views.weekly_session, state.ctx.store, today)
+    # in the pool the other pages' routes run in, as before: they share the ledger rows the last of them
+    # loaded (one load per change and thread, ordnung.secretary.triggers._RowsCache)
+    session = await run_in_threadpool(views.weekly_session, state.ctx.store, today)
     return await _with_backup(session, state, today)
 
 
