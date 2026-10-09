@@ -1,0 +1,36 @@
+name: Feature request
+description: An idea for something Ordnung could do, or do better.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never attach real letters or personal data.** Issues are public. If a kind of letter Ordnung
+        handles badly is the reason for your idea, describe it in your own words (who sends it, what it
+        asks of you, by when) or make one up; don't attach or paste a real one.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to get done
+      description: The situation, and what is hard or missing today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What Ordnung could do about it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do now instead
+      description: Other ways you have tried, in Ordnung or elsewhere.
+  - type: checkboxes
+    id: no-personal-data
+    attributes:
+      label: Personal data
+      options:
+        - label: Nothing above or attached shows a real letter or personal data.
+          required: true

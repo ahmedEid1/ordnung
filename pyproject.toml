@@ -6,7 +6,13 @@ dynamic = ["version"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt", "src/ordnung/rules/data/LICENSE-GeoNames.txt"]
+# the web build's notices: the licences of the code and fonts it bundles (web/scripts/third-party-notices.mjs)
+license-files = [
+  "LICENSE",
+  "src/ordnung/drafts/fonts/LICENSE-DejaVu.txt",
+  "src/ordnung/rules/data/LICENSE-GeoNames.txt",
+  "src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt",
+]
 requires-python = ">=3.11"
 authors = [{ name = "Ahmed Hobeishy" }]
 keywords = ["ai", "agent", "claude", "personal-assistant", "paperwork", "deadlines", "germany", "local-first", "mcp"]
@@ -128,7 +134,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q"
 markers = [
-  "slow: replays every recorded reading, times pages against a wall-clock budget, or counts the lines a page runs (sys.settrace, which coverage uses too); CI runs these once, without coverage (-m slow)",
+  "slow: replays every recorded reading, times pages against a wall-clock budget, counts the lines a page runs (sys.settrace, which coverage uses too), or builds the web app; CI runs these once, without coverage (-m slow)",
 ]
 
 [tool.coverage.run]

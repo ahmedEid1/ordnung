@@ -28,6 +28,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   benchmark's looser rule: in the app, an IBAN that only fails its checksum is no scam sign on its own.
 - README's Limitations now say that the app's own text is in English only, that Google Calendar and Outlook.com
   get the calendar file rather than live sync, and how much one hand-off sync save can upload on a large library.
+- The web app's licence notices ship with it: `THIRD-PARTY-NOTICES.txt`, next to the built app and among
+  the package's licence files, names every package and font the app bundles (the Inter and Fraunces
+  fonts are under the SIL Open Font License) with its licence text.
+- [SECURITY.md](SECURITY.md) says how to report a security problem privately. A bug report now goes
+  through a form that asks for `ordnung --version` and `ordnung doctor` and warns never to attach a
+  real letter, and [CONTRIBUTING.md](CONTRIBUTING.md) says how to work on Ordnung.
 
 ### Fixed
 
