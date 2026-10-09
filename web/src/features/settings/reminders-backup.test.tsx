@@ -528,6 +528,27 @@ describe("encrypted backup card", () => {
     click.mockRestore();
   });
 
+  it("after a download the weekly review and the privacy log are asked again", async () => {
+    useMockApi();
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: () => "blob:backup", revokeObjectURL: () => {} }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    const user = userEvent.setup();
+    const client = makeTestQueryClient();
+    // what other pages loaded before: the review's ending may still say a backup is due
+    client.setQueryData(qk.week, { backup: copy({ due: true }) });
+    client.setQueryData(qk.activity, []);
+    const card = await openBackupCard(client);
+    await user.click(await within(card).findByRole("button", { name: "Download encrypted backup…" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.click(within(dialog).getByRole("button", { name: "Suggest a strong one" }));
+    expect(client.getQueryState(qk.week)?.isInvalidated).toBe(false);
+    await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
+    await within(card).findByText("today (Mon 28 Sep 2026).");
+    expect(client.getQueryState(qk.week)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(qk.activity)?.isInvalidated).toBe(true);
+    click.mockRestore();
+  });
+
   it("asks for a passphrase twice, refuses a short or different one, then downloads", async () => {
     const { calls } = useMockApi();
     const created: Blob[] = [];
