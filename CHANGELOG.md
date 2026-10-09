@@ -19,6 +19,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- When Claude's usage limit is reached, the time Ordnung says it continues at is in your profile's time zone,
+  not the computer's.
+- The app no longer has a design-system page at `/dev/ui`; it stays in the demos and in development.
 - Windows: the message that another Ordnung process is using the data folder names that process ("pid N:
   ordnung serve"), as on Linux and macOS, and so does restore's.
 - Windows: stopping Ordnung, and hand-off sync from the command line when it ends, now wait up to 20 seconds

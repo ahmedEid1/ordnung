@@ -19174,7 +19174,7 @@
       },
       "ReviewFailedEvent": {
         "additionalProperties": false,
-        "description": "``review.failed``: the on-demand review could not run.",
+        "description": "``review.failed``: a review for Ideas (asked for, or the weekly one) could not run.",
         "properties": {
           "error": {
             "title": "Error",

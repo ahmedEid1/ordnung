@@ -227,6 +227,7 @@ class DailyTick:
             ideas = await run_review(self.ctx.store, llm, today)
         except LLMError as exc:
             log.warning("weekly review failed: %s", exc)
+            self._publish("review.failed", error=str(exc))  # as the review asked for in the app
             return
         self._publish("suggestions.updated", reason="review", created=len(ideas))
 

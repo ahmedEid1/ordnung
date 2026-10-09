@@ -128,6 +128,14 @@ def pause_until(reset_at: str | None, now: datetime) -> datetime:
     return parsed.astimezone(UTC)
 
 
+def clock_time(moment: datetime, zone: str) -> str:
+    """``HH:MM`` of ``moment`` in the person's time zone (the computer's when the zone is unknown)."""
+    try:
+        return moment.astimezone(ZoneInfo(zone)).strftime("%H:%M")
+    except (ZoneInfoNotFoundError, ValueError):
+        return moment.astimezone().strftime("%H:%M")
+
+
 class IngestWorker:
     """Reads queued documents in the background (see the module docstring)."""
 
@@ -419,7 +427,7 @@ class IngestWorker:
         if self.paused_until is None or until > self.paused_until:
             self.paused_until = until
             self.ctx.store.set_meta(PAUSE_META_KEY, until.isoformat())
-        local = self.paused_until.astimezone().strftime("%H:%M")
+        local = clock_time(self.paused_until, self.ctx.store.get_profile().timezone)
         reason = f"{WAITING_FOR_CLAUDE}: the usage limit was reached. Ordnung continues at about {local}."
         self._requeue(job, reason, not_before=self.paused_until)
         self._claude_answered()  # this pause replaces a wait for Claude the app heard of
