@@ -38,8 +38,9 @@ more; run the ones near your change before you open a pull request:
 make check
 # the rules engine keeps 100 % line and branch coverage
 .venv/bin/pytest tests/test_rules_*.py --cov=ordnung.rules --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100
-# both benchmarks, replayed (deterministic, zero tokens, no results file written)
-.venv/bin/ordnung eval --min-accuracy 0.95 --max-dangerous-late 0
+# both benchmarks, replayed (deterministic, zero tokens, no results file written); CI also replays the
+# holdout, holdout2 and dev splits and the numbers without the sender's Land
+.venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
 .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
 # the demo rebuilds identically from the samples and recordings
 .venv/bin/ordnung demo --check
