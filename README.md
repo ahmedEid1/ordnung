@@ -608,6 +608,9 @@ More in [docs/architecture.md](docs/architecture.md).
 - Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
   the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
   Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
+- The app's own text is in English only: buttons, receipts, Ideas and notifications. Ordnung reads German
+  letters, and what Claude writes for you (explanations, translations, Ask's answers) follows the language you
+  choose in Settings; letters to German offices stay in German.
 - High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
   its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
   reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
@@ -645,11 +648,20 @@ More in [docs/architecture.md](docs/architecture.md).
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
   sends no reminders and reads no letters, and calendar sync is connected on each computer.
+- Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app password
+  (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get the calendar
+  file: a snapshot whose alarms fire, but dates from letters read later reach it only when you download and import
+  the file again (Today's Ideas say when there are new ones).
 - Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
   online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
   iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
   knows the passphrase): a new sync folder with a new passphrase does, and changing the passphrase isn't
   possible yet.
+- Hand-off sync saves the database in 1 MiB slices and uploads every slice a save changed, which adds up on a
+  large library: measured on a generated library of 1,500 letters and 80 MiB of database, reading one more
+  letter changed 29 of its 80 slices, about 29 MiB to upload. Ordnung deletes replaced slices after a day, but your
+  provider's version history and trash may keep them longer: on a metered connection or a small quota, turn
+  version history off for the sync folder if your provider lets you, and empty its trash now and then.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in

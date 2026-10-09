@@ -1076,6 +1076,87 @@ def test_the_app_s_scam_rule_ignores_a_checksum_note_but_not_hidden_text() -> No
     assert not report.app_scam_sign(None)
 
 
+def test_readme_limitations_say_the_interface_is_english() -> None:
+    """README Limitations: the app's own words are English (the page is ``lang="en"``, receipts are English on
+    purpose and the web app has no translation library); what Claude writes follows the chosen language."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "The app's own text is in English only: buttons, receipts, Ideas and notifications. Ordnung reads German "
+        "letters, and what Claude writes for you (explanations, translations, Ask's answers) follows the language "
+        "you choose in Settings; letters to German offices stay in German."
+    ) in limitation
+    assert '<html lang="en">' in (ROOT / "web" / "index.html").read_text(encoding="utf-8")
+    assert "English on purpose (the UI is English" in (ROOT / "src/ordnung/rules/explain.py").read_text(
+        encoding="utf-8"
+    )
+    dependencies = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))
+    names = {*dependencies.get("dependencies", {}), *dependencies.get("devDependencies", {})}
+    assert not {name for name in names if re.search(r"i18n|intl|lingui|formatjs|polyglot", name)}
+    hint = (ROOT / "web/src/features/settings/RegionSection.tsx").read_text(encoding="utf-8")
+    assert (
+        "Explanations, translations and answers are written in this language. Letters to German offices stay in "
+        "German."
+    ) in hint
+
+
+def test_readme_limitations_say_google_and_outlook_get_a_snapshot() -> None:
+    """README Limitations: calendar sync logs in to a CalDAV server with a user name and an app password (HTTP
+    Basic), which Google Calendar and Outlook.com don't take; they get the calendar file, whose new dates the
+    "new dates since your last calendar update" Idea announces."""
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app "
+        "password (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get "
+        "the calendar file: a snapshot whose alarms fire, but dates from letters read later reach it only when you "
+        "download and import the file again (Today's Ideas say when there are new ones)."
+    ) in limitation
+    caldav = (ROOT / "src/ordnung/calendar/caldav.py").read_text(encoding="utf-8")
+    assert "httpx.BasicAuth(username, password)" in caldav and "OAuth" not in caldav
+    triggers = (ROOT / "src/ordnung/secretary/triggers.py").read_text(encoding="utf-8")
+    assert "new date{'s' if count != 1 else ''} since your last calendar update" in triggers
+
+
+def _churn() -> dict[str, int]:
+    """Finding 21's measurement, as ``ordnung.sync.push`` records it: the generated library's letters, its
+    database's MiB and slices, and the slices one more reading changed."""
+    from ordnung.sync import push
+
+    doc = _flat(push.__doc__ or "")
+    found = re.search(
+        r"generated library of ([\d,]+) letters .*?an (\d+) MiB database, (\d+) slices\): one more reading changed "
+        r"(\d+) slices",
+        doc,
+    )
+    assert found is not None, "the push module no longer records the churn measurement"
+    letters, mib, slices, changed = found.groups()
+    return {
+        "letters": int(letters.replace(",", "")),
+        "mib": int(mib),
+        "slices": int(slices),
+        "changed": int(changed),
+    }
+
+
+def test_readme_limitations_say_how_much_one_save_can_upload() -> None:
+    """README Limitations: one save uploads every 1 MiB database slice it changed — measured, one more reading
+    changed 29 of a 1,500-letter library's 80 slices (``ordnung.sync.push``); replaced slices go after a day,
+    and the provider's version history and trash may keep them."""
+    churn = _churn()
+    slice_mib = _whole(sync.DB_SLICE, _MIB)
+    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    assert (
+        f"Hand-off sync saves the database in {slice_mib} MiB slices and uploads every slice a save changed, which "
+        f"adds up on a large library: measured on a generated library of {churn['letters']:,} letters and "
+        f"{churn['mib']} MiB of database, reading one more letter changed {churn['changed']} of its {churn['slices']} "
+        f"slices, about {churn['changed'] * slice_mib} MiB to upload. Ordnung deletes replaced slices after "
+        f"{_SYNC_NUMBERS['slice_grace']()}, but your provider's version history and trash may keep them longer: on "
+        "a metered connection or a small quota, turn version history off for the sync folder if your provider lets "
+        "you, and empty its trash now and then."
+    ) in limitation
+    # why replaced slices go after a day, not after the 7 days of other objects
+    assert churn["changed"] * sync.DB_SLICE > sync.SLICE_CHURN_LIMIT_BYTES
+
+
 def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
     """README "The model reads, code computes" shows "part of its recorded answer" for the demo's tax assessment:
     every key and value of it is in that recording (``src/ordnung/demo/fixtures/extract/85ae2aa7….json``)."""
