@@ -42,6 +42,12 @@ FAST = {
 }
 
 
+#: The real engine's calls (sealing, a copy of the database) can take seconds on a slow CI runner: under the
+#: fake engine's 1 s limit one went on running after the app stopped, holding ordnung.db open (on Windows a
+#: file still open can't be replaced). The app's own limit is 30 s.
+REAL_ENGINE_TIMINGS: dict[str, Any] = {"FOLDER_OP_TIMEOUT_S": 10.0}
+
+
 class RealEngine(facade.RealEngine):
     """The real engine (the façade over the sync core) with an in-memory password store per computer,
     as :class:`~sync_fake_engine.FakeEngine` offers them (``computer(engine=RealEngine())``)."""

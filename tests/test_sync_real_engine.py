@@ -16,7 +16,17 @@ from ordnung.config import Paths
 from ordnung.db.store import PERSON_META_KEY, Store
 from ordnung.sync.local import load_state
 from sync_faults import copy_tree
-from sync_support import PASSPHRASE, RealEngine, agent_of, computer, connect, eventually, fast_sync, status
+from sync_support import (
+    PASSPHRASE,
+    REAL_ENGINE_TIMINGS,
+    RealEngine,
+    agent_of,
+    computer,
+    connect,
+    eventually,
+    fast_sync,
+    status,
+)
 from test_api_support import Api
 
 pytestmark = pytest.mark.usefixtures("fast")
@@ -24,9 +34,7 @@ pytestmark = pytest.mark.usefixtures("fast")
 
 @pytest.fixture
 def fast(monkeypatch: pytest.MonkeyPatch) -> None:
-    # the real engine's calls (sealing, a copy of the database) can take seconds on a busy CI runner
-    # measuring coverage: one over the fake engine's 1 s limit left its thread busy, and a save was refused
-    fast_sync(monkeypatch, FOLDER_OP_TIMEOUT_S=10.0)
+    fast_sync(monkeypatch, **REAL_ENGINE_TIMINGS)  # the real engine: see REAL_ENGINE_TIMINGS
     use_fast_keys(monkeypatch)
 
 
