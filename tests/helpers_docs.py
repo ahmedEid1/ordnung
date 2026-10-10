@@ -182,10 +182,11 @@ def hidden_text_pdf() -> bytes:
     )
 
 
-def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None) -> bytes:
+def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None, blank_back: bool = False) -> bytes:
     """An image-only PDF (a 'scan'): text is pixels, there is no text layer — or, with ``ocr``, an
     invisible OCR layer over the picture (a scanner's "searchable PDF"). The OCR layer has the
-    picture's lines, or the lines ``ocr_text`` (a scanner that read the picture differently)."""
+    picture's lines, or the lines ``ocr_text`` (a scanner that read the picture differently). With
+    ``blank_back`` a second page follows: the blank back of the sheet (a duplex scan), with no OCR layer."""
     image = Image.new("RGB", (1240, 1754), "white")
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(str(FONT), 40)
@@ -203,6 +204,11 @@ def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None) -> byt
         scale = A4[0] / 1240
         for row, text in enumerate(LETTER_PAGES[0] if ocr_text is None else ocr_text):
             pdf.text(150 * scale, (200 + row * 60 + 40) * scale, text)
+    if blank_back:
+        back = io.BytesIO()
+        Image.new("RGB", (1240, 1754), "white").save(back, "JPEG", quality=80)
+        pdf.add_page()
+        pdf.image(io.BytesIO(back.getvalue()), x=0, y=0, w=A4[0], h=A4[1])
     return bytes(pdf.output())
 
 

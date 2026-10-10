@@ -13,7 +13,8 @@ stage, a PDF whose every page has its own text no "transcribe".
 * A scan's scanner text (the invisible text of a "searchable PDF") is kept apart by the text stage for the
   person's letter search only (:meth:`~ordnung.db.store.Store.write_scan_text`, ADR 0020): never a page's
   text, never in a prompt. :func:`read_text_here` reads the text of a letter waiting for Claude, and
-  :func:`catch_up_scan_text` the scanner text of a letter stored before Ordnung kept it.
+  :func:`catch_up_scan_text` the scanner text of a letter stored before Ordnung kept it. Only the text of
+  pages without text of their own is kept: a page Claude transcribed drops its scanner text.
   So do *held* ones (``hold=True``: files from the watched folder, :mod:`ordnung.ingest.held`), which
   end ``held`` instead of ``processed`` and publish no stage events (nothing is being read) until the
   person says they may be read.
@@ -732,10 +733,15 @@ async def read_text_here(ctx: AppContext, doc_id: str) -> None:
     """Stage 2 alone, for a letter waiting for Claude: its own text (and a scanner's, kept apart) is read on
     this computer, so the letter search finds it by its words straight away. No model, no status, verdict
     or warning changes, no trace and no event: the letter waits as before, and its reading does the rest.
-    A letter gone, in the trash or without text of its own (a photo) is left alone."""
+    A letter gone, in the trash or without text of its own (a photo) is left alone, and so is one Claude
+    has read already ("Read again", "Try again"): its pages keep the words Claude read."""
     store = ctx.store
     document = store.get_document(doc_id)
     if document is None or document.deleted_at is not None or not has_text_layer(document):
+        return
+    if document.ai_processed_at is not None or any(
+        page.text_source == "transcript" for page in store.list_pages(doc_id)
+    ):
         return
     pages = await _ensure_pages(store, document)
     await asyncio.to_thread(read_text_layer, store, document, pages)
@@ -743,8 +749,9 @@ async def read_text_here(ctx: AppContext, doc_id: str) -> None:
 
 def catch_up_scan_text(store: Store, doc_id: str) -> None:
     """For a PDF letter stored before Ordnung kept a scanner's text: read it from the original and keep it
-    for search (ADR 0020). No model, and no row of the database changes (the pages keep their text). A
-    letter gone, in the trash or without its original meanwhile is left alone."""
+    for search (ADR 0020), for the pages without text of their own. No model, and no row of the database
+    changes (the pages keep their text). A letter gone, in the trash or without its original meanwhile is
+    left alone."""
     document = store.get_document(doc_id)
     if document is None or document.deleted_at is not None or document.mime != "application/pdf":
         return

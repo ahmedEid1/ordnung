@@ -60,8 +60,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   its file name. Now the scanner's text is kept with the letter's page images for search only: a letter
   found that way says *Found in your scanner's text — not checked*, and its page says what that text is
   for. It is never shown as the letter's words, never used to check a date or an amount, and never sent to
-  Claude; Ask doesn't search it. Once Claude has read the scan, the scanner's text is removed. Scans you
-  added before are caught up in the background after the update
+  Claude; Ask doesn't search it. Once Claude has read a page, that page's scanner text is removed. Scans
+  you added before are caught up in the background after the update
   ([ADR 0020](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)).
 - **A moving checklist.** When you change your address in Settings → Profile and tick *I moved*, Today
   lists who needs your new address: first, registering at the citizens' office (Bürgeramt) within two
@@ -145,9 +145,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   change how they repeat.
 - On a computer still on 0.2.0, a letter written in someone else's name prints your name under its signature
   until it is marked as sent. Print such letters on an updated computer.
-- A computer still on 0.2.0 shows the tax-season Idea without its button.
+- A computer still on 0.2.0 shows its own tax-season Idea, whose *See the documents* opens one letter rather
+  than the tax year (and it may count the year's letters slightly differently).
 - A computer still on 0.2.0 finds a scan only by its name, as before, and deletes its scanner's text with the
-  letter.
+  letter. A scan Claude reads there keeps its scanner's text until an updated computer receives it by hand-off
+  sync and removes it.
 - A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its Ideas
   and never takes them away, and saving the profile there forgets the move. Update both computers.
 - Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and

@@ -306,6 +306,36 @@ async def test_a_waiting_letters_text_is_read_once(
     assert read == [first.id, later.id, later.id]
 
 
+async def test_reading_a_read_scan_again_while_claude_is_missing_keeps_its_words(
+    ctx: AppContext, router: Router
+) -> None:
+    """ "Read again" on a scan Claude already read, while Claude is missing: the letter waits with the words
+    Claude read. Search still finds it by them, and no scanner text takes their place."""
+    router.transcript = TAX_LETTER.transcript()
+    ctx.settings.concurrency = 1
+    scan = await add_file(ctx, scanned_pdf(ocr=True, ocr_text=ZAEHLER_SCAN), "scan.pdf")
+    await ctx.worker.run_until_idle()
+    read = ctx.store.list_pages(scan.id)
+    assert [page.text_source for page in read] == ["transcript"]
+    assert [hit.doc_id for hit in ctx.store.search("Einkommensteuer")] == [scan.id]
+
+    router.errors["transcribe"] = lambda: ClaudeNotInstalled("The “claude” command was not found.")
+    refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
+    await add_file(ctx, INVOICE_LETTER.pdf(), "invoice.pdf")
+    await ctx.worker.run_until_idle()
+    assert ctx.worker.waiting_for_claude == worker.NOT_INSTALLED_REASON
+    pipeline.reprocess(ctx, scan.id)
+    await ctx.worker.run_until_idle()
+
+    assert ctx.store.list_pages(scan.id) == read
+    assert [hit.doc_id for hit in ctx.store.search("Einkommensteuer")] == [scan.id]
+    assert ctx.store.scan_text_pages(scan.id) == []
+    assert ctx.store.scan_text_matches("Wasserzählerstand") == set()
+    assert not (ctx.store.paths.derived / scan.id / "scan-text.json").exists()
+    job = next(job for job in ctx.store.list_jobs() if job.doc_id == scan.id and job.kind == "reprocess")
+    assert job.status == "queued" and job.waiting_reason is not None
+
+
 async def test_a_waiting_letter_whose_text_cant_be_read_still_waits(
     ctx: AppContext, router: Router, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -698,6 +728,25 @@ async def test_older_scans_get_their_scanner_text_in_the_background(ctx: AppCont
     await ctx.worker.stop()
     assert ctx.store.scan_text_missing() == []
     assert ctx.llm.backend.calls == []  # type: ignore[attr-defined]
+
+
+async def test_the_catch_up_removes_scanner_text_claude_has_read_since(
+    ctx: AppContext, router: Router
+) -> None:
+    """A scan Claude read where the scanner text was unknown (a computer still on 0.2.0, then hand-off sync)
+    still has its file: the catch-up removes it, without a model."""
+    router.transcript = TAX_LETTER.transcript()
+    scan = await add_file(ctx, scanned_pdf(ocr=True, ocr_text=ZAEHLER_SCAN), "scan.pdf")
+    await ctx.worker.run_until_idle()
+    kept = ctx.store.paths.derived / scan.id / "scan-text.json"
+    kept.write_text('{"version": 1, "pages": {"1": "Ablesung Ihres Wasserzählerstands"}}', "utf-8")
+    calls = len(ctx.llm.backend.calls)  # type: ignore[attr-defined]
+    ctx.worker.catch_up_delay_s = 0
+    await ctx.worker.start()
+    await wait_for(lambda: not kept.exists())
+    await ctx.worker.stop()
+    assert ctx.store.scan_text_stale() == []
+    assert len(ctx.llm.backend.calls) == calls  # type: ignore[attr-defined]
 
 
 async def test_the_catch_up_stops_with_the_worker(ctx: AppContext, monkeypatch: pytest.MonkeyPatch) -> None:

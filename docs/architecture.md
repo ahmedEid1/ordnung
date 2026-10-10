@@ -543,7 +543,8 @@ their own (`list_documents(also_ids=…)`; the default leaves the list as it was
 rows with `found_in` in the route — the store keeps returning `Document`, so Ask's ledger fingerprint is
 unchanged. `Store.search` (Ask's), the FTS tables, `pages`, prompts and the evidence checks never read the file.
 It lives with the page images, so hand-off sync and backups carry it and deleting the letter deletes it; the
-worker reads a waiting letter's own text at once and catches up older scans in the background.
+worker reads a waiting letter's own text at once (never one Claude has read: its pages keep Claude's words),
+catches up older scans in the background, and keeps only the scanner text of pages without text of their own.
 
 **Export letters** (`letters_zip.py`, `GET /api/documents.zip` in `api/routes/export.py`) is a pure read: one
 snapshot of the letters (`plan`), then a pull-based ZIP stream (`LettersZip`, one chunk of one file in memory,

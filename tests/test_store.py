@@ -1056,14 +1056,22 @@ def test_write_scan_text_after_a_purge_writes_nothing(store: Store) -> None:
     assert not (store.paths.derived / scan.id).exists()
 
 
+def kept_scan_text(store: Store, doc_id: str) -> dict[str, str]:
+    pages: dict[str, str] = json.loads(scan_file(store, doc_id).read_text("utf-8"))["pages"]
+    return pages
+
+
 def test_scanner_text_is_forgotten_once_every_page_has_its_own(store: Store) -> None:
-    """After Claude transcribed the pages the scanner's text would never count again: it goes. While a page
-    still has no text of its own, it stays."""
+    """Once Claude transcribed a page its scanner text would never count again: it goes. Only the text of
+    pages still without text of their own stays; the file goes with the last of them."""
     scan = add_scan(store, pages=2)
+    store.write_scan_text(scan.id, {1: SCANNER_TEXT, 2: "Rückseite mit Zählerstand"})
     assert store.scan_text_matches("Wasserzählers") == {scan.id}  # cached now
     store.set_page_text(scan.id, 1, "Transkript der ersten Seite", "transcript")
     store.forget_scan_text_once_read(scan.id)
-    assert scan_file(store, scan.id).is_file()
+    assert kept_scan_text(store, scan.id) == {"2": "Rückseite mit Zählerstand"}
+    assert store.scan_text_matches("Wasserzählers") == set()
+    assert store.scan_text_matches("Rückseite") == {scan.id}
     store.set_page_text(scan.id, 2, "Transkript der zweiten Seite", "transcript")
     store.forget_scan_text_once_read(scan.id)
     assert not scan_file(store, scan.id).exists() and scan.id not in store._scan_text_cache
@@ -1072,8 +1080,8 @@ def test_scanner_text_is_forgotten_once_every_page_has_its_own(store: Store) -> 
 
 
 def test_scanner_text_is_kept_only_while_a_page_has_no_text(store: Store) -> None:
-    """Written for a PDF with a page that has no text of its own (an empty map: looked, nothing there);
-    removed once every page has text; never kept for a photo or a text file."""
+    """Written for a PDF with a page that has no text of its own, and only for such pages (an empty map:
+    looked, nothing there); removed once every page has text; never kept for a photo or a text file."""
     letter = add_doc(store, b"letter with text")
     store.set_pages(letter.id, [page(1, "Eigener Text", text_source="text")])
     store.write_scan_text(letter.id, {1: SCANNER_TEXT})
@@ -1086,6 +1094,10 @@ def test_scanner_text_is_kept_only_while_a_page_has_no_text(store: Store) -> Non
     store.set_page_text(scan.id, 1, "Transkript", "transcript")
     store.write_scan_text(scan.id, {1: SCANNER_TEXT})
     assert not scan_file(store, scan.id).exists()
+    duplex = add_scan(store, pages=2)
+    store.set_page_text(duplex.id, 1, "Transkript", "transcript")
+    store.write_scan_text(duplex.id, {1: SCANNER_TEXT, 2: "Rückseite"})
+    assert kept_scan_text(store, duplex.id) == {"2": "Rückseite"}
     photo = store.add_document(
         sha256=sha(b"photo"), filename="a.jpg", mime="image/jpeg", file_path="files/a.jpg"
     )
@@ -1093,6 +1105,29 @@ def test_scanner_text_is_kept_only_while_a_page_has_no_text(store: Store) -> Non
     store.write_scan_text(photo.id, {1: SCANNER_TEXT})
     assert not scan_file(store, photo.id).exists()
     assert store.scan_text_pages("doc_missing") == []
+
+
+def test_out_of_date_scanner_text_is_listed_until_it_is_tidied(store: Store) -> None:
+    """A file still holding the scanner text of pages that have text of their own by now (Claude read the
+    scan on a version of Ordnung that didn't know the file) is listed for the catch-up; tidying keeps only
+    what still counts for search. A letter in the trash waits until it is restored."""
+    read = add_scan(store)
+    store.set_page_text(read.id, 1, "Transkript", "transcript")
+    duplex = add_scan(store, "Ablesung Zählerstand", pages=2)
+    store.set_page_text(duplex.id, 1, "Transkript", "transcript")
+    waiting = add_scan(store, "Wasserwerk Musterstadt")
+    trashed = add_scan(store, "Altpapier Abholung")
+    store.set_page_text(trashed.id, 1, "Transkript", "transcript")
+    store.trash_document(trashed.id)
+    assert sorted(store.scan_text_stale()) == sorted([read.id, duplex.id])
+    for doc_id in store.scan_text_stale():
+        store.forget_scan_text_once_read(doc_id)
+    assert not scan_file(store, read.id).exists()
+    assert kept_scan_text(store, duplex.id) == {}
+    assert store.scan_text_stale() == [] and store.scan_text_missing() == []
+    assert store.scan_text_matches("Wasserwerk") == {waiting.id}
+    store.restore_document(trashed.id)
+    assert store.scan_text_stale() == [trashed.id]
 
 
 def test_a_scanner_text_that_cant_be_written_leaves_search_by_name(

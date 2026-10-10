@@ -4,6 +4,7 @@ link → plan, on generated PDFs and photos."""
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
@@ -30,6 +31,7 @@ from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
 from ordnung.ingest.verify import READING_INCOMPLETE, REASON_TEXT
+from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Item
 from ordnung.secretary.triggers import Ledger, please_check
@@ -377,6 +379,42 @@ async def test_a_scan_claude_read_leaves_no_scanner_text_file(ctx: AppContext) -
     assert [page.text_source for page in ctx.store.list_pages(document.id)] == ["transcript"]
     assert not (ctx.store.paths.derived / document.id / "scan-text.json").exists()
     assert ctx.store.scan_text_missing() == []
+
+
+class BlankBackRouter(Router):
+    """Transcribes the blank back of a duplex scan as no text at all."""
+
+    def __call__(self, req: LLMRequest) -> dict[str, Any]:
+        if req.purpose == "transcribe" and req.attachments[0].path.name.startswith("page-2"):
+            return {"text": "", "language": "de", "legible": True}
+        return super().__call__(req)
+
+
+def _kept_scan_text(ctx: AppContext, doc_id: str) -> dict[str, str]:
+    pages: dict[str, str] = json.loads(_scan_file(ctx, doc_id).read_text("utf-8"))["pages"]
+    return pages
+
+
+async def test_a_duplex_scan_claude_read_keeps_no_scanner_text_of_the_page_it_read(data_dir: Path) -> None:
+    """A scan with a blank back: once Claude read the front, its scanner text is gone, though the back still
+    has no text of its own. The catch-up never brings it back."""
+    context = build_context(
+        data_dir, backend_obj=fake_backend(BlankBackRouter(transcript=APPOINTMENT_LETTER.transcript()))
+    )
+    try:
+        document = await add_file(context, scanned_pdf(ocr=True, blank_back=True), "duplex.pdf")
+        await context.worker.run_until_idle()
+        pages = context.store.list_pages(document.id)
+        assert [page.text_source for page in pages] == ["transcript", "none"]
+        assert _kept_scan_text(context, document.id) == {}
+        assert context.store.scan_text_missing() == []
+
+        _scan_file(context, document.id).unlink()
+        assert context.store.scan_text_missing() == [document.id]
+        pipeline.catch_up_scan_text(context.store, document.id)
+        assert _kept_scan_text(context, document.id) == {}
+    finally:
+        context.close()
 
 
 async def test_reading_again_keeps_the_scanner_text_current(ctx: AppContext) -> None:

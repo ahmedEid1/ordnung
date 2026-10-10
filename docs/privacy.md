@@ -14,7 +14,7 @@ goes where.
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
-| Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as a new-address letter you write states it |
+| Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | How each letter was read (its steps: counts, scores, computed dates, ids of records) | `ordnung.db` (`trace_spans`) — **no letter text**, the newest five readings per letter | Never (unless you export one with `ordnung trace`) |
@@ -280,8 +280,8 @@ a page's text: when Claude reads a scan, it reads the picture, and what it read 
   it), never used to check a date or an amount, and never sent to Claude: *Ask*, *Weekly Ideas*, the daily
   note and drafting never read it, and it is not in the search index *Ask* uses. The letter's page says
   what it is kept for.
-- **It goes with the letter.** Once Claude has read every page of the scan, the scanner's text is removed;
-  deleting the letter deletes it with the page images. A scan stored before Ordnung kept this text gets it
+- **It goes with the letter.** Once Claude has read a page of the scan, that page's scanner text is removed
+  (the file goes once every page is read); deleting the letter deletes it with the page images. A scan stored before Ordnung kept this text gets it
   in the background, read from the original by Ordnung's own code (no model).
 
 ## Reminders while Ordnung is closed

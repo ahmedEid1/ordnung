@@ -1364,23 +1364,18 @@ class Store:
 
     def write_scan_text(self, doc_id: str, pages: Mapping[int, str]) -> None:
         """Keep a scan's scanner text (page → text) for the person's letter search only: written while the
-        letter is a PDF with a page that has no text of its own (an empty map: looked, nothing there),
-        removed otherwise. In a transaction that needs the letter (:class:`NotFoundError`), so a letter
-        deleted for good meanwhile never gets the file back. A file that can't be written is logged, never
-        raised: search then finds the letter by its name, as before."""
+        letter is a PDF with a page that has no text of its own, for such pages alone (an empty map: looked,
+        nothing there), removed otherwise. In a transaction that needs the letter (:class:`NotFoundError`),
+        so a letter deleted for good meanwhile never gets the file back. A file that can't be written is
+        logged, never raised: search then finds the letter by its name, as before."""
         with self.tx() as conn:
             row = conn.execute("SELECT mime FROM documents WHERE id = ?", (doc_id,)).fetchone()
             if row is None:
                 raise NotFoundError(f"documents: no row with id {doc_id!r}")
-            blank = row["mime"] == _PDF and (
-                conn.execute(
-                    "SELECT 1 FROM pages WHERE doc_id = ? AND trim(text) = '' LIMIT 1", (doc_id,)
-                ).fetchone()
-                is not None
-            )
+            blank = self._pages_without_text(conn, doc_id) if row["mime"] == _PDF else set()
             try:
                 if blank:
-                    kept = {page: text for page, text in pages.items() if text.strip()}
+                    kept = {page: text for page, text in pages.items() if page in blank and text.strip()}
                     scan_text.write(self.paths.derived, doc_id, kept)
                 else:
                     scan_text.remove(self.paths.derived, doc_id)
@@ -1389,18 +1384,27 @@ class Store:
         self._forget_scan_text(doc_id)
 
     def forget_scan_text_once_read(self, doc_id: str) -> None:
-        """Remove the letter's scanner text once every page has text of its own (Claude transcribed the
-        scan): it would never count for search again. A file that can't be removed is logged."""
+        """Forget the scanner text of the letter's pages that have text of their own (Claude transcribed
+        them): it would never count for search again. The file keeps the pages still without text, and goes
+        once every page has text. A file that can't be changed is logged."""
         with self.tx() as conn:
-            blank = conn.execute(
-                "SELECT 1 FROM pages WHERE doc_id = ? AND trim(text) = '' LIMIT 1", (doc_id,)
-            ).fetchone()
-            if blank is None:
-                try:
+            blank = self._pages_without_text(conn, doc_id)
+            try:
+                if not blank:
                     scan_text.remove(self.paths.derived, doc_id)
-                except OSError:
-                    log.warning("could not remove the scanner text of %s", doc_id, exc_info=True)
+                elif scan_text.present(self.paths.derived, doc_id):
+                    kept = scan_text.read(self.paths.derived, doc_id)
+                    left = {page: text for page, text in kept.items() if page in blank and text.strip()}
+                    if left != kept:
+                        scan_text.write(self.paths.derived, doc_id, left)
+            except OSError:
+                log.warning("could not forget the scanner text of %s", doc_id, exc_info=True)
         self._forget_scan_text(doc_id)
+
+    @staticmethod
+    def _pages_without_text(conn: sqlite3.Connection, doc_id: str) -> set[int]:
+        rows = conn.execute("SELECT page FROM pages WHERE doc_id = ? AND trim(text) = ''", (doc_id,))
+        return {row["page"] for row in rows}
 
     def _blank_scan_pages(self, doc_id: str | None = None) -> dict[str, list[int]]:
         """Letter → its pages without text of their own, for the PDF letters not in the trash (with
@@ -1474,6 +1478,25 @@ class Store:
         return [
             doc_id for doc_id in self._blank_scan_pages() if not scan_text.present(self.paths.derived, doc_id)
         ]
+
+    def scan_text_stale(self) -> list[str]:
+        """PDF letters (not in the trash) whose kept scanner text is out of date: it holds a page that has
+        text of its own by now, or every page has — Claude read the scan on a version of Ordnung that didn't
+        know the file. The worker's catch-up tidies them (:meth:`forget_scan_text_once_read`), oldest first."""
+        blank = self._blank_scan_pages()
+        rows = self._conn().execute(
+            "SELECT id FROM documents WHERE deleted_at IS NULL AND mime = ? ORDER BY created_at, id", (_PDF,)
+        )
+        stale: list[str] = []
+        for row in rows:
+            doc_id = row["id"]
+            if not scan_text.present(self.paths.derived, doc_id):
+                continue
+            pages = blank.get(doc_id)
+            kept = scan_text.read(self.paths.derived, doc_id)
+            if pages is None or any(page not in pages for page, text in kept.items() if text.strip()):
+                stale.append(doc_id)
+        return stale
 
     # ---------------------------------------------------------------------------------------------
     # search

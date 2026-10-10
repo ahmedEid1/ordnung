@@ -23,8 +23,10 @@ checked against, not sent to Claude and not evidence for anything.
 - **Kept apart, in a file of its own.** The text stage returns the scanner's text apart from the pages'
   text (`PdfText.scan_text`; `PageText` has no field for it) and keeps it in `derived/<doc>/scan-text.json`
   (`{"version": 1, "pages": {"<n>": "<text>"}}`, at most 20,000 characters a page, private and written
-  atomically). An empty map means "looked, nothing there". It is removed once every page has text of its
-  own, when Claude has read the scan.
+  atomically). An empty map means "looked, nothing there". It holds only pages without text of their own: a
+  page's scanner text goes once Claude has read that page, and the file goes once every page has text. The
+  worker's catch-up also tidies a file that Claude's reading made out of date on a computer that didn't know
+  it (0.2.0).
 - **One reader.** Only `Store` reads and writes it (`ordnung.db.scan_text`; a test holds that no other
   module imports it). It is never in the `pages` table, the search indexes, `Document`, Ask's tools, a
   prompt, the reading's evidence checks, the hidden-text scam sign or the ledger fingerprint Ask's

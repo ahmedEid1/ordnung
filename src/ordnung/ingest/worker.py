@@ -26,7 +26,8 @@
 
 ``run_until_idle()`` processes everything that is due and returns — used by the CLI and tests.
 
-The scanner text of scans stored before Ordnung kept it (ADR 0020) is caught up in the background:
+The scanner text of scans stored before Ordnung kept it (ADR 0020) is caught up in the background, and a
+scanner text Claude's reading made out of date elsewhere (on a computer still on 0.2.0) is tidied:
 :data:`CATCH_UP_DELAY_S` seconds after :meth:`IngestWorker.start`, one letter at a time, never a model —
 and it stops with the worker, which runs only while background work is allowed (never while hand-off
 sync stands this computer by).
@@ -42,6 +43,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import logging
 import re
 import time
@@ -357,23 +359,30 @@ class IngestWorker:
             await asyncio.shield(self._ideas)
 
     async def _catch_up_scan_text(self, halt: asyncio.Event) -> None:
-        """Keep the scanner text of the scans stored before Ordnung kept it (ADR 0020): after
-        :attr:`catch_up_delay_s`, one letter at a time in a thread, until done or the worker stops (``halt``;
-        the letter under way is finished first). A letter that fails is logged and left for the next start."""
+        """Keep the scanner text of the scans stored before Ordnung kept it (ADR 0020), then forget the out of
+        date scanner text of pages Claude has read since: after :attr:`catch_up_delay_s`, one letter at a time
+        in a thread, until done or the worker stops (``halt``; the letter under way is finished first). A
+        letter that fails is logged and left for the next start."""
         with contextlib.suppress(TimeoutError):
             await asyncio.wait_for(halt.wait(), self.catch_up_delay_s)
         if halt.is_set():
             return
+        store = self.ctx.store
         try:
-            missing = await asyncio.to_thread(self.ctx.store.scan_text_missing)
+            missing = await asyncio.to_thread(store.scan_text_missing)
+            stale = await asyncio.to_thread(store.scan_text_stale)
         except Exception:
             log.warning("could not list the scans whose scanner text is missing", exc_info=True)
             return
-        for doc_id in missing:
+        work: list[tuple[str, Callable[[], None]]] = [
+            *((doc_id, functools.partial(pipeline.catch_up_scan_text, store, doc_id)) for doc_id in missing),
+            *((doc_id, functools.partial(store.forget_scan_text_once_read, doc_id)) for doc_id in stale),
+        ]
+        for doc_id, step in work:
             if halt.is_set():
                 return
             try:
-                await asyncio.to_thread(pipeline.catch_up_scan_text, self.ctx.store, doc_id)
+                await asyncio.to_thread(step)
             except Exception:
                 log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
 

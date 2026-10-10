@@ -2659,8 +2659,8 @@ def test_the_changelog_adds_the_tax_year_searchable_scans_and_the_moving_checkli
 
 def test_the_changelog_fixes_waiting_letters_search_and_says_what_an_older_computer_does() -> None:
     """CHANGELOG, Unreleased: Fixed — a letter added while Claude is missing is found by its PDF's words at once
-    (only the first one was); Upgrading — 0.2.0 shows the tax Idea without its button, finds scans by name only,
-    and drops a move when its profile is saved there while it never retires the checklist's rows."""
+    (only the first one was); Upgrading — 0.2.0 shows its own tax Idea, whose button opens one letter, finds scans
+    by name only, and drops a move when its profile is saved there while it never retires the checklist's rows."""
     assert (
         "A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its "
         "PDF straight away. Before, only the first such letter was; the others were found by name until Claude "
@@ -2668,9 +2668,11 @@ def test_the_changelog_fixes_waiting_letters_search_and_says_what_an_older_compu
     ) in _unreleased("Fixed")
     upgrading = _unreleased("Upgrading")
     for sentence in (
-        "A computer still on 0.2.0 shows the tax-season Idea without its button.",
+        "A computer still on 0.2.0 shows its own tax-season Idea, whose *See the documents* opens one letter "
+        "rather than the tax year (and it may count the year's letters slightly differently).",
         "A computer still on 0.2.0 finds a scan only by its name, as before, and deletes its scanner's text with "
-        "the letter.",
+        "the letter. A scan Claude reads there keeps its scanner's text until an updated computer receives it by "
+        "hand-off sync and removes it.",
         "A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its "
         "Ideas and never takes them away, and saving the profile there forgets the move. Update both computers.",
     ):
