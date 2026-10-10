@@ -2,7 +2,7 @@
  * Inbox list logic (pure, unit-tested): filters, month grouping, open to-dos per letter.
  */
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { Document, DocumentKind, Item, ListedItem } from "@/api/types";
+import type { Document, DocumentKind, DocumentListEntry, Item, ListedItem, SearchFoundIn } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import { daysUntil } from "@/lib/format";
 
@@ -21,6 +21,15 @@ export const isReading = (d: Document) => d.status === "queued" || d.status === 
  * person's "Read these" in their own group above the list, and are in no other group or filter.
  */
 export const isHeld = (d: Document) => d.status === "held" && !d.deleted_at;
+
+/**
+ * The waiting letters ({@link isHeld}) a search found (`results`: `GET /api/documents?q=`), with where it found
+ * each (`found_in`). The live list decides which still wait: one answered since the search ran is left out.
+ */
+export function heldMatches(docs: readonly Document[], results: readonly DocumentListEntry[]): Map<string, SearchFoundIn | null> {
+  const waiting = new Set(docs.filter(isHeld).map((d) => d.id));
+  return new Map(results.filter((d) => waiting.has(d.id)).map((d) => [d.id, d.found_in ?? null]));
+}
 
 export function matchesFilter(d: Document, filter: InboxFilter): boolean {
   if (filter === "check") return needsYou(d);

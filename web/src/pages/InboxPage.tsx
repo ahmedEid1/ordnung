@@ -25,7 +25,7 @@ import { useTrayByDoc } from "@/features/tour/newMail";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
 import { isTaxLetter } from "@/features/taxes/taxYear";
-import { filterCounts, filterDocuments, groupLetters, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
+import { filterCounts, filterDocuments, groupLetters, heldMatches, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
 
 /**
  * `/inbox` — every letter, filters, search, the demo's New-mail tray, the letters from the watched
@@ -167,12 +167,19 @@ export default function InboxPage() {
   const groups = useMemo(() => groupLetters(visible, today), [visible, today]);
   const total = useMemo(() => filterCounts(docs).all, [docs]);
   const waiting = useMemo(() => docs.filter(isHeld), [docs]);
+  // the search field shows once there are letters read (with only waiting ones, just their group does)
+  const withSearch = Boolean(total) || !waiting.length;
+  // the waiting letters the search found: their own group lists just them, as the top bar's search does
+  const heldFound = useMemo(
+    () => (searching && withSearch && search.data ? heldMatches(docs, search.data) : null),
+    [searching, withSearch, search.data, docs],
+  );
 
   // the settled words (not every keystroke): "Type one more letter" waits for a pause
   const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "" };
   const pendingSearch = searching && search.isPending;
-  const line = resultLine(view, visible.length, total, pendingSearch);
-  const empty = emptyCopy(view, phone);
+  const line = resultLine(view, visible.length, total, pendingSearch, heldFound?.size);
+  const empty = emptyCopy(view, phone, heldFound?.size);
   const onlySearch = Boolean(view.q) && filter === "all" && !kind;
   const clearSearch = () => setQuery("");
   const clearAll = () => {
@@ -238,9 +245,9 @@ export default function InboxPage() {
         />
       ) : (
         <>
-          {/* the letters the folder brought in wait above the list (they're in no group or filter of it) */}
-          <WaitingFromFolder docs={docs} onAnswered={() => focusLetters()?.focus({ preventScroll: true })} />
-          {total || !waiting.length ? (
+          {/* the letters the folder brought in wait above the list (in no group or filter of it); a search narrows them too */}
+          <WaitingFromFolder docs={docs} found={heldFound} onAnswered={() => focusLetters()?.focus({ preventScroll: true })} />
+          {withSearch ? (
             <>
               <div className="mb-6 flex flex-col gap-3">
                 <InboxToolbar
