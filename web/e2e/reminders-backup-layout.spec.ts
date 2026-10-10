@@ -1,8 +1,8 @@
 /**
  * Settings → Reminders → "Desktop notification each morning", Settings → Calendar → "Sync with
  * your own calendar" and Settings → Data → "Encrypted backup" on the real demo, where jsdom can't
- * look: nothing scrolls sideways at 320 px, the notification preview and long calendar addresses
- * wrap inside their cards, focus is never hidden under the fixed bars, the passphrase and
+ * look: nothing scrolls sideways at 320 px, the notification preview, the app-menu line and long
+ * calendar addresses wrap inside their cards, focus is never hidden under the fixed bars, the passphrase and
  * disconnect dialogs fit a phone as a sheet, all pass axe in light and dark mode — and a backup
  * made through the browser really is an Ordnung backup file, after which the card says the last backup
  * was made today. Settings → Your computers says that the demo never syncs (hand-off sync's two real
@@ -77,6 +77,9 @@ for (const [width, height] of [
     await noSidewaysScroll(page);
     // the command to start at login wraps rather than running off the card
     await inside(card.getByText("ordnung autostart enable", { exact: true }), card);
+    // and so does the app-menu line (the demo's: it opens with `ordnung demo`, nothing to copy)
+    await inside(card.getByRole("heading", { level: 4, name: "Open Ordnung from your app menu" }), card);
+    await inside(card.getByText(/^The demo opens with/), card);
     // unsaved: the save bar is on screen and Discard puts it back
     await expect(card.getByRole("button", { name: "Save changes" })).toBeInViewport();
     await card.getByRole("radio", { name: "With details" }).focus();

@@ -302,6 +302,13 @@ a page's text: when Claude reads a scan, it reads the picture, and what it read 
   what `serve` prints: the token never lands in the system journal or a log file.
   It also records `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` when that is set (see Hardening below).
   `ordnung autostart disable` removes the file.
+- **Open from your app menu** (`ordnung shortcut`) writes one launcher (an app-menu entry, an app in your
+  Applications folder or a Start-menu shortcut) that runs `ordnung serve`, and prints it before anything
+  else. It records `PATH` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` like start at login (a Windows
+  shortcut can't carry variables: it prints the `setx` command that sets the opt-out for your account).
+  When Ordnung isn't running, it starts only in a window of its own, so the sign-in link is printed only
+  there, never into a log or the system journal; on a Mac the first, windowless check throws its output
+  away. `ordnung shortcut --remove` removes the launcher.
 
 ## Calendar sync (optional)
 
@@ -613,8 +620,10 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   servers out of Ordnung's calls; `--no-session-persistence` keeps them out of your Claude history.
 - Ordnung runs your own Claude Code CLI, so Claude Code's own telemetry and error reporting apply to its
   calls as they do when you use Claude Code yourself. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` in
-  the environment you start Ordnung from to turn them off. With start at login, set it before
-  `ordnung autostart enable`, or run that again after setting it.
+  the environment you start Ordnung from to turn them off. With start at login or the app-menu shortcut,
+  set it before `ordnung autostart enable` or `ordnung shortcut`, or run that again after setting it; on
+  Windows the shortcut can't carry it, so set it for your account (`ordnung shortcut` prints the `setx`
+  command).
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
   removed before it reaches the model (a scan's invisible OCR layer never reaches the model: the page is

@@ -9,6 +9,7 @@ import type {
   BackupInfo,
   Contract,
   Dashboard,
+  DesktopReminders,
   DocumentDetail,
   DocumentListEntry,
   Draft,
@@ -688,5 +689,24 @@ describe("mock contracts", () => {
     const short = await patched("ctr_job", { ...terms, notice_value: 2, notice_before_end: true });
     expect(short.computed).toMatchObject({ cancel_by: "2026-10-03", earliest_exit: "2026-10-31" });
     expect(short.computed!.warnings).toEqual([expect.stringMatching(/^Before the fixed term's end we used at least four weeks' notice/)]);
+  });
+});
+
+describe("mock reminders outside the browser", () => {
+  it("has Ordnung in no app menu, and offers `ordnung shortcut` only with your own letters", async () => {
+    const s = srv();
+    const demo = await get<DesktopReminders>(s, "/reminders/desktop");
+    expect(demo.shortcut).toEqual({
+      added: false,
+      kind: "app menu entry",
+      path: "/home/sam/.local/share/applications/ordnung.desktop",
+      points_here: false,
+      current: false,
+      foreign: false,
+      command: null,
+    });
+    s.db.state.health.demo = false;
+    const own = await get<DesktopReminders>(s, "/reminders/desktop");
+    expect(own.shortcut).toEqual({ ...demo.shortcut, command: "ordnung shortcut" });
   });
 });

@@ -707,11 +707,13 @@ export type ReviewStarted = Schemas["ReviewStarted"];
 export type DataDeleted = Schemas["DataDeleted"];
 /** `POST /api/documents/held/read` · `…/keep-private`: the letters answered for, jobs queued, ids no longer waiting. */
 export type HeldResult = Schemas["HeldResult"];
-/** `GET /api/reminders/desktop`: the notification tool, today's text in each mode, start at login. */
+/** `GET /api/reminders/desktop`: the notification tool, today's text in each mode, start at login, the app-menu shortcut. */
 export type DesktopReminders = Schemas["DesktopReminders"];
 export type NotificationText = Schemas["NotificationText"];
 /** Whether `ordnung autostart` starts Ordnung at login, and for which data folder. */
 export type AutostartInfo = Schemas["AutostartInfo"];
+/** Whether `ordnung shortcut` put Ordnung in this computer's app menu, and for which data folder. */
+export type ShortcutInfo = Schemas["ShortcutInfo"];
 /** `POST /api/reminders/desktop/test`. */
 export type DesktopTestResult = Schemas["DesktopTestResult"];
 /** The two modes a desktop notification can be shown in (the setting also has `off`). */

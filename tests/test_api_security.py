@@ -127,6 +127,22 @@ async def test_every_response_is_nosniff_and_no_referrer(data_dir: Path) -> None
 # --------------------------------------------------------------------------------------------------
 
 
+async def test_the_sign_in_page_sends_whoever_added_ordnung_to_their_apps_there_first(
+    data_dir: Path, web_dist: Path
+) -> None:
+    async with api_for(data_dir, token=TOKEN) as api:
+        page = await api.client.get("/")
+        assert page.status_code == 401
+        shortcut = page.text.index(
+            "If you added Ordnung to your apps with “ordnung shortcut”, open it from there."
+        )
+        otherwise = page.text.index(
+            "Otherwise run one of these in a terminal and use the link it prints (or opens):"
+        )
+        # the launcher first, then the two commands, which stay the ways to start it
+        assert shortcut < otherwise < page.text.index("<code>ordnung serve</code><code>ordnung demo</code>")
+
+
 async def test_token_login_sets_cookie_and_redirects(data_dir: Path, web_dist: Path) -> None:
     async with api_for(data_dir, token=TOKEN) as api:
         client = api.client

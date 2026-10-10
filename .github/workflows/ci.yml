@@ -226,6 +226,8 @@ jobs:
           python-version: "3.12"
       - name: Build sdist and wheel
         run: uv build
+      - name: The description renders on PyPI
+        run: uvx twine check --strict dist/*
       - name: The wheel carries the built web app
         run: unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
       - name: Install the wheel into a clean venv and run it (outside the checkout)
@@ -240,8 +242,9 @@ jobs:
 
   other-systems:
     name: Other systems (${{ matrix.os }}, Python 3.12)
-    # the lock, durable writes, sync's computer id, phone access's network lookups and autostart differ on
-    # macOS and Windows: on main, by hand and weekly (not on pull requests); while the job is new a failure
+    # the lock, durable writes, sync's computer id, phone access's network lookups, autostart and the
+    # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened) differ on macOS and
+    # Windows: on main, by hand and weekly (not on pull requests); while the job is new a failure
     # shows here without failing the run
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
@@ -312,7 +315,7 @@ jobs:
             tests/test_cli.py::test_the_lock_waits_up_to_its_timeout \
             tests/test_cli.py::test_a_lock_held_by_another_process_blocks_until_it_exits \
             tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
-            tests/test_autostart.py tests/test_backup.py tests/test_backup_container.py \
+            tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py \
             tests/test_rules_postcodes.py tests/test_make_postcode_table.py
 
   frontend:

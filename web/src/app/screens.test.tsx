@@ -38,6 +38,7 @@ describe("boot splash", () => {
 
     act(() => vi.advanceTimersByTime(BOOT_STUCK_MS - BOOT_SLOW_MS));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Still waiting — is Ordnung running?");
+    expect(main).toHaveTextContent("If you closed the window where it ran, start it again from your apps or with ordnung serve.");
     expect(main).not.toHaveAttribute("aria-busy", "true");
     screen.getByRole("button", { name: "Try again" }).click();
     expect(onRetry).toHaveBeenCalledTimes(1);
@@ -57,6 +58,26 @@ describe("'isn't running' and 'open from its link'", () => {
     await user.click(within(items[0]!).getByRole("button", { name: /Copy command .*ordnung serve/ }));
     expect(await navigator.clipboard.readText()).toBe("ordnung serve");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("send whoever added Ordnung to their apps there first, then to the commands", () => {
+    const { unmount } = render(<UnreachableScreen onRetry={() => {}} status={0} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ordnung isn't running");
+    const notRunning = screen.getByText(/^This page talks to the Ordnung app/);
+    expect(notRunning).toHaveTextContent(
+      "This page talks to the Ordnung app on your computer, and it didn't answer. If you added Ordnung to your apps with ordnung shortcut, open it from there. Otherwise start it again with one of these commands, then try again.",
+    );
+    // the command is set as code, like the ones below it
+    expect(within(notRunning).getByText("ordnung shortcut").tagName).toBe("CODE");
+    unmount();
+
+    render(<UnreachableScreen onRetry={() => {}} status={401} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Please open Ordnung from its link");
+    expect(screen.getByText(/^For your privacy/)).toHaveTextContent(
+      "For your privacy, Ordnung only talks to the browser tab it opened itself. If you added Ordnung to your apps with ordnung shortcut, open it from there. Otherwise run one of these commands in a terminal and use the link it prints (or opens).",
+    );
+    // the commands to copy stay the two ways to start it
+    expect(within(screen.getByRole("list")).getAllByRole("listitem").map((li) => li.querySelector("code")?.textContent)).toEqual(["ordnung serve", "ordnung demo"]);
   });
 
   it("without a session, the button says what to do first", () => {
@@ -85,7 +106,7 @@ describe("on a paired phone", () => {
     const { rerender } = render(<UnreachableScreen phone status={0} onRetry={onRetry} />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Can't reach your computer");
     expect(screen.getAllByRole("listitem").map((li) => li.textContent)).toEqual([...PHONE_CHECKS]);
-    expect(screen.queryByText(/ordnung serve|terminal/)).toBeNull();
+    expect(screen.queryByText(/ordnung serve|ordnung shortcut|your apps|terminal/)).toBeNull();
     await userEvent.setup().click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
     rerender(<UnreachableScreen phone status={0} onRetry={onRetry} stillFailing />);

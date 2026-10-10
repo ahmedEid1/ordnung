@@ -188,7 +188,7 @@ describe("the Moving checklist card", () => {
     const { srv } = useMockApi();
     await moved(srv);
     const telecom = srv.db.state.suggestions.find((s) => s.rule_id === MOVING_RULE && s.action?.target_id === "pty_funknetz")!;
-    srv.db.state.drafts.push({ ...srv.db.state.drafts[0]!, id: "drf_move", kind: "address_change", party_id: "pty_funknetz", status: "draft", sent_at: null, created_at: "2026-09-28T09:00:00Z" });
+    srv.db.state.drafts.push({ ...srv.db.state.drafts[0]!, id: "drf_move", kind: "address_change", party_id: "pty_funknetz", status: "draft", sent_at: null, created_at: telecom.created_at }); // started once the row came, whatever today is
     const { user } = await renderToday();
     await screen.findByRole("region", { name: "Moving checklist" });
     await user.click(within(card()).getByRole("button", { name: "Show 6 more" }));

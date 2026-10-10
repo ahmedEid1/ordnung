@@ -1,11 +1,12 @@
 /**
  * Reminders that reach you while Ordnung is closed and the encrypted backup: Settings → Reminders →
- * "Desktop notification each morning" (its modes, the preview, the test, start at login, no tool),
+ * "Desktop notification each morning" (its modes, the preview, the test, start at login, the app-menu
+ * shortcut, no tool),
  * Settings → Calendar → "Sync with your own calendar" (CalDAV: the demo's refusal, the form, its
  * errors, the calendars found, connected, paused, no password store, disconnecting) and Settings →
  * Data → "Encrypted backup" (the passphrase dialog, its errors, a suggested passphrase, the
- * download). What depends on this computer (the notification tool, an autostart entry, the
- * password store, a calendar server) is answered by the audit, so every capture looks the same
+ * download). What depends on this computer (the notification tool, an autostart entry, the app-menu
+ * shortcut, the password store, a calendar server) is answered by the audit, so every capture looks the same
  * wherever it runs. Loading, error and busy states are captured too (an error waits for its text:
  * a 5xx answer is retried twice first).
  */
@@ -46,6 +47,15 @@ function desktopStatus(overrides = {}) {
       path: "/home/sam/.config/systemd/user/ordnung.service",
       points_here: false,
       command: "ordnung autostart enable --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
+    },
+    shortcut: {
+      added: false,
+      kind: "app menu entry",
+      path: "/home/sam/.local/share/applications/ordnung.desktop",
+      points_here: false,
+      current: false,
+      foreign: false,
+      command: "ordnung shortcut --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
     },
     ...overrides,
   };
@@ -191,6 +201,50 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     how: "open Settings → Reminders with start at login set up for another data folder (answered by the audit)",
     description: "Start at login starts another folder: the warning badge and what to do.",
     run: (c) => openDesktop(c, desktopStatus({ autostart: { ...desktopStatus().autostart, enabled: true, points_here: false } })),
+  });
+  add({
+    id: "reminders-desktop-shortcut-added",
+    route: REMINDERS,
+    how: "open Settings → Reminders with Ordnung in the Start menu for this folder (a long Windows path, answered by the audit)",
+    description: "Open Ordnung from your Start menu: the Added badge and where the shortcut is (a long path wraps).",
+    run: (c) =>
+      openDesktop(
+        c,
+        desktopStatus({
+          system: "windows",
+          tool: "powershell",
+          shortcut: {
+            added: true,
+            kind: "Start menu shortcut",
+            path: "C:\\Users\\samantha-rivera-musterfrau\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Ordnung.lnk",
+            points_here: true,
+            current: true,
+            foreign: false,
+            command: "ordnung shortcut",
+          },
+        }),
+      ),
+  });
+  add({
+    id: "reminders-desktop-shortcut-other",
+    route: REMINDERS,
+    how: "open Settings → Reminders with the app-menu shortcut set up for another data folder (answered by the audit)",
+    description: "The app-menu shortcut opens another folder: the warning badge, what to do and the command.",
+    run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, added: true, points_here: false } })),
+  });
+  add({
+    id: "reminders-desktop-shortcut-stale",
+    route: REMINDERS,
+    how: "open Settings → Reminders with the app-menu shortcut running another installation of Ordnung (answered by the audit)",
+    description: "The app-menu shortcut needs updating: the warning badge, what to do and the command.",
+    run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, added: true, points_here: true, current: false } })),
+  });
+  add({
+    id: "reminders-desktop-shortcut-foreign",
+    route: REMINDERS,
+    how: "open Settings → Reminders with an app-menu entry in place that `ordnung shortcut` didn't write (answered by the audit)",
+    description: "A launcher Ordnung didn't write is in the way: the warning, its path (it wraps) and the command for afterwards.",
+    run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, foreign: true } })),
   });
   add({
     id: "reminders-desktop-test-toast",
