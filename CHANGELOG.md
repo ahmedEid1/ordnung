@@ -111,6 +111,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 - The sign-in page and the *isn't running* screen say to open Ordnung from your apps if you added it there
   with `ordnung shortcut`, before the commands that start it.
+- `ordnung serve` in a terminal suggests `ordnung shortcut` while Ordnung isn't in your app menu, and
+  `ordnung autostart enable` says you can open the app from there too.
 
 ### Fixed
 

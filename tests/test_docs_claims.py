@@ -2936,9 +2936,6 @@ _ADR_OUTSIDE = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside
 #: What the sign-in page (``api/security.py``) and the web app's "isn't running" card (``screens.tsx``) say
 #: before their commands.
 OPEN_FROM_YOUR_APPS = "If you added Ordnung to your apps with “ordnung shortcut”, open it from there."
-#: Claims that hold once batch C's packages are merged (the launcher's code, the release workflow); on the docs
-#: package's own branch they fail.
-_UNTIL_C = pytest.mark.xfail(strict=False, reason="until C integration")
 
 
 def _without_a_terminal() -> str:
@@ -3005,6 +3002,18 @@ def test_the_sign_in_page_and_the_isn_t_running_screen_send_you_to_your_apps_fir
         r"If you added Ordnung to your apps with <code[^>]*>ordnung shortcut</code>, open it from there\.",
         screens,
     )
+
+
+def test_the_changelog_says_serve_and_autostart_point_to_the_shortcut() -> None:
+    """CHANGELOG, Unreleased → Changed, and the CLI lines it describes: `ordnung serve` in a terminal suggests
+    the shortcut while there is none, and `ordnung autostart enable` says the app opens from the app menu too."""
+    assert (
+        "`ordnung serve` in a terminal suggests `ordnung shortcut` while Ordnung isn't in your app menu, and "
+        "`ordnung autostart enable` says you can open the app from there too."
+    ) in _unreleased("Changed")
+    cli = (ROOT / "src" / "ordnung" / "cli.py").read_text(encoding="utf-8")
+    assert "Open it without a terminal next time: ordnung shortcut" in cli
+    assert "(ordnung shortcut adds it) or with: " in cli
 
 
 def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
@@ -3166,7 +3175,6 @@ def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
     assert "app-menu launchers per system written into temporary home folders" in flat
 
 
-@_UNTIL_C
 def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tmp_path: Path) -> None:
     """README, SPEC and ADR 0013 against ``ordnung.shortcut`` (batch C's launcher package): where each launcher
     goes, that the Linux entry asks for a terminal, what it runs, the Windows link's mark, the command's
@@ -3198,7 +3206,6 @@ def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tm
     assert "autostart entries, app-menu shortcuts and backups" in _flat(_readme())
 
 
-@_UNTIL_C
 def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
     """The CHANGELOG's *Releases* and README's Documentation list against batch C's release package: a pushed
     `v*` tag runs `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored
