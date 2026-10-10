@@ -16,6 +16,7 @@ import { englishInline } from "@/features/document/fact-text";
 import { ExportLettersDialog, EXPORT_IN_DEMO } from "@/features/export/ExportLettersDialog";
 import { LettersList } from "@/features/inbox/LettersList";
 import type { OpenSummary } from "@/features/inbox/filters";
+import { usePhoneCompanion } from "@/features/phone/client";
 import { ComputerOnly, OnYourComputer } from "@/features/phone/ComputerOnly";
 import { EXPORT_ON_COMPUTER } from "@/features/phone/copy";
 import { TAX_SEASON_SENTENCE, defaultTaxYear, earlyStatements, inTaxSeason, parseTaxYear, taxGroups, taxLetters, taxYears, undatedTaxLetters } from "@/features/taxes/taxYear";
@@ -74,6 +75,7 @@ function UndatedLine({ docs }: { docs: Document[] }) {
 export default function TaxYearPage() {
   const today = useTodayISO();
   const staticDemo = isStaticDemo();
+  const phone = usePhoneCompanion();
   const [params, setParams] = useSearchParams();
   const all = useDocuments();
   const parties = useParties();
@@ -107,13 +109,12 @@ export default function TaxYearPage() {
       { replace: true, preventScrollReset: true },
     );
 
+  // on a paired phone no action at all (an empty one would still take the header's gap)
   const exportAction =
-    year != null && !none ? (
-      <ComputerOnly what="Export these letters">
-        <Button ref={exportButton} icon={Download} onClick={() => setExportOpen(true)} disabled={staticDemo}>
-          Export these letters…
-        </Button>
-      </ComputerOnly>
+    year != null && !none && !phone ? (
+      <Button ref={exportButton} icon={Download} onClick={() => setExportOpen(true)} disabled={staticDemo}>
+        Export these letters…
+      </Button>
     ) : null;
 
   return (
