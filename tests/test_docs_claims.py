@@ -26,7 +26,7 @@ import pytest
 from fastapi.routing import APIRoute
 
 from helpers_secretary import TODAY, seed_ledger
-from ordnung import clock, letters_zip, sync
+from ordnung import clock, letters_zip, shortcut, sync
 from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
 from ordnung.api.routes import export
@@ -2925,3 +2925,295 @@ def test_no_moving_row_carries_an_address_as_the_privacy_page_says(store: Store)
         "Its rows never contain an address: like every Idea's, their titles (an organisation's name, the day to "
         "register by) are part of what *Weekly Ideas* and the daily note send."
     ) in _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch C — open Ordnung from the app menu (`ordnung shortcut`) and releases from a version tag: README, the
+# CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md and ADR 0013
+# --------------------------------------------------------------------------------------------------
+
+_ADR_OUTSIDE = ROOT / "docs" / "decisions" / "0013-backups-and-reminders-outside-the-browser.md"
+#: What the sign-in page (``api/security.py``) and the web app's "isn't running" card (``screens.tsx``) say
+#: before their commands.
+OPEN_FROM_YOUR_APPS = "If you added Ordnung to your apps with “ordnung shortcut”, open it from there."
+#: Claims that hold once batch C's packages are merged (the launcher's code, the release workflow); on the docs
+#: package's own branch they fail.
+_UNTIL_C = pytest.mark.xfail(strict=False, reason="until C integration")
+
+
+def _without_a_terminal() -> str:
+    """README Install's paragraph *Without a terminal*, with its list, flattened."""
+    install = _readme().split("## Install and run", 1)[1]
+    return _flat(install.split("**Without a terminal.**", 1)[1].split("\n**On your phone.**", 1)[0])
+
+
+def _privacy() -> str:
+    return _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
+
+
+def test_the_changelog_adds_the_app_menu_shortcut_and_releases() -> None:
+    """CHANGELOG, Unreleased → Added: `ordnung shortcut` (the three places, signed in, a window of its own whose
+    closing stops Ordnung, never started unseen, the mark, --dry-run and --remove, Settings, not the demo) and
+    releases from a tag, PyPI only once the owner has set it up — in the one list, after the moving checklist."""
+    added = _unreleased("Added")
+    launcher = _bullet(added, "**Open Ordnung from your app menu.**")
+    for words in (
+        "`ordnung shortcut` adds Ordnung to your app menu on Linux, to your Applications folder on a Mac "
+        "(Launchpad and Spotlight find it), or to the Start menu on Windows.",
+        "Opening it signs your browser in.",
+        "When Ordnung isn't running, it starts in a window of its own, and closing that window stops it.",
+        "Ordnung is never started without a window you can see.",
+        "When it already runs (for example from start at login), only the browser opens.",
+        "prints what it writes before writing, needs no admin rights and never replaces or removes a file it "
+        "didn't write",
+        "`--dry-run` only prints, and `ordnung shortcut --remove` takes it out again",
+        "Settings → Reminders shows whether it is there, and for which data folder.",
+        "The demo isn't added: it opens with `ordnung demo`.",
+    ):
+        assert words in launcher, words
+    releases = _bullet(added, "**Releases.**")
+    for words in (
+        "A version tag builds the wheel and the source package, checks them, and publishes a GitHub Release with "
+        "this changelog's section.",
+        "Publishing to PyPI waits until the owner has set it up ([docs/releasing.md](docs/releasing.md)): until "
+        "then a release goes to GitHub only.",
+        "Trusted Publishing, so no token is stored anywhere",
+        "a pull request never publishes",
+        "On PyPI the README's links and pictures point to GitHub.",
+    ):
+        assert words in releases, words
+    assert (
+        added.index("**A moving checklist.**")
+        < added.index("**Open Ordnung from your app menu.**")
+        < added.index("**Releases.**")
+        < added.index("**CI checks more.**")
+    )
+
+
+def test_the_sign_in_page_and_the_isn_t_running_screen_send_you_to_your_apps_first() -> None:
+    """CHANGELOG, Unreleased → Changed, and the code it describes: the sign-in page and the web app's "isn't
+    running" / "open from its link" card name the shortcut before the commands that start Ordnung."""
+    assert (
+        "The sign-in page and the *isn't running* screen say to open Ordnung from your apps if you added it "
+        "there with `ordnung shortcut`, before the commands that start it."
+    ) in _unreleased("Changed")
+    assert OPEN_FROM_YOUR_APPS in (ROOT / "src" / "ordnung" / "api" / "security.py").read_text(
+        encoding="utf-8"
+    )
+    screens = (ROOT / "web" / "src" / "app" / "screens.tsx").read_text(encoding="utf-8")
+    assert re.search(
+        r"If you added Ordnung to your apps with <code[^>]*>ordnung shortcut</code>, open it from there\.",
+        screens,
+    )
+
+
+def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
+    """README "Also:" names the shortcut, and Install has `ordnung shortcut` in the commands and a paragraph on
+    each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux terminal,
+    the Mac's first launch and Windows' opt-out, and what CI doesn't test."""
+    also = _flat(_tour().split("**Also:**", 1)[1])
+    assert (
+        "*app-menu shortcut* — open Ordnung from your app menu, Start menu or Applications folder, signed in, "
+        "without a terminal"
+    ) in also
+    commands = _readme().split("## Install and run", 1)[1].split("```bash", 1)[1].split("```", 1)[0]
+    assert (
+        "ordnung serve                   # the web app on http://127.0.0.1:8765\n"
+        "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
+    ) in commands
+    text = _without_a_terminal()
+    for words in (
+        "`ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in your app menu on Linux, "
+        f"`{shortcut.BUNDLE}` in the Applications folder of your home folder on a Mac (Launchpad, Spotlight and "
+        "the Dock take it), or a shortcut in your Start menu on Windows.",
+        "It prints what it writes, and where, before writing anything, and needs no admin rights; `--dry-run` "
+        "only prints.",
+        "Opening it signs your browser in. When Ordnung isn't running, it starts in a window of its own, and "
+        "closing that window stops Ordnung;",
+        "when it already runs (for example because it starts at login), only the browser opens",
+        "Ordnung is never started without a window you can see.",
+        "On Linux and macOS it records this terminal's `PATH`, as start at login does, so Ordnung finds the "
+        "same `claude`: run `ordnung shortcut` again after moving Claude Code.",
+        "`ordnung shortcut --remove` takes it out again. It never replaces or removes a file it didn't write, "
+        "and it doesn't add the demo, which opens with `ordnung demo`.",
+        "**Linux:** the entry asks your desktop for a terminal window to run in.",
+        "on a desktop without a terminal it knows (some minimal window managers), opening the entry does nothing "
+        "visible: start Ordnung with `ordnung serve` there.",
+        "**macOS:** Launchpad and Spotlight can take a moment to list the new app.",
+        "macOS warns about an unidentified developer only for apps downloaded from the internet.",
+        "Terminal asks before you close that window while Ordnung runs.",
+        "**Windows:** right-click it in the Start menu to pin it to the taskbar.",
+        "A shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal, "
+        "`ordnung shortcut` prints the `setx` command that sets it for your account.",
+        "opening it from the desktop's own menu isn't tested on any system.",
+    ):
+        assert words in text, words
+
+
+def test_readme_updating_says_to_close_the_shortcut_s_window_and_add_it_again_once_python_moved() -> None:
+    """README Updating: the shortcut's window is Ordnung (closing it stops Ordnung), and a launcher whose Python
+    moved is made again with `ordnung shortcut` (as start at login is)."""
+    updating = _flat(_readme().split("### Updating", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the window the shortcut opened;"
+        in updating
+    )
+    assert (
+        "If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), "
+        "the Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if "
+        "Ordnung starts at login."
+    ) in updating
+
+
+def test_the_privacy_page_says_the_shortcut_prints_the_sign_in_link_only_in_its_own_window() -> None:
+    """docs/privacy.md, Reminders while Ordnung is closed: one launcher, printed first; PATH and the opt-out as
+    start at login (Windows: `setx`); the link only in its own window, never in a log; the Mac's windowless check
+    throws its output away. Hardening says to set the opt-out before `ordnung shortcut` too."""
+    reminders = _privacy().split("## Reminders while Ordnung is closed", 1)[1].split(" ## ", 1)[0]
+    bullet = reminders.split("- **Open from your app menu** (`ordnung shortcut`)", 1)[1].split(" - **", 1)[0]
+    for words in (
+        "writes one launcher (an app-menu entry, an app in your Applications folder or a Start-menu shortcut) "
+        "that runs `ordnung serve`, and prints it before anything else.",
+        "It records `PATH` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` like start at login",
+        "it prints the `setx` command that sets the opt-out for your account",
+        "When Ordnung isn't running, it starts only in a window of its own, so the sign-in link is printed only "
+        "there, never into a log or the system journal;",
+        "on a Mac the first, windowless check throws its output away.",
+        "`ordnung shortcut --remove` removes the launcher.",
+    ):
+        assert words in bullet, words
+    hardening = _privacy().split("## Hardening built into every model call", 1)[1].split(" ## ", 1)[0]
+    assert (
+        "With start at login or the app-menu shortcut, set it before `ordnung autostart enable` or "
+        "`ordnung shortcut`, or run that again after setting it;"
+    ) in hardening
+
+
+def test_adr_0013_says_the_app_menu_shortcut_never_starts_ordnung_unseen() -> None:
+    """ADR 0013 (as ADR 0007 asks of a feature that changes an earlier policy): the shortcut's paragraph — one
+    launcher of the system's own kind, its mark, `serve --from-shortcut` in a window that is Ordnung, the exit
+    code without one, why — with the policy's module, and the header says when."""
+    adr = _adr(_ADR_OUTSIDE)
+    assert "2026-10-10 (the app-menu shortcut)" in adr.split("## Context", 1)[0]
+    para = adr.split("**The app-menu shortcut writes one launcher and never starts Ordnung unseen.**", 1)[1]
+    para = para.split(" **", 1)[0]
+    for words in (
+        f"`{shortcut.DESKTOP_FILE}`",
+        f"`{shortcut.BUNDLE}`",
+        f"`{shortcut.LNK}`",
+        "whose bytes Ordnung writes itself in the shell link format",
+        "a file at that place without it is never replaced or removed",
+        "The launcher runs `serve --from-shortcut`, which opens a running Ordnung in the browser and otherwise "
+        "starts Ordnung only in a terminal window, which is then Ordnung: closing it stops Ordnung,",
+        f"Without a terminal it exits with {shortcut.NO_WINDOW_EXIT} and starts nothing",
+        "Ordnung has no `stop` command",
+        "Policy: `ordnung/shortcut.py`.",
+    ):
+        assert words in para, words
+
+
+def test_the_launchers_marks_and_exit_code_in_the_spec_are_the_module_s() -> None:
+    """The marks, file names and the exit code SPEC quotes are ``ordnung.shortcut``'s."""
+    spec = _spec()
+    for name in (
+        shortcut.DESKTOP_MARK,
+        shortcut.PLIST_MARK,
+        shortcut.LNK_MARK,
+        shortcut.DESKTOP_FILE,
+        shortcut.LNK,
+    ):
+        assert name in spec, name
+    assert f"without one it exits with {shortcut.NO_WINDOW_EXIT} and starts nothing" in spec
+
+
+def test_the_spec_lists_the_shortcut_module_its_command_and_the_hidden_serve_flag() -> None:
+    """SPEC: `shortcut.py` among the modules, a bullet beside start at login, and the CLI list with
+    `shortcut [--port N] [--dry-run] [--remove]` and `serve`'s hidden `--from-shortcut`."""
+    raw = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
+    assert "autostart.py  shortcut.py" in raw.split("notify/desktop.py", 1)[1].split("\n", 1)[0]
+    spec = _spec()
+    bullet = spec.split("- **Open from your app menu** — ", 1)[1].split(" - **", 1)[0]
+    for words in (
+        "`ordnung shortcut [--port N] [--dry-run] [--remove]` (`shortcut.py`, policy in its docstring; ADR 0013)",
+        "`$XDG_DATA_HOME/applications/ordnung.desktop` (`Terminal=true`;",
+        "`~/Applications/Ordnung.app`",
+        "the per-user Start menu's `Ordnung.lnk` (its bytes written in the shell link format, MS-SHLLINK, by "
+        "Ordnung's own code — no COM, no PowerShell",
+        "running `<python> -m ordnung --data-dir D serve --from-shortcut`",
+        "Refused for the demo.",
+        "**Never started unseen:**",
+        "the Mac bundle then opens Terminal with its `Ordnung.command`",
+        "A failed start waits for Enter; a second click while the first start is under way waits up to 15 s",
+        "Settings → Reminders shows whether it is there and for which folder (`GET /api/reminders/desktop` → "
+        "`shortcut`, read only;",
+    ):
+        assert words in bullet, words
+    cli = _flat(raw.split("## 15. CLI", 1)[1].split("\n## ", 1)[0])
+    assert "`shortcut [--port N] [--dry-run] [--remove]`" in cli
+    assert "`serve` also takes a hidden `--from-shortcut`" in cli
+
+
+def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
+    """docs/architecture.md: the launcher in the diagram of what runs while the browser is closed, its bullet,
+    the trust boundary to the OS, and its tests in the testing table."""
+    arch = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    diagram = arch.split("## While the browser is closed", 1)[1].split("```mermaid", 1)[1].split("```", 1)[0]
+    assert "ordnung.desktop · Ordnung.app · Ordnung.lnk<br/>(written by ordnung shortcut)" in diagram
+    assert "serve --from-shortcut" in diagram
+    flat = _flat(arch)
+    assert "- **The app-menu shortcut** (`shortcut.py`) writes one launcher and runs nothing;" in flat
+    assert "The app-menu shortcut is a file Ordnung writes too" in flat
+    assert "app-menu launchers per system written into temporary home folders" in flat
+
+
+@_UNTIL_C
+def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tmp_path: Path) -> None:
+    """README, SPEC and ADR 0013 against ``ordnung.shortcut`` (batch C's launcher package): where each launcher
+    goes, that the Linux entry asks for a terminal, what it runs, the Windows link's mark, the command's
+    options, and that CI's macOS and Windows job runs the shortcut's tests (README)."""
+    import yaml
+    from typer.testing import CliRunner
+
+    from ordnung.cli import app
+
+    folder, home = tmp_path / "data", tmp_path / "home"
+    linux = shortcut.plan(folder, platform="linux", env={"PATH": "/usr/bin"}, home=home, python="/opt/py")
+    assert linux.path == home / ".local" / "share" / "applications" / shortcut.DESKTOP_FILE
+    assert linux.argv[-2:] == ("serve", "--from-shortcut")
+    entry = (linux.files[0].content or b"").decode("utf-8").splitlines()
+    assert "Terminal=true" in entry and f"{shortcut.DESKTOP_MARK}=1" in entry
+    mac = shortcut.plan(folder, platform="darwin", env={"PATH": "/usr/bin"}, home=home, python="/opt/py")
+    assert mac.path == home / "Applications" / shortcut.BUNDLE
+    assert any(file.path.name == "Ordnung.command" for file in mac.files)
+    appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
+    windows = shortcut.plan(folder, platform="win32", env=appdata, home=home, python="C:\\py\\python.exe")
+    assert windows.path.parts[-4:] == ("Windows", "Start Menu", "Programs", shortcut.LNK)
+    assert windows.link is not None and windows.link.description.endswith(shortcut.LNK_MARK)
+    help_text = CliRunner().invoke(app, ["shortcut", "--help"], env={"NO_COLOR": "1", "TERM": "dumb"}).output
+    for option in ("--remove", "--dry-run", "--port"):
+        assert option in help_text, option
+    ci = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
+    steps = " ".join(str(step.get("run", "")) for step in ci["jobs"]["other-systems"]["steps"])
+    assert "tests/test_shortcut.py" in steps
+    assert "autostart entries, app-menu shortcuts and backups" in _flat(_readme())
+
+
+@_UNTIL_C
+def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
+    """The CHANGELOG's *Releases* and README's Documentation list against batch C's release package: a pushed
+    `v*` tag runs `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored
+    token, and docs/releasing.md says how the owner sets it up."""
+    import yaml
+
+    workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    release = yaml.safe_load(workflow)
+    assert release[True] == {"push": {"tags": ["v*"]}}  # PyYAML reads the key `on` as True
+    pypi = release["jobs"]["pypi"]
+    assert "vars.PYPI_PUBLISH == 'true'" in pypi["if"] and pypi["environment"]["name"] == "pypi"
+    assert "secrets." not in workflow
+    releasing = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
+    for words in ("PYPI_PUBLISH", "release.yml", "pending publisher", "`pypi`"):
+        assert words in releasing, words
+    documentation = _flat(_readme().split("## Documentation", 1)[1])
+    link = "[docs/releasing.md](docs/releasing.md): how a release is made, and the one-time setup for PyPI"
+    assert link in documentation
