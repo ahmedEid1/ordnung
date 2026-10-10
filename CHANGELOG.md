@@ -73,6 +73,19 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   or the next three, ends six months after the move, and *Stop the checklist* ends it at once. Nothing is
   sent for you, and no row names an address
   ([ADR 0021](docs/decisions/0021-a-move-is-said-never-guessed.md)).
+- **Open Ordnung from your app menu.** `ordnung shortcut` adds Ordnung to your app menu on Linux, to your
+  Applications folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on Windows. Opening
+  it signs your browser in. When Ordnung isn't running, it starts in a window of its own, and closing that
+  window stops it. Ordnung is never started without a window you can see. When it already runs (for
+  example from start at login), only the browser opens. `ordnung shortcut` prints what it writes before
+  writing, needs no admin rights and never replaces or removes a file it didn't write; `--dry-run` only
+  prints, and `ordnung shortcut --remove` takes it out again. Settings → Reminders shows whether it is
+  there, and for which data folder. The demo isn't added: it opens with `ordnung demo`.
+- **Releases.** A version tag builds the wheel and the source package, checks them, and publishes a GitHub
+  Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
+  ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
+  Trusted Publishing, so no token is stored anywhere, and a pull request never publishes. On PyPI the
+  README's links and pictures point to GitHub.
 - **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
   sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
   own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
@@ -93,6 +106,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   reporting is off, a *Security contact* issue form asks for nothing about the problem). A bug report now
   goes through a form that asks for `ordnung --version` and `ordnung doctor` and warns never to attach a
   real letter, and [CONTRIBUTING.md](CONTRIBUTING.md) says how to work on Ordnung.
+
+### Changed
+
+- The sign-in page and the *isn't running* screen say to open Ordnung from your apps if you added it there
+  with `ordnung shortcut`, before the commands that start it.
 
 ### Fixed
 
