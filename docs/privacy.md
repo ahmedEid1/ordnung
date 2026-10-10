@@ -12,13 +12,15 @@ goes where.
 | Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
 | Your watched folder (optional) | wherever you chose | Ordnung only lists and reads it; a file there is copied in and **waits for you** before anything of it goes to Claude, unless you let new arrivals be read at once ([below](#the-watched-folder)) |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
+| A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
-| Profile (name, address, region, the IBAN you may add for refunds) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation) |
+| Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | How each letter was read (its steps: counts, scores, computed dates, ids of records) | `ordnung.db` (`trace_spans`) — **no letter text**, the newest five readings per letter | Never (unless you export one with `ordnung trace`) |
 | Fonts, UI, rules engine | bundled in the package | Never (no CDN, no web fonts) |
 | Encrypted backups (`ordnung backup`, Settings → Data) | wherever you save the file | Only where you put it — encrypted, so without your passphrase nobody can read it |
+| Exported letters (Settings → Data → *Export letters*, or *Export these letters…* on a tax year) | wherever you save the ZIP | Only as the ZIP you save, where you put it — **not encrypted**: your letters' original files and a list of them (`index.csv`) ([below](#your-controls)) |
 | The morning desktop notification | your system's notification area | Never — Ordnung writes it on this computer from your dates |
 | Calendar sync (only if you connect a calendar) | the calendar you connect (Nextcloud, iCloud, mailbox.org, …); the app password in your system's password store | To that calendar's provider: dates, times and alarms (discreet, the default) — or the events' titles, what to do, amounts and who it is with (with details) |
 | Phone access (only if you turn it on) | the certificates in `<data dir>/phone/`; the paired phones (their names, when and from which address they were last used, a hash of each sign-in) in `ordnung.db` | Only to phones you paired, encrypted, on your home network — they show what is on the computer and keep no copy ([below](#phone-access-optional)) |
@@ -59,6 +61,12 @@ Ordnung's question about a sender's state (*Is X in Bavaria?*) comes from the po
 looked up on your computer in a table of German postcodes that ships with Ordnung (GeoNames); nothing is
 sent or downloaded for it ([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Like
 every Idea's, its title (the sender's name and the state) is part of what *Weekly Ideas* sends.
+
+The moving checklist, after you tick *I moved* in Settings → Profile, is worked out on your computer from your
+contracts and letters; nothing is sent for it, and a letter you kept private, or a contract read from one,
+never puts an organisation on it ([ADR 0021](decisions/0021-a-move-is-said-never-guessed.md)). Its rows never
+contain an address: like every Idea's, their titles (an organisation's name, the day to register by) are part
+of what *Weekly Ideas* and the daily note send.
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
@@ -105,8 +113,9 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
 ## Your controls
 
 - **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
-  Claude. It is stored, searchable by its text layer, and you can add dates by hand. A letter you
-  delete while it still waits to be read is never sent either.
+  Claude. It is stored, search finds it by its name and by the text in the file — a PDF's own text, or
+  the text a scanner added to a scan, kept for search only (a photo only by its name) — and you can add
+  dates by hand. A letter you delete while it still waits to be read is never sent either.
 - **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
   are stored and read on this computer only, and wait in the Inbox ("From your folder — not read
   yet") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
@@ -115,11 +124,11 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
 - **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
   a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
   a waiting e-mail wait with it.
-- **Delete means delete** — deleting a letter removes it for good: the original, page images,
-  everything read from it, its to-dos and Ideas, its search-index entries, its entries in the
-  activity log, quotes from it in contracts you keep, the record of how it was read, and the cached
-  model responses of every call that carried it (a secretary's note or review built from several
-  letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
+- **Delete means delete** — deleting a letter removes it for good: the original, page images (and
+  the text a scanner added to it), everything read from it, its to-dos and Ideas, its search-index
+  entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
+  was read, and the cached model responses of every call that carried it (a secretary's note or review
+  built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
   database rows are overwritten rather than left behind. Originals and page images are never kept in the
   browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
@@ -173,6 +182,13 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   deleted afterwards.
 - **Model** — choose the Claude model every call runs on (Settings → Claude connection; Sonnet 5 unless you
   change it). The demo and the benchmarks keep the model they were recorded with.
+- **Export letters** — Settings → Data → *Export letters* (or *Export these letters…* on a tax year) saves
+  your letters' original files as one ZIP, in folders by year and sender, with a list of them
+  (`index.csv`) for a spreadsheet. It runs only when you click it, on the computer — a paired phone can't
+  export — and it leaves the computer only as the ZIP you save: Ordnung writes nothing for it, sends nothing
+  and keeps no copy. The ZIP isn't encrypted: anyone who has it can read the letters, so keep it safe and
+  share it only with people you trust, like your tax adviser. Letters you kept private are in it too;
+  letters you wrote in Ordnung aren't (download each one's PDF under Letters).
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
   there. (Two things keep themselves current, each only after you turn it on: calendar sync updates
@@ -248,6 +264,26 @@ brought as well. Pictures inside an e-mail (logos, tracking pixels, banners) are
 of a letter pasted into an e-mail is read like an attached one — and nothing in an e-mail is ever
 fetched from the internet.
 
+## Searchable scans
+
+Many scanners and phone apps save a "searchable PDF": a picture of the page with the scanner's own reading
+of it as hidden text. That text is somebody's reading of the picture, not the letter's words, so it is never
+a page's text: when Claude reads a scan, it reads the picture, and what it read is compared with the paper
+([ADR 0012](decisions/0012-girocode-only-for-grounded-transfers.md)). The decision is in
+[ADR 0020](decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md).
+
+- **Kept only for search.** The scanner's text is in `<data dir>/derived/<letter>/scan-text.json`, kept with
+  the letter's page images (so also in backups and hand-off sync), only for search. Your letter search counts
+  it on the pages that have no text of their own — a scan you kept private, one waiting from your watched
+  folder or for Claude — and a letter found only that way says *Found in your scanner's text — not checked*.
+- **Never shown, checked or sent.** It is never shown as the letter's words (search shows no snippet of
+  it), never used to check a date or an amount, and never sent to Claude: *Ask*, *Weekly Ideas*, the daily
+  note and drafting never read it, and it is not in the search index *Ask* uses. The letter's page says
+  what it is kept for.
+- **It goes with the letter.** Once Claude has read a page of the scan, that page's scanner text is removed
+  (the file goes once every page is read); deleting the letter deletes it with the page images. A scan stored before Ordnung kept this text gets it
+  in the background, read from the original by Ordnung's own code (no model).
+
 ## Reminders while Ordnung is closed
 
 - **The morning desktop notification** (Settings → Reminders; off until you switch it on) is written
@@ -316,10 +352,11 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
 
 - **What a phone can do.** Look at everything the everyday pages show, add letters (photos or files)
   and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists. It can't delete
-  anything, download originals, letter PDFs, the calendar file or your records, change settings, your profile, phone
-  access, calendar sync, the watched folder or backups, decide about letters waiting from your watched
-  folder, let Claude read a letter you kept private, or start the weekly Ideas. The exact list is checked
-  before a request reaches the rest of Ordnung, and anything not on it is refused.
+  anything, download originals, letter PDFs, the calendar file or your records, export your letters,
+  change settings, your profile, phone access, calendar sync, the watched folder or backups, decide
+  about letters waiting from your watched folder, let Claude read a letter you kept private, or start
+  the weekly Ideas. The exact list is checked before a request reaches the rest of Ordnung, and anything
+  not on it is refused.
 - **Your letters stay on the computer.** Photos taken on the phone go straight to the computer, every
   answer the phone gets is marked not to be stored, and the phone keeps no copy. On the phone, *My
   numbers* and your profile's IBAN show only their last 4 characters ([above](#my-numbers)). A letter
@@ -480,10 +517,10 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
 `ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
 Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
 your *Ask* conversations, the usage log and cached model answers), your original files, the page
-images and the letter PDFs. Not in it: the watched folder (those files are your own; what Ordnung
-took from them is), the lock, the running server's session file, phone access — neither its
-certificates nor the paired phones (they are taken out of the backup's copy of the database) — and
-hand-off sync's state (its folder, the computers, the kept copies; the passphrase never was in the data
+images (with the text a scanner added to a scan) and the letter PDFs. Not in it: the watched folder
+(those files are your own; what Ordnung took from them is), the lock, the running server's session file,
+phone access — neither its certificates nor the paired phones (they are taken out of the backup's copy of
+the database) — and hand-off sync's state (its folder, the computers, the kept copies; the passphrase never was in the data
 folder): a restored copy starts without sync.
 
 - **Encrypted before it is written.** AES-256-GCM in authenticated chunks, the key derived from your
@@ -580,9 +617,10 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   `ordnung autostart enable`, or run that again after setting it.
 - Document text is treated as **untrusted**: it is wrapped in `<untrusted_document>` markers, hidden
   (invisible) text — white, tiny, off the page, or drawn invisibly (a PDF's text render mode 3) — is
-  removed before it reaches the model (a scan's invisible OCR layer is not read at all: the page is read
-  from its picture, and what was read from it is compared with the paper), and every extracted fact is checked
-  against the page before it is shown as "found in the letter".
+  removed before it reaches the model (a scan's invisible OCR layer never reaches the model: the page is
+  read from its picture, and what was read from it is compared with the paper; the OCR text is kept only for
+  your letter search, [above](#searchable-scans)), and every extracted fact is checked against the page
+  before it is shown as "found in the letter".
 - *Ask* can only call Ordnung's **read-only** ledger tools; there are no write tools for a
   prompt-injected document to abuse, and no date calculator: the rules tools other clients can install
   are not on Ask's server ([ADR 0011](decisions/0011-ask-keeps-to-the-ledger.md)).

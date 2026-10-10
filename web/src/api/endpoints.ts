@@ -32,6 +32,7 @@ import type {
   ItemCreate,
   ItemListParams,
   ItemPatch,
+  LettersZipParams,
   MarkSentRequest,
   OnboardingRequest,
   PairRequest,
@@ -154,6 +155,12 @@ export const api = {
   /** Rendered page image (1-based page number). */
   pageUrl: (id: string, page: number) => assetUrl(apiRoute("/api/documents/{doc_id}/pages/{page}.jpg", { doc_id: id, page })),
   thumbnailUrl: (id: string) => assetUrl(apiRoute("/api/documents/{doc_id}/thumbnail.jpg", { doc_id: id })),
+  /**
+   * Export letters: their original files as one ZIP (computer only; the ZIP is not encrypted). Only a link —
+   * the export runs when the person clicks it.
+   */
+  lettersZipUrl: (choice: LettersZipParams) =>
+    assetUrl(apiRoute("/api/documents.zip"), { year: choice.year, until: choice.until, tax: choice.tax, party_id: choice.party_id }),
   /** "How it was read": one reading's steps (`run`: its trace id; default the newest kept) and every kept reading. */
   documentTrace: (id: string, run?: string | null) =>
     call("get", "/api/documents/{doc_id}/trace", { params: { doc_id: id }, query: { run: run ?? undefined } }),

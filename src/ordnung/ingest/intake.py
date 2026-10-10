@@ -102,7 +102,8 @@ class StoredFile:
 
 @dataclass(frozen=True, slots=True)
 class RenderedPage:
-    """A page image in ``derived/<doc_id>/page-<n>.jpg`` (``width``/``height`` in pixels)."""
+    """A page image in ``derived/<doc_id>/page-<n>.jpg`` (``width``/``height`` in pixels). The same folder may
+    hold ``scan-text.json``, a scanner's text kept for search only (:mod:`ordnung.db.scan_text`)."""
 
     page: int
     width: int

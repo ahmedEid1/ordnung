@@ -596,6 +596,46 @@ def test_tax_documents_in_tax_season_only(store: Store, ids: dict[str, str]) -> 
     assert found[0].due_date == "2026-07-31"
 
 
+def test_the_tax_idea_opens_the_tax_year(store: Store, ids: dict[str, str]) -> None:
+    """ "See the documents" opens the year's tax letters (``/inbox/taxes?year=2025``), not the first one."""
+    (idea,) = ideas(store, "tax_documents", date(2026, 3, 1))
+    assert idea.action is not None
+    assert (idea.action.type, idea.action.target_type, idea.action.target_id, idea.action.label) == (
+        "open",
+        "tax_year",
+        "2025",
+        "See the documents",
+    )
+    # every letter carries its own date: the Idea keeps its id (no churn from the new target)
+    assert idea.fingerprint == fingerprint("tax_documents", "2025", ids["doc_payslip"])
+
+
+def test_the_tax_idea_counts_a_letter_by_its_arrival_when_it_has_no_date(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """The same day as the Tax year page files it under: the letter's date, else the day it arrived."""
+    receipt = add_doc(
+        store,
+        "receipt",
+        kind="invoice",
+        title="Laptop receipt",
+        received_date="2025-11-03",
+        tax_relevant=True,
+    )
+    add_doc(  # dated in 2026, although it arrived in 2025: last year's return doesn't count it
+        store,
+        "late",
+        kind="invoice",
+        title="Course fee",
+        doc_date="2026-01-02",
+        received_date="2025-12-30",
+        tax_relevant=True,
+    )
+    (idea,) = ideas(store, "tax_documents", date(2026, 3, 1))
+    assert refs_of(idea) == {("document", ids["doc_payslip"]), ("document", receipt)}
+    assert idea.rationale == "2 tax-relevant letter(s)."
+
+
 # --------------------------------------------------------------------------------------------------
 # calendar
 # --------------------------------------------------------------------------------------------------

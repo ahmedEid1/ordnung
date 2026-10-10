@@ -533,6 +533,12 @@ export type PaymentDetails = Schemas["PaymentDetails"];
 export type KeyFact = Schemas["KeyFact"];
 /** A letter / file ("Letters" in the Inbox). `deleted_at` is set while it is in the trash. */
 export type Document = Schemas["Document"];
+/**
+ * A letter as `GET /api/documents` lists it: with `found_in`, where a search found it (`letter`: its own
+ * words; `scanner_text`: only in the unchecked text a scanner added; null: the list wasn't searched).
+ */
+export type DocumentListEntry = Schemas["DocumentListEntry"];
+export type SearchFoundIn = NonNullable<DocumentListEntry["found_in"]>;
 export type ContractComputation = Schemas["ContractComputation"];
 export type Contract = Schemas["Contract"];
 /** A to-do or date ("To-dos & dates" in the UI). */
@@ -838,6 +844,8 @@ export type ItemListParams = ApiQuery<"/api/items", "get">;
 export type ContractListParams = ApiQuery<"/api/contracts", "get">;
 export type SuggestionListParams = ApiQuery<"/api/suggestions", "get">;
 export type CallListParams = ApiQuery<"/api/calls", "get">;
+/** Export letters (`GET /api/documents.zip`): `year`, `until` (a day of the next year, with `year`), `tax`, `party_id`. */
+export type LettersZipParams = ApiQuery<"/api/documents.zip", "get">;
 
 // ------------------------------------------------------------------------------------------------
 // Streams: POST /api/ask and GET /api/events (their payloads are OpenAPI components too)

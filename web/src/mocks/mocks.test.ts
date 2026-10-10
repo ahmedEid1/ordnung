@@ -10,6 +10,7 @@ import type {
   Contract,
   Dashboard,
   DocumentDetail,
+  DocumentListEntry,
   Draft,
   Evidence,
   Item,
@@ -17,6 +18,7 @@ import type {
   RuleInfo,
   TimelineEntry,
   ListedItem,
+  Profile,
   WeeklySession,
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
@@ -518,6 +520,55 @@ describe("mock dataset", () => {
     const s = srv();
     for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).addressed_to, d.id).toBeNull();
     expect((await get<WeeklySession>(s, "/week")).backup).toBeNull();
+  });
+
+  it("says where a search found each letter and knows of no move, like the API", async () => {
+    const s = srv();
+    const all = await get<DocumentListEntry[]>(s, "/documents");
+    expect(all.length).toBeGreaterThan(10);
+    expect(all.every((d) => d.found_in === null)).toBe(true);
+    const found = await get<DocumentListEntry[]>(s, "/documents", "q=Stadtwerke");
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((d) => d.found_in === "letter")).toBe(true);
+    expect((await get<DocumentListEntry[]>(s, "/documents", "q=%20%20")).every((d) => d.found_in === null)).toBe(true);
+    expect([PROFILE.moved_on, PROFILE.old_address]).toEqual([null, ""]);
+  });
+
+  it("finds Sam's held scan by its scanner's text and marks it, until Claude has read it (ADR 0020)", async () => {
+    const s = srv();
+    const found = await get<DocumentListEntry[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(found.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("scanner_text");
+    // its own words (the file name) find it as the letter
+    const byName = await get<DocumentListEntry[]>(s, "/documents", "q=Scan_2026");
+    expect(byName.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("letter");
+    // only that scan has scanner text, on its one page
+    for (const d of s.db.liveDocuments()) {
+      const pages = (await get<DocumentDetail>(s, `/documents/${d.id}`)).scan_text_pages;
+      expect(pages, d.id).toEqual(d.id === "doc_folder_scan" ? [1] : []);
+    }
+    // once read, its page has text of its own: the scanner's text no longer counts
+    s.db.document("doc_folder_scan")!.ai_processed_at = "2026-09-28T10:00:00Z";
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_scan")).scan_text_pages).toEqual([]);
+    const again = await get<DocumentListEntry[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(again.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("letter");
+  });
+
+  it("clears a move with an empty day, as the API does (null: no move told)", async () => {
+    const s = srv();
+    const put = async (body: Record<string, unknown>) => (await (await s.handle("PUT", "/profile", new URLSearchParams(), body)).json()) as Profile;
+    expect(await put({ moved_on: "2026-09-21", old_address: "Alte Straße 1\n12345 Musterstadt" })).toMatchObject({ moved_on: "2026-09-21" });
+    expect(await put({ name: "Sam Rivera" })).toMatchObject({ moved_on: "2026-09-21", old_address: "Alte Straße 1\n12345 Musterstadt" });
+    expect(await put({ moved_on: "", old_address: "" })).toMatchObject({ moved_on: null, old_address: "" });
+  });
+
+  it("answers the letters' ZIP link with an empty ZIP (the demo keeps no originals to export)", () => {
+    const url = srv().resolveAsset("/documents.zip", { year: 2025, until: "2026-05-31", tax: true })!;
+    expect(url).toMatch(/^data:application\/zip;base64,/);
+    const bytes = Buffer.from(url.split(",")[1]!, "base64");
+    // the 22-byte end record of a ZIP with no entries: a file any unzip tool opens
+    expect(bytes.length).toBe(22);
+    expect([...bytes.subarray(0, 4)]).toEqual([0x50, 0x4b, 0x05, 0x06]);
+    expect(bytes.subarray(4).every((b) => b === 0)).toBe(true);
   });
 
   it("says who a letter is addressed to when a test names someone else, as the API works it out", async () => {

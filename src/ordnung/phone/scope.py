@@ -126,6 +126,7 @@ NEVER_ON_PHONE: dict[Operation, str] = {
     ("DELETE", "/api/drafts/{draft_id}/proofs/{proof_id}"): "deleting",
     ("DELETE", "/api/calls/{call_id}"): "deleting",
     ("GET", "/api/documents/{doc_id}/file"): "originals leave the computer",
+    ("GET", "/api/documents.zip"): "originals leave the computer",
     ("GET", "/api/calendar.ics"): "records leave the computer",
     ("GET", "/api/items/{item_id}.ics"): "records leave the computer",
     ("POST", "/api/documents/held/read"): "held-letter decisions",
@@ -167,6 +168,7 @@ _COMPUTER = _operations(
     DELETE /api/drafts/{draft_id}/proofs/{proof_id}
     DELETE /api/calls/{call_id}
     GET /api/documents/{doc_id}/file
+    GET /api/documents.zip
     GET /api/drafts/{draft_id}/pdf
     GET /api/drafts/{draft_id}/proof.pdf
     GET /api/calendar.ics
@@ -209,8 +211,8 @@ _COMPUTER = _operations(
     """
 )
 """Admin settings and profile edits, phone access and its devices, backups, deleting data, files and
-records that would leave the computer (originals, generated PDFs, the calendar files and the note that
-they were downloaded, traces), the watched folder and held
+records that would leave the computer (originals and the ZIP of them, generated PDFs, the calendar files
+and the note that they were downloaded, traces), the watched folder and held
 letters (privacy decisions), calendar sync (its password is in the computer's keyring), desktop
 notifications (they appear on the computer), the privacy log and usage, the Ideas review (background
 model work no phone waits for), the demo, and hand-off sync between computers (the passphrase lives in

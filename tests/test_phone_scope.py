@@ -55,7 +55,7 @@ def test_every_operation_is_classified(schema: dict[str, Any]) -> None:
     gone = sorted((PHONE_ROUTES | COMPUTER_ONLY) - operations)
     assert not gone, f"classified operations that don't exist: {gone}"
     assert not PHONE_ROUTES & COMPUTER_ONLY
-    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (115, 57, 58)
+    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (116, 57, 59)
 
 
 def test_never_on_phone_stays_on_the_computer() -> None:
@@ -91,6 +91,18 @@ def test_calendar_files_stay_on_the_computer() -> None:
     assert NEVER_ON_PHONE[("GET", "/api/calendar.ics")] == "records leave the computer"
     assert scope.match("GET", "/api/calendar.ics") is None
     assert scope.match("GET", "/api/items/itm_1.ics") is None
+
+
+def test_the_letters_zip_stays_on_the_computer() -> None:
+    """Export letters: the ZIP holds every original, like a letter's own file, so it never reaches a
+    phone; it is a download, not a change of the ledger."""
+    operation = ("GET", "/api/documents.zip")
+    assert operation in COMPUTER_ONLY and operation not in PHONE_ROUTES
+    assert NEVER_ON_PHONE[operation] == "originals leave the computer"
+    assert operation not in scope.CHANGE_LABELS
+    assert classify("GET", "/api/documents.zip") == "computer"
+    assert classify("HEAD", "/api/documents.zip") == "computer"
+    assert scope.match("GET", "/api/documents.zip") is None
 
 
 def test_the_only_delete_on_a_phone_is_the_undo_of_answered(schema: dict[str, Any]) -> None:

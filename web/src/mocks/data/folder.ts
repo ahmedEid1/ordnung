@@ -54,6 +54,12 @@ export const FOLDER_DOCUMENTS: Document[] = [
   }),
 ];
 
+/**
+ * Sam's scanner saves searchable PDFs: the held scan's page text is the scanner's own reading of the picture
+ * (no text of its own), kept for search only until Claude reads it (ADR 0020).
+ */
+export const SCANNER_TEXT: ReadonlySet<string> = new Set(["doc_folder_scan"]);
+
 /** What became of the e-mail's attachments (as the server lists them on the e-mail). */
 export const EMAIL_ATTACHMENTS: Record<string, EmailAttachment[]> = {
   doc_folder_mail: [

@@ -5,12 +5,14 @@
  */
 import type { ReactNode } from "react";
 import { useHref } from "react-router";
-import { ExternalLink, Landmark } from "lucide-react";
+import { ExternalLink, Landmark, MapPinHouse } from "lucide-react";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { MoneyInput, moneyReadBack } from "@/components/ui/MoneyInput";
 import { formatDate, formatIban, formatMoney } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { usePhoneCompanion } from "@/features/phone/client";
+import { moveStanding } from "@/features/today/moving";
 import { fieldError, nextDay, type DetailField, type DetailValues, type LetterDefaults, type TemplateConfig } from "./templates";
 
 export interface TemplateFieldsProps {
@@ -114,6 +116,28 @@ function SettingsLink({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Under the new-address letter: where the rest of the list is after a move the person told, else how to start the
+ * moving checklist — in Settings, which is on the computer (a phone gets no link). The letter never changes the
+ * profile: its address is the sender of every letter.
+ */
+function MovingNote({ profile, today }: { profile: Profile | undefined; today: string }) {
+  const phone = usePhoneCompanion();
+  return (
+    <p className="flex items-start gap-2 rounded-xl bg-surface-2/70 px-3 py-2.5 text-[13px] leading-5 text-ink/85">
+      <MapPinHouse className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
+      {moveStanding(profile, today) ? (
+        <span>Your moving checklist on Today lists who else needs your new address.</span>
+      ) : (
+        <span>
+          Telling several places? Change your address in {phone ? "Settings → Profile on your computer" : <SettingsLink>Settings → Profile</SettingsLink>} and
+          tick <em>I moved</em>: Today then lists everyone who needs it, starting with the <span lang="de">Bürgeramt</span>.
+        </span>
+      )}
+    </p>
+  );
+}
+
 export function TemplateFields({ config, values, onChange, today, profile, defaults = NO_DEFAULTS }: TemplateFieldsProps) {
   const iban = profile?.iban?.trim() ?? "";
   return (
@@ -141,6 +165,7 @@ export function TemplateFields({ config, values, onChange, today, profile, defau
           )}
         </p>
       ) : null}
+      {config.kind === "address_change" ? <MovingNote profile={profile} today={today} /> : null}
     </div>
   );
 }

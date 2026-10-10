@@ -1,0 +1,492 @@
+{
+  "_about": "The moving checklist (moved_house) on the same ledgers, as secretary/moving.py writes it and as the static demo's mock (web/src/mocks/moving.ts) ports it: the registration row, each sender with a running contract, and the broadcasting fee office. Read by tests/test_moving.py and web/src/mocks/moving.test.ts. Fictional data.",
+  "cases": [
+    {
+      "name": "a move last week: registration ahead, the broadcasting fee office, then each sender with a running contract",
+      "today": "2026-09-28",
+      "profile": {
+        "moved_on": "2026-09-24",
+        "address": "Neue Allee 7\n54321 Beispielstadt",
+        "old_address": "Beispielweg 5\n12345 Musterstadt"
+      },
+      "parties": [
+        {
+          "id": "p_bank",
+          "name": "Musterbank",
+          "kind": "bank"
+        },
+        {
+          "id": "p_work",
+          "name": "Muster Tech",
+          "kind": "employer"
+        },
+        {
+          "id": "p_power",
+          "name": "Stadtwerke Muster",
+          "kind": "company"
+        },
+        {
+          "id": "p_gym",
+          "name": "FitWell",
+          "kind": "gym"
+        },
+        {
+          "id": "p_old",
+          "name": "Old Telecom",
+          "kind": "telecom"
+        },
+        {
+          "id": "p_shop",
+          "name": "TechMarkt",
+          "kind": "retailer"
+        }
+      ],
+      "contracts": [
+        {
+          "party_id": "p_bank",
+          "name": "Musterbank Girokonto",
+          "category": "bank",
+          "status": "active"
+        },
+        {
+          "party_id": "p_work",
+          "name": "Werkstudent at Muster Tech",
+          "category": "employment",
+          "status": "active"
+        },
+        {
+          "party_id": "p_work",
+          "name": "Job ticket",
+          "category": "transport",
+          "status": "active"
+        },
+        {
+          "party_id": "p_work",
+          "name": "Company pension",
+          "category": "other",
+          "status": "active"
+        },
+        {
+          "party_id": "p_power",
+          "name": "MusterStrom Natur",
+          "category": "energy",
+          "status": "active"
+        },
+        {
+          "party_id": "p_gym",
+          "name": "FitWell Flex",
+          "category": "gym",
+          "status": "active"
+        },
+        {
+          "party_id": "p_old",
+          "name": "DSL 16",
+          "category": "internet",
+          "status": "ended"
+        }
+      ],
+      "rows": [
+        {
+          "entity": "registration",
+          "title": "Register your new address by Thu 8 Oct",
+          "body": "Register at the citizens' office (Bürgeramt or Einwohnermeldeamt) where you now live, within two weeks of moving in. Take your ID card or passport and your landlord's confirmation that you moved in (Wohnungsgeberbestätigung) — ask your landlord for it. Appointments are often booked out, so book one soon.",
+          "rationale": "You moved in on Thu 24 Sep; registering is due within two weeks (§ 17 Abs. 1 BMG).",
+          "kind": "deadline",
+          "priority": "high",
+          "due_date": "2026-10-08",
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once you're registered"
+          }
+        },
+        {
+          "entity": "broadcasting_fee",
+          "title": "Tell the broadcasting fee office your new address",
+          "body": "If you pay the broadcasting fee (Rundfunkbeitrag) for your flat, change your address online at rundfunkbeitrag.de. If you moved in with someone who already pays, you can de-register instead.",
+          "rationale": "You moved in on Thu 24 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once it's changed"
+          }
+        },
+        {
+          "entity": "p_work",
+          "title": "Tell Muster Tech your new address",
+          "body": "Your contracts “Company pension”, “Job ticket” and 1 more with them are running. Tell HR or payroll: your payslips and tax papers go there.",
+          "rationale": "You moved in on Thu 24 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_work",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_bank",
+          "title": "Tell Musterbank your new address",
+          "body": "Your contract “Musterbank Girokonto” with them is running. Many banks let you change it in online banking.",
+          "rationale": "You moved in on Thu 24 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_bank",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_gym",
+          "title": "Tell FitWell your new address",
+          "body": "Your contract “FitWell Flex” with them is running.",
+          "rationale": "You moved in on Thu 24 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_gym",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_power",
+          "title": "Tell Stadtwerke Muster your new address",
+          "body": "Your contract “MusterStrom Natur” with them is running. Note your meter readings on the day you move out and send them in.",
+          "rationale": "You moved in on Thu 24 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_power",
+            "label": "Write the letter"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a missed registration; a broadcaster with a running contract stands in for the fixed row; a flat's contract is counted without its name",
+      "today": "2026-10-20",
+      "profile": {
+        "moved_on": "2026-09-01",
+        "address": "Neue Allee 7\n54321 Beispielstadt",
+        "old_address": "Beispielweg 5\n12345 Musterstadt"
+      },
+      "parties": [
+        {
+          "id": "p_fee",
+          "name": "Beitragsservice",
+          "kind": "public_broadcaster"
+        },
+        {
+          "id": "p_flat",
+          "name": "Wohnbau Muster",
+          "kind": "landlord"
+        },
+        {
+          "id": "p_net",
+          "name": "FunkNetz",
+          "kind": "telecom"
+        }
+      ],
+      "contracts": [
+        {
+          "party_id": "p_fee",
+          "name": "Rundfunkbeitrag",
+          "category": "other",
+          "status": "active"
+        },
+        {
+          "party_id": "p_flat",
+          "name": "Flat Beispielweg 5",
+          "category": "rent",
+          "status": "active"
+        },
+        {
+          "party_id": "p_net",
+          "name": "FunkNetz Allnet L",
+          "category": "mobile",
+          "status": "active"
+        },
+        {
+          "party_id": "p_net",
+          "name": "FunkNetz Home 100",
+          "category": "internet",
+          "status": "active"
+        }
+      ],
+      "rows": [
+        {
+          "entity": "registration",
+          "title": "Register your new address — it was due Tue 15 Sep",
+          "body": "Register at the citizens' office (Bürgeramt or Einwohnermeldeamt) where you now live, within two weeks of moving in. Take your ID card or passport and your landlord's confirmation that you moved in (Wohnungsgeberbestätigung) — ask your landlord for it. Register as soon as you can.",
+          "rationale": "You moved in on Tue 1 Sep; registering is due within two weeks (§ 17 Abs. 1 BMG).",
+          "kind": "deadline",
+          "priority": "high",
+          "due_date": "2026-09-15",
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once you're registered"
+          }
+        },
+        {
+          "entity": "p_fee",
+          "title": "Tell Beitragsservice your new address",
+          "body": "Your contract “Rundfunkbeitrag” with them is running. If you pay the broadcasting fee (Rundfunkbeitrag) for your flat, change your address online at rundfunkbeitrag.de. If you moved in with someone who already pays, you can de-register instead.",
+          "rationale": "You moved in on Tue 1 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_fee",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_flat",
+          "title": "Tell Wohnbau Muster your new address",
+          "body": "Your contract with them is running. A landlord you are leaving needs it for your deposit and the last operating-cost statement.",
+          "rationale": "You moved in on Tue 1 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_flat",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_net",
+          "title": "Tell FunkNetz your new address",
+          "body": "Your contracts “FunkNetz Allnet L” and “FunkNetz Home 100” with them are running. If they provide your internet at home, ask whether they can move the line to the new address.",
+          "rationale": "You moved in on Tue 1 Sep.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_net",
+            "label": "Write the letter"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a move around the new year: the days carry their year when it isn't today's",
+      "today": "2027-01-10",
+      "profile": {
+        "moved_on": "2026-12-28",
+        "address": "",
+        "old_address": ""
+      },
+      "parties": [
+        {
+          "id": "p_kasse",
+          "name": "Muster BKK",
+          "kind": "health_insurer"
+        },
+        {
+          "id": "p_ins",
+          "name": "Muster Versicherung",
+          "kind": "insurer"
+        }
+      ],
+      "contracts": [
+        {
+          "party_id": "p_ins",
+          "name": "Privathaftpflicht",
+          "category": "insurance",
+          "status": "active"
+        },
+        {
+          "party_id": "p_kasse",
+          "name": "Student insurance",
+          "category": "insurance",
+          "status": "active"
+        },
+        {
+          "party_id": "p_kasse",
+          "name": "Dental extra",
+          "category": "insurance",
+          "status": "active"
+        }
+      ],
+      "rows": [
+        {
+          "entity": "registration",
+          "title": "Register your new address by Mon 11 Jan",
+          "body": "Register at the citizens' office (Bürgeramt or Einwohnermeldeamt) where you now live, within two weeks of moving in. Take your ID card or passport and your landlord's confirmation that you moved in (Wohnungsgeberbestätigung) — ask your landlord for it. Appointments are often booked out, so book one soon.",
+          "rationale": "You moved in on Mon 28 Dec 2026; registering is due within two weeks (§ 17 Abs. 1 BMG).",
+          "kind": "deadline",
+          "priority": "high",
+          "due_date": "2027-01-11",
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once you're registered"
+          }
+        },
+        {
+          "entity": "broadcasting_fee",
+          "title": "Tell the broadcasting fee office your new address",
+          "body": "If you pay the broadcasting fee (Rundfunkbeitrag) for your flat, change your address online at rundfunkbeitrag.de. If you moved in with someone who already pays, you can de-register instead.",
+          "rationale": "You moved in on Mon 28 Dec 2026.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once it's changed"
+          }
+        },
+        {
+          "entity": "p_ins",
+          "title": "Tell Muster Versicherung your new address",
+          "body": "Your contract “Privathaftpflicht” with them is running. Most insurers let you change it in their app or online account.",
+          "rationale": "You moved in on Mon 28 Dec 2026.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_ins",
+            "label": "Write the letter"
+          }
+        },
+        {
+          "entity": "p_kasse",
+          "title": "Tell Muster BKK your new address",
+          "body": "Your contracts “Dental extra” and “Student insurance” with them are running. Most insurers let you change it in their app or online account.",
+          "rationale": "You moved in on Mon 28 Dec 2026.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "open",
+            "target_type": "party",
+            "target_id": "p_kasse",
+            "label": "Write the letter"
+          }
+        }
+      ]
+    },
+    {
+      "name": "six months to the day after the move the list still stands",
+      "today": "2026-09-28",
+      "profile": {
+        "moved_on": "2026-04-01",
+        "address": "",
+        "old_address": ""
+      },
+      "parties": [],
+      "contracts": [],
+      "rows": [
+        {
+          "entity": "registration",
+          "title": "Register your new address — it was due Wed 15 Apr",
+          "body": "Register at the citizens' office (Bürgeramt or Einwohnermeldeamt) where you now live, within two weeks of moving in. Take your ID card or passport and your landlord's confirmation that you moved in (Wohnungsgeberbestätigung) — ask your landlord for it. Register as soon as you can.",
+          "rationale": "You moved in on Wed 1 Apr; registering is due within two weeks (§ 17 Abs. 1 BMG).",
+          "kind": "deadline",
+          "priority": "high",
+          "due_date": "2026-04-15",
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once you're registered"
+          }
+        },
+        {
+          "entity": "broadcasting_fee",
+          "title": "Tell the broadcasting fee office your new address",
+          "body": "If you pay the broadcasting fee (Rundfunkbeitrag) for your flat, change your address online at rundfunkbeitrag.de. If you moved in with someone who already pays, you can de-register instead.",
+          "rationale": "You moved in on Wed 1 Apr.",
+          "kind": "hygiene",
+          "priority": "low",
+          "due_date": null,
+          "action": {
+            "type": "none",
+            "target_type": null,
+            "target_id": null,
+            "label": "Tick it off once it's changed"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a day more than six months after the move the list is gone",
+      "today": "2026-09-28",
+      "profile": {
+        "moved_on": "2026-03-31",
+        "address": "",
+        "old_address": ""
+      },
+      "parties": [
+        {
+          "id": "p_bank",
+          "name": "Musterbank",
+          "kind": "bank"
+        }
+      ],
+      "contracts": [
+        {
+          "party_id": "p_bank",
+          "name": "Musterbank Girokonto",
+          "category": "bank",
+          "status": "active"
+        }
+      ],
+      "rows": []
+    },
+    {
+      "name": "no move told, no list",
+      "today": "2026-09-28",
+      "profile": {
+        "moved_on": null,
+        "address": "Neue Allee 7\n54321 Beispielstadt",
+        "old_address": ""
+      },
+      "parties": [
+        {
+          "id": "p_bank",
+          "name": "Musterbank",
+          "kind": "bank"
+        }
+      ],
+      "contracts": [
+        {
+          "party_id": "p_bank",
+          "name": "Musterbank Girokonto",
+          "category": "bank",
+          "status": "active"
+        }
+      ],
+      "rows": []
+    }
+  ]
+}

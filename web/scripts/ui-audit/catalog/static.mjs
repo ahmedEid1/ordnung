@@ -166,6 +166,33 @@ export async function staticCatalog({ webDir }) {
     await c.wait(400);
     await settle(c.page, { idle: false });
   });
+  // the tax year on mock data: export disabled in the online demo, with the reason
+  add("taxes", "/inbox/taxes", "Static demo: the Tax year page on mock data — “Export these letters…” disabled, with the reason.", async (c) => {
+    const main = inMain(c.page);
+    await c.visible(main.getByRole("heading", { level: 1, name: /^Tax year \d{4}$/ }));
+    const exportButton = await c.visible(main.getByRole("button", { name: /^Export these letters/ }));
+    if (!(await exportButton.isDisabled())) throw new Error("the online demo's “Export these letters…” is not disabled");
+    await c.visible(main.getByRole("note").filter({ hasText: "Exporting isn't available in the online demo" }));
+  });
+  // a held scan found by the text its scanner added: marked "not checked"
+  add("search-scanner-text", "/", "Static demo: searching “Wasserzähler” finds the held scan by its scanner's text, marked “not checked”.", async (c) => {
+    const open = c.page.getByRole("button", { name: "Search letters" });
+    if (await c.exists(open)) await c.click(open.first());
+    await c.type(c.page.getByRole("combobox", { name: "Search your letters" }).first(), "Wasserzähler", { settleAfter: false });
+    await c.visible(c.page.getByRole("option").filter({ hasText: "Found in your scanner's text — not checked" }), { timeout: 15_000 });
+    await settle(c.page, { idle: false });
+  });
+  // "I moved" next to a changed address, saved: Today shows the moving checklist (in the page: a reload starts the demo over)
+  add("i-moved", "/settings?section=profile", "Static demo: “I moved” ticked next to a changed address and saved, then Today's Moving checklist.", async (c) => {
+    const main = inMain(c.page);
+    await c.type(main.getByLabel("Postal address"), "Neue Straße 7\n12345 Musterstadt", { settleAfter: false });
+    const moved = await c.visible(main.getByRole("checkbox", { name: /^I moved — list who needs my new address/ }));
+    await moved.check();
+    await c.click(main.getByRole("button", { name: "Save changes" }), { settleAfter: false });
+    await c.click(main.getByRole("link", { name: "Open your moving checklist" }), { settleAfter: false, timeout: 15_000 });
+    await c.visible(c.page.getByRole("region", { name: "Moving checklist" }), { timeout: 15_000 });
+    await settle(c.page);
+  });
   add("dev-ui", "/dev/ui", "Static demo: the design-system gallery with its mock examples.");
   add("dev-ui-popover", "/dev/ui", "Static demo: gallery receipt popover (“Why this date? (phone contract)”).", (c) =>
     c.click(inMain(c.page).getByRole("button", { name: /Why this date\? \(phone contract\)/ })),

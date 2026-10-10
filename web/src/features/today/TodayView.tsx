@@ -15,6 +15,7 @@ import { LoadingLabel, Skeleton, SkeletonText } from "@/components/ui/Skeleton";
 import { ComingUp } from "./ComingUp";
 import { Greeting } from "./Greeting";
 import { IdeasSection } from "./Ideas";
+import { MovingChecklist } from "./MovingChecklist";
 import { LifeAtAGlance } from "./LifeAtAGlance";
 import { RecentLetters } from "./RecentLetters";
 import { SecretaryNote } from "./SecretaryNote";
@@ -179,8 +180,8 @@ function FirstRun() {
 
 /**
  * The Today page: greeting, the secretary's note, the letters waiting from the watched folder (when
- * any do), Top 3 this week, "Coming up" with the "Please check" and calendar cards beside it, Ideas,
- * life at a glance and recent letters (SPEC §14.1).
+ * any do), Top 3 this week, "Coming up" with the "Please check" and calendar cards beside it, the
+ * moving checklist (after a move the person told), Ideas, life at a glance and recent letters (SPEC §14.1).
  */
 export function TodayView() {
   const data = useTodayData();
@@ -258,6 +259,9 @@ export function TodayView() {
           </div>
         ) : null}
       </div>
+
+      {/* after "I moved" in Settings: who needs the new address (it stays for this visit once the last row is ticked) */}
+      <MovingChecklist rows={derived.moving} />
 
       <div className={IDEAS}>
         <IdeasSection

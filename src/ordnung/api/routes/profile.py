@@ -1,12 +1,15 @@
 """The person's profile, the app settings and the first-run onboarding.
 
-``PUT`` merges the fields sent into the stored values (the web app sends partial objects). A new
+``PUT`` merges the fields sent into the stored values (the web app sends partial objects; ``moved_on``
+— the day the person said they moved in — is cleared with ``""``, like the other text fields). A new
 holiday region, country or postal buffer recomputes the dates of every letter's to-dos (contracts
-are recomputed on read anyway). Settings guard the watched inbox folder (never the home folder, a
-file-system root or Ordnung's own data), take the model every call runs on only as an id or alias
-Claude Code accepts, and keep the server-controlled ``demo`` and ``simulated_today`` read-only. A new
-inbox folder restarts the folder watcher; choosing Ordnung's own inbox folder (``<data>/inbox``)
-creates it.
+are recomputed on read anyway). A move is taken only for a day in the last six months or the next
+three (422 otherwise), and a new, changed or cleared move refreshes the Ideas: the moving checklist
+(:mod:`ordnung.secretary.moving`) starts, starts over or ends. Settings guard the watched inbox
+folder (never the home folder, a file-system root or Ordnung's own data), take the model every call
+runs on only as an id or alias Claude Code accepts, and keep the server-controlled ``demo`` and
+``simulated_today`` read-only. A new inbox folder restarts the folder watcher; choosing Ordnung's own
+inbox folder (``<data>/inbox``) creates it.
 
 A paired phone (:mod:`ordnung.phone`) reads the profile with its IBAN masked to the last 4 characters,
 and never changes settings (403, also behind the phone listener's allow-list).
@@ -35,6 +38,7 @@ from ordnung.ingest.watcher import folder_chosen
 from ordnung.models import AppSettings, DesktopNotifyMode, Profile
 from ordnung.phone.mask import mask_profile
 from ordnung.rules import normalize_region
+from ordnung.secretary.moving import move_problem
 from ordnung.secretary.scam import iban_valid, normalize_iban
 from ordnung.sync import LOCAL_SETTINGS
 
@@ -70,6 +74,12 @@ class ProfilePatch(BaseModel):
     onboarded: bool | None = None
     iban: str | None = Field(
         default=None, max_length=50, description="your account, for refunds (empty: none)"
+    )
+    moved_on: str | None = Field(
+        default=None, max_length=10, description="the day you moved in (YYYY-MM-DD; empty: no move)"
+    )
+    old_address: str | None = Field(
+        default=None, max_length=1000, description="your address before that move (empty: none)"
     )
 
     @field_validator("name")
@@ -108,6 +118,17 @@ class ProfilePatch(BaseModel):
         if not iban_valid(iban):
             raise ValueError("That IBAN isn't valid — check it against your bank card or banking app.")
         return iban
+
+    @field_validator("moved_on")
+    @classmethod
+    def _move_day(cls, value: str | None) -> str | None:
+        """An ISO day, normalised; empty clears the move (stored as no move: ``None``)."""
+        if value is None or not value.strip():
+            return value if value is None else ""
+        try:
+            return date.fromisoformat(value.strip()).isoformat()
+        except ValueError as exc:
+            raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
 
     @field_validator("region")
     @classmethod
@@ -179,7 +200,26 @@ def _merge_profile(ctx: AppContext, patch: ProfilePatch, **extra: Any) -> Profil
     changes = {
         name: value for name, value in patch.model_dump(exclude_unset=True).items() if value is not None
     }
+    if changes.get("moved_on") == "":
+        changes["moved_on"] = None  # "" clears the move
     return ctx.store.save_profile(current.model_dump() | changes | extra)
+
+
+def _checked_move(patch: ProfilePatch, today: date) -> None:
+    """A move told for a day outside the last six months or the next three is refused (422): the checklist
+    it starts is for a move being made (:func:`ordnung.secretary.moving.move_problem`)."""
+    if not patch.moved_on:
+        return
+    problem = move_problem(date.fromisoformat(patch.moved_on), today)
+    if problem:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, problem)
+
+
+def _refresh_if_moved(ctx: AppContext, before: Profile, after: Profile) -> None:
+    """A new, changed or cleared move starts, restarts or ends the moving checklist: the Ideas are refreshed
+    in the background (they publish ``suggestions.updated``; no to-do changed)."""
+    if before.moved_on != after.moved_on:
+        ctx.worker.refresh_ideas()
 
 
 @router.get("/profile", response_model=Profile)
@@ -202,9 +242,11 @@ async def _recompute_if_dates_changed(ctx: AppContext, before: Profile, after: P
 @router.put("/profile", response_model=Profile)
 async def update_profile(patch: ProfilePatch, ctx: CtxDep, today: TodayDep) -> Profile:
     """Change profile fields; a new region (country, postal buffer) recomputes the to-dos' dates."""
+    _checked_move(patch, today)
     before = ctx.store.get_profile()
     profile = await asyncio.to_thread(_merge_profile, ctx, patch)
     await _recompute_if_dates_changed(ctx, before, profile, today)
+    _refresh_if_moved(ctx, before, profile)
     ctx.bus.publish("profile.updated")
     return profile
 
@@ -212,9 +254,11 @@ async def update_profile(patch: ProfilePatch, ctx: CtxDep, today: TodayDep) -> P
 @router.post("/onboarding", response_model=Profile)
 async def onboarding(body: OnboardingRequest, ctx: CtxDep, today: TodayDep) -> Profile:
     """Finish the first-run wizard: save the answers and mark the profile onboarded."""
+    _checked_move(body.profile, today)
     before = ctx.store.get_profile()
     profile = await asyncio.to_thread(_merge_profile, ctx, body.profile, onboarded=True)
     await _recompute_if_dates_changed(ctx, before, profile, today)
+    _refresh_if_moved(ctx, before, profile)
     if body.skip_ai:
         settings = ctx.store.get_settings().model_copy(update={"llm_brief": False, "llm_review": False})
         await asyncio.to_thread(ctx.store.save_settings, settings)

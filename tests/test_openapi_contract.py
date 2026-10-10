@@ -260,6 +260,63 @@ def test_a_letter_can_be_asked_for_in_another_name(schema: dict[str, Any]) -> No
     assert DraftCreate.model_fields["sender_name"].default is None
 
 
+def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str, Any]) -> None:
+    """``GET /api/documents`` rows are the letter plus ``found_in``, a view model made by the route: the
+    letter itself (what the store keeps and Ask's ledger fingerprint hashes) has no such field. A letter's
+    detail lists the pages whose scanner text is kept, for search only."""
+    components = schema["components"]["schemas"]
+    body = schema["paths"]["/api/documents"]["get"]["responses"]["200"]["content"]["application/json"][
+        "schema"
+    ]
+    assert body["items"] == {"$ref": "#/components/schemas/DocumentListEntry"}
+    entry = components["DocumentListEntry"]
+    assert set(entry["properties"]) == set(components["Document"]["properties"]) | {"found_in"}
+    assert set(entry["required"]) == set(entry["properties"])
+    found_in = entry["properties"]["found_in"]["anyOf"]
+    assert sorted(found_in[0]["enum"]) == ["letter", "scanner_text"] and found_in[1] == {"type": "null"}
+    assert issubclass(models.DocumentListEntry, models.Document)
+    assert "found_in" not in models.Document.model_fields
+    detail = components["DocumentDetail"]
+    assert detail["properties"]["scan_text_pages"] == {
+        "items": {"type": "integer"},
+        "type": "array",
+        "title": "Scan Text Pages",
+    }
+    assert "scan_text_pages" in detail["required"]
+    assert models.DocumentDetail.model_fields["scan_text_pages"].default_factory is list
+
+
+def test_a_profile_keeps_the_move_the_person_told(schema: dict[str, Any]) -> None:
+    """``moved_on`` (``null``: no move told) and the address before it; ``""`` clears either on a PUT."""
+    components = schema["components"]["schemas"]
+    profile = components["Profile"]
+    assert profile["properties"]["moved_on"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert profile["properties"]["old_address"]["type"] == "string"
+    assert {"moved_on", "old_address"} <= set(profile["required"])
+    assert (models.Profile().moved_on, models.Profile().old_address) == (None, "")
+    patch = components["ProfilePatch"]
+    assert patch["properties"]["moved_on"]["anyOf"][1] == {"type": "null"}
+    assert patch["properties"]["old_address"]["anyOf"] == [
+        {"type": "string", "maxLength": 1000},
+        {"type": "null"},
+    ]
+    assert "required" not in patch
+
+
+def test_export_letters_is_a_computer_only_zip_download(schema: dict[str, Any]) -> None:
+    operation = schema["paths"]["/api/documents.zip"]["get"]
+    assert set(schema["paths"]["/api/documents.zip"]) == {"get"}
+    params = {p["name"]: p for p in operation["parameters"]}
+    assert list(params) == ["year", "until", "tax", "party_id"]
+    assert all(p["in"] == "query" and not p.get("required") for p in params.values())
+    year = params["year"]["schema"]["anyOf"][0]
+    assert (year["type"], year["minimum"], year["maximum"]) == ("integer", 1900, 2100)
+    assert (params["tax"]["schema"]["type"], params["tax"]["schema"]["default"]) == ("boolean", False)
+    assert set(operation["responses"]["200"]["content"]) == {"application/zip"}
+    assert {"404", "422"} <= set(operation["responses"])
+    assert "x-ordnung-phone" not in operation
+
+
 def test_job_stages_match_the_pipeline() -> None:
     assert get_args(models.JobStage) == get_args(pipeline.Stage)
 

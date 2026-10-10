@@ -210,8 +210,11 @@ export interface paths {
         };
         /**
          * List Documents
-         * @description Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
-         *     (``source="proof"``) are listed with their letter, never here.
+         * @description Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
+         *     it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
+         *     added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
+         *     letter, never here. The scanner's text counts only on pages without text of their own and is never
+         *     returned (ADR 0020).
          */
         get: operations["list_documents_api_documents_get"];
         put?: never;
@@ -326,6 +329,31 @@ export interface paths {
          * @description A small image of the first page.
          */
         get: operations["thumbnail_api_documents__doc_id__thumbnail_jpg_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents.zip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Letters
+         * @description The letters' original files as a ZIP, in folders by year and sender
+         *     (``<year>/<sender>/<date> <title>.<ext>``), with ``index.csv`` listing them (UTF-8 with a BOM,
+         *     semicolons, opens in a spreadsheet). Every letter counts that isn't in the trash, waiting to be read
+         *     or a proof file — private letters too, as they are the person's own files — narrowed by the choice.
+         *     Sent as it is made (``Content-Disposition: attachment``, named
+         *     ``ordnung-letters[-for-taxes][-<year>|-<today>].zip``; ``Cache-Control: no-store``). Writes nothing.
+         */
+        get: operations["export_letters_api_documents_zip_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3356,6 +3384,113 @@ export interface components {
             region_suggestion: components["schemas"]["RegionSuggestion"] | null;
             /** Addressed To */
             addressed_to: string | null;
+            /** Scan Text Pages */
+            scan_text_pages: number[];
+        };
+        /**
+         * DocumentListEntry
+         * @description A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never
+         *     stored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.
+         *
+         *     ``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the
+         *     list wasn't searched.
+         */
+        DocumentListEntry: {
+            /** Id */
+            id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Filename */
+            filename: string;
+            /** Mime */
+            mime: string;
+            /**
+             * Pages
+             * @default 1
+             */
+            pages: number;
+            /**
+             * Direction
+             * @default incoming
+             * @enum {string}
+             */
+            direction: "incoming" | "outgoing" | "note";
+            /**
+             * Source
+             * @default upload
+             */
+            source: string;
+            /**
+             * Status
+             * @default queued
+             * @enum {string}
+             */
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
+            /** Error */
+            error: string | null;
+            /** Kind */
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            /** Title */
+            title: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Explanation */
+            explanation: string | null;
+            /** Language */
+            language: string | null;
+            /** Doc Date */
+            doc_date: string | null;
+            /** Received Date */
+            received_date: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Urgency */
+            urgency: ("low" | "normal" | "high" | "critical") | null;
+            /** Text Mode */
+            text_mode: ("text" | "vision") | null;
+            /** Key Facts */
+            key_facts: components["schemas"]["KeyFact"][];
+            /** References */
+            references: components["schemas"]["Identifier"][];
+            /** Warnings */
+            warnings: string[];
+            /**
+             * Tax Relevant
+             * @default false
+             */
+            tax_relevant: boolean;
+            /** Tax Note */
+            tax_note: string | null;
+            /** Tags */
+            tags: string[];
+            remedy: components["schemas"]["Remedy"] | null;
+            payment: components["schemas"]["PaymentDetails"] | null;
+            /**
+             * Hidden Text
+             * @default false
+             */
+            hidden_text: boolean;
+            /**
+             * Ai Private
+             * @default false
+             */
+            ai_private: boolean;
+            /** Ai Processed At */
+            ai_processed_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Processed At */
+            processed_at: string | null;
+            /** Deleted At */
+            deleted_at: string | null;
+            /** Found In */
+            found_in: ("letter" | "scanner_text") | null;
         };
         /**
          * DocumentPatch
@@ -5182,6 +5317,13 @@ export interface components {
              * @default
              */
             iban: string;
+            /** Moved On */
+            moved_on: string | null;
+            /**
+             * Old Address
+             * @default
+             */
+            old_address: string;
         };
         /**
          * ProfilePatch
@@ -5219,6 +5361,16 @@ export interface components {
              * @description your account, for refunds (empty: none)
              */
             iban?: string | null;
+            /**
+             * Moved On
+             * @description the day you moved in (YYYY-MM-DD; empty: no move)
+             */
+            moved_on?: string | null;
+            /**
+             * Old Address
+             * @description your address before that move (empty: none)
+             */
+            old_address?: string | null;
         };
         /**
          * Proof
@@ -7701,7 +7853,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Document"][];
+                    "application/json": components["schemas"]["DocumentListEntry"][];
                 };
             };
             /** @description Validation Error */
@@ -7964,6 +8116,49 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    export_letters_api_documents_zip_get: {
+        parameters: {
+            query?: {
+                /** @description only letters of that year, by the letter's date (else the day it arrived); undated letters are left out */
+                year?: number | null;
+                /** @description with “year”: also letters dated in the next year up to this day (YYYY-MM-DD) */
+                until?: string | null;
+                /** @description only letters marked as mattering for taxes */
+                tax?: boolean;
+                /** @description only this sender's letters (for a letter you sent: its recipient's) */
+                party_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The letters' original files and index.csv, as a ZIP */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": unknown;
+                };
+            };
+            /** @description The sender doesn't exist (any more) */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description A year outside 1900–2100, or “until” without a year or outside the next year */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

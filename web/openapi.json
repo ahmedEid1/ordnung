@@ -461,7 +461,7 @@
           "documents"
         ],
         "summary": "List Documents",
-        "description": "Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files\n(``source=\"proof\"``) are listed with their letter, never here.",
+        "description": "Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where\nit was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner\nadded; ``null`` without a search). A letter's proof files (``source=\"proof\"``) are listed with their\nletter, never here. The scanner's text counts only on pages without text of their own and is never\nreturned (ADR 0020).",
         "operationId": "list_documents_api_documents_get",
         "parameters": [
           {
@@ -662,7 +662,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Document"
+                    "$ref": "#/components/schemas/DocumentListEntry"
                   },
                   "title": "Response List Documents Api Documents Get"
                 }
@@ -1033,6 +1033,100 @@
           }
         },
         "x-ordnung-phone": true
+      }
+    },
+    "/api/documents.zip": {
+      "get": {
+        "tags": [
+          "export"
+        ],
+        "summary": "Export Letters",
+        "description": "The letters' original files as a ZIP, in folders by year and sender\n(``<year>/<sender>/<date> <title>.<ext>``), with ``index.csv`` listing them (UTF-8 with a BOM,\nsemicolons, opens in a spreadsheet). Every letter counts that isn't in the trash, waiting to be read\nor a proof file — private letters too, as they are the person's own files — narrowed by the choice.\nSent as it is made (``Content-Disposition: attachment``, named\n``ordnung-letters[-for-taxes][-<year>|-<today>].zip``; ``Cache-Control: no-store``). Writes nothing.",
+        "operationId": "export_letters_api_documents_zip_get",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 2100,
+                  "minimum": 1900
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only letters of that year, by the letter's date (else the day it arrived); undated letters are left out",
+              "title": "Year"
+            },
+            "description": "only letters of that year, by the letter's date (else the day it arrived); undated letters are left out"
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "with “year”: also letters dated in the next year up to this day (YYYY-MM-DD)",
+              "title": "Until"
+            },
+            "description": "with “year”: also letters dated in the next year up to this day (YYYY-MM-DD)"
+          },
+          {
+            "name": "tax",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "only letters marked as mattering for taxes",
+              "default": false,
+              "title": "Tax"
+            },
+            "description": "only letters marked as mattering for taxes"
+          },
+          {
+            "name": "party_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "only this sender's letters (for a letter you sent: its recipient's)",
+              "title": "Party Id"
+            },
+            "description": "only this sender's letters (for a letter you sent: its recipient's)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The letters' original files and index.csv, as a ZIP",
+            "content": {
+              "application/zip": {}
+            }
+          },
+          "404": {
+            "description": "The sender doesn't exist (any more)"
+          },
+          "422": {
+            "description": "A year outside 1900–2100, or “until” without a year or outside the next year"
+          }
+        }
       }
     },
     "/api/folder": {
@@ -9159,6 +9253,13 @@
               }
             ],
             "title": "Addressed To"
+          },
+          "scan_text_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Scan Text Pages"
           }
         },
         "type": "object",
@@ -9183,9 +9284,437 @@
           "scam_signs",
           "given_to_model",
           "region_suggestion",
-          "addressed_to"
+          "addressed_to",
+          "scan_text_pages"
         ],
         "title": "DocumentDetail"
+      },
+      "DocumentListEntry": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "mime": {
+            "type": "string",
+            "title": "Mime"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages",
+            "default": 1
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "incoming",
+              "outgoing",
+              "note"
+            ],
+            "title": "Direction",
+            "default": "incoming"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "upload"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "processed",
+              "needs_review",
+              "failed",
+              "held"
+            ],
+            "title": "Status",
+            "default": "queued"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tax_assessment",
+                  "tax_letter",
+                  "authority_letter",
+                  "residence_permit",
+                  "social_insurance",
+                  "health_insurance",
+                  "invoice",
+                  "dunning",
+                  "contract",
+                  "contract_change",
+                  "price_increase",
+                  "cancellation_confirmation",
+                  "payslip",
+                  "bank_letter",
+                  "insurance",
+                  "rent_lease",
+                  "utility_bill",
+                  "university",
+                  "employment",
+                  "appointment",
+                  "fine",
+                  "receipt",
+                  "identity_document",
+                  "broadcasting_fee",
+                  "certificate",
+                  "personal",
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "study",
+                  "health",
+                  "money",
+                  "residence",
+                  "tax",
+                  "mobility",
+                  "insurance",
+                  "leisure",
+                  "family",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "doc_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high",
+                  "critical"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency"
+          },
+          "text_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "vision"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Mode"
+          },
+          "key_facts": {
+            "items": {
+              "$ref": "#/components/schemas/KeyFact"
+            },
+            "type": "array",
+            "title": "Key Facts"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "type": "array",
+            "title": "References"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "tax_relevant": {
+            "type": "boolean",
+            "title": "Tax Relevant",
+            "default": false
+          },
+          "tax_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Note"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "remedy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Remedy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hidden_text": {
+            "type": "boolean",
+            "title": "Hidden Text",
+            "default": false
+          },
+          "ai_private": {
+            "type": "boolean",
+            "title": "Ai Private",
+            "default": false
+          },
+          "ai_processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Processed At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "found_in": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "letter",
+                  "scanner_text"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sha256",
+          "filename",
+          "mime",
+          "pages",
+          "direction",
+          "source",
+          "status",
+          "error",
+          "kind",
+          "area",
+          "title",
+          "summary",
+          "explanation",
+          "language",
+          "doc_date",
+          "received_date",
+          "party_id",
+          "case_id",
+          "urgency",
+          "text_mode",
+          "key_facts",
+          "references",
+          "warnings",
+          "tax_relevant",
+          "tax_note",
+          "tags",
+          "remedy",
+          "payment",
+          "hidden_text",
+          "ai_private",
+          "ai_processed_at",
+          "created_at",
+          "updated_at",
+          "processed_at",
+          "deleted_at",
+          "found_in"
+        ],
+        "title": "DocumentListEntry",
+        "description": "A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never\nstored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.\n\n``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the\nlist wasn't searched."
       },
       "DocumentPatch": {
         "properties": {
@@ -14250,6 +14779,22 @@
             "type": "string",
             "title": "Iban",
             "default": ""
+          },
+          "moved_on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved On"
+          },
+          "old_address": {
+            "type": "string",
+            "title": "Old Address",
+            "default": ""
           }
         },
         "type": "object",
@@ -14266,7 +14811,9 @@
           "postal_buffer_days",
           "is_student_visa",
           "onboarded",
-          "iban"
+          "iban",
+          "moved_on",
+          "old_address"
         ],
         "title": "Profile"
       },
@@ -14432,6 +14979,32 @@
             ],
             "title": "Iban",
             "description": "your account, for refunds (empty: none)"
+          },
+          "moved_on": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 10
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moved On",
+            "description": "the day you moved in (YYYY-MM-DD; empty: no move)"
+          },
+          "old_address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Address",
+            "description": "your address before that move (empty: none)"
           }
         },
         "additionalProperties": false,

@@ -151,6 +151,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     given_to_model: Boolean(document.ai_processed_at),
     region_suggestion: null,
     addressed_to: null,
+    scan_text_pages: [],
     ...d,
   };
 }

@@ -14,7 +14,9 @@ as JSON text, booleans as 0/1. ``update_*`` methods take model field names with 
 Search keeps two FTS5 indexes per document in sync on every document write: ``documents_fts``
 (word index, diacritics removed, bm25 ranking) and ``documents_trigram`` (substring index over a
 lower-cased, diacritic-folded copy, so "steuerbescheid" finds "Einkommensteuerbescheid" and
-"Kuendigung" finds "Kündigung").
+"Kuendigung" finds "Kündigung"). A scan's scanner text (:mod:`ordnung.db.scan_text`, ADR 0020) is in
+neither index: :meth:`Store.list_documents` ORs in the letters :meth:`Store.scan_text_matches` finds
+(``also_ids``), matched with the same rules; :meth:`Store.search` (Ask's) never sees it.
 """
 
 from __future__ import annotations
@@ -44,6 +46,7 @@ from pydantic_core import to_jsonable_python
 
 from ordnung.clock import now_iso, real_now_iso
 from ordnung.config import Paths
+from ordnung.db import scan_text
 from ordnung.db.migrate import current_version, latest_version, migrate, pending
 from ordnung.ids import content_id, doc_id_for_sha, new_id
 from ordnung.llm.base import Usage
@@ -380,6 +383,9 @@ _FTS_OPERATORS = frozenset({"AND", "OR", "NOT", "NEAR"})
 _TOKEN_EDGES = ".,;:!?'`´‘’‚“”„«»‹›<>|/\\-"
 _TRIGRAM_MIN = 3
 _SNIPPET_RADIUS = 60
+#: A word as the word index (``unicode61``) sees one: letters and digits, everything else separates.
+_WORD_RE = re.compile(r"[^\W_]+")
+_PDF = "application/pdf"
 
 
 def normalize_identifier(value: str) -> str:
@@ -440,6 +446,24 @@ def _trigram_expression(tokens: Sequence[str]) -> str | None:
         if spellings:
             clauses.append("(" + " OR ".join(f'"{v}"' for v in spellings) + ")")
     return " AND ".join(clauses) or None
+
+
+def _scan_text_match(plain: str, spelled: str, tokens: Sequence[str]) -> bool:
+    """Whether a scan's scanner text (folded: ``plain``, and with umlauts ``spelled`` out) matches the
+    query ``tokens`` by the rules the indexes apply to a letter's own text (:meth:`Store.list_documents`):
+    every token as a whole word — a token of several parts (``31.12``) as consecutive words — as in
+    ``documents_fts``; or every token of three or more letters as a substring of either spelling, in one
+    of its own spellings, as in ``documents_trigram``."""
+    if not tokens:
+        return False
+    words = f" {' '.join(_WORD_RE.findall(plain))} "
+    phrases = [" ".join(_WORD_RE.findall(_fold(token))) for token in tokens]
+    if all(phrases) and all(f" {phrase} " in words for phrase in phrases):
+        return True
+    body = plain if spelled == plain else f"{plain}\n{spelled}"
+    clauses = [[v for v in _variants(token) if len(v) >= _TRIGRAM_MIN] for token in tokens]
+    clauses = [spellings for spellings in clauses if spellings]
+    return bool(clauses) and all(any(v in body for v in spellings) for spellings in clauses)
 
 
 def _fold_with_offsets(text: str, transliterate: bool) -> tuple[str, list[int]]:
@@ -577,6 +601,9 @@ class Store:
         self._connections: list[sqlite3.Connection] = []
         # re-entrant: a thread's state may be dropped (closing its connection) wherever it is freed
         self._connections_lock = threading.RLock()
+        #: letter → (its scanner text file's (mtime, size), page → folded text): repeat searches only stat
+        self._scan_text_cache: dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]] = {}
+        self._scan_text_lock = threading.Lock()
         self._closed = False
         try:
             self.schema_version = self._check_schema() if read_only else self._migrate()
@@ -688,6 +715,8 @@ class Store:
             self.schema_version = migrate(conn)
             conn.execute("VACUUM")
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        with self._scan_text_lock:  # no folded copy of a scanner's text stays in memory either
+            self._scan_text_cache.clear()
 
     def replace_with(
         self,
@@ -1066,10 +1095,13 @@ class Store:
         include_deleted: bool = False,
         source: str | None = None,
         exclude_source: str | None = None,
+        also_ids: Collection[str] = (),
     ) -> list[Document]:
         """Documents, newest first by ``COALESCE(doc_date, created_at)``.
 
-        ``q`` filters by the same full-text/substring matching as :meth:`search`. Trashed documents
+        ``q`` filters by the same full-text/substring matching as :meth:`search`; ``also_ids`` are letters
+        that count as matching ``q`` too (the letter search's :meth:`scan_text_matches`), every other
+        filter and the paging still applying to them. Trashed documents
         are left out unless ``include_deleted``. ``source`` keeps the documents of one source
         (``upload``, ``folder``, ``email:<id>`` …); ``exclude_source`` leaves out one source (the
         Inbox leaves out proof files).
@@ -1087,13 +1119,13 @@ class Store:
             where.add("ai_private = ?", int(ai_private))
         if not include_deleted:
             where.add("deleted_at IS NULL")
-        if q is not None and q.strip() and not self._add_text_filter(where, q):
+        if q is not None and q.strip() and not self._add_text_filter(where, q, also_ids):
             return []
         paging, paging_params = _paging(limit, offset)
         tail = f"{where.sql()} ORDER BY COALESCE(doc_date, created_at) DESC, created_at DESC, id{paging}"
         return self._many(_DOCUMENTS, tail, [*where.params, *paging_params])
 
-    def _add_text_filter(self, where: _Where, q: str) -> bool:
+    def _add_text_filter(self, where: _Where, q: str, also_ids: Collection[str] = ()) -> bool:
         tokens = search_tokens(q)
         fts, trigram = _fts_expression(tokens), _trigram_expression(tokens)
         subqueries: list[str] = []
@@ -1106,8 +1138,23 @@ class Store:
             params.append(trigram)
         if not subqueries:
             return False
+        if also_ids:  # one JSON array, never one variable per id (SQLite's limit)
+            subqueries.append("id IN (SELECT value FROM json_each(?))")
+            params.append(json.dumps(sorted(also_ids)))
         where.add("(" + " OR ".join(subqueries) + ")", *params)
         return True
+
+    def indexed_matches(self, q: str, ids: Collection[str]) -> set[str]:
+        """Which of the letters ``ids`` match ``q`` by their own text (the search indexes, as
+        :meth:`list_documents`), the scanner text left out."""
+        if not ids:
+            return set()
+        where = _Where()
+        where.add("id IN (SELECT value FROM json_each(?))", json.dumps(sorted(ids)))
+        if not self._add_text_filter(where, q):
+            return set()
+        rows = self._conn().execute(f"SELECT id FROM documents {where.sql()}", where.params)
+        return {row["id"] for row in rows}
 
     def trash_document(self, id: str) -> Document:
         """Move a document to the trash (hidden from lists, search and to-dos; restorable)."""
@@ -1145,6 +1192,7 @@ class Store:
             )
             conn.execute("DELETE FROM documents WHERE id = ?", (id,))
             self._after_commit(self._truncate_wal)
+            self._after_commit(lambda: self._forget_scan_text(id))  # no folded copy stays in memory
             if purge_files:
                 original = self._data_path(row["file_path"])
                 self._after_commit(lambda: self._purge_files(id, original))
@@ -1309,6 +1357,146 @@ class Store:
         if row is None or row["extraction"] is None:
             return None
         return DocumentExtraction.model_validate_json(row["extraction"])
+
+    # ---------------------------------------------------------------------------------------------
+    # a scan's scanner text (search only: :mod:`ordnung.db.scan_text`, ADR 0020)
+    # ---------------------------------------------------------------------------------------------
+
+    def write_scan_text(self, doc_id: str, pages: Mapping[int, str]) -> None:
+        """Keep a scan's scanner text (page → text) for the person's letter search only: written while the
+        letter is a PDF with a page that has no text of its own, for such pages alone (an empty map: looked,
+        nothing there), removed otherwise. In a transaction that needs the letter (:class:`NotFoundError`),
+        so a letter deleted for good meanwhile never gets the file back. A file that can't be written is
+        logged, never raised: search then finds the letter by its name, as before."""
+        with self.tx() as conn:
+            row = conn.execute("SELECT mime FROM documents WHERE id = ?", (doc_id,)).fetchone()
+            if row is None:
+                raise NotFoundError(f"documents: no row with id {doc_id!r}")
+            blank = self._pages_without_text(conn, doc_id) if row["mime"] == _PDF else set()
+            try:
+                if blank:
+                    kept = {page: text for page, text in pages.items() if page in blank and text.strip()}
+                    scan_text.write(self.paths.derived, doc_id, kept)
+                else:
+                    scan_text.remove(self.paths.derived, doc_id)
+            except OSError:
+                log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
+        self._forget_scan_text(doc_id)
+
+    def forget_scan_text_once_read(self, doc_id: str) -> None:
+        """Forget the scanner text of the letter's pages that have text of their own (Claude transcribed
+        them): it would never count for search again. The file keeps the pages still without text, and goes
+        once every page has text. A file that can't be changed is logged."""
+        with self.tx() as conn:
+            blank = self._pages_without_text(conn, doc_id)
+            try:
+                if not blank:
+                    scan_text.remove(self.paths.derived, doc_id)
+                elif scan_text.present(self.paths.derived, doc_id):
+                    kept = scan_text.read(self.paths.derived, doc_id)
+                    left = {page: text for page, text in kept.items() if page in blank and text.strip()}
+                    if left != kept:
+                        scan_text.write(self.paths.derived, doc_id, left)
+            except OSError:
+                log.warning("could not forget the scanner text of %s", doc_id, exc_info=True)
+        self._forget_scan_text(doc_id)
+
+    @staticmethod
+    def _pages_without_text(conn: sqlite3.Connection, doc_id: str) -> set[int]:
+        rows = conn.execute("SELECT page FROM pages WHERE doc_id = ? AND trim(text) = ''", (doc_id,))
+        return {row["page"] for row in rows}
+
+    def _blank_scan_pages(self, doc_id: str | None = None) -> dict[str, list[int]]:
+        """Letter → its pages without text of their own, for the PDF letters not in the trash (with
+        ``doc_id``: that letter's, in the trash or not)."""
+        if doc_id is None:
+            which, params = "d.deleted_at IS NULL", [_PDF]
+        else:
+            which, params = "d.id = ?", [doc_id, _PDF]
+        rows = self._conn().execute(
+            "SELECT p.doc_id, p.page FROM pages p JOIN documents d ON d.id = p.doc_id "
+            f"WHERE {which} AND d.mime = ? AND trim(p.text) = '' ORDER BY d.created_at, p.doc_id, p.page",
+            params,
+        )
+        blank: dict[str, list[int]] = {}
+        for row in rows:
+            blank.setdefault(row["doc_id"], []).append(row["page"])
+        return blank
+
+    def _scan_text_folds(self, doc_id: str) -> dict[int, tuple[str, str]]:
+        """Page → the letter's scanner text folded both ways (:func:`_scan_text_match`), read again only
+        once its file changed."""
+        try:
+            info = scan_text.path(self.paths.derived, doc_id).stat()
+        except (OSError, ValueError):
+            self._forget_scan_text(doc_id)
+            return {}
+        signature = (info.st_mtime_ns, info.st_size)
+        with self._scan_text_lock:
+            cached = self._scan_text_cache.get(doc_id)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
+        folds = {
+            page: (_fold(text), _fold(text, transliterate=True))
+            for page, text in scan_text.read(self.paths.derived, doc_id).items()
+            if text.strip()
+        }
+        with self._scan_text_lock:
+            self._scan_text_cache[doc_id] = (signature, folds)
+        return folds
+
+    def _forget_scan_text(self, doc_id: str) -> None:
+        with self._scan_text_lock:
+            self._scan_text_cache.pop(doc_id, None)
+
+    def scan_text_matches(self, q: str) -> set[str]:
+        """The letters (not in the trash) whose scanner text ``q`` finds on their pages without text of
+        their own — matched as the indexes match a letter's own text (:func:`_scan_text_match`). For the
+        person's letter search alone (``list_documents(also_ids=…)``); never :meth:`search`."""
+        tokens = search_tokens(q)
+        if not tokens:
+            return set()
+        found: set[str] = set()
+        for doc_id, pages in self._blank_scan_pages().items():
+            folds = self._scan_text_folds(doc_id)
+            texts = [folds[page] for page in pages if page in folds]
+            plain = "\n".join(text for text, _ in texts)
+            spelled = "\n".join(text for _, text in texts)
+            if texts and _scan_text_match(plain, spelled, tokens):
+                found.add(doc_id)
+        return found
+
+    def scan_text_pages(self, doc_id: str) -> list[int]:
+        """The letter's pages without text of their own whose scanner text is kept (search only)."""
+        pages = self._blank_scan_pages(doc_id).get(doc_id, [])
+        folds = self._scan_text_folds(doc_id) if pages else {}
+        return [page for page in pages if page in folds]
+
+    def scan_text_missing(self) -> list[str]:
+        """PDF letters (not in the trash) with a page without text of its own whose scanner text was never
+        looked for — stored before Ordnung kept it (the worker's catch-up) — oldest first."""
+        return [
+            doc_id for doc_id in self._blank_scan_pages() if not scan_text.present(self.paths.derived, doc_id)
+        ]
+
+    def scan_text_stale(self) -> list[str]:
+        """PDF letters (not in the trash) whose kept scanner text is out of date: it holds a page that has
+        text of its own by now, or every page has — Claude read the scan on a version of Ordnung that didn't
+        know the file. The worker's catch-up tidies them (:meth:`forget_scan_text_once_read`), oldest first."""
+        blank = self._blank_scan_pages()
+        rows = self._conn().execute(
+            "SELECT id FROM documents WHERE deleted_at IS NULL AND mime = ? ORDER BY created_at, id", (_PDF,)
+        )
+        stale: list[str] = []
+        for row in rows:
+            doc_id = row["id"]
+            if not scan_text.present(self.paths.derived, doc_id):
+                continue
+            pages = blank.get(doc_id)
+            kept = scan_text.read(self.paths.derived, doc_id)
+            if pages is None or any(page not in pages for page, text in kept.items() if text.strip()):
+                stale.append(doc_id)
+        return stale
 
     # ---------------------------------------------------------------------------------------------
     # search

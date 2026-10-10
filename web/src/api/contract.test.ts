@@ -193,6 +193,7 @@ const CASES = {
   fileUrl: { run: (ids) => api.fileUrl(ids.doc), asset: true },
   pageUrl: { run: (ids) => api.pageUrl(ids.doc, 1), asset: true },
   thumbnailUrl: { run: (ids) => api.thumbnailUrl(ids.doc), asset: true },
+  lettersZipUrl: { run: (ids) => api.lettersZipUrl({ year: 2025, until: "2026-05-31", tax: true, party_id: ids.party }), asset: true },
   folder: { run: () => api.folder() },
   readHeld: { run: (ids) => api.readHeld([ids.held, "doc_gone"]) },
   keepHeldPrivate: { run: (ids) => api.keepHeldPrivate([ids.otherHeld]) },

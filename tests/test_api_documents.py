@@ -4,6 +4,7 @@ the confirmed arrival date recomputing to-dos, reprocess, trash and purge, and e
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -19,7 +20,7 @@ from ordnung import clock
 from ordnung.api.routes.documents import document_detail
 from ordnung.db.store import Store
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
-from ordnung.models import DocumentDetail
+from ordnung.models import Document, DocumentDetail
 from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for, lifespan
 
 TEXT_LETTER = (
@@ -199,6 +200,66 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
         assert (await api.client.get(f"/api/documents/{doc_id}/pages/9.jpg")).status_code == 404
         missing = await api.client.get("/api/documents/doc_nothinghere")
         assert missing.status_code == 404 and "exist" in missing.json()["detail"]
+
+
+async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) -> None:
+    """``found_in`` is worked out for the list only (the letter itself has no such field): ``null`` when
+    the list wasn't searched. A letter with page text of its own has no scanner text kept."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        listed = (await api.client.get("/api/documents")).json()
+        assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
+        assert set(listed[0]) == set(Document.model_fields) | {"found_in"}
+        blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
+        assert [row["found_in"] for row in blank] == [None]
+        found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()
+        assert [(row["id"], row["found_in"]) for row in found] == [(doc_id, "letter")]
+        assert all(type(d) is Document for d in api.ctx.store.list_documents())
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["scan_text_pages"] == []
+
+
+async def test_search_marks_a_letter_found_only_in_its_scanner_text(data_dir: Path) -> None:
+    """A private scan found only by the text its scanner added is marked ``scanner_text`` (not checked); a
+    letter found by its own words ``letter``; without a search ``null``. The scan's page says which pages
+    have such text — never the text itself."""
+    from helpers_docs import scanned_pdf
+
+    async with api_for(data_dir) as api:
+        scan = await api.upload(("scan.pdf", scanned_pdf(ocr=True)), private=True)
+        scan_id = str(scan["documents"][0]["id"])
+        letter_id = await _read_letter(api, TAX_LETTER.pdf(), "bescheid.pdf")
+        found = (await api.client.get("/api/documents", params={"q": "Einkommensteuer"})).json()
+        assert {row["id"]: row["found_in"] for row in found} == {scan_id: "scanner_text", letter_id: "letter"}
+        by_name = (await api.client.get("/api/documents", params={"q": "scan"})).json()
+        assert [(row["id"], row["found_in"]) for row in by_name] == [(scan_id, "letter")]
+        listed = (await api.client.get("/api/documents")).json()
+        assert {row["found_in"] for row in listed} == {None}
+        private = (
+            await api.client.get("/api/documents", params={"q": "Einkommensteuer", "private": "false"})
+        ).json()
+        assert [row["id"] for row in private] == [letter_id]
+        detail = (await api.client.get(f"/api/documents/{scan_id}")).json()
+        assert detail["scan_text_pages"] == [1]
+        assert "Einkommensteuer" not in json.dumps(detail)
+        assert (await api.client.get(f"/api/documents/{letter_id}")).json()["scan_text_pages"] == []
+        assert [hit.doc_id for hit in api.ctx.store.search("Einkommensteuer")] == [letter_id]
+
+
+async def test_a_phone_s_search_says_where_it_found_a_letter_too(data_dir: Path) -> None:
+    from helpers_docs import scanned_pdf
+    from phone_support import pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _, _):
+        scan = await api.upload(("scan.pdf", scanned_pdf(ocr=True)), private=True)
+        await api.read_all()
+        async with phone_client(api) as phone:
+            await pair(api, phone)
+            found = await phone.get("/api/documents", params={"q": "Einkommensteuer"})
+            assert found.status_code == 200, found.text
+            assert [(row["id"], row["found_in"]) for row in found.json()] == [
+                (scan["documents"][0]["id"], "scanner_text")
+            ]
 
 
 async def test_other_originals_are_downloads(data_dir: Path) -> None:

@@ -1,7 +1,8 @@
 /**
  * Provenance + housekeeping: "Read by Claude on 28 Sep 2026 · text of 2 pages", and the actions
  * Reprocess · Download original · Delete (with a confirmation listing what would disappear). On a paired phone
- * the letter stays on the computer: no download, no delete — a line says where to do them.
+ * the letter stays on the computer: no download, no delete — a line says where to do them. A scan whose pages
+ * carry only the text its scanner added says what Ordnung keeps that text for (ADR 0020).
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -70,6 +71,22 @@ export function sentText(detail: DocumentDetail, phone = false): string {
   return `The letter's text or image was sent to Anthropic through your own Claude account. The file itself stays on ${theComputer(phone)}.`;
 }
 
+/**
+ * What the text a scanner added to a scan is kept for (`scan_text_pages`: its pages without text of their own;
+ * ADR 0020): search only — never checked, never shown as the letter's words, never sent to Claude. The pages
+ * are named when only some of them have it. The same words on a phone: the file goes where the letter goes
+ * (hand-off sync, backups), so no computer is named. `null`: no such text.
+ */
+export function scanTextNote(detail: DocumentDetail): string | null {
+  const pages = detail.scan_text_pages;
+  if (!pages.length) return null;
+  const where =
+    pages.length >= detail.document.pages
+      ? "this file"
+      : `${pages.length === 1 ? "page" : "pages"} ${joinAnd(pages.map(String))} of this file`;
+  return `Your scanner added its own text to ${where}. Ordnung keeps it only so search can find the letter: it isn't checked, isn't shown as the letter's words and is never sent to Claude.`;
+}
+
 export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const phone = usePhoneCompanion();
@@ -84,6 +101,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const openItems = detail.items.filter(isOpenItem);
   const Icon = doc.ai_private ? Lock : doc.text_mode === "vision" ? ScanText : Sparkles;
   const reply = !scam && !busy && doc.direction === "incoming" && !doc.ai_private && !(doc.kind && NO_REPLY_KINDS.has(doc.kind));
+  const scanned = scanTextNote(detail);
 
   return (
     <footer className="border-t border-line pt-5">
@@ -93,6 +111,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
         <span className="min-w-0 [overflow-wrap:anywhere]">{keepTogether(provenanceText(doc))}</span>
       </p>
       <p className="mt-2 text-[12px] leading-5 text-muted">{sentText(detail, phone)}</p>
+      {scanned ? <p className="mt-1 text-[12px] leading-5 text-muted">{scanned}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* a letter that couldn't be read has its "Try again" at the top: no second button for the same thing */}
         {!doc.ai_private && !busy && doc.status !== "failed" ? (

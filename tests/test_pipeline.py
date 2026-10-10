@@ -4,6 +4,7 @@ link → plan, on generated PDFs and photos."""
 from __future__ import annotations
 
 import copy
+import json
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
@@ -30,6 +31,7 @@ from ordnung.ingest.intake import IntakeError
 from ordnung.ingest.pipeline import STAGES, add_file, ingest_document, reprocess
 from ordnung.ingest.plan import needs_check
 from ordnung.ingest.verify import READING_INCOMPLETE, REASON_TEXT
+from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Item
 from ordnung.secretary.triggers import Ledger, please_check
@@ -320,6 +322,138 @@ async def test_private_photo_is_not_transcribed(ctx: AppContext) -> None:
     await add_file(ctx, photo("JPEG", size=(600, 800)), "IMG.jpg", private=True)
     await ctx.worker.run_until_idle()
     assert backend(ctx).calls == []
+
+
+# --------------------------------------------------------------------------------------------------
+# A scan's scanner text: search only (ADR 0020)
+# --------------------------------------------------------------------------------------------------
+
+#: A scanner's reading of the picture with a word the picture (and Claude's transcript) doesn't have
+ODD_SCAN = ["Zebrafinkenweg 7 Quittungsnummer 0815", "Ablesung des Wasserzählers zum Jahresende"]
+
+
+def _scan_file(ctx: AppContext, doc_id: str) -> Path:
+    return ctx.store.paths.derived / doc_id / "scan-text.json"
+
+
+async def test_a_private_scan_is_found_by_its_scanner_text(ctx: AppContext) -> None:
+    """A searchable PDF kept private: no model sees it, its pages stay without text (the scanner's text
+    is not the letter's words), yet the letter search finds it by that text — Ask's search doesn't."""
+    document = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    assert backend(ctx).calls == []
+    assert [page.text for page in ctx.store.list_pages(document.id)] == [""]
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {document.id}
+    assert ctx.store.scan_text_pages(document.id) == [1]
+    assert ctx.store.search("Einkommensteuer") == []
+    stored = ctx.store.get_document(document.id)
+    assert stored is not None and stored.status == "processed"
+    assert ctx.store.get_document_text(document.id) == ""
+    assert not stored.hidden_text and stored.warnings == []
+    assert _scan_file(ctx, document.id).is_file()
+
+
+async def test_the_scanner_text_never_reaches_a_prompt(ctx: AppContext) -> None:
+    """A scan sent to Claude is read from its picture: no request carries the scanner's text, and once
+    the transcript fills the page the scanner's text is no longer kept (it would never count again)."""
+    document = await add_file(ctx, scanned_pdf(ocr=True, ocr_text=ODD_SCAN), "scan.pdf")
+    assert await ctx.worker.run_until_idle() == 1
+    calls = backend(ctx).calls
+    assert [call.purpose for call in calls] == ["transcribe", "extract"]
+    for call in calls:
+        sent = f"{call.system}\n{call.prompt}\n" + "\n".join(str(item) for item in call.attachments)
+        assert "Zebrafinken" not in sent and "Quittungsnummer" not in sent
+    assert ctx.store.scan_text_pages(document.id) == []
+    assert ctx.store.scan_text_matches("Zebrafinkenweg") == set()
+    page = ctx.store.get_page(document.id, 1)
+    assert page is not None and page.text_source == "transcript"
+    assert not _scan_file(ctx, document.id).exists()
+
+
+async def test_a_scan_claude_read_leaves_no_scanner_text_file(ctx: AppContext) -> None:
+    """A scan without a scanner's text (like the demo's New-mail letter) read by Claude: the file the text
+    stage kept ("looked, nothing there") goes once every page has its transcript, and the catch-up has
+    nothing left to do."""
+    document = await add_file(ctx, scanned_pdf(), "scan.pdf")
+    assert await ctx.worker.run_until_idle() == 1
+    assert [page.text_source for page in ctx.store.list_pages(document.id)] == ["transcript"]
+    assert not (ctx.store.paths.derived / document.id / "scan-text.json").exists()
+    assert ctx.store.scan_text_missing() == []
+
+
+class BlankBackRouter(Router):
+    """Transcribes the blank back of a duplex scan as no text at all."""
+
+    def __call__(self, req: LLMRequest) -> dict[str, Any]:
+        if req.purpose == "transcribe" and req.attachments[0].path.name.startswith("page-2"):
+            return {"text": "", "language": "de", "legible": True}
+        return super().__call__(req)
+
+
+def _kept_scan_text(ctx: AppContext, doc_id: str) -> dict[str, str]:
+    pages: dict[str, str] = json.loads(_scan_file(ctx, doc_id).read_text("utf-8"))["pages"]
+    return pages
+
+
+async def test_a_duplex_scan_claude_read_keeps_no_scanner_text_of_the_page_it_read(data_dir: Path) -> None:
+    """A scan with a blank back: once Claude read the front, its scanner text is gone, though the back still
+    has no text of its own. The catch-up never brings it back."""
+    context = build_context(
+        data_dir, backend_obj=fake_backend(BlankBackRouter(transcript=APPOINTMENT_LETTER.transcript()))
+    )
+    try:
+        document = await add_file(context, scanned_pdf(ocr=True, blank_back=True), "duplex.pdf")
+        await context.worker.run_until_idle()
+        pages = context.store.list_pages(document.id)
+        assert [page.text_source for page in pages] == ["transcript", "none"]
+        assert _kept_scan_text(context, document.id) == {}
+        assert context.store.scan_text_missing() == []
+
+        _scan_file(context, document.id).unlink()
+        assert context.store.scan_text_missing() == [document.id]
+        pipeline.catch_up_scan_text(context.store, document.id)
+        assert _kept_scan_text(context, document.id) == {}
+    finally:
+        context.close()
+
+
+async def test_reading_again_keeps_the_scanner_text_current(ctx: AppContext) -> None:
+    """Reading a letter again writes its scanner text afresh from the original; a letter whose pages
+    all have text of their own keeps none (a stale file is removed)."""
+    scan = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    letter = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    _scan_file(ctx, scan.id).write_text('{"version": 1, "pages": {"1": "veraltet"}}', "utf-8")
+    _scan_file(ctx, letter.id).write_text('{"version": 1, "pages": {"1": "veraltet"}}', "utf-8")
+    assert ctx.store.scan_text_matches("veraltet") == {scan.id}
+    reprocess(ctx, scan.id)
+    reprocess(ctx, letter.id)
+    await ctx.worker.run_until_idle()
+    assert ctx.store.scan_text_matches("veraltet") == set()
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {scan.id}
+    assert not _scan_file(ctx, letter.id).exists()
+
+
+async def test_older_scans_catch_up_without_touching_the_database(ctx: AppContext) -> None:
+    """A scan stored before Ordnung kept a scanner's text gets it from its original: no model, no page
+    row or letter changed; a letter in the trash or deleted meanwhile is skipped."""
+    scan = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    _scan_file(ctx, scan.id).unlink()
+    assert ctx.store.scan_text_missing() == [scan.id]
+    before = (ctx.store.get_document(scan.id), ctx.store.list_pages(scan.id))
+    pipeline.catch_up_scan_text(ctx.store, scan.id)
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {scan.id}
+    assert ctx.store.scan_text_missing() == []
+    assert (ctx.store.get_document(scan.id), ctx.store.list_pages(scan.id)) == before
+    assert backend(ctx).calls == []
+    _scan_file(ctx, scan.id).unlink()
+    ctx.store.trash_document(scan.id)
+    pipeline.catch_up_scan_text(ctx.store, scan.id)
+    assert not _scan_file(ctx, scan.id).exists() and ctx.store.scan_text_missing() == []
+    ctx.store.delete_document(scan.id)
+    pipeline.catch_up_scan_text(ctx.store, scan.id)  # gone: nothing to do
+    assert not (ctx.store.paths.derived / scan.id).exists()
 
 
 # --------------------------------------------------------------------------------------------------

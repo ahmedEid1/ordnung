@@ -9,7 +9,8 @@
   visible text is a scan with an OCR layer (a searchable PDF from a scanner or a phone app). Its OCR
   text is somebody's reading of the picture, not the letter's own text: the page counts as having no
   text layer and is read from its image like a photo (so its values are compared with the paper, ADR
-  0012), and the OCR text is neither the page text nor reported as hidden. Characters PDFium can't be
+  0012), and the OCR text is neither the page text nor reported as hidden: it is returned apart, as
+  :attr:`PdfText.scan_text`, for search only (ADR 0020). Characters PDFium can't be
   matched to (the same character within a fraction of its size) count as visible. The text layer is
   read with a pdfminer document that gives up after :data:`MAX_REFERENCE_LOOKUPS` lookups answering
   with another reference: an object that refers to itself (``5 0 obj 5 0 R endobj``, in the document
@@ -78,6 +79,8 @@ TextSource = Literal["text", "transcript", "none"]
 Direction = Literal["ltr", "rtl", "ttb", "btt"]
 
 MIN_TEXT_CHARS = 40  # meaningful (alphanumeric) characters for a page to count as having a text layer
+#: The most of a page's scanner text that is kept (:attr:`PdfText.scan_text`); a dense A4 page has about 5,000.
+MAX_SCAN_TEXT_CHARS = 20_000
 MIN_VISIBLE_FONT_SIZE = 3.0  # points; smaller glyphs are treated as hidden
 NEAR_WHITE = 0.95  # every RGB component at or above this is "white"
 
@@ -137,6 +140,15 @@ class PageText:
     def source(self) -> TextSource:
         """``text`` when the page text comes from the document itself, else ``none``."""
         return "text" if self.has_text_layer else "none"
+
+
+class PdfText(NamedTuple):
+    """A PDF's page texts and, apart from them, the text a scanner drew invisibly over its picture (page →
+    text, at most :data:`MAX_SCAN_TEXT_CHARS` each). The scanner's text is somebody's reading of the
+    picture: for search only — never a page's text, never evidence, never in a prompt (ADR 0020)."""
+
+    pages: list[PageText]
+    scan_text: dict[int, str]
 
 
 class TextDocument(NamedTuple):
@@ -323,8 +335,15 @@ def extract_pdf_pages(pdf_path: Path, rendered: Sequence[RenderedPage]) -> list[
 
     Word boxes are relative to the corresponding page image. A page whose text layer cannot be
     parsed comes back empty (``has_text_layer=False``) so the pipeline transcribes it instead.
+    A scanner's text is left out (:func:`read_pdf_text` gives it apart).
     """
-    unread = [PageText(page=r.page, text="") for r in rendered]
+    return read_pdf_text(pdf_path, rendered).pages
+
+
+def read_pdf_text(pdf_path: Path, rendered: Sequence[RenderedPage]) -> PdfText:
+    """:func:`extract_pdf_pages`'s pages and, apart from them, the text a scanner drew invisibly over the
+    picture of a page that has no text of its own (:class:`PdfText`; search only, ADR 0020)."""
+    unread = PdfText([PageText(page=r.page, text="") for r in rendered], {})
     try:
         pdf = open_pdf(pdf_path)
     except Exception:  # damaged text layer: every page falls back to transcription
@@ -337,8 +356,15 @@ def extract_pdf_pages(pdf_path: Path, rendered: Sequence[RenderedPage]) -> list[
         pdf.stream.close()  # closing the PDF would read its pages again, and fail again
         return unread
     invisible = _invisible_chars(pdf_path, [r.page for r in rendered])
+    texts: list[PageText] = []
+    scanned: dict[int, str] = {}
     with pdf:
-        return [_extract_page_safely(pages[r.page - 1], r.page, invisible.get(r.page)) for r in rendered]
+        for r in rendered:
+            text, scan = _extract_page_safely(pages[r.page - 1], r.page, invisible.get(r.page))
+            texts.append(text)
+            if scan:
+                scanned[r.page] = scan
+    return PdfText(texts, scanned)
 
 
 class _DrawnChar(NamedTuple):
@@ -426,17 +452,20 @@ def is_near_white(color: object) -> bool:
 
 def _extract_page_safely(
     page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None
-) -> PageText:
+) -> tuple[PageText, str]:
     try:
         return _extract_page(page, number, drawn)
     except Exception:  # one broken page must not stop ingestion
         log.warning("could not read the text layer of page %d", number, exc_info=True)
-        return PageText(page=number, text="")
+        return PageText(page=number, text=""), ""
     finally:
         page.close()
 
 
-def _extract_page(page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None) -> PageText:
+def _extract_page(
+    page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | None = None
+) -> tuple[PageText, str]:
+    """The page's text and its scanner text (``""`` unless the page is a scan with an OCR layer)."""
     frame = _PageFrame.of(page)
     backgrounds = _dark_backgrounds(page, frame)
     visible: list[_Glyph] = []
@@ -464,17 +493,20 @@ def _extract_page(page: Page, number: int, drawn: dict[str, list[_DrawnChar]] | 
     meaningful = sum(ch.isalnum() for ch in text)
     unseen = sum(ch.isalnum() for glyph in invisible for ch in glyph.text)
     if unseen >= MIN_TEXT_CHARS and unseen >= meaningful:
-        # a scan's OCR layer (module docstring): read from the image, the OCR text left out
+        # a scan's OCR layer (module docstring): read from the image, the OCR text kept apart for search
         hidden_text, _ = _assemble(hidden, frame)
-        return PageText(page=number, text="", hidden_text=hidden_text, has_text_layer=False)
+        scanned, _ = _assemble(invisible, frame)
+        page_text = PageText(page=number, text="", hidden_text=hidden_text, has_text_layer=False)
+        return page_text, scanned[:MAX_SCAN_TEXT_CHARS]
     hidden_text, _ = _assemble([*hidden, *invisible], frame)
-    return PageText(
+    page_text = PageText(
         page=number,
         text=text,
         words=words,
         hidden_text=hidden_text,
         has_text_layer=meaningful >= MIN_TEXT_CHARS,
     )
+    return page_text, ""
 
 
 def _glyph(char: dict[str, Any], frame: _PageFrame) -> _Glyph | None:
