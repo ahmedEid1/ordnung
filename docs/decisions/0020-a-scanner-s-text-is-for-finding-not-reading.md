@@ -59,6 +59,8 @@ checked against, not sent to Claude and not evidence for anything.
 ## Consequences and known limits
 - A private, waiting or offline scan is found by its words, and marked as not checked.
 - Ask still can't find a private letter (by design), nor a waiting one by its scanner text.
+- A search whose words are split between a letter's own text and its scanner text finds nothing: the
+  letter's own text, or its scanner text, has to hold every word.
 - A PDF that passes its invisible text off as a scan's now has those words kept for search, marked not
   checked, instead of thrown away; they still never reach the model, and the hidden-text sign is unchanged.
 - The benchmark's input (the pages' text) is the same as before, and no demo letter has an OCR layer, so
