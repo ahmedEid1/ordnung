@@ -23,6 +23,7 @@ import { keepCitations, protectRefs } from "@/lib/glue";
 import { cn, prefersReducedMotion } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
+import { moveStanding } from "@/features/today/moving";
 import {
   canSuspend,
   cancellableContracts,
@@ -952,14 +953,16 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const othersName = Boolean(signer.trim()) && !sameName(signer, ownName);
 
   // what the template form starts with: the contract's name (never a letter's title, which is Ordnung's
-  // English summary, not what was ordered), the profile's address — and after a move the person told (Settings →
-  // "I moved"), the address before and the day they moved in; all still theirs to change here
+  // English summary, not what was ordered), the profile's address — and while a move the person told stands
+  // (Settings → "I moved", at most six months ago), the address before and the day they moved in; all still theirs
+  // to change here. An older move's address may be two homes ago: it isn't filled in.
+  const move = moveStanding(profileQ.data, today) ? profileQ.data : undefined;
   const templateValues: DetailValues = !template
     ? values
     : {
         ...(template.kind === "withdrawal" ? { subject_matter: contract?.name ?? "" } : {}),
         ...(template.kind === "address_change"
-          ? { new_address: profileQ.data?.address ?? "", old_address: profileQ.data?.old_address ?? "", moved_on: profileQ.data?.moved_on ?? "" }
+          ? { new_address: profileQ.data?.address ?? "", old_address: move?.old_address ?? "", moved_on: move?.moved_on ?? "" }
           : {}),
         ...values,
       };

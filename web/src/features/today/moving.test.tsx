@@ -132,6 +132,8 @@ describe("the Moving checklist card", () => {
     await user.click(within(section).getByRole("button", { name: "Show 6 more" }));
     expect(checks()).toHaveLength(11);
     expect(within(section).getByText(/Also think of your doctor/)).toBeInTheDocument();
+    // the German name is marked as German, for screen readers' voice and hyphenation
+    expect(within(section).getByText("Nachsendeauftrag")).toHaveAttribute("lang", "de");
   });
 
   it("ticks a row off, hands focus to the next one, and Undo brings it back", async () => {

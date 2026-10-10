@@ -131,7 +131,7 @@ function MovingNote({ profile, today }: { profile: Profile | undefined; today: s
       ) : (
         <span>
           Telling several places? Change your address in {phone ? "Settings → Profile on your computer" : <SettingsLink>Settings → Profile</SettingsLink>} and
-          tick <em>I moved</em>: Today then lists everyone who needs it, starting with the Bürgeramt.
+          tick <em>I moved</em>: Today then lists everyone who needs it, starting with the <span lang="de">Bürgeramt</span>.
         </span>
       )}
     </p>

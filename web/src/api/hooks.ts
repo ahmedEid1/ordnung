@@ -569,8 +569,8 @@ export function useCase(id: string | null | undefined) {
 // Views
 // ------------------------------------------------------------------------------------------------
 
-export function useDashboard() {
-  return useQuery({ queryKey: qk.dashboard, queryFn: api.dashboard, staleTime: 30_000 });
+export function useDashboard({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.dashboard, queryFn: api.dashboard, staleTime: 30_000, enabled });
 }
 
 /** `GET /numbers` — My numbers (derived from the letters, refreshed with the ledger). */

@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { refreshMovingIdeas } from "@/mocks/moving";
 import SettingsPage from "@/pages/SettingsPage";
 
 class RO {
@@ -55,6 +56,7 @@ describe("I moved", () => {
     await user.type(address, NEW);
     expect(moveBox()).toBeInTheDocument();
     expect(moveBox()).not.toBeChecked();
+    expect(screen.getByText("Bürgeramt")).toHaveAttribute("lang", "de");
     // the address typed back as it was: no move
     await user.clear(address);
     await user.type(address, OLD);
@@ -126,6 +128,7 @@ describe("I moved", () => {
   it("while a move stands, says so, links to the checklist, and stops it with Undo", async () => {
     const { srv, calls } = useMockApi();
     srv.db.state.profile = { ...srv.db.state.profile, address: NEW, moved_on: "2026-09-21", old_address: OLD };
+    refreshMovingIdeas(srv.db);
     const { user, address } = await openProfile();
     const line = (await screen.findByText(/You moved in on Mon 21 Sep\./)).closest("p")!;
     expect(within(line).getByRole("link", { name: "Open your moving checklist" })).toHaveAttribute("href", "/#moving-checklist");
@@ -137,6 +140,20 @@ describe("I moved", () => {
     await user.click(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(calls.filter((c) => c.method === "PUT").at(-1)?.body).toEqual({ moved_on: "2026-09-21", old_address: OLD }));
     expect(await screen.findByText(/You moved in on Mon 21 Sep\./)).toBeInTheDocument();
+  });
+
+  it("once everyone on the checklist has the new address, says so instead of linking to it", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.profile = { ...srv.db.state.profile, address: NEW, moved_on: "2026-09-21", old_address: OLD };
+    refreshMovingIdeas(srv.db);
+    const rows = srv.db.state.suggestions.filter((s) => s.rule_id === "moved_house");
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) row.status = "done";
+    await openProfile();
+    const line = (await screen.findByText(/You moved in on Mon 21 Sep\./)).closest("p")!;
+    expect(await within(line).findByText("Everyone on your moving checklist has your new address.")).toBeInTheDocument();
+    expect(within(line).queryByRole("link", { name: "Open your moving checklist" })).toBeNull();
+    expect(within(line).getByRole("button", { name: "Stop the checklist" })).toBeInTheDocument();
   });
 
   it("says nothing of a move more than six months ago", async () => {

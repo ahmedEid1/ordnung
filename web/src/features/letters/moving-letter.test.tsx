@@ -1,5 +1,5 @@
 /**
- * The new-address letter ("Share a new address") and the moving checklist: after a move the person told, the
+ * The new-address letter ("Share a new address") and the moving checklist: while a move the person told stands, the
  * letter starts with the address before and the day they moved in (both still theirs to change), and a note says
  * where the rest of the list is; without a move, the note says how to start one — in Settings on the computer.
  * The letter never changes the profile.
@@ -49,6 +49,7 @@ describe("the new-address letter after a move", () => {
       "Telling several places? Change your address in Settings → Profile (opens in a new tab, so this letter stays as it is)⁠ and tick I moved: Today then lists everyone who needs it, starting with the Bürgeramt.",
     );
     expect(within(note).getByRole("link", { name: /Settings → Profile/ })).toHaveAttribute("target", "_blank");
+    expect(within(note).getByText("Bürgeramt")).toHaveAttribute("lang", "de");
   });
 
   it("on a phone, says the move is told on the computer, with no link to Settings", async () => {
@@ -61,11 +62,12 @@ describe("the new-address letter after a move", () => {
     expect(within(note).queryByRole("link")).not.toBeInTheDocument();
   });
 
-  it("a move more than six months ago still fills in the letter, and the note says how to start a new one", async () => {
+  it("a move more than six months ago fills in nothing (it may be two homes ago), and the note says how to start a new one", async () => {
     const { srv } = useMockApi();
     srv.db.state.profile = { ...srv.db.state.profile, moved_on: "2026-01-02", old_address: OLD };
     const dialog = await openLetter();
-    expect(await within(dialog).findByLabelText(/^Your previous address/)).toHaveValue(OLD);
+    expect(await within(dialog).findByLabelText(/^Your previous address/)).toHaveValue("");
+    expect(within(dialog).getByLabelText(/^Moved on/)).toHaveValue("");
     expect(within(dialog).getByText(/Telling several places\?/)).toBeInTheDocument();
   });
 });

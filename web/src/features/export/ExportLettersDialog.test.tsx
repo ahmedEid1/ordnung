@@ -109,6 +109,24 @@ describe("ExportLettersDialog", () => {
     expect(within(dialog).getByRole("checkbox", { name: /dated January–May 2026/ })).toBeChecked();
   });
 
+  it("counts each year under the rest of the choice, so the year shown matches the ZIP", async () => {
+    const { srv } = useMockApi();
+    seed(srv);
+    renderDialog({ year: 2025, tax: true, early: true });
+    const dialog = await screen.findByRole("dialog", { name: "Export letters" });
+    await within(dialog).findByText("2 letters will be in the ZIP.");
+    const year = within(dialog).getByRole("combobox", { name: "Year" });
+    expect(within(year).getAllByRole("option").map((o) => o.textContent)).toEqual(["All years", "2026 · 2 letters", "2025 · 1 letter"]);
+    expect(within(year).getByRole("option", { selected: true })).toHaveTextContent("2025 · 1 letter");
+    // the early statement is the other one, named on its own box
+    expect(within(dialog).getByRole("checkbox", { name: /^Also the letter for taxes dated January–May 2026/ })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: /dated January–May 2026/ }));
+    expect(within(dialog).getByRole("status")).toHaveTextContent("1 letter will be in the ZIP.");
+    await userEvent.selectOptions(within(dialog).getByRole("combobox", { name: "Sender" }), "pty_home");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("No letters match.");
+    expect(within(year).getByRole("option", { selected: true })).toHaveTextContent("2025 · 0 letters");
+  });
+
   it("can't download when no letter matches", async () => {
     const { srv } = useMockApi();
     seed(srv);

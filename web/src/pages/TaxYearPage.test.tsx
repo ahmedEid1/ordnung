@@ -113,6 +113,22 @@ describe("TaxYearPage", () => {
     expect(screen.queryByRole("link", { name: "Insurance June" })).toBeNull();
   });
 
+  it("shows each row's date on the letter, the date it is filed by", async () => {
+    const { srv } = useMockApi();
+    useLetters(srv, [
+      tax("Statement", { kind: "insurance", doc_date: "2026-05-29", received_date: "2026-06-02" }),
+      tax("Payslip", { kind: "payslip", doc_date: null, received_date: "2025-12-01" }),
+    ]);
+    renderPage("/inbox/taxes?year=2025", "2026-09-28");
+    await heading("Tax year 2025");
+    const early = screen.getByRole("heading", { level: 3, name: /^Dated January–May 2026/ }).closest("section")!;
+    const statement = within(early).getByRole("link", { name: "Statement" }).closest("li")!;
+    expect(within(statement).getAllByTitle("Dated Fri 29 May · arrived Tue 2 Jun")[0]).toHaveTextContent("Dated 29 May");
+    // a letter without a date of its own is filed by the day it arrived, and says so
+    const payslip = screen.getByRole("link", { name: "Payslip" }).closest("li")!;
+    expect(within(payslip).getAllByTitle(/^Arrived Mon 1 Dec/)[0]).toBeInTheDocument();
+  });
+
   it("names the letters for taxes that have no date, which belong to no year", async () => {
     const { srv } = useMockApi();
     useLetters(srv, [tax("Payslip", { kind: "payslip", doc_date: "2026-08-31" }), tax("Laptop receipt", { id: "doc_laptop", kind: "receipt" })]);
@@ -140,6 +156,8 @@ describe("TaxYearPage", () => {
     expect(screen.getByRole("heading", { name: "No letters for taxes dated 2023" })).toBeInTheDocument();
     expect(screen.getByText("Choose another year above.")).toBeInTheDocument();
     expect(within(screen.getByRole("combobox", { name: "Year" })).getAllByRole("option").map((o) => o.textContent)).toEqual(["2026 · 1 letter", "2023 · 0 letters"]);
+    // nothing to export for that year
+    expect(screen.queryByRole("button", { name: "Export these letters…" })).toBeNull();
   });
 
   it("opens the export with this year, the letters for taxes and the early statements", async () => {

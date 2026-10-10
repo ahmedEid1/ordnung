@@ -1,14 +1,14 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { Lock, MapPinHouse } from "lucide-react";
-import { useUpdateProfile } from "@/api/hooks";
+import { useDashboard, useUpdateProfile } from "@/api/hooks";
 import type { Profile } from "@/api/types";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { focusWhenReady } from "@/features/today/focus";
-import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, moveStanding } from "@/features/today/moving";
+import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, movingRows, moveStanding } from "@/features/today/moving";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
 type ProfileForm = Pick<Profile, "name" | "address" | "email" | "phone" | "iban">;
@@ -104,6 +104,10 @@ export function ProfileSection({ profile }: { profile: Profile }) {
 
   // the off switch for a move told by mistake (or done with): the rows still open expire; Undo puts it back
   const standing = moveStanding(profile, today);
+  // Today's checklist rows still open (null while unknown, or being fetched after a move was saved): with none
+  // left there is no card to go to
+  const dashboard = useDashboard({ enabled: standing });
+  const rowsLeft = dashboard.data && !dashboard.isFetching ? movingRows(dashboard.data.suggestions).length : null;
   const stopChecklist = () => {
     const back = { moved_on: profile.moved_on ?? "", old_address: profile.old_address };
     update.mutateAsync({ moved_on: "", old_address: "" }).then(
@@ -160,7 +164,11 @@ export function ProfileSection({ profile }: { profile: Profile }) {
                   if (e.target.checked && !movedOn) setMovedOn(today);
                 }}
                 label="I moved — list who needs my new address"
-                description="Today then lists who to tell, starting with registering at the Bürgeramt within two weeks."
+                description={
+                  <>
+                    Today then lists who to tell, starting with registering at the <span lang="de">Bürgeramt</span> within two weeks.
+                  </>
+                }
               />
               {moved ? (
                 <Field label="Moved in on" hint="Up to six months back, or three months ahead." error={attempted || movedOn !== today ? (dayError ?? undefined) : undefined} className="ml-[30px] sm:max-w-56">
@@ -173,9 +181,13 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
               <span>{movedLine(profile.moved_on, today)}</span>
               {/* text-sized, but 24 px tall targets (WCAG 2.5.8) */}
-              <Link to={`/#${MOVING_CHECKLIST_ID}`} className={MOVE_ACTION}>
-                Open your moving checklist
-              </Link>
+              {rowsLeft === 0 ? (
+                <span>Everyone on your moving checklist has your new address.</span>
+              ) : (
+                <Link to={`/#${MOVING_CHECKLIST_ID}`} className={MOVE_ACTION}>
+                  Open your moving checklist
+                </Link>
+              )}
               <span aria-hidden>·</span>
               <button
                 type="button"

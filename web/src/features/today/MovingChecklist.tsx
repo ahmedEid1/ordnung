@@ -127,7 +127,7 @@ function ChecklistCard({ rows }: { rows: Suggestion[] }) {
       )}
       <p className="mt-3 border-t border-line pt-3 text-[12.5px] leading-5 text-muted">
         Not in Ordnung? Also think of your doctor, a car's registration, online shops and subscriptions, and a forwarding order for your post
-        (Nachsendeauftrag, a paid Deutsche Post service).
+        (<span lang="de">Nachsendeauftrag</span>, a paid Deutsche Post service).
       </p>
     </motion.section>
   );

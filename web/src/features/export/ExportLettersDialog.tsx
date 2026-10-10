@@ -57,7 +57,10 @@ export function ExportLettersDialog({
   // (the React Compiler memoizes these)
   const docs = (all.data ?? []).filter(exportable);
   const { year = null, party_id = null, tax = false } = choice;
-  const years = countBy(docs, (d) => letterYear(d));
+  // every year with a letter to export, each counted under the rest of the choice (the early statements are named on their own box)
+  const yearCounts = countBy(selectForExport(docs, { tax, party_id }), (d) => letterYear(d));
+  const years = new Set(docs.map((d) => letterYear(d)));
+  if (year != null) years.add(year);
   // the next year's statements a tax year may take: only for a year's letters for taxes, and only those that exist
   const earlyCount =
     year != null && tax ? selectForExport(docs, { year, until: earlyUntil(year), tax, party_id }).filter((d) => letterYear(d) === year + 1).length : 0;
@@ -110,12 +113,12 @@ export function ExportLettersDialog({
           <Field label="Year">
             <Select value={year ?? ""} onChange={(e) => set({ year: e.target.value ? Number(e.target.value) : null })}>
               <option value="">All years</option>
-              {[...years.entries()]
-                .filter((entry): entry is [number, number] => entry[0] != null)
-                .sort((a, b) => b[0] - a[0])
-                .map(([y, n]) => (
+              {[...years]
+                .filter((y): y is number => y != null)
+                .sort((a, b) => b - a)
+                .map((y) => (
                   <option key={y} value={y}>
-                    {`${y} · ${plural(n, "letter")}`}
+                    {`${y} · ${plural(yearCounts.get(y) ?? 0, "letter")}`}
                   </option>
                 ))}
             </Select>

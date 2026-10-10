@@ -1143,10 +1143,10 @@ writing or at online-mahnantrag.de, never by e-mail — nor any other letter to 
 only has to be sent in time).
 Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
 request, which has one month from receipt).
-The composer fills an `address_change` letter's new address from the profile, as before, and, while a move is
-stored, its old address and moving day from `Profile.old_address` and `Profile.moved_on` (all editable); a
-note under the fields points to the moving checklist (§ 9), or to Settings → Profile's *I moved* when no move
-is stored. A row of the checklist opens this letter to its organisation (`/letters?kind=address_change&to=…`).
+The composer fills an `address_change` letter's new address from the profile, as before, and, while a move
+stands (told, at most six months ago), its old address and moving day from `Profile.old_address` and
+`Profile.moved_on` (all editable); a note under the fields points to the moving checklist (§ 9), or to Settings →
+Profile's *I moved* when no move stands. A row of the checklist opens this letter to its organisation (`/letters?kind=address_change&to=…`).
 A letter can go out in another name (`POST /api/drafts` `sender_name`; the composer offers the answered
 letter's addressee, `DocumentDetail.addressed_to`, and starts with the profile's name): its sender block,
 signature, PDF author and Nachweis use it, and it is kept in `drafts.sent_profile` (the name only until the

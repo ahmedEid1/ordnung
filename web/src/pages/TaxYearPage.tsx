@@ -109,9 +109,9 @@ export default function TaxYearPage() {
       { replace: true, preventScrollReset: true },
     );
 
-  // on a paired phone no action at all (an empty one would still take the header's gap)
+  // on a paired phone no action at all (an empty one would still take the header's gap), nor for a year with nothing to export
   const exportAction =
-    year != null && !none && !phone ? (
+    year != null && !none && !phone && (letters.length || early.length) ? (
       <Button ref={exportButton} icon={Download} onClick={() => setExportOpen(true)} disabled={staticDemo}>
         Export these letters…
       </Button>
@@ -187,7 +187,7 @@ export default function TaxYearPage() {
           ) : null}
 
           {groups.length ? (
-            <LettersList groups={groups} parties={partyMap} open={NO_TO_DOS} note={(d) => <TaxNote doc={d} />} />
+            <LettersList groups={groups} parties={partyMap} open={NO_TO_DOS} note={(d) => <TaxNote doc={d} />} dated />
           ) : year != null ? (
             <EmptyState size="sm" illustration="search" title={`No letters for taxes dated ${year}`} description="Choose another year above." />
           ) : null}

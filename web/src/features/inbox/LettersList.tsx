@@ -46,12 +46,15 @@ export function LettersList({
   parties,
   open,
   note,
+  dated = false,
 }: {
   groups: LetterGroup[];
   parties: Map<string, Party>;
   open: Map<string, OpenSummary>;
   /** The page's own line about a letter (the Tax year page: its tax note), the last line of its row; null: none. */
   note?: (doc: Document) => ReactNode | null;
+  /** Each row shows the date on the letter (else the day it arrived): for a page that files letters by it (Tax year). */
+  dated?: boolean;
 }) {
   const tray = useTrayByDoc();
   const justRead = useOpenedTrayDocs();
@@ -95,6 +98,7 @@ export function LettersList({
                     isNew={Boolean(item) && !isReading(d) && !seen.has(d.id)}
                     scam={scams.has(d.id)}
                     note={note?.(d) ?? null}
+                    dated={dated}
                   />
                 );
               })}
@@ -167,6 +171,7 @@ function LetterRow({
   isNew,
   scam,
   note,
+  dated = false,
 }: {
   doc: Document;
   party: Party | null;
@@ -175,6 +180,7 @@ function LetterRow({
   isNew: boolean;
   scam?: boolean;
   note?: ReactNode;
+  dated?: boolean;
 }) {
   const today = useTodayISO();
   const describedBy = useId();
@@ -249,7 +255,7 @@ function LetterRow({
             {isNew ? newBadge : null}
             {status}
             {doc.kind ? <KindBadge docKind={doc.kind} /> : null}
-            {reading ? null : <ArrivalDate doc={doc} served={open?.served} className="text-sm text-muted" />}
+            {reading ? null : <ArrivalDate doc={doc} served={open?.served} dated={dated} className="text-sm text-muted" />}
             {open?.count ? <TodoCount open={open} urgent={urgent} /> : null}
           </div>
           {urgent && next && action ? (
@@ -274,7 +280,7 @@ function LetterRow({
         </div>
         <div className="hidden min-w-0 @4xl:block">{doc.kind ? <KindBadge docKind={doc.kind} /> : null}</div>
         <div className="hidden text-right text-sm text-muted @4xl:block">
-          <ArrivalDate doc={doc} served={open?.served} />
+          <ArrivalDate doc={doc} served={open?.served} dated={dated} />
         </div>
         <div className="hidden justify-end @4xl:flex">{open?.count ? <TodoCount open={open} urgent={urgent} /> : null}</div>
       </div>
@@ -284,16 +290,20 @@ function LetterRow({
 
 /**
  * When the letter arrived ("26 Sep") — the date its group is built from — with the letter's own
- * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep").
+ * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep"). `dated`: the date on the letter
+ * instead, when it has one ("Dated Thu 24 Sep · arrived Sat 26 Sep").
  */
-function ArrivalDate({ doc, served, className }: { doc: Document; served?: boolean; className?: string }) {
+function ArrivalDate({ doc, served, dated = false, className }: { doc: Document; served?: boolean; dated?: boolean; className?: string }) {
   const today = useTodayISO();
   const { date, verb, docDate } = inboxDateInfo(doc, served);
-  const tip = `${verb} ${formatDate(date, { today })}${docDate ? ` · letter dated ${formatDate(docDate, { today })}` : ""}`;
+  const own = dated ? doc.doc_date : null;
+  const tip = own
+    ? `Dated ${formatDate(own, { today })}${own !== date ? ` · ${verb.toLowerCase()} ${formatDate(date, { today })}` : ""}`
+    : `${verb} ${formatDate(date, { today })}${docDate ? ` · letter dated ${formatDate(docDate, { today })}` : ""}`;
   return (
     <span title={tip} className={cn("whitespace-nowrap", className)}>
-      <span className="sr-only">{verb} </span>
-      <DateText date={date} style="day" />
+      <span className="sr-only">{own ? "Dated" : verb} </span>
+      <DateText date={own ?? date} style="day" />
     </span>
   );
 }
