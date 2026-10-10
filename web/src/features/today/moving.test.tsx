@@ -104,10 +104,12 @@ const card = () => screen.getByRole("region", { name: "Moving checklist" });
 const checks = () => within(card()).getAllByRole("checkbox");
 
 describe("the Moving checklist card", () => {
-  it("isn't there until the person says they moved", async () => {
-    useMockApi();
+  it("isn't there until the person says they moved, and asks for nothing until then", async () => {
+    const { calls } = useMockApi();
     await renderToday();
     expect(screen.queryByRole("region", { name: "Moving checklist" })).not.toBeInTheDocument();
+    // the letters already started are read only for a card that is there
+    expect(calls.filter((c) => c.method === "GET" && c.path === "/drafts")).toEqual([]);
   });
 
   it("lists who needs the new address above the Ideas, five rows at first, and never in the Ideas", async () => {

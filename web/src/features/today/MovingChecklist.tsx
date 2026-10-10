@@ -31,6 +31,14 @@ const quiet =
  * its heading takes focus. Ordnung sends nothing.
  */
 export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
+  // the card had rows during this visit: it stays, with "everyone has it", once the last one left
+  const [hadRows, setHadRows] = useState(rows.length > 0);
+  if (rows.length > 0 && !hadRows) setHadRows(true);
+  // no move told (nearly always): nothing is asked for, not even the letters started
+  return rows.length > 0 || hadRows ? <ChecklistCard rows={rows} /> : null;
+}
+
+function ChecklistCard({ rows }: { rows: Suggestion[] }) {
   const update = useUpdateSuggestion();
   const drafts = useDrafts();
   const listId = useId();
@@ -38,21 +46,14 @@ export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
   const [expanded, setExpanded] = useState(false);
   // rows being ticked: their checkbox shows the tick until they leave (and again unticked after Undo)
   const [ticking, setTicking] = useState<ReadonlySet<string>>(() => new Set());
-  // the card had rows during this visit: it stays, with "everyone has it", once the last one left
-  const [hadRows, setHadRows] = useState(rows.length > 0);
-  if (rows.length > 0 && !hadRows) setHadRows(true);
-  // arrived by the link to the card: once it is there, the page goes to it (once per visit)
+  // arrived by the link to the card: the page goes to it, once
   const { hash } = useLocation();
   const section = useRef<HTMLElement>(null);
-  const arrived = useRef(false);
-  const shownNow = rows.length > 0 || hadRows;
   useEffect(() => {
-    if (hash !== `#${MOVING_CHECKLIST_ID}` || arrived.current || !shownNow || !section.current) return;
-    arrived.current = true;
+    if (hash !== `#${MOVING_CHECKLIST_ID}` || !section.current) return;
     section.current.scrollIntoView?.({ block: "start" });
     focusWhenReady(() => document.getElementById(TITLE_ID), 1000, { always: true });
-  }, [hash, shownNow]);
-  if (!shownNow) return null;
+  }, [hash]);
 
   const shown = expanded ? rows : rows.slice(0, MOVING_SHOWN);
   const more = rows.length - shown.length;
