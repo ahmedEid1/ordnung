@@ -381,7 +381,7 @@ jobs:
         # order: tour, pages, sweep, layout, girocode, high-stakes, add-date (the demo), then real-app
         # (e2e/real-app-*.spec.ts)
         run: cd web && npm run e2e
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: playwright-report
