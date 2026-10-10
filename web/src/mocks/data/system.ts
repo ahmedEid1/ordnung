@@ -45,7 +45,7 @@ export const PROFILE: Profile = {
   is_student_visa: true,
   onboarded: true,
   iban: "",
-  // Sam told of no move (Settings → Profile → "I moved")
+  // Sam told of no move (Settings → Profile: "I moved", or "Moved recently?")
   moved_on: null,
   old_address: "",
 };

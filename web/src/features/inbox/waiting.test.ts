@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { makeDoc } from "@/features/document/fixtures";
-import { filterCounts, filterDocuments, isHeld } from "./filters";
+import { filterCounts, filterDocuments, heldMatches, isHeld } from "./filters";
 import { emailIdOf, fileKindLabel, heldOrigin, readLabel, waitingRows } from "./waiting";
 
 const held = (id: string, created: string, extra: Parameters<typeof makeDoc>[0] = {}) =>
@@ -32,6 +32,41 @@ describe("the letters waiting from the folder", () => {
     const rows = waitingRows([answered, bill]);
     expect(rows.map((r) => [r.doc.id, r.email?.id, r.nested])).toEqual([["bill", "mail", false]]);
     expect(waitingRows([bill])[0]!.email).toBeNull(); // the e-mail isn't known here
+  });
+
+  it("while the Inbox is searched, only the ones it found are listed; an attachment found without its e-mail stands on its own", () => {
+    const rows = waitingRows([terms, read, bill, scan, mail], new Set(["bill", "scan", "read"]));
+    expect(rows.map((r) => [r.doc.id, r.email?.id ?? null, r.nested])).toEqual([
+      ["scan", null, false],
+      ["bill", "mail", false],
+    ]);
+    expect(waitingRows([terms, bill, scan, mail], new Set())).toEqual([]);
+  });
+
+  it("a found e-mail keeps its waiting attachments under it: an answer for it is for them too", () => {
+    const rows = waitingRows([terms, read, bill, scan, mail], new Set(["mail"]));
+    expect(rows.map((r) => [r.doc.id, r.email?.id ?? null, r.nested])).toEqual([
+      ["mail", null, false],
+      ["bill", "mail", true],
+      ["terms", "mail", true],
+    ]);
+  });
+
+  it("a search's waiting letters: those the live list still holds as waiting, with where the search found each", () => {
+    const answered = { ...mail, status: "processed" as const };
+    const found = heldMatches(
+      [scan, bill, read, answered],
+      [
+        { ...read, found_in: "letter" },
+        { ...mail, found_in: "letter" }, // answered since the search ran
+        { ...scan, found_in: "scanner_text" },
+        { ...bill, found_in: "letter" },
+      ],
+    );
+    expect([...found]).toEqual([
+      ["scan", "scanner_text"],
+      ["bill", "letter"],
+    ]);
   });
 
   it("are in no group, filter or count of the letters list", () => {

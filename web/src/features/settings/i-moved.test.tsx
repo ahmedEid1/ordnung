@@ -1,7 +1,9 @@
 /**
  * Settings → Profile & address → "I moved": a move is told only by the person, only next to an address they
  * changed (the first address is no move), with the day they moved in; saving lists who needs the new address on
- * Today. While a move stands, one line says so, links to the checklist and stops it (with Undo).
+ * Today. Someone who saved the new address first starts it later with "Moved recently? Start the moving
+ * checklist": the address before and the day, and the address saved stays. While a move stands, one line says so,
+ * links to the checklist and stops it (with Undo).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -44,6 +46,7 @@ async function openProfile() {
 }
 
 const moveBox = () => screen.queryByRole("checkbox", { name: /I moved — list who needs my new address/ });
+const lateMove = () => screen.queryByRole("button", { name: "Moved recently? Start the moving checklist" });
 
 describe("I moved", () => {
   it("is offered only next to a changed address that was saved before", async () => {
@@ -132,6 +135,7 @@ describe("I moved", () => {
     const { user, address } = await openProfile();
     const line = (await screen.findByText(/You moved in on Mon 21 Sep\./)).closest("p")!;
     expect(within(line).getByRole("link", { name: "Open your moving checklist" })).toHaveAttribute("href", "/#moving-checklist");
+    expect(lateMove()).not.toBeInTheDocument(); // a move stands: nothing to start
     await user.click(within(line).getByRole("button", { name: "Stop the checklist" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ moved_on: "", old_address: "" }));
     const toast = await screen.findByText("Moving checklist stopped");
@@ -161,5 +165,127 @@ describe("I moved", () => {
     srv.db.state.profile = { ...srv.db.state.profile, moved_on: "2026-01-02", old_address: OLD };
     await openProfile();
     expect(screen.queryByText(/You moved in on/)).not.toBeInTheDocument();
+  });
+});
+
+describe("Moved recently? Start the moving checklist", () => {
+  it("is offered for an address already saved, only while that field is unchanged and no move stands", async () => {
+    useMockApi();
+    const { user, address } = await openProfile();
+    expect(lateMove()).toHaveAttribute("aria-expanded", "false");
+    await user.type(screen.getByLabelText(/^Phone/), "9"); // another field: still offered
+    expect(lateMove()).toBeInTheDocument();
+    // a changed address offers "I moved" instead
+    await user.clear(address);
+    await user.type(address, NEW);
+    expect(lateMove()).not.toBeInTheDocument();
+    expect(moveBox()).toBeInTheDocument();
+    await user.clear(address);
+    await user.type(address, OLD);
+    expect(lateMove()).toBeInTheDocument();
+  });
+
+  it("is not offered before an address was ever saved", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.profile.address = "";
+    await openProfile();
+    expect(lateMove()).not.toBeInTheDocument();
+  });
+
+  it("is offered again once a move is more than six months ago", async () => {
+    const { srv } = useMockApi();
+    srv.db.state.profile = { ...srv.db.state.profile, moved_on: "2026-01-02", old_address: OLD };
+    await openProfile();
+    expect(lateMove()).toBeInTheDocument();
+  });
+
+  it("opens on the address before and the day moved in, and Cancel takes focus back to it", async () => {
+    useMockApi();
+    const { user } = await openProfile();
+    const toggle = lateMove()!;
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const before = screen.getByLabelText("Your previous address");
+    await waitFor(() => expect(before).toHaveFocus());
+    expect(before).toBeRequired();
+    expect(screen.getByText("Bürgeramt")).toHaveAttribute("lang", "de");
+    const day = screen.getByLabelText("Moved in on");
+    expect(day).toHaveValue("");
+    expect(day).toBeRequired();
+    expect(day).toHaveAttribute("min", "2026-04-01");
+    expect(day).toHaveAttribute("max", "2026-12-27");
+    expect(day).toHaveAccessibleDescription("Up to six months back, or three months ahead.");
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Your previous address")).not.toBeInTheDocument();
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await waitFor(() => expect(toggle).toHaveFocus());
+  });
+
+  it("says what is missing only once Start the checklist is pressed, and starts nothing then", async () => {
+    const { calls } = useMockApi();
+    const { user } = await openProfile();
+    await user.click(lateMove()!);
+    const before = screen.getByLabelText("Your previous address");
+    const day = screen.getByLabelText("Moved in on");
+    expect(before).not.toHaveAttribute("aria-invalid");
+    expect(day).not.toHaveAttribute("aria-invalid");
+    const start = screen.getByRole("button", { name: "Start the checklist" });
+    await user.click(start);
+    expect(before).toHaveAccessibleDescription("Enter the address you moved from.");
+    expect(day).toHaveAccessibleDescription("Enter the day you moved in.");
+    await waitFor(() => expect(before).toHaveFocus());
+    // the address saved now is not the one before: if it still is, the new one goes above, with "I moved"
+    await user.type(before, OLD);
+    expect(before).toHaveAccessibleDescription("That's the address saved above. If it's still your old one, change it to your new address and tick “I moved”.");
+    await user.clear(before);
+    await user.type(before, NEW);
+    expect(before).not.toHaveAttribute("aria-invalid");
+    await user.type(day, "2026-01-15");
+    await user.click(start);
+    expect(day).toHaveAccessibleDescription(/last six months or the next three/);
+    await waitFor(() => expect(day).toHaveFocus());
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+  });
+
+  it("sends only the day and the address before: the address saved stays, Today lists who needs it, Undo takes it back", async () => {
+    const { srv, calls } = useMockApi();
+    srv.db.state.profile.address = NEW; // saved before, with no move
+    const { user, address } = await openProfile();
+    await user.click(lateMove()!);
+    // stray spaces around the lines go, as in the address field
+    await user.type(screen.getByLabelText("Your previous address"), "  Beispielweg 5  \n  12345 Musterstadt  ");
+    await user.type(screen.getByLabelText("Moved in on"), "2026-09-21");
+    await user.click(screen.getByRole("button", { name: "Start the checklist" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PUT" && c.path === "/profile")?.body).toEqual({ moved_on: "2026-09-21", old_address: OLD }));
+    const toast = await screen.findByText("Moving checklist started");
+    expect(screen.getByText("Today lists who needs your new address.")).toBeInTheDocument();
+    // the move now stands: its line takes the offer's place, and focus goes on to the checklist's link
+    const line = (await screen.findByText(/You moved in on Mon 21 Sep\./)).closest("p")!;
+    expect(lateMove()).not.toBeInTheDocument();
+    await waitFor(() => expect(within(line).getByRole("link", { name: "Open your moving checklist" })).toHaveFocus());
+    expect(address).toHaveValue(NEW);
+    expect(srv.db.state.profile.address).toBe(NEW);
+    expect(srv.db.state.suggestions.some((s) => s.rule_id === "moved_house" && s.status === "new")).toBe(true);
+    await user.click(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(calls.filter((c) => c.method === "PUT").at(-1)?.body).toEqual({ moved_on: "", old_address: "" }));
+    expect(await screen.findByRole("button", { name: "Moved recently? Start the moving checklist" })).toBeInTheDocument();
+    expect(screen.queryByText(/You moved in on/)).not.toBeInTheDocument();
+  });
+
+  it("leaves the form's other unsaved edits as they are", async () => {
+    const { srv, calls } = useMockApi();
+    srv.db.state.profile.address = NEW;
+    const phone = srv.db.state.profile.phone;
+    const { user } = await openProfile();
+    await user.type(screen.getByLabelText(/^Phone/), "9");
+    await user.click(lateMove()!);
+    await user.type(screen.getByLabelText("Your previous address"), OLD);
+    await user.type(screen.getByLabelText("Moved in on"), "2026-09-21");
+    await user.click(screen.getByRole("button", { name: "Start the checklist" }));
+    await screen.findByText(/You moved in on Mon 21 Sep\./);
+    expect(calls.filter((c) => c.method === "PUT")).toHaveLength(1);
+    expect(screen.getByLabelText(/^Phone/)).toHaveValue(`${phone}9`);
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
   });
 });

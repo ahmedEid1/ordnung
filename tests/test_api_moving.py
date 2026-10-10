@@ -122,6 +122,31 @@ async def test_a_move_lists_who_to_tell_and_stopping_it_clears_the_list(data_dir
         assert {row["id"] for row in expired} == {row["id"] for row in listed}
 
 
+async def test_a_move_told_after_the_new_address_was_saved_keeps_that_address(data_dir: Path) -> None:
+    """Settings → Profile → *Moved recently? Start the moving checklist*: the new address was saved first (no move
+    then), and the move is told later with the address before. The address saved stays the new one."""
+    async with api_for(data_dir) as api:
+        seed_ledger(api.ctx.store)
+        assert (await api.client.put("/api/profile", json={"address": NEW_ADDRESS})).status_code == 200
+        await api.ctx.worker.ideas_settled()
+        assert _rows((await api.client.get("/api/suggestions")).json()) == []  # an address edit is no move
+
+        saved = await api.client.put(
+            "/api/profile", json={"moved_on": "2026-09-21", "old_address": OLD_ADDRESS}
+        )
+        assert saved.status_code == 200, saved.text
+        profile = saved.json()
+        assert (profile["address"], profile["moved_on"], profile["old_address"]) == (
+            NEW_ADDRESS,
+            "2026-09-21",
+            OLD_ADDRESS,
+        )
+        await api.ctx.worker.ideas_settled()
+        titles = {row["title"] for row in _rows((await api.client.get("/api/suggestions")).json())}
+        assert "Register your new address by Mon 5 Oct" in titles
+        assert "Tell FunkNetz Mobile your new address" in titles
+
+
 async def test_only_a_change_of_the_move_refreshes_the_ideas(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

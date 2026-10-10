@@ -793,7 +793,8 @@ whose adding was stopped before its attachments adds them.
   without a state whose letters' postcode suggests one, while one of their open dates may change once it is
   confirmed: *Is X in Bavaria?*, one per sender; ADR 0019), `dunning_escalation`,
   `scam_warning`, `tax_documents` (Jan–Jul; counted by the letter's date, else the day it arrived; *See the
-  documents* opens the tax year, `target_type="tax_year"`), `moved_house` (after the person ticks *I moved*:
+  documents* opens the tax year, `target_type="tax_year"`), `moved_house` (after the person says they moved —
+  *I moved* next to a changed address, or *Moved recently? Start the moving checklist* once the new one is saved:
   register within two weeks of moving in, § 17 Abs. 1 BMG, a `deadline` dated by the rules engine and never
   moved off a weekend or holiday; *Tell X your new address* for each organisation with a running contract
   or a letter of the last three years of a kind that keeps the address, never from a letter with scam signs
@@ -1145,8 +1146,9 @@ Marking sent asks for channel + date and creates a follow-up item 21 days later 
 request, which has one month from receipt).
 The composer fills an `address_change` letter's new address from the profile, as before, and, while a move
 stands (told, at most six months ago), its old address and moving day from `Profile.old_address` and
-`Profile.moved_on` (all editable); a note under the fields points to the moving checklist (§ 9), or to Settings →
-Profile's *I moved* when no move stands. A row of the checklist opens this letter to its organisation (`/letters?kind=address_change&to=…`).
+`Profile.moved_on` (all editable); a note under the fields points to the moving checklist (§ 9), or, when no move
+stands, to Settings → Profile, where the person tells Ordnung they moved (*I moved* next to a changed address, or
+*Moved recently? Start the moving checklist* once the new one is saved). A row of the checklist opens this letter to its organisation (`/letters?kind=address_change&to=…`).
 A letter can go out in another name (`POST /api/drafts` `sender_name`; the composer offers the answered
 letter's addressee, `DocumentDetail.addressed_to`, and starts with the profile's name): its sender block,
 signature, PDF author and Nachweis use it, and it is kept in `drafts.sent_profile` (the name only until the
@@ -1771,9 +1773,12 @@ Pages:
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
    **"From your folder — not read yet"**: the held letters (an e-mail's attachments under it), with
-   *Read these N* and *Keep private*; held letters are in no other group or filter. While a search lists a
-   letter only because of its scanner's text, its row (and its option in the search box) says "Found in your
-   scanner's text — not checked". The header links **Letters for taxes** (when a letter is marked for taxes,
+   *Read these N* and *Keep private*; held letters are in no other group, filter or count. While the Inbox is
+   searched, the group lists only the held letters the search found, a found e-mail with its held attachments
+   ("· 1 of 3"; its answers are for those, and a search that finds none hides it), and the list never says
+   "No letters match" while one of them does: it
+   says where they are. While a search lists a letter only because of its scanner's text, its row (in the list
+   or the group, and its option in the search box) says "Found in your scanner's text — not checked". The header links **Letters for taxes** (when a letter is marked for taxes,
    also on a phone) to the **Tax year** page (`/inbox/taxes?year=YYYY`, its parent the Inbox): a year select
    (only years with letters for taxes; January–July last year, else this year), "N letters dated Y.", that
    year's letters for taxes by the letter's date (else the day it arrived) grouped by kind, each with Claude's
@@ -1873,8 +1878,10 @@ Pages:
    The model job that suggests Ideas once a week is *Weekly Ideas* ("Privacy & AI usage" and its
    activity), so "Weekly review" names only this session.
 9. **Settings** — profile & address (with **I moved** when an address already saved is changed: the day moved
-   in, today − 180 to today + 90; while a move is stored, a line with the day, a link to the checklist and
-   *Stop the checklist* with Undo), region (affects holidays), language, reminders (lead times,
+   in, today − 180 to today + 90; with the saved address unchanged and no move standing, **Moved recently? Start
+   the moving checklist**: the address before and the day, which *Start the checklist* saves alone (the address
+   stays), with Undo; while a move is stored, a line with the day, a link to the checklist and *Stop the checklist*
+   with Undo), region (affects holidays), language, reminders (lead times,
    browser notifications, the morning desktop notification with a preview, a test and "start
    Ordnung when you log in"), AI (letters read at once, the daily note, the weekly Ideas — the model
    is one for every job, kept under Claude), privacy statement + "Privacy & AI usage" (activity, tokens,

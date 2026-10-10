@@ -260,7 +260,7 @@ export function TodayView() {
         ) : null}
       </div>
 
-      {/* after "I moved" in Settings: who needs the new address (it stays for this visit once the last row is ticked) */}
+      {/* after the person says they moved in Settings → Profile: who needs the new address (it stays for this visit once the last row is ticked) */}
       <MovingChecklist rows={derived.moving} />
 
       <div className={IDEAS}>

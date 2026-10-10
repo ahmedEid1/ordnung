@@ -6,7 +6,8 @@
  * 1280 px without sideways scrolling, long names wrap inside their cards, the answers are ≥ 24 px
  * targets that don't spill out of their buttons, and axe finds nothing serious in either theme.
  * Today says the letters wait (its card, the Inbox's count) instead of "all clear", and on a wide
- * screen a waiting letter's page has no empty band under its card. Afterwards the folder is unset
+ * screen a waiting letter's page has no empty band under its card. The Inbox's own search narrows the
+ * waiting letters too, and never says no letter matches while one of them does. Afterwards the folder is unset
  * and the waiting letters deleted, so the other specs see the demo as it was.
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
@@ -172,6 +173,38 @@ for (const width of [320, 1280]) {
     await expect(card.locator("svg.lucide-folder-input")).toHaveCount(1);
     await expect(card.locator("svg.lucide-hourglass")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /^Inbox\b.*3 not read yet$/ })).toBeVisible();
+  });
+}
+
+for (const width of [320, 1280]) {
+  test(`${width} px: the Inbox's search lists the waiting letter it finds, and never says no letter matches`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 });
+    await open(page, "/inbox", "Inbox");
+    // a word only the scan's file name has: none of the demo's letters read
+    await page.getByRole("searchbox", { name: "Search letters" }).fill("Wasserzaehler");
+    const group = page.getByRole("region", { name: "From your folder — not read yet, 1 of 3 letters" });
+    await expect(group).toBeVisible();
+    const links = group.getByRole("list", { name: "Letters not read yet" }).getByRole("link");
+    await expect(links).toHaveCount(1);
+    expect(await links.first().getAttribute("title")).toContain(SCAN);
+    // found by its own name: not marked as found in a scanner's text
+    await expect(group.getByText("Found in your scanner's text — not checked")).toHaveCount(0);
+    // the answer is for the one letter listed
+    await expect(group.getByRole("button", { name: "Read it with Claude" })).toBeVisible();
+    const empty = page.getByRole("heading", { name: "1 letter not read yet matches “Wasserzaehler”" });
+    await expect(empty).toBeVisible();
+    await expect(page.getByText(/No letters match/)).toHaveCount(0);
+    expect(await sideways(page), "the page scrolls sideways").toBe(0);
+    await expectAccessible(page, testInfo, `inbox-search-waiting-${width}`);
+    await page.getByRole("tabpanel").getByRole("button", { name: "Clear search" }).click();
+    await expect(page.getByRole("region", { name: "From your folder — not read yet, 3 letters" })).toBeVisible();
+    // a word only the e-mail has: its attachment is listed under it, since an answer for the e-mail is for both
+    await page.getByRole("searchbox", { name: "Search letters" }).fill("FunkNetz");
+    const mail = page.getByRole("region", { name: "From your folder — not read yet, 2 of 3 letters" });
+    await expect(mail).toBeVisible();
+    await expect(mail.getByRole("list", { name: "Letters not read yet" }).getByRole("link")).toHaveText([/FunkNetz Kundenservice$/, /^Rechnung_2026.09\.pdf$/]);
+    await expect(mail.getByRole("button", { name: "Read these 2 with Claude" })).toBeVisible();
+    expect(await sideways(page), "the page scrolls sideways").toBe(0);
   });
 }
 

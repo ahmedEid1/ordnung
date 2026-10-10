@@ -27,11 +27,19 @@ const oldestFirst = (a: Document, b: Document) => -newestFirst(a, b);
 /**
  * The waiting letters: the newest first, an e-mail's waiting attachments right under it (in the
  * order they came). An attachment whose e-mail doesn't wait (any more) stands on its own, still
- * naming its e-mail.
+ * naming its e-mail. `only`: just these letters (the ones a search found); an attachment found
+ * without its e-mail stands on its own too. A found e-mail keeps its waiting attachments under it:
+ * an answer for the e-mail is for them as well (the server answers for them together).
  */
-export function waitingRows(docs: readonly Document[]): WaitingRow[] {
+export function waitingRows(docs: readonly Document[], only?: Pick<ReadonlySet<string>, "has">): WaitingRow[] {
   const byId = new Map(docs.map((d) => [d.id, d]));
-  const held = docs.filter(isHeld);
+  const waiting = docs.filter(isHeld);
+  const waitingIds = new Set(waiting.map((d) => d.id));
+  const found = (d: Document) => {
+    const parent = emailIdOf(d);
+    return !only || only.has(d.id) || (parent !== null && waitingIds.has(parent) && only.has(parent));
+  };
+  const held = waiting.filter(found);
   const heldIds = new Set(held.map((d) => d.id));
   const under = new Map<string, Document[]>();
   const roots: Document[] = [];
