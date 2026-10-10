@@ -74,7 +74,7 @@ export function offersLateMove(savedAddress: string, form: Pick<ProfileForm, "ad
 export function oldAddressError(oldAddress: string, savedAddress: string): string | null {
   const old = cleanAddress(oldAddress);
   if (!old) return "Enter the address you moved from.";
-  if (old === cleanAddress(savedAddress)) return "That's the address saved now — enter the one you moved from.";
+  if (old === cleanAddress(savedAddress)) return "That's the address saved above. If it's still your old one, change it to your new address and tick “I moved”.";
   return null;
 }
 
@@ -133,17 +133,18 @@ function StartMove({
 
   return (
     <div className="-mt-2 flex flex-col gap-3 sm:col-span-2">
-      <p className="flex items-center gap-1.5 text-[13px] leading-5 text-muted">
-        <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
-        <button ref={toggleRef} type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={toggle} className={MOVE_ACTION}>
+      {/* a wrapped label stays left-aligned, its icon by the first line */}
+      <p className="flex items-start gap-1.5 text-[13px] leading-5 text-muted">
+        <MapPinHouse className="mt-[5px] size-3.5 shrink-0" aria-hidden />
+        <button ref={toggleRef} type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={toggle} className={`${MOVE_ACTION} text-left`}>
           Moved recently? Start the moving checklist
         </button>
       </p>
       {open ? (
         <div id={panelId} className="flex flex-col gap-4 rounded-xl bg-surface-2/60 px-3.5 py-3">
           <p className="text-sm leading-5 text-pretty text-muted">
-            Your address above stays as it is. Today then lists who to tell, starting with registering at the <span lang="de">Bürgeramt</span> within two
-            weeks.
+            For when your new address is saved above — it stays as it is. Today then lists who to tell, starting with registering at the{" "}
+            <span lang="de">Bürgeramt</span> within two weeks.
           </p>
           <Field label="Your previous address" hint="Street and house number, then postcode and town — one per line." error={attempted ? (addressError ?? undefined) : undefined}>
             <Textarea ref={oldRef} value={oldAddress} onChange={(e) => setOldAddress(e.target.value)} rows={3} required autoComplete="off" className="min-h-20" />

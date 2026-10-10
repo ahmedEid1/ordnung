@@ -235,9 +235,9 @@ describe("Moved recently? Start the moving checklist", () => {
     expect(before).toHaveAccessibleDescription("Enter the address you moved from.");
     expect(day).toHaveAccessibleDescription("Enter the day you moved in.");
     await waitFor(() => expect(before).toHaveFocus());
-    // the address saved now is not the one before
+    // the address saved now is not the one before: if it still is, the new one goes above, with "I moved"
     await user.type(before, OLD);
-    expect(before).toHaveAccessibleDescription("That's the address saved now — enter the one you moved from.");
+    expect(before).toHaveAccessibleDescription("That's the address saved above. If it's still your old one, change it to your new address and tick “I moved”.");
     await user.clear(before);
     await user.type(before, NEW);
     expect(before).not.toHaveAttribute("aria-invalid");
