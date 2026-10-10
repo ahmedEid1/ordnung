@@ -1,0 +1,115 @@
+{
+  "about": "Which letters an export holds (letters_zip.matches and selection.ts), and the ZIP's name. Read by tests/test_letters_zip.py and selection.test.ts. A letter not given a field has its default: status processed, source upload, direction incoming, no dates, no sender, not for taxes, not private, not in the trash.",
+  "today": "2026-10-09",
+  "docs": [
+    { "id": "doc_payslip_2025", "doc_date": "2025-08-31", "tax_relevant": true, "party_id": "pty_work" },
+    { "id": "doc_rent_2025", "doc_date": "2025-03-01", "party_id": "pty_landlord" },
+    { "id": "doc_private_2025", "doc_date": "2025-04-01", "ai_private": true, "party_id": "pty_landlord" },
+    { "id": "doc_arrived_2025", "received_date": "2025-11-20", "tax_relevant": true, "party_id": "pty_work" },
+    { "id": "doc_misread_2025", "doc_date": "2025-13-40", "received_date": "2025-12-02", "tax_relevant": true, "party_id": "pty_insurer" },
+    { "id": "doc_new_year_2026", "doc_date": "2026-01-01", "tax_relevant": true, "party_id": "pty_insurer" },
+    { "id": "doc_may_2026", "doc_date": "2026-05-31", "received_date": "2026-06-03", "tax_relevant": true, "party_id": "pty_insurer" },
+    { "id": "doc_june_2026", "doc_date": "2026-06-01", "tax_relevant": true, "party_id": "pty_insurer" },
+    { "id": "doc_invoice_2026", "doc_date": "2026-02-10", "party_id": "pty_work" },
+    { "id": "doc_undated", "tax_relevant": true },
+    { "id": "doc_held", "doc_date": "2025-05-05", "status": "held", "ai_private": true, "tax_relevant": true },
+    { "id": "doc_trashed", "doc_date": "2025-05-06", "deleted_at": "2026-01-02T10:00:00Z", "tax_relevant": true },
+    { "id": "doc_proof", "doc_date": "2025-05-07", "source": "proof", "direction": "outgoing", "ai_private": true, "tax_relevant": true },
+    { "id": "doc_sent_2025", "doc_date": "2025-06-15", "direction": "outgoing", "party_id": "pty_landlord" },
+    { "id": "doc_failed_2025", "received_date": "2025-07-01", "status": "failed" }
+  ],
+  "cases": [
+    {
+      "name": "every letter: not waiting, in the trash or a proof file; private letters too",
+      "choice": {},
+      "expected_ids": [
+        "doc_payslip_2025",
+        "doc_rent_2025",
+        "doc_private_2025",
+        "doc_arrived_2025",
+        "doc_misread_2025",
+        "doc_new_year_2026",
+        "doc_may_2026",
+        "doc_june_2026",
+        "doc_invoice_2026",
+        "doc_undated",
+        "doc_sent_2025",
+        "doc_failed_2025"
+      ],
+      "expected_name": "ordnung-letters-2026-10-09.zip"
+    },
+    {
+      "name": "one year, by the date on the letter, else the day it arrived; undated letters left out",
+      "choice": { "year": 2025 },
+      "expected_ids": [
+        "doc_payslip_2025",
+        "doc_rent_2025",
+        "doc_private_2025",
+        "doc_arrived_2025",
+        "doc_misread_2025",
+        "doc_sent_2025",
+        "doc_failed_2025"
+      ],
+      "expected_name": "ordnung-letters-2025.zip"
+    },
+    {
+      "name": "a year's letters for taxes",
+      "choice": { "year": 2025, "tax": true },
+      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025"],
+      "expected_name": "ordnung-letters-for-taxes-2025.zip"
+    },
+    {
+      "name": "and the ones for taxes dated January to May of the next year",
+      "choice": { "year": 2025, "until": "2026-05-31", "tax": true },
+      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025", "doc_new_year_2026", "doc_may_2026"],
+      "expected_name": "ordnung-letters-for-taxes-2025.zip"
+    },
+    {
+      "name": "until takes the next year's letters up to and including its day",
+      "choice": { "year": 2025, "until": "2026-01-01" },
+      "expected_ids": [
+        "doc_payslip_2025",
+        "doc_rent_2025",
+        "doc_private_2025",
+        "doc_arrived_2025",
+        "doc_misread_2025",
+        "doc_new_year_2026",
+        "doc_sent_2025",
+        "doc_failed_2025"
+      ],
+      "expected_name": "ordnung-letters-2025.zip"
+    },
+    {
+      "name": "letters for taxes of every year, undated ones too",
+      "choice": { "tax": true },
+      "expected_ids": [
+        "doc_payslip_2025",
+        "doc_arrived_2025",
+        "doc_misread_2025",
+        "doc_new_year_2026",
+        "doc_may_2026",
+        "doc_june_2026",
+        "doc_undated"
+      ],
+      "expected_name": "ordnung-letters-for-taxes-2026-10-09.zip"
+    },
+    {
+      "name": "one sender, a letter sent to them too",
+      "choice": { "party_id": "pty_landlord" },
+      "expected_ids": ["doc_rent_2025", "doc_private_2025", "doc_sent_2025"],
+      "expected_name": "ordnung-letters-2026-10-09.zip"
+    },
+    {
+      "name": "one sender in one year",
+      "choice": { "year": 2026, "party_id": "pty_insurer" },
+      "expected_ids": ["doc_new_year_2026", "doc_may_2026", "doc_june_2026"],
+      "expected_name": "ordnung-letters-2026.zip"
+    },
+    {
+      "name": "a year with no letters",
+      "choice": { "year": 2023, "tax": true },
+      "expected_ids": [],
+      "expected_name": "ordnung-letters-for-taxes-2023.zip"
+    }
+  ]
+}

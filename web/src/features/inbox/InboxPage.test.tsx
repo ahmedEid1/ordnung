@@ -81,6 +81,19 @@ describe("Inbox", () => {
     expect(within(court).queryByText(/^Arrived/)).toBeNull();
   });
 
+  it("links to the letters for taxes from its header while a letter is marked for taxes", async () => {
+    renderInbox();
+    const link = await screen.findByRole("link", { name: "Letters for taxes" });
+    expect(link).toHaveAttribute("href", "/inbox/taxes");
+  });
+
+  it("has no link to the letters for taxes when none is marked", async () => {
+    for (const d of srv.db.state.documents) d.tax_relevant = false;
+    renderInbox();
+    await screen.findByRole("link", { name: "Payslip August 2026" });
+    expect(screen.queryByRole("link", { name: "Letters for taxes" })).toBeNull();
+  });
+
   it("filters to the letters that need checking", async () => {
     renderInbox();
     await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });

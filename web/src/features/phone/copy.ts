@@ -30,6 +30,8 @@ export const PHONE_OFFLINE_DETAIL = "Showing what was last loaded. Is your compu
 
 /** A letter's page on a phone, where Delete and Download original were. */
 export const DELETE_ON_COMPUTER = "Delete or download it on your computer.";
+/** The Tax year page on a phone, where "Export these letters…" is on the computer. */
+export const EXPORT_ON_COMPUTER = "Export them on your computer.";
 /** A letter you wrote, on a phone, where Download PDF and Delete were. */
 export const PDF_ON_COMPUTER = "Download or print the PDF on your computer.";
 /** A proof of sending on a phone, where its file and the Nachweis PDF could be downloaded. */

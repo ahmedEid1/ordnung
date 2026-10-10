@@ -1,7 +1,9 @@
 /** "Explained simply" — the letter in plain words, in the person's language, with German admin terms explained on hover. */
 import { Fragment } from "react";
+import { Link } from "react-router";
 import { BookOpen, Landmark } from "lucide-react";
 import type { Document } from "@/api/types";
+import { letterYear } from "@/features/export/selection";
 import { Glossary } from "@/components/ui/Glossary";
 import { ModelText, useModelLang } from "@/components/ui/ModelText";
 import { languageCode, languageName } from "@/lib/format";
@@ -10,7 +12,7 @@ import { splitGlossary } from "./glossary-text";
 import { PanelSection } from "./PanelSection";
 
 /** Plain text with its German words marked `lang="de"` (read out as German, hyphenated by German rules). */
-function MarkedGerman({ text }: { text: string }) {
+export function MarkedGerman({ text }: { text: string }) {
   return (
     <>
       {germanRuns(text).map((part, i) =>
@@ -66,6 +68,8 @@ export function ExplainedSimply({ doc }: { doc: Document }) {
   if (!doc.explanation && !doc.tax_note) return null;
   const paragraphs = (doc.explanation ?? "").split(/\n{2,}/).filter(Boolean);
   const from = writtenFrom(doc.language);
+  // the tax year the letter is filed under (its date, else the day it arrived), as the Tax year page files it
+  const year = letterYear(doc);
   return (
     <PanelSection id="explained" title="Explained simply" icon={BookOpen}>
       <div className="card px-5 py-4 sm:px-6">
@@ -87,6 +91,14 @@ export function ExplainedSimply({ doc }: { doc: Document }) {
               <ModelText text={doc.tax_note}>
                 <GlossaryText text={doc.tax_note} inline markGerman />
               </ModelText>
+              {year != null ? (
+                <>
+                  {" "}
+                  <Link to={`/inbox/taxes?year=${year}`} className="font-medium whitespace-nowrap underline underline-offset-2 hover:no-underline">
+                    All letters for taxes from {year}
+                  </Link>
+                </>
+              ) : null}
             </span>
           </p>
         ) : null}

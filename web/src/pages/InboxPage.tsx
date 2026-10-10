@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router";
-import { FileUp, Lock, Plus } from "lucide-react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { FileUp, Landmark, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
 import { useDocuments, useItems, useParties } from "@/api/hooks";
 import { dismissJob } from "@/api/sse";
@@ -9,7 +9,7 @@ import { useTodayISO } from "@/lib/today";
 import { documentKindLabel } from "@/lib/copy";
 import { Page, PageHeader } from "@/components/shell/Page";
 import { ACCEPTED_ONE, ACCEPTED_SHORT, useAddLetters } from "@/components/shell/AddLetters";
-import { Button } from "@/components/ui/Button";
+import { Button, buttonVariants } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadError } from "@/components/ui/LoadError";
 import { LoadingLabel, SkeletonText, Skeleton } from "@/components/ui/Skeleton";
@@ -24,6 +24,7 @@ import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView } from "@
 import { useTrayByDoc } from "@/features/tour/newMail";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
+import { isTaxLetter } from "@/features/taxes/taxYear";
 import { filterCounts, filterDocuments, groupLetters, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
 
 /**
@@ -184,6 +185,15 @@ export default function InboxPage() {
       <PageHeader
         title="Inbox"
         description="Every letter you added — read, explained and filed, with the sentence behind every date."
+        actions={
+          // a read-only page, so on a phone too
+          docs.some(isTaxLetter) ? (
+            <Link to="/inbox/taxes" className={buttonVariants({ size: "sm" })}>
+              <Landmark aria-hidden />
+              Letters for taxes
+            </Link>
+          ) : null
+        }
       />
 
       <MailTray onOpened={(opened) => opened.forEach(({ docId, sender }) => fromTray.current.set(docId, sender))} focusFallback={focusLetters} />

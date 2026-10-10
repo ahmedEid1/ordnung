@@ -52,6 +52,12 @@ export const routes: RouteObject[] = [
           { index: true, lazy: page(() => import("@/pages/TodayPage")), handle: { title: "Today" } satisfies RouteHandle },
           { path: "inbox", lazy: page(() => import("@/pages/InboxPage")), handle: { title: "Inbox" } satisfies RouteHandle },
           {
+            // a year's letters for taxes (?year=2025): the tax Idea, the Inbox and a letter's tax note link here
+            path: "inbox/taxes",
+            lazy: page(() => import("@/pages/TaxYearPage")),
+            handle: { title: "Tax year", parent: { to: "/inbox", label: "Inbox" } } satisfies RouteHandle,
+          },
+          {
             path: "documents/:id",
             lazy: page(() => import("@/pages/DocumentPage")),
             handle: { title: "Letter", parent: { to: "/inbox", label: "Inbox" } } satisfies RouteHandle,
