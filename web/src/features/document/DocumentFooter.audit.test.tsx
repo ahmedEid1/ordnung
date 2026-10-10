@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
-import { DocumentFooter } from "./DocumentFooter";
+import { DocumentFooter, scanTextNote } from "./DocumentFooter";
 import { makeDetail, makeDoc } from "./fixtures";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
@@ -58,5 +58,42 @@ describe("Where the letter went (FEAT G4)", () => {
   it("says a private letter never left the computer", () => {
     renderWithProviders(<DocumentFooter detail={makeDetail({ document: makeDoc({ ai_private: true, ai_processed_at: null }) })} />);
     expect(screen.getByText("This letter never left your computer.")).toBeInTheDocument();
+  });
+});
+
+describe("A scan's scanner text (ADR 0020)", () => {
+  const WHY = "Ordnung keeps it only so search can find the letter: it isn't checked, isn't shown as the letter's words and is never sent to Claude.";
+  const scan = (pages: number, scanTextPages: number[]) =>
+    makeDetail({
+      document: makeDoc({ status: "held", ai_private: true, ai_processed_at: null, pages }),
+      scan_text_pages: scanTextPages,
+      given_to_model: false,
+    });
+
+  it("says what the text the scanner added is kept for, and that it is never checked, shown or sent", () => {
+    renderWithProviders(<DocumentFooter detail={scan(1, [1])} />);
+    const note = screen.getByText(/^Your scanner added its own text to this file\./);
+    expect(note).toHaveTextContent(`Your scanner added its own text to this file. ${WHY}`);
+    // the file travels with hand-off sync and backups: never "on this computer only"
+    expect(note.textContent).not.toMatch(/computer/);
+  });
+
+  it("names the pages when only some of them have such text", () => {
+    const { unmount } = renderWithProviders(<DocumentFooter detail={scan(3, [2])} />);
+    expect(screen.getByText(/^Your scanner added its own text to page 2 of this file\./)).toBeInTheDocument();
+    unmount();
+    renderWithProviders(<DocumentFooter detail={scan(3, [2, 3])} />);
+    expect(screen.getByText(/^Your scanner added its own text to pages 2 and 3 of this file\./)).toBeInTheDocument();
+  });
+
+  it("says nothing for a letter without it", () => {
+    renderWithProviders(<DocumentFooter detail={scan(1, [])} />);
+    expect(screen.queryByText(/scanner/)).toBeNull();
+  });
+
+  it("is the same on a phone: it names no computer", () => {
+    expect(scanTextNote(scan(2, [1, 2]))).toBe(`Your scanner added its own text to this file. ${WHY}`);
+    expect(scanTextNote(scan(4, [1, 2, 4]))).toBe(`Your scanner added its own text to pages 1, 2 and 4 of this file. ${WHY}`);
+    expect(scanTextNote(scan(1, []))).toBeNull();
   });
 });
