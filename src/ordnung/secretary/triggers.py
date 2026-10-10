@@ -1265,7 +1265,9 @@ RESIDENCE_EXTENSION_LAW = "§ 81 Abs. 4 AufenthG"
 """Applying before a residence permit expires keeps it in force until the office decides."""
 STUDENT_WORK_LAW = "§ 16b Abs. 3 AufenthG"
 """How much a student with a residence permit may work."""
-IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW)
+REGISTRATION_LAW = "§ 17 Abs. 1 BMG"
+"""Registering a new home within two weeks of moving in (the moving checklist, :mod:`ordnung.secretary.moving`)."""
+IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW, REGISTRATION_LAW)
 """The § citations Ordnung's own Ideas state outside the rules catalog: Ask's check knows them like
 the catalog's (ADR 0008), so a correct "§ 81 Abs. 4 AufenthG" is not taken for an unvouched law."""
 
@@ -2154,6 +2156,14 @@ def sender_land(ledger: Ledger) -> list[Suggestion]:
     return sender_land_ideas(ledger)
 
 
+def moved_house(ledger: Ledger) -> list[Suggestion]:
+    """After the person said they moved: who needs the new address, starting with registering it
+    (:func:`ordnung.secretary.moving.moving_ideas`, imported here because it builds on this module)."""
+    from ordnung.secretary.moving import moving_ideas
+
+    return moving_ideas(ledger)
+
+
 Trigger = Callable[[Ledger], list[Suggestion]]
 
 #: Every rule in evaluation order (the keys are the ``rule_id``s stored on the Ideas).
@@ -2168,6 +2178,7 @@ TRIGGERS: dict[str, Trigger] = {
     "proof_missing": proof_missing,
     "please_check": please_check,
     "sender_land": sender_land,
+    "moved_house": moved_house,
     "dunning_escalation": dunning_escalation,
     "scam_warning": scam_warning,
     "iban_misprint": iban_misprint,
