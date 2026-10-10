@@ -18,10 +18,13 @@ writes, sends and ticks off.
 
 ## Decision
 - **Said in Settings.** Only the person sets `Profile.moved_on`: Settings → Profile offers *I moved* when
-  they change an address that was already saved, with the day they moved in. Saving stores two keys of the
-  profile (`moved_on`, and `old_address`, the address before), which `PUT /api/profile` takes only for a
-  move in the last six months or the next three (422 otherwise). *Stop the checklist* clears both. Ordnung
-  never changes the profile, nor the address, by itself.
+  they change an address that was already saved, with the day they moved in. Someone who saved the new
+  address first, with no move standing, gets *Moved recently? Start the moving checklist* instead: they type
+  the address before and the day, and *Start the checklist* saves the move alone; the address saved stays.
+  Either way the profile keeps two keys (`moved_on`, and `old_address`, the address before), which
+  `PUT /api/profile` takes only for a move in the last six months or the next three (422 otherwise), with or
+  without a new address in the same request. *Stop the checklist* clears both. Ordnung never changes the
+  profile, nor the address, by itself.
 - **Ideas as rows.** A rule, `moved_house` (`secretary/moving.py`), turns the move and the ledger into one
   Idea per row, which Today shows as its own *Moving checklist* card:
   - register at the citizens' office within two weeks of moving in (§ 17 Abs. 1 BMG). The day comes from
@@ -52,6 +55,8 @@ writes, sends and ticks off.
 ## Rejected
 - **Inferring a move from any address edit:** a typo fix would start a checklist. Asking costs one
   checkbox.
+- **Offering the move only next to a changed address:** someone who saved the new address first, and wants
+  the checklist later, had no way to start it.
 - **To-dos per row:** they would land in Ask's ledger fingerprint, so its recordings would stop replaying,
   and a to-do has no link to an organisation.
 - **A checklist stored in the profile**, ticked through `PUT /api/profile`: a computer-only route, so a
