@@ -188,7 +188,8 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   export — and it leaves the computer only as the ZIP you save: Ordnung writes nothing for it, sends nothing
   and keeps no copy. The ZIP isn't encrypted: anyone who has it can read the letters, so keep it safe and
   share it only with people you trust, like your tax adviser. Letters you kept private are in it too;
-  letters you wrote in Ordnung aren't (download each one's PDF under Letters).
+  letters still waiting for your answer from the watched folder aren't, nor are letters you wrote in Ordnung
+  (download each one's PDF under Letters) or their proofs of sending.
 - **Nothing is sent or paid automatically** — Ordnung drafts letters and suggests actions; you send
   them yourself. A GiroCode only pre-fills your banking app; you check and confirm the transfer
   there. (Two things keep themselves current, each only after you turn it on: calendar sync updates

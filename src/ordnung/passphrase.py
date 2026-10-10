@@ -34,11 +34,12 @@ The estimate is the largest of these counts, so none adds to another:
   look like words to both counts, so their shape counts Apple's own figure,
   :data:`APPLE_PASSWORD_BITS`.
 
-What it can't see: words it doesn't know, written in leetspeak ("Fl0w3r-G@rd3n7") or with a few random
-letters added ("Andreas!88#Xy"), read as random characters; random small letters alone, which look like
-one long word, count as words; the words' count, as in 0.2.0, cuts a word in alternating case at each
-capital ("lIeBlInG" is five tokens); and now and then a password manager's password spells a pattern by chance
-and counts as words only (fewer than 1 in 100 of each generator's, ``tests/test_passphrase_strength.py``).
+What it can't see: words in leetspeak when none has five letters or more ("C4t#D0g#B1rd#Qx"), and a word
+with three random letters or more added ("Andreas!88#Xqz"), read as random characters; random small letters
+alone, which look like one long word, count as words; the words' count, as in 0.2.0, cuts a word in
+alternating case at each capital ("lIeBlInG" is five tokens); and now and then a password manager's
+password spells a pattern by chance and counts as words only (fewer than 1 in 100 of each generator's,
+``tests/test_passphrase_strength.py``).
 """
 
 from __future__ import annotations
