@@ -541,6 +541,25 @@ async function screenshots(browser) {
   await settle(page);
   await shot(page, "today");
 
+  // Today in dark and on a phone too, before a letter is read: a letter read since makes Claude's note stale,
+  // and Today then shows the note written from the to-dos instead
+  const dark = await newContext(browser, { colorScheme: "dark" });
+  const darkPage = await dark.newPage();
+  await darkPage.goto(`${BASE}/`);
+  await darkPage.evaluate(() => localStorage.setItem("ordnung.theme", "dark"));
+  await darkPage.reload();
+  await settle(darkPage);
+  await shot(darkPage, "today-dark");
+  await dark.close();
+
+  const phoneOptions = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
+  const phone = await newContext(browser, phoneOptions);
+  const phonePage = await phone.newPage();
+  await phonePage.goto(`${BASE}/`);
+  await settle(phonePage);
+  await shot(phonePage, "mobile");
+  await phone.close();
+
   const taxId = await readMail(page, FINANZAMT);
   await page.goto(`${BASE}/documents/${taxId}`);
   await settle(page);
@@ -623,23 +642,6 @@ async function screenshots(browser) {
   await settle(courtPage);
   await shot(courtPage, "court-order");
   await court.close();
-
-  const dark = await newContext(browser, { colorScheme: "dark" });
-  const darkPage = await dark.newPage();
-  await darkPage.goto(`${BASE}/`);
-  await darkPage.evaluate(() => localStorage.setItem("ordnung.theme", "dark"));
-  await darkPage.reload();
-  await settle(darkPage);
-  await shot(darkPage, "today-dark");
-  await dark.close();
-
-  const phoneOptions = { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true };
-  const phone = await newContext(browser, phoneOptions);
-  const phonePage = await phone.newPage();
-  await phonePage.goto(`${BASE}/`);
-  await settle(phonePage);
-  await shot(phonePage, "mobile");
-  await phone.close();
 
   const phoneDark = await newContext(browser, { ...phoneOptions, colorScheme: "dark" });
   const phoneDarkPage = await phoneDark.newPage();
