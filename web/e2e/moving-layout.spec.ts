@@ -3,8 +3,10 @@
  * Profile ("I moved" appears next to the changed address, with the day moved in), Today then shows the "Moving
  * checklist" card, a row is ticked off and brought back with Undo by keyboard alone (focus moving on to the next
  * row and back), axe passes on the Settings block and the card, nothing scrolls sideways, and "Stop the checklist"
- * ends it. The demo is shared state: `finally` puts the address back and leaves every row of this move expired,
- * so later specs (and the demo's recorded note) see the ledger as it was.
+ * ends it. Someone who saved the new address first starts it with "Moved recently? Start the moving checklist"
+ * (by keyboard, axe on the open block), and the address saved stays. The demo is shared state: `finally` puts the
+ * address back and leaves every row of this move expired, so later specs (and the demo's recorded note) see the
+ * ledger as it was.
  */
 import type { Page } from "@playwright/test";
 import { apiGet, apiPatch, apiSend, expect, expectAccessible, open, settle, setTour, test } from "./helpers";
@@ -26,6 +28,7 @@ interface Idea {
 const MOVED_ON = "2026-09-21";
 const NEW_ADDRESS = "Neue Allee 7\n54321 Beispielstadt";
 const REGISTER = "Register your new address by Mon 5 Oct";
+const LATE_MOVE = "Moved recently? Start the moving checklist";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -65,7 +68,9 @@ test("a move told in Settings lists who needs the new address on Today; a row is
     const address = page.getByLabel("Postal address");
     const moved = page.getByRole("checkbox", { name: /I moved — list who needs my new address/ });
     await expect(moved).toHaveCount(0);
+    await expect(page.getByRole("button", { name: LATE_MOVE })).toBeVisible();
     await address.fill(NEW_ADDRESS);
+    await expect(page.getByRole("button", { name: LATE_MOVE })).toHaveCount(0);
     await moved.check();
     await page.getByLabel("Moved in on").fill(MOVED_ON);
     await settle(page);
@@ -116,6 +121,49 @@ test("a move told in Settings lists who needs the new address on Today; a row is
     await expect.poll(async () => (await movingRows(page)).filter((r) => r.status === "new").length, { timeout: 20_000 }).toBe(0);
     await open(page, "/");
     await expect(page.getByRole("region", { name: "Moving checklist" })).toHaveCount(0);
+  } finally {
+    await putBack(page, before);
+  }
+});
+
+test("a move told after the new address was saved: Moved recently? starts the checklist by keyboard, and the address stays", async ({ page }, testInfo) => {
+  const before = await apiGet<Profile>(page, "/api/profile");
+  expect(before.moved_on, "the demo knows of no move").toBeNull();
+  expect(before.address, "the demo has an address saved").not.toBe("");
+  await page.setViewportSize({ width: 375, height: 800 });
+  try {
+    // the new address saved first, without a move
+    await apiSend(page, "PUT", "/api/profile", { address: NEW_ADDRESS });
+    await open(page, "/settings?section=profile", "Settings");
+    await expect(page.getByLabel("Postal address")).toHaveValue(NEW_ADDRESS);
+    const late = page.getByRole("button", { name: LATE_MOVE });
+    await expect(late).toHaveAttribute("aria-expanded", "false");
+    await late.focus();
+    await page.keyboard.press("Enter");
+    await expect(late).toHaveAttribute("aria-expanded", "true");
+    const previous = page.getByLabel("Your previous address");
+    await expect(previous).toBeFocused();
+    // the address before is the one the demo had, line by line
+    for (const [i, line] of before.address.split("\n").entries()) {
+      if (i) await page.keyboard.press("Enter");
+      await page.keyboard.type(line);
+    }
+    await page.keyboard.press("Tab");
+    const day = page.getByLabel("Moved in on");
+    await expect(day).toBeFocused();
+    await day.fill(MOVED_ON);
+    await settle(page);
+    await expectAccessible(page, testInfo, "settings-moved-recently");
+    await expectNoSidewaysScroll(page, "Settings with Moved recently");
+    await page.getByRole("button", { name: "Start the checklist" }).click();
+    await expect(page.getByText("Moving checklist started")).toBeVisible();
+    // the move stands: its line takes the offer's place, and focus goes on to the checklist
+    await expect(page.getByText(/You moved in on Mon 21 Sep\./)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open your moving checklist" })).toBeFocused();
+    await expect(late).toHaveCount(0);
+    const now = await apiGet<Profile>(page, "/api/profile");
+    expect([now.address, now.moved_on, now.old_address]).toEqual([NEW_ADDRESS, MOVED_ON, before.address]);
+    await expect.poll(async () => (await movingRows(page)).some((r) => r.title === REGISTER && r.status === "new"), { timeout: 20_000 }).toBe(true);
   } finally {
     await putBack(page, before);
   }

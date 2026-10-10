@@ -1,9 +1,10 @@
 """The moving checklist: who needs the new address after the person says they moved (ADR 0021).
 
 A move is said, never guessed: only the person sets ``Profile.moved_on`` ("I moved" in Settings → Profile,
-``PUT /api/profile``), and nothing here changes the profile or sends anything. :func:`moving_ideas` is the
-``moved_house`` Idea rule. While the move is at most :data:`MOVE_WINDOW_DAYS` ago (or still ahead), it turns
-the move and the ledger into one Idea per row of the checklist, which Today shows as its own card:
+or "Moved recently?" once the new address is saved; ``PUT /api/profile``), and nothing here changes the
+profile or sends anything. :func:`moving_ideas` is the ``moved_house`` Idea rule. While the move is at most
+:data:`MOVE_WINDOW_DAYS` ago (or still ahead), it turns the move and the ledger into one Idea per row of the
+checklist, which Today shows as its own card:
 
 - register the new home at the citizens' office within two weeks of moving in (§ 17 Abs. 1 BMG,
   :data:`~ordnung.secretary.triggers.REGISTRATION_LAW`). The day comes from the rules engine

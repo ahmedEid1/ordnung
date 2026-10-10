@@ -1,7 +1,8 @@
 /**
  * The moving checklist's rules on the web side (`secretary.moving` on the server): which Ideas are its rows,
  * their order, the letter a row may already have, and whether a move the person told still has its checklist.
- * A move is only ever told by the person (Settings → Profile → "I moved"); nothing here sets one.
+ * A move is only ever told by the person (Settings → Profile → "I moved", or "Moved recently?" once the new
+ * address is saved); nothing here sets one.
  */
 import { addDays, format, parseISO } from "date-fns";
 import type { Draft, Priority, Profile, Suggestion } from "@/api/types";

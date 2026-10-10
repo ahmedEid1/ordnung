@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Lock, MapPinHouse } from "lucide-react";
 import { useDashboard, useUpdateProfile } from "@/api/hooks";
 import type { Profile } from "@/api/types";
+import { Button } from "@/components/ui/Button";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
@@ -48,17 +49,131 @@ export function profileErrors(f: ProfileForm): Partial<Record<keyof ProfileForm,
 const MOVE_ACTION =
   "inline-flex min-h-6 items-center rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
 
+/** An address as it is saved: each line trimmed, no empty lines around it. */
+const cleanAddress = (address: string) => cleanProfile({ name: "", address, email: "", phone: "", iban: "" }).address;
+
 /**
  * Whether the "I moved" box is offered: the person changed an address that was already saved (the first
  * address ever entered is no move, and neither is any other field).
  */
 export function offersMove(savedAddress: string, form: Pick<ProfileForm, "address">): boolean {
-  const before = cleanProfile({ name: "", address: savedAddress, email: "", phone: "", iban: "" }).address;
-  const after = cleanProfile({ name: "", address: form.address, email: "", phone: "", iban: "" }).address;
-  return before !== "" && after !== before;
+  const before = cleanAddress(savedAddress);
+  return before !== "" && cleanAddress(form.address) !== before;
 }
 
-/** "Profile & address": the sender block of every letter, the account refunds go to, and "I moved". */
+/**
+ * Whether "Moved recently? Start the moving checklist" is offered: for someone who saved the new address first.
+ * An address is saved, the field still shows it, and no move stands.
+ */
+export function offersLateMove(savedAddress: string, form: Pick<ProfileForm, "address">, standing: boolean): boolean {
+  const saved = cleanAddress(savedAddress);
+  return !standing && saved !== "" && cleanAddress(form.address) === saved;
+}
+
+/** What is wrong with the address before the move (`null`: nothing). */
+export function oldAddressError(oldAddress: string, savedAddress: string): string | null {
+  const old = cleanAddress(oldAddress);
+  if (!old) return "Enter the address you moved from.";
+  if (old === cleanAddress(savedAddress)) return "That's the address saved now — enter the one you moved from.";
+  return null;
+}
+
+/**
+ * "Moved recently? Start the moving checklist", for someone who saved the new address first: the address before
+ * and the day moved in, then "Start the checklist". The address saved stays. Nothing starts without that click,
+ * and a mistake shows only once it was pressed.
+ */
+function StartMove({
+  savedAddress,
+  today,
+  busy,
+  onStart,
+}: {
+  savedAddress: string;
+  today: string;
+  busy: boolean;
+  /** Saves the move (rejects when the save failed: the mutation's error toast says why). */
+  onStart: (move: { moved_on: string; old_address: string }) => Promise<unknown>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [oldAddress, setOldAddress] = useState("");
+  const [movedOn, setMovedOn] = useState("");
+  const [attempted, setAttempted] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const oldRef = useRef<HTMLTextAreaElement>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
+  const panelId = useId();
+  const addressError = oldAddressError(oldAddress, savedAddress);
+  const dayError = moveDayError(movedOn, today);
+
+  const close = () => {
+    setOpen(false);
+    setOldAddress("");
+    setMovedOn("");
+    setAttempted(false);
+  };
+  const toggle = () => {
+    if (open) {
+      close();
+      return;
+    }
+    setOpen(true);
+    requestAnimationFrame(() => oldRef.current?.focus());
+  };
+  const start = () => {
+    setAttempted(true);
+    if (addressError || dayError) {
+      const first = addressError ? oldRef : dayRef;
+      requestAnimationFrame(() => first.current?.focus());
+      return;
+    }
+    // once saved the move stands, and its line takes this one's place
+    onStart({ moved_on: movedOn, old_address: cleanAddress(oldAddress) }).then(close, () => undefined);
+  };
+
+  return (
+    <div className="-mt-2 flex flex-col gap-3 sm:col-span-2">
+      <p className="flex items-center gap-1.5 text-[13px] leading-5 text-muted">
+        <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
+        <button ref={toggleRef} type="button" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={toggle} className={MOVE_ACTION}>
+          Moved recently? Start the moving checklist
+        </button>
+      </p>
+      {open ? (
+        <div id={panelId} className="flex flex-col gap-4 rounded-xl bg-surface-2/60 px-3.5 py-3">
+          <p className="text-sm leading-5 text-pretty text-muted">
+            Your address above stays as it is. Today then lists who to tell, starting with registering at the <span lang="de">Bürgeramt</span> within two
+            weeks.
+          </p>
+          <Field label="Your previous address" hint="Street and house number, then postcode and town — one per line." error={attempted ? (addressError ?? undefined) : undefined}>
+            <Textarea ref={oldRef} value={oldAddress} onChange={(e) => setOldAddress(e.target.value)} rows={3} required autoComplete="off" className="min-h-20" />
+          </Field>
+          <Field label="Moved in on" hint="Up to six months back, or three months ahead." error={attempted ? (dayError ?? undefined) : undefined} className="sm:max-w-56">
+            <Input ref={dayRef} type="date" value={movedOn} onChange={(e) => setMovedOn(e.target.value)} required {...moveDayRange(today)} />
+          </Field>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="primary" size="sm" loading={busy} onClick={start}>
+              Start the checklist
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                close();
+                toggleRef.current?.focus();
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Profile & address": the sender block of every letter, the account refunds go to, and "I moved" (or "Moved recently?"). */
 export function ProfileSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile();
   const today = useTodayISO();
@@ -118,6 +233,19 @@ export function ProfileSection({ profile }: { profile: Profile }) {
       () => undefined, // the error toast comes from the mutation's meta
     );
   };
+  // "Moved recently?": the new address was saved first, so the move goes alone (the address stays); once it
+  // stands, focus goes on to its line. Undo clears it again
+  const lateOffered = offersLateMove(profile.address, form, standing);
+  const lineRef = useRef<HTMLParagraphElement>(null);
+  const startMove = (move: { moved_on: string; old_address: string }) =>
+    update.mutateAsync(move).then(() => {
+      focusWhenReady(() => lineRef.current?.querySelector<HTMLElement>("a, button") ?? null);
+      toast({
+        title: "Moving checklist started",
+        description: "Today lists who needs your new address.",
+        undo: () => update.mutateAsync({ moved_on: "", old_address: "" }).then(() => undefined),
+      });
+    });
 
   return (
     <section aria-labelledby="set-profile">
@@ -177,7 +305,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               ) : null}
             </div>
           ) : standing && profile.moved_on ? (
-            <p className="-mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-5 text-muted sm:col-span-2">
+            <p ref={lineRef} className="-mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-5 text-muted sm:col-span-2">
               <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
               <span>{movedLine(profile.moved_on, today)}</span>
               {/* text-sized, but 24 px tall targets (WCAG 2.5.8) */}
@@ -198,6 +326,8 @@ export function ProfileSection({ profile }: { profile: Profile }) {
                 Stop the checklist
               </button>
             </p>
+          ) : lateOffered ? (
+            <StartMove savedAddress={profile.address} today={today} busy={update.isPending} onStart={startMove} />
           ) : null}
           <Field label="Email" optional error={shown("email")}>
             <Input ref={emailRef} type="email" value={form.email} onChange={set("email")} onBlur={leave("email")} autoComplete="email" />
