@@ -16,7 +16,7 @@ import pytest
 
 from fakes import use_fast_keys
 from helpers_secretary import TODAY, seed_ledger
-from ordnung import autostart, clock
+from ordnung import autostart, clock, shortcut
 from ordnung import backup as backups
 from ordnung.api.routes import backup as backup_route
 from ordnung.api.routes import reminders
@@ -50,6 +50,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: folder))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     monkeypatch.setattr(
         desktop.shutil, "which", lambda name: f"/usr/bin/{name}" if name == "notify-send" else None
     )
@@ -121,10 +122,9 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
         assert body["shortcut"] == {
             "added": False,
             "kind": "app menu entry",
-            "path": "",
+            "path": str(home / ".local" / "share" / "applications" / "ordnung.desktop"),
             "points_here": False,
-            # nothing is offered until `ordnung shortcut` is built (ordnung.shortcut)
-            "command": None,
+            "command": f"ordnung shortcut --data-dir {data_dir}",
         }
 
 
@@ -212,6 +212,32 @@ async def test_the_status_knows_whether_autostart_starts_this_folder(data_dir: P
         autostart.enable(autostart.plan(data_dir.parent / "other", env={"PATH": "/usr/bin"}, home=home))
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert body["autostart"]["enabled"] and not body["autostart"]["points_here"]
+
+
+def write_foreign_launcher(path: str) -> None:
+    Path(path).write_text("[Desktop Entry]\nName=Ordnung\n", encoding="utf-8")
+
+
+async def test_the_status_knows_whether_the_shortcut_opens_this_folder(data_dir: Path, home: Path) -> None:
+    async with api_for(data_dir) as api:
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home))
+        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+        assert body["shortcut"]["added"] and body["shortcut"]["points_here"]
+        assert body["shortcut"]["path"] == str(home / ".local" / "share" / "applications" / "ordnung.desktop")
+        shortcut.write(shortcut.plan(data_dir.parent / "other", env={"PATH": "/usr/bin"}, home=home))
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert body["shortcut"]["added"] and not body["shortcut"]["points_here"]
+        # a launcher Ordnung didn't write isn't reported as Ordnung's
+        write_foreign_launcher(body["shortcut"]["path"])
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert not body["shortcut"]["added"] and not body["shortcut"]["points_here"]
+
+
+def test_the_shortcut_command_names_a_folder_that_isnt_the_default(tmp_path: Path) -> None:
+    default = tmp_path / "ordnung"
+    assert reminders.shortcut_command(default, default=default) == "ordnung shortcut"
+    odd = tmp_path / "my letters"
+    assert reminders.shortcut_command(odd, default=default) == f"ordnung shortcut --data-dir '{odd}'"
 
 
 async def test_the_test_notification_shows_today_or_a_sample(
