@@ -73,14 +73,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   or the next three, ends six months after the move, and *Stop the checklist* ends it at once. Nothing is
   sent for you, and no row names an address
   ([ADR 0021](docs/decisions/0021-a-move-is-said-never-guessed.md)).
-- **Open Ordnung from your app menu.** `ordnung shortcut` adds Ordnung to your app menu on Linux, to your
-  Applications folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on Windows. Opening
-  it signs your browser in. When Ordnung isn't running, it starts in a window of its own, and closing that
-  window stops it. Ordnung is never started without a window you can see. When it already runs (for
-  example from start at login), only the browser opens. `ordnung shortcut` prints what it writes before
+- **Open Ordnung from your app menu.** `ordnung shortcut` adds Ordnung to your app menu on Linux, to the
+  Applications folder in your home folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on
+  Windows. Opening it signs your browser in. When Ordnung isn't running, it starts in a window of its own, and
+  closing that window stops it. Ordnung is never started without a window you can see. When it already runs
+  (for example from start at login), only the browser opens. `ordnung shortcut` prints what it writes before
   writing, needs no admin rights and never replaces or removes a file it didn't write; `--dry-run` only
-  prints, and `ordnung shortcut --remove` takes it out again. Settings → Reminders shows whether it is
-  there, and for which data folder. The demo isn't added: it opens with `ordnung demo`.
+  prints, and `ordnung shortcut --remove` takes it out again. Settings → Reminders shows whether it is there,
+  and for which data folder. It also says when the command has to run again (Ordnung was installed somewhere
+  else), and when a launcher Ordnung didn't write is in the way. The demo isn't added: it opens with
+  `ordnung demo`.
 - **Releases.** A version tag builds the wheel and the source package, checks them, and publishes a GitHub
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
@@ -111,8 +113,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 - The sign-in page and the *isn't running* screen say to open Ordnung from your apps if you added it there
   with `ordnung shortcut`, before the commands that start it.
-- `ordnung serve` in a terminal suggests `ordnung shortcut` while Ordnung isn't in your app menu, and
-  `ordnung autostart enable` says you can open the app from there too.
+- `ordnung serve` in a terminal suggests `ordnung shortcut` for its data folder while Ordnung isn't in your
+  app menu, and `ordnung autostart enable` says you can open the app from there too.
 
 ### Fixed
 
@@ -140,6 +142,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - When the weekly review can't write Ideas (Claude didn't answer, or its limit is reached), Settings → Privacy
   & AI usage says so and that Ordnung tries again tomorrow; before, only Ordnung's log did.
 - The app no longer has a design-system page at `/dev/ui`; it stays in the demos and in development.
+- Closing the terminal window that runs `ordnung serve` (on Windows, its console window) stops Ordnung as
+  Ctrl+C does: hand-off sync saves your last changes and hands over, and the sign-in page and `server.json`
+  are removed. Before, Ordnung ended at once, and your other computer saw this one as still using it.
 - macOS: backups, and the copies hand-off sync keeps, are flushed to the disk itself before Ordnung goes on,
   as its other files are; before, they could still sit in the drive's cache.
 - A big library stays quick: the weekly review, and the Ideas worked out again after each letter is read,

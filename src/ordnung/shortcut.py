@@ -59,6 +59,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
+from xml.parsers.expat import ExpatError
 
 from ordnung import autostart
 from ordnung.config import web_dist_dir
@@ -72,6 +73,8 @@ System = autostart.System
 WriteStatus = autostart.WriteStatus
 
 MARK = "Written by `ordnung shortcut`; `ordnung shortcut --remove` removes it."
+#: the command that writes the launcher (:func:`command` adds the data folder)
+COMMAND = "ordnung shortcut"
 DESKTOP_FILE = "ordnung.desktop"
 BUNDLE = "Ordnung.app"
 LNK = "Ordnung.lnk"
@@ -665,6 +668,12 @@ def location(
     return plan(Path("/"), platform=platform, env=place, home=home, python="python")
 
 
+def command(data_dir: Path, *, default: Path | None = None) -> str:
+    """``ordnung shortcut`` for ``data_dir`` (``--data-dir`` unless it is the default folder): what Settings
+    and the CLI's hints offer."""
+    return autostart.folder_command(COMMAND, data_dir, default=default)
+
+
 def _read_bytes(path: Path) -> bytes:
     if path.stat().st_size > _MAX_READ:
         raise ValueError(f"{path} is too big to be a launcher Ordnung wrote")
@@ -687,8 +696,8 @@ def _inspect(sc: Shortcut) -> tuple[Owner, list[str] | None]:
         if not sc.path.is_file():
             return "other", None
         return _desktop_argv(sc.path) if sc.system == "linux" else _link_argv(sc.path)
-    except (OSError, UnicodeDecodeError, ValueError, plistlib.InvalidFileException):
-        return "other", None
+    except (OSError, UnicodeDecodeError, ValueError, plistlib.InvalidFileException, ExpatError):
+        return "other", None  # a property list cut short (XML) raises ExpatError
 
 
 def _marked_icon(path: Path) -> bool:
@@ -708,9 +717,10 @@ def _outside(sc: Shortcut, file: File) -> bool:
     return file.path != sc.path and sc.path not in file.path.parents
 
 
-def write(sc: Shortcut) -> WriteStatus:
-    """Write ``sc``'s files (icons drawn here); an identical launcher is left as it is. Raises
-    :class:`ShortcutError` for a launcher at that place that ``ordnung shortcut`` didn't write."""
+def check(sc: Shortcut) -> Owner:
+    """Whose launcher is at ``sc``'s place, after the checks :func:`write` starts with (a dry run makes them
+    too, so it refuses what the real run would). Raises :class:`ShortcutError` for a launcher there, or a
+    file of it outside its place (the Windows icon), that ``ordnung shortcut`` didn't write."""
     owner, _argv = _inspect(sc)
     if owner == "other":
         raise _not_ours(sc.path)
@@ -718,6 +728,13 @@ def write(sc: Shortcut) -> WriteStatus:
         there = file.path.is_symlink() or file.path.exists()
         if there and _outside(sc, file) and not _marked_icon(file.path):
             raise _not_ours(file.path)
+    return owner
+
+
+def write(sc: Shortcut) -> WriteStatus:
+    """Write ``sc``'s files (icons drawn here); an identical launcher is left as it is. Raises
+    :class:`ShortcutError` for a launcher at that place that ``ordnung shortcut`` didn't write."""
+    owner = check(sc)
 
     def same(file: File) -> bool:
         if file.content is None:  # an icon: only that it is there
@@ -739,22 +756,26 @@ def write(sc: Shortcut) -> WriteStatus:
 
 
 def removable(sc: Shortcut) -> list[Path]:
-    """The files :func:`remove` would delete at ``sc``'s place (none when there is no launcher).
-    Raises :class:`ShortcutError` when the launcher there isn't ours."""
+    """The files :func:`remove` would delete at ``sc``'s place: the launcher's own, and an icon Ordnung drew
+    outside it (Windows) even when the launcher itself was deleted by hand. Raises :class:`ShortcutError`
+    when the launcher there isn't ours."""
     owner, _argv = _inspect(sc)
-    if owner == "none":
-        return []
     if owner == "other":
         raise _not_ours(sc.path)
-    going = []
+    outside = [
+        file.path
+        for file in sc.files
+        if _outside(sc, file) and file.path.is_file() and _marked_icon(file.path)
+    ]
+    if owner == "none":
+        return outside
     # the mark last: a launcher that is half removed is still known as Ordnung's own
-    for file in reversed(sc.files):
-        if file.path.is_symlink() or not file.path.is_file():
-            continue
-        if _outside(sc, file) and not _marked_icon(file.path):
-            continue
-        going.append(file.path)
-    return going
+    inside = [
+        file.path
+        for file in reversed(sc.files)
+        if not _outside(sc, file) and not file.path.is_symlink() and file.path.is_file()
+    ]
+    return outside + inside
 
 
 def remove(sc: Shortcut) -> list[Path]:

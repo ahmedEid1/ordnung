@@ -696,7 +696,15 @@ describe("mock reminders outside the browser", () => {
   it("has Ordnung in no app menu, and offers `ordnung shortcut` only with your own letters", async () => {
     const s = srv();
     const demo = await get<DesktopReminders>(s, "/reminders/desktop");
-    expect(demo.shortcut).toEqual({ added: false, kind: "app menu entry", path: "/home/sam/.local/share/applications/ordnung.desktop", points_here: false, command: null });
+    expect(demo.shortcut).toEqual({
+      added: false,
+      kind: "app menu entry",
+      path: "/home/sam/.local/share/applications/ordnung.desktop",
+      points_here: false,
+      current: false,
+      foreign: false,
+      command: null,
+    });
     s.db.state.health.demo = false;
     const own = await get<DesktopReminders>(s, "/reminders/desktop");
     expect(own.shortcut).toEqual({ ...demo.shortcut, command: "ordnung shortcut" });

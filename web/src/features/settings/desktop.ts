@@ -97,12 +97,24 @@ export const MENU_NAME: Record<DesktopReminders["system"], string> = {
   windows: "Start menu",
 };
 
-/** The app-menu shortcut, in words for the badge (a launcher Ordnung didn't write counts as not added). */
+/**
+ * The app-menu shortcut, in words for the badge. A launcher Ordnung didn't write counts as not added, with a
+ * warning: it is in the way of `ordnung shortcut`. One that runs another installation of Ordnung (maybe gone)
+ * needs updating.
+ */
 export function shortcutLabel(status: DesktopReminders["shortcut"] | undefined): { text: string; tone: "ok" | "warn" | "neutral" } {
-  if (!status?.added) return { text: "Not added", tone: "neutral" };
+  if (!status?.added) return { text: "Not added", tone: status?.foreign ? "warn" : "neutral" };
   if (!status.points_here) return { text: "Opens another folder", tone: "warn" };
+  if (!status.current) return { text: "Needs updating", tone: "warn" };
   return { text: "Added", tone: "ok" };
 }
+
+/** After "Ordnung is in your Applications folder": macOS has two, and Finder's sidebar shows the other one. */
+export const MENU_PLACE_NOTE: Record<DesktopReminders["system"], string> = {
+  linux: "",
+  macos: " (the one in your home folder; Launchpad and Spotlight find it)",
+  windows: "",
+};
 
 /** A launcher's kind after "Set up as": "an app menu entry", "a Start menu shortcut". */
 export function withArticle(kind: string): string {

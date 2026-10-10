@@ -124,6 +124,8 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
             "kind": "app menu entry",
             "path": str(home / ".local" / "share" / "applications" / "ordnung.desktop"),
             "points_here": False,
+            "current": False,
+            "foreign": False,
             "command": f"ordnung shortcut --data-dir {data_dir}",
         }
 
@@ -222,15 +224,54 @@ async def test_the_status_knows_whether_the_shortcut_opens_this_folder(data_dir:
     async with api_for(data_dir) as api:
         shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home))
         body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
-        assert body["shortcut"]["added"] and body["shortcut"]["points_here"]
+        assert body["shortcut"]["added"] and body["shortcut"]["points_here"] and body["shortcut"]["current"]
+        assert not body["shortcut"]["foreign"]
         assert body["shortcut"]["path"] == str(home / ".local" / "share" / "applications" / "ordnung.desktop")
         shortcut.write(shortcut.plan(data_dir.parent / "other", env={"PATH": "/usr/bin"}, home=home))
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert body["shortcut"]["added"] and not body["shortcut"]["points_here"]
-        # a launcher Ordnung didn't write isn't reported as Ordnung's
+        # a launcher Ordnung didn't write isn't reported as Ordnung's, but as one in the way
         write_foreign_launcher(body["shortcut"]["path"])
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert not body["shortcut"]["added"] and not body["shortcut"]["points_here"]
+        assert body["shortcut"]["foreign"] and not body["shortcut"]["current"]
+
+
+async def test_a_launcher_that_runs_another_installation_is_not_current(data_dir: Path, home: Path) -> None:
+    """Ordnung reinstalled elsewhere and the old Python gone: the launcher opens nothing, and Settings says to
+    run the command again."""
+    gone = str(home / "old-venv" / "bin" / "python")
+    async with api_for(data_dir) as api:
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home, python=gone))
+        found = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()[
+            "shortcut"
+        ]
+        assert found["added"] and found["points_here"] and not found["current"] and not found["foreign"]
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home))
+        found = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()[
+            "shortcut"
+        ]
+        assert found["current"]
+
+
+async def test_a_launcher_that_can_t_be_read_never_fails_the_status(
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+    info = home / "Applications" / "Ordnung.app" / "Contents" / "Info.plist"
+    info.parent.mkdir(parents=True)
+    info.write_bytes(b"<?xml version='1.0'?><plist version='1.0'><dict><key>CFBundleName</key>")  # cut short
+    async with api_for(data_dir) as api:
+        answer = await api.client.get("/api/reminders/desktop", params={"preview": "false"})
+        assert answer.status_code == 200 and answer.json()["shortcut"]["foreign"]
+
+        def unreadable(*_args: Any, **_kwargs: Any) -> Any:
+            raise RuntimeError("no home folder")
+
+        monkeypatch.setattr(shortcut, "state", unreadable)
+        answer = await api.client.get("/api/reminders/desktop", params={"preview": "false"})
+        assert answer.status_code == 200 and not answer.json()["shortcut"]["added"]
+        assert answer.json()["autostart"]["command"]  # the rest of the status is all there
 
 
 def test_the_shortcut_command_names_a_folder_that_isnt_the_default(tmp_path: Path) -> None:

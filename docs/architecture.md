@@ -391,7 +391,8 @@ flowchart LR
   byte by byte in the shell link format, without any Windows API. The launcher runs `serve
   --from-shortcut`, which never starts Ordnung unseen: it opens a running Ordnung in the browser, or starts
   it in a terminal window that is Ordnung (closing it stops Ordnung), or exits with 3 when there is no
-  window. `state` reads the launcher back (which folder it opens) for Settings, without drawing an icon.
+  window. `state` reads the launcher back (which folder it opens, whether it runs this installation, and
+  whether it is Ordnung's own) for Settings, without drawing an icon.
 - **Calendar sync** (`calendar/caldav.py`, opt-in) puts the calendar file's events into the
   person's own CalDAV calendar — discreet by default — and keeps them current from the same tick:
   it remembers a digest per event it sent, so an unchanged ledger sends nothing (and reads no

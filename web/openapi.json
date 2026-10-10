@@ -16111,6 +16111,18 @@
             "title": "Points Here",
             "description": "The launcher opens this data folder"
           },
+          "current": {
+            "type": "boolean",
+            "title": "Current",
+            "description": "It runs this installation of Ordnung and has all its files (false: run the command again)",
+            "default": false
+          },
+          "foreign": {
+            "type": "boolean",
+            "title": "Foreign",
+            "description": "A launcher that ordnung shortcut didn't write is at its place: move it away first",
+            "default": false
+          },
           "command": {
             "anyOf": [
               {
@@ -16131,6 +16143,8 @@
           "kind",
           "path",
           "points_here",
+          "current",
+          "foreign",
           "command"
         ],
         "title": "ShortcutInfo",

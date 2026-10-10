@@ -53,6 +53,8 @@ function desktopStatus(overrides = {}) {
       kind: "app menu entry",
       path: "/home/sam/.local/share/applications/ordnung.desktop",
       points_here: false,
+      current: false,
+      foreign: false,
       command: "ordnung shortcut --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
     },
     ...overrides,
@@ -216,6 +218,8 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
             kind: "Start menu shortcut",
             path: "C:\\Users\\samantha-rivera-musterfrau\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Ordnung.lnk",
             points_here: true,
+            current: true,
+            foreign: false,
             command: "ordnung shortcut",
           },
         }),
@@ -227,6 +231,20 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
     how: "open Settings → Reminders with the app-menu shortcut set up for another data folder (answered by the audit)",
     description: "The app-menu shortcut opens another folder: the warning badge, what to do and the command.",
     run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, added: true, points_here: false } })),
+  });
+  add({
+    id: "reminders-desktop-shortcut-stale",
+    route: REMINDERS,
+    how: "open Settings → Reminders with the app-menu shortcut running another installation of Ordnung (answered by the audit)",
+    description: "The app-menu shortcut needs updating: the warning badge, what to do and the command.",
+    run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, added: true, points_here: true, current: false } })),
+  });
+  add({
+    id: "reminders-desktop-shortcut-foreign",
+    route: REMINDERS,
+    how: "open Settings → Reminders with an app-menu entry in place that `ordnung shortcut` didn't write (answered by the audit)",
+    description: "A launcher Ordnung didn't write is in the way: the warning, its path (it wraps) and the command for afterwards.",
+    run: (c) => openDesktop(c, desktopStatus({ shortcut: { ...desktopStatus().shortcut, foreign: true } })),
   });
   add({
     id: "reminders-desktop-test-toast",

@@ -21,6 +21,7 @@ import {
   failureDetail,
   failureLine,
   MENU_NAME,
+  MENU_PLACE_NOTE,
   MODE_HINTS,
   NOTHING_APPEARED,
   previewFor,
@@ -151,7 +152,7 @@ function OpenFromMenu({ status }: { status: DesktopReminders | undefined }) {
           The demo opens with <code className={code}>ordnung demo</code>. With your own letters, <code className={code}>ordnung shortcut</code> puts Ordnung
           in your {menu}.
         </p>
-      ) : info.added && info.points_here ? (
+      ) : info.added && info.points_here && info.current ? (
         <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-muted">
           <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
           <span className="min-w-0">
@@ -166,15 +167,36 @@ function OpenFromMenu({ status }: { status: DesktopReminders | undefined }) {
         <>
           <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-warn-ink">
             <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>It opens another data folder. Run the command again to open this one instead.</span>
+            <span>
+              {info.points_here
+                ? // it runs another installation of Ordnung (maybe gone), or a file of it is missing
+                  "It runs another installation of Ordnung, or a file of it is missing. Run the command again to bring it up to date."
+                : "It opens another data folder. Run the command again to open this one instead."}
+            </span>
+          </p>
+          {copy(info.command)}
+        </>
+      ) : info.foreign ? (
+        // `ordnung shortcut` never replaces a launcher it didn't write: it has to go first
+        <>
+          <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-warn-ink">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span className="min-w-0">
+              There is already an Ordnung entry in your {menu} that <code className={code}>ordnung shortcut</code> didn't write:{" "}
+              <span className={cn(code, "[overflow-wrap:anywhere]")}>
+                <BreakablePath path={info.path} />
+              </span>
+              . Move it away or delete it, then run this:
+            </span>
           </p>
           {copy(info.command)}
         </>
       ) : (
         <>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
-            Run this once in a terminal and Ordnung is in your {menu}. Opening it signs your browser in — no terminal needed after that. When Ordnung
-            isn't running, it starts in a window of its own; closing that window stops it.
+            Run this once in a terminal and Ordnung is in your {menu}
+            {MENU_PLACE_NOTE[status.system]}. Opening it signs your browser in — no terminal needed after that. When Ordnung isn't running, it
+            starts in a window of its own; closing that window stops it.
           </p>
           {copy(info.command)}
         </>

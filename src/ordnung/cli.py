@@ -471,9 +471,16 @@ def _open_browser_when_ready(folder: Path, info: ServerInfo) -> None:
     threading.Thread(target=wait_and_open, name="ordnung-open-browser", daemon=True).start()
 
 
+#: what stops ``serve`` as Ctrl+C does: ``kill``, and a terminal window that closes (POSIX's hang-up)
+STOP_SIGNALS = tuple(getattr(signal, name) for name in ("SIGTERM", "SIGHUP") if hasattr(signal, name))
+#: ``serve``'s exit code after its window closed: 128 + SIGHUP, as a shell reports a hang-up
+HANG_UP_EXIT = 129
+
+
 @contextlib.contextmanager
-def _graceful_sigterm() -> Iterator[None]:
-    """Let SIGTERM raise ``SystemExit`` so cleanup runs (uvicorn re-raises the signal after shutdown)."""
+def _graceful_stop() -> Iterator[None]:
+    """Let SIGTERM and SIGHUP raise ``SystemExit`` so cleanup runs (uvicorn re-raises SIGTERM after its
+    shutdown; :func:`_run_server` turns a hang-up into a shutdown first)."""
     if threading.current_thread() is not threading.main_thread():
         yield
         return
@@ -481,11 +488,107 @@ def _graceful_sigterm() -> Iterator[None]:
     def stop(signum: int, _frame: object) -> None:
         raise SystemExit(128 + signum)
 
-    previous = signal.signal(signal.SIGTERM, stop)
+    previous = {signum: signal.signal(signum, stop) for signum in STOP_SIGNALS}
     try:
         yield
     finally:
-        signal.signal(signal.SIGTERM, previous)
+        for signum, handler in previous.items():
+            signal.signal(signum, handler)
+
+
+#: Windows' console events after which it ends the process once the handlers return, or after about 5 s: the
+#: window closed, logging off, shutting down (Ctrl+C and Ctrl+Break, 0 and 1, are Python's own signals)
+CONSOLE_CLOSE_EVENTS = (2, 5, 6)
+#: how long the handler holds Windows off while the server shuts down and ``serve`` cleans up
+CLOSE_GRACE_S = 4.0
+ConsoleHandler = Callable[[int], bool]
+
+
+def _windows_console_handlers() -> Callable[[ConsoleHandler, bool], bool] | None:
+    """Adds (``True``) or takes away a console control handler (``SetConsoleCtrlHandler``), saying whether
+    Windows took it; ``None`` outside Windows."""
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handler_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+        kept: dict[ConsoleHandler, Any] = {}
+
+        def register(handler: ConsoleHandler, add: bool) -> bool:
+            # the C callback must live as long as it is registered
+            callback = kept.setdefault(handler, handler_type(handler)) if add else kept.pop(handler)
+            return bool(kernel32.SetConsoleCtrlHandler(callback, add))
+
+        return register
+    return None
+
+
+@contextlib.contextmanager
+def _stop_on_console_close(
+    server: Any,
+    hung_up: list[int],
+    *,
+    register: Callable[[ConsoleHandler, bool], bool] | None = None,
+) -> Iterator[None]:
+    """Windows: closing the console window stops ``server`` as Ctrl+C does. Windows sends no signal, only
+    CTRL_CLOSE_EVENT to the console's handlers, and ends the process once they return: the handler asks the
+    server to stop, then holds on for up to :data:`CLOSE_GRACE_S` while it shuts down and ``serve`` cleans
+    up (the process ends sooner once that is done). ``register``: the system's own when ``None``; a handler
+    Windows doesn't take changes nothing else."""
+    register = register or _windows_console_handlers()
+
+    def handler(event: int) -> bool:
+        if event not in CONSOLE_CLOSE_EVENTS:
+            return False
+        hung_up.append(event)
+        server.should_exit = True
+        time.sleep(CLOSE_GRACE_S)
+        return True
+
+    if register is None or not register(handler, True):
+        yield
+        return
+    try:
+        yield
+    finally:
+        register(handler, False)
+
+
+def _run_server(server: Any) -> None:
+    """Run uvicorn's ``server`` until it stops.
+
+    * Closing the terminal window (SIGHUP, which uvicorn doesn't handle; on Windows the console's
+      CTRL_CLOSE_EVENT, :func:`_stop_on_console_close`) stops it as Ctrl+C does: the app's shutdown runs
+      (sync's last save, this computer marked as no longer using Ordnung), then ``serve`` ends with
+      :data:`HANG_UP_EXIT` and its clean-up takes away ``server.json`` and the sign-in page.
+    * A failed startup (the app's, or the port taken after the check) ends uvicorn with exit code 3, which
+      is the launcher's "no window" (:data:`ordnung.shortcut.NO_WINDOW_EXIT`): it becomes a failure of
+      ``serve``'s own, code 1, so the launcher's window waits for Enter."""
+    from uvicorn.config import STARTUP_FAILURE
+
+    hang_up: int | None = getattr(signal, "SIGHUP", None)  # none on Windows
+    hung_up: list[int] = []
+    previous: Any = None
+    if hang_up is not None and threading.current_thread() is threading.main_thread():
+
+        def stop(signum: int, _frame: object) -> None:
+            hung_up.append(signum)
+            server.should_exit = True
+
+        previous = signal.signal(hang_up, stop)
+    try:
+        with _stop_on_console_close(server, hung_up):
+            server.run()
+    except SystemExit as exc:
+        if server.started or exc.code != STARTUP_FAILURE:
+            raise
+        raise _fail("Ordnung couldn't start.", hint="The lines above say why.") from None
+    finally:
+        if hang_up is not None and previous is not None:
+            signal.signal(hang_up, previous)
+    if hung_up:
+        raise SystemExit(HANG_UP_EXIT)
 
 
 def _create_app(context: AppContext, *, token: str | None, demo: bool) -> Any:
@@ -531,9 +634,15 @@ def _announce(info: ServerInfo, *, demo: bool, data_dir: Path, from_shortcut: bo
     ]
     if demo:
         lines.insert(1, "[dim]Sample life of Sam Rivera · recorded answers · zero tokens[/]")
-    elif not from_shortcut and _shortcut_missing():
-        lines.append("[dim]Open it without a terminal next time: ordnung shortcut[/]")
     console.print(Panel("\n".join(lines), title=title, expand=False))
+    if not demo and not from_shortcut and _shortcut_missing():
+        from ordnung import shortcut
+
+        # for this data folder, as Settings offers it; below the panel, on one line, so it copies whole
+        console.print(
+            f"[dim]Open it without a terminal next time: {escape(shortcut.command(data_dir))}[/]",
+            soft_wrap=True,
+        )
 
 
 def _wait_for_server(folder: Path) -> ServerInfo | None:
@@ -616,13 +725,18 @@ def _serve(
         console.print("Ordnung has just started for this folder: opened it in your browser.")
         launch_browser(folder, starting)
         return
-    with lock, _graceful_sigterm():
+    with lock, _graceful_stop():
         if prepare is not None:
             prepare()
         if not _port_free(host, port):
-            raise _fail(
-                f"Port {port} is already in use.", hint=f"Choose another one, e.g. --port {port + 1}."
+            # opened from the launcher, nobody typed a command to add --port to
+            hint = (
+                "Something else uses it, maybe another Ordnung such as `ordnung demo`: stop it and open "
+                f"Ordnung again, or give the shortcut another port once: ordnung shortcut --port {port + 1}"
+                if from_shortcut
+                else f"Choose another one, e.g. --port {port + 1}."
             )
+            raise _fail(f"Port {port} is already in use.", hint=hint)
         context = build_context(folder, backend=backend)
         token = generate_token() if token_on else None
         try:
@@ -642,7 +756,7 @@ def _serve(
                 # the plain asyncio loop: uvloop runs Python in the child it forks to start `claude`,
                 # where the store's thread cleanup could deadlock (see ordnung.db.store)
                 config = uvicorn.Config(asgi, host=host, port=port, log_level="warning", loop="asyncio")
-                uvicorn.Server(config).run()
+                _run_server(uvicorn.Server(config))
         finally:
             context.close()
             (folder / LOGIN_PAGE_NAME).unlink(missing_ok=True)
@@ -1685,9 +1799,12 @@ def autostart_enable(
     }
     console.print(f"[green]✓[/] {done[status]} Ordnung starts at your next login.")
     console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
+    # both for this data folder, as Settings offers them
+    serve_command = autostart.folder_command("ordnung serve", folder)
     console.print(
-        f"  Open the app any time from {shortcut.WHERE[entry.system]} (ordnung shortcut adds it) or with: "
-        "ordnung serve"
+        f"  Open the app any time from {shortcut.WHERE[entry.system]} ({escape(shortcut.command(folder))} "
+        f"adds it) or with: {escape(serve_command)}",
+        soft_wrap=True,
     )
     console.print("  Undo with: ordnung autostart disable")
     if _desktop_notifications(folder) == "off":
@@ -1769,11 +1886,18 @@ def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None
 
 #: how ``ordnung shortcut`` introduces the launcher, and where to find it once it is added
 SHORTCUT_AS = {"linux": "from this file", "macos": "as this app", "windows": "as this shortcut"}
+#: where to find the launcher once it is added (a Mac has two Applications folders: Finder's sidebar shows
+#: the other one)
 SHORTCUT_FIND = {
-    "linux": "",
-    "macos": " Find it in Launchpad or Spotlight, or drag it to the Dock.",
-    "windows": " Right-click it there to pin it to the taskbar.",
+    "linux": "Look for “Ordnung” in your app menu.",
+    "macos": (
+        "Find “Ordnung” with Launchpad or Spotlight, or in the Applications folder of your home folder; drag it "
+        "to the Dock to keep it there."
+    ),
+    "windows": "Look for “Ordnung” in your Start menu. Right-click it there to pin it to the taskbar.",
 }
+#: after "… wasn't written by `ordnung shortcut`, so it was left as it is."
+SHORTCUT_NOT_OURS = "Move it away or delete it yourself, then run `ordnung shortcut` again."
 
 
 @app.command()
@@ -1806,6 +1930,10 @@ def shortcut(
             planned = launcher.plan(folder, port=port)
         except launcher.ShortcutError as exc:
             raise _fail(str(exc), soft_wrap=True) from None
+        try:
+            launcher.check(planned)  # before anything is shown: a dry run refuses what the real run would
+        except launcher.ShortcutError as exc:
+            raise _fail(str(exc), hint=SHORTCUT_NOT_OURS, soft_wrap=True) from None
         where = launcher.WHERE[planned.system]
         console.print(
             f"Ordnung for [bold]{escape(str(folder))}[/] goes into {where}, {SHORTCUT_AS[planned.system]}:",
@@ -1827,9 +1955,9 @@ def shortcut(
         try:
             status = launcher.write(planned)
         except launcher.ShortcutError as exc:
-            raise _fail(str(exc), soft_wrap=True) from None
+            raise _fail(str(exc), hint=SHORTCUT_NOT_OURS, soft_wrap=True) from None
     done = {
-        "added": f"Added. Look for “Ordnung” in {where}.{SHORTCUT_FIND[planned.system]}",
+        "added": f"Added. {SHORTCUT_FIND[planned.system]}",
         "updated": "Updated the earlier shortcut.",
         "unchanged": f"Already in {where} like this.",
     }
@@ -1851,7 +1979,11 @@ def _remove_shortcut(*, dry_run: bool) -> None:
     try:
         going = launcher.removable(found)
     except launcher.ShortcutError as exc:
-        raise _fail(str(exc), soft_wrap=True) from None
+        raise _fail(
+            str(exc),
+            hint="It isn't Ordnung's to remove: remove it yourself if you don't want it.",
+            soft_wrap=True,
+        ) from None
     if not going:
         console.print(f"Ordnung isn't in {where}: there is no {escape(str(found.path))}.", soft_wrap=True)
         return
@@ -1869,7 +2001,7 @@ def _remove_shortcut(*, dry_run: bool) -> None:
             soft_wrap=True,
         )
     console.print(
-        f"  Ordnung is no longer in {where}. If it is running now, it keeps running until you close its window.",
+        f"  Ordnung is no longer in {where}. A running Ordnung keeps running: this only takes it out of {where}.",
         soft_wrap=True,
     )
 

@@ -107,10 +107,15 @@ describe("desktop notification helpers", () => {
   });
 
   it("names the app-menu shortcut's state", () => {
-    const info = { added: true, points_here: true, kind: "app menu entry", path: "/p", command: "ordnung shortcut" };
+    const info = { added: true, points_here: true, current: true, foreign: false, kind: "app menu entry", path: "/p", command: "ordnung shortcut" };
+    const none = { ...info, added: false, points_here: false, current: false };
     expect(shortcutLabel(undefined)).toEqual({ text: "Not added", tone: "neutral" });
-    expect(shortcutLabel({ ...info, added: false, points_here: false })).toEqual({ text: "Not added", tone: "neutral" });
-    expect(shortcutLabel({ ...info, points_here: false })).toEqual({ text: "Opens another folder", tone: "warn" });
+    expect(shortcutLabel(none)).toEqual({ text: "Not added", tone: "neutral" });
+    // a launcher Ordnung didn't write is in the way: not added, and something to do about it
+    expect(shortcutLabel({ ...none, foreign: true })).toEqual({ text: "Not added", tone: "warn" });
+    expect(shortcutLabel({ ...info, points_here: false, current: false })).toEqual({ text: "Opens another folder", tone: "warn" });
+    // it runs an installation of Ordnung that may be gone
+    expect(shortcutLabel({ ...info, current: false })).toEqual({ text: "Needs updating", tone: "warn" });
     expect(shortcutLabel(info)).toEqual({ text: "Added", tone: "ok" });
   });
 
@@ -516,6 +521,10 @@ describe("desktop notification card", () => {
     const card = await openDesktopCard();
     expect(await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your Applications folder" })).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: /^Copy command to put Ordnung in your Applications folder: ordnung shortcut/ })).toBeInTheDocument();
+    // not the Applications folder in Finder's sidebar: the one in the home folder
+    expect(within(card).getByText(/^Run this once in a terminal and Ordnung is in your Applications folder/)).toHaveTextContent(
+      "Run this once in a terminal and Ordnung is in your Applications folder (the one in your home folder; Launchpad and Spotlight find it).",
+    );
   });
 
   it("names the Start menu on Windows", async () => {
@@ -524,8 +533,9 @@ describe("desktop notification card", () => {
     expect(await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your Start menu" })).toBeInTheDocument();
   });
 
-  const useShortcutApi = (pointsHere: boolean) =>
-    useDesktopApi((own) => ({ shortcut: { ...own.shortcut, added: true, kind: "app menu entry", path: "/home/sam/.local/share/applications/ordnung.desktop", points_here: pointsHere } }));
+  const ENTRY = "/home/sam/.local/share/applications/ordnung.desktop";
+  const useShortcutApi = (pointsHere: boolean, current = pointsHere) =>
+    useDesktopApi((own) => ({ shortcut: { ...own.shortcut, added: true, kind: "app menu entry", path: ENTRY, points_here: pointsHere, current } }));
 
   it("says where the shortcut is when it opens this data folder (no command to run then)", async () => {
     useShortcutApi(true);
@@ -547,6 +557,28 @@ describe("desktop notification card", () => {
     expect(within(card).getByText("It opens another data folder. Run the command again to open this one instead.")).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Copy command to put Ordnung in your app menu: ordnung shortcut --data-dir /home/sam/Ordnung" })).toBeInTheDocument();
     expect(within(card).queryByText(/opens this data folder\./)).not.toBeInTheDocument();
+  });
+
+  it("says to run the command again when the shortcut runs another installation of Ordnung", async () => {
+    useShortcutApi(true, false);
+    const card = await openDesktopCard();
+    expect(await within(card).findByText("Needs updating")).toBeInTheDocument();
+    expect(
+      within(card).getByText("It runs another installation of Ordnung, or a file of it is missing. Run the command again to bring it up to date."),
+    ).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Copy command to put Ordnung in your app menu: ordnung shortcut --data-dir /home/sam/Ordnung" })).toBeInTheDocument();
+    expect(within(card).queryByText(/opens this data folder\./)).not.toBeInTheDocument();
+  });
+
+  it("says a launcher Ordnung didn't write is in the way before it offers the command", async () => {
+    useDesktopApi((own) => ({ shortcut: { ...own.shortcut, added: false, points_here: false, current: false, foreign: true, path: ENTRY } }));
+    const card = await openDesktopCard();
+    expect(await within(card).findByText("Not added")).toBeInTheDocument();
+    expect(within(card).getByText(/^There is already an Ordnung entry/)).toHaveTextContent(
+      `There is already an Ordnung entry in your app menu that ordnung shortcut didn't write: ${ENTRY}. Move it away or delete it, then run this:`,
+    );
+    expect(within(card).getByRole("button", { name: "Copy command to put Ordnung in your app menu: ordnung shortcut --data-dir /home/sam/Ordnung" })).toBeInTheDocument();
+    expect(within(card).queryByText(/^Run this once in a terminal/)).not.toBeInTheDocument();
   });
 
   it("start at login, once set up, says the app opens from the app menu or with `ordnung serve`", async () => {

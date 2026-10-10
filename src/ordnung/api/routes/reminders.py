@@ -22,20 +22,18 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
-from platformdirs import user_data_dir
 from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung import autostart, shortcut
 from ordnung.api.deps import CtxDep, StateDep
 from ordnung.app_context import AppContext
-from ordnung.assistant.mcp_install import shell_join
 from ordnung.notify import desktop
 from ordnung.tick import local_today
 
 router = APIRouter(tags=["reminders"])
 
 AUTOSTART_COMMAND = "ordnung autostart enable"
-SHORTCUT_COMMAND = "ordnung shortcut"
+SHORTCUT_COMMAND = shortcut.COMMAND
 SAMPLE = desktop.Notification(
     title="Ordnung", body="Nothing is due this week. This is how Ordnung will tell you."
 )
@@ -81,6 +79,14 @@ class ShortcutInfo(BaseModel):
     kind: str = Field(description="app menu entry, app in your Applications folder or Start menu shortcut")
     path: str = Field(description="The launcher's file (or the Ordnung.app folder)")
     points_here: bool = Field(description="The launcher opens this data folder")
+    current: bool = Field(
+        default=False,
+        description="It runs this installation of Ordnung and has all its files (false: run the command again)",
+    )
+    foreign: bool = Field(
+        default=False,
+        description="A launcher that ordnung shortcut didn't write is at its place: move it away first",
+    )
     command: str | None = Field(
         default=SHORTCUT_COMMAND,
         description="The command that adds it for this data folder (null: the demo, which isn't added)",
@@ -133,35 +139,26 @@ def _text(note: desktop.Notification | None) -> NotificationText | None:
     return NotificationText(title=note.title, body=note.body) if note is not None else None
 
 
-def _command(command: str, data_dir: Path, default: Path | None) -> str:
-    """``command`` for ``data_dir`` — with ``--data-dir`` unless it is the default folder (the
-    platform's, not ``ORDNUNG_HOME``: the command runs in another terminal)."""
-    folder = data_dir.expanduser().absolute()
-    standard = (default or Path(user_data_dir("ordnung", appauthor=False))).expanduser().absolute()
-    if folder.resolve() == standard.resolve():
-        return command
-    return shell_join([*command.split(), "--data-dir", str(folder)])
-
-
 def autostart_command(data_dir: Path, *, default: Path | None = None) -> str:
-    """``ordnung autostart enable`` for ``data_dir``."""
-    return _command(AUTOSTART_COMMAND, data_dir, default)
+    """``ordnung autostart enable`` for ``data_dir`` (with ``--data-dir`` unless it is the default folder)."""
+    return autostart.folder_command(AUTOSTART_COMMAND, data_dir, default=default)
 
 
 def shortcut_command(data_dir: Path, *, default: Path | None = None) -> str:
-    """``ordnung shortcut`` for ``data_dir``."""
-    return _command(SHORTCUT_COMMAND, data_dir, default)
+    """``ordnung shortcut`` for ``data_dir``, as the CLI's hints offer it (:func:`ordnung.shortcut.command`)."""
+    return shortcut.command(data_dir, default=default)
 
 
 def _shortcut_info(ctx: AppContext, kind: desktop.SystemKind, demo: bool) -> ShortcutInfo:
     """The launcher as Settings shows it: a file check and a small read (:func:`ordnung.shortcut.state`).
-    A launcher Ordnung didn't write isn't reported as added: ``ordnung shortcut`` would refuse to
-    replace it."""
+    A launcher Ordnung didn't write isn't reported as added but as ``foreign``: ``ordnung shortcut`` refuses
+    to replace it, so it has to be moved away first. ``current``: it runs this installation of Ordnung (a
+    launcher left by an installation that is gone opens nothing)."""
     here = ctx.paths.data_dir.expanduser().absolute()
     command = None if demo else shortcut_command(ctx.paths.data_dir)
     try:
         found = shortcut.state(ctx.paths.data_dir)
-    except (shortcut.ShortcutError, OSError):
+    except Exception:  # a launcher that can't be read never fails the rest of the status
         return ShortcutInfo(
             added=False, kind=shortcut.KINDS[kind], path="", points_here=False, command=command
         )
@@ -171,6 +168,8 @@ def _shortcut_info(ctx: AppContext, kind: desktop.SystemKind, demo: bool) -> Sho
         kind=found.kind,
         path=str(found.path),
         points_here=added and found.data_dir == here,
+        current=added and found.current,
+        foreign=found.added and not found.ours,
         command=command,
     )
 

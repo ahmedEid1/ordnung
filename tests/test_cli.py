@@ -531,14 +531,18 @@ def test_serve_holds_the_folder_and_writes_server_json(
     DataDirLock(data_dir).acquire().release()
 
 
-def test_sigterm_ends_the_server_through_its_cleanup() -> None:
+@pytest.mark.parametrize("name", ["SIGTERM", "SIGHUP"])
+def test_sigterm_and_a_hang_up_end_the_server_through_its_cleanup(name: str) -> None:
     import signal
 
-    before = signal.getsignal(signal.SIGTERM)
-    with pytest.raises(SystemExit) as stopped, cli._graceful_sigterm():
-        signal.raise_signal(signal.SIGTERM)
-    assert stopped.value.code == 128 + signal.SIGTERM
-    assert signal.getsignal(signal.SIGTERM) == before
+    if not hasattr(signal, name):
+        pytest.skip(f"no {name} here")
+    signum = getattr(signal, name)
+    before = signal.getsignal(signum)
+    with pytest.raises(SystemExit) as stopped, cli._graceful_stop():
+        signal.raise_signal(signum)
+    assert stopped.value.code == 128 + signum
+    assert signal.getsignal(signum) == before
 
 
 def test_serve_on_a_busy_port_explains_what_to_do(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:

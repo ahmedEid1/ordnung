@@ -1297,12 +1297,15 @@ are in their docstrings):
   line break in any value is refused. Refused for the demo. **Never started unseen:** `serve
   --from-shortcut` opens a running Ordnung in the browser (no link printed); otherwise it starts Ordnung
   only in a terminal window, titled *Ordnung*, whose closing stops it ("Close this window (or press Ctrl+C)
-  to stop Ordnung."), and without one it exits with 3 and starts nothing — the Mac bundle then opens
-  Terminal with its `Ordnung.command`. A failed start waits for Enter; a second click while the first start
-  is under way waits up to 15 s (`BROWSER_WAIT_S`) for that server and opens it. Settings → Reminders shows
-  whether it is there and for which folder (`GET /api/reminders/desktop` → `shortcut`, read only; the
-  command it offers names *this* data folder, none in the demo), and `ordnung serve` in a terminal suggests
-  it while there is none.
+  to stop Ordnung."; the hang-up, SIGHUP, or on Windows the console's close event, stops the server as
+  Ctrl+C does, so its shutdown and clean-up run), and without one it exits with 3 and starts nothing — the
+  Mac bundle then opens Terminal with its `Ordnung.command`. A failed start, also one inside the server
+  (uvicorn's own exit code 3 becomes 1), waits for Enter; a second click while the first start is under way
+  waits up to 15 s (`BROWSER_WAIT_S`) for that server and opens it. Settings → Reminders shows whether it is
+  there, for which folder, whether it runs this installation (`current`; otherwise the command again) and
+  whether a launcher Ordnung didn't write is in its place (`foreign`: move it away first)
+  (`GET /api/reminders/desktop` → `shortcut`, read only; the command it offers names *this* data folder,
+  none in the demo), and `ordnung serve` in a terminal suggests it, for its data folder, while there is none.
 - **Calendar sync (CalDAV, opt-in)** — `calendar/caldav.py` (policy in its docstring, ADR 0013).
   The person connects one calendar in Settings → Calendar: an address (a calendar's, an account's or
   just the provider's — Ordnung finds the calendars that take events: the address itself, the

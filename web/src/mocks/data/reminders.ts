@@ -28,6 +28,8 @@ export const MOCK_SHORTCUT: ShortcutInfo = {
   kind: "app menu entry",
   path: "/home/sam/.local/share/applications/ordnung.desktop",
   points_here: false,
+  current: false,
+  foreign: false,
   command: "ordnung shortcut",
 };
 

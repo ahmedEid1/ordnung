@@ -8,11 +8,13 @@ CI's other-systems job, which runs this whole file on macOS and Windows."""
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import os
 import plistlib
 import re
+import select
 import shlex
 import shutil
 import struct
@@ -23,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from platformdirs import user_data_dir
 from typer.testing import CliRunner
 
 from ordnung import autostart, cli, shortcut
@@ -602,6 +605,41 @@ def test_windows_never_replaces_or_removes_an_icon_it_didn_t_write(tmp_path: Pat
     assert icon.read_bytes() == b"another program's icon"
 
 
+def test_windows_removes_the_icon_first_and_also_once_the_shortcut_was_deleted_by_hand(
+    tmp_path: Path,
+) -> None:
+    """Right-click → Delete takes a Start-menu entry out; ``--remove`` still takes away the icon Ordnung
+    drew. The mark goes last: the icon first, then the ``.lnk``."""
+    env = windows_env(tmp_path)
+    sc = plan(tmp_path / "d", platform="win32", env=env, home=tmp_path, python=PY)
+    icon = file_named(sc, ICO).path
+    assert write(sc) == "added"
+    assert shortcut.removable(sc) == [icon, sc.path]
+    sc.path.unlink()  # deleted by hand in the Start menu
+    where = location(platform="win32", env=env, home=tmp_path)
+    assert shortcut.removable(where) == [icon]
+    assert remove(where) == [icon] and not icon.exists() and not icon.parent.exists()
+    assert remove(where) == []
+
+
+@pytest.mark.parametrize(
+    "broken", [b"<?xml version='1.0'?><plist version='1.0'><dict><key>CFBundleName</key>", b""]
+)
+def test_a_property_list_cut_short_is_someone_else_s(tmp_path: Path, broken: bytes) -> None:
+    """A bundle whose Info.plist doesn't parse is read as someone else's: never replaced or removed, and
+    Settings' status still answers."""
+    sc = plan(tmp_path / "d", platform="darwin", env={}, home=tmp_path, python=PY)
+    info = sc.path / "Contents" / "Info.plist"
+    info.parent.mkdir(parents=True)
+    info.write_bytes(broken)
+    found = state(tmp_path / "d", platform="darwin", env={}, home=tmp_path, python=PY)
+    assert found.added and not found.ours
+    for action in (write, shortcut.removable, shortcut.check):
+        with pytest.raises(ShortcutError, match="wasn't written by `ordnung shortcut`"):
+            action(sc)
+    assert info.read_bytes() == broken
+
+
 @WINDOWS_ONLY
 def test_the_shell_reads_the_link_back(tmp_path: Path) -> None:
     """Windows' own reader (test only: the shortcut itself runs no PowerShell and no COM)."""
@@ -920,8 +958,8 @@ def test_the_command_prints_what_it_writes(fake_home: Path, tmp_path: Path) -> N
     assert off.exit_code == 0, off.output
     assert f"✓ Removed {entry}" in off.output and not entry.exists()
     assert (
-        "Ordnung is no longer in your app menu. If it is running now, it keeps running until you close its window."
-        in off.output
+        "Ordnung is no longer in your app menu. A running Ordnung keeps running: this only takes it out of "
+        "your app menu." in off.output
     )
     again = invoke("shortcut", "--remove")
     assert again.exit_code == 0 and f"Ordnung isn't in your app menu: there is no {entry}." in again.output
@@ -932,10 +970,19 @@ def test_the_command_leaves_a_launcher_it_didn_t_write(fake_home: Path, tmp_path
     entry = fake_home / ".local" / "share" / "applications" / DESKTOP_FILE
     entry.parent.mkdir(parents=True)
     entry.write_text("[Desktop Entry]\nName=Ordnung\n", encoding="utf-8")
-    for args in (("--data-dir", str(tmp_path / "data")), ("--remove",)):
+    folder = str(tmp_path / "data")
+    for args in (
+        ("--data-dir", folder),
+        ("--data-dir", folder, "--dry-run"),
+        ("--remove",),
+        ("--remove", "--dry-run"),
+    ):
         result = invoke("shortcut", *args)
-        assert result.exit_code == 1
+        assert result.exit_code == 1, args  # a dry run says what the real run would: it refuses too
         assert f"✗ {entry} wasn't written by `ordnung shortcut`, so it was left as it is." in result.output
+        assert "Nothing was written" not in result.output and "[Desktop Entry]" not in result.output
+        step = "remove it yourself" if "--remove" in args else "then run `ordnung shortcut` again"
+        assert step in " ".join(result.output.split()), args
     assert entry.read_text(encoding="utf-8") == "[Desktop Entry]\nName=Ordnung\n"
 
 
@@ -949,10 +996,14 @@ def test_the_command_says_why_a_bundle_folder_stays(
     off = invoke("shortcut", "--remove")
     assert off.exit_code == 0, off.output
     assert f"! {bundle} holds files `ordnung shortcut` didn't write, so the folder stays." in off.output
-    assert "Find it in Launchpad or Spotlight" not in off.output
+    assert "Launchpad" not in off.output
     added = invoke("shortcut", "--data-dir", str(tmp_path / "data"))
     assert "goes into your Applications folder, as this app:" in added.output
-    assert "Find it in Launchpad or Spotlight, or drag it to the Dock." in added.output
+    # not the Applications folder in Finder's sidebar: where to find it, said plainly
+    assert (
+        "✓ Added. Find “Ordnung” with Launchpad or Spotlight, or in the Applications folder of your home "
+        "folder; drag it to the Dock to keep it there."
+    ) in " ".join(added.output.split())
 
 
 @WINDOWS_ONLY
@@ -1098,11 +1149,142 @@ def test_from_shortcut_waits_for_enter_after_a_failed_start(
     assert result.exit_code == 1
     error = result.output.index("Port 8765 is already in use")
     assert result.output.index("Press Enter to close this window.") > error
+    # nobody typed a command, so there is no --port to add: what the person can do instead
+    text = " ".join(result.output.split())
+    assert "maybe another Ordnung such as `ordnung demo`: stop it and open Ordnung again" in text
+    assert "ordnung shortcut --port 8766" in text and "Choose another one" not in text
     # typed by hand, the terminal stays open anyway: no prompt
     plain_run = invoke("serve", "--data-dir", str(tmp_path / "data"), "--no-browser")
     assert plain_run.exit_code == 1 and "Press Enter" not in plain_run.output
+    assert "Choose another one, e.g. --port 8766." in plain_run.output
     # Enter never comes (the input ends): it closes all the same
     assert invoke("serve", "--data-dir", str(tmp_path / "data"), "--from-shortcut").exit_code == 1
+
+
+def _free_port() -> int:
+    import socket
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
+
+
+def test_a_start_that_fails_inside_the_server_waits_for_enter(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launched: list[ServerInfo]
+) -> None:
+    """uvicorn ends a failed startup (the app's or the port's) with exit code 3, the code that means "no
+    window": serve turns it into a failure of its own, so the launcher's window waits for Enter."""
+
+    async def broken(scope: dict[str, Any], receive: Any, send: Any) -> None:
+        assert scope["type"] == "lifespan"
+        await receive()
+        await send({"type": "lifespan.startup.failed", "message": "the watched folder can't be read"})
+
+    folder = tmp_path / "data"
+    monkeypatch.setattr(cli, "_in_terminal", lambda: True)
+    monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: broken)
+    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda folder, info: launched.append(info))
+    port = str(_free_port())
+    result = invoke("serve", "--data-dir", str(folder), "--port", port, "--from-shortcut", input="\n")
+    assert result.exit_code == 1, result.output
+    assert result.exit_code != shortcut.NO_WINDOW_EXIT
+    failed = result.output.index("Ordnung couldn't start.")
+    assert result.output.index("Press Enter to close this window.") > failed
+    assert not (folder / "server.json").exists() and not (folder / cli.LOGIN_PAGE_NAME).exists()
+    by_hand = invoke("serve", "--data-dir", str(folder), "--port", port, "--no-browser")
+    assert by_hand.exit_code == 1 and "Ordnung couldn't start." in by_hand.output
+    assert "Press Enter" not in by_hand.output
+
+
+def test_closing_the_console_on_windows_stops_ordnung_as_ctrl_c_does(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Windows sends no signal when its console window closes, only CTRL_CLOSE_EVENT to the console handlers,
+    and ends the process once they return (or after about 5 s): the handler asks the server to stop and waits."""
+
+    class Server:
+        should_exit = False
+
+    server, hung_up = Server(), []
+    registered: list[tuple[Any, bool]] = []
+    monkeypatch.setattr(cli, "CLOSE_GRACE_S", 0.0)
+
+    def register(handler: Any, add: bool) -> bool:
+        registered.append((handler, add))
+        return True
+
+    with cli._stop_on_console_close(server, hung_up, register=register):
+        ((handler, added),) = registered
+        assert added
+        assert handler(0) is False and handler(1) is False  # Ctrl+C, Ctrl+Break: Python's own handlers
+        assert not server.should_exit and not hung_up
+        assert handler(2) is True  # the window closes
+        assert server.should_exit and hung_up
+    assert registered[-1] == (handler, False)  # taken away again
+    with cli._stop_on_console_close(server, hung_up, register=lambda handler, add: False):
+        pass  # a handler Windows doesn't take (no console, say) changes nothing else
+    with cli._stop_on_console_close(server, hung_up, register=None):
+        pass  # this system's own: none outside Windows; on Windows, the real handler comes and goes
+
+
+@pytest.mark.skipif(os.name != "posix", reason="a terminal window that closes hangs up (SIGHUP) on POSIX")
+def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None:
+    """Closing the terminal window sends SIGHUP: Ordnung shuts down as after Ctrl+C (the app's shutdown runs,
+    with sync's last save) and takes away server.json and the sign-in page, which holds the session token."""
+    import signal
+    import socket
+
+    folder = tmp_path / "data"
+    port = _free_port()
+    env = {
+        **os.environ,
+        "HOME": str(tmp_path / "home"),
+        "BROWSER": "true",
+        "ORDNUNG_CLAUDE_BIN": str(tmp_path / "no-claude"),
+        "TERM": "dumb",
+    }
+    leader, follower = os.openpty()
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "ordnung",
+            "--data-dir",
+            str(folder),
+            "serve",
+            "--from-shortcut",
+            "--port",
+            str(port),
+        ],
+        stdin=follower,
+        stdout=follower,
+        stderr=follower,
+        env=env,
+        cwd=Path(__file__).resolve().parents[1],
+        start_new_session=True,
+    )
+    os.close(follower)
+    try:
+        deadline = time.monotonic() + 60
+        answers = False
+        while not (answers and (folder / cli.LOGIN_PAGE_NAME).exists()):  # the page: once the browser opens
+            assert process.poll() is None and time.monotonic() < deadline, "Ordnung didn't start"
+            with contextlib.suppress(OSError), socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                answers = True
+            with contextlib.suppress(OSError):  # keep the terminal's buffer from filling up
+                if select.select([leader], [], [], 0.2)[0]:
+                    os.read(leader, 65536)
+        assert (folder / "server.json").exists()
+        os.close(leader)  # the window closes: the terminal hangs up
+        leader = -1
+        process.send_signal(signal.SIGHUP)
+        assert process.wait(timeout=30) == 128 + signal.SIGHUP
+    finally:
+        if leader >= 0:
+            os.close(leader)
+        if process.poll() is None:
+            process.kill()
+            process.wait()
+    assert not (folder / "server.json").exists() and not (folder / cli.LOGIN_PAGE_NAME).exists()
+    assert not (folder / "ordnung.db-wal").exists()  # the database was closed, its log written back
 
 
 def test_a_second_click_opens_the_ordnung_that_is_starting(
@@ -1194,12 +1376,16 @@ def test_serve_suggests_the_shortcut_only_in_a_terminal_and_only_when_there_is_n
     info = ServerInfo(port=8765, token="t", pid=1)
     hint = "Open it without a terminal next time: ordnung shortcut"
 
-    def panel(*, demo: bool = False, from_shortcut: bool = False) -> str:
-        cli._announce(info, demo=demo, data_dir=tmp_path / "data", from_shortcut=from_shortcut)
+    def panel(*, demo: bool = False, from_shortcut: bool = False, folder: Path = tmp_path / "data") -> str:
+        cli._announce(info, demo=demo, data_dir=folder, from_shortcut=from_shortcut)
         return " ".join(capsys.readouterr().out.replace("│", " ").split())
 
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
-    assert hint in panel() and "Press Ctrl+C to stop." in panel()
+    # the command sets up this data folder, as the one Settings offers does
+    assert f"{hint} --data-dir {tmp_path / 'data'}" in panel() and "Press Ctrl+C to stop." in panel()
+    default = Path(user_data_dir("ordnung", appauthor=False))
+    in_default = panel(folder=default)
+    assert hint in in_default and "--data-dir" not in in_default
     assert hint not in panel(demo=True) and hint not in panel(from_shortcut=True)
     monkeypatch.setattr(cli, "_in_terminal", lambda: False)  # e.g. started at login: nobody reads it
     assert hint not in panel()
@@ -1210,9 +1396,11 @@ def test_serve_suggests_the_shortcut_only_in_a_terminal_and_only_when_there_is_n
 
 @POSIX_ONLY
 def test_autostart_points_to_the_shortcut_for_opening_the_app(fake_home: Path, tmp_path: Path) -> None:
-    enabled = invoke("autostart", "enable", "--data-dir", str(tmp_path / "data"))
+    folder = tmp_path / "data"
+    enabled = invoke("autostart", "enable", "--data-dir", str(folder))
     assert enabled.exit_code == 0, enabled.output
+    # both commands name this data folder, as Settings' do
     assert (
-        "Open the app any time from your app menu (ordnung shortcut adds it) or with: ordnung serve"
-        in enabled.output
-    )
+        f"Open the app any time from your app menu (ordnung shortcut --data-dir {folder} adds it) or with: "
+        f"ordnung serve --data-dir {folder}"
+    ) in enabled.output

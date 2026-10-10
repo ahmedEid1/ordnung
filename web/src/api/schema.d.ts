@@ -5790,6 +5790,18 @@ export interface components {
              */
             points_here: boolean;
             /**
+             * Current
+             * @description It runs this installation of Ordnung and has all its files (false: run the command again)
+             * @default false
+             */
+            current: boolean;
+            /**
+             * Foreign
+             * @description A launcher that ordnung shortcut didn't write is at its place: move it away first
+             * @default false
+             */
+            foreign: boolean;
+            /**
              * Command
              * @description The command that adds it for this data folder (null: the demo, which isn't added)
              * @default ordnung shortcut

@@ -2979,8 +2979,8 @@ def test_the_changelog_adds_the_app_menu_shortcut_and_releases() -> None:
     added = _unreleased("Added")
     launcher = _bullet(added, "**Open Ordnung from your app menu.**")
     for words in (
-        "`ordnung shortcut` adds Ordnung to your app menu on Linux, to your Applications folder on a Mac "
-        "(Launchpad and Spotlight find it), or to the Start menu on Windows.",
+        "`ordnung shortcut` adds Ordnung to your app menu on Linux, to the Applications folder in your home "
+        "folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on Windows.",
         "Opening it signs your browser in.",
         "When Ordnung isn't running, it starts in a window of its own, and closing that window stops it.",
         "Ordnung is never started without a window you can see.",
@@ -2988,7 +2988,9 @@ def test_the_changelog_adds_the_app_menu_shortcut_and_releases() -> None:
         "prints what it writes before writing, needs no admin rights and never replaces or removes a file it "
         "didn't write",
         "`--dry-run` only prints, and `ordnung shortcut --remove` takes it out again",
-        "Settings → Reminders shows whether it is there, and for which data folder.",
+        "Settings → Reminders shows whether it is there, and for which data folder. It also says when the "
+        "command has to run again (Ordnung was installed somewhere else), and when a launcher Ordnung didn't "
+        "write is in the way.",
         "The demo isn't added: it opens with `ordnung demo`.",
     ):
         assert words in launcher, words
@@ -3032,12 +3034,15 @@ def test_the_changelog_says_serve_and_autostart_point_to_the_shortcut() -> None:
     """CHANGELOG, Unreleased → Changed, and the CLI lines it describes: `ordnung serve` in a terminal suggests
     the shortcut while there is none, and `ordnung autostart enable` says the app opens from the app menu too."""
     assert (
-        "`ordnung serve` in a terminal suggests `ordnung shortcut` while Ordnung isn't in your app menu, and "
-        "`ordnung autostart enable` says you can open the app from there too."
+        "`ordnung serve` in a terminal suggests `ordnung shortcut` for its data folder while Ordnung isn't in your "
+        "app menu, and `ordnung autostart enable` says you can open the app from there too."
     ) in _unreleased("Changed")
     cli = (ROOT / "src" / "ordnung" / "cli.py").read_text(encoding="utf-8")
-    assert "Open it without a terminal next time: ordnung shortcut" in cli
-    assert "(ordnung shortcut adds it) or with: " in cli
+    assert "Open it without a terminal next time: {escape(shortcut.command(data_dir))}" in cli
+    assert (
+        "({escape(shortcut.command(folder))} " in cli
+        and 'f"adds it) or with: {escape(serve_command)}"' in cli
+    )
 
 
 def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
@@ -3176,11 +3181,19 @@ def test_the_spec_lists_the_shortcut_module_its_command_and_the_hidden_serve_fla
         "Refused for the demo.",
         "**Never started unseen:**",
         "the Mac bundle then opens Terminal with its `Ordnung.command`",
-        "A failed start waits for Enter; a second click while the first start is under way waits up to 15 s",
-        "Settings → Reminders shows whether it is there and for which folder (`GET /api/reminders/desktop` → "
-        "`shortcut`, read only;",
+        "the hang-up, SIGHUP, or on Windows the console's close event, stops the server as Ctrl+C does, so its "
+        "shutdown and clean-up run",
+        "A failed start, also one inside the server (uvicorn's own exit code 3 becomes 1), waits for Enter; a "
+        "second click while the first start is under way waits up to 15 s",
+        "Settings → Reminders shows whether it is there, for which folder, whether it runs this installation "
+        "(`current`; otherwise the command again) and whether a launcher Ordnung didn't write is in its place "
+        "(`foreign`: move it away first) (`GET /api/reminders/desktop` → `shortcut`, read only;",
+        "`ordnung serve` in a terminal suggests it, for its data folder, while there is none.",
     ):
         assert words in bullet, words
+    from ordnung.api.routes.reminders import ShortcutInfo
+
+    assert {"current", "foreign"} <= set(ShortcutInfo.model_fields)
     cli = _flat(raw.split("## 15. CLI", 1)[1].split("\n## ", 1)[0])
     assert "`shortcut [--port N] [--dry-run] [--remove]`" in cli
     assert "`serve` also takes a hidden `--from-shortcut`" in cli
