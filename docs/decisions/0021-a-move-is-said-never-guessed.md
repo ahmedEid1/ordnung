@@ -30,8 +30,8 @@ writes, sends and ticks off.
   - *Tell X your new address*, for each organisation with the old address on record: a running contract,
     or a letter of the last three years from a kind of sender that keeps an address (a bank, an insurer, an
     employer, a landlord, a utility, a telecom, a university, a tax office, an immigration office or the
-    broadcaster) — never one with scam signs or one kept private — each with the new-address letter one
-    click away, filled in with the old address and the day;
+    broadcaster) — never one with scam signs or one kept private, nor a contract read from such a letter —
+    each with the new-address letter one click away, filled in with the old address and the day;
   - the broadcasting fee office, when no listed organisation is it.
 - **How rows end.** The person ticks a row off or marks it *Not needed* (`PATCH /api/suggestions/{id}`,
   with Undo, also from a paired phone). A sender's row goes once the person marks a new-address letter to

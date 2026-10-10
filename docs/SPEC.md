@@ -797,7 +797,7 @@ whose adding was stopped before its attachments adds them.
   register within two weeks of moving in, § 17 Abs. 1 BMG, a `deadline` dated by the rules engine and never
   moved off a weekend or holiday; *Tell X your new address* for each organisation with a running contract
   or a letter of the last three years of a kind that keeps the address, never from a letter with scam signs
-  or kept private, opening the new-address letter to them; the broadcasting fee office when none of them is
+  or kept private nor a contract read from one, opening the new-address letter to them; the broadcasting fee office when none of them is
   it; a sender's row goes once an `address_change` letter to them is marked sent; no row names an address;
   ends 180 days after the move; shown as Today's own card; `secretary/moving.py`, ADR 0021),
   `calendar_outdated` (new dates since last .ics export),
@@ -1738,10 +1738,10 @@ Pages:
    "All clear until Friday" empty state — never while letters couldn't be read, wait from the
    folder or wait in the queue (for Claude, say): then "Nothing due from the letters that were read" and the card "N letters couldn't be read
    — Try again"; "calendar outdated" card; undo toasts. While a move is stored, the **Moving checklist**
-   (`id="moving-checklist"`, an h2 section above the Ideas) lists the `moved_house` Ideas instead of the Ideas
-   list: registration first, each row with a native checkbox (ticks it off, with Undo, focus to the next
-   row), *Not needed*, and *Write the letter* (or *Open your draft* when an unsent new-address letter to them
-   exists); "Ordnung never sends anything for you".
+   (`id="moving-checklist"`, an h2 section above the Ideas) lists the `moved_house` Ideas, which the Ideas list
+   leaves out: registration first, five rows before *Show N more*, each with a native checkbox (ticks it off,
+   with Undo, focus to the next row), *Not needed*, and *Write the letter* (or *Open your draft* when an unsent
+   new-address letter to them exists); "Ordnung never sends anything for you".
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,

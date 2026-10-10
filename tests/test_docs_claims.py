@@ -26,7 +26,7 @@ import pytest
 from fastapi.routing import APIRoute
 
 from helpers_secretary import TODAY, seed_ledger
-from ordnung import clock, sync
+from ordnung import clock, letters_zip, sync
 from ordnung.api.app import openapi_schema
 from ordnung.api.deps import require_computer
 from ordnung.api.routes import export
@@ -37,10 +37,12 @@ from ordnung.assistant.rules_tools import build_rules_server
 from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
 from ordnung.backup.archive import FOLDERS
 from ordnung.backup.container import DEFAULT_KDF, MAX_SCRYPT_BYTES
+from ordnung.db import scan_text
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
 from ordnung.drafts.sent import letter_profile
 from ordnung.drafts.template_letters import TEMPLATES
+from ordnung.ingest import pipeline, worker
 from ordnung.ingest.extract import ExtractionInput, extraction_request
 from ordnung.ingest.plan import VerifiedItem, own_context
 from ordnung.llm.base import LLMRequest
@@ -61,6 +63,7 @@ from ordnung.models import (
 from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.postcodes import Home, suggest_land_why
+from ordnung.secretary import moving, triggers
 from ordnung.secretary.triggers import Ledger, letter_day, tax_documents
 from ordnung.tick import DailyTick
 from test_api_support import api_for
@@ -2581,8 +2584,6 @@ SCANNER_TEXT_KEPT = (
 )
 #: A § citation as the docs write one ("§ 17 Abs. 1 BMG").
 _CITATION = re.compile(r"§+ ?\d+[a-z]?(?: Abs\. \d+)?(?: (?:Satz|S\.|Nr\.) \d+)* [A-Z][A-Za-z]+")
-#: The claims below that need the code of another B2 package (scans, export, moving) until the branches merge.
-_until_b2_integration = pytest.mark.xfail(strict=False, reason="until B2 integration")
 
 
 def _unreleased(heading: str) -> str:
@@ -2836,12 +2837,10 @@ def test_adrs_0020_and_0021_exist_and_the_readme_lists_them() -> None:
     assert "[0021 a move is said, never guessed]" in documentation
 
 
-@_until_b2_integration
 def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -> None:
     """ADR 0020, SPEC § 8 and the CHANGELOG: the file is ``derived/<doc>/scan-text.json``, at most 20,000 characters
     a page; a letter found only by it is marked with the words the web app shows, and its page says what the text
     is kept for."""
-    scan_text = importlib.import_module("ordnung.db.scan_text")
     assert scan_text.NAME == "scan-text.json"
     assert scan_text.path(Path("derived"), "doc_x") == Path("derived/doc_x/scan-text.json")
     assert f"at most {scan_text.MAX_PAGE_CHARS:,} characters a page" in _spec()
@@ -2855,12 +2854,10 @@ def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -
     assert SCANNER_TEXT_NOTE in adr and f"*{SCANNER_TEXT_MATCH}*" in adr
 
 
-@_until_b2_integration
 def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
     """ADR 0020: only ``Store`` reads and writes the scanner text — no other module imports ``ordnung.db.scan_text``,
     so Ask, the reading, the evidence checks and prompts can't reach it; a waiting letter's own text is read at
     once, and the worker catches up older scans 30 seconds after Ordnung starts."""
-    importlib.import_module("ordnung.db.scan_text")
     package = ROOT / "src" / "ordnung"
     imports = re.compile(
         r"^\s*(?:from ordnung\.db import .*\bscan_text\b|from ordnung\.db\.scan_text |import ordnung\.db\.scan_text)",
@@ -2872,18 +2869,15 @@ def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
         if imports.search(path.read_text("utf-8"))
     }
     assert importers == {"db/store.py"}, importers
-    pipeline = importlib.import_module("ordnung.ingest.pipeline")
     assert callable(pipeline.read_text_here) and callable(pipeline.catch_up_scan_text)
-    assert importlib.import_module("ordnung.ingest.worker").CATCH_UP_DELAY_S == 30
+    assert worker.CATCH_UP_DELAY_S == 30
     adr = _adr(_ADR_SCANS)
     assert "Only `Store` reads and writes it" in adr and "30 seconds after Ordnung starts" in adr
 
 
-@_until_b2_integration
 def test_the_export_s_folders_list_and_name_are_the_ones_the_docs_show() -> None:
     """SPEC § 13 and the CHANGELOG: ``<year>/<sender>/<date> <title>.<ext>`` with ``Undated`` and ``Sender
     unknown``, ``index.csv`` (a BOM, semicolons) at the root, and the ZIP's name."""
-    letters_zip = importlib.import_module("ordnung.letters_zip")
     assert letters_zip.INDEX_NAME == "index.csv"
     assert (letters_zip.UNDATED, letters_zip.SENDER_UNKNOWN) == ("Undated", "Sender unknown")
     choice = letters_zip.Choice(year=2025, tax=True)
@@ -2894,13 +2888,10 @@ def test_the_export_s_folders_list_and_name_are_the_ones_the_docs_show() -> None
     assert "`ordnung-letters[-for-taxes][-<year>|-<today>].zip`" in spec
 
 
-@_until_b2_integration
 def test_the_moving_checklist_s_window_and_law_are_the_code_s() -> None:
     """ADR 0021, SPEC and the CHANGELOG: a move counts for the last six months or the next three (422 otherwise),
     the list ends six months after it, and its one law is the one Ask's check knows (``IDEA_LAWS``)."""
-    moving = importlib.import_module("ordnung.secretary.moving")
     assert (moving.MOVE_WINDOW_DAYS, moving.MOVE_AHEAD_DAYS) == (180, 90)
-    triggers = importlib.import_module("ordnung.secretary.triggers")
     assert triggers.REGISTRATION_LAW == "§ 17 Abs. 1 BMG" and triggers.REGISTRATION_LAW in triggers.IDEA_LAWS
     assert "moved_house" in triggers.TRIGGERS
     for text in (_adr(_ADR_MOVING), _bullet(_unreleased("Added"), "**A moving checklist.**")):
@@ -2909,11 +2900,9 @@ def test_the_moving_checklist_s_window_and_law_are_the_code_s() -> None:
     assert moving.MOVE_WINDOW_PROBLEM in _spec()
 
 
-@_until_b2_integration
 def test_no_moving_row_carries_an_address_as_the_privacy_page_says(store: Store) -> None:
     """docs/privacy.md: the moving checklist's rows never contain an address — neither the new nor the old one —
     though their titles reach *Weekly Ideas* and the daily note like every Idea's."""
-    moving = importlib.import_module("ordnung.secretary.moving")
     seed_ledger(store)
     store.save_profile(
         store.get_profile().model_copy(
