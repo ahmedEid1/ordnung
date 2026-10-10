@@ -1040,6 +1040,14 @@ def test_deleting_for_good_removes_the_scanner_text(store: Store) -> None:
     assert scan.id not in store._scan_text_cache
 
 
+def test_delete_everything_keeps_no_folded_scanner_text_in_memory(store: Store) -> None:
+    add_scan(store)
+    assert store.scan_text_matches("Wasserzählers") and store._scan_text_cache
+    store.wipe()
+    assert store._scan_text_cache == {}
+    assert store.scan_text_matches("Wasserzählers") == set()
+
+
 def test_write_scan_text_after_a_purge_writes_nothing(store: Store) -> None:
     scan = add_scan(store)
     store.delete_document(scan.id)

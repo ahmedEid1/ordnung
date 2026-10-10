@@ -715,6 +715,8 @@ class Store:
             self.schema_version = migrate(conn)
             conn.execute("VACUUM")
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        with self._scan_text_lock:  # no folded copy of a scanner's text stays in memory either
+            self._scan_text_cache.clear()
 
     def replace_with(
         self,
