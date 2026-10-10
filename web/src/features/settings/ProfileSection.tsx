@@ -1,9 +1,14 @@
 import { useRef, useState } from "react";
-import { Lock } from "lucide-react";
+import { Link } from "react-router";
+import { Lock, MapPinHouse } from "lucide-react";
 import { useUpdateProfile } from "@/api/hooks";
 import type { Profile } from "@/api/types";
-import { Field, Input, Textarea } from "@/components/ui/Field";
+import { Checkbox, Field, Input, Textarea } from "@/components/ui/Field";
+import { toast } from "@/components/ui/Toast";
 import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
+import { useTodayISO } from "@/lib/today";
+import { focusWhenReady } from "@/features/today/focus";
+import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, moveStanding } from "@/features/today/moving";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
 type ProfileForm = Pick<Profile, "name" | "address" | "email" | "phone" | "iban">;
@@ -39,37 +44,75 @@ export function profileErrors(f: ProfileForm): Partial<Record<keyof ProfileForm,
   return errors;
 }
 
-/** "Profile & address": the sender block of every letter, and the account refunds go to. */
+/** The stored move's link and button: text-sized, in the line's flow. */
+const MOVE_ACTION =
+  "inline-flex min-h-6 items-center rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+
+/**
+ * Whether the "I moved" box is offered: the person changed an address that was already saved (the first
+ * address ever entered is no move, and neither is any other field).
+ */
+export function offersMove(savedAddress: string, form: Pick<ProfileForm, "address">): boolean {
+  const before = cleanProfile({ name: "", address: savedAddress, email: "", phone: "", iban: "" }).address;
+  const after = cleanProfile({ name: "", address: form.address, email: "", phone: "", iban: "" }).address;
+  return before !== "" && after !== before;
+}
+
+/** "Profile & address": the sender block of every letter, the account refunds go to, and "I moved". */
 export function ProfileSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile();
+  const today = useTodayISO();
   const [form, setForm] = useState<ProfileForm>(() => pick(profile));
   const saved = pick(profile);
   const dirty = (Object.keys(saved) as (keyof ProfileForm)[]).some((k) => !same(k, saved, form));
+  // "I moved": offered only next to a changed address; the day starts as today
+  const [moved, setMoved] = useState(false);
+  const [movedOn, setMovedOn] = useState(today);
+  const moveOffered = offersMove(profile.address, form);
+  const telling = moveOffered && moved;
   // a mistake shows once you leave the field (or try to save), not while you type
   const [touched, setTouched] = useState<ReadonlySet<keyof ProfileForm>>(() => new Set());
   const [attempted, setAttempted] = useState(false);
   const errors = profileErrors(form);
-  const invalid = Object.keys(errors).length > 0;
+  const dayError = telling ? moveDayError(movedOn, today) : null;
+  const invalid = Object.keys(errors).length > 0 || dayError !== null;
   const shown = (k: keyof ProfileForm) => (attempted || touched.has(k) ? errors[k] : undefined);
   const nameRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLTextAreaElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const ibanRef = useRef<HTMLInputElement>(null);
+  const dayRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof ProfileForm) => (e: { target: { value: string } }) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const leave = (k: keyof ProfileForm) => () => setTouched((t) => (t.has(k) ? t : new Set(t).add(k)));
 
   const save = () =>
-    update.mutateAsync(cleanProfile(form)).then((p) => {
+    // a move goes with the new address in one save: the day, and the address before it
+    update.mutateAsync({ ...cleanProfile(form), ...(telling ? { moved_on: movedOn, old_address: profile.address } : {}) }).then((p) => {
       setForm(pick(p));
       setTouched(new Set());
       setAttempted(false);
-      return "New letters use this name and address.";
+      setMoved(false);
+      return telling ? "Today lists who needs your new address." : "New letters use this name and address.";
     });
 
   const showErrors = () => {
     setAttempted(true);
-    const first = errors.name ? nameRef : errors.email ? emailRef : ibanRef;
+    const first = errors.name ? nameRef : errors.email ? emailRef : errors.iban ? ibanRef : dayRef;
     requestAnimationFrame(() => first.current?.focus());
+  };
+
+  // the off switch for a move told by mistake (or done with): the rows still open expire; Undo puts it back
+  const standing = moveStanding(profile, today);
+  const stopChecklist = () => {
+    const back = { moved_on: profile.moved_on ?? "", old_address: profile.old_address };
+    update.mutateAsync({ moved_on: "", old_address: "" }).then(
+      () => {
+        focusWhenReady(() => addressRef.current);
+        toast({ title: "Moving checklist stopped", undo: () => update.mutateAsync(back).then(() => undefined) });
+      },
+      () => undefined, // the error toast comes from the mutation's meta
+    );
   };
 
   return (
@@ -87,6 +130,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               setForm(saved);
               setTouched(new Set());
               setAttempted(false);
+              setMoved(false);
             }}
           />
         }
@@ -97,6 +141,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           </Field>
           <Field label="Postal address" hint="Street and house number, then postcode and town — one per line." className="sm:col-span-2">
             <Textarea
+              ref={addressRef}
               value={form.address}
               onChange={set("address")}
               // the browser only scrolls the caret into view: bring the whole field clear of the phone's tab bar
@@ -106,6 +151,42 @@ export function ProfileSection({ profile }: { profile: Profile }) {
               className="min-h-20"
             />
           </Field>
+          {moveOffered ? (
+            <div className="-mt-2 flex flex-col gap-3 rounded-xl bg-surface-2/60 px-3.5 py-3 sm:col-span-2">
+              <Checkbox
+                checked={moved}
+                onChange={(e) => {
+                  setMoved(e.target.checked);
+                  if (e.target.checked && !movedOn) setMovedOn(today);
+                }}
+                label="I moved — list who needs my new address"
+                description="Today then lists who to tell, starting with registering at the Bürgeramt within two weeks."
+              />
+              {moved ? (
+                <Field label="Moved in on" hint="Up to six months back, or three months ahead." error={attempted || movedOn !== today ? (dayError ?? undefined) : undefined} className="ml-[30px] sm:max-w-56">
+                  <Input ref={dayRef} type="date" value={movedOn} onChange={(e) => setMovedOn(e.target.value)} {...moveDayRange(today)} />
+                </Field>
+              ) : null}
+            </div>
+          ) : standing && profile.moved_on ? (
+            <p className="-mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-5 text-muted sm:col-span-2">
+              <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
+              <span>{movedLine(profile.moved_on, today)}</span>
+              {/* text-sized, but 24 px tall targets (WCAG 2.5.8) */}
+              <Link to={`/#${MOVING_CHECKLIST_ID}`} className={MOVE_ACTION}>
+                Open your moving checklist
+              </Link>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={stopChecklist}
+                disabled={update.isPending}
+                className={MOVE_ACTION}
+              >
+                Stop the checklist
+              </button>
+            </p>
+          ) : null}
           <Field label="Email" optional error={shown("email")}>
             <Input ref={emailRef} type="email" value={form.email} onChange={set("email")} onBlur={leave("email")} autoComplete="email" />
           </Field>

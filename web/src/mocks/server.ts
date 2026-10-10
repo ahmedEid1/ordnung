@@ -113,6 +113,7 @@ import { addReading, compareReadings, defaultReadings, documentTrace, exportTrac
 import { MockPhoneAccess, PhoneRefusal, maskNumbers, maskProfile, phoneGate, phoneHealth, type PhoneScope } from "./phone";
 import { NOT_PHONE_MESSAGE } from "./data/phone";
 import { MockSync, SyncRefusal } from "./data/sync";
+import { MOVE_WINDOW_PROBLEM, moveAllowed, refreshMovingIdeas } from "./moving";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -1253,11 +1254,20 @@ const routes: [string, string, Handler][] = [
     ({ db, body }) => {
       const patch = withoutNulls(body) as Partial<Profile>;
       if (patch.moved_on === "") patch.moved_on = null; // "" clears the move, as the API stores it
+      // like the API: a move only for a day in the last six months or the next three
+      if (patch.moved_on && !moveAllowed(patch.moved_on, db.today)) throw new HttpError(422, MOVE_WINDOW_PROBLEM);
       if (typeof patch.iban === "string" && patch.iban.trim()) {
         if (!ibanLooksValid(patch.iban)) throw new HttpError(422, "That IBAN isn't valid — check it against your bank card or banking app.");
         patch.iban = normalizeIban(patch.iban);
       }
-      return (db.state.profile = { ...db.state.profile, ...patch });
+      const before = db.state.profile.moved_on;
+      db.state.profile = { ...db.state.profile, ...patch };
+      // a new, changed or cleared move starts, restarts or ends the moving checklist
+      if (db.state.profile.moved_on !== before) {
+        refreshMovingIdeas(db);
+        emit("suggestions.updated", {});
+      }
+      return db.state.profile;
     },
   ],
   ["GET", "/settings", ({ db }) => db.state.settings],
@@ -1897,6 +1907,11 @@ const routes: [string, string, Handler][] = [
       );
       db.log("draft.sent", `You sent “${d.subject}”`, "draft", d.id);
       emit("item.updated", {});
+      // like the API's Ideas refresh: a new-address letter marked sent takes its sender's moving row away
+      if (d.kind === "address_change") {
+        refreshMovingIdeas(db);
+        emit("suggestions.updated", {});
+      }
       return d;
     },
   ],

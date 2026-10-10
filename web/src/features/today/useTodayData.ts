@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useDashboard, useDocuments, useParties } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { useTodayISO } from "@/lib/today";
+import { movingRows } from "./moving";
 import { buildCandidates, calendarIdea, pickTopThree, selectIdeas, type TodayAction } from "./selection";
 import { contractHref } from "@/features/contracts/links";
 import { ideasFromNewMail, useOpenedTrayDocs } from "@/features/tour/newMail";
@@ -41,7 +42,8 @@ export function useTodayData() {
     const pinnedIds = new Set(ideasFromNewMail(dash.suggestions, trayDocs).map((s) => s.id));
     const ideas = selectIdeas(dash.suggestions, { shownItemIds, pinnedIds });
     const nextUp = [...rest].sort((a, b) => a.actionDate.localeCompare(b.actionDate))[0];
-    return { day, candidates, top, rest, nextUp, ideas, pinnedIds, calendar: calendarIdea(dash.suggestions) };
+    // the moving checklist's rows have a card of their own (after the person said they moved)
+    return { day, candidates, top, rest, nextUp, ideas, pinnedIds, calendar: calendarIdea(dash.suggestions), moving: movingRows(dash.suggestions) };
   }, [dash, reviewDocs, docTitles, today, trayDocs]);
 
   const partyById = useMemo(() => new Map<string, Party>((parties.data ?? []).map((p) => [p.id, p])), [parties.data]);

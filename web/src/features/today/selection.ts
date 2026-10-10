@@ -26,6 +26,7 @@ import { addToTotals, formatDate, formatMoney, type Totals } from "@/lib/format"
 import { offersEndingLetter } from "@/features/contracts/links";
 import { cancellationSent, noticeFromYou } from "@/features/contracts/model";
 import { isDirectDebit } from "@/lib/payments";
+import { MOVING_RULE } from "./moving";
 
 // ------------------------------------------------------------------------------------------------
 // Types
@@ -454,16 +455,16 @@ export interface SelectIdeasOptions {
 }
 
 /**
- * Ideas for Today: new ones, minus the calendar Idea (own card) and Ideas that only repeat a Top-3
- * action. Ideas that just arrived with new mail first, then possible scams, then by priority, then
- * newest.
+ * Ideas for Today: new ones, minus the calendar Idea and the moving checklist's rows (each has its own
+ * card) and Ideas that only repeat a Top-3 action. Ideas that just arrived with new mail first, then
+ * possible scams, then by priority, then newest.
  */
 export function selectIdeas(suggestions: readonly Suggestion[], opts: SelectIdeasOptions = {}): { shown: Suggestion[]; more: Suggestion[] } {
   const shownItems = opts.shownItemIds ?? new Set<string>();
   const pinned = opts.pinnedIds ?? new Set<string>();
   const max = opts.max ?? 3;
   const eligible = suggestions
-    .filter((s) => s.status === "new" && s.rule_id !== CALENDAR_RULE)
+    .filter((s) => s.status === "new" && s.rule_id !== CALENDAR_RULE && s.rule_id !== MOVING_RULE)
     .filter((s) => pinned.has(s.id) || s.kind === "scam" || !s.refs.some((r) => r.type === "item" && shownItems.has(r.id)))
     .sort(
       (a, b) =>
