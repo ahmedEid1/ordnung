@@ -23,13 +23,19 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi.routing import APIRoute
 
 from helpers_secretary import TODAY, seed_ledger
 from ordnung import clock, sync
 from ordnung.api.app import openapi_schema
+from ordnung.api.deps import require_computer
+from ordnung.api.routes import export
+from ordnung.api.routes.documents import DocumentPatch
+from ordnung.api.routes.profile import ProfilePatch
 from ordnung.app_context import AppContext, build_context
 from ordnung.assistant.rules_tools import build_rules_server
 from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
+from ordnung.backup.archive import FOLDERS
 from ordnung.backup.container import DEFAULT_KDF, MAX_SCRYPT_BYTES
 from ordnung.db.store import Store
 from ordnung.drafts.compose import compose
@@ -41,10 +47,21 @@ from ordnung.llm.base import LLMRequest
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
-from ordnung.models import BackupCopy, DateSpec, Evidence, ExtractedItem, Identifier, Page, Party, Profile
+from ordnung.models import (
+    BackupCopy,
+    DateSpec,
+    Document,
+    Evidence,
+    ExtractedItem,
+    Identifier,
+    Page,
+    Party,
+    Profile,
+)
 from ordnung.phone import scope as phone_scope
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.postcodes import Home, suggest_land_why
+from ordnung.secretary.triggers import Ledger, letter_day, tax_documents
 from ordnung.tick import DailyTick
 from test_api_support import api_for
 
@@ -2541,3 +2558,379 @@ def test_sync_letters_are_not_uploaded_again(synced: Any) -> None:
     outcome = synced.round()
     assert outcome.pushed is not None and outcome.pushed.outcome == "pushed"
     assert "f" not in outcome.pushed.kinds_written, outcome.pushed.kinds_written
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch B2 — the tax year and letter export, searchable scans and the moving checklist: README, the
+# CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md and ADRs 0020 and 0021
+# --------------------------------------------------------------------------------------------------
+
+_ADR_SCANS = ROOT / "docs" / "decisions" / "0020-a-scanner-s-text-is-for-finding-not-reading.md"
+_ADR_MOVING = ROOT / "docs" / "decisions" / "0021-a-move-is-said-never-guessed.md"
+#: What the app says where a search found a letter only in the text its scanner added (``web/src/lib/copy.ts``).
+SCANNER_TEXT_MATCH = "Found in your scanner's text — not checked"
+#: The letter page's note on a scan's scanner text (``web/src/features/document/DocumentFooter.tsx``).
+SCANNER_TEXT_NOTE = (
+    "Ordnung keeps it only so search can find the letter: it isn't checked, isn't shown as the letter's words "
+    "and is never sent to Claude."
+)
+#: Where the privacy page says a scanner's text lives: with the page images, which backups and hand-off sync
+#: carry — so never "on this computer only".
+SCANNER_TEXT_KEPT = (
+    "kept with the letter's page images (so also in backups and hand-off sync), only for search"
+)
+#: A § citation as the docs write one ("§ 17 Abs. 1 BMG").
+_CITATION = re.compile(r"§+ ?\d+[a-z]?(?: Abs\. \d+)?(?: (?:Satz|S\.|Nr\.) \d+)* [A-Z][A-Za-z]+")
+#: The claims below that need the code of another B2 package (scans, export, moving) until the branches merge.
+_until_b2_integration = pytest.mark.xfail(strict=False, reason="until B2 integration")
+
+
+def _unreleased(heading: str) -> str:
+    """The CHANGELOG's Unreleased ``### heading`` list, flattened."""
+    unreleased = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1]
+    return _flat(unreleased.split(f"\n### {heading}\n", 1)[1].split("\n### ", 1)[0])
+
+
+def _bullet(flat_list: str, lead: str) -> str:
+    """The bold-led bullet of a flattened list that starts with ``lead``, up to the next bold-led one."""
+    return flat_list.split(f"- {lead}", 1)[1].split(" - **", 1)[0]
+
+
+def _adr(path: Path) -> str:
+    return _flat(path.read_text(encoding="utf-8"))
+
+
+def _spec() -> str:
+    return _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
+
+
+def _moving_limitation() -> str:
+    """README's Limitations bullet about the moving checklist."""
+    (bullet,) = [part for part in _limitations().split(" - ") if "moving checklist" in part]
+    return bullet
+
+
+def test_the_changelog_adds_the_tax_year_searchable_scans_and_the_moving_checklist() -> None:
+    """CHANGELOG, Unreleased → Added: the tax year and *Export letters* (only on a click, never from a phone, the ZIP
+    not encrypted), searchable scans (search only, marked "not checked", never sent to Claude) and the moving
+    checklist (said, never guessed; nothing sent), in the one list with what was there."""
+    added = _unreleased("Added")
+    taxes = _bullet(added, "**Your tax year, and your letters as files.**")
+    for words in (
+        "*Inbox → Letters for taxes*",
+        "by the date on the letter (else the day it arrived)",
+        "dated January–May of the next year",
+        "now opens it",
+        "*Export letters* (Settings → Data, or *Export these letters…* on a tax year)",
+        "`2025/Finanzamt Musterstadt/2025-03-14 Steuerbescheid 2025.pdf`",
+        "`index.csv`",
+        "It runs only when you click it, on your computer, never from a phone",
+        "The ZIP isn't encrypted",
+    ):
+        assert words in taxes, words
+    scans = _bullet(
+        added, "**Scans you keep private, or add while Claude isn't connected, can be found by their words.**"
+    )
+    for words in (
+        f"*{SCANNER_TEXT_MATCH}*",
+        "kept with the letter's page images for search only",
+        "never shown as the letter's words, never used to check a date or an amount, and never sent to Claude",
+        "Ask doesn't search it",
+        "Scans you added before are caught up in the background",
+        "(docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)",
+    ):
+        assert words in scans, words
+    assert "computer only" not in scans and "on your computer" not in scans
+    moving = _bullet(added, "**A moving checklist.**")
+    for words in (
+        "tick *I moved*",
+        "within two weeks of moving in (§ 17 Abs. 1 BMG)",
+        "*Not needed*",
+        "once you mark a new-address letter to them as sent",
+        "Nothing is sent for you, and no row names an address",
+        "(docs/decisions/0021-a-move-is-said-never-guessed.md)",
+    ):
+        assert words in moving, words
+    # one list: the new features come after the sender's state and before the CI and documentation entries
+    assert added.index("**Ordnung suggests a sender's state") < added.index("**Your tax year")
+    assert added.index("**A moving checklist.**") < added.index("**CI checks more.**")
+
+
+def test_the_changelog_fixes_waiting_letters_search_and_says_what_an_older_computer_does() -> None:
+    """CHANGELOG, Unreleased: Fixed — a letter added while Claude is missing is found by its PDF's words at once
+    (only the first one was); Upgrading — 0.2.0 shows the tax Idea without its button, finds scans by name only,
+    and drops a move when its profile is saved there while it never retires the checklist's rows."""
+    assert (
+        "A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its "
+        "PDF straight away. Before, only the first such letter was; the others were found by name until Claude "
+        "read them."
+    ) in _unreleased("Fixed")
+    upgrading = _unreleased("Upgrading")
+    for sentence in (
+        "A computer still on 0.2.0 shows the tax-season Idea without its button.",
+        "A computer still on 0.2.0 finds a scan only by its name, as before, and deletes its scanner's text with "
+        "the letter.",
+        "A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its "
+        "Ideas and never takes them away, and saving the profile there forgets the move. Update both computers.",
+    ):
+        assert sentence in upgrading, sentence
+
+
+def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
+    """README "Also:" names the three features, and Install says what search finds without Claude: a PDF's own
+    text or the text a scanner added (search only), a photo by its name; a waiting letter by its PDF's words."""
+    also = _flat(_tour().split("**Also:**", 1)[1])
+    for words in (
+        "*tax year* — a year's letters for your tax return, by the date on them",
+        "*export letters* — your originals as files in folders by year and sender, with a list for a spreadsheet",
+        "*moving checklist* — who needs your new address, from your contracts and letters, starting with the "
+        "Bürgeramt's two weeks",
+    ):
+        assert words in also, words
+    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    assert (
+        "Without Claude you can still store letters privately, find them by name or by the text in the file (a "
+        "PDF's own text, or the text a scanner added to a scan — kept for search only, never checked or sent to "
+        "Claude; a photo only by its name) and add your own dates"
+    ) in install
+    assert "meanwhile search finds it by the words in its PDF" in install
+
+
+def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
+    """README Limitations: the tax year files a letter by its printed date (else its arrival,
+    ``triggers.letter_day``), so its January–May group is a heuristic; only Claude marks a letter for taxes, so a
+    private one never is, and nobody can yet (``DocumentPatch`` has no ``tax_relevant``); the ZIP isn't
+    encrypted; a scanner's text is unchecked; the moving checklist knows only the organisations Ordnung has
+    seen."""
+    dated = Document.model_construct(doc_date="2026-02-03", received_date="2026-02-06")
+    undated = Document.model_construct(doc_date=None, received_date="2026-02-06")
+    assert (letter_day(dated), letter_day(undated)) == (date(2026, 2, 3), date(2026, 2, 6))
+    assert "tax_relevant" not in DocumentPatch.model_fields
+    limitations = _limitations()
+    for sentence in (
+        "The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is "
+        "for",
+        "which is why a tax year also lists the letters for taxes dated January–May of the next year, for you to "
+        "check — a heuristic",
+        "Only Claude marks a letter for taxes, when it reads it: a letter you kept private is never marked, and "
+        "you can't mark one yourself yet",
+        "The ZIP *Export letters* saves isn't encrypted",
+        'The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn\'t checked',
+    ):
+        assert sentence in limitations, sentence
+    assert _moving_limitation().startswith(
+        "The moving checklist knows only the organisations Ordnung has seen in your contracts and letters"
+    )
+
+
+def test_the_tax_idea_opens_the_tax_year_the_docs_describe(store: Store) -> None:
+    """SPEC § 9 and the CHANGELOG: the tax-season Idea counts letters by the letter's date (else the day it
+    arrived) and *See the documents* opens the tax year — ``open``/``tax_year``/the year, which an older web app
+    has no link for (hence its Upgrading line)."""
+    seed_ledger(store)
+    (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
+    assert idea.action is not None
+    assert (idea.action.type, idea.action.target_type, idea.action.target_id) == ("open", "tax_year", "2025")
+    assert (
+        "`tax_documents` (Jan–Jul; counted by the letter's date, else the day it arrived; *See the documents* "
+        'opens the tax year, `target_type="tax_year"`)'
+    ) in _spec()
+    assert f"(*{idea.title}*) now opens it" in _unreleased("Added")
+
+
+def test_the_letters_zip_is_for_the_computer_only_and_leaves_it_only_as_the_zip_you_save() -> None:
+    """docs/privacy.md and SPEC: *Export letters* is computer-only (``NEVER_ON_PHONE``: originals leave the computer,
+    and the route checks again), writes nothing, and leaves the computer only as the ZIP the person saves, not
+    encrypted; a paired phone can't export."""
+    operation = ("GET", "/api/documents.zip")
+    assert phone_scope.classify(*operation) == "computer"
+    assert phone_scope.NEVER_ON_PHONE[operation] == "originals leave the computer"
+    (route,) = [r for r in export.router.routes if isinstance(r, APIRoute) and r.path == "/documents.zip"]
+    assert route.methods == {"GET"}
+    assert any(dependency.dependency is require_computer for dependency in route.dependencies)
+    privacy = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (row,) = [line for line in privacy.splitlines() if line.startswith("| Exported letters")]
+    assert "Only as the ZIP you save, where you put it — **not encrypted**" in row and "`index.csv`" in row
+    controls = _privacy_section("Your controls")
+    assert (
+        "it leaves the computer only as the ZIP you save: Ordnung writes nothing for it, sends nothing"
+        in controls
+    )
+    assert "a paired phone can't export" in controls
+    assert "export your letters" in _privacy_section("Phone access (optional)")
+    spec = _spec()
+    assert "`documents.zip` (GET: the letters' original files as one streamed ZIP" in spec
+    assert "computer-only, writes nothing)" in spec
+    assert "originals (a letter's file and the letters ZIP)" in spec
+
+
+def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
+    """docs/privacy.md: a scan's scanner text lives with its page images under ``derived/``, which backups and
+    hand-off sync carry (``backup.archive.FOLDERS``, ``sync.SYNCED_DIRS``) — so no document says it stays "on this
+    computer only"."""
+    assert "derived" in FOLDERS and "derived" in sync.SYNCED_DIRS
+    privacy = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (row,) = [line for line in privacy.splitlines() if line.startswith("| A scanner's text")]
+    assert SCANNER_TEXT_KEPT in row and "`scan-text.json`" in row and "never to Claude" in row
+    keep_private = (
+        _privacy_section("Your controls").split("**Keep private — no AI**", 1)[1].split(" - **", 1)[0]
+    )
+    assert (
+        "the text a scanner added to a scan, kept for search only (a photo only by its name)" in keep_private
+    )
+    scanner_words = re.compile(
+        r"scanner's text|scanner text|text a scanner|text your scanner|scan-text\.json|OCR"
+    )
+    for name in ("README.md", "CHANGELOG.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md"):
+        for chunk in re.split(r"\n\s*\n|\n\s*[-*] |\n\|", (ROOT / name).read_text(encoding="utf-8")):
+            if scanner_words.search(chunk):
+                assert "computer only" not in _flat(chunk), (name, _flat(chunk)[:160])
+    assert "computer only" not in _adr(_ADR_SCANS)
+
+
+def test_the_moving_docs_cite_no_law_but_the_duty_to_register() -> None:
+    """The moving checklist states one law, § 17 Abs. 1 BMG (registering within two weeks of moving in): ADR 0021
+    and the CHANGELOG's entry cite no other, and README's Limitations bullet none."""
+    for name, text in (
+        ("ADR 0021", _adr(_ADR_MOVING)),
+        ("CHANGELOG", _bullet(_unreleased("Added"), "**A moving checklist.**")),
+    ):
+        cited = _CITATION.findall(text)
+        assert cited and set(cited) == {"§ 17 Abs. 1 BMG"}, (name, cited)
+        assert text.count("§") == len(cited), name
+    assert "§" not in _moving_limitation()
+
+
+def test_a_move_is_said_never_guessed_as_the_docs_say() -> None:
+    """ADR 0021 and SPEC § 4: a move is two keys of the profile the person sets (``moved_on``, ``None`` until they
+    say they moved, ``""`` clears it; ``old_address``), so no migration — and a 0.2.0 computer, which ignores keys
+    it doesn't know, drops them when it saves the profile (the Upgrading line)."""
+    profile = Profile()
+    assert profile.moved_on is None and profile.old_address == ""
+    assert {"moved_on", "old_address"} <= set(ProfilePatch.model_fields)
+    assert Profile.model_config.get("extra") == "ignore"
+    adr = _adr(_ADR_MOVING)
+    for words in (
+        "Only the person sets `Profile.moved_on`",
+        "no route, no column and no migration",
+        "Nothing is sent, paid or cancelled",
+    ):
+        assert words in adr, words
+    assert "`Profile.moved_on` (`null`: no move told) and `Profile.old_address`" in _spec()
+
+
+def test_adrs_0020_and_0021_exist_and_the_readme_lists_them() -> None:
+    """Two new decisions, numbered after ADR 0019 and listed in README's Documentation: a scanner's text is for
+    finding, not reading (0020); a move is said, never guessed (0021)."""
+    titles = {
+        _ADR_SCANS: "# ADR 0020 — A scanner's text is for finding, not reading",
+        _ADR_MOVING: "# ADR 0021 — A move is said, never guessed",
+    }
+    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    for path, title in titles.items():
+        text = path.read_text(encoding="utf-8")
+        assert text.startswith(title + "\n"), path.name
+        assert "**Status:** accepted" in text, path.name
+        assert f"(docs/decisions/{path.name})" in documentation, path.name
+    assert "[0020 a scanner's text is for finding, not reading]" in documentation
+    assert "[0021 a move is said, never guessed]" in documentation
+
+
+@_until_b2_integration
+def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -> None:
+    """ADR 0020, SPEC § 8 and the CHANGELOG: the file is ``derived/<doc>/scan-text.json``, at most 20,000 characters
+    a page; a letter found only by it is marked with the words the web app shows, and its page says what the text
+    is kept for."""
+    scan_text = importlib.import_module("ordnung.db.scan_text")
+    assert scan_text.NAME == "scan-text.json"
+    assert scan_text.path(Path("derived"), "doc_x") == Path("derived/doc_x/scan-text.json")
+    assert f"at most {scan_text.MAX_PAGE_CHARS:,} characters a page" in _spec()
+    copy = (ROOT / "web" / "src" / "lib" / "copy.ts").read_text(encoding="utf-8")
+    assert f'SCANNER_TEXT_MATCH = "{SCANNER_TEXT_MATCH}"' in copy
+    footer = _flat(
+        (ROOT / "web" / "src" / "features" / "document" / "DocumentFooter.tsx").read_text(encoding="utf-8")
+    )
+    assert SCANNER_TEXT_NOTE in footer
+    adr = _adr(_ADR_SCANS)
+    assert SCANNER_TEXT_NOTE in adr and f"*{SCANNER_TEXT_MATCH}*" in adr
+
+
+@_until_b2_integration
+def test_only_the_store_reads_the_scanner_text_as_adr_0020_says() -> None:
+    """ADR 0020: only ``Store`` reads and writes the scanner text — no other module imports ``ordnung.db.scan_text``,
+    so Ask, the reading, the evidence checks and prompts can't reach it; a waiting letter's own text is read at
+    once, and the worker catches up older scans 30 seconds after Ordnung starts."""
+    importlib.import_module("ordnung.db.scan_text")
+    package = ROOT / "src" / "ordnung"
+    imports = re.compile(
+        r"^\s*(?:from ordnung\.db import .*\bscan_text\b|from ordnung\.db\.scan_text |import ordnung\.db\.scan_text)",
+        re.M,
+    )
+    importers = {
+        path.relative_to(package).as_posix()
+        for path in package.rglob("*.py")
+        if imports.search(path.read_text("utf-8"))
+    }
+    assert importers == {"db/store.py"}, importers
+    pipeline = importlib.import_module("ordnung.ingest.pipeline")
+    assert callable(pipeline.read_text_here) and callable(pipeline.catch_up_scan_text)
+    assert importlib.import_module("ordnung.ingest.worker").CATCH_UP_DELAY_S == 30
+    adr = _adr(_ADR_SCANS)
+    assert "Only `Store` reads and writes it" in adr and "30 seconds after Ordnung starts" in adr
+
+
+@_until_b2_integration
+def test_the_export_s_folders_list_and_name_are_the_ones_the_docs_show() -> None:
+    """SPEC § 13 and the CHANGELOG: ``<year>/<sender>/<date> <title>.<ext>`` with ``Undated`` and ``Sender
+    unknown``, ``index.csv`` (a BOM, semicolons) at the root, and the ZIP's name."""
+    letters_zip = importlib.import_module("ordnung.letters_zip")
+    assert letters_zip.INDEX_NAME == "index.csv"
+    assert (letters_zip.UNDATED, letters_zip.SENDER_UNKNOWN) == ("Undated", "Sender unknown")
+    choice = letters_zip.Choice(year=2025, tax=True)
+    assert letters_zip.zip_name(choice, date(2026, 10, 9)) == "ordnung-letters-for-taxes-2025.zip"
+    spec = _spec()
+    assert "`<year>/<sender>/<date> <title>.<ext>` (`Undated`, `Sender unknown`)" in spec
+    assert "`index.csv` (UTF-8 with a BOM, semicolons" in spec
+    assert "`ordnung-letters[-for-taxes][-<year>|-<today>].zip`" in spec
+
+
+@_until_b2_integration
+def test_the_moving_checklist_s_window_and_law_are_the_code_s() -> None:
+    """ADR 0021, SPEC and the CHANGELOG: a move counts for the last six months or the next three (422 otherwise),
+    the list ends six months after it, and its one law is the one Ask's check knows (``IDEA_LAWS``)."""
+    moving = importlib.import_module("ordnung.secretary.moving")
+    assert (moving.MOVE_WINDOW_DAYS, moving.MOVE_AHEAD_DAYS) == (180, 90)
+    triggers = importlib.import_module("ordnung.secretary.triggers")
+    assert triggers.REGISTRATION_LAW == "§ 17 Abs. 1 BMG" and triggers.REGISTRATION_LAW in triggers.IDEA_LAWS
+    assert "moved_house" in triggers.TRIGGERS
+    for text in (_adr(_ADR_MOVING), _bullet(_unreleased("Added"), "**A moving checklist.**")):
+        assert "a move in the last six months or the next three" in text
+        assert "ends six months after the move" in text
+    assert moving.MOVE_WINDOW_PROBLEM in _spec()
+
+
+@_until_b2_integration
+def test_no_moving_row_carries_an_address_as_the_privacy_page_says(store: Store) -> None:
+    """docs/privacy.md: the moving checklist's rows never contain an address — neither the new nor the old one —
+    though their titles reach *Weekly Ideas* and the daily note like every Idea's."""
+    moving = importlib.import_module("ordnung.secretary.moving")
+    seed_ledger(store)
+    store.save_profile(
+        store.get_profile().model_copy(
+            update={
+                "address": "Neue Straße 7\n12345 Musterstadt",
+                "old_address": "Beispielweg 5\n12345 Musterstadt",
+                "moved_on": "2026-09-24",
+            }
+        )
+    )
+    rows = moving.moving_ideas(Ledger(store, TODAY))
+    assert rows
+    for row in rows:
+        words = f"{row.title} {row.body} {row.rationale}"
+        for line in ("Neue Straße", "Beispielweg", "12345"):
+            assert line not in words, (row.title, line)
+    assert (
+        "Its rows never contain an address: like every Idea's, their titles (an organisation's name, the day to "
+        "register by) are part of what *Weekly Ideas* and the daily note send."
+    ) in _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
