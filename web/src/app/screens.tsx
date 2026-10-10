@@ -18,6 +18,9 @@ export const BOOT_SLOW_MS = 1500;
 /** …and asks whether Ordnung is running, with "Try again", after this long. */
 export const BOOT_STUCK_MS = 10_000;
 
+/** A command inside a sentence of these screens. */
+const INLINE_CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink";
+
 /** What a phone checks when the computer doesn't answer (the computer's own tab gets the commands instead). */
 export const PHONE_CHECKS = [
   "Your computer is on and awake.",
@@ -57,8 +60,8 @@ export function BootScreen({ onRetry = () => window.location.reload(), phone = s
               </p>
             ) : (
               <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
-                Ordnung usually starts in a second or two. If you closed the terminal where it ran, start it again with{" "}
-                <code className="whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink">ordnung serve</code>.
+                Ordnung usually starts in a second or two. If you closed the window where it ran, start it again from your apps or with{" "}
+                <code className={INLINE_CODE}>ordnung serve</code>.
               </p>
             )}
             <Button variant="primary" icon={RotateCw} className="mt-5" onClick={onRetry}>
@@ -115,8 +118,13 @@ export function UnreachableScreen({
         <h1 className="display mt-5 text-balance text-2xl font-semibold text-ink">{noSession ? "Please open Ordnung from its link" : "Ordnung isn't running"}</h1>
         <p className="mt-2 text-pretty text-base leading-relaxed text-muted">
           {noSession
-            ? "For your privacy, Ordnung only talks to the browser tab it opened itself. Run one of these commands in a terminal and use the link it prints (or opens)."
-            : "This page talks to the Ordnung app on your computer, and it didn't answer. Start it again with one of these commands, then try again."}
+            ? "For your privacy, Ordnung only talks to the browser tab it opened itself. "
+            : "This page talks to the Ordnung app on your computer, and it didn't answer. "}
+          {/* the launcher `ordnung shortcut` adds opens it signed in, and starts it when it isn't running */}
+          If you added Ordnung to your apps with <code className={INLINE_CODE}>ordnung shortcut</code>, open it from there.{" "}
+          {noSession
+            ? "Otherwise run one of these commands in a terminal and use the link it prints (or opens)."
+            : "Otherwise start it again with one of these commands, then try again."}
         </p>
         <ul className="mt-5 w-full space-y-3 text-left">
           {START_COMMANDS.map((c) => (

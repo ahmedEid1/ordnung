@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BellRing, CircleCheck, MonitorSmartphone, Power, TriangleAlert } from "lucide-react";
+import { AppWindow, BellRing, CircleCheck, MonitorSmartphone, Power, TriangleAlert } from "lucide-react";
 import { useDesktopReminders, useSettings, useTestDesktopNotification, useUpdateSettings } from "@/api/hooks";
 import type { AppSettings, DesktopReminders, NotificationText } from "@/api/types";
 import { LogoMark } from "@/components/shell/Logo";
@@ -15,7 +15,23 @@ import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { cn } from "@/lib/utils";
 import { isStaticDemo } from "@/mocks/mode";
 import { BreakablePath } from "./DataSection";
-import { autostartLabel, DESKTOP_MODES, failureDetail, failureLine, MODE_HINTS, NOTHING_APPEARED, previewFor, savedNote, testMode, testOutcome, timeError, type DesktopSetting } from "./desktop";
+import {
+  autostartLabel,
+  DESKTOP_MODES,
+  failureDetail,
+  failureLine,
+  MENU_NAME,
+  MODE_HINTS,
+  NOTHING_APPEARED,
+  previewFor,
+  savedNote,
+  shortcutLabel,
+  testMode,
+  testOutcome,
+  timeError,
+  withArticle,
+  type DesktopSetting,
+} from "./desktop";
 import { SaveBar, SettingsCard } from "./SettingsCard";
 
 const TOOL_NAMES: Record<string, string> = { "notify-send": "notify-send", osascript: "macOS notifications", powershell: "Windows notifications" };
@@ -55,6 +71,8 @@ function StartAtLogin({ status }: { status: DesktopReminders | undefined }) {
   const info = status?.autostart;
   const label = autostartLabel(info);
   const here = Boolean(info?.enabled && info.points_here);
+  // the other way to open the app, set up in the block below this one (once the status says which system)
+  const menu = status ? MENU_NAME[status.system] : null;
   const code = "font-mono text-[12.5px] text-ink";
   return (
     <div className="mt-6 border-t border-line pt-5">
@@ -72,8 +90,8 @@ function StartAtLogin({ status }: { status: DesktopReminders | undefined }) {
         <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-muted">
           <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
           <span className="min-w-0">
-            Ordnung starts in the background each time you log in, so the notification comes with the browser closed. Open the app with{" "}
-            <code className={code}>ordnung serve</code>. Set up as a {info.kind}:{" "}
+            Ordnung starts in the background each time you log in, so the notification comes with the browser closed. Open the app from your {menu}{" "}
+            (below) or with <code className={code}>ordnung serve</code>. Set up as a {info.kind}:{" "}
             <span className={cn(code, "[overflow-wrap:anywhere]")}>
               <BreakablePath path={info.path} />
             </span>{" "}
@@ -90,7 +108,7 @@ function StartAtLogin({ status }: { status: DesktopReminders | undefined }) {
         <>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">
             The morning notification — like every reminder — only comes while Ordnung is running. Run this once in a terminal and Ordnung starts in the
-            background each time you log in (you open the app with <code className={code}>ordnung serve</code>):
+            background each time you log in (you open the app {menu ? `from your ${menu}, below, or ` : ""}with <code className={code}>ordnung serve</code>):
           </p>
           <CopyCommand command={info?.command ?? "ordnung autostart enable"} label="start Ordnung when you log in" className="mt-3" />
           {info?.enabled ? (
@@ -99,6 +117,66 @@ function StartAtLogin({ status }: { status: DesktopReminders | undefined }) {
               <span>It is set up for another data folder. Run the command again to start this one instead.</span>
             </p>
           ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * "Open Ordnung from your app menu" (Start menu, Applications folder): what `ordnung shortcut` adds, and
+ * whether it is there for this data folder. Read only, like start at login — the person runs the command
+ * and sees what it writes. Shown once the status says which system this is, so the menu has its own name.
+ */
+function OpenFromMenu({ status }: { status: DesktopReminders | undefined }) {
+  if (!status) return null;
+  const info = status.shortcut;
+  const menu = MENU_NAME[status.system];
+  const label = shortcutLabel(info);
+  const code = "font-mono text-[12.5px] text-ink";
+  const copy = (command: string) => <CopyCommand command={command} label={`put Ordnung in your ${menu}`} className="mt-3" />;
+  return (
+    <div className="mt-6 border-t border-line pt-5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <h4 className="flex items-center gap-2 text-[14px] font-semibold text-ink">
+          <AppWindow className="size-4 shrink-0 text-muted" aria-hidden /> Open Ordnung from your {menu}
+        </h4>
+        <Badge tone={label.tone} dot>
+          {label.text}
+        </Badge>
+      </div>
+      {info.command === null ? (
+        // the demo (and the online demo): it opens with `ordnung demo`, never from the app menu
+        <p className="mt-1 text-[13px] leading-relaxed text-muted">
+          The demo opens with <code className={code}>ordnung demo</code>. With your own letters, <code className={code}>ordnung shortcut</code> puts Ordnung
+          in your {menu}.
+        </p>
+      ) : info.added && info.points_here ? (
+        <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-muted">
+          <CircleCheck className="mt-0.5 size-4 shrink-0 text-ok" aria-hidden />
+          <span className="min-w-0">
+            Ordnung is in your {menu} and opens this data folder. Set up as {withArticle(info.kind)}:{" "}
+            <span className={cn(code, "[overflow-wrap:anywhere]")}>
+              <BreakablePath path={info.path} />
+            </span>{" "}
+            — <code className={code}>ordnung shortcut --remove</code> takes it out.
+          </span>
+        </p>
+      ) : info.added ? (
+        <>
+          <p className="mt-1.5 flex gap-1.5 text-[13px] leading-5 text-warn-ink">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>It opens another data folder. Run the command again to open this one instead.</span>
+          </p>
+          {copy(info.command)}
+        </>
+      ) : (
+        <>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">
+            Run this once in a terminal and Ordnung is in your {menu}. Opening it signs your browser in — no terminal needed after that. When Ordnung
+            isn't running, it starts in a window of its own; closing that window stops it.
+          </p>
+          {copy(info.command)}
         </>
       )}
     </div>
@@ -250,11 +328,12 @@ function Editor({ settings }: { settings: AppSettings }) {
       ) : null}
 
       <StartAtLogin status={data} />
+      <OpenFromMenu status={data} />
     </SettingsCard>
   );
 }
 
-/** Settings → Reminders: the morning desktop notification, its time, a preview, a test and start at login. */
+/** Settings → Reminders: the morning desktop notification, its time, a preview, a test, start at login and the app-menu shortcut. */
 export function DesktopNotificationsCard() {
   const settings = useSettings();
   if (!settings.data) return null; // the Settings page shows its own loading and error states

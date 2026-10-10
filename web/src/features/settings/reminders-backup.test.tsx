@@ -17,7 +17,7 @@ import { formatDate } from "@/lib/format";
 import { backupStrengthLine, backupSummary, copyAge, earlierSuggestion, failureSentence, lastBackupLine, leftOutSentence, MIN_PASSPHRASE, passphraseProblem, restoreCommand, restoreCommandPieces, syncCopyLine, WEAK_PASSPHRASE_MESSAGE, weekReminderText } from "./backup";
 import { MIN_PASSPHRASE_BITS, passphraseBits } from "./passphrase";
 import { deleteCalendarNote } from "./calendarSync";
-import { autostartLabel, failureDetail, failureLine, previewFor, savedNote, testMode, testOutcome, timeError } from "./desktop";
+import { autostartLabel, failureDetail, failureLine, MENU_NAME, previewFor, savedNote, shortcutLabel, testMode, testOutcome, timeError, withArticle } from "./desktop";
 
 class RO {
   observe() {}
@@ -104,6 +104,24 @@ describe("desktop notification helpers", () => {
     expect(autostartLabel({ ...info, enabled: false })).toEqual({ text: "Off", tone: "neutral" });
     expect(autostartLabel({ ...info, points_here: false })).toEqual({ text: "Starts another folder", tone: "warn" });
     expect(autostartLabel(info)).toEqual({ text: "On", tone: "ok" });
+  });
+
+  it("names the app-menu shortcut's state", () => {
+    const info = { added: true, points_here: true, kind: "app menu entry", path: "/p", command: "ordnung shortcut" };
+    expect(shortcutLabel(undefined)).toEqual({ text: "Not added", tone: "neutral" });
+    expect(shortcutLabel({ ...info, added: false, points_here: false })).toEqual({ text: "Not added", tone: "neutral" });
+    expect(shortcutLabel({ ...info, points_here: false })).toEqual({ text: "Opens another folder", tone: "warn" });
+    expect(shortcutLabel(info)).toEqual({ text: "Added", tone: "ok" });
+  });
+
+  it("names the place the shortcut goes as the server does (`ordnung.shortcut.WHERE`)", () => {
+    const source = readFileSync(resolve(__dirname, "../../../../src/ordnung/shortcut.py"), "utf8");
+    const where = source.slice(source.indexOf("WHERE: dict[System, str] = {"));
+    for (const system of ["linux", "macos", "windows"] as const) {
+      expect(where).toMatch(new RegExp(`"${system}": "your ${MENU_NAME[system]}"`));
+    }
+    expect(withArticle("app menu entry")).toBe("an app menu entry");
+    expect(withArticle("Start menu shortcut")).toBe("a Start menu shortcut");
   });
 });
 
@@ -375,7 +393,12 @@ describe("desktop notification card", () => {
       const res = await handle(method, path, query, body, signal);
       if (method !== "GET" || path !== "/reminders/desktop") return res;
       const json = (await res.json()) as DesktopReminders;
-      const own = { ...json, demo: false, autostart: { ...json.autostart, command: "ordnung autostart enable --data-dir /home/sam/Ordnung" } };
+      const own = {
+        ...json,
+        demo: false,
+        autostart: { ...json.autostart, command: "ordnung autostart enable --data-dir /home/sam/Ordnung" },
+        shortcut: { ...json.shortcut, command: "ordnung shortcut --data-dir /home/sam/Ordnung" },
+      };
       return new Response(JSON.stringify({ ...own, ...patch(own) }), { status: 200, headers: { "Content-Type": "application/json" } });
     };
     return mocked;
@@ -398,6 +421,9 @@ describe("desktop notification card", () => {
     const card = await openDesktopCard();
     expect(await within(card).findByText(/The demo doesn't start at login/)).toBeInTheDocument();
     expect(within(card).queryByRole("button", { name: /Copy command to start Ordnung/ })).not.toBeInTheDocument();
+    // nor a shortcut: the demo opens with `ordnung demo`
+    expect(within(card).getByText(/^The demo opens with/)).toHaveTextContent("With your own letters, ordnung shortcut puts Ordnung in your app menu.");
+    expect(within(card).queryByRole("button", { name: /Copy command to put Ordnung/ })).not.toBeInTheDocument();
     await switchOn(user, card);
     expect(within(card).getByRole("note")).toHaveTextContent("The demo doesn't notify on its own");
     await user.click(within(card).getByRole("button", { name: "Save changes" }));
@@ -459,6 +485,76 @@ describe("desktop notification card", () => {
     const card = await openDesktopCard();
     expect(within(card).getByRole("note")).toHaveTextContent("Not available in the online demo");
     expect(within(card).queryByRole("button", { name: "Show a test notification" })).not.toBeInTheDocument();
+    // the app-menu line is the demo's: what `ordnung shortcut` does with your own letters, nothing to copy
+    expect(await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your app menu" })).toBeInTheDocument();
+    expect(await within(card).findByText(/^The demo opens with/)).toHaveTextContent(
+      "The demo opens with ordnung demo. With your own letters, ordnung shortcut puts Ordnung in your app menu.",
+    );
+    expect(within(card).queryByRole("button", { name: /Copy command to put Ordnung/ })).not.toBeInTheDocument();
+  });
+
+  it("offers `ordnung shortcut` for this data folder while Ordnung isn't in the app menu", async () => {
+    useDesktopApi(() => ({}));
+    const user = userEvent.setup();
+    const card = await openDesktopCard();
+    const heading = await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your app menu" });
+    // the same level as "Start Ordnung when you log in", its neighbour
+    expect(within(card).getByRole("heading", { name: "Start Ordnung when you log in" }).tagName).toBe(heading.tagName);
+    expect(await within(card).findByText("Not added")).toBeInTheDocument();
+    expect(within(card).getByText(/^Run this once in a terminal and Ordnung is in your app menu\./)).toHaveTextContent(
+      "Run this once in a terminal and Ordnung is in your app menu. Opening it signs your browser in — no terminal needed after that. When Ordnung isn't running, it starts in a window of its own; closing that window stops it.",
+    );
+    const copy = within(card).getByRole("button", { name: "Copy command to put Ordnung in your app menu: ordnung shortcut --data-dir /home/sam/Ordnung" });
+    await user.click(copy);
+    expect(await navigator.clipboard.readText()).toBe("ordnung shortcut --data-dir /home/sam/Ordnung");
+    // start at login points to it as the other way to open the app
+    expect(within(card).getByText(/you open the app from your app menu, below, or with/)).toHaveTextContent("ordnung serve");
+  });
+
+  it("names the place as each system does", async () => {
+    useDesktopApi(() => ({ system: "macos" as const, tool: "osascript" }));
+    const card = await openDesktopCard();
+    expect(await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your Applications folder" })).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: /^Copy command to put Ordnung in your Applications folder: ordnung shortcut/ })).toBeInTheDocument();
+  });
+
+  it("names the Start menu on Windows", async () => {
+    useDesktopApi(() => ({ system: "windows" as const, tool: "powershell" }));
+    const card = await openDesktopCard();
+    expect(await within(card).findByRole("heading", { level: 4, name: "Open Ordnung from your Start menu" })).toBeInTheDocument();
+  });
+
+  const useShortcutApi = (pointsHere: boolean) =>
+    useDesktopApi((own) => ({ shortcut: { ...own.shortcut, added: true, kind: "app menu entry", path: "/home/sam/.local/share/applications/ordnung.desktop", points_here: pointsHere } }));
+
+  it("says where the shortcut is when it opens this data folder (no command to run then)", async () => {
+    useShortcutApi(true);
+    const card = await openDesktopCard();
+    expect(await within(card).findByText("Added")).toBeInTheDocument();
+    const line = within(card).getByText(/^Ordnung is in your app menu and opens this data folder\./);
+    expect(line).toHaveTextContent(
+      "Ordnung is in your app menu and opens this data folder. Set up as an app menu entry: /home/sam/.local/share/applications/ordnung.desktop — ordnung shortcut --remove takes it out.",
+    );
+    expect(within(card).queryByRole("button", { name: /Copy command to put Ordnung/ })).not.toBeInTheDocument();
+    // start at login still has its own command
+    expect(within(card).getByRole("button", { name: /Copy command to start Ordnung when you log in/ })).toBeInTheDocument();
+  });
+
+  it("warns when the shortcut opens another data folder, and offers the command again", async () => {
+    useShortcutApi(false);
+    const card = await openDesktopCard();
+    expect(await within(card).findByText("Opens another folder")).toBeInTheDocument();
+    expect(within(card).getByText("It opens another data folder. Run the command again to open this one instead.")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Copy command to put Ordnung in your app menu: ordnung shortcut --data-dir /home/sam/Ordnung" })).toBeInTheDocument();
+    expect(within(card).queryByText(/opens this data folder\./)).not.toBeInTheDocument();
+  });
+
+  it("start at login, once set up, says the app opens from the app menu or with `ordnung serve`", async () => {
+    useAutostartApi(true);
+    const card = await openDesktopCard();
+    expect(await within(card).findByText(/Set up as a systemd user service/)).toHaveTextContent(
+      "Open the app from your app menu (below) or with ordnung serve. Set up as a systemd user service",
+    );
   });
 });
 

@@ -298,7 +298,9 @@ def unauthenticated_response(request: Request) -> Response:
         [
             "For your privacy, Ordnung only talks to the browser tab it opened itself, with the access link "
             "it printed when it started.",
-            "Run one of these in a terminal and use the link it prints (or opens):",
+            # the launcher of `ordnung shortcut` opens Ordnung signed in (ordnung.shortcut)
+            "If you added Ordnung to your apps with “ordnung shortcut”, open it from there. Otherwise run "
+            "one of these in a terminal and use the link it prints (or opens):",
         ],
         status_code=401,
         commands=("ordnung serve", "ordnung demo"),
