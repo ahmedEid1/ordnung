@@ -69,7 +69,9 @@ export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
   const undo = (row: Suggestion) => async () => {
     await update.mutateAsync({ id: row.id, patch: { status: "new" } });
     mark(row.id, false);
-    focusWhenReady(() => document.getElementById(checkId(row.id)));
+    // the row asked back takes focus — also from the toast's Undo pressed by keyboard, which would hand focus
+    // back to the row after it
+    focusWhenReady(() => document.getElementById(checkId(row.id)), 3000, { always: true });
   };
 
   // focus is watched from the click, while the row is in its place, and the toast follows the call's promise

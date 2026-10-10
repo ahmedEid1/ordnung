@@ -149,7 +149,12 @@ describe("the Moving checklist card", () => {
     expect(card()).toHaveTextContent("10 to go");
 
     const toast = await screen.findByText("Ticked off");
-    await user.click(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" }));
+    // from the next row's checkbox, Alt+N reaches the toast and its Undo (a checkbox is no text field)
+    await user.keyboard("{Alt>}n{/Alt}");
+    expect(toast.closest("[data-toast]")).toHaveFocus();
+    await user.tab();
+    expect(within(toast.closest("[data-toast]") as HTMLElement).getByRole("button", { name: "Undo" })).toHaveFocus();
+    await user.keyboard("{Enter}");
     await waitFor(() => expect(calls.filter((c) => c.path === `/suggestions/${id}`).map((c) => c.body)).toEqual([{ status: "done" }, { status: "new" }]));
     const back = await within(card()).findByRole("checkbox", { name: "Register your new address by Mon 5 Oct" });
     expect(back).not.toBeChecked();
