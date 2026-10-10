@@ -685,7 +685,10 @@ def test_the_shell_reads_the_link_back(tmp_path: Path) -> None:
     )
     seen = json.loads(out.stdout.decode("utf-8-sig"))  # PowerShell may write a BOM first
     assert sc.link is not None
-    assert Path(seen["target"]).resolve() == Path(sys.executable).resolve()
+    # A link without an ID list names its target in its EnvironmentVariableDataBlock: the shell opens
+    # that (test_the_link_opens_ordnung), but WScript's TargetPath, read from the ID list, stays empty.
+    # Explorer's Properties may show no target for the same reason (README, Without a terminal).
+    assert seen["target"] == "" or Path(seen["target"]).resolve() == Path(sys.executable).resolve()
     assert seen["arguments"] == sc.link.arguments and seen["description"] == sc.link.description
     assert seen["working_dir"] == str(tmp_path) and seen["show"] == 1
     assert Path(seen["icon"].rsplit(",", 1)[0]).resolve() == Path(sc.link.icon).resolve()
