@@ -401,8 +401,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
       }),
     region_suggestion: regionSuggestion(db, db.party(d.party_id), d),
     addressed_to: addressedTo(id),
-    // no scanner text is kept in the demo (only search could ever find it)
-    scan_text_pages: [],
+    // only Sam's held scan has scanner text (search only, never shown)
+    scan_text_pages: db.scanTextPages(d),
   };
 }
 

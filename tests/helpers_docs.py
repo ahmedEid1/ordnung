@@ -8,6 +8,7 @@ the rendered page image with :func:`expected_point`.
 from __future__ import annotations
 
 import io
+from collections.abc import Sequence
 from dataclasses import dataclass
 from email.message import EmailMessage
 
@@ -181,9 +182,10 @@ def hidden_text_pdf() -> bytes:
     )
 
 
-def scanned_pdf(ocr: bool = False) -> bytes:
+def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None) -> bytes:
     """An image-only PDF (a 'scan'): text is pixels, there is no text layer — or, with ``ocr``, an
-    invisible OCR layer over the picture (a scanner's "searchable PDF")."""
+    invisible OCR layer over the picture (a scanner's "searchable PDF"). The OCR layer has the
+    picture's lines, or the lines ``ocr_text`` (a scanner that read the picture differently)."""
     image = Image.new("RGB", (1240, 1754), "white")
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype(str(FONT), 40)
@@ -199,7 +201,7 @@ def scanned_pdf(ocr: bool = False) -> bytes:
         pdf.set_font("DejaVu", size=19)
         pdf.text_mode = TextMode.INVISIBLE
         scale = A4[0] / 1240
-        for row, text in enumerate(LETTER_PAGES[0]):
+        for row, text in enumerate(LETTER_PAGES[0] if ocr_text is None else ocr_text):
             pdf.text(150 * scale, (200 + row * 60 + 40) * scale, text)
     return bytes(pdf.output())
 

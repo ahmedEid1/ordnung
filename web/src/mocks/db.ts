@@ -43,7 +43,7 @@ import { SUGGESTIONS, TRAY_SUGGESTIONS } from "./data/suggestions";
 import { DRAFTS } from "./data/drafts";
 import { ACTIVITY, HEALTH, MAIL_TRAY, PROFILE, SETTINGS, TOUR, TRAY_DOC } from "./data/system";
 import { LETTERS } from "./data/letters";
-import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT } from "./data/folder";
+import { FOLDER_DOCUMENTS, FOLDER_LETTERS, FOLDER_RECENT, SCANNER_TEXT } from "./data/folder";
 import { renderLetter, type RenderedLetter } from "./pages";
 import { TODAY } from "./data/constants";
 import { item as makeItem, spec } from "./data/helpers";
@@ -878,11 +878,24 @@ export class MockDb {
   }
 
   /**
-   * Where a search (`q`) found a letter, as `GET /api/documents` says it (`found_in`): its own words — no
-   * scanner text is kept here yet; null when the list wasn't searched.
+   * Where a search (`q`) found a letter, as `GET /api/documents` says it (`found_in`): `scanner_text` for a scan
+   * not read yet whose own words (title, summary, file name, sender, kind, key facts) don't hold every searched
+   * word — it was found by the text its scanner added (`SCANNER_TEXT`); else `letter`; null when the list
+   * wasn't searched.
    */
-  foundIn(_doc: Document, q: string | null): SearchFoundIn | null {
-    return q?.trim() ? "letter" : null;
+  foundIn(doc: Document, q: string | null): SearchFoundIn | null {
+    const words = (q ?? "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!words.length) return null;
+    if (!this.scanTextPages(doc).length) return "letter";
+    const own = [doc.title, doc.summary, doc.filename, this.party(doc.party_id)?.name ?? "", doc.kind?.replace(/_/g, " "), ...doc.key_facts.map((f) => `${f.label} ${f.value}`)]
+      .join(" ")
+      .toLowerCase();
+    return words.every((w) => own.includes(w)) ? "letter" : "scanner_text";
+  }
+
+  /** The pages whose only text is the scanner's (`scan_text_pages`): Sam's held scan until Claude reads it. */
+  scanTextPages(doc: Document): number[] {
+    return SCANNER_TEXT.has(doc.id) && !doc.ai_processed_at ? [1] : [];
   }
 
   /** Items dated after the last calendar export (drives the "N new dates" Idea). */

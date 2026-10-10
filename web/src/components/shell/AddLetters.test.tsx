@@ -70,7 +70,9 @@ describe("Keep private — no AI: the dialog follows the switch", () => {
     expect(within(dialog).getByRole("button", { name: "Add letter" }).querySelector("svg")).toHaveClass("lucide-upload");
 
     await user.click(within(dialog).getByRole("switch", { name: /Keep private/ }));
-    expect(dialog).toHaveAccessibleDescription(/Stored on this computer only and searchable by its text\. Claude never reads it/);
+    expect(dialog).toHaveAccessibleDescription(
+      "Stored on this computer only. Search finds it by its name and by any text in the file. Claude never reads it, so Ordnung won't find its dates — you can add them by hand.",
+    );
     expect(dialog).not.toHaveAccessibleDescription(/Claude reads it/);
     expect(within(dialog).getByRole("button", { name: "Store privately" }).querySelector("svg")).toHaveClass("lucide-lock");
   });
@@ -114,6 +116,10 @@ describe("Claude isn't ready: store now, read later", () => {
     expect(claudeNotReady(health({ installed: true, ok: false, version: "2.0.9 (Claude Code)", needs_version: "2.1.0" }))).toBe("outdated");
     expect(addDescription(false, false, "outdated")).toMatch(/^Claude Code needs an update, so Ordnung stores it now and reads it/);
     expect(addDescription(true, false, "missing")).toMatch(/^Stored on this computer only/);
+    // a photo has no text: it is found by its name; a scan also by the text its scanner added (ADR 0020)
+    expect(addDescription(true, true)).toBe(
+      "Stored on this computer only. Search finds them by their names and by any text in the files. Claude never reads them, so Ordnung won't find their dates — you can add them by hand.",
+    );
   });
 });
 

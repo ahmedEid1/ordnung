@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
+import type { DocumentListEntry } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import InboxPage from "@/pages/InboxPage";
 import { LettersList } from "./LettersList";
@@ -170,5 +171,29 @@ describe("Inbox letters list", () => {
     expect(line.parentElement!.lastElementChild).toBe(line);
     expect(within(row).getAllByText("Wage tax certificate attached")).toHaveLength(1);
     expect(rowOf(screen.getByRole("link", { name: other.title! })).querySelector("[data-letter-note]")).toBeNull();
+  });
+
+  it("marks a letter a search found only in its scanner's text as not checked (ADR 0020)", async () => {
+    const [scan, other] = [srv.db.document("doc_folder_scan")!, srv.db.document("doc_library")!];
+    // rows as the search lists them (`GET /api/documents?q=`)
+    const found: DocumentListEntry[] = [
+      { ...scan, found_in: "scanner_text" },
+      { ...other, found_in: "letter" },
+    ];
+    renderWithProviders(
+      <LettersList
+        groups={[{ key: "found", label: "Found", docs: found }]}
+        parties={new Map()}
+        open={new Map()}
+      />,
+    );
+    const row = rowOf(await screen.findByRole("link", { name: scan.title! }));
+    // one line, in both the stacked and the table layout, with its icon and no tab stop of its own
+    const [text, ...more] = within(row).getAllByText("Found in your scanner's text — not checked");
+    expect(more).toEqual([]);
+    const line = text!.closest("p")!;
+    expect(line.querySelector("svg")).toHaveClass("lucide-scan-text");
+    expect(line.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+    expect(within(rowOf(screen.getByRole("link", { name: other.title! }))).queryByText(/scanner's text/)).toBeNull();
   });
 });

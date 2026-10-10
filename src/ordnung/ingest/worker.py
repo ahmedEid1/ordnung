@@ -8,7 +8,9 @@
 * Claude not installed, not signed in or too old pauses reading too, without an end (``llm.paused``
   with an empty ``until``): the letter waits in the queue instead of failing, and so does every letter
   for Claude claimed meanwhile (put back for :data:`CLAUDE_RECHECK_S` seconds at a time; private letters
-  are read as usual), and the API's cached Claude status is dropped (``claude_failed``). Reading goes
+  are read as usual), and the API's cached Claude status is dropped (``claude_failed``). A letter put back
+  this way first gets its own text read on this computer (once per run of Ordnung,
+  :func:`~ordnung.ingest.pipeline.read_text_here`), so search finds it by its words while it waits. Reading goes
   on once a check sees Claude ready (:meth:`IngestWorker.claude_ready` — the API's Claude status
   check, and the worker's own every :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``);
   ``llm.resumed`` follows once a letter gets past Claude. When a reading fails the same way right
@@ -23,6 +25,11 @@
   done with the database before anything closes or wipes it).
 
 ``run_until_idle()`` processes everything that is due and returns — used by the CLI and tests.
+
+The scanner text of scans stored before Ordnung kept it (ADR 0020) is caught up in the background:
+:data:`CATCH_UP_DELAY_S` seconds after :meth:`IngestWorker.start`, one letter at a time, never a model —
+and it stops with the worker, which runs only while background work is allowed (never while hand-off
+sync stands this computer by).
 
 Readings and the Ideas refresh are background work for hand-off sync: they run in a context where the
 person's writes aren't counted (:func:`~ordnung.db.store.background_context`), even when a request of
@@ -44,7 +51,8 @@ from typing import TYPE_CHECKING, ClassVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung.db.store import background_context, person_write
-from ordnung.ingest.pipeline import READING_JOBS, ingest_document, run_triggers
+from ordnung.ingest import pipeline
+from ordnung.ingest.pipeline import READING_JOBS, ingest_document, read_text_here, run_triggers
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeOutdated, ClaudeRateLimited
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from ordnung.models import Job
@@ -77,6 +85,9 @@ OUTDATED_REASON = (
 )
 #: How the reason of a letter waiting because Claude is not installed, not signed in or too old starts.
 _NOT_READY = f"{WAITING_FOR_CLAUDE}: Claude Code isn't "
+#: Seconds after the worker starts before it catches up the scanner text of older scans (startup and the
+#: first readings go first).
+CATCH_UP_DELAY_S = 30.0
 
 
 def _now() -> datetime:
@@ -167,6 +178,12 @@ class IngestWorker:
         self._wake: asyncio.Event | None = None
         self._stopping = False
         self._recovered = False
+        #: The letters waiting for Claude whose own text was read on this computer in this run of Ordnung.
+        self._text_read: set[str] = set()
+        #: Seconds after :meth:`start` before the scanner text of older scans is caught up.
+        self.catch_up_delay_s = CATCH_UP_DELAY_S
+        self._catch_up: asyncio.Task[None] | None = None
+        self._halt: asyncio.Event | None = None
 
     # ---------------------------------------------------------------------------------- state
 
@@ -263,6 +280,10 @@ class IngestWorker:
         self._loop_task = asyncio.create_task(
             self._run(), name="ordnung-ingest-worker", context=background_context()
         )
+        self._halt = asyncio.Event()
+        self._catch_up = asyncio.create_task(
+            self._catch_up_scan_text(self._halt), name="ordnung-scan-text", context=background_context()
+        )
 
     def reload(self) -> None:
         """The database was replaced (hand-off sync brought another computer's Ordnung here) while the
@@ -271,6 +292,7 @@ class IngestWorker:
         if self.running:
             raise RuntimeError("stop the worker before the database is replaced")
         self._recovered = False
+        self._text_read.clear()  # its waiting letters' text is read again
         self.paused_until = self._stored_pause()
 
     async def stop(self, grace: float = 10.0) -> None:
@@ -280,6 +302,14 @@ class IngestWorker:
         if self._loop_task is not None:
             await self._loop_task
             self._loop_task = None
+        if self._catch_up is not None:  # the letter under way gets ``grace`` seconds too
+            if self._halt is not None:
+                self._halt.set()
+            _, unfinished = await asyncio.wait({self._catch_up}, timeout=grace)
+            for task in unfinished:
+                task.cancel()
+            await asyncio.gather(self._catch_up, return_exceptions=True)
+            self._catch_up = None
         if self._claude_checking is not None:
             self._claude_checking.cancel()
             await asyncio.gather(self._claude_checking, return_exceptions=True)
@@ -325,6 +355,27 @@ class IngestWorker:
         """Wait until no background run of the triggers is under way or due."""
         while self._ideas is not None and not self._ideas.done():
             await asyncio.shield(self._ideas)
+
+    async def _catch_up_scan_text(self, halt: asyncio.Event) -> None:
+        """Keep the scanner text of the scans stored before Ordnung kept it (ADR 0020): after
+        :attr:`catch_up_delay_s`, one letter at a time in a thread, until done or the worker stops (``halt``;
+        the letter under way is finished first). A letter that fails is logged and left for the next start."""
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(halt.wait(), self.catch_up_delay_s)
+        if halt.is_set():
+            return
+        try:
+            missing = await asyncio.to_thread(self.ctx.store.scan_text_missing)
+        except Exception:
+            log.warning("could not list the scans whose scanner text is missing", exc_info=True)
+            return
+        for doc_id in missing:
+            if halt.is_set():
+                return
+            try:
+                await asyncio.to_thread(pipeline.catch_up_scan_text, self.ctx.store, doc_id)
+            except Exception:
+                log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
 
     def _recover(self) -> None:
         if not self._recovered:
@@ -384,9 +435,16 @@ class IngestWorker:
         if job.doc_id is None:
             store.update_job(job.id, status="failed", error="This job has no document to read.")
             return
-        if self.waiting_for_claude is not None and self._needs_claude(job.doc_id):
-            self._park(job, self.waiting_for_claude, said=job.waiting_reason)
-            return
+        why = self.waiting_for_claude
+        if why is not None and self._needs_claude(job.doc_id):
+            try:
+                await self._read_text_here(job.doc_id)
+            except asyncio.CancelledError:
+                self._park(job, why, said=job.waiting_reason)
+                raise
+            if self.waiting_for_claude is not None:  # else Claude got ready meanwhile: read it now
+                self._park(job, self.waiting_for_claude, said=job.waiting_reason)
+                return
         # it waited for Claude in an earlier process: a page may have shown that wait from the job
         waited = bool(job.waiting_reason and job.waiting_reason.startswith(_NOT_READY))
         if job.waiting_reason or job.not_before:
@@ -410,6 +468,18 @@ class IngestWorker:
             return
         self._got_past_claude(job, waited)
         await run_triggers(self.ctx)
+
+    async def _read_text_here(self, doc_id: str) -> None:
+        """A letter waits for Claude: read its own text on this computer, once per run of Ordnung, so search
+        finds it while it waits (:func:`~ordnung.ingest.pipeline.read_text_here`). A failure is logged: the
+        letter waits all the same."""
+        if doc_id in self._text_read:
+            return
+        self._text_read.add(doc_id)
+        try:
+            await read_text_here(self.ctx, doc_id)
+        except Exception:
+            log.warning("could not read the text of waiting letter %s", doc_id, exc_info=True)
 
     def _got_past_claude(self, job: Job, waited: bool) -> None:
         """A letter for Claude was read (or failed for a reason of its own): the wait for Claude is over."""

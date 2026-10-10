@@ -950,6 +950,210 @@ def test_substring_snippet_falls_back_to_the_start_when_it_cannot_locate_the_mat
 
 
 # --------------------------------------------------------------------------------------------------
+# a scan's scanner text (search only, ADR 0020)
+# --------------------------------------------------------------------------------------------------
+
+SCANNER_TEXT = "Ablesung Ihres Wasserzählers Nr. 4711 zum 31.12.2026 — Kündigung bestätigt, Musterstraße 12"
+
+
+def add_scan(store: Store, scanned: str = SCANNER_TEXT, *, pages: int = 1, **fields: Any) -> Document:
+    """A PDF letter whose pages have no text of their own and whose first page carries ``scanned``."""
+    document = add_doc(store, f"scan {scanned} {pages} {fields}".encode(), **fields)
+    store.set_pages(document.id, [page(n) for n in range(1, pages + 1)])
+    store.write_scan_text(document.id, {1: scanned})
+    return document
+
+
+def scan_file(store: Store, doc_id: str) -> Path:
+    return store.paths.derived / doc_id / "scan-text.json"
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "Wasserzählers",
+        "wasserzahlers",
+        "Wasserzaehlers",
+        "zähler",  # a part of a compound (substring rule)
+        "WASSERZÄHLERS 4711",
+        "Kündigung",
+        "Kuendigung",
+        "kundigung",
+        "31.12.",  # a multi-part token: consecutive words
+        "Musterstrasse",
+        "musterstraße",
+        "Ablesung 4711",
+    ],
+)
+def test_scanner_text_matches_words_compounds_and_umlauts(store: Store, query: str) -> None:
+    """The scanner text is matched with the very rules the search indexes apply (whole words, and every
+    term of three or more letters as a substring in either spelling of its umlauts)."""
+    scan = add_scan(store)
+    assert store.scan_text_matches(query) == {scan.id}
+
+
+@pytest.mark.parametrize(
+    "query", ["Stromzähler", "Wasserzählers 4712", "12.31", "zum 31.13", "*", "", "AND", "ab"]
+)
+def test_scanner_text_matches_only_what_it_says(store: Store, query: str) -> None:
+    add_scan(store)
+    assert store.scan_text_matches(query) == set()
+
+
+def test_scanner_text_counts_only_on_pages_without_text(store: Store) -> None:
+    """Once a page has text of its own (Claude transcribed it), its scanner text no longer counts."""
+    scan = add_scan(store, pages=2)
+    assert store.scan_text_pages(scan.id) == [1]
+    store.set_page_text(scan.id, 1, "Ein ganz anderes Transkript", "transcript")
+    assert store.scan_text_matches("Wasserzählers") == set()
+    assert store.scan_text_pages(scan.id) == []
+    store.set_page_text(scan.id, 1, "", "none")
+    assert store.scan_text_matches("Wasserzählers") == {scan.id}
+
+
+def test_scanner_text_is_never_in_search_or_the_indexes(store: Store) -> None:
+    """Ask's search, the plain list search and both indexes never see it; the letter's text is unchanged."""
+    scan = add_scan(store)
+    assert store.search("Wasserzählers") == []
+    assert store.list_documents(q="Wasserzählers") == []
+    assert raw(store, "SELECT COUNT(*) FROM documents_fts WHERE text LIKE '%asser%'") == [(0,)]
+    assert raw(store, "SELECT COUNT(*) FROM documents_trigram WHERE body LIKE '%asser%'") == [(0,)]
+    assert store.get_document_text(scan.id) == ""
+    assert [d.id for d in store.list_documents(q="Wasserzählers", also_ids={scan.id})] == [scan.id]
+
+
+def test_trashed_letters_scanner_text_is_not_matched(store: Store) -> None:
+    scan = add_scan(store)
+    store.trash_document(scan.id)
+    assert store.scan_text_matches("Wasserzählers") == set()
+    store.restore_document(scan.id)
+    assert store.scan_text_matches("Wasserzählers") == {scan.id}
+
+
+def test_deleting_for_good_removes_the_scanner_text(store: Store) -> None:
+    scan = add_scan(store)
+    assert store.scan_text_matches("Wasserzählers") == {scan.id}  # cached now
+    assert scan_file(store, scan.id).is_file()
+    store.delete_document(scan.id)
+    assert not scan_file(store, scan.id).exists()
+    assert store.scan_text_matches("Wasserzählers") == set()
+    assert scan.id not in store._scan_text_cache
+
+
+def test_delete_everything_keeps_no_folded_scanner_text_in_memory(store: Store) -> None:
+    add_scan(store)
+    assert store.scan_text_matches("Wasserzählers") and store._scan_text_cache
+    store.wipe()
+    assert store._scan_text_cache == {}
+    assert store.scan_text_matches("Wasserzählers") == set()
+
+
+def test_write_scan_text_after_a_purge_writes_nothing(store: Store) -> None:
+    scan = add_scan(store)
+    store.delete_document(scan.id)
+    with pytest.raises(NotFoundError):
+        store.write_scan_text(scan.id, {1: SCANNER_TEXT})
+    assert not (store.paths.derived / scan.id).exists()
+
+
+def test_scanner_text_is_forgotten_once_every_page_has_its_own(store: Store) -> None:
+    """After Claude transcribed the pages the scanner's text would never count again: it goes. While a page
+    still has no text of its own, it stays."""
+    scan = add_scan(store, pages=2)
+    assert store.scan_text_matches("Wasserzählers") == {scan.id}  # cached now
+    store.set_page_text(scan.id, 1, "Transkript der ersten Seite", "transcript")
+    store.forget_scan_text_once_read(scan.id)
+    assert scan_file(store, scan.id).is_file()
+    store.set_page_text(scan.id, 2, "Transkript der zweiten Seite", "transcript")
+    store.forget_scan_text_once_read(scan.id)
+    assert not scan_file(store, scan.id).exists() and scan.id not in store._scan_text_cache
+    store.forget_scan_text_once_read(scan.id)  # nothing left to forget
+    store.forget_scan_text_once_read("doc_missing")
+
+
+def test_scanner_text_is_kept_only_while_a_page_has_no_text(store: Store) -> None:
+    """Written for a PDF with a page that has no text of its own (an empty map: looked, nothing there);
+    removed once every page has text; never kept for a photo or a text file."""
+    letter = add_doc(store, b"letter with text")
+    store.set_pages(letter.id, [page(1, "Eigener Text", text_source="text")])
+    store.write_scan_text(letter.id, {1: SCANNER_TEXT})
+    assert not scan_file(store, letter.id).exists()
+    plain = add_doc(store, b"a plain scan")
+    store.set_pages(plain.id, [page(1)])
+    store.write_scan_text(plain.id, {})
+    assert scan_file(store, plain.id).is_file() and store.scan_text_pages(plain.id) == []
+    scan = add_scan(store)
+    store.set_page_text(scan.id, 1, "Transkript", "transcript")
+    store.write_scan_text(scan.id, {1: SCANNER_TEXT})
+    assert not scan_file(store, scan.id).exists()
+    photo = store.add_document(
+        sha256=sha(b"photo"), filename="a.jpg", mime="image/jpeg", file_path="files/a.jpg"
+    )
+    store.set_pages(photo.id, [page(1)])
+    store.write_scan_text(photo.id, {1: SCANNER_TEXT})
+    assert not scan_file(store, photo.id).exists()
+    assert store.scan_text_pages("doc_missing") == []
+
+
+def test_a_scanner_text_that_cant_be_written_leaves_search_by_name(
+    store: Store, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    def full(*args: object, **kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(store_module.scan_text, "write", full)
+    scan = add_scan(store, filename="Zählerstand.pdf")
+    assert not scan_file(store, scan.id).exists()
+    assert "could not keep the scanner text" in caplog.text
+    assert [d.id for d in store.list_documents(q="Zählerstand")] == [scan.id]
+
+
+def test_list_documents_also_ids_keeps_filters_and_paging(store: Store, clock: Clock) -> None:
+    scans = [add_scan(store, f"Wasserzähler {n}", kind="other") for n in range(4)]
+    store.update_document(scans[3].id, ai_private=True)
+    store.update_document(scans[2].id, kind="invoice")
+    named = add_text_doc(store, "Wasserzähler im Keller", kind="other")
+    found = store.scan_text_matches("Wasserzähler")
+    assert found == {scan.id for scan in scans}
+    listed = store.list_documents(q="Wasserzähler", also_ids=found)
+    assert [d.id for d in listed] == [named.id, scans[3].id, scans[2].id, scans[1].id, scans[0].id]
+    assert [
+        d.id for d in store.list_documents(q="Wasserzähler", also_ids=found, kind="other", ai_private=False)
+    ] == [
+        named.id,
+        scans[1].id,
+        scans[0].id,
+    ]
+    paged = store.list_documents(q="Wasserzähler", also_ids=found, limit=2, offset=1)
+    assert [d.id for d in paged] == [scans[3].id, scans[2].id]
+    assert store.list_documents(q="Keller", also_ids=()) == [named]
+    assert store.indexed_matches("Wasserzähler", found | {named.id}) == {named.id}
+    assert store.indexed_matches("Wasserzähler", set()) == set()
+    assert store.indexed_matches("*", {named.id}) == set()
+
+
+def test_repeat_searches_read_each_scanner_text_once(store: Store, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Searching again only looks at the files' sizes and times: a file is read again only once it changed."""
+    scans = [add_scan(store, f"Ablesung Nummer{n:03d} Wasserzähler") for n in range(30)]
+    reads: list[str] = []
+    real = store_module.scan_text.read
+
+    def counted(derived: Path, doc_id: str) -> dict[int, str]:
+        reads.append(doc_id)
+        return real(derived, doc_id)
+
+    monkeypatch.setattr(store_module.scan_text, "read", counted)
+    store._scan_text_cache.clear()
+    assert store.scan_text_matches("Wasserzähler") == {scan.id for scan in scans}
+    assert sorted(reads) == sorted(scan.id for scan in scans)
+    assert store.scan_text_matches("Nummer007") == {scans[7].id}
+    assert len(reads) == 30
+    store.write_scan_text(scans[7].id, {1: "Stromzähler"})
+    assert store.scan_text_matches("Nummer007") == set()
+    assert reads[30:] == [scans[7].id]
+
+
+# --------------------------------------------------------------------------------------------------
 # parties / cases / contracts
 # --------------------------------------------------------------------------------------------------
 

@@ -461,7 +461,7 @@
           "documents"
         ],
         "summary": "List Documents",
-        "description": "Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where\nit was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner\nadded; ``null`` without a search). A letter's proof files (``source=\"proof\"``) are listed with their\nletter, never here.",
+        "description": "Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where\nit was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner\nadded; ``null`` without a search). A letter's proof files (``source=\"proof\"``) are listed with their\nletter, never here. The scanner's text counts only on pages without text of their own and is never\nreturned (ADR 0020).",
         "operationId": "list_documents_api_documents_get",
         "parameters": [
           {

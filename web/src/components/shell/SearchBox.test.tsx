@@ -127,6 +127,34 @@ describe("search results", () => {
     delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
   });
 
+  it("says when a letter was found only in its scanner's text, as part of the option's name (ADR 0020)", async () => {
+    const [scan, other] = srv.db.state.documents;
+    searchOverride = () =>
+      json([
+        { ...scan!, id: "doc_scan", title: "Scan_2026-09-28_0914.pdf", found_in: "scanner_text" },
+        { ...other!, id: "doc_other", title: "Wasserzähler im Keller", found_in: "letter" },
+      ]);
+    renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Wasserzähler");
+    const list = await screen.findByRole("listbox", { name: "Matching letters" });
+    const [found, own] = within(list).getAllByRole("option");
+    expect(found).toHaveAccessibleName(/Scan_2026-09-28_0914\.pdf.*Found in your scanner's text — not checked/);
+    expect(own).not.toHaveAccessibleName(/scanner/);
+    // text only: no new stop for the keyboard
+    expect(found!.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+  });
+
+  it("finds the static demo's held scan by its scanner's text, and marks it", async () => {
+    renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Wasserzähler");
+    const option = await screen.findByRole("option", { name: /Scan_2026-09-28_0914\.pdf/ });
+    expect(option).toHaveAccessibleName(/Found in your scanner's text — not checked/);
+  });
+
   it("is a dropdown as wide as the field for a message, and up to 30rem for results", async () => {
     renderSearch();
     const user = userEvent.setup();

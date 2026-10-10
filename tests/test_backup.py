@@ -237,6 +237,23 @@ def test_the_demo_life_round_trips(tmp_path: Path) -> None:
     assert row_counts(restored)["documents"] > 20
 
 
+def test_a_scans_scanner_text_is_backed_up_and_restored_with_its_page_images(
+    life: Path, tmp_path: Path
+) -> None:
+    """``derived/<doc>/scan-text.json`` (ADR 0020) lives with the page images, so a backup carries it like
+    them — and the half-written file an atomic write cut short leaves is no file of the person's."""
+    from ordnung.db import scan_text
+
+    scan_text.write(life / "derived", "doc_1", {1: "Ablesung des Wasserzählers"})
+    (life / "derived" / "doc_1" / ".scan-text.json.123.456.part").write_bytes(b"{")
+    names = [name for name, _ in archive.iter_data_files(life)]
+    assert "derived/doc_1/scan-text.json" in names and not any(name.endswith(".part") for name in names)
+    restored = restore_backup(make_backup(life, tmp_path / "b"), PASS, tmp_path / "r").target
+    assert scan_text.read(restored / "derived", "doc_1") == {1: "Ablesung des Wasserzählers"}
+    kept = {name: digest for name, digest in file_digests(life).items() if not name.endswith(".part")}
+    assert file_digests(restored) == kept and len(kept) == 6
+
+
 def test_restored_files_and_folders_are_private(life: Path, tmp_path: Path) -> None:
     if os.name != "posix":
         pytest.skip("POSIX permissions")

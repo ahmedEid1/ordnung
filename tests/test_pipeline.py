@@ -323,6 +323,102 @@ async def test_private_photo_is_not_transcribed(ctx: AppContext) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# A scan's scanner text: search only (ADR 0020)
+# --------------------------------------------------------------------------------------------------
+
+#: A scanner's reading of the picture with a word the picture (and Claude's transcript) doesn't have
+ODD_SCAN = ["Zebrafinkenweg 7 Quittungsnummer 0815", "Ablesung des Wasserzählers zum Jahresende"]
+
+
+def _scan_file(ctx: AppContext, doc_id: str) -> Path:
+    return ctx.store.paths.derived / doc_id / "scan-text.json"
+
+
+async def test_a_private_scan_is_found_by_its_scanner_text(ctx: AppContext) -> None:
+    """A searchable PDF kept private: no model sees it, its pages stay without text (the scanner's text
+    is not the letter's words), yet the letter search finds it by that text — Ask's search doesn't."""
+    document = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    assert backend(ctx).calls == []
+    assert [page.text for page in ctx.store.list_pages(document.id)] == [""]
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {document.id}
+    assert ctx.store.scan_text_pages(document.id) == [1]
+    assert ctx.store.search("Einkommensteuer") == []
+    stored = ctx.store.get_document(document.id)
+    assert stored is not None and stored.status == "processed"
+    assert ctx.store.get_document_text(document.id) == ""
+    assert not stored.hidden_text and stored.warnings == []
+    assert _scan_file(ctx, document.id).is_file()
+
+
+async def test_the_scanner_text_never_reaches_a_prompt(ctx: AppContext) -> None:
+    """A scan sent to Claude is read from its picture: no request carries the scanner's text, and once
+    the transcript fills the page the scanner's text is no longer kept (it would never count again)."""
+    document = await add_file(ctx, scanned_pdf(ocr=True, ocr_text=ODD_SCAN), "scan.pdf")
+    assert await ctx.worker.run_until_idle() == 1
+    calls = backend(ctx).calls
+    assert [call.purpose for call in calls] == ["transcribe", "extract"]
+    for call in calls:
+        sent = f"{call.system}\n{call.prompt}\n" + "\n".join(str(item) for item in call.attachments)
+        assert "Zebrafinken" not in sent and "Quittungsnummer" not in sent
+    assert ctx.store.scan_text_pages(document.id) == []
+    assert ctx.store.scan_text_matches("Zebrafinkenweg") == set()
+    page = ctx.store.get_page(document.id, 1)
+    assert page is not None and page.text_source == "transcript"
+    assert not _scan_file(ctx, document.id).exists()
+
+
+async def test_a_scan_claude_read_leaves_no_scanner_text_file(ctx: AppContext) -> None:
+    """A scan without a scanner's text (like the demo's New-mail letter) read by Claude: the file the text
+    stage kept ("looked, nothing there") goes once every page has its transcript, and the catch-up has
+    nothing left to do."""
+    document = await add_file(ctx, scanned_pdf(), "scan.pdf")
+    assert await ctx.worker.run_until_idle() == 1
+    assert [page.text_source for page in ctx.store.list_pages(document.id)] == ["transcript"]
+    assert not (ctx.store.paths.derived / document.id / "scan-text.json").exists()
+    assert ctx.store.scan_text_missing() == []
+
+
+async def test_reading_again_keeps_the_scanner_text_current(ctx: AppContext) -> None:
+    """Reading a letter again writes its scanner text afresh from the original; a letter whose pages
+    all have text of their own keeps none (a stale file is removed)."""
+    scan = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    letter = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    _scan_file(ctx, scan.id).write_text('{"version": 1, "pages": {"1": "veraltet"}}', "utf-8")
+    _scan_file(ctx, letter.id).write_text('{"version": 1, "pages": {"1": "veraltet"}}', "utf-8")
+    assert ctx.store.scan_text_matches("veraltet") == {scan.id}
+    reprocess(ctx, scan.id)
+    reprocess(ctx, letter.id)
+    await ctx.worker.run_until_idle()
+    assert ctx.store.scan_text_matches("veraltet") == set()
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {scan.id}
+    assert not _scan_file(ctx, letter.id).exists()
+
+
+async def test_older_scans_catch_up_without_touching_the_database(ctx: AppContext) -> None:
+    """A scan stored before Ordnung kept a scanner's text gets it from its original: no model, no page
+    row or letter changed; a letter in the trash or deleted meanwhile is skipped."""
+    scan = await add_file(ctx, scanned_pdf(ocr=True), "scan.pdf", private=True)
+    await ctx.worker.run_until_idle()
+    _scan_file(ctx, scan.id).unlink()
+    assert ctx.store.scan_text_missing() == [scan.id]
+    before = (ctx.store.get_document(scan.id), ctx.store.list_pages(scan.id))
+    pipeline.catch_up_scan_text(ctx.store, scan.id)
+    assert ctx.store.scan_text_matches("Einkommensteuer") == {scan.id}
+    assert ctx.store.scan_text_missing() == []
+    assert (ctx.store.get_document(scan.id), ctx.store.list_pages(scan.id)) == before
+    assert backend(ctx).calls == []
+    _scan_file(ctx, scan.id).unlink()
+    ctx.store.trash_document(scan.id)
+    pipeline.catch_up_scan_text(ctx.store, scan.id)
+    assert not _scan_file(ctx, scan.id).exists() and ctx.store.scan_text_missing() == []
+    ctx.store.delete_document(scan.id)
+    pipeline.catch_up_scan_text(ctx.store, scan.id)  # gone: nothing to do
+    assert not (ctx.store.paths.derived / scan.id).exists()
+
+
+# --------------------------------------------------------------------------------------------------
 # Please check, hidden text, events
 # --------------------------------------------------------------------------------------------------
 
