@@ -1,1 +1,0 @@
-import{nr as e}from"./dateLabels-Bn4-EYJ4.js";function t(){return e().data?.client===`phone`}export{t};
