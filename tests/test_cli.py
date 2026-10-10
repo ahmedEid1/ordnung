@@ -74,7 +74,7 @@ def plain(output: str) -> str:
 def test_help_lists_every_command() -> None:
     result = invoke("--help")
     assert result.exit_code == 0
-    for command in ("serve", "add", "brief", "ask", "demo", "doctor", "eval", "mcp", "openapi"):
+    for command in ("serve", "add", "brief", "ask", "demo", "doctor", "eval", "mcp", "openapi", "shortcut"):
         assert command in result.output
 
 

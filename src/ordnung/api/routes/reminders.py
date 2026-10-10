@@ -133,14 +133,46 @@ def _text(note: desktop.Notification | None) -> NotificationText | None:
     return NotificationText(title=note.title, body=note.body) if note is not None else None
 
 
-def autostart_command(data_dir: Path, *, default: Path | None = None) -> str:
-    """``ordnung autostart enable`` for ``data_dir`` — with ``--data-dir`` unless it is the default
-    folder (the platform's, not ``ORDNUNG_HOME``: the command runs in another terminal)."""
+def _command(command: str, data_dir: Path, default: Path | None) -> str:
+    """``command`` for ``data_dir`` — with ``--data-dir`` unless it is the default folder (the
+    platform's, not ``ORDNUNG_HOME``: the command runs in another terminal)."""
     folder = data_dir.expanduser().absolute()
     standard = (default or Path(user_data_dir("ordnung", appauthor=False))).expanduser().absolute()
     if folder.resolve() == standard.resolve():
-        return AUTOSTART_COMMAND
-    return shell_join(["ordnung", "autostart", "enable", "--data-dir", str(folder)])
+        return command
+    return shell_join([*command.split(), "--data-dir", str(folder)])
+
+
+def autostart_command(data_dir: Path, *, default: Path | None = None) -> str:
+    """``ordnung autostart enable`` for ``data_dir``."""
+    return _command(AUTOSTART_COMMAND, data_dir, default)
+
+
+def shortcut_command(data_dir: Path, *, default: Path | None = None) -> str:
+    """``ordnung shortcut`` for ``data_dir``."""
+    return _command(SHORTCUT_COMMAND, data_dir, default)
+
+
+def _shortcut_info(ctx: AppContext, kind: desktop.SystemKind, demo: bool) -> ShortcutInfo:
+    """The launcher as Settings shows it: a file check and a small read (:func:`ordnung.shortcut.state`).
+    A launcher Ordnung didn't write isn't reported as added: ``ordnung shortcut`` would refuse to
+    replace it."""
+    here = ctx.paths.data_dir.expanduser().absolute()
+    command = None if demo else shortcut_command(ctx.paths.data_dir)
+    try:
+        found = shortcut.state(ctx.paths.data_dir)
+    except (shortcut.ShortcutError, OSError):
+        return ShortcutInfo(
+            added=False, kind=shortcut.KINDS[kind], path="", points_here=False, command=command
+        )
+    added = found.added and found.ours
+    return ShortcutInfo(
+        added=added,
+        kind=found.kind,
+        path=str(found.path),
+        points_here=added and found.data_dir == here,
+        command=command,
+    )
 
 
 def _status(ctx: AppContext, demo: bool, preview: bool) -> DesktopReminders:
@@ -167,10 +199,7 @@ def _status(ctx: AppContext, demo: bool, preview: bool) -> DesktopReminders:
             points_here=entry.enabled and entry.data_dir == here,
             command=None if demo else autostart_command(ctx.paths.data_dir),
         ),
-        # until `ordnung shortcut` is built: nothing added and no command offered
-        shortcut=ShortcutInfo(
-            added=False, kind=shortcut.KINDS[kind], path="", points_here=False, command=None
-        ),
+        shortcut=_shortcut_info(ctx, kind, demo),
     )
 
 

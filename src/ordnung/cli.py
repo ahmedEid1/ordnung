@@ -496,16 +496,67 @@ def _create_app(context: AppContext, *, token: str | None, demo: bool) -> Any:
     return create_app(context, token=token, demo=demo)
 
 
-def _announce(info: ServerInfo, *, demo: bool, data_dir: Path) -> None:
+def _in_terminal() -> bool:
+    """Whether Ordnung runs in a terminal window someone sees (and can type Enter into)."""
+    try:
+        return sys.stdin.isatty() and sys.stdout.isatty()
+    except (AttributeError, ValueError):  # no stream, or a closed one
+        return False
+
+
+def _shortcut_missing() -> bool:
+    """Whether ``ordnung shortcut`` could help: someone reads this terminal, and there is no launcher
+    at this computer's place (a file check, cheap on every system)."""
+    if not _in_terminal():
+        return False
+    from ordnung import shortcut
+
+    try:
+        where = shortcut.location().path
+        return not (where.is_symlink() or where.exists())
+    except (shortcut.ShortcutError, OSError):
+        return False
+
+
+def _announce(info: ServerInfo, *, demo: bool, data_dir: Path, from_shortcut: bool = False) -> None:
     title = "Ordnung demo" if demo else "Ordnung"
+    # opened from the launcher, this window is Ordnung: closing it stops Ordnung (ordnung.shortcut)
+    stop = (
+        "Close this window (or press Ctrl+C) to stop Ordnung." if from_shortcut else "Press Ctrl+C to stop."
+    )
     lines = [
         f"[bold]{escape(info.login_url)}[/]",
         f"[dim]Data: {escape(str(data_dir))}[/]",
-        "[dim]Your files stay on this computer. Press Ctrl+C to stop.[/]",
+        f"[dim]Your files stay on this computer. {stop}[/]",
     ]
     if demo:
         lines.insert(1, "[dim]Sample life of Sam Rivera · recorded answers · zero tokens[/]")
+    elif not from_shortcut and _shortcut_missing():
+        lines.append("[dim]Open it without a terminal next time: ordnung shortcut[/]")
     console.print(Panel("\n".join(lines), title=title, expand=False))
+
+
+def _wait_for_server(folder: Path) -> ServerInfo | None:
+    """The server of ``folder`` once it answers, waiting up to ``BROWSER_WAIT_S`` (it is starting)."""
+    deadline = time.monotonic() + BROWSER_WAIT_S
+    while True:
+        info = reachable_server(folder)
+        if info is not None or time.monotonic() >= deadline:
+            return info
+        time.sleep(0.2)
+
+
+def _hold_window(exc: Exception) -> None:
+    """After a failed start from the launcher, keep its window open until Enter, so the error can be
+    read. Not for the windowless check (its code asks for a window), Ctrl+C or a signal."""
+    from ordnung.shortcut import NO_WINDOW_EXIT
+
+    code = exc.exit_code if isinstance(exc, typer.Exit) else 1
+    if code in (0, NO_WINDOW_EXIT) or code >= 128 or not _in_terminal():
+        return
+    err_console.print("Press Enter to close this window.")
+    with contextlib.suppress(EOFError, KeyboardInterrupt):
+        input()
 
 
 def _serve(
@@ -526,7 +577,7 @@ def _serve(
 
     from ordnung.app_context import build_context
     from ordnung.doctor import web_ui_check
-    from ordnung.locking import DataDirLock
+    from ordnung.locking import DataDirLock, DataDirLocked
 
     if host not in LOOPBACK_HOSTS and not token_on:
         raise _fail(
@@ -539,11 +590,33 @@ def _serve(
         )
     already = reachable_server(folder)
     if already is not None:
+        if from_shortcut:  # no link printed: the browser opens signed in through the private page
+            console.print("Ordnung is already running for this folder: opened it in your browser.")
+            launch_browser(folder, already)
+            return
         console.print(f"Ordnung is already running for this folder: [bold]{escape(already.login_url)}[/]")
         if open_browser:
             launch_browser(folder, already)
         return
-    with DataDirLock(folder, purpose="ordnung serve"), _graceful_sigterm():
+    if from_shortcut:
+        from ordnung.shortcut import NO_WINDOW_EXIT
+
+        if not _in_terminal():  # never started unseen (ordnung.shortcut)
+            err_console.print("Ordnung isn't running, and there is no window to run it in.")
+            raise typer.Exit(NO_WINDOW_EXIT)
+        console.set_window_title("Ordnung")
+    lock = DataDirLock(folder, purpose="ordnung serve")
+    try:
+        lock.acquire()
+    except DataDirLocked:
+        # a second click while the first one is starting Ordnung: open that one once it answers
+        starting = _wait_for_server(folder) if from_shortcut else None
+        if starting is None:
+            raise
+        console.print("Ordnung has just started for this folder: opened it in your browser.")
+        launch_browser(folder, starting)
+        return
+    with lock, _graceful_sigterm():
         if prepare is not None:
             prepare()
         if not _port_free(host, port):
@@ -563,7 +636,7 @@ def _serve(
                 )
                 open_browser = False
             with advertise(folder, port=port, token=token, host=host) as info:
-                _announce(info, demo=demo, data_dir=folder)
+                _announce(info, demo=demo, data_dir=folder, from_shortcut=from_shortcut)
                 if open_browser:
                     _open_browser_when_ready(folder, info)
                 # the plain asyncio loop: uvloop runs Python in the child it forks to start `claude`,
@@ -588,34 +661,39 @@ def serve(
     from_shortcut: Annotated[bool, typer.Option("--from-shortcut", hidden=True)] = False,
 ) -> None:
     """Run the web app on this computer and open it in your browser."""
-    with _friendly():
-        if demo:
-            _demo_serve(
-                ctx,
-                data_dir,
+    try:
+        with _friendly():
+            if demo:
+                _demo_serve(
+                    ctx,
+                    data_dir,
+                    host=host,
+                    port=port,
+                    open_browser=not no_browser,
+                    token_on=not no_token,
+                    live=False,
+                    reset=False,
+                )
+                return
+            from ordnung.demo.loader import is_demo_dir
+
+            folder = resolve_paths(_chosen(ctx, data_dir)).data_dir
+            demo_folder = is_demo_dir(folder)
+            _serve(
+                folder,
                 host=host,
                 port=port,
                 open_browser=not no_browser,
                 token_on=not no_token,
-                live=False,
-                reset=False,
+                backend="replay" if demo_folder else None,
+                demo=demo_folder,
+                prepare=None if demo_folder else lambda: _finish_take_over(folder),
+                from_shortcut=from_shortcut,
             )
-            return
-        from ordnung.demo.loader import is_demo_dir
-
-        folder = resolve_paths(_chosen(ctx, data_dir)).data_dir
-        demo_folder = is_demo_dir(folder)
-        _serve(
-            folder,
-            host=host,
-            port=port,
-            open_browser=not no_browser,
-            token_on=not no_token,
-            backend="replay" if demo_folder else None,
-            demo=demo_folder,
-            prepare=None if demo_folder else lambda: _finish_take_over(folder),
-            from_shortcut=from_shortcut,
-        )
+    except Exception as exc:
+        if from_shortcut and not demo:
+            _hold_window(exc)
+        raise
 
 
 def _finish_take_over(folder: Path) -> None:
@@ -1572,7 +1650,7 @@ def autostart_enable(
     ] = False,
 ) -> None:
     """Start Ordnung (without opening the browser) every time you log in."""
-    from ordnung import autostart
+    from ordnung import autostart, shortcut
     from ordnung.demo.loader import is_demo_dir
 
     with _friendly():
@@ -1607,7 +1685,10 @@ def autostart_enable(
     }
     console.print(f"[green]✓[/] {done[status]} Ordnung starts at your next login.")
     console.print(f"  Start it now: {escape(entry.start_now)}", soft_wrap=True)
-    console.print("  Open the app any time with: ordnung serve (it finds the running Ordnung)")
+    console.print(
+        f"  Open the app any time from {shortcut.WHERE[entry.system]} (ordnung shortcut adds it) or with: "
+        "ordnung serve"
+    )
     console.print("  Undo with: ordnung autostart disable")
     if _desktop_notifications(folder) == "off":
         console.print(
@@ -1680,6 +1761,117 @@ def autostart_status(ctx: typer.Context, data_dir: DataDirOption = None) -> None
                 soft_wrap=True,
             )
     console.print(f"Running now: [bold]{'yes' if running else 'no'}[/]")
+
+
+# --------------------------------------------------------------------------------------------------
+# shortcut
+# --------------------------------------------------------------------------------------------------
+
+#: how ``ordnung shortcut`` introduces the launcher, and where to find it once it is added
+SHORTCUT_AS = {"linux": "from this file", "macos": "as this app", "windows": "as this shortcut"}
+SHORTCUT_FIND = {
+    "linux": "",
+    "macos": " Find it in Launchpad or Spotlight, or drag it to the Dock.",
+    "windows": " Right-click it there to pin it to the taskbar.",
+}
+
+
+@app.command()
+def shortcut(
+    ctx: typer.Context,
+    data_dir: DataDirOption = None,
+    port: Annotated[int, typer.Option(help="Port Ordnung listens on.")] = DEFAULT_PORT,
+    remove: Annotated[
+        bool, typer.Option("--remove", help="Take Ordnung out of your app menu again.")
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Only print what would be written (or removed), and where.")
+    ] = False,
+) -> None:
+    """Put Ordnung in your app menu (Start menu, Applications folder), to open it without a terminal."""
+    from ordnung import shortcut as launcher
+    from ordnung.demo.loader import is_demo_dir
+
+    with _friendly():
+        if remove:
+            _remove_shortcut(dry_run=dry_run)
+            return
+        folder = _folder(ctx, data_dir)
+        if is_demo_dir(folder):
+            raise _fail(
+                "The demo isn't added to your app menu.",
+                hint="Start it with `ordnung demo` when you want it.",
+            )
+        try:
+            planned = launcher.plan(folder, port=port)
+        except launcher.ShortcutError as exc:
+            raise _fail(str(exc), soft_wrap=True) from None
+        where = launcher.WHERE[planned.system]
+        console.print(
+            f"Ordnung for [bold]{escape(str(folder))}[/] goes into {where}, {SHORTCUT_AS[planned.system]}:",
+            soft_wrap=True,
+        )
+        console.print(f"  [bold]{escape(str(planned.path))}[/]", soft_wrap=True)
+        console.print(escape(planned.shown()), style="dim", soft_wrap=True)
+        opt_out = os.environ.get(launcher.TELEMETRY_OPT_OUT)
+        if planned.system == "windows" and opt_out:
+            name = launcher.TELEMETRY_OPT_OUT
+            console.print(
+                f"[yellow]![/] The Start-menu shortcut can't carry {name}. To keep it for Ordnung opened "
+                f"from there, set it for your account: setx {name} {escape(opt_out)}",
+                soft_wrap=True,
+            )
+        if dry_run:
+            console.print("Nothing was written (--dry-run).")
+            return
+        try:
+            status = launcher.write(planned)
+        except launcher.ShortcutError as exc:
+            raise _fail(str(exc), soft_wrap=True) from None
+    done = {
+        "added": f"Added. Look for “Ordnung” in {where}.{SHORTCUT_FIND[planned.system]}",
+        "updated": "Updated the earlier shortcut.",
+        "unchanged": f"Already in {where} like this.",
+    }
+    console.print(f"[green]✓[/] {done[status]}", soft_wrap=True)
+    console.print(
+        "  It opens Ordnung in your browser, signed in. When Ordnung isn't running, it starts in a window "
+        "of its own: closing that window stops Ordnung.",
+        soft_wrap=True,
+    )
+    console.print("  Take it out again with: ordnung shortcut --remove")
+
+
+def _remove_shortcut(*, dry_run: bool) -> None:
+    """``ordnung shortcut --remove``: only the launcher's own files, whichever folder it opens."""
+    from ordnung import shortcut as launcher
+
+    found = launcher.location()
+    where = launcher.WHERE[found.system]
+    try:
+        going = launcher.removable(found)
+    except launcher.ShortcutError as exc:
+        raise _fail(str(exc), soft_wrap=True) from None
+    if not going:
+        console.print(f"Ordnung isn't in {where}: there is no {escape(str(found.path))}.", soft_wrap=True)
+        return
+    if dry_run:
+        for path in going:
+            console.print(f"Would remove {escape(str(path))}", soft_wrap=True)
+        console.print("Nothing was removed (--dry-run).")
+        return
+    for path in launcher.remove(found):
+        console.print(f"[green]✓[/] Removed {escape(str(path))}", soft_wrap=True)
+    if found.path.exists():
+        console.print(
+            f"[yellow]![/] {escape(str(found.path))} holds files `ordnung shortcut` didn't write, so the "
+            "folder stays.",
+            soft_wrap=True,
+        )
+    console.print(
+        f"  Ordnung is no longer in {where}. If it is running now, it keeps running until you close its window.",
+        soft_wrap=True,
+    )
 
 
 # --------------------------------------------------------------------------------------------------
