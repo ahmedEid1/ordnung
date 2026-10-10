@@ -133,7 +133,8 @@ and photo attachments become letters; new files wait on your computer until you 
 *Keep private* · *template letters* — withdrawal, more time, instalments, defect notice, GDPR access,
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
-with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
+with your own CalDAV calendar · *app-menu shortcut* — open Ordnung from your app menu, Start menu or
+Applications folder, signed in, without a terminal · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
 or more unrelated words, or a password manager's random password with capital and small letters) with a
 restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them ·
 *export letters* — your originals as files in folders by year and sender, with a list for a spreadsheet ·
@@ -451,14 +452,15 @@ page), also ones that repeat. A letter added while Claude isn't installed, isn't
 meanwhile search finds it by the words in its PDF. CI tests Ordnung on Linux. A CI job on macOS and Windows
 (weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
 runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
-access's network lookups and certificates, autostart entries and backups. The other tests, desktop
-notifications, starting at a real login, and phone access and sync between real devices are not tested on
-macOS or Windows.
+access's network lookups and certificates, autostart entries, app-menu shortcuts and backups. The other
+tests, desktop notifications, starting at a real login, and phone access and sync between real devices are
+not tested on macOS or Windows.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
 ordnung doctor                  # checks Claude, search, fonts, your data folder and database, your last backup, disk encryption
 ordnung serve                   # the web app on http://127.0.0.1:8765
+ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
 ordnung brief                   # today's note in the terminal
 ordnung ask "When can I cancel my phone contract?"
@@ -468,6 +470,33 @@ ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung res
 
 `ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed
 in or updated, or for its usage limit to pass (it is stored and read once Claude is ready).
+
+**Without a terminal.** `ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
+your app menu on Linux, `Ordnung.app` in the Applications folder of your home folder on a Mac (Launchpad,
+Spotlight and the Dock take it), or a shortcut in your Start menu on Windows. It prints what it writes, and
+where, before writing anything, and needs no admin rights; `--dry-run` only prints. Opening it signs your
+browser in. When Ordnung isn't running, it starts in a window of its own, and closing that window stops
+Ordnung; when it already runs (for example because it starts at login), only the browser opens, after a
+terminal window flashes on Linux and Windows. Ordnung is never started without a window you can see. The
+shortcut opens the data folder it was added for. On Linux and macOS it records this terminal's `PATH`, as
+start at login does, so Ordnung finds the same `claude`: run `ordnung shortcut` again after moving Claude
+Code. `ordnung shortcut --remove` takes it out again. It never replaces or removes a file it didn't write,
+and it doesn't add the demo, which opens with `ordnung demo`.
+
+- **Linux:** the entry asks your desktop for a terminal window to run in. GNOME, KDE and most desktops
+  have one; on a desktop without a terminal it knows (some minimal window managers), opening the entry
+  does nothing visible: start Ordnung with `ordnung serve` there.
+- **macOS:** Launchpad and Spotlight can take a moment to list the new app. It is made on your Mac and
+  isn't signed; macOS warns about an unidentified developer only for apps downloaded from the internet.
+  When Ordnung isn't running, the app opens a Terminal window that runs Ordnung, and Terminal asks before
+  you close that window while Ordnung runs.
+- **Windows:** right-click it in the Start menu to pin it to the taskbar. Its Properties window may show
+  no target: the shortcut names Python in a part of the file Windows opens but doesn't show there. A
+  shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal,
+  `ordnung shortcut` prints the `setx` command that sets it for your account.
+
+CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
+opens it; opening it from the desktop's own menu isn't tested on any system.
 
 **On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
 choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
@@ -534,8 +563,9 @@ make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 ### Updating
 
 Each release has a version number (`ordnung --version` shows yours) and an entry in
-[CHANGELOG.md](CHANGELOG.md). Stop Ordnung first (Ctrl+C where `ordnung serve` runs; if it starts at login,
-`ordnung autostart disable` prints how to stop it and `ordnung autostart enable` how to start it again).
+[CHANGELOG.md](CHANGELOG.md). Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the window the
+shortcut opened; if it starts at login, `ordnung autostart disable` prints how to stop it and
+`ordnung autostart enable` how to start it again).
 A backup first lets you go back: an older Ordnung can't open a database a newer one has updated.
 
 ```bash
@@ -550,6 +580,9 @@ stored, Ordnung updates your data folder by itself the next time it starts (each
 it as it was). With hand-off sync, update both computers: until then Settings → Your computers says that
 the other one runs another version, and if the database changed, the computer with the older Ordnung can't
 bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving its own changes.
+If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), the
+Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if Ordnung
+starts at login.
 
 To go back, install the earlier version again by its commit (`pipx install --force
 "git+https://github.com/ahmedEid1/ordnung@COMMIT"`, the commit taken from the repository's history), then
@@ -730,6 +763,7 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/evals.md](docs/evals.md) and [docs/evals-ask.md](docs/evals-ask.md): the two benchmarks
 - [CONTRIBUTING.md](CONTRIBUTING.md): working on Ordnung; [SECURITY.md](SECURITY.md): reporting a
   vulnerability privately
+- [docs/releasing.md](docs/releasing.md): how a release is made, and the one-time setup for PyPI
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to

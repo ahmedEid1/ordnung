@@ -1,7 +1,8 @@
 # ADR 0013 — Backups and reminders that work while Ordnung is closed
 
 **Status:** accepted · **Date:** 2026-09-27 · **Updated:** 2026-10-08 (a new backup's passphrase and key
-costs are a new sync folder's), 2026-10-09 (Ordnung says when the last copy is old)
+costs are a new sync folder's), 2026-10-09 (Ordnung says when the last copy is old), 2026-10-10 (the
+app-menu shortcut)
 
 ## Context
 Until now reminders were a calendar file and browser notifications that only appear while a tab is
@@ -20,6 +21,21 @@ LaunchAgent, a Startup-folder `.cmd`), prints exactly what it wrote where and th
 starts it now; it never runs a service manager, and `disable` removes only that entry. The entry
 discards the server's standard output — the sign-in link carries the session token, which must not
 land in a system journal readable by administrators. Policy: `ordnung/autostart.py`.
+
+**The app-menu shortcut writes one launcher and never starts Ordnung unseen.** `ordnung shortcut` writes
+the system's own kind of launcher — an app-menu entry `ordnung.desktop`, a small `Ordnung.app` in
+`~/Applications`, or a Start-menu `Ordnung.lnk` whose bytes Ordnung writes itself in the shell link format
+(no COM, no PowerShell) — prints it and where before writing, and needs no admin rights. Each carries a
+mark, and a file at that place without it is never replaced or removed; `--remove` deletes only the
+launcher's own files. On Linux and macOS it records `PATH` and the telemetry opt-out, as the start-at-login
+entry does (a Windows shortcut can't carry them). The launcher runs `serve --from-shortcut`, which opens a
+running Ordnung in the browser and otherwise starts Ordnung only in a terminal window, which is then
+Ordnung: closing it stops Ordnung, and the sign-in link is printed there and nowhere else. Without a
+terminal it exits with 3 and starts nothing; the Mac app then opens Terminal to run Ordnung there. Chosen
+over a launcher that starts a hidden server: that server would have no window to stop it with (Ordnung has
+no `stop` command, and "Ctrl+C where it runs" would stop being true), and its sign-in link would need a
+place that isn't a log. Starting at login stays its own choice, and the demo isn't added. Policy:
+`ordnung/shortcut.py`.
 
 **The desktop notification is code's words, discreet by default.** It is built from the
 deterministic agenda (`build_agenda`), never by a model, so it can't say anything the ledger doesn't
@@ -125,6 +141,10 @@ where BitLocker is. Both checks only ever warn. Policy: `ordnung/backup/reminder
 ## Consequences
 - Reminders reach the person with the browser closed, and the backup is something they can put on
   another drive or in the cloud without trusting it.
+- Ordnung opens from the app menu without a terminal, but a click while it already runs still flashes a
+  terminal window on Linux and Windows, and a Linux desktop without a terminal it knows opens nothing. The
+  launcher names the Python it runs: once that moves, it stops opening Ordnung until `ordnung shortcut`
+  is run again.
 - A lost passphrase loses the backup — stated before a passphrase is asked for (the dialog's
   description, the CLI's line before the prompt); Ordnung never stores it. The web app offers a
   random one, with a Copy button, to put into a password manager; the CLI prints one before the prompt.

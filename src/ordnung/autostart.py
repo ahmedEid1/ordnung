@@ -130,6 +130,21 @@ def serve_argv(data_dir: Path, *, port: int | None = None, python: str | None = 
     return tuple(argv)
 
 
+def folder_command(command: str, data_dir: Path, *, default: Path | None = None) -> str:
+    """``command`` (``ordnung shortcut``, ``ordnung serve``…) for ``data_dir``: with ``--data-dir`` unless it
+    is the default folder. The platform's default, not ``ORDNUNG_HOME``: the command may run in another
+    terminal. What Settings and the CLI's hints offer."""
+    from platformdirs import user_data_dir
+
+    from ordnung.assistant.mcp_install import shell_join
+
+    folder = data_dir.expanduser().absolute()
+    standard = (default or Path(user_data_dir("ordnung", appauthor=False))).expanduser().absolute()
+    if folder.resolve() == standard.resolve():
+        return command
+    return shell_join([*command.split(), "--data-dir", str(folder)])
+
+
 def _no_line_breaks(values: tuple[str, ...] | list[str]) -> None:
     if any("\n" in value or "\r" in value for value in values):
         raise AutostartError("A path with a line break can't be put into a start-up entry.")

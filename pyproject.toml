@@ -1,10 +1,10 @@
 [project]
 name = "ordnung"
 # the package's version is __version__ in src/ordnung/__init__.py ([tool.hatch.version]); a release
-# changes the web app's and the demo's copies too (tests/test_regressions_install.py)
-dynamic = ["version"]
+# changes the web app's and the demo's copies too (tests/test_regressions_install.py). The readme is
+# README.md with its links pointing to GitHub ([tool.hatch.metadata.hooks.fancy-pypi-readme])
+dynamic = ["version", "readme"]
 description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
-readme = "README.md"
 # Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
 # notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
 license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"
@@ -95,19 +95,51 @@ Issues = "https://github.com/ahmedEid1/ordnung/issues"
 Changelog = "https://github.com/ahmedEid1/ordnung/blob/main/CHANGELOG.md"
 
 [build-system]
-requires = ["hatchling>=1.26"]
+# the plugin writes the description PyPI shows, so every build uses this one version of it
+requires = ["hatchling>=1.26", "hatch-fancy-pypi-readme==25.1.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
 path = "src/ordnung/__init__.py"
+
+# PyPI shows the README without the repository around it, and gives its headings no ids: pictures load from
+# GitHub's raw files, and links and anchors open GitHub's pages (of main: the hook can't read the version).
+# tests/test_release_workflow.py checks that no relative link is left and that nothing else changes.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="(?![a-z][a-z0-9+.-]*:)([^"]+)"'
+replacement = 'src="https://raw.githubusercontent.com/ahmedEid1/ordnung/main/\1"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '!\[([^\]]*)\]\((?![a-z][a-z0-9+.-]*:)([^)\s]+)\)'
+replacement = '![\1](https://raw.githubusercontent.com/ahmedEid1/ordnung/main/\2)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'href="(?![a-z][a-z0-9+.-]*:|#)([^"]+)"'
+replacement = 'href="https://github.com/ahmedEid1/ordnung/blob/main/\1"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?![a-z][a-z0-9+.-]*:|#)([^)\s]+)\)'
+replacement = '](https://github.com/ahmedEid1/ordnung/blob/main/\1)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '(href="|\]\()#'
+replacement = '\1https://github.com/ahmedEid1/ordnung#'
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ordnung"]
 artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.hatch.build.targets.sdist]
-# no tests: they need the whole checkout (evals/, scripts/, web/)
+# no tests: they need the whole checkout (evals/, scripts/, web/); no README pictures (15 MB): PyPI loads
+# them from GitHub
 include = ["src/ordnung", "README.md", "CHANGELOG.md", "LICENSE", "docs"]
+exclude = ["docs/assets"]
 artifacts = ["src/ordnung/web/dist/**", "src/ordnung/demo/demo_db/**"]
 
 [tool.ruff]

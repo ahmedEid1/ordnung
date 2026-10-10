@@ -89,3 +89,34 @@ export function autostartLabel(status: DesktopReminders["autostart"] | undefined
   if (!status.points_here) return { text: "Starts another folder", tone: "warn" };
   return { text: "On", tone: "ok" };
 }
+
+/** Where `ordnung shortcut` puts Ordnung on each system, as the person knows it (`ordnung.shortcut.WHERE`). */
+export const MENU_NAME: Record<DesktopReminders["system"], string> = {
+  linux: "app menu",
+  macos: "Applications folder",
+  windows: "Start menu",
+};
+
+/**
+ * The app-menu shortcut, in words for the badge. A launcher Ordnung didn't write counts as not added, with a
+ * warning: it is in the way of `ordnung shortcut`. One that runs another installation of Ordnung (maybe gone)
+ * needs updating.
+ */
+export function shortcutLabel(status: DesktopReminders["shortcut"] | undefined): { text: string; tone: "ok" | "warn" | "neutral" } {
+  if (!status?.added) return { text: "Not added", tone: status?.foreign ? "warn" : "neutral" };
+  if (!status.points_here) return { text: "Opens another folder", tone: "warn" };
+  if (!status.current) return { text: "Needs updating", tone: "warn" };
+  return { text: "Added", tone: "ok" };
+}
+
+/** After "Ordnung is in your Applications folder": macOS has two, and Finder's sidebar shows the other one. */
+export const MENU_PLACE_NOTE: Record<DesktopReminders["system"], string> = {
+  linux: "",
+  macos: " (the one in your home folder; Launchpad and Spotlight find it)",
+  windows: "",
+};
+
+/** A launcher's kind after "Set up as": "an app menu entry", "a Start menu shortcut". */
+export function withArticle(kind: string): string {
+  return `${/^[aeiou]/i.test(kind) ? "an" : "a"} ${kind}`;
+}

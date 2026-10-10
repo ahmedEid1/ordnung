@@ -16,7 +16,7 @@ import pytest
 
 from fakes import use_fast_keys
 from helpers_secretary import TODAY, seed_ledger
-from ordnung import autostart, clock
+from ordnung import autostart, clock, shortcut
 from ordnung import backup as backups
 from ordnung.api.routes import backup as backup_route
 from ordnung.api.routes import reminders
@@ -50,6 +50,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(sys, "platform", "linux")
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: folder))
     monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     monkeypatch.setattr(
         desktop.shutil, "which", lambda name: f"/usr/bin/{name}" if name == "notify-send" else None
     )
@@ -118,6 +119,15 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
             # this data folder is not the default one: the command sets up this one
             "command": f"ordnung autostart enable --data-dir {data_dir}",
         }
+        assert body["shortcut"] == {
+            "added": False,
+            "kind": "app menu entry",
+            "path": str(home / ".local" / "share" / "applications" / "ordnung.desktop"),
+            "points_here": False,
+            "current": False,
+            "foreign": False,
+            "command": f"ordnung shortcut --data-dir {data_dir}",
+        }
 
 
 async def test_the_status_without_the_preview_builds_no_agenda(
@@ -147,10 +157,28 @@ def test_the_start_at_login_command_names_a_folder_that_isnt_the_default(tmp_pat
     assert reminders.autostart_command(odd, default=default) == f"ordnung autostart enable --data-dir '{odd}'"
 
 
-async def test_the_demo_offers_no_start_at_login_command(data_dir: Path, home: Path) -> None:
+async def test_the_demo_offers_no_start_at_login_or_shortcut_command(data_dir: Path, home: Path) -> None:
     async with api_for(data_dir, demo=True) as api:
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert body["demo"] and body["autostart"]["command"] is None
+        assert body["shortcut"]["command"] is None and not body["shortcut"]["added"]
+
+
+@pytest.mark.parametrize(
+    ("platform", "kind"),
+    [
+        ("linux", "app menu entry"),
+        ("darwin", "app in your Applications folder"),
+        ("win32", "Start menu shortcut"),
+    ],
+)
+async def test_the_shortcut_is_named_as_this_system_names_it(
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch, platform: str, kind: str
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+    async with api_for(data_dir) as api:
+        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+        assert body["shortcut"]["kind"] == kind
 
 
 async def test_the_status_says_why_the_last_notification_wasnt_shown(data_dir: Path, home: Path) -> None:
@@ -186,6 +214,71 @@ async def test_the_status_knows_whether_autostart_starts_this_folder(data_dir: P
         autostart.enable(autostart.plan(data_dir.parent / "other", env={"PATH": "/usr/bin"}, home=home))
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert body["autostart"]["enabled"] and not body["autostart"]["points_here"]
+
+
+def write_foreign_launcher(path: str) -> None:
+    Path(path).write_text("[Desktop Entry]\nName=Ordnung\n", encoding="utf-8")
+
+
+async def test_the_status_knows_whether_the_shortcut_opens_this_folder(data_dir: Path, home: Path) -> None:
+    async with api_for(data_dir) as api:
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home))
+        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+        assert body["shortcut"]["added"] and body["shortcut"]["points_here"] and body["shortcut"]["current"]
+        assert not body["shortcut"]["foreign"]
+        assert body["shortcut"]["path"] == str(home / ".local" / "share" / "applications" / "ordnung.desktop")
+        shortcut.write(shortcut.plan(data_dir.parent / "other", env={"PATH": "/usr/bin"}, home=home))
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert body["shortcut"]["added"] and not body["shortcut"]["points_here"]
+        # a launcher Ordnung didn't write isn't reported as Ordnung's, but as one in the way
+        write_foreign_launcher(body["shortcut"]["path"])
+        body = (await api.client.get("/api/reminders/desktop")).json()
+        assert not body["shortcut"]["added"] and not body["shortcut"]["points_here"]
+        assert body["shortcut"]["foreign"] and not body["shortcut"]["current"]
+
+
+async def test_a_launcher_that_runs_another_installation_is_not_current(data_dir: Path, home: Path) -> None:
+    """Ordnung reinstalled elsewhere and the old Python gone: the launcher opens nothing, and Settings says to
+    run the command again."""
+    gone = str(home / "old-venv" / "bin" / "python")
+    async with api_for(data_dir) as api:
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home, python=gone))
+        found = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()[
+            "shortcut"
+        ]
+        assert found["added"] and found["points_here"] and not found["current"] and not found["foreign"]
+        shortcut.write(shortcut.plan(data_dir, env={"PATH": "/usr/bin"}, home=home))
+        found = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()[
+            "shortcut"
+        ]
+        assert found["current"]
+
+
+async def test_a_launcher_that_can_t_be_read_never_fails_the_status(
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sys, "platform", "darwin")
+    info = home / "Applications" / "Ordnung.app" / "Contents" / "Info.plist"
+    info.parent.mkdir(parents=True)
+    info.write_bytes(b"<?xml version='1.0'?><plist version='1.0'><dict><key>CFBundleName</key>")  # cut short
+    async with api_for(data_dir) as api:
+        answer = await api.client.get("/api/reminders/desktop", params={"preview": "false"})
+        assert answer.status_code == 200 and answer.json()["shortcut"]["foreign"]
+
+        def unreadable(*_args: Any, **_kwargs: Any) -> Any:
+            raise RuntimeError("no home folder")
+
+        monkeypatch.setattr(shortcut, "state", unreadable)
+        answer = await api.client.get("/api/reminders/desktop", params={"preview": "false"})
+        assert answer.status_code == 200 and not answer.json()["shortcut"]["added"]
+        assert answer.json()["autostart"]["command"]  # the rest of the status is all there
+
+
+def test_the_shortcut_command_names_a_folder_that_isnt_the_default(tmp_path: Path) -> None:
+    default = tmp_path / "ordnung"
+    assert reminders.shortcut_command(default, default=default) == "ordnung shortcut"
+    odd = tmp_path / "my letters"
+    assert reminders.shortcut_command(odd, default=default) == f"ordnung shortcut --data-dir '{odd}'"
 
 
 async def test_the_test_notification_shows_today_or_a_sample(

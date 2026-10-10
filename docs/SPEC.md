@@ -121,7 +121,7 @@ src/ordnung/            (the main modules; the package itself is the complete li
   assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
   drafts/ (compose.py, checks.py, pdf.py, templates.py, template_letters.py, proof.py, sent.py, tracking.py, fonts/)
   calendar/ (ics.py, caldav.py, secrets.py)  trace/ (spans.py, runs.py, view.py, facts.py, compare.py, otel.py)
-  notify/desktop.py  autostart.py  money/iban.py  backup/ (container.py, archive.py, restore.py, reminder.py)
+  notify/desktop.py  autostart.py  shortcut.py  money/iban.py  backup/ (container.py, archive.py, restore.py, reminder.py)
   phone/ (scope.py, net.py, tls.py, pairing.py, record.py, access.py, actor.py, mask.py)
   sync/ (crypto.py, folder.py, model.py, lineage.py, decide.py, scrub.py, local.py, scan.py, push.py, pull.py,
          kept.py, engine.py, agent.py, gate.py, status.py)
@@ -1251,8 +1251,8 @@ or confirmed. The Timeline marks money coming in "Money in" (never overdue) and 
 `meta.last_calendar_export_at` drives the "3 new dates since your last calendar update" card.
 Browser notifications (Notification API) while the app is open.
 
-**Reminders while Ordnung is closed** (`notify/desktop.py`, `autostart.py`; the policies are in
-their docstrings):
+**Reminders while Ordnung is closed** (`notify/desktop.py`, `autostart.py`, `shortcut.py`; the policies
+are in their docstrings):
 - **Morning desktop notification** — setting `desktop_notifications: off | discreet | full`
   (default `off`; the web app switches it on as `discreet`) and `desktop_notify_time` (`HH:MM`,
   default 08:00). Built by code from `build_agenda` — no model call: overdue, due today or in the
@@ -1281,6 +1281,31 @@ their docstrings):
   Settings offers the command for *this* data folder (`--data-dir` when it isn't the default one;
   none in the demo). `enable` says when the morning notification is still off. All entries (and
   backups and restored files) are written through binary descriptors (`O_BINARY` on Windows).
+- **Open from your app menu** — `ordnung shortcut [--port N] [--dry-run] [--remove]` (`shortcut.py`, policy
+  in its docstring; ADR 0013): one launcher per system, written by Ordnung itself (no tool is run, no admin
+  rights) and printed with its path before anything is written — `$XDG_DATA_HOME/applications/ordnung.desktop`
+  (`Terminal=true`; default `~/.local/share`), `~/Applications/Ordnung.app` (a property list, two `sh`
+  scripts and an icon) or the per-user Start menu's `Ordnung.lnk` (its bytes written in the shell link
+  format, MS-SHLLINK, by Ordnung's own code — no COM, no PowerShell; its icon in
+  `%LOCALAPPDATA%\Programs\Ordnung`) — running `<python> -m ordnung --data-dir D serve --from-shortcut`
+  (`--port` when it isn't the default), absolute paths, the last folder set up wins. Linux and macOS record
+  `PATH` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` as start at login does; on Windows the command
+  prints the `setx` line for the opt-out. Each launcher carries a mark (the `.desktop` key
+  `X-Ordnung-Shortcut`, `OrdnungShortcut` in `Info.plist`, "(added by ordnung shortcut)" at the end of the
+  link's description): a file at that place without it is never replaced or removed, `--remove` deletes only
+  the launcher's own files (a bundle folder once it is empty), an identical launcher is left as it is, and a
+  line break in any value is refused. Refused for the demo. **Never started unseen:** `serve
+  --from-shortcut` opens a running Ordnung in the browser (no link printed); otherwise it starts Ordnung
+  only in a terminal window, titled *Ordnung*, whose closing stops it ("Close this window (or press Ctrl+C)
+  to stop Ordnung."; the hang-up, SIGHUP, or on Windows the console's close event, stops the server as
+  Ctrl+C does, so its shutdown and clean-up run), and without one it exits with 3 and starts nothing — the
+  Mac bundle then opens Terminal with its `Ordnung.command`. A failed start, also one inside the server
+  (uvicorn's own exit code 3 becomes 1), waits for Enter; a second click while the first start is under way
+  waits up to 15 s (`BROWSER_WAIT_S`) for that server and opens it. Settings → Reminders shows whether it is
+  there, for which folder, whether it runs this installation (`current`; otherwise the command again) and
+  whether a launcher Ordnung didn't write is in its place (`foreign`: move it away first)
+  (`GET /api/reminders/desktop` → `shortcut`, read only; the command it offers names *this* data folder,
+  none in the demo), and `ordnung serve` in a terminal suggests it, for its data folder, while there is none.
 - **Calendar sync (CalDAV, opt-in)** — `calendar/caldav.py` (policy in its docstring, ADR 0013).
   The person connects one calendar in Settings → Calendar: an address (a calendar's, an account's or
   just the provider's — Ordnung finds the calendars that take events: the address itself, the
@@ -1922,7 +1947,9 @@ FILES… [--combine] [--private]` · `brief` · `ask "…"` · `demo [--data-dir
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
-[--dry-run] | disable | status` · `backup [--to FOLDER|FILE.ordnung-backup]` (a folder that
+[--dry-run] | disable | status` · `shortcut [--port N] [--dry-run] [--remove]` (§12's app-menu launcher;
+`serve` also takes a hidden `--from-shortcut`, what the launcher runs: it never starts Ordnung without a
+terminal window, exit code 3) · `backup [--to FOLDER|FILE.ordnung-backup]` (a folder that
 doesn't exist is refused) · `restore BACKUP [--force] [--check]` ·
 `sync [status]` · `sync connect FOLDER [--name N] [--keep this|folder]` · `sync use-here [--older-copy]
 [--wait SECONDS]` · `sync choose this|NAME [--yes]` · `sync save [--hand-over]` · `sync passphrase` ·

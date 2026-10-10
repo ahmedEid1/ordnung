@@ -106,3 +106,4 @@ check shows in the numbers at once, and costs nothing.
   decision gets a short record in [docs/decisions/](docs/decisions/).
 - Pull requests go to `main`, and CI must pass. Say what changed and how you checked it, and keep
   real letters and personal data out of the description too.
+- The owner makes releases from a version tag on `main`; [docs/releasing.md](docs/releasing.md) says how.
