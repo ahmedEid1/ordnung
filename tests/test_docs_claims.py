@@ -2586,10 +2586,34 @@ SCANNER_TEXT_KEPT = (
 _CITATION = re.compile(r"§+ ?\d+[a-z]?(?: Abs\. \d+)?(?: (?:Satz|S\.|Nr\.) \d+)* [A-Z][A-Za-z]+")
 
 
-def _unreleased(heading: str) -> str:
-    """The CHANGELOG's Unreleased ``### heading`` list, flattened."""
-    unreleased = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1]
-    return _flat(unreleased.split(f"\n### {heading}\n", 1)[1].split("\n### ", 1)[0])
+def _unreleased(heading: str, changelog: str | None = None) -> str:
+    """The CHANGELOG's ``### heading`` lists of what came after 0.2.0, flattened: Unreleased's and, once
+    released, those of the versions since (the newest first)."""
+    text = changelog if changelog is not None else (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    sections = text.split("\n## 0.2.0 — ", 1)[0].split("\n## ")[1:]
+    lists = [
+        _flat(section.split(f"\n### {heading}\n", 1)[1].split("\n### ", 1)[0])
+        for section in sections
+        if f"\n### {heading}\n" in section
+    ]
+    assert lists, heading
+    return " ".join(lists)
+
+
+def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
+    """docs/releasing.md renames "## Unreleased" to the version, and CONTRIBUTING.md starts a new one for the
+    next change: the claims about what came after 0.2.0 still find their bullets then."""
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    released = changelog.replace(
+        "\n## Unreleased\n",
+        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.0 — 2026-10-12\n",
+        1,
+    )
+    fix = _flat("- A small fix after the release.")
+    for heading in ("Added", "Changed", "Upgrading"):
+        assert _unreleased(heading, released) == _unreleased(heading)
+    assert _unreleased("Fixed", released) == f"{fix} {_unreleased('Fixed')}"
+    assert "**Open Ordnung from your app menu.**" in _unreleased("Added", released)
 
 
 def _bullet(flat_list: str, lead: str) -> str:

@@ -6,7 +6,10 @@ or published, this script checks that
 1. the tag is ``v`` + the package's version, ``__version__`` in ``src/ordnung/__init__.py``, written in
    PEP 440's normal form (the way PyPI shows it: ``0.3.0rc1``, never ``0.3.0-rc1``);
 2. CHANGELOG.md has exactly one section for that version, headed ``## 0.3.0 — YYYY-MM-DD`` with a real date,
-   and it isn't empty.
+   and it isn't empty;
+3. that section is the newest: above it there is at most an empty ``## Unreleased``. Anything else there means
+   the tagged commit holds changes the notes leave out (a tag on main after a later merge, say), and PyPI can
+   never take a version back.
 
 Otherwise it says what is wrong and exits with 1, and the release stops. The notes are that section, with the
 links that are relative to the repository pointed at the tagged files on GitHub (that is what they mean on a
@@ -106,6 +109,24 @@ def section(changelog: str, version: str) -> str:
     return text
 
 
+def check_newest(changelog: str, version: str) -> None:
+    """Refuse a release whose changelog lists anything above ``version``'s section: an empty ``## Unreleased``
+    is all that may stand there. Call it after :func:`section` has found that section."""
+    heading = re.search(rf"^## {re.escape(version)} — ", changelog, re.M)
+    if heading is None:  # no section at all: section() says so
+        return
+    above = re.split(r"^## ", changelog[: heading.start()], flags=re.M)[1:]
+    for part in above:
+        name, _, body = part.partition("\n")
+        if name.strip() == UNRELEASED and not body.strip():
+            continue
+        raise ReleaseError(
+            f'CHANGELOG.md lists changes above the section for {version}, under "## {name.strip()}": the tagged '
+            f"commit holds changes its notes leave out. Tag the commit that named the section for {version}: git "
+            f"tag -a v{version} <that commit>."
+        )
+
+
 def unwrapped(text: str) -> str:
     """``text`` with the lines of each paragraph and list item joined. CHANGELOG.md is wrapped at 110
     characters, and a release page shows each line end as a line break. Headings, list items, code blocks,
@@ -167,7 +188,11 @@ def _release(root: Path, tag: str | None, version: str | None) -> tuple[str, str
                 f"v{version_here}."
             )
         version = version_here
-    return version, notes((root / "CHANGELOG.md").read_text(encoding="utf-8"), version)
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    text = notes(changelog, version)
+    if tag is not None:
+        check_newest(changelog, version)
+    return version, text
 
 
 def main(argv: Sequence[str] | None = None) -> int:

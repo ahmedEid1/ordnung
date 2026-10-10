@@ -64,7 +64,8 @@ def test_each_job_gets_only_the_rights_it_needs() -> None:
     assert _workflow()["permissions"] == {}
     jobs = _jobs()
     assert set(jobs) == {"build", "github-release", "pypi"}
-    assert jobs["build"]["permissions"] == {"contents": "read"}
+    # the build reads the code, and CI's runs to check that CI passed on the tagged commit
+    assert jobs["build"]["permissions"] == {"contents": "read", "actions": "read"}
     assert jobs["github-release"]["permissions"] == {"contents": "write"}
     assert jobs["pypi"]["permissions"] == {"id-token": "write"}
 
@@ -97,7 +98,7 @@ def test_no_token_or_password_is_stored_or_handed_over() -> None:
     for word in ("secret", "password", "api_token", "api-token", "twine_", "pypi-ag", "user:"):
         assert word not in text.lower(), word
     tokens = re.findall(r"\$\{\{([^}]*token[^}]*)\}\}", text, re.I)
-    assert [token.strip() for token in tokens] == ["github.token"], tokens
+    assert {token.strip() for token in tokens} == {"github.token"}, tokens
     assert _jobs()["github-release"]["steps"][-1]["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
@@ -117,6 +118,7 @@ def test_the_build_checks_the_tag_the_branch_and_the_files_before_anything_is_pu
     order = [
         'python3 scripts/release_notes.py --tag "$GITHUB_REF_NAME" --out release-notes.md',
         'git merge-base --is-ancestor "$GITHUB_SHA" origin/main',
+        "actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success",
         "node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json",
         "uv build",
         "uvx twine check --strict dist/*",
@@ -160,15 +162,39 @@ def test_the_github_release_has_the_notes_and_both_files_and_checks_out_no_code(
     assert release["steps"][-1]["env"]["PRERELEASE"] == "${{ needs.build.outputs.prerelease }}"
 
 
-def test_the_actions_are_the_versions_ci_uses() -> None:
-    """Dependabot updates the actions of both workflows together; the PyPA publisher's ref is the one its
-    documentation gives."""
-    release, ci = _uses(RELEASE), _uses(ROOT / ".github/workflows/ci.yml")
-    for name, ref in release.items():
+def test_ci_must_have_passed_on_the_tagged_commit() -> None:
+    """Being on main isn't enough: CI's run for that commit on main must have passed (a scheduled run skips the
+    tests, so only a push counts)."""
+    build = _jobs()["build"]
+    step = build["steps"][_step_index(build, "actions/workflows/ci.yml/runs")]
+    assert step["env"] == {"GH_TOKEN": "${{ github.token }}"}
+    assert "gh api" in step["run"] and "exit 1" in step["run"]
+
+
+def test_the_release_build_restores_no_cache() -> None:
+    """A cache another run wrote could change what the release builds and uploads."""
+    for step in _jobs()["build"]["steps"]:
+        uses = step.get("uses", "")
+        if uses.startswith("astral-sh/setup-uv@"):
+            assert step["with"]["enable-cache"] is False
+        if uses.startswith("actions/setup-node@"):
+            assert step["with"]["package-manager-cache"] is False
+
+
+def test_the_actions_are_pinned_to_commits_of_the_versions_ci_uses() -> None:
+    """The PyPI job holds the token PyPI accepts as the owner: every action of the release runs a fixed commit,
+    never a tag or branch that can be moved, with its version beside it (Dependabot keeps both up to date), and
+    the same major version as CI's."""
+    ci = _uses(ROOT / ".github/workflows/ci.yml")
+    text = RELEASE.read_text(encoding="utf-8")
+    pinned = dict(re.findall(r"uses: ([\w.-]+/[\w.-]+)@[0-9a-f]{40} # (v\d+\.\d+\.\d+)$", text, re.M))
+    assert set(pinned) == set(_uses(RELEASE)), "every action of release.yml is pinned to a commit"
+    assert len(re.findall(r"uses: ", text)) == len(re.findall(r"uses: \S+@[0-9a-f]{40} # v", text))
+    for name, version in pinned.items():
         if name in ci:
-            assert ref == ci[name], name
-    assert release["pypa/gh-action-pypi-publish"] == "release/v1"
-    assert set(release) - set(ci) == {"actions/download-artifact", "pypa/gh-action-pypi-publish"}
+            assert version.split(".")[0] == ci[name], name
+    assert pinned["pypa/gh-action-pypi-publish"].startswith("v1.")  # its documented release/v1 line
+    assert set(pinned) - set(ci) == {"actions/download-artifact", "pypa/gh-action-pypi-publish"}
     nvmrc = (ROOT / ".nvmrc").read_text(encoding="utf-8").strip()
     for job in _jobs().values():
         for step in job["steps"]:
@@ -187,8 +213,10 @@ def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> N
         assert (ROOT / "docs" / target).resolve().exists(), target
     page = " ".join(text.split())
     for needed in (
-        "git tag -a v",
+        "git tag -a vX.Y.Z <merge commit>",
         "git push origin v",
+        "Required reviewers",
+        "ruleset",
         "python3 scripts/release_notes.py",
         "## Unreleased",
         "pending publisher",

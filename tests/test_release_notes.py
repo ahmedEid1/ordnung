@@ -53,6 +53,10 @@ The third one.
 The second one.
 """
 
+#: the changelog of the release commit: the version's section is the newest (an empty Unreleased above it is
+#: fine)
+RELEASED = TWO_VERSIONS.replace("## Unreleased\n\n- Something not released yet.\n\n", "## Unreleased\n\n")
+
 
 def _root(tmp_path: Path, version: str, changelog: str) -> Path:
     """A checkout with only what the script reads: CHANGELOG.md and src/ordnung/__init__.py."""
@@ -123,6 +127,39 @@ def test_a_version_without_its_changelog_section_stops_the_release(
     assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
     assert says in capsys.readouterr().err
     assert not out.exists()
+
+
+@pytest.mark.parametrize(
+    ("above", "named"),
+    [
+        ("## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n", "Unreleased"),
+        ("## 0.4.0 — 2026-12-01\n\nLater.\n\n", "0.4.0 — 2026-12-01"),
+    ],
+    ids=["unreleased-changes", "a-newer-version"],
+)
+def test_a_tag_on_a_commit_with_changes_its_notes_leave_out_stops_the_release(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], above: str, named: str
+) -> None:
+    """The tagged commit is what gets released: when the changelog lists anything above the version's section,
+    that commit holds changes the notes leave out (a tag on main after a later merge, or on a version whose
+    release commit is long past). PyPI could never take that version back."""
+    changelog = "# Changelog\n\n" + above + RELEASED.split("## Unreleased\n\n", 1)[1]
+    root = _root(tmp_path, "0.3.0", changelog)
+    out = tmp_path / "release-notes.md"
+    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 1
+    error = " ".join(capsys.readouterr().err.split())
+    assert f'CHANGELOG.md lists changes above the section for 0.3.0, under "## {named}"' in error
+    assert "Tag the commit that named the section for 0.3.0: git tag -a v0.3.0 <that commit>" in error
+    assert not out.exists()
+    # without a tag it is only a preview: the notes print
+    assert main(["--root", str(root), "0.3.0"]) == 0
+
+
+def test_an_empty_unreleased_section_above_the_version_is_fine(tmp_path: Path) -> None:
+    root = _root(tmp_path, "0.3.0", RELEASED)
+    out = tmp_path / "release-notes.md"
+    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(out)]) == 0
+    assert out.read_text(encoding="utf-8") == notes(RELEASED, "0.3.0")
 
 
 def test_links_point_to_the_tagged_files_on_github() -> None:
@@ -206,7 +243,7 @@ def test_a_version_pypi_would_spell_differently_is_refused(version: str) -> None
 def test_the_workflow_run_writes_the_notes_and_its_outputs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    root = _root(tmp_path / "checkout", "0.3.0rc1", TWO_VERSIONS.replace("0.3.0 —", "0.3.0rc1 —"))
+    root = _root(tmp_path / "checkout", "0.3.0rc1", RELEASED.replace("0.3.0 —", "0.3.0rc1 —"))
     outputs = tmp_path / "github-output"
     outputs.write_text("earlier=kept\n", encoding="utf-8")
     monkeypatch.setenv("GITHUB_OUTPUT", str(outputs))
@@ -239,13 +276,14 @@ def test_the_script_runs_with_the_standard_library_alone(tmp_path: Path) -> None
         for alias in node.names
     }
     assert imported <= set(sys.stdlib_module_names) | {"__future__"}, imported
+    root = _root(tmp_path / "checkout", "0.3.0", RELEASED)
     out = tmp_path / "release-notes.md"
     done = subprocess.run(
-        [sys.executable, "-I", str(script), "--tag", f"v{VERSION}", "--out", str(out)],
+        [sys.executable, "-I", str(script), "--root", str(root), "--tag", "v0.3.0", "--out", str(out)],
         cwd=tmp_path,
         capture_output=True,
         text=True,
         env={name: value for name, value in os.environ.items() if name != "GITHUB_OUTPUT"},
     )
     assert done.returncode == 0, done.stderr
-    assert out.read_text(encoding="utf-8") == notes(CHANGELOG, VERSION)
+    assert out.read_text(encoding="utf-8") == notes(RELEASED, "0.3.0")
