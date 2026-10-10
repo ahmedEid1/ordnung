@@ -43,6 +43,15 @@ describe("the letters waiting from the folder", () => {
     expect(waitingRows([terms, bill, scan, mail], new Set())).toEqual([]);
   });
 
+  it("a found e-mail keeps its waiting attachments under it: an answer for it is for them too", () => {
+    const rows = waitingRows([terms, read, bill, scan, mail], new Set(["mail"]));
+    expect(rows.map((r) => [r.doc.id, r.email?.id ?? null, r.nested])).toEqual([
+      ["mail", null, false],
+      ["bill", "mail", true],
+      ["terms", "mail", true],
+    ]);
+  });
+
   it("a search's waiting letters: those the live list still holds as waiting, with where the search found each", () => {
     const answered = { ...mail, status: "processed" as const };
     const found = heldMatches(

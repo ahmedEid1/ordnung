@@ -198,6 +198,13 @@ for (const width of [320, 1280]) {
     await expectAccessible(page, testInfo, `inbox-search-waiting-${width}`);
     await page.getByRole("tabpanel").getByRole("button", { name: "Clear search" }).click();
     await expect(page.getByRole("region", { name: "From your folder — not read yet, 3 letters" })).toBeVisible();
+    // a word only the e-mail has: its attachment is listed under it, since an answer for the e-mail is for both
+    await page.getByRole("searchbox", { name: "Search letters" }).fill("FunkNetz");
+    const mail = page.getByRole("region", { name: "From your folder — not read yet, 2 of 3 letters" });
+    await expect(mail).toBeVisible();
+    await expect(mail.getByRole("list", { name: "Letters not read yet" }).getByRole("link")).toHaveText([/FunkNetz Kundenservice$/, /^Rechnung_2026.09\.pdf$/]);
+    await expect(mail.getByRole("button", { name: "Read these 2 with Claude" })).toBeVisible();
+    expect(await sideways(page), "the page scrolls sideways").toBe(0);
   });
 }
 

@@ -3,7 +3,8 @@
  * an e-mail's attachment under it, "Read these 3" answers for exactly the letters shown, "Keep
  * private" keeps them here, and the online demo explains that it can't read new letters. While the
  * Inbox is searched, the group lists only the waiting letters the search found (one found by its
- * scanner's text says so), and the list below never says no letter matches when one of them does.
+ * scanner's text says so, a found e-mail comes with its attachment), and the list below never says no
+ * letter matches when one of them does.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -186,6 +187,22 @@ describe("the letters waiting from the folder, while the Inbox is searched", () 
     expect(waitingNames(g)).toEqual(["Ihre Rechnung September 2026 · FunkNetz Kundenservice", "Rechnung_2026-09_FunkNetz.pdf"]);
     expect(within(g).queryByText(SCANNER_TEXT_MATCH)).toBeNull();
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^\d+ letters? match(es)? “FunkNetz”, and 2 not read yet \(above\)$/));
+  });
+
+  it("lists a found e-mail with its waiting attachment under it, and answers for both", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    // a word only the e-mail has: an answer for it is for its attachment too, so that is listed as well
+    renderInbox("/inbox?q=Kundenservice");
+    const g = await screen.findByRole("region", { name: "From your folder — not read yet, 2 of 3 letters" });
+    expect(waitingNames(g)).toEqual(["Ihre Rechnung September 2026 · FunkNetz Kundenservice", "Rechnung_2026-09_FunkNetz.pdf"]);
+    expect(within(g).getByText("Attached to “Ihre Rechnung September 2026 · FunkNetz Kundenservice”")).toBeInTheDocument();
+    expect(within(g).queryByText(SCANNER_TEXT_MATCH)).toBeNull();
+    await user.click(within(g).getByRole("button", { name: "Read these 2 with Claude" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/read")?.body).toEqual({ doc_ids: ["doc_folder_mail", "doc_folder_invoice"] }),
+    );
+    expect(await screen.findByText("Claude is reading 2 letters")).toBeInTheDocument();
   });
 
   it("goes while the search finds none of them", async () => {

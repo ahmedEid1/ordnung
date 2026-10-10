@@ -6,6 +6,7 @@
  *
  * While the Inbox is searched (`found`), the group lists only the waiting letters the search found ("1 of
  * 3"), and its answers are for those; one found only in its scanner's text says so ("not checked", ADR 0020).
+ * A found e-mail is listed with its waiting attachments, since an answer for it is for them too.
  * A search that finds none of them hides the group until it is cleared.
  *
  * When they are answered the group goes; `onAnswered` then says where focus goes (the letters list).
