@@ -4,6 +4,10 @@
  * sends exactly the letters listed here to Claude (a file that arrives meanwhile is not included);
  * "Keep private" keeps them on this computer for good (docs/privacy.md, "The watched folder").
  *
+ * While the Inbox is searched (`found`), the group lists only the waiting letters the search found ("1 of
+ * 3"), and its answers are for those; one found only in its scanner's text says so ("not checked", ADR 0020).
+ * A search that finds none of them hides the group until it is cleared.
+ *
  * When they are answered the group goes; `onAnswered` then says where focus goes (the letters list).
  * The toast and the focus move run from the request's own promise (the group is gone by then), and
  * "Keep private" can be undone from its toast. More letters than one request may name are answered
@@ -13,9 +17,10 @@
  * a letter, nor ask about the watched folder (both are computer-only).
  */
 import { Link } from "react-router";
-import { FolderInput, Lock, Sparkles } from "lucide-react";
-import type { Document } from "@/api/types";
+import { FolderInput, Lock, ScanText, Sparkles } from "lucide-react";
+import type { Document, SearchFoundIn } from "@/api/types";
 import { useFolder, useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
+import { SCANNER_TEXT_MATCH } from "@/lib/copy";
 import { formatDateTime } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
@@ -26,11 +31,23 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { DECIDE_ON_COMPUTER } from "@/features/phone/copy";
 import { AnswerButton } from "./AnswerButton";
+import { isHeld } from "./filters";
 import { Thumb } from "./LettersList";
 import { fileKindLabel, readLabel, waitingRows, type WaitingRow } from "./waiting";
 
-export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Document[]; onAnswered?: () => void }) {
-  const rows = waitingRows(docs);
+export function WaitingFromFolder({
+  docs,
+  found = null,
+  onAnswered,
+}: {
+  docs: readonly Document[];
+  /** While the Inbox is searched: the waiting letters the search found, with where (`found_in`); null: no search. */
+  found?: ReadonlyMap<string, SearchFoundIn | null> | null;
+  onAnswered?: () => void;
+}) {
+  const rows = waitingRows(docs, found ?? undefined);
+  // narrowed by a search: "1 of 3"
+  const all = found ? docs.filter(isHeld).length : rows.length;
   const phone = usePhoneCompanion();
   const read = useReadHeld();
   const keep = useKeepHeldPrivate();
@@ -89,9 +106,9 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
           <>
             <span aria-hidden>
               From your folder — not read yet
-              <span className="font-medium tabular-nums">{` · ${n}`}</span>
+              <span className="font-medium tabular-nums">{n < all ? ` · ${n} of ${all}` : ` · ${n}`}</span>
             </span>
-            <span className="sr-only">{`From your folder — not read yet, ${plural(n, "letter")}`}</span>
+            <span className="sr-only">{`From your folder — not read yet, ${n < all ? `${n} of ${plural(all, "letter")}` : plural(n, "letter")}`}</span>
           </>
         }
         description={`Stored on ${phone ? "your" : "this"} computer and not read yet — nothing has been sent to Claude.`}
@@ -99,7 +116,7 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
       <div className="card overflow-hidden">
         <ul className="divide-y divide-line" aria-label="Letters not read yet">
           {rows.map((row) => (
-            <WaitingItem key={row.doc.id} row={row} />
+            <WaitingItem key={row.doc.id} row={row} scannerText={found?.get(row.doc.id) === "scanner_text"} />
           ))}
         </ul>
         {phone ? (
@@ -136,7 +153,7 @@ export function WaitingFromFolder({ docs, onAnswered }: { docs: readonly Documen
   );
 }
 
-function WaitingItem({ row }: { row: WaitingRow }) {
+function WaitingItem({ row, scannerText = false }: { row: WaitingRow; scannerText?: boolean }) {
   const today = useTodayISO();
   const { doc, email, nested } = row;
   // an e-mail is named by its subject and sender (read on this computer); anything else by its file name
@@ -162,6 +179,13 @@ function WaitingItem({ row }: { row: WaitingRow }) {
         {email ? (
           <p className="mt-0.5 line-clamp-2 text-sm leading-5 text-muted [overflow-wrap:anywhere]" title={`Attached to “${emailName}”`}>
             Attached to “{protectRefs(emailName)}”
+          </p>
+        ) : null}
+        {scannerText ? (
+          // as in the letters list: a line of its own, and never the scanner's text itself
+          <p className="mt-1.5 flex min-w-0 items-start gap-1.5 text-[12.5px] leading-5 text-muted">
+            <ScanText className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+            <span className="min-w-0">{SCANNER_TEXT_MATCH}</span>
           </p>
         ) : null}
       </div>

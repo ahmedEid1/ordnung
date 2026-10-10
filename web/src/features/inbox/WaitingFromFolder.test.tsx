@@ -1,7 +1,9 @@
 /**
  * "From your folder — not read yet" on the Inbox (mock API): the waiting letters are listed with
  * an e-mail's attachment under it, "Read these 3" answers for exactly the letters shown, "Keep
- * private" keeps them here, and the online demo explains that it can't read new letters.
+ * private" keeps them here, and the online demo explains that it can't read new letters. While the
+ * Inbox is searched, the group lists only the waiting letters the search found (one found by its
+ * scanner's text says so), and the list below never says no letter matches when one of them does.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -19,13 +21,13 @@ afterEach(() => {
   act(() => __clearToasts());
 });
 
-function renderInbox() {
+function renderInbox(route = "/inbox") {
   return renderWithProviders(
     <AddLettersProvider>
       <InboxPage />
       <Toaster />
     </AddLettersProvider>,
-    { route: "/inbox" },
+    { route },
   );
 }
 
@@ -131,5 +133,66 @@ describe("the letters waiting from the folder", () => {
     expect(within(g).getByRole("button", { name: "Read it with Claude" })).toBeInTheDocument();
     expect(within(g).getByText(/Claude reads it like a letter you add\./)).toBeInTheDocument();
     expect(within(g).queryByText(/reads them/)).toBeNull();
+  });
+});
+
+describe("the letters waiting from the folder, while the Inbox is searched", () => {
+  const SCANNER_TEXT_MATCH = "Found in your scanner's text — not checked";
+  const waitingNames = (g: HTMLElement) =>
+    within(within(g).getByRole("list", { name: "Letters not read yet" }))
+      .getAllByRole("link")
+      .map((a) => a.textContent);
+
+  it("lists only the ones the search found, marks one found by its scanner's text, and never says no letter matches", async () => {
+    const { calls } = useMockApi();
+    const user = userEvent.setup();
+    renderInbox(`/inbox?q=${encodeURIComponent("Wasserzähler")}`);
+    // the same word as the top bar's search, the same letter: Sam's held scan, by its scanner's text
+    const g = await screen.findByRole("region", { name: "From your folder — not read yet, 1 of 3 letters" });
+    expect(waitingNames(g)).toEqual(["Scan_2026-09-28_0914.pdf"]);
+    expect(within(g).getByText(SCANNER_TEXT_MATCH)).toBeInTheDocument();
+    // the scanner's text itself is never shown
+    expect(within(g).queryByText(/Wasserzähler/)).toBeNull();
+    // none of the letters read match: the list says where the one that does is
+    const empty = await screen.findByRole("heading", { name: "1 letter not read yet matches “Wasserzähler”" });
+    expect(within(empty.parentElement!).getByText("It's above, in “From your folder — not read yet”. No other letter matches.")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("1 letter not read yet matches “Wasserzähler”");
+    expect(screen.queryByText(/No letters match/)).toBeNull();
+    expect(screen.queryByText(/Try another word/)).toBeNull();
+    // the waiting letters stay out of the tabs' counts (a tab shows no "0")
+    expect(screen.getByRole("tab", { name: /^All/ })).not.toHaveTextContent(/\d/);
+    // the answer is for exactly the letter listed
+    await user.click(within(g).getByRole("button", { name: "Read it with Claude" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/read")?.body).toEqual({ doc_ids: ["doc_folder_scan"] }));
+  });
+
+  it("brings every waiting letter back when the search is cleared (the online demo as well)", async () => {
+    useMockApi({ staticDemo: true });
+    const user = userEvent.setup();
+    renderInbox(`/inbox?q=${encodeURIComponent("Wasserzähler")}`);
+    await screen.findByRole("region", { name: "From your folder — not read yet, 1 of 3 letters" });
+    const empty = await screen.findByRole("heading", { name: "1 letter not read yet matches “Wasserzähler”" });
+    await user.click(within(empty.parentElement!).getByRole("button", { name: "Clear search" }));
+    const g = await screen.findByRole("region", { name: "From your folder — not read yet, 3 letters" });
+    expect(waitingNames(g)).toHaveLength(3);
+    expect(within(g).queryByText(SCANNER_TEXT_MATCH)).toBeNull();
+    expect(within(g).getByRole("button", { name: "Read these 3 with Claude" })).toBeInTheDocument();
+  });
+
+  it("counts the waiting letters found next to the letters read, and marks none found by its own words", async () => {
+    useMockApi();
+    renderInbox("/inbox?q=FunkNetz");
+    const g = await screen.findByRole("region", { name: "From your folder — not read yet, 2 of 3 letters" });
+    expect(waitingNames(g)).toEqual(["Ihre Rechnung September 2026 · FunkNetz Kundenservice", "Rechnung_2026-09_FunkNetz.pdf"]);
+    expect(within(g).queryByText(SCANNER_TEXT_MATCH)).toBeNull();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent(/^\d+ letters? match(es)? “FunkNetz”, and 2 not read yet \(above\)$/));
+  });
+
+  it("goes while the search finds none of them", async () => {
+    useMockApi();
+    renderInbox("/inbox?q=Parking");
+    expect(await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 letter matches “Parking”"));
+    expect(screen.queryByRole("region", { name: /From your folder/ })).toBeNull();
   });
 });

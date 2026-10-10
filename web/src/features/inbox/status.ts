@@ -32,13 +32,20 @@ export interface ResultLine {
   visible: boolean;
 }
 
-/** The line under the toolbar: what the list shows now. */
-export function resultLine(v: InboxView, shown: number, total: number, searching: boolean): ResultLine {
+/** "1 letter not read yet matches “Wasserzähler”": the waiting letters a search found (they show above the list). */
+const heldMatch = (held: number, q: string) => `${held === 1 ? "1 letter not read yet matches" : `${held} letters not read yet match`} “${q}”`;
+
+/**
+ * The line under the toolbar: what the list shows now. `held`: the letters waiting from the folder that the
+ * search found — listed above, in their own group, never in the list or its counts.
+ */
+export function resultLine(v: InboxView, shown: number, total: number, searching: boolean, held = 0): ResultLine {
   if (v.typed.length > 0 && v.typed.length < MIN_SEARCH) return { text: "Type one more letter to search.", visible: true };
   if (v.q && searching) return { text: "Searching…", visible: true };
   if (v.q) {
-    if (!shown) return { text: `No letters match “${v.q}”`, visible: false };
-    return { text: `${shown === 1 ? "1 letter matches" : `${shown} letters match`} “${v.q}”`, visible: true };
+    if (!shown) return { text: held ? heldMatch(held, v.q) : `No letters match “${v.q}”`, visible: false };
+    const also = held ? `, and ${held} not read yet (above)` : "";
+    return { text: `${shown === 1 ? "1 letter matches" : `${shown} letters match`} “${v.q}”${also}`, visible: true };
   }
   if (isNarrowed(v)) return { text: shown ? `Showing ${shown} of ${plural(total, "letter")}` : "No letters here", visible: shown > 0 };
   return { text: "", visible: false };
@@ -54,10 +61,21 @@ export interface EmptyCopy {
 
 /**
  * The empty state of a filtered list — it says which filter left it empty and how to get out (`phone`: on a paired
- * phone, where the letters are on "your computer").
+ * phone, where the letters are on "your computer"). `held`: waiting letters the search found — never "No letters
+ * match" then: it says where they are.
  */
-export function emptyCopy(v: InboxView, phone = false): EmptyCopy {
+export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
   const plain = !v.q && !v.kindLabel;
+  if (v.q && held) {
+    // a filter or a kind narrows only the letters read: the waiting ones are in none
+    const searchOnly = v.filter === "all" && !v.kindLabel;
+    return {
+      title: heldMatch(held, v.q),
+      description: `${held === 1 ? "It's" : "They're"} above, in “From your folder — not read yet”. ${searchOnly ? "No other letter matches." : "Filters are on as well — clear them to search all your letters."}`,
+      illustration: "search",
+      action: searchOnly ? "clear-search" : "clear-filters",
+    };
+  }
   if (plain && v.filter === "check") {
     return {
       title: "Nothing to check",
