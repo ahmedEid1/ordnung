@@ -43,6 +43,36 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   leaves their dates as counted without it
   ([ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)). The lookup runs on your
   computer. Postcode data © GeoNames, CC BY 4.0.
+- **Your tax year, and your letters as files.** *Inbox → Letters for taxes* lists the letters that could
+  matter for a year's tax return, by the date on the letter (else the day it arrived) and grouped by kind,
+  each with Claude's note on why, then the ones dated January–May of the next year, when yearly statements
+  such as the *Lohnsteuerbescheinigung* usually arrive: check which year each is for. Today's tax-season
+  Idea (*Your 2025 tax documents are ready to collect*) now opens it, and so does a letter's tax note.
+  *Export letters* (Settings → Data, or *Export these letters…* on a tax year) downloads your letters'
+  original files as one ZIP, in folders by year and sender
+  (`2025/Finanzamt Musterstadt/2025-03-14 Steuerbescheid 2025.pdf`), with `index.csv` for a spreadsheet.
+  It runs only when you click it, on your computer, never from a phone, and it writes and sends nothing.
+  The ZIP isn't encrypted: anyone who has it can read the letters, so keep it safe.
+- **Scans you keep private, or add while Claude isn't connected, can be found by their words.** Many
+  scanners and phone apps save a "searchable PDF": a picture of the page with the scanner's own reading of
+  it as hidden text. Ordnung never takes that text for the letter's words (it reads the picture, and checks
+  what it read against the paper), and until now it threw the text away, so such a scan was found only by
+  its file name. Now the scanner's text is kept with the letter's page images for search only: a letter
+  found that way says *Found in your scanner's text — not checked*, and its page says what that text is
+  for. It is never shown as the letter's words, never used to check a date or an amount, and never sent to
+  Claude; Ask doesn't search it. Once Claude has read the scan, the scanner's text is removed. Scans you
+  added before are caught up in the background after the update
+  ([ADR 0020](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)).
+- **A moving checklist.** When you change your address in Settings → Profile and tick *I moved*, Today
+  lists who needs your new address: first, registering at the citizens' office (Bürgeramt) within two
+  weeks of moving in (§ 17 Abs. 1 BMG); then the organisations Ordnung knows from your contracts and
+  letters — your bank, insurers, employer, landlord, utilities and others — each with the new-address
+  letter one click away (your old address and the day filled in); and the broadcasting fee office, when
+  it isn't among them. Tick a row off, or mark it *Not needed*, with Undo; a sender's row goes by itself
+  once you mark a new-address letter to them as sent. The checklist is for a move in the last six months
+  or the next three, ends six months after the move, and *Stop the checklist* ends it at once. Nothing is
+  sent for you, and no row names an address
+  ([ADR 0021](docs/decisions/0021-a-move-is-said-never-guessed.md)).
 - **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
   sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
   own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
@@ -70,6 +100,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   it is now dated by its rule at once.
 - A to-do that repeats on a working day ("bis zum 3. Werktag") says so on its letter's page and in the
   sender's details; it said only "every month".
+- A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its
+  PDF straight away. Before, only the first such letter was; the others were found by name until Claude
+  read them.
 - A password manager's strong random password with capital and small letters now protects a new backup or
   a new sync folder. 0.2.0 counted only words, so symbols and capitals counted nothing and many such
   passwords were refused. Now random characters count by the alphabet they use (14 random letters and
@@ -112,6 +145,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   change how they repeat.
 - On a computer still on 0.2.0, a letter written in someone else's name prints your name under its signature
   until it is marked as sent. Print such letters on an updated computer.
+- A computer still on 0.2.0 shows the tax-season Idea without its button.
+- A computer still on 0.2.0 finds a scan only by its name, as before, and deletes its scanner's text with the
+  letter.
+- A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its Ideas
+  and never takes them away, and saving the profile there forgets the move. Update both computers.
 - Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and
   says so until the next one, which counts.
 

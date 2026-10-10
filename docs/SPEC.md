@@ -172,6 +172,11 @@ Key additions in v2 (to implement in models.py):
 - `Page.text_source: Literal["text","transcript","none"]`.
 - `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
   `purpose: LLMPurpose` Literal.
+- `DocumentListEntry` (`Document` + `found_in`: `letter`, `scanner_text`, or `null` without a search) is what
+  `GET /api/documents` lists, made by the route and never stored — `Document` stays what Ask's ledger
+  fingerprint hashes; `DocumentDetail.scan_text_pages` (the pages whose scanner text is kept for search only,
+  never the text; § 8); `Profile.moved_on` (`null`: no move told) and `Profile.old_address` (the moving
+  checklist, § 9).
 
 ## 5. Persistence — `db/`
 
@@ -444,6 +449,18 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    The text layer is read on a pdfminer document that gives up after 1000 lookups answering with
    another reference, so a PDF whose objects refer to themselves (`5 0 obj 5 0 R endobj`) can't hang
    the reading: its pages are transcribed instead.
+   A scan's invisible OCR layer (a scanner's "searchable PDF") is not the page's text: the page is
+   transcribed from its image. The OCR text is kept apart (`text.read_pdf_text` → `PdfText.scan_text`;
+   `extract_pdf_pages` returns the pages alone, as before) in `derived/<doc>/scan-text.json`
+   (`{"version": 1, "pages": {"<n>": "…"}}`, at most 20,000 characters a page, `0600`, written atomically;
+   only `Store` reads and writes it, `db/scan_text.py`) for the person's letter search only (ADR 0020):
+   `GET /api/documents?q=` matches it on pages with no text of their own, by the index's word and substring
+   rules, and marks letters found only there `found_in="scanner_text"`. Ask's `search`, the FTS indexes,
+   `Document`, prompts and evidence never read it; it is removed once every page has text of its own. A
+   letter put back to wait for Claude gets this stage alone first (`pipeline.read_text_here`: no model, no
+   status change, once per run of Ordnung), so search finds it by its words; the worker catches up the
+   scanner text of PDFs stored before Ordnung kept it, 30 s after it starts, one letter at a time
+   (`pipeline.catch_up_scan_text`: no database row changes).
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
@@ -775,7 +792,15 @@ whose adding was stopped before its attachments adds them.
   `followup_due` (a sent letter's follow-up item became due), `please_check`, `sender_land` (a sender
   without a state whose letters' postcode suggests one, while one of their open dates may change once it is
   confirmed: *Is X in Bavaria?*, one per sender; ADR 0019), `dunning_escalation`,
-  `scam_warning`, `tax_documents` (Jan–Jul), `calendar_outdated` (new dates since last .ics export),
+  `scam_warning`, `tax_documents` (Jan–Jul; counted by the letter's date, else the day it arrived; *See the
+  documents* opens the tax year, `target_type="tax_year"`), `moved_house` (after the person ticks *I moved*:
+  register within two weeks of moving in, § 17 Abs. 1 BMG, a `deadline` dated by the rules engine and never
+  moved off a weekend or holiday; *Tell X your new address* for each organisation with a running contract
+  or a letter of the last three years of a kind that keeps the address, never from a letter with scam signs
+  or kept private, opening the new-address letter to them; the broadcasting fee office when none of them is
+  it; a sender's row goes once an `address_change` letter to them is marked sent; no row names an address;
+  ends 180 days after the move; shown as Today's own card; `secretary/moving.py`, ADR 0021),
+  `calendar_outdated` (new dates since last .ics export),
   `proof_missing` (a cancellation or objection sent by Einschreiben has no tracking number and no
   proof two days on — not once an answer *from them* shows it arrived, the person closed the
   follow-up themselves, or 15 months passed (Deutsche Post no longer issues the delivery record); the
@@ -1118,6 +1143,10 @@ writing or at online-mahnantrag.de, never by e-mail — nor any other letter to 
 only has to be sent in time).
 Marking sent asks for channel + date and creates a follow-up item 21 days later (35 for a data access
 request, which has one month from receipt).
+The composer fills an `address_change` letter's new address from the profile, as before, and, while a move is
+stored, its old address and moving day from `Profile.old_address` and `Profile.moved_on` (all editable); a
+note under the fields points to the moving checklist (§ 9), or to Settings → Profile's *I moved* when no move
+is stored. A row of the checklist opens this letter to its organisation (`/letters?kind=address_change&to=…`).
 A letter can go out in another name (`POST /api/drafts` `sender_name`; the composer offers the answered
 letter's addressee, `DocumentDetail.addressed_to`, and starts with the profile's name): its sender block,
 signature, PDF author and Nachweis use it, and it is kept in `drafts.sent_profile` (the name only until the
@@ -1368,9 +1397,9 @@ detached.
   listener's own stop, which waits up to 30 s for what is in flight.
 - **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (59)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
-  profile edits, phone access, backups, deleting, originals, held-letter decisions and hand-off sync
-  stay on the computer, and the calendar files (`calendar.ics`, `items/{id}.ics`, `calendar/exported`)
-  are computer-only too. `classify` runs before routing (HEAD counts as GET; a path several templates
+  profile edits, phone access, backups, deleting, originals (a letter's file and the letters ZIP),
+  held-letter decisions and hand-off sync stay on the computer, and the calendar files (`calendar.ics`,
+  `items/{id}.ics`, `calendar/exported`) are computer-only too. `classify` runs before routing (HEAD counts as GET; a path several templates
   match is a phone's only when every match is; no match is refused); `mark_openapi` adds
   `x-ordnung-phone: true`.
   Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
@@ -1546,13 +1575,28 @@ answer there carries `Cross-Origin-Resource-Policy: same-origin` and a `Permissi
 session token, a bearer header and `?token=` are never accepted on the phone listener, and the device
 cookie never on the computer's. Refusals answer `{detail, code}` with the status `ERROR_STATUS` gives.
 
-Endpoints (all under `/api`): `health`, `profile` (GET/PUT), `settings` (GET/PUT), `onboarding`
-(POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list), `documents/{id}`
+Endpoints (all under `/api`): `health`, `profile` (GET/PUT; PUT and `onboarding` take `moved_on`, the day the
+person says they moved in — `""` clears it, and outside the last six months or the next three it is refused
+with 422 "Ordnung's moving checklist is for a move in the last six months or the next three — check the day." —
+and `old_address`, at most 1000 characters; a new, changed or cleared move refreshes the Ideas), `settings`
+(GET/PUT), `onboarding` (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list:
+`DocumentListEntry` rows, each with `found_in` — `letter`, or `scanner_text` when only a scan's scanner text
+matched `q` (ADR 0020); `null` without `q`), `documents/{id}`
 (GET detail, with `region_suggestion`: the question about the sender's state for this letter, its `waiting`
-counting this letter's open dates, and `addressed_to`: who the letter is addressed to, as read, when that
-isn't the profile's person — `secretary/addressee.py`, worked out on read / PATCH / DELETE),
+counting this letter's open dates, `addressed_to`: who the letter is addressed to, as read, when that
+isn't the profile's person — `secretary/addressee.py`, worked out on read —, and `scan_text_pages`: the pages
+whose scanner text is kept for search only / PATCH / DELETE),
 `documents/{id}/file`, `documents/{id}/pages/{n}.jpg`,
-`documents/{id}/thumbnail.jpg`, `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+`documents/{id}/thumbnail.jpg`, `documents.zip` (GET: the letters' original files as one streamed ZIP — every
+letter not in the trash, waiting for the person or a proof file, private ones too, narrowed by `year`
+(1900–2100, by the letter's date, else the day it arrived; undated letters left out), `until` (with `year`
+only, a day of the next year, else 422: the yearly statements dated early in it), `tax` and `party_id`
+(unknown: 404); `<year>/<sender>/<date> <title>.<ext>` (`Undated`, `Sender unknown`), every part made safe
+for Windows, macOS and Linux and unique in its folder whatever the case, the bytes the original's, and
+`index.csv` (UTF-8 with a BOM, semicolons, CRLF, a `'` before a cell that would start a formula) at the root;
+an original that is missing, or a link out of the data folder, is listed with an empty `file` and never
+followed; `attachment` named `ordnung-letters[-for-taxes][-<year>|-<today>].zip`, `no-store`; `letters_zip.py`;
+computer-only, writes nothing), `documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
 `base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
@@ -1643,7 +1687,7 @@ Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the b
 obligations towards authorities or a job — a job gets "Draft resignation").
 
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
-`LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
+`LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `DocumentListEntry`, `PartyDetail`,
 `CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
 `FolderStatus`, `FolderPickup`, `DocumentTrace`,
 `TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`. Live event `folder.updated` {state, doc_id?, held?}.
@@ -1693,12 +1737,26 @@ Pages:
    (collapsed; newest first by the day each was received, else dated, else added);
    "All clear until Friday" empty state — never while letters couldn't be read, wait from the
    folder or wait in the queue (for Claude, say): then "Nothing due from the letters that were read" and the card "N letters couldn't be read
-   — Try again"; "calendar outdated" card; undo toasts.
+   — Try again"; "calendar outdated" card; undo toasts. While a move is stored, the **Moving checklist**
+   (`id="moving-checklist"`, an h2 section above the Ideas) lists the `moved_house` Ideas instead of the Ideas
+   list: registration first, each row with a native checkbox (ticks it off, with Undo, focus to the next
+   row), *Not needed*, and *Write the letter* (or *Open your draft* when an unsent new-address letter to them
+   exists); "Ordnung never sends anything for you".
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
    **"From your folder — not read yet"**: the held letters (an e-mail's attachments under it), with
-   *Read these N* and *Keep private*; held letters are in no other group or filter.
+   *Read these N* and *Keep private*; held letters are in no other group or filter. While a search lists a
+   letter only because of its scanner's text, its row (and its option in the search box) says "Found in your
+   scanner's text — not checked". The header links **Letters for taxes** (when a letter is marked for taxes,
+   also on a phone) to the **Tax year** page (`/inbox/taxes?year=YYYY`, its parent the Inbox): a year select
+   (only years with letters for taxes; January–July last year, else this year), "N letters dated Y.", that
+   year's letters for taxes by the letter's date (else the day it arrived) grouped by kind, each with Claude's
+   tax note ("Marked for taxes." without one), then a group "Dated January–May Y+1" with a callout that yearly
+   statements arrive then (check which year each is for), and a line naming undated ones; *Export these
+   letters…* (not on a phone, which says to export on the computer; disabled in the static demo, with the
+   reason) opens the export dialog preset to what the page shows. A letter's tax note under "Explained
+   simply" links to its year.
 3. **Document viewer** — verdict card first (its meta row adds "Addressed to …" when the letter was
    addressed to someone else); page images with highlight overlays (click fact → scroll
    + pulse); "Explained simply"; key facts; to-dos with "Why this date?" popover; warnings (scam
@@ -1706,7 +1764,9 @@ Pages:
    GiroCode (folded behind "Show code" on phones, and in Today's Pay panel); thread; actions (Draft reply · Add to calendar · Reprocess · Delete); "Read by Claude on
    … · text of 2 pages" badge, and under it where the letter went — "Not sent to Claude" while no
    model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
-   not installed, carried nothing), else that its text or image was sent to Anthropic; 390 px layout
+   not installed, carried nothing), else that its text or image was sent to Anthropic, and for a scan whose
+   pages have only the text its scanner added (`DocumentDetail.scan_text_pages`), what that text is kept for
+   (search only — never checked, shown as the letter's words or sent to Claude); 390 px layout
    stacks the image below the card. An e-mail lists its
    attachments and what became of each (linked when added); an attachment says which e-mail it came
    with; a held letter says it waits, with *Read it with Claude* and *Keep private*. A second tab, **How
@@ -1787,7 +1847,9 @@ Pages:
    when the session is due, else a quiet "Weekly review" link at its foot; on `/week` the navigation marks Today as the current section.
    The model job that suggests Ideas once a week is *Weekly Ideas* ("Privacy & AI usage" and its
    activity), so "Weekly review" names only this session.
-9. **Settings** — profile & address, region (affects holidays), language, reminders (lead times,
+9. **Settings** — profile & address (with **I moved** when an address already saved is changed: the day moved
+   in, today − 180 to today + 90; while a move is stored, a line with the day, a link to the checklist and
+   *Stop the checklist* with Undo), region (affects holidays), language, reminders (lead times,
    browser notifications, the morning desktop notification with a preview, a test and "start
    Ordnung when you log in"), AI (letters read at once, the daily note, the weekly Ideas — the model
    is one for every job, kept under Claude), privacy statement + "Privacy & AI usage" (activity, tokens,
@@ -1798,8 +1860,11 @@ Pages:
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
    encrypted backup (when the last one was made; passphrase twice with a suggested five-word one to copy and
-   its strength, then the download; how to restore; also offered by "Delete everything"), disclaimer — the
-   static demo explains that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
+   its strength, then the download; how to restore; also offered by "Delete everything"), **Export your
+   letters** (*Export letters…*: a dialog with the year, the sender, "Only letters for taxes" and, for a tax
+   year, the next year's January–May letters; how many letters the ZIP will hold; that it isn't encrypted;
+   *Download ZIP* is a real link, so nothing happens until the click; disabled in the static demo),
+   disclaimer — the static demo explains that it can neither notify, sync a calendar, back up nor hand Ordnung over to another computer —,
    **Watched folder** (the path with the server's validation message, "Use Ordnung's own inbox folder"
    with its path to copy, the auto-read switch — later arrivals only — with the cloud-folder caveat,
    the folder's state, whether new files wait or are read, and the last files); in the demo, Data also

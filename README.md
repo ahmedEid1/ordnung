@@ -135,8 +135,10 @@ inspecting receipts, deposit back, new address · *reminders* — calendar expor
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
 or more unrelated words, or a password manager's random password with capital and small letters) with a
-restore that checks every byte · *Claude Desktop and Claude Code* can use the deadline engine as MCP
-tools.
+restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them ·
+*export letters* — your originals as files in folders by year and sender, with a list for a spreadsheet ·
+*moving checklist* — who needs your new address, from your contracts and letters, starting with the
+Bürgeramt's two weeks · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools.
 
 ## The model reads, code computes
 
@@ -418,10 +420,11 @@ paired with a one-time code, and never their requests for settings, backups or d
 *My numbers* and your profile's IBAN show only their last 4 characters (a letter shows what is printed on
 it, also one you write there that carries your IBAN). Settings show what each feature
 sends and a usage log per document; the address and IBAN in your profile are never put into a prompt.
-Files from a watched folder are sent to Claude only after you say so. Calendar sync, off until you
-connect a calendar, is the only feature that sends anything readable to another third party (your calendar
-provider), by default only dates with generic titles. If you turn on hand-off sync between your computers,
-your own sync tool receives only encrypted files with meaningless names: the passphrase stays in each
+Files from a watched folder are sent to Claude only after you say so. *Export letters* puts your original
+letters, unencrypted, into a ZIP you save, only when you click it and never from a phone. Calendar sync,
+off until you connect a calendar, is the only feature that sends anything readable to another third party
+(your calendar provider), by default only dates with generic titles. If you turn on hand-off sync between
+your computers, your own sync tool receives only encrypted files with meaningless names: the passphrase stays in each
 computer's password store, and the provider learns how many files there are, roughly how large, and when
 they change — never what is in them. Details in [docs/privacy.md](docs/privacy.md).
 
@@ -440,10 +443,12 @@ with Anthropic's installer — `curl -fsSL https://claude.ai/install.sh | bash` 
 `irm https://claude.ai/install.ps1 | iex` in Windows PowerShell; other ways are in its
 [setup guide](https://code.claude.com/docs/en/setup) — and run `claude` once to sign in. Installed this
 way it updates itself; `claude update` updates it at once. Ordnung calls it in headless mode; there is
-nothing else to configure. Without Claude you can still store letters privately, search them and add your own
-dates (Timeline → Add a date, or on a letter's page), also ones that repeat. A letter added while Claude isn't
-installed, isn't signed in or is older than 2.1.0 waits (*Waiting for Claude*) instead of failing, and is read
-once Claude is ready, without a restart. CI tests Ordnung on Linux. A CI job on macOS and Windows
+nothing else to configure. Without Claude you can still store letters privately, find them by name or by the
+text in the file (a PDF's own text, or the text a scanner added to a scan — kept for search only, never checked
+or sent to Claude; a photo only by its name) and add your own dates (Timeline → Add a date, or on a letter's
+page), also ones that repeat. A letter added while Claude isn't installed, isn't signed in or is older than
+2.1.0 waits (*Waiting for Claude*) instead of failing, and is read once Claude is ready, without a restart;
+meanwhile search finds it by the words in its PDF. CI tests Ordnung on Linux. A CI job on macOS and Windows
 (weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
 runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
 access's network lookups and certificates, autostart entries and backups. The other tests, desktop
@@ -624,7 +629,10 @@ More in [docs/architecture.md](docs/architecture.md).
   shows the postcode so you can check.
 - No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
   above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
-  megapixels, are refused; take the photo at normal resolution.
+  megapixels, are refused; take the photo at normal resolution. The text a scanner adds to a PDF (a
+  "searchable PDF") is kept for search only and isn't checked: a letter found by it says so, and it is never
+  shown as the letter's words, used to check a date or an amount, or sent to Claude. A photo kept private,
+  or waiting for Claude, is found only by its name.
 - Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
   the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
   Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
@@ -654,6 +662,18 @@ More in [docs/architecture.md](docs/architecture.md).
   that one, and it moves on when you mark it done or its day has passed. A date you add without a letter counts
   working days with the nationwide public holidays only, so where your Land has a holiday of its own, its
   working day can come out a day early, or a day late for "the last working day".
+- The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is for:
+  a yearly statement for 2025 dated February 2026 is a 2026 letter, which is why a tax year also lists the
+  letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
+  January payslip for the new year and misses a statement dated in June. Only Claude marks a letter for taxes,
+  when it reads it: a letter you kept private is never marked, and you can't mark one yourself yet (*Export
+  letters* with *Only letters for taxes* off takes all of a year's letters, private ones too). The ZIP *Export
+  letters* saves isn't encrypted, and letters you wrote in Ordnung aren't in it.
+- The moving checklist knows only the organisations Ordnung has seen in your contracts and letters (a running
+  contract, or a letter of the last three years from a bank, an insurer, your employer, a landlord, a utility,
+  an office and the like); others, such as your doctor or online shops, aren't on it. It doesn't cover moving
+  abroad or the contract rights a move may give, and its day to register, two weeks after the move, is never
+  moved off a weekend or holiday: the earlier, safe day.
 - The check for incomplete readings works from the letter's text with fixed rules, in German and English
   wording only. When the letter's dates or periods disagree, or its own date can't be read, it files the
   to-do without a date for you to fill in. Besides the objection deadline it catches a fixed pay-by or send-by
@@ -713,8 +733,10 @@ More in [docs/architecture.md](docs/architecture.md).
 - [docs/decisions/](docs/decisions/): the design decisions, from
   [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md) and
-  [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)
+  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md),
+  [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md),
+  [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)
+  and [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md)
 
 ## How this was built
 
