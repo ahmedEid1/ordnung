@@ -859,7 +859,8 @@ class Profile(_Model):
     #: The person's own account, only for letters that ask for money back (e.g. the deposit).
     iban: str = ""
     #: The day the person said they moved in at ``address`` (ISO ``YYYY-MM-DD``; ``None``: no move told).
-    #: Set only by the person ("I moved" in Settings → Profile), never guessed from a letter.
+    #: Set only by the person ("I moved" in Settings → Profile, or "Moved recently?" once the new address
+    #: is saved), never guessed from a letter.
     moved_on: str | None = None
     #: The address before that move, for the new-address letter. Like ``address``, never put into a prompt.
     old_address: str = ""

@@ -954,7 +954,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
 
   // what the template form starts with: the contract's name (never a letter's title, which is Ordnung's
   // English summary, not what was ordered), the profile's address — and while a move the person told stands
-  // (Settings → "I moved", at most six months ago), the address before and the day they moved in; all still theirs
+  // (said in Settings → Profile, at most six months ago), the address before and the day they moved in; all still theirs
   // to change here. An older move's address may be two homes ago: it isn't filled in.
   const move = moveStanding(profileQ.data, today) ? profileQ.data : undefined;
   const templateValues: DetailValues = !template

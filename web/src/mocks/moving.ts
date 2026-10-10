@@ -1,7 +1,7 @@
 /**
  * The static demo's moving checklist: a simplified port of `src/ordnung/secretary/moving.py` (the `moved_house`
- * Idea rule) over the mock state, in the API's words. After "I moved" it lists registering the new address within
- * two weeks (§ 17 Abs. 1 BMG; the day is never moved off a weekend), each sender with a running contract (a
+ * Idea rule) over the mock state, in the API's words. After a move told in Settings → Profile it lists registering
+ * the new address within two weeks (§ 17 Abs. 1 BMG; the day is never moved off a weekend), each sender with a running contract (a
  * contract named after the flat is counted, never named), and the broadcasting fee office when no listed sender
  * is the broadcaster. `moving-cases.json` holds the same ledgers for this port and the API's rule.
  *
