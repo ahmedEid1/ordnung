@@ -562,11 +562,10 @@ def _run_server(server: Any) -> None:
       CTRL_CLOSE_EVENT, :func:`_stop_on_console_close`) stops it as Ctrl+C does: the app's shutdown runs
       (sync's last save, this computer marked as no longer using Ordnung), then ``serve`` ends with
       :data:`HANG_UP_EXIT` and its clean-up takes away ``server.json`` and the sign-in page.
-    * A failed startup (the app's, or the port taken after the check) ends uvicorn with exit code 3, which
-      is the launcher's "no window" (:data:`ordnung.shortcut.NO_WINDOW_EXIT`): it becomes a failure of
-      ``serve``'s own, code 1, so the launcher's window waits for Enter."""
-    from uvicorn.config import STARTUP_FAILURE
-
+    * A failed startup (the app's, or the port taken after the check) becomes a failure of ``serve``'s own,
+      code 1, so the launcher's window waits for Enter. Newer uvicorn ends it with exit code 3, the
+      launcher's "no window" (:data:`ordnung.shortcut.NO_WINDOW_EXIT`); older ones with code 1 (the port)
+      or by returning with the app's lifespan marked to exit."""
     hang_up: int | None = getattr(signal, "SIGHUP", None)  # none on Windows
     hung_up: list[int] = []
     previous: Any = None
@@ -581,7 +580,7 @@ def _run_server(server: Any) -> None:
         with _stop_on_console_close(server, hung_up):
             server.run()
     except SystemExit as exc:
-        if server.started or exc.code != STARTUP_FAILURE:
+        if server.started or exc.code in (0, None):
             raise
         raise _fail("Ordnung couldn't start.", hint="The lines above say why.") from None
     finally:
@@ -589,6 +588,9 @@ def _run_server(server: Any) -> None:
             signal.signal(hang_up, previous)
     if hung_up:
         raise SystemExit(HANG_UP_EXIT)
+    # older uvicorn returns after a failed app startup, its lifespan marked to exit
+    if not server.started and getattr(getattr(server, "lifespan", None), "should_exit", False):
+        raise _fail("Ordnung couldn't start.", hint="The lines above say why.")
 
 
 def _create_app(context: AppContext, *, token: str | None, demo: bool) -> Any:

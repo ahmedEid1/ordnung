@@ -431,6 +431,7 @@ FLAGS = {
     "HasArguments": 0x20,
     "HasIconLocation": 0x40,
     "IsUnicode": 0x80,
+    "HasExpString": 0x200,
 }
 
 
@@ -444,8 +445,9 @@ def _nul_terminated(data: bytes, at: int, width: int) -> bytes:
 
 def parse_shell_link(data: bytes) -> dict[str, Any]:
     """Every field of a shell link (MS-SHLLINK 2.1-2.5), read independently of ``ordnung.shortcut``:
-    the header, the LinkInfo with its VolumeID and both local base paths, the StringData and the
-    terminal block — asserting the sizes and offsets on the way."""
+    the header, the LinkInfo with its VolumeID and both local base paths, the StringData, the
+    EnvironmentVariableDataBlock (2.5.4) and the terminal block — asserting the sizes and offsets on
+    the way."""
     header = struct.unpack_from("<I16sIIQQQIiIHHII", data, 0)
     size, clsid, flags, attributes, created, accessed, written, file_size, icon_index, show, hotkey = header[
         :11
@@ -479,7 +481,15 @@ def parse_shell_link(data: bytes) -> dict[str, Any]:
             (count,) = struct.unpack_from("<H", data, at)
             strings[name] = data[at + 2 : at + 2 + 2 * count].decode("utf-16-le")
             at += 2 + 2 * count
-    assert data[at:] == b"\0\0\0\0", "the extra data is only the terminal block"
+    # the target again, where Windows' shell reads what a link without an ID list opens
+    assert "HasExpString" in names
+    block_size, signature = struct.unpack_from("<II", data, at)
+    assert (block_size, signature) == (0x314, 0xA0000001)
+    exp_ansi = _nul_terminated(data[at + 8 : at + 8 + 260] + b"\0", 0, 1).decode("cp1252")
+    exp_wide = _nul_terminated(data[at + 268 : at + block_size] + b"\0\0", 0, 2).decode("utf-16-le")
+    assert exp_ansi == ansi_target and exp_wide == target
+    at += block_size
+    assert data[at:] == b"\0\0\0\0", "the extra data ends with the terminal block"
     return {
         "flags": names,
         "show": show,
@@ -520,6 +530,19 @@ def test_windows_plans_a_start_menu_shortcut(tmp_path: Path, quick_logo: list[in
     assert write(sc) == "unchanged"
 
 
+def test_a_target_too_long_for_a_windows_shortcut_is_refused() -> None:
+    """The block Windows reads the target from holds MAX_PATH characters: a longer path is refused, not cut."""
+    fits = WindowsLink(
+        target="C:\\" + "a" * 240 + "\\python.exe", arguments="", working_dir="", icon="", description=""
+    )
+    assert len(fits.target) < 260 and read_lnk(lnk_bytes(fits)) == fits
+    too_long = WindowsLink(
+        target="C:\\" + "a" * 260 + "\\python.exe", arguments="", working_dir="", icon="", description=""
+    )
+    with pytest.raises(ShortcutError, match="this long"):
+        lnk_bytes(too_long)
+
+
 @pytest.mark.parametrize("folder", WINDOWS_AWKWARD)
 def test_the_link_file_follows_the_shell_link_format(folder: str) -> None:
     link = WindowsLink(
@@ -539,6 +562,7 @@ def test_the_link_file_follows_the_shell_link_format(folder: str) -> None:
         "HasArguments",
         "HasIconLocation",
         "IsUnicode",
+        "HasExpString",
     }
     assert parsed["target"] == link.target and parsed["ansi_target"] == link.target  # cp1252 has ü
     assert (parsed["description"], parsed["working_dir"], parsed["arguments"], parsed["icon"]) == (
@@ -1380,9 +1404,15 @@ def test_serve_suggests_the_shortcut_only_in_a_terminal_and_only_when_there_is_n
         cli._announce(info, demo=demo, data_dir=folder, from_shortcut=from_shortcut)
         return " ".join(capsys.readouterr().out.replace("│", " ").split())
 
+    def unwrapped(text: str) -> str:  # the panel wraps a long path (Windows' temporary folders) at its edge
+        return "".join(text.split())
+
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
     # the command sets up this data folder, as the one Settings offers does
-    assert f"{hint} --data-dir {tmp_path / 'data'}" in panel() and "Press Ctrl+C to stop." in panel()
+    command = shortcut.command(tmp_path / "data")
+    assert command.startswith("ordnung shortcut --data-dir ")
+    assert unwrapped(f"Open it without a terminal next time: {command}") in unwrapped(panel())
+    assert "Press Ctrl+C to stop." in panel()
     default = Path(user_data_dir("ordnung", appauthor=False))
     in_default = panel(folder=default)
     assert hint in in_default and "--data-dir" not in in_default

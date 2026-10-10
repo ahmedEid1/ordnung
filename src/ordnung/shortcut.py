@@ -8,9 +8,12 @@ Written policy (ADR 0007):
   Windows: ``Ordnung.lnk`` in the per-user Start menu (``%APPDATA%\\Microsoft\\Windows\\Start
   Menu\\Programs``), with its icon in ``%LOCALAPPDATA%\\Programs\\Ordnung\\Ordnung.ico``. Ordnung
   writes every file itself, the ``.lnk`` too: its bytes follow the shell link format (MS-SHLLINK), a
-  header, the target as a Unicode local path in its LinkInfo, and the arguments, working folder, icon
-  and description as Unicode strings. No COM, no PowerShell, no other tool runs, and no admin rights
-  are needed. ``ordnung shortcut`` prints what it writes, and where, before writing anything.
+  header, the target as a Unicode local path in its LinkInfo, the arguments, working folder, icon and
+  description as Unicode strings, and the target again in an EnvironmentVariableDataBlock, which is
+  where Windows' shell reads what a link without an ID list opens (LinkInfo only helps it find a moved
+  target). A target path must stay below 260 characters. No COM, no PowerShell, no other tool runs,
+  and no admin rights are needed. ``ordnung shortcut`` prints what it writes, and where, before writing
+  anything.
 * **What it runs.** ``<this Python> -m ordnung --data-dir <the data folder> serve --from-shortcut``
   (and ``--port`` when it isn't the default): absolute paths, and the last folder set up wins, as for
   autostart. Linux and macOS record this terminal's ``PATH``, so Ordnung finds the same ``claude``,
@@ -386,8 +389,15 @@ _HEADER_SIZE = 0x4C
 _LINK_CLSID = bytes.fromhex("0114020000000000C000000000000046")
 _HAS_ID_LIST, _HAS_LINK_INFO, _HAS_NAME, _HAS_RELATIVE_PATH = 0x1, 0x2, 0x4, 0x8
 _HAS_WORKING_DIR, _HAS_ARGUMENTS, _HAS_ICON_LOCATION, _IS_UNICODE = 0x10, 0x20, 0x40, 0x80
+_HAS_EXP_STRING = 0x200
 _LINK_FLAGS = (
-    _HAS_LINK_INFO | _HAS_NAME | _HAS_WORKING_DIR | _HAS_ARGUMENTS | _HAS_ICON_LOCATION | _IS_UNICODE
+    _HAS_LINK_INFO
+    | _HAS_NAME
+    | _HAS_WORKING_DIR
+    | _HAS_ARGUMENTS
+    | _HAS_ICON_LOCATION
+    | _IS_UNICODE
+    | _HAS_EXP_STRING
 )
 #: the StringData fields, in the order the format keeps them
 _STRINGS = (_HAS_NAME, _HAS_RELATIVE_PATH, _HAS_WORKING_DIR, _HAS_ARGUMENTS, _HAS_ICON_LOCATION)
@@ -395,6 +405,9 @@ _STRINGS = (_HAS_NAME, _HAS_RELATIVE_PATH, _HAS_WORKING_DIR, _HAS_ARGUMENTS, _HA
 _INFO_HEADER_SIZE, _VOLUME_AND_LOCAL_PATH, _DRIVE_FIXED = 0x24, 0x1, 3
 #: the system code page of a German (and any Western) Windows, for the ANSI copy of the target
 _ANSI = "cp1252"
+#: EnvironmentVariableDataBlock: its size and signature, and its two fixed-size copies of the target
+#: (MAX_PATH characters, in the ANSI code page and in Unicode)
+_EXP_SIZE, _EXP_SIGNATURE, _MAX_PATH = 0x314, 0xA0000001, 260
 
 
 def _counted(value: str) -> bytes:
@@ -421,12 +434,32 @@ def _link_info(target: str) -> bytes:
     return head + volume + ansi + b"\0" + wide + b"\0\0"
 
 
+def _target_block(target: str) -> bytes:
+    """The EnvironmentVariableDataBlock with ``target``: the path Windows' shell opens. LinkInfo alone only
+    helps it find a moved target again; without an ID list, this is where it reads what the link opens."""
+    ansi = target.encode(_ANSI, "replace")
+    wide = target.encode("utf-16-le")
+    if len(wide) // 2 >= _MAX_PATH:
+        raise ShortcutError("A path this long can't be put into a Windows shortcut.")
+    return (
+        struct.pack("<II", _EXP_SIZE, _EXP_SIGNATURE)
+        + ansi.ljust(_MAX_PATH, b"\0")
+        + wide.ljust(2 * _MAX_PATH, b"\0")
+    )
+
+
 def lnk_bytes(link: WindowsLink) -> bytes:
     """``link`` as a shell link file (MS-SHLLINK, Unicode strings), written without any Windows API."""
     header = _HEADER.pack(_HEADER_SIZE, _LINK_CLSID, _LINK_FLAGS, 0, 0, 0, 0, 0, 0, link.show, 0, 0, 0, 0)
     strings = (link.description, link.working_dir, link.arguments, link.icon)
-    # the extra data is only its terminal block
-    return header + _link_info(link.target) + b"".join(_counted(value) for value in strings) + b"\0\0\0\0"
+    # the extra data: the target's block, then the terminal block
+    return (
+        header
+        + _link_info(link.target)
+        + b"".join(_counted(value) for value in strings)
+        + _target_block(link.target)
+        + b"\0\0\0\0"
+    )
 
 
 def _nul_terminated(data: bytes, start: int, width: int) -> bytes:
@@ -477,8 +510,18 @@ def _parse_lnk(data: bytes) -> WindowsLink | None:
             raw = data[at + 2 : end]
             strings[flag] = raw.decode("utf-16-le") if width == 2 else raw.decode(_ANSI, "replace")
             at = end
-    if len(data) < at + 4:
-        raise ValueError("the link has no terminal block")
+    while True:  # ExtraData: blocks until the terminal block (a size below 4)
+        if len(data) < at + 4:
+            raise ValueError("the link has no terminal block")
+        (size,) = struct.unpack_from("<I", data, at)
+        if size < 4:
+            break
+        if at + size > len(data):
+            raise ValueError("an extra data block runs past the end of the link")
+        if size == _EXP_SIZE and struct.unpack_from("<I", data, at + 4)[0] == _EXP_SIGNATURE:
+            wide = data[at + 8 + _MAX_PATH : at + size]
+            target = _nul_terminated(wide + b"\0\0", 0, 2).decode("utf-16-le") or target
+        at += size
     return WindowsLink(
         target=target,
         arguments=strings.get(_HAS_ARGUMENTS, ""),
