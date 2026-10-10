@@ -518,8 +518,10 @@ def _serve(
     backend: str | None,
     demo: bool,
     prepare: Callable[[], None] | None = None,
+    from_shortcut: bool = False,
 ) -> None:
-    """Hold the data folder, start the API + UI with uvicorn, and clean up ``server.json`` after."""
+    """Hold the data folder, start the API + UI with uvicorn, and clean up ``server.json`` after.
+    ``from_shortcut``: opened from the launcher that ``ordnung shortcut`` writes (:mod:`ordnung.shortcut`)."""
     import uvicorn
 
     from ordnung.app_context import build_context
@@ -582,6 +584,8 @@ def serve(
     no_browser: Annotated[bool, typer.Option("--no-browser", help="Don't open the browser.")] = False,
     no_token: Annotated[bool, typer.Option("--no-token", help="No session token (tests only).")] = False,
     demo: Annotated[bool, typer.Option("--demo", help="Serve the demo (sample life).")] = False,
+    # what the launcher that `ordnung shortcut` writes runs (ordnung.shortcut); not typed by hand
+    from_shortcut: Annotated[bool, typer.Option("--from-shortcut", hidden=True)] = False,
 ) -> None:
     """Run the web app on this computer and open it in your browser."""
     with _friendly():
@@ -610,6 +614,7 @@ def serve(
             backend="replay" if demo_folder else None,
             demo=demo_folder,
             prepare=None if demo_folder else lambda: _finish_take_over(folder),
+            from_shortcut=from_shortcut,
         )
 
 

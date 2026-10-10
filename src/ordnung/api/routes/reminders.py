@@ -1,5 +1,5 @@
-"""Reminders outside the browser (Settings → Reminders): the morning desktop notification and whether
-Ordnung starts at login.
+"""Reminders outside the browser (Settings → Reminders): the morning desktop notification, whether
+Ordnung starts at login, and whether it opens from the app menu.
 
 ``GET /api/reminders/desktop`` says which tool this computer shows notifications with, exactly what
 today's notification would say in each mode (built by code from the agenda — the text the daily tick
@@ -7,6 +7,8 @@ shows, :mod:`ordnung.notify.desktop`), the day it was last shown, the last one t
 show, and whether ``ordnung autostart`` starts this data folder at login (:mod:`ordnung.autostart`;
 read only — the web app never writes it). The command it offers sets up *this* data folder
 (``--data-dir`` when it isn't the default one); the demo offers none — it doesn't start at login.
+It also says whether ``ordnung shortcut`` put Ordnung in this computer's app menu, and for which data
+folder (:mod:`ordnung.shortcut`; read only as well).
 ``?preview=false`` leaves today's texts out (they are built from the agenda): the app's check for
 background problems on every page needs only the last day shown and the last failure.
 ``POST /api/reminders/desktop/test`` shows today's notification now in the mode asked for — or a
@@ -23,7 +25,7 @@ from fastapi import APIRouter, Query
 from platformdirs import user_data_dir
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung import autostart
+from ordnung import autostart, shortcut
 from ordnung.api.deps import CtxDep, StateDep
 from ordnung.app_context import AppContext
 from ordnung.assistant.mcp_install import shell_join
@@ -33,6 +35,7 @@ from ordnung.tick import local_today
 router = APIRouter(tags=["reminders"])
 
 AUTOSTART_COMMAND = "ordnung autostart enable"
+SHORTCUT_COMMAND = "ordnung shortcut"
 SAMPLE = desktop.Notification(
     title="Ordnung", body="Nothing is due this week. This is how Ordnung will tell you."
 )
@@ -69,8 +72,23 @@ class AutostartInfo(BaseModel):
     )
 
 
+class ShortcutInfo(BaseModel):
+    """Whether ``ordnung shortcut`` put Ordnung in this computer's app menu, and for which data folder."""
+
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+    added: bool
+    kind: str = Field(description="app menu entry, app in your Applications folder or Start menu shortcut")
+    path: str = Field(description="The launcher's file (or the Ordnung.app folder)")
+    points_here: bool = Field(description="The launcher opens this data folder")
+    command: str | None = Field(
+        default=SHORTCUT_COMMAND,
+        description="The command that adds it for this data folder (null: the demo, which isn't added)",
+    )
+
+
 class DesktopReminders(BaseModel):
-    """What Settings shows about the morning desktop notification."""
+    """What Settings shows about the morning desktop notification and how Ordnung starts on this computer."""
 
     model_config = ConfigDict(json_schema_serialization_defaults_required=True)
 
@@ -89,6 +107,7 @@ class DesktopReminders(BaseModel):
     last_failure_on: str | None = Field(default=None, description="The day of that failure")
     demo: bool = Field(default=False, description="The demo: it never notifies on its own")
     autostart: AutostartInfo
+    shortcut: ShortcutInfo
 
 
 class DesktopTestRequest(BaseModel):
@@ -148,6 +167,10 @@ def _status(ctx: AppContext, demo: bool, preview: bool) -> DesktopReminders:
             points_here=entry.enabled and entry.data_dir == here,
             command=None if demo else autostart_command(ctx.paths.data_dir),
         ),
+        # until `ordnung shortcut` is built: nothing added and no command offered
+        shortcut=ShortcutInfo(
+            added=False, kind=shortcut.KINDS[kind], path="", points_here=False, command=None
+        ),
     )
 
 
@@ -158,7 +181,7 @@ async def desktop_reminders(
     preview: Annotated[bool, Query(description="Include today's texts (built from the agenda)")] = True,
 ) -> DesktopReminders:
     """The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both
-    ``null``), and the start-at-login entry."""
+    ``null``), the start-at-login entry and the app-menu shortcut."""
     demo = state.demo or ctx.store.get_settings().demo
     return await asyncio.to_thread(_status, ctx, demo, preview)
 

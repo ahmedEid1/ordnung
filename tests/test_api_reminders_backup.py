@@ -118,6 +118,14 @@ async def test_the_status_previews_both_modes(data_dir: Path, home: Path) -> Non
             # this data folder is not the default one: the command sets up this one
             "command": f"ordnung autostart enable --data-dir {data_dir}",
         }
+        assert body["shortcut"] == {
+            "added": False,
+            "kind": "app menu entry",
+            "path": "",
+            "points_here": False,
+            # nothing is offered until `ordnung shortcut` is built (ordnung.shortcut)
+            "command": None,
+        }
 
 
 async def test_the_status_without_the_preview_builds_no_agenda(
@@ -147,10 +155,28 @@ def test_the_start_at_login_command_names_a_folder_that_isnt_the_default(tmp_pat
     assert reminders.autostart_command(odd, default=default) == f"ordnung autostart enable --data-dir '{odd}'"
 
 
-async def test_the_demo_offers_no_start_at_login_command(data_dir: Path, home: Path) -> None:
+async def test_the_demo_offers_no_start_at_login_or_shortcut_command(data_dir: Path, home: Path) -> None:
     async with api_for(data_dir, demo=True) as api:
         body = (await api.client.get("/api/reminders/desktop")).json()
         assert body["demo"] and body["autostart"]["command"] is None
+        assert body["shortcut"]["command"] is None and not body["shortcut"]["added"]
+
+
+@pytest.mark.parametrize(
+    ("platform", "kind"),
+    [
+        ("linux", "app menu entry"),
+        ("darwin", "app in your Applications folder"),
+        ("win32", "Start menu shortcut"),
+    ],
+)
+async def test_the_shortcut_is_named_as_this_system_names_it(
+    data_dir: Path, home: Path, monkeypatch: pytest.MonkeyPatch, platform: str, kind: str
+) -> None:
+    monkeypatch.setattr(sys, "platform", platform)
+    async with api_for(data_dir) as api:
+        body = (await api.client.get("/api/reminders/desktop", params={"preview": "false"})).json()
+        assert body["shortcut"]["kind"] == kind
 
 
 async def test_the_status_says_why_the_last_notification_wasnt_shown(data_dir: Path, home: Path) -> None:

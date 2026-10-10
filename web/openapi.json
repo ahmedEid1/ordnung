@@ -4170,7 +4170,7 @@
           "reminders"
         ],
         "summary": "Desktop Reminders",
-        "description": "The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both\n``null``), and the start-at-login entry.",
+        "description": "The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both\n``null``), the start-at-login entry and the app-menu shortcut.",
         "operationId": "desktop_reminders_api_reminders_desktop_get",
         "parameters": [
           {
@@ -8549,6 +8549,9 @@
           },
           "autostart": {
             "$ref": "#/components/schemas/AutostartInfo"
+          },
+          "shortcut": {
+            "$ref": "#/components/schemas/ShortcutInfo"
           }
         },
         "type": "object",
@@ -8561,10 +8564,11 @@
           "last_failure",
           "last_failure_on",
           "demo",
-          "autostart"
+          "autostart",
+          "shortcut"
         ],
         "title": "DesktopReminders",
-        "description": "What Settings shows about the morning desktop notification."
+        "description": "What Settings shows about the morning desktop notification and how Ordnung starts on this computer."
       },
       "DesktopTestRequest": {
         "properties": {
@@ -16085,6 +16089,52 @@
         "type": "object",
         "title": "SettingsPatch",
         "description": "Settings to change (all optional; ``models`` is merged by purpose)."
+      },
+      "ShortcutInfo": {
+        "properties": {
+          "added": {
+            "type": "boolean",
+            "title": "Added"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind",
+            "description": "app menu entry, app in your Applications folder or Start menu shortcut"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "The launcher's file (or the Ordnung.app folder)"
+          },
+          "points_here": {
+            "type": "boolean",
+            "title": "Points Here",
+            "description": "The launcher opens this data folder"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command",
+            "description": "The command that adds it for this data folder (null: the demo, which isn't added)",
+            "default": "ordnung shortcut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "added",
+          "kind",
+          "path",
+          "points_here",
+          "command"
+        ],
+        "title": "ShortcutInfo",
+        "description": "Whether ``ordnung shortcut`` put Ordnung in this computer's app menu, and for which data folder."
       },
       "StreamEvent": {
         "properties": {

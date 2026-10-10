@@ -47,6 +47,13 @@ function desktopStatus(overrides = {}) {
       points_here: false,
       command: "ordnung autostart enable --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
     },
+    shortcut: {
+      added: false,
+      kind: "app menu entry",
+      path: "/home/sam/.local/share/applications/ordnung.desktop",
+      points_here: false,
+      command: "ordnung shortcut --data-dir /home/samantha-rivera-musterfrau/Dokumente/Ordnung-Unterlagen",
+    },
     ...overrides,
   };
 }

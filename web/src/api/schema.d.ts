@@ -1490,7 +1490,7 @@ export interface paths {
         /**
          * Desktop Reminders
          * @description The desktop notification's tool, today's text in each mode (unless ``preview`` is false: both
-         *     ``null``), and the start-at-login entry.
+         *     ``null``), the start-at-login entry and the app-menu shortcut.
          */
         get: operations["desktop_reminders_api_reminders_desktop_get"];
         put?: never;
@@ -3151,7 +3151,7 @@ export interface components {
         };
         /**
          * DesktopReminders
-         * @description What Settings shows about the morning desktop notification.
+         * @description What Settings shows about the morning desktop notification and how Ordnung starts on this computer.
          */
         DesktopReminders: {
             /**
@@ -3192,6 +3192,7 @@ export interface components {
              */
             demo: boolean;
             autostart: components["schemas"]["AutostartInfo"];
+            shortcut: components["schemas"]["ShortcutInfo"];
         };
         /**
          * DesktopTestRequest
@@ -5765,6 +5766,35 @@ export interface components {
             demo?: boolean | null;
             /** Simulated Today */
             simulated_today?: string | null;
+        };
+        /**
+         * ShortcutInfo
+         * @description Whether ``ordnung shortcut`` put Ordnung in this computer's app menu, and for which data folder.
+         */
+        ShortcutInfo: {
+            /** Added */
+            added: boolean;
+            /**
+             * Kind
+             * @description app menu entry, app in your Applications folder or Start menu shortcut
+             */
+            kind: string;
+            /**
+             * Path
+             * @description The launcher's file (or the Ordnung.app folder)
+             */
+            path: string;
+            /**
+             * Points Here
+             * @description The launcher opens this data folder
+             */
+            points_here: boolean;
+            /**
+             * Command
+             * @description The command that adds it for this data folder (null: the demo, which isn't added)
+             * @default ordnung shortcut
+             */
+            command: string | null;
         };
         /**
          * StreamEvent

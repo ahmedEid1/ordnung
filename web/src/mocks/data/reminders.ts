@@ -1,13 +1,13 @@
 /**
- * Mock answers for reminders outside the browser (the desktop notification, start at login) and
- * the encrypted backup. The preview is worked out from the mock's open to-dos the way
+ * Mock answers for reminders outside the browser (the desktop notification, start at login, the
+ * app-menu shortcut) and the encrypted backup. The preview is worked out from the mock's open to-dos the way
  * `src/ordnung/notify/desktop.py` words it (what ends today first — deadlines and appointments before
  * tasks, tasks before payments — then what is overdue, then the week by day; counts only when
  * discreet, today's apart), so it follows what the visitor ticks off in the demo. The static demo can't touch a computer:
  * showing a notification or making a backup is refused there with a friendly message.
  */
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { AutostartInfo, BackupCopy, BackupInfo, DesktopMode, DesktopReminders, NotificationText } from "@/api/types";
+import type { AutostartInfo, BackupCopy, BackupInfo, DesktopMode, DesktopReminders, NotificationText, ShortcutInfo } from "@/api/types";
 import type { MockDb } from "../db";
 
 export const DESKTOP_STATIC_MESSAGE =
@@ -21,6 +21,14 @@ export const MOCK_AUTOSTART: AutostartInfo = {
   path: "/home/sam/.config/systemd/user/ordnung.service",
   points_here: false,
   command: "ordnung autostart enable",
+};
+
+export const MOCK_SHORTCUT: ShortcutInfo = {
+  added: false,
+  kind: "app menu entry",
+  path: "/home/sam/.local/share/applications/ordnung.desktop",
+  points_here: false,
+  command: "ordnung shortcut",
 };
 
 export const SAMPLE_NOTIFICATION: NotificationText = {
@@ -121,6 +129,8 @@ export function mockDesktopReminders(db: MockDb): DesktopReminders {
     demo,
     // the demo is started with `ordnung demo`, never at login: no command to offer
     autostart: demo ? { ...MOCK_AUTOSTART, command: null } : MOCK_AUTOSTART,
+    // and opens with `ordnung demo`, never from the app menu
+    shortcut: demo ? { ...MOCK_SHORTCUT, command: null } : MOCK_SHORTCUT,
   };
 }
 
