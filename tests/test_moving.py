@@ -4,9 +4,11 @@ address on record, and the broadcasting fee office. A move is said, never guesse
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -390,8 +392,26 @@ def test_the_checklist_ends_180_days_after_the_move(store: Store, ids: dict[str,
 
 
 def test_no_row_carries_an_address(store: Store, ids: dict[str, str]) -> None:
+    # a contract named after the flat it is for: its name is left out of the reason
+    landlord = store.add_party(name="Wohnbau Muster", kind="landlord")
+    store.add_contract(name="Flat Alte Straße 1", category="rent", party_id=landlord.id)
+    store.add_contract(name="Parking space", category="rent", party_id=landlord.id)
+    store.add_contract(name="Neue Allee 7, 2nd floor", category="rent", party_id=ids["stadtwerke"])
     move(store, "2026-09-24")
     ideas = rows(store)
+    found = by_entity(ideas)
+    assert found[landlord.id].body.startswith(
+        "Your contracts “Parking space” and 1 more with them are running."
+    )
+    assert found[ids["stadtwerke"]].body.startswith(
+        "Your contracts “Stadtwerke electricity” and 1 more with them are running."
+    )
+    only_flat = store.add_party(name="Hausverwaltung Alt", kind="landlord")
+    store.add_contract(
+        name="Wohnung Alte Straße 1, 12345 Musterstadt", category="rent", party_id=only_flat.id
+    )
+    ideas = rows(store)
+    assert by_entity(ideas)[only_flat.id].body.startswith("Your contract with them is running.")
     assert len(ideas) >= 7
     for idea in ideas:
         words = " ".join(
@@ -479,3 +499,50 @@ def test_a_move_may_be_told_from_six_months_back_to_three_ahead() -> None:
         assert move_problem(day, today) == (
             "Ordnung's moving checklist is for a move in the last six months or the next three — check the day."
         )
+
+
+# --------------------------------------------------------------------------------------------------
+# the static demo's port says the same
+# --------------------------------------------------------------------------------------------------
+
+#: The same ledgers through this rule and through the static demo's mock (``web/src/mocks/moving.ts``):
+#: the registration row, each sender with a running contract and the broadcasting fee office.
+PARITY_CASES = json.loads(
+    (Path(__file__).parents[1] / "web" / "src" / "mocks" / "moving-cases.json").read_text(encoding="utf-8")
+)["cases"]
+
+
+@pytest.mark.parametrize("case", PARITY_CASES, ids=[case["name"] for case in PARITY_CASES])
+def test_the_rows_are_the_ones_the_demo_mock_shows(store: Store, case: dict[str, Any]) -> None:
+    store.save_profile({"name": "Sam Rivera", "onboarded": True, **case["profile"]})
+    ids = {p["id"]: store.add_party(name=p["name"], kind=p["kind"]).id for p in case["parties"]}
+    named = {real: given for given, real in ids.items()}
+    for contract in case["contracts"]:
+        store.add_contract(
+            name=contract["name"],
+            category=contract["category"],
+            status=contract["status"],
+            party_id=ids[contract["party_id"]],
+        )
+    found = []
+    for idea in moving_ideas(Ledger(store, date.fromisoformat(case["today"]))):
+        assert idea.action is not None
+        entity = idea.fingerprint.split(":")[1]
+        found.append(
+            {
+                "entity": named.get(entity, entity),
+                "title": idea.title,
+                "body": idea.body,
+                "rationale": idea.rationale,
+                "kind": idea.kind,
+                "priority": idea.priority,
+                "due_date": idea.due_date,
+                "action": {
+                    "type": idea.action.type,
+                    "target_type": idea.action.target_type,
+                    "target_id": named.get(idea.action.target_id or "", idea.action.target_id),
+                    "label": idea.action.label,
+                },
+            }
+        )
+    assert found == case["rows"]

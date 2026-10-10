@@ -19,7 +19,8 @@ the move and the ledger into one Idea per row of the checklist, which Today show
 Every row's fingerprint holds the move's day, so the person's ticks ("done", "Not needed") last through
 every run and a new move starts a fresh list. A sender's row goes when the person marks a new-address letter
 to them as sent (sent at most :data:`LETTER_LEAD_DAYS` before the move): the rule no longer produces it and
-the reconcile expires it — nothing is ticked off for the person. No row carries an address.
+the reconcile expires it — nothing is ticked off for the person. No row carries an address: a contract
+named after the flat ("Flat Beispielweg 5") is counted without its name.
 
 The rule reads the ledger's shared rows (parties, contracts, letters) and the sent letters once per run, never
 once per organisation.
@@ -126,6 +127,8 @@ _REGISTRATION_BODY: Final = (
     "of moving in. Take your ID card or passport and your landlord's confirmation that you moved in "
     "(Wohnungsgeberbestätigung) — ask your landlord for it."
 )
+#: The shortest address line a contract's name is checked for (shorter ones, like "5", are everywhere).
+_ADDRESS_LINE_MIN: Final = 5
 _BOOK_SOON: Final = "Appointments are often booked out, so book one soon."
 _REGISTER_NOW: Final = "Register as soon as you can."
 
@@ -212,19 +215,35 @@ def _told(ledger: Ledger, moved: date) -> set[str]:
     }
 
 
-def _quoted(names: Iterable[str]) -> list[str]:
-    return [f"“{name}”" for name in names]
+def address_lines(*addresses: str) -> list[str]:
+    """The lines of the person's addresses a contract's name may repeat ("Flat Beispielweg 5"), folded for
+    comparing; lines shorter than :data:`_ADDRESS_LINE_MIN` (a lone house number) never match."""
+    lines = (" ".join(line.split()).casefold() for address in addresses for line in address.splitlines())
+    return [line for line in lines if len(line) >= _ADDRESS_LINE_MIN]
 
 
-def _reason(found: Listed, today: date) -> str:
+def _names_an_address(name: str, lines: Iterable[str]) -> bool:
+    folded = " ".join(name.split()).casefold()
+    return any(line in folded for line in lines)
+
+
+def _reason(found: Listed, today: date, lines: list[str]) -> str:
+    """Why a sender is listed: their running contracts by name (at most two, and never a name that repeats a
+    line of the person's address), else the day they last wrote."""
     contracts = sorted(found.contracts, key=lambda contract: (contract.name.casefold(), contract.id))
-    names = _quoted(contract.name for contract in contracts)
-    if len(names) == 1:
-        return f"Your contract {names[0]} with them is running."
-    if len(names) == 2:
-        return f"Your contracts {names[0]} and {names[1]} with them are running."
-    if names:
-        return f"Your contracts {names[0]}, {names[1]} and {len(names) - 2} more with them are running."
+    shown = [f"“{c.name}”" for c in contracts if not _names_an_address(c.name, lines)][:2]
+    more = len(contracts) - len(shown)
+    if len(contracts) == 1:
+        return (
+            f"Your contract {shown[0]} with them is running."
+            if shown
+            else "Your contract with them is running."
+        )
+    if contracts and not shown:
+        return f"Your {len(contracts)} contracts with them are running."
+    if contracts:
+        named = " and ".join(shown) if not more else f"{', '.join(shown)} and {more} more"
+        return f"Your contracts {named} with them are running."
     assert found.last_letter is not None  # listed for a letter
     return f"They last wrote to you on {day_label(found.last_letter, today)}."
 
@@ -285,9 +304,9 @@ def _broadcasting_fee(ledger: Ledger, moved: date) -> Suggestion:
     )
 
 
-def _tell(ledger: Ledger, found: Listed, moved: date) -> Suggestion:
+def _tell(ledger: Ledger, found: Listed, moved: date, lines: list[str]) -> Suggestion:
     party = found.party
-    body = " ".join(part for part in (_reason(found, ledger.today), _tip(found)) if part)
+    body = " ".join(part for part in (_reason(found, ledger.today, lines), _tip(found)) if part)
     return make_idea(
         RULE_ID,
         party.id,
@@ -319,5 +338,6 @@ def moving_ideas(ledger: Ledger) -> list[Suggestion]:
     ideas = [_registration(ledger, moved)]
     if not any(found.broadcaster for found in listed):
         ideas.append(_broadcasting_fee(ledger, moved))
-    ideas += [_tell(ledger, found, moved) for found in listed if found.party.id not in told]
+    lines = address_lines(ledger.profile.address, ledger.profile.old_address)
+    ideas += [_tell(ledger, found, moved, lines) for found in listed if found.party.id not in told]
     return ideas
