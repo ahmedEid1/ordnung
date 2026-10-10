@@ -1,5 +1,5 @@
-import { useId, useRef, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useId, useRef, useState } from "react";
+import { Link, useLocation } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronDown, CircleCheck, Lightbulb, MapPinHouse, PenLine, X } from "lucide-react";
 import { useDrafts, useUpdateSuggestion } from "@/api/hooks";
@@ -27,7 +27,8 @@ const quiet =
  * both say so in a toast with Undo. Focus goes to the next row's checkbox, or to the heading when none is left, and
  * back to a row Undo brought back. "Write the letter" opens a new-address letter to that sender (or the one already
  * started); the row is never ticked for the person. The card stays for this visit once the last row is ticked, and
- * says so. Ordnung sends nothing.
+ * says so. "Open your moving checklist" in Settings leads here (`/#moving-checklist`): the page goes to the card and
+ * its heading takes focus. Ordnung sends nothing.
  */
 export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
   const update = useUpdateSuggestion();
@@ -40,7 +41,18 @@ export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
   // the card had rows during this visit: it stays, with "everyone has it", once the last one left
   const [hadRows, setHadRows] = useState(rows.length > 0);
   if (rows.length > 0 && !hadRows) setHadRows(true);
-  if (!rows.length && !hadRows) return null;
+  // arrived by the link to the card: once it is there, the page goes to it (once per visit)
+  const { hash } = useLocation();
+  const section = useRef<HTMLElement>(null);
+  const arrived = useRef(false);
+  const shownNow = rows.length > 0 || hadRows;
+  useEffect(() => {
+    if (hash !== `#${MOVING_CHECKLIST_ID}` || arrived.current || !shownNow || !section.current) return;
+    arrived.current = true;
+    section.current.scrollIntoView?.({ block: "start" });
+    focusWhenReady(() => document.getElementById(TITLE_ID), 1000, { always: true });
+  }, [hash, shownNow]);
+  if (!shownNow) return null;
 
   const shown = expanded ? rows : rows.slice(0, MOVING_SHOWN);
   const more = rows.length - shown.length;
@@ -72,7 +84,7 @@ export function MovingChecklist({ rows }: { rows: Suggestion[] }) {
   };
 
   return (
-    <motion.section variants={fadeUp} id={MOVING_CHECKLIST_ID} aria-labelledby={TITLE_ID} className="card scroll-mt-20 p-4 sm:p-5">
+    <motion.section ref={section} variants={fadeUp} id={MOVING_CHECKLIST_ID} aria-labelledby={TITLE_ID} className="card scroll-mt-20 p-4 sm:p-5">
       <h2 id={TITLE_ID} className="flex items-center gap-2 text-[15px] font-semibold text-ink outline-none">
         <MapPinHouse className="size-[18px] shrink-0 text-accent" aria-hidden />
         Moving checklist

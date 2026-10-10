@@ -191,6 +191,22 @@ describe("the Moving checklist card", () => {
     expect(within(items("Register your new address by Mon 5 Oct")).queryByRole("link")).not.toBeInTheDocument();
   });
 
+  it("is where “Open your moving checklist” in Settings leads: the page goes to it", async () => {
+    const { srv } = useMockApi();
+    await moved(srv);
+    const scrolled = vi.fn();
+    const before = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = scrolled; // jsdom has no layout
+    try {
+      renderWithProviders(<TodayView />, { route: "/#moving-checklist" });
+      const heading = await screen.findByRole("heading", { level: 2, name: "Moving checklist" });
+      await waitFor(() => expect(heading).toHaveFocus());
+      expect(scrolled).toHaveBeenCalled();
+    } finally {
+      Element.prototype.scrollIntoView = before;
+    }
+  });
+
   it("says everyone has the new address once the last row is ticked off", async () => {
     const { srv } = useMockApi();
     srv.db.state.contracts = [];
