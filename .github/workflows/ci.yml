@@ -226,6 +226,8 @@ jobs:
           python-version: "3.12"
       - name: Build sdist and wheel
         run: uv build
+      - name: The description renders on PyPI
+        run: uvx twine check --strict dist/*
       - name: The wheel carries the built web app
         run: unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
       - name: Install the wheel into a clean venv and run it (outside the checkout)
