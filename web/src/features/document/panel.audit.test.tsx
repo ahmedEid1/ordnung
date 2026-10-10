@@ -427,4 +427,15 @@ describe("Explained simply", () => {
     expect(screen.getByText("Werbungskosten")).toHaveAttribute("lang", "de");
     expect(term.closest("span.min-w-0")).toHaveClass("[overflow-wrap:anywhere]", "hyphens-auto");
   });
+
+  it("links a letter for taxes to its tax year's other letters, by the letter's date", () => {
+    const doc = makeDoc({ explanation: "Your payslip.", tax_relevant: true, tax_note: "Keep it.", doc_date: "2025-12-31", received_date: "2026-01-04" });
+    renderWithProviders(<ExplainedSimply doc={doc} />, { client: client() });
+    expect(screen.getByRole("link", { name: "All letters for taxes from 2025" })).toHaveAttribute("href", "/inbox/taxes?year=2025");
+  });
+
+  it("has no tax year link for a letter without a date", () => {
+    renderWithProviders(<ExplainedSimply doc={makeDoc({ explanation: "x", tax_relevant: true, tax_note: "Keep it.", doc_date: null, received_date: null })} />, { client: client() });
+    expect(screen.queryByRole("link", { name: /All letters for taxes/ })).toBeNull();
+  });
 });

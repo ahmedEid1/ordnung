@@ -1,6 +1,6 @@
 import { Fragment, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router";
-import { Check, Copy, Download, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
+import { Check, Copy, Download, FolderDown, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
 import { useCalendarSync, useDeleteEverything, usePhone, useSync } from "@/api/hooks";
@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/Toast";
 import { isStaticDemo } from "@/mocks/mode";
 import { CopyCommand } from "@/features/onboarding/CopyCommand";
 import { DEMO_CMD } from "@/features/onboarding/options";
+import { EXPORT_IN_DEMO, ExportLettersDialog, NOT_ENCRYPTED } from "@/features/export/ExportLettersDialog";
 import { useClipboard } from "@/features/today/clipboard";
 import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
@@ -299,6 +300,8 @@ export function DataSection({ health }: { health: Health }) {
   const [busy, setBusy] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [backupOpen, setBackupOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportButtonRef = useRef<HTMLButtonElement>(null);
   // the backup's dialog opened from "Delete everything" hands focus back to its button
   const deleteButtonRef = useRef<HTMLButtonElement>(null);
   const staticDemo = isStaticDemo();
@@ -356,6 +359,26 @@ export function DataSection({ health }: { health: Health }) {
         <BackupCard open={backupOpen} onOpenChange={setBackupOpen} returnFocus={deleteButtonRef} />
 
         <SettingsCard
+          title="Export your letters"
+          id="set-data-letters"
+          description="The original files of your letters as a ZIP, in folders by year and sender, with a list for a spreadsheet — for your tax adviser, or to keep your papers outside Ordnung."
+          footer={
+            <Button ref={exportButtonRef} icon={FolderDown} onClick={() => setExportOpen(true)} disabled={staticDemo} className={FOOTER_ACTION}>
+              Export letters…
+            </Button>
+          }
+        >
+          {staticDemo ? (
+            <p className="rounded-lg bg-surface-2/70 px-3 py-2 text-[12.5px] leading-5 text-muted" role="note">
+              {EXPORT_IN_DEMO}
+            </p>
+          ) : (
+            <p className="text-sm leading-5 text-muted">{NOT_ENCRYPTED}</p>
+          )}
+          <ExportLettersDialog open={exportOpen} onClose={() => setExportOpen(false)} returnFocus={exportButtonRef} />
+        </SettingsCard>
+
+        <SettingsCard
           title="Download a copy of your records"
           id="set-data-export"
           description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your drafts, Ideas and how each letter was read — as a JSON file you can open anywhere."
@@ -365,7 +388,7 @@ export function DataSection({ health }: { health: Health }) {
             </Button>
           }
         >
-          <p className="text-sm leading-5 text-muted">Your original PDFs and photos stay in the folder above.</p>
+          <p className="text-sm leading-5 text-muted">For the original PDFs and photos as files, use “Export your letters” above.</p>
         </SettingsCard>
 
         {/* the demo only: the guided tour again */}
