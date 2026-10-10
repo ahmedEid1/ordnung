@@ -47,6 +47,7 @@ describe("a paired phone's pages say 'your computer'", () => {
   const pages: [string, string, RegExp | string | undefined][] = [
     ["Today", "/", undefined],
     ["Inbox", "/inbox", "Inbox"],
+    ["Tax year", "/inbox/taxes", /^(Tax year 2026|Letters for taxes)$/],
     ["Timeline", "/timeline", "Timeline"],
     ["Contracts", "/contracts", "Contracts"],
     ["My numbers", "/numbers", "My numbers"],

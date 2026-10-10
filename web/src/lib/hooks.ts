@@ -69,6 +69,9 @@ export function useScrolled(threshold = 4): boolean {
   );
 }
 
+/** Inputs nobody types into: a shortcut pressed on one is a shortcut (Alt+N from a just-ticked checkbox reaches its Undo). */
+const NOT_TYPED = new Set(["checkbox", "radio", "button", "submit", "reset", "range", "color", "file", "image"]);
+
 /** Run `handler` on a global keyboard shortcut (ignored while typing in inputs, unless `allowInInputs`). */
 export function useHotkey(match: (e: KeyboardEvent) => boolean, handler: (e: KeyboardEvent) => void, allowInInputs = false): void {
   const ref = useRef({ match, handler });
@@ -78,7 +81,8 @@ export function useHotkey(match: (e: KeyboardEvent) => boolean, handler: (e: Key
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      const typing = t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
+      const textInput = t instanceof HTMLInputElement && !NOT_TYPED.has(t.type);
+      const typing = t && (t.isContentEditable || textInput || /^(TEXTAREA|SELECT)$/.test(t.tagName));
       if (typing && !allowInInputs) return;
       if (ref.current.match(e)) ref.current.handler(e);
     };

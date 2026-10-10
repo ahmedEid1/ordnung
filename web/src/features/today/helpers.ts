@@ -48,6 +48,10 @@ export function ideaActionLabel(s: Suggestion, opts: IdeaActionOptions = {}): st
 
 /** The Idea asking for a sender's state (`secretary.sender_land.RULE_ID`): "Answer" opens their details at the question. */
 const SENDER_LAND_RULE = "sender_land";
+/** A moving-checklist row (`secretary.moving.RULE_ID`): "Write the letter" opens a new-address letter to that sender. */
+const MOVED_HOUSE_RULE = "moved_house";
+/** The tax Idea's year (`target_type: "tax_year"`, `target_id` "2025"). */
+const TAX_YEAR = /^\d{4}$/;
 
 /** Where an Idea's primary action leads (or null when it acts in place). */
 export function ideaHref(s: Suggestion): string | null {
@@ -68,10 +72,13 @@ export function ideaHref(s: Suggestion): string | null {
       case "contract":
         return contractHref(a.target_id);
       case "party":
+        if (s.rule_id === MOVED_HOUSE_RULE) return composerHref("address_change", { partyId: a.target_id });
         // at the State heading, the question next (never on Yes)
         return s.rule_id === SENDER_LAND_RULE ? `?party=${id}&state=ask` : `?party=${id}`;
       case "draft":
         return `/letters/${id}`;
+      case "tax_year":
+        return TAX_YEAR.test(a.target_id) ? `/inbox/taxes?year=${a.target_id}` : "/inbox/taxes";
       default:
         return null;
     }

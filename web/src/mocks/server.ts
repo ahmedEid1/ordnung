@@ -20,6 +20,7 @@ import type {
   DesktopTestResult,
   Document,
   DocumentDetail,
+  DocumentListEntry,
   Draft,
   Evidence,
   DraftCreate,
@@ -55,6 +56,7 @@ import type {
   UploadResult,
 } from "@/api/types";
 import { HIGH_STAKES_KINDS, type HighStakesKind } from "@/api/types";
+import type { QueryValue } from "@/api/client";
 import { ibanLooksValid, normalizeIban } from "@/lib/format";
 import { MockDb, letterFor, nowTs, pick } from "./db";
 import { emit } from "./events";
@@ -111,6 +113,7 @@ import { addReading, compareReadings, defaultReadings, documentTrace, exportTrac
 import { MockPhoneAccess, PhoneRefusal, maskNumbers, maskProfile, phoneGate, phoneHealth, type PhoneScope } from "./phone";
 import { NOT_PHONE_MESSAGE } from "./data/phone";
 import { MockSync, SyncRefusal } from "./data/sync";
+import { MOVE_WINDOW_PROBLEM, moveAllowed, refreshMovingIdeas } from "./moving";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -399,6 +402,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
       }),
     region_suggestion: regionSuggestion(db, db.party(d.party_id), d),
     addressed_to: addressedTo(id),
+    // only Sam's held scan has scanner text (search only, never shown)
+    scan_text_pages: db.scanTextPages(d),
   };
 }
 
@@ -1248,11 +1253,21 @@ const routes: [string, string, Handler][] = [
     "/profile",
     ({ db, body }) => {
       const patch = withoutNulls(body) as Partial<Profile>;
+      if (patch.moved_on === "") patch.moved_on = null; // "" clears the move, as the API stores it
+      // like the API: a move only for a day in the last six months or the next three
+      if (patch.moved_on && !moveAllowed(patch.moved_on, db.today)) throw new HttpError(422, MOVE_WINDOW_PROBLEM);
       if (typeof patch.iban === "string" && patch.iban.trim()) {
         if (!ibanLooksValid(patch.iban)) throw new HttpError(422, "That IBAN isn't valid — check it against your bank card or banking app.");
         patch.iban = normalizeIban(patch.iban);
       }
-      return (db.state.profile = { ...db.state.profile, ...patch });
+      const before = db.state.profile.moved_on;
+      db.state.profile = { ...db.state.profile, ...patch };
+      // a new, changed or cleared move starts, restarts or ends the moving checklist
+      if (db.state.profile.moved_on !== before) {
+        refreshMovingIdeas(db);
+        emit("suggestions.updated", {});
+      }
+      return db.state.profile;
     },
   ],
   ["GET", "/settings", ({ db }) => db.state.settings],
@@ -1343,7 +1358,8 @@ const routes: [string, string, Handler][] = [
       if (f("private") === "true") docs = docs.filter((d) => d.ai_private);
       const offset = Number(f("offset") ?? 0);
       const limit = f("limit") ? Number(f("limit")) : docs.length;
-      return docs.slice(offset, offset + limit);
+      // like the API: each row says where a search found it (null: the list wasn't searched)
+      return docs.slice(offset, offset + limit).map((d): DocumentListEntry => ({ ...d, found_in: db.foundIn(d, q) }));
     },
   ],
   [
@@ -1891,6 +1907,11 @@ const routes: [string, string, Handler][] = [
       );
       db.log("draft.sent", `You sent “${d.subject}”`, "draft", d.id);
       emit("item.updated", {});
+      // like the API's Ideas refresh: a new-address letter marked sent takes its sender's moving row away
+      if (d.kind === "address_change") {
+        refreshMovingIdeas(db);
+        emit("suggestions.updated", {});
+      }
       return d;
     },
   ],
@@ -2097,6 +2118,9 @@ const compiled = routes.map(([method, pattern, handler]) => {
 // Server
 // ------------------------------------------------------------------------------------------------
 
+/** A ZIP with no entries: only its 22-byte end record (`PK\x05\x06` and zeros), which any unzip tool opens. */
+const EMPTY_ZIP_URL = "data:application/zip;base64,UEsFBgAAAAAAAAAAAAAAAAAAAAAAAA==";
+
 const json = (status: number, body: unknown) =>
   new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
 
@@ -2104,8 +2128,8 @@ export interface MockServer {
   db: MockDb;
   /** Handle a `/api/...` request (path without the `/api` prefix). */
   handle(method: string, path: string, query: URLSearchParams, body: unknown, signal?: AbortSignal | null): Promise<Response>;
-  /** Resolve asset paths (page images, PDFs, .ics) to data: URLs. */
-  resolveAsset(path: string): string | null;
+  /** Resolve asset paths (page images, PDFs, .ics, the letters' ZIP) to data: URLs; `query` is the link's own. */
+  resolveAsset(path: string, query?: Record<string, QueryValue>): string | null;
   /** Open all New-mail letters instantly (for `?mock=full`). */
   openAllMail(): void;
   /** Phone access as the computer has it, and a phone's side of pairing (tests drive it; see `./phone`). */
@@ -2155,9 +2179,11 @@ export function createMockServer(opts: MockOptions): MockServer {
     return json(404, { detail: `No mock for ${m} /api${path}` });
   }
 
-  function resolveAsset(path: string): string | null {
+  function resolveAsset(path: string, _query?: Record<string, QueryValue>): string | null {
     const proof = resolveProofAsset(db, path);
     if (proof) return proof;
+    // export letters: the demo keeps no originals, so any choice gets a ZIP with nothing in it
+    if (path === "/documents.zip") return EMPTY_ZIP_URL;
     let m = /^\/documents\/([^/]+)\/pages\/(\d+)\.jpg$/.exec(path);
     const pageOf = (id: string, n: number) => {
       const letter = letterFor(decodeURIComponent(id));

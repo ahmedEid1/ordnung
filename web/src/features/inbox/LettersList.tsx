@@ -7,18 +7,21 @@
  * title on up to two lines, then the sender and a wrapping line of chips — until the list is
  * 56rem wide; from there a table with kind, arrival date and to-do columns (the title on one line,
  * in full in its tooltip), and from 64rem the letter's summary next to the sender.
+ *
+ * While searching, a letter found only in the text its scanner added says so on a line of its own ("not
+ * checked", ADR 0020).
  */
 import { Link } from "react-router";
-import { useId, useMemo } from "react";
-import { ListTodo, Lock, ShieldAlert } from "lucide-react";
-import type { Document, MailTrayItem, Party } from "@/api/types";
+import { useId, useMemo, type ReactNode } from "react";
+import { ListTodo, Lock, ScanText, ShieldAlert } from "lucide-react";
+import type { Document, DocumentListEntry, MailTrayItem, Party } from "@/api/types";
 import { useSuggestions } from "@/api/hooks";
 import { useOpenedTrayDocs, useTrayByDoc } from "@/features/tour/newMail";
 import { actionFromItem } from "@/features/today/selection";
 import { ActionCountdown } from "@/features/today/TopThree";
 import { api } from "@/api/endpoints";
 import { claudeWaitReason, useJobProgress } from "@/api/sse";
-import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep } from "@/lib/copy";
+import { JOB_STAGE_COPY, PIPELINE_STEPS, SCANNER_TEXT_MATCH, copyFor, stageToStep } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { NBSP, protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
@@ -35,14 +38,23 @@ import { useSeenLetters } from "./seen";
 /** A next step this close (in days) is spelled out under the letter. */
 const NEXT_STEP_DAYS = 14;
 
+/** A search (`GET /api/documents?q=`) found the letter only in the text its scanner added. */
+const foundInScannerText = (doc: Document | DocumentListEntry): boolean => "found_in" in doc && doc.found_in === "scanner_text";
+
 export function LettersList({
   groups,
   parties,
   open,
+  note,
+  dated = false,
 }: {
   groups: LetterGroup[];
   parties: Map<string, Party>;
   open: Map<string, OpenSummary>;
+  /** The page's own line about a letter (the Tax year page: its tax note), the last line of its row; null: none. */
+  note?: (doc: Document) => ReactNode | null;
+  /** Each row shows the date on the letter (else the day it arrived): for a page that files letters by it (Tax year). */
+  dated?: boolean;
 }) {
   const tray = useTrayByDoc();
   const justRead = useOpenedTrayDocs();
@@ -85,6 +97,8 @@ export function LettersList({
                     tray={item}
                     isNew={Boolean(item) && !isReading(d) && !seen.has(d.id)}
                     scam={scams.has(d.id)}
+                    note={note?.(d) ?? null}
+                    dated={dated}
                   />
                 );
               })}
@@ -156,6 +170,8 @@ function LetterRow({
   tray,
   isNew,
   scam,
+  note,
+  dated = false,
 }: {
   doc: Document;
   party: Party | null;
@@ -163,6 +179,8 @@ function LetterRow({
   tray?: MailTrayItem;
   isNew: boolean;
   scam?: boolean;
+  note?: ReactNode;
+  dated?: boolean;
 }) {
   const today = useTodayISO();
   const describedBy = useId();
@@ -237,7 +255,7 @@ function LetterRow({
             {isNew ? newBadge : null}
             {status}
             {doc.kind ? <KindBadge docKind={doc.kind} /> : null}
-            {reading ? null : <ArrivalDate doc={doc} served={open?.served} className="text-sm text-muted" />}
+            {reading ? null : <ArrivalDate doc={doc} served={open?.served} dated={dated} className="text-sm text-muted" />}
             {open?.count ? <TodoCount open={open} urgent={urgent} /> : null}
           </div>
           {urgent && next && action ? (
@@ -247,10 +265,22 @@ function LetterRow({
               <ActionCountdown action={action} variant="text" className="text-[12.5px]" />
             </p>
           ) : null}
+          {foundInScannerText(doc) ? (
+            // its own line in both layouts: it wraps on a phone instead of cutting off "not checked"
+            <p className="mt-1.5 flex min-w-0 items-start gap-1.5 text-[12.5px] leading-5 text-muted">
+              <ScanText className="mt-[3px] size-3.5 shrink-0" aria-hidden />
+              <span className="min-w-0">{SCANNER_TEXT_MATCH}</span>
+            </p>
+          ) : null}
+          {note != null && note !== false ? (
+            <div data-letter-note className="mt-1.5 min-w-0 break-words text-[12.5px] text-muted">
+              {note}
+            </div>
+          ) : null}
         </div>
         <div className="hidden min-w-0 @4xl:block">{doc.kind ? <KindBadge docKind={doc.kind} /> : null}</div>
         <div className="hidden text-right text-sm text-muted @4xl:block">
-          <ArrivalDate doc={doc} served={open?.served} />
+          <ArrivalDate doc={doc} served={open?.served} dated={dated} />
         </div>
         <div className="hidden justify-end @4xl:flex">{open?.count ? <TodoCount open={open} urgent={urgent} /> : null}</div>
       </div>
@@ -260,16 +290,20 @@ function LetterRow({
 
 /**
  * When the letter arrived ("26 Sep") — the date its group is built from — with the letter's own
- * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep").
+ * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep"). `dated`: the date on the letter
+ * instead, when it has one ("Dated Thu 24 Sep · arrived Sat 26 Sep").
  */
-function ArrivalDate({ doc, served, className }: { doc: Document; served?: boolean; className?: string }) {
+function ArrivalDate({ doc, served, dated = false, className }: { doc: Document; served?: boolean; dated?: boolean; className?: string }) {
   const today = useTodayISO();
   const { date, verb, docDate } = inboxDateInfo(doc, served);
-  const tip = `${verb} ${formatDate(date, { today })}${docDate ? ` · letter dated ${formatDate(docDate, { today })}` : ""}`;
+  const own = dated ? doc.doc_date : null;
+  const tip = own
+    ? `Dated ${formatDate(own, { today })}${own !== date ? ` · ${verb.toLowerCase()} ${formatDate(date, { today })}` : ""}`
+    : `${verb} ${formatDate(date, { today })}${docDate ? ` · letter dated ${formatDate(docDate, { today })}` : ""}`;
   return (
     <span title={tip} className={cn("whitespace-nowrap", className)}>
-      <span className="sr-only">{verb} </span>
-      <DateText date={date} style="day" />
+      <span className="sr-only">{own ? "Dated" : verb} </span>
+      <DateText date={own ?? date} style="day" />
     </span>
   );
 }

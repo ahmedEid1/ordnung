@@ -181,4 +181,18 @@ describe("Settings page", () => {
     expect(await screen.findByRole("heading", { level: 2, name: "Data" })).toBeInTheDocument();
     expect(screen.getByText("/tmp/ordnung-test")).toBeInTheDocument();
   });
+
+  it("Data: exports the letters' original files from their own card, and the JSON card points to it", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=data" });
+    const card = (await screen.findByRole("heading", { name: "Export your letters" })).closest("section")!;
+    expect(within(card).getByText(/The original files of your letters as a ZIP, in folders by year and sender/)).toBeInTheDocument();
+    expect(screen.getByText("For the original PDFs and photos as files, use “Export your letters” above.")).toBeInTheDocument();
+    expect(screen.queryByText("Your original PDFs and photos stay in the folder above.")).toBeNull();
+    await user.click(within(card).getByRole("button", { name: "Export letters…" }));
+    const dialog = await screen.findByRole("dialog", { name: "Export letters" });
+    expect(within(dialog).getByRole("combobox", { name: "Year" })).toHaveValue("");
+    expect(within(dialog).getByRole("checkbox", { name: "Only letters for taxes" })).not.toBeChecked();
+  });
 });

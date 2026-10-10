@@ -172,6 +172,8 @@ interface MainPage {
 const MAIN_PAGES: MainPage[] = [
   { name: "Today", path: async () => "/", h1: /Sam/ },
   { name: "Inbox", path: async () => "/inbox", h1: "Inbox" },
+  // the demo's letters for taxes are all dated 2026
+  { name: "Tax year", path: async () => "/inbox/taxes?year=2026", h1: "Tax year 2026" },
   {
     name: "Letter viewer",
     path: async (page) => `/documents/${await letterId(page, PHONE_CONTRACT)}`,

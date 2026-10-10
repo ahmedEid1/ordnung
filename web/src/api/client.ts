@@ -219,7 +219,8 @@ export async function request<T>(path: string, opts: RequestOptions = {}): Promi
 // them for data: URLs because <img>/<a href> requests bypass the fetch interceptor.
 // ------------------------------------------------------------------------------------------------
 
-type AssetResolver = (path: string) => string | null;
+/** Maps an API asset path (and its query, e.g. the export's choice) to another URL; null: not one of its own. */
+type AssetResolver = (path: string, query?: Record<string, QueryValue>) => string | null;
 let assetResolver: AssetResolver | null = null;
 
 /** Install (or clear with null) a resolver that maps API asset paths to other URLs. */
@@ -230,6 +231,6 @@ export function setAssetResolver(resolver: AssetResolver | null): void {
 /** URL for an API-served asset such as `/documents/doc_x/pages/1.jpg`. */
 export function assetUrl(path: string, query?: Record<string, QueryValue>): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  const resolved = assetResolver?.(p);
+  const resolved = assetResolver?.(p, query);
   return resolved ?? apiPath(p, query);
 }

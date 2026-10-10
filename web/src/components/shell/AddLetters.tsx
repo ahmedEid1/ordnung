@@ -781,8 +781,9 @@ const NOT_READY: Record<ClaudeNotReady, string> = {
 export function addDescription(keepPrivate: boolean, several: boolean, notReady: ClaudeNotReady | null = null, phone = false): string {
   const [it, its] = several ? ["them", "their"] : ["it", "its"];
   const where = theComputer(phone);
+  // found by name and by the file's own text, or the text a scanner added to it (ADR 0020); a photo by its name
   if (keepPrivate)
-    return `Stored on ${where} only and searchable by ${its} text. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`;
+    return `Stored on ${where} only. Search finds ${it} by ${several ? "their names" : "its name"} and by any text in the ${several ? "files" : "file"}. Claude never reads ${it}, so Ordnung won't find ${its} dates — you can add them by hand.`;
   if (notReady)
     return `${NOT_READY[notReady]}, so Ordnung stores ${it} now and reads ${it} as soon as Claude is connected (Settings → Claude connection). ${filesStay(phone)}`;
   return `Claude reads ${it} through your Claude account to find dates, amounts and what to do. ${filesStay(phone)}`;

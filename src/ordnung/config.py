@@ -6,7 +6,7 @@ Layout::
     <data_dir>/
       ordnung.db          SQLite (WAL)
       files/ab/<sha>.pdf  originals (content addressed)
-      derived/<doc_id>/   page renders + thumbnail
+      derived/<doc_id>/   page renders + thumbnail (+ scan-text.json: a scanner's text, search only)
       drafts/             generated letter PDFs
       inbox/              optional watched folder (default location)
       phone/              phone access's certificates (once it was turned on)

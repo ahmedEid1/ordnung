@@ -291,6 +291,12 @@ export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
   held: { label: "Not read yet", icon: MEANING_ICONS.notReadYet, tone: "accent", hint: "From your watched folder: stored on this computer, not sent to Claude until you say so." },
 };
 
+/**
+ * A search found the letter only in the text a scanner added to its pages (`found_in: "scanner_text"`, ADR 0020):
+ * somebody's reading of the picture, never the letter's checked words — said wherever the match is listed.
+ */
+export const SCANNER_TEXT_MATCH = "Found in your scanner's text — not checked";
+
 export const DIRECTION_COPY: CopyMap<Direction> = {
   incoming: { label: "Received", icon: Mail, tone: "neutral" },
   outgoing: { label: "Sent by you", icon: Send, tone: "accent" },

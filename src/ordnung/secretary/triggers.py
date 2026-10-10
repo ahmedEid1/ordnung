@@ -142,6 +142,12 @@ def parse_day(value: str | None) -> date | None:
         return None
 
 
+def letter_day(doc: Document) -> date | None:
+    """The day a letter is filed under by year (the tax year, the export's folders): the date printed on
+    it, else the day it arrived (``None``: neither is known)."""
+    return parse_day(doc.doc_date) or parse_day(doc.received_date)
+
+
 def parse_timestamp(value: str | None) -> datetime | None:
     """ISO-8601 timestamp (``Z`` allowed) → aware datetime; ``None`` for missing or malformed values."""
     if not value:
@@ -1259,7 +1265,9 @@ RESIDENCE_EXTENSION_LAW = "§ 81 Abs. 4 AufenthG"
 """Applying before a residence permit expires keeps it in force until the office decides."""
 STUDENT_WORK_LAW = "§ 16b Abs. 3 AufenthG"
 """How much a student with a residence permit may work."""
-IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW)
+REGISTRATION_LAW = "§ 17 Abs. 1 BMG"
+"""Registering a new home within two weeks of moving in (the moving checklist, :mod:`ordnung.secretary.moving`)."""
+IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW, REGISTRATION_LAW)
 """The § citations Ordnung's own Ideas state outside the rules catalog: Ask's check knows them like
 the catalog's (ADR 0008), so a correct "§ 81 Abs. 4 AufenthG" is not taken for an unvouched law."""
 
@@ -1921,7 +1929,9 @@ def iban_misprint(ledger: Ledger) -> list[Suggestion]:
 
 
 def tax_documents(ledger: Ledger) -> list[Suggestion]:
-    """January–July: collect last year's tax-relevant letters for the tax return."""
+    """January–July: collect last year's tax-relevant letters for the tax return. They are counted by
+    :func:`letter_day`, as the Tax year page files them, and "See the documents" opens that page
+    (``target_type="tax_year"``, ``target_id`` the year)."""
     today = ledger.today
     if today.month > TAX_SEASON_LAST_MONTH:
         return []
@@ -1930,7 +1940,7 @@ def tax_documents(ledger: Ledger) -> list[Suggestion]:
         (
             doc
             for doc in ledger.documents.values()
-            if doc.tax_relevant and (parse_day(doc.doc_date) or date.min).year == year
+            if doc.tax_relevant and (letter_day(doc) or date.min).year == year
         ),
         key=lambda doc: (doc.doc_date or "", doc.id),
     )
@@ -1955,7 +1965,7 @@ def tax_documents(ledger: Ledger) -> list[Suggestion]:
             kind="tax",
             priority="normal",
             refs=[_ref("document", doc.id) for doc in docs[:10]],
-            action=_open("document", docs[0].id, "See the documents"),
+            action=_open("tax_year", str(year), "See the documents"),
             due_date=date(today.year, 7, 31),
         )
     ]
@@ -2146,6 +2156,14 @@ def sender_land(ledger: Ledger) -> list[Suggestion]:
     return sender_land_ideas(ledger)
 
 
+def moved_house(ledger: Ledger) -> list[Suggestion]:
+    """After the person said they moved: who needs the new address, starting with registering it
+    (:func:`ordnung.secretary.moving.moving_ideas`, imported here because it builds on this module)."""
+    from ordnung.secretary.moving import moving_ideas
+
+    return moving_ideas(ledger)
+
+
 Trigger = Callable[[Ledger], list[Suggestion]]
 
 #: Every rule in evaluation order (the keys are the ``rule_id``s stored on the Ideas).
@@ -2160,6 +2178,7 @@ TRIGGERS: dict[str, Trigger] = {
     "proof_missing": proof_missing,
     "please_check": please_check,
     "sender_land": sender_land,
+    "moved_house": moved_house,
     "dunning_escalation": dunning_escalation,
     "scam_warning": scam_warning,
     "iban_misprint": iban_misprint,

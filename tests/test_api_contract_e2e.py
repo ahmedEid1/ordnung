@@ -9,8 +9,12 @@ coverage check until it is added here.
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import re
+import sqlite3
+import zipfile
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -82,11 +86,18 @@ async def _get(api: Api, contract: Contract, path: str, **params: Any) -> Any:
     return body
 
 
-async def _get_file(api: Api, contract: Contract, path: str, media_type: str) -> None:
+async def _get_file(api: Api, contract: Contract, path: str, media_type: str) -> bytes:
     response = await api.client.get(path)
     assert response.status_code == 200, f"GET {path}: {response.status_code} {response.text[:300]}"
     assert response.headers["content-type"].startswith(media_type), (path, response.headers["content-type"])
     contract.hit.add(contract.operation("get", path)[0])
+    return response.content
+
+
+def _database(api: Api) -> list[str]:
+    """Every row of the app's database, as SQL."""
+    with contextlib.closing(sqlite3.connect(f"file:{api.ctx.paths.db}?mode=ro", uri=True)) as conn:
+        return list(conn.iterdump())
 
 
 async def _seed(api: Api, contract: Contract) -> dict[str, str]:
@@ -253,6 +264,12 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/pdf", "application/pdf")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/preview.png", "image/png")
         await _get_file(api, contract, f"/api/drafts/{ids['draft']}/proof.pdf", "application/pdf")
+        # Export letters: the letters as a ZIP, and the database exactly as it was (it only reads)
+        before = _database(api)
+        archive = await _get_file(api, contract, "/api/documents.zip", "application/zip")
+        assert "index.csv" in zipfile.ZipFile(io.BytesIO(archive)).namelist()
+        assert len(zipfile.ZipFile(io.BytesIO(archive)).namelist()) == 3  # the two letters and the index
+        assert _database(api) == before
 
         assert not contract.problems, "\n".join(contract.problems)
         get_routes = {path for path, operations in contract.schema["paths"].items() if "get" in operations}

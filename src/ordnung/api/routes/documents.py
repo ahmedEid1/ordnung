@@ -59,6 +59,7 @@ from ordnung.models import (
     Direction,
     Document,
     DocumentDetail,
+    DocumentListEntry,
     DocumentStatus,
     Item,
     Job,
@@ -66,6 +67,7 @@ from ordnung.models import (
     LetterKind,
     PageInfo,
     ProofLink,
+    SearchFoundIn,
     Suggestion,
 )
 from ordnung.phone import PhoneRefusal
@@ -149,7 +151,7 @@ class DeleteResult(BaseModel):
 # --------------------------------------------------------------------------------------------------
 
 
-@router.get("/documents", response_model=list[Document])
+@router.get("/documents", response_model=list[DocumentListEntry])
 def list_documents(
     store: StoreDep,
     q: str | None = None,
@@ -161,10 +163,16 @@ def list_documents(
     private: bool | None = None,
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[Document]:
-    """Letters, newest first (trash excluded); ``q`` searches their text. A letter's proof files
-    (``source="proof"``) are listed with their letter, never here."""
-    return store.list_documents(
+) -> list[DocumentListEntry]:
+    """Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
+    it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
+    added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
+    letter, never here. The scanner's text counts only on pages without text of their own and is never
+    returned (ADR 0020)."""
+    query = q.strip() if q else ""
+    # letters found in a scan's scanner text: kept apart from the indexes, ORed in here alone
+    scanned = store.scan_text_matches(query) if query else set()
+    docs = store.list_documents(
         q=q,
         kind=kind,
         party_id=party_id,
@@ -175,7 +183,18 @@ def list_documents(
         offset=offset,
         ai_private=private,
         exclude_source=PROOF_SOURCE,
+        also_ids=scanned,
     )
+    listed_scans = scanned & {doc.id for doc in docs}
+    # of those, the ones its own words find too: a letter is "found in the scanner text" only otherwise
+    only_scanned = listed_scans - store.indexed_matches(query, listed_scans) if listed_scans else set()
+
+    def found_in(doc: Document) -> SearchFoundIn | None:
+        if not query:
+            return None
+        return "scanner_text" if doc.id in only_scanned else "letter"
+
+    return [DocumentListEntry.model_construct(**dict(doc), found_in=found_in(doc)) for doc in docs]
 
 
 def _page_infos(store: Store, doc_id: str) -> list[PageInfo]:
@@ -329,6 +348,7 @@ def document_detail(store: Store, doc_id: str, today: date) -> DocumentDetail:
         given_to_model=store.given_to_model(doc_id),
         region_suggestion=region_suggestion(ledger, party, doc_id=doc_id) if party is not None else None,
         addressed_to=addressed_to(document, store.get_extraction(doc_id), store.get_profile().name),
+        scan_text_pages=store.scan_text_pages(doc_id),
     )
 
 

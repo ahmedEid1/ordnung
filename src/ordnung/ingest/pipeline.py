@@ -10,6 +10,11 @@ stage, a PDF whose every page has its own text no "transcribe".
   plan share **one** ``store.tx()`` under the process-wide :func:`ledger_lock`; their stage events
   are published once that transaction has committed.
 * Private documents ("Keep private — no AI") stop after the text layer: no model call ever sees them.
+* A scan's scanner text (the invisible text of a "searchable PDF") is kept apart by the text stage for the
+  person's letter search only (:meth:`~ordnung.db.store.Store.write_scan_text`, ADR 0020): never a page's
+  text, never in a prompt. :func:`read_text_here` reads the text of a letter waiting for Claude, and
+  :func:`catch_up_scan_text` the scanner text of a letter stored before Ordnung kept it. Only the text of
+  pages without text of their own is kept: a page Claude transcribed drops its scanner text.
   So do *held* ones (``hold=True``: files from the watched folder, :mod:`ordnung.ingest.held`), which
   end ``held`` instead of ``processed`` and publish no stage events (nothing is being read) until the
   person says they may be read.
@@ -94,9 +99,10 @@ from ordnung.ingest.plan import (
 )
 from ordnung.ingest.text import (
     PageText,
+    PdfText,
     detect_injection_phrases,
     email_heading,
-    extract_pdf_pages,
+    read_pdf_text,
     text_file_pages,
 )
 from ordnung.ingest.transcribe import pages_to_transcribe, transcribe_pages
@@ -680,16 +686,19 @@ def has_text_layer(document: Document) -> bool:
     return document.mime == "application/pdf" or document.mime in TEXT_TYPES
 
 
-def _page_texts(store: Store, document: Document, pages: Sequence[Page]) -> list[PageText]:
+def _rendered(store: Store, pages: Sequence[Page]) -> list[RenderedPage]:
+    return [RenderedPage(p.page, p.width, p.height, store.data_dir / p.image_path) for p in pages]
+
+
+def _page_texts(store: Store, document: Document, pages: Sequence[Page]) -> PdfText:
     original = store.get_document_file(document.id)
     if original is None:
-        return []
+        return PdfText([], {})
     if document.mime == "application/pdf":
-        rendered = [RenderedPage(p.page, p.width, p.height, store.data_dir / p.image_path) for p in pages]
-        return extract_pdf_pages(original, rendered)
+        return read_pdf_text(original, _rendered(store, pages))
     if document.mime in TEXT_TYPES:
-        return text_file_pages(original, document.mime)
-    return []
+        return PdfText(text_file_pages(original, document.mime), {})
+    return PdfText([], {})
 
 
 def _with_text(page: Page, text: PageText | None) -> Page:
@@ -706,14 +715,55 @@ def _with_text(page: Page, text: PageText | None) -> Page:
 
 
 def read_text_layer(store: Store, document: Document, pages: Sequence[Page]) -> TextLayer:
-    """Stage 2: text, words and hidden text of every page from the document's own text layer.
+    """Stage 2: text, words and hidden text of every page from the document's own text layer — and a
+    scanner's text, kept apart for search only (ADR 0020), in the same transaction.
 
     Pages without enough text get ``text_source="none"`` and are left for transcription.
     """
-    texts = {text.page: text for text in _page_texts(store, document, pages)}
-    records = store.set_pages(document.id, [_with_text(page, texts.get(page.page)) for page in pages])
+    pdf = _page_texts(store, document, pages)
+    texts = {text.page: text for text in pdf.pages}
+    with store.tx():
+        records = store.set_pages(document.id, [_with_text(page, texts.get(page.page)) for page in pages])
+        store.write_scan_text(document.id, pdf.scan_text)
     hidden = any(page.hidden.strip() for page in records)
     return TextLayer(pages=records, hidden=hidden, warnings=[HIDDEN_TEXT_WARNING] if hidden else [])
+
+
+async def read_text_here(ctx: AppContext, doc_id: str) -> None:
+    """Stage 2 alone, for a letter waiting for Claude: its own text (and a scanner's, kept apart) is read on
+    this computer, so the letter search finds it by its words straight away. No model, no status, verdict
+    or warning changes, no trace and no event: the letter waits as before, and its reading does the rest.
+    A letter gone, in the trash or without text of its own (a photo) is left alone, and so is one Claude
+    has read already ("Read again", "Try again"): its pages keep the words Claude read."""
+    store = ctx.store
+    document = store.get_document(doc_id)
+    if document is None or document.deleted_at is not None or not has_text_layer(document):
+        return
+    if document.ai_processed_at is not None or any(
+        page.text_source == "transcript" for page in store.list_pages(doc_id)
+    ):
+        return
+    pages = await _ensure_pages(store, document)
+    await asyncio.to_thread(read_text_layer, store, document, pages)
+
+
+def catch_up_scan_text(store: Store, doc_id: str) -> None:
+    """For a PDF letter stored before Ordnung kept a scanner's text: read it from the original and keep it
+    for search (ADR 0020), for the pages without text of their own. No model, and no row of the database
+    changes (the pages keep their text). A letter gone, in the trash or without its original meanwhile is
+    left alone."""
+    document = store.get_document(doc_id)
+    if document is None or document.deleted_at is not None or document.mime != "application/pdf":
+        return
+    original = store.get_document_file(doc_id)
+    pages = store.list_pages(doc_id)
+    if original is None or not original.is_file() or not pages:
+        return
+    pdf = read_pdf_text(original, _rendered(store, pages))
+    try:
+        store.write_scan_text(doc_id, pdf.scan_text)
+    except NotFoundError:
+        log.info("document %s was deleted while its scanner text was read", doc_id)
 
 
 def injection_warnings(pages: Sequence[Page]) -> list[str]:
@@ -941,7 +991,8 @@ def _local_title(store: Store, document: Document) -> str | None:
 async def _finish_private(
     ctx: AppContext, document: Document, layer: TextLayer, progress: StageReporter, trace: Span = NO_SPAN
 ) -> Document:
-    """Private and held documents: keep the text layer for search; no model ever sees them. An
+    """Private and held documents: keep the text layer (and a scanner's text, search only) for search; no
+    model ever sees them. An
     e-mail is titled by its subject and sender (:func:`~ordnung.ingest.text.email_heading`).
 
     The letter is read again first, so an answer the person gave while this ran stands: one they let
@@ -1031,6 +1082,8 @@ async def _run_stages(
         ctx.llm, store, document.id, layer.pages, model=models.transcribe, use_cache=not force, trace=trace
     )
     pages = store.list_pages(document.id)
+    # every page transcribed: a scanner's text (search only) would never count again
+    store.forget_scan_text_once_read(document.id)
     if not prompt_pages(pages):
         raise ExtractionError(NO_TEXT_ERROR)
     injected = injection_warnings(pages)
