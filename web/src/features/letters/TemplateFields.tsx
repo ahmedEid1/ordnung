@@ -129,9 +129,11 @@ function MovingNote({ profile, today }: { profile: Profile | undefined; today: s
       {moveStanding(profile, today) ? (
         <span>Your moving checklist on Today lists who else needs your new address.</span>
       ) : (
+        // true whether the new address is saved yet or not: "I moved" goes with a changed one, "Moved recently?"
+        // with one saved already
         <span>
-          Telling several places? Change your address in {phone ? "Settings → Profile on your computer" : <SettingsLink>Settings → Profile</SettingsLink>} and
-          tick <em>I moved</em>: Today then lists everyone who needs it, starting with the <span lang="de">Bürgeramt</span>.
+          Telling several places? In {phone ? "Settings → Profile on your computer" : <SettingsLink>Settings → Profile</SettingsLink>}, tell Ordnung
+          you moved: Today then lists everyone who needs your new address, starting with the <span lang="de">Bürgeramt</span>.
         </span>
       )}
     </p>

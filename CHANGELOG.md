@@ -63,15 +63,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Claude; Ask doesn't search it. Once Claude has read a page, that page's scanner text is removed. Scans
   you added before are caught up in the background after the update
   ([ADR 0020](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)).
-- **A moving checklist.** When you change your address in Settings → Profile and tick *I moved*, Today
-  lists who needs your new address: first, registering at the citizens' office (Bürgeramt) within two
-  weeks of moving in (§ 17 Abs. 1 BMG); then the organisations Ordnung knows from your contracts and
-  letters — your bank, insurers, employer, landlord, utilities and others — each with the new-address
-  letter one click away (your old address and the day filled in); and the broadcasting fee office, when
-  it isn't among them. Tick a row off, or mark it *Not needed*, with Undo; a sender's row goes by itself
-  once you mark a new-address letter to them as sent. The checklist is for a move in the last six months
-  or the next three, ends six months after the move, and *Stop the checklist* ends it at once. Nothing is
-  sent for you, and no row names an address
+- **A moving checklist.** Tell Ordnung you moved in Settings → Profile: tick *I moved* as you change your
+  address there, or, if you saved the new address already, choose *Moved recently? Start the moving
+  checklist* and enter the address before. Today then lists who needs your new address: first,
+  registering at the citizens' office (Bürgeramt) within two weeks of moving in (§ 17 Abs. 1 BMG); then
+  the organisations Ordnung knows from your contracts and letters — your bank, insurers, employer,
+  landlord, utilities and others — each with the new-address letter one click away (your old address and
+  the day filled in); and the broadcasting fee office, when it isn't among them. Tick a row off, or mark
+  it *Not needed*, with Undo; a sender's row goes by itself once you mark a new-address letter to them as
+  sent. The checklist is for a move in the last six months or the next three, ends six months after the
+  move, and *Stop the checklist* ends it at once. Nothing is sent for you, and no row names an address
   ([ADR 0021](docs/decisions/0021-a-move-is-said-never-guessed.md)).
 - **Open Ordnung from your app menu.** `ordnung shortcut` adds Ordnung to your app menu on Linux, to the
   Applications folder in your home folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on

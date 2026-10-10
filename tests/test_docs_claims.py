@@ -2846,6 +2846,28 @@ def test_a_move_is_said_never_guessed_as_the_docs_say() -> None:
     assert "`Profile.moved_on` (`null`: no move told) and `Profile.old_address`" in _spec()
 
 
+#: The button in Settings → Profile for someone who saved the new address first (``ProfileSection.tsx``).
+LATE_MOVE = "Moved recently? Start the moving checklist"
+
+
+def test_a_move_can_be_told_after_the_new_address_was_saved_as_the_docs_say() -> None:
+    """ADR 0021, SPEC, the CHANGELOG and docs/privacy.md: a move is told with *I moved* next to a changed address, or,
+    once the new address is saved, with the button the web app shows — no doc says ticking *I moved* is the only way.
+    The letter composer's note (``TemplateFields.tsx``) no longer says to change the address and tick it."""
+    web = ROOT / "web" / "src" / "features"
+    assert LATE_MOVE in _flat((web / "settings" / "ProfileSection.tsx").read_text(encoding="utf-8"))
+    for name, text in (
+        ("ADR 0021", _adr(_ADR_MOVING)),
+        ("CHANGELOG", _bullet(_unreleased("Added"), "**A moving checklist.**")),
+        ("SPEC", _spec()),
+    ):
+        assert "I moved*" in text and f"*{LATE_MOVE}*" in text, name
+    privacy = _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
+    assert "after you tick *I moved*" not in privacy and "after you tell Ordnung you moved" in privacy
+    note = _flat((web / "letters" / "TemplateFields.tsx").read_text(encoding="utf-8"))
+    assert "tick <em>I moved</em>" not in note and "tell Ordnung you moved" in note
+
+
 def test_adrs_0020_and_0021_exist_and_the_readme_lists_them() -> None:
     """Two new decisions, numbered after ADR 0019 and listed in README's Documentation: a scanner's text is for
     finding, not reading (0020); a move is said, never guessed (0021)."""

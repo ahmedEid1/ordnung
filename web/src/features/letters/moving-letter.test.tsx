@@ -36,7 +36,7 @@ describe("the new-address letter after a move", () => {
     expect(within(dialog).getByLabelText(/^Your previous address/)).toHaveValue(OLD);
     expect(within(dialog).getByLabelText(/^Moved on/)).toHaveValue("2026-09-21");
     expect(within(dialog).getByText("Your moving checklist on Today lists who else needs your new address.")).toBeInTheDocument();
-    expect(within(dialog).queryByText(/tick I moved/)).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/tell Ordnung you moved/)).not.toBeInTheDocument();
   });
 
   it("without a move, says how to start the checklist, in a Settings tab that keeps the letter", async () => {
@@ -46,7 +46,7 @@ describe("the new-address letter after a move", () => {
     expect(within(dialog).getByLabelText(/^Moved on/)).toHaveValue("");
     const note = within(dialog).getByText(/Telling several places\?/);
     expect(note).toHaveTextContent(
-      "Telling several places? Change your address in Settings → Profile (opens in a new tab, so this letter stays as it is)⁠ and tick I moved: Today then lists everyone who needs it, starting with the Bürgeramt.",
+      "Telling several places? In Settings → Profile (opens in a new tab, so this letter stays as it is)⁠, tell Ordnung you moved: Today then lists everyone who needs your new address, starting with the Bürgeramt.",
     );
     expect(within(note).getByRole("link", { name: /Settings → Profile/ })).toHaveAttribute("target", "_blank");
     expect(within(note).getByText("Bürgeramt")).toHaveAttribute("lang", "de");
@@ -57,7 +57,7 @@ describe("the new-address letter after a move", () => {
     const dialog = await openLetter();
     const note = await within(dialog).findByText(/Telling several places\?/);
     expect(note).toHaveTextContent(
-      "Telling several places? Change your address in Settings → Profile on your computer and tick I moved: Today then lists everyone who needs it, starting with the Bürgeramt.",
+      "Telling several places? In Settings → Profile on your computer, tell Ordnung you moved: Today then lists everyone who needs your new address, starting with the Bürgeramt.",
     );
     expect(within(note).queryByRole("link")).not.toBeInTheDocument();
   });

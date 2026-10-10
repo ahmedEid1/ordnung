@@ -62,6 +62,18 @@ describe("the moving checklist in the static demo", () => {
     expect(s.db.state.suggestions.filter((x) => x.rule_id === MOVED_HOUSE_RULE).every((x) => x.status === "expired")).toBe(true);
   });
 
+  it("a move told after the new address was saved keeps that address and lists who to tell, as the API does", async () => {
+    const s = srv();
+    const put = (body: Record<string, unknown>) => s.handle("PUT", "/profile", new URLSearchParams(), body);
+    const NEW = "Neue Allee 7\n54321 Beispielstadt";
+    expect((await put({ address: NEW })).status).toBe(200);
+    expect(rows(s.db.state.suggestions)).toEqual([]); // an address edit is no move
+    const res = await put({ moved_on: "2026-09-21", old_address: "Beispielweg 5\n12345 Musterstadt" });
+    expect(res.status).toBe(200);
+    expect((await res.json()) as Profile).toMatchObject({ address: NEW, moved_on: "2026-09-21", old_address: "Beispielweg 5\n12345 Musterstadt" });
+    expect(rows(s.db.state.suggestions).map((r) => r.title)).toContain("Register your new address by Mon 5 Oct");
+  });
+
   it("a move outside the last six months or the next three is refused, with the API's words", async () => {
     const s = srv();
     for (const day of ["2026-03-31", "2026-12-28"]) {

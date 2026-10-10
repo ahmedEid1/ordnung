@@ -62,7 +62,7 @@ looked up on your computer in a table of German postcodes that ships with Ordnun
 sent or downloaded for it ([ADR 0019](decisions/0019-a-sender-s-land-is-suggested-never-set.md)). Like
 every Idea's, its title (the sender's name and the state) is part of what *Weekly Ideas* sends.
 
-The moving checklist, after you tick *I moved* in Settings → Profile, is worked out on your computer from your
+The moving checklist, after you tell Ordnung you moved in Settings → Profile, is worked out on your computer from your
 contracts and letters; nothing is sent for it, and a letter you kept private, or a contract read from one,
 never puts an organisation on it ([ADR 0021](decisions/0021-a-move-is-said-never-guessed.md)). Its rows never
 contain an address: like every Idea's, their titles (an organisation's name, the day to register by) are part
