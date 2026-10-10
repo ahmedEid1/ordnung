@@ -353,7 +353,7 @@ async def test_a_private_scan_is_found_by_its_scanner_text(ctx: AppContext) -> N
 
 async def test_the_scanner_text_never_reaches_a_prompt(ctx: AppContext) -> None:
     """A scan sent to Claude is read from its picture: no request carries the scanner's text, and once
-    the transcript fills the page the scanner's text no longer counts for search."""
+    the transcript fills the page the scanner's text is no longer kept (it would never count again)."""
     document = await add_file(ctx, scanned_pdf(ocr=True, ocr_text=ODD_SCAN), "scan.pdf")
     assert await ctx.worker.run_until_idle() == 1
     calls = backend(ctx).calls
@@ -365,6 +365,18 @@ async def test_the_scanner_text_never_reaches_a_prompt(ctx: AppContext) -> None:
     assert ctx.store.scan_text_matches("Zebrafinkenweg") == set()
     page = ctx.store.get_page(document.id, 1)
     assert page is not None and page.text_source == "transcript"
+    assert not _scan_file(ctx, document.id).exists()
+
+
+async def test_a_scan_claude_read_leaves_no_scanner_text_file(ctx: AppContext) -> None:
+    """A scan without a scanner's text (like the demo's New-mail letter) read by Claude: the file the text
+    stage kept ("looked, nothing there") goes once every page has its transcript, and the catch-up has
+    nothing left to do."""
+    document = await add_file(ctx, scanned_pdf(), "scan.pdf")
+    assert await ctx.worker.run_until_idle() == 1
+    assert [page.text_source for page in ctx.store.list_pages(document.id)] == ["transcript"]
+    assert not (ctx.store.paths.derived / document.id / "scan-text.json").exists()
+    assert ctx.store.scan_text_missing() == []
 
 
 async def test_reading_again_keeps_the_scanner_text_current(ctx: AppContext) -> None:

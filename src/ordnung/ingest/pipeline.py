@@ -1075,6 +1075,8 @@ async def _run_stages(
         ctx.llm, store, document.id, layer.pages, model=models.transcribe, use_cache=not force, trace=trace
     )
     pages = store.list_pages(document.id)
+    # every page transcribed: a scanner's text (search only) would never count again
+    store.forget_scan_text_once_read(document.id)
     if not prompt_pages(pages):
         raise ExtractionError(NO_TEXT_ERROR)
     injected = injection_warnings(pages)

@@ -1048,6 +1048,21 @@ def test_write_scan_text_after_a_purge_writes_nothing(store: Store) -> None:
     assert not (store.paths.derived / scan.id).exists()
 
 
+def test_scanner_text_is_forgotten_once_every_page_has_its_own(store: Store) -> None:
+    """After Claude transcribed the pages the scanner's text would never count again: it goes. While a page
+    still has no text of its own, it stays."""
+    scan = add_scan(store, pages=2)
+    assert store.scan_text_matches("Wasserzählers") == {scan.id}  # cached now
+    store.set_page_text(scan.id, 1, "Transkript der ersten Seite", "transcript")
+    store.forget_scan_text_once_read(scan.id)
+    assert scan_file(store, scan.id).is_file()
+    store.set_page_text(scan.id, 2, "Transkript der zweiten Seite", "transcript")
+    store.forget_scan_text_once_read(scan.id)
+    assert not scan_file(store, scan.id).exists() and scan.id not in store._scan_text_cache
+    store.forget_scan_text_once_read(scan.id)  # nothing left to forget
+    store.forget_scan_text_once_read("doc_missing")
+
+
 def test_scanner_text_is_kept_only_while_a_page_has_no_text(store: Store) -> None:
     """Written for a PDF with a page that has no text of its own (an empty map: looked, nothing there);
     removed once every page has text; never kept for a photo or a text file."""

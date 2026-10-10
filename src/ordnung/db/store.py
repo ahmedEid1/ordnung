@@ -1386,6 +1386,20 @@ class Store:
                 log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
         self._forget_scan_text(doc_id)
 
+    def forget_scan_text_once_read(self, doc_id: str) -> None:
+        """Remove the letter's scanner text once every page has text of its own (Claude transcribed the
+        scan): it would never count for search again. A file that can't be removed is logged."""
+        with self.tx() as conn:
+            blank = conn.execute(
+                "SELECT 1 FROM pages WHERE doc_id = ? AND trim(text) = '' LIMIT 1", (doc_id,)
+            ).fetchone()
+            if blank is None:
+                try:
+                    scan_text.remove(self.paths.derived, doc_id)
+                except OSError:
+                    log.warning("could not remove the scanner text of %s", doc_id, exc_info=True)
+        self._forget_scan_text(doc_id)
+
     def _blank_scan_pages(self, doc_id: str | None = None) -> dict[str, list[int]]:
         """Letter → its pages without text of their own, for the PDF letters not in the trash (with
         ``doc_id``: that letter's, in the trash or not)."""
