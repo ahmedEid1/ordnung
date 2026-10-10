@@ -109,6 +109,8 @@ test("a move told in Settings lists who needs the new address on Today; a row is
     await open(page, "/settings?section=profile", "Settings");
     await expect(page.getByText(/You moved in on Mon 21 Sep\./)).toBeVisible();
     await expect(page.getByRole("link", { name: "Open your moving checklist" })).toHaveAttribute("href", "/#moving-checklist");
+    await expectAccessible(page, testInfo, "settings-move-stands");
+    await expectNoSidewaysScroll(page, "Settings with a move told");
     await page.getByRole("button", { name: "Stop the checklist" }).click();
     await expect(page.getByText("Moving checklist stopped")).toBeVisible();
     await expect.poll(async () => (await movingRows(page)).filter((r) => r.status === "new").length, { timeout: 20_000 }).toBe(0);

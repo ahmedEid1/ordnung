@@ -44,6 +44,10 @@ export function profileErrors(f: ProfileForm): Partial<Record<keyof ProfileForm,
   return errors;
 }
 
+/** The stored move's link and button: text-sized, in the line's flow. */
+const MOVE_ACTION =
+  "inline-flex min-h-6 items-center rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60";
+
 /**
  * Whether the "I moved" box is offered: the person changed an address that was already saved (the first
  * address ever entered is no move, and neither is any other field).
@@ -168,7 +172,8 @@ export function ProfileSection({ profile }: { profile: Profile }) {
             <p className="-mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] leading-5 text-muted sm:col-span-2">
               <MapPinHouse className="size-3.5 shrink-0" aria-hidden />
               <span>{movedLine(profile.moved_on, today)}</span>
-              <Link to={`/#${MOVING_CHECKLIST_ID}`} className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent">
+              {/* text-sized, but 24 px tall targets (WCAG 2.5.8) */}
+              <Link to={`/#${MOVING_CHECKLIST_ID}`} className={MOVE_ACTION}>
                 Open your moving checklist
               </Link>
               <span aria-hidden>·</span>
@@ -176,7 +181,7 @@ export function ProfileSection({ profile }: { profile: Profile }) {
                 type="button"
                 onClick={stopChecklist}
                 disabled={update.isPending}
-                className="rounded font-medium text-accent outline-none hover:underline focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
+                className={MOVE_ACTION}
               >
                 Stop the checklist
               </button>
