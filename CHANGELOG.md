@@ -125,6 +125,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its
   PDF straight away. Before, only the first such letter was; the others were found by name until Claude
   read them.
+- The Inbox's own search finds the letters waiting from your watched folder, as the search at the top does.
+  While you search, *From your folder — not read yet* lists only the ones it found ("1 of 3"), one found only
+  in its scanner's text says so, and *Read it* and *Keep private* are for the letters listed. Before, the
+  Inbox's search left them out and said no letter matched.
 - A password manager's strong random password with capital and small letters now protects a new backup or
   a new sync folder. 0.2.0 counted only words, so symbols and capitals counted nothing and many such
   passwords were refused. Now random characters count by the alphabet they use (14 random letters and

@@ -1771,9 +1771,11 @@ Pages:
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,
    **"From your folder — not read yet"**: the held letters (an e-mail's attachments under it), with
-   *Read these N* and *Keep private*; held letters are in no other group or filter. While a search lists a
-   letter only because of its scanner's text, its row (and its option in the search box) says "Found in your
-   scanner's text — not checked". The header links **Letters for taxes** (when a letter is marked for taxes,
+   *Read these N* and *Keep private*; held letters are in no other group, filter or count. While the Inbox is
+   searched, the group lists only the held letters the search found ("· 1 of 3"; its answers are for those, and
+   a search that finds none hides it), and the list never says "No letters match" while one of them does: it
+   says where they are. While a search lists a letter only because of its scanner's text, its row (in the list
+   or the group, and its option in the search box) says "Found in your scanner's text — not checked". The header links **Letters for taxes** (when a letter is marked for taxes,
    also on a phone) to the **Tax year** page (`/inbox/taxes?year=YYYY`, its parent the Inbox): a year select
    (only years with letters for taxes; January–July last year, else this year), "N letters dated Y.", that
    year's letters for taxes by the letter's date (else the day it arrived) grouped by kind, each with Claude's
