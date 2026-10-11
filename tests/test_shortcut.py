@@ -1061,15 +1061,18 @@ def test_the_shell_reads_the_link_back(tmp_path: Path) -> None:
 @WINDOWS_ONLY
 def test_the_shell_reads_a_target_in_non_ascii_folders(tmp_path: Path) -> None:
     """The items of folders with umlauts (0x35) and Greek letters, which the ANSI code page can't hold, and of
-    the file (0x32): the shell puts the path back together from the ID list."""
+    the file (0x32): the shell puts the path back together from the ID list. Shell.Application reads it in
+    Unicode; WScript.Shell's ``TargetPath`` goes through the ANSI code page, so letters it can't hold come back
+    as "?" there (the first Windows run showed "Jürgen Müller\\?????\\python.exe")."""
     python = tmp_path.resolve() / "Jürgen Müller" / "Αθηνά" / "python.exe"
     python.parent.mkdir(parents=True)
     python.write_bytes(b"")  # only its path is read
     sc = plan(tmp_path / "d", platform="win32", env=windows_env(tmp_path), home=tmp_path, python=str(python))
     write(sc)
     seen = _shell_reads(sc.path)
-    assert Path(seen["target"]) == python, seen["target"]
-    assert Path(seen["explorer"]) == python, seen["explorer"]
+    assert Path(seen["explorer"]) == python, seen
+    as_ansi = str(python).encode("mbcs", "replace").decode("mbcs")
+    assert seen["target"] in (str(python), as_ansi), seen
 
 
 @WINDOWS_ONLY
