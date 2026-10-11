@@ -4090,12 +4090,13 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     assert tick_module.STOP_WAIT_S == 10  # "at most 10 seconds"
     assert "asyncio.to_thread(" not in inspect.getsource(DailyTick)
     assert "STOP_WAIT_S" in inspect.getsource(DailyTick.stop)
-    this, other = lin.make({"a": [(1, 1)]}), lin.make({"b": [(1, 1)]})
+    a, b = "a" * 32, "b" * 32  # two computers' keys
+    this, other = lin.make({a: [(1, 1)]}), lin.make({b: [(1, 1)]})
     first, second = lin.keep_this(this, [other]), lin.keep_this(other, [this])  # each kept its own
     assert lin.relation(first, second) == "diverged"  # asked once more, as it should
     again = lin.keep_this(first, [second])  # the same one kept again
     assert lin.renumbers(first, again)
-    saved = lin.bump(again, "a", 2)  # the save numbers the kept change anew
+    saved = lin.bump(again, a, 2)  # the save numbers the kept change anew
     assert lin.relation(second, saved) == "decided" and lin.relation(saved, second) == "behind"
     assert "renumbers(" in inspect.getsource(push.push)
     for rule in (decide._in_use, decide._use_here):
