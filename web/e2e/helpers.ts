@@ -29,8 +29,16 @@ export { expect };
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 
+/**
+ * A read retries a connection the server dropped as it was sent: uvicorn closes a keep-alive connection
+ * after 5 s without a request, and Playwright's request context reuses it with no idle limit of its own,
+ * so a read sent just under 5 s after the last one can end in "socket hang up" (ECONNRESET, the only error
+ * `maxRetries` retries). Changes are never retried: one that reached the server must not run twice.
+ */
+export const READ = { maxRetries: 2 } as const;
+
 export async function apiGet<T>(page: Page, path: string): Promise<T> {
-  const res = await page.request.get(path);
+  const res = await page.request.get(path, READ);
   expect(res.ok(), `GET ${path} → ${res.status()}`).toBe(true);
   return (await res.json()) as T;
 }
