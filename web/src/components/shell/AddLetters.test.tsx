@@ -12,7 +12,7 @@ import { qk } from "@/api/hooks";
 import { TEST_HEALTH, makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import type { Health } from "@/api/types";
-import { ACCEPTED_SHORT, AddLettersProvider, FileName, addDescription, claudeNotReady, fileKind, useAddLetters } from "./AddLetters";
+import { ACCEPT, ACCEPTED_SHORT, ACCEPTED_TYPES, AddLettersProvider, FileName, addDescription, claudeNotReady, fileKind, useAddLetters } from "./AddLetters";
 import { DropZone } from "./DropZone";
 
 let fetchSpy: ReturnType<typeof vi.fn>;
@@ -204,7 +204,7 @@ describe("files Ordnung can't read", () => {
     expect(toast).toHaveTextContent("notizen.docx isn't a file Ordnung reads");
     expect(toast).toHaveTextContent("JPG, PNG, WEBP, HEIC");
     // "e‑mail" with a non-breaking hyphen (U+2011): it never splits over two lines
-    expect(toast).toHaveTextContent("saved e\u2011mails (.eml)");
+    expect(toast).toHaveTextContent("saved e\u2011mails (.eml, Outlook .msg)");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -220,6 +220,22 @@ describe("files Ordnung can't read", () => {
     const rows = within(within(dialog).getByRole("list", { name: "Files to add" })).getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("E\u2011mail ·");
     expect(rows[1]).toHaveTextContent("Text file ·");
+  });
+});
+
+describe("Outlook files", () => {
+  it("accepts .msg and calls it an e‑mail", async () => {
+    expect(ACCEPT.split(",")).toEqual(expect.arrayContaining([".msg", "application/vnd.ms-outlook"]));
+    expect(ACCEPTED_TYPES).toBe("PDFs, photos (JPG, PNG, WEBP, HEIC), saved e\u2011mails (.eml, Outlook .msg) and text files");
+    expect(fileKind(new File(["x"], "Rechnung.msg", { type: "application/vnd.ms-outlook" })).label).toBe("E\u2011mail");
+    expect(fileKind(new File(["x"], "RECHNUNG.MSG", { type: "" })).label).toBe("E\u2011mail");
+    const user = renderAdder([new File([new Uint8Array([0xd0, 0xcf, 0x11, 0xe0])], "Rechnung.msg", { type: "" })]);
+    await user.click(screen.getByRole("button", { name: "Add them" }));
+    expect(screen.queryByText(/skipped/)).toBeNull();
+    const dialog = await screen.findByRole("dialog");
+    const [row] = within(within(dialog).getByRole("list", { name: "Files to add" })).getAllByRole("listitem");
+    expect(row).toHaveTextContent("Rechnung.msg");
+    expect(row).toHaveTextContent("E\u2011mail ·");
   });
 });
 

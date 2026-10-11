@@ -328,6 +328,8 @@ describe("Proof of sending", () => {
     // the next fitting kind is suggested (the receipt is already there)
     expect(within(dialog).getByRole("combobox", { name: "What is it?" })).toHaveValue("delivery_record");
     expect(within(dialog).getByText(/Deutsche Post's record of the day it was delivered/)).toBeInTheDocument(); // the kind's hint
+    // a sent e-mail can be saved from Outlook too (the server keeps it as an .eml copy)
+    expect(within(dialog).getByLabelText("File").getAttribute("accept")?.split(",")).toEqual(expect.arrayContaining([".eml", ".msg", "application/vnd.ms-outlook"]));
     // no file yet: the button says so (and focuses the file field) instead of sitting disabled
     await user.click(within(dialog).getByRole("button", { name: "Add proof" }));
     expect(within(dialog).getByText("Choose the photo or PDF of the proof.")).toBeInTheDocument();
