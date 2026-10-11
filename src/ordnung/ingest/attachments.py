@@ -10,7 +10,8 @@ e-mail's attachments are read like letters dropped in. The policy, which decides
 * **What is read** — PDFs and photos (JPEG, PNG, WEBP, HEIC/HEIF), decided by the bytes like any
   upload (:func:`~ordnung.ingest.intake.sniff_mime`), never by the declared type or the file name.
   Everything else — a zip, a Word file, a calendar invite, a text file, a forwarded e-mail — is
-  listed and not read.
+  listed and not read; so is an Outlook ``.msg`` or older Office file (an OLE compound file), even one
+  whose first bytes hold a PDF.
 * **Pictures inside the e-mail are skipped** — an image smaller than :data:`INLINE_IMAGE_MAX_BYTES`
   that the HTML body shows through a ``cid:`` link or that is not marked as an attachment is part of
   the e-mail's design (a logo, a tracking pixel); so is a larger one the HTML body shows whose shorter
@@ -45,6 +46,7 @@ from urllib.parse import unquote
 
 from ordnung.db.store import Store
 from ordnung.ingest.intake import IMAGE_TYPES, TOO_DEEP, IntakeError, image_size, safe_filename, sniff_mime
+from ordnung.ingest.outlook import is_ole
 from ordnung.models import Activity, AttachmentOutcome, Document, EmailAttachment
 
 MAX_ATTACHMENTS = 10
@@ -205,7 +207,7 @@ def _decide(part: Message, number: int, cids: frozenset[str], *, room: bool) -> 
 
 def _readable_type(data: bytes, filename: str) -> str | None:
     """The part's type when Ordnung reads it from e-mails (a PDF or a photo), by its bytes."""
-    if not data:
+    if not data or is_ole(data):  # an attached Outlook e-mail, like a forwarded one, is never opened
         return None
     try:
         mime = sniff_mime(data, filename)

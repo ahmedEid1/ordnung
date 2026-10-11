@@ -66,6 +66,7 @@ from ordnung.ingest.intake import (
     sniff_mime,
 )
 from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, DUNNING_ITEM_NOTE, rewarn_for_kind
+from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.ingest.plan import KIND_CHOSEN, is_statement, kind_chosen
 from ordnung.llm.replay import ReplayBackend
@@ -433,10 +434,12 @@ def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> DocumentDetai
 
 
 def _normalised(data: bytes, filename: str, combine_with: Sequence[bytes]) -> tuple[bytes, str]:
-    """The bytes and name Ordnung stores for an upload (photos combined into one PDF if asked)."""
+    """The bytes and name Ordnung stores for an upload (photos combined into one PDF if asked; an Outlook
+    ``.msg`` becomes its ``.eml`` copy before intake looks at it, :mod:`ordnung.ingest.outlook`)."""
     if combine_with:
         data = combine_images_to_pdf([data, *combine_with])
         filename = f"{Path(safe_filename(filename)).stem or 'photos'}.pdf"
+    data, filename = as_email(data, filename)
     body, _mime, name = normalise_upload(data, filename)
     return body, name
 

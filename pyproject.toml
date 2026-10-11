@@ -63,6 +63,9 @@ dependencies = [
   "keyring>=25",
   # phone access lists the network interfaces with their names and netmasks (pure Python)
   "ifaddr>=0.2",
+  # Outlook .msg files are opened as OLE compound files (pure Python; BSD-2-Clause, with PIL's licence for
+  # the code from PIL's OleFileIO)
+  "olefile>=0.47",
 ]
 
 [project.optional-dependencies]
