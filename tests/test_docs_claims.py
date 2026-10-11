@@ -3638,3 +3638,465 @@ def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so(
 def test_the_changelog_keeps_no_note_for_the_d1_integration() -> None:
     """The D1 integrator keeps or drops each line marked for it, then removes the mark."""
     assert "TODO(D1 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch D2 — compressed answers, a lighter letter list and Outlook .msg files: README, the CHANGELOG,
+# docs/privacy.md, SPEC, docs/architecture.md and ADR 0022
+# --------------------------------------------------------------------------------------------------
+
+#: A claim whose code comes with another D2 package (the docs package merges last): the D2 integrator removes the
+#: marker once that package is merged, or the claim and its test when the package didn't land.
+UNTIL_D2 = pytest.mark.xfail(strict=False, reason="until D2 integration")
+
+_ADR_COMPRESSED = ROOT / "docs" / "decisions" / "0022-compressed-answers-and-a-lighter-letter-list.md"
+#: The demo's committed database and files (``ordnung demo`` starts from a copy of them).
+_DEMO_DB = ROOT / "src" / "ordnung" / "demo" / "demo_db"
+#: The fictional Outlook e-mail the end-to-end tests add (``scripts/make_msg_fixture.py`` writes it).
+_OUTLOOK_FIXTURE = ROOT / "web" / "e2e" / "fixtures" / "outlook-bill.msg"
+#: The web app's text files, which go out gzipped (``api/compress.py``'s ``FILE_TYPES``).
+_APP_TEXT_FILES = frozenset({".js", ".css", ".svg", ".txt", ".json"})
+
+#: CHANGELOG, Unreleased → Changed: compressed answers and the lighter letter list (D2).
+D2_FASTER = (
+    "Faster on a big library and on the phone: Ordnung sends its answers and the web app's files compressed "
+    "(gzip), on the demo about 6 times less data for the answers and 3 times less for the app's files. The letter "
+    "list no longer carries each letter's explanation, key facts, references and bank details; the letter's own "
+    "page loads them, and *Download a copy of your records* still has every letter whole. Live updates, downloads, "
+    "signing in and pairing are never compressed "
+    "([ADR 0022](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md))."
+)
+#: CHANGELOG, Unreleased → Upgrading: what a script reading the letter list finds now.
+D2_LIST_SCRIPTS = (
+    "A script that reads the letter list (`GET /api/documents`) no longer finds `explanation`, `key_facts`, "
+    "`references`, `payment` or `sha256` in its rows: read them from the letter (`GET /api/documents/{id}`), or "
+    "every letter whole from `GET /api/documents.json` on the computer."
+)
+#: CHANGELOG, Unreleased → Added: e-mails saved from Outlook (D2-P3), its sentences in order.
+D2_OUTLOOK = (
+    "Ordnung now takes the `.msg` file Outlook saves (an e-mail dragged to the desktop, or saved with *Save as*) "
+    "wherever it takes an `.eml`: *Add letters*, your phone, the watched folder, `ordnung add` and proof of a sent "
+    "letter.",
+    "It opens the file on your computer and keeps the e-mail as an `.eml` copy named like the file, with its "
+    "sender, date, subject and text; every attached PDF or photo becomes a letter of its own.",
+    "The `.msg` itself isn't kept, so what only Outlook has (categories, flags, formatting) is lost: keep the file "
+    "if you need it.",
+    "The same file always makes the same copy, so adding it twice finds it already in Ordnung.",
+    "Signed or encrypted e-mails, calendar entries, contacts and tasks are refused with the reason, and an e-mail "
+    "whose text Outlook kept only as RTF comes in without its text (its attachments still come in).",
+    "Before, an Outlook file was refused (the watched folder left it alone), or taken for a PDF when an attached "
+    "PDF came first in it.",
+)
+#: README's Limitations: how e-mail comes in (it replaced "it can't open Outlook's `.msg` files").
+README_EMAIL_LIMIT = (
+    "E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy "
+    "(the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An Outlook e-mail whose text is "
+    "only in RTF comes in without its text (its attachments still come in), and a signed or encrypted one can't be "
+    "opened: save its attachments and add those."
+)
+#: docs/privacy.md, "Hardening built into every model call": what is compressed, and why that is safe.
+PRIVACY_COMPRESSED = (
+    "Answers are compressed (gzip) only when they are a JSON answer to a GET that sets no cookie; signing in, "
+    "pairing, downloads, a letter's files and live updates never are, and TLS's own compression is off on the "
+    "phone listener. An attack that reads secrets out of compressed HTTPS needs a website to make your phone send "
+    "Ordnung many requests, and the phone listener refuses requests from other sites "
+    "([ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md))."
+)
+#: docs/privacy.md, "Phone access (optional)": what the letter list leaves out.
+PRIVACY_LIST = "The letter list no longer carries bank details or key facts: a letter's page loads them when you open it."
+#: docs/privacy.md, "Your controls": an Outlook e-mail is kept as its .eml copy.
+PRIVACY_OUTLOOK = (
+    "An e-mail saved from Outlook (`.msg`) is opened on this computer and kept as an `.eml` copy; the `.msg` "
+    "itself isn't kept, so keep it yourself if you need the original."
+)
+#: ADR 0022: the rule for a later GET route with a secret in its answer.
+ADR_SECRET_RULE = (
+    "**The rule for later:** a new `GET` route whose JSON answer carries a secret (a code, a token, a password or "
+    "a key) gets a test that proves its answer is never compressed, or it isn't a `GET`."
+)
+
+
+def test_the_changelog_says_d2_compresses_answers_and_lightens_the_letter_list() -> None:
+    """CHANGELOG, Unreleased: Changed has D2's line after D1's, naming the fields the list leaves out; Upgrading
+    tells scripts where those fields are now, and they are exactly ``LEFT_OUT_OF_LIST``."""
+    from ordnung.api.routes.documents import LEFT_OUT_OF_LIST
+
+    changed = _unreleased("Changed")
+    assert f"- {D2_FASTER}" in changed
+    assert changed.index(D1_CHANGED[-1]) < changed.index(D2_FASTER)
+    assert f"- {D2_LIST_SCRIPTS}" in _unreleased("Upgrading")
+    named = D2_LIST_SCRIPTS.split("no longer finds", 1)[1].split(" in its rows", 1)[0]
+    assert set(re.findall(r"`(\w+)`", named)) == LEFT_OUT_OF_LIST
+
+
+def test_the_changelog_adds_e_mails_saved_from_outlook() -> None:
+    """CHANGELOG, Unreleased → Added: the Outlook bullet, its sentences in order."""
+    bullet = _bullet(_unreleased("Added"), "**E-mails saved from Outlook.**")
+    for sentence in D2_OUTLOOK:
+        assert sentence in bullet, sentence
+    assert [bullet.index(sentence) for sentence in D2_OUTLOOK] == sorted(bullet.index(s) for s in D2_OUTLOOK)
+
+
+def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
+    """SPEC § 4, § 12b and § 13: the list's rows are ``DocumentRow`` (``Document`` without ``LEFT_OUT_OF_LIST``,
+    plus ``found_in``), made in the route module; ``models.DocumentListEntry`` stays, unused; ``documents.json``
+    is every letter whole and computer-only ("records leave the computer", and the route checks again)."""
+    from ordnung import models
+    from ordnung.api.routes import documents
+
+    left_out = {"key_facts", "explanation", "references", "payment", "sha256"}
+    assert documents.LEFT_OUT_OF_LIST == left_out
+    assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {"found_in"}
+    assert hasattr(models, "DocumentListEntry")
+    components = openapi_schema()["components"]["schemas"]
+    assert "DocumentRow" in components and "DocumentListEntry" not in components
+    operation = ("GET", "/api/documents.json")
+    assert phone_scope.classify(*operation) == "computer"
+    assert phone_scope.NEVER_ON_PHONE[operation] == "records leave the computer"
+    (route,) = [r for r in documents.router.routes if isinstance(r, APIRoute) and r.path == "/documents.json"]
+    assert any(dependency.dependency is require_computer for dependency in route.dependencies)
+    spec = _spec()
+    for words in (
+        "`DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`, "
+        "`explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, or `null` "
+        "without a search) is what `GET /api/documents` lists",
+        "`models.DocumentListEntry` (the whole letter plus `found_in`) stays unused",
+        "GET list: `DocumentRow` rows (without `key_facts`, `explanation`, `references`, `payment` and `sha256`: "
+        "the letter's detail has them), each with `found_in`",
+        "`documents.json` (GET: every letter whole, as stored, newest first, without trash and proof files — the "
+        "letters of *Download a copy of your records*; computer-only)",
+        "and every letter whole (`documents.json`) are computer-only too",
+    ):
+        assert words in spec, words
+    assert "DocumentListEntry` rows" not in spec
+
+
+@UNTIL_D2
+def test_the_records_copy_takes_every_letter_whole() -> None:
+    """d2-list-consumers against the CHANGELOG: *Download a copy of your records* takes its letters from the
+    computer-only ``documents.json``, never from the lighter list."""
+    section = (ROOT / "web" / "src" / "features" / "settings" / "DataSection.tsx").read_text(encoding="utf-8")
+    export = section.split("async function buildExport()", 1)[1].split("\n}\n", 1)[0]
+    assert "api.documentsFull()" in export and "api.documents()" not in export
+
+
+def test_the_privacy_page_says_what_is_compressed_and_what_the_list_leaves_out() -> None:
+    """docs/privacy.md: what is compressed and why it is safe (with the hardening), the letter list on a phone,
+    and an Outlook e-mail kept as its ``.eml`` copy (with the e-mail attachments, and opened within limits)."""
+    hardening = _privacy_section("Hardening built into every model call")
+    assert PRIVACY_COMPRESSED in hardening
+    assert (
+        "An Outlook file is opened from memory, within limits on its size and structure, and its `.eml` copy then "
+        "passes the same checks."
+    ) in hardening
+    assert PRIVACY_LIST in _privacy_section("Phone access (optional)")
+    assert PRIVACY_OUTLOOK in _bullet(
+        _privacy_section("Your controls"), "**E-mail attachments follow the e-mail**"
+    )
+
+
+@UNTIL_D2
+async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> None:
+    """d2-compression against SPEC § 13, ADR 0022 and docs/architecture.md: JSON only, at least 1 KiB, level 6, a
+    thread from 128 KiB, never with a cookie, a download's or a file's headers; the outermost middleware; the web
+    app's five text types; TLS compression off on the phone listener."""
+    from ordnung.api import compress
+    from ordnung.phone import access
+
+    assert (compress.GZIP_LEVEL, compress.MIN_BYTES, compress.THREAD_BYTES) == (6, 1024, 128 * 1024)
+    assert compress.COMPRESSIBLE == frozenset({"application/json"})
+    never = {
+        b"set-cookie",
+        b"content-disposition",
+        b"etag",
+        b"accept-ranges",
+        b"content-range",
+        b"content-encoding",
+    }
+    assert never <= set(compress.NEVER_WITH)
+    assert set(compress.FILE_TYPES) == _APP_TEXT_FILES
+    assert "ssl.OP_NO_COMPRESSION" in inspect.getsource(access.listener_config)
+    async with api_for(data_dir) as api:
+        # the middleware added last is the outermost
+        assert api.app.user_middleware[0].cls is compress.CompressMiddleware
+        zipped = await api.client.get("/api/rules", headers={"Accept-Encoding": "gzip"})
+        plain = await api.client.get("/api/rules", headers={"Accept-Encoding": "identity"})
+    assert zipped.headers.get("content-encoding") == "gzip" and "content-encoding" not in plain.headers
+    assert zipped.json() == plain.json() and "Accept-Encoding" in zipped.headers["vary"]
+
+
+def test_adr_0022_states_the_rule_for_a_secret_in_a_get_answer_and_the_readme_lists_it() -> None:
+    """ADR 0022 (numbered after 0021, listed in README's Documentation) says why compression is safe here and
+    the rule a later route with a secret in a GET answer must follow; it keeps ``models.py`` untouched."""
+    text = _ADR_COMPRESSED.read_text(encoding="utf-8")
+    assert text.startswith("# ADR 0022 — Compressed answers and a lighter letter list\n")
+    assert "**Status:** accepted" in text
+    adr = _flat(text)
+    assert ADR_SECRET_RULE in adr
+    for words in (
+        "## Why compression is safe here (BREACH)",
+        "**`models.py` is untouched on purpose.**",
+        "**Starlette's `GZipMiddleware`:**",
+    ):
+        assert words in adr, words
+    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    assert f"(docs/decisions/{_ADR_COMPRESSED.name})" in documentation
+    assert "[0022 compressed answers and a lighter letter list]" in documentation
+
+
+def _stated_bytes(text: str) -> float:
+    """``about 2.9 MB`` → 2.9e6; ``about 91 KB`` → 91e3."""
+    found = re.fullmatch(r"about ([\d.]+) (KB|MB)", text)
+    assert found is not None, text
+    return float(found[1]) * (1e3 if found[2] == "KB" else 1e6)
+
+
+async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
+    """ADR 0022's Measured, on a copy of the demo: the letter list whole, as ``DocumentRow``s and gzipped at level 6
+    (the middleware's rules: 1 KiB and up, when it shrinks), the share the five fields took, the JSON answers to the
+    app's GETs without parameters, and the web app's text files gzipped at level 9 (files under 1 KiB as they are).
+    Each "about" is within a tenth."""
+    import gzip
+
+    from fake_caldav import MemorySecrets
+    from ordnung.api.routes import calendar_sync
+    from ordnung.api.routes import sync as sync_routes
+
+    def sent(body: bytes) -> int:
+        packed = gzip.compress(body, compresslevel=6, mtime=0)
+        return len(packed) if len(body) >= 1024 and len(packed) < len(body) else len(body)
+
+    def near(value: float, stated: float) -> bool:
+        return abs(value - stated) <= stated / 10
+
+    data = tmp_path / "demo"
+    shutil.copytree(_DEMO_DB, data)
+    raw = wire = 0
+    async with api_for(data, demo=True) as api:
+        # not the real keyring
+        api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: MemorySecrets()
+        api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
+        listed = await api.client.get("/api/documents")
+        whole = await api.client.get("/api/documents.json")
+        for path, operations in openapi_schema()["paths"].items():
+            get = operations.get("get")
+            if get is None or "{" in path or path in {"/api/events", "/api/health"}:
+                continue
+            if any(parameter.get("required") for parameter in get.get("parameters", [])):
+                continue
+            answer = await api.client.get(path)
+            if answer.status_code == 200 and answer.headers["content-type"].startswith("application/json"):
+                raw, wire = raw + len(answer.content), wire + sent(answer.content)
+    assert len(listed.json()) == len(whole.json()) == 22
+    measured = _flat(
+        _ADR_COMPRESSED.read_text(encoding="utf-8").split("## Measured", 1)[1].split("\n## ", 1)[0]
+    )
+    assert "On a copy of the demo (22 letters)" in measured
+    stated = [_stated_bytes(text) for text in re.findall(r"about [\d.]+ [KM]B", measured)]
+    assert len(stated) == 7, stated
+    whole_size, list_size, list_sent, answers_raw, answers_sent, files_raw, files_sent = stated
+    assert near(len(whole.content), whole_size) and near(len(listed.content), list_size)
+    assert near(sent(listed.content), list_sent)
+    assert f"{round(100 * (1 - sent(listed.content) / len(whole.content)))} % less on the wire" in measured
+    assert 0.65 <= 1 - len(listed.content) / len(whole.content) < 0.75  # "nearly three quarters"
+    assert "the five fields left out were nearly three quarters of its bytes" in measured
+    assert near(raw, answers_raw) and near(wire, answers_sent)
+    assert f"about {round(raw / wire)} times less" in measured
+    files = [
+        path.read_bytes()
+        for path in (ROOT / "src" / "ordnung" / "web" / "dist").rglob("*")
+        if path.is_file() and path.suffix.lower() in _APP_TEXT_FILES
+    ]
+    packed = [
+        min(len(gzip.compress(body, compresslevel=9, mtime=0)), len(body))
+        for body in files
+        if len(body) >= 1024
+    ]
+    size = sum(map(len, files))
+    gzipped = sum(packed) + sum(len(body) for body in files if len(body) < 1024)
+    assert near(size, files_raw) and near(gzipped, files_sent)
+    assert f"about {round(size / gzipped)} times less" in measured
+
+
+def test_readme_says_outlook_files_come_in_as_an_eml_copy() -> None:
+    """README: the "Also" line names Outlook's ``.msg``; Limitations no longer say it can't be opened, still say
+    Ordnung doesn't fetch mail from a mailbox, and say what an Outlook e-mail loses."""
+    readme = _flat(_readme())
+    assert (
+        "and e-mails (`.eml`, or Outlook's `.msg`) whose PDF and photo attachments become letters" in readme
+    )
+    assert README_EMAIL_LIMIT in _limitations()
+    assert "can't open Outlook's `.msg` files" not in readme
+
+
+@UNTIL_D2
+def test_outlook_files_come_in_where_the_docs_say() -> None:
+    """d2-outlook against README, the CHANGELOG and SPEC § 8: an Outlook file becomes an ``.eml`` copy named like
+    it, the same copy every time, before intake looks at it — at upload and the phone, the watched folder (which
+    watches ``.msg`` as SPEC § 8.1 lists), ``ordnung add`` and proof of a sent letter; the web app's pickers take
+    it; signed or encrypted ones are refused; olefile is a dependency."""
+    from ordnung import cli
+    from ordnung.api.routes import documents
+    from ordnung.drafts import sent
+    from ordnung.ingest import outlook, watcher
+    from ordnung.ingest.intake import sniff_mime
+
+    data = _OUTLOOK_FIXTURE.read_bytes()
+    body, name = outlook.as_email(data, "outlook-bill.msg")
+    assert name == "outlook-bill.eml" and outlook.as_email(data, "outlook-bill.msg") == (body, name)
+    assert sniff_mime(body, name) == "message/rfc822"
+    assert outlook.as_email(b"%PDF-1.7\n", "x.pdf") == (b"%PDF-1.7\n", "x.pdf")
+    assert "signed or encrypted" in outlook.ENCRYPTED
+    for function in (documents._normalised, sent.add_proof, cli._add_in_process, watcher.FolderWatcher._add):
+        source = inspect.getsource(function)  # called directly or in a thread (asyncio.to_thread)
+        assert re.search(r"\bas_email\b", source), function.__qualname__
+    listed = re.search(r"Files directly in the folder with a type Ordnung reads \(`([^`]+)`", _spec())
+    assert listed is not None and set(listed[1].split()) == set(watcher.WATCHED_SUFFIXES)
+    assert "Letters to add (PDF, photos, .txt/.eml/.msg)." in inspect.getsource(cli.add)
+    web = ROOT / "web" / "src"
+    for picker in (web / "components/shell/AddLetters.tsx", web / "features/letters/AddProofDialog.tsx"):
+        assert ".msg" in picker.read_text(encoding="utf-8"), picker.name
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert any(dependency.startswith("olefile>=") for dependency in pyproject["project"]["dependencies"])
+
+
+def test_the_spec_architecture_and_privacy_describe_outlook_files() -> None:
+    """SPEC § 3.2, § 8 and § 8.1, docs/architecture.md's diagram and trust boundaries, and docs/privacy.md's table:
+    an Outlook ``.msg`` comes in as its ``.eml`` copy."""
+    spec = _spec()
+    for words in (
+        "ifaddr (phone access: the network interfaces with their netmasks), olefile (Outlook `.msg` files)",
+        "**Outlook files** (`ingest/outlook.py`, policy in its docstring). An Outlook `.msg` (an OLE compound file, "
+        "whatever its name) becomes the `.eml` copy Ordnung stores, named like the file (`Rechnung.msg` → "
+        "`Rechnung.eml`), before intake looks at its bytes",
+        "The `.msg` itself is not kept.",
+        "Files directly in the folder with a type Ordnung reads (`.pdf .jpg .jpeg .png .webp .heic .heif .txt .eml "
+        ".msg`, any case)",
+    ):
+        assert words in spec, words
+    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    assert 'L["Letters · PDFs · phone photos · .eml · .msg"]' in architecture
+    (row,) = [line for line in architecture.splitlines() if line.startswith("| Outlook file → e-mail |")]
+    assert "`ingest/outlook.py`" in row and "then passes the upload checks below" in row
+    privacy = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (glance,) = [line for line in privacy.splitlines() if line.startswith("| Original files")]
+    assert "an Outlook e-mail as its `.eml` copy" in glance
+
+
+def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
+    """SPEC § 13 and docs/architecture.md: what is compressed, on both listeners; the middleware is the outermost,
+    decides on an answer's start and lets a live stream through at once; the web app's files are gzipped once."""
+    assert (
+        "Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes "
+        "out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread)"
+    ) in _spec()
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    concurrency = architecture.split("## Concurrency model", 1)[1].split(" ## ", 1)[0]
+    for words in (
+        "**Compressed answers** (`api/compress.py`, "
+        "[ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).",
+        "the outermost middleware on both listeners (then the security checks or the phone's gate, then sync's gate)",
+        "anything else, a live stream first of all, passes at once",
+        "The web app's text files are gzipped once and kept in memory, per file and version.",
+    ):
+        assert words in concurrency, words
+
+
+@UNTIL_D2
+def test_the_tests_the_architecture_names_for_d2_exist() -> None:
+    """docs/architecture.md's testing strategy names D2's tests; they come with the other D2 packages."""
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for path in (
+        "tests/test_compress.py",
+        "web/e2e/real-app-compression.spec.ts",
+        "web/e2e/letter-list-rows.spec.ts",
+        "tests/test_outlook.py",
+        "tests/test_outlook_intake.py",
+    ):
+        assert f"`{path}`" in architecture, path
+        assert (ROOT / path).is_file(), path
+
+
+def test_the_changelog_keeps_no_note_for_the_d2_integration() -> None:
+    """No line of the CHANGELOG waits for the D2 integrator's decision any more."""
+    assert "TODO(D2 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+
+#: CHANGELOG, Unreleased → Fixed: stopping the daily check waits for its work (d2-races).
+D2_TICK_FIXED = (
+    "Stopping Ordnung, or handing over to another computer with hand-off sync, while the daily check was at work "
+    "(the day's to-dos and Ideas, calendar sync) didn't wait for that work. It went on after the check had stopped: "
+    "the day's to-dos were no longer kept apart from a letter being read at that moment, and a hand-over could be "
+    "saved before the work ended. Stopping now waits for it, at most 10 seconds."
+)
+#: CHANGELOG, Unreleased → Fixed: hand-off sync's question settles when it is answered once more (d2-races).
+D2_SYNC_FIXED = (
+    "When two computers had answered hand-off sync's question (which computer's Ordnung to keep) apart, each "
+    "keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle "
+    "it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung "
+    "another computer had already kept, exactly as it is, is no longer asked again."
+)
+#: SPEC § 9: stopping the daily tick waits for its worker thread.
+SPEC_TICK_STOP = (
+    "Its work runs in worker threads, and stopping it (Ordnung stops, or hand-off sync stands this computer by) "
+    "waits for a running one, at most 10 s (`STOP_WAIT_S`): the ledger lock stays held until the day's work has "
+    "ended, and no thread of the tick still uses the store once it closes."
+)
+#: SPEC § 12c, Versions: two answers given apart, then asked once more.
+SPEC_ANSWERED_AGAIN = (
+    "A choice that keeps changes another answer dropped (two answers given apart, and the person asked once more) "
+    "leaves them out under their old numbers, and the save numbers them anew (`lineage.renumbers`), so the answer "
+    "given then stands; a version with the same content as one another computer kept in a choice counts what that "
+    "choice dropped as answered (`decide._informed`), so it isn't asked again."
+)
+
+
+def test_the_changelog_says_what_d2_fixed_in_the_daily_check_and_hand_off_sync() -> None:
+    """CHANGELOG, Unreleased → Fixed: the daily check's stop and hand-off sync's settled question, after the
+    Windows lines; SPEC § 9 and § 12c say the same."""
+    fixed = _unreleased("Fixed")
+    for line in (D2_TICK_FIXED, D2_SYNC_FIXED):
+        assert f"- {line}" in fixed, line
+    assert (
+        fixed.index("Windows: once Ordnung has stopped")
+        < fixed.index(D2_TICK_FIXED)
+        < fixed.index(D2_SYNC_FIXED)
+    )
+    spec = _spec()
+    assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
+    assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
+    architecture = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    (row,) = [
+        line
+        for line in architecture.splitlines()
+        if line.startswith("| **Whose content is newer** (lineage)")
+    ]
+    assert (
+        "(two answers given apart are asked about once more, and the answer given then stands: the changes it keeps "
+        "again are numbered anew)"
+    ) in row
+
+
+@UNTIL_D2
+def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
+    """d2-races against the CHANGELOG and SPEC: every thread call of the daily tick is waited for on a cancel (at
+    most 10 s); two answers given apart, then answered once more by keeping the same version, leave the other
+    computer seeing that answer as having decided, and the save numbers the kept changes anew; a version with the
+    same content as one kept elsewhere counts that choice's drops as answered."""
+    import ordnung.tick as tick_module
+    from ordnung.sync import decide, push
+    from ordnung.sync import lineage as lin
+
+    assert tick_module.STOP_WAIT_S == 10  # "at most 10 seconds"
+    assert "asyncio.to_thread(" not in inspect.getsource(DailyTick)
+    assert "STOP_WAIT_S" in inspect.getsource(DailyTick.stop)
+    this, other = lin.make({"a": [(1, 1)]}), lin.make({"b": [(1, 1)]})
+    first, second = lin.keep_this(this, [other]), lin.keep_this(other, [this])  # each kept its own
+    assert lin.relation(first, second) == "diverged"  # asked once more, as it should
+    again = lin.keep_this(first, [second])  # the same one kept again
+    assert lin.renumbers(first, again)
+    saved = lin.bump(again, "a", 2)  # the save numbers the kept change anew
+    assert lin.relation(second, saved) == "decided" and lin.relation(saved, second) == "behind"
+    assert "renumbers(" in inspect.getsource(push.push)
+    for rule in (decide._in_use, decide._use_here):
+        assert "_informed(" in inspect.getsource(rule), rule.__name__

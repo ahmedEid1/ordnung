@@ -128,9 +128,9 @@ phone's address on your Wi-Fi), and a stand-in for the sync tool copies the fold
 computers; the picture shows a typical path for that folder instead of its temporary one. The phone picture
 puts three moments side by side: the code, the paired phone, and the computer once it paired.
 
-**Also:** *one inbox* — a watched folder for your scanner or phone app, and e-mails (`.eml`) whose PDF
-and photo attachments become letters; new files wait on your computer until you choose *Read these* or
-*Keep private* · *template letters* — withdrawal, more time, instalments, defect notice, GDPR access,
+**Also:** *one inbox* — a watched folder for your scanner or phone app, and e-mails (`.eml`, or Outlook's
+`.msg`) whose PDF and photo attachments become letters; new files wait on your computer until you choose
+*Read these* or *Keep private* · *template letters* — withdrawal, more time, instalments, defect notice, GDPR access,
 inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
 desktop notification (discreet by default) while the browser is closed, start at login, optional sync
 with your own CalDAV calendar · *app-menu shortcut* — open Ordnung from your app menu, Start menu or
@@ -733,8 +733,10 @@ More in [docs/architecture.md](docs/architecture.md).
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
   sends no reminders and reads no letters, and calendar sync is connected on each computer.
-- E-mailed letters come in as saved `.eml` files. Ordnung doesn't fetch mail from a mailbox, and it can't
-  open Outlook's `.msg` files: save the e-mail as `.eml` first.
+- E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy
+  (the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An Outlook e-mail whose text is
+  only in RTF comes in without its text (its attachments still come in), and a signed or encrypted one can't be
+  opened: save its attachments and add those.
 - Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app password
   (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get the calendar
   file: a snapshot whose alarms fire, but dates from letters read later reach it only when you download and import
@@ -776,8 +778,9 @@ More in [docs/architecture.md](docs/architecture.md).
   [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
   [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md),
   [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md),
-  [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)
-  and [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md)
+  [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md),
+  [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md)
+  and [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)
 
 ## How this was built
 

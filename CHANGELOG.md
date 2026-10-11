@@ -85,6 +85,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   and for which data folder. It also says when the command has to run again (Ordnung was installed somewhere
   else), and when a launcher Ordnung didn't write is in the way. The demo isn't added: it opens with
   `ordnung demo`.
+- **E-mails saved from Outlook.** Ordnung now takes the `.msg` file Outlook saves (an e-mail dragged to the
+  desktop, or saved with *Save as*) wherever it takes an `.eml`: *Add letters*, your phone, the watched folder,
+  `ordnung add` and proof of a sent letter. It opens the file on your computer and keeps the e-mail as an
+  `.eml` copy named like the file, with its sender, date, subject and text; every attached PDF or photo
+  becomes a letter of its own. The `.msg` itself isn't kept, so what only Outlook has (categories, flags,
+  formatting) is lost: keep the file if you need it. The same file always makes the same copy, so adding it
+  twice finds it already in Ordnung. Signed or encrypted e-mails, calendar entries, contacts and tasks are
+  refused with the reason, and an e-mail whose text Outlook kept only as RTF comes in without its text (its
+  attachments still come in). Before, an Outlook file was refused (the watched folder left it alone), or taken
+  for a PDF when an attached PDF came first in it.
 - **Releases.** A version tag builds the wheel and the source package, checks them, and publishes a GitHub
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
@@ -129,6 +139,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - Ask no longer goes through every letter to work out the key a question is logged and replayed under when
   nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s
   less per question with 500 letters, more with a bigger archive.
+- Faster on a big library and on the phone: Ordnung sends its answers and the web app's files compressed
+  (gzip), on the demo about 6 times less data for the answers and 3 times less for the app's files. The letter
+  list no longer carries each letter's explanation, key facts, references and bank details; the letter's own
+  page loads them, and *Download a copy of your records* still has every letter whole. Live updates, downloads,
+  signing in and pairing are never compressed
+  ([ADR 0022](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).
 
 ### Fixed
 
@@ -181,6 +197,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - Windows: once Ordnung has stopped, its database is closed. Hand-off sync's thread, which ends as Ordnung
   stops, could still be closing its connection a moment later, so the data folder couldn't be deleted or
   replaced right away.
+- Stopping Ordnung, or handing over to another computer with hand-off sync, while the daily check was at work
+  (the day's to-dos and Ideas, calendar sync) didn't wait for that work. It went on after the check had stopped:
+  the day's to-dos were no longer kept apart from a letter being read at that moment, and a hand-over could be
+  saved before the work ended. Stopping now waits for it, at most 10 seconds.
+- When two computers had answered hand-off sync's question (which computer's Ordnung to keep) apart, each
+  keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle
+  it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung
+  another computer had already kept, exactly as it is, is no longer asked again.
 
 ### Upgrading
 
@@ -199,6 +223,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   and never takes them away, and saving the profile there forgets the move. Update both computers.
 - Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and
   says so until the next one, which counts.
+- A script that reads the letter list (`GET /api/documents`) no longer finds `explanation`, `key_facts`,
+  `references`, `payment` or `sha256` in its rows: read them from the letter (`GET /api/documents/{id}`), or
+  every letter whole from `GET /api/documents.json` on the computer.
 
 ## 0.2.0 — 2026-10-08
 
