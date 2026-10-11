@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import re
+import shutil
 import sys
 import threading
 import time
@@ -25,10 +27,12 @@ import pytest
 from fixtures_llm import TAX_LETTER, record_events
 from helpers_secretary import add_doc, seed_ledger
 from ordnung import clock
+from ordnung.assistant import ask
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ingest import pipeline
 from ordnung.ingest.pipeline import add_file
+from ordnung.llm.base import Usage
 from ordnung.models import DocumentExtraction, Evidence, Identifier, PaymentDetails
 from ordnung.secretary import triggers
 from ordnung.secretary.week import pending_items
@@ -378,6 +382,38 @@ def test_the_ideas_refresh_and_the_week_page_grow_with_the_letters_not_their_squ
     (small_ideas, small_week), (large_ideas, large_week) = (work[letters] for letters in GROWTH_LETTERS)
     assert large_ideas / small_ideas < GROWTH_LIMIT, work
     assert large_week / small_week < GROWTH_LIMIT, work
+
+
+def test_a_second_question_does_not_hash_the_ledger_again(
+    inbox: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ask's replay key carries a hash of the whole ledger (0.1 s at 500 letters, growing with them). A
+    question writes its chat and usage-log rows, which don't change the ledger: the next question's key
+    reuses the hash. The gate is the number of runs, like the page gates above."""
+    copy = tmp_path / "data"
+    shutil.copytree(inbox, copy)  # the questions write: never into the shared inbox
+    monkeypatch.setattr(ask._LEDGER_MEMO, "verify", False)  # count the memo's own runs only
+    runs: list[str] = []
+    original = ask.ledger_fingerprint
+
+    def counted(store: Store) -> str:
+        runs.append(original(store))
+        return runs[-1]
+
+    monkeypatch.setattr(ask, "ledger_fingerprint", counted)
+    with Store.open(Paths(copy)) as store:
+        first = ask.ask_cache_key(store, "What is due?", [], TODAY)
+        store.add_chat_message("thr_perf", "user", "What is due?")
+        store.add_chat_message("thr_perf", "assistant", "Nothing this week.")
+        store.log_llm_call(
+            "ask", "test-model", "fake", Usage(input_tokens=900, output_tokens=120), request_key=first
+        )
+        second = ask.ask_cache_key(store, "What else?", [], TODAY)
+        assert len(runs) == 1
+        assert json.loads(second[len("ask:") :])["ledger"] == runs[0] == original(store)
+        store.update_item(store.list_items(limit=1)[0].id, title="Changed")
+        ask.ask_cache_key(store, "What else?", [], TODAY)
+        assert len(runs) == 2  # a change to the ledger: worked out again
 
 
 def test_the_week_page_counts_each_new_letters_open_to_dos(inbox: Path) -> None:

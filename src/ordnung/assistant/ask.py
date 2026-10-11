@@ -36,6 +36,9 @@ import contextlib
 import json
 import logging
 import re
+import sqlite3
+import threading
+import weakref
 from collections import deque
 from collections.abc import AsyncGenerator, AsyncIterator, Collection, Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
@@ -181,6 +184,9 @@ def ledger_fingerprint(store: Store) -> str:
     the letters' page texts, the parties' shared fields, no timestamps), so a recorded answer replays
     only against the ledger it was recorded from — a changed warning, IBAN or page text makes a new
     recording necessary.
+
+    :func:`ask_cache_key` keeps it per state of the ledger (:class:`_LedgerMemo`); a table it starts to read
+    must join :data:`ordnung.db.store.LEDGER_TABLES`.
     """
     profile = store.get_profile()
     documents = store.list_documents()
@@ -202,6 +208,55 @@ def ledger_fingerprint(store: Store) -> str:
     )
 
 
+def _ledger_token(store: Store) -> tuple[int, int, int] | None:
+    try:
+        return store.ledger_token()
+    except sqlite3.Error:
+        logger.debug("Ask: no ledger token, the fingerprint is worked out afresh", exc_info=True)
+        return None
+
+
+class _LedgerMemo:
+    """The ledger fingerprint last worked out per store and thread, kept while :meth:`Store.ledger_token`
+    stays as it was. A token only compares with one taken on the same store and thread (its own connection),
+    so the memo is per store (weakly held) and per thread. Without a token (inside a transaction, or an SQLite
+    error) the fingerprint is worked out afresh and not kept; nor is it when the token moved while it was
+    worked out (its reads are not one snapshot). ``verify`` (the tests, ``conftest.py``): work it out again on
+    every hit, note any difference in ``mismatches`` and use the fresh value."""
+
+    def __init__(self) -> None:
+        self.verify = False
+        self.mismatches: list[str] = []
+        self._lock = threading.Lock()
+        self._stores: weakref.WeakKeyDictionary[Store, threading.local] = weakref.WeakKeyDictionary()
+
+    def _local(self, store: Store) -> threading.local:
+        with self._lock:
+            local = self._stores.get(store)
+            if local is None:
+                local = self._stores[store] = threading.local()
+            return local
+
+    def fingerprint(self, store: Store) -> str:
+        """``ledger_fingerprint(store)``, from the memo while the ledger is as it was."""
+        before = _ledger_token(store)
+        local = self._local(store)
+        kept: tuple[tuple[int, int, int], str] | None = getattr(local, "kept", None)
+        if before is not None and kept is not None and kept[0] == before:
+            if self.verify and (fresh := ledger_fingerprint(store)) != kept[1]:
+                self.mismatches.append(f"{store.db_path}: kept {kept[1][:12]} != fresh {fresh[:12]}")
+                return fresh
+            return kept[1]
+        value = ledger_fingerprint(store)
+        if before is not None and _ledger_token(store) == before:  # nothing changed while it was worked out
+            local.kept = (before, value)
+        return value
+
+
+#: Ask's replay key reuses the ledger fingerprint while the ledger is unchanged (:func:`ask_cache_key`).
+_LEDGER_MEMO = _LedgerMemo()
+
+
 def ask_cache_key(
     store: Store, question: str, history: Sequence[ChatMessage], today: date, *, masked_numbers: bool = False
 ) -> str:
@@ -214,7 +269,7 @@ def ask_cache_key(
     basis: dict[str, Any] = {
         "question": " ".join(question.split()),
         "today": today.isoformat(),
-        "ledger": ledger_fingerprint(store),
+        "ledger": _LEDGER_MEMO.fingerprint(store),
         "history": stable_hash([[m.role, m.content] for m in history]) if history else None,
     }
     if masked_numbers:
