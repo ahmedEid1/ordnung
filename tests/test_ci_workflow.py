@@ -154,6 +154,7 @@ PER_SYSTEM_TESTS = (
     "tests/test_platform_smoke.py",  # the real lookups, the disk-encryption probe among them
     "tests/test_shortcut.py",  # the Mac bundle opened; the Windows link read back by the shell and opened
     "tests/test_encryption.py",  # no answer and no process on Windows; nothing in it depends on the system
+    "tests/test_store_ledger_token.py",  # SQLite's data_version and TEMP triggers, in each system's own SQLite
 )
 
 
