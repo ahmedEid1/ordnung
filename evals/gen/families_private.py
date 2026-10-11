@@ -17,7 +17,7 @@ from . import orgs as O
 from .common import Case, event_period_item, fixed_item, spec, today_after, truth, undated_item
 from .families_admin import STYLES, check, created
 from .law import fmt
-from .pdf import Letter, Org, P, Person, Sign, Style, Table
+from .pdf import Block, Letter, Org, P, Person, Sign, Style, Table
 from .text import de, de_long, de_weekday, en_uk, en_us, eur_plain
 
 INVOICE_RULE = "Payment period in days after the invoice date: the invoice day is not counted (§ 187 Abs. 1 BGB); § 193 BGB moves an end on Sat/Sun/holiday to the next working day."
@@ -242,7 +242,7 @@ def appointment() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, split: str, variant: str, org: Org, person: Person, letter_date: date, when: date, time: str, subject: str,
-             refs: list[tuple[str, str]], body: list, key: list[str], kind: str = "appointment", photo: bool = False, note: str = "",
+             refs: list[tuple[str, str]], body: list[Block], key: list[str], kind: str = "appointment", photo: bool = False, note: str = "",
              amounts: list[float] | None = None) -> Case:  # fmt: skip
         item = check(
             fixed_item(due=when, region=org.region, kind="appointment", nature="appointment", title=subject, time=time,
@@ -367,7 +367,7 @@ def contract_confirmation() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, split: str, variant: str, org: Org, person: Person, letter_date: date, subject: str, refs: list[tuple[str, str]],
-             blocks: list, contract: dict, key: list[str], kind: str = "contract") -> Case:  # fmt: skip
+             blocks: list[Block], contract: dict[str, Any], key: list[str], kind: str = "contract") -> Case:  # fmt: skip
         letter = Letter(
             org=org, recipient=person, info=[*refs, ("Datum", de(letter_date))], subject=subject,
             salutation=f"Hallo {person.name.split()[0]}," if variant == "A" else "Sehr geehrte Kundin, sehr geehrter Kunde,",
@@ -485,7 +485,7 @@ def price_increase() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, split: str, variant: str, org: Org, person: Person, letter_date: date, effective: date, regime: str,
-             old: float, new: float, subject: str, refs: list[tuple[str, str]], blocks: list, key: list[str], category: str) -> Case:  # fmt: skip
+             old: float, new: float, subject: str, refs: list[tuple[str, str]], blocks: list[Block], key: list[str], category: str) -> Case:  # fmt: skip
         cancel_by = effective - timedelta(days=1)
         why = f"Effective {fmt(effective)}. " + (
             "§ 41 Abs. 5 EnWG: the customer may cancel without notice with effect from the change; the cancellation must reach the "
@@ -598,7 +598,7 @@ def english_letter() -> list[Case]:
         person: Person,
         info: list[tuple[str, str]],
         subject: str,
-        blocks: list,
+        blocks: list[Block],
         variant: str,
         when: date,
         sal: str,

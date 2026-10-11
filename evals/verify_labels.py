@@ -32,10 +32,10 @@ from collections import defaultdict
 from collections.abc import Callable
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-import holidays
 import pdfplumber
+from holidays.countries.germany import Germany
 
 D = date
 LAENDER = ("BW", "BY", "BE", "BB", "HB", "HH", "HE", "MV", "NI", "NW", "RP", "SL", "SN", "ST", "SH", "TH")
@@ -53,7 +53,7 @@ def _hol(region: str | None) -> Any:
     if key not in _HOLIDAYS:
         # 'catholic' = holidays of only part of a Land (Mariä Himmelfahrt in BY, Fronleichnam in parts of SN/TH)
         categories = ("public", "catholic") if key[1] else ("public",)
-        _HOLIDAYS[key] = holidays.Germany(subdiv=region, years=range(2023, 2030), categories=categories)
+        _HOLIDAYS[key] = Germany(subdiv=region, years=range(2023, 2030), categories=categories)
     return _HOLIDAYS[key]
 
 
@@ -555,7 +555,7 @@ def check_dates(entries: list[dict[str, Any]]) -> tuple[int, list[str]]:
                         f"{cid} {slot}: expected ambiguous {fact[1]}, label {label} {item.get('candidates')}"
                     )
                 continue
-            fn, args, region = fact
+            fn, args, region = cast(Rule, fact)  # absent, undatable and ambiguous facts went above
             mine = fn(*args, region=region)
             checked += 1
             if label != mine.isoformat():

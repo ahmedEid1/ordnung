@@ -320,9 +320,9 @@ def environment() -> dict[str, str]:
     import zlib
 
     import fpdf
-    import holidays
     import PIL
     import pypdfium2.version as pdfium_version
+    from holidays.version import __version__ as holidays_version
 
     return {
         "fpdf2": fpdf.__version__,
@@ -330,7 +330,7 @@ def environment() -> dict[str, str]:
         "pdfium": str(pdfium_version.PDFIUM_INFO),
         "pillow": PIL.__version__,
         "zlib": zlib.ZLIB_RUNTIME_VERSION,
-        "holidays": holidays.__version__,
+        "holidays": holidays_version,
     }
 
 

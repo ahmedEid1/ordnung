@@ -12,6 +12,7 @@ the computed label.
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 from . import orgs as O
 from .common import (
@@ -238,7 +239,7 @@ def municipal_decision() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, variant: str, org: Org, person: Person, salutation: str, posted: date, remedy: str, subject: str,
-             az: str, body: list[Block], hand: str, extra_items: list | None = None, photo: bool = False,
+             az: str, body: list[Block], hand: str, extra_items: list[dict[str, Any]] | None = None, photo: bool = False,
              court: tuple[str, str] | None = None, key: list[str] | None = None, notes: str = "") -> Case:  # fmt: skip
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
@@ -374,7 +375,7 @@ def social_decision() -> list[Case]:
 
     def make(case_id: str, variant: str, org: Org, person: Person, salutation: str, posted: date, kind: str, subject: str,
              refs: list[tuple[str, str]], body: list[Block], hand: str, amounts: list[float] | None = None,
-             extra_items: list | None = None, photo: bool = False, notes: str = "") -> Case:  # fmt: skip
+             extra_items: list[dict[str, Any]] | None = None, photo: bool = False, notes: str = "") -> Case:  # fmt: skip
         item = check(
             objection_item(
                 posted=posted,

@@ -16,6 +16,7 @@ hand from the calendar and is asserted against the computed label.
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
 from . import law
 from . import orgs as O
@@ -271,7 +272,7 @@ def municipal_decision() -> list[Case]:
 
     def make(case_id: str, variant: str, org: Org, person: Person, salutation: str, posted: date, remedy: str, subject: str,
              ref: tuple[str, str], body: list[Block], belehrung: list[str], key: str, hand: str, signer: tuple[str, ...],
-             extra_items: list | None = None, photo: bool = False, notes: str = "", more_keys: list[str] | None = None,
+             extra_items: list[dict[str, Any]] | None = None, photo: bool = False, notes: str = "", more_keys: list[str] | None = None,
              extra_info: list[tuple[str, str]] | None = None) -> Case:  # fmt: skip
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
@@ -422,7 +423,7 @@ def social_decision() -> list[Case]:
 
     def make(case_id: str, variant: str, org: Org, person: Person, salutation: str, posted: date, kind: str, subject: str,
              refs: list[tuple[str, str]], body: list[Block], belehrung: list[str], key: str, hand: str,
-             amounts: list[float] | None = None, extra_items: list | None = None, photo: bool = False, notes: str = "",
+             amounts: list[float] | None = None, extra_items: list[dict[str, Any]] | None = None, photo: bool = False, notes: str = "",
              rule: str | None = None, closing: tuple[str, ...] = (), shift_citation: str | None = None,
              more_keys: list[str] | None = None, extra_info: list[tuple[str, str]] | None = None) -> Case:  # fmt: skip
         item = check(
@@ -757,7 +758,7 @@ def year_boundary() -> list[Case]:
             ),
             hand,
         )
-        belehrung = [
+        belehrung: list[Block] = [
             H("Rechtsbehelfsbelehrung", size=9.8),
             P(f"Den Widerspruch gegen diese Entscheidung richten Sie innerhalb eines Monats ab ihrer Bekanntgabe schriftlich oder "
               f"zur Niederschrift an die {org.name}, {org.street}, {org.postcode} {org.city}. Schicken wir Ihnen den Bescheid per "
