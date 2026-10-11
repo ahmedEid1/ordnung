@@ -5,7 +5,7 @@
 import type { Page } from "@playwright/test";
 import type { PhoneStatus } from "@/api/types";
 import { PHONE_DEMO_MESSAGE } from "@/mocks/data/phone";
-import { apiGet, contractOf, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, setTour, shownAs, test } from "./helpers";
+import { apiGet, contractOf, expect, expectAccessible, expectNoRawEnums, letterDetail, letterId, open, openMail, READ, setTour, shownAs, test } from "./helpers";
 
 // The tour card floats over every page; these tests are about the pages themselves.
 test.beforeEach(async ({ page }) => {
@@ -107,7 +107,7 @@ test.describe("pages", () => {
     expect(response.headers()["content-type"]).toBe("image/png");
     const preview = page.getByRole("region", { name: "Print preview" });
     await expect(preview.getByRole("img", { name: "Preview of the printable letter" })).toBeVisible();
-    const file = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!);
+    const file = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!, READ);
     expect(file.headers()["content-type"]).toBe("application/pdf");
     expect((await file.body()).subarray(0, 5).toString()).toBe("%PDF-");
 

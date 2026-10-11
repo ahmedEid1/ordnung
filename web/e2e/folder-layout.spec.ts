@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { BASE_URL, STORAGE_STATE, WEB_DIR } from "./env";
-import { apiGet, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiGet, expect, expectAccessible, open, READ, setTour, settle, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const SAMPLES = resolve(WEB_DIR, "..", "src", "ordnung", "demo", "samples");
@@ -69,7 +69,7 @@ test.beforeEach(async ({ page }) => {
 test.afterAll(async ({ browser }) => {
   const ctx = await browser.newContext({ storageState: STORAGE_STATE, baseURL: BASE_URL });
   await ctx.request.put("/api/settings", { data: { inbox_dir: null }, headers: CLIENT });
-  const waiting = (await (await ctx.request.get("/api/documents?status=held")).json()) as { id: string }[];
+  const waiting = (await (await ctx.request.get("/api/documents?status=held", READ)).json()) as { id: string }[];
   for (const d of waiting) await ctx.request.delete(`/api/documents/${d.id}?purge=true`, { headers: CLIENT });
   await ctx.close();
   if (folder) rmSync(folder, { recursive: true, force: true });

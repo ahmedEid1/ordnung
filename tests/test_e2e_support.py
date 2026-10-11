@@ -208,3 +208,85 @@ def test_make_capture_makes_the_readme_pictures_of_the_real_app() -> None:
     assert re.search(r'^test\.skip\(!OUT, "[^"]+"\);$', spec, re.M)
     assert "address: PHONE_ADDRESS" in spec
     assert '"the pictures asked no model"' in spec
+
+
+#: An API read in an e2e file: ``<context>.request.get(…)``, or ``.get(…)`` with a path literal ("/…") first, as on
+#: a request context made with ``playwright.request.newContext``.
+_E2E_READ = re.compile(r"\brequest\.get\(|\.get\((?=\s*[`\"']/)")
+#: A change through a request context (``post``, ``put``, ``patch``, ``delete``, ``fetch``).
+_E2E_CHANGE = re.compile(r"\.(?:post|put|patch|delete|fetch)\(")
+
+
+def _call_arguments(source: str, start: int) -> str:
+    """The text of a call's arguments, from just after its ``(`` (at ``start - 1``) to the matching ``)``,
+    stepping over string and template literals."""
+    depth, quote, i = 1, "", start
+    while i < len(source):
+        char = source[i]
+        if quote:
+            if char == "\\":
+                i += 1
+            elif char == quote:
+                quote = ""
+        elif char in "\"'`":
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return source[start:i]
+        i += 1
+    raise AssertionError(f"no closing parenthesis after offset {start}")
+
+
+def _calls(source: str, pattern: re.Pattern[str]) -> list[tuple[int, str]]:
+    """Each call ``pattern`` finds in ``source``: its line number and its arguments."""
+    return [
+        (source.count("\n", 0, found.start()) + 1, _call_arguments(source, found.end()))
+        for found in pattern.finditer(source)
+    ]
+
+
+def test_the_e2e_guard_finds_reads_and_changes_by_their_arguments() -> None:
+    source = (
+        "const a = await page.request.get(`/api/x/${id}`, READ);\n"
+        'const b = (await (await computer.get("/api/documents")).json()) as X[];\n'
+        'const c = await ctx.request.get((await link.getAttribute("href"))!, { ...READ, maxRedirects: 0 });\n'
+        'const d = await page.request.post("/api/drafts", { data: { a: "(" }, headers: CLIENT });\n'
+        'const e = rows.get(key) ?? params.get("q");\n'
+    )
+    reads = _calls(source, _E2E_READ)
+    assert [line for line, _ in reads] == [1, 2, 3]
+    assert reads[0][1] == "`/api/x/${id}`, READ"
+    assert reads[1][1] == '"/api/documents"'
+    assert reads[2][1] == '(await link.getAttribute("href"))!, { ...READ, maxRedirects: 0 }'
+    assert _calls(source, _E2E_CHANGE) == [(4, '"/api/drafts", { data: { a: "(" }, headers: CLIENT }')]
+
+
+def _e2e_file(name: str) -> object:
+    if name == "add-date.spec.ts":
+        # D1-P3 owns this spec and passes READ on its two reads; remove this mark when D1 integrates
+        return pytest.param(name, marks=pytest.mark.xfail(strict=True, reason="until D1 integration (D1-P3)"))
+    return name
+
+
+@pytest.mark.parametrize("name", [_e2e_file(p.name) for p in sorted(E2E.glob("*.ts"))])
+def test_the_e2e_reads_retry_a_connection_the_server_dropped(name: str) -> None:
+    """Every read of the API in ``web/e2e/`` passes ``READ`` (``apiGet`` does): uvicorn closes a keep-alive
+    connection after 5 s without a request, and Playwright's request context can reuse it just as it closes, which
+    ends in "socket hang up" unless the read is retried. Changes never pass it: one that reached the server must
+    not run twice."""
+    helpers = (E2E / "helpers.ts").read_text(encoding="utf-8")
+    assert "export const READ = { maxRetries: 2 } as const;" in helpers
+    assert (
+        "const res = await page.request.get(path, READ);"
+        in helpers.split("export async function apiGet", 1)[1]
+    )
+    source = (E2E / name).read_text(encoding="utf-8")
+    unretried = [
+        f"{name}:{line}" for line, args in _calls(source, _E2E_READ) if not re.search(r"\bREAD\b", args)
+    ]
+    assert unretried == [], "API reads without READ"
+    retried = [f"{name}:{line}" for line, args in _calls(source, _E2E_CHANGE) if re.search(r"\bREAD\b", args)]
+    assert retried == [], "changes that pass READ"
