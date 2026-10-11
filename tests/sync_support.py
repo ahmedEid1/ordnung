@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from fake_caldav import MemorySecrets
-from ordnung.api.deps import ApiState
+from ordnung.api.deps import SHUTDOWN_GRACE_S, ApiState
 from ordnung.api.routes import sync as sync_routes
 from ordnung.sync import agent as agent_module
 from ordnung.sync import facade
@@ -99,7 +99,11 @@ async def computer(
             try:
                 yield api
             finally:
-                await agent.dispose()  # no lifespan stops the agent
+                await agent.dispose()  # no lifespan stops the agent …
+                state = state_of(api)
+                if state.background_on:  # … nor the background work it started (after a failed join)
+                    await state.stop_background(final=True)
+                    await state.drain(SHUTDOWN_GRACE_S)  # the store closes next
             return
         async with lifespan(api.app):
             yield api
