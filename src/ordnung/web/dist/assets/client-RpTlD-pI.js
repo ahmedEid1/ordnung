@@ -1,0 +1,1 @@
+import{nr as e}from"./dateLabels-Ch0_FI22.js";function t(){return e().data?.client===`phone`}export{t};
