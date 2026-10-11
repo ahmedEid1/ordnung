@@ -17,8 +17,10 @@ Written policy:
   device below it: a ``crypt`` one (LUKS or plain dm-crypt, also under LVM or btrfs) → on, else off — said
   as "found no disk encryption (LUKS)", never "not encrypted": fscrypt or ZFS's own encryption aren't seen.
 * **Every other system** (Windows among them) has no answer: no check is shown, and the docs say where
-  BitLocker and Device encryption are. Windows reports BitLocker without administrator rights only through
-  values Microsoft doesn't document.
+  BitLocker and Device encryption are. Microsoft documents BitLocker's status only through
+  ``Win32_EncryptableVolume``, whose methods need administrator rights, and through ``manage-bde`` and
+  ``Get-BitLockerVolume``, both built on it. The Shell's ``System.Volume.BitLockerProtection`` can be read
+  without those rights, but its values aren't documented.
 * Each command is an argument list (never a shell line) with a :data:`TIMEOUT_S` limit. Anything that
   goes wrong — a tool missing, a timeout, an odd answer, an exception — is "unknown", never an error.
 """
