@@ -264,14 +264,7 @@ def test_the_e2e_guard_finds_reads_and_changes_by_their_arguments() -> None:
     assert _calls(source, _E2E_CHANGE) == [(4, '"/api/drafts", { data: { a: "(" }, headers: CLIENT }')]
 
 
-def _e2e_file(name: str) -> object:
-    if name == "add-date.spec.ts":
-        # D1-P3 owns this spec and passes READ on its two reads; remove this mark when D1 integrates
-        return pytest.param(name, marks=pytest.mark.xfail(strict=True, reason="until D1 integration (D1-P3)"))
-    return name
-
-
-@pytest.mark.parametrize("name", [_e2e_file(p.name) for p in sorted(E2E.glob("*.ts"))])
+@pytest.mark.parametrize("name", [p.name for p in sorted(E2E.glob("*.ts"))])
 def test_the_e2e_reads_retry_a_connection_the_server_dropped(name: str) -> None:
     """Every read of the API in ``web/e2e/`` passes ``READ`` (``apiGet`` does): uvicorn closes a keep-alive
     connection after 5 s without a request, and Playwright's request context can reuse it just as it closes, which

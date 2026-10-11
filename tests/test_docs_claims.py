@@ -3299,10 +3299,6 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
 # Batch D1 — weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
 # --------------------------------------------------------------------------------------------------
 
-#: A claim whose code comes with another D1 package (the docs package merges last): the D1 integrator removes the
-#: marker once that package is merged, or the claim and its test when the package didn't land.
-UNTIL_D1 = pytest.mark.xfail(strict=False, reason="until D1 integration")
-
 #: Microsoft's own page on Device encryption (it resolved on 2026-10-11, to the reader's language).
 DEVICE_ENCRYPTION_PAGE = (
     "https://support.microsoft.com/windows/device-encryption-in-windows-cf7e2b6f-3e70-4882-9532-18633605b7df"
@@ -3508,7 +3504,6 @@ def test_the_architecture_says_how_ask_keeps_its_replay_key() -> None:
     assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
 
 
-@UNTIL_D1
 def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None:
     """d1-ask-memo against the architecture's paragraph: the token watches exactly the letters, pages, to-dos,
     contracts, senders and cases (and the profile); Ask's own writes leave it, a sender moves it; and the tests'
@@ -3526,7 +3521,6 @@ def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None
     assert "memo.verify = True" in (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
 
 
-@UNTIL_D1
 def test_the_web_offers_the_weekly_repeats_the_docs_name() -> None:
     """d1-web-small against CHANGELOG and SPEC: *Repeats* offers every week and every 2 weeks right after "Doesn't
     repeat", before every month, and names their weekday."""
@@ -3538,7 +3532,6 @@ def test_the_web_offers_the_weekly_repeats_the_docs_name() -> None:
     assert '"Every week"' in source and "`Every ${WEEKS[choice]} weeks`" in source
 
 
-@UNTIL_D1
 def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outlook() -> None:
     """d1-web-small against CHANGELOG: the calendar sync card says Google Calendar and Outlook.com take the calendar
     file, and *Where do I find these?* lists them with that."""
@@ -3552,7 +3545,6 @@ def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outl
     ) in card
 
 
-@UNTIL_D1
 def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
     """d1-windows (merged only once CI's Windows job passed) against README, SPEC, architecture and CHANGELOG: a
     plain drive path gets an ID list right after the header, whose flags say so, and Windows' shell reading the
@@ -3587,7 +3579,6 @@ def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
     assert D1_CHANGED[1] in _unreleased("Changed")
 
 
-@UNTIL_D1
 def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so() -> None:
     """d1-test-hygiene against CHANGELOG's Fixed: the line about a waiting letter added again stands exactly when
     the worker remembers the letters it read by job (a letter deleted and added again keeps its id)."""
@@ -3596,7 +3587,6 @@ def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so(
     assert listed == by_job
 
 
-@UNTIL_D1
 def test_the_changelog_keeps_no_note_for_the_d1_integration() -> None:
     """The D1 integrator keeps or drops each line marked for it, then removes the mark."""
     assert "TODO(D1 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")

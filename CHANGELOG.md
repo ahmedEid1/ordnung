@@ -139,8 +139,6 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its
   PDF straight away. Before, only the first such letter was; the others were found by name until Claude
   read them.
-  <!-- TODO(D1 integration): keep the next bullet only if d1-test-hygiene's worker fix (the text read
-  remembered by job, not by letter) is merged, else delete it; then delete this comment. -->
 - A letter waiting for Claude that you delete for good and add again while Ordnung runs is found by the words
   in its PDF again. Before, only its name found it until Claude read it.
 - The Inbox's own search finds the letters waiting from your watched folder, as the search at the top does.
