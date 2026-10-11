@@ -995,11 +995,14 @@ if not shell32.ShellExecuteExW(ctypes.byref(info)):
 """
 
 
+def _run(argv: list[str], timeout: float) -> None:
+    """Runs ``argv`` (a Python of the tests) and fails with what it printed when it fails."""
+    done = subprocess.run(argv, capture_output=True, timeout=timeout)
+    assert done.returncode == 0, (done.stdout + done.stderr).decode("utf-8", "replace")
+
+
 def _open_with_the_shell(path: Path) -> None:
-    done = subprocess.run(
-        [sys.executable, "-c", SHELL_OPENS, str(path)], capture_output=True, text=True, timeout=60
-    )
-    assert done.returncode == 0, done.stderr
+    _run([sys.executable, "-c", SHELL_OPENS, str(path)], timeout=60)
 
 
 def _fake_ordnung(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
@@ -1035,13 +1038,7 @@ def _ran(out: Path) -> dict[str, Any]:
 def other_python(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A second Python, in folders with umlauts: a venv without pip (a few seconds on Windows)."""
     venv = tmp_path_factory.mktemp("venv").resolve() / "Jürgen Müller" / "venv"
-    done = subprocess.run(
-        [sys.executable, "-m", "venv", "--without-pip", str(venv)],
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    assert done.returncode == 0, done.stderr
+    _run([sys.executable, "-m", "venv", "--without-pip", str(venv)], timeout=300)
     return venv / "Scripts" / "python.exe"
 
 
