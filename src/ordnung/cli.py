@@ -894,12 +894,14 @@ def _add_in_process(paths: Paths, files: Sequence[Path], *, combine: bool, priva
     async def work(
         ctx: AppContext,
     ) -> tuple[list[tuple[Document, str | None, list[Item]]], dict[str, str], date]:
+        from ordnung.ingest.outlook import as_email
         from ordnung.ingest.pipeline import add_file
         from ordnung.tick import local_today
 
         added = []
         for group in groups:
             (name, data), *rest = group
+            data, name = as_email(data, name)  # an Outlook .msg: its .eml copy, before intake looks at it
             combine_with = [body for _, body in rest] or None
             added.append(
                 await add_file(
@@ -1011,7 +1013,7 @@ def add(
     ctx: typer.Context,
     files: Annotated[
         list[Path],
-        typer.Argument(help="Letters to add (PDF, photos, .txt/.eml).", exists=True, dir_okay=False),
+        typer.Argument(help="Letters to add (PDF, photos, .txt/.eml/.msg).", exists=True, dir_okay=False),
     ],
     combine: Annotated[bool, typer.Option("--combine", help="The photos are pages of one letter.")] = False,
     private: Annotated[bool, typer.Option("--private", help="Keep private — never sent to Claude.")] = False,

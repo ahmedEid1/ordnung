@@ -24,7 +24,9 @@ The policy, which decides every case:
   (it is an archive, not an inbox; the reason is shown): choose a folder just for letters.
 * **Intake** — every file goes through the normal intake with all its limits
   (:func:`~ordnung.ingest.pipeline.add_file_result`), ``source="folder"``; at most 50 MB of a file is
-  read, so a larger one is refused without being loaded whole. A name that is not valid UTF-8 (a
+  read, so a larger one is refused without being loaded whole. An Outlook ``.msg`` is added as its
+  ``.eml`` copy (:mod:`ordnung.ingest.outlook`); whether a file was taken before, or is Ordnung's own,
+  is still decided by the file's own bytes. A name that is not valid UTF-8 (a
   Windows archive, a network drive) is shown as Windows-1252; the file itself is opened by its real
   name. A PDF Ordnung itself made (a letter drafted for the person, downloaded into the folder) is
   never added as a letter received (:mod:`ordnung.ingest.own_files`).
@@ -73,6 +75,7 @@ from watchfiles import awatch
 
 from ordnung.db.store import Store, background_context, person_write
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
+from ordnung.ingest.outlook import as_email
 from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
 from ordnung.models import FolderOutcome, FolderPickup, FolderState
@@ -83,7 +86,9 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 SOURCE = "folder"
-WATCHED_SUFFIXES = frozenset({".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".txt", ".eml"})
+WATCHED_SUFFIXES = frozenset(
+    {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".txt", ".eml", ".msg"}
+)
 PARTIAL_SUFFIXES = (".part", ".partial", ".crdownload", ".download", ".tmp", ".temp")
 SETTLE_S = 2.0
 RESCAN_S = 60.0
@@ -539,9 +544,10 @@ class FolderWatcher:
             return
         hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
+            body, stored_name = await asyncio.to_thread(as_email, data, name)  # an Outlook .msg: its .eml
             with person_write(syncing):  # the person's scan: hand-off sync counts it as their change
                 added = await add_file_result(
-                    self.ctx, data, name, hold=hold, source=SOURCE, restore_trashed=False
+                    self.ctx, body, stored_name, hold=hold, source=SOURCE, restore_trashed=False
                 )
         except IntakeError as exc:
             self._refused(name, str(exc))

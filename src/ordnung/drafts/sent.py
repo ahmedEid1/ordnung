@@ -10,8 +10,9 @@ stores and reads.
   given to Claude, also when it was marked private later: "kept private" is never claimed for it. One that
   waits for the person's answer from the watched folder (:mod:`ordnung.ingest.held`) gets it now: *Keep
   private* — a proof is never offered to Claude with "Read these".
-* **A proof e-mail's attachments are no letters.** A sent e-mail kept as proof is one file: its
-  attachments are never added (also when the same ``.eml`` arrives again, :mod:`ordnung.ingest.pipeline`),
+* **A proof e-mail's attachments are no letters.** A sent e-mail kept as proof is one file (one saved
+  from Outlook as its ``.eml`` copy, :mod:`ordnung.ingest.outlook`): its attachments are never added
+  (also when the same ``.eml`` arrives again, :mod:`ordnung.ingest.pipeline`),
   and the ones it brought while it waited in the Inbox as a letter — still waiting, never read — are
   deleted for good when it becomes proof: the proof e-mail holds them itself. Attachments the person
   already answered for (read, or kept private) stay.
@@ -40,6 +41,7 @@ stores and reads.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -72,6 +74,7 @@ from ordnung.drafts.templates import format_date
 from ordnung.drafts.tracking import TrackingError, parse_tracking_number, tracking_info
 from ordnung.ingest import held as consent
 from ordnung.ingest.attachments import email_source, is_email
+from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import add_file, keep_held_private
 from ordnung.models import Document, Draft, Profile, Proof, ProofEntry, ProofOverview
 from ordnung.secretary.triggers import Ledger, parse_day
@@ -247,6 +250,7 @@ async def add_proof(
     proofs = store.list_proofs(draft.id)
     if len(proofs) >= MAX_PROOFS:
         raise DraftError(TOO_MANY)
+    data, filename = await asyncio.to_thread(as_email, data, filename)  # an Outlook .msg: its .eml copy
     document = await add_file(
         ctx,
         data,
