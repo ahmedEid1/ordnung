@@ -20,7 +20,8 @@ Point = tuple[float, float]
 def render_page(pdf_bytes: bytes, index: int = 0, dpi: float = 140.0) -> Image.Image:
     document = pdfium.PdfDocument(pdf_bytes)
     try:
-        return document[index].render(scale=dpi / 72.0).to_pil().convert("RGB")
+        image: Image.Image = document[index].render(scale=dpi / 72.0).to_pil().convert("RGB")
+        return image
     finally:
         document.close()
 

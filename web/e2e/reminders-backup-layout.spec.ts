@@ -11,7 +11,7 @@
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { apiGet, expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiGet, expect, expectAccessible, open, READ, setTour, settle, test } from "./helpers";
 
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
@@ -309,7 +309,7 @@ test("a backup made in the browser is an encrypted Ordnung backup", async ({ pag
 const SYNC_DEMO_MESSAGE = "This is the demo, so it doesn't sync. Your own Ordnung can.";
 
 test("the demo never syncs: Settings → Your computers says so, and setting it up is refused", async ({ page }) => {
-  const status = (await (await page.request.get("/api/sync")).json()) as { available: boolean; unavailable: string | null; connected: boolean; mode: string };
+  const status = (await (await page.request.get("/api/sync", READ)).json()) as { available: boolean; unavailable: string | null; connected: boolean; mode: string };
   expect(status).toMatchObject({ available: false, unavailable: SYNC_DEMO_MESSAGE, connected: false, mode: "off" });
   // refused before anything is looked at: no folder is inspected or written, no passphrase is kept
   const refused = await page.request.put("/api/sync", {

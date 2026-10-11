@@ -6,7 +6,7 @@
  * phones "Mark as sent" comes first across the whole row, and Save stays in reach while you edit.
  */
 import type { Page } from "@playwright/test";
-import { apiGet, contractOf, expect, open, setTour, test } from "./helpers";
+import { apiGet, contractOf, expect, open, READ, setTour, test } from "./helpers";
 
 interface DraftSummary {
   id: string;
@@ -78,7 +78,7 @@ test("the print preview is an image of the letter, with the PDF a link away", as
   await expect(img).toBeVisible();
   expect(await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBeGreaterThan(1000);
   expect(await img.getAttribute("src")).toMatch(/\/api\/drafts\/[^/]+\/preview\.png\?v=/);
-  const pdf = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!);
+  const pdf = await page.request.get((await preview.getByRole("link", { name: /Open the PDF/ }).getAttribute("href"))!, READ);
   expect(pdf.headers()["content-type"]).toBe("application/pdf");
 });
 

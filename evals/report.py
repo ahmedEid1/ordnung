@@ -105,7 +105,7 @@ EXTRACTION_LABELS: dict[str, str] = {
 # --------------------------------------------------------------------------------------------------
 
 
-def _commit_note(meta: dict[str, Any]) -> str:
+def _commit_note(meta: Mapping[str, Any]) -> str:
     """What the results file says about its commit, after it (``meta.commit_note``): a commit that is no longer
     in the published history, say (final review of phase 2: `17f2292` and `5c3e35b` were squashed)."""
     note = meta.get("commit_note")
@@ -2344,10 +2344,11 @@ def _legend_conditions(panels: Sequence[ChartPanel]) -> list[str]:
 def _matplotlib_chart(
     results: Mapping[str, Any], path: Path, *, rescored: Mapping[str, Any] | None = None
 ) -> Path:
-    import matplotlib
+    # matplotlib comes with the `eval` extra only, and CI type-checks evals/ without it
+    import matplotlib  # type: ignore[import-not-found, unused-ignore]
 
     matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt  # type: ignore[import-not-found, unused-ignore]
 
     panels = chart_panels(results, rescored)
     groups = panels[0].groups
@@ -2386,10 +2387,10 @@ def _matplotlib_chart(
                 lo, hi = est.get("ci") or (None, None)
                 end = value
                 if lo is not None and hi is not None:
-                    line = {"color": TEXT_SECONDARY, "linewidth": 1.2, "zorder": 3}
-                    ax.plot([lo * 100, hi * 100], [y, y], **line)
-                    ax.plot([lo * 100] * 2, [y - bar / 4, y + bar / 4], **line)
-                    ax.plot([hi * 100] * 2, [y - bar / 4, y + bar / 4], **line)
+                    whisker = {"color": TEXT_SECONDARY, "linewidth": 1.2, "zorder": 3}
+                    ax.plot([lo * 100, hi * 100], [y, y], **whisker)
+                    ax.plot([lo * 100] * 2, [y - bar / 4, y + bar / 4], **whisker)
+                    ax.plot([hi * 100] * 2, [y - bar / 4, y + bar / 4], **whisker)
                     end = max(end, hi * 100)
                 ax.text(
                     end + 1.5, y, f"{value:.0f} %", va="center", ha="left", fontsize=8.5, color=TEXT_PRIMARY

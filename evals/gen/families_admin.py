@@ -9,6 +9,7 @@ from the calendar and is asserted against the computed label.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from typing import Any
 
 from . import orgs as O
 from .common import (
@@ -37,7 +38,7 @@ def created(d: date | None) -> datetime:
     return datetime(d.year, d.month, d.day, 8, 0, tzinfo=UTC)
 
 
-def check(item: dict, hand: str) -> dict:
+def check(item: dict[str, Any], hand: str) -> dict[str, Any]:
     """Assert the computed label equals the date worked out by hand."""
     assert item["expected_due"] == hand, (item["title"], item["expected_due"], hand)
     return item
@@ -427,7 +428,7 @@ def municipal_decision() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, split: str, variant: str, org: Org, person: Person, posted: date, remedy: str, subject: str,
-             az: str, body: list, hand: str, extra_items: list | None = None, photo: bool = False, court: tuple[str, str] | None = None,
+             az: str, body: list[Block], hand: str, extra_items: list[dict[str, Any]] | None = None, photo: bool = False, court: tuple[str, str] | None = None,
              key: list[str] | None = None, notes: str = "") -> Case:  # fmt: skip
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
@@ -606,7 +607,7 @@ def social_decision() -> list[Case]:
     cases: list[Case] = []
 
     def make(case_id: str, split: str, variant: str, org: Org, person: Person, posted: date, kind: str, subject: str,
-             refs: list[tuple[str, str]], body: list, hand: str, amounts: list[float] | None = None, extra_items: list | None = None,
+             refs: list[tuple[str, str]], body: list[Block], hand: str, amounts: list[float] | None = None, extra_items: list[dict[str, Any]] | None = None,
              photo: bool = False) -> Case:  # fmt: skip
         item = check(
             objection_item(
@@ -1042,7 +1043,7 @@ def year_boundary() -> list[Case]:
 
     # --- variant C (test): short-form AO notices around the year end / month end --------------------
     def variant_c(case_id: str, org: Org, person: Person, posted: date, subject: str, body: str, ref: tuple[str, str], amount: float,
-                  hand: str, day_word: str, extra: list | None = None, optional: list | None = None) -> Case:  # fmt: skip
+                  hand: str, day_word: str, extra: list[dict[str, Any]] | None = None, optional: list[dict[str, Any]] | None = None) -> Case:  # fmt: skip
         item = check(
             objection_item(
                 posted=posted, scope="ao", remedy="einspruch", region=None, title="Einspruchsfrist"

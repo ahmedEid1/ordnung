@@ -15,7 +15,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { FAKE_CLAUDE, REAL_CLAUDE, REAL_LETTER } from "./env";
-import { apiGet, expect, expectAccessible, open, test, type Letter } from "./helpers";
+import { apiGet, expect, expectAccessible, open, READ, test, type Letter } from "./helpers";
 
 /** A letter of its own (not the one real-app-letters.spec.ts reads): it is never read, and deleted at the end. */
 const FILE = "20_stadtbibliothek_mahnung.pdf";
@@ -148,7 +148,7 @@ test("a letter added while Claude is missing waits, and every page loaded later 
     }
     installClaude();
     // the health check finds Claude now, so the specs after this one don't wait out the worker's own check
-    const health = await page.request.get("/api/health", { headers: { "X-Ordnung-Client": "web" } });
+    const health = await page.request.get("/api/health", { ...READ, headers: { "X-Ordnung-Client": "web" } });
     expect(health.ok(), `GET /api/health → ${health.status()}`).toBe(true);
   });
 });
