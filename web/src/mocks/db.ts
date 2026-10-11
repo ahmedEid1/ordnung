@@ -171,7 +171,10 @@ function occurrenceOf(rule: Recurrence, start: string, notBefore: string, after:
   const first = parseISO(start);
   const days = dayStep(rule);
   const { months, workingDay, day } = steps(rule);
-  for (let k = 0; k < 1200; k++) {
+  // a rule in days (every week, every 2 weeks) starts at the step just before `notBefore`: from decades back it is
+  // still found, as the server's 10,000 steps find it (the walk below is for month rules: 100 years)
+  const from = days !== null ? Math.max(0, Math.floor(differenceInCalendarDays(parseISO(notBefore), first) / days)) : 0;
+  for (let k = from; k < from + 1200; k++) {
     let at: Date;
     if (days !== null) at = addDays(first, k * days);
     else if (workingDay !== null) at = workingDayOf(monthsOn(first, k * months!, 1), workingDay);

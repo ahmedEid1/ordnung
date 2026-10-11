@@ -35,8 +35,13 @@ export function focusWhenReady(find: () => HTMLElement | null, ms = 5000, { alwa
 /**
  * A card is about to leave a list: when its heading is gone, focus the heading now at its place
  * (the next card, or the last one), or `fallbackId` (the section heading) when none is left.
+ *
+ * Returns `settled`, to call once the change is saved and the lists are refreshed: a card that is
+ * still there then (a date of your own that repeats every week moved on to its next day, still
+ * among these cards) gets the focus its busy button dropped, on its own heading. If it leaves
+ * later after all, the card now in its place takes over as above.
  */
-export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: string, fallbackId: string): void {
+export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: string, fallbackId: string): () => void {
   const at = Math.max(0, headings().findIndex((h) => h.id === leavingId));
   focusWhenReady(
     () => {
@@ -49,6 +54,16 @@ export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: stri
     // back someone who moved on — only lost focus is moved.
     LEAVING_WAIT_MS,
   );
+  // two frames: the refreshed list is drawn by then (the query cache tells React on a timer)
+  return () =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const stayed = document.getElementById(leavingId);
+        if (!stayed || !focusIsLost()) return;
+        if (!stayed.hasAttribute("tabindex")) stayed.tabIndex = -1;
+        stayed.focus();
+      }),
+    );
 }
 
 /** How long a leaving card's successor is waited for (:func:`focusAfterLeaving`). */

@@ -395,9 +395,8 @@ flowchart LR
 - **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
   (which folder it starts, whether it is current) for the CLI and for Settings.
 - **The app-menu shortcut** (`shortcut.py`) writes one launcher and runs nothing; its `.lnk` is written
-  byte by byte in the shell link format, with the target as an ID list Windows reads, without any Windows
-  API. The launcher runs `serve --from-shortcut`, which never starts Ordnung unseen: it opens a running
-  Ordnung in the browser, or starts
+  byte by byte in the shell link format, without any Windows API. The launcher runs `serve
+  --from-shortcut`, which never starts Ordnung unseen: it opens a running Ordnung in the browser, or starts
   it in a terminal window that is Ordnung (closing it stops Ordnung), or exits with 3 when there is no
   window. `state` reads the launcher back (which folder it opens, whether it runs this installation, and
   whether it is Ordnung's own) for Settings, without drawing an icon.

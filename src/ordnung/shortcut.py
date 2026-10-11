@@ -7,16 +7,13 @@ Written policy (ADR 0007):
   ``~/Applications/Ordnung.app``, a bundle of a property list, two short ``sh`` scripts and an icon.
   Windows: ``Ordnung.lnk`` in the per-user Start menu (``%APPDATA%\\Microsoft\\Windows\\Start
   Menu\\Programs``), with its icon in ``%LOCALAPPDATA%\\Programs\\Ordnung\\Ordnung.ico``. Ordnung
-  writes every file itself, the ``.lnk`` too: its bytes follow the shell link format (MS-SHLLINK): a
-  header; the target as an ID list (This PC, its drive, each folder and the file, laid out as in the
-  format's example 3.1 but with no dates, sizes or file numbers, so the bytes depend only on the path),
-  which is where Windows' shell reads the target from; the target as a Unicode local path in its
-  LinkInfo (which only helps the shell find a moved target); the arguments, working folder, icon and
-  description as Unicode strings; and the target again in an EnvironmentVariableDataBlock. A target
-  that isn't a plain path on a drive letter (a network path) gets no ID list, and the shell opens what
-  the block names. Every copy names the same file. A target path must stay below 260 characters. No
-  COM, no PowerShell, no other tool runs, and no admin rights are needed. ``ordnung shortcut`` prints
-  what it writes, and where, before writing anything.
+  writes every file itself, the ``.lnk`` too: its bytes follow the shell link format (MS-SHLLINK), a
+  header, the target as a Unicode local path in its LinkInfo, the arguments, working folder, icon and
+  description as Unicode strings, and the target again in an EnvironmentVariableDataBlock, which is
+  where Windows' shell reads what a link without an ID list opens (LinkInfo only helps it find a moved
+  target). A target path must stay below 260 characters. No COM, no PowerShell, no other tool runs,
+  and no admin rights are needed. ``ordnung shortcut`` prints what it writes, and where, before writing
+  anything.
 * **What it runs.** ``<this Python> -m ordnung --data-dir <the data folder> serve --from-shortcut``
   (and ``--port`` when it isn't the default): absolute paths, and the last folder set up wins, as for
   autostart. Linux and macOS record this terminal's ``PATH``, so Ordnung finds the same ``claude``,
@@ -411,23 +408,6 @@ _ANSI = "cp1252"
 #: EnvironmentVariableDataBlock: its size and signature, and its two fixed-size copies of the target
 #: (MAX_PATH characters, in the ANSI code page and in Unicode)
 _EXP_SIZE, _EXP_SIGNATURE, _MAX_PATH = 0x314, 0xA0000001, 260
-#: LinkTargetIDList (MS-SHLLINK 2.2; the items' fields as libyal's "Windows Shell Item format" names them):
-#: This PC, the drive, then one item per folder and the file, laid out as in the format's example 3.1
-#: ("Shortcut to a File") but with no dates, sizes or file numbers, so the bytes depend only on the path
-_MY_COMPUTER = bytes.fromhex("E04FD020EA3A6910A2D808002B30309D")  # {20D04FE0-3AEA-1069-A2D8-08002B30309D}
-_ROOT_ITEM = struct.pack("<HBB", 20, 0x1F, 0x50) + _MY_COMPUTER  # a root folder item, sorted as My Computer
-_DRIVE_ITEM_SIZE, _DRIVE_ITEM = 25, 0x2F
-_FS_ITEM, _FS_FOLDER, _FS_FILE, _FS_UNICODE = 0x30, 0x01, 0x02, 0x04
-_ATTRIBUTE_FOLDER, _ATTRIBUTE_ARCHIVE = 0x10, 0x20
-#: a folder's or the file's item: its size, type, 0, file size, FAT date and time, attributes (14 bytes)
-_FS_HEAD = struct.Struct("<HBBIIH")
-#: then its extension block 0xBEEF0004, in the example's version 7: size, version, signature, created and
-#: last-opened FAT dates, where the long name starts, 0, NTFS file reference, 0, localized name (38 bytes)
-_EXT_HEAD = struct.Struct("<HHIIIHHQQH")
-_EXT_SIGNATURE, _EXT_VERSION, _EXT_NAME_AT = 0xBEEF0004, 7, _EXT_HEAD.size
-#: a plain absolute path on a drive letter: no network or ``\\?\`` path, no empty name, none of the characters
-#: Windows refuses in a name
-_DRIVE_PATH = re.compile(r'([A-Za-z]):\\((?:[^\\/:*?"<>|\x00-\x1f]+\\)*[^\\/:*?"<>|\x00-\x1f]+)')
 
 
 def _counted(value: str) -> bytes:
@@ -455,8 +435,8 @@ def _link_info(target: str) -> bytes:
 
 
 def _target_block(target: str) -> bytes:
-    """The EnvironmentVariableDataBlock with ``target``: the path Windows' shell opens when a link has no ID
-    list (LinkInfo alone only helps it find a moved target again)."""
+    """The EnvironmentVariableDataBlock with ``target``: the path Windows' shell opens. LinkInfo alone only
+    helps it find a moved target again; without an ID list, this is where it reads what the link opens."""
     ansi = target.encode(_ANSI, "replace")
     wide = target.encode("utf-16-le")
     if len(wide) // 2 >= _MAX_PATH:
@@ -468,61 +448,16 @@ def _target_block(target: str) -> bytes:
     )
 
 
-def _fs_item(name: str, *, folder: bool) -> bytes:
-    """The item of one folder or of the file: its long name as the primary name (in ASCII, or in UTF-16 with
-    the Unicode flag), then the extension block with the long name again."""
-    kind = _FS_ITEM | (_FS_FOLDER if folder else _FS_FILE)
-    if name.isascii():
-        primary = name.encode("ascii") + b"\0"
-        primary += b"\0" * (len(primary) % 2)  # the extension block starts at an even offset
-    else:
-        kind |= _FS_UNICODE
-        primary = name.encode("utf-16-le") + b"\0\0"
-    long_name = name.encode("utf-16-le") + b"\0\0"
-    block_at = _FS_HEAD.size + len(primary)
-    block_size = _EXT_NAME_AT + len(long_name) + 2
-    block = (
-        _EXT_HEAD.pack(block_size, _EXT_VERSION, _EXT_SIGNATURE, 0, 0, _EXT_NAME_AT, 0, 0, 0, 0)
-        + long_name
-        + struct.pack("<H", block_at)  # where the block starts in the item: its last two bytes
-    )
-    attributes = _ATTRIBUTE_FOLDER if folder else _ATTRIBUTE_ARCHIVE
-    return _FS_HEAD.pack(block_at + block_size, kind, 0, 0, 0, attributes) + primary + block
-
-
-def _id_list(target: str) -> bytes | None:
-    """The LinkTargetIDList (with its size) for ``target``; ``None`` when ``target`` isn't a plain absolute
-    path on a drive letter (a network path, say): such a link names its target in LinkInfo and the
-    EnvironmentVariableDataBlock only, as before. Call it for a target below MAX_PATH (:func:`_target_block`
-    refuses longer ones): its list then stays under 8 KB."""
-    match = _DRIVE_PATH.fullmatch(target)
-    if match is None:
-        return None
-    names = match[2].split("\\")
-    if any(name[-1] in ". " for name in names):
-        return None  # Windows drops a trailing dot or space ("." and ".." too): not the file's own name
-    volume = f"{match[1].upper()}:\\".encode()
-    drive = struct.pack("<HB", _DRIVE_ITEM_SIZE, _DRIVE_ITEM) + volume.ljust(_DRIVE_ITEM_SIZE - 3, b"\0")
-    last = len(names) - 1
-    items = [_ROOT_ITEM, drive, *(_fs_item(name, folder=i < last) for i, name in enumerate(names))]
-    body = b"".join(items) + b"\0\0"  # the TerminalID
-    return struct.pack("<H", len(body)) + body
-
-
 def lnk_bytes(link: WindowsLink) -> bytes:
     """``link`` as a shell link file (MS-SHLLINK, Unicode strings), written without any Windows API."""
-    target_block = _target_block(link.target)  # first: it refuses a target too long for Windows
-    id_list = _id_list(link.target)
-    flags = _LINK_FLAGS | (_HAS_ID_LIST if id_list is not None else 0)
-    header = _HEADER.pack(_HEADER_SIZE, _LINK_CLSID, flags, 0, 0, 0, 0, 0, 0, link.show, 0, 0, 0, 0)
+    header = _HEADER.pack(_HEADER_SIZE, _LINK_CLSID, _LINK_FLAGS, 0, 0, 0, 0, 0, 0, link.show, 0, 0, 0, 0)
     strings = (link.description, link.working_dir, link.arguments, link.icon)
     # the extra data: the target's block, then the terminal block
     return (
         header
-        + (id_list or b"")
         + _link_info(link.target)
         + b"".join(_counted(value) for value in strings)
-        + target_block
+        + _target_block(link.target)
         + b"\0\0\0\0"
     )
 
@@ -554,10 +489,8 @@ def _parse_lnk(data: bytes) -> WindowsLink | None:
         return None
     flags, show = fields[2], fields[9]
     at = _HEADER_SIZE
-    if flags & _HAS_ID_LIST:  # skipped: the target is read from LinkInfo and the block
+    if flags & _HAS_ID_LIST:
         (size,) = struct.unpack_from("<H", data, at)
-        if at + 2 + size > len(data):
-            raise ValueError("the ID list runs past the end of the link")
         at += 2 + size
     target = ""
     if flags & _HAS_LINK_INFO:

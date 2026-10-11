@@ -32,6 +32,28 @@ describe("focusAfterLeaving", () => {
     expect(document.activeElement).toBe(other);
   });
 
+  it("focuses the card's own heading when the change is saved and the card stayed (a weekly date moved on)", () => {
+    const settled = focusAfterLeaving(headings, "card-a", "top3");
+    vi.advanceTimersByTime(500);
+    settled();
+    vi.advanceTimersByTime(50);
+    expect(document.activeElement?.id).toBe("card-a");
+    // and if it leaves after all, the card now in its place takes over
+    document.getElementById("card-a")?.remove();
+    vi.advanceTimersByTime(50);
+    expect(document.activeElement?.id).toBe("card-b");
+  });
+
+  it("leaves focus where the person put it when the card stayed", () => {
+    const other = document.createElement("button");
+    document.body.append(other);
+    const settled = focusAfterLeaving(headings, "card-a", "top3");
+    other.focus();
+    settled();
+    vi.advanceTimersByTime(50);
+    expect(document.activeElement).toBe(other);
+  });
+
   it("hands focus to the section heading when no card is left", () => {
     document.getElementById("card-b")?.remove();
     focusAfterLeaving(headings, "card-a", "top3");

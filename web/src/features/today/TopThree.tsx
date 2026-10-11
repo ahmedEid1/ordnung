@@ -115,8 +115,11 @@ export function ActionCountdown({ action, variant = "pill", className }: { actio
 const headingId = (key: string) => `top-${key}`;
 
 export interface TopFocus {
-  /** This card is about to leave: when it's gone, focus the card now in its place (or the section heading). */
-  leaving: (key: string) => void;
+  /**
+   * This card is about to leave: when it's gone, focus the card now in its place (or the section heading).
+   * Call what it returns once the change is saved: a card still there then keeps the focus.
+   */
+  leaving: (key: string) => () => void;
   /** This card is coming back (Undo): focus its heading once it's there. */
   returning: (key: string) => void;
 }
@@ -270,9 +273,12 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
         const item = action.item;
         if (!item) return;
         // as for "Mark as paid": the card can leave before the call's callbacks would run
-        focus?.leaving(action.key);
+        const settled = focus?.leaving(action.key);
         update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
-          (moved) =>
+          (moved) => {
+            // a to-do of your own every week or every 2 weeks moves on and can stay in Top 3: the busy button
+            // dropped focus, so its own heading takes it (D1 review)
+            settled?.();
             toast({
               tone: "success",
               title: "Marked as done",
@@ -281,8 +287,9 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
                 await update.mutateAsync({ id: item.id, patch: { status: "open" } });
                 focus?.returning(action.key);
               },
-            }),
-          () => undefined,
+            });
+          },
+          () => settled?.(), // the card stays; the error toast comes from the mutation's meta
         );
         return;
       }

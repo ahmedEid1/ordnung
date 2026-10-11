@@ -6,6 +6,7 @@ that makes the docs untrue fails here.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib
 import inspect
@@ -175,6 +176,35 @@ def test_mypy_is_strict_on_the_rules_engine() -> None:
     assert re.search(
         r"^typecheck:\n\t\$\(PY\) -m mypy\n", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M
     )
+
+
+def test_mypy_finds_the_generators_the_benchmark_code_imports() -> None:
+    """README's "strict on the benchmark code" holds only where mypy finds what evals/ imports
+    (``ignore_missing_imports`` makes a module it can't find Any, silently). evals/generate.py runs with evals/ on
+    sys.path and imports its generators as ``gen``, which mypy, reading evals/ as a package, can't find: for mypy
+    it imports the same names from ``evals.gen`` (D1 review: 17 imports were Any). No other benchmark module
+    imports ``gen``."""
+    tree = ast.parse((ROOT / "evals" / "generate.py").read_text(encoding="utf-8"))
+
+    def imported(nodes: list[ast.stmt], prefix: str = "") -> set[tuple[str, str, str | None]]:
+        return {
+            ((node.module or "").removeprefix(prefix), alias.name, alias.asname)
+            for node in nodes
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        }
+
+    assert not {module for module, _, _ in imported(tree.body) if module.split(".")[0] == "gen"}
+    (guard,) = [
+        node for node in tree.body if isinstance(node, ast.If) and ast.unparse(node.test) == "TYPE_CHECKING"
+    ]
+    for_mypy, when_run = imported(guard.body, "evals."), imported(guard.orelse)
+    assert for_mypy == when_run and len(when_run) > 50
+    assert {module.split(".")[0] for module, _, _ in when_run} == {"gen"}
+    others = [path for path in (ROOT / "evals").rglob("*.py") if path.name != "generate.py"]
+    assert not [
+        path.name for path in others if re.search(r"^\s*(from|import) gen\b", path.read_text("utf-8"), re.M)
+    ]
 
 
 def test_demo_check_runs_in_ci() -> None:
@@ -3296,7 +3326,7 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch D1 — weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
+# Batch D1 — weekly repeats, mypy on evals/, package updates, Ask's key (the Windows link's ID list waits)
 # --------------------------------------------------------------------------------------------------
 
 #: Microsoft's own page on Device encryption (it resolved on 2026-10-11, to the reader's language).
@@ -3308,9 +3338,6 @@ DEVICE_ENCRYPTION_PAGE = (
 D1_CHANGED = (
     "Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, "
     "and *Where do I find these?* lists them with that.",
-    "Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an "
-    "ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run "
-    "`ordnung shortcut` again to rewrite one you added before.",
     "The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7 of "
     "GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer ask "
     "for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript take "
@@ -3337,18 +3364,21 @@ ASK_KEY_KEPT = (
 )
 
 
-async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_always_among_the_ideas(
+async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_always_among_the_ideas(
     data_dir: Path,
 ) -> None:
     """README Limitations: a deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is
-    always an Idea, because its default reminder window (Settings → Reminders: 14 and 7 days) reaches the next one
-    wherever the week stands; a payment every 2 weeks isn't, and a reminder, the dialog's first kind, is one only on
-    its day. Added through the API as *Add a date* adds them, starting on every day of the cycle."""
+    an Idea nearly all the time, because its default reminder window (Settings → Reminders: 14 and 7 days) reaches
+    the next one wherever the week stands; a payment every 2 weeks isn't, and a reminder, the dialog's first kind,
+    is one only on its day. Added through the API as *Add a date* adds them, starting on every day of the cycle.
+    Marked done before its day, it moves to the one after the day marked, which can be past the window (D1 review:
+    the line said "always"): a weekly payment due Thu 1 Oct moves to Thu 8 Oct (send by Wed 7 Oct, 9 days off) and
+    a deadline every 2 weeks due Thu 8 Oct to Thu 22 Oct, neither an Idea then; a weekly deadline stays one."""
     assert (
-        "A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is always among "
-        "Today's Ideas: by default Ordnung reminds you from 14 days before a deadline and 7 days before a payment "
-        "(Settings → Reminders), and the next one is never further off. Added as a reminder, the dialog's first "
-        "kind, such a date is an Idea only on its day."
+        "A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's "
+        "Ideas nearly all the time: by default Ordnung reminds you from 14 days before a deadline and 7 days before "
+        "a payment (Settings → Reminders), and the next one is never further off, unless you mark one done before "
+        "its day. Added as a reminder, the dialog's first kind, such a date is an Idea only on its day."
     ) in _limitations()
     defaults = Profile().reminder_days
     assert (max(defaults["deadline"]), max(defaults["payment"]), max(defaults["reminder"])) == (14, 7, 0)
@@ -3361,6 +3391,13 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_always_am
         *(("deadline", 2, offset) for offset in range(14)),
         ("payment", 2, 13),
     ]
+    #: marked done before their day: (kind, weeks, offset) → still an Idea afterwards
+    early = {
+        ("payment", 1, 3): False,
+        ("deadline", 2, 10): False,
+        ("deadline", 1, 3): True,
+        ("deadline", 1, 6): True,
+    }
     clock.set_today(TODAY)  # Mon 28 Sep 2026
     try:
         async with api_for(data_dir) as api:
@@ -3378,6 +3415,11 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_always_am
                 assert response.status_code == 201, response.text
                 ids[(kind, weeks, offset)] = response.json()["id"]
             ideas = triggers.deadline_soon(Ledger(api.ctx.store, TODAY))
+            for case in early:
+                response = await api.client.patch(f"/api/items/{ids[case]}", json={"status": "done"})
+                assert response.status_code == 200, response.text
+                assert response.json()["status"] == "open", case  # it moved on to its next day
+            after = triggers.deadline_soon(Ledger(api.ctx.store, TODAY))
     finally:
         clock.set_today(None)
     with_idea = {ref.id for idea in ideas for ref in idea.refs if ref.type == "item"}
@@ -3386,6 +3428,9 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_always_am
             kind == "reminder" and offset == 0
         )
         assert (item_id in with_idea) is expected, (kind, weeks, offset)
+    with_idea_after = {ref.id for idea in after for ref in idea.refs if ref.type == "item"}
+    for case, expected in early.items():
+        assert (ids[case] in with_idea_after) is expected, case
 
 
 def test_the_changelog_adds_weekly_repeats_and_says_what_d1_changed() -> None:
@@ -3545,38 +3590,34 @@ def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outl
     ) in card
 
 
-def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
-    """d1-windows (merged only once CI's Windows job passed) against README, SPEC, architecture and CHANGELOG: a
-    plain drive path gets an ID list right after the header, whose flags say so, and Windows' shell reading the
-    target is tested on Windows; README drops "may show no target" and claims nothing about the Properties window."""
+def test_the_windows_link_s_id_list_waits_for_a_run_on_windows(tmp_path: Path) -> None:
+    """Plan §2.4 gates d1-windows' ID list on a dispatched CI run on Windows, which batch D1 didn't have (its
+    branch was never pushed; the other-systems job doesn't run on pull requests): until that run is green, the
+    link has no ID list, README keeps "may show no target" and its CI sentence, and no doc names an ID list.
+    Re-landing the ID list (222e933, 24c53a3) changes this test with the docs."""
     appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
     windows = shortcut.plan(
         tmp_path / "data", platform="win32", env=appdata, home=tmp_path, python="C:\\Python312\\python.exe"
     )
     assert windows.link is not None
-    id_list = shortcut._id_list(windows.link.target)
-    assert id_list is not None
-    data = shortcut.lnk_bytes(windows.link)
-    (flags,) = struct.unpack_from("<I", data, 20)
-    assert flags & 0x1 and data[76 : 76 + len(id_list)] == id_list
-    assert "def test_the_shell_reads_the_link_back(" in (ROOT / "tests" / "test_shortcut.py").read_text(
-        encoding="utf-8"
-    )
+    (flags,) = struct.unpack_from("<I", shortcut.lnk_bytes(windows.link), 20)
+    assert not flags & 0x1
     text = _without_a_terminal()
-    assert "may show no target" not in text and "Properties" not in text
     assert (
-        "CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell "
-        "reads its target and opens it;"
+        "Its Properties window may show no target: the shortcut names Python in a part of the file Windows opens "
+        "but doesn't show there."
     ) in text
     assert (
-        "no COM, no PowerShell; the target as an ID list (This PC, its drive, each folder and the file) and again as "
-        "a path in its LinkInfo and an EnvironmentVariableDataBlock;"
-    ) in _spec()
-    assert (
-        "its `.lnk` is written byte by byte in the shell link format, with the target as an ID list Windows reads, "
-        "without any Windows API."
-    ) in _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    assert D1_CHANGED[1] in _unreleased("Changed")
+        "CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell "
+        "opens it;"
+    ) in text
+    docs = [
+        ROOT / "README.md",
+        ROOT / "CHANGELOG.md",
+        ROOT / "docs" / "SPEC.md",
+        ROOT / "docs" / "architecture.md",
+    ]
+    assert not [doc.name for doc in docs if "ID list" in _flat(doc.read_text(encoding="utf-8"))]
 
 
 def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so() -> None:

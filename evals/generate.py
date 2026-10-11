@@ -41,73 +41,138 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:  # allow `python evals/generate.py` from the repo root
     sys.path.insert(0, str(HERE))
 
-from gen import law  # noqa: E402
-from gen.adversarial import adversarial  # noqa: E402
-from gen.common import DOCUMENT_KINDS, SPLIT_VARIANTS, Case  # noqa: E402
-from gen.families_admin import (  # noqa: E402
-    fine_bussgeld,
-    municipal_decision,
-    social_decision,
-    tax_assessment,
-    year_boundary,
-)
-from gen.families_private import (  # noqa: E402
-    appointment,
-    business_days,
-    contract_confirmation,
-    dunning_fixed,
-    english_letter,
-    invoice_relative,
-    price_increase,
-)
-from gen.holdout2_admin import fine_bussgeld as holdout2_fine_bussgeld  # noqa: E402
-from gen.holdout2_admin import municipal_decision as holdout2_municipal_decision  # noqa: E402
-from gen.holdout2_admin import social_decision as holdout2_social_decision  # noqa: E402
-from gen.holdout2_admin import tax_assessment as holdout2_tax_assessment  # noqa: E402
-from gen.holdout2_admin import year_boundary as holdout2_year_boundary  # noqa: E402
-from gen.holdout2_adversarial import adversarial as holdout2_adversarial  # noqa: E402
-from gen.holdout2_private import appointment as holdout2_appointment  # noqa: E402
-from gen.holdout2_private import business_days as holdout2_business_days  # noqa: E402
-from gen.holdout2_private import contract_confirmation as holdout2_contract_confirmation  # noqa: E402
-from gen.holdout2_private import dunning_fixed as holdout2_dunning_fixed  # noqa: E402
-from gen.holdout2_private import english_letter as holdout2_english_letter  # noqa: E402
-from gen.holdout2_private import invoice_relative as holdout2_invoice_relative  # noqa: E402
-from gen.holdout2_private import price_increase as holdout2_price_increase  # noqa: E402
-from gen.holdout3_admin import fine_bussgeld as holdout3_fine_bussgeld  # noqa: E402
-from gen.holdout3_admin import municipal_decision as holdout3_municipal_decision  # noqa: E402
-from gen.holdout3_admin import social_decision as holdout3_social_decision  # noqa: E402
-from gen.holdout3_admin import tax_assessment as holdout3_tax_assessment  # noqa: E402
-from gen.holdout3_admin import year_boundary as holdout3_year_boundary  # noqa: E402
-from gen.holdout3_adversarial import adversarial as holdout3_adversarial  # noqa: E402
-from gen.holdout3_private import appointment as holdout3_appointment  # noqa: E402
-from gen.holdout3_private import business_days as holdout3_business_days  # noqa: E402
-from gen.holdout3_private import contract_confirmation as holdout3_contract_confirmation  # noqa: E402
-from gen.holdout3_private import dunning_fixed as holdout3_dunning_fixed  # noqa: E402
-from gen.holdout3_private import english_letter as holdout3_english_letter  # noqa: E402
-from gen.holdout3_private import invoice_relative as holdout3_invoice_relative  # noqa: E402
-from gen.holdout3_private import price_increase as holdout3_price_increase  # noqa: E402
-from gen.holdout_admin import fine_bussgeld as holdout_fine_bussgeld  # noqa: E402
-from gen.holdout_admin import municipal_decision as holdout_municipal_decision  # noqa: E402
-from gen.holdout_admin import social_decision as holdout_social_decision  # noqa: E402
-from gen.holdout_admin import tax_assessment as holdout_tax_assessment  # noqa: E402
-from gen.holdout_admin import year_boundary as holdout_year_boundary  # noqa: E402
-from gen.holdout_adversarial import adversarial as holdout_adversarial  # noqa: E402
-from gen.holdout_private import appointment as holdout_appointment  # noqa: E402
-from gen.holdout_private import business_days as holdout_business_days  # noqa: E402
-from gen.holdout_private import contract_confirmation as holdout_contract_confirmation  # noqa: E402
-from gen.holdout_private import dunning_fixed as holdout_dunning_fixed  # noqa: E402
-from gen.holdout_private import english_letter as holdout_english_letter  # noqa: E402
-from gen.holdout_private import invoice_relative as holdout_invoice_relative  # noqa: E402
-from gen.holdout_private import price_increase as holdout_price_increase  # noqa: E402
-from gen.pdf import render_letter  # noqa: E402
-from gen.photo import phone_photo  # noqa: E402
-from gen.text import seed_for  # noqa: E402
+# mypy reads evals/ as a package, where the generators are evals.gen; run as a script, they are gen (the
+# folder put on sys.path above). The same files and names either way.
+if TYPE_CHECKING:
+    from evals.gen import law
+    from evals.gen.adversarial import adversarial
+    from evals.gen.common import DOCUMENT_KINDS, SPLIT_VARIANTS, Case
+    from evals.gen.families_admin import (
+        fine_bussgeld,
+        municipal_decision,
+        social_decision,
+        tax_assessment,
+        year_boundary,
+    )
+    from evals.gen.families_private import (
+        appointment,
+        business_days,
+        contract_confirmation,
+        dunning_fixed,
+        english_letter,
+        invoice_relative,
+        price_increase,
+    )
+    from evals.gen.holdout2_admin import fine_bussgeld as holdout2_fine_bussgeld
+    from evals.gen.holdout2_admin import municipal_decision as holdout2_municipal_decision
+    from evals.gen.holdout2_admin import social_decision as holdout2_social_decision
+    from evals.gen.holdout2_admin import tax_assessment as holdout2_tax_assessment
+    from evals.gen.holdout2_admin import year_boundary as holdout2_year_boundary
+    from evals.gen.holdout2_adversarial import adversarial as holdout2_adversarial
+    from evals.gen.holdout2_private import appointment as holdout2_appointment
+    from evals.gen.holdout2_private import business_days as holdout2_business_days
+    from evals.gen.holdout2_private import contract_confirmation as holdout2_contract_confirmation
+    from evals.gen.holdout2_private import dunning_fixed as holdout2_dunning_fixed
+    from evals.gen.holdout2_private import english_letter as holdout2_english_letter
+    from evals.gen.holdout2_private import invoice_relative as holdout2_invoice_relative
+    from evals.gen.holdout2_private import price_increase as holdout2_price_increase
+    from evals.gen.holdout3_admin import fine_bussgeld as holdout3_fine_bussgeld
+    from evals.gen.holdout3_admin import municipal_decision as holdout3_municipal_decision
+    from evals.gen.holdout3_admin import social_decision as holdout3_social_decision
+    from evals.gen.holdout3_admin import tax_assessment as holdout3_tax_assessment
+    from evals.gen.holdout3_admin import year_boundary as holdout3_year_boundary
+    from evals.gen.holdout3_adversarial import adversarial as holdout3_adversarial
+    from evals.gen.holdout3_private import appointment as holdout3_appointment
+    from evals.gen.holdout3_private import business_days as holdout3_business_days
+    from evals.gen.holdout3_private import contract_confirmation as holdout3_contract_confirmation
+    from evals.gen.holdout3_private import dunning_fixed as holdout3_dunning_fixed
+    from evals.gen.holdout3_private import english_letter as holdout3_english_letter
+    from evals.gen.holdout3_private import invoice_relative as holdout3_invoice_relative
+    from evals.gen.holdout3_private import price_increase as holdout3_price_increase
+    from evals.gen.holdout_admin import fine_bussgeld as holdout_fine_bussgeld
+    from evals.gen.holdout_admin import municipal_decision as holdout_municipal_decision
+    from evals.gen.holdout_admin import social_decision as holdout_social_decision
+    from evals.gen.holdout_admin import tax_assessment as holdout_tax_assessment
+    from evals.gen.holdout_admin import year_boundary as holdout_year_boundary
+    from evals.gen.holdout_adversarial import adversarial as holdout_adversarial
+    from evals.gen.holdout_private import appointment as holdout_appointment
+    from evals.gen.holdout_private import business_days as holdout_business_days
+    from evals.gen.holdout_private import contract_confirmation as holdout_contract_confirmation
+    from evals.gen.holdout_private import dunning_fixed as holdout_dunning_fixed
+    from evals.gen.holdout_private import english_letter as holdout_english_letter
+    from evals.gen.holdout_private import invoice_relative as holdout_invoice_relative
+    from evals.gen.holdout_private import price_increase as holdout_price_increase
+    from evals.gen.pdf import render_letter
+    from evals.gen.photo import phone_photo
+    from evals.gen.text import seed_for
+else:
+    from gen import law
+    from gen.adversarial import adversarial
+    from gen.common import DOCUMENT_KINDS, SPLIT_VARIANTS, Case
+    from gen.families_admin import (
+        fine_bussgeld,
+        municipal_decision,
+        social_decision,
+        tax_assessment,
+        year_boundary,
+    )
+    from gen.families_private import (
+        appointment,
+        business_days,
+        contract_confirmation,
+        dunning_fixed,
+        english_letter,
+        invoice_relative,
+        price_increase,
+    )
+    from gen.holdout2_admin import fine_bussgeld as holdout2_fine_bussgeld
+    from gen.holdout2_admin import municipal_decision as holdout2_municipal_decision
+    from gen.holdout2_admin import social_decision as holdout2_social_decision
+    from gen.holdout2_admin import tax_assessment as holdout2_tax_assessment
+    from gen.holdout2_admin import year_boundary as holdout2_year_boundary
+    from gen.holdout2_adversarial import adversarial as holdout2_adversarial
+    from gen.holdout2_private import appointment as holdout2_appointment
+    from gen.holdout2_private import business_days as holdout2_business_days
+    from gen.holdout2_private import contract_confirmation as holdout2_contract_confirmation
+    from gen.holdout2_private import dunning_fixed as holdout2_dunning_fixed
+    from gen.holdout2_private import english_letter as holdout2_english_letter
+    from gen.holdout2_private import invoice_relative as holdout2_invoice_relative
+    from gen.holdout2_private import price_increase as holdout2_price_increase
+    from gen.holdout3_admin import fine_bussgeld as holdout3_fine_bussgeld
+    from gen.holdout3_admin import municipal_decision as holdout3_municipal_decision
+    from gen.holdout3_admin import social_decision as holdout3_social_decision
+    from gen.holdout3_admin import tax_assessment as holdout3_tax_assessment
+    from gen.holdout3_admin import year_boundary as holdout3_year_boundary
+    from gen.holdout3_adversarial import adversarial as holdout3_adversarial
+    from gen.holdout3_private import appointment as holdout3_appointment
+    from gen.holdout3_private import business_days as holdout3_business_days
+    from gen.holdout3_private import contract_confirmation as holdout3_contract_confirmation
+    from gen.holdout3_private import dunning_fixed as holdout3_dunning_fixed
+    from gen.holdout3_private import english_letter as holdout3_english_letter
+    from gen.holdout3_private import invoice_relative as holdout3_invoice_relative
+    from gen.holdout3_private import price_increase as holdout3_price_increase
+    from gen.holdout_admin import fine_bussgeld as holdout_fine_bussgeld
+    from gen.holdout_admin import municipal_decision as holdout_municipal_decision
+    from gen.holdout_admin import social_decision as holdout_social_decision
+    from gen.holdout_admin import tax_assessment as holdout_tax_assessment
+    from gen.holdout_admin import year_boundary as holdout_year_boundary
+    from gen.holdout_adversarial import adversarial as holdout_adversarial
+    from gen.holdout_private import appointment as holdout_appointment
+    from gen.holdout_private import business_days as holdout_business_days
+    from gen.holdout_private import contract_confirmation as holdout_contract_confirmation
+    from gen.holdout_private import dunning_fixed as holdout_dunning_fixed
+    from gen.holdout_private import english_letter as holdout_english_letter
+    from gen.holdout_private import invoice_relative as holdout_invoice_relative
+    from gen.holdout_private import price_increase as holdout_price_increase
+    from gen.pdf import render_letter
+    from gen.photo import phone_photo
+    from gen.text import seed_for
 
 DEFAULT_OUT = HERE / "dataset"
 MAX_TOTAL_BYTES = 25 * 1024 * 1024

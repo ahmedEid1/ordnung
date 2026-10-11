@@ -74,8 +74,8 @@ const EVENT_PREFIX: Partial<Record<Role, string>> = {
 export const rowLinkId = (key: string) => `week-row-${key}`;
 
 /** A row leaves its step (confirmed, paid): the focus goes on to the row now in its place, else the step's heading. */
-function focusAfterRow(step: StepId, key: string): void {
-  focusAfterLeaving(
+function focusAfterRow(step: StepId, key: string): () => void {
+  return focusAfterLeaving(
     () => Array.from(document.querySelectorAll<HTMLElement>(`[data-week-row="${step}"]`)),
     rowLinkId(key),
     `week-step-${step}`,
