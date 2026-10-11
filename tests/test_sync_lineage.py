@@ -96,6 +96,43 @@ def test_relation(local: Lineage, other: Lineage, expected: str) -> None:
     assert lin.relation(local, other) == expected
 
 
+def test_keeping_this_again_over_an_answer_given_apart_settles_it() -> None:
+    """Two computers answered one choice apart, each keeping its own; asked once more, the person keeps this
+    computer's again. That answer saw the other one, so it stands: the other answer is behind it and sees
+    it as having decided. Its lineage came out the same as the first answer's, so the question came back
+    after every answer."""
+    first = L({A: [(1, 2)]}, {B: [(1, 1)]})  # this computer kept its own …
+    apart = L({A: [(1, 1)], B: [(1, 1)]}, {A: [(2, 2)]})  # … and the other its own, apart
+    assert lin.relation(first, apart) == "diverged"  # asked once more
+    again = lin.keep_this(first, [apart])
+    assert lin.renumbers(first, again)  # change 2 is left out under its old number …
+    pushed = lin.bump(again, A, 3)  # … and the push numbers it anew
+    assert pushed.content == {A: [(1, 1), (3, 3)]} and pushed.dropped == {A: [(2, 2)], B: [(1, 1)]}
+    assert lin.relation(pushed, apart) == "behind"
+    assert lin.relation(apart, pushed) == "decided"
+    assert lin.relation(pushed, L({A: [(1, 1)]})) == "behind"  # never "same" as data without change 2
+    # nothing contested: the lineage is the same as before, and the push numbers nothing anew
+    plain = lin.keep_this(first, [L({A: [(1, 1)], B: [(1, 1)]})])
+    assert plain == first and not lin.renumbers(first, plain)
+
+
+def test_keeping_the_other_over_an_answer_that_dropped_it_settles_it() -> None:
+    """As above for "keep the other one": a third computer kept the laptop's version after the desktop's
+    answer had dropped the laptop's change. That change is numbered anew, so the desktop's answer is behind
+    this one, never at odds with it."""
+    desktop = L({A: [(1, 2)]}, {B: [(1, 1)]})  # the desktop kept its own, dropping the laptop's change
+    laptop = L({A: [(1, 1)], B: [(1, 1)]})
+    third = L({A: [(1, 1)]})
+    kept = lin.keep_other(laptop, third, [desktop, laptop])
+    assert lin.renumbers(laptop, kept)  # saved with the laptop's data: change B1 is numbered anew
+    pushed = lin.bump(kept, C, 1)
+    assert pushed.content == {A: [(1, 1)], C: [(1, 1)]} and pushed.dropped == {A: [(2, 2)], B: [(1, 1)]}
+    assert lin.relation(pushed, desktop) == "behind" and lin.relation(desktop, pushed) == "decided"
+    assert lin.relation(pushed, laptop) == "behind"
+    # nothing contested: as before
+    assert lin.keep_other(laptop, third, [laptop]) == L({A: [(1, 1)], B: [(1, 1)]})
+
+
 def test_a_lineage_may_not_claim_beyond_what_a_computer_published() -> None:  # finding 18
     claims_all = L({A: [(1, 1000)], B: [(1, 1)]})
     assert not lin.claims_within(claims_all, {A: 3, B: 1})
@@ -234,7 +271,10 @@ class World:
 
     def push(self, m: Machine, lineage: Lineage | None = None, state: str | None = None) -> None:
         m.seq += 1
-        person = bool(m.pending)
+        # as the real push: a choice's changes kept again over an answer that dropped them are numbered anew
+        person = bool(m.pending) or (
+            lineage is not None and m.base is not None and lin.renumbers(m.base.lineage, lineage)
+        )
         if person:
             m.pnum += 1
         base = m.base.lineage if m.base else Lineage()
@@ -569,7 +609,8 @@ def test_a_left_head_still_counts_for_content() -> None:  # blocker 2
 
 
 # --------------------------------------------------------------------------------------------------
-# histories TestHistories failed on (shrunk): questions a choice never answered
+# histories TestHistories failed on (shrunk): questions a choice never answered, and answers that didn't
+# settle the question
 # --------------------------------------------------------------------------------------------------
 
 
@@ -640,3 +681,85 @@ def test_the_older_copy_put_in_use_after_a_choice_asks_again() -> None:
     state.nothing_asked_again()
     state.nothing_lost()
     assert isinstance(world.round(a), Choice)
+
+
+def test_answering_once_more_after_two_answers_given_apart_is_the_last_question() -> None:
+    """Found by a random walk over the histories: both computers kept their own apart, and asked once more
+    the desktop kept its own again — and was asked again after every answer, since its new version had the
+    same lineage as its first answer, still at odds with the laptop's."""
+    state = Histories()
+    world = state.world
+    a, b = world.machines[A], world.machines[B]
+    state.deliver(src=0, dst=1)
+    state.use_here(index=1, older=False)
+    state.person_change(index=1)
+    state.person_change(index=0)
+    state.settle()
+    state.choose(index=0, pick=0)  # the desktop keeps its own …
+    state.choose(index=1, pick=0)  # … and the laptop its own, apart
+    assert world.conflicting
+    state.settle()
+    state.nothing_asked_again()
+    state.choose(index=0, pick=0)  # asked once more: the desktop's again
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    assert not isinstance(world.round(a), Choice)
+    standing = decide(world.local(b), world.view(b))
+    assert isinstance(standing, Standby) and standing.choice is None
+    assert isinstance(world.use_here(b), Pull)  # the laptop takes the answer in, keeping a copy first
+    assert b.kept and world.everything_kept() >= world.made - frozenset().union(
+        *(d for _c, d in world.choices)
+    )
+
+
+def test_a_computer_holding_the_answers_data_takes_its_answer_in() -> None:
+    """Found by a random walk (three computers): the third computer kept the desktop's version over the
+    laptop's; the desktop, holding that very data, was put in use at it — and asked "desktop's or
+    laptop's?" again, as its own version didn't know of the answer. A version with the same content counts
+    with what it left out on purpose."""
+    state = Histories()
+    world = state.world
+    a = world.machines[A]
+    state.deliver(src=2, dst=1)
+    state.three(names=3)
+    state.person_change(index=0)
+    state.deliver(src=0, dst=2)
+    state.use_here(index=1, older=False)
+    state.person_change(index=1)
+    state.use_here(index=2, older=True)
+    state.settle()
+    state.choose(index=2, pick=3)  # the third keeps the desktop's version
+    state.settle()
+    state.nothing_asked_again()
+    state.use_here(index=0, older=True)  # the desktop, at that same data, in use
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    assert not isinstance(world.round(a), Choice)
+
+
+def test_keeping_another_computers_version_after_answers_given_apart_is_the_last_question() -> None:
+    """Found by a random walk (three computers): the third kept the laptop's version and the desktop its
+    own, apart; asked once more, the laptop kept the third's (its own data) — and was asked again, its
+    answer at odds with the desktop's as before."""
+    state = Histories()
+    world = state.world
+    b = world.machines[B]
+    state.deliver(src=2, dst=1)
+    state.three(names=3)
+    state.deliver(src=0, dst=2)
+    state.use_here(index=1, older=False)
+    state.use_here(index=2, older=True)
+    state.person_change(index=1)
+    state.person_change(index=0)
+    state.settle()
+    state.choose(index=2, pick=2)  # the third keeps the laptop's version …
+    state.choose(index=0, pick=2)  # … and the desktop its own, apart
+    assert world.conflicting
+    state.settle()
+    state.choose(index=1, pick=2)  # asked once more on the laptop
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    assert not isinstance(world.round(b), Choice)

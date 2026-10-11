@@ -433,6 +433,8 @@ def push(
     snap = snapshot or take_snapshot(session, demo=demo)
     base = state.base.ref if state.base is not None else None
     person = state.force_person or snap.person is None or snap.person > state.pushed or base is None
+    if lineage is not None and base is not None and lin.renumbers(base.lineage, lineage):
+        person = True  # changes a choice kept again over an answer that dropped them: numbered anew
     wanted_state = head_state or state.head_state
     if base is not None and snap.digest == base.digest and lineage is None and not force:
         if person:
