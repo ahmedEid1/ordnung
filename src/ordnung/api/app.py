@@ -19,10 +19,15 @@ Security Policy, the localhost security middleware and a lifespan that runs the 
   invalid input ``422``, unknown records ``404``, phone-access and hand-off sync refusals their status
   with ``{"detail", "code"}``, and anything unexpected a JSON ``500`` with a plain sentence (``code``
   ``internal_error``) and the error's name, never its message.
-* **web app** — files of ``config.web_dist_dir()`` are served as they are; a missing file (under
-  ``assets/`` or with an extension) is a ``404``; any other non-API path gets ``index.html``
-  (client-side routing) with the CSP, whose ``script-src`` allows exactly the inline theme script of
-  the built ``index.html`` by hash. Without a build a friendly page explains how to get it.
+* **compression** — :class:`~ordnung.api.compress.CompressMiddleware` is the outermost middleware (on both
+  listeners): JSON answers to a GET go out gzipped when the client takes gzip; streams, downloads, range
+  requests, writes and anything that sets a cookie never do.
+* **web app** — files of ``config.web_dist_dir()`` are served as they are, and their text files
+  (``.js``, ``.css``, ``.svg``, ``.txt``, ``.json``) gzipped from memory to a client that takes gzip (never
+  a range request); a missing file (under ``assets/`` or with an extension) is a ``404``; any other
+  non-API path gets ``index.html`` (client-side routing, never compressed) with the CSP, whose
+  ``script-src`` allows exactly the inline theme script of the built ``index.html`` by hash. Without a
+  build a friendly page explains how to get it.
 * **OpenAPI** at ``/api/openapi.json`` lists every view model, the ``StreamEvent`` of ``/api/ask`` and
   ``ServerEvents`` (the payload of each live event of ``/api/events``, by event name). No interactive
   docs page is served (it would load scripts from a CDN). :func:`openapi_json` is what
@@ -49,6 +54,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic.json_schema import models_json_schema
 
 from ordnung import __version__, models
+from ordnung.api.compress import FILE_TYPES, CompressMiddleware, GzipFiles, accepts_gzip
 from ordnung.api.deps import SHUTDOWN_GRACE_S, ApiState
 from ordnung.api.phone_gate import PhoneGate, PhoneListener
 from ordnung.api.routes import ROUTERS
@@ -269,13 +275,29 @@ def public_files(dist: Path) -> frozenset[str]:
     return frozenset(found)
 
 
+async def _app_file(request: Request, found: Path, cache: str, gzipped: GzipFiles) -> Response:
+    """A file of the built web app: a text file gzipped from memory to a client that takes gzip (a ``GET``
+    without ``Range``), anything else as it is."""
+    media = FILE_TYPES.get(found.suffix.lower())
+    if media is None:
+        return FileResponse(found, headers={"Cache-Control": cache})
+    headers = {"Cache-Control": cache, "Vary": "Accept-Encoding"}
+    accepted = ", ".join(request.headers.getlist("accept-encoding"))
+    if request.method == "GET" and "range" not in request.headers and accepts_gzip(accepted):
+        body = await gzipped.get(found)
+        if body is not None:
+            return Response(body, media_type=media, headers={**headers, "Content-Encoding": "gzip"})
+    return FileResponse(found, media_type=media, headers=headers)
+
+
 def _mount_web_app(app: FastAPI, dist: Path) -> None:
     index = dist / "index.html"
     hashes = inline_script_hashes(index.read_text(encoding="utf-8")) if index.is_file() else []
     page_headers = {**PAGE_HEADERS, "Content-Security-Policy": content_security_policy(hashes)}
+    gzipped = GzipFiles()
 
     @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
-    async def web_app(path: str) -> Response:
+    async def web_app(path: str, request: Request) -> Response:
         if f"/{path}" == API_PREFIX or f"/{path}".startswith(API_PREFIX + "/"):
             return JSONResponse({"detail": "Not Found"}, status_code=404)
         if not index.is_file():
@@ -283,7 +305,7 @@ def _mount_web_app(app: FastAPI, dist: Path) -> None:
         found = _static_file(dist, path)
         if found is not None and found != index.resolve():
             cache = ASSET_CACHE if path.startswith("assets/") else "no-cache"
-            return FileResponse(found, headers={"Cache-Control": cache})
+            return await _app_file(request, found, cache, gzipped)
         if found is None and (path.startswith("assets/") or PurePosixPath(path).suffix):
             # a file this build doesn't have (a tab left open across an upgrade asks for the old
             # version's page chunks): index.html would fail as a script with a MIME type error
@@ -402,7 +424,9 @@ def create_app(ctx: AppContext, *, token: str | None, demo: bool = False) -> Fas
     _mount_web_app(app, dist)
     state.phone.bind_app(PhoneListener(app), public_files(dist))
     app.openapi = _openapi(app)  # type: ignore[method-assign]
-    # the last added is the outermost: the security checks (or the phone's gate) first, then sync's gate
+    # the last added is the outermost: compression sees the final headers (cookies, no-store) of both
+    # listeners; then the security checks (or the phone's gate), then sync's gate
     app.add_middleware(SyncGate, agent=state.sync)
     app.add_middleware(SecurityMiddleware, token=token, phone=PhoneGate(state.phone))
+    app.add_middleware(CompressMiddleware)
     return app

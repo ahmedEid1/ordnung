@@ -287,6 +287,8 @@ def listener_config(app: ASGIApp, address: str, port: int, certs: tls.Certificat
     config.load()
     if config.ssl is not None:
         config.ssl.minimum_version = ssl.TLSVersion.TLSv1_2
+        # TLS's own compression (CRIME) stays off, whatever the OpenSSL build would choose
+        config.ssl.options |= ssl.OP_NO_COMPRESSION
     return config
 
 
