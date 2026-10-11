@@ -60,8 +60,6 @@ LIST_SHARE = 0.6
 ROW_BYTES = 1_200
 #: What the letter list may weigh on the wire, as a share of its JSON: answers are gzip-compressed.
 WIRE_SHARE = 0.10
-#: The wire check needs the compression of JSON answers, another package of the same batch.
-UNTIL_D2_P1 = pytest.mark.xfail(strict=True, reason="until D2 integration (D2-P1 compresses JSON answers)")
 
 _PARTY_KINDS = ("utility", "telecom", "insurer", "health_insurer", "retailer", "landlord", "bank", "gym")
 _SENDER_WORDS = ("Stadtwerke", "Netz", "Versicherung", "Kasse", "Handel", "Wohnen", "Bank", "Fitness")
@@ -370,7 +368,6 @@ async def test_the_letter_list_stays_light(api: Api) -> None:
     assert per_row < ROW_BYTES, f"{per_row:.0f} bytes of JSON per list row"
 
 
-@UNTIL_D2_P1
 async def test_the_letter_list_is_light_on_the_wire(api: Api) -> None:
     """With :data:`LETTERS` letters the list arrives gzip-compressed, at under a tenth of its JSON."""
     listed = await api.client.get("/api/documents", headers={"Accept-Encoding": "gzip"})

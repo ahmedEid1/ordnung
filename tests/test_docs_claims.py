@@ -3645,10 +3645,6 @@ def test_the_changelog_keeps_no_note_for_the_d1_integration() -> None:
 # docs/privacy.md, SPEC, docs/architecture.md and ADR 0022
 # --------------------------------------------------------------------------------------------------
 
-#: A claim whose code comes with another D2 package (the docs package merges last): the D2 integrator removes the
-#: marker once that package is merged, or the claim and its test when the package didn't land.
-UNTIL_D2 = pytest.mark.xfail(strict=False, reason="until D2 integration")
-
 _ADR_COMPRESSED = ROOT / "docs" / "decisions" / "0022-compressed-answers-and-a-lighter-letter-list.md"
 #: The demo's committed database and files (``ordnung demo`` starts from a copy of them).
 _DEMO_DB = ROOT / "src" / "ordnung" / "demo" / "demo_db"
@@ -3771,7 +3767,6 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     assert "DocumentListEntry` rows" not in spec
 
 
-@UNTIL_D2
 def test_the_records_copy_takes_every_letter_whole() -> None:
     """d2-list-consumers against the CHANGELOG: *Download a copy of your records* takes its letters from the
     computer-only ``documents.json``, never from the lighter list."""
@@ -3795,7 +3790,6 @@ def test_the_privacy_page_says_what_is_compressed_and_what_the_list_leaves_out()
     )
 
 
-@UNTIL_D2
 async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> None:
     """d2-compression against SPEC § 13, ADR 0022 and docs/architecture.md: JSON only, at least 1 KiB, level 6, a
     thread from 128 KiB, never with a cookie, a download's or a file's headers; the outermost middleware; the web
@@ -3929,7 +3923,6 @@ def test_readme_says_outlook_files_come_in_as_an_eml_copy() -> None:
     assert "can't open Outlook's `.msg` files" not in readme
 
 
-@UNTIL_D2
 def test_outlook_files_come_in_where_the_docs_say() -> None:
     """d2-outlook against README, the CHANGELOG and SPEC § 8: an Outlook file becomes an ``.eml`` copy named like
     it, the same copy every time, before intake looks at it — at upload and the phone, the watched folder (which
@@ -4002,7 +3995,6 @@ def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
         assert words in concurrency, words
 
 
-@UNTIL_D2
 def test_the_tests_the_architecture_names_for_d2_exist() -> None:
     """docs/architecture.md's testing strategy names D2's tests; they come with the other D2 packages."""
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
@@ -4077,7 +4069,6 @@ def test_the_changelog_says_what_d2_fixed_in_the_daily_check_and_hand_off_sync()
     ) in row
 
 
-@UNTIL_D2
 def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     """d2-races against the CHANGELOG and SPEC: every thread call of the daily tick is waited for on a cancel (at
     most 10 s); two answers given apart, then answered once more by keeping the same version, leave the other
