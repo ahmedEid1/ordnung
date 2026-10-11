@@ -427,7 +427,16 @@ export async function demoCatalog({ api, server }) {
   docState(payDoc, "evidence-tooltip", "hover the first evidence chip", "Tooltip of an evidence chip.", (c) => c.hover(c.page.getByRole("button", { name: /show “.*” on the page/ })));
   docState(payDoc, "delete-dialog", "click “Delete”", "The delete-letter confirmation.", (c) => c.click(main(c.page).getByRole("button", { name: /^Delete$/ })));
   const statementDoc = byFile("13_nebenkostenabrechnung_2025.pdf");
-  const photoFineDoc = docs.find((d) => d.text_mode === "vision" && d.payment?.iban);
+  // the photographed fine: a letter read from a photo whose bank details have an IBAN. The letter list leaves
+  // out bank details (a letter's own page has them), so each photographed letter's page is asked in turn.
+  let photoFineDoc;
+  for (const d of docs.filter((x) => x.text_mode === "vision")) {
+    const { document } = await api.get(`/api/documents/${d.id}`);
+    if (document.payment?.iban) {
+      photoFineDoc = d;
+      break;
+    }
+  }
   const openPay = async (c) => {
     const pay = c.page.getByRole("article").first().getByRole("button", { name: /^Pay\b/ });
     if (await c.exists(pay)) await c.click(pay);

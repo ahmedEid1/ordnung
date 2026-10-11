@@ -17,9 +17,11 @@ import { classifyPhoneRequest, phoneScopeFromOpenApi } from "@/mocks/phone";
 import { SchemaChecker, type OpenApiDoc, type Operation, type Schema } from "@/test/jsonSchema";
 import { ApiError } from "./client";
 import { api, type Api } from "./endpoints";
-import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type StreamEvent } from "./types";
+import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type Document, type DocumentRow, type StreamEvent } from "./types";
 
 const doc = JSON.parse(openapiText) as OpenApiDoc;
+/** What the letter list leaves out of each letter, like the API (`LEFT_OUT_OF_LIST`): its page and the copy of your records have it. */
+const LEFT_OUT_OF_LIST = ["key_facts", "explanation", "references", "payment", "sha256"] as const;
 const strict = new SchemaChecker(doc, true);
 const loose = new SchemaChecker(doc);
 
@@ -518,6 +520,41 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     expect(await refused(() => api.updateProfile({ name: "Sam" }))).toBeNull(); // in use here again
   });
 
+  it("the letter list leaves out each letter's reading and the copy of your records keeps it, strictly as the API declares", async () => {
+    const props = (name: string) => Object.keys((doc.components.schemas[name] as { properties: Record<string, unknown> }).properties);
+    // what the list leaves out, read from the API's own schemas
+    expect(props("Document").filter((k) => !props("DocumentRow").includes(k)).sort()).toEqual([...LEFT_OUT_OF_LIST].sort());
+    expect(props("DocumentRow").filter((k) => !props("Document").includes(k))).toEqual(["found_in"]);
+
+    const problems: string[] = [];
+    const answers: unknown[] = [];
+    for (const run of [() => api.documents(), () => api.documents({ q: "Stadtwerke" }), () => api.documentsFull()]) {
+      const before = exchanges.length;
+      answers.push(await run());
+      const { method, url, response } = exchanges[before]!;
+      const match = operationFor(method, url.pathname)!;
+      problems.push(...(await responseProblems(match.op, response)).map((p) => `${method} ${url.pathname}${url.search}: ${p}`));
+    }
+    expect(problems).toEqual([]);
+    const [rows, found, records] = answers as [DocumentRow[], DocumentRow[], Document[]];
+    expect(found.length).toBeGreaterThan(0);
+    expect([...rows, ...found].filter((row) => LEFT_OUT_OF_LIST.some((field) => field in row)).map((row) => row.id)).toEqual([]);
+    expect(records.map((d) => d.id)).toEqual(rows.map((row) => row.id));
+    expect(records.filter((d) => LEFT_OUT_OF_LIST.some((field) => !(field in d))).map((d) => d.id)).toEqual([]);
+
+    // a mock that sent any of them in a list row would fail the strict check, one problem per field
+    const rowSchema = { $ref: "#/components/schemas/DocumentRow" };
+    const whole = records.find((d) => d.explanation && d.key_facts.length && d.references.length && d.payment?.iban)!;
+    expect(whole).toBeTruthy();
+    const row = rows.find((r) => r.id === whole.id)!;
+    expect(strict.check(row, rowSchema)).toEqual([]);
+    for (const field of LEFT_OUT_OF_LIST) expect(strict.check({ ...row, [field]: whole[field] }, rowSchema)).toEqual([`$.${field}: not declared by the API`]);
+    expect(strict.check({ ...whole, found_in: null }, rowSchema).sort()).toEqual(LEFT_OUT_OF_LIST.map((field) => `$.${field}: not declared by the API`).sort());
+    // …and the copy of your records needs every one of them
+    const docSchema = { $ref: "#/components/schemas/Document" };
+    expect(strict.check(row, docSchema).sort()).toEqual(LEFT_OUT_OF_LIST.map((field) => `$: missing required “${field}”`).concat("$.found_in: not declared by the API").sort());
+  });
+
   it("the schema checker catches drift (sanity check of the checker itself)", () => {
     const docSchema = { $ref: "#/components/schemas/Document" };
     expect(strict.check({ id: "doc_1" }, docSchema).some((p) => p.includes("missing required"))).toBe(true);
@@ -592,6 +629,17 @@ describe("API contract on a phone (the mock as the phone listener, its allow-lis
     expect(await refusal(() => api.deleteDocument("doc_1"))).toEqual({ status: 403, code: "computer_only" });
     expect(await refusal(() => api.phone())).toEqual({ status: 403, code: "computer_only" });
     expect(srv.refused).toEqual(["GET /api/settings", "GET /api/health?probe=true", "DELETE /api/documents/doc_1", "GET /api/phone"]);
+  });
+
+  it("gives a phone the letter list without each letter's reading, and never the copy of your records", async () => {
+    srv = createMockServer({ staticDemo: false, latency: 0, phoneScope: scope });
+    expect(await checked("documents", () => api.documents())).toEqual([]);
+    const rows = await api.documents();
+    expect(rows.length).toBeGreaterThan(10);
+    expect(rows.filter((row) => LEFT_OUT_OF_LIST.some((field) => field in row)).map((row) => row.id)).toEqual([]);
+    expect(classifyPhoneRequest(scope, "GET", "/api/documents.json")).toBe("computer");
+    expect(await refusal(() => api.documentsFull())).toEqual({ status: 403, code: "computer_only" });
+    expect(srv.refused).toEqual(["GET /api/documents.json"]);
   });
 
   it("pairs a phone like the API, and refuses a wrong, reused or locked-out code with the declared statuses", async () => {

@@ -10,6 +10,7 @@ import type {
   Contract,
   Dashboard,
   DesktopReminders,
+  Document,
   DocumentDetail,
   DocumentRow,
   Draft,
@@ -533,6 +534,36 @@ describe("mock dataset", () => {
     expect(found.every((d) => d.found_in === "letter")).toBe(true);
     expect((await get<DocumentRow[]>(s, "/documents", "q=%20%20")).every((d) => d.found_in === null)).toBe(true);
     expect([PROFILE.moved_on, PROFILE.old_address]).toEqual([null, ""]);
+  });
+
+  it("leaves each letter's reading out of the letter list, like the API; the letter's page keeps it", async () => {
+    const s = srv();
+    const leftOut = ["key_facts", "explanation", "references", "payment", "sha256"] as const;
+    for (const query of ["", "q=Stadtwerke", "limit=3", "status=processed"]) {
+      const rows = await get<DocumentRow[]>(s, "/documents", query);
+      expect(rows.length, query).toBeGreaterThan(0);
+      expect(rows.filter((row) => leftOut.some((field) => field in row)).map((row) => row.id), query).toEqual([]);
+    }
+    const whole = s.db.liveDocuments().find((d) => d.explanation && d.key_facts.length && d.payment?.iban)!;
+    expect(whole).toBeTruthy();
+    const page = await get<DocumentDetail>(s, `/documents/${whole.id}`);
+    for (const field of leftOut) expect(page.document[field], field).toEqual(whole[field]);
+  });
+
+  it("keeps every letter's whole reading in the copy of your records, in the list's order (no trash, no proof files)", async () => {
+    const s = srv();
+    const trashed = s.db.liveDocuments().find((d) => d.status === "processed")!;
+    trashed.deleted_at = "2026-09-28T09:00:00Z";
+    const records = await get<Document[]>(s, "/documents.json");
+    const rows = await get<DocumentRow[]>(s, "/documents");
+    expect(records.map((d) => d.id)).toEqual(rows.map((row) => row.id));
+    expect(records.map((d) => d.id)).not.toContain(trashed.id);
+    expect(records.some((d) => d.source === "proof")).toBe(false);
+    expect(s.db.state.documents.some((d) => d.source === "proof")).toBe(true);
+    expect(records).toEqual(JSON.parse(JSON.stringify(records.map((d) => s.db.document(d.id)))));
+    const read = records.filter((d) => d.status === "processed" && d.ai_processed_at && !d.ai_private);
+    expect(read.length).toBeGreaterThan(5);
+    expect(read.filter((d) => !d.explanation).map((d) => d.id)).toEqual([]);
   });
 
   it("finds Sam's held scan by its scanner's text and marks it, until Claude has read it (ADR 0020)", async () => {
