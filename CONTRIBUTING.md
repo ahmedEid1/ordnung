@@ -30,9 +30,9 @@ still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without
 
 ## Checks
 
-`make check` runs what most changes need: ruff (lint and format) and mypy, the backend tests (the fast
-ones with coverage, then the slow ones), and the web app's ESLint, type check and Vitest tests. CI runs
-more; run the ones near your change before you open a pull request:
+`make check` runs what most changes need: ruff (lint and format) and mypy (strict, over the package and
+`evals/`), the backend tests (the fast ones with coverage, then the slow ones), and the web app's ESLint,
+type check and Vitest tests. CI runs more; run the ones near your change before you open a pull request:
 
 ```bash
 make check

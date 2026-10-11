@@ -2071,8 +2071,9 @@ day) never depends on the hour of the run; results in
 `evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay.
 
 ## 18. Quality bar
-ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day
-idempotence, never landing on a holiday, deemed delivery ≥ posted + 4 from 2025, send_by ≤ cancel_by);
+ruff + `mypy --strict` clean (the package and `evals/`); pytest incl. Hypothesis properties for rules
+(month-end invariants, business-day idempotence, never landing on a holiday, deemed delivery ≥ posted + 4
+from 2025, send_by ≤ cancel_by);
 fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo --check`; frontend
 tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.
 

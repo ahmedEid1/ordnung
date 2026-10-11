@@ -159,12 +159,21 @@ def test_rules_branch_coverage_is_a_ci_gate() -> None:
 
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
-    """README's quality table says the rules engine has "`mypy` strict on it": pyproject.toml gives the whole
-    package, the rules engine with it, every check of ``mypy --strict``, and no module is let off."""
+    """README's quality table says the rules engine has "`mypy` strict on it, as on the whole package and the
+    benchmark code", and its CI gates row says so too: pyproject.toml gives the whole package, the rules engine
+    with it, and ``evals/`` every check of ``mypy --strict``, no module is let off, and CI's type check runs
+    mypy with pyproject.toml's list (no paths of its own)."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung"]
+    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung", "evals"]
     assert "overrides" not in mypy
-    assert "`mypy` strict on it" in _readme()
+    readme = _flat(_readme())
+    assert "`mypy` strict on it, as on the whole package and the benchmark code" in readme
+    assert "| CI gates | ruff, mypy (strict, on the package and the benchmark code), ESLint," in readme
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"run: \.venv/bin/mypy\n", ci)
+    assert re.search(
+        r"^typecheck:\n\t\$\(PY\) -m mypy\n", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M
+    )
 
 
 def test_demo_check_runs_in_ci() -> None:
