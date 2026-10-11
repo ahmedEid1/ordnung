@@ -7,12 +7,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Added
 
-- **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every month on its day, every
-  month on a working day (the 3rd, the last …), every 3 or 6 months, or every year. A repeating date shows its
-  next day, moves on when you mark it done or once its day has passed, and is never overdue because a month
-  went by. Your own dates can be edited later: choose *Edit* on the letter's page, or open one without a
-  letter from Timeline. When you change the day of one that repeats, you choose whether only that one moves
-  or every one after it (one on a working day moves alone); *Remove* stops it, with Undo.
+- **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every week or every 2 weeks on
+  its weekday, every month on its day, every month on a working day (the 3rd, the last …), every 3 or 6
+  months, or every year. A repeating date shows its next day, moves on when you mark it done or once its day
+  has passed, and is never overdue because a week or a month went by. Your own dates can be edited later:
+  choose *Edit* on the letter's page, or open one without a letter from Timeline. When you change the day of
+  one that repeats, you choose whether only that one moves or every one after it (one on a working day moves
+  alone); *Remove* stops it, with Undo.
 - **A letter addressed to someone else says so.** When a letter names someone other than you (your partner,
   your child, "Familie …"), its page shows *Addressed to …* under its title. A reply, objection, template
   letter or cancellation you write from it still starts in your name: its *From* field says who the letter
@@ -116,6 +117,18 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   with `ordnung shortcut`, before the commands that start it.
 - `ordnung serve` in a terminal suggests `ordnung shortcut` for its data folder while Ordnung isn't in your
   app menu, and `ordnung autostart enable` says you can open the app from there too.
+- Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, and
+  *Where do I find these?* lists them with that.
+- Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an
+  ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run
+  `ordnung shortcut` again to rewrite one you added before.
+- The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7
+  of GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer
+  ask for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript
+  take them.
+- Ask no longer goes through every letter to work out the key a question is logged and replayed under when
+  nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s
+  less per question with 500 letters, more with a bigger archive.
 
 ### Fixed
 
@@ -126,6 +139,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its
   PDF straight away. Before, only the first such letter was; the others were found by name until Claude
   read them.
+  <!-- TODO(D1 integration): keep the next bullet only if d1-test-hygiene's worker fix (the text read
+  remembered by job, not by letter) is merged, else delete it; then delete this comment. -->
+- A letter waiting for Claude that you delete for good and add again while Ordnung runs is found by the words
+  in its PDF again. Before, only its name found it until Claude read it.
 - The Inbox's own search finds the letters waiting from your watched folder, as the search at the top does.
   While you search, *From your folder — not read yet* lists only the ones it found ("1 of 3"), a found e-mail
   with its attachments, one found only in its scanner's text says so, and *Read it* and *Keep private* are

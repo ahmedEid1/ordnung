@@ -490,13 +490,12 @@ and it doesn't add the demo, which opens with `ordnung demo`.
   isn't signed; macOS warns about an unidentified developer only for apps downloaded from the internet.
   When Ordnung isn't running, the app opens a Terminal window that runs Ordnung, and Terminal asks before
   you close that window while Ordnung runs.
-- **Windows:** right-click it in the Start menu to pin it to the taskbar. Its Properties window may show
-  no target: the shortcut names Python in a part of the file Windows opens but doesn't show there. A
-  shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal,
-  `ordnung shortcut` prints the `setx` command that sets it for your account.
+- **Windows:** right-click it in the Start menu to pin it to the taskbar. A shortcut can't carry
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal, `ordnung shortcut` prints the
+  `setx` command that sets it for your account.
 
 CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
-opens it; opening it from the desktop's own menu isn't tested on any system.
+reads its target and opens it; opening it from the desktop's own menu isn't tested on any system.
 
 **On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
 choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
@@ -695,6 +694,10 @@ More in [docs/architecture.md](docs/architecture.md).
   that one, and it moves on when you mark it done or its day has passed. A date you add without a letter counts
   working days with the nationwide public holidays only, so where your Land has a holiday of its own, its
   working day can come out a day early, or a day late for "the last working day".
+- A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is always among Today's
+  Ideas: by default Ordnung reminds you from 14 days before a deadline and 7 days before a payment (Settings →
+  Reminders), and the next one is never further off. Added as a reminder, the dialog's first kind, such a date
+  is an Idea only on its day.
 - The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is for:
   a yearly statement for 2025 dated February 2026 is a 2026 letter, which is why a tax year also lists the
   letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
