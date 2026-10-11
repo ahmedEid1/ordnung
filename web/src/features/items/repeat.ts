@@ -11,8 +11,8 @@ import type { Item, Recurrence } from "@/api/types";
 import { ordinal } from "@/features/contracts/model";
 import { formatDate } from "@/lib/format";
 
-/** What the "Repeats" select offers; `current` is a rule set some other way (every 2 weeks …), kept as it is. */
-export type RepeatChoice = "never" | "month" | "working_day" | "quarter" | "half_year" | "year" | "current";
+/** What the "Repeats" select offers; `current` is a rule set some other way (every 3 weeks …), kept as it is. */
+export type RepeatChoice = "never" | "week" | "two_weeks" | "month" | "working_day" | "quarter" | "half_year" | "year" | "current";
 
 export interface RepeatOption {
   value: RepeatChoice;
@@ -29,6 +29,10 @@ const LAST = -1;
 const LAST_DAY = 31;
 
 const MONTHS: Partial<Record<RepeatChoice, number>> = { month: 1, quarter: 3, half_year: 6 };
+/** The weekly choices, by their weeks: a date of your own never moves off a weekend or a holiday, so each one is 7·n days on. */
+const WEEKS: Partial<Record<RepeatChoice, number>> = { week: 1, two_weeks: 2 };
+/** The weekly choice a rule in days or weeks is, by its days (every 14 days is every 2 weeks, as the server's `same_rule` says). */
+const WEEKLY_BY_DAYS: Record<number, RepeatChoice> = { 7: "week", 14: "two_weeks" };
 
 /** The rule a choice sends (`null`: it doesn't repeat; `current`: the date's own rule, unchanged). */
 export function repeatRule(choice: RepeatChoice, workingDay: number, current: Recurrence | null = null): Recurrence | null {
@@ -42,6 +46,9 @@ export function repeatRule(choice: RepeatChoice, workingDay: number, current: Re
       return { interval: 1, unit: "months", working_day: workingDay, day_of_month: null };
     case "year":
       return { interval: 1, unit: "years", ...plain };
+    case "week":
+    case "two_weeks":
+      return { interval: WEEKS[choice]!, unit: "weeks", ...plain };
     default:
       return { interval: MONTHS[choice]!, unit: "months", ...plain };
   }
@@ -71,12 +78,15 @@ export function dayStep(r: Recurrence): number | null {
 }
 
 /**
- * The choice a stored rule is (`startDate`: where its schedule starts, `date_spec.date`): every 12 months is every year,
- * as the server's `same_rule` says, and a day of the month that is the schedule's own day is the plain rule. Any other
- * rule (every 2 weeks, every 3 months on a working day …) is `current`, kept unless changed.
+ * The choice a stored rule is (`startDate`: where its schedule starts, `date_spec.date`): every 12 months is every year
+ * and every 14 days every 2 weeks, as the server's `same_rule` says, and a day of the month that is the schedule's own
+ * day is the plain rule. Any other rule (every 3 weeks, every 3 months on a working day …) is `current`, kept unless
+ * changed.
  */
 export function repeatChoiceOf(rule: Recurrence | null | undefined, startDate: string | null | undefined): { choice: RepeatChoice; workingDay: number } {
   if (!rule) return { choice: "never", workingDay: DEFAULT_WORKING_DAY };
+  const days = dayStep(rule);
+  if (days !== null) return { choice: WEEKLY_BY_DAYS[days] ?? "current", workingDay: DEFAULT_WORKING_DAY };
   const { months, workingDay, day } = steps(rule);
   if (months === 1 && workingDay !== null) return { choice: "working_day", workingDay };
   const startDay = startDate ? parseISO(startDate).getDate() : null;
@@ -109,12 +119,17 @@ function onDay(date: Date): string {
   return `the ${ordinal(date.getDate())}${date.getDate() > 28 ? " (or the month's last day)" : ""}`;
 }
 
-/** One choice in words, on `date`'s day ("Every 3 months on the 14th"); without a date, no day. */
+/** One choice in words, on `date`'s day ("Every 3 months on the 14th", "Every week on Wednesday"); without a date, no day. */
 export function repeatChoiceLabel(choice: RepeatChoice, date: string | null | undefined, current: Recurrence | null = null): string {
   const day = date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseISO(date) : null;
   switch (choice) {
     case "never":
       return "Doesn't repeat";
+    case "week":
+    case "two_weeks": {
+      const every = WEEKS[choice] === 1 ? "Every week" : `Every ${WEEKS[choice]} weeks`;
+      return day ? `${every} on ${format(day, "EEEE")}` : every;
+    }
     case "working_day":
       return "Every month on a working day";
     case "current":
@@ -129,12 +144,14 @@ export function repeatChoiceLabel(choice: RepeatChoice, date: string | null | un
 }
 
 /**
- * The "Repeats" choices for the day chosen (`date`; none yet: no "on the …"). Weekly is left out on purpose — monthly,
- * quarterly, half-yearly and yearly cover the German cadences — but a date that already repeats some other way
- * (`current`) keeps that rule as the last choice.
+ * The "Repeats" choices for the day chosen (`date`; none yet: no "on the …" and no weekday), from the most frequent to
+ * the least, as calendar apps order them: every week and every 2 weeks (an appointment, a cleaner, a bin day), then
+ * monthly, quarterly, half-yearly and yearly (the German cadences). Every 3 or 4 weeks isn't offered ("every 4 weeks"
+ * is easily taken for monthly), but a date that already repeats some other way (`current`) keeps that rule as the last
+ * choice.
  */
 export function repeatOptions(date: string | null | undefined, current?: Recurrence | null, startDate?: string | null): RepeatOption[] {
-  const choices: RepeatChoice[] = ["never", "month", "working_day", "quarter", "half_year", "year"];
+  const choices: RepeatChoice[] = ["never", "week", "two_weeks", "month", "working_day", "quarter", "half_year", "year"];
   const own = current ? repeatChoiceOf(current, startDate ?? date).choice : null;
   if (own === "current") choices.push("current");
   // the date's own choice is on its schedule's day; another one would start on the date shown

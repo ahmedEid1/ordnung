@@ -58,6 +58,8 @@ describe("what is checked and sent", () => {
     expect(dateBody(DRAFT, null)).not.toHaveProperty("recurrence");
     expect(dateBody({ ...DRAFT, repeat: "quarter" }, null).recurrence).toEqual({ interval: 3, unit: "months", working_day: null, day_of_month: null });
     expect(dateBody({ ...DRAFT, repeat: "working_day", workingDay: -1 }, null).recurrence).toEqual({ interval: 1, unit: "months", working_day: -1, day_of_month: null });
+    expect(dateBody({ ...DRAFT, repeat: "week" }, null).recurrence).toEqual({ interval: 1, unit: "weeks", working_day: null, day_of_month: null });
+    expect(dateBody({ ...DRAFT, repeat: "two_weeks" }, null).recurrence).toEqual({ interval: 2, unit: "weeks", working_day: null, day_of_month: null });
   });
 });
 
@@ -69,8 +71,17 @@ describe("Repeats", () => {
     const dialog = await screen.findByRole("dialog", { name: "Add a date" });
     const repeats = within(dialog).getByLabelText("Repeats");
     expect(repeats).toHaveValue("never");
-    // before a day is chosen, no "on the …"
-    expect(within(repeats).getAllByRole("option").map((o) => o.textContent)).toEqual(["Doesn't repeat", "Every month", "Every month on a working day", "Every 3 months", "Every 6 months", "Every year"]);
+    // before a day is chosen, no "on the …" and no weekday
+    expect(within(repeats).getAllByRole("option").map((o) => o.textContent)).toEqual([
+      "Doesn't repeat",
+      "Every week",
+      "Every 2 weeks",
+      "Every month",
+      "Every month on a working day",
+      "Every 3 months",
+      "Every 6 months",
+      "Every year",
+    ]);
     const when = within(dialog).getByLabelText("When?");
     fireEvent.change(when, { target: { value: "2026-10-20" } });
     expect(within(repeats).getAllByRole("option").map((o) => o.textContent)).toContain("Every 3 months on the 20th");
@@ -94,6 +105,40 @@ describe("Repeats", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/items")).toBe(true));
     expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ due_date: "2026-10-20", recurrence: { interval: 3, unit: "months" } });
     await waitFor(() => expect(success).toHaveBeenCalledWith("Date added", expect.objectContaining({ description: "Pay the quarterly fee — Tue 20 Oct, repeats every 3 months" })));
+  });
+
+  it("every week on Thursday: sends {interval: 1, unit: 'weeks'}, asks nothing more, and the toast says it repeats every week", async () => {
+    const { calls } = useMockApi();
+    const success = vi.spyOn(toast, "success");
+    const user = userEvent.setup();
+    renderWithProviders(<AddDateDialog open onClose={() => {}} />, { client: makeTestQueryClient() });
+    const dialog = await screen.findByRole("dialog", { name: "Add a date" });
+    await fill(user, dialog, { title: "Physio", date: "2026-10-01" });
+    const repeats = within(dialog).getByLabelText("Repeats");
+    expect(within(repeats).getAllByRole("option").map((o) => o.textContent)).toEqual(expect.arrayContaining(["Every week on Thursday", "Every 2 weeks on Thursday"]));
+    await user.selectOptions(repeats, "Every week on Thursday");
+    expect(repeats).toHaveValue("week");
+    // a weekly date never moves off a weekend or a holiday: no working day to choose, no hint
+    expect(within(dialog).queryByLabelText("Which working day?")).toBeNull();
+    await user.click(within(dialog).getByRole("button", { name: "Add date" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/items")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ due_date: "2026-10-01", recurrence: { interval: 1, unit: "weeks", working_day: null, day_of_month: null } });
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Date added", expect.objectContaining({ description: "Physio — Thu 1 Oct, repeats every week" })));
+  });
+
+  it("every 2 weeks from a day gone by: the toast names its next one, as the server dates it", async () => {
+    const { calls } = useMockApi();
+    const success = vi.spyOn(toast, "success");
+    const user = userEvent.setup();
+    renderWithProviders(<AddDateDialog open onClose={() => {}} />, { client: makeTestQueryClient() });
+    const dialog = await screen.findByRole("dialog", { name: "Add a date" });
+    // Thu 10 Sep; the mock's today is Mon 28 Sep, so Thu 24 Sep has passed and Thu 8 Oct is next
+    await fill(user, dialog, { title: "Session", date: "2026-09-10" });
+    await user.selectOptions(within(dialog).getByLabelText("Repeats"), "Every 2 weeks on Thursday");
+    await user.click(within(dialog).getByRole("button", { name: "Add date" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/items")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ due_date: "2026-09-10", recurrence: { interval: 2, unit: "weeks" } });
+    await waitFor(() => expect(success).toHaveBeenCalledWith("Date added", expect.objectContaining({ description: "Session — Thu 8 Oct, repeats every 2 weeks" })));
   });
 
   it("every month on a working day: asks which one (the 3rd unless chosen), says how they are counted, and names the day it falls on", async () => {

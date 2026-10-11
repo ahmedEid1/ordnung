@@ -5,9 +5,9 @@
  * a to-do added by hand (`POST /api/items`): reading the letter again never changes it, and it is on Today, the
  * Timeline, the calendar file and the reminders like the dates Ordnung reads ("Your own reminders" for a reminder).
  *
- * It can repeat (audit item 26): every month on its day or on a working day, every 3 or 6 months, every year. A
- * repeating date is one entry at its next date; the server dates it by its rule and moves it on when it is marked
- * done. "Edit your date" (`EditDateDialog`, the same form) changes one later — what it says, how it repeats, which
+ * It can repeat (audit item 26): every week or every 2 weeks on its weekday, every month on its day or on a working
+ * day, every 3 or 6 months, every year. A repeating date is one entry at its next date — in the calendar file and a
+ * synced calendar too — and the server dates it by its rule and moves it on when it is marked done. "Edit your date" (`EditDateDialog`, the same form) changes one later — what it says, how it repeats, which
  * dates move — or removes it (`status: dismissed`, with Undo).
  */
 import { useId, useState, type FormEvent, type RefObject } from "react";
