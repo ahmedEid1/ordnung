@@ -9,8 +9,21 @@ from pathlib import Path
 import pytest
 
 from ordnung import clock, durable
+from ordnung.assistant import ask
 from ordnung.config import Paths
 from ordnung.db.store import Store
+
+
+@pytest.fixture(autouse=True)
+def _ledger_memo_verified() -> Iterator[None]:
+    """Ask keeps its ledger fingerprint per state of the ledger (``ask._LEDGER_MEMO``). In every test, each
+    value it hands out from the memo is worked out again and compared; a difference fails the test here (not
+    inside Ask, which turns an exception into an error event that could hide it)."""
+    memo = ask._LEDGER_MEMO
+    memo.verify = True
+    yield
+    found, memo.mismatches[:] = list(memo.mismatches), []
+    assert found == [], f"Ask's ledger memo handed out a stale fingerprint: {found}"
 
 
 @pytest.fixture(autouse=True)
