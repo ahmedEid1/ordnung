@@ -245,6 +245,13 @@ run of brackets, digits or spaces; tests time one 88 KB sentence and 40,000-char
 a worker thread so a long answer never blocks the server, and re-run by the Ask benchmark over
 recorded answers.
 
+The replay key carries a hash of everything Ask's tools can read (the ledger fingerprint). It is worked out
+once per state of the ledger and kept per store and thread while no letter, page, to-do, contract, sender,
+case or the profile changed (`Store.ledger_token`): temporary triggers, which live only in the open
+connection and never in the database file, count this connection's writes to those tables, and another
+connection's commit or a schema change counts as a change too. The value is the same either way, and the
+tests work it out again wherever it was kept.
+
 ## My numbers and the weekly session
 
 Two read models over the same ledger snapshot, both written policies (ADR 0007) and both read-only
@@ -388,8 +395,9 @@ flowchart LR
 - **Start at login** (`autostart.py`) writes one entry and runs nothing; `status` reads it back
   (which folder it starts, whether it is current) for the CLI and for Settings.
 - **The app-menu shortcut** (`shortcut.py`) writes one launcher and runs nothing; its `.lnk` is written
-  byte by byte in the shell link format, without any Windows API. The launcher runs `serve
-  --from-shortcut`, which never starts Ordnung unseen: it opens a running Ordnung in the browser, or starts
+  byte by byte in the shell link format, with the target as an ID list Windows reads, without any Windows
+  API. The launcher runs `serve --from-shortcut`, which never starts Ordnung unseen: it opens a running
+  Ordnung in the browser, or starts
   it in a terminal window that is Ordnung (closing it stops Ordnung), or exits with 3 when there is no
   window. `state` reads the launcher back (which folder it opens, whether it runs this installation, and
   whether it is Ordnung's own) for Settings, without drawing an icon.
@@ -418,7 +426,8 @@ flowchart LR
   (`sync.LOCAL_ACTIVITY_KINDS`), and the reminder is never an Idea, so the daily note and the weekly Ideas
   review send the model nothing new. `ordnung doctor` adds two rows that only warn: `backup`, and
   `disk_encryption` (`encryption.py`: `fdesetup` on macOS, `findmnt` and `lsblk` on Linux, argument lists
-  with a timeout; no row on other systems).
+  with a timeout; no row on other systems: on Windows, Microsoft documents BitLocker's status only through
+  interfaces that need administrator rights).
 
 ## Moving between computers: hand-off sync
 

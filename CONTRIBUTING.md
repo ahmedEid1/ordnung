@@ -30,9 +30,9 @@ still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without
 
 ## Checks
 
-`make check` runs what most changes need: ruff (lint and format) and mypy, the backend tests (the fast
-ones with coverage, then the slow ones), and the web app's ESLint, type check and Vitest tests. CI runs
-more; run the ones near your change before you open a pull request:
+`make check` runs what most changes need: ruff (lint and format) and mypy (strict, over the package and
+`evals/`), the backend tests (the fast ones with coverage, then the slow ones), and the web app's ESLint,
+type check and Vitest tests. CI runs more; run the ones near your change before you open a pull request:
 
 ```bash
 make check
@@ -57,6 +57,12 @@ These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more 
   writes `web/openapi.json` and `web/src/api/schema.d.ts` again.
 - **The docs say what the code does.** `tests/test_docs_claims.py` checks the README's and docs'
   numbers and statements against the code; change the docs in the same pull request.
+
+**Writing an end-to-end test.** Before the next key press or click, wait for what the person sees (a toast,
+a status line, a button that is enabled again), not only for focus. Read the API with `apiGet`, or pass
+`READ` to `page.request.get`: it retries a connection the server dropped, and a change is never retried.
+Run the tests with Playwright's own Chromium (`make browser` installs it): an older build moves focus off a
+disabled button at once and hides this kind of race.
 
 ## Benchmarks and recorded answers
 
@@ -91,8 +97,13 @@ check shows in the numbers at once, and costs nothing.
   in the samples' manifest, because the sample letters regenerate byte for byte only with those;
   `make constraints` keeps them. The floors in `pyproject.toml` are what CI's "lowest" job installs.
 - **Web packages and GitHub Actions**: Dependabot opens update pull requests every week
-  (`.github/dependabot.yml`). One for `web/` changes `package-lock.json`, so run `make build-web` and
-  commit `src/ordnung/web/dist` on its branch before CI passes.
+  (`.github/dependabot.yml`): minor and patch updates together, each major on its own. One for `web/`
+  changes `package-lock.json`, so CI passes only once `make build-web` has run and `src/ordnung/web/dist`
+  is committed on its branch; or fold the updates into a pull request of your own. TypeScript majors are
+  skipped until the packages that need TypeScript (openapi-typescript, typescript-eslint) take them: a test
+  in `tests/test_repo_hygiene.py` fails then, saying to remove the rule. `ci.yml` names actions by their
+  major version (`actions/checkout@v7`), and `release.yml` pins each to a commit with its version beside it;
+  keep both on the same major (`tests/test_release_workflow.py` compares them).
 - CI's weekly "latest" job tests every Python package at its newest version, and its dependency audit
   checks `constraints.txt` and the web app's packages for known vulnerabilities.
 

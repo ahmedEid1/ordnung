@@ -1288,9 +1288,11 @@ are in their docstrings):
   rights) and printed with its path before anything is written — `$XDG_DATA_HOME/applications/ordnung.desktop`
   (`Terminal=true`; default `~/.local/share`), `~/Applications/Ordnung.app` (a property list, two `sh`
   scripts and an icon) or the per-user Start menu's `Ordnung.lnk` (its bytes written in the shell link
-  format, MS-SHLLINK, by Ordnung's own code — no COM, no PowerShell; its icon in
-  `%LOCALAPPDATA%\Programs\Ordnung`) — running `<python> -m ordnung --data-dir D serve --from-shortcut`
-  (`--port` when it isn't the default), absolute paths, the last folder set up wins. Linux and macOS record
+  format, MS-SHLLINK, by Ordnung's own code — no COM, no PowerShell; the target as an ID list (This PC, its
+  drive, each folder and the file) and again as a path in its LinkInfo and an EnvironmentVariableDataBlock;
+  its icon in `%LOCALAPPDATA%\Programs\Ordnung`) — running
+  `<python> -m ordnung --data-dir D serve --from-shortcut` (`--port` when it isn't the default), absolute
+  paths, the last folder set up wins. Linux and macOS record
   `PATH` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` as start at login does; on Windows the command
   prints the `setx` line for the opt-out. Each launcher carries a mark (the `.desktop` key
   `X-Ordnung-Shortcut`, `OrdnungShortcut` in `Info.plist`, "(added by ordnung shortcut)" at the end of the
@@ -1819,10 +1821,11 @@ Pages:
    they were read under "residence", which is the residence-permit area. Timeline and every letter's
    "To-dos & dates" have "Add a date": what it is, the day, the kind (reminder, deadline, payment,
    appointment, to-do, expiry date), an optional amount and, on Timeline, an optional letter, and
-   *Repeats* (every month on its day or on a working day, every 3 or 6 months, every year). It is the
-   person's own to-do (`POST /api/items`, origin `manual`), also on a letter kept private or one Claude
-   couldn't read. The same dialog edits it later (*Edit* on the letter's page, or its Timeline row when it
-   has no letter): changing the day of a repeating one asks whether only that one moves or every one after
+   *Repeats* (every week or every 2 weeks on its weekday, every month on its day or on a working day, every 3
+   or 6 months, every year). It is the person's own to-do (`POST /api/items`, origin `manual`), also on a
+   letter kept private or one Claude couldn't read. The same dialog edits it later (*Edit* on the letter's
+   page, or its Timeline row when it has no letter): changing the day of a repeating one asks whether only
+   that one moves or every one after
    it (one on a working day moves alone), and *Remove* dismisses it with Undo. A repeating to-do's row says how it repeats.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
@@ -2071,8 +2074,9 @@ day) never depends on the hour of the run; results in
 `evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay.
 
 ## 18. Quality bar
-ruff + mypy clean; pytest incl. Hypothesis properties for rules (month-end invariants, business-day
-idempotence, never landing on a holiday, deemed delivery ≥ posted + 4 from 2025, send_by ≤ cancel_by);
+ruff + `mypy --strict` clean (the package and `evals/`); pytest incl. Hypothesis properties for rules
+(month-end invariants, business-day idempotence, never landing on a holiday, deemed delivery ≥ posted + 4
+from 2025, send_by ≤ cancel_by);
 fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo --check`; frontend
 tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.
 

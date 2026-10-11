@@ -587,7 +587,10 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   Windows, turn on BitLocker, or Device encryption on Windows Home: Settings → Privacy & security → Device
   encryption, or BitLocker Drive Encryption in the Control Panel. On Linux, disk encryption (LUKS) is
   usually chosen when the system is installed. On a Mac and on Linux, `ordnung doctor` (and *Run check* in
-  Settings) says what it found, as a best effort; on Windows it doesn't check, so look yourself.
+  Settings) says what it found, as a best effort; on Windows it doesn't check, so look yourself. Microsoft's
+  page [Device encryption in Windows](https://support.microsoft.com/windows/device-encryption-in-windows-cf7e2b6f-3e70-4882-9532-18633605b7df)
+  shows where to look; if Settings has no Device encryption page, your PC may not support it, or you're
+  signed in with a standard account.
 
 **After**, from another computer:
 
