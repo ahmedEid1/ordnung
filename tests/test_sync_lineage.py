@@ -184,8 +184,11 @@ class World:
         self.choice_settled = False
         #: two answers given on two computers before either saw the other's: asked once more (§9)
         self.conflicting = False
+        #: the last choice left something unanswered, or something new came since: a question may be asked
         self.changed_since_choice = False
         self.choice_versions: dict[str, str] = {}
+        #: the lineage of the version the last choice made
+        self.choice_lineage: Lineage | None = None
 
     # ---- the views decide() sees ---------------------------------------------------------------
 
@@ -263,6 +266,11 @@ class World:
         m.epoch = max([m.epoch, *(h.epoch for h, _v in m.seen.values())]) + 1
         m.mode = m.head_state = "in_use"
         m.written += 1
+        chosen = self.choice_lineage
+        if chosen is not None and (m.base is None or not lin.covers(m.base.lineage, chosen)):
+            # in use at data that never took the last choice in (an older copy, a version from before it):
+            # a second answer, given apart — the question may come back
+            self.changed_since_choice = True
 
     def deliver(self, source: Machine, target: Machine) -> None:
         if source.base is None:
@@ -334,8 +342,22 @@ class World:
             self.claim(m)
         if isinstance(decision, ChooseThis | ChooseOther) and m.base is not None:
             self.choice_versions[m.computer] = m.base.id.key()
-            self.changed_since_choice = False
+            self.choice_lineage = m.base.lineage
+            self.changed_since_choice = self.unanswered(m)
         return decision
+
+    def unanswered(self, chooser: Machine) -> bool:
+        """What the choice just made on ``chooser`` didn't answer: another computer's person changes it
+        never saw (still pending there, or in a version that hadn't reached it), or another computer
+        taken into use that it never saw (a higher epoch)."""
+        assert chooser.base is not None
+        answer = chooser.base.lineage
+        return any(
+            not lin.covers(answer, self.local(m).lineage)
+            or (m.epoch, m.computer) > (chooser.epoch, chooser.computer)
+            for m in self.machines.values()
+            if m is not chooser and m.base is not None
+        )
 
     def everything_kept(self) -> set[str]:
         found: set[str] = set()
@@ -544,3 +566,77 @@ def test_a_left_head_still_counts_for_content() -> None:  # blocker 2
     decision = world.use_here(a)
     assert isinstance(decision, Pull) and decision.target.computer == B
     assert world.everything_kept() >= world.made
+
+
+# --------------------------------------------------------------------------------------------------
+# histories TestHistories failed on (shrunk): questions a choice never answered
+# --------------------------------------------------------------------------------------------------
+
+
+def test_a_change_the_choice_never_saw_is_asked_about() -> None:
+    """Found by a seeded search: the laptop changed something again just as the desktop chose, before that
+    change reached the desktop. The change is on no side of the choice, so it is asked about after all — the
+    history check took the choice as its answer ("a choice already answered was asked again")."""
+    state = Histories()
+    world = state.world
+    a, b = world.machines[A], world.machines[B]
+    state.deliver(src=0, dst=1)
+    state.person_change(index=0)
+    state.use_here(index=1, older=False)
+    state.use_here(index=0, older=False)
+    state.person_change(index=1)
+    state.settle()
+    before = set(world.made)
+    state.person_change(index=1)  # the laptop's late change: not in what the desktop sees
+    late = world.made - before
+    state.choose(index=0, pick=0)  # the desktop keeps its own
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    decision = world.round(a)
+    assert isinstance(decision, Choice) and any(side.computer == B for side in decision.sides)
+    assert late and late <= b.data  # what the question is about is still there
+
+
+def test_a_computer_taken_into_use_that_the_choice_never_saw_asks_again() -> None:
+    """The laptop was put in use at its own copy just as the desktop kept its own, neither having seen the
+    other's step: two answers given apart, and the laptop (in use) asks once more."""
+    state = Histories()
+    world = state.world
+    b = world.machines[B]
+    state.deliver(src=0, dst=1)
+    state.use_here(index=1, older=False)
+    state.deliver(src=1, dst=0)
+    state.use_here(index=0, older=True)
+    state.person_change(index=0)
+    state.person_change(index=1)
+    state.settle()
+    state.use_here(index=1, older=True)  # the laptop, at its own copy …
+    state.choose(index=0, pick=0)  # … and the desktop keeps its own, before it saw that
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    assert b.mode == "in_use" and isinstance(world.round(b), Choice)
+
+
+def test_the_older_copy_put_in_use_after_a_choice_asks_again() -> None:
+    """``--hypothesis-seed=66``: after the laptop kept its own, the desktop was put in use at its older copy
+    ("Use the copy this computer has now"): a second answer that contradicts the first, so the question
+    comes back — the history check counted it as asked again."""
+    state = Histories()
+    world = state.world
+    a = world.machines[A]
+    state.deliver(src=0, dst=1)
+    state.person_change(index=0)
+    state.use_here(index=1, older=False)
+    state.person_change(index=1)
+    state.settle()
+    state.choose(index=1, pick=0)  # the laptop keeps its own
+    state.settle()
+    state.nothing_asked_again()  # settled: nobody asks
+    state.use_here(index=0, older=True)  # the desktop's older copy, in use
+    assert a.mode == "in_use"
+    state.settle()
+    state.nothing_asked_again()
+    state.nothing_lost()
+    assert isinstance(world.round(a), Choice)
