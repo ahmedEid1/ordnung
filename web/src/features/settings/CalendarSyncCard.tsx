@@ -39,7 +39,7 @@ import { calendarElsewhereNote, otherComputers } from "./sync";
 
 const TITLE = "Sync with your own calendar";
 const DESCRIPTION =
-  "Optional: Ordnung puts your dates into a calendar you already use — Nextcloud, iCloud, mailbox.org or another CalDAV calendar — and keeps them current while it runs. Your calendar provider then stores what the events say.";
+  "Optional: Ordnung puts your dates into a calendar you already use — Nextcloud, iCloud, mailbox.org or another CalDAV calendar — and keeps them current while it runs. Your calendar provider then stores what the events say. Google Calendar and Outlook.com don't offer this, so use the calendar file above for them.";
 const PREVIEW_COUNT = 4;
 /** The card's heading (both states), the connected line and the form's own error: where focus goes. */
 const HEADING_ID = "set-cal-sync";
@@ -158,6 +158,11 @@ function ProviderHints() {
             <span className="font-medium text-ink">{p.name}</span> — address: {p.address}. App password: {p.password}.
           </li>
         ))}
+        {/* they take no CalDAV with an app password (README, Limitations): the calendar file is their way */}
+        <li>
+          <span className="font-medium text-ink">Google Calendar, Outlook.com</span> — no calendar address with an app password: download the calendar file above instead, and again when Ordnung says there are
+          new dates.
+        </li>
         <li>Other providers: the CalDAV address from the calendar's settings or help pages. Use an app password where your provider offers one — not your main password.</li>
       </ul>
     </details>

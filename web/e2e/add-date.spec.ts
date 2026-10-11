@@ -4,7 +4,7 @@
  * Claude never read and so has no dates of its own — from the keyboard, with the dialog and both pages free of
  * serious axe findings. On the private letter, ticking the date off keeps focus on its button (UX audit U4). A date
  * that repeats on a working day (audit item 26) is dated by its rule, shows it on Timeline, and is changed in its
- * own "Edit your date" dialog.
+ * own "Edit your date" dialog; so is one that repeats every week, whose calendar file is one event at its next date.
  *
  * It adds to-dos and a letter to the shared demo, so it runs last (its own project) and takes them away again.
  */
@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { WEB_DIR } from "./env";
-import { expect, expectAccessible, open, setTour, test } from "./helpers";
+import { READ, expect, expectAccessible, open, setTour, test } from "./helpers";
 
 const CLIENT = { "X-Ordnung-Client": "web" };
 const SAMPLE = join(resolve(WEB_DIR, "..", "src", "ordnung", "demo", "samples"), "04_stadtwerke_vertrag.pdf");
@@ -38,7 +38,7 @@ async function addDate(page: Page, { title, date, kind }: { title: string; date:
 }
 
 async function deleteItems(page: Page, title: string): Promise<void> {
-  const items = (await (await page.request.get("/api/items")).json()) as { id: string; title: string }[];
+  const items = (await (await page.request.get("/api/items", READ)).json()) as { id: string; title: string }[];
   for (const item of items.filter((i) => i.title === title)) await page.request.delete(`/api/items/${item.id}`, { headers: CLIENT });
 }
 
@@ -108,6 +108,65 @@ test("a monthly date on the 3rd working day: added from the keyboard, its next d
   await deleteItems(page, title);
 });
 
+test("a weekly date: added from the keyboard as Every week on Thursday, 'Repeats every week' on its row, its calendar file one event at its next date, changed to every 2 weeks in its edit dialog", async ({
+  page,
+}, testInfo) => {
+  const title = `Physio ${RUN}`;
+  await open(page, "/timeline", "Timeline");
+  const add = page.getByRole("main").getByRole("button", { name: "Add a date" });
+  await add.focus();
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Add a date" });
+  await expect(dialog).toBeVisible();
+  const what = dialog.getByLabel("What is it?");
+  await expect(what).toBeFocused();
+  await what.fill(title);
+  // Thu 1 Oct 2026
+  await dialog.getByLabel("When?").fill("2026-10-01");
+  const repeats = dialog.getByLabel("Repeats");
+  await expect(repeats.locator("option")).toContainText(["Doesn't repeat", "Every week on Thursday", "Every 2 weeks on Thursday", "Every month on the 1st"]);
+  await repeats.focus();
+  await repeats.selectOption({ label: "Every week on Thursday" });
+  await expect(repeats).toHaveValue("week");
+  // a weekly date never moves off a weekend or a holiday: nothing more to choose
+  await expect(dialog.getByLabel("Which working day?")).toHaveCount(0);
+  await expectAccessible(page, testInfo, "add-date-weekly");
+  await what.press("Enter");
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText(`${title} — Thu 1 Oct, repeats every week`)).toBeVisible();
+  await expect(add).toBeFocused();
+
+  // on the list at its next date, with its rule
+  const list = page.getByRole("region", { name: "Every date" });
+  const row = list.getByRole("button", { name: new RegExp(title) });
+  await expect(row).toContainText("Repeats every week");
+  await expect(list.locator("li[data-date='2026-10-01']", { has: page.getByRole("button", { name: new RegExp(title) }) })).toHaveCount(1);
+
+  // its calendar file: one event at its next date, as for every repeating date (no series)
+  const items = (await (await page.request.get("/api/items", READ)).json()) as { id: string; title: string }[];
+  const id = items.find((i) => i.title === title)!.id;
+  const ics = await page.request.get(`/api/items/${id}.ics`, READ);
+  expect(ics.ok(), `GET /api/items/${id}.ics → ${ics.status()}`).toBe(true);
+  const text = await ics.text();
+  expect(text.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+  expect(text).toContain("DTSTART;VALUE=DATE:20261001");
+  expect(text).not.toContain("RRULE");
+
+  // its own "Edit your date": every week on its Thursday, changed to every 2 weeks
+  await row.focus();
+  await page.keyboard.press("Enter");
+  const edit = page.getByRole("dialog", { name: "Edit your date" });
+  await expect(edit).toBeVisible();
+  await expect(edit.getByLabel("Next date")).toHaveValue("2026-10-01");
+  await expect(edit.getByLabel("Repeats")).toHaveValue("week");
+  await edit.getByLabel("Repeats").selectOption({ label: "Every 2 weeks on Thursday" });
+  await edit.getByRole("button", { name: "Save" }).click();
+  await expect(edit).toBeHidden();
+  await expect(page.getByText(`${title} — Thu 1 Oct, repeats every 2 weeks`)).toBeVisible();
+  await expect(list.getByRole("button", { name: new RegExp(title) })).toContainText("Repeats every 2 weeks");
+  await deleteItems(page, title);
+});
+
 test("on a letter kept private: no dates of its own, a deadline added to it, ticked off without losing focus", async ({ page }, testInfo) => {
   const title = `Send the meter reading ${RUN}`;
   // a copy new to Ordnung (a comment after %%EOF changes its hash), kept private: Claude never reads it
@@ -118,7 +177,7 @@ test("on a letter kept private: no dates of its own, a deadline added to it, tic
   });
   expect(upload.status(), await upload.text()).toBe(201);
   const docId = ((await upload.json()) as { documents: { id: string }[] }).documents[0]!.id;
-  await expect.poll(async () => ((await (await page.request.get(`/api/documents/${docId}`)).json()) as { document: { status: string } }).document.status, { timeout: 30_000 }).toBe("processed");
+  await expect.poll(async () => ((await (await page.request.get(`/api/documents/${docId}`, READ)).json()) as { document: { status: string } }).document.status, { timeout: 30_000 }).toBe("processed");
 
   await open(page, `/documents/${docId}`);
   const todos = page.getByRole("region", { name: /^To-dos & dates/ });

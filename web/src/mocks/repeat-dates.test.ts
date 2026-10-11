@@ -88,6 +88,41 @@ describe("your own repeating dates in the mock", () => {
     expect((await patch(s, ustva.id, { status: "done" })).due_date).toBe("2026-11-04");
   });
 
+  it("every week: moves on a week when marked done and Undo brings it back; a past start goes to its next week; every 2 weeks keeps its weekday", async () => {
+    const s = srv();
+    const WEEKLY: Recurrence = { ...MONTHLY, unit: "weeks" };
+    const TWO_WEEKS: Recurrence = { ...WEEKLY, interval: 2 };
+    // Thu 1 Oct, from Mon 28 Sep
+    const physio = await add(s, "2026-10-01", WEEKLY, { title: "Physio" });
+    expect([physio.due_date, physio.date_spec?.date]).toEqual(["2026-10-01", "2026-10-01"]);
+    expect(await patch(s, physio.id, { status: "done" })).toMatchObject({ status: "open", due_date: "2026-10-08", completed_at: null });
+    expect(await patch(s, physio.id, { status: "open" })).toMatchObject({ status: "open", due_date: "2026-10-01" });
+    // Thu 3 Sep is weeks back: its next Thursday from today
+    const past = await add(s, "2026-09-03", WEEKLY);
+    expect([past.due_date, past.date_spec?.date]).toEqual(["2026-10-01", "2026-09-03"]);
+    // every 2 weeks from Thu 10 Sep: Thu 24 Sep has passed, so Thu 8 Oct, then Thu 22 Oct
+    const session = await add(s, "2026-09-10", TWO_WEEKS);
+    expect(session.due_date).toBe("2026-10-08");
+    expect((await patch(s, session.id, { status: "done" })).due_date).toBe("2026-10-22");
+    // the same rule as 14 days, sent alone, is no new rule: no new start
+    const same = await patch(s, session.id, { recurrence: { interval: 14, unit: "days" } });
+    expect([same.due_date, same.date_spec?.date]).toEqual(["2026-10-22", "2026-09-10"]);
+  });
+
+  it("every week, moved: alone it comes back to its weekday, with its rule every week after moves", async () => {
+    const s = srv();
+    const WEEKLY: Recurrence = { ...MONTHLY, unit: "weeks" };
+    // "Only this one": Thu 1 Oct on Fri 2 Oct, then Thu 8 Oct
+    const once = await add(s, "2026-10-01", WEEKLY);
+    expect((await patch(s, once.id, { due_date: "2026-10-02" })).date_spec?.date).toBe("2026-10-01");
+    expect((await patch(s, once.id, { status: "done" })).due_date).toBe("2026-10-08");
+    // "This one and every one after": Fridays from Fri 2 Oct
+    const every = await add(s, "2026-10-01", WEEKLY);
+    const restarted = await patch(s, every.id, { due_date: "2026-10-02", recurrence: WEEKLY });
+    expect([restarted.due_date, restarted.date_spec?.date]).toEqual(["2026-10-02", "2026-10-02"]);
+    expect((await patch(s, every.id, { status: "done" })).due_date).toBe("2026-10-09");
+  });
+
   it("are removed with dismissed, and set open again just as they were", async () => {
     const s = srv();
     const ustva = await add(s, "2026-10-01", THIRD_WORKING_DAY);

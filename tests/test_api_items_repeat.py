@@ -155,3 +155,83 @@ async def test_a_date_read_from_a_letter_keeps_its_schedule(data_dir: Path) -> N
         )
         moved = await _patch(api, {"id": item_id}, due_date="2026-10-03", recurrence=MONTHLY)
         assert any(step["label"] == "Moved by you from" for step in moved["computation"]["steps"])
+
+
+# ------------------------------------------------------------------------------------------------
+# Every week and every 2 weeks ("Add a date" offers both): the server already places and rolls them.
+# A date you add yourself never moves off a weekend or a holiday (dates.py, ``shift_rule="none"``), so
+# each one is exactly 7·n days after the date its schedule starts at. These pin that.
+# ------------------------------------------------------------------------------------------------
+
+WEEKLY = {"interval": 1, "unit": "weeks"}
+TWO_WEEKS = {"interval": 2, "unit": "weeks"}
+
+
+async def test_a_weekly_date_moves_on_a_week_when_done_and_undo_brings_it_back(data_dir: Path) -> None:
+    """Point 3: marked done, it stays open at the same weekday a week on; set open again (Undo), it is back."""
+    async with api_for(data_dir) as api:
+        physio = await _add(api, "2026-10-01", WEEKLY, title="Physio")  # a Thursday
+        assert (physio["due_date"], physio["date_spec"]["date"]) == ("2026-10-01", "2026-10-01")
+        assert physio["computation"]["summary"] == "You set this date yourself."
+        done = await _patch(api, physio, status="done")
+        assert (done["status"], done["due_date"], done["completed_at"]) == ("open", "2026-10-08", None)
+        undone = await _patch(api, done, status="open")
+        assert (undone["status"], undone["due_date"]) == ("open", "2026-10-01")
+
+
+async def test_a_weekly_date_given_in_the_past_starts_at_its_next_week(data_dir: Path) -> None:
+    """A start weeks back is on its schedule from then: the first of its weeks from today (Fri 25 Sep)."""
+    async with api_for(data_dir) as api:
+        physio = await _add(api, "2026-09-03", WEEKLY, title="Physio")  # a Thursday
+        assert (physio["due_date"], physio["date_spec"]["date"]) == ("2026-10-01", "2026-09-03")
+        summary = physio["computation"]["summary"]
+        assert summary == "Repeats every week since Thu 3 Sep 2026; next on Thu 1 Oct 2026."
+
+
+async def test_every_two_weeks_keeps_its_weekday_and_moves_on_two_weeks(data_dir: Path) -> None:
+    """Every 2 weeks from Thu 10 Sep: Thu 24 Sep has passed, so Thu 8 Oct; done, Thu 22 Oct."""
+    async with api_for(data_dir) as api:
+        session = await _add(api, "2026-09-10", TWO_WEEKS, title="Session")
+        assert session["due_date"] == "2026-10-08"
+        assert (await _patch(api, session, status="done"))["due_date"] == "2026-10-22"
+
+
+async def test_a_weekly_date_moved_once_comes_back_to_its_weekday(data_dir: Path) -> None:
+    """Point 7 ("Only this one"): Thu 1 Oct moved to Fri 2 Oct stands in for that week; done, Thu 8 Oct."""
+    async with api_for(data_dir) as api:
+        physio = await _add(api, "2026-10-01", WEEKLY, title="Physio")
+        moved = await _patch(api, physio, due_date="2026-10-02")
+        assert (moved["due_date"], moved["date_spec"]["date"]) == ("2026-10-02", "2026-10-01")
+        assert (await _patch(api, moved, status="done"))["due_date"] == "2026-10-08"
+
+
+async def test_a_weekly_date_moved_with_its_rule_moves_every_week_after(data_dir: Path) -> None:
+    """Point 2 ("This one and every one after"): sent with its rule, the schedule starts again on Fri 2 Oct."""
+    async with api_for(data_dir) as api:
+        physio = await _add(api, "2026-10-01", WEEKLY, title="Physio")
+        restarted = await _patch(api, physio, due_date="2026-10-02", recurrence=WEEKLY)
+        assert (restarted["due_date"], restarted["date_spec"]["date"]) == ("2026-10-02", "2026-10-02")
+        assert (await _patch(api, restarted, status="done"))["due_date"] == "2026-10-09"
+
+
+async def test_every_14_days_is_every_2_weeks(data_dir: Path) -> None:
+    """``same_rule``: the same rule sent as 14 days alone is no new rule, so the schedule doesn't start again
+    (it stays on Thu 8 Oct from 10 Sep); the web reads either one as "Every 2 weeks"."""
+    async with api_for(data_dir) as api:
+        session = await _add(api, "2026-09-10", TWO_WEEKS, title="Session")
+        same = await _patch(api, session, recurrence={"interval": 14, "unit": "days"})
+        assert (same["due_date"], same["date_spec"]["date"]) == ("2026-10-08", "2026-09-10")
+        assert (await _patch(api, same, status="done"))["due_date"] == "2026-10-22"
+
+
+async def test_a_weekly_payment_has_each_weeks_own_send_by_day(data_dir: Path) -> None:
+    """The day to transfer by moves with bank holidays from week to week: the day before a Thursday, but two
+    days before Christmas Eve and New Year's Eve (24 and 31 Dec are no bank working days)."""
+    async with api_for(data_dir) as api:
+        weekly = await _add(api, "2026-10-01", WEEKLY, kind="payment", direction="out", amount=20.0)
+        assert (weekly["due_date"], weekly["send_by"]) == ("2026-10-01", "2026-09-30")
+        paid = await _patch(api, weekly, status="done")
+        assert (paid["due_date"], paid["send_by"]) == ("2026-10-08", "2026-10-07")
+        for due, send_by in (("2026-12-24", "2026-12-22"), ("2026-12-31", "2026-12-29")):
+            item = await _add(api, due, WEEKLY, kind="payment", direction="out", amount=20.0)
+            assert (item["due_date"], item["send_by"]) == (due, send_by)
