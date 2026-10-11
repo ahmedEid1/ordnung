@@ -149,6 +149,21 @@ def test_the_weekly_run_installs_claude_code_as_the_readme_says_and_checks_its_f
     assert "ANTHROPIC_API_KEY" not in json.dumps(job) and "secrets." not in json.dumps(job)
 
 
+#: test files whose subject differs per system and that the "Other systems" job runs on macOS and Windows
+PER_SYSTEM_TESTS = (
+    "tests/test_platform_smoke.py",  # the real lookups, the disk-encryption probe among them
+    "tests/test_shortcut.py",  # the Mac bundle opened; the Windows link read back by the shell and opened
+    "tests/test_encryption.py",  # no answer and no process on Windows; nothing in it depends on the system
+)
+
+
+def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system() -> None:
+    (step,) = [step for step in _jobs()["other-systems"]["steps"] if "pytest" in step.get("run", "")]
+    named = step["run"].replace("\\\n", " ").split()
+    for name in PER_SYSTEM_TESTS:
+        assert name in named, name
+
+
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:
     """Only the rules engine had a coverage gate: the main test step reported coverage but never failed on
     it. The floors read the coverage the test step measured, so they cost no second run."""

@@ -1,5 +1,8 @@
 """Whether the disk under the data folder is encrypted (:mod:`ordnung.encryption`): only the system's own
-status commands, faked here — never run, never as administrator, never a shell line."""
+status commands, faked here — never run, never as administrator, never a shell line.
+
+Nothing here depends on the system the tests run on, so CI's "Other systems" job runs this file on macOS and
+Windows too; tests/test_platform_smoke.py runs the real probe there."""
 
 from __future__ import annotations
 
@@ -11,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from ordnung import encryption
 from ordnung.encryption import TIMEOUT_S, Encryption, disk_encryption
 
 
@@ -176,3 +180,18 @@ def test_an_unreadable_kernel_release_is_not_wsl(tmp_path: Path) -> None:
         tmp_path, system="linux", which=which("findmnt", "lsblk"), run=run, read_text=unreadable
     )
     assert found == Encryption("on", "LUKS")
+
+
+def test_the_policy_says_why_windows_has_no_answer() -> None:
+    """Windows gets no answer (above) because Microsoft documents BitLocker's status only through
+    administrator tools; the one property readable without them has no documented values. The policy says
+    so, by name, rather than leaving it open."""
+    policy = " ".join((encryption.__doc__ or "").split())
+    for name in (
+        "Win32_EncryptableVolume",
+        "manage-bde",
+        "Get-BitLockerVolume",
+        "System.Volume.BitLockerProtection",
+    ):
+        assert name in policy, name
+    assert "administrator rights" in policy and "aren't documented" in policy
