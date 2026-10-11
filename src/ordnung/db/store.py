@@ -136,6 +136,26 @@ _PROFILE_KEY = "profile"
 _SETTINGS_KEY = "settings"
 #: The ``meta`` row that holds the app settings (JSON of :class:`~ordnung.models.AppSettings`).
 SETTINGS_META_KEY = _SETTINGS_KEY
+#: The tables Ask's ledger fingerprint reads (:func:`ordnung.assistant.ask.ledger_fingerprint`; of ``meta``
+#: only the profile), and ``cases``: deleting one changes letters, to-dos and contracts (``ON DELETE SET
+#: NULL``). :meth:`Store.ledger_token` watches them; a table the fingerprint starts to read must join them
+#: (``tests/test_ask.py`` checks it with SQLite's authorizer).
+LEDGER_TABLES = ("documents", "pages", "items", "contracts", "parties", "cases")
+#: The temporary counter of :meth:`Store.ledger_token` and the name prefix of its triggers (connection-only).
+_LEDGER_WRITES = "ordnung_ledger_writes"
+_LEDGER_TRIGGER_SQL: tuple[tuple[str, str], ...] = (
+    *(
+        (f"ordnung_ledger_{table}_{op.lower()}", f"AFTER {op} ON main.{table}")
+        for table in LEDGER_TABLES
+        for op in ("INSERT", "UPDATE", "DELETE")
+    ),
+    ("ordnung_ledger_meta_insert", f"AFTER INSERT ON main.meta WHEN NEW.key = '{_PROFILE_KEY}'"),
+    (
+        "ordnung_ledger_meta_update",
+        f"AFTER UPDATE ON main.meta WHEN NEW.key = '{_PROFILE_KEY}' OR OLD.key = '{_PROFILE_KEY}'",
+    ),
+    ("ordnung_ledger_meta_delete", f"AFTER DELETE ON main.meta WHEN OLD.key = '{_PROFILE_KEY}'"),
+)
 
 
 class NotFoundError(LookupError):
@@ -893,13 +913,70 @@ class Store:
         """A value that changes whenever this thread may read something else than before: another
         connection committed (``PRAGMA data_version``), this one wrote (``total_changes``) or the schema
         changed ("Delete everything"). Only values taken in the same thread compare; ``None`` inside a
-        transaction, whose reads may not be committed."""
+        transaction, whose reads may not be committed. For what Ask's ledger fingerprint reads, see
+        :meth:`ledger_token`."""
         conn = self._conn()
         if conn.in_transaction:
             return None
         data = conn.execute("PRAGMA data_version").fetchone()[0]
         schema = conn.execute("PRAGMA schema_version").fetchone()[0]
         return int(data), conn.total_changes, int(schema)
+
+    def ledger_token(self) -> tuple[int, int, int] | None:
+        """Like :meth:`change_token`, but moved only by what Ask's ledger fingerprint can read: this
+        connection's writes to :data:`LEDGER_TABLES` and the profile, another connection's commit
+        (``PRAGMA data_version``) or a schema change. The usage log, chat, activity and settings written on
+        this connection leave it as it was, so Ask's own writes for one question don't make the next one work
+        the fingerprint out again.
+
+        This connection's writes are counted by temporary triggers, made on first use. They live in the open
+        connection only (SQLite's ``temp`` schema): never in the database file, a backup, a sync copy or an
+        export. They are made again when one is missing ("Delete everything" drops them with the tables),
+        and that moves the token by itself. Making them adds nothing to ``total_changes``, so
+        :meth:`change_token` and the person-change counter see no write; a rolled-back write rolls the count
+        back too. A read-only store can't make them, and can't write either: its :meth:`change_token` is
+        already moved only by other connections. Only values taken in the same thread compare; ``None``
+        inside a transaction, whose reads may not be committed."""
+        if self.read_only:
+            return self.change_token()
+        conn = self._conn()
+        if conn.in_transaction:
+            return None
+        watching = conn.execute(
+            "SELECT count(*) FROM temp.sqlite_master WHERE type = 'trigger' AND name GLOB 'ordnung_ledger_*'"
+        ).fetchone()[0]
+        if watching != len(_LEDGER_TRIGGER_SQL):
+            self._watch_ledger(conn)
+        data = conn.execute("PRAGMA data_version").fetchone()[0]
+        writes = conn.execute(f"SELECT n FROM temp.{_LEDGER_WRITES}").fetchone()[0]
+        schema = conn.execute("PRAGMA schema_version").fetchone()[0]
+        return int(data), int(writes), int(schema)
+
+    @staticmethod
+    def _watch_ledger(conn: sqlite3.Connection) -> None:
+        """(Re)make the temporary counter and triggers of :meth:`ledger_token`, all or nothing. The counter
+        starts one above where it was (at 0 the first time), so a remade watch never gives back a token handed
+        out while one of its triggers was missing."""
+        conn.execute("BEGIN")
+        try:
+            kept = conn.execute(
+                "SELECT 1 FROM temp.sqlite_master WHERE type = 'table' AND name = ?", (_LEDGER_WRITES,)
+            ).fetchone()
+            last = int(conn.execute(f"SELECT n FROM temp.{_LEDGER_WRITES}").fetchone()[0]) if kept else -1
+            # dropped and made anew rather than updated: DDL adds nothing to total_changes, an UPDATE would
+            conn.execute(f"DROP TABLE IF EXISTS temp.{_LEDGER_WRITES}")
+            conn.execute(f"CREATE TEMP TABLE {_LEDGER_WRITES} AS SELECT {last + 1} AS n")
+            for name, event in _LEDGER_TRIGGER_SQL:
+                # the body names the counter unqualified: SQLite refuses ``temp.`` inside a trigger's body
+                conn.execute(
+                    f"CREATE TEMP TRIGGER IF NOT EXISTS {name} {event} "
+                    f"BEGIN UPDATE {_LEDGER_WRITES} SET n = n + 1; END"
+                )
+            conn.execute("COMMIT")
+        except BaseException:
+            if conn.in_transaction:
+                conn.execute("ROLLBACK")
+            raise
 
     def _after_commit(self, callback: Callable[[], None]) -> None:
         """Inside :meth:`tx`: run ``callback`` once the outermost transaction commits (never on rollback)."""
