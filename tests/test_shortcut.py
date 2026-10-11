@@ -9,6 +9,7 @@ CI's other-systems job, which runs this whole file on macOS and Windows."""
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
 import os
@@ -21,10 +22,14 @@ import struct
 import subprocess
 import sys
 import time
+import uuid
+import warnings
 from pathlib import Path
 from typing import Any
 
 import pytest
+from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import strategies as st
 from platformdirs import user_data_dir
 from typer.testing import CliRunner
 
@@ -443,11 +448,118 @@ def _nul_terminated(data: bytes, at: int, width: int) -> bytes:
     return data[at:end]
 
 
+#: the root item of a path on a drive: This PC (CLSID_MyComputer)
+MY_COMPUTER = uuid.UUID("20D04FE0-3AEA-1069-A2D8-08002B30309D")
+#: the characters Windows refuses in a folder or file name (besides the control characters)
+REFUSED = set('\\/:*?"<>|')
+
+
+def is_drive_path(target: str) -> bool:
+    """A plain absolute path on a drive letter, the only target that gets an ID list: ``X:\\`` and one or more
+    names, none empty, none holding a character Windows refuses, none ending in a dot or a space (Windows
+    drops those, so such a name isn't the file's own)."""
+    if len(target) < 4 or not ("A" <= target[0].upper() <= "Z") or target[1:3] != ":\\":
+        return False
+    return all(
+        name and name[-1] not in ". " and not REFUSED & set(name) and min(map(ord, name)) >= 0x20
+        for name in target[3:].split("\\")
+    )
+
+
+def _name(item: bytes, at: int, width: int, end: int) -> bytes:
+    """The NUL-terminated name at ``at`` (``width`` bytes a unit), which has to end before ``end``."""
+    stop = at
+    while item[stop : stop + width] != b"\0" * width:
+        stop += width
+        assert stop + width <= end, "a name runs past its item"
+    return item[at:stop]
+
+
+def parse_id_list(data: bytes, at: int, *, strict: bool = True) -> dict[str, Any]:
+    """The LinkTargetIDList at ``at`` (MS-SHLLINK 2.2; the shell items' fields as libyal's "Windows Shell Item
+    format" names them), read independently of ``ordnung.shortcut``: This PC, the drive, and a file-system item
+    for each folder and the file. ``strict``: exactly as Ordnung writes it, the layout of the format's example
+    3.1 with no dates, sizes or file numbers, the long name as the primary name, an extension block 0xBEEF0004
+    of version 7. Otherwise as Windows writes its own (any version from 7, real dates, 8.3 primary names):
+    then only the long names and the kinds count. Names are measured in UTF-16 bytes (an emoji takes two
+    units)."""
+    (size,) = struct.unpack_from("<H", data, at)
+    body = data[at + 2 : at + 2 + size]
+    assert len(body) == size >= 2 and body[-2:] == b"\0\0", "the list ends with its TerminalID"
+    items, pos = [], 0
+    while True:
+        (item_size,) = struct.unpack_from("<H", body, pos)
+        if item_size == 0:
+            assert pos + 2 == size, "nothing follows the TerminalID"
+            break
+        assert 3 <= item_size <= size - 2 - pos, "an item runs past the list"
+        items.append(body[pos : pos + item_size])
+        pos += item_size
+    root, drive, *entries = items
+    assert len(root) == 20 and root[2] == 0x1F and uuid.UUID(bytes_le=root[4:20]) == MY_COMPUTER
+    assert drive[2] & 0x70 == 0x20 and len(drive) >= 25, "a volume item"
+    letter = drive[3:23].split(b"\0", 1)[0].decode("ascii")
+    assert len(letter) == 3 and "A" <= letter[0] <= "Z" and letter[1:] == ":\\", letter
+    if strict:
+        assert root[3] == 0x50 and drive[2] == 0x2F and len(drive) == 25 and drive[6:] == b"\0" * 19
+        assert entries, "a drive path names at least the file"
+    names, kinds, types = [], [], []
+    for number, item in enumerate(entries):
+        last = number == len(entries) - 1
+        item_size, kind, zero, file_size, fat, attributes = struct.unpack_from("<HBBIIH", item)
+        assert kind & 0x70 == 0x30, f"a file-system item, not {kind:#04x}"
+        width = 2 if kind & 0x04 else 1
+        primary = _name(item, 14, width, len(item))
+        (block_at,) = struct.unpack_from("<H", item, len(item) - 2)
+        assert block_at % 2 == 0 and block_at >= 14 + len(primary) + width, (
+            "the extension block follows the name"
+        )
+        block_size, version, signature = struct.unpack_from("<HHI", item, block_at)
+        assert signature == 0xBEEF0004 and version >= 7 and block_at + block_size <= len(item)
+        (name_at,) = struct.unpack_from("<H", item, block_at + 16)
+        long_name = _name(item, block_at + name_at, 2, block_at + block_size).decode(
+            "utf-16-le", "surrogatepass"
+        )
+        if strict:
+            unicode = not long_name.isascii()
+            assert kind == 0x30 | (0x02 if last else 0x01) | (0x04 if unicode else 0), f"{kind:#04x}"
+            assert (zero, file_size, fat, attributes) == (0, 0, 0, 0x20 if last else 0x10)
+            assert primary.decode("utf-16-le" if unicode else "ascii") == long_name, (
+                "the long name is the primary"
+            )
+            pad = 0 if unicode else (len(primary) + 1) % 2  # an ASCII name is padded to an even length
+            assert (
+                block_at == 14 + len(primary) + width + pad and item[block_at - pad : block_at] == b"\0" * pad
+            )
+            assert (version, name_at) == (7, 0x26)
+            # no dates, no file reference, nothing unknown, no localized name: zeros
+            assert item[block_at + 8 : block_at + 16] == b"\0" * 8
+            assert item[block_at + 18 : block_at + 0x26] == b"\0" * 20
+            # the long name, its NUL and the block's own offset end the item
+            assert (
+                block_at + 0x26 + len(long_name.encode("utf-16-le")) + 2 + 2
+                == block_at + block_size
+                == len(item)
+            )
+        names.append(long_name)
+        kinds.append("file" if kind & 0x02 else "folder")
+        types.append(kind)
+    return {
+        "drive": letter,
+        "names": names,
+        "kinds": kinds,
+        "types": types,
+        "path": letter + "\\".join(names),
+        "sizes": [len(item) for item in items],
+        "end": at + 2 + size,
+    }
+
+
 def parse_shell_link(data: bytes) -> dict[str, Any]:
     """Every field of a shell link (MS-SHLLINK 2.1-2.5), read independently of ``ordnung.shortcut``:
-    the header, the LinkInfo with its VolumeID and both local base paths, the StringData, the
-    EnvironmentVariableDataBlock (2.5.4) and the terminal block — asserting the sizes and offsets on
-    the way."""
+    the header, the LinkTargetIDList, the LinkInfo with its VolumeID and both local base paths, the
+    StringData, the EnvironmentVariableDataBlock (2.5.4) and the terminal block — asserting the sizes and
+    offsets on the way."""
     header = struct.unpack_from("<I16sIIQQQIiIHHII", data, 0)
     size, clsid, flags, attributes, created, accessed, written, file_size, icon_index, show, hotkey = header[
         :11
@@ -457,7 +569,10 @@ def parse_shell_link(data: bytes) -> dict[str, Any]:
     names = {name for name, bit in FLAGS.items() if flags & bit}
     assert flags & ~sum(FLAGS.values()) == 0
     at = 0x4C
-    assert "HasLinkTargetIDList" not in names  # LinkInfo alone names the target
+    id_list = None
+    if "HasLinkTargetIDList" in names:
+        id_list = parse_id_list(data, at, strict=True)
+        at = id_list["end"]
     info_size, info_header, info_flags, volume_at, base_at, network_at, suffix_at, wide_at, wide_suffix_at = (
         struct.unpack_from("<9I", data, at)
     )
@@ -474,6 +589,10 @@ def parse_shell_link(data: bytes) -> dict[str, Any]:
     target = _nul_terminated(info, wide_at, 2).decode("utf-16-le")
     assert wide_suffix_at == wide_at + len(target.encode("utf-16-le")) + 2
     assert _nul_terminated(info, wide_suffix_at, 2) == b"" and wide_suffix_at + 2 == info_size
+    # an ID list exactly when the target is a plain path on a drive, and then it names the same file
+    assert (id_list is not None) == is_drive_path(target), target
+    if id_list is not None:
+        assert id_list["path"] == target[0].upper() + target[1:]
     at += info_size
     strings = {}
     for name in ("HasName", "HasRelativePath", "HasWorkingDir", "HasArguments", "HasIconLocation"):
@@ -493,6 +612,7 @@ def parse_shell_link(data: bytes) -> dict[str, Any]:
     return {
         "flags": names,
         "show": show,
+        "id_list": id_list,
         "ansi_target": ansi_target,
         "target": target,
         "description": strings.get("HasName"),
@@ -556,6 +676,7 @@ def test_the_link_file_follows_the_shell_link_format(folder: str) -> None:
     )
     parsed = parse_shell_link(lnk_bytes(link))
     assert parsed["flags"] == {
+        "HasLinkTargetIDList",
         "HasLinkInfo",
         "HasName",
         "HasWorkingDir",
@@ -564,6 +685,11 @@ def test_the_link_file_follows_the_shell_link_format(folder: str) -> None:
         "IsUnicode",
         "HasExpString",
     }
+    # the ID list names the target folder by folder; the folder with umlauts has a Unicode name (0x35)
+    id_list = parsed["id_list"]
+    assert id_list["drive"] == "C:\\"
+    assert id_list["names"] == ["Users", "Jürgen Müller", "pipx", "venvs", "ordnung", "Scripts", "python.exe"]
+    assert id_list["types"] == [0x31, 0x35, 0x31, 0x31, 0x31, 0x31, 0x32]
     assert parsed["target"] == link.target and parsed["ansi_target"] == link.target  # cp1252 has ü
     assert (parsed["description"], parsed["working_dir"], parsed["arguments"], parsed["icon"]) == (
         link.description,
@@ -589,7 +715,136 @@ def test_a_target_outside_the_ansi_code_page_keeps_its_unicode_path() -> None:
     )
     parsed = parse_shell_link(lnk_bytes(link))
     assert parsed["target"] == link.target and parsed["ansi_target"] == "C:\\Users\\?????\\python.exe"
+    assert parsed["id_list"]["names"] == ["Users", "Αθηνά", "python.exe"]  # the ID list is Unicode too
     assert read_lnk(lnk_bytes(link)) == link
+
+
+#: MS-SHLLINK 3.1, "Shortcut to a File" (C:\test\a.txt), bytes 0x4C-0x10A as the format publishes them: the
+#: IDListSize and the ID list (This PC, the drive, the folder "test", the file "a.txt", the TerminalID)
+SPEC_ID_LIST = bytes.fromhex(
+    "bd0014001f50e04fd020ea3a6910a2d808002b30309d19002f433a5c000000000000000000000000000000000000004600"
+    "3100000000002c3969a31000746573740000320007000400efbe2c3965a32c3969a326000000031e00000000f51e00000000"
+    "00000000000074006500730074000000140048003200000000002c3969a32000612e74787400340007000400efbe2c3969a3"
+    "2c3969a3260000002d6e0000000096010000000000000000000061002e00740078007400000014000000"
+)
+
+
+def test_the_id_list_matches_the_format_s_own_example() -> None:
+    """Byte for byte the format's example, but for what Ordnung leaves out on purpose so the bytes depend only
+    on the path: each item's modified date, and its extension block's created and last-opened dates and NTFS
+    file reference, which are zeros."""
+    ours = shortcut._id_list("C:\\test\\a.txt")
+    assert ours is not None and len(ours) == len(SPEC_ID_LIST) == 191
+    left_out: set[int] = set()
+    at = 2 + 20 + 25  # after the IDListSize, This PC and the drive
+    for _ in range(2):
+        (size,) = struct.unpack_from("<H", SPEC_ID_LIST, at)
+        (block,) = struct.unpack_from("<H", SPEC_ID_LIST, at + size - 2)
+        left_out |= {*range(at + 8, at + 12), *range(at + block + 8, at + block + 16)}
+        left_out |= set(range(at + block + 20, at + block + 28))
+        at += size
+    assert {i for i, (a, b) in enumerate(zip(ours, SPEC_ID_LIST, strict=True)) if a != b} <= left_out
+    assert {ours[i] for i in left_out} == {0}
+    assert (
+        parse_id_list(ours, 0)["path"]
+        == parse_id_list(SPEC_ID_LIST, 0, strict=False)["path"]
+        == "C:\\test\\a.txt"
+    )
+
+
+@pytest.mark.parametrize(
+    ("target", "sizes", "length"),
+    [
+        (
+            "C:\\Users\\name\\AppData\\Local\\Programs\\Python\\Python312\\pythonw.exe",
+            [20, 25, 72, 70, 78, 72, 82, 76, 84, 90],
+            673,
+        ),
+        ("d:\\Αθηνά\\python.exe", [20, 25, 78, 88], 215),  # the drive is written D:\
+        ("C:\\" + "a" * 245 + "\\python.exe", [20, 25, 792, 88], 929),  # 259 characters, the longest
+        ("C:\\" + "a\\" * 127 + "p", [20, 25, *[60] * 128], 7729),  # 128 names, the most a link can hold
+    ],
+)
+def test_the_id_list_names_each_folder_and_the_file(target: str, sizes: list[int], length: int) -> None:
+    id_list = shortcut._id_list(target)
+    assert id_list is not None and len(id_list) == length
+    parsed = parse_id_list(id_list, 0)
+    assert parsed["path"] == target[0].upper() + target[1:] and parsed["sizes"] == sizes
+    assert parsed["kinds"] == ["folder"] * (len(sizes) - 3) + ["file"]
+    link = WindowsLink(target=target, arguments="-m ordnung", working_dir="", icon="", description="")
+    assert parse_shell_link(lnk_bytes(link))["id_list"] == parsed | {"end": 0x4C + length}
+    assert read_lnk(lnk_bytes(link)) == link
+
+
+#: what a folder or file name holds in the round trip: ASCII but what Windows refuses, umlauts, Greek, CJK and
+#: emoji (two UTF-16 units each)
+NAME_CHARACTERS = [chr(c) for c in range(0x20, 0x7F) if chr(c) not in REFUSED] + list(
+    "äöüßÄÖÜαθηνάΑΩ書類郵便😀📄"
+)
+
+
+@settings(max_examples=300, deadline=None, suppress_health_check=[HealthCheck.too_slow])
+@given(
+    letter=st.sampled_from("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"),
+    names=st.lists(
+        st.text(st.sampled_from(NAME_CHARACTERS), min_size=1, max_size=12).filter(
+            lambda name: name[-1] not in ". "
+        ),
+        min_size=1,
+        max_size=24,
+    ),
+)
+def test_any_drive_path_round_trips_through_the_id_list(letter: str, names: list[str]) -> None:
+    target = f"{letter}:\\" + "\\".join(names)
+    assume(len(target.encode("utf-16-le")) // 2 < 260)
+    id_list = shortcut._id_list(target)
+    assert id_list is not None
+    parsed = parse_id_list(id_list, 0)
+    assert parsed["path"] == target[0].upper() + target[1:] and parsed["end"] == len(id_list)
+    link = WindowsLink(target=target, arguments="-m ordnung", working_dir="", icon="", description="")
+    assert parse_shell_link(lnk_bytes(link))["id_list"]["names"] == names
+    assert read_lnk(lnk_bytes(link)) == link
+
+
+#: targets that aren't a plain path on a drive letter: they get no ID list
+NOT_DRIVE_PATHS = [
+    PY,
+    "\\\\server\\share\\py.exe",
+    "\\\\?\\C:\\x\\py.exe",
+    "C:\\",
+    "C:\\a\\..\\b.exe",
+    "C:\\a\\.\\b.exe",
+    "C:\\a.\\b.exe",
+    "C:\\a \\b.exe",
+    "C:\\a\\b.exe.",
+    "C:/a/b.exe",
+    "C:\\a/b.exe",
+    "C:\\a\\\\b.exe",
+    "C:\\a\\b.exe\\",
+    "C:x\\py.exe",
+    "Ä:\\a\\py.exe",
+    "1:\\a\\py.exe",
+    "C:\\a\\b:c.exe",
+    "C:\\a\\b\tc.exe",
+    "py.exe",
+    "",
+]
+#: the SHA-256 of what batch C's code wrote for each of them (before there was an ID list), see the test
+NOT_DRIVE_PATHS_BYTES = "0a73cd903163d2f3a19fb4d27da9bac6492fa9df18b3ad0228de804d0e84482f"
+
+
+def test_a_target_that_isn_t_a_plain_drive_path_gets_no_id_list_and_the_same_bytes_as_before() -> None:
+    digest = hashlib.sha256()
+    for target in NOT_DRIVE_PATHS:
+        assert shortcut._id_list(target) is None and not is_drive_path(target), target
+        link = WindowsLink(
+            target, "-m ordnung serve", "C:\\Users\\sam", "C:\\Users\\sam\\Ordnung.ico", shortcut.DESCRIPTION
+        )
+        data = lnk_bytes(link)
+        assert "HasLinkTargetIDList" not in parse_shell_link(data)["flags"], target
+        assert read_lnk(data) == link
+        digest.update(struct.pack("<I", len(data)) + data)
+    assert digest.hexdigest() == NOT_DRIVE_PATHS_BYTES
 
 
 def test_what_isnt_a_whole_shell_link_reads_as_none() -> None:
@@ -597,6 +852,15 @@ def test_what_isnt_a_whole_shell_link_reads_as_none() -> None:
     assert read_lnk(whole) is not None
     for data in (b"", b"not a link", b"\x4c\0\0\0" + b"\0" * 72, whole[:-10], whole[:-4], whole[:100]):
         assert read_lnk(data) is None, data
+    # a link with an ID list: cut inside it, or saying it is longer than the whole file
+    with_id_list = lnk_bytes(WindowsLink("C:\\Python\\python.exe", "b", "c", "d", "e"))
+    assert read_lnk(with_id_list) is not None
+    (size,) = struct.unpack_from("<H", with_id_list, 0x4C)
+    too_long = with_id_list[:0x4C] + struct.pack("<H", len(with_id_list)) + with_id_list[0x4E:]
+    for data in (with_id_list[: 0x4C + size // 2], too_long):
+        assert read_lnk(data) is None
+    with pytest.raises(ValueError, match="the ID list runs past the end of the link"):
+        shortcut._parse_lnk(too_long)
 
 
 def test_the_windows_command_line_splits_as_python_reads_it() -> None:
@@ -664,34 +928,184 @@ def test_a_property_list_cut_short_is_someone_else_s(tmp_path: Path, broken: byt
     assert info.read_bytes() == broken
 
 
+#: Windows' own readers of a link, run by PowerShell (tests only: the shortcut itself runs no PowerShell and
+#: no COM): WScript.Shell, and the Shell.Application folder object Explorer uses. Both report the target
+#: through IShellLink::GetPath, which reads the ID list.
+SHELL_READS = (
+    "[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
+    "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ORDNUNG_TEST_LNK); "
+    "$item = (New-Object -ComObject Shell.Application).NameSpace((Split-Path -Parent $env:ORDNUNG_TEST_LNK))"
+    ".ParseName((Split-Path -Leaf $env:ORDNUNG_TEST_LNK)); "
+    "ConvertTo-Json @{target=$s.TargetPath; explorer=$item.GetLink.Path; arguments=$s.Arguments; "
+    "working_dir=$s.WorkingDirectory; icon=$s.IconLocation; description=$s.Description; show=$s.WindowStyle}"
+)
+
+
+def _powershell(script: str, **env: str) -> str:
+    done = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+        env={**os.environ, **env},
+        capture_output=True,
+        timeout=120,
+    )
+    assert done.returncode == 0, done.stderr.decode("utf-8", "replace")
+    return done.stdout.decode("utf-8-sig")  # PowerShell may write a BOM first
+
+
+def _shell_reads(link: Path) -> dict[str, Any]:
+    seen: dict[str, Any] = json.loads(_powershell(SHELL_READS, ORDNUNG_TEST_LNK=str(link)))
+    return seen
+
+
+def _id_list_hex(data: bytes) -> str:
+    (size,) = struct.unpack_from("<H", data, 0x4C)
+    return data[0x4C : 0x4C + 2 + size].hex(" ")
+
+
+def _with_id_list(data: bytes, id_list: bytes) -> bytes:
+    """The link ``data`` (one with an ID list) with ``id_list`` in place of its own."""
+    (size,) = struct.unpack_from("<H", data, 0x4C)
+    return data[:0x4C] + id_list + data[0x4C + 2 + size :]
+
+
+#: opens a file as a double click does (ShellExecuteExW with the default verb) and waits until the shell has
+#: handed it over, with no dialog ("Problem with Shortcut" would wait for a click): run in a subprocess with a
+#: timeout, so nothing the shell does can hang the job
+SHELL_OPENS = """
+import ctypes, sys
+from ctypes import wintypes
+
+class Info(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD), ("fMask", wintypes.ULONG), ("hwnd", wintypes.HWND),
+        ("lpVerb", wintypes.LPCWSTR), ("lpFile", wintypes.LPCWSTR), ("lpParameters", wintypes.LPCWSTR),
+        ("lpDirectory", wintypes.LPCWSTR), ("nShow", ctypes.c_int), ("hInstApp", wintypes.HINSTANCE),
+        ("lpIDList", ctypes.c_void_p), ("lpClass", wintypes.LPCWSTR), ("hkeyClass", wintypes.HKEY),
+        ("dwHotKey", wintypes.DWORD), ("hIcon", wintypes.HANDLE), ("hProcess", wintypes.HANDLE),
+    ]
+
+shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+shell32.ShellExecuteExW.argtypes = [ctypes.POINTER(Info)]
+shell32.ShellExecuteExW.restype = wintypes.BOOL
+ctypes.windll.ole32.CoInitializeEx(None, 0x2 | 0x4)  # apartment-threaded, no OLE1 DDE, as the docs ask
+# SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI; SW_SHOWNORMAL
+info = Info(cbSize=ctypes.sizeof(Info), fMask=0x100 | 0x400, lpFile=sys.argv[1], nShow=1)
+if not shell32.ShellExecuteExW(ctypes.byref(info)):
+    sys.exit("ShellExecuteExW failed: " + ctypes.FormatError(ctypes.get_last_error()))
+"""
+
+
+def _open_with_the_shell(path: Path) -> None:
+    done = subprocess.run(
+        [sys.executable, "-c", SHELL_OPENS, str(path)], capture_output=True, text=True, timeout=60
+    )
+    assert done.returncode == 0, done.stderr
+
+
+def _fake_ordnung(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """A package ``ordnung`` on PYTHONPATH that writes the file returned here: the arguments it got and the
+    Python that ran it."""
+    fake = tmp_path / "fake" / "ordnung"
+    fake.mkdir(parents=True)
+    out = tmp_path / "ran.json"
+    (fake / "__init__.py").write_text("", encoding="utf-8")
+    (fake / "__main__.py").write_text(
+        "import json, os, sys\n"
+        "part = os.environ['ORDNUNG_TEST_RAN'] + '.part'\n"
+        "with open(part, 'w', encoding='utf-8') as handle:\n"
+        "    json.dump({'argv': sys.argv[1:], 'executable': sys.executable}, handle)\n"
+        "os.replace(part, os.environ['ORDNUNG_TEST_RAN'])\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PYTHONPATH", str(tmp_path / "fake"))
+    monkeypatch.setenv("ORDNUNG_TEST_RAN", str(out))
+    return out
+
+
+def _ran(out: Path) -> dict[str, Any]:
+    """What the fake Ordnung wrote, once it has run (it is started by the shell, so it is waited for)."""
+    deadline = time.monotonic() + 20
+    while not out.exists() and time.monotonic() < deadline:
+        time.sleep(0.2)
+    ran: dict[str, Any] = json.loads(out.read_text(encoding="utf-8"))
+    return ran
+
+
+@pytest.fixture(scope="module")
+def other_python(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """A second Python, in folders with umlauts: a venv without pip (a few seconds on Windows)."""
+    venv = tmp_path_factory.mktemp("venv").resolve() / "Jürgen Müller" / "venv"
+    done = subprocess.run(
+        [sys.executable, "-m", "venv", "--without-pip", str(venv)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stderr
+    return venv / "Scripts" / "python.exe"
+
+
 @WINDOWS_ONLY
 def test_the_shell_reads_the_link_back(tmp_path: Path) -> None:
-    """Windows' own reader (test only: the shortcut itself runs no PowerShell and no COM)."""
+    """Windows' own readers get every field, the target too: it comes from the ID list (``TargetPath`` was
+    empty while the link had none), and it is the Python the link runs."""
     folder = tmp_path / "Jürgen Müller" / "ordnung"
     sc = plan(folder, platform="win32", env=windows_env(tmp_path), home=tmp_path, python=sys.executable)
     write(sc)
-    script = (
-        "[Console]::OutputEncoding = [Text.Encoding]::UTF8; "
-        "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ORDNUNG_TEST_LNK); "
-        "ConvertTo-Json @{target=$s.TargetPath; arguments=$s.Arguments; working_dir=$s.WorkingDirectory; "
-        "icon=$s.IconLocation; description=$s.Description; show=$s.WindowStyle}"
-    )
-    out = subprocess.run(
-        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-        env={**os.environ, "ORDNUNG_TEST_LNK": str(sc.path)},
-        capture_output=True,
-        check=True,
-        timeout=120,
-    )
-    seen = json.loads(out.stdout.decode("utf-8-sig"))  # PowerShell may write a BOM first
+    seen = _shell_reads(sc.path)
     assert sc.link is not None
-    # A link without an ID list names its target in its EnvironmentVariableDataBlock: the shell opens
-    # that (test_the_link_opens_ordnung), but WScript's TargetPath, read from the ID list, stays empty.
-    # Explorer's Properties may show no target for the same reason (README, Without a terminal).
-    assert seen["target"] == "" or Path(seen["target"]).resolve() == Path(sys.executable).resolve()
+    assert Path(seen["target"]).resolve() == Path(sys.executable).resolve(), seen["target"]
+    assert Path(seen["explorer"]).resolve() == Path(sys.executable).resolve(), seen["explorer"]
     assert seen["arguments"] == sc.link.arguments and seen["description"] == sc.link.description
     assert seen["working_dir"] == str(tmp_path) and seen["show"] == 1
     assert Path(seen["icon"].rsplit(",", 1)[0]).resolve() == Path(sc.link.icon).resolve()
+
+
+@WINDOWS_ONLY
+def test_the_shell_reads_a_target_in_non_ascii_folders(tmp_path: Path) -> None:
+    """The items of folders with umlauts (0x35) and Greek letters, which the ANSI code page can't hold, and of
+    the file (0x32): the shell puts the path back together from the ID list."""
+    python = tmp_path.resolve() / "Jürgen Müller" / "Αθηνά" / "python.exe"
+    python.parent.mkdir(parents=True)
+    python.write_bytes(b"")  # only its path is read
+    sc = plan(tmp_path / "d", platform="win32", env=windows_env(tmp_path), home=tmp_path, python=str(python))
+    write(sc)
+    seen = _shell_reads(sc.path)
+    assert Path(seen["target"]) == python, seen["target"]
+    assert Path(seen["explorer"]) == python, seen["explorer"]
+
+
+@WINDOWS_ONLY
+def test_the_id_list_names_what_windows_own_link_names(tmp_path: Path) -> None:
+    """A link Windows makes itself (WScript.Shell, to the same Python) has the same drive, folders and file in
+    its ID list. Windows' own items carry dates, file numbers and 8.3 names, so only the long names and kinds
+    are compared; on a failure both ID lists are printed in hex. The resolved path is used: the runner's
+    temporary folder can hold an 8.3 name, and Windows stores the long one."""
+    python = Path(sys.executable).resolve()
+    sc = plan(tmp_path / "d", platform="win32", env=windows_env(tmp_path), home=tmp_path, python=str(python))
+    assert sc.link is not None
+    ours = lnk_bytes(sc.link)
+    theirs_path = tmp_path / "windows.lnk"
+    _powershell(
+        "$s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:ORDNUNG_TEST_LNK); "
+        "$s.TargetPath = $env:ORDNUNG_TEST_TARGET; $s.Save()",
+        ORDNUNG_TEST_LNK=str(theirs_path),
+        ORDNUNG_TEST_TARGET=str(python),
+    )
+    theirs = theirs_path.read_bytes()
+    assert struct.unpack_from("<I", theirs, 0x14)[0] & FLAGS["HasLinkTargetIDList"]
+    dumps = f"\nours:     {_id_list_hex(ours)}\nWindows': {_id_list_hex(theirs)}"
+    try:
+        mine = parse_id_list(ours, 0x4C, strict=True)
+        windows = parse_id_list(theirs, 0x4C, strict=False)
+    except AssertionError as error:
+        pytest.fail(f"{error}{dumps}")
+    assert mine["path"].casefold() == str(python).casefold(), dumps
+    assert mine["drive"] == windows["drive"], dumps
+    assert [name.casefold() for name in mine["names"]] == [name.casefold() for name in windows["names"]], (
+        dumps
+    )
+    assert mine["kinds"] == windows["kinds"], dumps
 
 
 @WINDOWS_ONLY
@@ -717,33 +1131,58 @@ def test_windows_arguments_round_trip_through_the_shell_s_parser(tmp_path: Path)
 
 @WINDOWS_ONLY
 def test_the_link_opens_ordnung(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = tmp_path / "fake" / "ordnung"
-    fake.mkdir(parents=True)
-    out = tmp_path / "argv.json"
-    (fake / "__init__.py").write_text("", encoding="utf-8")
-    (fake / "__main__.py").write_text(
-        "import json, os, sys\n"
-        "part = os.environ['ORDNUNG_TEST_ARGV'] + '.part'\n"
-        "with open(part, 'w', encoding='utf-8') as handle:\n"
-        "    json.dump(sys.argv[1:], handle)\n"
-        "os.replace(part, os.environ['ORDNUNG_TEST_ARGV'])\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("PYTHONPATH", str(tmp_path / "fake"))
-    monkeypatch.setenv("ORDNUNG_TEST_ARGV", str(out))
+    """The shell runs the link's Python with its arguments (the checkout, and so this Python, is on ``D:`` on
+    GitHub's runners: a drive item other than ``C:``), and opening it doesn't make the shell rewrite it."""
+    out = _fake_ordnung(tmp_path, monkeypatch)
     folder = tmp_path / "Jürgen Müller" / "ordnung"
     sc = plan(folder, platform="win32", env=windows_env(tmp_path), home=tmp_path, python=sys.executable)
     write(sc)
-    os.startfile(sc.path)  # type: ignore[attr-defined]
-    deadline = time.monotonic() + 20
-    while not out.exists() and time.monotonic() < deadline:
-        time.sleep(0.2)
-    assert json.loads(out.read_text(encoding="utf-8")) == [
-        "--data-dir",
-        str(folder),
-        "serve",
-        "--from-shortcut",
-    ]
+    _open_with_the_shell(sc.path)
+    ran = _ran(out)
+    assert ran["argv"] == ["--data-dir", str(folder), "serve", "--from-shortcut"]
+    assert Path(ran["executable"]).resolve() == Path(sys.executable).resolve()
+    assert sc.link is not None and read_lnk(sc.path.read_bytes()) == sc.link
+    assert sc.path.read_bytes() == lnk_bytes(sc.link)
+
+
+@WINDOWS_ONLY
+def test_a_link_to_a_python_in_non_ascii_folders_opens(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, other_python: Path
+) -> None:
+    out = _fake_ordnung(tmp_path, monkeypatch)
+    sc = plan(
+        tmp_path / "d", platform="win32", env=windows_env(tmp_path), home=tmp_path, python=str(other_python)
+    )
+    write(sc)
+    _open_with_the_shell(sc.path)
+    ran = _ran(out)
+    assert ran["argv"] == ["--data-dir", str(tmp_path / "d"), "serve", "--from-shortcut"]
+    assert Path(ran["executable"]) == other_python
+
+
+@WINDOWS_ONLY
+def test_when_the_id_list_and_the_block_disagree_windows_opens_one_of_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, other_python: Path
+) -> None:
+    """The probe: a link whose LinkInfo and EnvironmentVariableDataBlock name this Python, and whose ID list
+    names another one. Ordnung's copies never disagree, so either answer can ship; the test says which one
+    Windows opened in a warning (the end of the pytest output), so the module policy can say whether the
+    block is still a fallback once a link has an ID list."""
+    out = _fake_ordnung(tmp_path, monkeypatch)
+    sc = plan(
+        tmp_path / "d", platform="win32", env=windows_env(tmp_path), home=tmp_path, python=sys.executable
+    )
+    other = shortcut._id_list(str(other_python))
+    assert sc.link is not None and other is not None
+    sc.path.parent.mkdir(parents=True)
+    sc.path.write_bytes(_with_id_list(lnk_bytes(sc.link), other))
+    _open_with_the_shell(sc.path)
+    ran = Path(_ran(out)["executable"])
+    copies = {other_python: "the ID list's", Path(sys.executable): "the LinkInfo's and the block's"}
+    assert ran in copies, ran
+    warnings.warn(
+        f"Windows opened {copies[ran]} Python ({ran}) of a link whose copies disagree", stacklevel=1
+    )
 
 
 # --------------------------------------------------------------------------------------------------
