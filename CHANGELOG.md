@@ -119,6 +119,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   app menu, and `ordnung autostart enable` says you can open the app from there too.
 - Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, and
   *Where do I find these?* lists them with that.
+- Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an
+  ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run
+  `ordnung shortcut` again to rewrite one you added before.
 - The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7
   of GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer
   ask for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript

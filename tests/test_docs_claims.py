@@ -3326,7 +3326,7 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch D1 — weekly repeats, mypy on evals/, package updates, Ask's key (the Windows link's ID list waits)
+# Batch D1 — weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
 # --------------------------------------------------------------------------------------------------
 
 #: Microsoft's own page on Device encryption (it resolved on 2026-10-11, to the reader's language).
@@ -3338,6 +3338,9 @@ DEVICE_ENCRYPTION_PAGE = (
 D1_CHANGED = (
     "Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, "
     "and *Where do I find these?* lists them with that.",
+    "Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an "
+    "ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run "
+    "`ordnung shortcut` again to rewrite one you added before.",
     "The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7 of "
     "GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer ask "
     "for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript take "
@@ -3590,34 +3593,38 @@ def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outl
     ) in card
 
 
-def test_the_windows_link_s_id_list_waits_for_a_run_on_windows(tmp_path: Path) -> None:
-    """Plan §2.4 gates d1-windows' ID list on a dispatched CI run on Windows, which batch D1 didn't have (its
-    branch was never pushed; the other-systems job doesn't run on pull requests): until that run is green, the
-    link has no ID list, README keeps "may show no target" and its CI sentence, and no doc names an ID list.
-    Re-landing the ID list (222e933, 24c53a3) changes this test with the docs."""
+def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
+    """d1-windows (merged only once CI's Windows job passed) against README, SPEC, architecture and CHANGELOG: a
+    plain drive path gets an ID list right after the header, whose flags say so, and Windows' shell reading the
+    target is tested on Windows; README drops "may show no target" and claims nothing about the Properties window."""
     appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
     windows = shortcut.plan(
         tmp_path / "data", platform="win32", env=appdata, home=tmp_path, python="C:\\Python312\\python.exe"
     )
     assert windows.link is not None
-    (flags,) = struct.unpack_from("<I", shortcut.lnk_bytes(windows.link), 20)
-    assert not flags & 0x1
+    id_list = shortcut._id_list(windows.link.target)
+    assert id_list is not None
+    data = shortcut.lnk_bytes(windows.link)
+    (flags,) = struct.unpack_from("<I", data, 20)
+    assert flags & 0x1 and data[76 : 76 + len(id_list)] == id_list
+    assert "def test_the_shell_reads_the_link_back(" in (ROOT / "tests" / "test_shortcut.py").read_text(
+        encoding="utf-8"
+    )
     text = _without_a_terminal()
-    assert (
-        "Its Properties window may show no target: the shortcut names Python in a part of the file Windows opens "
-        "but doesn't show there."
-    ) in text
+    assert "may show no target" not in text and "Properties" not in text
     assert (
         "CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell "
-        "opens it;"
+        "reads its target and opens it;"
     ) in text
-    docs = [
-        ROOT / "README.md",
-        ROOT / "CHANGELOG.md",
-        ROOT / "docs" / "SPEC.md",
-        ROOT / "docs" / "architecture.md",
-    ]
-    assert not [doc.name for doc in docs if "ID list" in _flat(doc.read_text(encoding="utf-8"))]
+    assert (
+        "no COM, no PowerShell; the target as an ID list (This PC, its drive, each folder and the file) and again as "
+        "a path in its LinkInfo and an EnvironmentVariableDataBlock;"
+    ) in _spec()
+    assert (
+        "its `.lnk` is written byte by byte in the shell link format, with the target as an ID list Windows reads, "
+        "without any Windows API."
+    ) in _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert D1_CHANGED[1] in _unreleased("Changed")
 
 
 def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so() -> None:

@@ -1288,9 +1288,11 @@ are in their docstrings):
   rights) and printed with its path before anything is written — `$XDG_DATA_HOME/applications/ordnung.desktop`
   (`Terminal=true`; default `~/.local/share`), `~/Applications/Ordnung.app` (a property list, two `sh`
   scripts and an icon) or the per-user Start menu's `Ordnung.lnk` (its bytes written in the shell link
-  format, MS-SHLLINK, by Ordnung's own code — no COM, no PowerShell; its icon in
-  `%LOCALAPPDATA%\Programs\Ordnung`) — running `<python> -m ordnung --data-dir D serve --from-shortcut`
-  (`--port` when it isn't the default), absolute paths, the last folder set up wins. Linux and macOS record
+  format, MS-SHLLINK, by Ordnung's own code — no COM, no PowerShell; the target as an ID list (This PC, its
+  drive, each folder and the file) and again as a path in its LinkInfo and an EnvironmentVariableDataBlock;
+  its icon in `%LOCALAPPDATA%\Programs\Ordnung`) — running
+  `<python> -m ordnung --data-dir D serve --from-shortcut` (`--port` when it isn't the default), absolute
+  paths, the last folder set up wins. Linux and macOS record
   `PATH` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` as start at login does; on Windows the command
   prints the `setx` line for the opt-out. Each launcher carries a mark (the `.desktop` key
   `X-Ordnung-Shortcut`, `OrdnungShortcut` in `Info.plist`, "(added by ordnung shortcut)" at the end of the
