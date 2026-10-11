@@ -14,7 +14,7 @@
 import { Link } from "react-router";
 import { useId, useMemo, type ReactNode } from "react";
 import { ListTodo, Lock, ScanText, ShieldAlert } from "lucide-react";
-import type { Document, DocumentListEntry, MailTrayItem, Party } from "@/api/types";
+import type { DocumentRow, ListedLetter, MailTrayItem, Party } from "@/api/types";
 import { useSuggestions } from "@/api/hooks";
 import { useOpenedTrayDocs, useTrayByDoc } from "@/features/tour/newMail";
 import { actionFromItem } from "@/features/today/selection";
@@ -39,7 +39,7 @@ import { useSeenLetters } from "./seen";
 const NEXT_STEP_DAYS = 14;
 
 /** A search (`GET /api/documents?q=`) found the letter only in the text its scanner added. */
-const foundInScannerText = (doc: Document | DocumentListEntry): boolean => "found_in" in doc && doc.found_in === "scanner_text";
+const foundInScannerText = (doc: ListedLetter | DocumentRow): boolean => "found_in" in doc && doc.found_in === "scanner_text";
 
 export function LettersList({
   groups,
@@ -52,7 +52,7 @@ export function LettersList({
   parties: Map<string, Party>;
   open: Map<string, OpenSummary>;
   /** The page's own line about a letter (the Tax year page: its tax note), the last line of its row; null: none. */
-  note?: (doc: Document) => ReactNode | null;
+  note?: (doc: ListedLetter) => ReactNode | null;
   /** Each row shows the date on the letter (else the day it arrived): for a page that files letters by it (Tax year). */
   dated?: boolean;
 }) {
@@ -111,7 +111,7 @@ export function LettersList({
 }
 
 /** A small picture of the letter's first page (a lock on private ones). */
-export function Thumb({ doc }: { doc: Document }) {
+export function Thumb({ doc }: { doc: ListedLetter }) {
   const reading = isReading(doc);
   return (
     // a sheet of paper, dimmed in dark mode so 20 white pages don't glare off the dark card
@@ -140,7 +140,7 @@ export function Thumb({ doc }: { doc: Document }) {
  * step's name ("Checking…") next to it, what exactly happens in its tooltip ("Checking every fact
  * against the page") — the New-mail card above tells the whole story.
  */
-function ReadingStatus({ doc }: { doc: Document }) {
+function ReadingStatus({ doc }: { doc: ListedLetter }) {
   const job = useJobProgress(doc.id);
   const step = job?.status === "done" ? PIPELINE_STEPS.length : stageToStep(job?.stage);
   let name = doc.status === "queued" ? "Waiting to be read…" : "Reading…";
@@ -173,7 +173,7 @@ function LetterRow({
   note,
   dated = false,
 }: {
-  doc: Document;
+  doc: ListedLetter;
   party: Party | null;
   open?: OpenSummary;
   tray?: MailTrayItem;
@@ -293,7 +293,7 @@ function LetterRow({
  * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep"). `dated`: the date on the letter
  * instead, when it has one ("Dated Thu 24 Sep · arrived Sat 26 Sep").
  */
-function ArrivalDate({ doc, served, dated = false, className }: { doc: Document; served?: boolean; dated?: boolean; className?: string }) {
+function ArrivalDate({ doc, served, dated = false, className }: { doc: ListedLetter; served?: boolean; dated?: boolean; className?: string }) {
   const today = useTodayISO();
   const { date, verb, docDate } = inboxDateInfo(doc, served);
   const own = dated ? doc.doc_date : null;

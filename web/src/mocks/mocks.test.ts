@@ -11,7 +11,7 @@ import type {
   Dashboard,
   DesktopReminders,
   DocumentDetail,
-  DocumentListEntry,
+  DocumentRow,
   Draft,
   Evidence,
   Item,
@@ -525,22 +525,22 @@ describe("mock dataset", () => {
 
   it("says where a search found each letter and knows of no move, like the API", async () => {
     const s = srv();
-    const all = await get<DocumentListEntry[]>(s, "/documents");
+    const all = await get<DocumentRow[]>(s, "/documents");
     expect(all.length).toBeGreaterThan(10);
     expect(all.every((d) => d.found_in === null)).toBe(true);
-    const found = await get<DocumentListEntry[]>(s, "/documents", "q=Stadtwerke");
+    const found = await get<DocumentRow[]>(s, "/documents", "q=Stadtwerke");
     expect(found.length).toBeGreaterThan(0);
     expect(found.every((d) => d.found_in === "letter")).toBe(true);
-    expect((await get<DocumentListEntry[]>(s, "/documents", "q=%20%20")).every((d) => d.found_in === null)).toBe(true);
+    expect((await get<DocumentRow[]>(s, "/documents", "q=%20%20")).every((d) => d.found_in === null)).toBe(true);
     expect([PROFILE.moved_on, PROFILE.old_address]).toEqual([null, ""]);
   });
 
   it("finds Sam's held scan by its scanner's text and marks it, until Claude has read it (ADR 0020)", async () => {
     const s = srv();
-    const found = await get<DocumentListEntry[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    const found = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
     expect(found.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("scanner_text");
     // its own words (the file name) find it as the letter
-    const byName = await get<DocumentListEntry[]>(s, "/documents", "q=Scan_2026");
+    const byName = await get<DocumentRow[]>(s, "/documents", "q=Scan_2026");
     expect(byName.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("letter");
     // only that scan has scanner text, on its one page
     for (const d of s.db.liveDocuments()) {
@@ -550,7 +550,7 @@ describe("mock dataset", () => {
     // once read, its page has text of its own: the scanner's text no longer counts
     s.db.document("doc_folder_scan")!.ai_processed_at = "2026-09-28T10:00:00Z";
     expect((await get<DocumentDetail>(s, "/documents/doc_folder_scan")).scan_text_pages).toEqual([]);
-    const again = await get<DocumentListEntry[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    const again = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
     expect(again.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("letter");
   });
 

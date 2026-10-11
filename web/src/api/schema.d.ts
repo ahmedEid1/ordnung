@@ -212,9 +212,10 @@ export interface paths {
          * List Documents
          * @description Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
          *     it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
-         *     added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
-         *     letter, never here. The scanner's text counts only on pages without text of their own and is never
-         *     returned (ADR 0020).
+         *     added; ``null`` without a search). Each row leaves out the letter's explanation, key facts,
+         *     references, bank details and file hash (``LEFT_OUT_OF_LIST``): the letter's own page has them. A
+         *     letter's proof files (``source="proof"``) are listed with their letter, never here. The scanner's
+         *     text counts only on pages without text of their own and is never returned (ADR 0020).
          */
         get: operations["list_documents_api_documents_get"];
         put?: never;
@@ -223,6 +224,28 @@ export interface paths {
          * @description Store the uploaded letters and queue them for reading.
          */
         post: operations["upload_documents_api_documents_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Records Copy
+         * @description Every letter whole, as stored, newest first: the letters of "Download a copy of your records".
+         *     Trash and proof files are left out, as in the list. Computer only (403 ``computer_only`` for a
+         *     phone, also behind the phone listener's allow-list): records leave the computer.
+         */
+        get: operations["records_copy_api_documents_json_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2258,7 +2281,7 @@ export interface components {
         Body_upload_documents_api_documents_post: {
             /**
              * Files
-             * @description The letters (PDF, photos, .txt/.eml)
+             * @description The letters (PDF, photos, .txt/.eml/.msg)
              */
             files?: string[] | null;
             /** Files[] */
@@ -3389,18 +3412,49 @@ export interface components {
             scan_text_pages: number[];
         };
         /**
-         * DocumentListEntry
-         * @description A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never
-         *     stored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.
-         *
-         *     ``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the
-         *     list wasn't searched.
+         * DocumentPatch
+         * @description Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
+         *     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
+         *     ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
+         *     dismissal …).
          */
-        DocumentListEntry: {
+        DocumentPatch: {
+            /** Title */
+            title?: string | null;
+            /** Kind */
+            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
+            /** Area */
+            area?: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            /** Tags */
+            tags?: string[] | null;
+            /** Doc Date */
+            doc_date?: string | null;
+            /** Received Date */
+            received_date?: string | null;
+            /** Received Confirmed */
+            received_confirmed?: boolean | null;
+            /** Party Id */
+            party_id?: string | null;
+            /** Case Id */
+            case_id?: string | null;
+            /** Ai Private */
+            ai_private?: boolean | null;
+            /** Direction */
+            direction?: ("incoming" | "outgoing" | "note") | null;
+        };
+        /**
+         * DocumentRow
+         * @description A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but
+         *     ``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter
+         *     (``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,
+         *     never stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.
+         *
+         *     Its fields are copied from ``Document`` by name, so a field the letter gains reaches the list by
+         *     itself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used.
+         */
+        DocumentRow: {
             /** Id */
             id: string;
-            /** Sha256 */
-            sha256: string;
             /** Filename */
             filename: string;
             /** Mime */
@@ -3437,8 +3491,6 @@ export interface components {
             title: string | null;
             /** Summary */
             summary: string | null;
-            /** Explanation */
-            explanation: string | null;
             /** Language */
             language: string | null;
             /** Doc Date */
@@ -3453,10 +3505,6 @@ export interface components {
             urgency: ("low" | "normal" | "high" | "critical") | null;
             /** Text Mode */
             text_mode: ("text" | "vision") | null;
-            /** Key Facts */
-            key_facts: components["schemas"]["KeyFact"][];
-            /** References */
-            references: components["schemas"]["Identifier"][];
             /** Warnings */
             warnings: string[];
             /**
@@ -3469,7 +3517,6 @@ export interface components {
             /** Tags */
             tags: string[];
             remedy: components["schemas"]["Remedy"] | null;
-            payment: components["schemas"]["PaymentDetails"] | null;
             /**
              * Hidden Text
              * @default false
@@ -3492,37 +3539,6 @@ export interface components {
             deleted_at: string | null;
             /** Found In */
             found_in: ("letter" | "scanner_text") | null;
-        };
-        /**
-         * DocumentPatch
-         * @description Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
-         *     ``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is
-         *     ``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a
-         *     dismissal …).
-         */
-        DocumentPatch: {
-            /** Title */
-            title?: string | null;
-            /** Kind */
-            kind?: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
-            /** Area */
-            area?: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
-            /** Tags */
-            tags?: string[] | null;
-            /** Doc Date */
-            doc_date?: string | null;
-            /** Received Date */
-            received_date?: string | null;
-            /** Received Confirmed */
-            received_confirmed?: boolean | null;
-            /** Party Id */
-            party_id?: string | null;
-            /** Case Id */
-            case_id?: string | null;
-            /** Ai Private */
-            ai_private?: boolean | null;
-            /** Direction */
-            direction?: ("incoming" | "outgoing" | "note") | null;
         };
         /**
          * DocumentTrace
@@ -7895,7 +7911,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentListEntry"][];
+                    "application/json": components["schemas"]["DocumentRow"][];
                 };
             };
             /** @description Validation Error */
@@ -7938,6 +7954,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    records_copy_api_documents_json_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Document"][];
                 };
             };
         };

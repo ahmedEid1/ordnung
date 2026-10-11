@@ -9,9 +9,12 @@ from pathlib import Path
 from typing import Any, get_args
 
 import pytest
+from fastapi.routing import APIRoute
 from starlette.routing import compile_path
 
 from ordnung.api.app import openapi_schema
+from ordnung.api.deps import require_computer
+from ordnung.api.routes import documents
 from ordnung.config import Paths
 from ordnung.ids import new_id
 from ordnung.phone import ERROR_STATUS, PhoneErrorCode, cookie_name, scope
@@ -55,7 +58,7 @@ def test_every_operation_is_classified(schema: dict[str, Any]) -> None:
     gone = sorted((PHONE_ROUTES | COMPUTER_ONLY) - operations)
     assert not gone, f"classified operations that don't exist: {gone}"
     assert not PHONE_ROUTES & COMPUTER_ONLY
-    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (116, 57, 59)
+    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (117, 57, 60)
 
 
 def test_never_on_phone_stays_on_the_computer() -> None:
@@ -103,6 +106,28 @@ def test_the_letters_zip_stays_on_the_computer() -> None:
     assert classify("GET", "/api/documents.zip") == "computer"
     assert classify("HEAD", "/api/documents.zip") == "computer"
     assert scope.match("GET", "/api/documents.zip") is None
+
+
+def test_the_copy_of_your_records_stays_on_the_computer() -> None:
+    """``GET /api/documents.json`` ("Download a copy of your records") takes every letter with its whole
+    reading: records that would leave the computer, like the calendar files, so a phone never gets them
+    (the route checks again). It is a download, not a change of the ledger, and the letter list a phone
+    shows (``GET /api/documents``) is a different operation. The route is declared before
+    ``/documents/{doc_id}``."""
+    operation = ("GET", "/api/documents.json")
+    assert operation in COMPUTER_ONLY and operation not in PHONE_ROUTES
+    assert NEVER_ON_PHONE[operation] == "records leave the computer"
+    assert operation not in scope.CHANGE_LABELS
+    assert classify("GET", "/api/documents.json") == "computer"
+    assert classify("HEAD", "/api/documents.json") == "computer"
+    assert scope.match("GET", "/api/documents.json") is None
+    assert classify("GET", "/api/documents") == "phone"
+    routes = [r for r in documents.router.routes if isinstance(r, APIRoute)]
+    (route,) = [r for r in routes if r.path == "/documents.json"]
+    assert route.methods == {"GET"}
+    assert any(dependency.dependency is require_computer for dependency in route.dependencies)
+    paths = [r.path for r in routes]
+    assert paths.index("/documents.json") < paths.index("/documents/{doc_id}")
 
 
 def test_the_only_delete_on_a_phone_is_the_undo_of_answered(schema: dict[str, Any]) -> None:

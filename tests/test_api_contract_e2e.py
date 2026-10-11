@@ -25,7 +25,8 @@ from jsonschema import Draft202012Validator
 from fake_caldav import MemorySecrets
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER
 from ordnung import clock
-from ordnung.api.routes import calendar_sync, sync
+from ordnung.api.routes import calendar_sync, documents, sync
+from ordnung.drafts.proof import PROOF_SOURCE
 from test_api_support import TODAY, Api, api_for, sse_messages
 
 NOT_CALLED = {"/api/events": "an endless event stream (tested in test_api_ledger)"}
@@ -201,8 +202,18 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp
         await _get(api, contract, "/api/folder")
         await _get(api, contract, "/api/dashboard")
         await _get(api, contract, "/api/brief")
-        await _get(api, contract, "/api/documents")
-        await _get(api, contract, "/api/documents", q="Einkommensteuer", limit=8)
+        listed = await _get(api, contract, "/api/documents")
+        searched = await _get(api, contract, "/api/documents", q="Einkommensteuer", limit=8)
+        # the list leaves out what Claude read from inside each letter in detail, and the file hash
+        assert listed and searched
+        assert all(set(row) == set(documents.DocumentRow.model_fields) for row in [*listed, *searched])
+        # "Download a copy of your records": the same letters, each whole, as stored
+        records = await _get(api, contract, "/api/documents.json")
+        stored = api.ctx.store.list_documents(exclude_source=PROOF_SOURCE)
+        assert records == [doc.model_dump(mode="json") for doc in stored]
+        assert [row["id"] for row in records] == [row["id"] for row in listed]
+        assert all(documents.LEFT_OUT_OF_LIST <= set(row) for row in records)
+        assert all(row["explanation"] and row["sha256"] for row in records)
         detail = await _get(api, contract, f"/api/documents/{ids['doc']}")
         assert detail["items"] and detail["pages"]
         await api.client.post(f"/api/documents/{ids['doc']}/reprocess")

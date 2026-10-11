@@ -10,7 +10,7 @@ import { useRef } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
 import { ArrowRight, RotateCw, TriangleAlert } from "lucide-react";
-import type { Document } from "@/api/types";
+import type { ListedLetter } from "@/api/types";
 import { useReprocessDocuments } from "@/api/hooks";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { plural } from "@/lib/utils";
@@ -41,7 +41,7 @@ export function failedTitle(count: number): string {
   return `${plural(count, "letter")} couldn't be read`;
 }
 
-export function FailedCard({ docs }: { docs: Document[] }) {
+export function FailedCard({ docs }: { docs: ListedLetter[] }) {
   const retry = useReprocessDocuments();
   const card = useRef<HTMLElement>(null);
   if (!docs.length) return null;

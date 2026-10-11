@@ -534,11 +534,15 @@ export type KeyFact = Schemas["KeyFact"];
 /** A letter / file ("Letters" in the Inbox). `deleted_at` is set while it is in the trash. */
 export type Document = Schemas["Document"];
 /**
- * A letter as `GET /api/documents` lists it: with `found_in`, where a search found it (`letter`: its own
- * words; `scanner_text`: only in the unchecked text a scanner added; null: the list wasn't searched).
+ * A letter as `GET /api/documents` lists it: without what Claude read from inside it in detail (explanation,
+ * key facts, references, bank details) and the file hash — the letter's own page (`GET /api/documents/{id}`)
+ * has them — and with `found_in`, where a search found it (`letter`: its own words; `scanner_text`: only in
+ * the unchecked text a scanner added; null: the list wasn't searched).
  */
-export type DocumentListEntry = Schemas["DocumentListEntry"];
-export type SearchFoundIn = NonNullable<DocumentListEntry["found_in"]>;
+export type DocumentRow = Schemas["DocumentRow"];
+/** What every list view reads of a letter: a list row without `found_in`. A full `Document` has all of it too. */
+export type ListedLetter = Omit<DocumentRow, "found_in">;
+export type SearchFoundIn = NonNullable<DocumentRow["found_in"]>;
 export type ContractComputation = Schemas["ContractComputation"];
 export type Contract = Schemas["Contract"];
 /** A to-do or date ("To-dos & dates" in the UI). */

@@ -461,7 +461,7 @@
           "documents"
         ],
         "summary": "List Documents",
-        "description": "Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where\nit was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner\nadded; ``null`` without a search). A letter's proof files (``source=\"proof\"``) are listed with their\nletter, never here. The scanner's text counts only on pages without text of their own and is never\nreturned (ADR 0020).",
+        "description": "Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where\nit was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner\nadded; ``null`` without a search). Each row leaves out the letter's explanation, key facts,\nreferences, bank details and file hash (``LEFT_OUT_OF_LIST``): the letter's own page has them. A\nletter's proof files (``source=\"proof\"``) are listed with their letter, never here. The scanner's\ntext counts only on pages without text of their own and is never returned (ADR 0020).",
         "operationId": "list_documents_api_documents_get",
         "parameters": [
           {
@@ -662,7 +662,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/DocumentListEntry"
+                    "$ref": "#/components/schemas/DocumentRow"
                   },
                   "title": "Response List Documents Api Documents Get"
                 }
@@ -721,6 +721,32 @@
           }
         },
         "x-ordnung-phone": true
+      }
+    },
+    "/api/documents.json": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Records Copy",
+        "description": "Every letter whole, as stored, newest first: the letters of \"Download a copy of your records\".\nTrash and proof files are left out, as in the list. Computer only (403 ``computer_only`` for a\nphone, also behind the phone listener's allow-list): records leave the computer.",
+        "operationId": "records_copy_api_documents_json_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Document"
+                  },
+                  "type": "array",
+                  "title": "Response Records Copy Api Documents Json Get"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/documents/{doc_id}": {
@@ -5826,7 +5852,7 @@
               }
             ],
             "title": "Files",
-            "description": "The letters (PDF, photos, .txt/.eml)"
+            "description": "The letters (PDF, photos, .txt/.eml/.msg)"
           },
           "files[]": {
             "anyOf": [
@@ -9293,433 +9319,6 @@
         ],
         "title": "DocumentDetail"
       },
-      "DocumentListEntry": {
-        "properties": {
-          "id": {
-            "type": "string",
-            "title": "Id"
-          },
-          "sha256": {
-            "type": "string",
-            "title": "Sha256"
-          },
-          "filename": {
-            "type": "string",
-            "title": "Filename"
-          },
-          "mime": {
-            "type": "string",
-            "title": "Mime"
-          },
-          "pages": {
-            "type": "integer",
-            "title": "Pages",
-            "default": 1
-          },
-          "direction": {
-            "type": "string",
-            "enum": [
-              "incoming",
-              "outgoing",
-              "note"
-            ],
-            "title": "Direction",
-            "default": "incoming"
-          },
-          "source": {
-            "type": "string",
-            "title": "Source",
-            "default": "upload"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "processing",
-              "processed",
-              "needs_review",
-              "failed",
-              "held"
-            ],
-            "title": "Status",
-            "default": "queued"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error"
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "tax_assessment",
-                  "tax_letter",
-                  "authority_letter",
-                  "residence_permit",
-                  "social_insurance",
-                  "health_insurance",
-                  "invoice",
-                  "dunning",
-                  "contract",
-                  "contract_change",
-                  "price_increase",
-                  "cancellation_confirmation",
-                  "payslip",
-                  "bank_letter",
-                  "insurance",
-                  "rent_lease",
-                  "utility_bill",
-                  "university",
-                  "employment",
-                  "appointment",
-                  "fine",
-                  "receipt",
-                  "identity_document",
-                  "broadcasting_fee",
-                  "certificate",
-                  "personal",
-                  "other",
-                  "court_payment_order",
-                  "enforcement_order",
-                  "dismissal",
-                  "landlord_notice",
-                  "rent_increase",
-                  "operating_costs"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kind"
-          },
-          "area": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "home",
-                  "work",
-                  "study",
-                  "health",
-                  "money",
-                  "residence",
-                  "tax",
-                  "mobility",
-                  "insurance",
-                  "leisure",
-                  "family",
-                  "other"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Area"
-          },
-          "title": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Title"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "explanation": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Explanation"
-          },
-          "language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Language"
-          },
-          "doc_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Doc Date"
-          },
-          "received_date": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Received Date"
-          },
-          "party_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Party Id"
-          },
-          "case_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Case Id"
-          },
-          "urgency": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "low",
-                  "normal",
-                  "high",
-                  "critical"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Urgency"
-          },
-          "text_mode": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "text",
-                  "vision"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Text Mode"
-          },
-          "key_facts": {
-            "items": {
-              "$ref": "#/components/schemas/KeyFact"
-            },
-            "type": "array",
-            "title": "Key Facts"
-          },
-          "references": {
-            "items": {
-              "$ref": "#/components/schemas/Identifier"
-            },
-            "type": "array",
-            "title": "References"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Warnings"
-          },
-          "tax_relevant": {
-            "type": "boolean",
-            "title": "Tax Relevant",
-            "default": false
-          },
-          "tax_note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tax Note"
-          },
-          "tags": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Tags"
-          },
-          "remedy": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Remedy"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "payment": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PaymentDetails"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "hidden_text": {
-            "type": "boolean",
-            "title": "Hidden Text",
-            "default": false
-          },
-          "ai_private": {
-            "type": "boolean",
-            "title": "Ai Private",
-            "default": false
-          },
-          "ai_processed_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ai Processed At"
-          },
-          "created_at": {
-            "type": "string",
-            "title": "Created At"
-          },
-          "updated_at": {
-            "type": "string",
-            "title": "Updated At"
-          },
-          "processed_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Processed At"
-          },
-          "deleted_at": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Deleted At"
-          },
-          "found_in": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "letter",
-                  "scanner_text"
-                ]
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Found In"
-          }
-        },
-        "type": "object",
-        "required": [
-          "id",
-          "sha256",
-          "filename",
-          "mime",
-          "pages",
-          "direction",
-          "source",
-          "status",
-          "error",
-          "kind",
-          "area",
-          "title",
-          "summary",
-          "explanation",
-          "language",
-          "doc_date",
-          "received_date",
-          "party_id",
-          "case_id",
-          "urgency",
-          "text_mode",
-          "key_facts",
-          "references",
-          "warnings",
-          "tax_relevant",
-          "tax_note",
-          "tags",
-          "remedy",
-          "payment",
-          "hidden_text",
-          "ai_private",
-          "ai_processed_at",
-          "created_at",
-          "updated_at",
-          "processed_at",
-          "deleted_at",
-          "found_in"
-        ],
-        "title": "DocumentListEntry",
-        "description": "A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never\nstored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.\n\n``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the\nlist wasn't searched."
-      },
       "DocumentPatch": {
         "properties": {
           "title": {
@@ -9905,6 +9504,389 @@
         "type": "object",
         "title": "DocumentPatch",
         "description": "Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and\n``doc_date`` recompute the letter's to-dos with the rules engine unless ``received_confirmed`` is\n``false``; so does ``kind``, which decides the rules of high-stakes letters (a court order, a\ndismissal …)."
+      },
+      "DocumentRow": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "mime": {
+            "type": "string",
+            "title": "Mime"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages",
+            "default": 1
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "incoming",
+              "outgoing",
+              "note"
+            ],
+            "title": "Direction",
+            "default": "incoming"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "upload"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "processed",
+              "needs_review",
+              "failed",
+              "held"
+            ],
+            "title": "Status",
+            "default": "queued"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tax_assessment",
+                  "tax_letter",
+                  "authority_letter",
+                  "residence_permit",
+                  "social_insurance",
+                  "health_insurance",
+                  "invoice",
+                  "dunning",
+                  "contract",
+                  "contract_change",
+                  "price_increase",
+                  "cancellation_confirmation",
+                  "payslip",
+                  "bank_letter",
+                  "insurance",
+                  "rent_lease",
+                  "utility_bill",
+                  "university",
+                  "employment",
+                  "appointment",
+                  "fine",
+                  "receipt",
+                  "identity_document",
+                  "broadcasting_fee",
+                  "certificate",
+                  "personal",
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "study",
+                  "health",
+                  "money",
+                  "residence",
+                  "tax",
+                  "mobility",
+                  "insurance",
+                  "leisure",
+                  "family",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "doc_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high",
+                  "critical"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency"
+          },
+          "text_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "vision"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Mode"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "tax_relevant": {
+            "type": "boolean",
+            "title": "Tax Relevant",
+            "default": false
+          },
+          "tax_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Note"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "remedy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Remedy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hidden_text": {
+            "type": "boolean",
+            "title": "Hidden Text",
+            "default": false
+          },
+          "ai_private": {
+            "type": "boolean",
+            "title": "Ai Private",
+            "default": false
+          },
+          "ai_processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Processed At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "found_in": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "letter",
+                  "scanner_text"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found In"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "filename",
+          "mime",
+          "pages",
+          "direction",
+          "source",
+          "status",
+          "error",
+          "kind",
+          "area",
+          "title",
+          "summary",
+          "language",
+          "doc_date",
+          "received_date",
+          "party_id",
+          "case_id",
+          "urgency",
+          "text_mode",
+          "warnings",
+          "tax_relevant",
+          "tax_note",
+          "tags",
+          "remedy",
+          "hidden_text",
+          "ai_private",
+          "ai_processed_at",
+          "created_at",
+          "updated_at",
+          "processed_at",
+          "deleted_at",
+          "found_in"
+        ],
+        "title": "DocumentRow",
+        "description": "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\nnever stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n\nIts fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\nitself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
       },
       "DocumentTrace": {
         "properties": {

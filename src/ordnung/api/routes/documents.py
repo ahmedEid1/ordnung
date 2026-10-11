@@ -1,5 +1,10 @@
 """Letters: upload, list, detail, edit, reprocess, delete, and their files (original, pages, thumbnail).
 
+The list (``GET /api/documents``) answers :class:`DocumentRow`: each letter without what Claude read
+from inside it in detail and the file hash (:data:`LEFT_OUT_OF_LIST`); the letter's own page
+(``GET /api/documents/{id}``) has all of it. "Download a copy of your records" takes every letter whole
+from ``GET /api/documents.json``, on the computer only.
+
 Uploads (``POST /api/documents``, multipart): ``files`` (``files[]`` is accepted too), ``combine``
 (all photos of the upload become one multi-page letter; other files stay separate documents) and
 ``private`` ("Keep private — no AI"). The response lists the documents queued for reading with their
@@ -24,13 +29,24 @@ from collections.abc import Sequence
 from datetime import date
 from functools import partial
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, File, Form, HTTPException, Query, Request, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, create_model
 
-from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, phone_device
+from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, phone_device, require_computer
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
@@ -59,7 +75,6 @@ from ordnung.models import (
     Direction,
     Document,
     DocumentDetail,
-    DocumentListEntry,
     DocumentStatus,
     Item,
     Job,
@@ -138,6 +153,34 @@ class DocumentPatch(BaseModel):
     direction: Direction | None = None
 
 
+#: What the letter list leaves out: what Claude read from inside the letter in detail, and the file hash.
+#: The letter's own page (``GET /api/documents/{id}``) and the copy of your records have all of it.
+LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment", "sha256"})
+
+_ROW_FIELDS: dict[str, Any] = {
+    name: (field.annotation, field)
+    for name, field in Document.model_fields.items()
+    if name not in LEFT_OUT_OF_LIST
+}
+
+DocumentRow = create_model(
+    "DocumentRow",
+    __config__=ConfigDict(json_schema_serialization_defaults_required=True),
+    __doc__=(
+        "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
+        "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
+        "(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\n"
+        "never stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n"
+        "\n"
+        "Its fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\n"
+        "itself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
+    ),
+    __module__=__name__,
+    **_ROW_FIELDS,
+    found_in=(SearchFoundIn | None, None),
+)
+
+
 class DeleteResult(BaseModel):
     """What ``DELETE /api/documents/{id}`` did."""
 
@@ -151,7 +194,7 @@ class DeleteResult(BaseModel):
 # --------------------------------------------------------------------------------------------------
 
 
-@router.get("/documents", response_model=list[DocumentListEntry])
+@router.get("/documents", response_model=list[DocumentRow])
 def list_documents(
     store: StoreDep,
     q: str | None = None,
@@ -163,12 +206,13 @@ def list_documents(
     private: bool | None = None,
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[DocumentListEntry]:
+) -> list[DocumentRow]:
     """Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
     it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
-    added; ``null`` without a search). A letter's proof files (``source="proof"``) are listed with their
-    letter, never here. The scanner's text counts only on pages without text of their own and is never
-    returned (ADR 0020)."""
+    added; ``null`` without a search). Each row leaves out the letter's explanation, key facts,
+    references, bank details and file hash (``LEFT_OUT_OF_LIST``): the letter's own page has them. A
+    letter's proof files (``source="proof"``) are listed with their letter, never here. The scanner's
+    text counts only on pages without text of their own and is never returned (ADR 0020)."""
     query = q.strip() if q else ""
     # letters found in a scan's scanner text: kept apart from the indexes, ORed in here alone
     scanned = store.scan_text_matches(query) if query else set()
@@ -194,7 +238,21 @@ def list_documents(
             return None
         return "scanner_text" if doc.id in only_scanned else "letter"
 
-    return [DocumentListEntry.model_construct(**dict(doc), found_in=found_in(doc)) for doc in docs]
+    return [
+        DocumentRow.model_construct(
+            **{name: value for name, value in dict(doc).items() if name not in LEFT_OUT_OF_LIST},
+            found_in=found_in(doc),
+        )
+        for doc in docs
+    ]
+
+
+@router.get("/documents.json", response_model=list[Document], dependencies=[Depends(require_computer)])
+def records_copy(store: StoreDep) -> list[Document]:
+    """Every letter whole, as stored, newest first: the letters of "Download a copy of your records".
+    Trash and proof files are left out, as in the list. Computer only (403 ``computer_only`` for a
+    phone, also behind the phone listener's allow-list): records leave the computer."""
+    return store.list_documents(exclude_source=PROOF_SOURCE)
 
 
 def _page_infos(store: Store, doc_id: str) -> list[PageInfo]:
@@ -467,7 +525,7 @@ async def upload_documents(
     state: StateDep,
     ctx: CtxDep,
     files: Annotated[
-        list[UploadFile] | None, File(description="The letters (PDF, photos, .txt/.eml)")
+        list[UploadFile] | None, File(description="The letters (PDF, photos, .txt/.eml/.msg)")
     ] = None,
     files_array: Annotated[list[UploadFile] | None, File(alias="files[]", include_in_schema=False)] = None,
     combine: Annotated[bool, Form(description="Photos of this upload are pages of one letter")] = False,

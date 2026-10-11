@@ -17,7 +17,7 @@ from helpers_secretary import TODAY as TODAY_DATE
 from helpers_secretary import add_doc, add_item
 from helpers_sender_land import BACKWARDS, HOLIDAY, MUNICH, letter_from, to_do
 from ordnung import clock
-from ordnung.api.routes.documents import document_detail
+from ordnung.api.routes.documents import LEFT_OUT_OF_LIST, document_detail
 from ordnung.db.store import Store
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
 from ordnung.models import Document, DocumentDetail
@@ -204,12 +204,13 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
 
 async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) -> None:
     """``found_in`` is worked out for the list only (the letter itself has no such field): ``null`` when
-    the list wasn't searched. A letter with page text of its own has no scanner text kept."""
+    the list wasn't searched. The list leaves out the letter's reading in detail and its file hash
+    (``LEFT_OUT_OF_LIST``). A letter with page text of its own has no scanner text kept."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         listed = (await api.client.get("/api/documents")).json()
         assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
-        assert set(listed[0]) == set(Document.model_fields) | {"found_in"}
+        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in"}
         blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
         assert [row["found_in"] for row in blank] == [None]
         found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()

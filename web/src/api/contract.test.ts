@@ -185,6 +185,7 @@ const CASES = {
   deleteEverything: { run: () => api.deleteEverything(), status: 409 },
 
   documents: { run: () => api.documents({ q: "Rechnung", status: "processed", limit: 20, offset: 0 }) },
+  documentsFull: { run: () => api.documentsFull() },
   uploadDocuments: { run: () => api.uploadDocuments([pdf()], { combine: false, private: false }) },
   document: { run: (ids) => api.document(ids.doc) },
   updateDocument: { run: (ids) => api.updateDocument(ids.doc, { title: "Renamed letter", tags: ["kept"] }) },

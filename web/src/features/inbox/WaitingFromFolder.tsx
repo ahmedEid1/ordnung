@@ -19,7 +19,7 @@
  */
 import { Link } from "react-router";
 import { FolderInput, Lock, ScanText, Sparkles } from "lucide-react";
-import type { Document, SearchFoundIn } from "@/api/types";
+import type { ListedLetter, SearchFoundIn } from "@/api/types";
 import { useFolder, useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
 import { SCANNER_TEXT_MATCH } from "@/lib/copy";
 import { formatDateTime } from "@/lib/format";
@@ -41,7 +41,7 @@ export function WaitingFromFolder({
   found = null,
   onAnswered,
 }: {
-  docs: readonly Document[];
+  docs: readonly ListedLetter[];
   /** While the Inbox is searched: the waiting letters the search found, with where (`found_in`); null: no search. */
   found?: ReadonlyMap<string, SearchFoundIn | null> | null;
   onAnswered?: () => void;

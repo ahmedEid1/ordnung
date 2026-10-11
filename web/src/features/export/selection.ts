@@ -5,7 +5,7 @@
  * the dialog can say how many letters the ZIP will hold before the person clicks. Both test suites read
  * `selection-cases.json`, so the two can't drift apart.
  */
-import type { Document, LettersZipParams } from "@/api/types";
+import type { LettersZipParams, ListedLetter } from "@/api/types";
 
 /** What the person chose: a year (by the letter's date), `until` a day of the next year, only letters for taxes, one sender. */
 export interface ExportChoice {
@@ -33,23 +33,23 @@ export function parseDay(value: string | null | undefined): string | null {
 }
 
 /** The day a letter is filed under by year: the date printed on it, else the day it arrived (`letter_day` on the server). */
-export function letterDay(d: Pick<Document, "doc_date" | "received_date">): string | null {
+export function letterDay(d: Pick<ListedLetter, "doc_date" | "received_date">): string | null {
   return parseDay(d.doc_date) ?? parseDay(d.received_date);
 }
 
 /** The year of {@link letterDay} (null: the letter has no date). */
-export function letterYear(d: Pick<Document, "doc_date" | "received_date">): number | null {
+export function letterYear(d: Pick<ListedLetter, "doc_date" | "received_date">): number | null {
   const day = letterDay(d);
   return day ? Number(day.slice(0, 4)) : null;
 }
 
 /** A letter that can be exported at all: not in the trash, not waiting to be read (held), not a proof file. */
-export function exportable(d: Document): boolean {
+export function exportable(d: ListedLetter): boolean {
   return !d.deleted_at && d.status !== "held" && d.source !== "proof";
 }
 
 /** Whether `d` belongs in the export `c` describes. */
-export function matchesChoice(d: Document, c: ExportChoice): boolean {
+export function matchesChoice(d: ListedLetter, c: ExportChoice): boolean {
   if (!exportable(d)) return false;
   if (c.tax && !d.tax_relevant) return false;
   if (c.party_id && d.party_id !== c.party_id) return false;
@@ -62,7 +62,7 @@ export function matchesChoice(d: Document, c: ExportChoice): boolean {
 }
 
 /** The letters of `docs` the export takes, in their order. */
-export function selectForExport(docs: readonly Document[], c: ExportChoice): Document[] {
+export function selectForExport<T extends ListedLetter>(docs: readonly T[], c: ExportChoice): T[] {
   return docs.filter((d) => matchesChoice(d, c));
 }
 

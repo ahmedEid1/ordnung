@@ -20,7 +20,7 @@ import type {
   DesktopTestResult,
   Document,
   DocumentDetail,
-  DocumentListEntry,
+  DocumentRow,
   Draft,
   Evidence,
   DraftCreate,
@@ -33,6 +33,7 @@ import type {
   Job,
   LetterAdvice,
   ListedItem,
+  ListedLetter,
   MailOpenResult,
   NoticeUnit,
   PageInfo,
@@ -358,6 +359,20 @@ function regionSuggestion(db: MockDb, party: Party | null, doc?: Document): Regi
       x.refs.some((r) => r.type === "party" && r.id === party.id),
   );
   return { ...known, idea_id: idea?.id ?? null, declined: idea?.status === "dismissed" };
+}
+
+/**
+ * A letter as the list (`GET /api/documents`) answers it, like the API (`LEFT_OUT_OF_LIST`): without what Claude read
+ * from inside it in detail (explanation, key facts, references, bank details) and the file hash. Its page has them.
+ */
+export function toRow(d: Document): ListedLetter {
+  const { key_facts: _keyFacts, explanation: _explanation, references: _references, payment: _payment, sha256: _sha256, ...row } = d;
+  return row;
+}
+
+/** The mock list's order: newest first by the day it arrived, else its date, else when it was added. */
+function newestFirst(a: Document, b: Document): number {
+  return (a.received_date ?? a.doc_date ?? a.created_at) < (b.received_date ?? b.doc_date ?? b.created_at) ? 1 : -1;
 }
 
 function documentDetail(db: MockDb, id: string): DocumentDetail {
@@ -1348,7 +1363,7 @@ const routes: [string, string, Handler][] = [
     "/documents",
     ({ db, query }) => {
       const q = query.get("q");
-      let docs = q ? db.search(q) : [...db.liveDocuments()].sort((a, b) => ((a.received_date ?? a.doc_date ?? a.created_at) < (b.received_date ?? b.doc_date ?? b.created_at) ? 1 : -1));
+      let docs = q ? db.search(q) : [...db.liveDocuments()].sort(newestFirst);
       const f = (k: string) => query.get(k);
       if (f("kind")) docs = docs.filter((d) => d.kind === f("kind"));
       if (f("party_id")) docs = docs.filter((d) => d.party_id === f("party_id"));
@@ -1358,10 +1373,12 @@ const routes: [string, string, Handler][] = [
       if (f("private") === "true") docs = docs.filter((d) => d.ai_private);
       const offset = Number(f("offset") ?? 0);
       const limit = f("limit") ? Number(f("limit")) : docs.length;
-      // like the API: each row says where a search found it (null: the list wasn't searched)
-      return docs.slice(offset, offset + limit).map((d): DocumentListEntry => ({ ...d, found_in: db.foundIn(d, q) }));
+      // like the API: rows leave out the reading, and each says where a search found it (null: the list wasn't searched)
+      return docs.slice(offset, offset + limit).map((d): DocumentRow => ({ ...toRow(d), found_in: db.foundIn(d, q) }));
     },
   ],
+  // "Download a copy of your records": every letter whole, as stored (trash and proof files left out, as in the list)
+  ["GET", "/documents.json", ({ db }) => [...db.liveDocuments()].sort(newestFirst) satisfies Document[]],
   [
     "POST",
     "/documents",
