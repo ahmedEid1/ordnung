@@ -49,6 +49,25 @@ def _uses(path: Path) -> dict[str, str]:
     return {name: found.pop() for name, found in refs.items()}
 
 
+def _major(ref: str) -> str:
+    """The major version a ref names: ``v7.1.0`` → ``v7``; ``v7`` stays."""
+    return ref.split(".")[0]
+
+
+def _release_pins() -> dict[str, str]:
+    """Each action release.yml pins to a commit, with the version written beside it."""
+    text = RELEASE.read_text(encoding="utf-8")
+    return dict(re.findall(r"uses: ([\w.-]+/[\w.-]+)@[0-9a-f]{40} # (v\d+\.\d+\.\d+)$", text, re.M))
+
+
+def _pins_follow(ci: dict[str, str]) -> None:
+    """Each action release.yml pins has the major version of CI's ref for it, compared as majors on both sides:
+    CI's ref may be a major tag (``v7``) or a full version (``v7.1.0``)."""
+    for name, version in _release_pins().items():
+        if name in ci:
+            assert _major(version) == _major(ci[name]), name
+
+
 def test_only_a_pushed_version_tag_starts_a_release() -> None:
     workflow = _workflow()
     triggers = workflow.get("on", workflow.get(True))  # PyYAML reads the key `on` as True
@@ -187,12 +206,10 @@ def test_the_actions_are_pinned_to_commits_of_the_versions_ci_uses() -> None:
     the same major version as CI's."""
     ci = _uses(ROOT / ".github/workflows/ci.yml")
     text = RELEASE.read_text(encoding="utf-8")
-    pinned = dict(re.findall(r"uses: ([\w.-]+/[\w.-]+)@[0-9a-f]{40} # (v\d+\.\d+\.\d+)$", text, re.M))
+    pinned = _release_pins()
     assert set(pinned) == set(_uses(RELEASE)), "every action of release.yml is pinned to a commit"
     assert len(re.findall(r"uses: ", text)) == len(re.findall(r"uses: \S+@[0-9a-f]{40} # v", text))
-    for name, version in pinned.items():
-        if name in ci:
-            assert version.split(".")[0] == ci[name], name
+    _pins_follow(ci)
     assert pinned["pypa/gh-action-pypi-publish"].startswith("v1.")  # its documented release/v1 line
     assert set(pinned) - set(ci) == {"actions/download-artifact", "pypa/gh-action-pypi-publish"}
     nvmrc = (ROOT / ".nvmrc").read_text(encoding="utf-8").strip()
@@ -200,6 +217,20 @@ def test_the_actions_are_pinned_to_commits_of_the_versions_ci_uses() -> None:
         for step in job["steps"]:
             if step.get("uses", "").startswith("actions/setup-node@"):
                 assert str(step["with"]["node-version"]) == nvmrc
+
+
+def test_a_full_version_in_ci_yml_and_a_major_tag_name_the_same_major() -> None:
+    """ci.yml names major tags (``@v7``) and release.yml full versions (``# v7.1.0``). Dependabot keeps each
+    file's precision, except when the two name the same version (``v5`` and ``v5.0.0``): then it writes the full
+    one into both, ``@v7.1.0`` in ci.yml (pull requests #15 and #16). The check reads both sides as major 7, and
+    still refuses a different major."""
+    assert _major("v7.1.0") == _major("v7") == "v7"
+    assert _major("v10.3.0") == "v10" != _major("v1.14.2")
+    ci = _uses(ROOT / ".github/workflows/ci.yml")
+    pins = _release_pins()
+    _pins_follow({**ci, **{name: pins[name] for name in ("actions/setup-node", "actions/upload-artifact")}})
+    with pytest.raises(AssertionError, match="actions/setup-node"):
+        _pins_follow({**ci, "actions/setup-node": "v6"})
 
 
 def test_ci_s_wheel_job_checks_that_the_description_renders_on_pypi() -> None:

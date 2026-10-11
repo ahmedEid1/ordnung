@@ -9,7 +9,7 @@
   with an empty ``until``): the letter waits in the queue instead of failing, and so does every letter
   for Claude claimed meanwhile (put back for :data:`CLAUDE_RECHECK_S` seconds at a time; private letters
   are read as usual), and the API's cached Claude status is dropped (``claude_failed``). A letter put back
-  this way first gets its own text read on this computer (once per run of Ordnung,
+  this way first gets its own text read on this computer (once per job in a run of Ordnung,
   :func:`~ordnung.ingest.pipeline.read_text_here`), so search finds it by its words while it waits. Reading goes
   on once a check sees Claude ready (:meth:`IngestWorker.claude_ready` — the API's Claude status
   check, and the worker's own every :data:`CLAUDE_RECHECK_S` seconds through ``claude_check``);
@@ -180,7 +180,8 @@ class IngestWorker:
         self._wake: asyncio.Event | None = None
         self._stopping = False
         self._recovered = False
-        #: The letters waiting for Claude whose own text was read on this computer in this run of Ordnung.
+        #: The jobs of letters waiting for Claude whose own text was read on this computer in this run of
+        #: Ordnung (by job: a letter deleted for good and added again keeps its id, and is read again).
         self._text_read: set[str] = set()
         #: Seconds after :meth:`start` before the scanner text of older scans is caught up.
         self.catch_up_delay_s = CATCH_UP_DELAY_S
@@ -447,7 +448,7 @@ class IngestWorker:
         why = self.waiting_for_claude
         if why is not None and self._needs_claude(job.doc_id):
             try:
-                await self._read_text_here(job.doc_id)
+                await self._read_text_here(job.id, job.doc_id)
             except asyncio.CancelledError:
                 self._park(job, why, said=job.waiting_reason)
                 raise
@@ -478,13 +479,14 @@ class IngestWorker:
         self._got_past_claude(job, waited)
         await run_triggers(self.ctx)
 
-    async def _read_text_here(self, doc_id: str) -> None:
-        """A letter waits for Claude: read its own text on this computer, once per run of Ordnung, so search
-        finds it while it waits (:func:`~ordnung.ingest.pipeline.read_text_here`). A failure is logged: the
-        letter waits all the same."""
-        if doc_id in self._text_read:
+    async def _read_text_here(self, job_id: str, doc_id: str) -> None:
+        """A letter waits for Claude: read its own text on this computer, once per job in a run of Ordnung, so
+        search finds it while it waits (:func:`~ordnung.ingest.pipeline.read_text_here`). Remembered by job, not
+        by letter: a letter deleted for good and added again has the same id (it is made from the file) but a new
+        job, and is read again. A failure is logged: the letter waits all the same."""
+        if job_id in self._text_read:
             return
-        self._text_read.add(doc_id)
+        self._text_read.add(job_id)
         try:
             await read_text_here(self.ctx, doc_id)
         except Exception:

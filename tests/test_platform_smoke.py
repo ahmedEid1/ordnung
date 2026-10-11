@@ -1,10 +1,11 @@
 """The lookups that differ per operating system, run for real on this machine: the network interfaces and
-the router phone access reads, sync's computer id and the durable writes' flush. Only types and shapes are
-checked, and that nothing failed on the way — the router lookup and the interface listing are best effort
-and log what they swallow, so a swallowed error fails here too.
+the router phone access reads, sync's computer id, the durable writes' flush and the disk-encryption probe.
+Only types and shapes are checked, and that nothing failed on the way — the router lookup and the interface
+listing are best effort and log what they swallow, so a swallowed error fails here too.
 
 CI runs this file on Linux in every job and on macOS and Windows in the "Other systems" job, where the
-``route``/``arp``, ``ioreg``, registry and ``F_FULLFSYNC`` branches run (the other tests replace them).
+``route``/``arp``, ``ioreg``, registry, ``F_FULLFSYNC`` and ``fdesetup`` branches run (the other tests
+replace them).
 """
 
 from __future__ import annotations
@@ -14,12 +15,14 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
-from ordnung import durable
+from ordnung import durable, encryption
 from ordnung.phone import net
 from ordnung.sync import local
 
@@ -116,3 +119,35 @@ def test_fsync_asks_macos_to_flush_the_drive_s_cache(monkeypatch: pytest.MonkeyP
     finally:
         os.close(fd)
     assert calls == [(fd, full)]
+
+
+def _kernel_release() -> str:
+    try:
+        return encryption.OSRELEASE.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def test_the_disk_encryption_probe_on_this_system(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The probe ``ordnung doctor`` runs, for real. macOS (``fdesetup``) and Linux (``findmnt``, ``lsblk``)
+    answer on, off or unknown and never raise. Windows (and WSL) has no answer and starts no process: there is
+    no documented way to read BitLocker's status without administrator rights (:mod:`ordnung.encryption`)."""
+    started: list[list[str]] = []
+    real_popen = subprocess.Popen
+
+    def watched(args: Any, *rest: Any, **kwargs: Any) -> Any:
+        started.append(list(args))
+        return real_popen(args, *rest, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", watched)  # what subprocess.run starts
+    found = encryption.disk_encryption(tmp_path)
+    in_wsl = sys.platform.startswith("linux") and "microsoft" in _kernel_release().lower()
+    if sys.platform == "win32" or in_wsl:
+        assert found is None and started == []
+        return
+    assert found is not None and found.answer in ("on", "off", "unknown"), found
+    assert found.answer != "unknown" or found.reason
+    if sys.platform == "darwin":
+        assert found.what == "FileVault" and [argv[0] for argv in started] == [encryption.FDESETUP]
+    else:
+        assert {Path(argv[0]).name for argv in started} <= {"findmnt", "lsblk"}, started

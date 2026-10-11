@@ -126,10 +126,15 @@ test("“Read again and compare” never drops keyboard focus to the start of th
   const readAgain = page.getByRole("button", { name: "Read again and compare" });
   const reprocess = `**/api/documents/${id}/reprocess`;
   // the demo is shared by the other tests, so the letter isn't really read again: the server answers here.
-  // Refused: the button was busy (Chromium moves focus off a disabled button) — focus comes back to it
+  // Refused: the button was busy; focus comes back to it once the refusal is in. Wait for the refusal itself
+  // (its toast, the button no longer busy): Chromium 153 moves focus off a disabled button only at its next
+  // frame, so a focus check right after Enter can pass while the button is still busy, and a second Enter
+  // would then land on a disabled button
   await page.route(reprocess, (route) => route.fulfill({ status: 409, json: { detail: "This letter is being read right now." } }));
   await readAgain.focus();
   await page.keyboard.press("Enter");
+  await expect(page.getByText("This letter is being read right now.")).toBeVisible();
+  await expect(readAgain).toBeEnabled();
   await expect(readAgain).toBeFocused();
   // accepted: while the letter is read, focus waits on the reading's heading
   await page.unroute(reprocess);

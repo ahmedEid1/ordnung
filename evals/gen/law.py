@@ -207,14 +207,14 @@ def cross_check_with_holidays_package(years: Iterable[int]) -> None:
 
     Brandenburg's Ostersonntag/Pfingstsonntag are Sundays anyway and are ignored.
     """
-    import holidays  # imported lazily: only used for this consistency check
+    from holidays.countries.germany import Germany  # imported lazily: only used for this consistency check
 
     for year in years:
-        package_national = {d for d in holidays.Germany(years=year) if d.weekday() != 6}
+        package_national = {d for d in Germany(years=year) if d.weekday() != 6}
         mine_national = {d for d in national_holidays(year) if d.weekday() != 6}
         assert package_national == mine_national, (year, package_national ^ mine_national)
         for land in LAENDER:
-            package = {d for d in holidays.Germany(subdiv=land, years=year) if d.weekday() != 6}
+            package = {d for d in Germany(subdiv=land, years=year) if d.weekday() != 6}
             mine = {d for d in holidays_for(year, land) if d.weekday() != 6}
             assert package == mine, (year, land, sorted(package ^ mine))
 

@@ -306,6 +306,39 @@ async def test_a_waiting_letters_text_is_read_once(
     assert read == [first.id, later.id, later.id]
 
 
+async def test_a_waiting_letter_added_again_after_deletion_is_read_again(
+    ctx: AppContext, router: Router, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A waiting letter deleted for good and added again in the same run of Ordnung, while Claude is still
+    missing, comes back with the same id (it is made from the file): its text is read again, so search finds
+    it by its words while it waits."""
+    refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
+    read: list[str] = []
+    real = pipeline.read_text_layer
+
+    def counted(store: Store, document: Any, pages: Any) -> Any:
+        read.append(document.id)
+        return real(store, document, pages)
+
+    monkeypatch.setattr(pipeline, "read_text_layer", counted)
+    ctx.settings.concurrency = 1
+    other = await add_file(ctx, INVOICE_LETTER.pdf(), "invoice.pdf")  # its reading finds Claude missing
+    first = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")  # so this one's text is read while it waits
+    await ctx.worker.run_until_idle()
+    assert ctx.worker.waiting_for_claude is not None
+    assert read == [other.id, first.id]
+    assert [hit.doc_id for hit in ctx.store.search("Einkommensteuer")] == [first.id]
+    assert ctx.store.delete_document(first.id)
+    assert ctx.store.search("Einkommensteuer") == []
+
+    again = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
+    assert again.id == first.id
+    await ctx.worker.run_until_idle()
+    assert read == [other.id, first.id, again.id]
+    assert [hit.doc_id for hit in ctx.store.search("Einkommensteuer")] == [again.id]
+    assert ctx.store.get_document(again.id).status == "queued"  # still waiting for Claude
+
+
 async def test_reading_a_read_scan_again_while_claude_is_missing_keeps_its_words(
     ctx: AppContext, router: Router
 ) -> None:

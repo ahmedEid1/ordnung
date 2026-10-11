@@ -490,13 +490,12 @@ and it doesn't add the demo, which opens with `ordnung demo`.
   isn't signed; macOS warns about an unidentified developer only for apps downloaded from the internet.
   When Ordnung isn't running, the app opens a Terminal window that runs Ordnung, and Terminal asks before
   you close that window while Ordnung runs.
-- **Windows:** right-click it in the Start menu to pin it to the taskbar. Its Properties window may show
-  no target: the shortcut names Python in a part of the file Windows opens but doesn't show there. A
-  shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal,
-  `ordnung shortcut` prints the `setx` command that sets it for your account.
+- **Windows:** right-click it in the Start menu to pin it to the taskbar. A shortcut can't carry
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal, `ordnung shortcut` prints the
+  `setx` command that sets it for your account.
 
 CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
-opens it; opening it from the desktop's own menu isn't tested on any system.
+reads its target and opens it; opening it from the desktop's own menu isn't tested on any system.
 
 **On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
 choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
@@ -636,9 +635,9 @@ More in [docs/architecture.md](docs/architecture.md).
 | | |
 |---|---|
 | Tests | 10,700+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 2,000+ Vitest tests; 430+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
-| Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it, as on the whole package; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
+| Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it, as on the whole package and the benchmark code; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
 | UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI; hand-off sync's standing-by screen, which only two real computers show, is checked at 320 px in their story ([`web/e2e/real-app-sync.spec.ts`](web/e2e/real-app-sync.spec.ts)) |
-| CI gates | ruff, mypy, ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), line and branch coverage floors (100 % for the rules engine; the whole package, hand-off sync and phone access each a little under what they measure), `ordnung demo --check`, both benchmarks replayed with no model calls: Ask at its thresholds, and reading letters at its published numbers on the test, holdout, holdout2 and dev splits and without the sender's Land (row ⁹), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), a check that the committed web build matches its sources, and, weekly, that the rules were checked against the law in the last 90 days. Not yet a gate: weekly and on main, the wheel and the tests of the code that differs per system on macOS and Windows; weekly, whether Claude Code, installed fresh (the newest, and 2.1.0), still takes every flag Ordnung passes |
+| CI gates | ruff, mypy (strict, on the package and the benchmark code), ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), line and branch coverage floors (100 % for the rules engine; the whole package, hand-off sync and phone access each a little under what they measure), `ordnung demo --check`, both benchmarks replayed with no model calls: Ask at its thresholds, and reading letters at its published numbers on the test, holdout, holdout2 and dev splits and without the sender's Land (row ⁹), the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), a check that the committed web build matches its sources, and, weekly, that the rules were checked against the law in the last 90 days. Not yet a gate: weekly and on main, the wheel and the tests of the code that differs per system on macOS and Windows; weekly, whether Claude Code, installed fresh (the newest, and 2.1.0), still takes every flag Ordnung passes |
 | Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
 
 ## Limitations
@@ -695,6 +694,10 @@ More in [docs/architecture.md](docs/architecture.md).
   that one, and it moves on when you mark it done or its day has passed. A date you add without a letter counts
   working days with the nationwide public holidays only, so where your Land has a holiday of its own, its
   working day can come out a day early, or a day late for "the last working day".
+- A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's Ideas
+  nearly all the time: by default Ordnung reminds you from 14 days before a deadline and 7 days before a payment
+  (Settings → Reminders), and the next one is never further off, unless you mark one done before its day. Added
+  as a reminder, the dialog's first kind, such a date is an Idea only on its day.
 - The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is for:
   a yearly statement for 2025 dated February 2026 is a 2026 letter, which is why a tax year also lists the
   letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a

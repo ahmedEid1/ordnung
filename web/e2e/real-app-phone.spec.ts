@@ -31,7 +31,7 @@ import {
   WRONG_CODE_MESSAGE,
 } from "@/mocks/data/phone";
 import { PHONE_ADDRESS, PHONE_BASE_URL, PHONE_PORT, REAL_BASE_URL, REAL_DATA_DIR, REAL_LETTER, REAL_STORAGE_STATE, phoneCookie } from "./env";
-import { apiGet, apiSend, expect, expectAccessible, open, phoneContext, test } from "./helpers";
+import { apiGet, apiSend, expect, expectAccessible, open, phoneContext, READ, test } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -257,10 +257,10 @@ test.afterAll(async ({ playwright }) => {
     const off = await computer.put("/api/phone", { data: { enabled: false } });
     expect(off.ok(), `PUT /api/phone {enabled: false} → ${off.status()}`).toBe(true);
     // what the phone added goes (with the to-do on it) — once its reading is over, so no reading is cut off
-    const docs = (await (await computer.get("/api/documents")).json()) as { id: string; source: string }[];
+    const docs = (await (await computer.get("/api/documents", READ)).json()) as { id: string; source: string }[];
     for (const doc of docs.filter((d) => d.source === "phone" || d.id === photoLetterId)) {
       await expect
-        .poll(async () => ((await (await computer.get(`/api/documents/${doc.id}`)).json()) as { document: { status: string } }).document.status, { timeout: 60_000 })
+        .poll(async () => ((await (await computer.get(`/api/documents/${doc.id}`, READ)).json()) as { document: { status: string } }).document.status, { timeout: 60_000 })
         .not.toMatch(/^(queued|processing)$/);
       const gone = await computer.delete(`/api/documents/${doc.id}?purge=true`);
       expect(gone.ok(), `DELETE /api/documents/${doc.id} → ${gone.status()}`).toBe(true);
@@ -347,7 +347,7 @@ test("the paired phone opens every everyday page without a refusal", async () =>
   // and offers the optional trust step (Chrome on Android keeps the authority to the computer's address): the
   // authority, which the listener gives a paired phone only
   await expect(page.getByRole("link", { name: "Download the certificate" })).toHaveAttribute("href", CERTIFICATE_PATH);
-  const authority = await phone.context.request.get(CERTIFICATE_PATH);
+  const authority = await phone.context.request.get(CERTIFICATE_PATH, READ);
   expect(authority.status()).toBe(200);
   expect(authority.headers()["content-type"]).toBe("application/x-x509-ca-cert");
   expect((await authority.body())[0], "a DER certificate (a SEQUENCE)").toBe(0x30);
@@ -465,13 +465,13 @@ test("what stays on the computer is refused on the phone, and the computer's sig
     const notPaired = { code: "phone_not_paired", detail: PHONE_NOT_PAIRED_MESSAGE };
 
     const bearer = await openPhone(browser, { extraHTTPHeaders: { Authorization: `Bearer ${token}` } });
-    const health = await bearer.context.request.get("/api/health");
+    const health = await bearer.context.request.get("/api/health", READ);
     expect(health.status()).toBe(401);
     expect(await health.json()).toEqual(notPaired);
 
     // cookies ignore ports: the computer's session cookie for 127.0.0.1 comes along, and means nothing here
     const cookie = await openPhone(browser, { storageState: REAL_STORAGE_STATE });
-    const docs = await cookie.context.request.get("/api/documents");
+    const docs = await cookie.context.request.get("/api/documents", READ);
     expect(docs.status()).toBe(401);
     expect(await docs.json()).toEqual(notPaired);
 
@@ -482,7 +482,7 @@ test("what stays on the computer is refused on the phone, and the computer's sig
     expect(await link.context.cookies()).toEqual([]);
 
     // nor does a phone that isn't paired get the certificate authority: it is sent to pair first
-    const authority = await link.context.request.get(CERTIFICATE_PATH, { maxRedirects: 0 });
+    const authority = await link.context.request.get(CERTIFICATE_PATH, { ...READ, maxRedirects: 0 });
     expect(authority.status()).toBe(303);
     expect(authority.headers()["location"]).toBe("/pair");
   });

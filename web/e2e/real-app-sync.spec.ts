@@ -31,7 +31,7 @@ import type { APIRequestContext, Browser, BrowserContext, Page, TestInfo } from 
 import type { components } from "@/api/schema";
 import { readFileSync } from "node:fs";
 import { REAL_B_BASE_URL, REAL_B_STORAGE_STATE, REAL_BASE_URL, REAL_LETTER, REAL_STORAGE_STATE, SYNC_A_DIR, SYNC_B_DIR } from "./env";
-import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDetail, open, settle, shownAs, test, type Letter, type LetterItem } from "./helpers";
+import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDetail, open, READ, settle, shownAs, test, type Letter, type LetterItem } from "./helpers";
 import { isOrdnungName, isSyncToolFile, ORDNUNG_NAMES, SyncTool, type Side } from "./sync-tool";
 
 type SyncStatus = components["schemas"]["SyncStatus"];
@@ -438,7 +438,7 @@ test("both computers changed: the laptop is asked once, keeps its own, and the d
     expect(titles, "the desktop's change is in its kept copy, not in the data").not.toContain(B_TODO);
     const copy = over.kept[0]!;
     expect(copy.name).toMatch(/^ordnung-kept-\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?\.ordnung-backup$/);
-    const download = await b.page.request.get(`/api/sync/kept/${copy.name}`);
+    const download = await b.page.request.get(`/api/sync/kept/${copy.name}`, READ);
     expect(download.status()).toBe(200);
     const bytes = await download.body();
     expect(bytes.subarray(0, 15).toString("latin1"), "an ordinary encrypted backup").toBe("ORDNUNG-BACKUP\n");
@@ -504,7 +504,7 @@ test.afterAll(async ({ playwright }) => {
       expect(left.ok(), `DELETE /api/sync on the ${name} → ${left.status()} ${await left.text()}`).toBe(true);
     }
     const laptop = computers[0]![1];
-    const docs = (await (await laptop.get("/api/documents")).json()) as Letter[];
+    const docs = (await (await laptop.get("/api/documents", READ)).json()) as Letter[];
     for (const doc of docs.filter((d) => d.filename === FILE)) {
       const gone = await laptop.delete(`/api/documents/${doc.id}?purge=true`);
       expect(gone.ok(), `DELETE /api/documents/${doc.id} → ${gone.status()}`).toBe(true);

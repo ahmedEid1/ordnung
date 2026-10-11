@@ -7,7 +7,7 @@
  * "Finish" is answered by the test.
  */
 import type { Page } from "@playwright/test";
-import { expect, expectAccessible, expectNoRawEnums, open, setTour, settle, test } from "./helpers";
+import { expect, expectAccessible, expectNoRawEnums, open, READ, setTour, settle, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -206,7 +206,7 @@ test("Pay this week: the amounts end in one column, with a Pay button or without
 
 test("Finish ends with “All clear …” (answered by the test: the demo keeps no review)", async ({ page }) => {
   await page.route("**/api/week/done", async (route) => {
-    const week = await (await page.request.get("/api/week")).json();
+    const week = await (await page.request.get("/api/week", READ)).json();
     await route.fulfill({ json: { ...week, due: false } });
   });
   await open(page, "/week?step=file", "Weekly review");
@@ -235,7 +235,7 @@ for (const scheme of ["light", "dark"] as const) {
       test(`at ${width}px it follows the ending, wraps on screen and links to Settings`, async ({ page }, testInfo) => {
         await page.setViewportSize({ width, height: 800 });
         await page.route("**/api/week/done", async (route) => {
-          const week = await (await page.request.get("/api/week")).json();
+          const week = await (await page.request.get("/api/week", READ)).json();
           await route.fulfill({ json: { ...week, due: false, backup: DUE_BACKUP } });
         });
         await open(page, "/week?step=file", "Weekly review");

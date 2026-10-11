@@ -200,6 +200,49 @@ describe("the Pay panel", () => {
   });
 });
 
+describe("Mark done", () => {
+  it("keeps focus on a weekly to-do of your own that moves on and stays in Top 3 (D1 review: focus fell to <body>)", async () => {
+    const { srv } = useMockApi();
+    // a quiet week: TechMarkt, a to-do of your own every week from today, and a contract
+    srv.db.state.items = srv.db.state.items.filter((i) => i.id === "itm_tm_dunning");
+    srv.db.state.items.push(
+      item({
+        id: "itm_weekly",
+        kind: "task",
+        title: "Water the plants",
+        due_date: "2026-09-28",
+        origin: "manual",
+        recurrence: { interval: 1, unit: "weeks", working_day: null, day_of_month: null },
+      }),
+    );
+    // the PATCH is held until the busy button has dropped focus, as Chromium drops it from a disabled button
+    const answer = globalThis.fetch;
+    let release = () => undefined as void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      if ((init?.method ?? "GET").toUpperCase() === "PATCH") await held;
+      return answer(input, init);
+    });
+    const { top, user } = await renderToday();
+    const button = within(top).getByRole("button", { name: "Mark done: Water the plants" });
+    await user.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    // jsdom keeps focus on a disabled button (and won't blur it): lose it the way Chromium does
+    act(() => {
+      const away = document.body.appendChild(document.createElement("input"));
+      away.focus();
+      away.remove();
+    });
+    expect(document.activeElement).toBe(document.body);
+    release();
+
+    const toast = (await screen.findByText("Marked as done")).closest<HTMLElement>("li[data-toast]")!;
+    expect(toast).toHaveTextContent("Water the plants · Next: Mon 5 Oct");
+    const heading = within(top).getByRole("heading", { level: 3, name: "Water the plants" });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+});
+
 describe("the reason", () => {
   it("offers Read more only when the text is really cut, and says whether it is open", async () => {
     const observers: (() => void)[] = [];

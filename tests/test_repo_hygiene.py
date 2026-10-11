@@ -281,6 +281,9 @@ def test_contributors_get_the_node_versions_the_readme_requires() -> None:
 
 
 def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_to_make_constraints() -> None:
+    """No ``labels``: Dependabot then adds its own (``dependencies`` with ``github_actions`` or ``javascript``) and
+    creates them where they are missing, while labels it is told to use must exist first. The repository had
+    none of them, so every pull request came without labels and with a comment saying so."""
     updates = _yaml(".github/dependabot.yml")["updates"]
     assert {(update["package-ecosystem"], update["directory"]) for update in updates} == {
         ("github-actions", "/"),
@@ -288,11 +291,65 @@ def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_t
     }
     for update in updates:
         assert update["schedule"]["interval"] == "weekly"
-        assert update["labels"]
+        assert "labels" not in update
         groups = list(update["groups"].values())
         assert any(sorted(group["update-types"]) == ["minor", "patch"] for group in groups)
     contributing = _text("CONTRIBUTING.md")
     assert "make constraints" in contributing and "CONSTRAINTS_ARGS=--upgrade" in contributing
+
+
+def _takes_major(peer: str, major: int) -> bool:
+    """Whether an npm range such as ``^5.x``, ``>=4.8.4 <6.1.0`` or ``^5 || ^7`` lets in the version
+    ``major.0.0``. Only the forms the lock uses are read; any other part counts as letting it in, so the test
+    below errs toward saying the wait is over."""
+
+    wanted = (major, 0, 0)
+    for alternative in peer.split("||"):
+        allowed = True
+        for part in alternative.split():
+            if caret := re.fullmatch(r"\^(\d+)(?:\.[\dx*]+)*", part):
+                allowed &= int(caret[1]) == major
+            elif bound := re.fullmatch(r"(>=|>|<=|<)(\d+)(?:\.(\d+))?(?:\.(\d+))?", part):
+                limit = tuple(int(number or 0) for number in bound.groups()[1:])
+                allowed &= {
+                    ">=": wanted >= limit,
+                    ">": wanted > limit,
+                    "<=": wanted <= limit,
+                    "<": wanted < limit,
+                }[bound[1]]
+        if allowed:
+            return True
+    return False
+
+
+def test_typescript_majors_wait_until_the_packages_that_need_typescript_take_them() -> None:
+    """Pull request #18 (TypeScript 7) failed at `npm ci`: openapi-typescript (``npm run gen:api``) takes
+    only ``^5.x`` and typescript-eslint only below 6.1. So Dependabot skips TypeScript majors (minor and patch
+    updates still come). This fails once no package in the lock refuses TypeScript 7: then remove the
+    ``ignore`` rule in .github/dependabot.yml, and this test with it."""
+    (npm,) = [u for u in _yaml(".github/dependabot.yml")["updates"] if u["package-ecosystem"] == "npm"]
+    assert npm["ignore"] == [
+        {"dependency-name": "typescript", "update-types": ["version-update:semver-major"]}
+    ]
+    lock = json.loads(_text("web/package-lock.json"))
+    refusing = sorted(
+        name.removeprefix("node_modules/")
+        for name, package in lock["packages"].items()
+        if "typescript" in package.get("peerDependencies", {})
+        and not _takes_major(package["peerDependencies"]["typescript"], 7)
+    )
+    assert refusing, (
+        "every package in web/package-lock.json takes TypeScript 7 now: remove the ignore rule for typescript "
+        "in .github/dependabot.yml (and this test)"
+    )
+    named = {"openapi-typescript", "typescript-eslint"} & set(refusing)
+    assert named, (
+        f"the comment in .github/dependabot.yml names packages that take TypeScript 7 now: {refusing}"
+    )
+    # how the ranges in the lock read
+    assert not _takes_major("^5.x", 7) and _takes_major("^5.x", 5)
+    assert not _takes_major(">=4.8.4 <6.1.0", 7) and _takes_major(">=4.8.4 <6.1.0", 6)
+    assert _takes_major(">=4.8.4", 7) and _takes_major("^5.x || ^7.0.0", 7)
 
 
 def test_every_environment_variable_contributing_names_is_read_somewhere() -> None:

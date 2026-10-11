@@ -25,6 +25,7 @@ afterEach(() => {
 
 const MONTHLY: Recurrence = { interval: 1, unit: "months", working_day: null, day_of_month: null };
 const THIRD_WORKING_DAY: Recurrence = { ...MONTHLY, working_day: 3 };
+const WEEKLY: Recurrence = { ...MONTHLY, unit: "weeks" };
 
 /** A date of the person's own, as the server keeps it: its schedule starts at `date_spec.date`. */
 function own(i: Partial<Item> = {}): Item {
@@ -77,11 +78,24 @@ describe("what Save sends: only what changed", () => {
   });
 
   it("keeps a rule the dialog can't make as it is", () => {
-    const fortnightly = own({ recurrence: { ...MONTHLY, interval: 2, unit: "weeks" } });
-    const kept = draftOf(fortnightly);
+    const everyThreeWeeks = own({ recurrence: { ...MONTHLY, interval: 3, unit: "weeks" } });
+    const kept = draftOf(everyThreeWeeks);
     expect(kept.repeat).toBe("current");
-    expect(patchFor(kept, fortnightly)).toEqual({});
-    expect(patchFor({ ...kept, repeat: "month" }, fortnightly)).toEqual({ recurrence: MONTHLY });
+    expect(patchFor(kept, everyThreeWeeks)).toEqual({});
+    expect(patchFor({ ...kept, repeat: "month" }, everyThreeWeeks)).toEqual({ recurrence: MONTHLY });
+  });
+
+  it("starts a weekly date at its weekly choice — every 14 days is every 2 weeks — and sends a new rule only when it changes", () => {
+    const weekly = own({ recurrence: WEEKLY, due_date: "2026-10-01", date_spec: { ...own().date_spec!, date: "2026-10-01", shift_rule: "none" } });
+    expect(draftOf(weekly).repeat).toBe("week");
+    expect(patchFor(draftOf(weekly), weekly)).toEqual({});
+    expect(patchFor({ ...draftOf(weekly), repeat: "two_weeks" }, weekly)).toEqual({ recurrence: { ...WEEKLY, interval: 2 } });
+    // a new date alone is only this one; with "every one after", its rule goes with it
+    expect(patchFor({ ...draftOf(weekly), date: "2026-10-02" }, weekly)).toEqual({ due_date: "2026-10-02" });
+    expect(patchFor({ ...draftOf(weekly), date: "2026-10-02", moves: "after" }, weekly)).toEqual({ due_date: "2026-10-02", recurrence: WEEKLY });
+    const fourteenDays = own({ recurrence: { ...MONTHLY, interval: 14, unit: "days" } });
+    expect(draftOf(fourteenDays).repeat).toBe("two_weeks");
+    expect(patchFor(draftOf(fourteenDays), fourteenDays)).toEqual({});
   });
 });
 
@@ -144,6 +158,39 @@ describe("Edit your date", () => {
     await waitFor(() => expect(patches()).toEqual([{ due_date: "2026-10-15", recurrence: MONTHLY }]));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(success).toHaveBeenCalledWith("Date saved", expect.objectContaining({ description: "UStVA — Thu 15 Oct, repeats every month" }));
+  });
+
+  it("a weekly date: pre-selects every week on its weekday, asks which dates move once the day changes, and saves every one after", async () => {
+    const success = vi.spyOn(toast, "success");
+    const weekly = own({ title: "Physio", recurrence: WEEKLY, due_date: "2026-10-01", date_spec: { ...own().date_spec!, date: "2026-10-01", shift_rule: "none" } });
+    const { user, patches, onClose } = useEditDialog(weekly);
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    const repeats = within(dialog).getByLabelText("Repeats");
+    expect(repeats).toHaveValue("week");
+    expect(within(repeats).getByRole("option", { name: "Every week on Thursday" })).toBeInTheDocument();
+    expect(within(repeats).queryByRole("option", { name: /\(as now\)$/ })).toBeNull();
+    fireEvent.change(within(dialog).getByLabelText("Next date"), { target: { value: "2026-10-02" } });
+    const moves = within(dialog).getByRole("group", { name: "Which dates move?" });
+    expect(within(moves).getByRole("radio", { name: "Only this one (Fri 2 Oct)" })).toBeChecked();
+    await user.click(within(moves).getByRole("radio", { name: "This one and every one after (every week on Friday)" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(patches()).toEqual([{ due_date: "2026-10-02", recurrence: WEEKLY }]));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(success).toHaveBeenCalledWith("Date saved", expect.objectContaining({ description: "Physio — Fri 2 Oct, repeats every week" }));
+  });
+
+  it("pre-selects every 2 weeks on its weekday for a date every 14 days (the same rule)", async () => {
+    useEditDialog(own({ recurrence: { ...MONTHLY, interval: 14, unit: "days" }, due_date: "2026-10-01", date_spec: { ...own().date_spec!, date: "2026-10-01" } }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    expect(within(dialog).getByLabelText("Repeats")).toHaveValue("two_weeks");
+    expect(within(dialog).getByRole("option", { name: "Every 2 weeks on Thursday" })).toBeInTheDocument();
+  });
+
+  it("keeps every 3 weeks as it is, and says so", async () => {
+    useEditDialog(own({ recurrence: { ...MONTHLY, interval: 3, unit: "weeks" }, due_date: "2026-10-01", date_spec: { ...own().date_spec!, date: "2026-10-01" } }));
+    const dialog = await screen.findByRole("dialog", { name: "Edit your date" });
+    expect(within(dialog).getByLabelText("Repeats")).toHaveValue("current");
+    expect(within(dialog).getByRole("option", { name: "Every 3 weeks (as now)" })).toBeInTheDocument();
   });
 
   it("doesn't ask for a date that repeats on a working day, nor once Repeats changed", async () => {

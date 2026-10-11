@@ -6,8 +6,10 @@ that makes the docs untrue fails here.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import importlib
+import inspect
 import json
 import os
 import re
@@ -159,12 +161,50 @@ def test_rules_branch_coverage_is_a_ci_gate() -> None:
 
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
-    """README's quality table says the rules engine has "`mypy` strict on it": pyproject.toml gives the whole
-    package, the rules engine with it, every check of ``mypy --strict``, and no module is let off."""
+    """README's quality table says the rules engine has "`mypy` strict on it, as on the whole package and the
+    benchmark code", and its CI gates row says so too: pyproject.toml gives the whole package, the rules engine
+    with it, and ``evals/`` every check of ``mypy --strict``, no module is let off, and CI's type check runs
+    mypy with pyproject.toml's list (no paths of its own)."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung"]
+    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung", "evals"]
     assert "overrides" not in mypy
-    assert "`mypy` strict on it" in _readme()
+    readme = _flat(_readme())
+    assert "`mypy` strict on it, as on the whole package and the benchmark code" in readme
+    assert "| CI gates | ruff, mypy (strict, on the package and the benchmark code), ESLint," in readme
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert re.search(r"run: \.venv/bin/mypy\n", ci)
+    assert re.search(
+        r"^typecheck:\n\t\$\(PY\) -m mypy\n", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M
+    )
+
+
+def test_mypy_finds_the_generators_the_benchmark_code_imports() -> None:
+    """README's "strict on the benchmark code" holds only where mypy finds what evals/ imports
+    (``ignore_missing_imports`` makes a module it can't find Any, silently). evals/generate.py runs with evals/ on
+    sys.path and imports its generators as ``gen``, which mypy, reading evals/ as a package, can't find: for mypy
+    it imports the same names from ``evals.gen`` (D1 review: 17 imports were Any). No other benchmark module
+    imports ``gen``."""
+    tree = ast.parse((ROOT / "evals" / "generate.py").read_text(encoding="utf-8"))
+
+    def imported(nodes: list[ast.stmt], prefix: str = "") -> set[tuple[str, str, str | None]]:
+        return {
+            ((node.module or "").removeprefix(prefix), alias.name, alias.asname)
+            for node in nodes
+            if isinstance(node, ast.ImportFrom)
+            for alias in node.names
+        }
+
+    assert not {module for module, _, _ in imported(tree.body) if module.split(".")[0] == "gen"}
+    (guard,) = [
+        node for node in tree.body if isinstance(node, ast.If) and ast.unparse(node.test) == "TYPE_CHECKING"
+    ]
+    for_mypy, when_run = imported(guard.body, "evals."), imported(guard.orelse)
+    assert for_mypy == when_run and len(when_run) > 50
+    assert {module.split(".")[0] for module, _, _ in when_run} == {"gen"}
+    others = [path for path in (ROOT / "evals").rglob("*.py") if path.name != "generate.py"]
+    assert not [
+        path.name for path in others if re.search(r"^\s*(from|import) gen\b", path.read_text("utf-8"), re.M)
+    ]
 
 
 def test_demo_check_runs_in_ci() -> None:
@@ -3283,3 +3323,318 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
     documentation = _flat(_readme().split("## Documentation", 1)[1])
     link = "[docs/releasing.md](docs/releasing.md): how a release is made, and the one-time setup for PyPI"
     assert link in documentation
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch D1 — weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
+# --------------------------------------------------------------------------------------------------
+
+#: Microsoft's own page on Device encryption (it resolved on 2026-10-11, to the reader's language).
+DEVICE_ENCRYPTION_PAGE = (
+    "https://support.microsoft.com/windows/device-encryption-in-windows-cf7e2b6f-3e70-4882-9532-18633605b7df"
+)
+
+#: CHANGELOG, Unreleased → Changed: batch D1's lines.
+D1_CHANGED = (
+    "Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, "
+    "and *Where do I find these?* lists them with that.",
+    "Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an "
+    "ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run "
+    "`ordnung shortcut` again to rewrite one you added before.",
+    "The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7 of "
+    "GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer ask "
+    "for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript take "
+    "them.",
+    "Ask no longer goes through every letter to work out the key a question is logged and replayed under when "
+    "nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s "
+    "less per question with 500 letters, more with a bigger archive.",
+)
+
+#: CHANGELOG, Unreleased → Fixed: the waiting letter added again (only with d1-test-hygiene's worker fix).
+WAITING_READ_AGAIN = (
+    "A letter waiting for Claude that you delete for good and add again while Ordnung runs is found by the words "
+    "in its PDF again. Before, only its name found it until Claude read it."
+)
+
+#: docs/architecture.md, "Asking a question": how Ask keeps its replay key (d1-ask-memo).
+ASK_KEY_KEPT = (
+    "The replay key carries a hash of everything Ask's tools can read (the ledger fingerprint). It is worked out "
+    "once per state of the ledger and kept per store and thread while no letter, page, to-do, contract, sender, "
+    "case or the profile changed (`Store.ledger_token`): temporary triggers, which live only in the open "
+    "connection and never in the database file, count this connection's writes to those tables, and another "
+    "connection's commit or a schema change counts as a change too. The value is the same either way, and the "
+    "tests work it out again wherever it was kept."
+)
+
+
+async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_always_among_the_ideas(
+    data_dir: Path,
+) -> None:
+    """README Limitations: a deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is
+    an Idea nearly all the time, because its default reminder window (Settings → Reminders: 14 and 7 days) reaches
+    the next one wherever the week stands; a payment every 2 weeks isn't, and a reminder, the dialog's first kind,
+    is one only on its day. Added through the API as *Add a date* adds them, starting on every day of the cycle.
+    Marked done before its day, it moves to the one after the day marked, which can be past the window (D1 review:
+    the line said "always"): a weekly payment due Thu 1 Oct moves to Thu 8 Oct (send by Wed 7 Oct, 9 days off) and
+    a deadline every 2 weeks due Thu 8 Oct to Thu 22 Oct, neither an Idea then; a weekly deadline stays one."""
+    assert (
+        "A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's "
+        "Ideas nearly all the time: by default Ordnung reminds you from 14 days before a deadline and 7 days before "
+        "a payment (Settings → Reminders), and the next one is never further off, unless you mark one done before "
+        "its day. Added as a reminder, the dialog's first kind, such a date is an Idea only on its day."
+    ) in _limitations()
+    defaults = Profile().reminder_days
+    assert (max(defaults["deadline"]), max(defaults["payment"]), max(defaults["reminder"])) == (14, 7, 0)
+    dialog = (ROOT / "web/src/features/items/AddDateDialog.tsx").read_text(encoding="utf-8")
+    assert re.search(r'const EMPTY: DateDraft = \{[^}]*kind: "reminder"', dialog)
+    cases = [
+        *(("deadline", 1, offset) for offset in range(7)),
+        *(("payment", 1, offset) for offset in range(7)),
+        *(("reminder", 1, offset) for offset in range(7)),
+        *(("deadline", 2, offset) for offset in range(14)),
+        ("payment", 2, 13),
+    ]
+    #: marked done before their day: (kind, weeks, offset) → still an Idea afterwards
+    early = {
+        ("payment", 1, 3): False,
+        ("deadline", 2, 10): False,
+        ("deadline", 1, 3): True,
+        ("deadline", 1, 6): True,
+    }
+    clock.set_today(TODAY)  # Mon 28 Sep 2026
+    try:
+        async with api_for(data_dir) as api:
+            ids: dict[tuple[str, int, int], str] = {}
+            for kind, weeks, offset in cases:
+                body: dict[str, Any] = {
+                    "kind": kind,
+                    "title": f"Weekly {kind} {weeks} {offset}",
+                    "due_date": date.fromordinal(TODAY.toordinal() + offset).isoformat(),
+                    "recurrence": {"interval": weeks, "unit": "weeks"},
+                }
+                if kind == "payment":
+                    body |= {"amount": 40.0, "direction": "out", "description": "Transfer it."}
+                response = await api.client.post("/api/items", json=body)
+                assert response.status_code == 201, response.text
+                ids[(kind, weeks, offset)] = response.json()["id"]
+            ideas = triggers.deadline_soon(Ledger(api.ctx.store, TODAY))
+            for case in early:
+                response = await api.client.patch(f"/api/items/{ids[case]}", json={"status": "done"})
+                assert response.status_code == 200, response.text
+                assert response.json()["status"] == "open", case  # it moved on to its next day
+            after = triggers.deadline_soon(Ledger(api.ctx.store, TODAY))
+    finally:
+        clock.set_today(None)
+    with_idea = {ref.id for idea in ideas for ref in idea.refs if ref.type == "item"}
+    for (kind, weeks, offset), item_id in ids.items():
+        expected = (kind, weeks) in {("deadline", 1), ("payment", 1), ("deadline", 2)} or (
+            kind == "reminder" and offset == 0
+        )
+        assert (item_id in with_idea) is expected, (kind, weeks, offset)
+    with_idea_after = {ref.id for idea in after for ref in idea.refs if ref.type == "item"}
+    for case, expected in early.items():
+        assert (ids[case] in with_idea_after) is expected, case
+
+
+def test_the_changelog_adds_weekly_repeats_and_says_what_d1_changed() -> None:
+    """CHANGELOG, Unreleased: the repeating dates of your own (still unreleased) now repeat every week or every 2
+    weeks too, in the order the dialog offers them; Changed has D1's lines after what was there."""
+    repeats = _bullet(_unreleased("Added"), "**Dates you add yourself can repeat.**")
+    for words in (
+        "*Add a date* has a *Repeats* choice: every week or every 2 weeks on its weekday, every month on its day, "
+        "every month on a working day (the 3rd, the last …), every 3 or 6 months, or every year.",
+        "is never overdue because a week or a month went by.",
+    ):
+        assert words in repeats, words
+    changed = _unreleased("Changed")
+    for line in D1_CHANGED:
+        assert f"- {line}" in changed, line
+    assert changed.index("`ordnung serve` in a terminal suggests") < changed.index(D1_CHANGED[0])
+    assert [changed.index(line) for line in D1_CHANGED] == sorted(changed.index(line) for line in D1_CHANGED)
+
+
+def test_the_spec_lists_the_weekly_repeats_and_still_one_entry_at_the_next_day() -> None:
+    """SPEC (Timeline's *Add a date*) lists every week and every 2 weeks first, as the dialog does; the server's
+    rule takes weeks (``Recurrence.unit``), and README still says a repeating date is one entry at its next day."""
+    assert (
+        "*Repeats* (every week or every 2 weeks on its weekday, every month on its day or on a working day, every 3 "
+        "or 6 months, every year)"
+    ) in _spec()
+    from ordnung.models import Recurrence
+
+    assert Recurrence(interval=2, unit="weeks").unit == "weeks"
+    assert "A repeating date is one entry at its next day" in _limitations()
+
+
+def test_the_changelog_s_package_updates_are_the_repository_s() -> None:
+    """CHANGELOG, Unreleased → Changed: motion 14, version 7 of checkout, setup-node and upload-artifact in CI
+    (major tags) and the release workflow (commits pinned with their version), Dependabot without labels and holding
+    TypeScript majors back; CONTRIBUTING's Dependencies say how such updates land."""
+    import yaml
+
+    package = json.loads((ROOT / "web" / "package.json").read_text(encoding="utf-8"))
+    assert package["dependencies"]["motion"].startswith("^14.")
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    for action in ("checkout", "setup-node", "upload-artifact"):
+        assert set(re.findall(rf"actions/{action}@(\S+)", ci)) == {"v7"}, action
+        pins = re.findall(rf"actions/{action}@[0-9a-f]{{40}} # (v\d+)\.\d+\.\d+$", release, re.M)
+        assert pins and set(pins) == {"v7"}, action
+    dependabot = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+    assert all("labels" not in update for update in dependabot["updates"])
+    (npm,) = [update for update in dependabot["updates"] if update["package-ecosystem"] == "npm"]
+    assert {"dependency-name": "typescript", "update-types": ["version-update:semver-major"]} in npm["ignore"]
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    dependencies = _flat(contributing.split("## Dependencies", 1)[1].split("\n## ", 1)[0])
+    for words in (
+        "Dependabot opens update pull requests every week (`.github/dependabot.yml`): minor and patch updates "
+        "together, each major on its own.",
+        "One for `web/` changes `package-lock.json`, so CI passes only once `make build-web` has run and "
+        "`src/ordnung/web/dist` is committed on its branch; or fold the updates into a pull request of your own.",
+        "TypeScript majors are skipped until the packages that need TypeScript (openapi-typescript, "
+        "typescript-eslint) take them: a test in `tests/test_repo_hygiene.py` fails then, saying to remove the rule.",
+        "`ci.yml` names actions by their major version (`actions/checkout@v7`), and `release.yml` pins each to a "
+        "commit with its version beside it; keep both on the same major (`tests/test_release_workflow.py` compares "
+        "them).",
+    ):
+        assert words in dependencies, words
+
+
+def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_path: Path) -> None:
+    """docs/privacy.md, before a computer is lost: where Ordnung doesn't check (Windows), Microsoft's own page on
+    Device encryption, and what its note says when Settings shows no such page; README's Limitations say Ordnung
+    doesn't check there, and it doesn't: no answer and no process on Windows."""
+    from ordnung import encryption
+
+    assert (
+        "on Windows it doesn't check, so look yourself. Microsoft's page [Device encryption in Windows]"
+        f"({DEVICE_ENCRYPTION_PAGE}) shows where to look; if Settings has no Device encryption page, your PC may "
+        "not support it, or you're signed in with a standard account."
+    ) in _privacy()
+
+    def no_process(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("no process on Windows")
+
+    assert encryption.disk_encryption(tmp_path, system="win32", run=no_process) is None
+    assert (
+        "On Windows it doesn't check: see that BitLocker or Device encryption is on yourself."
+        in _limitations()
+    )
+
+
+def test_contributing_says_how_an_end_to_end_test_waits_and_reads() -> None:
+    """CONTRIBUTING's checks: mypy covers the benchmark code too; an e2e test waits for what the person sees, reads
+    with ``READ`` (web/e2e/helpers.ts: a retried read, never a retried change) and runs on Playwright's own
+    Chromium (``make browser``)."""
+    contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    checks = _flat(contributing.split("## Checks", 1)[1].split("\n## ", 1)[0])
+    for words in (
+        "ruff (lint and format) and mypy (strict, over the package and `evals/`)",
+        "**Writing an end-to-end test.** Before the next key press or click, wait for what the person sees (a "
+        "toast, a status line, a button that is enabled again), not only for focus.",
+        "Read the API with `apiGet`, or pass `READ` to `page.request.get`: it retries a connection the server "
+        "dropped, and a change is never retried.",
+        "Run the tests with Playwright's own Chromium (`make browser` installs it): an older build moves focus off a "
+        "disabled button at once and hides this kind of race.",
+    ):
+        assert words in checks, words
+    helpers = (ROOT / "web" / "e2e" / "helpers.ts").read_text(encoding="utf-8")
+    assert "export const READ = { maxRetries: 2 } as const;" in helpers
+    assert "await page.request.get(path, READ)" in helpers
+    assert re.search(r"^browser: ", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M)
+
+
+def test_the_architecture_says_how_ask_keeps_its_replay_key() -> None:
+    """docs/architecture.md, "Asking a question": the ledger fingerprint is kept per state of the ledger."""
+    asking = (
+        (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8").split("## Asking a question", 1)[1]
+    )
+    assert ASK_KEY_KEPT in _flat(asking.split("\n## ", 1)[0])
+
+
+def test_ask_keeps_its_replay_key_as_the_architecture_says(store: Store) -> None:
+    """d1-ask-memo against the architecture's paragraph: the token watches exactly the letters, pages, to-dos,
+    contracts, senders and cases (and the profile); Ask's own writes leave it, a sender moves it; and the tests'
+    verify mode works the fingerprint out again wherever it was kept."""
+    from ordnung.assistant import ask
+    from ordnung.db import store as store_module
+
+    assert store_module.LEDGER_TABLES == ("documents", "pages", "items", "contracts", "parties", "cases")
+    token = store.ledger_token()
+    store.save_settings(store.get_settings())
+    assert store.ledger_token() == token
+    store.add_party(name="FunkNetz Mobile", kind="telecom")
+    assert store.ledger_token() != token
+    assert hasattr(ask, "_LEDGER_MEMO")
+    assert "memo.verify = True" in (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
+
+
+def test_the_web_offers_the_weekly_repeats_the_docs_name() -> None:
+    """d1-web-small against CHANGELOG and SPEC: *Repeats* offers every week and every 2 weeks right after "Doesn't
+    repeat", before every month, and names their weekday."""
+    source = (ROOT / "web" / "src" / "features" / "items" / "repeat.ts").read_text(encoding="utf-8")
+    assert re.search(r'export type RepeatChoice = "never" \| "week" \| "two_weeks" \| "month"', source)
+    choices = re.search(r"const choices: RepeatChoice\[\] = \[([^\]]*)\]", source)
+    assert choices is not None
+    assert choices[1].split(", ")[:4] == ['"never"', '"week"', '"two_weeks"', '"month"']
+    assert '"Every week"' in source and "`Every ${WEEKS[choice]} weeks`" in source
+
+
+def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outlook() -> None:
+    """d1-web-small against CHANGELOG: the calendar sync card says Google Calendar and Outlook.com take the calendar
+    file, and *Where do I find these?* lists them with that."""
+    card = _flat((ROOT / "web/src/features/settings/CalendarSyncCard.tsx").read_text(encoding="utf-8"))
+    assert (
+        "Google Calendar and Outlook.com don't offer this, so use the calendar file above for them." in card
+    )
+    assert (
+        '<span className="font-medium text-ink">Google Calendar, Outlook.com</span> — no calendar address with an '
+        "app password: download the calendar file above instead"
+    ) in card
+
+
+def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
+    """d1-windows (merged only once CI's Windows job passed) against README, SPEC, architecture and CHANGELOG: a
+    plain drive path gets an ID list right after the header, whose flags say so, and Windows' shell reading the
+    target is tested on Windows; README drops "may show no target" and claims nothing about the Properties window."""
+    appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
+    windows = shortcut.plan(
+        tmp_path / "data", platform="win32", env=appdata, home=tmp_path, python="C:\\Python312\\python.exe"
+    )
+    assert windows.link is not None
+    id_list = shortcut._id_list(windows.link.target)
+    assert id_list is not None
+    data = shortcut.lnk_bytes(windows.link)
+    (flags,) = struct.unpack_from("<I", data, 20)
+    assert flags & 0x1 and data[76 : 76 + len(id_list)] == id_list
+    assert "def test_the_shell_reads_the_link_back(" in (ROOT / "tests" / "test_shortcut.py").read_text(
+        encoding="utf-8"
+    )
+    text = _without_a_terminal()
+    assert "may show no target" not in text and "Properties" not in text
+    assert (
+        "CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell "
+        "reads its target and opens it;"
+    ) in text
+    assert (
+        "no COM, no PowerShell; the target as an ID list (This PC, its drive, each folder and the file) and again as "
+        "a path in its LinkInfo and an EnvironmentVariableDataBlock;"
+    ) in _spec()
+    assert (
+        "its `.lnk` is written byte by byte in the shell link format, with the target as an ID list Windows reads, "
+        "without any Windows API."
+    ) in _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert D1_CHANGED[1] in _unreleased("Changed")
+
+
+def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so() -> None:
+    """d1-test-hygiene against CHANGELOG's Fixed: the line about a waiting letter added again stands exactly when
+    the worker remembers the letters it read by job (a letter deleted and added again keeps its id)."""
+    listed = WAITING_READ_AGAIN in _unreleased("Fixed")
+    by_job = "job_id" in inspect.signature(worker.IngestWorker._read_text_here).parameters
+    assert listed == by_job
+
+
+def test_the_changelog_keeps_no_note_for_the_d1_integration() -> None:
+    """The D1 integrator keeps or drops each line marked for it, then removes the mark."""
+    assert "TODO(D1 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")

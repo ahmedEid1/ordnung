@@ -154,10 +154,11 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B", "SIM", "PTH"]
 
-# The whole package gets every check of `mypy --strict` (evals/ and the tests aren't type-checked).
+# The whole package and the benchmark code (evals/) get every check of `mypy --strict` (the tests aren't
+# type-checked). CI installs only the dev extras, so evals/ has to pass without matplotlib too.
 [tool.mypy]
 python_version = "3.11"
-files = ["src/ordnung"]
+files = ["src/ordnung", "evals"]
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]

@@ -7,7 +7,7 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { REAL_DATA_DIR, REAL_LETTER } from "./env";
-import { apiGet, expect, letterDetail, open, shownAs, test, type Letter } from "./helpers";
+import { apiGet, expect, letterDetail, open, READ, shownAs, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 
@@ -72,6 +72,6 @@ test("a letter deleted for good is gone", async ({ page }) => {
   await expect(page.getByText("Letter deleted").first()).toBeVisible();
   expect((await apiGet<Letter[]>(page, "/api/documents")).map((d) => d.filename)).not.toContain(FILE);
   for (const path of [`/api/documents/${letter.id}`, `/api/documents/${letter.id}/file`, `/api/documents/${letter.id}/thumbnail.jpg`]) {
-    expect((await page.request.get(path)).status(), path).toBe(404);
+    expect((await page.request.get(path, READ)).status(), path).toBe(404);
   }
 });

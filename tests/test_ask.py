@@ -3,8 +3,12 @@ citations, stored chat, request shape, cache key, replay and failure paths."""
 
 from __future__ import annotations
 
+import contextlib
 import json
+import shutil
+import sqlite3
 import sys
+import threading
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +19,7 @@ import pytest
 from helpers_secretary import TODAY, add_doc, seed_ledger
 from ordnung import clock
 from ordnung.app_context import build_context
+from ordnung.assistant import ask as ask_module
 from ordnung.assistant.ask import (
     ALLOWED_TOOLS,
     CHECK_FAILED,
@@ -37,7 +42,7 @@ from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.mcp_server import TOOL_NAMES, LedgerTools, render_result
 from ordnung.assistant.support import NOTE_PREFIX
 from ordnung.config import Paths
-from ordnung.db.store import Store
+from ordnung.db.store import LEDGER_TABLES, Store
 from ordnung.llm.base import LLMBackend, LLMRequest, LLMResponse, StreamEvent, Usage
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend, fixture_path
@@ -814,6 +819,177 @@ def test_fingerprint_tracks_everything_ask_can_read(store: Store, ids: dict[str,
     fingerprint = ledger_fingerprint(store)
     store.update_document(doc.id, payment=PaymentDetails(iban="DE89370400440532013000", iban_valid=True))
     assert ledger_fingerprint(store) != fingerprint
+
+
+# --------------------------------------------------------------------------------------------------
+# the fingerprint is worked out once per state of the ledger
+# --------------------------------------------------------------------------------------------------
+
+
+def _ledger_of(cache_key: str | None) -> str:
+    return str(json.loads((cache_key or "")[len("ask:") :])["ledger"])
+
+
+def fingerprint_runs(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """The values of every run of the ledger fingerprint from now on (the memo's verify mode off, so only its
+    own runs count)."""
+    monkeypatch.setattr(ask_module._LEDGER_MEMO, "verify", False)
+    runs: list[str] = []
+    original = ask_module.ledger_fingerprint
+
+    def counted(store: Store) -> str:
+        value = original(store)
+        runs.append(value)
+        return value
+
+    monkeypatch.setattr(ask_module, "ledger_fingerprint", counted)
+    return runs
+
+
+def test_the_ledger_fingerprint_reads_only_the_watched_tables(
+    paths: Paths, store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The guard against drift: a table the fingerprint starts to read must join ``LEDGER_TABLES``, or the
+    memo would keep a value while that table changes (a fresh store, so every statement is prepared, and
+    so authorized, inside the fingerprint)."""
+    store.set_pages(
+        ids["doc_tax"], [{"page": 1, "width": 595, "height": 842, "image_path": "p1.png", "text": "x"}]
+    )
+    read: set[str] = set()
+    keys: list[str] = []
+    original = Store.get_meta
+
+    def spied(self: Store, key: str) -> str | None:
+        keys.append(key)
+        return original(self, key)
+
+    def authorizer(action: int, table: str | None, *_: object) -> int:
+        if action == sqlite3.SQLITE_READ and table:
+            read.add(table)
+        return sqlite3.SQLITE_OK
+
+    with Store.open(paths) as fresh:
+        conn = fresh._conn()
+        conn.set_authorizer(authorizer)
+        monkeypatch.setattr(Store, "get_meta", spied)
+        try:
+            ledger_fingerprint(fresh)
+        finally:
+            conn.set_authorizer(None)
+    assert {"documents", "pages", "items", "contracts", "parties", "meta"} <= read
+    unwatched = read - {*LEDGER_TABLES, "meta"}
+    assert not unwatched, f"the ledger fingerprint reads {sorted(unwatched)}: add them to LEDGER_TABLES"
+    assert set(keys) == {"profile"}, "of meta the token watches only the profile"
+
+
+async def test_a_second_question_reuses_the_fingerprint(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = fingerprint_runs(monkeypatch)
+    backend = ScriptedBackend(turn(tools, "Nothing is due today."))
+    ctx = make_ctx(paths, store, backend)
+    await collect(ctx, "What is due?")
+    await collect(ctx, "Anything else?")  # the first wrote its chat, usage and activity rows
+    assert len(runs) == 1
+    first, second = backend.calls
+    monkeypatch.setattr(ask_module, "_LEDGER_MEMO", ask_module._LedgerMemo())  # cleared
+    assert first.cache_key == ask_cache_key(store, "What is due?", [], TODAY)
+    assert second.cache_key == ask_cache_key(store, "Anything else?", [], TODAY)
+    assert len(runs) == 2  # the cleared memo worked it out once, then reused it
+    assert _ledger_of(first.cache_key) == _ledger_of(second.cache_key) == ledger_fingerprint(store)
+
+
+async def test_the_fingerprint_is_worked_out_again_after_a_ledger_change(
+    paths: Paths, store: Store, ids: dict[str, str], tools: LedgerTools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = fingerprint_runs(monkeypatch)
+    backend = ScriptedBackend(turn(tools, "Nothing is due today."))
+    ctx = make_ctx(paths, store, backend)
+    await collect(ctx, "What is due?")
+    store.update_item(ids["dunning_payment"], status="done")
+    await collect(ctx, "What is due now?")
+    assert len(runs) == 2
+    assert runs[1] == ledger_fingerprint(store) != runs[0]
+    assert [_ledger_of(req.cache_key) for req in backend.calls] == runs
+
+
+def test_the_memo_is_per_store(
+    paths: Paths, store: Store, ids: dict[str, str], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two copies of one database that differ in one page text have equal tokens (the benchmark opens many
+    such stores on one thread): each store keeps its own fingerprint."""
+    store.set_pages(
+        ids["doc_tax"], [{"page": 1, "width": 595, "height": 842, "image_path": "p1.png", "text": "a"}]
+    )
+    store.close()
+    copy = Paths(tmp_path / "copy").ensure()
+    shutil.copyfile(paths.db, copy.db)
+    with contextlib.closing(sqlite3.connect(copy.db, isolation_level=None)) as raw:
+        raw.execute("UPDATE pages SET text = 'b' WHERE doc_id = ?", (ids["doc_tax"],))
+    runs = fingerprint_runs(monkeypatch)
+    with Store.open(paths) as first, Store.open(copy) as second:
+        assert first.ledger_token() == second.ledger_token()
+        memo = ask_module._LEDGER_MEMO
+        values = [
+            memo.fingerprint(first),
+            memo.fingerprint(second),
+            memo.fingerprint(first),
+            memo.fingerprint(second),
+        ]
+        assert values == [ledger_fingerprint(first), ledger_fingerprint(second)] * 2
+        assert values[0] != values[1]
+    assert len(runs) == 2
+
+
+def test_the_memo_is_per_thread(store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch) -> None:
+    runs = fingerprint_runs(monkeypatch)
+    memo = ask_module._LEDGER_MEMO
+    here = memo.fingerprint(store)
+    there: list[str] = []
+    worker = threading.Thread(target=lambda: there.append(memo.fingerprint(store)))
+    worker.start()
+    worker.join()
+    assert memo.fingerprint(store) == here == there[0]
+    assert len(runs) == 2  # once here, once there, then here again from the memo
+
+
+def test_a_commit_while_hashing_is_not_kept(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs = fingerprint_runs(monkeypatch)
+    counted = ask_module.ledger_fingerprint
+    commits = ["Changed meanwhile"]
+
+    def committing_midway(s: Store) -> str:
+        value = counted(s)
+        if commits:  # the first run only: another connection commits while the ledger is read
+            with contextlib.closing(sqlite3.connect(s.db_path, isolation_level=None)) as other:
+                other.execute("UPDATE items SET title = ? WHERE id = ?", (commits.pop(), ids["followup"]))
+        return value
+
+    monkeypatch.setattr(ask_module, "ledger_fingerprint", committing_midway)
+    memo = ask_module._LEDGER_MEMO
+    first = memo.fingerprint(store)
+    assert first == runs[0]
+    second = memo.fingerprint(store)
+    assert len(runs) == 2 and second == ledger_fingerprint(store) != first
+    assert memo.fingerprint(store) == second and len(runs) == 2  # kept now
+
+
+def test_the_verify_mode_notes_a_stale_value(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The test suite's own check (``conftest.py``): with ``verify`` on, a kept value that no longer matches
+    is noted and the fresh one used."""
+    memo = ask_module._LEDGER_MEMO
+    monkeypatch.setattr(memo, "verify", True)
+    monkeypatch.setattr(Store, "ledger_token", lambda self: (1, 1, 1))  # a token that misses every change
+    kept = memo.fingerprint(store)
+    store.update_item(ids["dunning_payment"], status="done")
+    fresh = memo.fingerprint(store)
+    assert fresh == ledger_fingerprint(store) != kept
+    noted, memo.mismatches[:] = list(memo.mismatches), []
+    assert len(noted) == 1 and kept[:12] in noted[0] and fresh[:12] in noted[0]
 
 
 async def test_thread_continues_with_untrusted_history(
