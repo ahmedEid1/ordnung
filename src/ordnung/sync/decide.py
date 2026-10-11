@@ -242,6 +242,17 @@ def _relation(local: Lineage, head: HeadView) -> lin.Relation:
     return lin.relation(local, head.head.version.lineage)
 
 
+def _informed(mine: Lineage, heads: Sequence[HeadView]) -> Lineage:
+    """This computer's lineage, plus what heads with the same content left out on purpose: the same data,
+    answered elsewhere (another computer kept exactly this content in a choice) — not asked again here."""
+    same = [
+        h.head.version.lineage.dropped
+        for h in heads
+        if h.head.version is not None and lin.same(mine, h.head.version.lineage)
+    ]
+    return lin.make(mine.content, lin.union(mine.dropped, *same)) if same else mine
+
+
 def _rank(head: HeadView) -> tuple[int, str]:
     return (head.head.epoch, head.computer)
 
@@ -327,7 +338,7 @@ def _in_use(local: LocalView, view: FolderView) -> Decision:
     if view.holder is not None and view.holder != local.computer:
         return BecomeStandby(late_push=local.pending)  # R3
     heads = _versioned(view)
-    mine = local.lineage
+    mine = _informed(local.lineage, heads)
     relations = {h.computer: _relation(mine, h) for h in heads}
     if any(r in ("diverged", "decided") for r in relations.values()):
         return _choice(local, heads)  # R4
@@ -380,7 +391,7 @@ def _use_here(local: LocalView, view: FolderView, *, older_copy: bool) -> Decisi
         return LatePush()  # U1
     if older_copy:
         return Claim()
-    mine = local.lineage
+    mine = _informed(local.lineage, heads)
     relations = {h.computer: _relation(mine, h) for h in heads}
     if all(r in ("behind", "same") for r in relations.values()):  # U2
         same = [h for h in heads if relations[h.computer] == "same" and h.head.version is not None]
