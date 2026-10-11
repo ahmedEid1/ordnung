@@ -1,5 +1,7 @@
 # Weekly update pull requests for the workflow's actions and the web app's packages: minor and patch
 # updates together in one pull request per ecosystem, each major update on its own.
+# No `labels`: Dependabot then adds its own (`dependencies`, with `github_actions` or `javascript`) and
+# creates them where they are missing; labels it is told to use must exist in the repository first.
 # Python is left out on purpose: CI and `make install` install the versions pinned in constraints.txt,
 # which `make constraints` writes (CONTRIBUTING.md says how to refresh it).
 # A pull request for web/ changes package-lock.json, so CI's check of the committed web build fails
@@ -11,7 +13,6 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    labels: ["dependencies", "github_actions"]
     groups:
       actions-minor-and-patch:
         update-types: ["minor", "patch"]
@@ -21,8 +22,13 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    labels: ["dependencies", "javascript"]
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 doesn't install here: openapi-typescript 7.13 (`npm run gen:api`) takes typescript ^5,
+      # typescript-eslint 8.71 only below 6.1 (pull request #18). tests/test_repo_hygiene.py fails once no
+      # package in web/package-lock.json refuses it: then remove this.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
     groups:
       web-minor-and-patch:
         update-types: ["minor", "patch"]
