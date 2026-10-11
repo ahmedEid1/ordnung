@@ -331,6 +331,25 @@ describe("calendar sync card", () => {
     expect(screen.queryByText(/It's a snapshot/)).not.toBeInTheDocument();
   });
 
+  it("says Google Calendar and Outlook.com take the calendar file, not calendar sync", async () => {
+    useMockApi();
+    const user = userEvent.setup();
+    const card = await openCard();
+    expect(card).toHaveTextContent(
+      "Optional: Ordnung puts your dates into a calendar you already use — Nextcloud, iCloud, mailbox.org or another CalDAV calendar — and keeps them current while it runs. Your calendar provider then stores what the events say. Google Calendar and Outlook.com don't offer this, so use the calendar file above for them.",
+    );
+    // the calendar file it points to is above the card
+    const file = screen.getByText("Add your dates to your calendar");
+    expect(file.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // under the form: where to find the address, per provider
+    await user.click(await within(card).findByText("Where do I find these?"));
+    const hints = within(card).getAllByRole("listitem").map((li) => li.textContent);
+    const google = hints.findIndex((t) => t?.startsWith("Google Calendar, Outlook.com"));
+    expect(hints[google]).toBe("Google Calendar, Outlook.com — no calendar address with an app password: download the calendar file above instead, and again when Ordnung says there are new dates.");
+    // just before "Other providers"
+    expect(hints[google + 1]).toMatch(/^Other providers: /);
+  });
+
   it("explains that the online demo can't sync, and still shows what would be sent", async () => {
     useMockApi({ staticDemo: true });
     const card = await openCard();
