@@ -458,7 +458,7 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    rules, and marks letters found only there `found_in="scanner_text"`. Ask's `search`, the FTS indexes,
    `Document`, prompts and evidence never read it; it is removed once every page has text of its own. A
    letter put back to wait for Claude gets this stage alone first (`pipeline.read_text_here`: no model, no
-   status change, once per run of Ordnung), so search finds it by its words; the worker catches up the
+   status change, once per job in a run of Ordnung), so search finds it by its words; the worker catches up the
    scanner text of PDFs stored before Ordnung kept it, 30 s after it starts, one letter at a time
    (`pipeline.catch_up_scan_text`: no database row changes).
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
