@@ -3866,21 +3866,25 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
     data = tmp_path / "demo"
     shutil.copytree(_DEMO_DB, data)
     raw = wire = 0
-    async with api_for(data, demo=True) as api:
-        # not the real keyring
-        api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: MemorySecrets()
-        api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
-        listed = await api.client.get("/api/documents")
-        whole = await api.client.get("/api/documents.json")
-        for path, operations in openapi_schema()["paths"].items():
-            get = operations.get("get")
-            if get is None or "{" in path or path in {"/api/events", "/api/health"}:
-                continue
-            if any(parameter.get("required") for parameter in get.get("parameters", [])):
-                continue
-            answer = await api.client.get(path)
-            if answer.status_code == 200 and answer.headers["content-type"].startswith("application/json"):
-                raw, wire = raw + len(answer.content), wire + sent(answer.content)
+    try:
+        async with api_for(data, demo=True) as api:
+            # not the real keyring
+            api.app.dependency_overrides[calendar_sync.get_secrets] = lambda: MemorySecrets()
+            api.app.dependency_overrides[sync_routes.get_secrets] = lambda: MemorySecrets()
+            listed = await api.client.get("/api/documents")
+            whole = await api.client.get("/api/documents.json")
+            for path, operations in openapi_schema()["paths"].items():
+                get = operations.get("get")
+                if get is None or "{" in path or path in {"/api/events", "/api/health"}:
+                    continue
+                if any(parameter.get("required") for parameter in get.get("parameters", [])):
+                    continue
+                answer = await api.client.get(path)
+                is_json = answer.headers["content-type"].startswith("application/json")
+                if answer.status_code == 200 and is_json:
+                    raw, wire = raw + len(answer.content), wire + sent(answer.content)
+    finally:
+        clock.set_today(None)  # the demo's context pins its simulated day; never for the next test
     assert len(listed.json()) == len(whole.json()) == 22
     measured = _flat(
         _ADR_COMPRESSED.read_text(encoding="utf-8").split("## Measured", 1)[1].split("\n## ", 1)[0]
