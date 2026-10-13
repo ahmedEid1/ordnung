@@ -305,14 +305,18 @@ class IngestWorker:
         if self._loop_task is not None:
             await self._loop_task
             self._loop_task = None
-        if self._catch_up is not None:  # the letter under way gets ``grace`` seconds too
+        # held here: a stop running at the same time (hand-off sync standing by while Ordnung stops) may
+        # clear the attribute while this one waits
+        catch_up = self._catch_up
+        if catch_up is not None:  # the letter under way gets ``grace`` seconds too
             if self._halt is not None:
                 self._halt.set()
-            _, unfinished = await asyncio.wait({self._catch_up}, timeout=grace)
+            _, unfinished = await asyncio.wait({catch_up}, timeout=grace)
             for task in unfinished:
                 task.cancel()
-            await asyncio.gather(self._catch_up, return_exceptions=True)
-            self._catch_up = None
+            await asyncio.gather(catch_up, return_exceptions=True)
+            if self._catch_up is catch_up:
+                self._catch_up = None
         if self._claude_checking is not None:
             self._claude_checking.cancel()
             await asyncio.gather(self._claude_checking, return_exceptions=True)

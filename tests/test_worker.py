@@ -813,6 +813,21 @@ async def test_the_catch_up_stops_with_the_worker(ctx: AppContext, monkeypatch: 
     assert ctx.store.scan_text_missing() == order[1:]  # the letter under way finished; no other began
 
 
+async def test_two_stops_at_once_both_end_cleanly(ctx: AppContext) -> None:
+    """Hand-off sync can stand this computer by while Ordnung stops, so two stops of the worker overlap.
+    Whichever comes second, both return and the worker is stopped. (The later one used to find the
+    catch-up already cleared by the earlier one and fail with a TypeError, so Ordnung's stop failed.)"""
+    for offset in range(40):  # how far the first stop has got when the second one starts
+        await ctx.worker.start()
+        first = asyncio.create_task(ctx.worker.stop(grace=1))
+        for _ in range(offset):
+            await asyncio.sleep(0)
+        second = asyncio.create_task(ctx.worker.stop(grace=1))
+        results = await asyncio.gather(first, second, return_exceptions=True)
+        assert results == [None, None], (offset, results)
+        assert not ctx.worker.running
+
+
 async def test_start_requeues_jobs_left_running(ctx: AppContext) -> None:
     document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
     claimed = ctx.store.claim_next_job()
