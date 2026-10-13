@@ -742,11 +742,13 @@ whatever its name) becomes the `.eml` copy Ordnung stores, named like the file (
 `ordnung add` and proof of a sent letter (still one file, its attachments no letters). So one whose first
 bytes hold an attached PDF is never taken for a PDF. olefile reads it from memory, strictly (every defect from
 `DEFECT_INCORRECT` up is an error), within limits: 50 MB in and out, 20,000 directory entries counted before
-olefile builds them, no stream larger than the file, at most twice the file read in all, 50 attachments with
-their bytes (later ones by name only), 500 recipients, a header value at most 998 characters without control
-characters; a tree too deep for the parser, or any parser error, is "damaged". Only e-mails (`IPM.Note`,
-`IPM.Note.*`) are opened: a signed or encrypted one, a calendar entry, contact or task, an older Word, Excel or
-PowerPoint file and any other OLE file are refused, each with its reason. The copy keeps From, To, Cc, Date,
+olefile builds them, a FAT (the map of the file's sectors) read only as far as the file reaches, no stream
+larger than the file, at most twice the file read in all, 500 attachments of which 50 keep their bytes (later
+ones by name only), 500 recipients, a header value at most 998 characters without control characters; a tree
+too deep for the parser, or any parser error, is "damaged", and so is a file named `.msg` that intake wouldn't
+take either (emptied or cut short). Only e-mails (`IPM.Note`, `IPM.Note.*`) are opened: a signed or encrypted
+one, a meeting invitation, calendar entry, contact or task, an older Word, Excel or PowerPoint file and any
+other OLE file are refused, each with its reason and what to do. The copy keeps From, To, Cc, Date,
 Subject, Message-ID, In-Reply-To, References and Reply-To (from Outlook's copy of the original internet
 headers when it kept one, else from the message's properties; never Bcc, nor an Exchange-only address), the
 plain and the HTML text (a text kept only as RTF isn't converted: the e-mail comes in without text, and no

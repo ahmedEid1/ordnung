@@ -221,6 +221,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   sync and removes it.
 - A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its Ideas
   and never takes them away, and saving the profile there forgets the move. Update both computers.
+- Outlook e-mails (`.msg`) that were already in your watched folder before the update count as files that
+  were there when you chose the folder: they wait for you, also with "Read new files with Claude straight
+  away" on.
 - Backups made with `ordnung backup` before this version left no note, so Ordnung has no record of them and
   says so until the next one, which counts.
 - A script that reads the letter list (`GET /api/documents`) no longer finds `explanation`, `key_facts`,

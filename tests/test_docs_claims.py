@@ -3692,7 +3692,8 @@ README_EMAIL_LIMIT = (
 )
 #: docs/privacy.md, "Hardening built into every model call": what is compressed, and why that is safe.
 PRIVACY_COMPRESSED = (
-    "Answers are compressed (gzip) only when they are a JSON answer to a GET that sets no cookie; signing in, "
+    "Answers are compressed (gzip) only when they are a JSON answer to a GET that sets no cookie, or one of the "
+    "web app's own files, such as its scripts and styles, which hold nothing of yours; signing in, "
     "pairing, downloads, a letter's files and live updates never are, and TLS's own compression is off on the "
     "phone listener. An attack that reads secrets out of compressed HTTPS needs a website to make your phone send "
     "Ordnung many requests, and the phone listener refuses requests from other sites "

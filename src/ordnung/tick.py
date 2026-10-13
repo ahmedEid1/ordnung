@@ -292,14 +292,18 @@ class DailyTick:
 
 async def _in_thread(fn: Callable[..., T], /, *args: Any, **kwargs: Any) -> T:
     """``fn`` in a worker thread (:func:`asyncio.to_thread`). A cancel can't stop the thread: it is waited
-    for — at most :data:`STOP_WAIT_S` — before the cancel goes on, so locks held around the call (the
-    ledger lock) stay held and :meth:`DailyTick.stop` returns once nothing of the tick runs any more."""
+    for — at most :data:`STOP_WAIT_S`, whatever more cancels come meanwhile (two stops at once) — before the
+    cancel goes on, so locks held around the call (the ledger lock) stay held and :meth:`DailyTick.stop`
+    returns once nothing of the tick runs any more."""
     call = asyncio.ensure_future(asyncio.to_thread(fn, *args, **kwargs))
     try:
         return await asyncio.shield(call)
     except asyncio.CancelledError:
-        done, _ = await asyncio.wait({call}, timeout=STOP_WAIT_S)
-        if not done:
+        deadline = time.monotonic() + STOP_WAIT_S
+        while not call.done() and (left := deadline - time.monotonic()) > 0:
+            with contextlib.suppress(asyncio.CancelledError):  # cancelled again: still waited for
+                await asyncio.wait({call}, timeout=left)
+        if not call.done():
             log.warning("the daily tick's work was still running after %g s; stopping anyway", STOP_WAIT_S)
         call.add_done_callback(_forget)  # its outcome is no one's any more
         raise

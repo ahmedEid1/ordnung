@@ -14,6 +14,7 @@ import os
 import struct
 import subprocess
 import sys
+import threading
 import time
 import tomllib
 import tracemalloc
@@ -37,6 +38,7 @@ from helpers_msg import (
     build_msg,
     directory,
     entries_named,
+    message_nodes,
     patched,
     patched_all,
     simple_pdf,
@@ -474,7 +476,12 @@ def test_encrypted_refused(message_class: str) -> None:
     "message_class", ["IPM.Appointment", "IPM.Contact", "IPM.Task", "IPM.Schedule.Meeting.Request"]
 )
 def test_calendar_entry_refused(message_class: str) -> None:
+    """Said what it is (a meeting invitation came to the person as an e-mail) and what to do instead."""
     assert refusal(build_msg(bill(message_class=message_class))) == NOT_AN_EMAIL
+    assert NOT_AN_EMAIL == (
+        "This Outlook file is a meeting invitation, calendar entry, contact or task, which Ordnung doesn't "
+        "open. Save its attachments, or print it as a PDF, and add those."
+    )
 
 
 @pytest.mark.parametrize("message_class", ["IPM.Note", "ipm.note", "IPM.Note.Microsoft.Voicemail"])
@@ -491,6 +498,27 @@ def test_office_file_refused(main: str) -> None:
 
 def test_other_ole_file_refused() -> None:
     assert refusal(build([stream("Contents", b"x" * 100)])) == NOT_OUTLOOK
+
+
+def test_other_ole_file_named_msg_is_a_damaged_outlook_file() -> None:
+    """Named ``.msg``, an OLE file without a message is an Outlook file that can't be opened: “this type is
+    not supported” would contradict the list of types that names ``.msg``."""
+    other = build([stream("Contents", b"x" * 100)])
+    with pytest.raises(IntakeError, match="It may be damaged"):
+        as_email(other, "Rechnung.msg")
+    with pytest.raises(IntakeError) as caught:
+        as_email(other, "Rechnung.dat")
+    assert str(caught.value) == NOT_OUTLOOK
+
+
+def test_without_olefile_outlook_files_say_a_part_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An install updated without its new dependency: not “damaged, save it again”, but what to do."""
+    monkeypatch.setitem(sys.modules, "olefile", None)  # import olefile fails
+    assert refusal(build_msg(bill())) == outlook.MISSING_PART
+    assert outlook.MISSING_PART == (
+        "Ordnung can't open Outlook files on this computer because a part it needs is missing. "
+        "Update or reinstall Ordnung, then add the file again."
+    )
 
 
 def test_outlook_item_without_a_class_is_damaged() -> None:
@@ -594,6 +622,91 @@ def test_lookups_stay_linear_with_many_entries() -> None:
     assert_linear(file_of, 100, read=msg_to_eml)
 
 
+def difat_file(fat_sectors: int, *, difat_sectors: int = 1, loop: bool = True, size: int = 1536) -> bytes:
+    """A compound file whose header claims ``fat_sectors`` FAT sectors, listed by a DIFAT chain whose every
+    pointer names the one FAT sector (sector 0). The chain is sectors 1 … ``difat_sectors``; with ``loop``
+    its last sector points back at itself. Zeros fill the file to ``size`` bytes."""
+    fat = [0xFFFFFFFF] * 128
+    fat[0] = 0xFFFFFFFD  # a FAT sector
+    fat[1 : 1 + difat_sectors] = [0xFFFFFFFC] * difat_sectors  # DIFAT sectors
+    sectors = [struct.pack("<128I", *fat)]
+    for n in range(1, difat_sectors + 1):
+        following = n + 1 if n < difat_sectors else (n if loop else 0xFFFFFFFE)
+        sectors.append(struct.pack("<127I", *[0] * 127) + struct.pack("<I", following))
+    header = (
+        MAGIC
+        + b"\0" * 16
+        + struct.pack("<HHHHH", 0x3E, 3, 0xFFFE, 9, 6)
+        + b"\0" * 6
+        + struct.pack("<IIIIIIII", 0, fat_sectors, 0xFFFFFFFE, 0, 4096, 0xFFFFFFFE, 0, 1)
+        + struct.pack("<I", (fat_sectors - 109 + 126) // 127)  # the DIFAT sectors that many FAT sectors need
+        + struct.pack("<109I", *[0] * 109)
+    )
+    return (header + b"".join(sectors)).ljust(size, b"\0")
+
+
+def refused_quickly_in_a_thread(data: bytes) -> None:
+    """:func:`assert_quick_refusal` in a thread of its own, given 60 s: a file that sends olefile into an
+    endless loop fails the test instead of hanging the run."""
+    failed: list[BaseException] = []
+
+    def check() -> None:
+        try:
+            assert_quick_refusal(data)
+        except BaseException as exc:
+            failed.append(exc)
+
+    worker = threading.Thread(target=check, daemon=True)
+    worker.start()
+    worker.join(60)
+    assert not worker.is_alive(), "still reading the file after 60 s"
+    if failed:
+        raise failed[0]
+
+
+@pytest.mark.parametrize(
+    "shape",
+    [
+        pytest.param({"fat_sectors": 10_000}, id="1.5 KB, a DIFAT sector naming itself, 10,000 FAT sectors"),
+        pytest.param({"fat_sectors": 4_000_000_000}, id="1.5 KB claiming 4 billion FAT sectors"),
+        pytest.param(
+            {"fat_sectors": 109 + 127 * 127, "difat_sectors": 127, "loop": False, "size": 8 * 1024**2},
+            id="8 MB, 127 DIFAT sectors naming one FAT sector 16,238 times",
+        ),
+    ],
+)
+def test_fat_claims_are_bounded_by_the_file(shape: dict[str, Any]) -> None:
+    """The header says how many FAT sectors there are and the DIFAT lists them; olefile believes both, and
+    follows a DIFAT sector that points at itself as often as the header says. Every FAT and DIFAT sector is
+    a sector of the file, and the FAT is read only until it covers the file: refused at once."""
+    refused_quickly_in_a_thread(difat_file(**shape))
+
+
+def test_attachments_beyond_a_few_hundred_are_not_kept() -> None:
+    """10,000 empty attachment storages (1.3 MB) would make 10,000 parts (seconds of work, hundreds of MB):
+    only the first :data:`~ordnung.ingest.outlook.MAX_ATTACHMENTS` become parts, quickly and in little
+    memory, and the e-mail is still read."""
+    nodes = message_nodes(bill(attachments=[Attachment("Rechnung.pdf", PDF, "application/pdf")]))
+    nodes += [storage(f"__attach_version1.0_#{n:08X}") for n in range(1, 10_000)]
+    raw = build(nodes)
+    started = time.thread_time()
+    eml = msg_to_eml(raw)
+    elapsed = time.thread_time() - started  # (measured apart: tracing every allocation slows it 5 times)
+    tracemalloc.start()
+    try:
+        assert msg_to_eml(raw) == eml
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert elapsed < 2.0 and peak < 50 * 1024**2, (elapsed, peak)
+    message = email.message_from_bytes(eml, policy=email.policy.default)
+    assert isinstance(message, EmailMessage)
+    found = attachments_of(message)
+    assert len(found) == outlook.MAX_ATTACHMENTS
+    assert found[0] == ("Rechnung.pdf", "application/pdf", "attachment", PDF)
+    assert message["Subject"] == "Ihre Rechnung September 2026"
+
+
 def test_result_over_50_mb_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     raw = build_msg(bill())
     monkeypatch.setattr(outlook, "MAX_BYTES", len(msg_to_eml(raw)) - 1)
@@ -666,13 +779,27 @@ def assert_quick_refusal(data: bytes) -> None:
         (PDF, "Rechnung.pdf"),
         (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.eml"),
         (b"Notiz", "notiz.txt"),
-        (b"\xd0\xcf\x11", "kurz.msg"),  # shorter than the magic
-        (b"", "leer.msg"),
+        (b"\xd0\xcf\x11", "kurz.pdf"),  # shorter than the magic: intake says what it is
+        (b"", "leer.msg"),  # intake says it is empty
+        (b"From: a@example.org\r\nSubject: x\r\n\r\nHallo", "mail.msg"),  # an e-mail as text, named .msg
     ],
 )
 def test_as_email_leaves_other_files_alone(data: bytes, name: str) -> None:
     assert as_email(data, name) == (data, name)
     assert not is_ole(data)
+
+
+@pytest.mark.parametrize(
+    "data",
+    [b"\xd0\xcf\x11", b"\0" * 8192, b"\xd0\xcf\x11\xe0\xa1\xb1"],
+    ids=["cut before its first 8 bytes", "zeros after a failed copy", "cut inside the magic"],
+)
+def test_a_msg_that_is_no_file_intake_reads_is_damaged(data: bytes) -> None:
+    """Named ``.msg`` but neither an OLE file nor a type intake reads: an Outlook file that can't be opened,
+    with the advice to save it again (not “this file type is not supported”)."""
+    with pytest.raises(IntakeError) as caught:
+        as_email(data, "kaputt.msg")
+    assert str(caught.value) == DAMAGED
 
 
 @pytest.mark.parametrize(

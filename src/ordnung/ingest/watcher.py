@@ -35,8 +35,10 @@ The policy, which decides every case:
   on, files that **arrive** after the folder was chosen are read at once; the files that were already
   in it when it was chosen always wait (choosing ``~/Downloads`` must not send every file in it to
   Claude). Choosing a folder again — after "Stop watching" or another folder — counts as choosing it
-  (:func:`folder_chosen`): what came in meanwhile waits too; a restart does not. Where letters can't be read at all (the zero-token demo), files are always held. A copy
-  of a waiting file never answers for it.
+  (:func:`folder_chosen`): what came in meanwhile waits too; a restart does not. After an update that
+  watches more types (Outlook ``.msg`` files), the files of those types already in the folder count as
+  there when it was chosen: they wait too. Where letters can't be read at all (the zero-token demo),
+  files are always held. A copy of a waiting file never answers for it.
 * **Read-only** — the folder is only listed and read (``O_NOFOLLOW``): nothing in it is ever written,
   moved or deleted.
 * **Errors never stop the server** — a refused file (a limit, a file Ordnung isn't allowed to read)
@@ -89,6 +91,9 @@ SOURCE = "folder"
 WATCHED_SUFFIXES = frozenset(
     {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".txt", ".eml", ".msg"}
 )
+#: The types watched before the record of the files there when a folder was chosen named them (0.2.0):
+#: Outlook files were left alone then, so the ones already in the folder count as there when it was chosen.
+EARLIER_SUFFIXES = WATCHED_SUFFIXES - {".msg"}
 PARTIAL_SUFFIXES = (".part", ".partial", ".crdownload", ".download", ".tmp", ".temp")
 SETTLE_S = 2.0
 RESCAN_S = 60.0
@@ -348,6 +353,9 @@ class FolderWatcher:
         self._seen: list[str] = []
         self._seen_set: set[str] = set()
         self._baseline: set[str] = set()
+        #: Types watched now but not when the folder's baseline was saved (an update): on the first listing,
+        #: the files of these types already there join the baseline.
+        self._newly_watched: frozenset[str] = frozenset()
         #: Whether hand-off sync is connected (set by the API): files are then the person's changes and
         #: remembered across computers (:data:`TAKEN_META_KEY`).
         self.sync_on: Callable[[], bool] | None = None
@@ -492,6 +500,15 @@ class FolderWatcher:
                     first_watch = False
                     self._baseline = set(keys.values()) - self._seen_set
                     self._save_baseline(folder)
+                elif self._newly_watched:  # updated: files of a type left alone before were there already
+                    self._baseline |= {
+                        key
+                        for name, key in keys.items()
+                        if PurePosixPath(name.lower()).suffix in self._newly_watched
+                        and key not in self._seen_set
+                    }
+                    self._newly_watched = frozenset()
+                    self._save_baseline(folder)
                 self._forget_absent(set(keys.values()))
                 last_listing, list_now = now, False
                 if not watching:
@@ -632,15 +649,23 @@ class FolderWatcher:
             stored = json.loads(self.ctx.store.get_meta(BASELINE_META_KEY) or "{}")
         except ValueError:
             stored = {}
+        self._newly_watched = frozenset()
         if not isinstance(stored, dict) or stored.get("folder") != str(folder):
             self._baseline = set()
             return True
         keys = stored.get("keys")
         self._baseline = {key for key in keys if isinstance(key, str)} if isinstance(keys, list) else set()
+        suffixes = stored.get("suffixes")
+        watched = set(suffixes) if isinstance(suffixes, list) else EARLIER_SUFFIXES  # none saved: 0.2.0
+        self._newly_watched = WATCHED_SUFFIXES - watched
         return False
 
     def _save_baseline(self, folder: Path | None) -> None:
-        payload = {"folder": str(folder or ""), "keys": sorted(self._baseline)}
+        payload = {
+            "folder": str(folder or ""),
+            "keys": sorted(self._baseline),
+            "suffixes": sorted(WATCHED_SUFFIXES),
+        }
         self.ctx.store.set_meta(BASELINE_META_KEY, json.dumps(payload))
 
 

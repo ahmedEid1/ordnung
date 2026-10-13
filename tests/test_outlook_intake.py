@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import email
 import email.policy
+import json
 from collections.abc import Iterator
 from email.message import EmailMessage
 from pathlib import Path
@@ -15,12 +16,13 @@ from pathlib import Path
 import pytest
 
 from fixtures_llm import TODAY, Router, fake_backend
+from helpers_docs import Line, make_pdf
 from helpers_msg import Attachment, bill, build_msg
 from ordnung import cli, clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.config import Paths
 from ordnung.db.store import Store
-from ordnung.ingest import watcher
+from ordnung.ingest import held, watcher
 from ordnung.ingest.attachments import email_attachments, email_source
 from ordnung.ingest.intake import normalise_upload, sniff_mime
 from ordnung.ingest.outlook import DAMAGED, msg_to_eml
@@ -112,6 +114,12 @@ async def test_upload_of_a_damaged_msg_says_why(data_dir: Path) -> None:
         assert response.json()["errors"] == [{"filename": "Rechnung.msg", "detail": DAMAGED}]
 
 
+async def test_upload_of_a_msg_full_of_zeros_says_it_is_damaged(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", b"\0" * 8192))])
+        assert response.json()["errors"] == [{"filename": "kaputt.msg", "detail": DAMAGED}]
+
+
 async def test_phone_upload_msg(data_dir: Path) -> None:
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
         await pair(api, phone)
@@ -172,6 +180,15 @@ async def test_watched_folder_refused_msg_logged(ctx: AppContext, inbox: Path) -
     assert ctx.store.list_documents() == []
 
 
+async def test_watched_folder_refuses_a_msg_full_of_zeros_as_damaged(ctx: AppContext, inbox: Path) -> None:
+    (inbox / "kaputt-nullen.msg").write_bytes(b"\0" * 8192)
+    async with watching(ctx):
+        await eventually(lambda: logged(ctx, "folder.refused"))
+    assert logged(ctx, "folder.refused") == [
+        f"Couldn't add “kaputt-nullen.msg” from your watched folder: {DAMAGED}"
+    ]
+
+
 async def test_watched_folder_says_a_known_msg_by_its_own_name(ctx: AppContext, inbox: Path) -> None:
     (inbox / "Rechnung.msg").write_bytes(BILL)
     async with watching(ctx):
@@ -179,6 +196,35 @@ async def test_watched_folder_says_a_known_msg_by_its_own_name(ctx: AppContext, 
         (inbox / "Kopie.msg").write_bytes(BILL)
         await eventually(lambda: logged(ctx, "folder.known"))
     assert logged(ctx, "folder.known") == ["“Kopie.msg” in your watched folder is already in Ordnung"]
+
+
+async def test_after_the_update_outlook_files_already_in_the_folder_wait(
+    ctx: AppContext, inbox: Path
+) -> None:
+    """0.2.0 left Outlook files in a watched folder alone, and its record of the files there when the folder
+    was chosen doesn't list them. After the update they count as files that were there: they wait, with
+    their attachments, even with "Read new files with Claude straight away" on. Files of the types watched
+    before, and Outlook files that arrive later, are new arrivals as before."""
+    (inbox / "Alte Rechnung.msg").write_bytes(BILL)
+    (inbox / "neu.pdf").write_bytes(make_pdf([[Line(72, 90, "Kam, während Ordnung zu war")]]))
+    use_folder(ctx, inbox, inbox_auto_read=True)
+    # what 0.2.0 kept once it had watched this folder: the folder, no files still waiting, no file types
+    ctx.store.set_meta(watcher.BASELINE_META_KEY, json.dumps({"folder": str(inbox), "keys": []}))
+    async with watching(ctx):
+        old = await eventually(picked(ctx, "Alte Rechnung.eml"))
+        attached = await eventually(picked(ctx, "Rechnung_2026-09.pdf"))
+        arrived = await eventually(picked(ctx, "neu.pdf"))
+        (inbox / "Neue Rechnung.msg").write_bytes(build_msg(bill(subject="Neue Rechnung", attachments=[])))
+        new = await eventually(picked(ctx, "Neue Rechnung.eml"))
+    assert [(doc.status, doc.ai_private) for doc in (old, attached)] == [("held", True)] * 2
+    assert (arrived.status, new.status) == ("queued", "queued")
+    assert {doc.id for doc in held.waiting(ctx.store)} == {old.id, attached.id}  # nothing for Claude
+    stored = json.loads(ctx.store.get_meta(watcher.BASELINE_META_KEY) or "{}")
+    assert stored["suffixes"] == sorted(watcher.WATCHED_SUFFIXES)
+    (inbox / "Während zu.msg").write_bytes(build_msg(bill(subject="Während zu", attachments=[])))
+    async with watching(ctx):  # once updated, an Outlook file that came while Ordnung was closed arrived
+        later = await eventually(picked(ctx, "Während zu.eml"))
+    assert later.status == "queued"
 
 
 # --------------------------------------------------------------------------------------------------

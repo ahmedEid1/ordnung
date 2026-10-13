@@ -8,7 +8,9 @@ file whose first bytes hold an attached PDF is never called a broken PDF.
 The policy, which decides every case:
 
 * **Which files.** An OLE compound file (its first 8 bytes are :data:`OLE_MAGIC`), whatever its name.
-  Every other file passes through unchanged (:func:`as_email`).
+  Every other file passes through unchanged (:func:`as_email`), except one named ``.msg`` that intake
+  wouldn't take either (emptied by a failed copy, or cut short): that is a damaged Outlook file. Named
+  ``.msg``, an OLE file without a message is damaged too, rather than of a type Ordnung doesn't read.
 * **Opened from memory, strictly.** olefile reads it from a ``BytesIO`` (it takes ``bytes`` shorter than
   1,536 for a file *path*), read-only, and every defect from ``DEFECT_INCORRECT`` up is an error: a
   stream larger than the file, an incomplete stream, an entry or a stream referenced twice.
@@ -16,13 +18,14 @@ The policy, which decides every case:
   (``…SMIME…``) is refused, and so are calendar entries, contacts and tasks, older Word, Excel and
   PowerPoint files and any other OLE file, each with its reason.
 * **Bounded.** The file is at most 50 MB (:data:`~ordnung.ingest.intake.MAX_BYTES`) and has at most
-  :data:`MAX_ENTRIES` directory entries, counted before olefile builds them. No stream is larger than the
-  file, and at most :data:`READ_BUDGET_FACTOR` times the file's size is read in all (entries may share
-  sectors). At most :data:`MAX_WITH_BYTES` attachments keep their bytes; later ones keep only their
-  names, so the e-mail still lists them. At most :data:`MAX_RECIPIENTS` recipients. A header value loses
-  its control characters and is at most :data:`MAX_HEADER_CHARS` long. Outlook's copy of the original
-  headers is read up to :data:`MAX_TRANSPORT_HEADERS`. The result is at most 50 MB. A tree too deep for
-  the parser (``RecursionError``), or any other parser error, is "damaged".
+  :data:`MAX_ENTRIES` directory entries, counted before olefile builds them. Its FAT (the map of its
+  sectors) is read only as far as the file reaches. No stream is larger than the file, and at most
+  :data:`READ_BUDGET_FACTOR` times the file's size is read in all (entries may share sectors). At most
+  :data:`MAX_ATTACHMENTS` attachments, of which the first :data:`MAX_WITH_BYTES` keep their bytes and
+  later ones only their names, so the e-mail still lists them. At most :data:`MAX_RECIPIENTS` recipients.
+  A header value loses its control characters and is at most :data:`MAX_HEADER_CHARS` long. Outlook's
+  copy of the original headers is read up to :data:`MAX_TRANSPORT_HEADERS`. The result is at most 50 MB.
+  A tree too deep for the parser (``RecursionError``), or any other parser error, is "damaged".
 * **The same file, the same e-mail.** No Date or Message-ID is made up, and the MIME boundaries come from
   the file's SHA-256, so adding a ``.msg`` twice finds the letter already in Ordnung.
 * **Headers.** From, To, Cc, Date, Subject, Message-ID, In-Reply-To, References and Reply-To: from the
@@ -40,11 +43,13 @@ The policy, which decides every case:
 * **Kept.** The ``.eml`` copy, named like the file (``Rechnung.msg`` → ``Rechnung.eml``); the ``.msg``
   itself is not kept, so what only Outlook has (categories, flags, read state, RTF formatting) is lost.
 
-olefile is imported only when an Outlook file arrives.
+olefile is imported only when an Outlook file arrives; without it (an install updated without its new
+part) the file is refused with what to do (:data:`MISSING_PART`).
 """
 
 from __future__ import annotations
 
+import array
 import codecs
 import email.parser
 import email.policy
@@ -69,6 +74,7 @@ MAX_ENTRIES = 20_000
 READ_BUDGET_FACTOR = 2
 MAX_WITH_BYTES = 50
 MAX_RECIPIENTS = 500
+MAX_ATTACHMENTS = 500
 MAX_HEADER_CHARS = 998
 MAX_NAME_CHARS = 200
 MAX_ADDRESS_CHARS = 320
@@ -80,8 +86,8 @@ DAMAGED = (
     "or save its attachments and add those."
 )
 NOT_AN_EMAIL = (
-    "This Outlook file is a calendar entry, contact or task, not an e-mail. "
-    "Ordnung only opens e-mails saved from Outlook."
+    "This Outlook file is a meeting invitation, calendar entry, contact or task, which Ordnung doesn't open. "
+    "Save its attachments, or print it as a PDF, and add those."
 )
 OFFICE_FILE = (
     "This is an older Office file (Word, Excel or PowerPoint), not a letter. Save it as a PDF and add that."
@@ -89,6 +95,10 @@ OFFICE_FILE = (
 ENCRYPTED = "This Outlook e-mail is signed or encrypted, so Ordnung can't open it. Save its attachments and add those."
 TOO_LARGE = (
     "This Outlook e-mail is larger than 50 MB once opened. Save its attachments and add them one by one."
+)
+MISSING_PART = (
+    "Ordnung can't open Outlook files on this computer because a part it needs is missing. "
+    "Update or reinstall Ordnung, then add the file again."
 )
 NOT_OUTLOOK = (
     "This file type is not supported. Please upload a PDF, a photo (JPEG, PNG, WEBP, HEIC) "
@@ -144,17 +154,25 @@ def is_ole(data: bytes) -> bool:
 def as_email(data: bytes, filename: str) -> tuple[bytes, str]:
     """``(data, filename)`` unchanged unless ``data`` is an OLE compound file; an Outlook e-mail becomes its
     ``.eml`` copy named like the file (``C:\\Mail\\Rechnung.msg`` → ``Rechnung.eml``). Raises
-    :class:`~ordnung.ingest.intake.IntakeError` for any other OLE file, with the reason."""
-    if not is_ole(data):
-        return data, filename
+    :class:`~ordnung.ingest.intake.IntakeError` for any other OLE file, with the reason, and for a file
+    named ``.msg`` that is no file intake reads (:data:`DAMAGED`)."""
     name = PurePosixPath(filename.replace("\\", "/")).name.strip()
-    stem = name[: -len(".msg")] if name.lower().endswith(".msg") else PurePosixPath(name).stem
-    return msg_to_eml(data), f"{stem.strip() or 'e-mail'}.eml"
+    named_msg = name.lower().endswith(".msg")
+    if not is_ole(data):
+        if named_msg and data:
+            try:
+                intake.sniff_mime(data, filename)  # an e-mail saved as text keeps working
+            except IntakeError:
+                raise IntakeError(DAMAGED) from None
+        return data, filename
+    stem = name[: -len(".msg")] if named_msg else PurePosixPath(name).stem
+    return msg_to_eml(data, named_msg=named_msg), f"{stem.strip() or 'e-mail'}.eml"
 
 
-def msg_to_eml(data: bytes) -> bytes:
+def msg_to_eml(data: bytes, *, named_msg: bool = False) -> bytes:
     """The ``.eml`` copy of an Outlook e-mail (see the module docstring); raises
-    :class:`~ordnung.ingest.intake.IntakeError` with the reason for anything else."""
+    :class:`~ordnung.ingest.intake.IntakeError` with the reason for anything else (``named_msg``: the file
+    is named ``.msg``, so an OLE file without a message is a damaged one)."""
     check_size(data)  # empty, or larger than 50 MB: intake's own words
     if not is_ole(data):
         raise IntakeError(DAMAGED)
@@ -162,10 +180,12 @@ def msg_to_eml(data: bytes) -> bytes:
         ole = _open(data)
     except IntakeError:
         raise
+    except ImportError:  # olefile is missing: saving the e-mail again wouldn't help
+        raise IntakeError(MISSING_PART) from None
     except Exception:  # olefile's errors (OSError, OleFileError, struct.error …), RecursionError
         raise IntakeError(DAMAGED) from None
     try:
-        eml = _convert(ole, data)
+        eml = _convert(ole, data, named_msg=named_msg)
     except IntakeError:
         raise
     except Exception:  # a defect found while reading, a tree too deep for the parser
@@ -184,13 +204,34 @@ def msg_to_eml(data: bytes) -> bytes:
 
 @functools.cache
 def _ole_class() -> Any:
-    """olefile's reader with two changes: it counts the directory before building it (a 50 MB file could
-    hold 400,000 entries), and it finds an entry by its path in a dictionary (olefile scans every entry of
+    """olefile's reader with three changes. It reads the FAT only as far as the file's size allows: olefile
+    believes the header's count of FAT sectors and follows the DIFAT (the list of FAT sectors) that many
+    times, even round a DIFAT sector that names itself, and copies the whole FAT for each sector it adds,
+    so 1.5 KB could keep it busy for good. It counts the directory before building it (a 50 MB file could
+    hold 400,000 entries). And it finds an entry by its path in a dictionary (olefile scans every entry of
     each storage on the way, which is quadratic for a file with many entries)."""
     import olefile
 
     class BoundedOleFile(olefile.OleFileIO):  # type: ignore[misc]
         _paths: dict[tuple[str, ...], int] | None = None
+
+        def loadfat(self, header: bytes) -> None:
+            # every FAT and DIFAT sector is a sector of the file, so the DIFAT loop runs at most once per
+            # sector of the file (olefile checks the DIFAT count against the FAT count before it)
+            if max(self.num_fat_sectors, self.num_difat_sectors) > self.nb_sect:
+                raise IntakeError(DAMAGED)
+            super().loadfat(header)
+
+        def loadfat_sect(self, sect: Any) -> Any:
+            # olefile's, adding in place and only until the FAT covers every sector of the file (olefile cuts
+            # it there afterwards): a DIFAT naming one FAT sector many times costs no more than the file
+            numbers = sect if isinstance(sect, array.array) else self.sect2array(sect)
+            number = None
+            for number in numbers:
+                if number in (olefile.ENDOFCHAIN, olefile.FREESECT) or len(self.fat) >= self.nb_sect:
+                    break
+                self.fat.extend(self.sect2array(self.getsect(number)))
+            return number
 
         def _load_direntry(self, sid: int) -> Any:
             if len(self.direntries) > MAX_ENTRIES:
@@ -327,13 +368,13 @@ def _codec(codepage: int | None) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
-def _convert(ole: Any, data: bytes) -> bytes:
+def _convert(ole: Any, data: bytes, *, named_msg: bool = False) -> bytes:
     if len(ole.direntries) > MAX_ENTRIES:
         raise IntakeError(DAMAGED)
     reader = _Reader(ole, len(data))
     top = frozenset(reader.kids(()))
     if _PROPERTIES not in top:
-        raise IntakeError(OFFICE_FILE if top & _OFFICE_STREAMS else NOT_OUTLOOK)
+        raise IntakeError(OFFICE_FILE if top & _OFFICE_STREAMS else DAMAGED if named_msg else NOT_OUTLOOK)
     message = _Props(reader, (), header=32)
     message_class = (message.text(_MESSAGE_CLASS) or "").strip().upper()
     if not message_class:
@@ -355,7 +396,7 @@ def _convert(ole: Any, data: bytes) -> bytes:
             root.add_alternative(html, subtype="html", charset="utf-8", cte="quoted-printable")
     elif html and html.strip():
         root.set_content(html, subtype="html", charset="utf-8", cte="quoted-printable")
-    storages = [name for name in message.ordered if name.startswith(_ATTACHMENT)]
+    storages = [name for name in message.ordered if name.startswith(_ATTACHMENT)][:MAX_ATTACHMENTS]
     if storages:
         root.make_mixed()
         for number, name in enumerate(storages, start=1):

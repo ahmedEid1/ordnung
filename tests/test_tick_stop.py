@@ -140,6 +140,29 @@ async def test_cancelling_the_days_work_keeps_the_ledger_lock_until_its_thread_e
     assert held.outcome == ["done"] and not ledger_lock().locked()
 
 
+async def test_two_stops_at_once_both_wait_for_the_days_work(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The computer standing by stops its background work while the app's own stop runs: the second cancel
+    must not cut the first one's wait, or both return with the thread still reconciling and the ledger lock
+    let go."""
+    held = Held(tick_module.run_and_reconcile)
+    monkeypatch.setattr(tick_module, "run_and_reconcile", held)
+    tick = DailyTick(Ctx(store), startup_grace_s=0)
+    tick.start()
+    await held.entered()
+    first = asyncio.create_task(tick.stop())
+    await asyncio.sleep(0.05)
+    second = asyncio.create_task(tick.stop())
+    try:
+        assert await not_done_after(first, 0.3) and not second.done()
+        assert ledger_lock().locked(), "the ledger lock was let go while the day's work still ran"
+    finally:
+        held.release()
+    await asyncio.gather(first, second)
+    assert held.outcome == ["done"] and not ledger_lock().locked()
+
+
 async def test_stopping_gives_up_on_a_thread_that_hangs(
     store: Store, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
