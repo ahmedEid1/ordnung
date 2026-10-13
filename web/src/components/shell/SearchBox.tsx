@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEve
 import { Link, useNavigate } from "react-router";
 import { ArrowRight, Plus, RotateCw, ScanText, Search, SearchX, TriangleAlert, X } from "lucide-react";
 import { SEARCH_LIMIT, useDocuments, useParties, useSearchDocuments } from "@/api/hooks";
-import type { Document, DocumentListEntry } from "@/api/types";
+import type { DocumentRow, ListedLetter } from "@/api/types";
 import { cn, plural } from "@/lib/utils";
 import { useDebounced, useHotkey } from "@/lib/hooks";
 import { DOCUMENT_STATUS_COPY, SCANNER_TEXT_MATCH, documentKindLabel } from "@/lib/copy";
@@ -96,7 +96,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
 
   // a boolean, so the combobox always states aria-expanded (ARIA requires it); the phone sheet is always open
   const open = inline ? true : focused && q.length > 0;
-  const matches: DocumentListEntry[] = dterm.length >= MIN_CHARS && searching ? (search.data ?? []) : [];
+  const matches: DocumentRow[] = dterm.length >= MIN_CHARS && searching ? (search.data ?? []) : [];
   const results = matches.slice(0, SEARCH_LIMIT);
   const hasMore = matches.length > SEARCH_LIMIT;
   const settled = dterm === term && !search.isFetching;
@@ -128,7 +128,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
     setActive(-1);
   };
 
-  const go = (d: Document) => {
+  const go = (d: ListedLetter) => {
     navigate(`/documents/${d.id}`);
     reset();
     inputRef.current?.blur();
@@ -160,7 +160,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
     }
   };
 
-  const optionRow = (d: DocumentListEntry, i: number) => {
+  const optionRow = (d: DocumentRow, i: number) => {
     const title = d.title ?? d.filename;
     const sender = d.party_id ? partyName.get(d.party_id) : undefined;
     // a letter waiting from the watched folder has no kind or date read yet: it says so, with the day it came

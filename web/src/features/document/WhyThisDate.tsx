@@ -7,7 +7,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
-import type { Area, ComputationReceipt, DateSpec, Document, DocumentDetail, DocumentKind, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
+import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, DocumentRow, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { isTransfer } from "@/lib/payments";
 import { usePartyDrawer } from "@/lib/party-drawer";
@@ -156,7 +156,7 @@ export function useLetterLanguage(docId: string | null | undefined): string | nu
   if (!docId) return null;
   const detail = qc.getQueryData<DocumentDetail>(qk.documents.detail(docId));
   if (detail) return detail.document.language;
-  const lists = qc.getQueriesData<Document[]>({ queryKey: [...qk.documents.all, "list"] });
+  const lists = qc.getQueriesData<DocumentRow[]>({ queryKey: [...qk.documents.all, "list"] });
   const listed = lists.flatMap(([, docs]) => (Array.isArray(docs) ? docs : [])).find((d) => d.id === docId);
   return listed?.language ?? null;
 }

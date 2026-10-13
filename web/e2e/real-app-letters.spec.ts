@@ -3,13 +3,21 @@
  * calendar file, and a letter deleted for good is gone — what the demo can't show (it reads only its
  * recorded letters). The fake answers with the demo's recorded reading of the bank's fee increase
  * (e2e/global-setup.ts); the tests share one letter, so they run in order.
+ *
+ * An e-mail saved from Outlook (`e2e/fixtures/outlook-bill.msg`, fictional, made by
+ * `scripts/make_msg_fixture.py`) comes in as an e-mail with its attached bill as a letter of its own, though its
+ * first kilobyte holds the bill's PDF, which intake alone took for a PDF. It is added privately (nothing goes to
+ * the fake Claude) and deleted at the end.
  */
 import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { REAL_DATA_DIR, REAL_LETTER } from "./env";
 import { apiGet, expect, letterDetail, open, READ, shownAs, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
+const OUTLOOK_FILE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "outlook-bill.msg");
 
 test.describe.configure({ mode: "serial" });
 
@@ -73,5 +81,49 @@ test("a letter deleted for good is gone", async ({ page }) => {
   expect((await apiGet<Letter[]>(page, "/api/documents")).map((d) => d.filename)).not.toContain(FILE);
   for (const path of [`/api/documents/${letter.id}`, `/api/documents/${letter.id}/file`, `/api/documents/${letter.id}/thumbnail.jpg`]) {
     expect((await page.request.get(path, READ)).status(), path).toBe(404);
+  }
+});
+
+interface StoredLetter extends Letter {
+  mime: string;
+  source: string;
+  status: string;
+}
+
+test("an e-mail saved from Outlook comes in as an e-mail with its bill", async ({ page }) => {
+  await open(page, "/inbox", "Inbox");
+  await page.locator("input[type=file][multiple]").first().setInputFiles(OUTLOOK_FILE);
+  const dialog = page.getByRole("dialog", { name: "Add this letter?" });
+  // the file's row says what it is: an e-mail, like a saved .eml
+  const files = dialog.getByRole("list", { name: "Files to add" });
+  await expect(files).toContainText("outlook-bill.msg");
+  await expect(files).toContainText("E\u2011mail");
+  await dialog.getByRole("switch", { name: /Keep private/ }).click();
+  await dialog.getByRole("button", { name: "Store privately" }).click();
+  await expect(dialog).toBeHidden();
+
+  let mail: StoredLetter | undefined;
+  let bill: StoredLetter | undefined;
+  await expect
+    .poll(
+      async () => {
+        const docs = await apiGet<StoredLetter[]>(page, "/api/documents");
+        mail = docs.find((d) => d.filename === "outlook-bill.eml");
+        bill = mail && docs.find((d) => d.source === `email:${mail!.id}`);
+        return [mail?.mime, bill?.filename, bill?.mime];
+      },
+      { message: "the e-mail and its bill are in Ordnung", timeout: 30_000 },
+    )
+    .toEqual(["message/rfc822", "Stromrechnung_2026-09.pdf", "application/pdf"]);
+  expect([mail!.status, bill!.status]).not.toContain("failed");
+  await expect(page.getByText(/This PDF could not be opened/)).toHaveCount(0);
+
+  // the e-mail's page lists the bill it brought
+  await open(page, `/documents/${mail!.id}`);
+  await expect(page.getByRole("main").getByText("Stromrechnung_2026-09.pdf").first()).toBeVisible();
+
+  for (const doc of [bill!, mail!]) {
+    const res = await page.request.delete(`/api/documents/${doc.id}?purge=true`, { headers: { "X-Ordnung-Client": "web" } });
+    expect(res.ok(), `DELETE /api/documents/${doc.id} → ${res.status()}`).toBe(true);
   }
 });

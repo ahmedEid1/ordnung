@@ -133,7 +133,10 @@ export const api = {
     call("delete", "/api/data", { body: unreceivedOk ? { confirm: "DELETE", unreceived_ok: true } : { confirm: "DELETE" } }),
 
   // -- documents ---------------------------------------------------------------------------------
+  /** The letter list: rows without each letter's explanation, key facts, references, bank details and file hash. */
   documents: (params: DocumentListParams = {}) => call("get", "/api/documents", { query: { ...params } }),
+  /** Every letter whole, as stored, newest first (computer only): the letters of "Download a copy of your records". */
+  documentsFull: () => call("get", "/api/documents.json"),
   /** Multipart upload: `files` (repeated), `combine`, `private` → 201 with documents, jobs, duplicates, errors. */
   uploadDocuments: (files: File[] | FileList, opts: UploadOptions = {}) => {
     const form = new FormData();

@@ -2,7 +2,7 @@
  * Inbox list logic (pure, unit-tested): filters, month grouping, open to-dos per letter.
  */
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
-import type { Document, DocumentKind, DocumentListEntry, Item, ListedItem, SearchFoundIn } from "@/api/types";
+import type { DocumentKind, DocumentRow, Item, ListedItem, ListedLetter, SearchFoundIn } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import { daysUntil } from "@/lib/format";
 
@@ -14,34 +14,34 @@ export function parseFilter(v: string | null): InboxFilter {
 }
 
 /** Letters that need the person: "Please check" (or reading failed). */
-export const needsYou = (d: Document) => d.status === "needs_review" || d.status === "failed";
-export const isReading = (d: Document) => d.status === "queued" || d.status === "processing";
+export const needsYou = (d: ListedLetter) => d.status === "needs_review" || d.status === "failed";
+export const isReading = (d: ListedLetter) => d.status === "queued" || d.status === "processing";
 /**
  * From the watched folder (or attached to an e-mail from it) and not read yet: these wait for the
  * person's "Read these" in their own group above the list, and are in no other group or filter.
  */
-export const isHeld = (d: Document) => d.status === "held" && !d.deleted_at;
+export const isHeld = (d: ListedLetter) => d.status === "held" && !d.deleted_at;
 
 /**
  * The waiting letters ({@link isHeld}) a search found (`results`: `GET /api/documents?q=`), with where it found
  * each (`found_in`). The live list decides which still wait: one answered since the search ran is left out.
  */
-export function heldMatches(docs: readonly Document[], results: readonly DocumentListEntry[]): Map<string, SearchFoundIn | null> {
+export function heldMatches(docs: readonly ListedLetter[], results: readonly DocumentRow[]): Map<string, SearchFoundIn | null> {
   const waiting = new Set(docs.filter(isHeld).map((d) => d.id));
   return new Map(results.filter((d) => waiting.has(d.id)).map((d) => [d.id, d.found_in ?? null]));
 }
 
-export function matchesFilter(d: Document, filter: InboxFilter): boolean {
+export function matchesFilter(d: ListedLetter, filter: InboxFilter): boolean {
   if (filter === "check") return needsYou(d);
   if (filter === "private") return d.ai_private;
   return true;
 }
 
-export function filterDocuments(docs: Document[], opts: { filter: InboxFilter; kind?: DocumentKind | null }): Document[] {
+export function filterDocuments(docs: ListedLetter[], opts: { filter: InboxFilter; kind?: DocumentKind | null }): ListedLetter[] {
   return docs.filter((d) => !d.deleted_at && !isHeld(d) && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
 }
 
-export function filterCounts(docs: Document[]): Record<InboxFilter, number> {
+export function filterCounts(docs: ListedLetter[]): Record<InboxFilter, number> {
   const live = docs.filter((d) => !d.deleted_at && !isHeld(d));
   return {
     all: live.length,
@@ -51,7 +51,7 @@ export function filterCounts(docs: Document[]): Record<InboxFilter, number> {
 }
 
 /** Kinds present in the list, as select options sorted by label. */
-export function kindOptions(docs: Document[]): { value: DocumentKind; label: string; count: number }[] {
+export function kindOptions(docs: ListedLetter[]): { value: DocumentKind; label: string; count: number }[] {
   const counts = new Map<DocumentKind, number>();
   for (const d of docs) if (d.kind) counts.set(d.kind, (counts.get(d.kind) ?? 0) + 1);
   return [...counts.entries()]
@@ -60,7 +60,7 @@ export function kindOptions(docs: Document[]): { value: DocumentKind; label: str
 }
 
 /** When the letter came into the inbox: its arrival date, else when it was added. */
-export function inboxDate(d: Document): string {
+export function inboxDate(d: ListedLetter): string {
   return d.received_date ?? d.created_at.slice(0, 10);
 }
 
@@ -73,7 +73,7 @@ export function inboxDate(d: Document): string {
  * order is served whatever its to-dos.
  */
 export function inboxDateInfo(
-  d: Document,
+  d: ListedLetter,
   served = false,
 ): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
   const date = inboxDate(d);
@@ -85,7 +85,7 @@ export function inboxDateInfo(
 export interface LetterGroup {
   key: string;
   label: string;
-  docs: Document[];
+  docs: ListedLetter[];
 }
 
 export const JUST_READ_LABEL = "Just read";
@@ -97,7 +97,7 @@ export const JUST_READ_LABEL = "Just read";
  */
 export function pinJustRead(groups: LetterGroup[], ids: ReadonlySet<string>): LetterGroup[] {
   if (!ids.size) return groups;
-  const pinned: Document[] = [];
+  const pinned: ListedLetter[] = [];
   const rest: LetterGroup[] = [];
   for (const g of groups) {
     if (g.key === "reading") {
@@ -116,7 +116,7 @@ export function pinJustRead(groups: LetterGroup[], ids: ReadonlySet<string>): Le
  * Newest first, grouped: letters being read → "Last 7 days" → one group per month
  * ("August", or "December 2025" for other years).
  */
-export function groupLetters(docs: Document[], today: string): LetterGroup[] {
+export function groupLetters(docs: ListedLetter[], today: string): LetterGroup[] {
   const t = parseISO(today);
   const sorted = [...docs].sort((a, b) => {
     const ra = Number(isReading(a));

@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { motion } from "motion/react";
 import { CalendarCheck, CalendarPlus, ChevronRight, Download, TriangleAlert } from "lucide-react";
 import { useMarkCalendarExported } from "@/api/hooks";
-import type { Document, Suggestion } from "@/api/types";
+import type { ListedLetter, Suggestion } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { toast } from "@/components/ui/Toast";
@@ -39,7 +39,7 @@ export function checkReason(warning: string): string {
 export const NO_REASON = "Open the letter to check its to-do.";
 
 /** "Please check": letters where something needs a quick look (unknown arrival date, possible scam…). */
-export function PleaseCheckCard({ docs }: { docs: Document[] }) {
+export function PleaseCheckCard({ docs }: { docs: ListedLetter[] }) {
   if (!docs.length) return null;
   return (
     <motion.section

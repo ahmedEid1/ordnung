@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { renderWithProviders } from "@/test/render";
 import { createMockServer, type MockServer } from "@/mocks/server";
-import type { DocumentListEntry } from "@/api/types";
+import type { DocumentRow } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import InboxPage from "@/pages/InboxPage";
 import { LettersList } from "./LettersList";
@@ -176,7 +176,7 @@ describe("Inbox letters list", () => {
   it("marks a letter a search found only in its scanner's text as not checked (ADR 0020)", async () => {
     const [scan, other] = [srv.db.document("doc_folder_scan")!, srv.db.document("doc_library")!];
     // rows as the search lists them (`GET /api/documents?q=`)
-    const found: DocumentListEntry[] = [
+    const found: DocumentRow[] = [
       { ...scan, found_in: "scanner_text" },
       { ...other, found_in: "letter" },
     ];

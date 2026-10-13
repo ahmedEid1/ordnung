@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER, record_events
 from ordnung import clock, models
 from ordnung.api.app import openapi_json, openapi_schema
+from ordnung.api.routes import documents
 from ordnung.api.routes.drafts import DraftCreate
 from ordnung.ingest import pipeline
 from test_api_support import TODAY, api_for
@@ -148,6 +149,7 @@ def test_make_and_npm_regenerate_both_files() -> None:
 def test_list_endpoints_answer_plain_arrays(schema: dict[str, Any]) -> None:
     for path in (
         "/api/documents",
+        "/api/documents.json",
         "/api/items",
         "/api/contracts",
         "/api/parties",
@@ -169,6 +171,7 @@ def test_response_models_mark_every_field_required(schema: dict[str, Any]) -> No
     components = schema["components"]["schemas"]
     for name in (
         "Document",
+        "DocumentRow",
         "Item",
         "Contract",
         "Health",
@@ -261,21 +264,27 @@ def test_a_letter_can_be_asked_for_in_another_name(schema: dict[str, Any]) -> No
 
 
 def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str, Any]) -> None:
-    """``GET /api/documents`` rows are the letter plus ``found_in``, a view model made by the route: the
-    letter itself (what the store keeps and Ask's ledger fingerprint hashes) has no such field. A letter's
-    detail lists the pages whose scanner text is kept, for search only."""
+    """``GET /api/documents`` rows are ``DocumentRow``, a view model made by the route: the letter
+    without what Claude read from inside it in detail and the file hash (``LEFT_OUT_OF_LIST``), plus
+    ``found_in``. The letter itself (what the store keeps and Ask's ledger fingerprint hashes) has no
+    such field. A letter's detail lists the pages whose scanner text is kept, for search only."""
     components = schema["components"]["schemas"]
     body = schema["paths"]["/api/documents"]["get"]["responses"]["200"]["content"]["application/json"][
         "schema"
     ]
-    assert body["items"] == {"$ref": "#/components/schemas/DocumentListEntry"}
-    entry = components["DocumentListEntry"]
-    assert set(entry["properties"]) == set(components["Document"]["properties"]) | {"found_in"}
-    assert set(entry["required"]) == set(entry["properties"])
-    found_in = entry["properties"]["found_in"]["anyOf"]
+    assert body["items"] == {"$ref": "#/components/schemas/DocumentRow"}
+    row, letter = components["DocumentRow"], components["Document"]
+    assert set(row["properties"]) == (set(letter["properties"]) - documents.LEFT_OUT_OF_LIST) | {"found_in"}
+    assert set(row["required"]) == set(row["properties"])
+    kept = set(row["properties"]) - {"found_in"}
+    assert {name: row["properties"][name] for name in kept} == {
+        name: letter["properties"][name] for name in kept
+    }
+    found_in = row["properties"]["found_in"]["anyOf"]
     assert sorted(found_in[0]["enum"]) == ["letter", "scanner_text"] and found_in[1] == {"type": "null"}
-    assert issubclass(models.DocumentListEntry, models.Document)
     assert "found_in" not in models.Document.model_fields
+    # models.DocumentListEntry stays in models.py (a benchmark digest file), unused by any route
+    assert "DocumentListEntry" not in components
     detail = components["DocumentDetail"]
     assert detail["properties"]["scan_text_pages"] == {
         "items": {"type": "integer"},
@@ -284,6 +293,42 @@ def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str,
     }
     assert "scan_text_pages" in detail["required"]
     assert models.DocumentDetail.model_fields["scan_text_pages"].default_factory is list
+
+
+def test_the_letter_list_leaves_out_exactly_the_reading_and_the_file_hash() -> None:
+    """What the list leaves out is pinned: the letter's explanation, key facts, references, bank
+    details and file hash. Every other field of a letter reaches the list by itself."""
+    assert documents.LEFT_OUT_OF_LIST == frozenset(
+        {"key_facts", "explanation", "references", "payment", "sha256"}
+    )
+    assert documents.LEFT_OUT_OF_LIST <= set(models.Document.model_fields)
+    assert set(documents.DocumentRow.model_fields) == (
+        set(models.Document.model_fields) - documents.LEFT_OUT_OF_LIST
+    ) | {"found_in"}
+    assert not issubclass(documents.DocumentRow, models.Document)
+    for name, field in documents.DocumentRow.model_fields.items():
+        if name != "found_in":
+            assert field.annotation == models.Document.model_fields[name].annotation, name
+
+
+def test_the_copy_of_your_records_lists_every_letter_whole(schema: dict[str, Any]) -> None:
+    """``GET /api/documents.json`` ("Download a copy of your records") answers whole letters, as
+    stored, for the computer only."""
+    assert set(schema["paths"]["/api/documents.json"]) == {"get"}
+    operation = schema["paths"]["/api/documents.json"]["get"]
+    body = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert body == {
+        "type": "array",
+        "items": {"$ref": "#/components/schemas/Document"},
+        "title": body["title"],
+    }
+    assert "parameters" not in operation
+    assert "x-ordnung-phone" not in operation
+
+
+def test_the_upload_form_names_every_kind_of_file_it_takes(schema: dict[str, Any]) -> None:
+    form = schema["components"]["schemas"]["Body_upload_documents_api_documents_post"]
+    assert form["properties"]["files"]["description"] == "The letters (PDF, photos, .txt/.eml/.msg)"
 
 
 def test_a_profile_keeps_the_move_the_person_told(schema: dict[str, Any]) -> None:

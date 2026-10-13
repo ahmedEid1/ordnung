@@ -5,7 +5,7 @@
  */
 import { useState, type RefObject } from "react";
 import { Download } from "lucide-react";
-import type { Document } from "@/api/types";
+import type { ListedLetter } from "@/api/types";
 import { api } from "@/api/endpoints";
 import { useDocuments, useParties } from "@/api/hooks";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -159,7 +159,7 @@ export function ExportLettersDialog({
 }
 
 /** How many of `docs` share each key (letters with a null key counted under null). */
-function countBy<K>(docs: readonly Document[], key: (d: Document) => K): Map<K, number> {
+function countBy<K>(docs: readonly ListedLetter[], key: (d: ListedLetter) => K): Map<K, number> {
   const counts = new Map<K, number>();
   for (const d of docs) counts.set(key(d), (counts.get(key(d)) ?? 0) + 1);
   return counts;

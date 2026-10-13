@@ -6,7 +6,7 @@
  * the tax Idea's count and the export. Yearly statements for a year usually carry the next year's date, so the
  * letters for taxes dated January–May of the next year are shown (and exported) with it, to be checked.
  */
-import type { Document } from "@/api/types";
+import type { ListedLetter } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import type { LetterGroup } from "@/features/inbox/filters";
 import { EARLY_UNTIL, exportable, letterDay, letterYear } from "@/features/export/selection";
@@ -23,15 +23,15 @@ const yearOf = (iso: string) => Number(iso.slice(0, 4));
 const monthOf = (iso: string) => Number(iso.slice(5, 7));
 
 /** A letter on the Tax year page: one that can be exported and is marked as mattering for taxes. */
-export const isTaxLetter = (d: Document) => exportable(d) && d.tax_relevant;
+export const isTaxLetter = (d: ListedLetter) => exportable(d) && d.tax_relevant;
 
 /** The letters for taxes dated in `year`, in their order. */
-export function taxLetters(docs: readonly Document[], year: number): Document[] {
+export function taxLetters(docs: readonly ListedLetter[], year: number): ListedLetter[] {
   return docs.filter((d) => isTaxLetter(d) && letterYear(d) === year);
 }
 
 /** The years that have letters for taxes, newest first, with how many each has. */
-export function taxYears(docs: readonly Document[]): { year: number; count: number }[] {
+export function taxYears(docs: readonly ListedLetter[]): { year: number; count: number }[] {
   const counts = new Map<number, number>();
   for (const d of docs) {
     const year = isTaxLetter(d) ? letterYear(d) : null;
@@ -41,7 +41,7 @@ export function taxYears(docs: readonly Document[]): { year: number; count: numb
 }
 
 /** Letters for taxes with no date at all: they belong to no year (and no year's export). */
-export function undatedTaxLetters(docs: readonly Document[]): Document[] {
+export function undatedTaxLetters(docs: readonly ListedLetter[]): ListedLetter[] {
   return docs.filter((d) => isTaxLetter(d) && !letterDay(d));
 }
 
@@ -62,7 +62,7 @@ export function inTaxSeason(today: string, year: number): boolean {
 }
 
 /** The letters for taxes dated 1 January – 31 May of the next year, once that year has begun. */
-export function earlyStatements(docs: readonly Document[], year: number, today: string): Document[] {
+export function earlyStatements(docs: readonly ListedLetter[], year: number, today: string): ListedLetter[] {
   const from = `${year + 1}-01-01`;
   const until = `${year + 1}-${EARLY_UNTIL}`;
   if (today < from) return [];
@@ -72,10 +72,10 @@ export function earlyStatements(docs: readonly Document[], year: number, today: 
   });
 }
 
-const byDay = (a: Document, b: Document) => (letterDay(a) ?? "").localeCompare(letterDay(b) ?? "") || a.created_at.localeCompare(b.created_at);
+const byDay = (a: ListedLetter, b: ListedLetter) => (letterDay(a) ?? "").localeCompare(letterDay(b) ?? "") || a.created_at.localeCompare(b.created_at);
 
 /** One group per kind ("Payslip", "Insurance" …) in label order, the oldest letter first in each. */
-export function groupByKind(docs: readonly Document[]): LetterGroup[] {
+export function groupByKind(docs: readonly ListedLetter[]): LetterGroup[] {
   const groups = new Map<string, LetterGroup>();
   for (const d of docs) {
     const kind = d.kind ?? "other";
@@ -87,7 +87,7 @@ export function groupByKind(docs: readonly Document[]): LetterGroup[] {
 }
 
 /** The page's list: the year's letters for taxes by kind, then the next year's early ones ("Dated January–May 2026"). */
-export function taxGroups(docs: readonly Document[], year: number, today: string): LetterGroup[] {
+export function taxGroups(docs: readonly ListedLetter[], year: number, today: string): LetterGroup[] {
   const groups = groupByKind(taxLetters(docs, year));
   const early = earlyStatements(docs, year, today);
   if (early.length) groups.push({ key: EARLY_GROUP, label: `Dated January–May ${year + 1}`, docs: [...early].sort(byDay) });

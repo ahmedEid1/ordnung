@@ -164,6 +164,46 @@ def test_both_changed_asks_once_and_either_answer_keeps_a_copy(pair: Pair) -> No
         pair.settle()
 
 
+def test_answered_apart_then_once_more_is_the_last_question(pair: Pair) -> None:  # blocker 3
+    """Each computer kept its own before it saw the other's answer; asked once more, the person keeps the
+    same one again. That answer stands: the question doesn't come back after every answer."""
+    a, b = pair.a, pair.b
+    pair.joined()
+    a.use_here(older_copy=True)
+    a.person_edit("A's change")
+    b.person_edit("B's change")
+    a.round()
+    b.round()
+    pair.settle()
+    a.round()
+    b.round()
+    a.choose(a.key_of(a))  # apart: each keeps its own
+    b.choose(b.key_of(b))
+    pair.settle()
+    a.round()
+    b.round()  # the one that isn't in use stands by
+    holder = a if a.mode == "in_use" else b
+    other = b if holder is a else a
+    assert other.mode == "standing_by"
+    asked = holder.round()
+    assert isinstance(asked.decision, Choice), asked  # asked once more
+    holder.choose(holder.key_of(holder))  # the same answer again
+    pair.settle()
+    for _ in range(2):
+        assert not isinstance(holder.round().decision, Choice)
+        other.round()
+        pair.settle()
+    assert other.mode == "standing_by"
+    outcome = other.use_here()
+    assert outcome.kept is not None and isinstance(outcome.decision, Pull) and outcome.decision.keep
+    assert other.notes() == holder.notes()
+    pair.settle()
+    for _ in range(2):
+        assert not isinstance(holder.round().decision, Choice)
+        assert not isinstance(other.round().decision, Choice)
+        pair.settle()
+
+
 def test_choosing_the_other_computer(pair: Pair) -> None:
     a, b = pair.a, pair.b
     pair.joined()

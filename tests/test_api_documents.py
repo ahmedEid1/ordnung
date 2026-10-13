@@ -17,8 +17,9 @@ from helpers_secretary import TODAY as TODAY_DATE
 from helpers_secretary import add_doc, add_item
 from helpers_sender_land import BACKWARDS, HOLIDAY, MUNICH, letter_from, to_do
 from ordnung import clock
-from ordnung.api.routes.documents import document_detail
+from ordnung.api.routes.documents import LEFT_OUT_OF_LIST, document_detail
 from ordnung.db.store import Store
+from ordnung.drafts.proof import PROOF_SOURCE
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeRateLimited
 from ordnung.models import Document, DocumentDetail
 from test_api_support import FINE_LETTER, TODAY, Api, ApiRouter, api_for, lifespan
@@ -204,12 +205,13 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
 
 async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) -> None:
     """``found_in`` is worked out for the list only (the letter itself has no such field): ``null`` when
-    the list wasn't searched. A letter with page text of its own has no scanner text kept."""
+    the list wasn't searched. The list leaves out the letter's reading in detail and its file hash
+    (``LEFT_OUT_OF_LIST``). A letter with page text of its own has no scanner text kept."""
     async with api_for(data_dir) as api:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         listed = (await api.client.get("/api/documents")).json()
         assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
-        assert set(listed[0]) == set(Document.model_fields) | {"found_in"}
+        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in"}
         blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
         assert [row["found_in"] for row in blank] == [None]
         found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()
@@ -260,6 +262,102 @@ async def test_a_phone_s_search_says_where_it_found_a_letter_too(data_dir: Path)
             assert [(row["id"], row["found_in"]) for row in found.json()] == [
                 (scan["documents"][0]["id"], "scanner_text")
             ]
+
+
+# --------------------------------------------------------------------------------------------------
+# the list leaves out the reading; the copy of your records keeps it, on the computer only
+# --------------------------------------------------------------------------------------------------
+
+
+def _reading(document: dict[str, object]) -> dict[str, object]:
+    """What the list leaves out of a letter (:data:`LEFT_OUT_OF_LIST`), from a letter as JSON."""
+    return {name: document[name] for name in sorted(LEFT_OUT_OF_LIST)}
+
+
+async def test_the_letter_list_leaves_out_the_reading(data_dir: Path) -> None:
+    """No row of the list carries the letter's explanation, key facts, references, bank details or
+    file hash, searched or not, with a limit or without; the letter's own page has all of them, as
+    stored."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        stored = api.ctx.store.get_document(doc_id)
+        assert stored is not None
+        assert stored.explanation and stored.key_facts and stored.references and stored.sha256
+        assert stored.payment is not None and stored.payment.iban
+        for params in ({}, {"q": "Finanzamt"}, {"limit": 1}, {"status": "processed"}):
+            rows = (await api.client.get("/api/documents", params=params)).json()
+            assert [row["id"] for row in rows] == [doc_id], params
+            assert not LEFT_OUT_OF_LIST & set(rows[0]), params
+            assert stored.payment.iban not in json.dumps(rows)
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()["document"]
+        assert _reading(detail) == _reading(stored.model_dump(mode="json"))
+
+
+async def test_the_copy_of_your_records_has_every_letter_whole(data_dir: Path) -> None:
+    """``GET /api/documents.json`` ("Download a copy of your records"): every letter as stored, with its
+    whole reading, in the list's order (newest first). Trash and proof files are left out, as in the
+    list, and no row says where a search found it."""
+    async with api_for(data_dir) as api:
+        tax = await _read_letter(api, TAX_LETTER.pdf(), "bescheid.pdf")
+        invoice = await _read_letter(api, INVOICE_LETTER.pdf(), "rechnung.pdf")
+        trashed = await _read_letter(api, FINE_LETTER.pdf(), "verwarnung.pdf")
+        assert (await api.client.delete(f"/api/documents/{trashed}")).json()["purged"] is False
+        proof = api.ctx.store.add_document(
+            sha256="0" * 64,
+            filename="einlieferungsbeleg.jpg",
+            mime="image/jpeg",
+            file_path="files/einlieferungsbeleg.jpg",
+            source=PROOF_SOURCE,
+            direction="outgoing",
+            status="processed",
+        )
+
+        response = await api.client.get("/api/documents.json")
+        assert response.status_code == 200 and response.headers["content-type"] == "application/json"
+        records = response.json()
+        listed = (await api.client.get("/api/documents")).json()
+        ids = [row["id"] for row in records]
+        assert set(ids) == {tax, invoice} and trashed not in ids and proof.id not in ids
+        assert ids == [row["id"] for row in listed]
+        stored = [api.ctx.store.get_document(row["id"]) for row in records]
+        assert records == [doc.model_dump(mode="json") for doc in stored if doc is not None]
+        assert all(set(row) == set(Document.model_fields) for row in records)
+        whole = next(row for row in records if row["id"] == tax)
+        assert whole["explanation"] and whole["key_facts"] and whole["references"] and whole["sha256"]
+        assert whole["payment"]["iban"]
+
+
+async def test_the_copy_of_your_records_is_for_the_computer_only(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A paired phone gets the letter list, without the reading, but never the copy of your records:
+    the phone listener's allow-list refuses it, and the route refuses it again when the allow-list would
+    have let it through. Records leave the computer only from the computer."""
+    from ordnung.phone import scope as phone_scope
+    from phone_support import pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _, _):
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        async with phone_client(api) as phone:
+            await pair(api, phone)
+            listed = await phone.get("/api/documents")
+            assert listed.status_code == 200, listed.text
+            assert [row["id"] for row in listed.json()] == [doc_id]
+            assert not LEFT_OUT_OF_LIST & set(listed.json()[0])
+
+            refused = await phone.get("/api/documents.json")
+            assert (refused.status_code, refused.json()["code"]) == (403, "computer_only")
+            real = phone_scope.match
+
+            def everything(method: str, path: str) -> object:
+                return real(method, path) or ((method, path), {})
+
+            monkeypatch.setattr(phone_scope, "match", everything)
+            again = await phone.get("/api/documents.json")
+            assert doc_id not in again.text
+            assert (again.status_code, again.json()["code"]) == (403, "computer_only")
+        computer = await api.client.get("/api/documents.json")
+        assert computer.status_code == 200 and [row["id"] for row in computer.json()] == [doc_id]
 
 
 async def test_other_originals_are_downloads(data_dir: Path) -> None:

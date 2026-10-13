@@ -5,7 +5,7 @@
 import { useCallback, useMemo } from "react";
 import { FileText, ListTodo, Signature, Users, type LucideIcon } from "lucide-react";
 import { useContracts, useDocuments, useItems, useParties } from "@/api/hooks";
-import type { Contract, Document, Item, Party } from "@/api/types";
+import type { Contract, Item, ListedLetter, Party } from "@/api/types";
 import type { CitationRef, CiteType } from "./citations";
 import { contractHref } from "@/features/contracts/links";
 
@@ -29,7 +29,7 @@ const KIND: Record<CiteType, { label: string; icon: LucideIcon }> = {
 };
 
 export interface RefSources {
-  documents?: Document[];
+  documents?: ListedLetter[];
   items?: Item[];
   contracts?: Contract[];
   parties?: Party[];

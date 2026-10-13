@@ -14,6 +14,9 @@ connected (:mod:`ordnung.calendar.caldav`; nothing when none is connected). Whil
 notification waits for its first try, the loop wakes up for it instead of sleeping the whole
 interval — a time like 23:50 is never skipped by a check at 23:48 and the next one after midnight.
 
+Its work runs in worker threads, which a cancel can't stop: :meth:`DailyTick.stop` waits for a running one
+(at most :data:`STOP_WAIT_S`), so no thread of the tick still uses the store when it closes next.
+
 It never changes an item's status: overdue is computed on read.
 """
 
@@ -26,7 +29,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, Protocol, TypeVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from ordnung import clock
@@ -50,6 +53,10 @@ MIN_WAKE_S = 30.0
 REVIEW_EVERY = timedelta(days=7)
 LAST_TICK_KEY = "last_tick_date"
 SIMULATED_TODAY_KEY = "simulated_today"
+#: how long a cancelled check waits for its worker thread (calendar sync, the day's work) to end
+STOP_WAIT_S = 10.0
+
+T = TypeVar("T")
 
 
 class Publisher(Protocol):
@@ -166,8 +173,8 @@ class DailyTick:
     async def _new_day(self, today: date, previous: str | None) -> TickResult:
         store = self.ctx.store
         async with ledger_lock():  # the pipeline links and reconciles under the same lock
-            await asyncio.to_thread(roll_forward, store, today, item_contexts())
-            run = await asyncio.to_thread(run_and_reconcile, store, today)
+            await _in_thread(roll_forward, store, today, item_contexts())
+            run = await _in_thread(run_and_reconcile, store, today)
         store.set_meta(LAST_TICK_KEY, today.isoformat())
         self._publish("day.changed", date=today.isoformat(), previous=previous)
         self._publish("suggestions.updated", reason="tick", **run.as_dict())
@@ -182,7 +189,7 @@ class DailyTick:
             return None
         try:
             clock_time = self._now(store).time()
-            return await asyncio.to_thread(
+            return await _in_thread(
                 desktop.morning_notification, store, today, clock_time, sender=self._notifier
             )
         except Exception:
@@ -194,7 +201,7 @@ class DailyTick:
         if self._calendar_sync is None:
             return None
         try:
-            return await asyncio.to_thread(self._calendar_sync, self.ctx.store)
+            return await _in_thread(self._calendar_sync, self.ctx.store)
         except Exception:
             log.exception("calendar sync failed")
             return None
@@ -273,10 +280,35 @@ class DailyTick:
         return self._task
 
     async def stop(self) -> None:
-        """Cancel the loop and any running review."""
+        """Cancel the loop and any running review; a check's worker thread is waited for (at most
+        :data:`STOP_WAIT_S`): once this returns, the tick no longer uses the store."""
         for task in (self._task, self._review):
             if task is not None and not task.done():
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
         self._task = None
+
+
+async def _in_thread(fn: Callable[..., T], /, *args: Any, **kwargs: Any) -> T:
+    """``fn`` in a worker thread (:func:`asyncio.to_thread`). A cancel can't stop the thread: it is waited
+    for — at most :data:`STOP_WAIT_S`, whatever more cancels come meanwhile (two stops at once) — before the
+    cancel goes on, so locks held around the call (the ledger lock) stay held and :meth:`DailyTick.stop`
+    returns once nothing of the tick runs any more."""
+    call = asyncio.ensure_future(asyncio.to_thread(fn, *args, **kwargs))
+    try:
+        return await asyncio.shield(call)
+    except asyncio.CancelledError:
+        deadline = time.monotonic() + STOP_WAIT_S
+        while not call.done() and (left := deadline - time.monotonic()) > 0:
+            with contextlib.suppress(asyncio.CancelledError):  # cancelled again: still waited for
+                await asyncio.wait({call}, timeout=left)
+        if not call.done():
+            log.warning("the daily tick's work was still running after %g s; stopping anyway", STOP_WAIT_S)
+        call.add_done_callback(_forget)  # its outcome is no one's any more
+        raise
+
+
+def _forget(call: asyncio.Future[Any]) -> None:
+    if not call.cancelled():
+        call.exception()  # retrieved, so it is never reported as unretrieved

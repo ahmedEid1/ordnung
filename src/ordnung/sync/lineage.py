@@ -17,6 +17,9 @@ Between this computer's lineage ``L`` and another version's ``H`` (:func:`relati
 * ``diverged`` — anything else: both have changes the other lacks, or two answers to one choice
   contradict each other. The person is asked.
 
+A choice that keeps changes another answer dropped numbers them anew (:func:`keep_this`): two answers given
+apart are asked about once more, and the answer given then stands.
+
 Ranges are inclusive ``(first, last)`` pairs, merged and sorted after every operation.
 """
 
@@ -167,17 +170,35 @@ def bump(lineage: Lineage, computer: str, pnum: int) -> Lineage:
 
 def keep_this(mine: Lineage, others: Iterable[Lineage]) -> Lineage:
     """The person kept this computer's version over ``others``: everything they had that this one
-    hasn't is dropped."""
+    hasn't is dropped.
+
+    Changes of this one that another answer dropped (two answers to one choice, given apart, and the
+    person asked once more) are left out under their old numbers: kept under them, this answer would be
+    at odds with that one again, and the question would come back after every answer. The push numbers
+    them anew instead (:func:`renumbers`): this answer then stands — the other is behind it, and sees it
+    as having decided."""
     others = list(others)
-    seen = union(mine.dropped, *(knowledge(o) for o in others))
-    return make(mine.content, difference(seen, mine.content))
+    contested = intersection(mine.content, union(*(o.dropped for o in others)))
+    content = difference(mine.content, contested)
+    seen = union(mine.dropped, contested, *(knowledge(o) for o in others))
+    return make(content, difference(seen, content))
+
+
+def renumbers(base: Lineage, chosen: Lineage) -> bool:
+    """A choice's lineage leaves out person changes the data it is saved with still holds (``base``'s:
+    :func:`keep_this` or :func:`keep_other` over an answer that dropped them): the push gives them a new
+    person number."""
+    return not subset(base.content, chosen.content)
 
 
 def keep_other(chosen: Lineage, mine: Lineage, others: Iterable[Lineage]) -> Lineage:
-    """The person kept ``chosen`` over this computer's version and ``others``."""
+    """The person kept ``chosen`` over this computer's version and ``others`` (changes of it that an
+    answer dropped are numbered anew, as in :func:`keep_this`)."""
     others = list(others)
-    seen = union(chosen.dropped, knowledge(mine), *(knowledge(o) for o in others))
-    return make(chosen.content, difference(seen, chosen.content))
+    contested = intersection(chosen.content, union(mine.dropped, *(o.dropped for o in others)))
+    content = difference(chosen.content, contested)
+    seen = union(chosen.dropped, contested, knowledge(mine), *(knowledge(o) for o in others))
+    return make(content, difference(seen, content))
 
 
 def relation(local: Lineage, other: Lineage) -> Relation:

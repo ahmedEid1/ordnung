@@ -21,20 +21,21 @@ import { formatFileSize } from "@/lib/format";
 import { cn, plural } from "@/lib/utils";
 
 /**
- * File types Ordnung accepts: PDFs, phone photos, saved e-mails (`.eml` — each PDF or photo attached
- * becomes a letter of its own, as from the watched folder) and plain text — what intake reads.
+ * File types Ordnung accepts: PDFs, phone photos, saved e-mails (`.eml`, or Outlook's `.msg`, which the
+ * server keeps as an `.eml` copy — each PDF or photo attached becomes a letter of its own, as from the
+ * watched folder) and plain text — what intake reads.
  */
 export const ACCEPT =
-  "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,message/rfc822,text/plain,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.eml,.txt";
+  "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,message/rfc822,application/vnd.ms-outlook,text/plain,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.eml,.msg,.txt";
 /** The accepted types in words (the "skipped" message names them). "e‑mail" has a non-breaking hyphen (U+2011). */
-export const ACCEPTED_TYPES = "PDFs, photos (JPG, PNG, WEBP, HEIC), saved e‑mails (.eml) and text files";
+export const ACCEPTED_TYPES = "PDFs, photos (JPG, PNG, WEBP, HEIC), saved e‑mails (.eml, Outlook .msg) and text files";
 /** What can be added, said short (drop zone, empty states, onboarding): "PDFs, phone photos or saved e‑mails". */
 export const ACCEPTED_SHORT = "PDFs, phone photos or saved e‑mails";
 /** One of them: "a PDF, a phone photo or a saved e‑mail". */
 export const ACCEPTED_ONE = "a PDF, a phone photo or a saved e‑mail";
 
 const isImage = (f: File) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(f.name);
-const isEmail = (f: File) => f.type === "message/rfc822" || /\.eml$/i.test(f.name);
+const isEmail = (f: File) => f.type === "message/rfc822" || f.type === "application/vnd.ms-outlook" || /\.(eml|msg)$/i.test(f.name);
 const isText = (f: File) => isEmail(f) || f.type === "text/plain" || /\.(eml|txt)$/i.test(f.name);
 const isAccepted = (f: File) => isImage(f) || isText(f) || f.type === "application/pdf" || /\.pdf$/i.test(f.name);
 

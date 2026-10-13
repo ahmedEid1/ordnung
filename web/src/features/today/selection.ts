@@ -15,10 +15,10 @@ import { addDays, differenceInCalendarDays, format, parseISO, startOfWeek } from
 import type {
   Contract,
   Dashboard,
-  Document,
   DraftKind,
   Item,
   ItemKind,
+  ListedLetter,
   Priority,
   Suggestion,
 } from "@/api/types";
@@ -84,7 +84,7 @@ export interface TodayAction {
 export interface CandidateContext {
   today: string;
   /** Documents with status "Please check" (their warnings explain why). */
-  reviewDocs?: readonly Pick<Document, "id" | "warnings">[];
+  reviewDocs?: readonly Pick<ListedLetter, "id" | "warnings">[];
   /** Letter titles by document id — the last-resort reason ("From “Library: overdue books”"). */
   docTitles?: ReadonlyMap<string, string>;
 }

@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode }
 import { Link, useNavigate } from "react-router";
 import { Building2, Check, FileX, Languages, Mail, Plus, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
 import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile, useSuggestions } from "@/api/hooks";
-import type { Contract, Document, DraftKind, Party } from "@/api/types";
+import type { Contract, DraftKind, ListedLetter, Party } from "@/api/types";
 import { useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -86,13 +86,13 @@ const PLACEHOLDER: Record<"cancellation" | "objection" | "general_reply", string
 };
 
 /** An objection's example wishes by the kind of letter it answers (a tax example fits only a tax letter). */
-const OBJECTION_PLACEHOLDER: Partial<Record<NonNullable<Document["kind"]>, string>> = {
+const OBJECTION_PLACEHOLDER: Partial<Record<NonNullable<ListedLetter["kind"]>, string>> = {
   court_payment_order: "e.g. I cancelled this subscription in 2022 and owe nothing.",
   enforcement_order: "e.g. I never received the payment order this is based on.",
   landlord_notice: "e.g. My child changes school next year, and I have nowhere else to go.",
 };
 
-function wishesPlaceholder(kind: DraftKind, letterKind?: Document["kind"] | null): string {
+function wishesPlaceholder(kind: DraftKind, letterKind?: ListedLetter["kind"] | null): string {
   if (isTemplateKind(kind)) return TEMPLATE_BY_KIND[kind].wishes;
   if (kind === "objection" && letterKind) return OBJECTION_PLACEHOLDER[letterKind] ?? PLACEHOLDER.objection;
   return PLACEHOLDER[kind];
@@ -243,7 +243,7 @@ function ContractOption({ c, party }: { c: Contract; party?: Party }) {
   );
 }
 
-function DocOption({ d, party, pill }: { d: Document; party?: Party; pill?: ReactNode }) {
+function DocOption({ d, party, pill }: { d: ListedLetter; party?: Party; pill?: ReactNode }) {
   const date = letterDate(d);
   return (
     <>
@@ -339,7 +339,7 @@ function ChoiceList<T extends { id: string }>({
 }
 
 /** The letter chosen for an objection that can't be objected to — shown as chosen, not as a choice. */
-function ChosenLetter({ d, party }: { d: Document; party?: Party }) {
+function ChosenLetter({ d, party }: { d: ListedLetter; party?: Party }) {
   return (
     <div className="mb-2 flex items-center gap-3 rounded-xl border border-warn/40 bg-surface px-3 py-2.5" data-chosen-letter>
       <span className="sr-only">The letter you chose: </span>
@@ -406,7 +406,7 @@ const NOTHING: Record<NothingKind, { title: string; body: string; card: string; 
 
 
 /** Why an objection is possible when the law, not the letter's instructions, gives it. */
-function StatutoryNote({ kind, term }: { kind: Document["kind"]; term: "Einspruch" | "Widerspruch" }) {
+function StatutoryNote({ kind, term }: { kind: ListedLetter["kind"]; term: "Einspruch" | "Widerspruch" }) {
   if (kind === "landlord_notice") {
     return (
       <>
@@ -522,9 +522,9 @@ export function LetterComposer({ open, onClose, prefill }: LetterComposerProps) 
 }
 
 /** `docs` with the letters of `kinds` first, each group in its own order. */
-function fittingFirst(docs: Document[], kinds: readonly Document["kind"][] | undefined): Document[] {
+function fittingFirst(docs: ListedLetter[], kinds: readonly ListedLetter["kind"][] | undefined): ListedLetter[] {
   if (!kinds?.length) return docs;
-  const fits = (d: Document) => kinds.includes(d.kind);
+  const fits = (d: ListedLetter) => kinds.includes(d.kind);
   return [...docs.filter(fits), ...docs.filter((d) => !fits(d))];
 }
 
@@ -544,7 +544,7 @@ function TemplateRecipient({
   claimant = false,
 }: {
   config: TemplateConfig;
-  docs: Document[];
+  docs: ListedLetter[];
   docId: string | null;
   setDocId: (id: string | null) => void;
   partyId: string | null;

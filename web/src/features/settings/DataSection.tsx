@@ -29,7 +29,8 @@ async function buildExport() {
   const [profile, settings, documents, items, contracts, parties, drafts, suggestions, traces] = await Promise.all([
     api.profile(),
     api.settings(),
-    api.documents(), // no limit: every letter (the API caps an explicit limit at 1000)
+    // every letter whole, as stored (computer only): the letter list leaves out each letter's reading
+    api.documentsFull(),
     api.items({ include_undated: true }), // no limit: every to-do (explicit limits stop at 5000)
     api.contracts(),
     api.parties(),

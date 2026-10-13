@@ -9,7 +9,7 @@ goes where.
 
 | Data | Where it lives | Leaves your computer? |
 |---|---|---|
-| Original files (PDFs, photos) | `<data dir>/files/` | Never by Ordnung itself |
+| Original files (PDFs, photos, e-mails; an Outlook e-mail as its `.eml` copy) | `<data dir>/files/` | Never by Ordnung itself |
 | Your watched folder (optional) | wherever you chose | Ordnung only lists and reads it; a file there is copied in and **waits for you** before anything of it goes to Claude, unless you let new arrivals be read at once ([below](#the-watched-folder)) |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
@@ -123,7 +123,8 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
   its attachments kept private with it wait again too).
 - **E-mail attachments follow the e-mail** — each PDF or photo attached to an e-mail you add becomes
   a letter of its own with the e-mail's choice: attachments of a private e-mail stay private, those of
-  a waiting e-mail wait with it.
+  a waiting e-mail wait with it. An e-mail saved from Outlook (`.msg`) is opened on this computer and kept
+  as an `.eml` copy; the `.msg` itself isn't kept, so keep it yourself if you need the original.
 - **Delete means delete** — deleting a letter removes it for good: the original, page images (and
   the text a scanner added to it), everything read from it, its to-dos and Ideas, its search-index
   entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
@@ -260,10 +261,10 @@ into — best a folder just for letters. It is off until you choose one.
   touched; Ordnung's own inbox folder lives inside its data folder and is deleted with it — every file
   in it, even ones Ordnung couldn't add (the Delete-everything dialog says so).
 
-E-mails in the folder wait with their attachments, and *Read these* for an e-mail reads what it
-brought as well. Pictures inside an e-mail (logos, tracking pixels, banners) are never read — a photo
-of a letter pasted into an e-mail is read like an attached one — and nothing in an e-mail is ever
-fetched from the internet.
+E-mails in the folder (`.eml`, or Outlook's `.msg` as its `.eml` copy) wait with their attachments, and
+*Read these* for an e-mail reads what it brought as well. Pictures inside an e-mail (logos, tracking
+pixels, banners) are never read — a photo of a letter pasted into an e-mail is read like an attached one —
+and nothing in an e-mail is ever fetched from the internet.
 
 ## Searchable scans
 
@@ -366,7 +367,8 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
   the weekly Ideas. The exact list is checked before a request reaches the rest of Ordnung, and anything
   not on it is refused.
 - **Your letters stay on the computer.** Photos taken on the phone go straight to the computer, every
-  answer the phone gets is marked not to be stored, and the phone keeps no copy. On the phone, *My
+  answer the phone gets is marked not to be stored, and the phone keeps no copy. The letter list no longer
+  carries bank details or key facts: a letter's page loads them when you open it. On the phone, *My
   numbers* and your profile's IBAN show only their last 4 characters ([above](#my-numbers)). A letter
   shows what is printed on it, though — also a letter you write: one that asks for money back on your
   account (such as the deposit return) carries your IBAN in full, on the phone too. A single
@@ -655,7 +657,8 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   refused, so a hostile file can't exhaust your computer's memory or keep the check busy for minutes. A PDF whose protection or structure
   can't be checked this way is refused, with the hint to print it to a new PDF. A refused file leaves
   nothing behind, and a PDF whose objects refer to themselves can't hang the reading of its text: its
-  pages are read from their images instead.
+  pages are read from their images instead. An Outlook file is opened from memory, within limits on its
+  size and structure, and its `.eml` copy then passes the same checks.
 - The local web server listens on `127.0.0.1` and answers only requests addressed to this computer
   (`localhost` or `127.0.0.1`), and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict
@@ -669,6 +672,12 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   request of at most 1 KiB; afterwards only what the phone's allow-list names. It takes at most 128
   connections at once, and logs refusals as counts — never a code, sign-in or cookie
   ([ADR 0017](decisions/0017-phone-access-over-the-home-network.md)).
+- Answers are compressed (gzip) only when they are a JSON answer to a GET that sets no cookie, or one of
+  the web app's own files, such as its scripts and styles, which hold nothing of yours; signing in,
+  pairing, downloads, a letter's files and live updates never are, and TLS's own compression is off on the
+  phone listener. An attack that reads secrets out of compressed HTTPS needs a website to make your phone
+  send Ordnung many requests, and the phone listener refuses requests from other sites
+  ([ADR 0022](decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).
 
 ## Using Ordnung from Claude Desktop or Claude Code
 

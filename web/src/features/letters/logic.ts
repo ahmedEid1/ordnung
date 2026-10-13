@@ -13,12 +13,12 @@ import {
   SEND_CHANNELS,
   type Area,
   type Contract,
-  type Document,
   type Draft,
   type DraftCheck,
   type DraftKind,
   type Item,
   type LetterAdvice,
+  type ListedLetter,
   type Remedy,
   type SendChannel,
   type SendChannelKind,
@@ -92,7 +92,7 @@ export function adviceFor(area: Area | null | undefined): AdviceLink[] {
  * The remedy the law gives these letters, whatever their instructions were read as (mirrors
  * `STATUTORY_REMEDIES` in `src/ordnung/drafts/templates.py`).
  */
-export const STATUTORY_REMEDY: Partial<Record<NonNullable<Document["kind"]>, "Einspruch" | "Widerspruch">> = {
+export const STATUTORY_REMEDY: Partial<Record<NonNullable<ListedLetter["kind"]>, "Einspruch" | "Widerspruch">> = {
   court_payment_order: "Widerspruch",
   enforcement_order: "Einspruch",
   landlord_notice: "Widerspruch",
@@ -105,7 +105,7 @@ export const STATUTORY_REMEDY: Partial<Record<NonNullable<Document["kind"]>, "Ei
  * one (`compose.objection_remedy`) with the card's words.
  */
 export function objectionCheck(
-  doc: (Pick<Document, "remedy" | "area"> & Partial<Pick<Document, "kind">>) | null | undefined,
+  doc: (Pick<ListedLetter, "remedy" | "area"> & Partial<Pick<ListedLetter, "kind">>) | null | undefined,
   card?: LetterAdvice | null,
 ): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
@@ -171,15 +171,15 @@ export function objectionCheck(
 }
 
 /** Papers nobody writes back to: an ID document or a payslip is kept, never answered. */
-const NOT_ANSWERED = new Set<Document["kind"]>(["identity_document", "payslip"]);
+const NOT_ANSWERED = new Set<ListedLetter["kind"]>(["identity_document", "payslip"]);
 
 /** The date a letter is known by: its own date, else the day it arrived. */
-export function letterDate(d: Pick<Document, "doc_date" | "received_date">): string | null {
+export function letterDate(d: Pick<ListedLetter, "doc_date" | "received_date">): string | null {
   return d.doc_date ?? d.received_date ?? null;
 }
 
 /** Documents a letter can relate to (read, not in the trash, not an ID or a payslip) — newest first. */
-export function usableDocuments(docs: Document[]): Document[] {
+export function usableDocuments(docs: ListedLetter[]): ListedLetter[] {
   return docs
     .filter((d) => !d.deleted_at && (d.status === "processed" || d.status === "needs_review") && !NOT_ANSWERED.has(d.kind))
     .sort((a, b) => ((letterDate(b) ?? "") < (letterDate(a) ?? "") ? -1 : 1));
@@ -193,7 +193,7 @@ export function objectionDeadline<T extends DeadlineItem>(items: readonly T[]): 
   return open.sort((a, b) => (a.due_date! < b.due_date! ? -1 : a.due_date! > b.due_date! ? 1 : 0))[0] ?? null;
 }
 
-export function objectionDocuments(docs: Document[]): Document[] {
+export function objectionDocuments(docs: ListedLetter[]): ListedLetter[] {
   return usableDocuments(docs).filter((d) => objectionCheck(d).ok);
 }
 
@@ -446,7 +446,7 @@ export function plainText(message: string): string {
  * authority's decision — not a court payment order (nothing to enforce yet) or a landlord's notice.
  * The composer asks it (an explicit choice), so "Draft objection" on such a letter opens the composer.
  */
-export function canSuspend(doc: Pick<Document, "kind"> | null): boolean {
+export function canSuspend(doc: Pick<ListedLetter, "kind"> | null): boolean {
   return Boolean(doc) && doc!.kind !== "court_payment_order" && doc!.kind !== "landlord_notice";
 }
 
@@ -480,7 +480,7 @@ export function mayBeCourt(name: string | null | undefined): boolean {
  * `objection_to_typed_court`, review round 3 of phase 2).
  */
 export function needsTypedCourt(
-  doc: Pick<Document, "kind" | "remedy"> | null,
+  doc: Pick<ListedLetter, "kind" | "remedy"> | null,
   party: { name: string } | null | undefined,
 ): boolean {
   if (!doc || (doc.kind !== "court_payment_order" && doc.kind !== "enforcement_order")) return false;

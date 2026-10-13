@@ -140,7 +140,8 @@ Python ≥ 3.11: FastAPI, uvicorn, Pydantic v2, Typer, Rich, sqlite3 (WAL, FTS5)
 pypdfium2, Pillow + pillow-heif, holidays, python-dateutil, icalendar, fpdf2, rapidfuzz, platformdirs,
 sse-starlette, python-multipart, httpx, mcp v2 (`mcp.server.mcpserver.MCPServer`), cryptography
 (backups, phone access certificates, hand-off sync), keyring (calendar sync's and hand-off sync's password
-store), ifaddr (phone access: the network interfaces with their netmasks), hypothesis (dev).
+store), ifaddr (phone access: the network interfaces with their netmasks), olefile (Outlook `.msg` files),
+hypothesis (dev).
 Frontend: Vite 8, React 19, TypeScript 5.9, Tailwind 4, React Router 8, TanStack Query, lucide-react,
 date-fns, recharts, motion, @fontsource (Inter, Fraunces). Tooling: uv, ruff, mypy, pytest, vitest,
 Playwright + @axe-core/playwright, GitHub Actions.
@@ -172,9 +173,12 @@ Key additions in v2 (to implement in models.py):
 - `Page.text_source: Literal["text","transcript","none"]`.
 - `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
   `purpose: LLMPurpose` Literal.
-- `DocumentListEntry` (`Document` + `found_in`: `letter`, `scanner_text`, or `null` without a search) is what
-  `GET /api/documents` lists, made by the route and never stored — `Document` stays what Ask's ledger
-  fingerprint hashes; `DocumentDetail.scan_text_pages` (the pages whose scanner text is kept for search only,
+- `DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`,
+  `explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, or `null`
+  without a search) is what `GET /api/documents` lists, made by the route and never stored — `Document` stays
+  what Ask's ledger fingerprint hashes, and `models.DocumentListEntry` (the whole letter plus `found_in`) stays
+  unused, because editing `models.py` changes the benchmark's code digest (ADR 0022);
+  `DocumentDetail.scan_text_pages` (the pages whose scanner text is kept for search only,
   never the text; § 8); `Profile.moved_on` (`null`: no move told) and `Profile.old_address` (the moving
   checklist, § 9).
 
@@ -708,7 +712,8 @@ limit, `source="email:<the e-mail's id>"`, the e-mail's arrival date and its pri
 or held). At most 10 attachments per e-mail are read, the first in the message; pictures inside the
 e-mail are skipped (under 64 KB and shown by a `cid:` link or not marked as an attachment; or shown by
 a `cid:` link with a shorter side under 800 px, a banner) — a photo of a letter pasted into the text is
-read; a zip, Word file, calendar invite, text file or forwarded e-mail is listed and not read. What
+read; a zip, Word file, calendar invite, text file or forwarded e-mail is listed and not read, and so is
+an attached Outlook or older Office file (an OLE file), even one whose first bytes hold a PDF. What
 became of each (`added`, `known`, `inline`, `not_read`, `refused` with the intake's reason,
 `over_limit`; with the linked letter's status now) is written to the activity log on the e-mail and
 shown on it, with the number of parts past the 50 listed; an attachment shows the e-mail it came
@@ -731,13 +736,35 @@ for the parser is refused with a reason. An e-mail title is its subject and send
 or held (no model). Adding a trashed e-mail again restores its attachments too; adding an e-mail again
 whose adding was stopped before its attachments adds them.
 
+**Outlook files** (`ingest/outlook.py`, policy in its docstring). An Outlook `.msg` (an OLE compound file,
+whatever its name) becomes the `.eml` copy Ordnung stores, named like the file (`Rechnung.msg` →
+`Rechnung.eml`), before intake looks at its bytes, at every way in: upload and the phone, the watched folder,
+`ordnung add` and proof of a sent letter (still one file, its attachments no letters). So one whose first
+bytes hold an attached PDF is never taken for a PDF. olefile reads it from memory, strictly (every defect from
+`DEFECT_INCORRECT` up is an error), within limits: 50 MB in and out, 20,000 directory entries counted before
+olefile builds them, a FAT (the map of the file's sectors) read only as far as the file reaches, no stream
+larger than the file, at most twice the file read in all, 500 attachments of which 50 keep their bytes (later
+ones by name only), 500 recipients, a header value at most 998 characters without control characters; a tree
+too deep for the parser, or any parser error, is "damaged", and so is a file named `.msg` that intake wouldn't
+take either (emptied or cut short). Only e-mails (`IPM.Note`, `IPM.Note.*`) are opened: a signed or encrypted
+one, a meeting invitation, calendar entry, contact or task, an older Word, Excel or PowerPoint file and any
+other OLE file are refused, each with its reason and what to do. The copy keeps From, To, Cc, Date,
+Subject, Message-ID, In-Reply-To, References and Reply-To (from Outlook's copy of the original internet
+headers when it kept one, else from the message's properties; never Bcc, nor an Exchange-only address), the
+plain and the HTML text (a text kept only as RTF isn't converted: the e-mail comes in without text, and no
+sentence is added) and each attachment's bytes, name, type and Content-ID (a text type becomes
+`application/octet-stream`); an attached e-mail is listed, never opened, and an OLE object or a link keeps
+only its name. The same file always gives the same copy (no made-up Date or Message-ID; MIME boundaries from
+the file's SHA-256), so adding it again finds the letter already there. The `.msg` itself is not kept.
+
 ### 8.1 The watched folder — `ingest/watcher.py`
 
 `FolderWatcher` runs in the server's lifespan next to the worker and the daily tick while
 `settings.inbox_dir` is set, and restarts when the setting changes (policy in its docstring):
 
 - Files directly in the folder with a type Ordnung reads (`.pdf .jpg .jpeg .png .webp .heic .heif
-  .txt .eml`, any case); sub-folders are not entered and symbolic links never followed; partial and
+  .txt .eml .msg`, any case), an Outlook `.msg` as its `.eml` copy (§ 8; whether it was picked up before
+  is decided by the file itself); sub-folders are not entered and symbolic links never followed; partial and
   temporary files (`.part`, `.partial`, `.crdownload`, `.download`, `.tmp`, `.temp`, `~$…`, dotfiles,
   `…~`) are ignored.
 - A file counts once its size and modification time have not changed for 2 s and it is not empty.
@@ -782,6 +809,9 @@ whose adding was stopped before its attachments adds them.
   due, and — in `ordnung serve` — calendar sync sends what changed to a connected calendar (§ 12).
   While today's notification waits for its first try the loop wakes up for it (its time, or a
   minute after start-up) instead of sleeping the whole 15 minutes.
+  Its work runs in worker threads, and stopping it (Ordnung stops, or hand-off sync stands this computer by)
+  waits for a running one, at most 10 s (`STOP_WAIT_S`): the ledger lock stays held until the day's work has
+  ended, and no thread of the tick still uses the store once it closes.
 - **Triggers** (`run_triggers(store, today) -> dict[rule_id, list[Suggestion]]`, then
   `reconcile_suggestions` expires absent ones; after an edit through the API they run in the background
   — `IngestWorker.refresh_ideas`: one run at a time, an edit made meanwhile gets one more — so the
@@ -1424,11 +1454,12 @@ detached.
   `phone_not_paired`, or 409 `unavailable` when phone access stopped) and lets every other request finish
   — an upload that arrived is answered as filed; a request that isn't a stream runs shielded from the
   listener's own stop, which waits up to 30 s for what is in flight.
-- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (59)
+- **What a phone may do** (`phone/scope.py`). `PHONE_ROUTES` (57 operations) and `COMPUTER_ONLY` (60)
   cover every operation of the API; `NEVER_ON_PHONE` (part of `COMPUTER_ONLY`) says why settings,
   profile edits, phone access, backups, deleting, originals (a letter's file and the letters ZIP),
   held-letter decisions and hand-off sync stay on the computer, and the calendar files (`calendar.ics`,
-  `items/{id}.ics`, `calendar/exported`) are computer-only too. `classify` runs before routing (HEAD counts as GET; a path several templates
+  `items/{id}.ics`, `calendar/exported`) and every letter whole (`documents.json`) are computer-only too.
+  `classify` runs before routing (HEAD counts as GET; a path several templates
   match is a phone's only when every match is; no match is refused); `mark_openapi` adds
   `x-ordnung-phone: true`.
   Computer-only handlers check again (`require_computer`: the phone admin routes, `PUT /api/settings`,
@@ -1500,7 +1531,11 @@ outside the database, Delete everything leaves first, a restored backup starts w
   writes); a save reads it from its own snapshot. Background work never makes a version newer, so it never
   causes a question. A head may claim a computer's numbers only up to that computer's published `pnum`.
   Order comes from epochs and lineage, never clocks. `decide(local, view, action)` is pure: save, bring a
-  late change in quietly, ask (a choice), wait, stand by or claim. At start the counters are raised to what
+  late change in quietly, ask (a choice), wait, stand by or claim. A choice that keeps changes another answer
+  dropped (two answers given apart, and the person asked once more) leaves them out under their old numbers,
+  and the save numbers them anew (`lineage.renumbers`), so the answer given then stands; a version with the
+  same content as one another computer kept in a choice counts what that choice dropped as answered
+  (`decide._informed`), so it isn't asked again. At start the counters are raised to what
   the folder shows, and a database older than this computer's last save is a rollback (a kept copy, then
   that save brought back, with a notice), never a person change.
 - **Saving** (`sync/push.py`), on the computer in use only: 2 s after the person's last write, 10 s after
@@ -1603,13 +1638,23 @@ every change and `X-Ordnung-Client` (403 `cross_site`); then the device cookie �
 answer there carries `Cross-Origin-Resource-Policy: same-origin` and a `Permissions-Policy`. The
 session token, a bearer header and `?token=` are never accepted on the phone listener, and the device
 cookie never on the computer's. Refusals answer `{detail, code}` with the status `ERROR_STATUS` gives.
+Compression (`api/compress.py`, ADR 0022): on both listeners, a JSON answer to a `GET` that takes gzip goes
+out gzipped when it is a `200` of at least 1 KiB in one message (level 6; from 128 KiB in a thread) and has
+no `Set-Cookie`, `Content-Disposition`, `ETag`, `Accept-Ranges`, `Content-Range`, `Content-Encoding` or
+`Cache-Control: no-transform`, and gzip makes it smaller; such an answer says `Vary: Accept-Encoding`. Streams,
+downloads, files, pages, range requests and writes are never compressed, and request bodies are never
+decompressed. The web app's `.js`, `.css`, `.svg`, `.txt` and `.json` files are gzipped once and kept in
+memory (never `index.html`, `HEAD` or a range request), and the phone listener's TLS has `OP_NO_COMPRESSION`.
+No compressed answer carries a secret today; a new `GET` whose JSON answer would carry one (a code, a token, a
+password or a key) gets a test that proves it is never compressed.
 
 Endpoints (all under `/api`): `health`, `profile` (GET/PUT; PUT and `onboarding` take `moved_on`, the day the
 person says they moved in — `""` clears it, and outside the last six months or the next three it is refused
 with 422 "Ordnung's moving checklist is for a move in the last six months or the next three — check the day." —
 and `old_address`, at most 1000 characters; a new, changed or cleared move refreshes the Ideas), `settings`
 (GET/PUT), `onboarding` (POST), `documents` (POST upload `files[]`, `combine`, `private`; GET list:
-`DocumentListEntry` rows, each with `found_in` — `letter`, or `scanner_text` when only a scan's scanner text
+`DocumentRow` rows (without `key_facts`, `explanation`, `references`, `payment` and `sha256`: the letter's
+detail has them), each with `found_in` — `letter`, or `scanner_text` when only a scan's scanner text
 matched `q` (ADR 0020); `null` without `q`), `documents/{id}`
 (GET detail, with `region_suggestion`: the question about the sender's state for this letter, its `waiting`
 counting this letter's open dates, `addressed_to`: who the letter is addressed to, as read, when that
@@ -1625,7 +1670,9 @@ for Windows, macOS and Linux and unique in its folder whatever the case, the byt
 `index.csv` (UTF-8 with a BOM, semicolons, CRLF, a `'` before a cell that would start a formula) at the root;
 an original that is missing, or a link out of the data folder, is listed with an empty `file` and never
 followed; `attachment` named `ordnung-letters[-for-taxes][-<year>|-<today>].zip`, `no-store`; `letters_zip.py`;
-computer-only, writes nothing), `documents/{id}/reprocess` (POST), `documents/{id}/trace`
+computer-only, writes nothing), `documents.json` (GET: every letter whole, as stored, newest first, without
+trash and proof files — the letters of *Download a copy of your records*; computer-only),
+`documents/{id}/reprocess` (POST), `documents/{id}/trace`
 (`?run=` a reading's trace id; default the newest kept: its steps, their model calls and the kept
 readings), `documents/{id}/trace/compare` (`?base&head`: what a later reading decided differently;
 `base` defaults to the newest earlier reading that was done, not a paused or stopped attempt),
@@ -1716,10 +1763,11 @@ Contracts carry `cancellable` + `cancel_hint`, worked out on read (not for the b
 obligations towards authorities or a job — a job gets "Draft resignation").
 
 View models (in models.py): `Dashboard`, `TimelineEntry`, `Lane{id,label,area,bars[]}`,
-`LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `DocumentListEntry`, `PartyDetail`,
+`LaneBar{id,label,start,end,kind,marker_dates[],ref}`, `DocumentDetail`, `PartyDetail`,
 `CaseDetail`, `UsageStats`, `Health`, `RuleInfo`, `TourState`, `MailTrayItem`, `EmailAttachment`,
 `FolderStatus`, `FolderPickup`, `DocumentTrace`,
 `TraceRun`, `TraceSpan`, `TraceComparison`, `TraceExport`. Live event `folder.updated` {state, doc_id?, held?}.
+The letter list's `DocumentRow` lives next to its route (§ 4).
 Hand-off sync's models live next to their routes (`SyncStatus`, `SyncComputer`, `SyncArriving`,
 `SyncProblem` with `actions`, `SyncChoice`, `SyncSide`, `SyncKept`, `SyncNotice`, `SyncFolderInfo`); live event
 `sync.updated` {replaced} (`replaced`: the data was replaced, every page reloads its data).

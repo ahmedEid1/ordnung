@@ -15,8 +15,9 @@ import { PROOF_DAY_LABEL, SENDING_DAY_KINDS, proofKindsFor } from "./proof";
 const NOTE_MAX = 500;
 /** From this many characters left, the note says how many remain. */
 const NOTE_COUNT_FROM = 100;
-/** What the file picker offers (the server checks every file like any upload). */
-const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.eml,message/rfc822,text/plain";
+/** What the file picker offers (the server checks every file like any upload; an Outlook `.msg` is kept as its
+ * `.eml` copy). */
+const ACCEPT = "application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.eml,message/rfc822,.msg,application/vnd.ms-outlook,text/plain";
 export const FILE_REQUIRED = "Choose the photo or PDF of the proof.";
 
 export interface AddProofDialogProps {

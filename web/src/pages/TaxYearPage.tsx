@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { Download, Landmark } from "lucide-react";
-import type { Document } from "@/api/types";
+import type { ListedLetter } from "@/api/types";
 import { useDocuments, useParties } from "@/api/hooks";
 import { Page, PageHeader } from "@/components/shell/Page";
 import { Button, buttonVariants } from "@/components/ui/Button";
@@ -30,7 +30,7 @@ const DESCRIPTION =
 const NO_TO_DOS = new Map<string, OpenSummary>();
 
 /** Under each letter: Claude's note on why it could matter for taxes ("Marked for taxes." without one). */
-function TaxNote({ doc }: { doc: Document }) {
+function TaxNote({ doc }: { doc: ListedLetter }) {
   return (
     <span className="flex items-start gap-1.5 text-k-expiry-ink">
       <Landmark className="mt-[3px] size-3.5 shrink-0" aria-hidden />
@@ -49,7 +49,7 @@ function TaxNote({ doc }: { doc: Document }) {
 }
 
 /** "1 letter for taxes has no date, so it isn't in any year: “Laptop receipt”." — each title a link. */
-function UndatedLine({ docs }: { docs: Document[] }) {
+function UndatedLine({ docs }: { docs: ListedLetter[] }) {
   const one = docs.length === 1;
   return (
     <p className="mt-6 text-sm leading-6 text-muted [overflow-wrap:anywhere]">

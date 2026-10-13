@@ -24,7 +24,9 @@ The policy, which decides every case:
   (it is an archive, not an inbox; the reason is shown): choose a folder just for letters.
 * **Intake** — every file goes through the normal intake with all its limits
   (:func:`~ordnung.ingest.pipeline.add_file_result`), ``source="folder"``; at most 50 MB of a file is
-  read, so a larger one is refused without being loaded whole. A name that is not valid UTF-8 (a
+  read, so a larger one is refused without being loaded whole. An Outlook ``.msg`` is added as its
+  ``.eml`` copy (:mod:`ordnung.ingest.outlook`); whether a file was taken before, or is Ordnung's own,
+  is still decided by the file's own bytes. A name that is not valid UTF-8 (a
   Windows archive, a network drive) is shown as Windows-1252; the file itself is opened by its real
   name. A PDF Ordnung itself made (a letter drafted for the person, downloaded into the folder) is
   never added as a letter received (:mod:`ordnung.ingest.own_files`).
@@ -33,8 +35,10 @@ The policy, which decides every case:
   on, files that **arrive** after the folder was chosen are read at once; the files that were already
   in it when it was chosen always wait (choosing ``~/Downloads`` must not send every file in it to
   Claude). Choosing a folder again — after "Stop watching" or another folder — counts as choosing it
-  (:func:`folder_chosen`): what came in meanwhile waits too; a restart does not. Where letters can't be read at all (the zero-token demo), files are always held. A copy
-  of a waiting file never answers for it.
+  (:func:`folder_chosen`): what came in meanwhile waits too; a restart does not. After an update that
+  watches more types (Outlook ``.msg`` files), the files of those types already in the folder count as
+  there when it was chosen: they wait too. Where letters can't be read at all (the zero-token demo),
+  files are always held. A copy of a waiting file never answers for it.
 * **Read-only** — the folder is only listed and read (``O_NOFOLLOW``): nothing in it is ever written,
   moved or deleted.
 * **Errors never stop the server** — a refused file (a limit, a file Ordnung isn't allowed to read)
@@ -73,6 +77,7 @@ from watchfiles import awatch
 
 from ordnung.db.store import Store, background_context, person_write
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
+from ordnung.ingest.outlook import as_email
 from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
 from ordnung.models import FolderOutcome, FolderPickup, FolderState
@@ -83,7 +88,12 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 SOURCE = "folder"
-WATCHED_SUFFIXES = frozenset({".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".txt", ".eml"})
+WATCHED_SUFFIXES = frozenset(
+    {".pdf", ".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".txt", ".eml", ".msg"}
+)
+#: The types watched before the record of the files there when a folder was chosen named them (0.2.0):
+#: Outlook files were left alone then, so the ones already in the folder count as there when it was chosen.
+EARLIER_SUFFIXES = WATCHED_SUFFIXES - {".msg"}
 PARTIAL_SUFFIXES = (".part", ".partial", ".crdownload", ".download", ".tmp", ".temp")
 SETTLE_S = 2.0
 RESCAN_S = 60.0
@@ -343,6 +353,9 @@ class FolderWatcher:
         self._seen: list[str] = []
         self._seen_set: set[str] = set()
         self._baseline: set[str] = set()
+        #: Types watched now but not when the folder's baseline was saved (an update): on the first listing,
+        #: the files of these types already there join the baseline.
+        self._newly_watched: frozenset[str] = frozenset()
         #: Whether hand-off sync is connected (set by the API): files are then the person's changes and
         #: remembered across computers (:data:`TAKEN_META_KEY`).
         self.sync_on: Callable[[], bool] | None = None
@@ -487,6 +500,15 @@ class FolderWatcher:
                     first_watch = False
                     self._baseline = set(keys.values()) - self._seen_set
                     self._save_baseline(folder)
+                elif self._newly_watched:  # updated: files of a type left alone before were there already
+                    self._baseline |= {
+                        key
+                        for name, key in keys.items()
+                        if PurePosixPath(name.lower()).suffix in self._newly_watched
+                        and key not in self._seen_set
+                    }
+                    self._newly_watched = frozenset()
+                    self._save_baseline(folder)
                 self._forget_absent(set(keys.values()))
                 last_listing, list_now = now, False
                 if not watching:
@@ -539,9 +561,10 @@ class FolderWatcher:
             return
         hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
+            body, stored_name = await asyncio.to_thread(as_email, data, name)  # an Outlook .msg: its .eml
             with person_write(syncing):  # the person's scan: hand-off sync counts it as their change
                 added = await add_file_result(
-                    self.ctx, data, name, hold=hold, source=SOURCE, restore_trashed=False
+                    self.ctx, body, stored_name, hold=hold, source=SOURCE, restore_trashed=False
                 )
         except IntakeError as exc:
             self._refused(name, str(exc))
@@ -626,15 +649,23 @@ class FolderWatcher:
             stored = json.loads(self.ctx.store.get_meta(BASELINE_META_KEY) or "{}")
         except ValueError:
             stored = {}
+        self._newly_watched = frozenset()
         if not isinstance(stored, dict) or stored.get("folder") != str(folder):
             self._baseline = set()
             return True
         keys = stored.get("keys")
         self._baseline = {key for key in keys if isinstance(key, str)} if isinstance(keys, list) else set()
+        suffixes = stored.get("suffixes")
+        watched = set(suffixes) if isinstance(suffixes, list) else EARLIER_SUFFIXES  # none saved: 0.2.0
+        self._newly_watched = WATCHED_SUFFIXES - watched
         return False
 
     def _save_baseline(self, folder: Path | None) -> None:
-        payload = {"folder": str(folder or ""), "keys": sorted(self._baseline)}
+        payload = {
+            "folder": str(folder or ""),
+            "keys": sorted(self._baseline),
+            "suffixes": sorted(WATCHED_SUFFIXES),
+        }
         self.ctx.store.set_meta(BASELINE_META_KEY, json.dumps(payload))
 
 

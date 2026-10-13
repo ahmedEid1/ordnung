@@ -3,7 +3,8 @@
 The gate is the number of ``Store.list_documents`` calls a request makes, which doesn't depend on the
 machine: one page of the app loads the letters once, never once per letter (the N+1 query of the
 scam check made every page take seconds at 500 letters). The time budget on top is soft — generous
-enough for a loaded CI runner, tight enough to catch a page that is back to seconds.
+enough for a loaded CI runner, tight enough to catch a page that is back to seconds. The letter list
+has a size budget too: it leaves out each letter's reading, which the letter's own page loads.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ import pytest
 from fixtures_llm import TAX_LETTER, record_events
 from helpers_secretary import add_doc, seed_ledger
 from ordnung import clock
+from ordnung.api.routes.documents import LEFT_OUT_OF_LIST
 from ordnung.assistant import ask
 from ordnung.config import Paths
 from ordnung.db.store import Store
@@ -50,6 +52,14 @@ PAGE_BUDGET_S = 3.0
 GROWTH_LETTERS = (100, 400)
 #: How much more work the large library may take: about four times as much, never sixteen.
 GROWTH_LIMIT = 5.5
+#: What the letter list may weigh, as a share of the same letters whole (``GET /api/documents.json``):
+#: it leaves out each letter's explanation, key facts, references, bank details and file hash. About
+#: half here, where a letter has no key facts (a quarter on the demo, where key facts are half the bytes).
+LIST_SHARE = 0.6
+#: Bytes of JSON a list row may take on average: about a kilobyte, a title and a summary with the rest.
+ROW_BYTES = 1_200
+#: What the letter list may weigh on the wire, as a share of its JSON: answers are gzip-compressed.
+WIRE_SHARE = 0.10
 
 _PARTY_KINDS = ("utility", "telecom", "insurer", "health_insurer", "retailer", "landlord", "bank", "gym")
 _SENDER_WORDS = ("Stadtwerke", "Netz", "Versicherung", "Kasse", "Handel", "Wohnen", "Bank", "Fitness")
@@ -335,6 +345,36 @@ async def test_pages_answer_in_time(api: Api) -> None:
             slow[url] = round(took, 2)
     assert not slow, f"slower than {BUDGET_S}s with {LETTERS} letters: {slow}"
     assert total < PAGE_BUDGET_S, f"{total:.2f}s for every ledger page with {LETTERS} letters"
+
+
+# --------------------------------------------------------------------------------------------------
+# The letter list stays light
+# --------------------------------------------------------------------------------------------------
+
+
+async def test_the_letter_list_stays_light(api: Api) -> None:
+    """With :data:`LETTERS` letters no row of the list carries a letter's reading (the letter's own page
+    and the copy of your records have it), and the list weighs well under the same letters whole."""
+    listed = await api.client.get("/api/documents")
+    whole = await api.client.get("/api/documents.json")
+    assert listed.status_code == whole.status_code == 200
+    rows, letters = listed.json(), whole.json()
+    assert len(rows) == len(letters) == LETTERS
+    assert not [row["id"] for row in rows if LEFT_OUT_OF_LIST & set(row)]
+    assert all(letter["explanation"] for letter in letters)
+    share = len(listed.content) / len(whole.content)
+    assert share < LIST_SHARE, f"the list is {share:.0%} of the letters whole with {LETTERS} letters"
+    per_row = len(listed.content) / LETTERS
+    assert per_row < ROW_BYTES, f"{per_row:.0f} bytes of JSON per list row"
+
+
+async def test_the_letter_list_is_light_on_the_wire(api: Api) -> None:
+    """With :data:`LETTERS` letters the list arrives gzip-compressed, at under a tenth of its JSON."""
+    listed = await api.client.get("/api/documents", headers={"Accept-Encoding": "gzip"})
+    assert listed.status_code == 200 and len(listed.json()) == LETTERS
+    assert listed.headers.get("content-encoding") == "gzip"
+    share = listed.num_bytes_downloaded / len(listed.content)
+    assert share < WIRE_SHARE, f"{listed.num_bytes_downloaded} bytes on the wire, {share:.0%} of its JSON"
 
 
 # --------------------------------------------------------------------------------------------------
