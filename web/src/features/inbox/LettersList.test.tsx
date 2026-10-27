@@ -173,6 +173,51 @@ describe("Inbox letters list", () => {
     expect(rowOf(screen.getByRole("link", { name: other.title! })).querySelector("[data-letter-note]")).toBeNull();
   });
 
+  it("tags a letter filed for someone in the household: on the chip line, and after the title in the table", async () => {
+    const [bkk, other] = [srv.db.document("doc_bkk")!, srv.db.document("doc_library")!];
+    renderWithProviders(
+      <LettersList
+        groups={[{ key: "sep", label: "September", docs: [bkk, other] }]}
+        parties={new Map()}
+        open={new Map()}
+        filedFor={(d) => (d.id === bkk.id ? "Alex Rivera" : null)}
+      />,
+    );
+    const row = rowOf(await screen.findByRole("link", { name: bkk.title! }));
+    // the table's tag comes first in the row (with the title), the stacked rows' one on the chip line under it
+    const [table, stacked, ...more] = within(row).getAllByText("For Alex Rivera");
+    expect(more).toEqual([]);
+    // stacked rows: with the status and kind under the sender; the table: next to the title, like the status
+    expect(stacked!.closest("[data-person-tag]")!.parentElement).toHaveClass("@4xl:hidden");
+    expect(table!.closest("[data-person-tag]")!.parentElement).toHaveClass("hidden", "@4xl:inline-flex");
+    // the whole name in its tooltip, cut on the screen when long; never a tab stop
+    expect(stacked!.closest("[data-person-tag]")).toHaveAttribute("title", "For Alex Rivera");
+    expect(row.querySelectorAll("a, button, [tabindex]")).toHaveLength(1);
+    expect(within(rowOf(screen.getByRole("link", { name: other.title! }))).queryByText(/^For /)).toBeNull();
+  });
+
+  it("has no person tags where the page doesn't ask for them (the Tax year page)", async () => {
+    const tax = srv.db.document("doc_payslip")!;
+    renderWithProviders(<LettersList groups={[{ key: "y", label: "2026", docs: [tax] }]} parties={new Map()} open={new Map()} dated />);
+    const row = rowOf(await screen.findByRole("link", { name: tax.title! }));
+    expect(row.querySelector("[data-person-tag]")).toBeNull();
+  });
+
+  it("says a letter's own year beside its date when the list shows that year and it arrived in another", async () => {
+    // added on 12 Jan 2026, dated 15 Mar 2025
+    const job = srv.db.document("doc_job")!;
+    const lease = srv.db.document("doc_lease")!;
+    renderWithProviders(<LettersList groups={[{ key: "y", label: "2025", docs: [job, lease] }]} parties={new Map()} open={new Map()} filedYear={2025} />);
+    const row = rowOf(await screen.findByRole("link", { name: job.title! }));
+    const dates = within(row).getAllByTitle(/^Added Mon 12 Jan/);
+    expect(dates).toHaveLength(2);
+    // heard as "Added 12 Jan, dated 2025"
+    for (const d of dates) expect([...d.querySelectorAll(".sr-only")].map((s) => s.textContent)).toEqual(["Added ", ", dated 2025"]);
+    expect(dates[0]!.querySelector("[aria-hidden]")).toHaveTextContent("· dated 2025");
+    expect(dates[1]!.querySelector("[aria-hidden]")).toHaveClass("block");
+    expect(within(rowOf(screen.getByRole("link", { name: lease.title! }))).queryByText(/dated 2025/)).toBeNull();
+  });
+
   it("marks a letter a search found only in its scanner's text as not checked (ADR 0020)", async () => {
     const [scan, other] = [srv.db.document("doc_folder_scan")!, srv.db.document("doc_library")!];
     // rows as the search lists them (`GET /api/documents?q=`)

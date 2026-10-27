@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
 import type { Contract, Item, ItemAside, ListedItem } from "@/api/types";
-import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, parseFilter, pinJustRead } from "./filters";
+import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, otherYearDated, parseFilter, pinJustRead, yearOptions } from "./filters";
 import { dueSoon, recapSentence, recapTitle, summarizeBatch } from "./recap";
 
 const TODAY = "2026-09-28";
@@ -60,6 +60,74 @@ describe("inbox filters", () => {
     // nothing to pin: the very same groups
     expect(pinJustRead(groups, new Set())).toBe(groups);
     expect(pinJustRead(groups, new Set(["r", "zzz"]))).toBe(groups);
+  });
+
+  describe("one year at a time (?year=)", () => {
+    const years = [
+      makeDoc({ id: "dated25", doc_date: "2025-12-30", received_date: "2026-01-04" }),
+      makeDoc({ id: "arrived25", doc_date: null, received_date: "2025-11-20" }),
+      makeDoc({ id: "misread", doc_date: "2025-13-40", received_date: "2026-02-02" }),
+      makeDoc({ id: "dated26", doc_date: "2026-09-15", received_date: "2026-09-17" }),
+      makeDoc({ id: "old", doc_date: "2017-02-11", received_date: null, created_at: "2026-01-12T20:52:00Z" }),
+      makeDoc({ id: "undated", doc_date: null, received_date: null, created_at: "2026-09-20T10:00:00Z" }),
+      makeDoc({ id: "held", doc_date: "2019-05-05", status: "held" }),
+      makeDoc({ id: "trashed", doc_date: "2018-05-06", deleted_at: "2026-01-02T10:00:00Z" }),
+    ];
+
+    it("yearOptions counts letters by the date on them, else the day they arrived, newest first; undated ones in no year", () => {
+      // the letters waiting from the folder and the trash are in no year either: the list never shows them
+      expect(yearOptions(years, null)).toEqual([
+        { value: 2026, count: 2 },
+        { value: 2025, count: 2 },
+        { value: 2017, count: 1 },
+      ]);
+      expect(yearOptions([], null)).toEqual([]);
+    });
+
+    it("an asked year with no letters stays an option", () => {
+      expect(yearOptions(years, 2019)).toEqual([
+        { value: 2026, count: 2 },
+        { value: 2025, count: 2 },
+        { value: 2019, count: 0 },
+        { value: 2017, count: 1 },
+      ]);
+      expect(yearOptions(years, 2025)).toEqual(yearOptions(years, null));
+    });
+
+    it("narrows like the kind does: by the date on the letter, else the day it arrived", () => {
+      expect(filterDocuments(years, { filter: "all", year: 2025 }).map((d) => d.id)).toEqual(["dated25", "arrived25"]);
+      expect(filterDocuments(years, { filter: "all", year: 2026 }).map((d) => d.id)).toEqual(["misread", "dated26"]);
+      expect(filterDocuments(years, { filter: "all", year: 2019 })).toEqual([]);
+      // no year: every letter, the undated one too
+      expect(filterDocuments(years, { filter: "all", year: null }).map((d) => d.id)).toEqual(["dated25", "arrived25", "misread", "dated26", "old", "undated"]);
+      expect(filterDocuments(years, { filter: "all", kind: "invoice", year: 2025 })).toEqual([]);
+    });
+
+    it("groupLetters with a year names every month with its year", () => {
+      const rows = [
+        makeDoc({ id: "now", received_date: "2026-09-27" }),
+        makeDoc({ id: "sep", received_date: "2026-09-02" }),
+        makeDoc({ id: "jan", received_date: "2026-01-04" }),
+        makeDoc({ id: "dec", received_date: "2025-12-02" }),
+        makeDoc({ id: "reading", status: "processing", received_date: "2026-09-28", kind: null }),
+      ];
+      expect(groupLetters(rows, TODAY, { withYear: true }).map((g) => g.label)).toEqual(["Being read", "Last 7 days", "September 2026", "January 2026", "December 2025"]);
+      // without one, this year's months go by their name alone
+      expect(groupLetters(rows, TODAY).map((g) => g.label)).toEqual(["Being read", "Last 7 days", "September", "January", "December 2025"]);
+    });
+
+    it("says a row's own year when it arrived in another one than the year chosen", () => {
+      // dated 30 Dec 2025, arrived 4 Jan 2026: listed in 2025, under January 2026
+      expect(otherYearDated(years[0]!, 2025)).toBe(2025);
+      expect(otherYearDated(years[0]!, null)).toBeNull();
+      // added in 2026 with a date of 2017 on it
+      expect(otherYearDated(years[4]!, 2017)).toBe(2017);
+      // the same year as its arrival: nothing to say
+      expect(otherYearDated(years[1]!, 2025)).toBeNull();
+      expect(otherYearDated(years[3]!, 2026)).toBeNull();
+      // not a letter of that year at all
+      expect(otherYearDated(years[3]!, 2025)).toBeNull();
+    });
   });
 
   it("dates a row by its arrival (the grouping date) and keeps the letter's own date aside", () => {

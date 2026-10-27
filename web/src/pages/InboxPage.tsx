@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } fro
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
 import { FileUp, Landmark, Lock, Plus } from "lucide-react";
 import type { DocumentKind } from "@/api/types";
-import { useDocuments, useItems, useParties } from "@/api/hooks";
+import { useDocuments, useHousehold, useItems, useParties } from "@/api/hooks";
 import { dismissJob } from "@/api/sse";
 import { useDebounced, useMediaQuery, useStickyError } from "@/lib/hooks";
 import { useTodayISO } from "@/lib/today";
@@ -20,16 +20,36 @@ import { LettersList } from "@/features/inbox/LettersList";
 import { InboxToolbar } from "@/features/inbox/InboxToolbar";
 import { BatchRecapDialog } from "@/features/inbox/BatchRecap";
 import { useReadingBatch } from "@/features/inbox/useReadingBatch";
-import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView } from "@/features/inbox/status";
+import { MIN_SEARCH, emptyCopy, isNarrowed, resultLine, type InboxView, type InboxWho } from "@/features/inbox/status";
 import { useTrayByDoc } from "@/features/tour/newMail";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { filesStay } from "@/features/phone/copy";
 import { isTaxLetter } from "@/features/taxes/taxYear";
-import { filterCounts, filterDocuments, groupLetters, heldMatches, isHeld, kindOptions, openItemsByDoc, parseFilter, type InboxFilter } from "@/features/inbox/filters";
+import { parseYear } from "@/features/export/selection";
+import { FILE_THESE_BUTTON_ID, FileThese } from "@/features/household/FileThese";
+import { MINE, filedMember, forOptions, matchesFor, memberById, parseFor, suggestedFor } from "@/features/household/logic";
+import { focusWhenReady } from "@/features/today/focus";
+import {
+  filterCounts,
+  filterDocuments,
+  groupLetters,
+  heldMatches,
+  isHeld,
+  kindOptions,
+  openItemsByDoc,
+  parseFilter,
+  yearOptions,
+  type InboxFilter,
+} from "@/features/inbox/filters";
+
+/** The first letter of the list, where focus goes when the letters above it are answered. */
+const firstLetter = (list: HTMLElement | null) => list?.querySelector<HTMLElement>("a[href^='/documents/']") ?? null;
 
 /**
- * `/inbox` — every letter, filters, search, the demo's New-mail tray, the letters from the watched
- * folder that wait for the person, and the batch recap.
+ * `/inbox` — every letter, filters (`?filter=`, `?kind=`, `?year=` by the date on the letter, `?for=` whose letters
+ * when the household has people), search, the demo's New-mail tray, the letters from the watched folder that wait
+ * for the person, the letters addressed to someone in the household and not filed yet (*File these N*), and the
+ * batch recap.
  */
 export default function InboxPage() {
   const navigate = useNavigate();
@@ -42,6 +62,15 @@ export default function InboxPage() {
   const [params, setParams] = useSearchParams();
   const filter = parseFilter(params.get("filter"));
   const kind = (params.get("kind") || null) as DocumentKind | null;
+  // one year, by the date on the letter (else the day it arrived), as the Tax year page files them; a year that
+  // can't be is ignored
+  const year = parseYear(params.get("year"));
+  // whose letters: You, someone in the household, or (an unknown person, a household with nobody) everyone
+  const household = useHousehold();
+  const people = household.data;
+  const forParam = params.get("for");
+  const who = parseFor(forParam, people);
+  const member = who && who !== MINE ? memberById(people, who) : null;
 
   // ---- the search lives in the field and in the URL (?q=), so Back to the Inbox keeps it -------
   const urlQuery = params.get("q") ?? "";
@@ -158,14 +187,25 @@ export default function InboxPage() {
 
   const docs = useMemo(() => all.data ?? [], [all.data]);
   const kinds = useMemo(() => kindOptions(docs), [docs]);
+  // like the kinds, over every letter: the year asked for stays a choice even with none
+  const years = useMemo(() => yearOptions(docs, year), [docs, year]);
+  const whoOptions = useMemo(() => forOptions(filterDocuments(docs, { filter: "all" }), people), [docs, people]);
   const partyMap = useMemo(() => new Map((parties.data ?? []).map((p) => [p.id, p])), [parties.data]);
   const openMap = useMemo(() => openItemsByDoc(items.data ?? [], today), [items.data, today]);
-  // the words and the kind narrow the list first; the tabs count within that
-  const narrowed = useMemo(() => filterDocuments(searching ? (search.data ?? []) : docs, { filter: "all", kind }), [searching, search.data, docs, kind]);
+  // the words, the kind and the year narrow the list first, then whose letters; the tabs count within that
+  const base = useMemo(() => filterDocuments(searching ? (search.data ?? []) : docs, { filter: "all", kind, year }), [searching, search.data, docs, kind, year]);
+  const narrowed = useMemo(() => (who == null ? base : base.filter((d) => matchesFor(d, who, people))), [base, who, people]);
   const counts = useMemo(() => filterCounts(narrowed), [narrowed]);
   const visible = useMemo(() => filterDocuments(narrowed, { filter }), [narrowed, filter]);
-  const groups = useMemo(() => groupLetters(visible, today), [visible, today]);
+  const groups = useMemo(() => groupLetters(visible, today, { withYear: year != null }), [visible, today, year]);
   const total = useMemo(() => filterCounts(docs).all, [docs]);
+  // a person's view: their letters not filed yet, as the rest is narrowed (search, kind, year, tab) — File these N
+  const toFile = useMemo(() => (member ? suggestedFor(filterDocuments(base, { filter }), member.id, people) : []), [member, base, filter, people]);
+  // the Everyone view says whose each letter is (a person's own view would only repeat it)
+  const filedFor = useMemo(
+    () => (who == null && people?.members.length ? (d: { id: string }) => filedMember(people, d.id)?.name ?? null : undefined),
+    [who, people],
+  );
   const waiting = useMemo(() => docs.filter(isHeld), [docs]);
   // the search field shows once there are letters read (with only waiting ones, just their group does)
   const withSearch = Boolean(total) || !waiting.length;
@@ -176,11 +216,14 @@ export default function InboxPage() {
   );
 
   // the settled words (not every keystroke): "Type one more letter" waits for a pause
-  const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "" };
+  const whoView: InboxWho | null = who === MINE ? { kind: "mine" } : member ? { kind: "person", name: member.name, suggested: toFile.length } : null;
+  const view: InboxView = { filter, kindLabel: kind ? documentKindLabel(kind) : null, typed: q, q: searching ? q : "", year, who: whoView };
   const pendingSearch = searching && search.isPending;
   const line = resultLine(view, visible.length, total, pendingSearch, heldFound?.size);
   const empty = emptyCopy(view, phone, heldFound?.size);
-  const onlySearch = Boolean(view.q) && filter === "all" && !kind;
+  const onlySearch = Boolean(view.q) && filter === "all" && !kind && year == null && who == null;
+  // `?for=` waits for the household before it lists anything (never every letter first, then one person's)
+  const loading = all.isPending || (Boolean(forParam) && household.isPending);
   const clearSearch = () => setQuery("");
   const clearAll = () => {
     setQuery("");
@@ -195,7 +238,7 @@ export default function InboxPage() {
         actions={
           // a read-only page, so on a phone too
           docs.some(isTaxLetter) ? (
-            <Link to="/inbox/taxes" className={buttonVariants({ size: "sm" })}>
+            <Link to={year != null ? `/inbox/taxes?year=${year}` : "/inbox/taxes"} className={buttonVariants({ size: "sm" })}>
               <Landmark aria-hidden />
               Letters for taxes
             </Link>
@@ -212,15 +255,18 @@ export default function InboxPage() {
           onRetry={() => void all.refetch()}
           retrying={all.isFetching}
         />
-      ) : all.isPending ? (
+      ) : loading ? (
         <div aria-busy="true">
           <LoadingLabel>Loading your letters…</LoadingLabel>
-          {/* shaped like the toolbar: the tabs, then the search and the kind picker */}
+          {/* shaped like the toolbar: the tabs, then the search, then the kind and year pickers */}
           <div className="mb-6 flex flex-col gap-3 xl:flex-row xl:items-center">
             <Skeleton className="h-9 w-full rounded-xl sm:w-72" />
             <div className="flex flex-col gap-3 sm:flex-row xl:flex-1 xl:justify-end">
               <Skeleton className="h-9 rounded-lg sm:flex-1 xl:max-w-80" />
-              <Skeleton className="h-9 rounded-lg sm:w-48" />
+              <div className="flex gap-3">
+                <Skeleton className="h-9 flex-1 rounded-lg sm:w-48 sm:flex-none" />
+                <Skeleton className="h-9 flex-1 rounded-lg sm:w-32 sm:flex-none" />
+              </div>
             </div>
           </div>
           <div className="card divide-y divide-line">
@@ -257,6 +303,12 @@ export default function InboxPage() {
                   kind={kind}
                   onKind={(k) => setParam("kind", k)}
                   kinds={kinds}
+                  year={year}
+                  onYear={(y) => setParam("year", y == null ? null : String(y))}
+                  years={years}
+                  who={who ?? ""}
+                  onWho={(w) => setParam("for", w)}
+                  whoOptions={whoOptions}
                   query={query}
                   onQuery={setQuery}
                 />
@@ -282,8 +334,18 @@ export default function InboxPage() {
                 aria-labelledby={`inbox-filter-tab-${filter}`}
                 aria-busy={searching && search.isFetching}
               >
+                {member && !pendingSearch ? (
+                  <FileThese
+                    member={member}
+                    letters={toFile}
+                    household={people}
+                    parties={partyMap}
+                    // once the card is gone (its button had focus): the first letter, the ones just filed among them
+                    onFiled={() => focusWhenReady(() => (document.getElementById(FILE_THESE_BUTTON_ID) ? null : firstLetter(lettersRef.current)))}
+                  />
+                ) : null}
                 {groups.length ? (
-                  <LettersList groups={groups} parties={partyMap} open={openMap} />
+                  <LettersList groups={groups} parties={partyMap} open={openMap} filedYear={year} filedFor={filedFor} />
                 ) : pendingSearch ? null : (
                   <EmptyState
                     size="sm"
