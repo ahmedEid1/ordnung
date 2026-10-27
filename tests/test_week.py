@@ -914,6 +914,24 @@ def test_filing_what_was_done_and_archiving_year_old_letters(store: Store, ids: 
     assert file.summary.startswith("2 to-dos done · ")
 
 
+def test_keep_it_with_your_tax_papers_follows_the_persons_choice(store: Store, ids: dict[str, str]) -> None:
+    """The person's own "For taxes" choice over Claude's mark, both ways (``secretary.tax_choice``)."""
+    store.set_meta(SESSION_KEY, _stored(TODAY - timedelta(days=7)))
+    store.update_item(ids["tax_objection"], status="done", completed_at=_stamp(TODAY - timedelta(days=1)))
+    store.update_item(ids["tax_refund"], status="done", completed_at=_stamp(TODAY - timedelta(days=1)))
+    birthday = add_doc(store, "year-old", kind="receipt", title="Receipt", doc_date="2025-09-24")
+    store.set_tax_choice(ids["doc_tax"], False)
+    store.set_tax_choice(birthday, True)
+    rows = {entry.ref.id: entry for entry in _step(weekly_session(store, TODAY), "file").entries}
+    assert rows[ids["doc_tax"]].note == "Everything done — file the paper."
+    assert rows[birthday].note == (
+        "A year old with nothing open — move the paper to your archive. Keep it with your tax papers."
+    )
+    store.set_tax_choice(ids["doc_tax"], None)  # back to Claude's mark
+    rows = {entry.ref.id: entry for entry in _step(weekly_session(store, TODAY), "file").entries}
+    assert rows[ids["doc_tax"]].note == "Everything done — file the paper. Keep it with your tax papers."
+
+
 # --------------------------------------------------------------------------------------------------
 # the endpoints
 # --------------------------------------------------------------------------------------------------

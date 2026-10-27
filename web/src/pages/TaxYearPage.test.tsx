@@ -148,6 +148,47 @@ describe("TaxYearPage", () => {
     expect(screen.queryByRole("button", { name: "Export these letters…" })).toBeNull();
   });
 
+  it("under a letter the person marked it says “You marked this for taxes.”", async () => {
+    const { srv } = useMockApi();
+    useLetters(srv, [
+      makeDoc({ id: "receipt", title: "Laptop receipt", kind: "receipt", tax_relevant: false, doc_date: "2026-03-02", party_id: null }),
+      makeDoc({ id: "donation", title: "Donation receipt", kind: "receipt", tax_relevant: false, ai_private: true, doc_date: "2026-04-02", party_id: null }),
+      tax("Payslip", { kind: "payslip", doc_date: "2026-08-31", tax_note: "Keep it for your return." }),
+      tax("Insurance", { kind: "insurance", doc_date: "2026-05-01" }),
+    ]);
+    srv.db.state.taxChoices = { receipt: true, donation: true, Insurance: false };
+    renderPage("/inbox/taxes?year=2026");
+    await heading("Tax year 2026");
+    const row = (name: string) => screen.getByRole("link", { name }).closest("li")!;
+    // the person's own: a private letter too; Claude's note stays Claude's; one they took off isn't listed
+    expect(within(row("Laptop receipt")).getByText("You marked this for taxes.")).toBeInTheDocument();
+    expect(within(row("Donation receipt")).getByText("You marked this for taxes.")).toBeInTheDocument();
+    expect(within(row("Payslip")).getByText(/Keep it for your return/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Insurance" })).toBeNull();
+    expect(screen.getByRole("status")).toHaveTextContent("3 letters dated 2026.");
+    expect(within(screen.getByRole("combobox", { name: "Year" })).getAllByRole("option").map((o) => o.textContent)).toEqual(["2026 · 3 letters"]);
+  });
+
+  it("the description and the empty state say a letter can be marked on its page", async () => {
+    const { srv } = useMockApi();
+    useLetters(srv, [tax("Payslip", { kind: "payslip", doc_date: "2026-08-31" })]);
+    srv.db.state.taxChoices = { Payslip: false };
+    renderPage("/inbox/taxes");
+    await heading("Letters for taxes");
+    expect(
+      screen.getByText(
+        "Letters that could matter for your tax return — payslips, insurance, receipts for work or study costs — by the date on the letter. Claude marks them when it reads a letter; you can mark or unmark any letter on its page.",
+      ),
+    ).toBeInTheDocument();
+    // the only letter Claude marked was taken off: none for taxes
+    expect(await screen.findByRole("heading", { name: "No letters for taxes yet" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "When Claude reads a letter that could matter for your tax return — a payslip, an insurance statement, a receipt for work or study costs — it shows here, by year. You can also mark a letter yourself: open it and press For taxes.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("says when the year chosen has none", async () => {
     const { srv } = useMockApi();
     useLetters(srv, [tax("Payslip", { kind: "payslip", doc_date: "2026-08-31" })]);

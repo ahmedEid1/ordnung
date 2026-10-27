@@ -47,6 +47,8 @@ PDF = b"%PDF-1.7\n" + bytes(range(256)) * 4 + b"\n%%EOF\n"
 
 
 def _shared_doc(fields: dict[str, Any]) -> Document:
+    """A letter of the shared table; its ``tax_choice`` (the person's own) is kept apart, as the store keeps
+    it (:data:`SHARED_CHOICES`)."""
     base = {
         "sha256": fields["id"],
         "filename": f"{fields['id']}.pdf",
@@ -55,7 +57,14 @@ def _shared_doc(fields: dict[str, Any]) -> Document:
         "created_at": STAMP,
         "updated_at": STAMP,
     }
-    return Document.model_validate({**base, **fields})
+    letter = {key: value for key, value in fields.items() if key != "tax_choice"}
+    return Document.model_validate({**base, **letter})
+
+
+#: The person's own "For taxes" choices of the shared table's letters, by id.
+SHARED_CHOICES: dict[str, bool] = {
+    fields["id"]: fields["tax_choice"] for fields in SHARED["docs"] if fields.get("tax_choice") is not None
+}
 
 
 def _choice(raw: dict[str, Any]) -> Choice:
@@ -119,8 +128,18 @@ def files_of(archive: zipfile.ZipFile) -> list[str]:
 @pytest.mark.parametrize("case", SHARED["cases"], ids=[case["name"] for case in SHARED["cases"]])
 def test_the_letters_chosen_are_the_ones_the_dialog_counts(case: dict[str, Any]) -> None:
     docs = [_shared_doc(fields) for fields in SHARED["docs"]]
-    chosen = select_documents(docs, _choice(case["choice"]))
+    chosen = select_documents(docs, _choice(case["choice"]), SHARED_CHOICES)
     assert [doc.id for doc in chosen] == case["expected_ids"]
+
+
+def test_the_shared_table_has_letters_the_person_marked_and_unmarked() -> None:
+    """The rows the dialog and the ZIP must agree on for the person's own choice: a private letter they
+    marked, one Claude marked that they took off, and a waiting one they marked (never exported)."""
+    assert SHARED_CHOICES == {
+        "doc_private_marked_2025": True,
+        "doc_unmarked_2025": False,
+        "doc_held_marked": True,
+    }
 
 
 @pytest.mark.parametrize("case", SHARED["cases"], ids=[case["name"] for case in SHARED["cases"]])
@@ -428,6 +447,43 @@ def test_the_index_opens_in_a_german_spreadsheet(store: Store, paths: Paths) -> 
         "",
         "Widerspruch; Teil 1",
     )
+
+
+def test_only_letters_for_taxes_follows_the_persons_choice(store: Store, paths: Paths) -> None:
+    """The person's own "For taxes" choice over Claude's mark, both ways (``secretary.tax_choice``): a
+    private letter they marked goes in, one Claude marked that they took off doesn't."""
+    claudes = letter(store, paths, "claudes", doc_date="2025-03-01", tax_relevant=True)
+    unmarked = letter(store, paths, "unmarked", doc_date="2025-04-01", tax_relevant=True)
+    marked = letter(store, paths, "marked", doc_date="2025-05-01", ai_private=True)
+    letter(store, paths, "rent", doc_date="2025-06-01")
+    store.set_tax_choice(unmarked, False)
+    store.set_tax_choice(marked, True)
+    for choice in (Choice(tax=True), Choice(year=2025, tax=True)):
+        assert {entry.doc.id for entry in plan(store, choice)} == {claudes, marked}
+    assert len(plan(store, Choice(year=2025))) == 4  # without "Only letters for taxes": every letter
+    store.set_tax_choice(unmarked, None)  # back to Claude's mark
+    assert {entry.doc.id for entry in plan(store, Choice(tax=True))} == {claudes, unmarked, marked}
+    # one read of the choices for the whole export
+    assert letters_zip.matches(store.get_document(marked), Choice(tax=True)) is False  # type: ignore[arg-type]
+    assert letters_zip.matches(store.get_document(marked), Choice(tax=True), {marked: True})  # type: ignore[arg-type]
+
+
+def test_the_index_says_for_taxes_as_the_person_chose_and_leaves_out_a_note_they_unmarked(
+    store: Store, paths: Paths
+) -> None:
+    """``for_taxes`` is the person's choice, else Claude's mark; ``tax_note`` stays empty for a letter that
+    doesn't count for taxes, so the sheet never says "no" next to a note."""
+    claudes = letter(store, paths, "claudes", doc_date="2025-03-01", tax_relevant=True, tax_note="Payslip")
+    unmarked = letter(
+        store, paths, "unmarked", doc_date="2025-04-01", tax_relevant=True, tax_note="Insurance"
+    )
+    marked = letter(store, paths, "marked", doc_date="2025-05-01", ai_private=True)
+    store.set_tax_choice(unmarked, False)
+    store.set_tax_choice(marked, True)
+    rows = {row["ordnung_id"]: row for row in index_rows(opened(archive_bytes(store)))}
+    assert (rows[claudes]["for_taxes"], rows[claudes]["tax_note"]) == ("yes", "Payslip")
+    assert (rows[unmarked]["for_taxes"], rows[unmarked]["tax_note"]) == ("no", "")
+    assert (rows[marked]["for_taxes"], rows[marked]["tax_note"]) == ("yes", "")
 
 
 @pytest.mark.parametrize(

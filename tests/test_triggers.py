@@ -636,6 +636,50 @@ def test_the_tax_idea_counts_a_letter_by_its_arrival_when_it_has_no_date(
     assert idea.rationale == "2 tax-relevant letter(s)."
 
 
+def test_the_tax_idea_counts_letters_the_person_marked_and_not_ones_they_unmarked(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """The person's own "For taxes" choice over Claude's mark, both ways (``secretary.tax_choice``): a
+    changed set of letters is a new Idea, as when a new letter for taxes is read."""
+    march = date(2026, 3, 1)
+    (before,) = ideas(store, "tax_documents", march)
+    receipt = add_doc(store, "receipt", kind="invoice", title="Laptop receipt", doc_date="2025-11-03")
+    kept_private = add_doc(
+        store, "kept", kind="other", title="Donation", doc_date="2025-06-01", ai_private=True
+    )
+    store.set_tax_choice(receipt, True)
+    store.set_tax_choice(kept_private, True)
+    store.set_tax_choice(ids["doc_payslip"], False)
+    (idea,) = ideas(store, "tax_documents", march)
+    assert refs_of(idea) == {("document", receipt), ("document", kept_private)}
+    assert idea.rationale == "2 tax-relevant letter(s)."
+    assert idea.fingerprint == fingerprint("tax_documents", "2025", kept_private, receipt)
+    assert idea.fingerprint != before.fingerprint
+    store.set_tax_choice(receipt, False)
+    store.set_tax_choice(kept_private, None)
+    assert ideas(store, "tax_documents", march) == []
+    # Claude's own mark is still on the letter the person took off
+    letter = store.get_document(ids["doc_payslip"])
+    assert letter is not None and letter.tax_relevant is True
+
+
+def test_the_tax_idea_leaves_out_a_letter_waiting_from_the_folder(store: Store, ids: dict[str, str]) -> None:
+    """As the Tax year page and the export do: a letter waiting for the person's answer isn't counted, also
+    when it carries a choice (made before it waited, or on another computer)."""
+    waiting = add_doc(
+        store,
+        "waiting",
+        title="Scan",
+        doc_date="2025-04-01",
+        status="held",
+        ai_private=True,
+        tax_relevant=True,
+    )
+    store.set_tax_choice(waiting, True)
+    (idea,) = ideas(store, "tax_documents", date(2026, 3, 1))
+    assert refs_of(idea) == {("document", ids["doc_payslip"])}
+
+
 # --------------------------------------------------------------------------------------------------
 # calendar
 # --------------------------------------------------------------------------------------------------

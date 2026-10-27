@@ -3,7 +3,7 @@ import { Fragment } from "react";
 import { Link } from "react-router";
 import { BookOpen, Landmark } from "lucide-react";
 import type { Document } from "@/api/types";
-import { letterYear } from "@/features/export/selection";
+import { forTaxes, letterYear } from "@/features/export/selection";
 import { Glossary } from "@/components/ui/Glossary";
 import { ModelText, useModelLang } from "@/components/ui/ModelText";
 import { languageCode, languageName } from "@/lib/format";
@@ -63,9 +63,15 @@ export function writtenFrom(language: string | null | undefined): string | null 
   return `Written by Claude from the ${languageName(code) ?? "original"} letter. The letter itself is what counts.`;
 }
 
-export function ExplainedSimply({ doc }: { doc: Document }) {
+/**
+ * The explanation, and Claude's note for the tax return while the letter counts for taxes: the person's own choice
+ * (`taxChoice`, from the letter's page), else Claude's mark ({@link forTaxes}) — a letter they took off their letters
+ * for taxes doesn't say "For your tax return".
+ */
+export function ExplainedSimply({ doc, taxChoice = null }: { doc: Document; taxChoice?: boolean | null }) {
   const modelLang = useModelLang(doc.explanation);
-  if (!doc.explanation && !doc.tax_note) return null;
+  const taxNote = forTaxes({ tax_relevant: doc.tax_relevant, tax_choice: taxChoice }) ? doc.tax_note : null;
+  if (!doc.explanation && !taxNote) return null;
   const paragraphs = (doc.explanation ?? "").split(/\n{2,}/).filter(Boolean);
   const from = writtenFrom(doc.language);
   // the tax year the letter is filed under (its date, else the day it arrived), as the Tax year page files it
@@ -81,15 +87,15 @@ export function ExplainedSimply({ doc }: { doc: Document }) {
             </p>
           ))}
         </div>
-        {doc.tax_relevant && doc.tax_note ? (
+        {taxNote ? (
           <p className="mt-4 flex items-start gap-2 rounded-lg bg-k-expiry-soft px-3 py-2.5 text-[13px] leading-5 text-k-expiry-ink">
             <Landmark className="mt-0.5 size-4 shrink-0" aria-hidden />
             {/* a long German term ("Werbungskosten/Entfernungspauschale") breaks — hyphenated by German rules where
                 the browser can — instead of widening the page (UI audit round 1: it stuck out of the box at 320 px) */}
             <span className="min-w-0 [overflow-wrap:anywhere] hyphens-auto">
               <span className="font-semibold">For your tax return: </span>
-              <ModelText text={doc.tax_note}>
-                <GlossaryText text={doc.tax_note} inline markGerman />
+              <ModelText text={taxNote}>
+                <GlossaryText text={taxNote} inline markGerman />
               </ModelText>
               {year != null ? (
                 <>

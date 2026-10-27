@@ -6,8 +6,9 @@ The policy:
   private letters too, as they are the person's own files — narrowed by the :class:`Choice`: a year by
   the letter's day (:func:`ordnung.secretary.triggers.letter_day`: the date printed on it, else the day it
   arrived; undated letters belong to no year), ``until`` a day of the next year (the yearly statements that
-  come early in it), only letters for taxes, one sender. The web app's export dialog counts the same way
-  (``web/src/features/export/selection.ts``; both test suites read ``selection-cases.json``).
+  come early in it), only letters for taxes — the person's own choice, else Claude's mark
+  (:func:`ordnung.secretary.tax_choice.for_taxes`) —, one sender. The web app's export dialog counts the
+  same way (``web/src/features/export/selection.ts``; both test suites read ``selection-cases.json``).
 * **Names.** A file is ``<year>/<sender>/<date> <title>.<ext>`` (``Undated`` and ``Sender unknown`` when
   either isn't known), ``index.csv`` sits at the root. Every part comes from :func:`safe_component`, so a
   name a letter brought in never leaves its folder, works on Windows, macOS and Linux, and is unique in its
@@ -17,6 +18,8 @@ The policy:
   never followed: ``index.csv`` lists the letter with an empty ``file`` and :data:`MISSING_NOTE`.
 * **index.csv** opens in a German spreadsheet: UTF-8 with a BOM, semicolons, CRLF. A cell that would start
   a formula gets a leading ``'`` (:func:`csv_cell`) — titles and sender names come from letters.
+  ``for_taxes`` says whether the letter counts for taxes, as above; Claude's ``tax_note`` is left out for a
+  letter that doesn't, so the sheet never says "no" next to a note.
 * **Streaming.** :class:`LettersZip` yields the archive a chunk at a time (one chunk of a file in memory),
   with ZIP64 records where the sizes need them. A file that can't be read halfway stops the archive
   before its central directory, so a cut download never opens as complete.
@@ -32,16 +35,18 @@ import re
 import stat
 import unicodedata
 import zipfile
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path, PurePosixPath
+from types import MappingProxyType
 from typing import Any, BinaryIO
 
 from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import TEXT_TYPES, download_name, strip_control
 from ordnung.models import PROOF_SOURCE, Document
+from ordnung.secretary.tax_choice import for_taxes
 from ordnung.secretary.triggers import letter_day, parse_day
 
 SENDER_CHARS, SENDER_BYTES = 60, 80  # a sender's folder
@@ -80,6 +85,8 @@ _DEVICES = frozenset(
     {"CON", "PRN", "AUX", "NUL", *(f"COM{n}" for n in range(1, 10)), *(f"LPT{n}" for n in range(1, 10))}
 )
 _FIRST_DAY, _LAST_DAY = date(1980, 1, 1), date(2107, 12, 31)  # what a ZIP's timestamps can hold
+#: No choices of the person's: every letter goes by Claude's mark.
+NO_CHOICES: Mapping[str, bool] = MappingProxyType({})
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,12 +102,14 @@ class Choice:
 @dataclass(frozen=True, slots=True)
 class Entry:
     """One letter of the export: its sender's name (``None``: unknown), its path inside the ZIP and its
-    original (both ``None``: the file is missing, or outside the data folder)."""
+    original (both ``None``: the file is missing, or outside the data folder), and whether it counts for
+    taxes (:func:`~ordnung.secretary.tax_choice.for_taxes`)."""
 
     doc: Document
     sender: str | None
     name: str | None
     path: Path | None
+    for_taxes: bool = False
 
 
 # --------------------------------------------------------------------------------------------------
@@ -113,11 +122,12 @@ def exportable(doc: Document) -> bool:
     return doc.deleted_at is None and not is_held(doc) and doc.source != PROOF_SOURCE
 
 
-def matches(doc: Document, choice: Choice) -> bool:
-    """Whether ``doc`` belongs in the export ``choice`` describes."""
+def matches(doc: Document, choice: Choice, choices: Mapping[str, bool] = NO_CHOICES) -> bool:
+    """Whether ``doc`` belongs in the export ``choice`` describes; ``choices`` are the person's own "For
+    taxes" choices by letter id (:meth:`Store.tax_choices`)."""
     if not exportable(doc):
         return False
-    if choice.tax and not doc.tax_relevant:
+    if choice.tax and not for_taxes(doc, choices):
         return False
     if choice.party_id is not None and doc.party_id != choice.party_id:
         return False
@@ -131,9 +141,11 @@ def matches(doc: Document, choice: Choice) -> bool:
     return choice.until is not None and day.year == choice.year + 1 and day <= choice.until
 
 
-def select_documents(docs: Iterable[Document], choice: Choice) -> list[Document]:
-    """The letters of ``docs`` that ``choice`` takes, in their order."""
-    return [doc for doc in docs if matches(doc, choice)]
+def select_documents(
+    docs: Iterable[Document], choice: Choice, choices: Mapping[str, bool] = NO_CHOICES
+) -> list[Document]:
+    """The letters of ``docs`` that ``choice`` takes, in their order (``choices``: as :func:`matches`)."""
+    return [doc for doc in docs if matches(doc, choice, choices)]
 
 
 def zip_name(choice: Choice, today: date) -> str:
@@ -200,8 +212,10 @@ def _original(store: Store, doc: Document, root: Path) -> Path | None:
 
 def plan(store: Store, choice: Choice) -> list[Entry]:
     """Every letter of the export with its name in the ZIP, worked out before any byte is sent: ordered by
-    year, sender and day, so the same letters always give the same archive."""
-    docs = select_documents(store.list_documents(exclude_source=PROOF_SOURCE), choice)
+    year, sender and day, so the same letters always give the same archive. The person's "For taxes"
+    choices are read once, for the selection and ``index.csv``."""
+    choices = store.tax_choices()
+    docs = select_documents(store.list_documents(exclude_source=PROOF_SOURCE), choice, choices)
     senders = {party.id: party.name for party in store.list_parties()}
     root = store.data_dir.resolve()
 
@@ -236,7 +250,7 @@ def plan(store: Store, choice: Choice) -> list[Entry]:
                 copy += 1
                 name = f"{folder}/{stem} ({copy}){extension}"
             taken.add(name.casefold())
-        entries.append(Entry(doc=doc, sender=sender, name=name, path=path))
+        entries.append(Entry(doc=doc, sender=sender, name=name, path=path, for_taxes=for_taxes(doc, choices)))
     return entries
 
 
@@ -264,8 +278,8 @@ def _row(entry: Entry, written: bool) -> list[str]:
         entry.sender,
         doc.title,
         (doc.kind or "").replace("_", " "),
-        _yes(doc.tax_relevant),
-        doc.tax_note,
+        _yes(entry.for_taxes),
+        doc.tax_note if entry.for_taxes else None,  # never "no" next to Claude's note
         DIRECTIONS.get(doc.direction, doc.direction),
         _yes(doc.ai_private),
         doc.pages,

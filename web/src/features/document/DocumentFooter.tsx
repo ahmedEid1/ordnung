@@ -1,6 +1,7 @@
 /**
  * Provenance + housekeeping: "Read by Claude on 28 Sep 2026 · text of 2 pages", and the actions
- * Reprocess · Download original · Delete (with a confirmation listing what would disappear). On a paired phone
+ * Reprocess · Draft a reply · For taxes (`./TaxToggle`, with its line saying who decided) · Download original ·
+ * Delete (with a confirmation listing what would disappear). On a paired phone
  * the letter stays on the computer: no download, no delete — a line says where to do them. A scan whose pages
  * carry only the text its scanner added says what Ordnung keeps that text for (ADR 0020).
  */
@@ -21,6 +22,7 @@ import { ComputerOnly, OnYourComputer } from "@/features/phone/ComputerOnly";
 import { DELETE_ON_COMPUTER, theComputer } from "@/features/phone/copy";
 import { isOpenItem, openItemCounts, scamSuggestion } from "./verdict";
 import { useStartDraft } from "./actions";
+import { TaxState, TaxToggle } from "./TaxToggle";
 
 const NOUN: Record<string, string> = {
   deadline: "deadline",
@@ -142,6 +144,8 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
             Draft a reply
           </Button>
         ) : null}
+        {/* the person's own choice, on the phone too (hidden for a letter waiting, being read or in the trash) */}
+        <TaxToggle detail={detail} />
         <ComputerOnly what="Download original · Delete">
           <a href={api.fileUrl(doc.id)} download={doc.filename} className={buttonVariants({ size: "sm" })}>
             <Download aria-hidden />
@@ -159,6 +163,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
           </Button>
         </ComputerOnly>
       </div>
+      <TaxState detail={detail} />
       {phone ? <OnYourComputer className="mt-3">{DELETE_ON_COMPUTER}</OnYourComputer> : null}
 
       <Dialog

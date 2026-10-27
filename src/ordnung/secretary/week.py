@@ -111,6 +111,7 @@ from ordnung.payments import is_direct_debit
 from ordnung.rules.send import same_day_channels, send_guidance
 from ordnung.secretary.brief import Agenda, AgendaEntry, is_unread
 from ordnung.secretary.girocode_gate import amount_confirmed
+from ordnung.secretary.tax_choice import for_taxes
 from ordnung.secretary.triggers import (
     Ledger,
     action_day,
@@ -899,7 +900,8 @@ def _file(ledger: Ledger, window: _Window) -> WeekStep:
     for doc in sorted(ledger.documents.values(), key=lambda d: (d.doc_date or "", d.id), reverse=True):
         if doc.id in open_docs or ledger.scam_reasons(doc):
             continue
-        tax = " Keep it with your tax papers." if doc.tax_relevant else ""
+        # the person's own "For taxes" choice, else Claude's mark
+        tax = " Keep it with your tax papers." if for_taxes(doc, ledger.tax_choices) else ""
         if doc.id in done_docs:
             rows.append(_doc_entry(ledger, doc, note=f"Everything done — file the paper.{tax}", tone="ok"))
             continue
