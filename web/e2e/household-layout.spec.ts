@@ -54,6 +54,10 @@ function fault(f: Finding): string | null {
 
 /** The view in light and dark: no layout fault, and axe finds nothing serious. */
 async function checkView(page: Page, testInfo: TestInfo, name: string): Promise<void> {
+  // a toast of the press before ("Added …") would fade out by itself in the middle of a scan, and axe then reads its
+  // half-faded text: close it first, from script so focus stays where the press left it, and let it go
+  await page.locator('li[data-toast] button[aria-label="Dismiss notification"]').evaluateAll((buttons) => buttons.forEach((b) => (b as HTMLButtonElement).click()));
+  await expect(page.locator("li[data-toast]")).toHaveCount(0);
   for (const theme of THEMES) {
     await page.emulateMedia({ colorScheme: theme });
     await expect(page.locator("html")).toHaveClass(theme === "dark" ? /\bdark\b/ : /^(?![\s\S]*\bdark\b)/);
