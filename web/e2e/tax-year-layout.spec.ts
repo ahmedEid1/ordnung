@@ -2,11 +2,15 @@
  * The Tax year page and the Export letters dialog on real pages (what jsdom can't measure), from 320 to 1280 px: no
  * sideways scroll, each letter's tax note wraps inside its row, the Year field fits, the dialog fits the screen with
  * its download in reach — and the Inbox's toolbar still fits every filter tab with the "Letters for taxes" link in
- * its header. Runs against the demo (its letters for taxes are dated 2026) in the "layout" project; it downloads
- * nothing and changes nothing.
+ * its header — and a letter marked for taxes on its own page (D3) is listed with "You marked this for taxes.". Runs
+ * against the demo (its letters for taxes are dated 2026) in the "layout" project; it downloads nothing, and the
+ * letter it marks is left without a choice again.
  */
 import type { Page } from "@playwright/test";
-import { expect, expectAccessible, open, setTour, settle, test } from "./helpers";
+import { apiGet, apiPatch, expect, expectAccessible, letterId, open, setTour, settle, test } from "./helpers";
+
+/** A letter Claude didn't mark for taxes, dated 2026: the TechMarkt invoice. */
+const MARKED_FILE = "08_rechnung_techmarkt.pdf";
 
 const sideways = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
@@ -60,6 +64,29 @@ for (const width of [320, 390, 768, 1280]) {
       if (width === 1280) await expectAccessible(page, test.info(), "export-dialog");
       await dialog.getByRole("button", { name: "Cancel" }).click();
       await expect(dialog).toBeHidden();
+    });
+
+    test("a letter marked on its page shows on the Tax year page with “You marked this for taxes.”", async ({ page }) => {
+      const id = await letterId(page, MARKED_FILE);
+      try {
+        await apiPatch(page, `/api/documents/${id}`, { tax_choice: null });
+        await open(page, `/documents/${id}`);
+        const toggle = page.getByRole("main").getByRole("button", { name: "For taxes" });
+        await toggle.scrollIntoViewIfNeeded();
+        await toggle.click();
+        await expect(toggle).toHaveAttribute("aria-pressed", "true");
+        await page.getByRole("main").getByRole("link", { name: "All letters for taxes from 2026" }).click();
+        await expect(page).toHaveURL(/\/inbox\/taxes\?year=2026$/);
+        await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText("Tax year 2026");
+        await settle(page);
+        const shown = (await apiGet<{ document: { title: string } }>(page, `/api/documents/${id}`)).document;
+        const row = page.getByRole("main").getByRole("listitem").filter({ has: page.getByRole("link", { name: shown.title }) });
+        await expect(row.getByText("You marked this for taxes.")).toBeVisible();
+        expect(await sideways(page), "the page scrolls sideways").toBe(0);
+      } finally {
+        // the demo as it was: no choice of the person's
+        await apiPatch(page, `/api/documents/${id}`, { tax_choice: null });
+      }
     });
 
     test("the Inbox's toolbar still fits with the Letters for taxes link in the header", async ({ page }) => {

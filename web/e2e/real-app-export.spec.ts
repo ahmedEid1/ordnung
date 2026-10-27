@@ -1,14 +1,15 @@
 /**
  * Export letters on the real app (`ordnung serve` with the fake Claude): Settings → Data → Export letters downloads a
  * real ZIP — the letter's original file, byte for byte, in its year and sender folders, and `index.csv` for a
- * spreadsheet — only when the person clicks Download, and nothing in Ordnung changes. The letter it adds is deleted
- * for good afterwards (the other real-app specs add the same file).
+ * spreadsheet — only when the person clicks Download, and nothing in Ordnung changes. A letter marked *For taxes* on
+ * its page (D3) goes into the ZIP of "Only letters for taxes", and its toast's Undo takes it out again. The letter
+ * each test adds is deleted for good afterwards (the other real-app specs add the same file).
  */
 import { readFileSync } from "node:fs";
 import { inflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { REAL_LETTER } from "./env";
-import { apiGet, apiSend, expect, open, test, type Letter } from "./helpers";
+import { apiGet, apiSend, expect, open, READ, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 const INDEX_HEADER = "file;letter_date;arrived;sender;title;kind;for_taxes;tax_note;direction;private;pages;original_name;ordnung_id;note";
@@ -101,6 +102,54 @@ test("Export letters downloads a real ZIP of the originals, only on a click, and
 
     // an export only reads: Ordnung holds exactly what it held
     expect(await everything(page), "Ordnung changed").toBe(before);
+  } finally {
+    for (const added of (await apiGet<Letter[]>(page, "/api/documents")).filter((d) => d.filename === FILE)) {
+      await apiSend(page, "DELETE", `/api/documents/${added.id}?purge=true`);
+    }
+  }
+  expect((await apiGet<Letter[]>(page, "/api/documents")).map((d) => d.filename)).not.toContain(FILE);
+});
+
+test("a letter marked For taxes on its page goes into the tax ZIP, and Undo takes it out again", async ({ page }) => {
+  /** The originals in `GET /api/documents.zip?tax=true` (Only letters for taxes) that are this letter's file, and its index row. */
+  const taxZip = async (id: string) => {
+    const res = await page.request.get("/api/documents.zip?tax=true", READ);
+    expect(res.ok(), `the tax ZIP → ${res.status()}`).toBe(true);
+    const entries = unzip(await res.body());
+    const original = readFileSync(REAL_LETTER);
+    const files = [...entries.keys()].filter((name) => name.endsWith(".pdf") && entries.get(name)!.equals(original));
+    const index = entries.get("index.csv")!.subarray(3).toString("utf8").split("\r\n");
+    return { files, row: index.find((line) => line.includes(id)) };
+  };
+  const toggle = page.getByRole("main").getByRole("button", { name: "For taxes" });
+  try {
+    const upload = await page.request.post("/api/documents", {
+      headers: { "X-Ordnung-Client": "web" },
+      multipart: { files: { name: FILE, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
+    });
+    expect(upload.status(), await upload.text()).toBe(201);
+    const letter = await readLetter(page);
+    // Claude didn't mark the bank's fee increase for taxes: it isn't in the tax ZIP
+    expect((await taxZip(letter.id)).files).toEqual([]);
+
+    await open(page, `/documents/${letter.id}`);
+    await toggle.scrollIntoViewIfNeeded();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    const marked = page.locator("li[data-toast]").filter({ hasText: "Marked for taxes" });
+    await expect(marked).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    // the pointer on the toast keeps its Undo there while the ZIP is checked
+    await marked.hover();
+    const inZip = await taxZip(letter.id);
+    expect(inZip.files, "the letter's original is in the tax ZIP").toHaveLength(1);
+    expect(inZip.row?.split(";")[6], "index.csv says it is for taxes").toBe("yes");
+
+    await marked.getByRole("button", { name: "Undo" }).click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    // exactly as before: no choice of the person's, and out of the tax ZIP again
+    expect((await apiGet<{ tax_choice: boolean | null }>(page, `/api/documents/${letter.id}`)).tax_choice).toBeNull();
+    expect((await taxZip(letter.id)).files).toEqual([]);
   } finally {
     for (const added of (await apiGet<Letter[]>(page, "/api/documents")).filter((d) => d.filename === FILE)) {
       await apiSend(page, "DELETE", `/api/documents/${added.id}?purge=true`);

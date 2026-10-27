@@ -192,7 +192,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
               </>
             ) : (
               <>
-                <ExplainedSimply doc={doc} />
+                <ExplainedSimply doc={doc} taxChoice={detail.tax_choice} />
                 <ItemsList items={detail.items} docId={doc.id} pages={doc.pages} scam={scam} setAside={detail.set_aside} documents={detail.related} letter={doc} />
                 <KeyFacts doc={doc} scam={scam} girocodes={detail.girocodes} />
                 <EmailParts detail={detail} />
