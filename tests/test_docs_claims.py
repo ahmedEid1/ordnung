@@ -4112,10 +4112,6 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
 # --------------------------------------------------------------------------------------------------
 
 _ADR_HOUSEHOLD = ROOT / "docs" / "decisions" / "0023-letters-for-your-household-are-suggested-never-filed.md"
-#: Claims about code the other D3 packages build (d3-tax-choice, d3-household-core, d3-inbox and
-#: d3-household-surfaces): on d3-docs's own branch that code is still d3-contract's (an empty household, a 501
-#: for a tax choice), so these hold once D3 is merged; the integrator then drops the mark.
-_UNTIL_D3 = pytest.mark.xfail(strict=False, reason="until D3 integration")
 
 #: CHANGELOG, Unreleased → Added: *For taxes* on a letter's page (d3-tax-choice), its sentences in order.
 D3_FOR_TAXES = (
@@ -4482,7 +4478,6 @@ def test_the_spec_and_architecture_say_how_for_taxes_and_the_household_work() ->
         assert words in architecture, words
 
 
-@_UNTIL_D3
 async def test_a_tax_choice_is_kept_apart_and_followed_as_the_docs_say(data_dir: Path) -> None:
     """d3-tax-choice against the CHANGELOG, README, SPEC and docs/architecture.md: the choice is set by the PATCH
     and never touches Claude's mark; the letter's page, its row and the records carry it; the tax-season Idea
@@ -4514,7 +4509,6 @@ async def test_a_tax_choice_is_kept_apart_and_followed_as_the_docs_say(data_dir:
         assert cleared.status_code == 200 and store.tax_choices() == {}
 
 
-@_UNTIL_D3
 async def test_the_household_files_a_letter_only_on_a_press_as_the_docs_say(data_dir: Path) -> None:
     """d3-household-core against ADR 0023, SPEC and docs/privacy.md: adding a person files nothing; a PATCH files
     and the letter's page says so; the person's own name is refused with the docs' words; deleting the letter for
@@ -4578,7 +4572,6 @@ _D3_PAGE_WORDS = (
 )
 
 
-@_UNTIL_D3
 def test_the_pages_say_what_the_docs_quote() -> None:
     """The words SPEC, README, the CHANGELOG and docs/privacy.md quote from the pages are the pages' own."""
     web = ROOT / "web" / "src"
@@ -4586,7 +4579,6 @@ def test_the_pages_say_what_the_docs_quote() -> None:
         assert words in (web / path).read_text(encoding="utf-8"), (path, words)
 
 
-@_UNTIL_D3
 def test_the_tests_the_architecture_names_for_d3_exist() -> None:
     """docs/architecture.md's testing strategy names D3's tests; they come with the other D3 packages."""
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
