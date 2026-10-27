@@ -498,3 +498,18 @@ describe("whose letter it is", () => {
     expect(within(coming).getAllByText(/(^|· )For Alex Rivera( ·|$)/).length).toBeGreaterThan(0);
   });
 });
+
+describe("whose letter it is in the static demo", () => {
+  it("tags Today's rows of the letters a visitor filed for someone, through the demo's own household", async () => {
+    const { srv } = useMockApi({ staticDemo: true });
+    const none = new URLSearchParams();
+    const empty = (await (await srv.handle("GET", "/household", none, undefined)).json()) as Household;
+    const added = (await (await srv.handle("PUT", "/household", none, { base: empty.version, members: [{ id: null, name: "Alex Rivera", signs: true }] })).json()) as Household;
+    const letters = Object.fromEntries(srv.db.liveDocuments().map((d) => [d.id, added.members[0]!.id]));
+    expect((await srv.handle("PATCH", "/household", none, { letters })).status).toBe(200);
+    await renderToday();
+    const coming = screen.getByRole("region", { name: /Coming up/ });
+    expect((await within(coming).findAllByText(/(^|· )For Alex Rivera( ·|$)/)).length).toBeGreaterThan(0);
+    expect(within(screen.getByRole("region", { name: "Top 3 this week" })).getAllByText("For Alex Rivera").length).toBeGreaterThan(0);
+  });
+});

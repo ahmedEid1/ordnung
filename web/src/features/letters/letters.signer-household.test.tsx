@@ -215,3 +215,22 @@ describe("the From field of a letter filed for someone who doesn't sign letters"
     expect(drafted(opened.calls)).not.toHaveProperty("sender_name");
   });
 });
+
+describe("the static demo, whose household is the page's own", () => {
+  it("offers the name of someone a visitor added and filed the letter for, as the app does", async () => {
+    const { srv } = useMockApi({ full: true, staticDemo: true });
+    const none = new URLSearchParams();
+    const empty = (await (await srv.handle("GET", "/household", none, undefined)).json()) as Household;
+    const added = await srv.handle("PUT", "/household", none, { base: empty.version, members: [{ id: null, name: "Alex Rivera", signs: true }] });
+    expect(added.status).toBe(200);
+    const alex = ((await added.json()) as Household).members[0]!;
+    expect((await srv.handle("PATCH", "/household", none, { letters: { doc_tax: alex.id } })).status).toBe(200);
+
+    renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
+    const dialog = await screen.findByRole("dialog", { name: "New letter" });
+    const from = await within(dialog).findByRole("textbox", { name: "From" });
+    expect(from).toHaveValue("Sam Rivera");
+    expect(from).toHaveAccessibleDescription("This letter is filed for Alex Rivera.");
+    expect(within(dialog).getByRole("button", { name: "Reply in Alex Rivera's name" })).toBeInTheDocument();
+  });
+});
