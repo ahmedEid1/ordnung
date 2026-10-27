@@ -136,9 +136,11 @@ desktop notification (discreet by default) while the browser is closed, start at
 with your own CalDAV calendar · *app-menu shortcut* — open Ordnung from your app menu, Start menu or
 Applications folder, signed in, without a terminal · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
 or more unrelated words, or a password manager's random password with capital and small letters) with a
-restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them ·
-*export letters* — your originals as files in folders by year and sender, with a list for a spreadsheet ·
-*moving checklist* — who needs your new address, from your contracts and letters, starting with the
+restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them;
+mark or unmark any letter yourself, and the Inbox shows one year at a time · *your household* — file a letter
+for your partner or your child when Ordnung asks (it never files one by itself), find their letters, and reply
+in their name when they sign their own · *export letters* — your originals as files in folders by year and
+sender, with a list for a spreadsheet · *moving checklist* — who needs your new address, from your contracts and letters, starting with the
 Bürgeramt's two weeks · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools.
 
 ## The model reads, code computes
@@ -420,7 +422,8 @@ on your home network: HTTPS with a certificate Ordnung makes on your computer, a
 paired with a one-time code, and never their requests for settings, backups or deletion; on a phone,
 *My numbers* and your profile's IBAN show only their last 4 characters (a letter shows what is printed on
 it, also one you write there that carries your IBAN). Settings show what each feature
-sends and a usage log per document; the address and IBAN in your profile are never put into a prompt.
+sends and a usage log per document; the address and IBAN in your profile, the people you list as your
+household and your *For taxes* choices are never put into a prompt.
 Files from a watched folder are sent to Claude only after you say so. *Export letters* puts your original
 letters, unencrypted, into a ZIP you save, only when you click it and never from a phone. Calendar sync,
 off until you connect a calendar, is the only feature that sends anything readable to another third party
@@ -701,12 +704,13 @@ More in [docs/architecture.md](docs/architecture.md).
 - The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is for:
   a yearly statement for 2025 dated February 2026 is a 2026 letter, which is why a tax year also lists the
   letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
-  January payslip for the new year and misses a statement dated in June. Only Claude marks a letter for taxes,
-  when it reads it: a letter you kept private is never marked, and you can't mark one yourself yet (*Export
-  letters* with *Only letters for taxes* off takes all of a year's letters, private ones too, but not the ones
-  still waiting under *From your folder — not read yet*: choose *Read these* or *Keep private* first). The ZIP
-  *Export letters* saves isn't encrypted, and letters you wrote in Ordnung and their proofs of sending aren't
-  in it.
+  January payslip for the new year and misses a statement dated in June. Claude marks a letter for taxes when
+  it reads it; *For taxes* on a letter's page changes that, for private letters too, and your choice stays when
+  the letter is read again. Ask, and the Ideas Claude suggests each week, still go by Claude's own mark. A
+  letter still waiting under *From your folder — not read yet* can't be marked, and *Export letters* with *Only
+  letters for taxes* off takes all of a year's letters, private ones too, but not those: choose *Read these* or
+  *Keep private* first. The ZIP *Export letters* saves isn't encrypted, and letters you wrote in Ordnung and
+  their proofs of sending aren't in it.
 - The moving checklist knows only the organisations Ordnung has seen in your contracts and letters (a running
   contract, or a letter of the last three years from a bank, an insurer, your employer, a landlord, a utility,
   an office and the like); others, such as your doctor or online shops, aren't on it. It doesn't cover moving
@@ -726,9 +730,10 @@ More in [docs/architecture.md](docs/architecture.md).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier.
 - One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
-  child) says so, and a reply to it can go out in their name, but its dates, reminders and numbers count as
-  yours. A phone you pair in Settings → Phone can use it in its browser over your home Wi-Fi while the
-  computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
+  child) says so, you can file it for them once they are in your household, and a reply to it can go out in
+  their name, but its dates, reminders and numbers count as yours, and Ask and Ideas still treat a household
+  member's letters as yours. A phone you pair in Settings → Phone can use it in its browser over your home
+  Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
   and it can't change settings, back up or delete. There is no
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
   doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
@@ -779,8 +784,9 @@ More in [docs/architecture.md](docs/architecture.md).
   [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md),
   [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md),
   [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md),
-  [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md)
-  and [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)
+  [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md),
+  [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)
+  and [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)
 
 ## How this was built
 

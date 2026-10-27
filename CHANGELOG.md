@@ -95,6 +95,23 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   refused with the reason, and an e-mail whose text Outlook kept only as RTF comes in without its text (its
   attachments still come in). Before, an Outlook file was refused (the watched folder left it alone), or taken
   for a PDF when an attached PDF came first in it.
+- **Mark any letter for taxes yourself.** A letter's page has a *For taxes* button: press it to add the letter
+  to your letters for taxes, or to take one Claude marked off them — private letters too, and on your phone,
+  with Undo. Your choice stays when the letter is read again; the Tax year page, *Export letters* with *Only
+  letters for taxes*, the tax-season Idea and the weekly review's *Keep it with your tax papers* follow it. Ask
+  and *Weekly Ideas* still see Claude's own mark.
+- **The Inbox shows one year at a time.** A *Year* choice next to the kind of letter shows the letters dated
+  in that year (else arrived in it), as the Tax year page files them; its *Letters for taxes* link then opens
+  that year.
+- **Your household.** Add the people whose letters come to you too, such as your partner or your children, in
+  Settings → Profile & address (Claude never sees the list). A letter addressed to one of them asks *Is this
+  letter for Alex Rivera?* — one press files it, *Change* files it for someone else, and nothing is filed by
+  itself ([ADR 0023](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)). The Inbox
+  shows one person's letters and files the ones addressed to them at once (*File these 3 for Alex Rivera*);
+  Inbox and Today rows say whose letter it is; a reply to their letter can go out in their name when they sign
+  their own letters (for a child, it goes out in yours). A paired phone can file letters but not change the
+  list, and *Download a copy of your records* holds it. Their letters' dates, reminders and numbers stay yours,
+  and Ask and Ideas still treat them as yours.
 - **Releases.** A version tag builds the wheel and the source package, checks them, and publishes a GitHub
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
@@ -229,6 +246,15 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A script that reads the letter list (`GET /api/documents`) no longer finds `explanation`, `key_facts`,
   `references`, `payment` or `sha256` in its rows: read them from the letter (`GET /api/documents/{id}`), or
   every letter whole from `GET /api/documents.json` on the computer.
+- A computer still on 0.2.0 keeps the letters you marked or unmarked for taxes but doesn't use your choices:
+  its Tax year page, export and tax-season Idea go by Claude's marks alone, and a letter deleted for good there
+  leaves its choice behind (its id and yes or no, nothing of the letter) until you next mark or unmark a letter
+  on an updated computer. Update both computers.
+- A computer still on 0.2.0 keeps your household and the letters you filed for its people when it receives
+  them by hand-off sync or from a backup, but doesn't show them: there every letter is yours, as before. Update
+  both computers.
+- A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the
+  letter) until an updated computer in use runs its daily check.
 
 ## 0.2.0 — 2026-10-08
 
