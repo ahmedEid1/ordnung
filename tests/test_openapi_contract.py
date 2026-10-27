@@ -19,9 +19,10 @@ from pydantic import ValidationError
 
 from fixtures_llm import GYM_CONTRACT_LETTER, TAX_LETTER, record_events
 from ordnung import clock, models
-from ordnung.api.app import openapi_json, openapi_schema
+from ordnung.api.app import VIEW_MODELS, openapi_json, openapi_schema
 from ordnung.api.routes import documents
 from ordnung.api.routes.drafts import DraftCreate
+from ordnung.db.store import HOUSEHOLD_META_KEY
 from ordnung.ingest import pipeline
 from test_api_support import TODAY, api_for
 
@@ -274,15 +275,19 @@ def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str,
     ]
     assert body["items"] == {"$ref": "#/components/schemas/DocumentRow"}
     row, letter = components["DocumentRow"], components["Document"]
-    assert set(row["properties"]) == (set(letter["properties"]) - documents.LEFT_OUT_OF_LIST) | {"found_in"}
+    assert (
+        set(row["properties"])
+        == (set(letter["properties"]) - documents.LEFT_OUT_OF_LIST) | documents.ROUTE_FIELDS
+    )
     assert set(row["required"]) == set(row["properties"])
-    kept = set(row["properties"]) - {"found_in"}
+    kept = set(row["properties"]) - documents.ROUTE_FIELDS
     assert {name: row["properties"][name] for name in kept} == {
         name: letter["properties"][name] for name in kept
     }
     found_in = row["properties"]["found_in"]["anyOf"]
     assert sorted(found_in[0]["enum"]) == ["letter", "scanner_text"] and found_in[1] == {"type": "null"}
     assert "found_in" not in models.Document.model_fields
+    assert row["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
     # models.DocumentListEntry stays in models.py (a benchmark digest file), unused by any route
     assert "DocumentListEntry" not in components
     detail = components["DocumentDetail"]
@@ -302,28 +307,124 @@ def test_the_letter_list_leaves_out_exactly_the_reading_and_the_file_hash() -> N
         {"key_facts", "explanation", "references", "payment", "sha256"}
     )
     assert documents.LEFT_OUT_OF_LIST <= set(models.Document.model_fields)
-    assert set(documents.DocumentRow.model_fields) == (
-        set(models.Document.model_fields) - documents.LEFT_OUT_OF_LIST
-    ) | {"found_in"}
+    assert documents.ROUTE_FIELDS == frozenset({"found_in", "tax_choice"})
+    assert (
+        set(documents.DocumentRow.model_fields)
+        == (set(models.Document.model_fields) - documents.LEFT_OUT_OF_LIST) | documents.ROUTE_FIELDS
+    )
     assert not issubclass(documents.DocumentRow, models.Document)
+    assert not documents.ROUTE_FIELDS & set(models.Document.model_fields)
     for name, field in documents.DocumentRow.model_fields.items():
-        if name != "found_in":
+        if name not in documents.ROUTE_FIELDS:
             assert field.annotation == models.Document.model_fields[name].annotation, name
 
 
 def test_the_copy_of_your_records_lists_every_letter_whole(schema: dict[str, Any]) -> None:
     """``GET /api/documents.json`` ("Download a copy of your records") answers whole letters, as
-    stored, for the computer only."""
+    stored, with the person's own "For taxes" choice (``LetterRecord``), for the computer only."""
     assert set(schema["paths"]["/api/documents.json"]) == {"get"}
     operation = schema["paths"]["/api/documents.json"]["get"]
     body = operation["responses"]["200"]["content"]["application/json"]["schema"]
     assert body == {
         "type": "array",
-        "items": {"$ref": "#/components/schemas/Document"},
+        "items": {"$ref": "#/components/schemas/LetterRecord"},
         "title": body["title"],
     }
     assert "parameters" not in operation
     assert "x-ordnung-phone" not in operation
+    components = schema["components"]["schemas"]
+    record, letter = components["LetterRecord"], components["Document"]
+    assert set(record["properties"]) == set(letter["properties"]) | {"tax_choice"}
+    assert set(record["required"]) == set(record["properties"])
+    assert {name: record["properties"][name] for name in letter["properties"]} == letter["properties"]
+    assert record["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
+    assert issubclass(documents.LetterRecord, models.Document)
+
+
+def test_a_letter_detail_and_patch_carry_the_persons_tax_choice(schema: dict[str, Any]) -> None:
+    """The letter's page answers ``LetterDetail``, a route-local ``DocumentDetail`` with the person's own
+    "For taxes" choice (``null``: none, Claude's mark counts) and who the letter is for; a PATCH may set the
+    choice. The letter itself (what Ask's fingerprint hashes) has no such field."""
+    components = schema["components"]["schemas"]
+    operation = schema["paths"]["/api/documents/{doc_id}"]["get"]
+    body = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert body == {"$ref": "#/components/schemas/LetterDetail"}
+    detail, base = components["LetterDetail"], components["DocumentDetail"]
+    assert set(detail["properties"]) == set(base["properties"]) | {"tax_choice", "household"}
+    assert set(detail["required"]) == set(detail["properties"])
+    assert detail["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
+    assert detail["properties"]["household"] == {"$ref": "#/components/schemas/LetterFor"}
+    assert issubclass(documents.LetterDetail, models.DocumentDetail)
+    assert documents.LetterDetail.model_fields["tax_choice"].default is None
+    patch = components["DocumentPatch"]
+    field = patch["properties"]["tax_choice"]
+    assert field["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
+    assert field["description"].startswith("For taxes: true or false is the person's own choice")
+    assert "tax_choice" not in patch.get("required", [])
+    assert "tax_choice" not in models.Document.model_fields
+    assert "tax_choice" not in models.DocumentDetail.model_fields
+    # DocumentDetail stays a named view model (models.py is a benchmark digest file)
+    assert models.DocumentDetail in VIEW_MODELS
+
+
+def test_the_household_has_three_operations_and_its_shapes(schema: dict[str, Any]) -> None:
+    """``/api/household``: GET and PATCH (file letters) for the phone too, PUT (edit the people) on the
+    computer only. Bodies refuse unknown fields; the caps are in the schema."""
+    operations = schema["paths"]["/api/household"]
+    assert set(operations) == {"get", "put", "patch"}
+    assert operations["get"].get("x-ordnung-phone") is True
+    assert operations["patch"].get("x-ordnung-phone") is True
+    assert "x-ordnung-phone" not in operations["put"]
+    for method in ("get", "put", "patch"):
+        answer = operations[method]["responses"]["200"]["content"]["application/json"]["schema"]
+        assert answer == {"$ref": "#/components/schemas/Household"}, method
+    components = schema["components"]["schemas"]
+    for name in ("Household", "HouseholdPerson", "HouseholdMember", "LetterFor"):
+        definition = components[name]
+        assert set(definition["required"]) == set(definition["properties"]), name
+    assert set(components["Household"]["properties"]) == {"members", "filed", "mine", "suggested", "version"}
+    assert set(components["HouseholdPerson"]["properties"]) == {"id", "name", "signs", "letters"}
+    assert set(components["LetterFor"]["properties"]) == {"filed_for", "mine", "suggested", "add"}
+    change = components["HouseholdChange"]
+    assert change["additionalProperties"] is False and change["required"] == ["base", "members"]
+    assert change["properties"]["members"]["maxItems"] == 50
+    assert change["properties"]["also_file"]["maxItems"] == 1
+    assert components["MemberIn"]["additionalProperties"] is False
+    assert components["MemberIn"]["properties"]["name"]["maxLength"] == 1000
+    filing = components["HouseholdFiling"]
+    assert filing["additionalProperties"] is False
+    letters = filing["properties"]["letters"]
+    assert (letters["minProperties"], letters["maxProperties"]) == (1, 1000)
+
+
+async def test_a_new_library_has_no_tax_choice_and_an_empty_household(data_dir: Path) -> None:
+    """Before the person chooses anything: every letter says no tax choice (Claude's mark counts) and
+    nobody else it is for, and the household is empty. Bodies that break the contract answer 422."""
+    async with api_for(data_dir) as api:
+        client = api.client
+        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
+        await api.read_all()
+        doc_id = body["documents"][0]["id"]
+        detail = (await client.get(f"/api/documents/{doc_id}")).json()
+        assert detail["tax_choice"] is None
+        assert detail["household"] == {"filed_for": None, "mine": False, "suggested": None, "add": None}
+        assert [row["tax_choice"] for row in (await client.get("/api/documents")).json()] == [None]
+        assert [row["tax_choice"] for row in (await client.get("/api/documents.json")).json()] == [None]
+        for bad in ("maybe", 2, []):
+            assert (
+                await client.patch(f"/api/documents/{doc_id}", json={"tax_choice": bad})
+            ).status_code == 422
+        assert (await client.patch(f"/api/documents/{doc_id}", json={"title": "Bescheid"})).status_code == 200
+        empty = {"members": [], "filed": {}, "mine": [], "suggested": {}, "version": "4f53cda18c2baa0c"}
+        assert (await client.get("/api/household")).json() == empty
+        change = {"base": empty["version"], "members": [{"name": "Alex Rivera"}]}
+        assert (await client.put("/api/household", json={**change, "extra": 1})).status_code == 422
+        assert (
+            await client.put("/api/household", json={**change, "also_file": ["a", "b"]})
+        ).status_code == 422
+        assert (await client.patch("/api/household", json={"letters": {}})).status_code == 422
+        assert api.ctx.store.tax_choices() == {}
+        assert api.ctx.store.get_meta(HOUSEHOLD_META_KEY) is None
 
 
 def test_the_upload_form_names_every_kind_of_file_it_takes(schema: dict[str, Any]) -> None:

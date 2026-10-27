@@ -136,6 +136,19 @@ _PROFILE_KEY = "profile"
 _SETTINGS_KEY = "settings"
 #: The ``meta`` row that holds the app settings (JSON of :class:`~ordnung.models.AppSettings`).
 SETTINGS_META_KEY = _SETTINGS_KEY
+#: meta: the person's own "For taxes" choices, letter id → ``true``/``false`` (canonical JSON; no row while
+#: there are none). Kept apart from the letter's ``tax_relevant``, which a reading overwrites; what counts
+#: is :func:`ordnung.secretary.tax_choice.for_taxes`. Synced like the profile (``ordnung.sync.SYNCED_META``);
+#: Ask's ledger fingerprint never reads it. No migration: a computer still on 0.2.x carries it untouched.
+TAX_CHOICES_META_KEY = "tax_choices"
+#: meta: the person's household (:mod:`ordnung.secretary.household`): ``{"format": 1, "members": [{"id",
+#: "name", "signs"}], "links": {letter id: member id | "me"}}``. Synced like the profile; never read by Ask.
+HOUSEHOLD_META_KEY = "household"
+#: The rows that name letters by id: deleting a letter for good removes it from each, at this JSON path.
+_LETTER_KEYED_META: tuple[tuple[str, str], ...] = (
+    (TAX_CHOICES_META_KEY, "$"),
+    (HOUSEHOLD_META_KEY, "$.links"),
+)
 #: The tables Ask's ledger fingerprint reads (:func:`ordnung.assistant.ask.ledger_fingerprint`; of ``meta``
 #: only the profile), and ``cases``: deleting one changes letters, to-dos and contracts (``ON DELETE SET
 #: NULL``). :meth:`Store.ledger_token` watches them; a table the fingerprint starts to read must join them
@@ -350,6 +363,24 @@ class _Where:
 
     def sql(self) -> str:
         return "WHERE " + " AND ".join(self.clauses) if self.clauses else ""
+
+
+def _tax_choices(raw: str | None) -> dict[str, bool]:
+    """The choices a ``tax_choices`` row holds: an unreadable row, or a value that isn't ``true`` or
+    ``false``, counts as no choice."""
+    if raw is None:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {key: value for key, value in parsed.items() if isinstance(value, bool)}
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def _priority_rank(column: str) -> str:
@@ -1093,6 +1124,46 @@ class Store:
         self.set_meta(_SETTINGS_KEY, validated.model_dump_json())
         return validated
 
+    def tax_choices(self) -> dict[str, bool]:
+        """The person's "For taxes" choices by letter id (:data:`TAX_CHOICES_META_KEY`); an unreadable row
+        or a value that isn't a boolean counts as no choice. Letters in the trash keep theirs."""
+        return _tax_choices(self.get_meta(TAX_CHOICES_META_KEY))
+
+    def set_tax_choice(self, doc_id: str, choice: bool | None) -> bool:
+        """Set (``True``/``False``) or clear (``None``) the person's "For taxes" choice of one letter, in one
+        transaction that also drops the choices of letters that no longer exist (deleted for good on a
+        computer still on 0.2.x). The letter must exist (:class:`NotFoundError`); one in the trash may have
+        a choice. An unchanged value writes nothing: no person change, no new sync version. Returns whether
+        the row changed."""
+        with self.tx() as conn:
+            if conn.execute("SELECT 1 FROM documents WHERE id = ?", (doc_id,)).fetchone() is None:
+                raise NotFoundError(f"documents: no row with id {doc_id!r}")
+            row = conn.execute("SELECT value FROM meta WHERE key = ?", (TAX_CHOICES_META_KEY,)).fetchone()
+            before = _tax_choices(None if row is None else str(row["value"]))
+            existing = {
+                found["id"]
+                for found in conn.execute(  # one JSON array, never one variable per id (SQLite's limit)
+                    "SELECT id FROM documents WHERE id IN (SELECT value FROM json_each(?))",
+                    (json.dumps(sorted(before)),),
+                )
+            }
+            after = {key: value for key, value in before.items() if key in existing}
+            if choice is None:
+                after.pop(doc_id, None)
+            else:
+                after[doc_id] = choice
+            if after == before:
+                return False
+            if after:
+                conn.execute(
+                    "INSERT INTO meta (key, value) VALUES (?, ?) "
+                    "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    (TAX_CHOICES_META_KEY, _canonical_json(after)),
+                )
+            else:
+                conn.execute("DELETE FROM meta WHERE key = ?", (TAX_CHOICES_META_KEY,))
+        return True
+
     # ---------------------------------------------------------------------------------------------
     # documents
     # ---------------------------------------------------------------------------------------------
@@ -1305,6 +1376,15 @@ class Store:
                 (json.dumps(others), call["id"]),
             )
         conn.execute("DELETE FROM trace_spans WHERE doc_id = ?", (doc_id,))
+        for key, path in _LETTER_KEYED_META:
+            # the person's choices about the letter (For taxes, whose letter it is): the id is quoted in the
+            # path, so it names one key whatever it holds ("." or "["); a row that isn't JSON is left alone
+            conn.execute(
+                "UPDATE meta SET value = json_remove(value, ? || '.\"' || ? || '\"') WHERE key = ? "
+                "AND json_valid(value) AND json_type(value, ? || '.\"' || ? || '\"') IS NOT NULL",
+                (path, doc_id, key, path, doc_id),
+            )
+        conn.execute("DELETE FROM meta WHERE key = ? AND value = '{}'", (TAX_CHOICES_META_KEY,))
 
     def given_to_model(self, doc_id: str) -> bool:
         """Whether a model ever had the document: it was read, or a model call carried it — a logged
@@ -1427,6 +1507,19 @@ class Store:
             "SELECT page, text FROM pages WHERE doc_id = ? AND trim(text) != '' ORDER BY page", (doc_id,)
         )
         return "\n\n".join(f"=== Page {row['page']} ===\n{row['text']}" for row in rows)
+
+    def recipient_names(self) -> dict[str, str | None]:
+        """Who each letter in the Inbox is addressed to, as read (``DocumentExtraction.recipient_name``), by
+        letter id, in one query: every letter outside the trash but proof files; ``None`` unless the letter
+        is incoming and has a reading that names someone. For the household's suggestions
+        (:mod:`ordnung.secretary.household`); never stored."""
+        rows = self._conn().execute(
+            "SELECT id, CASE WHEN direction = 'incoming' AND json_valid(extraction) "
+            "THEN json_extract(extraction, '$.recipient_name') END AS name "
+            "FROM documents WHERE deleted_at IS NULL AND source != ?",
+            (PROOF_SOURCE,),
+        )
+        return {row["id"]: row["name"] if isinstance(row["name"], str) else None for row in rows}
 
     def get_extraction(self, doc_id: str) -> DocumentExtraction | None:
         """The stored model extraction of a document (``None`` if not extracted yet)."""

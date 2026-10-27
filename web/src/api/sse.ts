@@ -223,6 +223,8 @@ export function handleServerEvent(qc: QueryClient, ev: ServerEvent): void {
       break;
     case "profile.updated":
       void qc.invalidateQueries({ queryKey: qk.profile });
+      // household writes announce themselves so too (no event of their own: the events are in models.py)
+      void qc.invalidateQueries({ queryKey: qk.household });
       break;
     case "demo.mail":
       void qc.invalidateQueries({ queryKey: qk.mail });

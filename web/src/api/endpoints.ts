@@ -29,9 +29,12 @@ import type {
   DraftCreate,
   DraftPatch,
   Health,
+  HouseholdChange,
+  HouseholdFiling,
   ItemCreate,
   ItemListParams,
   ItemPatch,
+  LetterRecord,
   LettersZipParams,
   MarkSentRequest,
   OnboardingRequest,
@@ -124,6 +127,12 @@ export const api = {
   settings: () => call("get", "/api/settings"),
   updateSettings: (settings: SettingsPatch) => call("put", "/api/settings", { body: settings }),
   onboarding: (body: OnboardingRequest) => call("post", "/api/onboarding", { body }),
+  /** Your household: its people, the letters filed for each, the ones that are the person's, the suggestions. */
+  household: () => call("get", "/api/household"),
+  /** Replace the list of people (computer only); `base` is the `version` the page saw (409 when it is stale). */
+  saveHousehold: (body: HouseholdChange) => call("put", "/api/household", { body }),
+  /** File letters: a member's id, `"me"`, or null (forget the answer) per letter id (at most 1,000 at once). */
+  fileLetters: (body: HouseholdFiling) => call("patch", "/api/household", { body }),
   /**
    * "Delete everything": wipes the data folder; the API insists on the typed word `DELETE`. `unreceivedOk` is the
    * second confirmation hand-off sync asks for while no other computer has this one's latest changes (409
@@ -135,8 +144,11 @@ export const api = {
   // -- documents ---------------------------------------------------------------------------------
   /** The letter list: rows without each letter's explanation, key facts, references, bank details and file hash. */
   documents: (params: DocumentListParams = {}) => call("get", "/api/documents", { query: { ...params } }),
-  /** Every letter whole, as stored, newest first (computer only): the letters of "Download a copy of your records". */
-  documentsFull: () => call("get", "/api/documents.json"),
+  /**
+   * Every letter whole, as stored, newest first, with the person's `tax_choice` (`LetterRecord`; computer only):
+   * the letters of "Download a copy of your records".
+   */
+  documentsFull: (): Promise<LetterRecord[]> => call("get", "/api/documents.json"),
   /** Multipart upload: `files` (repeated), `combine`, `private` → 201 with documents, jobs, duplicates, errors. */
   uploadDocuments: (files: File[] | FileList, opts: UploadOptions = {}) => {
     const form = new FormData();

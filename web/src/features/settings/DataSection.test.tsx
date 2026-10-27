@@ -55,8 +55,10 @@ describe("Download a copy of your records", () => {
     const letters = srv.db.liveDocuments();
     expect(letters.length).toBeGreaterThan(10);
     // every letter, each as stored: what Claude read from inside it, its references, bank details and file hash
+    // (and the person's own "For taxes" choice, none here)
     const byId = (docs: Document[]) => Object.fromEntries(docs.map((d) => [d.id, d]));
-    expect(byId(records.documents)).toEqual(byId(JSON.parse(JSON.stringify(letters)) as Document[]));
+    const stored = letters.map((d) => ({ ...d, tax_choice: null }));
+    expect(byId(records.documents)).toEqual(byId(JSON.parse(JSON.stringify(stored)) as Document[]));
     for (const d of records.documents) for (const field of LEFT_OUT_OF_LIST) expect(d, `${d.id} keeps ${field}`).toHaveProperty(field);
     const read = records.documents.filter((d) => d.ai_processed_at && !d.ai_private && d.status === "processed");
     expect(read.length).toBeGreaterThan(5);

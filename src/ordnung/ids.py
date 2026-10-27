@@ -32,6 +32,7 @@ PREFIXES = {
     "prf",
     "cal",
     "phn",
+    "hhm",  # a person of the household (ordnung.secretary.household)
 }
 
 

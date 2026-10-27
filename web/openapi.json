@@ -319,6 +319,110 @@
         }
       }
     },
+    "/api/household": {
+      "get": {
+        "tags": [
+          "household"
+        ],
+        "summary": "Get Household",
+        "description": "The household: its people, the letters filed for each, the ones that are the person's and the\nsuggestions.",
+        "operationId": "get_household_api_household_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Household"
+                }
+              }
+            }
+          }
+        },
+        "x-ordnung-phone": true
+      },
+      "put": {
+        "tags": [
+          "household"
+        ],
+        "summary": "Save Household",
+        "description": "Replace the list of people (kept ids keep their letters; ``id: null`` adds a person).",
+        "operationId": "save_household_api_household_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseholdChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Household"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "household"
+        ],
+        "summary": "File Letters",
+        "description": "File letters for a person, as the person's own, or forget the answer.",
+        "operationId": "file_letters_api_household_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HouseholdFiling"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Household"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "x-ordnung-phone": true
+      }
+    },
     "/api/data": {
       "delete": {
         "tags": [
@@ -738,7 +842,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/Document"
+                    "$ref": "#/components/schemas/LetterRecord"
                   },
                   "type": "array",
                   "title": "Response Records Copy Api Documents Json Get"
@@ -774,7 +878,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DocumentDetail"
+                  "$ref": "#/components/schemas/LetterDetail"
                 }
               }
             }
@@ -9112,213 +9216,6 @@
         ],
         "title": "Document"
       },
-      "DocumentDetail": {
-        "properties": {
-          "document": {
-            "$ref": "#/components/schemas/Document"
-          },
-          "advice": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/LetterAdvice"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "pages": {
-            "items": {
-              "$ref": "#/components/schemas/PageInfo"
-            },
-            "type": "array",
-            "title": "Pages"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/Item"
-            },
-            "type": "array",
-            "title": "Items"
-          },
-          "contracts": {
-            "items": {
-              "$ref": "#/components/schemas/Contract"
-            },
-            "type": "array",
-            "title": "Contracts"
-          },
-          "party": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Party"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "case": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Case"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "related": {
-            "items": {
-              "$ref": "#/components/schemas/Document"
-            },
-            "type": "array",
-            "title": "Related"
-          },
-          "suggestions": {
-            "items": {
-              "$ref": "#/components/schemas/Suggestion"
-            },
-            "type": "array",
-            "title": "Suggestions"
-          },
-          "drafts": {
-            "items": {
-              "$ref": "#/components/schemas/Draft"
-            },
-            "type": "array",
-            "title": "Drafts"
-          },
-          "set_aside": {
-            "items": {
-              "$ref": "#/components/schemas/ItemAside"
-            },
-            "type": "array",
-            "title": "Set Aside"
-          },
-          "girocodes": {
-            "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/GiroCodeReady"
-                },
-                {
-                  "$ref": "#/components/schemas/GiroCodeBlocked"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "status",
-                "mapping": {
-                  "blocked": "#/components/schemas/GiroCodeBlocked",
-                  "ready": "#/components/schemas/GiroCodeReady"
-                }
-              }
-            },
-            "type": "array",
-            "title": "Girocodes"
-          },
-          "attachments": {
-            "items": {
-              "$ref": "#/components/schemas/EmailAttachment"
-            },
-            "type": "array",
-            "title": "Attachments"
-          },
-          "attachments_more": {
-            "type": "integer",
-            "title": "Attachments More",
-            "default": 0
-          },
-          "email": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/Document"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "can_wait_again": {
-            "type": "boolean",
-            "title": "Can Wait Again",
-            "default": false
-          },
-          "proof_of": {
-            "items": {
-              "$ref": "#/components/schemas/ProofLink"
-            },
-            "type": "array",
-            "title": "Proof Of"
-          },
-          "scam_signs": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Scam Signs"
-          },
-          "given_to_model": {
-            "type": "boolean",
-            "title": "Given To Model",
-            "default": false
-          },
-          "region_suggestion": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RegionSuggestion"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "addressed_to": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Addressed To"
-          },
-          "scan_text_pages": {
-            "items": {
-              "type": "integer"
-            },
-            "type": "array",
-            "title": "Scan Text Pages"
-          }
-        },
-        "type": "object",
-        "required": [
-          "document",
-          "advice",
-          "pages",
-          "items",
-          "contracts",
-          "party",
-          "case",
-          "related",
-          "suggestions",
-          "drafts",
-          "set_aside",
-          "girocodes",
-          "attachments",
-          "attachments_more",
-          "email",
-          "can_wait_again",
-          "proof_of",
-          "scam_signs",
-          "given_to_model",
-          "region_suggestion",
-          "addressed_to",
-          "scan_text_pages"
-        ],
-        "title": "DocumentDetail"
-      },
       "DocumentPatch": {
         "properties": {
           "title": {
@@ -9498,6 +9395,18 @@
               }
             ],
             "title": "Direction"
+          },
+          "tax_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Choice",
+            "description": "For taxes: true or false is the person's own choice, over Claude's mark; null goes back to Claude's mark"
           }
         },
         "additionalProperties": false,
@@ -9848,6 +9757,17 @@
               }
             ],
             "title": "Found In"
+          },
+          "tax_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Choice"
           }
         },
         "type": "object",
@@ -9883,7 +9803,8 @@
           "updated_at",
           "processed_at",
           "deleted_at",
-          "found_in"
+          "found_in",
+          "tax_choice"
         ],
         "title": "DocumentRow",
         "description": "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\nnever stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n\nIts fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\nitself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
@@ -11033,6 +10954,180 @@
         ],
         "title": "HelpLink",
         "description": "Independent, free or low-cost help for a high-stakes letter (information, not legal advice)."
+      },
+      "Household": {
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/HouseholdPerson"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "filed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Filed",
+            "description": "Letter id → the person it is filed for"
+          },
+          "mine": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Mine",
+            "description": "Letters the person said are theirs (sorted)"
+          },
+          "suggested": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Suggested",
+            "description": "Unanswered letter id → the one person its addressee names"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "description": "The list of people's version: a PUT's base"
+          }
+        },
+        "type": "object",
+        "required": [
+          "members",
+          "filed",
+          "mine",
+          "suggested",
+          "version"
+        ],
+        "title": "Household",
+        "description": "``GET``, ``PUT`` and ``PATCH /api/household``: the people and who each letter is for."
+      },
+      "HouseholdChange": {
+        "properties": {
+          "base": {
+            "type": "string",
+            "title": "Base"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberIn"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Members"
+          },
+          "also_file": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 1,
+            "title": "Also File",
+            "description": "Letters to file for the one new person, at once"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "base",
+          "members"
+        ],
+        "title": "HouseholdChange",
+        "description": "``PUT /api/household``: the whole list of people, from the version the page saw (``base``)."
+      },
+      "HouseholdFiling": {
+        "properties": {
+          "letters": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": "object",
+            "maxProperties": 1000,
+            "minProperties": 1,
+            "title": "Letters"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "letters"
+        ],
+        "title": "HouseholdFiling",
+        "description": "``PATCH /api/household``: who each letter is for — a person's id, ``\"me\"``, or ``null`` (not\nanswered)."
+      },
+      "HouseholdMember": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "hhm_…, kept across renames"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "As typed in Settings, on one line"
+          },
+          "signs": {
+            "type": "boolean",
+            "title": "Signs",
+            "description": "Replies to their letters may go out in their name",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "signs"
+        ],
+        "title": "HouseholdMember",
+        "description": "A person of the household, as the person typed them in."
+      },
+      "HouseholdPerson": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "hhm_…, kept across renames"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "As typed in Settings, on one line"
+          },
+          "signs": {
+            "type": "boolean",
+            "title": "Signs",
+            "description": "Replies to their letters may go out in their name",
+            "default": true
+          },
+          "letters": {
+            "type": "integer",
+            "title": "Letters",
+            "description": "Letters filed for them, outside the trash"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "signs",
+          "letters"
+        ],
+        "title": "HouseholdPerson",
+        "description": "A person of the household with the number of letters filed for them."
       },
       "Identifier": {
         "properties": {
@@ -12583,6 +12678,231 @@
         "title": "LetterAdvice",
         "description": "The \"get advice\" card of a high-stakes letter, worked out on read (:mod:`ordnung.rules.advice`).\n\n``urgent`` letters (court orders, a dismissal) always carry it; the others show it as information."
       },
+      "LetterDetail": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "advice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterAdvice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/PageInfo"
+            },
+            "type": "array",
+            "title": "Pages"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "contracts": {
+            "items": {
+              "$ref": "#/components/schemas/Contract"
+            },
+            "type": "array",
+            "title": "Contracts"
+          },
+          "party": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Party"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Case"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "type": "array",
+            "title": "Related"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/Draft"
+            },
+            "type": "array",
+            "title": "Drafts"
+          },
+          "set_aside": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAside"
+            },
+            "type": "array",
+            "title": "Set Aside"
+          },
+          "girocodes": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/GiroCodeReady"
+                },
+                {
+                  "$ref": "#/components/schemas/GiroCodeBlocked"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "status",
+                "mapping": {
+                  "blocked": "#/components/schemas/GiroCodeBlocked",
+                  "ready": "#/components/schemas/GiroCodeReady"
+                }
+              }
+            },
+            "type": "array",
+            "title": "Girocodes"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAttachment"
+            },
+            "type": "array",
+            "title": "Attachments"
+          },
+          "attachments_more": {
+            "type": "integer",
+            "title": "Attachments More",
+            "default": 0
+          },
+          "email": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Document"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_wait_again": {
+            "type": "boolean",
+            "title": "Can Wait Again",
+            "default": false
+          },
+          "proof_of": {
+            "items": {
+              "$ref": "#/components/schemas/ProofLink"
+            },
+            "type": "array",
+            "title": "Proof Of"
+          },
+          "scam_signs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Scam Signs"
+          },
+          "given_to_model": {
+            "type": "boolean",
+            "title": "Given To Model",
+            "default": false
+          },
+          "region_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "addressed_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Addressed To"
+          },
+          "scan_text_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Scan Text Pages"
+          },
+          "tax_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Choice",
+            "description": "The person's own For taxes choice; null: none, Claude's mark (document.tax_relevant) counts"
+          },
+          "household": {
+            "$ref": "#/components/schemas/LetterFor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "advice",
+          "pages",
+          "items",
+          "contracts",
+          "party",
+          "case",
+          "related",
+          "suggestions",
+          "drafts",
+          "set_aside",
+          "girocodes",
+          "attachments",
+          "attachments_more",
+          "email",
+          "can_wait_again",
+          "proof_of",
+          "scam_signs",
+          "given_to_model",
+          "region_suggestion",
+          "addressed_to",
+          "scan_text_pages",
+          "tax_choice",
+          "household"
+        ],
+        "title": "LetterDetail",
+        "description": "``GET /api/documents/{id}``: the letter's page (``models.DocumentDetail``) with what the person chose\nabout the letter, kept apart from Claude's reading. Route-local, so ``models.py`` (a benchmark digest\nfile) stays as it is; Ask never reads it."
+      },
       "LetterDetails": {
         "properties": {
           "subject_matter": {
@@ -12805,6 +13125,482 @@
         "type": "object",
         "title": "LetterDetails",
         "description": "Facts a template letter needs besides the letter, contract or person it is about.\n\nEverything is optional here; each template names the facts it requires\n(:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused\nwith a clear message, never a server error), amounts in euros."
+      },
+      "LetterFor": {
+        "properties": {
+          "filed_for": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseholdMember"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Filed for this person"
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine",
+            "description": "The person said the letter is theirs",
+            "default": false
+          },
+          "suggested": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseholdMember"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Not answered yet: the one person its addressee names"
+          },
+          "add": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Add",
+            "description": "Not answered yet: the addressee to offer to add to the household"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filed_for",
+          "mine",
+          "suggested",
+          "add"
+        ],
+        "title": "LetterFor",
+        "description": "Who one letter is for, worked out on read for its page (all empty without a household)."
+      },
+      "LetterRecord": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256"
+          },
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "mime": {
+            "type": "string",
+            "title": "Mime"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages",
+            "default": 1
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "incoming",
+              "outgoing",
+              "note"
+            ],
+            "title": "Direction",
+            "default": "incoming"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "default": "upload"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processing",
+              "processed",
+              "needs_review",
+              "failed",
+              "held"
+            ],
+            "title": "Status",
+            "default": "queued"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "tax_assessment",
+                  "tax_letter",
+                  "authority_letter",
+                  "residence_permit",
+                  "social_insurance",
+                  "health_insurance",
+                  "invoice",
+                  "dunning",
+                  "contract",
+                  "contract_change",
+                  "price_increase",
+                  "cancellation_confirmation",
+                  "payslip",
+                  "bank_letter",
+                  "insurance",
+                  "rent_lease",
+                  "utility_bill",
+                  "university",
+                  "employment",
+                  "appointment",
+                  "fine",
+                  "receipt",
+                  "identity_document",
+                  "broadcasting_fee",
+                  "certificate",
+                  "personal",
+                  "other",
+                  "court_payment_order",
+                  "enforcement_order",
+                  "dismissal",
+                  "landlord_notice",
+                  "rent_increase",
+                  "operating_costs"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "area": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "work",
+                  "study",
+                  "health",
+                  "money",
+                  "residence",
+                  "tax",
+                  "mobility",
+                  "insurance",
+                  "leisure",
+                  "family",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Area"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "doc_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doc Date"
+          },
+          "received_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received Date"
+          },
+          "party_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Party Id"
+          },
+          "case_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "urgency": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "normal",
+                  "high",
+                  "critical"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Urgency"
+          },
+          "text_mode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "text",
+                  "vision"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Mode"
+          },
+          "key_facts": {
+            "items": {
+              "$ref": "#/components/schemas/KeyFact"
+            },
+            "type": "array",
+            "title": "Key Facts"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/Identifier"
+            },
+            "type": "array",
+            "title": "References"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          },
+          "tax_relevant": {
+            "type": "boolean",
+            "title": "Tax Relevant",
+            "default": false
+          },
+          "tax_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Note"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "remedy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Remedy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hidden_text": {
+            "type": "boolean",
+            "title": "Hidden Text",
+            "default": false
+          },
+          "ai_private": {
+            "type": "boolean",
+            "title": "Ai Private",
+            "default": false
+          },
+          "ai_processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ai Processed At"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "processed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processed At"
+          },
+          "deleted_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deleted At"
+          },
+          "tax_choice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Choice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "sha256",
+          "filename",
+          "mime",
+          "pages",
+          "direction",
+          "source",
+          "status",
+          "error",
+          "kind",
+          "area",
+          "title",
+          "summary",
+          "explanation",
+          "language",
+          "doc_date",
+          "received_date",
+          "party_id",
+          "case_id",
+          "urgency",
+          "text_mode",
+          "key_facts",
+          "references",
+          "warnings",
+          "tax_relevant",
+          "tax_note",
+          "tags",
+          "remedy",
+          "payment",
+          "hidden_text",
+          "ai_private",
+          "ai_processed_at",
+          "created_at",
+          "updated_at",
+          "processed_at",
+          "deleted_at",
+          "tax_choice"
+        ],
+        "title": "LetterRecord",
+        "description": "A letter in the copy of your records (``GET /api/documents.json``): the letter whole, as stored, with\nthe person's own \"For taxes\" choice (``None``: none)."
       },
       "LetterRef": {
         "properties": {
@@ -13421,6 +14217,38 @@
         ],
         "title": "MarkSentRequest",
         "description": "How and when the letter was sent."
+      },
+      "MemberIn": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 1000,
+            "title": "Name"
+          },
+          "signs": {
+            "type": "boolean",
+            "title": "Signs",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "MemberIn",
+        "description": "A person as a ``PUT`` sends them: a new one has no id."
       },
       "ModelSettings": {
         "properties": {
@@ -19628,6 +20456,219 @@
           "purged"
         ],
         "title": "DocumentDeletedEvent",
+        "type": "object"
+      },
+      "DocumentDetail": {
+        "properties": {
+          "document": {
+            "$ref": "#/components/schemas/Document"
+          },
+          "advice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LetterAdvice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "pages": {
+            "items": {
+              "$ref": "#/components/schemas/PageInfo"
+            },
+            "title": "Pages",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "contracts": {
+            "items": {
+              "$ref": "#/components/schemas/Contract"
+            },
+            "title": "Contracts",
+            "type": "array"
+          },
+          "party": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Party"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "case": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Case"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "related": {
+            "items": {
+              "$ref": "#/components/schemas/Document"
+            },
+            "title": "Related",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/Draft"
+            },
+            "title": "Drafts",
+            "type": "array"
+          },
+          "set_aside": {
+            "items": {
+              "$ref": "#/components/schemas/ItemAside"
+            },
+            "title": "Set Aside",
+            "type": "array"
+          },
+          "girocodes": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "blocked": "#/components/schemas/GiroCodeBlocked",
+                  "ready": "#/components/schemas/GiroCodeReady"
+                },
+                "propertyName": "status"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/GiroCodeReady"
+                },
+                {
+                  "$ref": "#/components/schemas/GiroCodeBlocked"
+                }
+              ]
+            },
+            "title": "Girocodes",
+            "type": "array"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/EmailAttachment"
+            },
+            "title": "Attachments",
+            "type": "array"
+          },
+          "attachments_more": {
+            "default": 0,
+            "title": "Attachments More",
+            "type": "integer"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Document"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "can_wait_again": {
+            "default": false,
+            "title": "Can Wait Again",
+            "type": "boolean"
+          },
+          "proof_of": {
+            "items": {
+              "$ref": "#/components/schemas/ProofLink"
+            },
+            "title": "Proof Of",
+            "type": "array"
+          },
+          "scam_signs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scam Signs",
+            "type": "array"
+          },
+          "given_to_model": {
+            "default": false,
+            "title": "Given To Model",
+            "type": "boolean"
+          },
+          "region_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RegionSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "addressed_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Addressed To"
+          },
+          "scan_text_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Scan Text Pages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "document",
+          "advice",
+          "pages",
+          "items",
+          "contracts",
+          "party",
+          "case",
+          "related",
+          "suggestions",
+          "drafts",
+          "set_aside",
+          "girocodes",
+          "attachments",
+          "attachments_more",
+          "email",
+          "can_wait_again",
+          "proof_of",
+          "scam_signs",
+          "given_to_model",
+          "region_suggestion",
+          "addressed_to",
+          "scan_text_pages"
+        ],
+        "title": "DocumentDetail",
         "type": "object"
       },
       "DocumentProcessedEvent": {

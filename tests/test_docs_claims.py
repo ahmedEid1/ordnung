@@ -3743,7 +3743,10 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
 
     left_out = {"key_facts", "explanation", "references", "payment", "sha256"}
     assert documents.LEFT_OUT_OF_LIST == left_out
-    assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {"found_in"}
+    assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {
+        "found_in",
+        "tax_choice",  # D3: the person's own "For taxes" choice (d3-docs describes it in SPEC § 4)
+    }
     assert hasattr(models, "DocumentListEntry")
     components = openapi_schema()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components

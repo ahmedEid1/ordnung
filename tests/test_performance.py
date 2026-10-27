@@ -31,7 +31,7 @@ from ordnung import clock
 from ordnung.api.routes.documents import LEFT_OUT_OF_LIST
 from ordnung.assistant import ask
 from ordnung.config import Paths
-from ordnung.db.store import Store
+from ordnung.db.store import TAX_CHOICES_META_KEY, Store
 from ordnung.ingest import pipeline
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.base import Usage
@@ -544,3 +544,25 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         worker.join()
         assert seen == [before, before + 1]
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
+
+
+@pytest.mark.slow  # a wall-clock budget
+def test_setting_a_tax_choice_among_5000_stays_fast(paths: Paths) -> None:
+    """The person's "For taxes" choices are one JSON row, read and written whole on every press: with
+    5,000 choices a press still takes under 50 ms."""
+    with Store.open(paths) as store:
+        with store.tx() as conn:
+            conn.executemany(
+                "INSERT INTO documents (id, sha256, filename, mime, file_path, created_at, updated_at) VALUES "
+                "(?, ?, ?, 'application/pdf', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+                [(f"doc_{n:012d}", f"{n:064x}", f"{n}.pdf", f"files/{n}.pdf") for n in range(5000)],
+            )
+        choices = {f"doc_{n:012d}": n % 2 == 0 for n in range(5000)}
+        store.set_meta(TAX_CHOICES_META_KEY, json.dumps(choices, sort_keys=True, separators=(",", ":")))
+        took = []
+        for n, choice in ((7, True), (8, False), (9, None)):
+            start = time.perf_counter()
+            assert store.set_tax_choice(f"doc_{n:012d}", choice) is True
+            took.append(time.perf_counter() - start)
+        assert len(store.tax_choices()) == 4999
+        assert sorted(took)[1] < 0.05, took

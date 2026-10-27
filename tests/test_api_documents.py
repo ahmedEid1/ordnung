@@ -177,7 +177,8 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         response = await api.client.get(f"/api/documents/{doc_id}")
         detail = DocumentDetail.model_validate(response.json())
-        assert set(response.json()) == set(DocumentDetail.model_fields)
+        # the letter's page (LetterDetail): DocumentDetail with the person's tax choice and who it is for
+        assert set(response.json()) == set(DocumentDetail.model_fields) | {"tax_choice", "household"}
         assert [(page.page, page.text_source) for page in detail.pages] == [(1, "text"), (2, "text")]
         assert detail.party is not None and detail.party.name == "Finanzamt Musterstadt"
         assert detail.case is not None and detail.document.case_id == detail.case.id
@@ -211,7 +212,7 @@ async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) ->
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         listed = (await api.client.get("/api/documents")).json()
         assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
-        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in"}
+        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in", "tax_choice"}
         blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
         assert [row["found_in"] for row in blank] == [None]
         found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()
@@ -320,8 +321,11 @@ async def test_the_copy_of_your_records_has_every_letter_whole(data_dir: Path) -
         assert set(ids) == {tax, invoice} and trashed not in ids and proof.id not in ids
         assert ids == [row["id"] for row in listed]
         stored = [api.ctx.store.get_document(row["id"]) for row in records]
-        assert records == [doc.model_dump(mode="json") for doc in stored if doc is not None]
-        assert all(set(row) == set(Document.model_fields) for row in records)
+        # each letter as stored, with the person's own "For taxes" choice (none here)
+        assert records == [
+            {**doc.model_dump(mode="json"), "tax_choice": None} for doc in stored if doc is not None
+        ]
+        assert all(set(row) == set(Document.model_fields) | {"tax_choice"} for row in records)
         whole = next(row for row in records if row["id"] == tax)
         assert whole["explanation"] and whole["key_facts"] and whole["references"] and whole["sha256"]
         assert whole["payment"]["iban"]
@@ -393,6 +397,25 @@ async def test_patch_document_fields(data_dir: Path) -> None:
         unknown_party = await api.client.patch(f"/api/documents/{doc_id}", json={"party_id": "pty_nobody"})
         assert unknown_party.status_code == 404
         assert (await api.client.patch("/api/documents/doc_nothing", json={"title": "x"})).status_code == 404
+
+
+async def test_a_tax_choice_answers_501_until_it_is_built(data_dir: Path) -> None:
+    """D3's contract (d3-contract): the PATCH takes ``tax_choice`` and answers 501 until d3-tax-choice
+    builds it; nothing is changed, and a PATCH without it works as before."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        before = api.ctx.store.get_document(doc_id)
+        for choice in (True, False, None):
+            refused = await api.client.patch(
+                f"/api/documents/{doc_id}", json={"tax_choice": choice, "title": "x"}
+            )
+            assert refused.status_code == 501, choice
+            assert refused.json()["detail"] == "Marking a letter for taxes isn't built yet."
+        assert api.ctx.store.get_document(doc_id) == before
+        assert api.ctx.store.tax_choices() == {}
+        assert (
+            await api.client.patch(f"/api/documents/{doc_id}", json={"title": "Bescheid"})
+        ).status_code == 200
 
 
 async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data_dir: Path) -> None:

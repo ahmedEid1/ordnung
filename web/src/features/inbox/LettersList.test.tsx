@@ -177,8 +177,8 @@ describe("Inbox letters list", () => {
     const [scan, other] = [srv.db.document("doc_folder_scan")!, srv.db.document("doc_library")!];
     // rows as the search lists them (`GET /api/documents?q=`)
     const found: DocumentRow[] = [
-      { ...scan, found_in: "scanner_text" },
-      { ...other, found_in: "letter" },
+      { ...scan, found_in: "scanner_text", tax_choice: null },
+      { ...other, found_in: "letter", tax_choice: null },
     ];
     renderWithProviders(
       <LettersList

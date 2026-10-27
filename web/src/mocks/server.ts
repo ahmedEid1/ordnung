@@ -27,13 +27,16 @@ import type {
   FolderStatus,
   HeldResult,
   Health,
+  Household,
+  HouseholdChange,
+  HouseholdFiling,
   Item,
   ItemAside,
   ItemCreate,
   Job,
   LetterAdvice,
+  LetterRecord,
   ListedItem,
-  ListedLetter,
   MailOpenResult,
   NoticeUnit,
   PageInfo,
@@ -115,6 +118,8 @@ import { MockPhoneAccess, PhoneRefusal, maskNumbers, maskProfile, phoneGate, pho
 import { NOT_PHONE_MESSAGE } from "./data/phone";
 import { MockSync, SyncRefusal } from "./data/sync";
 import { MOVE_WINDOW_PROBLEM, moveAllowed, refreshMovingIdeas } from "./moving";
+import { TaxChoiceRefusal, forgetTaxChoice, patchTaxChoice, taxChoiceOf } from "./taxChoices";
+import { HouseholdRefusal, fileLetters, forgetLetterFiling, householdView, letterFor as householdFor, saveHousehold } from "./household";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -197,6 +202,16 @@ function phoneRefusals<T>(work: () => T): T {
     return work();
   } catch (err) {
     if (err instanceof PhoneRefusal) throw new HttpError(err.status, err.message, err.code ?? undefined);
+    throw err;
+  }
+}
+
+/** A refusal of the person's own choices (For taxes, the household) as the API answers it (`{detail}`). */
+function choiceRefusals<T>(work: () => T): T {
+  try {
+    return work();
+  } catch (err) {
+    if (err instanceof TaxChoiceRefusal || err instanceof HouseholdRefusal) throw new HttpError(err.status, err.message);
     throw err;
   }
 }
@@ -363,11 +378,12 @@ function regionSuggestion(db: MockDb, party: Party | null, doc?: Document): Regi
 
 /**
  * A letter as the list (`GET /api/documents`) answers it, like the API (`LEFT_OUT_OF_LIST`): without what Claude read
- * from inside it in detail (explanation, key facts, references, bank details) and the file hash. Its page has them.
+ * from inside it in detail (explanation, key facts, references, bank details) and the file hash, with the person's
+ * own "For taxes" choice (`./taxChoices`). Its page has them.
  */
-export function toRow(d: Document): ListedLetter {
+export function toRow(d: Document, db: MockDb): Omit<DocumentRow, "found_in"> {
   const { key_facts: _keyFacts, explanation: _explanation, references: _references, payment: _payment, sha256: _sha256, ...row } = d;
-  return row;
+  return { ...row, tax_choice: taxChoiceOf(db, d.id) };
 }
 
 /** The mock list's order: newest first by the day it arrived, else its date, else when it was added. */
@@ -419,6 +435,9 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     addressed_to: addressedTo(id),
     // only Sam's held scan has scanner text (search only, never shown)
     scan_text_pages: db.scanTextPages(d),
+    // what the person chose about the letter, kept apart from its reading (`./taxChoices`, `./household`)
+    tax_choice: taxChoiceOf(db, id),
+    household: householdFor(db, d),
   };
 }
 
@@ -1262,6 +1281,10 @@ const routes: [string, string, Handler][] = [
   ],
   // on a phone the IBAN shows only its last 4 characters
   ["GET", "/profile", ({ db, opts }) => (opts.phoneScope ? maskProfile(db.state.profile) : db.state.profile)],
+  // your household (`./household`): reading it and filing letters on a phone too, editing it on the computer only
+  ["GET", "/household", ({ db }) => householdView(db) satisfies Household],
+  ["PUT", "/household", ({ db, body }) => choiceRefusals(() => saveHousehold(db, body as HouseholdChange))],
+  ["PATCH", "/household", ({ db, body }) => choiceRefusals(() => fileLetters(db, body as HouseholdFiling))],
   // like the API: PUT merges the fields sent (nulls change nothing; `models` merges by purpose)
   [
     "PUT",
@@ -1374,11 +1397,17 @@ const routes: [string, string, Handler][] = [
       const offset = Number(f("offset") ?? 0);
       const limit = f("limit") ? Number(f("limit")) : docs.length;
       // like the API: rows leave out the reading, and each says where a search found it (null: the list wasn't searched)
-      return docs.slice(offset, offset + limit).map((d): DocumentRow => ({ ...toRow(d), found_in: db.foundIn(d, q) }));
+      return docs.slice(offset, offset + limit).map((d): DocumentRow => ({ ...toRow(d, db), found_in: db.foundIn(d, q) }));
     },
   ],
-  // "Download a copy of your records": every letter whole, as stored (trash and proof files left out, as in the list)
-  ["GET", "/documents.json", ({ db }) => [...db.liveDocuments()].sort(newestFirst) satisfies Document[]],
+  // "Download a copy of your records": every letter whole, as stored, with the person's "For taxes" choice (trash
+  // and proof files left out, as in the list)
+  [
+    "GET",
+    "/documents.json",
+    ({ db }) =>
+      [...db.liveDocuments()].sort(newestFirst).map((d): LetterRecord => ({ ...d, tax_choice: taxChoiceOf(db, d.id) })),
+  ],
   [
     "POST",
     "/documents",
@@ -1533,10 +1562,13 @@ const routes: [string, string, Handler][] = [
     "PATCH",
     "/documents/:id",
     ({ db, params, body }) => {
+      // the person's "For taxes" choice is kept apart from the letter (`./taxChoices`), with the API's refusals
+      choiceRefusals(() => patchTaxChoice(db, params.id!, body));
       const d = db.document(params.id!) ?? notFound();
       const patch = pick<Document>(body, DOC_PATCHABLE);
       const kindChanged = patch.kind !== undefined && patch.kind !== d.kind;
-      Object.assign(d, patch, { updated_at: nowTs() });
+      // like the API: a PATCH that changes none of the letter's own fields leaves it as it was
+      if (Object.keys(patch).length) Object.assign(d, patch, { updated_at: nowTs() });
       if (patch.received_date && d.id === "doc_gym_price") {
         recomputeGymPrice(db, patch.received_date);
         d.warnings = []; // the arrival day is known now: no "we don't know when it arrived"
@@ -1578,6 +1610,11 @@ const routes: [string, string, Handler][] = [
       const removed = db.state.items.filter((i) => i.doc_id === d.id && i.status === "open").length;
       d.deleted_at = nowTs();
       db.state.items = db.state.items.filter((i) => i.doc_id !== d.id);
+      if (query.get("purge") === "true") {
+        // deleted for good: nothing the person chose about it stays (the trash keeps both, like the API)
+        forgetTaxChoice(db, d.id);
+        forgetLetterFiling(db, d.id);
+      }
       db.log("document.deleted", `Deleted “${d.title ?? d.filename}” and everything derived from it`, "document", d.id);
       return { id: d.id, purged: query.get("purge") === "true", removed_open_items: removed } satisfies DeleteResult;
     },

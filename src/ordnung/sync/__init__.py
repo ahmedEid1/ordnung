@@ -70,6 +70,8 @@ from ordnung.backup import length_problem as _length_problem
 from ordnung.backup.archive import _LEFT_OUT_META
 from ordnung.calendar.caldav import STATE_KEY as _CALENDAR_STATE_KEY
 from ordnung.calendar.caldav import UID_KEY_META as _CALENDAR_UID_KEY
+from ordnung.db.store import HOUSEHOLD_META_KEY as _HOUSEHOLD_KEY
+from ordnung.db.store import TAX_CHOICES_META_KEY as _TAX_CHOICES_KEY
 from ordnung.ingest.own_files import MAX_OWN_FILES, OWN_FILES_META_KEY
 from ordnung.ingest.watcher import BASELINE_META_KEY, SEEN_META_KEY
 from ordnung.ingest.worker import PAUSE_META_KEY
@@ -272,6 +274,8 @@ SYNCED_META: frozenset[str] = frozenset(
         "weekly_session_at",
         "weekly_prompt_dismissed_at",
         "last_calendar_export_at",
+        _TAX_CHOICES_KEY,  # "tax_choices": the person's own "For taxes" choices
+        _HOUSEHOLD_KEY,  # "household": its people and which letters are filed for them
     }
 )
 SYNCED_META_PREFIXES: tuple[str, ...] = ("brief:",)

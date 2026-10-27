@@ -63,6 +63,17 @@ def test_the_keys_other_modules_name_are_the_contract_s() -> None:
         sync.FOLDER_TAKEN_MAX,
     )
     assert sync.INTERRUPTIONS_META_KEY == store._INTERRUPTIONS_KEY
+    assert (store.TAX_CHOICES_META_KEY, store.HOUSEHOLD_META_KEY) == ("tax_choices", "household")
+
+
+def test_the_persons_own_choices_travel_with_hand_off_sync() -> None:
+    """The "For taxes" choices and the household are the person's, like the profile: synced whole (a pull
+    takes the incoming copy), digested, never local, merged or the demo's."""
+    from ordnung.db import store
+
+    for key in (store.TAX_CHOICES_META_KEY, store.HOUSEHOLD_META_KEY):
+        assert key in sync.SYNCED_META, key
+        assert key not in sync.LOCAL_META | sync.MERGED_META | sync.DEMO_META, key
 
 
 def test_the_key_file_takes_256_mib_of_scrypt() -> None:

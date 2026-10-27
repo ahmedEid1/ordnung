@@ -198,6 +198,7 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp
         # what the web app loads, page by page
         await _get(api, contract, "/api/health")
         await _get(api, contract, "/api/profile")
+        await _get(api, contract, "/api/household")
         await _get(api, contract, "/api/settings")
         await _get(api, contract, "/api/folder")
         await _get(api, contract, "/api/dashboard")
@@ -207,10 +208,11 @@ async def test_every_get_endpoint_matches_the_openapi_schema(data_dir: Path, tmp
         # the list leaves out what Claude read from inside each letter in detail, and the file hash
         assert listed and searched
         assert all(set(row) == set(documents.DocumentRow.model_fields) for row in [*listed, *searched])
-        # "Download a copy of your records": the same letters, each whole, as stored
+        # "Download a copy of your records": the same letters, each whole, as stored (with the person's own
+        # "For taxes" choice: none here)
         records = await _get(api, contract, "/api/documents.json")
         stored = api.ctx.store.list_documents(exclude_source=PROOF_SOURCE)
-        assert records == [doc.model_dump(mode="json") for doc in stored]
+        assert records == [{**doc.model_dump(mode="json"), "tax_choice": None} for doc in stored]
         assert [row["id"] for row in records] == [row["id"] for row in listed]
         assert all(documents.LEFT_OUT_OF_LIST <= set(row) for row in records)
         assert all(row["explanation"] and row["sha256"] for row in records)

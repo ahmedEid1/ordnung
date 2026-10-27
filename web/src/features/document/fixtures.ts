@@ -2,9 +2,12 @@
  * Small factories for tests of the Document viewer (complete objects with sensible defaults).
  * Only imported by `*.test.ts(x)` files.
  */
-import type { ComputationReceipt, Document, DocumentDetail, Item, Suggestion } from "@/api/types";
+import type { ComputationReceipt, Document, DocumentDetail, DocumentRow, Item, LetterFor, Suggestion } from "@/api/types";
 
 const TS = "2026-09-28T07:00:00Z";
+
+/** Who a letter is for without a household: nobody else. */
+export const NOBODY_ELSE: LetterFor = { filed_for: null, mine: false, suggested: null, add: null };
 
 export function makeDoc(d: Partial<Document> = {}): Document {
   return {
@@ -46,6 +49,13 @@ export function makeDoc(d: Partial<Document> = {}): Document {
     deleted_at: null,
     ...d,
   };
+}
+
+/** A row of the letter list (`GET /api/documents`): the letter without its reading in detail, with `found_in`
+ * and the person's `tax_choice` (none by default). */
+export function makeRow(d: Partial<DocumentRow> = {}): DocumentRow {
+  const { key_facts: _facts, explanation: _explanation, references: _references, payment: _payment, sha256: _sha, ...row } = makeDoc();
+  return { ...row, found_in: null, tax_choice: null, ...d };
 }
 
 export function makeReceipt(r: Partial<ComputationReceipt> = {}): ComputationReceipt {
@@ -152,6 +162,8 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     region_suggestion: null,
     addressed_to: null,
     scan_text_pages: [],
+    tax_choice: null,
+    household: NOBODY_ELSE,
     ...d,
   };
 }
