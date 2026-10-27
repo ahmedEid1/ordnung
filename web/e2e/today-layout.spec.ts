@@ -3,7 +3,8 @@
  * "Mark as paid" in view on short screens and shows the whole IBAN on small phones, the Top-3 rank
  * sits in the card's corner, Coming up gets the page's width until there is room for the side
  * cards (then both start level, Ideas below in two columns), and focus has somewhere to go when a
- * paid card leaves and when Undo brings it back.
+ * paid card leaves and when Undo brings it back. Without a household (as the demo starts), no row says whose letter
+ * it is and there is no filter of whose letters.
  */
 import type { Locator, Page } from "@playwright/test";
 import { apiPatch, expect, open, setTour, settle, test } from "./helpers";
@@ -80,6 +81,15 @@ test.describe("small phone 320×640", () => {
       expect(rank.x + rank.width).toBeLessThanOrEqual(c.x + c.width - 8);
       expect(pill.x + pill.width).toBeLessThanOrEqual(rank.x);
     }
+  });
+
+  test("with no household (as the demo starts), Today says nothing of whose a letter is and offers no filter", async ({ page }) => {
+    // e2e/household-surfaces-layout.spec.ts has the tags, with a household of its own
+    await open(page, "/", /Sam/);
+    const main = page.getByRole("main");
+    await expect(main.locator("[data-person-tag]")).toHaveCount(0);
+    await expect(main.locator("[data-part=meta]").filter({ hasText: /^For / })).toHaveCount(0);
+    await expect(main.getByRole("combobox", { name: /Whose letters/ })).toHaveCount(0);
   });
 });
 
