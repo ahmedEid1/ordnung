@@ -26,7 +26,7 @@ import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
 
 async function buildExport() {
-  const [profile, settings, documents, items, contracts, parties, drafts, suggestions, traces] = await Promise.all([
+  const [profile, settings, documents, items, contracts, parties, drafts, suggestions, traces, household] = await Promise.all([
     api.profile(),
     api.settings(),
     // every letter whole, as stored (computer only): the letter list leaves out each letter's reading
@@ -37,8 +37,25 @@ async function buildExport() {
     api.drafts(),
     api.suggestions(),
     api.traces(), // how each letter was read: steps and model calls, never letter text
+    api.household(),
   ]);
-  return { exported_at: new Date().toISOString(), app: "Ordnung", profile, settings, documents, items, contracts, parties, drafts, ideas: suggestions, reading_traces: traces };
+  // your household as you made it: its people, the letters filed for each and the ones you said are yours (never the
+  // suggestions, the letters' counts or the version: Ordnung works those out)
+  const { members, filed, mine } = household;
+  return {
+    exported_at: new Date().toISOString(),
+    app: "Ordnung",
+    profile,
+    settings,
+    documents,
+    items,
+    contracts,
+    parties,
+    household: { members: members.map(({ id, name, signs }) => ({ id, name, signs })), filed, mine },
+    drafts,
+    ideas: suggestions,
+    reading_traces: traces,
+  };
 }
 
 /**
@@ -382,7 +399,7 @@ export function DataSection({ health }: { health: Health }) {
         <SettingsCard
           title="Download a copy of your records"
           id="set-data-export"
-          description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your drafts, Ideas and how each letter was read — as a JSON file you can open anywhere."
+          description="Letters (details, not the files), to-dos & dates, contracts, people & organisations, your household, your drafts, Ideas and how each letter was read — as a JSON file you can open anywhere."
           footer={
             <Button icon={Download} onClick={() => void exportJson()} loading={busy} className={FOOTER_ACTION}>
               Download JSON
