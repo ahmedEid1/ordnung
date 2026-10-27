@@ -14,15 +14,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import openapiText from "../../openapi.json?raw";
 import { createMockServer, MOCK_ROUTES, type MockServer } from "@/mocks/server";
 import { classifyPhoneRequest, phoneScopeFromOpenApi } from "@/mocks/phone";
-import { HOUSEHOLD_WRITES_BUILT } from "@/mocks/household";
 import { SchemaChecker, type OpenApiDoc, type Operation, type Schema } from "@/test/jsonSchema";
 import { ApiError } from "./client";
 import { api, type Api } from "./endpoints";
 import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type DocumentRow, type LetterRecord, type StreamEvent } from "./types";
 
 const doc = JSON.parse(openapiText) as OpenApiDoc;
-/** What a part of D3's contract answers until its package builds it (the API's 501, undeclared like there). */
-const NOT_BUILT = 501;
 /** What the letter list leaves out of each letter, like the API (`LEFT_OUT_OF_LIST`): its page and the copy of your records have it. */
 const LEFT_OUT_OF_LIST = ["key_facts", "explanation", "references", "payment", "sha256"] as const;
 const strict = new SchemaChecker(doc, true);
@@ -189,12 +186,10 @@ const CASES = {
   onboarding: { run: () => api.onboarding({ profile: { region: "NW" }, skip_ai: false }) },
   deleteEverything: { run: () => api.deleteEverything(), status: 409 },
   household: { run: () => api.household() },
-  // 501 like the API until d3-household-core builds the writes (its mock turns HOUSEHOLD_WRITES_BUILT on)
   saveHousehold: {
     run: () => api.saveHousehold({ base: "4f53cda18c2baa0c", members: [{ id: null, name: "Alex Rivera", signs: true }], also_file: [] }),
-    status: HOUSEHOLD_WRITES_BUILT ? undefined : NOT_BUILT,
   },
-  fileLetters: { run: (ids) => api.fileLetters({ letters: { [ids.doc]: "me" } }), status: HOUSEHOLD_WRITES_BUILT ? undefined : NOT_BUILT },
+  fileLetters: { run: (ids) => api.fileLetters({ letters: { [ids.doc]: "me" } }) },
 
   documents: { run: () => api.documents({ q: "Rechnung", status: "processed", limit: 20, offset: 0 }) },
   documentsFull: { run: () => api.documentsFull() },
@@ -465,9 +460,7 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
       called.add(match.key);
       if (c.status && response.status !== c.status) problems.push(`${name}: expected ${c.status}, the mock answered ${response.status}`);
       if (!c.status && !response.ok) problems.push(`${name}: the mock answered ${response.status} (${await response.clone().text()})`);
-      // a part not built yet answers 501, which the API doesn't declare either: only the request is checked
-      const answer = response.status === NOT_BUILT ? [] : await responseProblems(match.op, response);
-      for (const p of [...requestProblems(match.op, url, body), ...answer]) {
+      for (const p of [...requestProblems(match.op, url, body), ...(await responseProblems(match.op, response))]) {
         problems.push(`${name} (${match.key}): ${p}`);
       }
     }

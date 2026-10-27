@@ -20,8 +20,6 @@ export interface StoredHousehold {
   links: Record<string, string>;
 }
 
-/** Whether PUT and PATCH are built here (they are: the policy below). */
-export const HOUSEHOLD_WRITES_BUILT = true as boolean;
 /** The version of a household with no people (the API's: 16 hex of the SHA-256 of `[]`). */
 export const EMPTY_VERSION = "4f53cda18c2baa0c";
 

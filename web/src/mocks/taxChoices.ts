@@ -9,11 +9,6 @@
  */
 import type { MockDb } from "./db";
 
-/** What a PATCH with `tax_choice` answered before d3-tax-choice built it (as the API did). */
-export const TAX_CHOICE_NOT_BUILT = "Marking a letter for taxes isn't built yet.";
-/** Whether a PATCH's `tax_choice` is built here (`mocks.test.ts` skips its "not built yet" case). */
-export const TAX_CHOICE_BUILT = true as boolean;
-
 /** The API's words (`api/routes/documents.py`). */
 export const IN_TRASH = "This letter is in the trash.";
 export const HELD_MESSAGE = "This letter isn't read yet: choose “Read” or “Keep private” for it first (Inbox → From your folder).";

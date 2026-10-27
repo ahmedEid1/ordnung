@@ -34,8 +34,6 @@ import { CHECK_LABELS, DRAFTS } from "./data/drafts";
 import { PARTIES } from "./data/parties";
 import { CONTRACTS } from "./data/contracts";
 import { ITEMS } from "./data/items";
-import { TAX_CHOICE_BUILT } from "./taxChoices";
-import { HOUSEHOLD_WRITES_BUILT } from "./household";
 
 const srv = () => createMockServer({ staticDemo: false, latency: 0 });
 
@@ -778,26 +776,6 @@ describe("the person's own choices beside the letters (D3: For taxes, the househ
     expect((await get<DocumentDetail>(s, `/documents/${marked!.id}`)).tax_choice).toBe(true);
     // the letter itself keeps Claude's own mark
     expect("tax_choice" in s.db.document(marked!.id)!).toBe(false);
-  });
-
-  it.skipIf(TAX_CHOICE_BUILT)("answers a tax choice with 501 until it is built, like the API, and changes nothing", async () => {
-    const s = srv();
-    const d = s.db.liveDocuments()[0]!;
-    const before = JSON.stringify(d);
-    const res = await s.handle("PATCH", `/documents/${d.id}`, new URLSearchParams(), { tax_choice: true, title: "x" });
-    expect([res.status, ((await res.json()) as { detail: string }).detail]).toEqual([501, "Marking a letter for taxes isn't built yet."]);
-    expect(JSON.stringify(s.db.document(d.id))).toBe(before);
-    expect(s.db.state.taxChoices).toEqual({});
-  });
-
-  it.skipIf(HOUSEHOLD_WRITES_BUILT)("answers household edits and filings with 501 until they are built, like the API", async () => {
-    const s = srv();
-    const change = { base: EMPTY_HOUSEHOLD.version, members: [{ name: "Alex Rivera", signs: true }], also_file: [] };
-    for (const [method, body] of [["PUT", change], ["PATCH", { letters: { doc_x: "me" } }]] as const) {
-      const res = await s.handle(method, "/household", new URLSearchParams(), body);
-      expect([res.status, ((await res.json()) as { detail: string }).detail], method).toEqual([501, "Your household isn't built yet."]);
-    }
-    expect(s.db.state.household).toEqual({ format: 1, members: [], links: {} });
   });
 
   it("leaves a letter as it was for a PATCH that changes none of its own fields, like the API", async () => {

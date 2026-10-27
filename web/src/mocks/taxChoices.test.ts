@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DocumentDetail, DocumentRow } from "@/api/types";
 import { createMockServer } from "./server";
 import { RECEIPT_DOC_ID } from "./data/proof";
-import { HELD_MESSAGE, IN_TRASH, NOT_A_LETTER, PROOF_FOR_TAXES, TAX_CHOICE_BUILT } from "./taxChoices";
+import { HELD_MESSAGE, IN_TRASH, NOT_A_LETTER, PROOF_FOR_TAXES } from "./taxChoices";
 
 /** The mock with the New-mail letters opened too (the tax assessment, which Claude marked without a note, among them). */
 const srv = () => {
@@ -23,10 +23,6 @@ const detail = async (s: Server, id: string) => (await (await s.handle("GET", `/
 const refusal = async (res: Response) => [res.status, ((await res.json()) as { detail: string }).detail];
 
 describe("For taxes in the mock backend", () => {
-  it("is built: a PATCH with tax_choice no longer answers 501", () => {
-    expect(TAX_CHOICE_BUILT).toBe(true);
-  });
-
   it("the mock keeps a tax choice apart from the letter, refuses a waiting letter, and Read again keeps it", async () => {
     const s = srv();
     const before = JSON.stringify(s.db.document("doc_tax"));

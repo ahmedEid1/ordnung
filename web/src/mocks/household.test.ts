@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { DocumentDetail, Household, HouseholdMember } from "@/api/types";
 import { openApiPhoneScope } from "@/test/mockFetch";
 import { ADDRESSEES } from "./data/documents";
-import { answerFor, checkMembers, emptyHousehold, HOUSEHOLD_WRITES_BUILT, HouseholdRefusal, householdVersion, type StoredHousehold } from "./household";
+import { answerFor, checkMembers, emptyHousehold, HouseholdRefusal, householdVersion, type StoredHousehold } from "./household";
 import { createMockServer } from "./server";
 
 interface LetterVector {
@@ -116,8 +116,7 @@ afterEach(() => {
 });
 
 describe("your household in the mock", () => {
-  it("is built: PUT and PATCH answer as the API does", () => {
-    expect(HOUSEHOLD_WRITES_BUILT).toBe(true);
+  it("starts empty, with the API's version of a household with no people", () => {
     expect(householdVersion([])).toBe("4f53cda18c2baa0c");
     expect(emptyHousehold()).toEqual({ format: 1, members: [], links: {} });
   });
