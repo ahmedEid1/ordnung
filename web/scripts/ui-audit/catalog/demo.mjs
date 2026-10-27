@@ -1249,6 +1249,233 @@ export async function demoCatalog({ api, server }) {
   for (const s of remindersBackupStates()) add(s);
 
   // ---------------------------------------------------------------------------------------------
+  // D3: "For taxes" on any letter, the Inbox's year, and your household (ADR 0023). The demo has no tax choice and
+  // no household, and every letter in it is addressed to its persona: these states answer the page's reads
+  // themselves (the letter's page, `GET /api/household`), and a press's write is answered in the page — nothing of
+  // the shared demo changes.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const ALEX = { id: "hhm_uiaudit00001", name: "Alex Rivera", signs: true };
+    const MIA = { id: "hhm_uiaudit00002", name: "Mia Rivera", signs: false };
+    // the library's reminder is the child's; any other letter if a re-recording renamed its sample
+    const childDoc = docs.find((d) => d.filename === "20_stadtbibliothek_mahnung.pdf") ?? docs.find((d) => d.id !== replyDoc.id);
+    /** The household `GET /api/household` answers: each person's letters counted from `filed`. */
+    const household = ({ members = [ALEX, MIA], filed = {}, mine = [], suggested = {} } = {}) => ({
+      members: members.map((m) => ({ ...m, letters: Object.values(filed).filter((id) => id === m.id).length })),
+      filed,
+      mine,
+      suggested,
+      version: "0123456789abcdef",
+    });
+    /** Every letter filed for Alex Rivera, the library's reminder for Mia Rivera (who doesn't sign letters). */
+    const everyoneFiled = () => household({ filed: Object.fromEntries(docs.map((d) => [d.id, d.id === childDoc?.id ? MIA.id : ALEX.id])) });
+    const answerHousehold = (c, h) => fakeApi(c.page, "GET", /^\/api\/household$/, async () => ({ json: h }));
+    /** The letter's page as the API answers it, with `patch` over it (`tax_choice`, `addressed_to`, `household`). */
+    const letterAnswered = (c, doc, patch) => fakeApi(c.page, "GET", new RegExp(`^/api/documents/${doc.id}$`), (_r, o) => ({ json: { ...o, ...patch } }), { passthrough: true });
+    const forLetter = (over) => ({ household: { filed_for: null, mine: false, suggested: null, add: null, ...over } });
+
+    // Today: whose letter it is, a tag and never a filter
+    add({
+      id: "today-household",
+      group: "today",
+      route: "/",
+      how: "open / with GET /api/household answered: every letter filed for Alex Rivera, the library's reminder for Mia Rivera",
+      description: "Today with a household: “For Alex Rivera” on Top 3 cards (under the title and amount), “For … · ” starting Coming-up rows. No filter.",
+      run: async (c) => {
+        await answerHousehold(c, everyoneFiled());
+        await c.goto("/");
+      },
+    });
+    add({
+      id: "today-household-recent",
+      group: "today",
+      route: "/",
+      how: "as today-household, then open Recent letters",
+      description: "Recent letters with a household: “For Alex Rivera · ” starting each filed letter's second line.",
+      run: async (c) => {
+        await answerHousehold(c, everyoneFiled());
+        await c.goto("/");
+        await c.click(main(c.page).getByRole("button", { name: /^Recent letters/ }));
+        await c.scrollTo(main(c.page).getByRole("region", { name: /^Recent letters/ }));
+      },
+    });
+
+    // Inbox: one year at a time; one person's letters and "File these N"
+    add({ id: "inbox-year", group: "inbox", route: "/inbox?year=2025", how: "open /inbox?year=2025", description: "The Inbox showing one year: the Year select, month labels with their year, “ · dated 2025” on a letter that arrived in another year.", run: (c) => c.goto("/inbox?year=2025") });
+    add({ id: "inbox-year-empty", group: "inbox", route: "/inbox?year=2019", how: "open /inbox?year=2019", description: "A year with no letters: “No letters dated 2019”, the year kept as an option, Clear filters.", run: (c) => c.goto("/inbox?year=2019") });
+    const [suggestA, suggestB, suggestC, filedA, filedB, filedMia] = docs.filter((d) => d.id !== childDoc?.id).concat(childDoc ? [childDoc] : []).slice(-6);
+    const someFiled = () =>
+      household({
+        filed: Object.fromEntries([filedA, filedB].filter(Boolean).map((d) => [d.id, ALEX.id]).concat(filedMia ? [[filedMia.id, MIA.id]] : [])),
+        suggested: Object.fromEntries([suggestA, suggestB, suggestC].filter(Boolean).map((d) => [d.id, ALEX.id])),
+      });
+    add({
+      id: "inbox-household",
+      group: "inbox",
+      route: "/inbox",
+      how: "open /inbox with GET /api/household answered (Alex Rivera and Mia Rivera, letters filed for each, three suggested for Alex)",
+      description: "The Inbox with a household: the For select on Everyone, “For Alex Rivera” tags on the rows filed for someone.",
+      run: async (c) => {
+        await answerHousehold(c, someFiled());
+        await c.goto("/inbox");
+      },
+    });
+    add({
+      id: "inbox-household-person",
+      group: "inbox",
+      route: `/inbox?for=${ALEX.id}`,
+      how: `open /inbox?for=${ALEX.id} with GET /api/household answered as for inbox-household`,
+      description: "One person's letters: the For select on Alex Rivera, and “Addressed to Alex Rivera, not filed yet” with “File these 3 for Alex Rivera”.",
+      run: async (c) => {
+        await answerHousehold(c, someFiled());
+        await c.goto(`/inbox?for=${ALEX.id}`);
+      },
+    });
+
+    // the letter's page: For taxes
+    const taxDoc = docs.find((d) => d.tax_relevant);
+    add({
+      id: `${docSlug(replyDoc)}--for-taxes-yours`,
+      group: "document",
+      route: `/documents/${replyDoc.id}`,
+      how: "open the letter with its tax_choice answered as true",
+      description: "“For taxes” pressed by the person: “You marked this letter for taxes.” and the link to the year's letters.",
+      run: async (c) => {
+        await letterAnswered(c, replyDoc, { tax_choice: true });
+        await c.goto(`/documents/${replyDoc.id}`);
+        await c.scrollTo(main(c.page).getByRole("button", { name: "For taxes" }));
+      },
+    });
+    if (taxDoc) {
+      add({
+        id: `${docSlug(taxDoc)}--for-taxes-off`,
+        group: "document",
+        route: `/documents/${taxDoc.id}`,
+        how: "open a letter Claude marked for taxes, with its tax_choice answered as false",
+        description: "“For taxes” off on a letter Claude had marked: “You took this letter off your letters for taxes. Claude had marked it.”",
+        run: async (c) => {
+          await letterAnswered(c, taxDoc, { tax_choice: false });
+          await c.goto(`/documents/${taxDoc.id}`);
+          await c.scrollTo(main(c.page).getByRole("button", { name: "For taxes" }));
+        },
+      });
+    }
+    add({
+      id: `${docSlug(replyDoc)}--for-taxes-toast`,
+      group: "document",
+      route: `/documents/${replyDoc.id}`,
+      how: "open the letter, press “For taxes” (the PATCH answered with the letter in the page, so nothing changes)",
+      description: "The toast after pressing “For taxes” (“Marked for taxes” and the year's page), with Undo.",
+      pinToasts: true,
+      run: async (c) => {
+        const detail = await c.api.get(`/api/documents/${replyDoc.id}`);
+        await fakeApi(c.page, "PATCH", new RegExp(`^/api/documents/${replyDoc.id}$`), async () => ({ json: detail.document }));
+        await c.goto(`/documents/${replyDoc.id}`);
+        const toggle = main(c.page).getByRole("button", { name: "For taxes" });
+        if (!(await c.exists(toggle))) c.notApplicable("no “For taxes” on this letter");
+        await c.click(toggle);
+        await pinToasts(c.page);
+      },
+    });
+
+    // the letter's page: who it is for
+    const letterFor = (suffix, how, description, h, patch, then) =>
+      add({
+        id: `${docSlug(replyDoc)}--household-${suffix}`,
+        group: "document",
+        route: `/documents/${replyDoc.id}`,
+        how: `open the letter with ${how}`,
+        description,
+        run: async (c) => {
+          await answerHousehold(c, h);
+          await letterAnswered(c, replyDoc, patch);
+          await c.goto(`/documents/${replyDoc.id}`);
+          if (then) await then(c);
+        },
+      });
+    letterFor(
+      "question",
+      "its addressee answered as Alex Rivera, who is in the household (suggested, not filed)",
+      "The letter's question: “Is this letter for Alex Rivera?” with Yes, “No, it's mine” and “Someone else…”.",
+      household({ suggested: { [replyDoc.id]: ALEX.id } }),
+      { addressed_to: ALEX.name, ...forLetter({ suggested: ALEX }) },
+    );
+    letterFor("filed", "it filed for Alex Rivera", "A letter filed for someone: “For Alex Rivera” with Change.", household({ filed: { [replyDoc.id]: ALEX.id } }), forLetter({ filed_for: ALEX }));
+    letterFor(
+      "choices",
+      "it filed for Alex Rivera, then “Change”",
+      "“Who is this letter for?”: You, then each person, the current one checked; “Manage your household” (a sheet on phones).",
+      household({ filed: { [replyDoc.id]: ALEX.id } }),
+      forLetter({ filed_for: ALEX }),
+      (c) => c.click(main(c.page).getByRole("button", { name: "Change who this letter is for" })),
+    );
+    letterFor(
+      "add",
+      "its addressee answered as Alex Rivera and no one in the household",
+      "A letter for one other person, with no household yet: “Addressed to Alex Rivera” and “Add Alex Rivera to your household”.",
+      household({ members: [] }),
+      { addressed_to: ALEX.name, ...forLetter({ add: ALEX.name }) },
+    );
+    letterFor(
+      "add-form",
+      "its addressee answered as Alex Rivera and no one in the household, then “Add Alex Rivera to your household”",
+      "“Add to your household”: the name as read, “Signs their own letters”, the visible ticked “Also file this letter for Alex Rivera”.",
+      household({ members: [] }),
+      { addressed_to: ALEX.name, ...forLetter({ add: ALEX.name }) },
+      (c) => c.click(main(c.page).getByRole("button", { name: "Add Alex Rivera to your household" })),
+    );
+
+    // the composer's From field for a letter filed for someone
+    const composerFiled = (id, doc, description, then) =>
+      add({
+        id: `composer-household-${id}`,
+        group: "letters",
+        route: `/letters?kind=general_reply&doc=${doc.id}`,
+        how: `open /letters?kind=general_reply&doc=${doc.id} with GET /api/household answered as for today-household${then ? ", then as described" : ""}`,
+        description,
+        run: async (c) => {
+          await answerHousehold(c, everyoneFiled());
+          await c.goto(`/letters?kind=general_reply&doc=${doc.id}`);
+          const from = c.page.getByRole("dialog", { name: "New letter" }).getByRole("textbox", { name: "From" });
+          await c.visible(from);
+          if (then) await then(c);
+          await c.scrollTo(from);
+        },
+      });
+    composerFiled("signs", replyDoc, "Composer: a reply to a letter filed for Alex Rivera, who signs: From starts with your name, “Reply in Alex Rivera's name” one press away.");
+    composerFiled("theirs", replyDoc, "Composer: the reply now in Alex Rivera's name (“It goes out in the name of Alex Rivera, who signs it.”), “Use my name”.", (c) =>
+      c.click(c.page.getByRole("dialog", { name: "New letter" }).getByRole("button", { name: "Reply in Alex Rivera's name" })),
+    );
+    if (childDoc) composerFiled("child", childDoc, "Composer: a reply to a letter filed for Mia Rivera, who doesn't sign letters: it goes out in your name, no offer of hers.");
+
+    // Settings → Profile & address → Your household (computer only)
+    add({ id: "settings-household", group: "settings", route: "/settings?section=profile#set-household", how: "open /settings?section=profile#set-household", description: "Your household, empty as the demo starts: “No one yet.” and the add form.", run: (c) => c.goto("/settings?section=profile#set-household") });
+    add({
+      id: "settings-household-people",
+      group: "settings",
+      route: "/settings?section=profile#set-household",
+      how: "open /settings?section=profile#set-household with GET /api/household answered (Alex Rivera signs, Mia Rivera doesn't, letters filed for each)",
+      description: "Your household with two people: who signs, their letters (a link to the Inbox), Edit and Remove.",
+      run: async (c) => {
+        await answerHousehold(c, someFiled());
+        await c.goto("/settings?section=profile#set-household");
+      },
+    });
+    add({
+      id: "settings-household-remove",
+      group: "settings",
+      route: "/settings?section=profile#set-household",
+      how: "as settings-household-people, then “Remove Alex Rivera” (not confirmed)",
+      description: "“Remove Alex Rivera?”: their letters count as yours again, nothing is deleted.",
+      run: async (c) => {
+        await answerHousehold(c, someFiled());
+        await c.goto("/settings?section=profile#set-household");
+        await c.click(main(c.page).getByRole("button", { name: "Remove Alex Rivera" }));
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
   // Shell & overlays
   // ---------------------------------------------------------------------------------------------
   const SH = "shell-and-overlays";
