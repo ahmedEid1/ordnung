@@ -9,16 +9,17 @@ changes and publish ``profile.updated``. Nothing here is ever given to Claude.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+from collections.abc import Callable
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from ordnung.api.deps import StoreDep, require_computer
+from ordnung.api.deps import CtxDep, StoreDep, require_computer
 from ordnung.secretary import household
-from ordnung.secretary.household import HouseholdMember
+from ordnung.secretary.household import HouseholdError, HouseholdMember, HouseholdView
 
 router = APIRouter(tags=["household"])
-
-NOT_BUILT = "Your household isn't built yet."
 
 
 class HouseholdPerson(HouseholdMember):
@@ -79,13 +80,33 @@ def get_household(store: StoreDep) -> Household:
     return Household.model_validate(household.view(store))
 
 
+async def _written(ctx: CtxDep, write: Callable[[], HouseholdView]) -> Household:
+    """Run a household change in a worker thread (one transaction), answer the household after it and
+    announce it as ``profile.updated`` (no event of its own: the events are in ``models.py``). A refusal is
+    the policy's status and words; nothing is announced then."""
+    try:
+        answer = await asyncio.to_thread(write)
+    except HouseholdError as refused:
+        raise HTTPException(refused.status, refused.detail) from None
+    ctx.bus.publish("profile.updated")
+    return Household.model_validate(answer)
+
+
 @router.put("/household", response_model=Household, dependencies=[Depends(require_computer)])
-async def save_household(change: HouseholdChange) -> Household:
+async def save_household(change: HouseholdChange, ctx: CtxDep) -> Household:
     """Replace the list of people (kept ids keep their letters; ``id: null`` adds a person)."""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, NOT_BUILT)
+    # from the version the page saw (409 when it changed since); ``also_file`` files a letter for the one new
+    # person at once; 422 with the reason for a name that can't be one person of the household
+    return await _written(
+        ctx,
+        lambda: household.change(
+            ctx.store, base=change.base, members=change.members, also_file=change.also_file
+        ),
+    )
 
 
 @router.patch("/household", response_model=Household)
-async def file_letters(filing: HouseholdFiling) -> Household:
+async def file_letters(filing: HouseholdFiling, ctx: CtxDep) -> Household:
     """File letters for a person, as the person's own, or forget the answer."""
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, NOT_BUILT)
+    # 404 for a letter that doesn't exist or is in the trash, 422 for a proof file or someone not in the household
+    return await _written(ctx, lambda: household.file(ctx.store, filing.letters))
