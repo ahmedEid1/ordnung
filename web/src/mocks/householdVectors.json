@@ -827,5 +827,40 @@
     "expect": {
       "refused": "Your household can have at most 12 people."
     }
+  },
+  {
+    "kind": "version",
+    "case": "version: no one",
+    "members": [],
+    "expect": "4f53cda18c2baa0c"
+  },
+  {
+    "kind": "version",
+    "case": "version: one person",
+    "members": [
+      {
+        "id": "hhm_000000000000",
+        "name": "Alex Rivera",
+        "signs": true
+      }
+    ],
+    "expect": "9e35152c18da1377"
+  },
+  {
+    "kind": "version",
+    "case": "version: two people, one who doesn't sign, with umlauts and quotes",
+    "members": [
+      {
+        "id": "hhm_k3j9x0a1b2c4",
+        "name": "Jürgen Müller",
+        "signs": false
+      },
+      {
+        "id": "hhm_000000000002",
+        "name": "Mia \"Mimi\" Rivera",
+        "signs": true
+      }
+    ],
+    "expect": "8f0cd0287f260c43"
   }
 ]
