@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 
 from ordnung.models import Direction, Document, DocumentExtraction
-from ordnung.secretary.addressee import addressed_to, is_the_person, shown_name
+from ordnung.secretary.addressee import addressed_to, is_the_person, names_alone, names_others, shown_name
 
 SAM = "Sam Rivera"
 
@@ -118,3 +118,30 @@ def test_the_name_is_shown_on_one_short_line() -> None:
     assert shown_name("Frau​ Alex\x00 Rivera") == "Alex Rivera"
     long = addressed_to(_letter(), _reading("Alex " + "R" * 300), SAM)
     assert long is not None and len(long) == 120 and long.startswith("Alex RRR")
+
+
+_ADDRESSEES = (
+    "Sam Rivera",
+    "Herrn Dr. Sam Rivera",
+    "S. Rivera",
+    "Sam Rivera c/o Alex Rivera",
+    "Alex Rivera",
+    "Frau Alex Rivera",
+    "Sam und Alex Rivera",
+    "Familie Rivera",
+    "Alex Rivera c/o Sam Rivera",
+    "Muster GmbH",
+    "Herrn",
+    "Jürgen Groß",
+)
+
+
+@pytest.mark.parametrize("addressee", _ADDRESSEES)
+@pytest.mark.parametrize("name", [SAM, "Alex Rivera", "Juergen Gross", "J. Groß", "Rivera"])
+def test_names_alone_is_is_the_person(addressee: str, name: str) -> None:
+    """The household compares an addressee with each person's name by the same rule (ADR 0023): the public
+    ``names_alone`` is step 1's comparison, unchanged."""
+    assert names_alone(addressee, name) is is_the_person(addressee, name)
+    assert names_others(addressee) is (
+        "und" in addressee or "Familie" in addressee
+    )  # "c/o" ends the name: what follows it never counts

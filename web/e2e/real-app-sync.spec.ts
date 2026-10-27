@@ -35,6 +35,7 @@ import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDeta
 import { isOrdnungName, isSyncToolFile, ORDNUNG_NAMES, SyncTool, type Side } from "./sync-tool";
 
 type SyncStatus = components["schemas"]["SyncStatus"];
+type Household = components["schemas"]["Household"];
 
 test.describe.configure({ mode: "serial" });
 
@@ -96,6 +97,8 @@ const FILE = "19_bank_preisaenderung.pdf";
 /** What each computer adds to the letter while neither sees the other. */
 const A_TODO = "Compare the fees of two other banks";
 const B_TODO = "Ask the bank whether the old account model can stay";
+/** Someone of the laptop's household (ADR 0023): the letter is filed for them, and both travel. */
+const HOUSEHOLD_PERSON = "Mia Rivera";
 const CLIENT = { "X-Ordnung-Client": "web" };
 
 /** How long a computer may take to see what the sync tool brought: it reads the folder every 15 s (`SCAN_S`). */
@@ -111,6 +114,8 @@ type ListedLetter = Letter & { status: string };
 /** Set in the first test: the passphrase the laptop's setup suggested, and the letter it added. */
 let passphrase = "";
 let letter: ListedLetter | undefined;
+/** The laptop's household once the letter is filed in it (the desktop must find the same). */
+let household: Household | undefined;
 
 /** The sync status, straight from the server (never through a page's routes). */
 const syncOf = (page: Page): Promise<SyncStatus> => apiGet<SyncStatus>(page, "/api/sync");
@@ -228,6 +233,13 @@ test("the laptop starts syncing with a suggested passphrase, and its letter is s
       .toBe("processed");
   });
 
+  await test.step("the household: one person, and the letter filed for them (both travel with the data)", async () => {
+    const empty = await apiGet<Household>(page, "/api/household");
+    const added = await apiSend<Household>(page, "PUT", "/api/household", { base: empty.version, members: [{ name: HOUSEHOLD_PERSON, signs: false }] });
+    household = await apiSend<Household>(page, "PATCH", "/api/household", { letters: { [letter!.id]: added.members[0]!.id } });
+    expect(household.filed).toEqual({ [letter!.id]: added.members[0]!.id });
+  });
+
   await test.step("saved to the folder: the top bar says so, and the folder holds only Ordnung's names", async () => {
     await until(page, "the letter is saved to the sync folder", saved, SAVE_WAIT);
     await open(page, "/");
@@ -285,6 +297,7 @@ test("the desktop joins from its welcome page, waits for what hasn't arrived, an
     const there = await apiGet<Letter[]>(b.page, "/api/documents");
     expect(there.map((d) => d.filename)).toEqual([FILE]);
     expect((await apiGet<{ name: string }>(b.page, "/api/profile")).name, "the profile came along").toBe("Sam Rivera");
+    expect(await apiGet<Household>(b.page, "/api/household"), "the household came along, the letter filed as it was").toEqual(household);
     const { title } = await letterDetail(b.page, letter!.id);
     await open(b.page, `/documents/${letter!.id}`, shownAs(title));
   });
@@ -508,6 +521,12 @@ test.afterAll(async ({ playwright }) => {
     for (const doc of docs.filter((d) => d.filename === FILE)) {
       const gone = await laptop.delete(`/api/documents/${doc.id}?purge=true`);
       expect(gone.ok(), `DELETE /api/documents/${doc.id} → ${gone.status()}`).toBe(true);
+    }
+    // and the household goes too (twice: the people removed by the first change keep their links one change longer)
+    for (let n = 0; n < 2; n++) {
+      const { version } = (await (await laptop.get("/api/household", READ)).json()) as Household;
+      const emptied = await laptop.put("/api/household", { data: { base: version, members: [] } });
+      expect(emptied.ok(), `PUT /api/household → ${emptied.status()} ${await emptied.text()}`).toBe(true);
     }
   } finally {
     for (const [, computer] of computers) await computer.dispose();

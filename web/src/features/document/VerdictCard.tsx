@@ -69,6 +69,7 @@ import {
 } from "./verdict";
 import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
+import { useLetterFor } from "@/features/household/LetterFor";
 import { isDeadlineCheck, READING_CHECK_SLOT } from "./Warnings";
 import { canSuspend, needsTypedCourt } from "@/features/letters/logic";
 import { composerHref } from "@/features/today/selection";
@@ -296,6 +297,10 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
   const law = !scam && (Boolean(decision) || Boolean(open?.due_date && usesLaw(open)));
   const advice = open && (open.priority === "high" || open.priority === "critical") ? verdictAdvice(detail.advice, open.area, doc.kind, detail.party?.kind) : undefined;
   const footer = law ? <Disclaimer advice={advice} /> : !scam && advice?.length ? <AdviceLinks advice={advice} className="block text-xs leading-5 text-muted" /> : null;
+  // who the letter is for (the household, ADR 0023): answered where the kind is — not while it is read, nor for a
+  // possible scam, a letter in the trash or a proof file
+  const reading = doc.status === "queued" || doc.status === "processing";
+  const forLetter = useLetterFor(detail, !scam && !reading && !doc.deleted_at && doc.source !== "proof");
 
   return (
     <article
@@ -362,7 +367,9 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
               Addressed to <span className="text-ink/85">{detail.addressed_to}</span>
             </span>
           ) : null}
+          {forLetter.line}
         </div>
+        {forLetter.question}
         {/* money and dates the app's way, units and reference numbers kept whole ("MV-" / "2025-0412", "184.30" / "€") */}
         {doc.summary ? (
           <p className="mt-3 text-[15px] leading-relaxed text-ink/80 wrap-break-word" {...summaryLang}>
