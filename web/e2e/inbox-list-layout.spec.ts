@@ -3,11 +3,13 @@
  * 1920 px — to-do chips on one line inside their column, titles on at most two lines (or one,
  * with the full title in the tooltip, in the table layout), the table only where the list is wide
  * enough — and a letter read from New mail sits on top ("Just read"), "New" until it was opened; Enter on a
- * row takes the keyboard to the letter's heading.
+ * row takes the keyboard to the letter's heading. While one year shows, a letter dated in another year than
+ * it arrived says so beside its date (in the table on a line under it); a letter filed for someone in the
+ * household carries their name, cut to fit (the household is answered here: the demo's has nobody).
  * Runs in the "layout" project (its name ends in `layout.spec.ts`).
  */
 import type { Page } from "@playwright/test";
-import { expect, letterDetail, open, openMail, setTour, settle, shownAs, test } from "./helpers";
+import { apiGet, expect, letterDetail, open, openMail, setTour, settle, shownAs, test } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await setTour(page, null);
@@ -77,6 +79,72 @@ for (const width of [320, 768, 1280, 1920]) {
         expect(w).toBeGreaterThan(450);
       }
     });
+  });
+}
+
+// One year at a time (?year=) and your household's letters: what a row adds must fit it.
+for (const width of [320, 1280]) {
+  test(`at ${width} px, a letter dated in another year than it arrived says so beside its date, and the row still fits`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    // the demo's passport: dated 2017, added this September
+    await open(page, "/inbox?year=2017", "Inbox");
+    const report = await rows(page);
+    expect(report.sideways, "the page scrolls sideways").toBe(0);
+    expect(report.rows.length).toBeGreaterThan(0);
+    for (const r of report.rows) expect(r.rowOverflow, `${r.title}: the row is wider than the card`).toBeLessThanOrEqual(0);
+    const row = page.locator("section[aria-labelledby^='grp-'] > ul > li").first();
+    const shown = row.locator("[aria-hidden]", { hasText: /dated 2017$/ }).filter({ visible: true });
+    await expect(shown).toHaveCount(1);
+    const m = await shown.evaluate((el) => {
+      const date = el.parentElement!.querySelector("time")!.getBoundingClientRect();
+      const own = el.getBoundingClientRect();
+      const cell = el.parentElement!.parentElement!;
+      return { below: own.top >= date.bottom - 1, cellOverflow: cell.scrollWidth - cell.clientWidth, text: el.textContent };
+    });
+    if (width >= 1280) {
+      // the table's date column keeps its width: "dated 2017" goes on a line under the date
+      expect(m.text).toBe("dated 2017");
+      expect(m.below).toBe(true);
+      expect(m.cellOverflow).toBeLessThanOrEqual(0);
+    } else {
+      // stacked rows: after the date, on its line
+      expect(m.text).toBe(" · dated 2017");
+    }
+  });
+
+  test(`at ${width} px, a letter filed for someone in the household carries their name, cut to fit`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const docs = await apiGet<{ id: string; kind: string | null }[]>(page, "/api/documents");
+    const insurer = docs.find((d) => d.kind === "health_insurance")!;
+    const person = "Alexandra Maria Rivera-Hernández von Musterstadt-Beispielhausen";
+    await page.route("**/api/household", (route) =>
+      route.fulfill({
+        json: {
+          members: [{ id: "hhm_alex00000001", name: person, signs: true, letters: 1 }],
+          filed: { [insurer.id]: "hhm_alex00000001" },
+          mine: [],
+          suggested: {},
+          version: "0123456789abcdef",
+        },
+      }),
+    );
+    await open(page, "/inbox", "Inbox");
+    const tag = page.locator(`section[aria-labelledby^='grp-'] li:has(a[href='/documents/${insurer.id}']) [data-person-tag]`).filter({ visible: true });
+    await expect(tag).toHaveCount(1);
+    await expect(tag).toHaveAttribute("title", `For ${person}`);
+    const m = await tag.evaluate((el) => {
+      const li = el.closest("li")!.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const title = el.closest("li")!.querySelector("a[href^='/documents/']")!.getBoundingClientRect();
+      return { inside: r.left >= li.left - 0.5 && r.right <= li.right + 0.5, height: Math.round(r.height), titleWidth: title.width };
+    });
+    expect(m.inside, "the tag spills out of its row").toBe(true);
+    expect(m.height, "the tag wraps").toBeLessThanOrEqual(24);
+    // the title keeps room to be read next to a long name
+    expect(m.titleWidth).toBeGreaterThan(width >= 1280 ? 200 : 150);
+    const report = await rows(page);
+    expect(report.sideways).toBe(0);
+    for (const r of report.rows) expect(r.rowOverflow, `${r.title}: the row is wider than the card`).toBeLessThanOrEqual(0);
   });
 }
 

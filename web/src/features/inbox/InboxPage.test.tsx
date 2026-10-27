@@ -5,25 +5,52 @@ import type { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "@/test/render";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { handleServerEvent, __resetEventsForTests } from "@/api/sse";
-import type { JobProgressEvent } from "@/api/types";
+import type { DocumentRow, Household, HouseholdFiling, JobProgressEvent } from "@/api/types";
 import { createMockServer, type MockServer } from "@/mocks/server";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
+import { makeRow } from "@/features/document/fixtures";
+import CASES from "@/features/export/selection-cases.json";
+import { taxLetters, taxYears, undatedTaxLetters } from "@/features/taxes/taxYear";
 import InboxPage from "@/pages/InboxPage";
 
 let srv: MockServer;
 /** Requests answered with HTTP 500 instead of the mock server (`GET /documents` → the list failed). */
 let failing: Set<string>;
+/** The letter list to answer instead of the mock server's (the shared selection table), or null. */
+let listed: DocumentRow[] | null;
+/** A household with people (`GET`/`PATCH /household`), as the API works it out, or null: the mock server's (nobody). */
+let people: FakeHousehold | null;
+/** The bodies of `PATCH /household`. */
+let filings: HouseholdFiling["letters"][];
+
+const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
 beforeEach(() => {
   srv = createMockServer({ staticDemo: false, latency: 0 });
   failing = new Set();
+  listed = null;
+  people = null;
+  filings = [];
   vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input), "http://localhost");
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
     const path = url.pathname.replace(/^\/api/, "");
-    if (failing.has(`${init?.method ?? "GET"} ${path}`)) return new Response(JSON.stringify({ detail: "Internal error" }), { status: 500, headers: { "Content-Type": "application/json" } });
-    return srv.handle(init?.method ?? "GET", path, url.searchParams, body);
+    const method = init?.method ?? "GET";
+    if (failing.has(`${method} ${path}`)) return json({ detail: "Internal error" }, 500);
+    if (listed && method === "GET" && path === "/documents" && !url.searchParams.get("q")) return json(listed);
+    if (people && path === "/household") {
+      if (method === "PATCH") {
+        const letters = (body as HouseholdFiling).letters;
+        filings.push(letters);
+        for (const [id, answer] of Object.entries(letters)) {
+          if (answer == null) delete people.links[id];
+          else people.links[id] = answer;
+        }
+      }
+      return json(householdOf(people));
+    }
+    return srv.handle(method, path, url.searchParams, body);
   });
 });
 afterEach(() => {
@@ -40,6 +67,61 @@ function renderInbox(route = "/inbox") {
     </AddLettersProvider>,
     { route },
   );
+}
+
+/** The household the fake `/household` keeps: its people, each letter's answer, and whom each letter's addressee names. */
+interface FakeHousehold {
+  members: { id: string; name: string; signs: boolean }[];
+  links: Record<string, string>;
+  addressed: Record<string, string>;
+}
+
+const ALEX = "hhm_alex00000001";
+const MIA = "hhm_mia000000001";
+
+/** `GET /api/household` as the API works it out: live filings, the person's own, the unanswered letters' suggestions. */
+function householdOf(f: FakeHousehold): Household {
+  const ids = new Set(f.members.map((m) => m.id));
+  const filed = Object.fromEntries(Object.entries(f.links).filter(([, v]) => ids.has(v)));
+  const mine = Object.entries(f.links)
+    .filter(([, v]) => v === "me")
+    .map(([k]) => k)
+    .sort();
+  const suggested = Object.fromEntries(Object.entries(f.addressed).filter(([id]) => !(id in filed) && !mine.includes(id)));
+  return {
+    members: f.members.map((m) => ({ ...m, letters: Object.values(filed).filter((v) => v === m.id).length })),
+    filed,
+    mine,
+    suggested,
+    version: "0123456789abcdef",
+  };
+}
+
+/** Alex has the health insurer's letter filed; the dentist's and the library's are addressed to Alex and not filed; Mia has none. */
+function withPeople(): FakeHousehold {
+  people = {
+    members: [
+      { id: ALEX, name: "Alex Rivera", signs: true },
+      { id: MIA, name: "Mia Rivera", signs: false },
+    ],
+    links: { doc_bkk: ALEX, doc_parking: "me" },
+    addressed: { doc_dentist: ALEX, doc_library: ALEX },
+  };
+  return people;
+}
+
+const lettersPanel = () => screen.getByRole("tabpanel");
+/** The letters the list shows (its month groups; not the card of letters to file above it). */
+const listedIds = () =>
+  [...lettersPanel().querySelectorAll<HTMLAnchorElement>("section[aria-labelledby^='grp-'] a[href^='/documents/']")].map((a) =>
+    a.getAttribute("href")!.slice("/documents/".length),
+  );
+const optionsOf = (select: HTMLElement) => within(select).getAllByRole("option").map((o) => o.textContent);
+/** The words of an element a screen reader reads (its text without what is `aria-hidden`), spaces tidied. */
+function spoken(el: HTMLElement): string {
+  const copy = el.cloneNode(true) as HTMLElement;
+  copy.querySelectorAll("[aria-hidden]").forEach((n) => n.remove());
+  return (copy.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
 /** A `job.progress` event, as the server sends it while a letter is read. */
@@ -236,6 +318,218 @@ describe("Inbox", () => {
     await userEvent.setup().click(within(dialog).getByRole("button", { name: "Done" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(document.activeElement).toHaveAttribute("href", expect.stringMatching(/^\/documents\//));
+  });
+
+  describe("one year at a time", () => {
+    it("?year=2025 lists only letters dated 2025 and Clear filters drops it", async () => {
+      const { router } = renderInbox("/inbox?year=2025");
+      expect(await screen.findByRole("link", { name: "Rental agreement — Beispielweg 5" })).toBeInTheDocument();
+      expect(listedIds().sort()).toEqual(["doc_gym", "doc_job", "doc_lease", "doc_power"]);
+      const select = screen.getByRole("combobox", { name: "Year, by the date on the letter" });
+      expect(select).toHaveValue("2025");
+      // every year with letters, newest first, by the date on the letter (else the day it arrived)
+      expect(optionsOf(select)).toEqual(["All years", "2026 (15)", "2025 (4)", "2024 (2)", "2017 (1)"]);
+      // every month with its year, this year's too; the groups stay by arrival
+      expect(screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+        expect.stringMatching(/^January 2026/),
+        expect.stringMatching(/^September 2025/),
+      ]);
+      expect(screen.getByRole("status")).toHaveTextContent(/^Showing 4 of \d+ letters$/);
+      // the tabs count within the year
+      expect(screen.getByRole("tab", { name: /^All/ })).toHaveTextContent(/^All4$/);
+
+      await userEvent.setup().click(screen.getByRole("button", { name: "Clear filters" }));
+      await waitFor(() => expect(router.state.location.search).toBe(""));
+      expect(await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
+      expect(select).toHaveValue("");
+    });
+
+    it("chooses a year in the URL, keeps the search words, and ignores a year that can't be", async () => {
+      const { router } = renderInbox("/inbox?year=20x5&q=Gym");
+      await screen.findByRole("link", { name: "Gym price increase — FitWell" });
+      const select = screen.getByRole("combobox", { name: "Year, by the date on the letter" });
+      expect(select).toHaveValue("");
+      await waitFor(() => expect(listedIds().sort()).toEqual(["doc_gym", "doc_gym_price"]));
+      await userEvent.setup().selectOptions(select, "2025");
+      await waitFor(() => expect(router.state.location.search).toBe("?year=2025&q=Gym"));
+      expect(listedIds()).toEqual(["doc_gym"]);
+      expect(screen.getByRole("searchbox", { name: "Search letters" })).toHaveValue("Gym");
+    });
+
+    it("keeps an asked year with no letters as a choice, and says why it is empty", async () => {
+      renderInbox("/inbox?year=2019");
+      expect(await screen.findByRole("heading", { name: "No letters dated 2019" })).toBeInTheDocument();
+      expect(screen.getByText(/Ordnung files a letter under the year of the date on it, else the day it arrived/)).toBeInTheDocument();
+      expect(optionsOf(screen.getByRole("combobox", { name: "Year, by the date on the letter" }))).toContain("2019 (0)");
+      await userEvent.setup().click(screen.getByRole("button", { name: "Clear filters" }));
+      expect(await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" })).toBeInTheDocument();
+    });
+
+    it("a row that arrived in another year says “dated 2025”", async () => {
+      renderInbox("/inbox?year=2025");
+      // added on 12 Jan 2026, dated 2025: under January 2026, with its own year
+      const job = (await screen.findByRole("link", { name: "Werkstudent employment contract" })).closest("li")!;
+      const [stacked, table] = within(job).getAllByTitle(/^Added Mon 12 Jan/);
+      // what a screen reader hears, in both layouts
+      expect(spoken(stacked!)).toBe("Added 12 Jan, dated 2025");
+      expect(spoken(table!)).toBe("Added 12 Jan, dated 2025");
+      // on screen: after the date in stacked rows, on a line of its own in the table's date column
+      expect(stacked!.querySelector("[aria-hidden]")).toHaveTextContent(/^· dated 2025$/);
+      expect(table!.querySelector("[aria-hidden]")).toHaveTextContent(/^dated 2025$/);
+      expect(table!.querySelector("[aria-hidden]")).toHaveClass("block");
+      // a letter that arrived in 2025 says nothing more
+      const lease = screen.getByRole("link", { name: "Rental agreement — Beispielweg 5" }).closest("li")!;
+      expect(within(lease).queryByText(/dated 2025/)).toBeNull();
+    });
+
+    it("the Letters for taxes link keeps the chosen year", async () => {
+      renderInbox("/inbox?year=2026");
+      const link = await screen.findByRole("link", { name: "Letters for taxes" });
+      expect(link).toHaveAttribute("href", "/inbox/taxes?year=2026");
+      await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Year, by the date on the letter" }), "");
+      await waitFor(() => expect(link).toHaveAttribute("href", "/inbox/taxes"));
+    });
+
+    it("the Inbox and the Tax year page file the shared table's letters under the same years", async () => {
+      // the letter list as the API answers it: no trash, no proof files
+      const rows = (CASES.docs as Partial<DocumentRow>[])
+        .map((fields) => makeRow({ doc_date: null, received_date: null, party_id: null, title: fields.id, ...fields }))
+        .filter((d) => !d.deleted_at && d.source !== "proof");
+      listed = rows;
+      const user = userEvent.setup();
+      renderInbox();
+      await screen.findByRole("link", { name: "doc_payslip_2025" });
+      const select = screen.getByRole("combobox", { name: "Year, by the date on the letter" });
+      const years = optionsOf(select)
+        .slice(1)
+        .map((o) => Number(o!.slice(0, 4)));
+      // every year of the Tax year page is a year of the Inbox
+      for (const { year } of taxYears(rows)) expect(years).toContain(year);
+      for (const year of years) {
+        await user.selectOptions(select, String(year));
+        await waitFor(() => expect(select).toHaveValue(String(year)));
+        const shown = new Set(listedIds());
+        const onTaxPage = taxLetters(rows, year).map((d) => d.id);
+        // each letter of the year's tax page is in the Inbox's year…
+        for (const id of onTaxPage) expect(shown, `${id} in ${year}`).toContain(id);
+        // …and no letter for taxes of another year is
+        const otherTax = years.filter((y) => y !== year).flatMap((y) => taxLetters(rows, y).map((d) => d.id));
+        for (const id of otherTax) expect(shown, `${id} not in ${year}`).not.toContain(id);
+        // an undated letter for taxes is in no year
+        for (const d of undatedTaxLetters(rows)) expect(shown).not.toContain(d.id);
+      }
+    });
+  });
+
+  describe("whose letters (your household)", () => {
+    it("has no For select while the household has no people", async () => {
+      renderInbox("/inbox?for=me");
+      await screen.findByRole("link", { name: "Parking fine (Verwarnungsgeld)" });
+      expect(screen.queryByRole("combobox", { name: "Whose letters" })).toBeNull();
+      // ?for= with nobody in the household reads as Everyone
+      expect(listedIds()).toContain("doc_parking");
+      expect(screen.getByRole("status").textContent).toBe("");
+    });
+
+    it("offers Everyone, You and each person with their letters, and narrows before the tabs count", async () => {
+      withPeople();
+      const { router } = renderInbox();
+      const select = await screen.findByRole("combobox", { name: "Whose letters" });
+      expect(optionsOf(select)).toEqual(["Everyone", "You", "Alex Rivera (1)", "Mia Rivera (0)"]);
+      const user = userEvent.setup();
+      await user.selectOptions(select, ALEX);
+      await waitFor(() => expect(router.state.location.search).toBe(`?for=${ALEX}`));
+      await waitFor(() => expect(listedIds()).toEqual(["doc_bkk"]));
+      expect(screen.getByRole("tab", { name: /^All/ })).toHaveTextContent(/^All1$/);
+      expect(screen.getByRole("status")).toHaveTextContent(/^Showing 1 of \d+ letters$/);
+
+      await user.selectOptions(select, "me");
+      await waitFor(() => expect(router.state.location.search).toBe("?for=me"));
+      // You: every letter not filed for someone (the ones addressed to Alex too, until they are filed)
+      await waitFor(() => expect(listedIds()).not.toContain("doc_bkk"));
+      expect(listedIds()).toEqual(expect.arrayContaining(["doc_parking", "doc_dentist", "doc_library"]));
+
+      await user.click(screen.getByRole("button", { name: "Clear filters" }));
+      await waitFor(() => expect(router.state.location.search).toBe(""));
+      expect(select).toHaveValue("");
+    });
+
+    it("reads an unknown person in ?for= as Everyone", async () => {
+      withPeople();
+      renderInbox("/inbox?for=hhm_gone00000000");
+      const select = await screen.findByRole("combobox", { name: "Whose letters" });
+      expect(select).toHaveValue("");
+      await waitFor(() => expect(listedIds()).toEqual(expect.arrayContaining(["doc_bkk", "doc_parking"])));
+    });
+
+    it("tags a letter filed for someone in the Everyone view only", async () => {
+      withPeople();
+      renderInbox();
+      const bkk = (await screen.findByRole("link", { name: "Health insurance contributions from 1 Oct" })).closest("li")!;
+      await waitFor(() => expect(within(bkk).getAllByText("For Alex Rivera").length).toBeGreaterThan(0));
+      // only the letters filed for someone: the person's own and unanswered ones have none
+      const parking = screen.getByRole("link", { name: "Parking fine (Verwarnungsgeld)" }).closest("li")!;
+      expect(within(parking).queryByText(/^For /)).toBeNull();
+      const dentist = screen.getByRole("link", { name: "Dentist appointment reminder" }).closest("li")!;
+      expect(within(dentist).queryByText(/^For /)).toBeNull();
+
+      await userEvent.setup().selectOptions(screen.getByRole("combobox", { name: "Whose letters" }), ALEX);
+      await waitFor(() => expect(listedIds()).toEqual(["doc_bkk"]));
+      expect(within(lettersPanel()).queryByText("For Alex Rivera")).toBeNull();
+    });
+
+    it("files the letters addressed to someone with one press, exactly those listed, and Undo puts them back", async () => {
+      withPeople();
+      const user = userEvent.setup();
+      renderInbox(`/inbox?for=${ALEX}`);
+      const card = await screen.findByRole("region", { name: /Addressed to Alex Rivera, not filed yet/ });
+      expect(within(card).getByText("Ordnung read Alex Rivera's name on these letters. They count as yours until you file them.")).toBeInTheDocument();
+      expect(
+        within(card)
+          .getAllByRole("link")
+          .map((a) => a.getAttribute("href")),
+      ).toEqual(["/documents/doc_library", "/documents/doc_dentist"]);
+      // not in Alex's letters until they are filed
+      expect(listedIds()).toEqual(["doc_bkk"]);
+
+      // a kind narrows the card too: the button files exactly what it lists
+      await user.selectOptions(screen.getByRole("combobox", { name: "Kind of letter" }), "dunning");
+      await waitFor(() => expect(within(card).getAllByRole("link")).toHaveLength(1));
+      await user.click(within(card).getByRole("button", { name: "File it for Alex Rivera" }));
+      await waitFor(() => expect(filings).toEqual([{ doc_library: ALEX }]));
+      const toastItem = (await screen.findByText("Filed 1 letter for Alex Rivera")).closest("li")!;
+      await waitFor(() => expect(listedIds()).toEqual(["doc_library"]));
+      expect(screen.queryByRole("region", { name: /Addressed to Alex Rivera/ })).toBeNull();
+      // focus goes to the letters, not the page
+      await waitFor(() => expect(document.activeElement).toHaveAttribute("href", "/documents/doc_library"));
+
+      await user.click(within(toastItem).getByRole("button", { name: "Undo" }));
+      await waitFor(() => expect(filings).toEqual([{ doc_library: ALEX }, { doc_library: null }]));
+      const back = await screen.findByRole("region", { name: /Addressed to Alex Rivera, not filed yet/ });
+      expect(within(back).getByRole("button", { name: "File it for Alex Rivera" })).toBeInTheDocument();
+
+      // without the kind: all of them
+      await user.selectOptions(screen.getByRole("combobox", { name: "Kind of letter" }), "");
+      await user.click(await within(back).findByRole("button", { name: "File these 2 for Alex Rivera" }));
+      await waitFor(() => expect(filings.at(-1)).toEqual({ doc_library: ALEX, doc_dentist: ALEX }));
+      expect(await screen.findByText("Filed 2 letters for Alex Rivera")).toBeInTheDocument();
+    });
+
+    it("says how to file a person's letters when none is filed yet, and that every letter is someone's", async () => {
+      withPeople();
+      renderInbox(`/inbox?for=${MIA}`);
+      expect(await screen.findByRole("heading", { name: "No letters filed for Mia Rivera" })).toBeInTheDocument();
+      expect(screen.getByText("Open a letter and press “Change” next to “For you” to file it for Mia Rivera.")).toBeInTheDocument();
+      expect(screen.queryByRole("region", { name: /Addressed to/ })).toBeNull();
+    });
+
+    it("points up to the letters addressed to a person when none is filed for them yet", async () => {
+      withPeople().links = {};
+      renderInbox(`/inbox?for=${ALEX}`);
+      expect(await screen.findByRole("heading", { name: "No letters filed for Alex Rivera" })).toBeInTheDocument();
+      expect(screen.getByText("The letters above are addressed to Alex Rivera. File them with one press.")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: /Addressed to Alex Rivera, not filed yet/ })).toBeInTheDocument();
+    });
   });
 
   it("opens a tray letter and files it", async () => {

@@ -1,8 +1,12 @@
 /**
- * Inbox list logic (pure, unit-tested): filters, month grouping, open to-dos per letter.
+ * Inbox list logic (pure, unit-tested): filters, one year at a time, month grouping, open to-dos per letter.
+ *
+ * A year (`?year=`) is the year of the date on the letter, else the day it arrived ({@link letterYear}): the
+ * rule the Tax year page, the export and the tax Idea file letters by. The month groups stay by arrival.
  */
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import type { DocumentKind, DocumentRow, Item, ListedItem, ListedLetter, SearchFoundIn } from "@/api/types";
+import { letterYear } from "@/features/export/selection";
 import { documentKindLabel } from "@/lib/copy";
 import { daysUntil } from "@/lib/format";
 
@@ -37,12 +41,18 @@ export function matchesFilter(d: ListedLetter, filter: InboxFilter): boolean {
   return true;
 }
 
-export function filterDocuments(docs: ListedLetter[], opts: { filter: InboxFilter; kind?: DocumentKind | null }): ListedLetter[] {
-  return docs.filter((d) => !d.deleted_at && !isHeld(d) && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind));
+/** A letter the list shows at all: not in the trash, not waiting from the folder (those wait above it). */
+const listed = (d: ListedLetter) => !d.deleted_at && !isHeld(d);
+
+/** The letters of a tab, a kind and a year (by the date on the letter, else the day it arrived; null: every year). */
+export function filterDocuments<T extends ListedLetter>(docs: readonly T[], opts: { filter: InboxFilter; kind?: DocumentKind | null; year?: number | null }): T[] {
+  return docs.filter(
+    (d) => listed(d) && matchesFilter(d, opts.filter) && (!opts.kind || d.kind === opts.kind) && (opts.year == null || letterYear(d) === opts.year),
+  );
 }
 
 export function filterCounts(docs: ListedLetter[]): Record<InboxFilter, number> {
-  const live = docs.filter((d) => !d.deleted_at && !isHeld(d));
+  const live = docs.filter(listed);
   return {
     all: live.length,
     check: live.filter(needsYou).length,
@@ -57,6 +67,30 @@ export function kindOptions(docs: ListedLetter[]): { value: DocumentKind; label:
   return [...counts.entries()]
     .map(([value, count]) => ({ value, label: documentKindLabel(value), count }))
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+/**
+ * The year select's options: each year that has letters the list shows, newest first, with how many (letters with no
+ * date and no arrival day are in no year: *All years* only). `asked`: a `?year=` with no letters stays an option, with
+ * 0, as the Tax year page keeps an asked year.
+ */
+export function yearOptions(docs: readonly ListedLetter[], asked: number | null): { value: number; count: number }[] {
+  const counts = new Map<number, number>();
+  for (const d of docs) {
+    const year = listed(d) ? letterYear(d) : null;
+    if (year != null) counts.set(year, (counts.get(year) ?? 0) + 1);
+  }
+  if (asked != null && !counts.has(asked)) counts.set(asked, 0);
+  return [...counts.entries()].map(([value, count]) => ({ value, count })).sort((a, b) => b.value - a.value);
+}
+
+/**
+ * The year a row says it is dated (" · dated 2025") while the list shows one year: the letter's own year when it
+ * arrived (or was added) in another one, so its month group names another year; else null.
+ */
+export function otherYearDated(d: ListedLetter, year: number | null): number | null {
+  if (year == null || letterYear(d) !== year) return null;
+  return Number(inboxDate(d).slice(0, 4)) === year ? null : year;
 }
 
 /** When the letter came into the inbox: its arrival date, else when it was added. */
@@ -114,9 +148,10 @@ export function pinJustRead(groups: LetterGroup[], ids: ReadonlySet<string>): Le
 
 /**
  * Newest first, grouped: letters being read → "Last 7 days" → one group per month
- * ("August", or "December 2025" for other years).
+ * ("August", or "December 2025" for other years). `withYear` (the list shows one year): every month carries
+ * its year, this year's too ("September 2026").
  */
-export function groupLetters(docs: ListedLetter[], today: string): LetterGroup[] {
+export function groupLetters(docs: ListedLetter[], today: string, { withYear = false }: { withYear?: boolean } = {}): LetterGroup[] {
   const t = parseISO(today);
   const sorted = [...docs].sort((a, b) => {
     const ra = Number(isReading(a));
@@ -141,7 +176,7 @@ export function groupLetters(docs: ListedLetter[], today: string): LetterGroup[]
       label = "Last 7 days";
     } else {
       key = format(date, "yyyy-MM");
-      label = date.getFullYear() === t.getFullYear() ? format(date, "MMMM") : format(date, "MMMM yyyy");
+      label = !withYear && date.getFullYear() === t.getFullYear() ? format(date, "MMMM") : format(date, "MMMM yyyy");
     }
     let g = byKey.get(key);
     if (!g) {
