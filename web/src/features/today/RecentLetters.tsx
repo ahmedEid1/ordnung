@@ -2,13 +2,14 @@ import { useId, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, ChevronDown } from "lucide-react";
+import { useHousehold } from "@/api/hooks";
 import type { Document, Party } from "@/api/types";
 import { DateText } from "@/components/ui/DateText";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { documentKindLabel } from "@/lib/copy";
 import { cn } from "@/lib/utils";
-import { recentLetterDate, sortRecentLetters } from "./helpers";
+import { filedMember } from "@/features/household/logic";
+import { recentLetterDate, recentLetterMeta, sortRecentLetters } from "./helpers";
 import { fadeUp } from "./motion";
 
 const allLetters = "inline-flex min-h-6 items-center gap-1 rounded text-[13px] font-medium text-accent hover:underline";
@@ -16,10 +17,11 @@ const allLetters = "inline-flex min-h-6 items-center gap-1 rounded text-[13px] f
 /**
  * "Recent letters" — collapsed by default (the latest one named under the heading); expands to the
  * latest letters with kind, status and the day each arrived, newest first. "All letters" goes to
- * the inbox.
+ * the inbox. A letter filed for someone of the household says so first on its second line.
  */
 export function RecentLetters({ docs, partyById }: { docs: Document[]; partyById: Map<string, Party> }) {
   const [open, setOpen] = useState(false);
+  const household = useHousehold().data;
   const listId = useId();
   const titleId = `${listId}-title`;
   const latestId = `${listId}-latest`;
@@ -72,7 +74,7 @@ export function RecentLetters({ docs, partyById }: { docs: Document[]; partyById
               {sorted.map((d) => {
                 const party = d.party_id ? partyById.get(d.party_id) : undefined;
                 const title = d.title ?? d.filename;
-                const meta = [party?.name, d.kind ? documentKindLabel(d.kind) : null].filter(Boolean).join(" · ");
+                const meta = recentLetterMeta(d, party, filedMember(household, d.id)?.name ?? null);
                 const status = d.status !== "processed" ? d.status : null;
                 return (
                   <li key={d.id}>

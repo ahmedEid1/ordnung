@@ -7,10 +7,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { qk } from "@/api/hooks";
+import type { Household } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { formatIban } from "@/lib/format";
 import { plainText } from "@/lib/glue";
-import { renderWithProviders } from "@/test/render";
+import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { item } from "@/mocks/data/helpers";
 import { receiptForItem } from "./receipt";
@@ -279,5 +281,43 @@ describe("the reason", () => {
       height.mockRestore();
       vi.restoreAllMocks();
     }
+  });
+});
+
+describe("whose letter it is (your household)", () => {
+  const ALEX = { id: "hhm_alex000000001", name: "Alex Rivera", signs: true, letters: 0 };
+
+  /** Today with the letters `filed` says filed for Alex Rivera, as if `GET /api/household` had answered so. */
+  async function renderFiled({ srv }: ReturnType<typeof useMockApi>, filed: (docId: string) => boolean) {
+    const client = makeTestQueryClient();
+    const docs = srv.db.liveDocuments().filter((d) => filed(d.id));
+    const household: Household = { members: [{ ...ALEX, letters: docs.length }], filed: Object.fromEntries(docs.map((d) => [d.id, ALEX.id])), mine: [], suggested: {}, version: "0123456789abcdef" };
+    client.setQueryData(qk.household, household);
+    renderWithProviders(<TodayView />, { client });
+    const top = await screen.findByRole("region", { name: "Top 3 this week" });
+    return within(top).findAllByRole("article");
+  }
+
+  it("a card of a letter filed for someone has the tag under its title and amount, before Please check", async () => {
+    const cards = await renderFiled(useMockApi(), () => true);
+    const tagged = cards.filter((c) => c.querySelector("[data-person-tag]"));
+    expect(tagged.length).toBeGreaterThan(0);
+    for (const card of tagged) {
+      const tag = card.querySelector<HTMLElement>("[data-person-tag]")!;
+      expect(tag).toHaveTextContent("For Alex Rivera");
+      expect(tag).toHaveAttribute("title", "For Alex Rivera");
+      const heading = within(card).getByRole("heading", { level: 3 });
+      expect(heading.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      const amount = heading.nextElementSibling;
+      if (amount && amount !== tag && !amount.matches("[data-person-tag]")) expect(amount.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      const check = within(card).queryByText("Please check");
+      if (check) expect(tag.compareDocumentPosition(check) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
+  it("no card has a tag when no letter is filed for someone", async () => {
+    const cards = await renderFiled(useMockApi(), () => false);
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) expect(card.querySelector("[data-person-tag]")).toBeNull();
   });
 });

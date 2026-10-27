@@ -2,8 +2,10 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
+import { useHousehold } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { DateLeaf } from "@/components/ui/DateLeaf";
+import { filedMember } from "@/features/household/logic";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -17,10 +19,10 @@ import { actionHref } from "./useTodayData";
  * One date: the calendar leaf, then the title (up to two lines) and what/who (up to two lines),
  * each with its full text on hover. A roomy card adds the kind icon and puts the amount in its
  * own column; a phone-sized one leads the second line with the amount instead, so the title keeps
- * the width.
+ * the width. A letter filed for someone of the household says so first ("For Alex Rivera · …").
  */
-function Row({ action, party }: { action: TodayAction; party: Party | undefined }) {
-  const meta = comingUpMeta(action, party);
+function Row({ action, party, forName }: { action: TodayAction; party: Party | undefined; forName: string | null }) {
+  const meta = comingUpMeta(action, party, forName);
   const money = action.amount ? formatMoney(action.amount, { currency: action.currency }) : null;
   const full = [money, meta].filter(Boolean).join(" · ");
   return (
@@ -85,6 +87,9 @@ export function ComingUp({
     return { groups: listed.map((g) => ({ ...g, totals: totals.get(g.key) ?? g.totals })), anyInWindow: allGroups.length > 0 };
   }, [actions, all, today]);
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
+  // whose letter each date comes from (a contract's: the letter it came from); a tag, never a filter
+  const household = useHousehold().data;
+  const forName = (a: TodayAction) => (a.docId ? (filedMember(household, a.docId)?.name ?? null) : null);
 
   return (
     <motion.section variants={fadeUp} aria-labelledby="coming-up-title">
@@ -124,7 +129,7 @@ export function ComingUp({
               </div>
               <ul>
                 {g.entries.map((e) => (
-                  <Row key={e.action.key} action={e.action} party={e.action.partyId ? partyById.get(e.action.partyId) : undefined} />
+                  <Row key={e.action.key} action={e.action} party={e.action.partyId ? partyById.get(e.action.partyId) : undefined} forName={forName(e.action)} />
                 ))}
               </ul>
             </div>
