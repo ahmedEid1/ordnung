@@ -10,6 +10,7 @@ import { formatIban, ibanLooksValid, normalizeIban } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { focusWhenReady } from "@/features/today/focus";
 import { MOVING_CHECKLIST_ID, moveDayError, moveDayRange, movedLine, movingRows, moveStanding } from "@/features/today/moving";
+import { HouseholdCard } from "@/features/household/HouseholdCard";
 import { SaveBar, SectionHeading, SettingsCard } from "./SettingsCard";
 
 type ProfileForm = Pick<Profile, "name" | "address" | "email" | "phone" | "iban">;
@@ -174,7 +175,10 @@ function StartMove({
   );
 }
 
-/** "Profile & address": the sender block of every letter, the account refunds go to, and "I moved" (or "Moved recently?"). */
+/**
+ * "Profile & address": the sender block of every letter, the account refunds go to, and "I moved" (or "Moved
+ * recently?"); then "Your household", the people whose letters come to the person too.
+ */
 export function ProfileSection({ profile }: { profile: Profile }) {
   const update = useUpdateProfile();
   const today = useTodayISO();
@@ -359,6 +363,10 @@ export function ProfileSection({ profile }: { profile: Profile }) {
           the address and IBAN you enter here into its requests to Claude — letters you add are read as they are printed.
         </p>
       </SettingsCard>
+      {/* the people whose letters come to the person too (`#set-household` opens it) */}
+      <div className="mt-6">
+        <HouseholdCard />
+      </div>
     </section>
   );
 }

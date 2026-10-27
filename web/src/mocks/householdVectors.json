@@ -1,1 +1,866 @@
-[]
+[
+  {
+    "kind": "letter",
+    "case": "one member named alone",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "courtesy words and a title don't count",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Frau Dr. Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "case doesn't count",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "ALEX RIVERA",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "word order and punctuation don't count",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Rivera, Alex",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "an initial matches the word it begins",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "A. Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "an initial matches no other word",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "U. Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": "U. Rivera"
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "umlauts written with an e",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "link": null,
+    "addressee": "Juergen Mueller",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Jürgen Müller",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "umlauts written as plain vowels",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "link": null,
+    "addressee": "Jurgen Muller",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Jürgen Müller",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "accents don't count",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jose Nunez"
+    ],
+    "link": null,
+    "addressee": "José Núñez",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Jose Nunez",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "ß is ss",
+    "profile": "Sam Rivera",
+    "members": [
+      "Mia Gross"
+    ],
+    "link": null,
+    "addressee": "Mia Groß",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Mia Gross",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "a middle name within",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex Maria Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "what follows c/o is where it goes",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera",
+      "Mia Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex Rivera c/o Sam Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the one of two people it names",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera",
+      "Mia Rivera"
+    ],
+    "link": null,
+    "addressee": "Mia Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Mia Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "two people it could name: no suggestion",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera",
+      "A. Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "similar names: no suggestion",
+    "profile": "Sam Rivera",
+    "members": [
+      "Kim",
+      "Kim Rivera"
+    ],
+    "link": null,
+    "addressee": "Kim Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "a surname alone fits everyone: no suggestion",
+    "profile": "Jo Smith",
+    "members": [
+      "Alex Rivera",
+      "Mia Rivera"
+    ],
+    "link": null,
+    "addressee": "Herrn Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "a surname alone of one member",
+    "profile": "Jo Smith",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Frau Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "several people: und",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex und Mia Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "several people: &",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex & Mia Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "several people: u.",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex u. Mia Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "several people: Familie",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Familie Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "several people: Eheleute",
+    "profile": "Sam Rivera",
+    "members": [],
+    "link": null,
+    "addressee": "Eheleute Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the person themselves",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Herrn Sam Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the person, surname only",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Herrn Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the person c/o someone",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Sam Rivera c/o Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "no profile name",
+    "profile": "",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "no addressee",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": null,
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "an addressee of courtesy words only",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Herrn",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "an empty household offers to add the one person",
+    "profile": "Sam Rivera",
+    "members": [],
+    "link": null,
+    "addressee": "Frau Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": "Alex Rivera"
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "an offer keeps an academic title",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": null,
+    "addressee": "Herrn Dr. Kim Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": "Dr. Kim Rivera"
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "a full household offers no one",
+    "profile": "Sam Rivera",
+    "members": [
+      "Person A",
+      "Person B",
+      "Person C",
+      "Person D",
+      "Person E",
+      "Person F",
+      "Person G",
+      "Person H",
+      "Person I",
+      "Person J",
+      "Person K",
+      "Person L"
+    ],
+    "link": null,
+    "addressee": "Kim Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "room for one more",
+    "profile": "Sam Rivera",
+    "members": [
+      "Person A",
+      "Person B",
+      "Person C",
+      "Person D",
+      "Person E",
+      "Person F",
+      "Person G",
+      "Person H",
+      "Person I",
+      "Person J",
+      "Person K"
+    ],
+    "link": null,
+    "addressee": "Kim Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": null,
+      "add": "Kim Rivera"
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "filed for a member",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": "Alex Rivera",
+    "addressee": "Kim Rivera",
+    "expect": {
+      "filed_for": "Alex Rivera",
+      "mine": false,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the person's own",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": "me",
+    "addressee": "Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": true,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "the person's own, with no one in the household",
+    "profile": "Sam Rivera",
+    "members": [],
+    "link": "me",
+    "addressee": "Kim Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": true,
+      "suggested": null,
+      "add": null
+    }
+  },
+  {
+    "kind": "letter",
+    "case": "filed for someone removed: unanswered again",
+    "profile": "Sam Rivera",
+    "members": [
+      "Alex Rivera"
+    ],
+    "link": "removed",
+    "addressee": "Alex Rivera",
+    "expect": {
+      "filed_for": null,
+      "mine": false,
+      "suggested": "Alex Rivera",
+      "add": null
+    }
+  },
+  {
+    "kind": "name",
+    "case": "kept as typed on one line",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "  Alex\n Rivera\t",
+    "expect": {
+      "kept": "Alex Rivera"
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a title stays",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Dr. Mia Rivera-López",
+    "expect": {
+      "kept": "Dr. Mia Rivera-López"
+    }
+  },
+  {
+    "kind": "name",
+    "case": "empty",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "",
+    "expect": {
+      "refused": "Type a name."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "blank",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": " \n\t",
+    "expect": {
+      "refused": "Type a name."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "too long",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": {
+      "refused": "Use at most 120 characters."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "just long enough",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "expect": {
+      "kept": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    }
+  },
+  {
+    "kind": "name",
+    "case": "digits only",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "12345",
+    "expect": {
+      "refused": "Type a name with letters in it."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a title only",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Dr.",
+    "expect": {
+      "refused": "Type a name with letters in it."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a name of several people",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Alex und Mia Rivera",
+    "expect": {
+      "refused": "Add one person at a time."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a name of several people: &",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Alex & Mia",
+    "expect": {
+      "refused": "Add one person at a time."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a name of several people: Familie",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Familie Rivera",
+    "expect": {
+      "refused": "Add one person at a time."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "your own name",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Sam Rivera",
+    "expect": {
+      "refused": "That's your own name. Your household is the other people your letters come for."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "your own name, otherwise",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Herrn S. Rivera",
+    "expect": {
+      "refused": "That's your own name. Your household is the other people your letters come for."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "your own surname",
+    "profile": "Sam Rivera",
+    "members": [],
+    "name": "Rivera",
+    "expect": {
+      "refused": "That's your own name. Your household is the other people your letters come for."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "anyone's name without a profile name",
+    "profile": "",
+    "members": [],
+    "name": "Sam Rivera",
+    "expect": {
+      "kept": "Sam Rivera"
+    }
+  },
+  {
+    "kind": "name",
+    "case": "the same name with e for umlauts",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "name": "Juergen Mueller",
+    "expect": {
+      "refused": "Jürgen Müller is already in your household."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "the same name in another order",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "name": "Müller Jürgen",
+    "expect": {
+      "refused": "Jürgen Müller is already in your household."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "the same name with an initial",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "name": "J. Müller",
+    "expect": {
+      "refused": "Jürgen Müller is already in your household."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "the same name in small letters",
+    "profile": "Sam Rivera",
+    "members": [
+      "Jürgen Müller"
+    ],
+    "name": "jurgen muller",
+    "expect": {
+      "refused": "Jürgen Müller is already in your household."
+    }
+  },
+  {
+    "kind": "name",
+    "case": "a similar name is kept",
+    "profile": "Sam Rivera",
+    "members": [
+      "Kim"
+    ],
+    "name": "Kim Rivera",
+    "expect": {
+      "kept": "Kim Rivera"
+    }
+  },
+  {
+    "kind": "name",
+    "case": "at most twelve",
+    "profile": "Sam Rivera",
+    "members": [
+      "Person A",
+      "Person B",
+      "Person C",
+      "Person D",
+      "Person E",
+      "Person F",
+      "Person G",
+      "Person H",
+      "Person I",
+      "Person J",
+      "Person K",
+      "Person L"
+    ],
+    "name": "One More",
+    "expect": {
+      "refused": "Your household can have at most 12 people."
+    }
+  },
+  {
+    "kind": "version",
+    "case": "version: no one",
+    "members": [],
+    "expect": "4f53cda18c2baa0c"
+  },
+  {
+    "kind": "version",
+    "case": "version: one person",
+    "members": [
+      {
+        "id": "hhm_000000000000",
+        "name": "Alex Rivera",
+        "signs": true
+      }
+    ],
+    "expect": "9e35152c18da1377"
+  },
+  {
+    "kind": "version",
+    "case": "version: two people, one who doesn't sign, with umlauts and quotes",
+    "members": [
+      {
+        "id": "hhm_k3j9x0a1b2c4",
+        "name": "Jürgen Müller",
+        "signs": false
+      },
+      {
+        "id": "hhm_000000000002",
+        "name": "Mia \"Mimi\" Rivera",
+        "signs": true
+      }
+    ],
+    "expect": "8f0cd0287f260c43"
+  }
+]

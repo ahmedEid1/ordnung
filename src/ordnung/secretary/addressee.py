@@ -94,16 +94,39 @@ def _within(words: list[tuple[str, ...]], others: list[tuple[str, ...]]) -> bool
     return all(any(_same_word(word, other) for other in others) for word in words)
 
 
-def is_the_person(addressee: str, profile_name: str) -> bool:
-    """Whether ``addressee`` (as read) names the profile's person alone (points 2 and 3). ``True`` when
-    either name has no words to compare: nothing is said then."""
+def names_alone(addressee: str, name: str) -> bool:
+    """Whether ``addressee`` (as read) names the person called ``name`` alone, by points 2 and 3: the words of
+    the addressee before "c/o", without its leading courtesy words, and of ``name`` — every word of one is a
+    word of the other. ``True`` when either has no words to compare. The household compares a letter's
+    addressee with each of its people's names by this rule (:mod:`ordnung.secretary.household`)."""
     for_whom = _for_whom(addressee)
     if _names_others(for_whom):
         return False
-    theirs, mine = _spellings(_without_courtesy(for_whom)), _spellings(profile_name)
+    theirs, mine = _spellings(_without_courtesy(for_whom)), _spellings(name)
     if not theirs or not mine:
         return True
     return _within(theirs, mine) or _within(mine, theirs)
+
+
+def names_others(addressee: str) -> bool:
+    """Whether ``addressee`` (before "c/o") names more than one person ("Sam und Alex Rivera", "Familie
+    Rivera"): the exception of point 3."""
+    return _names_others(_for_whom(addressee))
+
+
+def same_name(a: str, b: str) -> bool:
+    """Whether two names are one person's, spelled otherwise: each name's words are all words of the other
+    (case, accents, umlauts, titles, punctuation, word order and leading courtesy words don't count; an
+    initial matches the word it begins: "Jürgen Müller", "Müller, Juergen" and "J. Müller"). ``False`` when
+    either has no words to compare."""
+    left, right = _spellings(_without_courtesy(a)), _spellings(_without_courtesy(b))
+    return bool(left and right) and _within(left, right) and _within(right, left)
+
+
+def is_the_person(addressee: str, profile_name: str) -> bool:
+    """Whether ``addressee`` (as read) names the profile's person alone (points 2 and 3). ``True`` when
+    either name has no words to compare: nothing is said then."""
+    return names_alone(addressee, profile_name)
 
 
 def shown_name(addressee: str) -> str:
