@@ -5,10 +5,12 @@
  * longer the addressee, as in `real-app-addressee.spec.ts`.
  *
  * The person adds Sam Rivera and Mia Rivera in Settings; the letter then asks *Is this letter for Sam Rivera?* and
- * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Removed from the
- * household, Sam's letter is the person's again ("For you", and Sam can be added back); filed as the person's own,
- * then deleted for good, it leaves no trace in the household. `finally` puts the profile and the household back and
- * deletes the letter.
+ * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Filed for Sam, Today
+ * says so, a reply offers *Reply in Sam Rivera's name* (never filled in by itself), and the records copy holds the
+ * household; once Sam no longer signs his letters, the reply goes out in the person's name with no offer of his.
+ * Removed from the household, Sam's letter is the person's again ("For you", and Sam can be added back); filed as the
+ * person's own, then deleted for good, it leaves no trace in the household. Nothing is drafted. `finally` puts the
+ * profile and the household back and deletes the letter.
  */
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
@@ -57,6 +59,7 @@ test("a letter for someone of the household is asked about, filed with one press
   test.setTimeout(120_000);
   const before = await apiGet<{ name: string }>(page, "/api/profile");
   expect(before.name, "the real app's person is the demo persona").toBe(ADDRESSEE);
+  const drafts = (await apiGet<unknown[]>(page, "/api/drafts")).length;
   try {
     await emptyHousehold(page);
     const upload = await page.request.post("/api/documents", {
@@ -107,6 +110,50 @@ test("a letter for someone of the household is asked about, filed with one press
       expect((await apiGet<{ household: { filed_for: { name: string } | null } }>(page, `/api/documents/${letter.id}`)).household.filed_for?.name).toBe(ADDRESSEE);
     });
 
+    await test.step("Today says whose letter it is; a reply offers Sam Rivera's name, who signs", async () => {
+      await open(page, "/");
+      const today = page.getByRole("main");
+      await today.getByRole("button", { name: /^Recent letters/ }).click();
+      await expect(today.getByRole("region", { name: /^Recent letters/ }).getByText(new RegExp(`^For ${ADDRESSEE} · `))).toBeVisible();
+      await open(page, `/letters?kind=general_reply&doc=${letter.id}`);
+      const dialog = page.getByRole("dialog", { name: "New letter" });
+      const from = dialog.getByRole("textbox", { name: "From" });
+      await expect(from).toHaveValue(RENAMED);
+      await expect(from).toHaveAccessibleDescription(`This letter is filed for ${ADDRESSEE}.`);
+      await dialog.getByRole("button", { name: `Reply in ${ADDRESSEE}'s name` }).click();
+      await expect(from).toHaveValue(ADDRESSEE);
+      await expect(from).toHaveAccessibleDescription(`This letter is filed for ${ADDRESSEE}. It goes out in the name of ${ADDRESSEE}, who signs it.`);
+      await dialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(dialog).toBeHidden();
+    });
+
+    await test.step("the records copy holds the household: its people, the letter filed for Sam, nothing suggested", async () => {
+      await open(page, "/settings?section=data", "Settings");
+      const records = page.getByRole("region", { name: "Download a copy of your records" });
+      const [download] = await Promise.all([page.waitForEvent("download"), records.getByRole("button", { name: "Download JSON" }).click()]);
+      const copy = JSON.parse(readFileSync((await download.path())!, "utf8")) as { household: Record<string, unknown> };
+      const h = await apiGet<Household>(page, "/api/household");
+      expect(copy.household).toEqual({ members: h.members.map(({ id, name, signs }) => ({ id, name, signs })), filed: { [letter.id]: h.members[0]!.id }, mine: [] });
+      expect(copy.household.members).toEqual([expect.objectContaining({ name: ADDRESSEE, signs: true }), expect.objectContaining({ name: CHILD, signs: false })]);
+    });
+
+    await test.step("Sam no longer signs his letters: the reply goes out in the person's name, with no offer of his", async () => {
+      await open(page, "/settings?section=profile#set-household", "Settings");
+      await card(page).getByRole("button", { name: `Edit ${ADDRESSEE}` }).click();
+      const editing = page.getByRole("form", { name: `Edit ${ADDRESSEE}` });
+      await editing.getByRole("checkbox", { name: /Signs their own letters/ }).click();
+      await editing.getByRole("button", { name: "Save" }).click();
+      await expect(card(page).getByRole("listitem").filter({ hasText: ADDRESSEE })).toContainText("Doesn't sign letters");
+      await open(page, `/letters?kind=general_reply&doc=${letter.id}`);
+      const dialog = page.getByRole("dialog", { name: "New letter" });
+      const from = dialog.getByRole("textbox", { name: "From" });
+      await expect(from).toHaveValue(RENAMED);
+      await expect(from).toHaveAccessibleDescription(`This letter is filed for ${ADDRESSEE}, who doesn't sign letters, so it goes out in your name.`);
+      await expect(dialog.getByRole("button", { name: /^Reply in / })).toHaveCount(0);
+      await dialog.getByRole("button", { name: "Cancel" }).click();
+      await expect(dialog).toBeHidden();
+    });
+
     await test.step("removed from the household, Sam's letter is the person's again", async () => {
       await open(page, "/settings?section=profile#set-household", "Settings");
       await card(page).getByRole("button", { name: `Remove ${ADDRESSEE}` }).click();
@@ -139,4 +186,5 @@ test("a letter for someone of the household is asked about, filed with one press
   }
   expect((await apiGet<{ name: string }>(page, "/api/profile")).name).toBe(ADDRESSEE);
   expect((await apiGet<Household>(page, "/api/household")).members).toEqual([]);
+  expect(await apiGet<unknown[]>(page, "/api/drafts"), "nothing was drafted").toHaveLength(drafts);
 });
