@@ -1,8 +1,8 @@
 import { Fragment, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import { Building2, Check, FileX, Languages, Mail, Plus, Scale, Search, Sparkles, type LucideIcon } from "lucide-react";
-import { useContracts, useCreateDraft, useDocument, useDocuments, useParties, useProfile, useSuggestions } from "@/api/hooks";
-import type { Contract, DraftKind, ListedLetter, Party } from "@/api/types";
+import { useContracts, useCreateDraft, useDocument, useDocuments, useHousehold, useParties, useProfile, useSuggestions } from "@/api/hooks";
+import type { Contract, DraftKind, HouseholdMember, ListedLetter, Party } from "@/api/types";
 import { useOptionalAddLetters } from "@/components/shell/AddLetters";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
@@ -24,6 +24,7 @@ import { cn, prefersReducedMotion } from "@/lib/utils";
 import { offersEndingLetter } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
 import { moveStanding } from "@/features/today/moving";
+import { filedMember } from "@/features/household/logic";
 import {
   canSuspend,
   cancellableContracts,
@@ -723,6 +724,15 @@ function TemplateRecipient({
 }
 
 /**
+ * The From field's hint for a letter filed for someone of the household: who it is filed for and, when the field holds
+ * another name than the person's own (`otherName`), that it goes out in that name.
+ */
+function filedLine(name: string, signs: boolean, otherName: string | null): string {
+  if (otherName) return `This letter is filed for ${name}. It goes out in the name of ${otherName}, who signs it.`;
+  return signs ? `This letter is filed for ${name}.` : `This letter is filed for ${name}, who doesn't sign letters, so it goes out in your name.`;
+}
+
+/**
  * The From field of a letter answering one addressed to someone else (`DocumentDetail.addressed_to`). It starts with
  * the person's own name: the addressee's is one press away, and "Use my name" goes back — offered, never set (a
  * child's letter answered in the child's name would be the worse mistake). A household ("Familie Rivera") has no
@@ -730,15 +740,24 @@ function TemplateRecipient({
  * (focus moves to the button that took the pressed one's place) and a status line says whose name it now is. Code
  * never adds the name to the draft request (the related letter's title and summary, sent as read, may still name the
  * addressee).
+ *
+ * A letter the person filed for someone of their household (`member`, ADR 0023) says so instead, still starting with
+ * the person's own name: someone who signs their own letters is offered by the name typed in Settings (never as read
+ * from the letter); someone who doesn't (a child) is offered not at all — the letter goes out in the person's name,
+ * unless they type another. Without `member` the field is exactly the one above.
  */
 function SignerField({
   addressee,
+  member,
   ownName,
   value,
   onChange,
   othersName,
 }: {
-  addressee: string;
+  /** Who the answered letter was addressed to, when that isn't the person (`addressed_to`). */
+  addressee: string | null;
+  /** The person of the household the answered letter is filed for. */
+  member?: Pick<HouseholdMember, "name" | "signs"> | null;
   ownName: string;
   value: string;
   onChange: (name: string) => void;
@@ -762,29 +781,36 @@ function SignerField({
     setSaid(line);
     onChange(name);
   };
-  const household = namesHousehold(addressee);
+  // the one-press name: a member's who signs as typed in Settings; else the addressee's, unless it names a household
+  const theirs = member ? (member.signs ? member.name : null) : addressee && !namesHousehold(addressee) ? addressee : null;
   return (
     <div className="mt-4" data-signer>
       <Field
         label="From"
         hint={
           <span className="[overflow-wrap:anywhere]">
-            This letter was addressed to {addressee}.{othersName ? <> It goes out in the name of {value.trim()}, who signs it.</> : null}
+            {member ? (
+              filedLine(member.name, member.signs, othersName ? value.trim() : null)
+            ) : (
+              <>
+                This letter was addressed to {addressee}.{othersName ? <> It goes out in the name of {value.trim()}, who signs it.</> : null}
+              </>
+            )}
           </span>
         }
       >
         <Input ref={inputRef} value={value} onChange={(e) => onChange(e.target.value)} maxLength={120} autoComplete="off" spellCheck={false} />
       </Field>
       <div className="mt-2 flex flex-wrap gap-2">
-        {!household && !sameName(value, addressee) ? (
+        {theirs && !sameName(value, theirs) ? (
           // an element, not a string: the Button truncates a string label, and a long name wraps at 320 px instead
           <Button
             ref={theirsRef}
             size="sm"
             className="h-auto min-h-8 max-w-full whitespace-normal py-1 text-left"
-            onClick={() => press(addressee, "mine", `The letter now goes out in the name of ${addressee}.`)}
+            onClick={() => press(theirs, "mine", `The letter now goes out in the name of ${theirs}.`)}
           >
-            <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Reply in {addressee}'s name</span>
+            <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Reply in {theirs}'s name</span>
           </Button>
         ) : null}
         {ownName && !sameName(value, ownName) ? (
@@ -943,6 +969,16 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const answeredId = kind === "cancellation" ? (contract?.source_doc_id ?? null) : docId;
   const answeredQ = useDocument(kind && answeredId ? answeredId : undefined);
   const letterAddressee = answeredQ.data?.document.id === answeredId ? (answeredQ.data?.addressed_to ?? null) : null;
+  // the person filed the letter answered for someone of their household (ADR 0023): the household when it has loaded
+  // (it changes in every window), else the letter's own page
+  const householdQ = useHousehold({ enabled: Boolean(kind && answeredId) });
+  const letterMember: HouseholdMember | null = !answeredId
+    ? null
+    : householdQ.data
+      ? filedMember(householdQ.data, answeredId)
+      : answeredQ.data?.document.id === answeredId
+        ? answeredQ.data.household.filed_for
+        : null;
   const ownName = profileQ.data?.name?.trim() ?? "";
   // what the person typed or chose, per answered letter: switching letters never carries one person's name to another
   const [signers, setSigners] = useState<Record<string, string>>({});
@@ -1036,7 +1072,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
         language,
         suspend_enforcement: kind === "objection" && canSuspend(doc) ? suspend : undefined,
         // only a name the person chose: their own (or an emptied field) leaves the request as without the field
-        sender_name: letterAddressee && othersName ? signer.trim() : undefined,
+        sender_name: (letterAddressee || letterMember) && othersName ? signer.trim() : undefined,
         details: template
           ? detailsPayload(template, templateValues, recipientId ? null : typedRecipient)
           : courtTyped
@@ -1468,8 +1504,8 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
               </div>
             ) : null}
 
-            {letterAddressee && !objectionBlocked && !refusal && !nothing ? (
-              <SignerField addressee={letterAddressee} ownName={ownName} value={signer} onChange={setSigner} othersName={othersName} />
+            {(letterAddressee || letterMember) && !objectionBlocked && !refusal && !nothing ? (
+              <SignerField addressee={letterAddressee} member={letterMember} ownName={ownName} value={signer} onChange={setSigner} othersName={othersName} />
             ) : null}
           </section>
         ) : null}
