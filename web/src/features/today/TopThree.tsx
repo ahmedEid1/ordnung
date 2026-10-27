@@ -12,8 +12,8 @@ import {
   Wallet,
   type LucideIcon,
 } from "lucide-react";
-import { useDocument, useUpdateItem } from "@/api/hooks";
-import type { Party } from "@/api/types";
+import { useDocument, useHousehold, useUpdateItem } from "@/api/hooks";
+import type { HouseholdMember, Party } from "@/api/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button, type ButtonVariant } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
@@ -29,6 +29,8 @@ import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { doneLine } from "@/features/items/repeat";
+import { filedMember } from "@/features/household/logic";
+import { PersonTag } from "@/features/household/PersonTag";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
 import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
@@ -314,7 +316,20 @@ function Reason({ children }: { children: ReactNode }) {
   return <ReadMore className="mt-2 text-[13.5px] leading-relaxed text-muted">{children}</ReadMore>;
 }
 
-function ActionCard({ action, index, party, today }: { action: TodayAction; index: number; party: Party | undefined; today: string }) {
+function ActionCard({
+  action,
+  index,
+  party,
+  person,
+  today,
+}: {
+  action: TodayAction;
+  index: number;
+  party: Party | undefined;
+  /** Who the action's letter is filed for, in the household (a contract's: the letter it came from). */
+  person: HouseholdMember | null;
+  today: string;
+}) {
   const receipt = action.item ? receiptForItem(action.item) : action.contract ? receiptForContract(action.contract) : null;
   const tone = actionTone(action, today);
   return (
@@ -358,6 +373,8 @@ function ActionCard({ action, index, party, today }: { action: TodayAction; inde
           {action.amount ? (
             <Money amount={action.amount} currency={action.currency} className="display mt-1 text-[22px] font-semibold leading-tight" />
           ) : null}
+          {/* whose letter it is: a tag, never a filter */}
+          {person ? <PersonTag name={person.name} className="mt-2 self-start" /> : null}
           {action.needsCheck ? (
             <Badge tone="warn" icon={TriangleAlert} className="mt-2 self-start">
               Please check
@@ -386,7 +403,8 @@ function ActionCard({ action, index, party, today }: { action: TodayAction; inde
 
 /**
  * "Top 3 this week": the three most urgent actions, each with a countdown, a reason, the
- * person/organisation, one verb button and "Why this date?". Shows "All clear until …" when
+ * person/organisation, one verb button and "Why this date?" — and, for a letter filed for someone of the household,
+ * whose it is ("For Alex Rivera"). Shows "All clear until …" when
  * nothing is due — unless letters aren't read (from the watched folder, or they couldn't be read): then
  * it says so. When a card leaves (paid, done) focus moves to the card now in its place.
  */
@@ -408,6 +426,7 @@ export function TopThree({
   const focus = useTopFocus(section);
   // the countdowns count from the app's today; so does the urgency edge
   const appToday = useTodayISO();
+  const household = useHousehold().data;
   return (
     <TopFocusContext.Provider value={focus}>
       <section ref={section} aria-labelledby="top3-title" className="@container">
@@ -415,7 +434,14 @@ export function TopThree({
         {actions.length ? (
           <motion.ol variants={stagger} initial="hidden" animate="show" className="grid grid-cols-1 gap-3 sm:gap-4 @4xl:grid-cols-3">
             {actions.map((a, i) => (
-              <ActionCard key={a.key} action={a} index={i} party={a.partyId ? partyById.get(a.partyId) : undefined} today={appToday} />
+              <ActionCard
+                key={a.key}
+                action={a}
+                index={i}
+                party={a.partyId ? partyById.get(a.partyId) : undefined}
+                person={a.docId ? filedMember(household, a.docId) : null}
+                today={appToday}
+              />
             ))}
           </motion.ol>
         ) : (
