@@ -71,8 +71,9 @@ eval — *not built* (`ordnung eval --models` can run several models, but no com
 agent eval (`docs/evals-ask.md`) — built; "please check" received-date question — built; ⌘K search —
 built; per-document pipeline trace view — built.
 
-**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR, LLM party
-tie-break, extra letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
+**Cut (v1.1+):** bank CSV/money subsystem, calendar month page, MCP write tools, OCR (Ordnung's own
+reading of a letter; Tesseract's words, for search only, came later: ADR 0024), LLM party tie-break, extra
+letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
 § 8.1.)
 
 ## 3. Architecture
@@ -115,7 +116,7 @@ src/ordnung/            (the main modules; the package itself is the complete li
   rules/ (calendar_de.py, periods.py, delivery.py, deadlines.py, contracts.py, catalog.py, send.py,
           routing.py, letters.py, advice.py, explain.py, consumer.py, employment.py, tenancy.py)
   ingest/ (intake.py, text.py, transcribe.py, extract.py, verify.py, link.py, plan.py, pipeline.py, worker.py,
-           held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py)
+           held.py, watcher.py, attachments.py, own_files.py, expansion.py, normalize.py, ocr.py)
   secretary/ (triggers.py, review.py, brief.py, week.py, waiting.py, scam.py, calls.py, girocode_gate.py,
               addressee.py)
   assistant/ (mcp_server.py, ask.py, citations.py, support.py, channels.py, rules_tools.py, mcp_install.py)
@@ -174,9 +175,9 @@ Key additions in v2 (to implement in models.py):
 - `LLMRequest.attachments: list[Attachment(path, media_type)]` replaces `files`;
   `purpose: LLMPurpose` Literal.
 - `DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`,
-  `explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, or `null`
-  without a search) is what `GET /api/documents` lists, made by the route and never stored — `Document` stays
-  what Ask's ledger fingerprint hashes, and `models.DocumentListEntry` (the whole letter plus `found_in`) stays
+  `explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`,
+  `picture_text`, or `null` without a search) is what `GET /api/documents` lists, made by the route and never
+  stored — `Document` stays what Ask's ledger fingerprint hashes, and `models.DocumentListEntry` (the whole letter plus `found_in`) stays
   unused, because editing `models.py` changes the benchmark's code digest (ADR 0022);
   `DocumentDetail.scan_text_pages` (the pages whose scanner text is kept for search only,
   never the text; § 8); `Profile.moved_on` (`null`: no move told) and `Profile.old_address` (the moving
@@ -188,6 +189,9 @@ Key additions in v2 (to implement in models.py):
   `LetterRecord` (`Document` plus `tax_choice`) what `documents.json` answers. They live in
   `api/routes/documents.py`, and the choices and the household are `meta` rows (§ 5), not `Document` fields,
   for the same reason as `DocumentRow` (ADR 0022, ADR 0023).
+- `found_in` is the route's own `LetterFoundIn` (`models.SearchFoundIn` stays `letter` or `scanner_text`), and
+  `LetterDetail` also carries `picture_text_pages` (the pages whose words Ordnung read in the picture, kept for
+  search only, never the words; § 8, ADR 0024).
 
 ## 5. Persistence — `db/`
 
@@ -458,6 +462,11 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   a database) and `disk_encryption` (whether the disk under the data folder is encrypted, read from
   `fdesetup` on macOS and `findmnt`/`lsblk` on Linux by `encryption.py`, a best effort; left out on other
   systems).
+- The `ocr` row (*Text in pictures*, right after the web app; ADR 0024) never fails: ok with the version and
+  languages of the Tesseract found; ok *Not installed (optional)* with the install line for this system as its
+  fix (the CLI prints it as an *Optional —* tip), the one row that is ok and has a fix (`models.DoctorCheck`
+  stays as it is); ok *Turned off (ORDNUNG_OCR=off)*; a warning for a Tesseract older than 4.1, without German
+  language data, or that didn't answer.
 
 ## 8. Ingestion pipeline — `ingest/`
 
@@ -482,6 +491,18 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    status change, once per job in a run of Ordnung), so search finds it by its words; the worker catches up the
    scanner text of PDFs stored before Ordnung kept it, 30 s after it starts, one letter at a time
    (`pipeline.catch_up_scan_text`: no database row changes).
+   **Text in pictures** (optional, ADR 0024; `ingest/ocr.py`): with Tesseract 4.1 or newer installed (German
+   and/or English) and `ORDNUNG_OCR` not `off`, the worker reads the words in the pages of letters Claude isn't
+   reading — kept private or held, waiting for Claude or failed; photos, and PDF pages with neither text of
+   their own nor a scanner's — 30 s after it starts, one page at a time, newest letter first, and looks again
+   after each reading ends and every five minutes. Each page is drawn as a grayscale PNG (at most 2400 px on
+   its long side and 300 dpi, never enlarged) and read by `tesseract stdin stdout -l deu+eng` (the languages
+   installed) with one thread at nice 10 (`BELOW_NORMAL_PRIORITY_CLASS` on Windows), in a private temporary
+   folder, with 120 s a page. The words go into `derived/<doc>/picture-text.json` (the scanner text's format,
+   `""` for a page with no words), and the letter search matches them as it matches the scanner's,
+   `found_in="picture_text"` (the scanner's text wins when both match). Nothing else reads them; a page's words
+   go once Claude reads it, a page Tesseract fails on waits for the next start, and while `ORDNUNG_OCR=off`
+   search ignores them and the worker removes every such file when it starts. No database row changes.
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
@@ -1690,12 +1711,14 @@ nothing, 404 for a letter gone or in the trash, 422 for a proof file or someone 
 publish `profile.updated`; `secretary/household.py`, ADR 0023), `onboarding` (POST), `documents` (POST upload
 `files[]`, `combine`, `private`; GET list:
 `DocumentRow` rows (without `key_facts`, `explanation`, `references`, `payment` and `sha256`: the letter's
-detail has them), each with `found_in` — `letter`, or `scanner_text` when only a scan's scanner text
-matched `q` (ADR 0020); `null` without `q` — and `tax_choice`), `documents/{id}`
+detail has them), each with `found_in` — `letter`; `scanner_text` when only a scan's scanner text
+matched `q` (ADR 0020); `picture_text` when only the words Ordnung read in its picture did (ADR 0024; the
+scanner's text wins when both match); `null` without `q` — and `tax_choice`), `documents/{id}`
 (GET detail — `LetterDetail` —, with `region_suggestion`: the question about the sender's state for this
 letter, its `waiting` counting this letter's open dates, `addressed_to`: who the letter is addressed to, as
 read, when that isn't the profile's person — `secretary/addressee.py`, worked out on read —,
-`scan_text_pages`: the pages whose scanner text is kept for search only, `tax_choice` and `household`: whom
+`scan_text_pages`: the pages whose scanner text is kept for search only, `picture_text_pages`: the pages whose
+picture text is kept for search only (`[]` while `ORDNUNG_OCR=off`), `tax_choice` and `household`: whom
 the letter is filed for, whether it is the person's own, the one person of the household its addressee names,
 or whom to offer *Add … to your household* (worked out on read) / PATCH, also `tax_choice`: `true` or `false`
 is the person's own *For taxes* choice, `null` goes back to Claude's mark; kept apart from the letter, so *Read
@@ -1871,7 +1894,9 @@ Pages:
    ("· 1 of 3"; its answers are for those, and a search that finds none hides it), and the list never says
    "No letters match" while one of them does: it
    says where they are. While a search lists a letter only because of its scanner's text, its row (in the list
-   or the group, and its option in the search box) says "Found in your scanner's text — not checked".
+   or the group, and its option in the search box) says "Found in your scanner's text — not checked"; only
+   because of the words Ordnung read in its picture (ADR 0024), it says "Found in text Ordnung read from the
+   picture — not checked" (the scanner's line when both match).
    Beside the kind, a **Year** select (`?year=`, "Year, by the date on the letter": *All years*, then each year
    with letters, newest first, with how many; an asked year with no letters stays a choice, an invalid one
    is ignored) shows one year's letters by the letter's date, else the day it arrived, as the Tax year page
@@ -1912,7 +1937,9 @@ Pages:
    model call has carried it (`DocumentDetail.given_to_model`: a call whose CLI never started, Claude
    not installed, carried nothing), else that its text or image was sent to Anthropic, and for a scan whose
    pages have only the text its scanner added (`DocumentDetail.scan_text_pages`), what that text is kept for
-   (search only — never checked, shown as the letter's words or sent to Claude); 390 px layout
+   (search only — never checked, shown as the letter's words or sent to Claude), and for a letter whose
+   pictures Ordnung read with Tesseract (`picture_text_pages`), which pages ("in this photo", "in this file",
+   "on pages 1, 2 and 4 of this file") and the same, in the same words on a phone; 390 px layout
    stacks the image below the card. An e-mail lists its
    attachments and what became of each (linked when added); an attachment says which e-mail it came
    with; a held letter says it waits, with *Read it with Claude* and *Keep private*. A second tab, **How
@@ -2218,8 +2245,9 @@ since the demo has neither, and the README says so. `docs/`: architecture, deadl
 (data-flow table), evals, evals-ask, decisions/ADRs.
 
 ## 20. Changes from v1 (review outcomes)
-Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR, party tie-break, 4 letter kinds,
-7 CLI commands. Added: stdin content-block invocation, transcribe-then-extract, grounding levels +
+Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR (Ordnung's own
+reading of a letter; Tesseract's words, for search only, came later: ADR 0024), party tie-break, 4 letter
+kinds, 7 CLI commands. Added: stdin content-block invocation, transcribe-then-extract, grounding levels +
 exact digit checks, deterministic IDs + strict replay, durable job queue + rate-limit pause,
 idempotent reprocess, localhost token/CSP/Fetch-Metadata defences, daily tick, onboarding, action-
 first Today & verdict card, "Please check", life lanes, bilingual letters + send guidance, calendar

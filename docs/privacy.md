@@ -13,6 +13,7 @@ goes where.
 | Your watched folder (optional) | wherever you chose | Ordnung only lists and reads it; a file there is copied in and **waits for you** before anything of it goes to Claude, unless you let new arrivals be read at once ([below](#the-watched-folder)) |
 | Page images, thumbnails | `<data dir>/derived/` | Only as part of a *Read* call (see below) |
 | A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
+| Text Ordnung read from a picture (only with Tesseract installed: the words in a photo or scan Claude isn't reading) | `<data dir>/derived/` (`picture-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown. Tesseract runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture ([below](#words-in-pictures-optional)) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
 | Your *For taxes* choices (the letters you marked for taxes yourself, or took off your letters for taxes) | `ordnung.db` (`meta`, the `tax_choices` row: letter ids with yes or no) | Only inside your encrypted backups and hand-off sync's encrypted copy, and in *Download a copy of your records* when you save it — never sent to Claude: Ask and *Weekly Ideas* see Claude's own mark ([below](#what-is-sent-to-claude-per-feature)) |
@@ -149,8 +150,9 @@ sync.
 
 - **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
   Claude. It is stored, search finds it by its name and by the text in the file — a PDF's own text, or
-  the text a scanner added to a scan, kept for search only (a photo only by its name) — and you can add
-  dates by hand. A letter you delete while it still waits to be read is never sent either.
+  the text a scanner added to a scan, kept for search only; a photo by its name, and by the words Ordnung
+  reads in it if you installed Tesseract, kept the same way — and you can add dates by hand. A letter you
+  delete while it still waits to be read is never sent either.
 - **The watched folder waits for you** — files your scanner or phone app saves into the watched folder
   are stored and read on this computer only, and wait in the Inbox ("From your folder — not read
   yet") until you choose *Read these* or *Keep private* ([details](#the-watched-folder)). *Keep
@@ -161,8 +163,8 @@ sync.
   a waiting e-mail wait with it. An e-mail saved from Outlook (`.msg`) is opened on this computer and kept
   as an `.eml` copy; the `.msg` itself isn't kept, so keep it yourself if you need the original.
 - **Delete means delete** — deleting a letter removes it for good: the original, page images (and
-  the text a scanner added to it), everything read from it, its to-dos and Ideas, its search-index
-  entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
+  the text a scanner added to it or Ordnung read from it), everything read from it, its to-dos and Ideas,
+  its search-index entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
   was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
   every call that carried it (a secretary's note or review built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
@@ -321,6 +323,36 @@ a page's text: when Claude reads a scan, it reads the picture, and what it read 
   (the file goes once every page is read); deleting the letter deletes it with the page images. A scan stored before Ordnung kept this text gets it
   in the background, read from the original by Ordnung's own code (no model).
 
+## Words in pictures (optional)
+
+[Tesseract](https://github.com/tesseract-ocr/tesseract) is a free program (Apache-2.0) that reads the words in
+a picture. Ordnung doesn't install or ship it, but when you install it, Ordnung uses it to find the photos and
+scans Claude isn't reading by their words, under the rules of a scanner's text [above](#searchable-scans). The
+decision is in [ADR 0024](decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md).
+Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung found it (*Text in pictures*).
+
+- **Only for letters Claude isn't reading:** kept private, waiting from your watched folder or for Claude, or
+  that couldn't be read. A page with text of its own, or with a scanner's text, isn't read.
+- **Read here, by a program you installed.** Tesseract runs on the computer Ordnung runs on, one page at a
+  time at low priority. It gets a picture Ordnung made from the page, never the original file, and a private
+  temporary folder that is removed afterwards. Nothing goes over the network to read a picture.
+- **Kept only for search, never shown, checked or sent.** The words are in
+  `<data dir>/derived/<letter>/picture-text.json`, kept with the letter's page images (so also in backups and
+  hand-off sync), only for search. A letter found only by them says *Found in text Ordnung read from the
+  picture — not checked*, and its page says which of its pages Ordnung read. They are never shown as the
+  letter's words (search shows no snippet of them), never used to check a date or an amount, and never sent to
+  Claude: *Ask*, *Weekly Ideas*, the daily note and drafting never read them, and they are not in the search
+  index *Ask* uses.
+- **It goes with the page.** Once Claude reads a page, what Ordnung read there is removed; deleting the letter
+  deletes it with the page images.
+- **Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started,
+  search ignores the words read before, and Ordnung removes them when it starts. `ordnung doctor` then shows
+  *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it before `ordnung serve`, or before
+  `ordnung autostart enable` or `ordnung shortcut`, which record it (run them again after setting or unsetting
+  it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again. With hand-off sync, set it the same
+  way on every computer: one with it off removes the words the others read, and they read them again once
+  they are in use.
+
 ## Reminders while Ordnung is closed
 
 - **The morning desktop notification** (Settings → Reminders; off until you switch it on) is written
@@ -337,7 +369,8 @@ a page's text: when Claude reads a scan, it reads the picture, and what it read 
   log in (a systemd user service, a LaunchAgent or a Startup-folder entry), and prints it before
   anything else. The server's sign-in link carries the session token, so the service throws away
   what `serve` prints: the token never lands in the system journal or a log file.
-  It also records `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` when that is set (see Hardening below).
+  It also records `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` (see Hardening below) and `ORDNUNG_OCR`
+  ([above](#words-in-pictures-optional)) when they are set.
   `ordnung autostart disable` removes the file.
 - **Open from your app menu** (`ordnung shortcut`) writes one launcher (an app-menu entry, an app in your
   Applications folder or a Start-menu shortcut) that runs `ordnung serve`, and prints it before anything
@@ -517,7 +550,8 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   backups). Without it nobody can open the folder: not your sync provider, not Ordnung's makers, not
   you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
 - **What stays on each computer.** Only your ledger and your letters' files travel. Your household and your
-  *For taxes* choices travel with your ledger. Never: phone access and
+  *For taxes* choices travel with your ledger. The text a scanner added to a scan and the words Ordnung read in
+  a picture travel with the page images. Never: phone access and
   the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
   which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
   it remembers (only a fingerprint of each file it brought in travels, so a folder both computers watch
@@ -565,8 +599,8 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
 `ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
 Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
 your household and your *For taxes* choices, your *Ask* conversations, the usage log and cached model answers), your original files, the page
-images (with the text a scanner added to a scan) and the letter PDFs. Not in it: the watched folder
-(those files are your own; what Ordnung took from them is), the lock, the running server's session file,
+images (with the text a scanner added to a scan and the words Ordnung read in a picture) and the letter
+PDFs. Not in it: the watched folder (those files are your own; what Ordnung took from them is), the lock, the running server's session file,
 phone access — neither its certificates nor the paired phones (they are taken out of the backup's copy of
 the database) — and hand-off sync's state (its folder, the computers, the kept copies; the passphrase never was in the data
 folder): a restored copy starts without sync.
