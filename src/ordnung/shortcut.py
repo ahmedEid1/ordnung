@@ -20,9 +20,9 @@ Written policy (ADR 0007):
 * **What it runs.** ``<this Python> -m ordnung --data-dir <the data folder> serve --from-shortcut``
   (and ``--port`` when it isn't the default): absolute paths, and the last folder set up wins, as for
   autostart. Linux and macOS record this terminal's ``PATH``, so Ordnung finds the same ``claude``,
-  and also Claude Code's telemetry opt-out ``CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`` when it is set
-  here. A Windows shortcut can't carry variables: the command says how to set the opt-out for the
-  account (``setx``).
+  and also Claude Code's telemetry opt-out ``CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`` and the off
+  switch for text in pictures ``ORDNUNG_OCR`` (ADR 0024) when they are set here. A Windows shortcut
+  can't carry variables: the command says how to set them for the account (``setx``).
 * **Never started unseen.** ``serve --from-shortcut`` opens a running Ordnung in the browser.
   Otherwise it starts Ordnung only when it has a terminal window to run in, and that window is
   Ordnung: closing it stops Ordnung. Linux asks the desktop for a terminal (``Terminal=true``) and
@@ -107,6 +107,8 @@ WHERE: dict[System, str] = {
 }
 #: Claude Code's telemetry opt-out, recorded as autostart records it (docs/privacy.md)
 TELEMETRY_OPT_OUT = autostart.TELEMETRY_OPT_OUT
+#: what Linux and macOS record after ``PATH`` when set here, as autostart does (a Windows shortcut can't)
+SWITCHES = autostart.SWITCHES
 DESCRIPTION = f"Ordnung, your paperwork secretary {LNK_MARK}"
 #: the variables that say where the launcher goes (``location`` needs no others)
 PLACE_VARIABLES = ("XDG_DATA_HOME", "APPDATA", "LOCALAPPDATA")
@@ -286,7 +288,7 @@ def _linux(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Shortcu
     path = Path(env.get("XDG_DATA_HOME") or home / ".local" / "share") / "applications" / DESKTOP_FILE
     svg = web_dist_dir() / "favicon.svg"
     icon = svg if svg.is_file() else None
-    environment = autostart._recorded(env, "PATH", TELEMETRY_OPT_OUT)
+    environment = autostart._recorded(env, "PATH", *SWITCHES)
     content = _desktop(argv, environment, icon).encode("utf-8")
     return Shortcut(system="linux", path=path, argv=argv, files=(File(path, content),))
 
@@ -325,7 +327,7 @@ def _macos(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Shortcu
     contents = bundle / "Contents"
     exports = [
         f"export {name}={sh_quote(value)}"
-        for name, value in autostart._recorded(env, "PATH", TELEMETRY_OPT_OUT).items()
+        for name, value in autostart._recorded(env, "PATH", *SWITCHES).items()
     ]
     command = " ".join(sh_quote(arg) for arg in argv)
     info = {
@@ -761,7 +763,7 @@ def plan(
     env = os.environ if env is None else env
     home = home or Path.home()
     argv = shortcut_argv(Path(data_dir).expanduser().absolute(), port=port, python=python)
-    recorded = autostart._recorded(env, "PATH", TELEMETRY_OPT_OUT)
+    recorded = autostart._recorded(env, "PATH", *SWITCHES)
     _no_line_breaks([*argv, *recorded.values(), str(home)])
     builders = {"linux": _linux, "macos": _macos, "windows": _windows}
     sc = builders[system](argv, env, home)

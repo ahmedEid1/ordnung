@@ -696,6 +696,39 @@ def test_doctor_with_a_fake_claude(tmp_path: Path, data_dir: Path, monkeypatch: 
     assert "2.1.5" in result.output
 
 
+def test_doctor_prints_an_optional_tip_for_an_ok_row_with_a_fix(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """*Text in pictures* is ok without Tesseract (it is optional), yet its fix says how to add it: after the
+    table, one *Optional —* line, never the ``!`` of a problem, and the exit code stays 0."""
+    from ordnung import doctor
+    from ordnung.ingest import ocr
+
+    bin_dir = tmp_path / "bin"
+    fake_claude(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/bin{os.pathsep}/usr/bin")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ORDNUNG_OCR")
+    monkeypatch.setattr(ocr, "find", lambda **_: None)
+    result = invoke("doctor", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    text = " ".join(plain(result.output).split())
+    tip = (
+        "Optional — Text in pictures: To find photos and scans Claude doesn't read by their words, install "
+        f"Tesseract: {doctor.tesseract_install()}"
+    )
+    assert text.count("Optional —") == 1 and tip in text
+    assert text.index("Not installed (optional)") < text.index(tip)
+    assert "! Text in pictures" not in text and "✓ Text in pictures" not in text
+    # turned off: an ok row without a fix, so no tip
+    monkeypatch.setenv("ORDNUNG_OCR", "off")
+    result = invoke("doctor", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    text = " ".join(plain(result.output).split())
+    assert "Turned off (ORDNUNG_OCR=off)" in text and "Optional —" not in text
+
+
 def test_doctor_probes_on_the_model_every_call_runs_on(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
