@@ -5,6 +5,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-29
+
+The second numbered release. [Updating](README.md#updating) says how to install it; *Upgrading* below says
+what a computer still on 0.2.0 does with what this version adds, if you use hand-off sync between the two.
+
 ### Added
 
 - **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every week or every 2 weeks on
@@ -127,7 +132,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
   Trusted Publishing, so no token is stored anywhere, and a pull request never publishes. On PyPI the
-  README's links and pictures point to GitHub.
+  README's links and pictures point to GitHub. [Updating](README.md#updating) says how to install one release
+  by its tag.
 - **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
   sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
   own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.

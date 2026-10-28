@@ -41,6 +41,8 @@ change to the README also changes what that page links to.
    - `__version__` in `src/ordnung/__init__.py`;
    - `npm version X.Y.Z --no-git-tag-version` in `web/` (`package.json` and `package-lock.json`);
    - `version` in the static demo's health answer, `HEALTH` in `web/src/mocks/data/system.ts`;
+   - the tag in README's *Updating* (`…/ordnung@vX.Y.Z`);
+   - the version in the bug report template's placeholder (`.github/ISSUE_TEMPLATE/bug_report.yml`);
    - then `make openapi`, `ordnung demo --rebuild` and `make build-web`.
 2. **Name the changelog's section.** In CHANGELOG.md, rename `## Unreleased` to `## X.Y.Z — YYYY-MM-DD`, with
    the day of the release. `python3 scripts/release_notes.py` prints the notes as the release will show them
@@ -103,8 +105,8 @@ You need a PyPI account with two-factor authentication. No token is ever needed.
 4. **Turn the upload on.** Under *Settings → Secrets and variables → Actions → Variables*, add the repository
    variable `PYPI_PUBLISH` with the value `true`. Until then the PyPI job is skipped and a release goes to
    GitHub only; any other value turns uploads off again.
-5. **Try it with a pre-release** if you like (`0.3.0rc1`, above): it reaches PyPI, but `pipx install ordnung`
-   doesn't install it.
+5. **Try it with a pre-release** if you like (the next version's, such as `0.4.0rc1`, above): it reaches PyPI,
+   but `pipx install ordnung` doesn't install it.
 
 If PyPI refuses the upload as an untrusted publisher, compare the pending publisher's fields with the list
 above: the workflow's file name and the environment's name must match exactly.

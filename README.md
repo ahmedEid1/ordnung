@@ -28,9 +28,9 @@ and keeps a ledger of every deadline, payment, contract and reply that you can a
 Nothing is ever paid, sent or cancelled for you.
 
 <p align="center">
-  <img src="docs/assets/demo.gif" width="820" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read live; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card">
+  <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card">
 </p>
-<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 45 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
+<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 36 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
 
 <p align="center">
   <a href="https://ahmedeid1.github.io/ordnung/">Online demo</a> ·
@@ -583,9 +583,9 @@ make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 
 ### Updating
 
-Each release has a version number (`ordnung --version` shows yours) and an entry in
-[CHANGELOG.md](CHANGELOG.md). Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the window the
-shortcut opened; if it starts at login, `ordnung autostart disable` prints how to stop it and
+Each release has a version number (`ordnung --version` shows yours), an entry in [CHANGELOG.md](CHANGELOG.md)
+and a tag on GitHub, such as `v0.3.0`. Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the
+window the shortcut opened; if it starts at login, `ordnung autostart disable` prints how to stop it and
 `ordnung autostart enable` how to start it again).
 A backup first lets you go back: an older Ordnung can't open a database a newer one has updated.
 
@@ -595,18 +595,23 @@ pipx reinstall ordnung           # installed with uv: uv tool upgrade ordnung
 ordnung doctor
 ```
 
-`pipx reinstall` and `uv tool upgrade` always install the newest code from GitHub; `pipx upgrade ordnung`
-can keep the old code when the version number didn't change. When a version changes how the database is
-stored, Ordnung updates your data folder by itself the next time it starts (each step completes or leaves
-it as it was). With hand-off sync, update both computers: until then Settings → Your computers says that
-the other one runs another version, and if the database changed, the computer with the older Ordnung can't
-bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving its own changes.
+`pipx reinstall` and `uv tool upgrade` install the newest code from GitHub, which can hold changes no release
+has yet; `pipx upgrade ordnung` can keep the old code when the version number didn't change. To install a
+release instead, name its tag: `pipx install --force "git+https://github.com/ahmedEid1/ordnung@v0.3.0"`
+(with uv: `uv tool install "git+https://github.com/ahmedEid1/ordnung@v0.3.0"`). An install made from a tag
+stays on that release when you reinstall or upgrade it; install the next tag the same way. When a version
+changes how the database is stored, Ordnung updates your data folder by itself the next time it starts (each
+step completes or leaves it as it was). With hand-off sync, update both computers: until then Settings → Your
+computers says that the other one runs another version, and if the database changed, the computer with the
+older Ordnung can't bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving
+its own changes.
 If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), the
 Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if Ordnung
 starts at login.
 
-To go back, install the earlier version again by its commit (`pipx install --force
-"git+https://github.com/ahmedEid1/ordnung@COMMIT"`, the commit taken from the repository's history), then
+To go back, install the version you had again by its tag
+(`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`, or `uv tool install` with the same
+address; a version without a tag by its commit, taken from the repository's history), then
 `ordnung restore FILE --force`, which moves the updated data folder aside.
 
 ## Architecture
