@@ -104,7 +104,7 @@ def test_the_demo_uses_ci_s_versions_of_the_actions_and_node_it_shares() -> None
 def test_the_readme_links_the_demo_that_needs_no_account() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert readme.count(PAGES_URL) == 2  # the links under the video and in "Try it in 60 seconds"
-    assert "claude.ai/artifact" not in readme  # that page asks a visitor to sign in to Claude
+    assert "claude.ai/artifact" not in readme  # one demo link: the copy that main rebuilds by itself
     releasing = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
     assert PAGES_URL in releasing
     assert "Source: GitHub Actions" in releasing
