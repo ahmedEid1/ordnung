@@ -14,7 +14,9 @@ import {
   ENUM_COVERAGE,
   GROUNDING_COPY,
   PARTY_KIND_COPY,
+  PICTURE_TEXT_MATCH,
   PIPELINE_STEPS,
+  SCANNER_TEXT_MATCH,
   TONES,
   assertNoRawEnums,
   copyFor,
@@ -23,6 +25,7 @@ import {
   splitRecordIds,
   humanize,
   stageToStep,
+  uncheckedMatch,
 } from "./copy";
 import { GLOSSARY_TERMS, lookupTerm, termWithTranslation } from "./glossary";
 
@@ -113,6 +116,20 @@ describe("enum copy", () => {
     expect(stageToStep("done")).toBe(5);
     expect(stageToStep("mystery")).toBe(0);
     expect(stageToStep(null)).toBe(0);
+  });
+});
+
+describe("where a search found a letter", () => {
+  it("names where a search found a letter: its words, the scanner's text, or the picture", () => {
+    // its own words say nothing; text nobody checked says whose reading it was (ADR 0020, ADR 0024)
+    expect(uncheckedMatch("letter")).toBeNull();
+    expect(uncheckedMatch(null)).toBeNull();
+    expect(uncheckedMatch(undefined)).toBeNull();
+    expect(uncheckedMatch("scanner_text")).toBe("Found in your scanner's text — not checked");
+    expect(uncheckedMatch("picture_text")).toBe("Found in text Ordnung read from the picture — not checked");
+    expect([SCANNER_TEXT_MATCH, PICTURE_TEXT_MATCH]).toEqual([uncheckedMatch("scanner_text"), uncheckedMatch("picture_text")]);
+    // plain words, never a raw value
+    for (const line of [SCANNER_TEXT_MATCH, PICTURE_TEXT_MATCH]) expect(() => assertNoRawEnums(line, { exactWord: true })).not.toThrow();
   });
 });
 

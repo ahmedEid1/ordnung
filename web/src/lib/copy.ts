@@ -155,6 +155,7 @@ import {
   type SendChannelKind,
   type SendForm,
   type ProofKind,
+  type SearchFoundIn,
   type WaitingSource,
   type WaitingStatus,
   type SuggestionKind,
@@ -296,6 +297,24 @@ export const DOCUMENT_STATUS_COPY: CopyMap<DocumentStatus> = {
  * somebody's reading of the picture, never the letter's checked words — said wherever the match is listed.
  */
 export const SCANNER_TEXT_MATCH = "Found in your scanner's text — not checked";
+
+/**
+ * A search found the letter only in the words Ordnung read from its picture itself, with Tesseract
+ * (`found_in: "picture_text"`, ADR 0024): like a scanner's text, a reading nobody checked, kept for search only.
+ */
+export const PICTURE_TEXT_MATCH = "Found in text Ordnung read from the picture — not checked";
+
+/**
+ * The line a listed search match carries (`found_in`): the scanner's ({@link SCANNER_TEXT_MATCH}, ADR 0020) or the
+ * picture's ({@link PICTURE_TEXT_MATCH}, ADR 0024) for a letter found only in text nobody checked; `null` for one
+ * found by its own words, or a list that wasn't searched. The API says `scanner_text` when both texts match: the
+ * scanner's line wins.
+ */
+export function uncheckedMatch(foundIn: SearchFoundIn | null | undefined): string | null {
+  if (foundIn === "scanner_text") return SCANNER_TEXT_MATCH;
+  if (foundIn === "picture_text") return PICTURE_TEXT_MATCH;
+  return null;
+}
 
 export const DIRECTION_COPY: CopyMap<Direction> = {
   incoming: { label: "Received", icon: Mail, tone: "neutral" },
