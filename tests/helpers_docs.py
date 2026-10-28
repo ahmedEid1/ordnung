@@ -187,16 +187,9 @@ def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None, blank_
     invisible OCR layer over the picture (a scanner's "searchable PDF"). The OCR layer has the
     picture's lines, or the lines ``ocr_text`` (a scanner that read the picture differently). With
     ``blank_back`` a second page follows: the blank back of the sheet (a duplex scan), with no OCR layer."""
-    image = Image.new("RGB", (1240, 1754), "white")
-    draw = ImageDraw.Draw(image)
-    font = ImageFont.truetype(str(FONT), 40)
-    for row, text in enumerate(LETTER_PAGES[0]):
-        draw.text((150, 200 + row * 60), text, font=font, fill="black")
-    buffer = io.BytesIO()
-    image.save(buffer, "JPEG", quality=80)
     pdf = FPDF(unit="pt", format=A4)
     pdf.add_page()
-    pdf.image(io.BytesIO(buffer.getvalue()), x=0, y=0, w=A4[0], h=A4[1])
+    pdf.image(io.BytesIO(scanned_photo()), x=0, y=0, w=A4[0], h=A4[1])
     if ocr:
         pdf.add_font("DejaVu", "", str(FONT))
         pdf.set_font("DejaVu", size=19)
@@ -210,6 +203,30 @@ def scanned_pdf(ocr: bool = False, ocr_text: Sequence[str] | None = None, blank_
         pdf.add_page()
         pdf.image(io.BytesIO(back.getvalue()), x=0, y=0, w=A4[0], h=A4[1])
     return bytes(pdf.output())
+
+
+#: How :func:`scanned_photo` stores the pixels for an EXIF orientation, so that turning them upright by it
+#: (``ImageOps.exif_transpose``) gives the page back.
+_STORED_TURNED = {3: Image.Transpose.ROTATE_180, 6: Image.Transpose.ROTATE_90, 8: Image.Transpose.ROTATE_270}
+
+
+def scanned_photo(orientation: int = 1) -> bytes:
+    """A photo (JPEG, 1240 × 1754 once upright) of the first page of :data:`LETTER_PAGES`: the picture a
+    :func:`scanned_pdf` holds. With an EXIF ``orientation`` of 3, 6 or 8 the pixels are stored turned, as a phone
+    held sideways or upside down stores them, and the orientation turns them upright again."""
+    image = Image.new("RGB", (1240, 1754), "white")
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype(str(FONT), 40)
+    for row, text in enumerate(LETTER_PAGES[0]):
+        draw.text((150, 200 + row * 60), text, font=font, fill="black")
+    buffer = io.BytesIO()
+    if orientation == 1:
+        image.save(buffer, "JPEG", quality=80)
+        return buffer.getvalue()
+    exif = Image.Exif()
+    exif[0x0112] = orientation
+    image.transpose(_STORED_TURNED[orientation]).save(buffer, "JPEG", quality=80, exif=exif.tobytes())
+    return buffer.getvalue()
 
 
 def photo(fmt: str, orientation: int = 1, size: tuple[int, int] = (200, 100), alpha: bool = False) -> bytes:
