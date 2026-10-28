@@ -77,6 +77,7 @@ from watchfiles import awatch
 
 from ordnung.db.store import Store, background_context, person_write
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
+from ordnung.ingest.layout_guard import text_layout_refused
 from ordnung.ingest.outlook import as_email
 from ordnung.ingest.own_files import OWN_LETTER, is_own_file, remember_own_file  # noqa: F401  (re-exported)
 from ordnung.ingest.pipeline import add_file_result
@@ -561,11 +562,12 @@ class FolderWatcher:
             return
         hold = hold or not (self.can_read and self.ctx.settings.inbox_auto_read)
         try:
-            body, stored_name = await asyncio.to_thread(as_email, data, name)  # an Outlook .msg: its .eml
-            with person_write(syncing):  # the person's scan: hand-off sync counts it as their change
-                added = await add_file_result(
-                    self.ctx, body, stored_name, hold=hold, source=SOURCE, restore_trashed=False
-                )
+            with text_layout_refused():
+                body, stored_name = await asyncio.to_thread(as_email, data, name)  # an Outlook .msg: its .eml
+                with person_write(syncing):  # the person's scan: hand-off sync counts it as their change
+                    added = await add_file_result(
+                        self.ctx, body, stored_name, hold=hold, source=SOURCE, restore_trashed=False
+                    )
         except IntakeError as exc:
             self._refused(name, str(exc))
             return
