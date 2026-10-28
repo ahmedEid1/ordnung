@@ -1,0 +1,61 @@
+# The online demo: the web app's browser-only build (VITE_STATIC_DEMO=1, on the mock world in web/src/mocks,
+# with no server and no model), published on GitHub Pages at https://ahmedeid1.github.io/ordnung/ whenever
+# main's web/ changes, so anyone can open it without an account. A pull request only builds it.
+# The owner turns Pages on once: Settings → Pages → Build and deployment → Source: GitHub Actions
+# (docs/releasing.md). Actions are named by major version, as in ci.yml (tests/test_demo_workflow.py).
+name: Online demo
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/demo.yml"]
+  pull_request:
+    paths: ["web/**", ".github/workflows/demo.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A pull request's newer push replaces its older build; a deploy is never cut off halfway.
+concurrency:
+  group: demo-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      # Relative asset paths, so it runs under the project's sub-path; never into the committed web build.
+      - run: npx vite build --base ./ --outDir "$RUNNER_TEMP/demo" --emptyOutDir
+        working-directory: web
+        env:
+          VITE_STATIC_DEMO: "1"
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/demo
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

@@ -66,6 +66,17 @@ The next change goes under a new `## Unreleased` heading again (CONTRIBUTING.md)
 A pre-release works the same way, with a version such as `X.Y.Zrc1`, its own changelog section and the tag
 `vX.Y.Zrc1`. `pipx install ordnung` skips it; `pipx install "ordnung==X.Y.Zrc1"` installs it.
 
+## The online demo (turned on once, by the owner)
+
+The online demo at <https://ahmedeid1.github.io/ordnung/> is the web app's browser-only build on the static
+demo's letters. [`.github/workflows/demo.yml`](../.github/workflows/demo.yml) builds it for each pull request
+that changes `web/` and publishes it on GitHub Pages from `main`. So a release's version shows there once its
+pull request is merged, with no step of its own. Anyone can open it; it needs no account.
+
+GitHub Pages has to be turned on once. Under *Settings → Pages → Build and deployment*, choose
+*Source: GitHub Actions*. Then run *Actions → Online demo → Run workflow* on `main`, or merge a change to
+`web/`. Until then the workflow's deploy job fails, and the link shows GitHub's "404" page.
+
 ## Turning on PyPI (once, by the owner)
 
 You need a PyPI account with two-factor authentication. No token is ever needed.
