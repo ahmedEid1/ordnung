@@ -2238,11 +2238,12 @@ privacy, install and run (incl. `ordnung mcp install` and autostart), architectu
 trust boundaries), quality (tests, coverage, UI audit and layout sweep, CI gates, review), limitations,
 links to the docs, how it was built (Claude Code as pair programmer; correctness via tests, legal worked
 examples, evals), disclaimer. Its numeric claims are checked by `tests/test_docs_claims.py`. Screenshots,
-the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`) on
-a fresh demo; the court order comes from the mock data (`?mock=full`), since the recorded demo has
-none, and the phone pairing and Your computers pictures from the real app (`web/e2e/readme-pictures.spec.ts`),
-since the demo has neither, and the README says so. `docs/`: architecture, deadline-rules (with citations), privacy
-(data-flow table), evals, evals-ask, decisions/ADRs.
+the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`),
+small by design (GIF 720 px, 6 fps, 64 colours; MP4 CRF 32; `tests/test_media_budget.py` keeps them in
+budget), from replay only, on a fresh demo; the court order comes from the mock data (`?mock=full`), since
+the recorded demo has none, and the phone pairing and Your computers pictures from the real app
+(`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the README says so. `docs/`:
+architecture, deadline-rules (with citations), privacy (data-flow table), evals, evals-ask, decisions/ADRs.
 
 ## 20. Changes from v1 (review outcomes)
 Cut money/bank CSV, calendar page, MCP writes, inbox watcher (built in phase 2), OCR (Ordnung's own

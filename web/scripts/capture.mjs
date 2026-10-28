@@ -17,9 +17,17 @@
  * It writes `<out>/video/demo.webm` and `<out>/video/cut` (the seconds where the video starts and the
  * GIF ends); `make capture` turns them into `demo.mp4` and `demo.gif`.
  * Set PW_CHROMIUM_PATH to use a Chromium that is already installed.
+ *
+ * Every page it opens is guarded (`guardPage`): the theme the picture is in, and nothing that would tell a reader
+ * about the computer that made it — a path, its name, the git e-mail, the author's name (`forbiddenWords`, found
+ * when it runs; none is written here). A page that shows one stops the capture (`assertClean`). A failed run's
+ * screenshot goes to CAPTURE_REVIEW (`make capture`'s review folder), never to `<out>`.
  */
+import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { homedir, hostname, tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
 import { shownAs } from "./ui-audit/steps.mjs";
@@ -35,6 +43,9 @@ const { values: opts } = parseArgs({
 
 const BASE = `http://127.0.0.1:${opts.port}`;
 const OUT = resolve(opts.out);
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** Where a failed run's screenshot goes: it may show what the guard found, so never into `<out>`. */
+const REVIEW = resolve(process.env.CAPTURE_REVIEW || join(tmpdir(), "ordnung-capture-review"));
 const TOKEN = JSON.parse(readFileSync(join(opts.data, "server.json"), "utf8")).token;
 const CLIENT = { "X-Ordnung-Client": "web" };
 const FINANZAMT = "Finanzamt Musterstadt";
@@ -110,8 +121,116 @@ function hideDemoTour() {
   else document.addEventListener("DOMContentLoaded", install);
 }
 
+// ------------------------------------------------------------------------------------------------
+// The guard: README's media are public, so no page may show this computer, its owner or the wrong theme
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * What no page may show, found when the capture runs (none of it is written into the repo): the paths of this
+ * computer the capture knows (the home folder, the checkout, the demo's data folder, where the pictures go), the
+ * computer's name, the git e-mail address, each word of the author's name in pyproject.toml, and CAPTURE_FORBIDDEN's
+ * words (comma-separated). Each comes with what it is, for the message, which never repeats it.
+ */
+function forbiddenWords() {
+  const found = [];
+  const add = (text, what) => {
+    const word = (text ?? "").trim();
+    if (word.length < 3 || word === "/" || found.some((f) => f.text.toLowerCase() === word.toLowerCase())) return;
+    found.push({ text: word, what });
+  };
+  add(homedir(), "the home folder");
+  add(REPO, "the checkout's folder");
+  add(resolve(opts.data), "the demo's data folder");
+  add(OUT, "the pictures' folder");
+  const host = hostname();
+  if (host.length >= 4 && host.toLowerCase() !== "localhost") add(host, "this computer's name");
+  try {
+    const email = execFileSync("git", ["config", "user.email"], { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    add(email, "the git e-mail address");
+  } catch {
+    // no e-mail set
+  }
+  const authors = readFileSync(join(REPO, "pyproject.toml"), "utf8").match(/^authors\s*=\s*\[(.*?)\]$/ms)?.[1] ?? "";
+  for (const [, name] of authors.matchAll(/\bname\s*=\s*"([^"]*)"/g)) {
+    for (const word of name.split(/[^\p{L}]+/u)) add(word, "a word of the author's name");
+  }
+  for (const word of (process.env.CAPTURE_FORBIDDEN ?? "").split(",")) add(word, "a word of CAPTURE_FORBIDDEN");
+  return found;
+}
+
+const FORBIDDEN = forbiddenWords();
+
+/**
+ * In every page the capture opens (an init script): at most every 250 ms after the page changes or scrolls, it looks
+ * at the text on screen and the values of the fields on screen for a `forbidden` word (anywhere but inside a longer
+ * word or number, in any case), and at the theme (`theme`: "dark" only for the two dark pictures). On screen, because
+ * that is what a picture or a frame shows: the letter's "How it was read" holds an export command with the data
+ * folder further down, which no picture shows. What it finds is kept in sessionStorage "cap-leaks", across the
+ * tour's page loads, for {@link assertClean}.
+ */
+function guardPage({ forbidden, theme }) {
+  if (!location.protocol.startsWith("http")) return; // a new tab's blank page, before the capture opens one
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rules = forbidden.map(({ text, what }) => ({ what, pattern: new RegExp(`(?<![\\p{L}\\p{N}])${escape(text)}(?![\\p{L}\\p{N}])`, "iu") }));
+  const note = (what) => {
+    const where = `${location.pathname}${location.search}`;
+    const found = JSON.parse(sessionStorage.getItem("cap-leaks") ?? "[]");
+    if (found.some((f) => f.what === what && f.where === where)) return;
+    found.push({ what, where });
+    sessionStorage.setItem("cap-leaks", JSON.stringify(found));
+  };
+  const onScreen = (rect) => rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth;
+  const visible = { checkOpacity: true, checkVisibilityCSS: true, opacityProperty: true, visibilityProperty: true };
+  /** The texts on screen, in the page's order. */
+  const shown = () => {
+    const texts = [];
+    const range = document.createRange();
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.nodeValue.trim() || !node.parentElement?.checkVisibility(visible)) continue;
+      range.selectNodeContents(node);
+      if ([...range.getClientRects()].some(onScreen)) texts.push(node.nodeValue);
+    }
+    for (const field of document.querySelectorAll("input, textarea")) {
+      if (field.value && field.checkVisibility(visible) && onScreen(field.getBoundingClientRect())) texts.push(field.value);
+    }
+    return texts;
+  };
+  const check = () => {
+    if (!document.body || document.readyState === "loading") return;
+    const texts = shown();
+    // joined both ways: a path may be drawn in pieces, and a name may stand between two other texts
+    const text = `${texts.join("")}\n${texts.join("\n")}`;
+    for (const { what, pattern } of rules) if (pattern.test(text)) note(what);
+    if (document.documentElement.classList.contains("dark") !== (theme === "dark")) note(theme === "dark" ? "the light theme" : "the dark theme");
+  };
+  let timer = 0;
+  const soon = () => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = 0;
+      check();
+    }, 250);
+  };
+  new MutationObserver(soon).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "value"] });
+  document.addEventListener("scroll", soon, { capture: true, passive: true });
+  window.addEventListener("resize", soon);
+  window.addEventListener("load", check);
+  window.__capCheck = check;
+}
+
+/** Stops the capture when the page showed, at any time since its tab opened, what no picture may (never repeating it). */
+async function assertClean(page) {
+  const found = await page.evaluate(() => {
+    window.__capCheck?.();
+    return JSON.parse(sessionStorage.getItem("cap-leaks") ?? "[]");
+  });
+  if (found.length) throw new Error(`A page showed what no picture may: ${found.map((f) => `${f.what} on ${f.where}`).join("; ")}`);
+}
+
 async function caption(page, text) {
   await page.evaluate((t) => window.__caption?.(t), text);
+  await assertClean(page);
 }
 
 async function pointAt(page, locator) {
@@ -162,14 +281,17 @@ async function nav(page, label, text) {
   await shown(page);
   if (text !== undefined) await caption(page, text);
   await page.waitForLoadState("networkidle");
+  await assertClean(page);
 }
 
 // ------------------------------------------------------------------------------------------------
 // Session and demo state
 // ------------------------------------------------------------------------------------------------
 
+/** A browser context on the demo, every page of it guarded: in the dark theme only when `extra` asks for it. */
 async function newContext(browser, extra = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "en-GB", timezoneId: "Europe/Berlin", ...extra });
+  await context.addInitScript(guardPage, { forbidden: FORBIDDEN, theme: extra.colorScheme === "dark" ? "dark" : "light" });
   await context.addCookies([{ name: `ordnung_token_${opts.port}`, value: TOKEN, url: BASE, httpOnly: true, sameSite: "Strict" }]);
   await context.request.patch(`${BASE}/api/demo/tour`, { data: { active: false, completed: true }, headers: CLIENT });
   return context;
@@ -328,8 +450,11 @@ async function recordVideo(browser) {
   let cut;
   try {
     cut = await tour(page);
+    await assertClean(page);
   } catch (err) {
-    await page.screenshot({ path: join(OUT, "capture-error.png") }).catch(() => {});
+    mkdirSync(REVIEW, { recursive: true });
+    await page.screenshot({ path: join(REVIEW, "capture-error.png") }).catch(() => {});
+    console.error(`the page when it stopped → ${join(REVIEW, "capture-error.png")}`);
     await context.close();
     throw err;
   }
@@ -363,6 +488,7 @@ async function tour(page) {
     await ready().waitFor({ timeout: 60_000 });
     await settle(page, 300);
     gaps.push([from, seconds()]);
+    await assertClean(page);
   };
   /** A full page load within the demo: cut from the video too (the app's boot screen), the caption changes with the heading. */
   const load = async (url, text) => {
@@ -510,6 +636,7 @@ async function shot(page, name, options = {}) {
   // the pointer rests on the sidebar's empty space: no hover tooltip in the picture
   if ((page.viewportSize()?.width ?? 0) >= 1024) await page.mouse.move(120, 600);
   await page.waitForTimeout(500);
+  await assertClean(page);
   await page.screenshot({ path: join(OUT, `${name}.png`), ...options });
   console.log(`shot → ${name}.png`);
 }
@@ -575,6 +702,7 @@ async function screenshots(browser) {
   const receipt = page.getByRole("dialog", { name: "Why this date?" });
   await receipt.getByRole("button", { name: "Show the rules" }).click();
   await page.waitForTimeout(700);
+  await assertClean(page);
   await receipt.screenshot({ path: join(OUT, "why.png") });
   console.log("shot → why.png");
   await page.keyboard.press("Escape");
