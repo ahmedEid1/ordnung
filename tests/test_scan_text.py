@@ -195,6 +195,58 @@ def test_only_the_store_and_the_text_stage_touch_the_scanner_text() -> None:
     assert named == set()
 
 
+#: Words that name the text Ordnung read in a picture, or the engine that reads it (ADR 0024).
+PICTURE_TEXT_NAMES = ("picture_text", "picture-text", "PICTURE_NAME", "ingest.ocr", "ingest import ocr")
+#: The only modules that may import ``ordnung.ingest.ocr`` (and so run Tesseract): the worker, which reads the
+#: pictures, and the doctor, which says whether Tesseract is there.
+OCR_IMPORTERS = {"ingest/worker.py", "doctor.py"}
+
+
+def _imports_ocr(tree: ast.Module) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import) and any(
+            alias.name == "ordnung.ingest.ocr" or alias.name.startswith("ordnung.ingest.ocr.")
+            for alias in node.names
+        ):
+            return True
+        if isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module.split(".")[-1] == "ocr" or module.startswith("ordnung.ingest.ocr."):
+                return True
+            if module in ("ordnung.ingest", "") and any(alias.name == "ocr" for alias in node.names):
+                return True
+    return False
+
+
+def test_no_reader_for_claude_names_picture_text() -> None:
+    """No module that builds a prompt, checks evidence, drafts or answers Ask even names the text Ordnung read in a
+    picture, or the engine that reads it (ADR 0024); nor do the reading stages."""
+    named = {
+        (name, word)
+        for name, _, source in _modules()
+        if name.startswith(NEVER_NAMED_IN) or name in NEVER_NAMED_IN_FILES
+        for word in PICTURE_TEXT_NAMES
+        if word in source
+    }
+    assert named == set()
+
+
+def test_only_the_worker_and_the_doctor_run_tesseract() -> None:
+    """Importers of :mod:`ordnung.ingest.ocr` are the worker and the doctor at most: nothing else can run
+    Tesseract, and the letter routes ask :func:`ordnung.config.ocr_turned_off` instead."""
+    importers = {name for name, tree, _ in _modules() if _imports_ocr(tree)}
+    assert "ingest/worker.py" in importers and importers <= OCR_IMPORTERS, importers
+    for source in (
+        "import ordnung.ingest.ocr",
+        "from ordnung.ingest import ocr",
+        "from ordnung.ingest.ocr import find",
+        "from . import ocr",
+        "from .ocr import recognise",
+    ):
+        assert _imports_ocr(ast.parse(source)), source
+    assert not _imports_ocr(ast.parse("from ordnung.ingest import pipeline"))
+
+
 def test_the_import_guard_sees_every_way_of_importing_it() -> None:
     for source in (
         "import ordnung.db.scan_text",

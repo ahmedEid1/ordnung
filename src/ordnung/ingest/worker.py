@@ -32,6 +32,16 @@ scanner text Claude's reading made out of date elsewhere (on a computer still on
 and it stops with the worker, which runs only while background work is allowed (never while hand-off
 sync stands this computer by).
 
+The words in the pictures of letters Claude isn't reading (kept private, held, waiting for Claude, failed)
+are read the same way when Tesseract is installed (ADR 0024, :mod:`ordnung.ingest.ocr`): after the same
+delay the worker looks for Tesseract once, then reads one page at a time, newest letter first, at low
+priority, and keeps the words for the letter search only (``picture-text.json``, through the store); no
+row of the database changes and no model is called. It looks again after each reading ends and every
+:data:`PICTURES_POLL_S` seconds; a page Tesseract fails on is left until Ordnung starts again. Stopping the
+worker stops a reading under way (Tesseract is killed). ``ORDNUNG_OCR=off``: Tesseract is never looked
+for, and the words read earlier are removed when the worker starts. Without a usable Tesseract the loop
+ends after its one look.
+
 Readings and the Ideas refresh are background work for hand-off sync: they run in a context where the
 person's writes aren't counted (:func:`~ordnung.db.store.background_context`), even when a request of
 theirs queued them. When sync replaces the data under a running server, :meth:`IngestWorker.reload`
@@ -46,14 +56,18 @@ import contextlib
 import functools
 import logging
 import re
+import threading
 import time
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+# how a job's ``waiting_reason`` starts while it waits for Claude: the store's, re-exported (the CLI reads it)
+from ordnung.db.store import WAITING_FOR_CLAUDE as WAITING_FOR_CLAUDE
 from ordnung.db.store import background_context, person_write
-from ordnung.ingest import pipeline
+from ordnung.ingest import ocr, pipeline
+from ordnung.ingest.ocr import Tesseract
 from ordnung.ingest.pipeline import READING_JOBS, ingest_document, read_text_here, run_triggers
 from ordnung.llm.base import ClaudeAuthError, ClaudeNotInstalled, ClaudeOutdated, ClaudeRateLimited
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
@@ -73,8 +87,6 @@ _CLOCK_RE = re.compile(
 )
 _RELATIVE_RE = re.compile(r"^(?P<n>\d+(?:\.\d+)?)\s*(?P<unit>h|hours?|m|min|mins|minutes?)$", re.I)
 _EPOCH_RE = re.compile(r"^\d{9,11}(?:\.\d+)?$")
-#: How a job's ``waiting_reason`` starts while it waits for Claude (a usage limit, or Claude not ready).
-WAITING_FOR_CLAUDE = "Waiting for Claude"
 #: Seconds between the worker's own checks for Claude while letters wait for it (zero tokens).
 CLAUDE_RECHECK_S = 30.0
 #: The longest time between those checks after checks said "ready" and readings failed all the same.
@@ -87,13 +99,22 @@ OUTDATED_REASON = (
 )
 #: How the reason of a letter waiting because Claude is not installed, not signed in or too old starts.
 _NOT_READY = f"{WAITING_FOR_CLAUDE}: Claude Code isn't "
-#: Seconds after the worker starts before it catches up the scanner text of older scans (startup and the
-#: first readings go first).
+#: Seconds after the worker starts before it catches up the scanner text of older scans, and starts reading
+#: the words in pictures (startup and the first readings go first).
 CATCH_UP_DELAY_S = 30.0
+#: Seconds between the worker's looks for pictures to read when no reading ended meanwhile (a letter kept
+#: private on another computer, brought here by hand-off sync, is found this way).
+PICTURES_POLL_S = 300.0
 
 
 def _now() -> datetime:
     return datetime.now(UTC)
+
+
+def _look_for_tesseract() -> Tesseract | None:
+    """The Tesseract this start of the worker reads pictures with: looked for afresh (it may have been installed
+    since Ordnung last started); ``None`` when there is none or text in pictures is turned off."""
+    return ocr.find(refresh=True)
 
 
 def _parse_clock(text: str, now: datetime) -> datetime | None:
@@ -187,6 +208,15 @@ class IngestWorker:
         self.catch_up_delay_s = CATCH_UP_DELAY_S
         self._catch_up: asyncio.Task[None] | None = None
         self._halt: asyncio.Event | None = None
+        #: Looks for the Tesseract that reads pictures (ADR 0024), once per start; replaced in tests.
+        self.find_tesseract: Callable[[], Tesseract | None] = _look_for_tesseract
+        #: Seconds between looks for pictures to read when no reading ended meanwhile.
+        self.pictures_poll_s = PICTURES_POLL_S
+        self._pictures: asyncio.Task[None] | None = None
+        self._pictures_wake: asyncio.Event | None = None
+        self._picture_stop: threading.Event | None = None
+        #: (letter, page) Tesseract failed on in this run of Ordnung: left until Ordnung starts again.
+        self._picture_failed: set[tuple[str, int]] = set()
 
     # ---------------------------------------------------------------------------------- state
 
@@ -287,6 +317,13 @@ class IngestWorker:
         self._catch_up = asyncio.create_task(
             self._catch_up_scan_text(self._halt), name="ordnung-scan-text", context=background_context()
         )
+        self._pictures_wake = asyncio.Event()
+        self._picture_stop = threading.Event()
+        self._pictures = asyncio.create_task(
+            self._read_pictures(self._halt, self._pictures_wake, self._picture_stop),
+            name="ordnung-pictures",
+            context=background_context(),
+        )
 
     def reload(self) -> None:
         """The database was replaced (hand-off sync brought another computer's Ordnung here) while the
@@ -296,6 +333,7 @@ class IngestWorker:
             raise RuntimeError("stop the worker before the database is replaced")
         self._recovered = False
         self._text_read.clear()  # its waiting letters' text is read again
+        self._picture_failed.clear()  # and the pictures Tesseract failed on are tried again
         self.paused_until = self._stored_pause()
 
     async def stop(self, grace: float = 10.0) -> None:
@@ -306,17 +344,24 @@ class IngestWorker:
             await self._loop_task
             self._loop_task = None
         # held here: a stop running at the same time (hand-off sync standing by while Ordnung stops) may
-        # clear the attribute while this one waits
-        catch_up = self._catch_up
-        if catch_up is not None:  # the letter under way gets ``grace`` seconds too
+        # clear the attributes while this one waits
+        catch_up, pictures = self._catch_up, self._pictures
+        background = {task for task in (catch_up, pictures) if task is not None}
+        if background:  # the letter or page under way gets ``grace`` seconds too
             if self._halt is not None:
                 self._halt.set()
-            _, unfinished = await asyncio.wait({catch_up}, timeout=grace)
+            if self._picture_stop is not None:
+                self._picture_stop.set()  # a reading under way stops (Tesseract is killed) within a poll
+            if self._pictures_wake is not None:
+                self._pictures_wake.set()
+            _, unfinished = await asyncio.wait(background, timeout=grace)
             for task in unfinished:
                 task.cancel()
-            await asyncio.gather(catch_up, return_exceptions=True)
-            if self._catch_up is catch_up:
+            await asyncio.gather(*background, return_exceptions=True)
+            if catch_up is not None and self._catch_up is catch_up:
                 self._catch_up = None
+            if pictures is not None and self._pictures is pictures:
+                self._pictures = None
         if self._claude_checking is not None:
             self._claude_checking.cancel()
             await asyncio.gather(self._claude_checking, return_exceptions=True)
@@ -391,6 +436,81 @@ class IngestWorker:
             except Exception:
                 log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
 
+    async def _read_pictures(self, halt: asyncio.Event, wake: asyncio.Event, stop: threading.Event) -> None:
+        """Read the words in the pictures of the letters Claude isn't reading (ADR 0024; the module docstring).
+        Turned off: forget what was read before, and end. Else after :attr:`catch_up_delay_s` look for Tesseract
+        once (none usable: end), then read the due pages one at a time until ``halt``, looking again whenever
+        ``wake`` is set (a reading ended) or :attr:`pictures_poll_s` passed; ``stop`` stops a reading under
+        way."""
+        store = self.ctx.store
+        if ocr.turned_off():
+            try:
+                forgotten = await asyncio.to_thread(store.forget_all_picture_text)
+            except Exception:
+                log.warning("could not forget the words read in pictures", exc_info=True)
+                return
+            if forgotten:
+                log.info("text in pictures is turned off: forgot the words read in %d letter(s)", forgotten)
+            return
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(halt.wait(), self.catch_up_delay_s)
+        if halt.is_set():
+            return
+        try:
+            engine = await asyncio.to_thread(self.find_tesseract)
+        except Exception:
+            log.warning("could not look for Tesseract", exc_info=True)
+            return
+        if engine is None or not engine.usable:
+            return
+        while not halt.is_set():
+            wake.clear()
+            try:
+                due = await asyncio.to_thread(self._pictures_due)
+            except Exception:
+                log.warning("could not list the pictures to read", exc_info=True)
+                due = []
+            if not due:
+                if halt.is_set():
+                    return
+                with contextlib.suppress(TimeoutError):
+                    await asyncio.wait_for(wake.wait(), self.pictures_poll_s)
+                continue
+            for doc_id, page in due:
+                if halt.is_set() or wake.is_set():
+                    break  # stopping, or a reading ended: what is due first may have changed
+                try:
+                    kept = await asyncio.to_thread(self._read_picture, engine, doc_id, page, stop)
+                except ocr.Stopped:
+                    return
+                except ocr.RecognitionError as exc:  # its message never holds what Tesseract printed
+                    log.warning("could not read the words on page %d of %s: %s", page, doc_id, exc)
+                    kept = False
+                except Exception:
+                    log.warning("could not read the words on page %d of %s", page, doc_id, exc_info=True)
+                    kept = False
+                if not kept:
+                    self._picture_failed.add((doc_id, page))
+
+    def _pictures_due(self) -> list[tuple[str, int]]:
+        """Tidy the words read in pages Claude has read since, then list the pages to read (in a thread)."""
+        store = self.ctx.store
+        for doc_id in store.picture_text_stale():
+            store.forget_scan_text_once_read(doc_id)
+        return [pair for pair in store.picture_text_due() if pair not in self._picture_failed]
+
+    def _read_picture(self, engine: Tesseract, doc_id: str, page: int, stop: threading.Event) -> bool:
+        """Draw the page, have Tesseract read it and keep the words (in a thread); ``False``: nothing kept."""
+        store = self.ctx.store
+        document = store.get_document(doc_id)
+        original = store.get_document_file(doc_id)
+        if document is None or original is None:
+            return False
+        picture = ocr.page_picture(original, document.mime, page)
+        if stop.is_set():
+            raise ocr.Stopped("Ordnung is stopping")
+        return store.write_picture_text(doc_id, page, ocr.recognise(engine, picture, stop=stop))
+
     def _recover(self) -> None:
         if not self._recovered:
             requeued = self.ctx.store.requeue_running_jobs()
@@ -443,6 +563,8 @@ class IngestWorker:
         if not task.cancelled() and task.exception() is not None:
             log.error("ingest task crashed", exc_info=task.exception())
         self.notify()
+        if self._pictures_wake is not None:  # a letter may have become one whose pictures are read (ADR 0024)
+            self._pictures_wake.set()
 
     async def _run_job(self, job: Job) -> None:
         store = self.ctx.store

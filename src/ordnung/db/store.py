@@ -16,7 +16,9 @@ Search keeps two FTS5 indexes per document in sync on every document write: ``do
 lower-cased, diacritic-folded copy, so "steuerbescheid" finds "Einkommensteuerbescheid" and
 "Kuendigung" finds "Kündigung"). A scan's scanner text (:mod:`ordnung.db.scan_text`, ADR 0020) is in
 neither index: :meth:`Store.list_documents` ORs in the letters :meth:`Store.scan_text_matches` finds
-(``also_ids``), matched with the same rules; :meth:`Store.search` (Ask's) never sees it.
+(``also_ids``), matched with the same rules; :meth:`Store.search` (Ask's) never sees it. Nor does it see the
+words Ordnung read in the picture of a page Claude isn't reading (``picture-text.json``, ADR 0024), which the
+letter list ORs in the same way (:meth:`Store.picture_text_matches`).
 """
 
 from __future__ import annotations
@@ -113,6 +115,9 @@ _NORMAL_PRAGMAS: tuple[str, ...] = (
 )
 _READ_ONLY = frozenset({"id", "created_at", "updated_at"})
 _ACTIVE_JOB_STATUSES = ("queued", "running", "waiting")
+#: How a job's ``waiting_reason`` starts while it waits for Claude (a usage limit, or Claude not ready).
+#: Here so the store can tell such a letter apart (:data:`_CLAUDE_ISNT_READING`); the worker re-exports it.
+WAITING_FOR_CLAUDE = "Waiting for Claude"
 #: A job interrupted this often (the process died while reading it) is failed, not queued again.
 MAX_JOB_ATTEMPTS = 3
 #: meta: job id → how often the process died while reading it (this computer's; never synced)
@@ -437,6 +442,17 @@ _SNIPPET_RADIUS = 60
 #: A word as the word index (``unicode61``) sees one: letters and digits, everything else separates.
 _WORD_RE = re.compile(r"[^\W_]+")
 _PDF = "application/pdf"
+#: The letters (``documents d``) Claude isn't reading, whose pictures Ordnung may read itself (ADR 0024):
+#: photos and PDFs, not in the trash and not a proof file, kept private or held (both ``ai_private``),
+#: failed, or with a job waiting for Claude (not ready, or a usage limit). Named parameters ``:pdf``,
+#: ``:proof`` and ``:waiting`` (:data:`_NOT_READING_PARAMS`).
+_CLAUDE_ISNT_READING = (
+    "d.deleted_at IS NULL AND d.source != :proof AND (d.mime = :pdf OR d.mime LIKE 'image/%') "
+    "AND (d.ai_private = 1 OR d.status = 'failed' OR EXISTS ("
+    "SELECT 1 FROM jobs j WHERE j.doc_id = d.id AND j.status IN ('queued', 'waiting') "
+    "AND substr(j.waiting_reason, 1, length(:waiting)) = :waiting))"
+)
+_NOT_READING_PARAMS: dict[str, str] = {"pdf": _PDF, "proof": PROOF_SOURCE, "waiting": WAITING_FOR_CLAUDE}
 
 
 def normalize_identifier(value: str) -> str:
@@ -654,7 +670,9 @@ class Store:
         self._connections_lock = threading.RLock()
         #: letter → (its scanner text file's (mtime, size), page → folded text): repeat searches only stat
         self._scan_text_cache: dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]] = {}
-        self._scan_text_lock = threading.Lock()
+        #: the same for the words Ordnung read in its pictures (``picture-text.json``, ADR 0024)
+        self._picture_text_cache: dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]] = {}
+        self._scan_text_lock = threading.Lock()  # guards both
         self._closed = False
         try:
             self.schema_version = self._check_schema() if read_only else self._migrate()
@@ -766,8 +784,9 @@ class Store:
             self.schema_version = migrate(conn)
             conn.execute("VACUUM")
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-        with self._scan_text_lock:  # no folded copy of a scanner's text stays in memory either
+        with self._scan_text_lock:  # no folded copy of a scanner's or a picture's text stays in memory either
             self._scan_text_cache.clear()
+            self._picture_text_cache.clear()
 
     def replace_with(
         self,
@@ -1564,9 +1583,11 @@ class Store:
         self._forget_scan_text(doc_id)
 
     def forget_scan_text_once_read(self, doc_id: str) -> None:
-        """Forget the scanner text of the letter's pages that have text of their own (Claude transcribed
-        them): it would never count for search again. The file keeps the pages still without text, and goes
-        once every page has text. A file that can't be changed is logged."""
+        """Forget the scanner text, and the words Ordnung read in the picture (ADR 0024), of the letter's
+        pages that have text of their own (Claude transcribed them): they would never count for search
+        again. Each file keeps the pages still without text (picture text's ``""`` too: looked at, no
+        words), and goes once none is left. A file that can't be changed is logged. The text stage calls
+        it by this name after Claude's reading."""
         with self.tx() as conn:
             blank = self._pages_without_text(conn, doc_id)
             try:
@@ -1579,6 +1600,15 @@ class Store:
                         scan_text.write(self.paths.derived, doc_id, left)
             except OSError:
                 log.warning("could not forget the scanner text of %s", doc_id, exc_info=True)
+            try:
+                pictures = scan_text.read(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME)
+                still = {page: text for page, text in pictures.items() if page in blank}
+                if not still:
+                    scan_text.remove(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME)
+                elif still != pictures:
+                    scan_text.write(self.paths.derived, doc_id, still, name=scan_text.PICTURE_NAME)
+            except OSError:
+                log.warning("could not forget the words read in the pictures of %s", doc_id, exc_info=True)
         self._forget_scan_text(doc_id)
 
     @staticmethod
@@ -1586,16 +1616,17 @@ class Store:
         rows = conn.execute("SELECT page FROM pages WHERE doc_id = ? AND trim(text) = ''", (doc_id,))
         return {row["page"] for row in rows}
 
-    def _blank_scan_pages(self, doc_id: str | None = None) -> dict[str, list[int]]:
+    def _blank_scan_pages(self, doc_id: str | None = None, *, images: bool = False) -> dict[str, list[int]]:
         """Letter → its pages without text of their own, for the PDF letters not in the trash (with
-        ``doc_id``: that letter's, in the trash or not)."""
+        ``doc_id``: that letter's, in the trash or not); with ``images`` for photos too."""
+        mime = "(d.mime = ? OR d.mime LIKE 'image/%')" if images else "d.mime = ?"
         if doc_id is None:
             which, params = "d.deleted_at IS NULL", [_PDF]
         else:
             which, params = "d.id = ?", [doc_id, _PDF]
         rows = self._conn().execute(
             "SELECT p.doc_id, p.page FROM pages p JOIN documents d ON d.id = p.doc_id "
-            f"WHERE {which} AND d.mime = ? AND trim(p.text) = '' ORDER BY d.created_at, p.doc_id, p.page",
+            f"WHERE {which} AND {mime} AND trim(p.text) = '' ORDER BY d.created_at, p.doc_id, p.page",
             params,
         )
         blank: dict[str, list[int]] = {}
@@ -1603,48 +1634,65 @@ class Store:
             blank.setdefault(row["doc_id"], []).append(row["page"])
         return blank
 
-    def _scan_text_folds(self, doc_id: str) -> dict[int, tuple[str, str]]:
-        """Page → the letter's scanner text folded both ways (:func:`_scan_text_match`), read again only
-        once its file changed."""
+    def _text_cache(self, name: str) -> dict[str, tuple[tuple[int, int], dict[int, tuple[str, str]]]]:
+        return self._picture_text_cache if name == scan_text.PICTURE_NAME else self._scan_text_cache
+
+    def _scan_text_folds(self, doc_id: str, name: str = scan_text.NAME) -> dict[int, tuple[str, str]]:
+        """Page → the letter's scanner text (with ``name=PICTURE_NAME``: the words read in its pictures)
+        folded both ways (:func:`_scan_text_match`), pages without words left out; read again only once
+        its file changed."""
+        cache = self._text_cache(name)
         try:
-            info = scan_text.path(self.paths.derived, doc_id).stat()
+            info = scan_text.path(self.paths.derived, doc_id, name=name).stat()
         except (OSError, ValueError):
-            self._forget_scan_text(doc_id)
+            with self._scan_text_lock:
+                cache.pop(doc_id, None)
             return {}
         signature = (info.st_mtime_ns, info.st_size)
         with self._scan_text_lock:
-            cached = self._scan_text_cache.get(doc_id)
+            cached = cache.get(doc_id)
         if cached is not None and cached[0] == signature:
             return cached[1]
+        if name == scan_text.NAME:
+            found = scan_text.read(self.paths.derived, doc_id)
+        else:
+            found = scan_text.read(self.paths.derived, doc_id, name=name)
         folds = {
             page: (_fold(text), _fold(text, transliterate=True))
-            for page, text in scan_text.read(self.paths.derived, doc_id).items()
+            for page, text in found.items()
             if text.strip()
         }
         with self._scan_text_lock:
-            self._scan_text_cache[doc_id] = (signature, folds)
+            cache[doc_id] = (signature, folds)
         return folds
 
     def _forget_scan_text(self, doc_id: str) -> None:
+        """Drop the folded copies of the letter's scanner text and picture text."""
         with self._scan_text_lock:
             self._scan_text_cache.pop(doc_id, None)
+            self._picture_text_cache.pop(doc_id, None)
 
-    def scan_text_matches(self, q: str) -> set[str]:
-        """The letters (not in the trash) whose scanner text ``q`` finds on their pages without text of
-        their own — matched as the indexes match a letter's own text (:func:`_scan_text_match`). For the
-        person's letter search alone (``list_documents(also_ids=…)``); never :meth:`search`."""
+    def _found_text_matches(self, q: str, name: str) -> set[str]:
+        """The letters (not in the trash) whose scanner text (or picture text) ``q`` finds on their pages
+        without text of their own (:func:`_scan_text_match`)."""
         tokens = search_tokens(q)
         if not tokens:
             return set()
         found: set[str] = set()
-        for doc_id, pages in self._blank_scan_pages().items():
-            folds = self._scan_text_folds(doc_id)
+        for doc_id, pages in self._blank_scan_pages(images=name == scan_text.PICTURE_NAME).items():
+            folds = self._scan_text_folds(doc_id, name)
             texts = [folds[page] for page in pages if page in folds]
             plain = "\n".join(text for text, _ in texts)
             spelled = "\n".join(text for _, text in texts)
             if texts and _scan_text_match(plain, spelled, tokens):
                 found.add(doc_id)
         return found
+
+    def scan_text_matches(self, q: str) -> set[str]:
+        """The letters (not in the trash) whose scanner text ``q`` finds on their pages without text of
+        their own — matched as the indexes match a letter's own text (:func:`_scan_text_match`). For the
+        person's letter search alone (``list_documents(also_ids=…)``); never :meth:`search`."""
+        return self._found_text_matches(q, scan_text.NAME)
 
     def scan_text_pages(self, doc_id: str) -> list[int]:
         """The letter's pages without text of their own whose scanner text is kept (search only)."""
@@ -1677,6 +1725,124 @@ class Store:
             if pages is None or any(page not in pages for page, text in kept.items() if text.strip()):
                 stale.append(doc_id)
         return stale
+
+    # ---------------------------------------------------------------------------------------------
+    # the words Ordnung read in a picture itself (search only: ``picture-text.json``, ADR 0024)
+    # ---------------------------------------------------------------------------------------------
+
+    def picture_text_due(self) -> list[tuple[str, int]]:
+        """The (letter, page) pairs whose picture Ordnung may read now, newest letter first, its pages in
+        order: a page without text of its own of a letter Claude isn't reading (:data:`_CLAUDE_ISNT_READING`),
+        not looked at yet (in the letter's ``picture-text.json``, ``""`` included), without a scanner's text,
+        and — for a PDF — whose own text was looked for already (its text stage ran: ``scan-text.json`` is
+        there)."""
+        rows = self._conn().execute(
+            "SELECT p.doc_id, p.page, d.mime FROM pages p JOIN documents d ON d.id = p.doc_id "
+            f"WHERE {_CLAUDE_ISNT_READING} AND trim(p.text) = '' ORDER BY d.created_at DESC, d.id, p.page",
+            _NOT_READING_PARAMS,
+        )
+        by_letter: dict[str, tuple[str, list[int]]] = {}
+        for row in rows:
+            by_letter.setdefault(row["doc_id"], (row["mime"], []))[1].append(row["page"])
+        due: list[tuple[str, int]] = []
+        derived = self.paths.derived
+        for doc_id, (mime, pages) in by_letter.items():
+            if mime == _PDF and not scan_text.present(derived, doc_id):
+                continue
+            looked = scan_text.read(derived, doc_id, name=scan_text.PICTURE_NAME)
+            scanned = {page for page, text in scan_text.read(derived, doc_id).items() if text.strip()}
+            due.extend((doc_id, page) for page in pages if page not in looked and page not in scanned)
+        return due
+
+    def write_picture_text(self, doc_id: str, page: int, text: str) -> bool:
+        """Keep what Ordnung read in the picture of the letter's ``page`` (``""``, or only spaces: looked at,
+        no words), for the person's letter search only. In a transaction that checks again that Claude isn't
+        reading the letter, and that the page still has no text of its own and no scanner's text: ``False``
+        (nothing kept) when that changed meanwhile — the letter was let through to Claude, read, or deleted
+        for good, so it never gets the file back. A file that can't be written is logged (letter and page,
+        never the words): ``False``."""
+        with self.tx() as conn:
+            row = conn.execute(
+                f"SELECT d.mime FROM documents d WHERE d.id = :id AND {_CLAUDE_ISNT_READING}",
+                {**_NOT_READING_PARAMS, "id": doc_id},
+            ).fetchone()
+            if row is None or page not in self._pages_without_text(conn, doc_id):
+                return False
+            derived = self.paths.derived
+            if row["mime"] == _PDF and not scan_text.present(derived, doc_id):
+                return False  # its own text hasn't been looked for yet
+            if scan_text.read(derived, doc_id).get(page, "").strip():
+                return False
+            try:
+                kept = scan_text.read(derived, doc_id, name=scan_text.PICTURE_NAME)
+                kept[page] = text.strip()
+                scan_text.write(derived, doc_id, kept, name=scan_text.PICTURE_NAME)
+            except OSError as exc:
+                log.warning(
+                    "could not keep the words read on page %d of %s (%s)", page, doc_id, type(exc).__name__
+                )
+                return False
+        self._forget_scan_text(doc_id)
+        return True
+
+    def picture_text_matches(self, q: str) -> set[str]:
+        """The letters (not in the trash) the words Ordnung read in their pictures find, on their pages
+        without text of their own — matched as the scanner text is (:meth:`scan_text_matches`). Whether
+        Claude reads the letter now isn't asked again: a letter just let through keeps its unchecked match
+        until Claude reads the page. For the person's letter search alone (``list_documents(also_ids=…)``);
+        never :meth:`search`."""
+        return self._found_text_matches(q, scan_text.PICTURE_NAME)
+
+    def picture_text_pages(self, doc_id: str) -> list[int]:
+        """The letter's pages without text of their own on which Ordnung read words in the picture (search
+        only; a page looked at without words isn't one)."""
+        pages = self._blank_scan_pages(doc_id, images=True).get(doc_id, [])
+        folds = self._scan_text_folds(doc_id, scan_text.PICTURE_NAME) if pages else {}
+        return [page for page in pages if page in folds]
+
+    def picture_text_stale(self) -> list[str]:
+        """Letters (not in the trash) whose kept picture text is out of date: it names a page that has text
+        of its own by now — Claude read it on a computer without text in pictures, then hand-off sync brought
+        it here — or every page has. The worker tidies them (:meth:`forget_scan_text_once_read`), oldest
+        first."""
+        blank = self._blank_scan_pages(images=True)
+        rows = self._conn().execute(
+            "SELECT id FROM documents WHERE deleted_at IS NULL AND (mime = ? OR mime LIKE 'image/%') "
+            "ORDER BY created_at, id",
+            (_PDF,),
+        )
+        stale: list[str] = []
+        for row in rows:
+            doc_id = row["id"]
+            if not scan_text.present(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME):
+                continue
+            pages = blank.get(doc_id, [])
+            kept = scan_text.read(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME)
+            if not pages or any(page not in pages for page in kept):
+                stale.append(doc_id)
+        return stale
+
+    def forget_all_picture_text(self) -> int:
+        """Remove every ``picture-text.json`` (text in pictures is turned off: ``ORDNUNG_OCR=off``); the
+        scanner's text and the page images stay. Returns how many letters had one; a file that can't be
+        removed is logged."""
+        removed = 0
+        derived = self.paths.derived
+        folders = sorted(derived.iterdir()) if derived.is_dir() else []
+        for folder in folders:
+            if folder.is_symlink() or not (folder / scan_text.PICTURE_NAME).is_file():
+                continue
+            try:
+                scan_text.remove(derived, folder.name, name=scan_text.PICTURE_NAME)
+            except (OSError, ValueError):
+                log.warning(
+                    "could not forget the words read in the pictures of %s", folder.name, exc_info=True
+                )
+                continue
+            removed += 1
+        with self._scan_text_lock:
+            self._picture_text_cache.clear()
+        return removed
 
     # ---------------------------------------------------------------------------------------------
     # search
