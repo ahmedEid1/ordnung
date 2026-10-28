@@ -42,10 +42,15 @@ jobs:
           .venv/bin/ruff format --check src tests scripts evals
       - name: Type check
         run: .venv/bin/mypy
+      - name: Install Tesseract with German (text in pictures, ADR 0024; the other legs test it missing)
+        if: matrix.python == '3.12'
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
       - name: Tests (and pyproject.toml's coverage floor for the whole package)
         env:
           # here the samples must regenerate byte for byte (elsewhere the test skips when a library differs)
           ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
+          # and the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
+          ORDNUNG_REQUIRE_TESSERACT: ${{ matrix.python == '3.12' && '1' || '' }}
         run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
       - name: Coverage floors of hand-off sync and phone access (read from the run above)
         if: matrix.python == '3.12'
@@ -243,9 +248,10 @@ jobs:
   other-systems:
     name: Other systems (${{ matrix.os }}, Python 3.12)
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
-    # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened) and the
-    # disk-encryption probe differ on macOS and Windows: on main, by hand and weekly (not on pull
-    # requests); while the job is new a failure shows here without failing the run
+    # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
+    # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on
+    # main, by hand and weekly (not on pull requests); while the job is new a failure shows here without
+    # failing the run
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
     continue-on-error: true
@@ -294,7 +300,8 @@ jobs:
           ORDNUNG_HOME: ${{ runner.temp }}/ordnung-data
         run: |
           # it exits 1 when a check fails: Claude's checks may (no `claude`, or not signed in), every other
-          # check must pass, and the exit code must say which
+          # check must pass, and the exit code must say which; text in pictures is ok (Tesseract is optional:
+          # "Not installed (optional)" here)
           code=0
           "$WHEEL_BIN/ordnung" doctor || code=$?
           "$WHEEL_BIN/python" - "$code" <<'EOF'
@@ -302,9 +309,12 @@ jobs:
           from ordnung.config import default_data_dir
           from ordnung.doctor import run_doctor_sync
 
-          failed = [check.id for check in run_doctor_sync(default_data_dir()).checks if check.status == "fail"]
+          checks = run_doctor_sync(default_data_dir()).checks
+          failed = [check.id for check in checks if check.status == "fail"]
           assert all(name.startswith("claude") for name in failed), failed
           assert int(sys.argv[1]) == (1 if failed else 0), (sys.argv[1], failed)
+          (ocr,) = [check for check in checks if check.id == "ocr"]
+          assert ocr.status == "ok", ocr
           EOF
       - name: Tests of the code that differs per system
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
@@ -317,7 +327,7 @@ jobs:
             tests/test_sync_*.py tests/test_phone_net.py tests/test_phone_tls.py tests/test_phone_listener.py \
             tests/test_autostart.py tests/test_shortcut.py tests/test_backup.py tests/test_backup_container.py \
             tests/test_rules_postcodes.py tests/test_make_postcode_table.py tests/test_encryption.py \
-            tests/test_store_ledger_token.py
+            tests/test_store_ledger_token.py tests/test_ocr.py tests/test_doctor_pictures.py
 
   frontend:
     name: Frontend
@@ -375,12 +385,18 @@ jobs:
           tests/test_repo_hygiene.py::test_a_web_build_ships_the_licence_of_every_package_it_bundles
       - name: Build UI
         run: cd web && npm run build
+      - name: Install Tesseract with German (the real app reads a private photo's words, ADR 0024)
+        run: sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends tesseract-ocr tesseract-ocr-deu
       - name: Playwright (the demo; then the real app reading with a fake Claude)
         # playwright.config.ts starts `ordnung demo --reset` and `ordnung serve` with tests/fake_claude.py from
         # .venv, plus a second `ordnung serve` (hand-off sync's other computer; both real apps keep secrets in the
         # file keyring of tests/e2e_support), and logs in to all three with their tokens; its projects run in
         # order: tour, pages, sweep, layout, girocode, high-stakes, add-date (the demo), then real-app
-        # (e2e/real-app-*.spec.ts)
+        # (e2e/real-app-*.spec.ts). Text in pictures is on in the first real app only (ORDNUNG_E2E_OCR), with the
+        # Tesseract installed above: its spec must run, not skip
+        env:
+          ORDNUNG_E2E_OCR: "on"
+          ORDNUNG_REQUIRE_TESSERACT: "1"
         run: cd web && npm run e2e
       - uses: actions/upload-artifact@v7
         if: failure()

@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 import {
   BASE_URL,
   DATA_DIR,
+  E2E_OCR,
   FAKE_CLAUDE_SCENARIO,
   keyringEnv,
   ORDNUNG_BIN,
@@ -32,7 +33,9 @@ import {
  * port after the real app's, while that spec turns it on. Hand-off sync (e2e/real-app-sync.spec.ts) needs a
  * second computer: another `ordnung serve` on its own data folder, on the port after that. Both real apps keep
  * their secrets in a password store of their own made for the tests (`tests/e2e_support/e2e_keyring.py`): CI's
- * Linux has no keyring, and Ordnung refuses the ones that don't keep passwords safely.
+ * Linux has no keyring, and Ordnung refuses the ones that don't keep passwords safely. No server reads the words in
+ * pictures (`ORDNUNG_OCR=off`, ADR 0024) but the real app with `ORDNUNG_E2E_OCR=on` (e2e/env.ts), so a Tesseract
+ * installed here changes nothing else.
  *
  * Local: `npm run build && PW_CHROMIUM_PATH=/path/to/chrome npm run e2e`. See `e2e/env.ts` for
  * the knobs (ports, data folders, reuse running servers).
@@ -107,6 +110,7 @@ export default defineConfig({
     {
       command: `"${ORDNUNG_BIN}" demo --serve --no-browser --port ${PORT} --data-dir "${DATA_DIR}" --reset`,
       url: `${BASE_URL}/api/health`,
+      env: { ORDNUNG_OCR: "off" },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",
@@ -116,7 +120,14 @@ export default defineConfig({
       command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_PORT} --data-dir "${REAL_DATA_DIR}"`,
       url: `${REAL_BASE_URL}/api/health`,
       // phone access may listen on loopback only (the one address it is then offered), never on a network
-      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, [PHONE_TEST_ADDRESS_ENV]: PHONE_ADDRESS, ...keyringEnv(REAL_KEYRING) },
+      // it reads the words in pictures only when the run asks (ORDNUNG_E2E_OCR=on, with Tesseract installed)
+      env: {
+        ORDNUNG_CLAUDE_BIN: REAL_CLAUDE,
+        FAKE_CLAUDE_SCENARIO,
+        [PHONE_TEST_ADDRESS_ENV]: PHONE_ADDRESS,
+        ORDNUNG_OCR: E2E_OCR ? "on" : "off",
+        ...keyringEnv(REAL_KEYRING),
+      },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",
@@ -126,7 +137,7 @@ export default defineConfig({
       // hand-off sync's other computer: a data folder and a password store of its own, the same fake Claude
       command: `"${ORDNUNG_BIN}" serve --no-browser --port ${REAL_B_PORT} --data-dir "${REAL_B_DATA_DIR}"`,
       url: `${REAL_B_BASE_URL}/api/health`,
-      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, ...keyringEnv(REAL_B_KEYRING) },
+      env: { ORDNUNG_CLAUDE_BIN: REAL_CLAUDE, FAKE_CLAUDE_SCENARIO, ORDNUNG_OCR: "off", ...keyringEnv(REAL_B_KEYRING) },
       reuseExistingServer: process.env.ORDNUNG_E2E_REUSE === "1",
       stdout: "ignore",
       stderr: "pipe",

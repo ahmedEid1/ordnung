@@ -229,6 +229,12 @@ export interface MockState {
   taxChoices: Record<string, boolean>;
   /** the person's household and who each letter is filed for (`./household`); empty, as in `ordnung demo` */
   household: StoredHousehold;
+  /**
+   * The words Ordnung read in a letter's pictures itself, by letter id and page (`picture-text.json`, ADR 0024;
+   * `""`: looked, no words): search only, never shown. Empty, as in `ordnung demo` (no demo letter qualifies, and a
+   * browser runs no Tesseract); tests seed it.
+   */
+  pictureText: Record<string, Record<number, string>>;
 }
 
 /**
@@ -280,6 +286,7 @@ export class MockDb {
       lastBackupAt: null,
       taxChoices: {},
       household: emptyHousehold(),
+      pictureText: {},
     };
   }
 
@@ -871,7 +878,8 @@ export class MockDb {
     const scored = this.liveDocuments()
       .map((d) => {
         const party = this.party(d.party_id)?.name ?? "";
-        const text = [d.title, d.summary, d.filename, party, d.kind?.replace(/_/g, " "), ...d.key_facts.map((f) => `${f.label} ${f.value}`), letterFor(d.id)?.pageText(1) ?? ""]
+        // like the API, which ORs in the letters found by the words Ordnung read in their pictures
+        const text = [d.title, d.summary, d.filename, party, d.kind?.replace(/_/g, " "), ...d.key_facts.map((f) => `${f.label} ${f.value}`), letterFor(d.id)?.pageText(1) ?? "", this.pictureTextOf(d)]
           .join(" ")
           .toLowerCase();
         const title = (d.title ?? "").toLowerCase();
@@ -890,22 +898,48 @@ export class MockDb {
   /**
    * Where a search (`q`) found a letter, as `GET /api/documents` says it (`found_in`): `scanner_text` for a scan
    * not read yet whose own words (title, summary, file name, sender, kind, key facts) don't hold every searched
-   * word — it was found by the text its scanner added (`SCANNER_TEXT`); else `letter`; null when the list
-   * wasn't searched.
+   * word — it was found by the text its scanner added (`SCANNER_TEXT`); `picture_text` for a letter not read yet
+   * whose own words don't hold them but the words Ordnung read in its pictures do (ADR 0024; the scanner's text
+   * wins); else `letter`; null when the list wasn't searched.
    */
   foundIn(doc: Document, q: string | null): SearchFoundIn | null {
     const words = (q ?? "").trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length) return null;
-    if (!this.scanTextPages(doc).length) return "letter";
+    const scanned = this.scanTextPages(doc).length > 0;
+    const pictured = this.pictureTextPages(doc).length > 0;
+    if (!scanned && !pictured) return "letter";
     const own = [doc.title, doc.summary, doc.filename, this.party(doc.party_id)?.name ?? "", doc.kind?.replace(/_/g, " "), ...doc.key_facts.map((f) => `${f.label} ${f.value}`)]
       .join(" ")
       .toLowerCase();
-    return words.every((w) => own.includes(w)) ? "letter" : "scanner_text";
+    if (words.every((w) => own.includes(w))) return "letter";
+    if (scanned) return "scanner_text";
+    const picture = this.pictureTextOf(doc).toLowerCase();
+    return words.every((w) => picture.includes(w)) ? "picture_text" : "letter";
   }
 
   /** The pages whose only text is the scanner's (`scan_text_pages`): Sam's held scan until Claude reads it. */
   scanTextPages(doc: Document): number[] {
     return SCANNER_TEXT.has(doc.id) && !doc.ai_processed_at ? [1] : [];
+  }
+
+  /**
+   * The pages with words Ordnung read in their pictures (`picture_text_pages`, ADR 0024): while Claude hasn't read
+   * the letter, and not the pages where it found none.
+   */
+  pictureTextPages(doc: Document): number[] {
+    if (doc.ai_processed_at) return [];
+    return Object.entries(this.state.pictureText[doc.id] ?? {})
+      .filter(([, text]) => text.trim())
+      .map(([page]) => Number(page))
+      .sort((a, b) => a - b);
+  }
+
+  /** The words Ordnung read in the letter's pictures, for search only (`""` once Claude read the letter). */
+  private pictureTextOf(doc: Document): string {
+    const pages = this.state.pictureText[doc.id] ?? {};
+    return this.pictureTextPages(doc)
+      .map((page) => pages[page])
+      .join(" ");
   }
 
   /** Items dated after the last calendar export (drives the "N new dates" Idea). */

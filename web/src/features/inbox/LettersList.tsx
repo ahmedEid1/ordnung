@@ -8,8 +8,8 @@
  * 56rem wide; from there a table with kind, arrival date and to-do columns (the title on one line,
  * in full in its tooltip), and from 64rem the letter's summary next to the sender.
  *
- * While searching, a letter found only in the text its scanner added says so on a line of its own ("not
- * checked", ADR 0020).
+ * While searching, a letter found only in the text its scanner added (ADR 0020), or only in the words Ordnung read
+ * from its picture (ADR 0024), says so on a line of its own ("not checked").
  *
  * The Inbox asks for two more things: while it shows one year (`filedYear`), a row that arrived in another
  * year says its own (" · dated 2025"; in the table's date column on a line under the date), and in its
@@ -26,7 +26,7 @@ import { actionFromItem } from "@/features/today/selection";
 import { ActionCountdown } from "@/features/today/TopThree";
 import { api } from "@/api/endpoints";
 import { claudeWaitReason, useJobProgress } from "@/api/sse";
-import { JOB_STAGE_COPY, PIPELINE_STEPS, SCANNER_TEXT_MATCH, copyFor, stageToStep } from "@/lib/copy";
+import { JOB_STAGE_COPY, PIPELINE_STEPS, copyFor, stageToStep, uncheckedMatch } from "@/lib/copy";
 import { formatDate } from "@/lib/format";
 import { NBSP, protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
@@ -44,8 +44,11 @@ import { useSeenLetters } from "./seen";
 /** A next step this close (in days) is spelled out under the letter. */
 const NEXT_STEP_DAYS = 14;
 
-/** A search (`GET /api/documents?q=`) found the letter only in the text its scanner added. */
-const foundInScannerText = (doc: ListedLetter | DocumentRow): boolean => "found_in" in doc && doc.found_in === "scanner_text";
+/**
+ * Where a search (`GET /api/documents?q=`) found the letter: only in the text its scanner added, or only in the
+ * words Ordnung read from its picture — else (its own words, or no search) `null`.
+ */
+const foundIn = (doc: ListedLetter | DocumentRow): DocumentRow["found_in"] => ("found_in" in doc ? doc.found_in : null);
 
 export function LettersList({
   groups,
@@ -232,6 +235,8 @@ function LetterRow({
     </Badge>
   );
   const personTag = person ? <PersonTag name={person} /> : null;
+  // found only in text nobody checked (the scanner's, ADR 0020; Ordnung's own reading of the picture, ADR 0024)
+  const unchecked = uncheckedMatch(foundIn(doc));
 
   return (
     <li className="group relative transition-colors hover:bg-surface-2/50 focus-within:bg-surface-2/50">
@@ -290,11 +295,11 @@ function LetterRow({
               <ActionCountdown action={action} variant="text" className="text-[12.5px]" />
             </p>
           ) : null}
-          {foundInScannerText(doc) ? (
+          {unchecked ? (
             // its own line in both layouts: it wraps on a phone instead of cutting off "not checked"
             <p className="mt-1.5 flex min-w-0 items-start gap-1.5 text-[12.5px] leading-5 text-muted">
               <ScanText className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-              <span className="min-w-0">{SCANNER_TEXT_MATCH}</span>
+              <span className="min-w-0">{unchecked}</span>
             </p>
           ) : null}
           {note != null && note !== false ? (

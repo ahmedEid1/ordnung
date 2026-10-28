@@ -100,7 +100,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
       .then((res) => {
         const ids = res.documents.map((d) => d.id);
         toast.success("Kept private", {
-          description: "It stays on this computer and is never sent to Claude — nothing in it was read.",
+          description: "It stays on this computer and is never sent to Claude.",
           undo: ids.length
             ? () =>
                 wait
@@ -131,7 +131,7 @@ export function HeldCard({ detail, className, onAnswered }: HeldCardProps) {
         </p>
         <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
           Let Claude read it to have its dates, amounts and deadlines filed — every fact is checked against the page. Or keep it private: it stays searchable here and is
-          never sent, but nothing in it is read.
+          never sent, but Claude never reads it, so nothing in it is filed.
           {attached === 1 ? " Its attachment that waits goes with it." : attached > 1 ? ` Its ${plural(attached, "attachment")} that wait go with it.` : ""}
         </p>
         {phone ? (

@@ -3,11 +3,11 @@
  * an e-mail's attachment under it, "Read these 3" answers for exactly the letters shown, "Keep
  * private" keeps them here, and the online demo explains that it can't read new letters. While the
  * Inbox is searched, the group lists only the waiting letters the search found (one found by its
- * scanner's text says so, a found e-mail comes with its attachment), and the list below never says no
- * letter matches when one of them does.
+ * scanner's text, or by the words Ordnung read from its picture, says so; a found e-mail comes with its
+ * attachment), and the list below never says no letter matches when one of them does.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
@@ -83,7 +83,9 @@ describe("the letters waiting from the folder", () => {
     const user = userEvent.setup();
     renderInbox();
     await user.click(within(await group()).getByRole("button", { name: "Keep private" }));
-    expect(await screen.findByText(/nothing in them was read/)).toBeInTheDocument();
+    expect(await screen.findByText("They stay on this computer and are never sent to Claude.")).toBeInTheDocument();
+    // never "nothing in them was read": Ordnung may have read the words in their pictures (ADR 0024)
+    expect(document.body.textContent).not.toMatch(/nothing in (it|them) (is|was) read/i);
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
     expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/wait")?.body).toEqual({
@@ -139,6 +141,7 @@ describe("the letters waiting from the folder", () => {
 
 describe("the letters waiting from the folder, while the Inbox is searched", () => {
   const SCANNER_TEXT_MATCH = "Found in your scanner's text — not checked";
+  const PICTURE_TEXT_MATCH = "Found in text Ordnung read from the picture — not checked";
   const waitingNames = (g: HTMLElement) =>
     within(within(g).getByRole("list", { name: "Letters not read yet" }))
       .getAllByRole("link")
@@ -165,6 +168,33 @@ describe("the letters waiting from the folder, while the Inbox is searched", () 
     // the answer is for exactly the letter listed
     await user.click(within(g).getByRole("button", { name: "Read it with Claude" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/read")?.body).toEqual({ doc_ids: ["doc_folder_scan"] }));
+  });
+
+  it("marks a waiting photo the search found by the text Ordnung read from it", async () => {
+    const { srv } = useMockApi();
+    // a photo the folder brought in (held, like Sam's scan), whose words Ordnung read itself (ADR 0024)
+    const scan = srv.db.document("doc_folder_scan")!;
+    srv.db.upsertDocument({ ...scan, id: "doc_folder_photo", filename: "IMG_20260928_1015.jpg", title: "IMG_20260928_1015.jpg", mime: "image/jpeg" });
+    srv.db.state.pictureText.doc_folder_photo = { 1: "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7" };
+    renderInbox("/inbox?q=Kellerabteil");
+    const g = await screen.findByRole("region", { name: "From your folder — not read yet, 1 of 4 letters" });
+    expect(waitingNames(g)).toEqual(["IMG_20260928_1015.jpg"]);
+    // its own line, with the scanner line's icon, and never the words themselves
+    const line = within(g).getByText(PICTURE_TEXT_MATCH).closest("p")!;
+    expect(line.querySelector("svg")).toHaveClass("lucide-scan-text");
+    expect(line.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+    expect(within(g).queryByText(SCANNER_TEXT_MATCH)).toBeNull();
+    expect(within(g).queryByText(/Kellerabteil/)).toBeNull();
+    // the list below says where the one that matches is
+    expect(await screen.findByRole("heading", { name: "1 letter not read yet matches “Kellerabteil”" })).toBeInTheDocument();
+    // the scan found by its scanner's text keeps the scanner's line, also when Ordnung read words there too
+    srv.db.state.pictureText.doc_folder_scan = { 1: "Wasserzähler" };
+    cleanup();
+    renderInbox(`/inbox?q=${encodeURIComponent("Wasserzähler")}`);
+    const scanned = await screen.findByRole("region", { name: "From your folder — not read yet, 1 of 4 letters" });
+    expect(waitingNames(scanned)).toEqual(["Scan_2026-09-28_0914.pdf"]);
+    expect(within(scanned).getByText(SCANNER_TEXT_MATCH)).toBeInTheDocument();
+    expect(within(scanned).queryByText(PICTURE_TEXT_MATCH)).toBeNull();
   });
 
   it("brings every waiting letter back when the search is cleared (the online demo as well)", async () => {

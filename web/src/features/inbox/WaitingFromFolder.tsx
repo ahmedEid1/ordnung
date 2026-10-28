@@ -5,7 +5,8 @@
  * "Keep private" keeps them on this computer for good (docs/privacy.md, "The watched folder").
  *
  * While the Inbox is searched (`found`), the group lists only the waiting letters the search found ("1 of
- * 3"), and its answers are for those; one found only in its scanner's text says so ("not checked", ADR 0020).
+ * 3"), and its answers are for those; one found only in its scanner's text (ADR 0020), or only in the words Ordnung
+ * read from its picture (ADR 0024), says so ("not checked").
  * A found e-mail is listed with its waiting attachments, since an answer for it is for them too.
  * A search that finds none of them hides the group until it is cleared.
  *
@@ -21,7 +22,7 @@ import { Link } from "react-router";
 import { FolderInput, Lock, ScanText, Sparkles } from "lucide-react";
 import type { ListedLetter, SearchFoundIn } from "@/api/types";
 import { useFolder, useKeepHeldPrivate, useReadHeld, useWaitAgain } from "@/api/hooks";
-import { SCANNER_TEXT_MATCH } from "@/lib/copy";
+import { uncheckedMatch } from "@/lib/copy";
 import { formatDateTime } from "@/lib/format";
 import { protectRefs } from "@/lib/glue";
 import { useTodayISO } from "@/lib/today";
@@ -85,7 +86,7 @@ export function WaitingFromFolder({
         const kept = res.documents.map((d) => d.id);
         const count = kept.length;
         toast.success(count === 1 ? "Kept private" : `Kept ${plural(count, "letter")} private`, {
-          description: `${count === 1 ? "It stays" : "They stay"} on this computer and ${count === 1 ? "is" : "are"} never sent to Claude — nothing in ${count === 1 ? "it" : "them"} was read.`,
+          description: `${count === 1 ? "It stays" : "They stay"} on this computer and ${count === 1 ? "is" : "are"} never sent to Claude.`,
           undo: count
             ? () =>
                 wait
@@ -117,7 +118,7 @@ export function WaitingFromFolder({
       <div className="card overflow-hidden">
         <ul className="divide-y divide-line" aria-label="Letters not read yet">
           {rows.map((row) => (
-            <WaitingItem key={row.doc.id} row={row} scannerText={found?.get(row.doc.id) === "scanner_text"} />
+            <WaitingItem key={row.doc.id} row={row} foundIn={found?.get(row.doc.id)} />
           ))}
         </ul>
         {phone ? (
@@ -154,9 +155,12 @@ export function WaitingFromFolder({
   );
 }
 
-function WaitingItem({ row, scannerText = false }: { row: WaitingRow; scannerText?: boolean }) {
+/** `foundIn`: where the search found the letter (`found_in`), while the Inbox is searched. */
+function WaitingItem({ row, foundIn = null }: { row: WaitingRow; foundIn?: SearchFoundIn | null }) {
   const today = useTodayISO();
   const { doc, email, nested } = row;
+  // found only in text nobody checked: the scanner's (ADR 0020) or Ordnung's own reading of the picture (ADR 0024)
+  const unchecked = uncheckedMatch(foundIn);
   // an e-mail is named by its subject and sender (read on this computer); anything else by its file name
   const title = doc.title ?? doc.filename;
   const emailName = email ? (email.title ?? email.filename) : "";
@@ -182,11 +186,11 @@ function WaitingItem({ row, scannerText = false }: { row: WaitingRow; scannerTex
             Attached to “{protectRefs(emailName)}”
           </p>
         ) : null}
-        {scannerText ? (
-          // as in the letters list: a line of its own, and never the scanner's text itself
+        {unchecked ? (
+          // as in the letters list: a line of its own, and never the text itself
           <p className="mt-1.5 flex min-w-0 items-start gap-1.5 text-[12.5px] leading-5 text-muted">
             <ScanText className="mt-[3px] size-3.5 shrink-0" aria-hidden />
-            <span className="min-w-0">{SCANNER_TEXT_MATCH}</span>
+            <span className="min-w-0">{unchecked}</span>
           </p>
         ) : null}
       </div>

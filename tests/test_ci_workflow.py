@@ -1,6 +1,6 @@
 """.github/workflows/ci.yml: the slow checks have a job of their own, every published benchmark number is
-replayed with a gate at that number, coverage has floors, and the weekly run checks the rules' age and the
-real Claude Code's flags."""
+replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the
+real Claude Code's flags, and a real Tesseract is installed only where a test needs it (ADR 0024)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from ordnung.doctor import native_install
+from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from test_docs_claims import WITHOUT_LAND
 
@@ -155,6 +155,8 @@ PER_SYSTEM_TESTS = (
     "tests/test_shortcut.py",  # the Mac bundle opened; the Windows link read back by the shell and opened
     "tests/test_encryption.py",  # no answer and no process on Windows; nothing in it depends on the system
     "tests/test_store_ledger_token.py",  # SQLite's data_version and TEMP triggers, in each system's own SQLite
+    "tests/test_ocr.py",  # Tesseract's places, priority, private temp folder and kill per system; missing there
+    "tests/test_doctor_pictures.py",  # "Not installed (optional)" with that system's install line
 )
 
 
@@ -163,6 +165,61 @@ def test_the_other_systems_job_runs_the_tests_whose_subject_differs_per_system()
     named = step["run"].replace("\\\n", " ").split()
     for name in PER_SYSTEM_TESTS:
         assert name in named, name
+
+
+#: what installs Tesseract with its German language data (Ubuntu's ``tesseract-ocr`` brings English with it)
+APT_TESSERACT = (
+    "sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends "
+    "tesseract-ocr tesseract-ocr-deu"
+)
+
+
+def _step(job: dict[str, Any], text: str) -> tuple[int, dict[str, Any]]:
+    """The one step of ``job`` whose script holds ``text``, and where it is."""
+    (found,) = [(index, step) for index, step in enumerate(job["steps"]) if text in step.get("run", "")]
+    return found
+
+
+def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None:
+    """Text in pictures (ADR 0024): Tesseract is an optional program, never a dependency. A real one, with German,
+    is installed only in the backend's 3.12 leg (the real-binary tests, which must run there instead of skipping)
+    and the end-to-end job (the real app reads a photo with OCR on). Every other job, the macOS and Windows runners
+    among them, tests the missing-binary path."""
+    jobs = _jobs()
+    # the packages the doctor's Linux line names
+    assert "sudo apt install tesseract-ocr tesseract-ocr-deu" in tesseract_install("linux")
+
+    backend = jobs["backend"]
+    at, install = _step(backend, "tesseract")
+    assert install["run"].strip() == APT_TESSERACT and install["if"] == "matrix.python == '3.12'"
+    tests_at, tests = _step(backend, 'pytest -m "not slow"')
+    assert at < tests_at
+    assert tests["env"]["ORDNUNG_REQUIRE_TESSERACT"] == "${{ matrix.python == '3.12' && '1' || '' }}"
+    assert tests["env"]["ORDNUNG_REQUIRE_TESSERACT"] == tests["env"]["ORDNUNG_REQUIRE_SAMPLES"]
+
+    e2e = jobs["e2e"]
+    at, install = _step(e2e, "tesseract")
+    assert install["run"].strip() == APT_TESSERACT and "if" not in install
+    playwright_at, playwright = _step(e2e, "npm run e2e")
+    assert at < playwright_at
+    assert playwright["env"] == {"ORDNUNG_E2E_OCR": "on", "ORDNUNG_REQUIRE_TESSERACT": "1"}
+
+    for name, job in jobs.items():
+        if name not in ("backend", "e2e"):
+            lines = _script(job).lower().splitlines()
+            assert not [line for line in lines if "install" in line and "tesseract" in line], name
+            assert "ORDNUNG_REQUIRE_TESSERACT" not in json.dumps(job), name
+    for test in ("tests/test_ocr.py", "tests/test_doctor_pictures.py"):
+        assert test in PER_SYSTEM_TESTS
+    doctor_tests = (ROOT / "tests" / "test_doctor_pictures.py").read_text(encoding="utf-8")
+    assert "ORDNUNG_REQUIRE_TESSERACT" in doctor_tests
+
+
+def test_the_installed_wheels_doctor_finds_text_in_pictures_optional_on_other_systems() -> None:
+    """Where Tesseract is missing (the macOS and Windows runners) the wheel's doctor shows *Text in pictures* as
+    ok: *Not installed (optional)*, never a warning that would say something is wrong."""
+    (step,) = [step for step in _jobs()["other-systems"]["steps"] if "run_doctor_sync" in step.get("run", "")]
+    assert 'check.id == "ocr"' in step["run"] and 'ocr.status == "ok"' in step["run"]
 
 
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:

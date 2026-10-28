@@ -438,6 +438,8 @@ function documentDetail(db: MockDb, id: string): DocumentDetail {
     // what the person chose about the letter, kept apart from its reading (`./taxChoices`, `./household`)
     tax_choice: taxChoiceOf(db, id),
     household: householdFor(db, d),
+    // the pages with words Ordnung read in their pictures (search only, never shown; none in the demo)
+    picture_text_pages: db.pictureTextPages(d),
   };
 }
 

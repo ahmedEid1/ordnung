@@ -164,6 +164,7 @@ export function makeDetail(d: Partial<DocumentDetail> = {}): DocumentDetail {
     scan_text_pages: [],
     tax_choice: null,
     household: NOBODY_ELSE,
+    picture_text_pages: [],
     ...d,
   };
 }

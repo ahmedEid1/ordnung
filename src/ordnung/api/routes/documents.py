@@ -34,7 +34,7 @@ from collections.abc import Sequence
 from datetime import date
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import (
     APIRouter,
@@ -55,6 +55,7 @@ from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, pho
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
+from ordnung.config import ocr_turned_off
 from ordnung.db.store import Store
 from ordnung.drafts.proof import PROOF_SOURCE
 from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
@@ -88,7 +89,6 @@ from ordnung.models import (
     LetterKind,
     PageInfo,
     ProofLink,
-    SearchFoundIn,
     Suggestion,
 )
 from ordnung.phone import PhoneRefusal
@@ -174,6 +174,10 @@ LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment
 #: What the route adds to each row of the list: where a search found the letter, and the person's own
 #: "For taxes" choice (``None``: none, Claude's mark counts).
 ROUTE_FIELDS = frozenset({"found_in", "tax_choice"})
+#: Where a search found a letter (route-local: ``models.SearchFoundIn`` stays, models.py is a digest file):
+#: ``letter`` — its own words; ``scanner_text`` — only in the text a scanner added (ADR 0020);
+#: ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
+LetterFoundIn = Literal["letter", "scanner_text", "picture_text"]
 
 _ROW_FIELDS: dict[str, Any] = {
     name: (field.annotation, field)
@@ -184,8 +188,9 @@ _ROW_FIELDS: dict[str, Any] = {
 DocumentRow = create_model(
     "DocumentRow",
     __config__=ConfigDict(json_schema_serialization_defaults_required=True),
-    # the published description stays as it was (D3's contract changes only the fields): the ROUTE_FIELDS
-    # are found_in and tax_choice, the person's own "For taxes" choice (None: none, Claude's mark counts)
+    # the published description stays as it was (D3's and D4's contracts change only the fields): the
+    # ROUTE_FIELDS are found_in (LetterFoundIn: models.SearchFoundIn and picture_text) and tax_choice, the
+    # person's own "For taxes" choice (None: none, Claude's mark counts)
     __doc__=(
         "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
         "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
@@ -197,7 +202,7 @@ DocumentRow = create_model(
     ),
     __module__=__name__,
     **_ROW_FIELDS,
-    found_in=(SearchFoundIn | None, None),
+    found_in=(LetterFoundIn | None, None),
     tax_choice=(bool | None, None),
 )
 
@@ -213,6 +218,13 @@ class LetterDetail(DocumentDetail):
     )
     #: Who the letter is for (all empty without a household).
     household: LetterFor = Field(default_factory=LetterFor)
+    picture_text_pages: list[int] = Field(
+        default_factory=list,
+        description=(
+            "The pages (1-based) whose words Ordnung read itself from the picture (Tesseract), kept for search "
+            "only: never shown, checked or sent to Claude."
+        ),
+    )
 
 
 class LetterRecord(Document):
@@ -254,9 +266,15 @@ def list_documents(
     references, bank details and file hash (``LEFT_OUT_OF_LIST``): the letter's own page has them. A
     letter's proof files (``source="proof"``) are listed with their letter, never here. The scanner's
     text counts only on pages without text of their own and is never returned (ADR 0020)."""
+    # the published description stays as it was (D4's contract changes only found_in's values): found_in
+    # is also ``picture_text`` — only in the unchecked text Ordnung read from the picture itself (ADR 0024),
+    # which counts only on pages without text of their own, is never returned, and doesn't count while
+    # ORDNUNG_OCR=off
     query = q.strip() if q else ""
-    # letters found in a scan's scanner text: kept apart from the indexes, ORed in here alone
+    # letters found in a scan's scanner text, or in the words Ordnung read in a picture: kept apart from the
+    # indexes, ORed in here alone (the picture's not while text in pictures is turned off)
     scanned = store.scan_text_matches(query) if query else set()
+    pictured = store.picture_text_matches(query) if query and not ocr_turned_off() else set()
     docs = store.list_documents(
         q=q,
         kind=kind,
@@ -268,16 +286,18 @@ def list_documents(
         offset=offset,
         ai_private=private,
         exclude_source=PROOF_SOURCE,
-        also_ids=scanned,
+        also_ids=scanned | pictured,
     )
-    listed_scans = scanned & {doc.id for doc in docs}
-    # of those, the ones its own words find too: a letter is "found in the scanner text" only otherwise
-    only_scanned = listed_scans - store.indexed_matches(query, listed_scans) if listed_scans else set()
+    listed = (scanned | pictured) & {doc.id for doc in docs}
+    # of those, the ones its own words find too: a letter is "found in" the unchecked text only otherwise
+    own = store.indexed_matches(query, listed) if listed else set()
 
-    def found_in(doc: Document) -> SearchFoundIn | None:
+    def found_in(doc: Document) -> LetterFoundIn | None:
         if not query:
             return None
-        return "scanner_text" if doc.id in only_scanned else "letter"
+        if doc.id not in listed or doc.id in own:
+            return "letter"
+        return "scanner_text" if doc.id in scanned else "picture_text"  # the scanner's text comes first
 
     choices = store.tax_choices()  # one read for every row
     return [
@@ -472,12 +492,14 @@ def _proof_of(store: Store, doc_id: str) -> list[ProofLink]:
 @router.get("/documents/{doc_id}", response_model=LetterDetail)
 def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> LetterDetail:
     """One letter with everything the viewer shows."""
-    # with the person's own "For taxes" choice and who the letter is for (LetterDetail)
+    # with the person's own "For taxes" choice, who the letter is for, and the pages whose words Ordnung read in
+    # the picture (LetterDetail; none while text in pictures is turned off, ADR 0024)
     detail = document_detail(store, doc_id, today)
     return LetterDetail.model_construct(
         **dict(detail),
         tax_choice=store.tax_choices().get(doc_id),
         household=letter_for(store, detail.document),
+        picture_text_pages=[] if ocr_turned_off() else store.picture_text_pages(doc_id),
     )
 
 

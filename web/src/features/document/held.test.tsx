@@ -156,6 +156,26 @@ describe("answering on the letter's page", () => {
     expect(await screen.findByRole("article", { name: "Scan_2026-09-28_0914.pdf" })).toBeInTheDocument();
   });
 
+  it("a waiting photo whose words Ordnung read never says nothing in it is read, before or after “Keep private”", async () => {
+    const { srv } = useMockApi();
+    // a photo the folder brought in (held), whose words Ordnung read itself (ADR 0024): its footer says so
+    const scan = srv.db.document("doc_folder_scan")!;
+    srv.db.upsertDocument({ ...scan, id: "doc_folder_photo", filename: "IMG_20260928_1015.jpg", title: "IMG_20260928_1015.jpg", mime: "image/jpeg" });
+    srv.db.state.pictureText.doc_folder_photo = { 1: "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7" };
+    const user = userEvent.setup();
+    renderPage("doc_folder_photo");
+    const card = await screen.findByRole("article", { name: "IMG_20260928_1015.jpg" });
+    expect(screen.getByText(/^Ordnung read the words in this photo itself/)).toBeInTheDocument();
+    const NOTHING_READ = /nothing in (it|them) (is|was) read/i;
+    expect(within(card).getByText(/never sent, but Claude never reads it, so nothing in it is filed\./)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(NOTHING_READ);
+    await user.click(within(card).getByRole("button", { name: "Keep private" }));
+    expect(await screen.findByText("Kept private")).toBeInTheDocument();
+    expect(screen.getByText("It stays on this computer and is never sent to Claude.")).toBeInTheDocument();
+    expect(screen.getByText(/^Ordnung read the words in this photo itself/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(NOTHING_READ);
+  });
+
   it("a letter kept private from the folder can wait again from its page — focus goes to the waiting card", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();

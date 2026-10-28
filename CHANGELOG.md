@@ -113,6 +113,16 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   their own letters (for a child, it goes out in yours). A paired phone can file letters but not change the
   list, and *Download a copy of your records* holds it. Their letters' dates, reminders and numbers stay yours,
   and Ask and Ideas still treat them as yours.
+- **Words in private photos are searchable (optional).** With Tesseract installed, a free program Ordnung
+  doesn't install, Ordnung reads the words in the photos and scans Claude isn't reading: kept private, waiting
+  from your watched folder or for Claude, or that couldn't be read. Tesseract runs on the computer Ordnung runs
+  on, one page at a time at low priority, and nothing is sent anywhere to read a picture. The words are kept
+  with the letter's page images for search only: a letter found that way says *Found in text Ordnung read from
+  the picture — not checked*, and its page says which of its pages Ordnung read. They are never shown as the
+  letter's words, never used to check a date or an amount, and never sent to Claude; Ask doesn't search them.
+  Once Claude reads a page, what Ordnung read there is removed. `ordnung doctor` says whether Ordnung found
+  Tesseract (*Text in pictures*) and how to install it, and `ORDNUNG_OCR=off` turns it off
+  ([ADR 0024](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)).
 - **Releases.** A version tag builds the wheel and the source package, checks them, and publishes a GitHub
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
@@ -261,6 +271,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the
   letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile
   is filed as before (on an updated computer it starts unfiled).
+- Tesseract is optional and Ordnung doesn't install it; `ordnung doctor` gives the line for your system. A
+  computer still on 0.2.0 finds a private photo only by its name, as before, and deletes the words Ordnung read
+  in it with the letter.
 
 ## 0.2.0 — 2026-10-08
 

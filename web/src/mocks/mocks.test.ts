@@ -813,3 +813,62 @@ describe("the person's own choices beside the letters (D3: For taxes, the househ
     expect(Array.isArray(vectors)).toBe(true);
   });
 });
+
+describe("text Ordnung read from a picture (ADR 0024): search only, like the scanner's", () => {
+  it("finds a letter by the text Ordnung read from its picture once seeded, and marks it, like the API", async () => {
+    const s = srv();
+    expect(await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil")).toEqual([]);
+    // Sam's held invoice: Ordnung read words on its first page and none on its second
+    s.db.state.pictureText.doc_folder_invoice = { 1: "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7", 2: "" };
+    const found = await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil");
+    expect(found.map((d) => [d.id, d.found_in])).toEqual([["doc_folder_invoice", "picture_text"]]);
+    // its own words find it as the letter
+    const byName = await get<DocumentRow[]>(s, "/documents", "q=FunkNetz");
+    expect(byName.find((d) => d.id === "doc_folder_invoice")?.found_in).toBe("letter");
+    // its page names the pages with words, never the words
+    const page = await get<DocumentDetail>(s, "/documents/doc_folder_invoice");
+    expect(page.picture_text_pages).toEqual([1]);
+    expect(JSON.stringify(page)).not.toContain("Kellerabteil");
+    expect(JSON.stringify(found)).not.toContain("Kellerabteil");
+    // a scan's scanner text wins when both find it
+    s.db.state.pictureText.doc_folder_scan = { 2: "Wasserzähler Kellerabteil" };
+    const both = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(both.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("scanner_text");
+    // once Claude read the letter, what Ordnung read from its picture no longer counts
+    s.db.document("doc_folder_invoice")!.ai_processed_at = "2026-09-28T10:00:00Z";
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_invoice")).picture_text_pages).toEqual([]);
+    const after = await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil");
+    expect(after.map((d) => d.id)).toEqual(["doc_folder_scan"]);
+  });
+
+  it("the static demo keeps no picture text, like the Python demo", async () => {
+    for (const staticDemo of [true, false]) {
+      const s = createMockServer({ staticDemo, latency: 0 });
+      expect(s.db.state.pictureText).toEqual({});
+      for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).picture_text_pages, d.id).toEqual([]);
+      for (const q of ["Stadtwerke", "Rechnung", "Wasserzähler", "2026"]) {
+        const rows = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent(q)}`);
+        expect(rows.length, q).toBeGreaterThan(0);
+        expect(rows.filter((row) => row.found_in === "picture_text").map((row) => row.id), q).toEqual([]);
+      }
+    }
+  });
+
+  it("a letter kept private in the static demo stays found by its name only: a browser runs no Tesseract", async () => {
+    const s = createMockServer({ staticDemo: true, latency: 0 });
+    // Sam's waiting letters, kept private: in the installed app with Tesseract, letters Ordnung would read itself
+    const res = await s.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan", "doc_folder_mail", "doc_folder_invoice"] });
+    expect(res.ok, `keep-private → ${res.status}`).toBe(true);
+    const kept = s.db.liveDocuments().filter((d) => d.id.startsWith("doc_folder_") && d.ai_private && d.status === "processed");
+    expect(kept.map((d) => d.id).sort()).toEqual(["doc_folder_invoice", "doc_folder_mail", "doc_folder_scan"]);
+    expect(s.db.state.pictureText).toEqual({});
+    for (const d of kept) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).picture_text_pages, d.id).toEqual([]);
+    // the scan keeps its scanner's text (ADR 0020); nothing is found in a picture's
+    const found = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(found.map((d) => [d.id, d.found_in])).toEqual([["doc_folder_scan", "scanner_text"]]);
+    for (const d of kept) {
+      const rows = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent(d.filename.replace(/\.[^.]+$/, ""))}`);
+      expect(rows.find((row) => row.id === d.id)?.found_in, d.filename).toBe("letter");
+    }
+  });
+});

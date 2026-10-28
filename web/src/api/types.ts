@@ -537,8 +537,9 @@ export type Document = Schemas["Document"];
  * A letter as `GET /api/documents` lists it: without what Claude read from inside it in detail (explanation,
  * key facts, references, bank details) and the file hash — the letter's own page (`GET /api/documents/{id}`)
  * has them — and with `found_in`, where a search found it (`letter`: its own words; `scanner_text`: only in
- * the unchecked text a scanner added; null: the list wasn't searched), and `tax_choice`, the person's own
- * "For taxes" choice (null: none, Claude's mark `tax_relevant` counts).
+ * the unchecked text a scanner added; `picture_text`: only in the unchecked text Ordnung read from the picture
+ * itself, ADR 0024; null: the list wasn't searched), and `tax_choice`, the person's own "For taxes" choice (null:
+ * none, Claude's mark `tax_relevant` counts).
  */
 export type DocumentRow = Schemas["DocumentRow"];
 /**
@@ -608,7 +609,8 @@ export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 /**
  * The letter's page (`GET /api/documents/{id}`, `LetterDetail`): everything the viewer shows, the person's own
- * "For taxes" choice (`tax_choice`, null: none) and who the letter is for (`household`).
+ * "For taxes" choice (`tax_choice`, null: none), who the letter is for (`household`) and the pages whose words
+ * Ordnung read from the picture itself (`picture_text_pages`, search only, ADR 0024).
  */
 export type DocumentDetail = Schemas["LetterDetail"];
 /** A GiroCode (EPC QR) for one payment — or why there is none — worked out on read by the server. */

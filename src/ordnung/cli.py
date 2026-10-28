@@ -1487,7 +1487,7 @@ def doctor(
     probe: Annotated[bool, typer.Option("--probe", help="Also make one tiny live call to Claude.")] = False,
     data_dir: DataDirOption = None,
 ) -> None:
-    """Check Claude, search, fonts, the web app and your data folder (zero tokens)."""
+    """Check Claude, search, fonts, the web app, text in pictures and your data folder (zero tokens)."""
     from ordnung.doctor import run_doctor_sync
 
     folder = _folder(ctx, data_dir)
@@ -1500,9 +1500,17 @@ def doctor(
     for check in report.checks:
         table.add_row(STATUS_ICONS[check.status], escape(check.label), escape(check.detail))
     console.print(table)
+    # a fix often holds a command to copy: one line each, which the terminal wraps softly (a hard break inside
+    # `sudo apt install …` would paste as two commands)
     for check in report.checks:
         if check.fix and check.status in ("warn", "fail"):
-            console.print(f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}")
+            console.print(
+                f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}", soft_wrap=True
+            )
+    # an ok row with a fix (Text in pictures: not installed) is a tip, not a problem
+    for check in report.checks:
+        if check.fix and check.status == "ok":
+            console.print(f"[dim]Optional — {escape(check.label)}: {escape(check.fix)}[/]", soft_wrap=True)
     if not report.ok:
         raise typer.Exit(1)
 
@@ -1945,14 +1953,14 @@ def shortcut(
         )
         console.print(f"  [bold]{escape(str(planned.path))}[/]", soft_wrap=True)
         console.print(escape(planned.shown()), style="dim", soft_wrap=True)
-        opt_out = os.environ.get(launcher.TELEMETRY_OPT_OUT)
-        if planned.system == "windows" and opt_out:
-            name = launcher.TELEMETRY_OPT_OUT
-            console.print(
-                f"[yellow]![/] The Start-menu shortcut can't carry {name}. To keep it for Ordnung opened "
-                f"from there, set it for your account: setx {name} {escape(opt_out)}",
-                soft_wrap=True,
-            )
+        for name in launcher.SWITCHES if planned.system == "windows" else ():
+            value = os.environ.get(name)
+            if value:
+                console.print(
+                    f"[yellow]![/] The Start-menu shortcut can't carry {name}. To keep it for Ordnung opened "
+                    f"from there, set it for your account: setx {name} {escape(value)}",
+                    soft_wrap=True,
+                )
         if dry_run:
             console.print("Nothing was written (--dry-run).")
             return

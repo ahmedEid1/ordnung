@@ -35,6 +35,7 @@ from typer.testing import CliRunner
 
 from ordnung import autostart, cli, shortcut
 from ordnung.cli import app
+from ordnung.config import OCR_SWITCH
 from ordnung.locking import DataDirLocked
 from ordnung.server import ServerInfo
 from ordnung.shortcut import (
@@ -244,6 +245,42 @@ def test_no_path_no_env_wrapper(tmp_path: Path) -> None:
         f"{shortcut.TELEMETRY_OPT_OUT}=1",
         PY,
     ]
+
+
+def test_the_launchers_record_the_off_switch_for_text_in_pictures(tmp_path: Path) -> None:
+    """ADR 0024: ``ORDNUNG_OCR=off`` set where ``ordnung shortcut`` runs reaches the Ordnung it starts, as the
+    telemetry opt-out does (after it), on Linux and macOS. A Windows shortcut carries no variables: its bytes
+    don't change (``setx`` reaches it). Unset or empty, nothing names it."""
+    folder = tmp_path / "data"
+    off = {shortcut.TELEMETRY_OPT_OUT: "1", OCR_SWITCH: "off"}
+    linux = plan(folder, platform="linux", env=linux_env(**off), home=tmp_path, python=PY)
+    words = desktop_unquote(exec_value(linux))
+    telemetry = f"{shortcut.TELEMETRY_OPT_OUT}=1"
+    assert words[:5] == ["/usr/bin/env", f"PATH={PATH_ENV}", telemetry, "ORDNUNG_OCR=off", PY]
+
+    mac = plan(folder, platform="darwin", env=linux_env(**off), home=tmp_path, python=PY)
+    for script in ("Ordnung", "Ordnung.command"):
+        lines = text_of(file_named(mac, script)).splitlines()
+        exports = [line for line in lines if line.startswith("export ")]
+        assert exports == [
+            f"export PATH={sh_quote(PATH_ENV)}",
+            f"export {shortcut.TELEMETRY_OPT_OUT}='1'",
+            "export ORDNUNG_OCR='off'",
+        ], script
+
+    env = windows_env(tmp_path)
+    plain_link = plan(folder, platform="win32", env=env, home=tmp_path, python=PY)
+    switched = plan(folder, platform="win32", env={**env, **off}, home=tmp_path, python=PY)
+    assert switched.link == plain_link.link
+    assert file_named(switched, LNK).content == file_named(plain_link, LNK).content
+
+    for platform in ("linux", "darwin"):
+        before = plan(folder, platform=platform, env=linux_env(), home=tmp_path, python=PY)
+        empty = plan(folder, platform=platform, env=linux_env(ORDNUNG_OCR=""), home=tmp_path, python=PY)
+        assert [file.content for file in empty.files[:3]] == [file.content for file in before.files[:3]]
+        assert all(b"ORDNUNG_OCR" not in (file.content or b"") for file in before.files)
+    with pytest.raises(ShortcutError, match="line break"):
+        plan(folder, platform="darwin", env=linux_env(ORDNUNG_OCR="off\nrm -rf"), home=tmp_path, python=PY)
 
 
 def test_the_icon_points_into_this_installation_or_is_left_out(
@@ -1520,6 +1557,29 @@ def test_windows_says_the_shortcut_can_t_carry_the_telemetry_opt_out(
         f"! The Start-menu shortcut can't carry {name}. To keep it for Ordnung opened from there, "
         f"set it for your account: setx {name} 1"
     ) in dry.output
+
+
+def test_windows_says_the_shortcut_can_t_carry_the_off_switch_for_text_in_pictures(
+    fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR 0024: ``setx ORDNUNG_OCR off`` is how a Windows shortcut's Ordnung gets the switch; the command says so
+    when it is set here. Linux and macOS record it, so they say nothing."""
+    for name, value in windows_env(fake_home).items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv(OCR_SWITCH)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert OCR_SWITCH not in invoke("shortcut", "--data-dir", str(tmp_path / "data"), "--dry-run").output
+    monkeypatch.setenv(OCR_SWITCH, "off")
+    dry = invoke("shortcut", "--data-dir", str(tmp_path / "data"), "--dry-run")
+    assert dry.exit_code == 0, dry.output
+    assert (
+        f"! The Start-menu shortcut can't carry {OCR_SWITCH}. To keep it for Ordnung opened from there, "
+        f"set it for your account: setx {OCR_SWITCH} off"
+    ) in dry.output
+    assert shortcut.TELEMETRY_OPT_OUT not in dry.output
+    monkeypatch.setattr(sys, "platform", "darwin")
+    mac = invoke("shortcut", "--data-dir", str(tmp_path / "data"), "--dry-run")
+    assert mac.exit_code == 0 and "setx" not in mac.output
 
 
 def test_the_shortcut_command_is_listed() -> None:

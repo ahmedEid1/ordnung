@@ -496,6 +496,23 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     expect(set.region_suggestion).toBeNull();
   });
 
+  it("a letter found by the words Ordnung read in its picture answers in the API's shape (ADR 0024)", async () => {
+    srv.db.state.pictureText.doc_folder_invoice = { 1: "Ihr Kellerabteil 7" };
+    const problems: string[] = [];
+    const answers: unknown[] = [];
+    for (const run of [() => api.documents({ q: "Kellerabteil" }), () => api.document("doc_folder_invoice")]) {
+      const before = exchanges.length;
+      answers.push(await run());
+      const { method, url, response } = exchanges[before]!;
+      const match = operationFor(method, url.pathname)!;
+      problems.push(...(await responseProblems(match.op, response)).map((p) => `${method} ${url.pathname}: ${p}`));
+    }
+    expect(problems).toEqual([]);
+    const [rows, page] = answers as [DocumentRow[], { picture_text_pages: number[] }];
+    expect(rows.map((row) => row.found_in)).toEqual(["picture_text"]);
+    expect(page.picture_text_pages).toEqual([1]);
+  });
+
   it("the mock streams Ask answers exactly like the API (default message events, checked `done`)", async () => {
     const events = await drain(api.ask({ question: "What did the Finanzamt send me?" }));
     const done = events.at(-1)!;

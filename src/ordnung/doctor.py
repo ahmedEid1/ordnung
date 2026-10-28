@@ -8,9 +8,14 @@ the bundled letter fonts and the built web app; when the last copy kept elsewher
 hand-off sync's save: :mod:`ordnung.backup.reminder`) and whether the disk under the data folder is
 encrypted (:mod:`ordnung.encryption`, on macOS and Linux) — both only ever warn — and, while hand-off sync
 is connected, the sync folder (reachable), the password store (usable), the mode and the age of the last
-save, never reading the passphrase. ``probe=True`` adds one tiny live model call. The
-structured :class:`DoctorReport` feeds the CLI, ``/api/health`` (via :func:`claude_status`) and the
-Settings page.
+save, never reading the passphrase. Right after the web app, *Text in pictures* (ADR 0024) says whether
+Ordnung found Tesseract, the optional program that reads the words in photos and scans Claude isn't reading,
+for search only. ``probe=True`` adds one tiny live model call. The structured :class:`DoctorReport` feeds the
+CLI, ``/api/health`` (via :func:`claude_status`) and the Settings page.
+
+A row's ``fix`` is usually for a row that isn't ok (``models.DoctorCheck`` says so, and stays as it is: it is a
+digest file). One ok row carries a fix too: *Text in pictures* — *Not installed (optional)* names how to install
+Tesseract, and the CLI prints it as an *Optional —* tip, never as a problem.
 """
 
 from __future__ import annotations
@@ -23,20 +28,23 @@ import shutil
 import sqlite3
 import sys
 import tempfile
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
 from ordnung import clock, encryption
 from ordnung.backup import reminder
-from ordnung.config import Paths, web_dist_dir
+from ordnung.config import OCR_SWITCH, Paths, ocr_turned_off, web_dist_dir
 from ordnung.db.migrate import SchemaError, applied_versions, current_version, discover
 from ordnung.llm import claude_cli
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, parse_version, version_text
 from ordnung.models import CheckStatus, ClaudeStatus, DoctorCheck
+
+if TYPE_CHECKING:
+    from ordnung.ingest.ocr import Tesseract
 
 # re-exported: the check models live in ordnung.models, the version floor with the backend that keeps to it
 __all__ = ["MIN_CLAUDE_VERSION", "CheckStatus", "DoctorCheck", "parse_version"]
@@ -602,6 +610,99 @@ def web_ui_check() -> DoctorCheck:
 
 
 # --------------------------------------------------------------------------------------------------
+# Text in pictures (ADR 0024)
+# --------------------------------------------------------------------------------------------------
+
+#: How :func:`text_in_pictures_check` asks for Tesseract (by default :func:`ordnung.ingest.ocr.find`, looking again).
+FindTesseract = Callable[[], "Tesseract | None"]
+#: Where Windows gets Tesseract: UB Mannheim's installer (it asks which language data to add).
+TESSERACT_WINDOWS_URL = "https://github.com/UB-Mannheim/tesseract/wiki"
+_LANGUAGE_NAMES = {"deu": "German", "eng": "English"}
+
+
+def tesseract_install(platform: str = sys.platform) -> str:
+    """How to install Tesseract with its German language data on ``platform``. It ends "then restart Ordnung":
+    Ordnung looks for Tesseract when it starts. The README gives the same lines."""
+    if platform == "win32":
+        return (
+            f"the installer from {TESSERACT_WINDOWS_URL}, with German ticked under “Additional language data”, "
+            "then restart Ordnung."
+        )
+    if platform == "darwin":
+        return "`brew install tesseract tesseract-lang`, then restart Ordnung."
+    return (
+        "`sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora: `sudo dnf install tesseract "
+        "tesseract-langpack-deu`), then restart Ordnung."
+    )
+
+
+def tesseract_german(platform: str = sys.platform) -> str:
+    """How to add German to a Tesseract installed on ``platform``."""
+    if platform == "win32":
+        return (
+            "Run the Tesseract installer again and tick German under “Additional language data”, then restart "
+            "Ordnung."
+        )
+    if platform == "darwin":
+        return "Install the German language data: `brew install tesseract-lang`, then restart Ordnung."
+    return (
+        "Install the German language data: `sudo apt install tesseract-ocr-deu` (Fedora: `sudo dnf install "
+        "tesseract-langpack-deu`), then restart Ordnung."
+    )
+
+
+def text_in_pictures_check(
+    *, platform: str = sys.platform, env: Mapping[str, str] | None = None, find: FindTesseract | None = None
+) -> DoctorCheck:
+    """Whether Ordnung reads the words in photos and scans Claude isn't reading (ADR 0024): the Tesseract it
+    found, with its version and languages. Tesseract is optional, so this row never fails: *Not installed
+    (optional)* is ok, with this system's install line as its fix; a Tesseract Ordnung can't use (older than 4.1,
+    without German, or one that didn't answer) warns and says what to do. Turned off (``ORDNUNG_OCR=off``) it is
+    ok and looks for nothing. Otherwise it looks again on every run (``find``: tests pass their own)."""
+    label = "Text in pictures"
+    if ocr_turned_off(env):
+        return DoctorCheck(id="ocr", label=label, status="ok", detail=f"Turned off ({OCR_SWITCH}=off)")
+    from ordnung.ingest import ocr
+
+    engine = find() if find is not None else ocr.find(refresh=True, platform=platform, env=env)
+    if engine is None:
+        return DoctorCheck(
+            id="ocr",
+            label=label,
+            status="ok",
+            detail="Not installed (optional)",
+            fix="To find photos and scans Claude doesn't read by their words, install Tesseract: "
+            + tesseract_install(platform),
+        )
+    if engine.version is None:
+        detail = f"Tesseract at {engine.path} didn't answer, so Ordnung reads no pictures"
+        fix = f"Install it again: {tesseract_install(platform)}"
+        return DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
+    version = ".".join(str(part) for part in engine.version)
+    if engine.version < ocr.MIN_VERSION:
+        needed = ".".join(str(part) for part in ocr.MIN_VERSION)
+        detail = f"Tesseract {version} is too old: Ordnung needs {needed} or newer, so it reads no pictures"
+        fix = f"Install a newer one: {tesseract_install(platform)}"
+        return DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
+    if "deu" not in engine.languages:
+        missing = (
+            "no German language data: words with ä, ö, ü or ß are often misread"
+            if engine.languages
+            else "neither German nor English language data, so Ordnung reads no pictures"
+        )
+        detail = f"Tesseract {version} has {missing}"
+        return DoctorCheck(
+            id="ocr", label=label, status="warn", detail=detail, fix=tesseract_german(platform)
+        )
+    languages = " and ".join(_LANGUAGE_NAMES[language] for language in engine.languages)
+    detail = (
+        f"Tesseract {version} ({languages}): photos and scans Claude doesn't read are found by their words, "
+        "not checked"
+    )
+    return DoctorCheck(id="ocr", label=label, status="ok", detail=detail)
+
+
+# --------------------------------------------------------------------------------------------------
 # All together
 # --------------------------------------------------------------------------------------------------
 
@@ -615,6 +716,7 @@ def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
         sqlite_check(),
         fonts_check(),
         web_ui_check(),
+        text_in_pictures_check(),
         data_dir_check(folder),
         database_check(folder),
         disk_check(folder),

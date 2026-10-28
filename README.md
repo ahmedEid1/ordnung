@@ -424,12 +424,13 @@ paired with a one-time code, and never their requests for settings, backups or d
 it, also one you write there that carries your IBAN). Settings show what each feature
 sends and a usage log per document; the address and IBAN in your profile, the people you list as your
 household and your *For taxes* choices are never put into a prompt.
-Files from a watched folder are sent to Claude only after you say so. *Export letters* puts your original
-letters, unencrypted, into a ZIP you save, only when you click it and never from a phone. Calendar sync,
-off until you connect a calendar, is the only feature that sends anything readable to another third party
-(your calendar provider), by default only dates with generic titles. If you turn on hand-off sync between
-your computers, your own sync tool receives only encrypted files with meaningless names: the passphrase stays in each
-computer's password store, and the provider learns how many files there are, roughly how large, and when
+Files from a watched folder are sent to Claude only after you say so. Tesseract, if you install it to find
+photos by their words, runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture.
+*Export letters* puts your original letters, unencrypted, into a ZIP you save, only when you click it and never
+from a phone. Calendar sync, off until you connect a calendar, is the only feature that sends anything readable
+to another third party (your calendar provider), by default only dates with generic titles. If you turn on
+hand-off sync between your computers, your own sync tool receives only encrypted files with meaningless names:
+the passphrase stays in each computer's password store, and the provider learns how many files there are, roughly how large, and when
 they change — never what is in them. Details in [docs/privacy.md](docs/privacy.md).
 
 Ordnung doesn't encrypt the data folder itself, so turn on your disk's encryption: FileVault on a Mac,
@@ -449,19 +450,20 @@ with Anthropic's installer — `curl -fsSL https://claude.ai/install.sh | bash` 
 way it updates itself; `claude update` updates it at once. Ordnung calls it in headless mode; there is
 nothing else to configure. Without Claude you can still store letters privately, find them by name or by the
 text in the file (a PDF's own text, or the text a scanner added to a scan — kept for search only, never checked
-or sent to Claude; a photo only by its name) and add your own dates (Timeline → Add a date, or on a letter's
-page), also ones that repeat. A letter added while Claude isn't installed, isn't signed in or is older than
-2.1.0 waits (*Waiting for Claude*) instead of failing, and is read once Claude is ready, without a restart;
-meanwhile search finds it by the words in its PDF. CI tests Ordnung on Linux. A CI job on macOS and Windows
-(weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`, and
-runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
-access's network lookups and certificates, autostart entries, app-menu shortcuts and backups. The other
-tests, desktop notifications, starting at a real login, and phone access and sync between real devices are
-not tested on macOS or Windows.
+or sent to Claude; a photo by its name, and by the words Ordnung reads in it when Tesseract is installed, kept
+the same way) and add your own dates (Timeline → Add a date, or on a letter's page), also ones that repeat. A
+letter added while Claude isn't installed, isn't signed in or is older than 2.1.0 waits (*Waiting for Claude*)
+instead of failing, and is read once Claude is ready, without a restart; meanwhile search finds it by the words
+in its PDF. CI tests Ordnung on Linux, with a real Tesseract for text in pictures. A CI job on macOS and
+Windows (weekly and on main, not yet required to pass) installs Ordnung, checks the demo and `ordnung doctor`,
+and runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
+access's network lookups and certificates, autostart entries, app-menu shortcuts, backups and text in pictures
+(looking for Tesseract, which isn't installed there). The other tests, desktop notifications, starting at a
+real login, and phone access and sync between real devices are not tested on macOS or Windows.
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
-ordnung doctor                  # checks Claude, search, fonts, your data folder and database, your last backup, disk encryption
+ordnung doctor                  # checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption
 ordnung serve                   # the web app on http://127.0.0.1:8765
 ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed
 ordnung add ~/Downloads/*.pdf   # or drag files into the app
@@ -474,6 +476,23 @@ ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung res
 `ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed
 in or updated, or for its usage limit to pass (it is stored and read once Claude is ready).
 
+**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or that
+couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data. Ordnung doesn't
+install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same line for your
+system:
+
+- Linux: `sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora:
+  `sudo dnf install tesseract tesseract-langpack-deu`), then restart Ordnung.
+- macOS: `brew install tesseract tesseract-lang`, then restart Ordnung.
+- Windows: the installer from https://github.com/UB-Mannheim/tesseract/wiki, with German ticked under
+  “Additional language data”, then restart Ordnung.
+
+Tesseract runs on the computer Ordnung runs on, one page at a time at low priority: nothing is sent anywhere
+to read a picture. The words are kept for your letter search only, marked *not checked*, and are never shown,
+checked or sent to Claude
+([ADR 0024](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)).
+`ORDNUNG_OCR=off` turns it off ([how](docs/privacy.md#words-in-pictures-optional)).
+
 **Without a terminal.** `ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
 your app menu on Linux, `Ordnung.app` in the Applications folder of your home folder on a Mac (Launchpad,
 Spotlight and the Dock take it), or a shortcut in your Start menu on Windows. It prints what it writes, and
@@ -482,9 +501,9 @@ browser in. When Ordnung isn't running, it starts in a window of its own, and cl
 Ordnung; when it already runs (for example because it starts at login), only the browser opens, after a
 terminal window flashes on Linux and Windows. Ordnung is never started without a window you can see. The
 shortcut opens the data folder it was added for. On Linux and macOS it records this terminal's `PATH`, as
-start at login does, so Ordnung finds the same `claude`: run `ordnung shortcut` again after moving Claude
-Code. `ordnung shortcut --remove` takes it out again. It never replaces or removes a file it didn't write,
-and it doesn't add the demo, which opens with `ordnung demo`.
+start at login does, so Ordnung finds the same `claude` and Tesseract: run `ordnung shortcut` again after
+moving Claude Code. `ordnung shortcut --remove` takes it out again. It never replaces or removes a file it
+didn't write, and it doesn't add the demo, which opens with `ordnung demo`.
 
 - **Linux:** the entry asks your desktop for a terminal window to run in. GNOME, KDE and most desktops
   have one; on a desktop without a terminal it knows (some minimal window managers), opening the entry
@@ -494,8 +513,8 @@ and it doesn't add the demo, which opens with `ordnung demo`.
   When Ordnung isn't running, the app opens a Terminal window that runs Ordnung, and Terminal asks before
   you close that window while Ordnung runs.
 - **Windows:** right-click it in the Start menu to pin it to the taskbar. A shortcut can't carry
-  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal, `ordnung shortcut` prints the
-  `setx` command that sets it for your account.
+  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` or `ORDNUNG_OCR`: when one is set in your terminal,
+  `ordnung shortcut` prints the `setx` command that sets it for your account.
 
 CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
 reads its target and opens it; opening it from the desktop's own menu isn't tested on any system.
@@ -662,12 +681,15 @@ More in [docs/architecture.md](docs/architecture.md).
   postcodes), when the address names another country, or when it contradicts the state you set for your own
   town. A suggestion can be wrong (a central mail centre in another state, a misread digit): the question
   shows the postcode so you can check.
-- No OCR of its own: photos and scans are transcribed by Claude, so they need a model call. JPEG photos
-  above about 179 megapixels (some phones' 200 MP mode), and PNG, WebP or HEIC images above about 89.5
-  megapixels, are refused; take the photo at normal resolution. The text a scanner adds to a PDF (a
-  "searchable PDF") is kept for search only and isn't checked: a letter found by it says so, and it is never
-  shown as the letter's words, used to check a date or an amount, or sent to Claude. A photo kept private,
-  or waiting for Claude, is found only by its name.
+- Photos and scans are read by Claude, so reading them needs a model call; Ordnung's own text recognition
+  (optional, with Tesseract) is for search only. JPEG photos above about 179 megapixels (some phones' 200 MP
+  mode), and PNG, WebP or HEIC images above about 89.5 megapixels, are refused; take the photo at normal
+  resolution. The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn't checked:
+  a letter found by it says so, and it is never shown as the letter's words, used to check a date or an
+  amount, or sent to Claude. With Tesseract installed, the words Ordnung reads in a photo or scan Claude isn't
+  reading are kept the same way, marked *not checked*; Tesseract often misreads handwriting, creased paper and
+  small print, so such a letter may not be found by every word on it. Without Tesseract, a photo kept
+  private, waiting or that couldn't be read is found only by its name.
 - Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
   the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
   Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
@@ -785,8 +807,9 @@ More in [docs/architecture.md](docs/architecture.md).
   [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md),
   [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md),
   [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md),
-  [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)
-  and [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)
+  [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md),
+  [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)
+  and [0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)
 
 ## How this was built
 

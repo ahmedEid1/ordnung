@@ -2747,7 +2747,8 @@ def test_the_changelog_fixes_waiting_letters_search_and_says_what_an_older_compu
 
 def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
     """README "Also:" names the three features, and Install says what search finds without Claude: a PDF's own
-    text or the text a scanner added (search only), a photo by its name; a waiting letter by its PDF's words."""
+    text or the text a scanner added (search only), a photo by its name and, with Tesseract installed, by the
+    words Ordnung reads in it (ADR 0024); a waiting letter by its PDF's words."""
     also = _flat(_tour().split("**Also:**", 1)[1])
     for words in (
         "*tax year* — a year's letters for your tax return, by the date on them",
@@ -2760,7 +2761,8 @@ def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None
     assert (
         "Without Claude you can still store letters privately, find them by name or by the text in the file (a "
         "PDF's own text, or the text a scanner added to a scan — kept for search only, never checked or sent to "
-        "Claude; a photo only by its name) and add your own dates"
+        "Claude; a photo by its name, and by the words Ordnung reads in it when Tesseract is installed, kept the "
+        "same way) and add your own dates"
     ) in install
     assert "meanwhile search finds it by the words in its PDF" in install
 
@@ -2838,7 +2840,8 @@ def test_the_letters_zip_is_for_the_computer_only_and_leaves_it_only_as_the_zip_
 def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
     """docs/privacy.md: a scan's scanner text lives with its page images under ``derived/``, which backups and
     hand-off sync carry (``backup.archive.FOLDERS``, ``sync.SYNCED_DIRS``) — so no document says it stays "on this
-    computer only"."""
+    computer only". The same holds for the words Ordnung reads in a picture with Tesseract (ADR 0024), kept
+    beside it."""
     assert "derived" in FOLDERS and "derived" in sync.SYNCED_DIRS
     privacy = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
     (row,) = [line for line in privacy.splitlines() if line.startswith("| A scanner's text")]
@@ -2847,16 +2850,19 @@ def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
         _privacy_section("Your controls").split("**Keep private — no AI**", 1)[1].split(" - **", 1)[0]
     )
     assert (
-        "the text a scanner added to a scan, kept for search only (a photo only by its name)" in keep_private
+        "the text a scanner added to a scan, kept for search only; a photo by its name, and by the words Ordnung "
+        "reads in it if you installed Tesseract, kept the same way" in keep_private
     )
     scanner_words = re.compile(
         r"scanner's text|scanner text|text a scanner|text your scanner|scan-text\.json|OCR"
+        r"|picture text|picture-text\.json|Tesseract|text Ordnung read|words Ordnung read"
     )
     for name in ("README.md", "CHANGELOG.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md"):
         for chunk in re.split(r"\n\s*\n|\n\s*[-*] |\n\|", (ROOT / name).read_text(encoding="utf-8")):
             if scanner_words.search(chunk):
                 assert "computer only" not in _flat(chunk), (name, _flat(chunk)[:160])
     assert "computer only" not in _adr(_ADR_SCANS)
+    assert "computer only" not in _adr(_ADR_PICTURES)
 
 
 def test_the_moving_docs_cite_no_law_but_the_duty_to_register() -> None:
@@ -3137,7 +3143,7 @@ def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
         "when it already runs (for example because it starts at login), only the browser opens",
         "Ordnung is never started without a window you can see.",
         "On Linux and macOS it records this terminal's `PATH`, as start at login does, so Ordnung finds the "
-        "same `claude`: run `ordnung shortcut` again after moving Claude Code.",
+        "same `claude` and Tesseract: run `ordnung shortcut` again after moving Claude Code.",
         "`ordnung shortcut --remove` takes it out again. It never replaces or removes a file it didn't write, "
         "and it doesn't add the demo, which opens with `ordnung demo`.",
         "**Linux:** the entry asks your desktop for a terminal window to run in.",
@@ -3147,8 +3153,8 @@ def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
         "macOS warns about an unidentified developer only for apps downloaded from the internet.",
         "Terminal asks before you close that window while Ordnung runs.",
         "**Windows:** right-click it in the Start menu to pin it to the taskbar.",
-        "A shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`: when it is set in your terminal, "
-        "`ordnung shortcut` prints the `setx` command that sets it for your account.",
+        "A shortcut can't carry `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` or `ORDNUNG_OCR`: when one is set in "
+        "your terminal, `ordnung shortcut` prints the `setx` command that sets it for your account.",
         "opening it from the desktop's own menu isn't tested on any system.",
     ):
         assert words in text, words
@@ -3306,7 +3312,7 @@ def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tm
     ci = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     steps = " ".join(str(step.get("run", "")) for step in ci["jobs"]["other-systems"]["steps"])
     assert "tests/test_shortcut.py" in steps
-    assert "autostart entries, app-menu shortcuts and backups" in _flat(_readme())
+    assert "autostart entries, app-menu shortcuts, backups and text in pictures" in _flat(_readme())
 
 
 def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
@@ -3762,8 +3768,8 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     spec = _spec()
     for words in (
         "`DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`, "
-        "`explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, or `null` "
-        "without a search) is what `GET /api/documents` lists",
+        "`explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, "
+        "`picture_text`, or `null` without a search) is what `GET /api/documents` lists",
         "`models.DocumentListEntry` (the whole letter plus `found_in`) stays unused",
         "GET list: `DocumentRow` rows (without `key_facts`, `explanation`, `references`, `payment` and `sha256`: "
         "the letter's detail has them), each with `found_in`",
@@ -4420,6 +4426,7 @@ def test_the_spec_names_the_letter_models_and_routes_d3_adds() -> None:
     assert set(documents.LetterDetail.model_fields) == set(models.DocumentDetail.model_fields) | {
         "tax_choice",
         "household",
+        "picture_text_pages",  # D4 (ADR 0024)
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
     paths = openapi_schema()["paths"]
@@ -4599,5 +4606,473 @@ def test_the_tests_the_architecture_names_for_d3_exist() -> None:
         "web/e2e/tax-toggle-layout.spec.ts",
         "web/e2e/real-app-export.spec.ts",
     ):
+        assert f"`{path}`" in architecture, path
+        assert (ROOT / path).is_file(), path
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch D4 — words in private photos are searchable, with Tesseract if the person installs it: README,
+# the CHANGELOG, CONTRIBUTING.md, docs/privacy.md, SPEC, docs/architecture.md and ADR 0024
+# --------------------------------------------------------------------------------------------------
+
+_ADR_PICTURES = (
+    ROOT / "docs" / "decisions" / "0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md"
+)
+
+#: What the app says where a search found a letter only in the words Ordnung read in its picture
+#: (``web/src/lib/copy.ts``).
+PICTURE_TEXT_MATCH = "Found in text Ordnung read from the picture — not checked"
+#: The letter page's note on those words, after "Ordnung read the words in this photo itself, "
+#: (``web/src/features/document/DocumentFooter.tsx``).
+PICTURE_TEXT_NOTE = (
+    "only so search can find the letter: they aren't checked, aren't shown as the letter's words and are never "
+    "sent to Claude."
+)
+#: The ADR's link, as README and the CHANGELOG write it.
+_ADR_PICTURES_LINK = f"[ADR 0024](docs/decisions/{_ADR_PICTURES.name})"
+#: CHANGELOG, Unreleased → Added: words in private photos (the whole of D4), its sentences in order.
+D4_ADDED = (
+    "With Tesseract installed, a free program Ordnung doesn't install, Ordnung reads the words in the photos and "
+    "scans Claude isn't reading: kept private, waiting from your watched folder or for Claude, or that couldn't "
+    "be read.",
+    "Tesseract runs on the computer Ordnung runs on, one page at a time at low priority, and nothing is sent "
+    "anywhere to read a picture.",
+    "The words are kept with the letter's page images for search only: a letter found that way says *Found in "
+    "text Ordnung read from the picture — not checked*, and its page says which of its pages Ordnung read.",
+    "They are never shown as the letter's words, never used to check a date or an amount, and never sent to "
+    "Claude; Ask doesn't search them.",
+    "Once Claude reads a page, what Ordnung read there is removed.",
+    "`ordnung doctor` says whether Ordnung found Tesseract (*Text in pictures*) and how to install it, and "
+    f"`ORDNUNG_OCR=off` turns it off ({_ADR_PICTURES_LINK}).",
+)
+#: CHANGELOG, Unreleased → Upgrading: Tesseract is the person's to install; what a 0.2.0 computer does.
+D4_UPGRADING = (
+    "Tesseract is optional and Ordnung doesn't install it; `ordnung doctor` gives the line for your system. A "
+    "computer still on 0.2.0 finds a private photo only by its name, as before, and deletes the words Ordnung "
+    "read in it with the letter."
+)
+#: README Install: the paragraph on text in pictures, before and after its install lines.
+README_PICTURES = (
+    "**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or "
+    "that couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data.",
+    "Ordnung doesn't install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same "
+    "line for your system:",
+    "Tesseract runs on the computer Ordnung runs on, one page at a time at low priority: nothing is sent anywhere "
+    "to read a picture.",
+    "The words are kept for your letter search only, marked *not checked*, and are never shown, checked or sent to "
+    f"Claude ({_ADR_PICTURES_LINK}).",
+    "`ORDNUNG_OCR=off` turns it off ([how](docs/privacy.md#words-in-pictures-optional)).",
+)
+#: README Install: the line per system, the doctor's own word for word (``doctor.tesseract_install``).
+README_TESSERACT_LINES = {
+    "Linux": (
+        "linux",
+        "`sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora: `sudo dnf install tesseract "
+        "tesseract-langpack-deu`), then restart Ordnung.",
+    ),
+    "macOS": ("darwin", "`brew install tesseract tesseract-lang`, then restart Ordnung."),
+    "Windows": (
+        "win32",
+        "the installer from https://github.com/UB-Mannheim/tesseract/wiki, with German ticked under “Additional "
+        "language data”, then restart Ordnung.",
+    ),
+}
+#: README Limitations: what Ordnung's own text recognition is for and misses (it replaced "No OCR of its own").
+README_PICTURES_LIMIT = (
+    "Photos and scans are read by Claude, so reading them needs a model call; Ordnung's own text recognition "
+    "(optional, with Tesseract) is for search only.",
+    'The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn\'t checked',
+    "With Tesseract installed, the words Ordnung reads in a photo or scan Claude isn't reading are kept the same "
+    "way, marked *not checked*; Tesseract often misreads handwriting, creased paper and small print, so such a "
+    "letter may not be found by every word on it.",
+    "Without Tesseract, a photo kept private, waiting or that couldn't be read is found only by its name.",
+)
+#: docs/privacy.md, "Words in pictures (optional)": its sentences, and what each bullet starts with.
+PRIVACY_PICTURES = (
+    "Ordnung doesn't install or ship it, but when you install it, Ordnung uses it to find the photos and scans "
+    "Claude isn't reading by their words, under the rules of a scanner's text [above](#searchable-scans).",
+    "Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung found it (*Text in pictures*).",
+    "**Only for letters Claude isn't reading:** kept private, waiting from your watched folder or for Claude, or "
+    "that couldn't be read. A page with text of its own, or with a scanner's text, isn't read.",
+    "**Read here, by a program you installed.** Tesseract runs on the computer Ordnung runs on, one page at a "
+    "time at low priority. It gets a picture Ordnung made from the page, never the original file, and a private "
+    "temporary folder that is removed afterwards. Nothing goes over the network to read a picture.",
+    "**Kept only for search, never shown, checked or sent.** The words are in "
+    "`<data dir>/derived/<letter>/picture-text.json`, kept with the letter's page images (so also in backups and "
+    "hand-off sync), only for search.",
+    f"A letter found only by them says *{PICTURE_TEXT_MATCH}*, and its page says which of its pages Ordnung read.",
+    "They are never shown as the letter's words (search shows no snippet of them), never used to check a date or "
+    "an amount, and never sent to Claude: *Ask*, *Weekly Ideas*, the daily note and drafting never read them, and "
+    "they are not in the search index *Ask* uses.",
+    "**It goes with the page.** Once Claude reads a page, what Ordnung read there is removed; deleting the letter "
+    "deletes it with the page images.",
+    "**Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started, "
+    "search ignores the words read before, and Ordnung removes them when it starts.",
+    # the doctor reads its own terminal's switch; setx changes no window already open, and a Start-at-login entry
+    # written while the switch was set keeps what it recorded
+    "`ordnung doctor`, run where it is set, then shows *Turned off (ORDNUNG_OCR=off)*.",
+    "On Linux and macOS, set it before `ordnung serve`, or before `ordnung autostart enable` or `ordnung "
+    "shortcut`, which record it (run them again after setting or unsetting it). On Windows, run `setx ORDNUNG_OCR "
+    "off`, then start Ordnung again from a new terminal window or the Start menu (`setx` doesn't change a window "
+    "already open), and run `ordnung autostart enable` again there if Ordnung starts at login.",
+    "With hand-off sync, set it the same way on every computer: one with it off removes the words the others "
+    "read, and they read them again once they are in use.",
+)
+#: SPEC: the cut list's "OCR", read today.
+SPEC_OCR_CUT = (
+    "OCR (Ordnung's own reading of a letter; Tesseract's words, for search only, came later: ADR 0024)"
+)
+#: SPEC: what it says of text in pictures.
+SPEC_PICTURES = (
+    "plus `found_in`: `letter`, `scanner_text`, `picture_text`, or `null` without a search)",
+    "`found_in` is the route's own `LetterFoundIn` (`models.SearchFoundIn` stays `letter` or `scanner_text`), and "
+    "`LetterDetail` also carries `picture_text_pages` (the pages whose words Ordnung read in the picture, kept for "
+    "search only, never the words; § 8, ADR 0024).",
+    "normalize.py, ocr.py)",
+    "The `ocr` row (*Text in pictures*, right after the web app; ADR 0024) never fails:",
+    "ok *Not installed (optional)* with the install line for this system as its fix (the CLI prints it as an "
+    "*Optional —* tip)",
+    "ok *Turned off (ORDNUNG_OCR=off)*",
+    "**Text in pictures** (optional, ADR 0024; `ingest/ocr.py`):",
+    "kept private or held, waiting for Claude or failed; photos, and PDF pages with neither text of their own nor "
+    "a scanner's",
+    "at most 2400 px on its long side and 300 dpi, never enlarged",
+    "with one thread at nice 10 (`BELOW_NORMAL_PRIORITY_CLASS` on Windows), in a private temporary folder, with 120 "
+    "s a page",
+    '`derived/<doc>/picture-text.json` (the scanner text\'s format, `""` for a page with no words)',
+    '`found_in="picture_text"` (the scanner\'s text wins when both match)',
+    "`picture_text` when only the words Ordnung read in its picture did (ADR 0024; the scanner's text wins when "
+    "both match)",
+    "`picture_text_pages`: the pages whose picture text is kept for search only (`[]` while `ORDNUNG_OCR=off`)",
+    f'it says "{PICTURE_TEXT_MATCH}"',
+    'which pages ("in this photo", "in this file", "on pages 1, 2 and 4 of this file")',
+)
+#: docs/architecture.md: what it says of text in pictures.
+ARCHITECTURE_PICTURES = (
+    f"**Text in pictures** (optional, [ADR 0024](decisions/{_ADR_PICTURES.name}))",
+    "`ingest/ocr.py` is the engine",
+    "Only `ingest/worker.py` and `doctor.py` import it.",
+    "`picture_text_due` lists the pages",
+    "`write_picture_text` checks again in a transaction",
+    "`picture_text_matches` and `picture_text_pages` serve the letter routes",
+    "`forget_scan_text_once_read`, which the text stage calls after Claude's reading, removes a page's picture "
+    "text too",
+    "`ORDNUNG_OCR=off` (`config.ocr_turned_off`, read on every call)",
+    "(`forget_all_picture_text`)",
+    "No database row is written, so Ask's fingerprint, the ledger token and the benchmark's inputs stay as they "
+    "were.",
+)
+#: The tests docs/architecture.md names for D4 (they come with the other D4 packages).
+D4_TESTS = (
+    "tests/fake_tesseract.py",
+    "tests/test_ocr.py",
+    "tests/test_picture_text.py",
+    "tests/test_picture_text_ask.py",
+    "tests/test_worker_pictures.py",
+    "tests/test_doctor_pictures.py",
+    "web/e2e/real-app-pictures.spec.ts",
+    "tests/test_photo_fixture.py",
+    "scripts/make_photo_fixture.py",
+)
+#: An import of the engine, in any of its forms.
+_IMPORTS_OCR = re.compile(
+    r"^\s*(?:from ordnung\.ingest import .*\bocr\b|from ordnung\.ingest\.ocr |import ordnung\.ingest\.ocr)",
+    re.M,
+)
+
+
+def _slug(heading: str) -> str:
+    """The anchor GitHub gives a Markdown heading."""
+    return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
+
+
+def _readme_pictures() -> str:
+    """README Install's paragraph *Words in photos (optional)*, with its list, flattened."""
+    install = _readme().split("## Install and run", 1)[1]
+    return _flat(
+        install.split("**Words in photos (optional).**", 1)[1].split("\n**Without a terminal.**", 1)[0]
+    )
+
+
+def test_the_changelog_adds_words_in_private_photos() -> None:
+    """CHANGELOG, Unreleased → Added: words in private photos, its sentences in order, after your household and
+    before the releases; Upgrading: Tesseract is the person's to install, and what a computer on 0.2.0 does."""
+    added = _unreleased("Added")
+    bullet = _bullet(added, "**Words in private photos are searchable (optional).**")
+    for sentence in D4_ADDED:
+        assert sentence in bullet, sentence
+    assert [bullet.index(s) for s in D4_ADDED] == sorted(bullet.index(s) for s in D4_ADDED)
+    assert "computer only" not in bullet and "on your computer" not in bullet
+    assert (
+        added.index("**Your household.**")
+        < added.index("**Words in private photos are searchable (optional).**")
+        < added.index("**Releases.**")
+    )
+    assert f"- {D4_UPGRADING}" in _unreleased("Upgrading")
+
+
+def test_readme_says_what_text_in_pictures_finds_and_misses() -> None:
+    """README: Install's paragraph (optional, how to install, what it does, the off switch), the note in Privacy,
+    the doctor's comment, CI on Linux and on other systems; Limitations replace "No OCR of its own";
+    Documentation lists ADR 0024 after 0023."""
+    pictures = _readme_pictures()
+    assert README_PICTURES[0].removeprefix("**Words in photos (optional).** ") in pictures
+    for sentence in README_PICTURES[1:]:
+        assert sentence in pictures, sentence
+    for name, (_, line) in README_TESSERACT_LINES.items():
+        assert f"- {name}: {line}" in pictures, name
+    privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "Tesseract, if you install it to find photos by their words, runs on the computer Ordnung runs on: nothing "
+        "is sent anywhere to read a picture."
+    ) in privacy
+    (line,) = [line for line in _readme().splitlines() if line.startswith("ordnung doctor ")]
+    assert "text in pictures" in line
+    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
+    assert (
+        "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
+        "installed there)."
+    ) in install
+    limitations = _limitations()
+    for sentence in README_PICTURES_LIMIT:
+        assert sentence in limitations, sentence
+    assert "No OCR of its own" not in _readme()
+    assert "or waiting for Claude, is found only by its name" not in limitations
+    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    assert (
+        f"[0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/{_ADR_PICTURES.name})"
+    ) in documentation
+    assert documentation.index("[0023 letters for your household") < documentation.index(
+        "[0024 words Ordnung"
+    )
+
+
+def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None:
+    """README's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the line
+    as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
+    login and the app-menu launchers record it; docs/privacy.md names ``ORDNUNG_OCR=off`` and
+    ``picture-text.json``; README lists ADR 0024."""
+    from ordnung import autostart, config, doctor
+
+    pictures = _readme_pictures()
+    for name, (platform, line) in README_TESSERACT_LINES.items():
+        row = doctor.text_in_pictures_check(platform=platform, env={}, find=lambda: None)
+        assert (row.id, row.label, row.status, row.detail) == (
+            "ocr",
+            "Text in pictures",
+            "ok",
+            "Not installed (optional)",
+        )
+        assert (
+            row.fix
+            == f"To find photos and scans Claude doesn't read by their words, install Tesseract: {line}"
+        )
+        assert doctor.tesseract_install(platform) == line, name
+        assert f"- {name}: {line}" in pictures, name
+    off = doctor.text_in_pictures_check(env={config.OCR_SWITCH: "off"})
+    assert (off.status, off.detail, off.fix) == ("ok", "Turned off (ORDNUNG_OCR=off)", None)
+    assert config.OCR_SWITCH in autostart.SWITCHES and shortcut.SWITCHES == autostart.SWITCHES
+    privacy = _privacy_section("Words in pictures (optional)")
+    assert "`ORDNUNG_OCR=off`" in privacy and "`setx ORDNUNG_OCR off`" in privacy
+    assert "`<data dir>/derived/<letter>/picture-text.json`" in privacy
+    assert _ADR_PICTURES_LINK in pictures
+
+
+def test_the_off_switch_and_the_file_are_the_ones_the_docs_name() -> None:
+    """docs/privacy.md, ADR 0024 and SPEC against d4-contract: ``ORDNUNG_OCR`` is off with "off", "0", "false" or
+    "no" in any case (read on every call); the words live in ``derived/<doc>/picture-text.json`` beside the
+    scanner's text, with its format and limit, under ``derived/``, which backups and hand-off sync carry."""
+    from ordnung import config
+
+    assert config.OCR_SWITCH == "ORDNUNG_OCR"
+    for value in ("off", "0", "false", "no", " OFF ", "No"):
+        assert config.ocr_turned_off({"ORDNUNG_OCR": value}), value
+    for value in ("", "on", "1", "yes"):
+        assert not config.ocr_turned_off({"ORDNUNG_OCR": value}), value
+    assert not config.ocr_turned_off({})
+    assert scan_text.PICTURE_NAME == "picture-text.json"
+    found = scan_text.path(Path("derived"), "doc_x", name=scan_text.PICTURE_NAME)
+    assert found == Path("derived/doc_x/picture-text.json")
+    assert "derived" in FOLDERS and "derived" in sync.SYNCED_DIRS
+    adr = _adr(_ADR_PICTURES)
+    assert f"at most {scan_text.MAX_PAGE_CHARS:,} characters a page" in adr
+    assert "`ORDNUNG_OCR=off` (also `0`, `false` or `no`, in any case)" in adr
+
+
+def test_the_privacy_page_says_where_picture_text_lives_and_how_to_turn_it_off() -> None:
+    """docs/privacy.md: a row in "At a glance" (``derived/``, with the page images, so in backups and hand-off
+    sync; never to Claude, and nothing sent to read a picture); *Delete means delete*; the section *Words in
+    pictures (optional)*, which README links to; backups and hand-off sync carry the words."""
+    text = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (row,) = [line for line in text.splitlines() if line.startswith("| Text Ordnung read from a picture")]
+    for words in (
+        "`picture-text.json`",
+        SCANNER_TEXT_KEPT,
+        "never to Claude",
+        "nothing is sent anywhere to read a picture",
+        "([below](#words-in-pictures-optional))",
+    ):
+        assert words in row, words
+    assert text.index("| A scanner's text") < text.index("| Text Ordnung read from a picture")
+    assert _slug("Words in pictures (optional)") == "words-in-pictures-optional"
+    assert text.index("\n## Searchable scans\n") < text.index("\n## Words in pictures (optional)\n")
+    section = _privacy_section("Words in pictures (optional)")
+    for sentence in PRIVACY_PICTURES:
+        assert sentence in section, sentence
+    assert f"[ADR 0024](decisions/{_ADR_PICTURES.name})" in section
+    assert "computer only" not in section
+    controls = _privacy_section("Your controls")
+    assert "(and the text a scanner added to it or Ordnung read from it)" in _bullet(
+        controls, "**Delete means delete**"
+    )
+    backups = _privacy_section("Encrypted backups")
+    assert "(with the text a scanner added to a scan and the words Ordnung read in a picture)" in backups
+    sync_section = _privacy_section("Hand-off sync between your computers (optional)")
+    assert (
+        "The text a scanner added to a scan and the words Ordnung read in a picture travel with the page images."
+    ) in sync_section
+
+
+def test_adr_0024_says_found_not_read_and_its_limits_are_the_engine_s() -> None:
+    """ADR 0024 (numbered after 0023): the principle of ADR 0020 for words Ordnung reads itself, what it decided,
+    rejected and accepts; the limits it states are ``ingest/ocr.py``'s (d4-contract's constants)."""
+    from ordnung.ingest import ocr
+
+    text = _ADR_PICTURES.read_text(encoding="utf-8")
+    assert text.startswith("# ADR 0024 — Words Ordnung reads in a picture are for finding, not reading\n")
+    assert "**Status:** accepted" in text
+    assert sorted(p.name for p in _ADR_PICTURES.parent.glob("0024-*")) == [_ADR_PICTURES.name]
+    adr = _adr(_ADR_PICTURES)
+    version = ".".join(str(part) for part in ocr.MIN_VERSION)
+    for words in (
+        "## Context",
+        "## Principle",
+        "## Decision",
+        "## Rejected",
+        "## Consequences and known limits",
+        "[ADR 0020](0020-a-scanner-s-text-is-for-finding-not-reading.md)",
+        f"Tesseract {version} or newer",
+        f"at most {ocr.PICTURE_LONG_SIDE} px on its long side and {ocr.MAX_DPI} dpi, never enlarged",
+        f"`-l {'+'.join(ocr.LANGUAGES)}`",
+        f"one thread (`OMP_THREAD_LIMIT=1`), nice {ocr.NICENESS} (`BELOW_NORMAL_PRIORITY_CLASS` on Windows)",
+        f"{ocr.PAGE_TIMEOUT_S:.0f} seconds a page",
+        "a private temporary folder",
+        '`found_in="picture_text"`',
+        f"*{PICTURE_TEXT_MATCH}*",
+        "Only `ingest/worker.py` and `doctor.py` import the engine",
+        "`models.py` stays as it is",
+        "`LetterFoundIn`",
+        "`LetterDetail.picture_text_pages`",
+        "**A Settings switch or a Health field:**",
+        "**macOS Vision or Windows.Media.Ocr:**",
+        "**Bundling Tesseract, or `pytesseract` or `tesserocr`:**",
+        "**Reading every letter, or giving Claude the words to save tokens:**",
+        "**The `pages` table or the search indexes:**",
+        "**Showing the words, or a snippet of them:**",
+        "A computer still on 0.2.0",
+        "The benchmark's inputs and Ask's are unchanged",
+    ):
+        assert words in adr, words
+    assert "computer only" not in adr
+    assert (ocr.PICTURE_LONG_SIDE, ocr.MAX_DPI, ocr.NICENESS, ocr.LANGUAGES) == (
+        2400,
+        300,
+        10,
+        ("deu", "eng"),
+    )
+
+
+def test_the_spec_and_architecture_describe_text_in_pictures() -> None:
+    """SPEC (the cut list, the layout, the route-local models, the doctor, the text stage, the API and the web
+    app) and docs/architecture.md against d4-contract's routes: ``found_in`` may say ``picture_text``
+    (``LetterFoundIn``; ``models.SearchFoundIn`` stays) and the letter's page names ``picture_text_pages``; no
+    module but the worker and the doctor imports the engine."""
+    from typing import get_args
+
+    from ordnung import models
+    from ordnung.api.routes import documents
+
+    assert set(get_args(documents.LetterFoundIn)) == {"letter", "scanner_text", "picture_text"}
+    assert set(get_args(models.SearchFoundIn)) == {"letter", "scanner_text"}
+    assert "picture_text_pages" in documents.LetterDetail.model_fields
+    assert "picture_text_pages" not in models.DocumentDetail.model_fields
+    spec = _spec()
+    assert spec.count(SPEC_OCR_CUT) == 2
+    for words in SPEC_PICTURES:
+        assert words in spec, words
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for words in ARCHITECTURE_PICTURES:
+        assert words in architecture, words
+    package = ROOT / "src" / "ordnung"
+    importers = {
+        path.relative_to(package).as_posix()
+        for path in package.rglob("*.py")
+        if _IMPORTS_OCR.search(path.read_text("utf-8"))
+    }
+    assert importers <= {"ingest/worker.py", "doctor.py"}, importers
+
+
+def test_contributing_says_how_to_run_the_pictures_spec() -> None:
+    """CONTRIBUTING: ``ORDNUNG_E2E_OCR=on make e2e`` with Tesseract installed, as CI's end-to-end job
+    (``web/e2e/env.ts``); every pytest runs with ``ORDNUNG_OCR=off`` (``tests/conftest.py``)."""
+    contributing = _flat((ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8"))
+    assert "ORDNUNG_E2E_OCR=on make e2e" in contributing
+    assert (
+        "Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a Tesseract installed on your computer "
+        "reads none of their letters; the engine's tests use a fake one (`tests/fake_tesseract.py`)."
+    ) in contributing
+    env_ts = (ROOT / "web" / "e2e" / "env.ts").read_text(encoding="utf-8")
+    assert 'process.env.ORDNUNG_E2E_OCR === "on"' in env_ts
+    conftest = (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
+    assert 'monkeypatch.setenv(OCR_SWITCH, "off")' in conftest
+    assert (ROOT / "tests" / "fake_tesseract.py").is_file()
+
+
+def test_the_engine_store_and_worker_are_what_the_docs_say() -> None:
+    """docs/architecture.md, SPEC and ADR 0024 against d4-ocr-engine, d4-ocr-store-worker and d4-ocr-doctor-ci:
+    the store's methods, the worker's start delay and its look every five minutes, the engine finding nothing
+    while turned off, and the doctor's row right after the web app."""
+    from ordnung import config, doctor
+    from ordnung.ingest import ocr
+
+    for name in (
+        "picture_text_due",
+        "write_picture_text",
+        "picture_text_matches",
+        "picture_text_pages",
+        "picture_text_stale",
+        "forget_all_picture_text",
+        "forget_scan_text_once_read",
+    ):
+        assert callable(getattr(Store, name, None)), name
+    assert worker.CATCH_UP_DELAY_S == 30 and worker.PICTURES_POLL_S == 300
+    assert "every five minutes" in _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert ocr.find(refresh=True, env={config.OCR_SWITCH: "off"}) is None
+    checks = inspect.getsource(doctor.local_checks)
+    assert (
+        checks.index("web_ui_check()")
+        < checks.index("text_in_pictures_check()")
+        < checks.index("data_dir_check(")
+    )
+
+
+def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
+    """The line and the note the CHANGELOG, the privacy page, SPEC and ADR 0024 quote are the web app's own
+    (d4-ocr-web)."""
+    web = ROOT / "web" / "src"
+    copy = (web / "lib" / "copy.ts").read_text(encoding="utf-8")
+    assert f'PICTURE_TEXT_MATCH = "{PICTURE_TEXT_MATCH}"' in copy
+    footer = _flat((web / "features" / "document" / "DocumentFooter.tsx").read_text(encoding="utf-8"))
+    assert "Ordnung read the words ${where} itself, " + PICTURE_TEXT_NOTE in footer
+    for where in ('"in this photo"', '"in this file"', "of this file`"):
+        assert where in footer, where
+    assert "Ordnung read the words in this photo itself, " + PICTURE_TEXT_NOTE in _adr(_ADR_PICTURES)
+
+
+def test_the_tests_the_architecture_names_for_d4_exist() -> None:
+    """docs/architecture.md's testing strategy names D4's tests; they come with the other D4 packages."""
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for path in D4_TESTS:
         assert f"`{path}`" in architecture, path
         assert (ROOT / path).is_file(), path
