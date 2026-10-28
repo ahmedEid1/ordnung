@@ -285,8 +285,13 @@ def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str,
         name: letter["properties"][name] for name in kept
     }
     found_in = row["properties"]["found_in"]["anyOf"]
-    assert sorted(found_in[0]["enum"]) == ["letter", "scanner_text"] and found_in[1] == {"type": "null"}
+    assert sorted(found_in[0]["enum"]) == ["letter", "picture_text", "scanner_text"]
+    assert found_in[1] == {"type": "null"}
     assert "found_in" not in models.Document.model_fields
+    # the route's own type (ADR 0024 adds picture_text); models.SearchFoundIn stays as it was (models.py is a
+    # benchmark digest file)
+    assert get_args(documents.LetterFoundIn) == ("letter", "scanner_text", "picture_text")
+    assert get_args(models.SearchFoundIn) == ("letter", "scanner_text")
     assert row["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
     # models.DocumentListEntry stays in models.py (a benchmark digest file), unused by any route
     assert "DocumentListEntry" not in components
@@ -350,7 +355,11 @@ def test_a_letter_detail_and_patch_carry_the_persons_tax_choice(schema: dict[str
     body = operation["responses"]["200"]["content"]["application/json"]["schema"]
     assert body == {"$ref": "#/components/schemas/LetterDetail"}
     detail, base = components["LetterDetail"], components["DocumentDetail"]
-    assert set(detail["properties"]) == set(base["properties"]) | {"tax_choice", "household"}
+    assert set(detail["properties"]) == set(base["properties"]) | {
+        "tax_choice",
+        "household",
+        "picture_text_pages",
+    }
     assert set(detail["required"]) == set(detail["properties"])
     assert detail["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
     assert detail["properties"]["household"] == {"$ref": "#/components/schemas/LetterFor"}
@@ -365,6 +374,41 @@ def test_a_letter_detail_and_patch_carry_the_persons_tax_choice(schema: dict[str
     assert "tax_choice" not in models.DocumentDetail.model_fields
     # DocumentDetail stays a named view model (models.py is a benchmark digest file)
     assert models.DocumentDetail in VIEW_MODELS
+
+
+def test_a_letters_detail_names_its_picture_text_pages(schema: dict[str, Any]) -> None:
+    """The letter's page lists the pages whose words Ordnung read itself from the picture (Tesseract, ADR 0024),
+    kept for search only: page numbers, never the words. Route-local: ``models.DocumentDetail`` has no such field
+    (models.py is a benchmark digest file)."""
+    components = schema["components"]["schemas"]
+    detail = components["LetterDetail"]
+    assert detail["properties"]["picture_text_pages"] == {
+        "items": {"type": "integer"},
+        "type": "array",
+        "title": "Picture Text Pages",
+        "description": (
+            "The pages (1-based) whose words Ordnung read itself from the picture (Tesseract), kept for search "
+            "only: never shown, checked or sent to Claude."
+        ),
+    }
+    assert "picture_text_pages" in detail["required"]
+    assert documents.LetterDetail.model_fields["picture_text_pages"].default_factory is list
+    assert "picture_text_pages" not in models.DocumentDetail.model_fields
+    assert "picture_text_pages" not in components["DocumentDetail"]["properties"]
+
+
+async def test_a_letter_with_no_text_read_from_its_picture_names_no_such_page(data_dir: Path) -> None:
+    """Without text Ordnung read from a picture, a letter's page names no such page, and a search finds the
+    letter by its own words, never as ``picture_text``."""
+    async with api_for(data_dir) as api:
+        client = api.client
+        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
+        await api.read_all()
+        doc_id = body["documents"][0]["id"]
+        assert (await client.get(f"/api/documents/{doc_id}")).json()["picture_text_pages"] == []
+        assert [row["found_in"] for row in (await client.get("/api/documents")).json()] == [None]
+        found = (await client.get("/api/documents", params={"q": "Einkommensteuer"})).json()
+        assert [row["found_in"] for row in found] == ["letter"]
 
 
 def test_the_household_has_three_operations_and_its_shapes(schema: dict[str, Any]) -> None:

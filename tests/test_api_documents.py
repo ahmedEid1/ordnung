@@ -177,8 +177,13 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         response = await api.client.get(f"/api/documents/{doc_id}")
         detail = DocumentDetail.model_validate(response.json())
-        # the letter's page (LetterDetail): DocumentDetail with the person's tax choice and who it is for
-        assert set(response.json()) == set(DocumentDetail.model_fields) | {"tax_choice", "household"}
+        # the letter's page (LetterDetail): DocumentDetail with the person's tax choice, who it is for and the
+        # pages whose words Ordnung read in the picture (ADR 0024)
+        assert set(response.json()) == set(DocumentDetail.model_fields) | {
+            "tax_choice",
+            "household",
+            "picture_text_pages",
+        }
         assert [(page.page, page.text_source) for page in detail.pages] == [(1, "text"), (2, "text")]
         assert detail.party is not None and detail.party.name == "Finanzamt Musterstadt"
         assert detail.case is not None and detail.document.case_id == detail.case.id

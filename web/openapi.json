@@ -9749,7 +9749,8 @@
                 "type": "string",
                 "enum": [
                   "letter",
-                  "scanner_text"
+                  "scanner_text",
+                  "picture_text"
                 ]
               },
               {
@@ -12871,6 +12872,14 @@
           },
           "household": {
             "$ref": "#/components/schemas/LetterFor"
+          },
+          "picture_text_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Picture Text Pages",
+            "description": "The pages (1-based) whose words Ordnung read itself from the picture (Tesseract), kept for search only: never shown, checked or sent to Claude."
           }
         },
         "type": "object",
@@ -12898,7 +12907,8 @@
           "addressed_to",
           "scan_text_pages",
           "tax_choice",
-          "household"
+          "household",
+          "picture_text_pages"
         ],
         "title": "LetterDetail",
         "description": "``GET /api/documents/{id}``: the letter's page (``models.DocumentDetail``) with what the person chose\nabout the letter, kept apart from Claude's reading. Route-local, so ``models.py`` (a benchmark digest\nfile) stays as it is; Ask never reads it."

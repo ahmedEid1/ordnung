@@ -78,6 +78,71 @@ def test_a_doc_id_never_names_a_file_outside_its_folder(tmp_path: Path) -> None:
     for bad in ("..", "../x", "a/b", "", "."):
         with pytest.raises(ValueError):
             scan_text.path(tmp_path, bad)
+        with pytest.raises(ValueError):
+            scan_text.path(tmp_path, bad, name=scan_text.PICTURE_NAME)
+
+
+# --------------------------------------------------------------------------------------------------
+# Text Ordnung read from a picture (ADR 0024): the same format, a file of its own
+# --------------------------------------------------------------------------------------------------
+
+
+def test_picture_text_has_a_file_of_its_own_beside_the_scanner_text(tmp_path: Path) -> None:
+    """``picture-text.json`` keeps what Ordnung read from a page's picture itself, in the scanner text's format;
+    each file is read, written and removed alone, and the scanner text stays the default."""
+    assert scan_text.PICTURE_NAME == "picture-text.json"
+    picture = scan_text.path(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)
+    assert picture == tmp_path / "doc_a" / "picture-text.json"
+    assert scan_text.path(tmp_path, "doc_a", name=scan_text.NAME) == scan_text.path(tmp_path, "doc_a")
+
+    scan_text.write(tmp_path, "doc_a", {2: "Kellerabteil"}, name=scan_text.PICTURE_NAME)
+    assert scan_text.present(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)
+    assert not scan_text.present(tmp_path, "doc_a")  # no scanner text came with it
+    assert scan_text.read(tmp_path, "doc_a") == {}
+    assert scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME) == {2: "Kellerabteil"}
+    assert json.loads(picture.read_text("utf-8")) == {"version": 1, "pages": {"2": "Kellerabteil"}}
+
+    scan_text.write(tmp_path, "doc_a", {1: "Wasserzähler"})
+    scan_text.remove(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)
+    assert not picture.exists() and scan_text.read(tmp_path, "doc_a") == {1: "Wasserzähler"}
+    scan_text.remove(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)  # already gone: nothing to do
+
+
+def test_a_page_of_picture_text_without_words_means_looked_and_found_none(tmp_path: Path) -> None:
+    """``""`` for a page: Ordnung looked at its picture and found no words, so it never looks again."""
+    scan_text.write(tmp_path, "doc_a", {1: "", 2: "Seite zwei"}, name=scan_text.PICTURE_NAME)
+    assert scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME) == {1: "", 2: "Seite zwei"}
+
+
+def test_picture_text_is_capped_like_the_scanner_text(tmp_path: Path) -> None:
+    long = "x" * (scan_text.MAX_PAGE_CHARS + 50)
+    scan_text.write(tmp_path, "doc_a", {1: long}, name=scan_text.PICTURE_NAME)
+    assert len(scan_text.read(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)[1]) == scan_text.MAX_PAGE_CHARS
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX file modes")
+def test_picture_text_is_private_and_written_atomically(tmp_path: Path) -> None:
+    scan_text.write(tmp_path, "doc_a", {1: "Text"}, name=scan_text.PICTURE_NAME)
+    target = scan_text.path(tmp_path, "doc_a", name=scan_text.PICTURE_NAME)
+    assert stat.S_IMODE(os.stat(target).st_mode) == 0o600
+    assert stat.S_IMODE(os.stat(target.parent).st_mode) == 0o700
+    scan_text.write(tmp_path, "doc_a", {1: "Neu"}, name=scan_text.PICTURE_NAME)
+    assert sorted(path.name for path in target.parent.iterdir()) == ["picture-text.json"]  # no .part left
+
+
+@pytest.mark.parametrize(
+    "name", ["", "other.json", "page-1.png", "../scan-text.json", "doc_a/scan-text.json", "Picture-Text.json"]
+)
+def test_no_other_file_can_be_named(tmp_path: Path, name: str) -> None:
+    """Only the two files are ever named: a caller can't reach a page image or anything else with these."""
+    with pytest.raises(ValueError):
+        scan_text.path(tmp_path, "doc_a", name=name)
+    for touch in (scan_text.read, scan_text.remove, scan_text.present):
+        with pytest.raises(ValueError):
+            touch(tmp_path, "doc_a", name=name)
+    with pytest.raises(ValueError):
+        scan_text.write(tmp_path, "doc_a", {1: "x"}, name=name)
+    assert not (tmp_path / "doc_a").exists()
 
 
 # --------------------------------------------------------------------------------------------------

@@ -13,6 +13,8 @@
  *   started by hand needs `ORDNUNG_PHONE_TEST_ADDRESS=127.0.0.1` for the phone tests (see {@link PHONE_ADDRESS}),
  *   and both real apps need the e2e password store's environment for the sync tests ({@link keyringEnv})
  * - `PW_CHROMIUM_PATH`: a Chromium executable to use instead of Playwright's download
+ * - `ORDNUNG_E2E_OCR=on`: the real app reads the words in pictures with the Tesseract installed here (ADR 0024;
+ *   CI's end-to-end job, with Tesseract and its German data); without it every server runs with `ORDNUNG_OCR=off`
  */
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -43,6 +45,11 @@ function ordnungBin(): string {
 }
 
 export const ORDNUNG_BIN = ordnungBin();
+/**
+ * Whether the real app reads the words in pictures (`ORDNUNG_E2E_OCR=on`, ADR 0024): only then does it run with
+ * `ORDNUNG_OCR` on, and only it; the demo server and the second computer never do (playwright.config.ts).
+ */
+export const E2E_OCR = process.env.ORDNUNG_E2E_OCR === "on";
 
 // ------------------------------------------------------------------------------------------------
 // The real app (project "real-app"): `ordnung serve` with a fake Claude

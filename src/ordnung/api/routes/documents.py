@@ -34,7 +34,7 @@ from collections.abc import Sequence
 from datetime import date
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import (
     APIRouter,
@@ -88,7 +88,6 @@ from ordnung.models import (
     LetterKind,
     PageInfo,
     ProofLink,
-    SearchFoundIn,
     Suggestion,
 )
 from ordnung.phone import PhoneRefusal
@@ -174,6 +173,10 @@ LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment
 #: What the route adds to each row of the list: where a search found the letter, and the person's own
 #: "For taxes" choice (``None``: none, Claude's mark counts).
 ROUTE_FIELDS = frozenset({"found_in", "tax_choice"})
+#: Where a search found a letter (route-local: ``models.SearchFoundIn`` stays, models.py is a digest file):
+#: ``letter`` — its own words; ``scanner_text`` — only in the text a scanner added (ADR 0020);
+#: ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
+LetterFoundIn = Literal["letter", "scanner_text", "picture_text"]
 
 _ROW_FIELDS: dict[str, Any] = {
     name: (field.annotation, field)
@@ -184,8 +187,9 @@ _ROW_FIELDS: dict[str, Any] = {
 DocumentRow = create_model(
     "DocumentRow",
     __config__=ConfigDict(json_schema_serialization_defaults_required=True),
-    # the published description stays as it was (D3's contract changes only the fields): the ROUTE_FIELDS
-    # are found_in and tax_choice, the person's own "For taxes" choice (None: none, Claude's mark counts)
+    # the published description stays as it was (D3's and D4's contracts change only the fields): the
+    # ROUTE_FIELDS are found_in (LetterFoundIn: models.SearchFoundIn and picture_text) and tax_choice, the
+    # person's own "For taxes" choice (None: none, Claude's mark counts)
     __doc__=(
         "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
         "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
@@ -197,7 +201,7 @@ DocumentRow = create_model(
     ),
     __module__=__name__,
     **_ROW_FIELDS,
-    found_in=(SearchFoundIn | None, None),
+    found_in=(LetterFoundIn | None, None),
     tax_choice=(bool | None, None),
 )
 
@@ -213,6 +217,13 @@ class LetterDetail(DocumentDetail):
     )
     #: Who the letter is for (all empty without a household).
     household: LetterFor = Field(default_factory=LetterFor)
+    picture_text_pages: list[int] = Field(
+        default_factory=list,
+        description=(
+            "The pages (1-based) whose words Ordnung read itself from the picture (Tesseract), kept for search "
+            "only: never shown, checked or sent to Claude."
+        ),
+    )
 
 
 class LetterRecord(Document):
@@ -274,7 +285,7 @@ def list_documents(
     # of those, the ones its own words find too: a letter is "found in the scanner text" only otherwise
     only_scanned = listed_scans - store.indexed_matches(query, listed_scans) if listed_scans else set()
 
-    def found_in(doc: Document) -> SearchFoundIn | None:
+    def found_in(doc: Document) -> LetterFoundIn | None:
         if not query:
             return None
         return "scanner_text" if doc.id in only_scanned else "letter"
@@ -472,12 +483,14 @@ def _proof_of(store: Store, doc_id: str) -> list[ProofLink]:
 @router.get("/documents/{doc_id}", response_model=LetterDetail)
 def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> LetterDetail:
     """One letter with everything the viewer shows."""
-    # with the person's own "For taxes" choice and who the letter is for (LetterDetail)
+    # with the person's own "For taxes" choice, who the letter is for, and the pages whose words Ordnung read in
+    # the picture (LetterDetail; none so far: Ordnung reads no picture yet, ADR 0024)
     detail = document_detail(store, doc_id, today)
     return LetterDetail.model_construct(
         **dict(detail),
         tax_choice=store.tax_choices().get(doc_id),
         household=letter_for(store, detail.document),
+        picture_text_pages=[],
     )
 
 

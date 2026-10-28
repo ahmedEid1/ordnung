@@ -10,8 +10,15 @@ import pytest
 
 from ordnung import clock, durable
 from ordnung.assistant import ask
-from ordnung.config import Paths
+from ordnung.config import OCR_SWITCH, Paths
 from ordnung.db.store import Store
+
+
+@pytest.fixture(autouse=True)
+def _text_in_pictures_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Text in pictures (ADR 0024) is off in every test, so a Tesseract installed on this computer or runner never
+    reads a test's letters. A test that wants it on says so: ``monkeypatch.delenv("ORDNUNG_OCR")``."""
+    monkeypatch.setenv(OCR_SWITCH, "off")
 
 
 @pytest.fixture(autouse=True)

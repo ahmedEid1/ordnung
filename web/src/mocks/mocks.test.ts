@@ -813,3 +813,44 @@ describe("the person's own choices beside the letters (D3: For taxes, the househ
     expect(Array.isArray(vectors)).toBe(true);
   });
 });
+
+describe("text Ordnung read from a picture (ADR 0024): search only, like the scanner's", () => {
+  it("finds a letter by the text Ordnung read from its picture once seeded, and marks it, like the API", async () => {
+    const s = srv();
+    expect(await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil")).toEqual([]);
+    // Sam's held invoice: Ordnung read words on its first page and none on its second
+    s.db.state.pictureText.doc_folder_invoice = { 1: "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7", 2: "" };
+    const found = await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil");
+    expect(found.map((d) => [d.id, d.found_in])).toEqual([["doc_folder_invoice", "picture_text"]]);
+    // its own words find it as the letter
+    const byName = await get<DocumentRow[]>(s, "/documents", "q=FunkNetz");
+    expect(byName.find((d) => d.id === "doc_folder_invoice")?.found_in).toBe("letter");
+    // its page names the pages with words, never the words
+    const page = await get<DocumentDetail>(s, "/documents/doc_folder_invoice");
+    expect(page.picture_text_pages).toEqual([1]);
+    expect(JSON.stringify(page)).not.toContain("Kellerabteil");
+    expect(JSON.stringify(found)).not.toContain("Kellerabteil");
+    // a scan's scanner text wins when both find it
+    s.db.state.pictureText.doc_folder_scan = { 2: "Wasserzähler Kellerabteil" };
+    const both = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(both.find((d) => d.id === "doc_folder_scan")?.found_in).toBe("scanner_text");
+    // once Claude read the letter, what Ordnung read from its picture no longer counts
+    s.db.document("doc_folder_invoice")!.ai_processed_at = "2026-09-28T10:00:00Z";
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_invoice")).picture_text_pages).toEqual([]);
+    const after = await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil");
+    expect(after.map((d) => d.id)).toEqual(["doc_folder_scan"]);
+  });
+
+  it("the static demo keeps no picture text, like the Python demo", async () => {
+    for (const staticDemo of [true, false]) {
+      const s = createMockServer({ staticDemo, latency: 0 });
+      expect(s.db.state.pictureText).toEqual({});
+      for (const d of s.db.liveDocuments()) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).picture_text_pages, d.id).toEqual([]);
+      for (const q of ["Stadtwerke", "Rechnung", "Wasserzähler", "2026"]) {
+        const rows = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent(q)}`);
+        expect(rows.length, q).toBeGreaterThan(0);
+        expect(rows.filter((row) => row.found_in === "picture_text").map((row) => row.id), q).toEqual([]);
+      }
+    }
+  });
+});

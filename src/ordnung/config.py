@@ -6,7 +6,8 @@ Layout::
     <data_dir>/
       ordnung.db          SQLite (WAL)
       files/ab/<sha>.pdf  originals (content addressed)
-      derived/<doc_id>/   page renders + thumbnail (+ scan-text.json: a scanner's text, search only)
+      derived/<doc_id>/   page renders + thumbnail (+ scan-text.json: a scanner's text, and
+                          picture-text.json: the words Ordnung read in the picture; both search only)
       drafts/             generated letter PDFs
       inbox/              optional watched folder (default location)
       phone/              phone access's certificates (once it was turned on)
@@ -20,6 +21,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +31,10 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 REPO_DIR = PACKAGE_DIR.parent.parent  # only meaningful in a source checkout
 PRIVATE_DIR_MODE = 0o700
 
+#: The off switch for text in pictures (ADR 0024): "off", "0", "false" or "no" (any case) turns it off.
+OCR_SWITCH = "ORDNUNG_OCR"
+_OFF_VALUES = frozenset({"off", "0", "false", "no"})
+
 
 def private_dir(path: Path) -> Path:
     """Create ``path`` (and missing parents) and make it accessible to its owner only (POSIX)."""
@@ -37,6 +43,14 @@ def private_dir(path: Path) -> Path:
         with contextlib.suppress(OSError):  # not ours to change (e.g. a shared mount): leave it
             path.chmod(PRIVATE_DIR_MODE)
     return path
+
+
+def ocr_turned_off(env: Mapping[str, str] | None = None) -> bool:
+    """Whether the person turned text in pictures off (:data:`OCR_SWITCH`): Ordnung then never starts Tesseract,
+    and search leaves out the words it read in pictures. Read from ``env`` (default the process environment) on
+    every call, never kept: here, so the launchers and the letter routes can ask without loading the engine."""
+    value = (os.environ if env is None else env).get(OCR_SWITCH, "")
+    return value.strip().lower() in _OFF_VALUES
 
 
 def default_data_dir() -> Path:

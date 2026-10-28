@@ -4420,6 +4420,7 @@ def test_the_spec_names_the_letter_models_and_routes_d3_adds() -> None:
     assert set(documents.LetterDetail.model_fields) == set(models.DocumentDetail.model_fields) | {
         "tax_choice",
         "household",
+        "picture_text_pages",  # D4 (ADR 0024)
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
     paths = openapi_schema()["paths"]

@@ -3522,7 +3522,7 @@ export interface components {
             /** Deleted At */
             deleted_at: string | null;
             /** Found In */
-            found_in: ("letter" | "scanner_text") | null;
+            found_in: ("letter" | "scanner_text" | "picture_text") | null;
             /** Tax Choice */
             tax_choice: boolean | null;
         };
@@ -4610,6 +4610,11 @@ export interface components {
              */
             tax_choice: boolean | null;
             household: components["schemas"]["LetterFor"];
+            /**
+             * Picture Text Pages
+             * @description The pages (1-based) whose words Ordnung read itself from the picture (Tesseract), kept for search only: never shown, checked or sent to Claude.
+             */
+            picture_text_pages: number[];
         };
         /**
          * LetterDetails
