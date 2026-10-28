@@ -46,6 +46,9 @@ make check
 .venv/bin/ordnung demo --check
 # Playwright: the demo, then the real app reading with a fake Claude (installs Chromium first)
 make e2e
+# as CI's end-to-end job, with Tesseract and its German language data installed: the real app also finds a
+# private photo by the words Ordnung reads in it (ADR 0024)
+ORDNUNG_E2E_OCR=on make e2e
 ```
 
 These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more things CI checks:
@@ -57,6 +60,9 @@ These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more 
   writes `web/openapi.json` and `web/src/api/schema.d.ts` again.
 - **The docs say what the code does.** `tests/test_docs_claims.py` checks the README's and docs'
   numbers and statements against the code; change the docs in the same pull request.
+- **Text in pictures stays off in tests.** Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a
+  Tesseract installed on your computer reads none of their letters; the engine's tests use a fake one
+  (`tests/fake_tesseract.py`). A test that needs it on unsets the switch itself.
 
 **Writing an end-to-end test.** Before the next key press or click, wait for what the person sees (a toast,
 a status line, a button that is enabled again), not only for focus. Read the API with `apiGet`, or pass
