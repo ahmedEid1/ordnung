@@ -225,17 +225,6 @@ async def test_out_of_date_picture_text_is_tidied_when_the_worker_starts(
 # --------------------------------------------------------------------------------------------------
 
 
-def _engine_built() -> bool:
-    """Whether :mod:`ordnung.ingest.ocr` can run Tesseract on this branch (its ``look`` never raises once built)."""
-    try:
-        ocr.look(os.devnull + "-no-tesseract-here")
-    except NotImplementedError:
-        return False
-    except Exception:
-        return True
-    return True
-
-
 def _png() -> bytes:
     buffer = io.BytesIO()
     Image.new("L", (40, 20), 255).save(buffer, "PNG")
@@ -264,8 +253,6 @@ async def test_stop_kills_a_recognition_under_way_and_writes_nothing(
         monkeypatch.setattr(ocr, "recognise", hangs)
         ctx.worker.find_tesseract = lambda: INSTALLED
     else:
-        if not _engine_built():
-            pytest.skip("the engine (D4-P1) isn't built on this branch yet")
         monkeypatch.setenv("FAKE_TESSERACT_MODE", "hang")
         monkeypatch.setenv("FAKE_TESSERACT_REPORT", str(report))
         fake = Tesseract(
@@ -402,8 +389,6 @@ async def test_the_engine_reads_a_private_photo_with_the_fake_tesseract(
     ctx: AppContext, monkeypatch: pytest.MonkeyPatch, ocr_on: None
 ) -> None:
     """With the engine: the photo is drawn, read by (the fake) Tesseract and kept for search only."""
-    if not _engine_built():
-        pytest.skip("the engine (D4-P1) isn't built on this branch yet")
     from fake_tesseract import ECHO_TEXT
 
     monkeypatch.setenv("FAKE_TESSERACT_MODE", "echo")

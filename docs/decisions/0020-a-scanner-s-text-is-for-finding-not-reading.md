@@ -56,7 +56,9 @@ checked against, not sent to Claude and not evidence for anything.
   older computer's purge would leave a shadow row of a deleted letter behind.
 - **Showing the text, or a snippet of it:** it would invite reading it as the letter's words.
 - **Ordnung's own OCR for photos:** a new dependency, and the same unchecked text for every photo. A photo
-  stays findable by its name.
+  stays findable by its name. (*Revisited:* with Tesseract, a program the person installs, Ordnung now reads
+  the words in a photo or scan Claude isn't reading, under this ADR's rules; see
+  [ADR 0024](0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md).)
 
 ## Consequences and known limits
 - A private, waiting or offline scan is found by its words, and marked as not checked.

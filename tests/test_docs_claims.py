@@ -4618,11 +4618,6 @@ def test_the_tests_the_architecture_names_for_d3_exist() -> None:
 _ADR_PICTURES = (
     ROOT / "docs" / "decisions" / "0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md"
 )
-#: Claims about code the other D4 packages build (d4-ocr-engine, d4-ocr-store-worker, d4-ocr-doctor-ci and
-#: d4-ocr-web): on d4-docs's own branch that code is still d4-contract's (no Tesseract is ever found, no picture
-#: text is kept, the doctor has no row for it and the web app no line), so these hold once D4 is merged; the
-#: integrator then drops the mark.
-_UNTIL_D4 = pytest.mark.xfail(strict=False, reason="until D4 integration")
 
 #: What the app says where a search found a letter only in the words Ordnung read in its picture
 #: (``web/src/lib/copy.ts``).
@@ -4850,7 +4845,6 @@ def test_readme_says_what_text_in_pictures_finds_and_misses() -> None:
     )
 
 
-@_UNTIL_D4
 def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None:
     """README's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the line
     as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
@@ -5032,7 +5026,6 @@ def test_contributing_says_how_to_run_the_pictures_spec() -> None:
     assert (ROOT / "tests" / "fake_tesseract.py").is_file()
 
 
-@_UNTIL_D4
 def test_the_engine_store_and_worker_are_what_the_docs_say() -> None:
     """docs/architecture.md, SPEC and ADR 0024 against d4-ocr-engine, d4-ocr-store-worker and d4-ocr-doctor-ci:
     the store's methods, the worker's start delay and its look every five minutes, the engine finding nothing
@@ -5061,7 +5054,6 @@ def test_the_engine_store_and_worker_are_what_the_docs_say() -> None:
     )
 
 
-@_UNTIL_D4
 def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
     """The line and the note the CHANGELOG, the privacy page, SPEC and ADR 0024 quote are the web app's own
     (d4-ocr-web)."""
@@ -5075,7 +5067,6 @@ def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
     assert "Ordnung read the words in this photo itself, " + PICTURE_TEXT_NOTE in _adr(_ADR_PICTURES)
 
 
-@_UNTIL_D4
 def test_the_tests_the_architecture_names_for_d4_exist() -> None:
     """docs/architecture.md's testing strategy names D4's tests; they come with the other D4 packages."""
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
