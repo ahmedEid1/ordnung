@@ -56,9 +56,17 @@ SLOW_S = 0.5
 def _priority() -> int:
     if sys.platform == "win32":
         import ctypes
+        from ctypes import wintypes
 
-        kernel32 = ctypes.windll.kernel32
-        return int(kernel32.GetPriorityClass(kernel32.GetCurrentProcess()))
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        # Typed, or the pseudo-handle -1 reaches GetPriorityClass cut to 32 bits and the call answers 0 (failed)
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.GetPriorityClass.argtypes = [wintypes.HANDLE]
+        kernel32.GetPriorityClass.restype = wintypes.DWORD
+        priority = int(kernel32.GetPriorityClass(kernel32.GetCurrentProcess()))
+        if priority == 0:
+            raise OSError(ctypes.get_last_error(), "GetPriorityClass failed")
+        return priority
     return os.getpriority(os.PRIO_PROCESS, 0)
 
 

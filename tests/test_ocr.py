@@ -215,7 +215,7 @@ def test_candidates_put_the_path_first_then_each_systems_places(
 
 
 def test_candidates_read_the_process_environment_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("PATH", os.pathsep.join(["/opt/eins", "/opt/zwei"]))
+    monkeypatch.setenv("PATH", ":".join(["/opt/eins", "/opt/zwei"]))  # Linux's separator, on any system
     found = ocr.candidates("linux", is_file=_is_program_in({"/opt/zwei/tesseract", "/opt/eins/tesseract"}))
     assert found == ["/opt/eins/tesseract", "/opt/zwei/tesseract"]
 
