@@ -853,4 +853,22 @@ describe("text Ordnung read from a picture (ADR 0024): search only, like the sca
       }
     }
   });
+
+  it("a letter kept private in the static demo stays found by its name only: a browser runs no Tesseract", async () => {
+    const s = createMockServer({ staticDemo: true, latency: 0 });
+    // Sam's waiting letters, kept private: in the installed app with Tesseract, letters Ordnung would read itself
+    const res = await s.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan", "doc_folder_mail", "doc_folder_invoice"] });
+    expect(res.ok, `keep-private → ${res.status}`).toBe(true);
+    const kept = s.db.liveDocuments().filter((d) => d.id.startsWith("doc_folder_") && d.ai_private && d.status === "processed");
+    expect(kept.map((d) => d.id).sort()).toEqual(["doc_folder_invoice", "doc_folder_mail", "doc_folder_scan"]);
+    expect(s.db.state.pictureText).toEqual({});
+    for (const d of kept) expect((await get<DocumentDetail>(s, `/documents/${d.id}`)).picture_text_pages, d.id).toEqual([]);
+    // the scan keeps its scanner's text (ADR 0020); nothing is found in a picture's
+    const found = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent("Wasserzähler")}`);
+    expect(found.map((d) => [d.id, d.found_in])).toEqual([["doc_folder_scan", "scanner_text"]]);
+    for (const d of kept) {
+      const rows = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent(d.filename.replace(/\.[^.]+$/, ""))}`);
+      expect(rows.find((row) => row.id === d.id)?.found_in, d.filename).toBe("letter");
+    }
+  });
 });

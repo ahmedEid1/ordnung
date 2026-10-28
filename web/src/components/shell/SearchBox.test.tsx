@@ -146,6 +146,31 @@ describe("search results", () => {
     expect(found!.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
   });
 
+  it("says when a letter was found only in text Ordnung read from its picture, as part of the option's name (ADR 0024)", async () => {
+    const [photo, scan, other] = srv.db.state.documents;
+    searchOverride = () =>
+      json([
+        { ...photo!, id: "doc_photo", title: "IMG_20260928_101500.jpg", found_in: "picture_text" },
+        { ...scan!, id: "doc_scan", title: "Scan_2026-09-28_0914.pdf", found_in: "scanner_text" },
+        { ...other!, id: "doc_other", title: "Kellerabteil 7", found_in: "letter" },
+      ]);
+    renderSearch();
+    const user = userEvent.setup();
+    await user.click(topField());
+    await user.type(topField(), "Kellerabteil");
+    const list = await screen.findByRole("listbox", { name: "Matching letters" });
+    const [pictured, scanned, own] = within(list).getAllByRole("option");
+    expect(pictured).toHaveAccessibleName(/IMG_20260928_101500\.jpg.*Found in text Ordnung read from the picture — not checked/);
+    expect(pictured).not.toHaveAccessibleName(/scanner/);
+    // one line each: the picture's for the photo, the scanner's for the scan, none for a letter's own words
+    expect(scanned).toHaveAccessibleName(/Found in your scanner's text — not checked/);
+    expect(scanned).not.toHaveAccessibleName(/read from the picture/);
+    expect(own).not.toHaveAccessibleName(/not checked/);
+    // with the same icon as the scanner's line, and no new stop for the keyboard
+    expect(within(pictured!).getByText("Found in text Ordnung read from the picture — not checked").previousElementSibling).toHaveClass("lucide-scan-text");
+    expect(pictured!.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+  });
+
   it("finds the static demo's held scan by its scanner's text, and marks it", async () => {
     renderSearch();
     const user = userEvent.setup();

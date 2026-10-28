@@ -3,7 +3,9 @@
  * Reprocess · Draft a reply · For taxes (`./TaxToggle`, with its line saying who decided) · Download original ·
  * Delete (with a confirmation listing what would disappear). On a paired phone
  * the letter stays on the computer: no download, no delete — a line says where to do them. A scan whose pages
- * carry only the text its scanner added says what Ordnung keeps that text for (ADR 0020).
+ * carry only the text its scanner added says what Ordnung keeps that text for (ADR 0020), and a letter whose
+ * pictures Ordnung read itself with Tesseract (a photo or scan Claude isn't reading) says which pages, and what
+ * those words are kept for (ADR 0024).
  */
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -89,6 +91,24 @@ export function scanTextNote(detail: DocumentDetail): string | null {
   return `Your scanner added its own text to ${where}. Ordnung keeps it only so search can find the letter: it isn't checked, isn't shown as the letter's words and is never sent to Claude.`;
 }
 
+/**
+ * What the words Ordnung read in the letter's pictures itself are kept for (`picture_text_pages`: the pages where
+ * Tesseract found words, while Claude isn't reading the letter; ADR 0024): search only — never checked, never shown
+ * as the letter's words, never sent to Claude. "this photo" for a photo, "this file" when every page has them, else
+ * the pages ("on pages 1, 2 and 4 of this file"). The same words on a phone: the file goes where the letter goes
+ * (hand-off sync, backups), so no computer is named. `null`: no such words.
+ */
+export function pictureTextNote(detail: DocumentDetail): string | null {
+  const pages = detail.picture_text_pages;
+  if (!pages.length) return null;
+  const where = detail.document.mime.startsWith("image/")
+    ? "in this photo"
+    : pages.length >= detail.document.pages
+      ? "in this file"
+      : `on ${pages.length === 1 ? "page" : "pages"} ${joinAnd(pages.map(String))} of this file`;
+  return `Ordnung read the words ${where} itself, only so search can find the letter: they aren't checked, aren't shown as the letter's words and are never sent to Claude.`;
+}
+
 export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;
   const phone = usePhoneCompanion();
@@ -104,6 +124,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
   const Icon = doc.ai_private ? Lock : doc.text_mode === "vision" ? ScanText : Sparkles;
   const reply = !scam && !busy && doc.direction === "incoming" && !doc.ai_private && !(doc.kind && NO_REPLY_KINDS.has(doc.kind));
   const scanned = scanTextNote(detail);
+  const pictured = pictureTextNote(detail);
 
   return (
     <footer className="border-t border-line pt-5">
@@ -114,6 +135,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
       </p>
       <p className="mt-2 text-[12px] leading-5 text-muted">{sentText(detail, phone)}</p>
       {scanned ? <p className="mt-1 text-[12px] leading-5 text-muted">{scanned}</p> : null}
+      {pictured ? <p className="mt-1 text-[12px] leading-5 text-muted">{pictured}</p> : null}
       <div className="mt-4 flex flex-wrap gap-2">
         {/* a letter that couldn't be read has its "Try again" at the top: no second button for the same thing */}
         {!doc.ai_private && !busy && doc.status !== "failed" ? (

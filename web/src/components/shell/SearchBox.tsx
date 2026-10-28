@@ -5,7 +5,7 @@ import { SEARCH_LIMIT, useDocuments, useParties, useSearchDocuments } from "@/ap
 import type { DocumentRow, ListedLetter } from "@/api/types";
 import { cn, plural } from "@/lib/utils";
 import { useDebounced, useHotkey } from "@/lib/hooks";
-import { DOCUMENT_STATUS_COPY, SCANNER_TEXT_MATCH, documentKindLabel } from "@/lib/copy";
+import { DOCUMENT_STATUS_COPY, documentKindLabel, uncheckedMatch } from "@/lib/copy";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { DateText } from "@/components/ui/DateText";
 import { Kbd } from "@/components/ui/Kbd";
@@ -71,8 +71,9 @@ function PanelMessage({ icon, tone = "muted", children, action }: { icon?: React
  * Search combobox over letters (`GET /api/documents?q=`), keyboard navigable. Every state says
  * what is going on: a hint, "Searching…", the matches (the query highlighted, a link to all of
  * them in the Inbox when there are more), nothing found, no letters at all, or an error with
- * "Try again". The number found is announced. A letter found only in the text its scanner added says so
- * ("not checked", ADR 0020) on a line of its own, read out with its title.
+ * "Try again". The number found is announced. A letter found only in the text its scanner added (ADR 0020), or
+ * only in the words Ordnung read from its picture (ADR 0024), says so ("not checked") on a line of its own, read
+ * out with its title.
  */
 function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps) {
   const navigate = useNavigate();
@@ -167,6 +168,7 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
     const waiting = d.status === "held";
     const date = waiting ? d.created_at.slice(0, 10) : (d.doc_date ?? d.received_date);
     const kind = waiting ? DOCUMENT_STATUS_COPY.held.label : documentKindLabel(d.kind);
+    const unchecked = uncheckedMatch(d.found_in);
     const isActive = i === activeIndex;
     return (
       <li
@@ -216,10 +218,11 @@ function SearchCombobox({ autoFocus, onNavigate, inline, className }: ComboProps
               </>
             )}
           </span>
-          {d.found_in === "scanner_text" ? (
+          {unchecked ? (
+            // found only in text nobody checked: the scanner's (ADR 0020) or Ordnung's own reading of the picture (ADR 0024)
             <span className="mt-0.5 flex items-start gap-1 text-xs text-muted">
               <ScanText className="mt-px size-3.5 shrink-0" aria-hidden />
-              <span className="min-w-0">{SCANNER_TEXT_MATCH}</span>
+              <span className="min-w-0">{unchecked}</span>
             </span>
           ) : null}
         </span>

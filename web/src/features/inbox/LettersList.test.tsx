@@ -241,4 +241,35 @@ describe("Inbox letters list", () => {
     expect(line.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
     expect(within(rowOf(screen.getByRole("link", { name: other.title! }))).queryByText(/scanner's text/)).toBeNull();
   });
+
+  it("marks a letter a search found only in text Ordnung read from its picture as not checked (ADR 0024)", async () => {
+    // Sam's held invoice (a PDF whose pages are pictures, say), and the held scan with its scanner's text
+    const [pictured, scan, other] = [srv.db.document("doc_folder_invoice")!, srv.db.document("doc_folder_scan")!, srv.db.document("doc_library")!];
+    // rows as the search lists them (`GET /api/documents?q=`)
+    const found: DocumentRow[] = [
+      { ...pictured, found_in: "picture_text", tax_choice: null },
+      { ...scan, found_in: "scanner_text", tax_choice: null },
+      { ...other, found_in: "letter", tax_choice: null },
+    ];
+    renderWithProviders(
+      <LettersList
+        groups={[{ key: "found", label: "Found", docs: found }]}
+        parties={new Map()}
+        open={new Map()}
+      />,
+    );
+    const row = rowOf(await screen.findByRole("link", { name: pictured.title! }));
+    // one line, in both the stacked and the table layout, with the scanner line's icon and no tab stop of its own
+    const [text, ...more] = within(row).getAllByText("Found in text Ordnung read from the picture — not checked");
+    expect(more).toEqual([]);
+    const line = text!.closest("p")!;
+    expect(line.querySelector("svg")).toHaveClass("lucide-scan-text");
+    expect(line.querySelectorAll("a, button, [tabindex]")).toHaveLength(0);
+    expect(within(row).queryByText(/scanner's text/)).toBeNull();
+    // the scan keeps its scanner's line; a letter found by its own words says neither
+    const scanRow = rowOf(screen.getByRole("link", { name: scan.title! }));
+    expect(within(scanRow).getByText("Found in your scanner's text — not checked")).toBeInTheDocument();
+    expect(within(scanRow).queryByText(/read from the picture/)).toBeNull();
+    expect(within(rowOf(screen.getByRole("link", { name: other.title! }))).queryByText(/not checked/)).toBeNull();
+  });
 });
