@@ -35,6 +35,9 @@ import type {
   DraftPatch,
   Health,
   HeldResult,
+  Household,
+  HouseholdChange,
+  HouseholdFiling,
   ItemCreate,
   ItemListParams,
   ItemPatch,
@@ -70,6 +73,8 @@ import type {
 export const qk = {
   health: ["health"] as const,
   profile: ["profile"] as const,
+  /** Your household: refreshed with the ledger (a new reading changes its suggestions) and on `profile.updated`. */
+  household: ["household"] as const,
   settings: ["settings"] as const,
   documents: {
     all: ["documents"] as const,
@@ -152,6 +157,7 @@ const LEDGER_PREFIXES = [
   qk.folder,
   qk.waiting,
   qk.questions,
+  qk.household,
 ] as const;
 
 /** Invalidate every ledger-derived query (documents, items, contracts, views, ideas…). */
@@ -231,6 +237,73 @@ export function useUpdateProfile() {
       qc.setQueryData(qk.profile, profile);
       void invalidateLedger(qc); // region/postal buffer change recomputes dates
     },
+  });
+}
+
+/** Your household: its people, the letters filed for each, the ones that are the person's and the suggestions. */
+export function useHousehold(opts: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: qk.household, queryFn: api.household, enabled: opts.enabled ?? true });
+}
+
+/** A household write answers the new household: keep it, and let the letters' pages say again who each is for. */
+function householdSaved(qc: QueryClient, household: Household): Promise<void> {
+  qc.setQueryData(qk.household, household);
+  return qc.invalidateQueries({ queryKey: ["documents", "detail"] });
+}
+
+/** Replace the list of people (computer only; 409 when `base` is not the household's `version` any more). */
+export function useSaveHousehold() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: HouseholdChange) => api.saveHousehold(body),
+    meta: { errorTitle: "Couldn't save your household" },
+    onSuccess: (household) => householdSaved(qc, household),
+  });
+}
+
+/** The most letters one `PATCH /api/household` takes (the body's cap). */
+export const FILE_LETTERS_MAX = 1_000;
+
+/** The letters a chunked filing filed before one of its requests failed, by the error it failed with. */
+const filedBefore = new WeakMap<object, string[]>();
+
+/**
+ * The letters {@link useFileLetters} filed before a later chunk failed with `err` (the mutation's error), for a toast
+ * and an Undo of those; `[]` when it filed none (the first chunk failed, or it was one request).
+ */
+export function filedBeforeFailure(err: unknown): string[] {
+  return (typeof err === "object" && err !== null && filedBefore.get(err)) || [];
+}
+
+/**
+ * File letters: a member's id, `"me"`, or null (forget the answer) per letter id. More than
+ * {@link FILE_LETTERS_MAX} go in chunks, one after the other, inside this one mutation (an Undo sends its own
+ * answers back the same way); the answer is the household after the last one. When a later chunk fails, the
+ * earlier ones stay filed: {@link filedBeforeFailure} names their letters.
+ */
+export function useFileLetters() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ letters }: HouseholdFiling) => {
+      const entries = Object.entries(letters);
+      const filed: string[] = [];
+      let household: Household | undefined;
+      for (let start = 0; start === 0 || start < entries.length; start += FILE_LETTERS_MAX) {
+        const chunk = Object.fromEntries(entries.slice(start, start + FILE_LETTERS_MAX));
+        try {
+          household = await api.fileLetters({ letters: chunk });
+        } catch (err) {
+          if (filed.length && typeof err === "object" && err !== null) filedBefore.set(err, filed);
+          throw err;
+        }
+        filed.push(...Object.keys(chunk));
+      }
+      return household as Household;
+    },
+    meta: { errorTitle: "Couldn't change who the letter is for" },
+    onSuccess: (household) => householdSaved(qc, household),
+    // a chunk that failed after others were filed: show what is filed now
+    onError: () => qc.invalidateQueries({ queryKey: qk.household }),
   });
 }
 

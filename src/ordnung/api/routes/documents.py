@@ -5,6 +5,11 @@ from inside it in detail and the file hash (:data:`LEFT_OUT_OF_LIST`); the lette
 (``GET /api/documents/{id}``) has all of it. "Download a copy of your records" takes every letter whole
 from ``GET /api/documents.json``, on the computer only.
 
+What the person chose about a letter is kept apart from Claude's reading and added by the routes (models
+outside ``models.py``): its "For taxes" choice (``tax_choice``, :mod:`ordnung.secretary.tax_choice`) on each
+row, the letter's page (:class:`LetterDetail`) and the records (:class:`LetterRecord`), and who the letter
+is for on its page (``household``, :mod:`ordnung.secretary.household`).
+
 Uploads (``POST /api/documents``, multipart): ``files`` (``files[]`` is accepted too), ``combine``
 (all photos of the upload become one multi-page letter; other files stay separate documents) and
 ``private`` ("Keep private — no AI"). The response lists the documents queued for reading with their
@@ -99,6 +104,7 @@ from ordnung.rules.routing import (
 )
 from ordnung.secretary.addressee import addressed_to
 from ordnung.secretary.girocode_gate import document_girocodes
+from ordnung.secretary.household import LetterFor, letter_for
 from ordnung.secretary.sender_land import region_suggestion
 from ordnung.secretary.triggers import Ledger
 
@@ -152,11 +158,22 @@ class DocumentPatch(BaseModel):
     case_id: str | None = None
     ai_private: bool | None = None
     direction: Direction | None = None
+    tax_choice: bool | None = Field(
+        default=None,
+        description=(
+            "For taxes: true or false is the person's own choice, over Claude's mark; null goes back to "
+            "Claude's mark"
+        ),
+        strict=True,  # true, false or null: never "yes" or 1 (the published schema is the same)
+    )
 
 
 #: What the letter list leaves out: what Claude read from inside the letter in detail, and the file hash.
 #: The letter's own page (``GET /api/documents/{id}``) and the copy of your records have all of it.
 LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment", "sha256"})
+#: What the route adds to each row of the list: where a search found the letter, and the person's own
+#: "For taxes" choice (``None``: none, Claude's mark counts).
+ROUTE_FIELDS = frozenset({"found_in", "tax_choice"})
 
 _ROW_FIELDS: dict[str, Any] = {
     name: (field.annotation, field)
@@ -167,6 +184,8 @@ _ROW_FIELDS: dict[str, Any] = {
 DocumentRow = create_model(
     "DocumentRow",
     __config__=ConfigDict(json_schema_serialization_defaults_required=True),
+    # the published description stays as it was (D3's contract changes only the fields): the ROUTE_FIELDS
+    # are found_in and tax_choice, the person's own "For taxes" choice (None: none, Claude's mark counts)
     __doc__=(
         "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
         "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
@@ -179,7 +198,28 @@ DocumentRow = create_model(
     __module__=__name__,
     **_ROW_FIELDS,
     found_in=(SearchFoundIn | None, None),
+    tax_choice=(bool | None, None),
 )
+
+
+class LetterDetail(DocumentDetail):
+    """``GET /api/documents/{id}``: the letter's page (``models.DocumentDetail``) with what the person chose
+    about the letter, kept apart from Claude's reading. Route-local, so ``models.py`` (a benchmark digest
+    file) stays as it is; Ask never reads it."""
+
+    tax_choice: bool | None = Field(
+        default=None,
+        description="The person's own For taxes choice; null: none, Claude's mark (document.tax_relevant) counts",
+    )
+    #: Who the letter is for (all empty without a household).
+    household: LetterFor = Field(default_factory=LetterFor)
+
+
+class LetterRecord(Document):
+    """A letter in the copy of your records (``GET /api/documents.json``): the letter whole, as stored, with
+    the person's own "For taxes" choice (``None``: none)."""
+
+    tax_choice: bool | None = None
 
 
 class DeleteResult(BaseModel):
@@ -239,21 +279,28 @@ def list_documents(
             return None
         return "scanner_text" if doc.id in only_scanned else "letter"
 
+    choices = store.tax_choices()  # one read for every row
     return [
         DocumentRow.model_construct(
             **{name: value for name, value in dict(doc).items() if name not in LEFT_OUT_OF_LIST},
             found_in=found_in(doc),
+            tax_choice=choices.get(doc.id),
         )
         for doc in docs
     ]
 
 
-@router.get("/documents.json", response_model=list[Document], dependencies=[Depends(require_computer)])
-def records_copy(store: StoreDep) -> list[Document]:
+@router.get("/documents.json", response_model=list[LetterRecord], dependencies=[Depends(require_computer)])
+def records_copy(store: StoreDep) -> list[LetterRecord]:
     """Every letter whole, as stored, newest first: the letters of "Download a copy of your records".
     Trash and proof files are left out, as in the list. Computer only (403 ``computer_only`` for a
     phone, also behind the phone listener's allow-list): records leave the computer."""
-    return store.list_documents(exclude_source=PROOF_SOURCE)
+    # each with the person's own "For taxes" choice (LetterRecord), read once
+    choices = store.tax_choices()
+    return [
+        LetterRecord.model_construct(**dict(doc), tax_choice=choices.get(doc.id))
+        for doc in store.list_documents(exclude_source=PROOF_SOURCE)
+    ]
 
 
 def _page_infos(store: Store, doc_id: str) -> list[PageInfo]:
@@ -422,10 +469,16 @@ def _proof_of(store: Store, doc_id: str) -> list[ProofLink]:
     return links
 
 
-@router.get("/documents/{doc_id}", response_model=DocumentDetail)
-def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> DocumentDetail:
+@router.get("/documents/{doc_id}", response_model=LetterDetail)
+def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> LetterDetail:
     """One letter with everything the viewer shows."""
-    return document_detail(store, doc_id, today)
+    # with the person's own "For taxes" choice and who the letter is for (LetterDetail)
+    detail = document_detail(store, doc_id, today)
+    return LetterDetail.model_construct(
+        **dict(detail),
+        tax_choice=store.tax_choices().get(doc_id),
+        household=letter_for(store, detail.document),
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -590,16 +643,38 @@ PRIVATE_ON_COMPUTER = "Let Claude read a private letter from your computer."
 HELD_MESSAGE = (
     "This letter isn't read yet: choose “Read” or “Keep private” for it first (Inbox → From your folder)."
 )
+IN_TRASH = "This letter is in the trash."
+PROOF_FOR_TAXES = "A proof file goes with its letter: mark that letter for taxes instead."
+
+
+def _check_tax_choice(document: Document) -> None:
+    """A "For taxes" choice is for a letter in the Inbox (the page shows the toggle only there): not one in
+    the trash, one waiting for the person's answer, or a proof file. A letter being read may have one: it is
+    kept apart from the reading and is still there when the reading ends."""
+    if document.deleted_at is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, IN_TRASH)
+    if is_held(document):
+        raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
+    if document.source == PROOF_SOURCE:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROOF_FOR_TAXES)
 
 
 def _apply_patch(store: Store, doc_id: str, changes: dict[str, object]) -> Document:
     document = require(store.get_document(doc_id), NOT_FOUND)
+    # the person's "For taxes" choice is kept apart from the letter (secretary.tax_choice): its row, and
+    # with it ``updated_at`` and Ask's ledger token, stay as they are
+    tax_set = "tax_choice" in changes
+    tax_choice = changes.pop("tax_choice", None)
+    if tax_set:
+        _check_tax_choice(document)
     if "ai_private" in changes and is_held(document):
         # a waiting letter is private until the person answers (ingest.held): only an answer changes that
         raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     _check_links(store, changes)
     if changes.get("tags", ...) is None:
         changes["tags"] = []
+    if tax_set:
+        store.set_tax_choice(document.id, tax_choice if isinstance(tax_choice, bool) else None)
     return store.update_document(document.id, **changes) if changes else document
 
 
@@ -652,7 +727,11 @@ async def update_document(
     doc_id: str, patch: DocumentPatch, request: Request, ctx: CtxDep, today: TodayDep
 ) -> Document:
     """Correct a letter's facts; a confirmed arrival date or corrected letter date recomputes its to-dos."""
+    # (the published description stays as it was.) ``tax_choice`` sets the person's own "For taxes" choice
+    # (``null`` clears it), kept apart from the letter: the answer is the letter as stored, and its page
+    # carries the choice; 409 for a letter in the trash, one waiting for the person, or a proof file
     changes = patch.model_dump(exclude_unset=True)
+    tax_set = "tax_choice" in changes
     confirmed = changes.pop("received_confirmed", None)
     if changes.get("ai_private") is False and is_phone(request):
         document = require(ctx.store.get_document(doc_id), NOT_FOUND)
@@ -660,8 +739,11 @@ async def update_document(
             raise PhoneRefusal("computer_only", PRIVATE_ON_COMPUTER)
     async with ledger_lock():
         document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
+    if tax_set:
+        # the tax Idea counts the letters for taxes: it follows at once
+        ctx.worker.refresh_ideas()
     if changed is None:
-        if changes:
+        if changes or tax_set:
             ctx.bus.publish("document.updated", doc_id=doc_id)
         return document
     ctx.bus.publish("document.updated", doc_id=doc_id)
@@ -674,7 +756,7 @@ async def reprocess_document(doc_id: str, ctx: CtxDep) -> Job:
     """Read the letter again, bypassing the model cache (to-dos the person edited are kept)."""
     document = require(ctx.store.get_document(doc_id), NOT_FOUND)
     if document.deleted_at is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "This letter is in the trash.")
+        raise HTTPException(status.HTTP_409_CONFLICT, IN_TRASH)
     if is_held(document):
         raise HTTPException(status.HTTP_409_CONFLICT, HELD_MESSAGE)
     return await asyncio.to_thread(reprocess, ctx, doc_id)

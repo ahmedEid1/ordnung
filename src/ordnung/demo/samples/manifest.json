@@ -6,7 +6,7 @@
     "environment": {
       "fpdf2": "2.8.8",
       "fonttools": "4.66.0",
-      "pillow": "12.3.0",
+      "pillow": "13.0.0",
       "pypdfium2": "5.13.0",
       "pdfium": "153.0.7999.0",
       "zlib": "1.3"

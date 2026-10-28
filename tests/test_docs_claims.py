@@ -1212,13 +1212,15 @@ def test_a_date_you_add_without_a_letter_counts_nationwide_holidays_only(store: 
 
 
 def test_readme_says_a_letter_for_someone_else_still_counts_as_yours() -> None:
-    """README Limitations: a letter addressed to someone else says so and can be answered in their name, but it is
-    filed as yours — there is one person's Ordnung, and My numbers takes a number as yours by its label and the
-    letter, never by the addressee."""
+    """README Limitations: a letter addressed to someone else says so, can be filed for them once they are in your
+    household (D3) and can be answered in their name, but its dates and numbers count as yours, and Ask and Ideas
+    still treat it as yours — there is one person's Ordnung, and My numbers takes a number as yours by its label
+    and the letter, never by the addressee."""
     assert (
         "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
-        "child) says so, and a reply to it can go out in their name, but its dates, reminders and numbers count "
-        "as yours."
+        "child) says so, you can file it for them once they are in your household, and a reply to it can go out "
+        "in their name, but its dates, reminders and numbers count as yours, and Ask and Ideas still treat a "
+        "household member's letters as yours."
     ) in _limitations()
     assert "recipient_name" not in (ROOT / "src/ordnung/numbers.py").read_text(encoding="utf-8")
 
@@ -2765,26 +2767,28 @@ def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None
 
 def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
     """README Limitations: the tax year files a letter by its printed date (else its arrival,
-    ``triggers.letter_day``), so its January–May group is a heuristic; only Claude marks a letter for taxes, so a
-    private one never is, and nobody can yet (``DocumentPatch`` has no ``tax_relevant``); the ZIP isn't
-    encrypted; a scanner's text is unchecked; the moving checklist knows only the organisations Ordnung has
-    seen."""
+    ``triggers.letter_day``), so its January–May group is a heuristic; Claude marks a letter for taxes and the
+    person's *For taxes* choice changes that (``DocumentPatch.tax_choice``, never Claude's own ``tax_relevant``,
+    which Ask keeps seeing); the ZIP isn't encrypted; a scanner's text is unchecked; the moving checklist knows
+    only the organisations Ordnung has seen."""
     dated = Document.model_construct(doc_date="2026-02-03", received_date="2026-02-06")
     undated = Document.model_construct(doc_date=None, received_date="2026-02-06")
     assert (letter_day(dated), letter_day(undated)) == (date(2026, 2, 3), date(2026, 2, 6))
     assert "tax_relevant" not in DocumentPatch.model_fields
+    assert "tax_choice" in DocumentPatch.model_fields
     limitations = _limitations()
     for sentence in (
         "The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is "
         "for",
         "which is why a tax year also lists the letters for taxes dated January–May of the next year, for you to "
         "check — a heuristic",
-        "Only Claude marks a letter for taxes, when it reads it: a letter you kept private is never marked, and "
-        "you can't mark one yourself yet",
+        README_TAX_LIMIT,
         "The ZIP *Export letters* saves isn't encrypted",
         'The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn\'t checked',
     ):
         assert sentence in limitations, sentence
+    assert "you can't mark one yourself yet" not in limitations
+    assert "Only Claude marks a letter for taxes" not in limitations
     assert _moving_limitation().startswith(
         "The moving checklist knows only the organisations Ordnung has seen in your contracts and letters"
     )
@@ -3743,7 +3747,10 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
 
     left_out = {"key_facts", "explanation", "references", "payment", "sha256"}
     assert documents.LEFT_OUT_OF_LIST == left_out
-    assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {"found_in"}
+    assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {
+        "found_in",
+        "tax_choice",  # D3: the person's own "For taxes" choice (SPEC § 4, checked in Batch D3 below)
+    }
     assert hasattr(models, "DocumentListEntry")
     components = openapi_schema()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components
@@ -4097,3 +4104,500 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
     assert "renumbers(" in inspect.getsource(push.push)
     for rule in (decide._in_use, decide._use_here):
         assert "_informed(" in inspect.getsource(rule), rule.__name__
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch D3 — For taxes on any letter, an Inbox year filter and your household: README, the CHANGELOG,
+# docs/privacy.md, SPEC, docs/architecture.md and ADR 0023
+# --------------------------------------------------------------------------------------------------
+
+_ADR_HOUSEHOLD = ROOT / "docs" / "decisions" / "0023-letters-for-your-household-are-suggested-never-filed.md"
+
+#: CHANGELOG, Unreleased → Added: *For taxes* on a letter's page (d3-tax-choice), its sentences in order.
+D3_FOR_TAXES = (
+    "A letter's page has a *For taxes* button: press it to add the letter to your letters for taxes, or to take "
+    "one Claude marked off them — private letters too, and on your phone, with Undo.",
+    "Your choice stays when the letter is read again; the Tax year page, *Export letters* with *Only letters for "
+    "taxes*, the tax-season Idea and the weekly review's *Keep it with your tax papers* follow it.",
+    "Ask and *Weekly Ideas* still see Claude's own mark on each letter; the tax-season Idea, whose title *Weekly "
+    "Ideas* and the daily note send like every Idea's, follows your choice.",
+)
+#: CHANGELOG, Unreleased → Added: the Inbox's year (d3-inbox).
+D3_YEAR = (
+    "A *Year* choice next to the kind of letter shows the letters dated in that year (else arrived in it), as "
+    "the Tax year page files them; its *Letters for taxes* link then opens that year."
+)
+#: CHANGELOG, Unreleased → Added: your household (d3-household-core, d3-inbox, d3-household-surfaces), its
+#: sentences in order.
+D3_HOUSEHOLD = (
+    "Add the people whose letters come to you too, such as your partner or your children, in Settings → Profile "
+    "& address (Claude never sees the list).",
+    "A letter addressed to one of them asks *Is this letter for Alex Rivera?* — one press files it, *Change* "
+    "files it for someone else, and nothing is filed by itself "
+    "([ADR 0023](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)).",
+    "The Inbox shows one person's letters and files the ones addressed to them at once (*File these 3 for Alex "
+    "Rivera*); Inbox and Today rows say whose letter it is; a reply to their letter can go out in their name "
+    "when they sign their own letters (for a child, it goes out in yours).",
+    "A paired phone can file letters but not change the list, and *Download a copy of your records* holds it.",
+    "Their letters' dates, reminders and numbers stay yours, and Ask and Ideas still treat them as yours.",
+)
+#: CHANGELOG, Unreleased → Upgrading: what a computer still on 0.2.0 does with the two new ``meta`` rows. (0.2.0
+#: had no addressee policy, ``secretary/addressee.py``, so its composer never offers another name.)
+D3_UPGRADING = (
+    "A computer still on 0.2.0 keeps the letters you marked or unmarked for taxes but doesn't use your choices: "
+    "its Tax year page, export and tax-season Idea go by Claude's marks alone, and a letter deleted for good "
+    "there leaves its choice behind (its id and yes or no, nothing of the letter) until you next mark or unmark "
+    "a letter on an updated computer: the same file added again on 0.2.0 meanwhile takes that choice back (on an "
+    "updated computer it starts with none). Update both computers.",
+    "A computer still on 0.2.0 keeps your household and the letters you filed for its people when it receives "
+    "them by hand-off sync or from a backup, but doesn't show them: there every letter is yours, as before. "
+    "Update both computers.",
+    "A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the "
+    "letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile "
+    "is filed as before (on an updated computer it starts unfiled).",
+)
+#: README's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet").
+README_TAX_LIMIT = (
+    "Claude marks a letter for taxes when it reads it; *For taxes* on a letter's page changes that, for private "
+    "letters too, and your choice stays when the letter is read again. Ask, and the Ideas Claude suggests each "
+    "week, still see Claude's own mark on each letter (the tax-season Idea follows your choice). A letter still "
+    "waiting under *From your folder — not read yet* can't be marked"
+)
+#: README "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
+README_D3_ALSO = (
+    "*tax year* — a year's letters for your tax return, by the date on them; mark or unmark any letter "
+    "yourself, and the Inbox shows one year at a time",
+    "*your household* — file a letter for your partner or your child when Ordnung asks (it never files one by "
+    "itself), find their letters, and reply in their name when they sign their own",
+)
+#: docs/privacy.md, "What is sent to Claude, per feature": the choices never reach Claude; the tax Idea's title.
+PRIVACY_FOR_TAXES = (
+    "Your *For taxes* choices never reach Claude: Ask and *Weekly Ideas* see the mark Claude gave a letter when "
+    "it read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays."
+)
+PRIVACY_TAX_IDEA = (
+    "Your choices can make the tax-season Idea appear or go away; its title (*{title}*: no letter, no count), like "
+    "every Idea's, is part of what *Weekly Ideas* and the daily note send."
+)
+#: docs/privacy.md, "Your household": when a letter is filed, what never reaches Claude, who may change it.
+PRIVACY_HOUSEHOLD = (
+    "Ordnung suggests who a letter is for from the addressee its reading names, on your computer, and files a "
+    "letter for someone only when you press *Yes*, choose them under *Change*, file a set of letters in the "
+    "Inbox, or add them from a letter with *Also file this letter for …* left ticked; nothing is filed by itself, "
+    "by a reading, by the daily check or by sync.",
+    "**Never sent to Claude.** The list is not put into a prompt, a draft request, Ask's tools, a notification, "
+    "a calendar or anything *Weekly Ideas* and the daily note send.",
+    "**Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file "
+    'letters, and the privacy log notes each time ("Changed who a letter is for on Anna\'s iPhone").',
+    "Deleting a letter for good removes its filing in the same step; the trash keeps it, as it keeps the "
+    "letter.",
+)
+#: The modules that build what Claude is given: Ask (its tools and fingerprint), the prompts and the model
+#: runtime, the weekly review's snapshot, the daily note and a draft request.
+_CLAUDE_FACING = (
+    ROOT / "src" / "ordnung" / "assistant",
+    ROOT / "src" / "ordnung" / "llm",
+    ROOT / "src" / "ordnung" / "secretary" / "review.py",
+    ROOT / "src" / "ordnung" / "secretary" / "brief.py",
+    ROOT / "src" / "ordnung" / "drafts" / "compose.py",
+)
+#: The names of the household and the tax choices in code.
+_D3_NAMES = frozenset(
+    {
+        "household",
+        "tax_choice",
+        "tax_choices",
+        "for_taxes",
+        "recipient_names",
+        "HOUSEHOLD_META_KEY",
+        "TAX_CHOICES_META_KEY",
+    }
+)
+_D3_MODULES = ("ordnung.secretary.household", "ordnung.secretary.tax_choice", "ordnung.api.routes.household")
+
+
+def test_the_changelog_adds_for_taxes_the_inbox_year_and_your_household() -> None:
+    """CHANGELOG, Unreleased → Added: *For taxes* on any letter, the Inbox's year and your household, their
+    sentences in order, after the Outlook e-mails and before the releases."""
+    added = _unreleased("Added")
+    for lead, sentences in (
+        ("**Mark any letter for taxes yourself.**", D3_FOR_TAXES),
+        ("**The Inbox shows one year at a time.**", (D3_YEAR,)),
+        ("**Your household.**", D3_HOUSEHOLD),
+    ):
+        bullet = _bullet(added, lead)
+        for sentence in sentences:
+            assert sentence in bullet, sentence
+        assert [bullet.index(s) for s in sentences] == sorted(bullet.index(s) for s in sentences), lead
+    assert (
+        added.index("**E-mails saved from Outlook.**")
+        < added.index("**Mark any letter for taxes yourself.**")
+        < added.index("**The Inbox shows one year at a time.**")
+        < added.index("**Your household.**")
+        < added.index("**Releases.**")
+    )
+
+
+def test_the_changelog_says_what_a_0_2_0_computer_does_with_the_choices_and_the_household() -> None:
+    """CHANGELOG, Unreleased → Upgrading, against the code: both rows are synced ``meta`` rows (0.2.0's scrub
+    deletes only its own local and demo keys, as now, so they travel through it untouched), backups keep them,
+    and no migration came with them (a 0.2.0 computer refuses a newer schema in sync and backups)."""
+    from ordnung.backup import archive
+    from ordnung.db import store as store_module
+
+    upgrading = _unreleased("Upgrading")
+    for sentence in D3_UPGRADING:
+        assert f"- {sentence}" in upgrading, sentence
+    keys = {store_module.TAX_CHOICES_META_KEY, store_module.HOUSEHOLD_META_KEY}
+    assert keys == {"tax_choices", "household"}
+    assert keys <= sync.SYNCED_META
+    assert keys.isdisjoint(sync.LOCAL_META | sync.DEMO_META | sync.MERGED_META)
+    assert keys.isdisjoint(archive._LEFT_OUT_META)
+    migrations = sorted(p.name for p in (ROOT / "src" / "ordnung" / "db" / "migrations").glob("*.sql"))
+    assert len(migrations) == 5 and migrations[-1].startswith("0005_"), migrations
+
+
+def test_readme_names_for_taxes_the_inbox_year_and_your_household() -> None:
+    """README: the "Also" line names *For taxes*, the Inbox's year and your household; Privacy says the
+    household and the choices are never put into a prompt; Documentation lists ADR 0023 after 0022."""
+    also = _flat(_tour().split("**Also:**", 1)[1])
+    for words in README_D3_ALSO:
+        assert words in also, words
+    privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
+    assert (
+        "the address and IBAN in your profile, the people you list as your household and your *For taxes* "
+        "choices are never put into a prompt"
+    ) in privacy
+    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    assert f"(docs/decisions/{_ADR_HOUSEHOLD.name})" in documentation
+    assert documentation.index("[0022 compressed answers") < documentation.index(
+        "[0023 letters for your household are suggested, never filed]"
+    )
+
+
+def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: Store) -> None:
+    """docs/privacy.md: a row each in "At a glance" (``meta``, in backups and hand-off sync, never to Claude); the
+    choices never reach Claude, but the tax Idea's title, like every Idea's, does; "Your household"; a phone files
+    but never edits the list (the privacy log's words); deleting a letter for good removes both."""
+    from ordnung.api import phone_gate
+    from ordnung.secretary import review
+
+    text = (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    (taxes,) = [line for line in text.splitlines() if line.startswith("| Your *For taxes* choices")]
+    (people,) = [line for line in text.splitlines() if line.startswith("| Your household")]
+    assert "`tax_choices`" in taxes and "`household`" in people
+    for row in (taxes, people):
+        assert "encrypted backups and hand-off sync's encrypted copy" in row and "never sent to Claude" in row
+    sent = _privacy_section("What is sent to Claude, per feature")
+    seed_ledger(store)
+    (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
+    assert PRIVACY_FOR_TAXES in sent
+    assert PRIVACY_TAX_IDEA.format(title=idea.title) in sent
+    # the weekly review is given Claude's own mark and only the Ideas' titles
+    assert '"tax_relevant": doc.tax_relevant' in inspect.getsource(review._document_row)
+    assert '"existing_ideas": {"open": open_titles' in inspect.getsource(review)
+    household = _privacy_section("Your household")
+    for sentence in PRIVACY_HOUSEHOLD:
+        assert sentence in household, sentence
+    assert phone_scope.CHANGE_LABELS[("PATCH", "/api/household")] == "Changed who a letter is for"
+    assert 'f"{label} on {device.name}"' in inspect.getsource(phone_gate)
+    phone = _privacy_section("Phone access (optional)")
+    assert "mark a letter for taxes and file a letter for someone in your household" in phone
+    assert "change settings, your profile, your household's list" in phone
+    controls = _privacy_section("Your controls")
+    assert "your *For taxes* choice for it and whom you filed it for" in _bullet(
+        controls, "**Delete means delete**"
+    )
+    assert "Your household and your *For taxes* choices travel with your ledger." in _privacy_section(
+        "Hand-off sync between your computers (optional)"
+    )
+    assert "your household and your *For taxes* choices" in _privacy_section("Encrypted backups")
+
+
+def test_nothing_claude_is_given_reads_the_household_or_the_tax_choices() -> None:
+    """docs/privacy.md, ADR 0023 and docs/architecture.md: no module that builds what Claude is given (Ask, the
+    prompts, the weekly review, the daily note, a draft request) imports or names the household or the tax
+    choices, and no prompt mentions them."""
+    files = [
+        path
+        for root in _CLAUDE_FACING
+        for path in ([root] if root.is_file() else sorted(root.rglob("*")))
+        if path.is_file() and path.suffix in {".py", ".md"}
+    ]
+    assert len(files) > 20 and any(path.suffix == ".md" for path in files)
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        name = path.relative_to(ROOT).as_posix()
+        if path.suffix == ".md":
+            assert not re.search(r"household|tax_choice", text, re.IGNORECASE), name
+            continue
+        for node in ast.walk(ast.parse(text)):
+            if isinstance(node, ast.ImportFrom):
+                assert node.module not in _D3_MODULES, name
+                assert _D3_NAMES.isdisjoint(alias.name for alias in node.names), name
+            elif isinstance(node, ast.Import):
+                assert not any(alias.name.startswith(_D3_MODULES) for alias in node.names), name
+            elif isinstance(node, ast.Name):
+                assert node.id not in _D3_NAMES, (name, node.id)
+            elif isinstance(node, ast.Attribute):
+                assert node.attr not in _D3_NAMES, (name, node.attr)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                assert node.value not in _D3_NAMES, name
+
+
+def test_the_choices_and_the_household_leave_ask_s_ledger_as_it_was(store: Store) -> None:
+    """ADR 0023 and docs/architecture.md: the two rows are not what Ask reads — its fingerprint and the store's
+    ledger token stay as they were when a choice is set and a household is saved."""
+    from ordnung.assistant.ask import ledger_fingerprint
+    from ordnung.db.store import HOUSEHOLD_META_KEY
+
+    ids = seed_ledger(store)
+    token, fingerprint = store.ledger_token(), ledger_fingerprint(store)
+    assert store.set_tax_choice(ids["doc_phone"], True)
+    household = {
+        "format": 1,
+        "members": [{"id": "hhm_k3j9x0a1b2c4", "name": "Alex Rivera", "signs": True}],
+        "links": {ids["doc_phone"]: "hhm_k3j9x0a1b2c4"},
+    }
+    store.set_meta(HOUSEHOLD_META_KEY, json.dumps(household))
+    assert store.ledger_token() == token
+    assert ledger_fingerprint(store) == fingerprint
+
+
+def test_a_phone_files_letters_but_never_edits_the_household_as_the_docs_say() -> None:
+    """SPEC § 12b and ADR 0023: reading the household and filing letters are a phone's; the list itself is
+    computer-only ("household edits"), like the profile."""
+    assert phone_scope.classify("GET", "/api/household") == "phone"
+    assert phone_scope.classify("PATCH", "/api/household") == "phone"
+    assert phone_scope.classify("PUT", "/api/household") == "computer"
+    assert phone_scope.NEVER_ON_PHONE[("PUT", "/api/household")] == "household edits"
+    assert phone_scope.classify("PATCH", "/api/documents/doc_x") == "phone"  # For taxes, as any correction
+    spec = _spec()
+    assert "says why settings, profile and household edits, phone access" in spec
+    assert (
+        "`GET` and `PATCH /api/household` are a phone's (filing a letter for someone of the household, logged "
+        '"Changed who a letter is for"); `PUT /api/household`, the list itself, is not'
+    ) in spec
+    adr = _adr(_ADR_HOUSEHOLD)
+    assert "A paired phone may file a letter, as it may correct one, but never change the list" in adr
+
+
+def test_adr_0023_says_suggest_never_file_and_the_policy_cites_it() -> None:
+    """ADR 0023 (numbered after 0022): the principle, the policy's points, why a ``meta`` row and what was left
+    out; the policy module cites it, and the limits it states are the module's."""
+    from ordnung import ids
+    from ordnung.secretary import household
+
+    text = _ADR_HOUSEHOLD.read_text(encoding="utf-8")
+    assert text.startswith("# ADR 0023 — Letters for your household are suggested, never filed\n")
+    assert "**Status:** accepted" in text
+    assert sorted(p.name for p in _ADR_HOUSEHOLD.parent.glob("0023-*")) == [_ADR_HOUSEHOLD.name]
+    adr = _flat(text)
+    for words in (
+        "## Principle The addressee suggests, the person decides",
+        "1. **Suggest, never file.**",
+        "9. **Never seen by Claude.**",
+        "## Why a `meta` row",
+        "## Rejected or deferred",
+        "## Consequences and known limits",
+        f"at most {household.MAX_PEOPLE} people",
+        f"at most {household.MAX_NAME_CHARS} characters",
+        "The *For taxes* choices follow the same rule",
+    ):
+        assert words in adr, words
+    assert "ADR 0023" in (household.__doc__ or "")
+    assert "hhm" in ids.PREFIXES
+
+
+def test_the_spec_names_the_letter_models_and_routes_d3_adds() -> None:
+    """SPEC § 4, § 5, § 12c and § 13 against the code: the route-local models (``DocumentRow``'s
+    ``ROUTE_FIELDS``, ``LetterDetail``, ``LetterRecord``) and what the routes answer; the two ``meta`` rows;
+    ``/api/household``."""
+    from ordnung import models
+    from ordnung.api.routes import documents
+
+    assert documents.ROUTE_FIELDS == {"found_in", "tax_choice"}
+    assert set(documents.LetterDetail.model_fields) == set(models.DocumentDetail.model_fields) | {
+        "tax_choice",
+        "household",
+    }
+    assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
+    paths = openapi_schema()["paths"]
+
+    def answer(path: str) -> Any:
+        return paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+
+    assert answer("/api/documents/{doc_id}")["$ref"].endswith("/LetterDetail")
+    assert answer("/api/documents.json")["items"]["$ref"].endswith("/LetterRecord")
+    assert set(paths["/api/household"]) == {"get", "put", "patch"}
+    spec = _spec()
+    for words in (
+        "`DocumentRow` also carries `tax_choice`, the person's own *For taxes* choice",
+        "`ROUTE_FIELDS` (`found_in`, `tax_choice`)",
+        "`LetterDetail` (`models.DocumentDetail` plus `tax_choice` and `household`",
+        "`LetterRecord` (`Document` plus `tax_choice`)",
+        '`tax_choices` (`{"<doc_id>": true|false}`',
+        "need no migration (`user_version` stays 5)",
+        "`delete_document` removes the letter from both in its transaction",
+        "Meta `household` and `tax_choices` (the person's household and *For taxes* choices) travel as they are",
+        "also `tax_choice`: `true` or `false` is the person's own *For taxes* choice, `null` goes back to "
+        "Claude's mark",
+        "`household` (GET: the people with their letters",
+        "as `LetterRecord`s, each with its `tax_choice`",
+    ):
+        assert words in spec, words
+
+
+def test_the_spec_and_architecture_say_how_for_taxes_and_the_household_work() -> None:
+    """SPEC § 9, § 11 and § 14 and docs/architecture.md: who decides a letter counts for taxes (``for_taxes``),
+    where the choice lives and who never reads it; the household's paragraph, its trust boundary and the
+    daily check; the pages."""
+    from ordnung.secretary.tax_choice import for_taxes
+
+    marked = Document.model_construct(id="doc_a", tax_relevant=True)
+    unmarked = Document.model_construct(id="doc_b", tax_relevant=False)
+    assert (for_taxes(marked, {}), for_taxes(unmarked, {})) == (True, False)
+    assert (for_taxes(marked, {"doc_a": False}), for_taxes(unmarked, {"doc_b": True})) == (False, True)
+    spec = _spec()
+    for words in (
+        "over the letters that count for taxes (the person's own *For taxes* choice, else Claude's mark; not those "
+        "waiting from the folder)",
+        "forget the household's filings of letters deleted for good on a computer still on 0.2.0",
+        "For a letter the person filed for someone of their household (ADR 0023)",
+        "**For taxes** (`aria-pressed`",
+        "a **Year** select (`?year=`",
+        "**Your household** (`#set-household`",
+        '"You marked this for taxes."',
+    ):
+        assert words in spec, words
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for words in (
+        "**For taxes** is the person's own choice over Claude's mark",
+        "`Ledger.tax_choices` is read lazily, so Ask's server, which builds Ledgers, never reads the row",
+        "Ask and the weekly review's snapshot for *Weekly Ideas* keep Claude's own mark on each letter; the "
+        "tax-season Idea, whose title is among the snapshot's open Ideas, follows the choice.",
+        "**Your household** (`secretary/household.py`, a written policy;",
+        f"[ADR 0023](decisions/{_ADR_HOUSEHOLD.name})",
+        "a letter is filed for someone of the person's household only when they press",
+        "(*Yes*, *Change*, *File these N*, or *Add* with *Also file this letter* left ticked)",
+    ):
+        assert words in architecture, words
+
+
+async def test_a_tax_choice_is_kept_apart_and_followed_as_the_docs_say(data_dir: Path) -> None:
+    """d3-tax-choice against the CHANGELOG, README, SPEC and docs/architecture.md: the choice is set by the PATCH
+    and never touches Claude's mark; the letter's page, its row and the records carry it; the tax-season Idea
+    follows it; a letter waiting from the folder can't be marked; ``Ledger.tax_choices`` is lazy and the ZIP's
+    selection takes the choices."""
+    import functools
+
+    from helpers_secretary import add_doc
+
+    assert isinstance(inspect.getattr_static(Ledger, "tax_choices"), functools.cached_property)
+    assert "choices" in inspect.signature(letters_zip.matches).parameters
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        payslip = add_doc(store, "payslip", title="Payslip March", doc_date="2025-03-31")
+        waiting = add_doc(store, "waiting", status="held", ai_private=True, doc_date="2025-04-02")
+        marked = await api.client.patch(f"/api/documents/{payslip}", json={"tax_choice": True})
+        assert marked.status_code == 200, marked.text
+        letter = store.get_document(payslip)
+        assert letter is not None and letter.tax_relevant is False  # Claude's mark, as it was
+        assert (await api.client.get(f"/api/documents/{payslip}")).json()["tax_choice"] is True
+        rows = {row["id"]: row for row in (await api.client.get("/api/documents")).json()}
+        records = {row["id"]: row for row in (await api.client.get("/api/documents.json")).json()}
+        assert rows[payslip]["tax_choice"] is True and records[payslip]["tax_choice"] is True
+        (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
+        assert payslip in {ref.id for ref in idea.refs}
+        refused = await api.client.patch(f"/api/documents/{waiting}", json={"tax_choice": True})
+        assert refused.status_code == 409
+        cleared = await api.client.patch(f"/api/documents/{payslip}", json={"tax_choice": None})
+        assert cleared.status_code == 200 and store.tax_choices() == {}
+
+
+async def test_the_household_files_a_letter_only_on_a_press_as_the_docs_say(data_dir: Path) -> None:
+    """d3-household-core against ADR 0023, SPEC and docs/privacy.md: adding a person files nothing; a PATCH files
+    and the letter's page says so; the person's own name is refused with the docs' words; deleting the letter for
+    good leaves no trace; the daily check prunes."""
+    from ordnung import tick
+    from ordnung.secretary import household
+
+    async with api_for(data_dir) as api:
+        ids = seed_ledger(api.ctx.store)
+        empty = (await api.client.get("/api/household")).json()
+        assert (empty["members"], empty["filed"], empty["mine"]) == ([], {}, [])
+        added = await api.client.put(
+            "/api/household",
+            json={"base": empty["version"], "members": [{"id": None, "name": "Alex Rivera", "signs": True}]},
+        )
+        assert added.status_code == 200, added.text
+        (alex,) = added.json()["members"]
+        assert alex["id"].startswith("hhm_") and added.json()["filed"] == {}
+        doc = ids["doc_phone"]
+        filed = await api.client.patch("/api/household", json={"letters": {doc: alex["id"]}})
+        assert filed.status_code == 200 and filed.json()["filed"] == {doc: alex["id"]}
+        page = (await api.client.get(f"/api/documents/{doc}")).json()
+        assert page["household"]["filed_for"]["name"] == "Alex Rivera"
+        own = await api.client.put(
+            "/api/household",
+            json={
+                "base": filed.json()["version"],
+                "members": [{"id": alex["id"], "name": "Alex Rivera"}, {"id": None, "name": "Sam Rivera"}],
+            },
+        )
+        assert own.status_code == 422 and own.json()["detail"] == household.OWN_NAME
+        assert household.TOO_MANY == "Your household can have at most 12 people."
+        purged = await api.client.delete(f"/api/documents/{doc}", params={"purge": True})
+        assert purged.status_code == 200
+        assert doc not in (await api.client.get("/api/household")).json()["filed"]
+        assert doc not in (api.ctx.store.get_meta("household") or "")
+    assert "household.prune_gone" in inspect.getsource(tick)
+
+
+#: The words the docs quote from the pages, and the file each is in (d3-tax-choice, d3-household-core, d3-inbox,
+#: d3-household-surfaces).
+_D3_PAGE_WORDS = (
+    ("features/document/TaxToggle.tsx", "You marked this letter for taxes."),
+    (
+        "features/document/TaxToggle.tsx",
+        "You took this letter off your letters for taxes. Claude had marked it.",
+    ),
+    ("features/document/TaxToggle.tsx", "Claude marked this letter for taxes when it read it."),
+    ("pages/TaxYearPage.tsx", "You marked this for taxes."),
+    ("pages/TaxYearPage.tsx", "you can mark or unmark any letter on its page."),
+    ("features/inbox/InboxToolbar.tsx", "Year, by the date on the letter"),
+    ("features/inbox/InboxToolbar.tsx", "Whose letters"),
+    ("features/household/HouseholdCard.tsx", "Claude never sees this list."),
+    ("features/household/HouseholdCard.tsx", "Signs their own letters"),
+    ("features/household/LetterFor.tsx", "Who is this letter for?"),
+    ("features/household/LetterFor.tsx", "Its dates, reminders and numbers stay in your Ordnung either way."),
+    ("features/household/LetterFor.tsx", "Also file this letter for"),
+    ("features/household/FileThese.tsx", "not filed yet"),
+    ("features/letters/LetterComposer.tsx", "who doesn't sign letters, so it goes out in your name."),
+    ("features/settings/DataSection.tsx", "people & organisations, your household, your drafts"),
+)
+
+
+def test_the_pages_say_what_the_docs_quote() -> None:
+    """The words SPEC, README, the CHANGELOG and docs/privacy.md quote from the pages are the pages' own."""
+    web = ROOT / "web" / "src"
+    for path, words in _D3_PAGE_WORDS:
+        assert words in (web / path).read_text(encoding="utf-8"), (path, words)
+
+
+def test_the_tests_the_architecture_names_for_d3_exist() -> None:
+    """docs/architecture.md's testing strategy names D3's tests; they come with the other D3 packages."""
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for path in (
+        "tests/test_store_choices.py",
+        "tests/test_tax_choice.py",
+        "tests/test_household.py",
+        "tests/test_api_household.py",
+        "tests/test_household_vectors.py",
+        "web/src/mocks/householdVectors.json",
+        "web/e2e/real-app-household.spec.ts",
+        "web/e2e/tax-toggle-layout.spec.ts",
+        "web/e2e/real-app-export.spec.ts",
+    ):
+        assert f"`{path}`" in architecture, path
+        assert (ROOT / path).is_file(), path

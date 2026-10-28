@@ -16,7 +16,7 @@ import pytest
 import ordnung
 from ordnung.backup.archive import database_copy
 from ordnung.config import Paths
-from ordnung.db.store import PERSON_META_KEY, Store, person_write
+from ordnung.db.store import HOUSEHOLD_META_KEY, PERSON_META_KEY, TAX_CHOICES_META_KEY, Store, person_write
 from ordnung.ingest import watcher
 from ordnung.models import AppSettings, CalendarSyncState
 from ordnung.sync import (
@@ -399,3 +399,80 @@ def test_scrub_module_imports_nothing_that_imports_sync() -> None:
         module = importlib.import_module(name)
         source = Path(module.__file__ or "").read_text(encoding="utf-8")
         assert "from ordnung.sync" not in source and "import ordnung.sync" not in source, name
+
+
+# --------------------------------------------------------------------------------------------------
+# the person's own choices beside the letters (D3): For taxes and the household
+# --------------------------------------------------------------------------------------------------
+
+
+def _seed_choices(store: Store) -> tuple[str, str]:
+    """A letter marked for taxes and filed for a household member; returns both rows as stored."""
+    doc = store.add_document(
+        sha256="c" * 64, filename="x.pdf", mime="application/pdf", file_path="files/cc/x.pdf"
+    )
+    member = {"id": "hhm_0123456789ab", "name": "Alex Rivera", "signs": True}
+    household = json.dumps({"format": 1, "members": [member], "links": {doc.id: member["id"]}})
+    store.set_tax_choice(doc.id, True)
+    store.set_meta(HOUSEHOLD_META_KEY, household)
+    return store.get_meta(TAX_CHOICES_META_KEY) or "", household
+
+
+def test_a_pushed_copy_keeps_the_tax_choices_and_the_household(store: Store) -> None:
+    choices, household = _seed_choices(store)
+    with _copy(store) as copy:
+        scrub(copy)
+        meta = dict(copy.execute("SELECT key, value FROM meta"))
+    assert meta[TAX_CHOICES_META_KEY] == choices != ""
+    assert meta[HOUSEHOLD_META_KEY] == household
+
+
+def test_the_household_and_the_tax_choices_count_in_the_digest(store: Store) -> None:
+    doc = store.add_document(
+        sha256="d" * 64, filename="y.pdf", mime="application/pdf", file_path="files/dd/y.pdf"
+    )
+    before = _digest(store)
+    store.set_tax_choice(doc.id, False)
+    with_choice = _digest(store)
+    assert with_choice != before
+    store.set_meta(HOUSEHOLD_META_KEY, '{"format":1,"members":[],"links":{}}')
+    assert _digest(store) != with_choice
+
+
+def test_a_pull_takes_the_incoming_choices_and_household(tmp_path: Path) -> None:
+    """Nothing is merged, as for the profile: the incoming copy's rows are kept, this computer's go."""
+    them = Store.open(Paths(tmp_path / "them").ensure())
+    here = Store.open(Paths(tmp_path / "here").ensure())
+    try:
+        choices, household = _seed_choices(them)
+        here.set_meta(HOUSEHOLD_META_KEY, '{"format":1,"members":[],"links":{}}')
+        staged = _staged_from(them, tmp_path)
+        live = sqlite3.connect(here.db_path, isolation_level=None)
+        merge_local(staged, live, target=VersionId(computer="a" * 32, seq=2), calendar=None)
+        meta = dict(staged.execute("SELECT key, value FROM meta"))
+        assert (meta[TAX_CHOICES_META_KEY], meta[HOUSEHOLD_META_KEY]) == (choices, household)
+        live.close()
+        staged.close()
+    finally:
+        them.close()
+        here.close()
+
+
+def test_a_meta_row_this_version_does_not_know_travels_untouched(tmp_path: Path) -> None:
+    """What a computer still on 0.2.0 relies on for the D3 rows: a row it has no name for is neither
+    scrubbed nor merged, so it travels as it is, and the schema version stays the same (no migration)."""
+    them = Store.open(Paths(tmp_path / "them").ensure())
+    here = Store.open(Paths(tmp_path / "here").ensure())
+    try:
+        them.set_meta("from_a_newer_ordnung", '{"kept": true}')
+        staged = _staged_from(them, tmp_path)
+        assert dict(staged.execute("SELECT key, value FROM meta"))["from_a_newer_ordnung"] == '{"kept": true}'
+        live = sqlite3.connect(here.db_path, isolation_level=None)
+        merge_local(staged, live, target=VersionId(computer="b" * 32, seq=1), calendar=None)
+        assert dict(staged.execute("SELECT key, value FROM meta"))["from_a_newer_ordnung"] == '{"kept": true}'
+        assert staged.execute("PRAGMA user_version").fetchone()[0] == 5
+        live.close()
+        staged.close()
+    finally:
+        them.close()
+        here.close()

@@ -138,6 +138,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/household": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Household
+         * @description The household: its people, the letters filed for each, the ones that are the person's and the
+         *     suggestions.
+         */
+        get: operations["get_household_api_household_get"];
+        /**
+         * Save Household
+         * @description Replace the list of people (kept ids keep their letters; ``id: null`` adds a person).
+         */
+        put: operations["save_household_api_household_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * File Letters
+         * @description File letters for a person, as the person's own, or forget the answer.
+         */
+        patch: operations["file_letters_api_household_patch"];
+        trace?: never;
+    };
     "/api/data": {
         parameters: {
             query?: never;
@@ -3361,56 +3390,6 @@ export interface components {
             /** Deleted At */
             deleted_at: string | null;
         };
-        /** DocumentDetail */
-        DocumentDetail: {
-            document: components["schemas"]["Document"];
-            advice: components["schemas"]["LetterAdvice"] | null;
-            /** Pages */
-            pages: components["schemas"]["PageInfo"][];
-            /** Items */
-            items: components["schemas"]["Item"][];
-            /** Contracts */
-            contracts: components["schemas"]["Contract"][];
-            party: components["schemas"]["Party"] | null;
-            case: components["schemas"]["Case"] | null;
-            /** Related */
-            related: components["schemas"]["Document"][];
-            /** Suggestions */
-            suggestions: components["schemas"]["Suggestion"][];
-            /** Drafts */
-            drafts: components["schemas"]["Draft"][];
-            /** Set Aside */
-            set_aside: components["schemas"]["ItemAside"][];
-            /** Girocodes */
-            girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
-            /** Attachments */
-            attachments: components["schemas"]["EmailAttachment"][];
-            /**
-             * Attachments More
-             * @default 0
-             */
-            attachments_more: number;
-            email: components["schemas"]["Document"] | null;
-            /**
-             * Can Wait Again
-             * @default false
-             */
-            can_wait_again: boolean;
-            /** Proof Of */
-            proof_of: components["schemas"]["ProofLink"][];
-            /** Scam Signs */
-            scam_signs: string[];
-            /**
-             * Given To Model
-             * @default false
-             */
-            given_to_model: boolean;
-            region_suggestion: components["schemas"]["RegionSuggestion"] | null;
-            /** Addressed To */
-            addressed_to: string | null;
-            /** Scan Text Pages */
-            scan_text_pages: number[];
-        };
         /**
          * DocumentPatch
          * @description Corrections the person can make to a letter. ``received_date`` (when the letter arrived) and
@@ -3441,6 +3420,11 @@ export interface components {
             ai_private?: boolean | null;
             /** Direction */
             direction?: ("incoming" | "outgoing" | "note") | null;
+            /**
+             * Tax Choice
+             * @description For taxes: true or false is the person's own choice, over Claude's mark; null goes back to Claude's mark
+             */
+            tax_choice?: boolean | null;
         };
         /**
          * DocumentRow
@@ -3539,6 +3523,8 @@ export interface components {
             deleted_at: string | null;
             /** Found In */
             found_in: ("letter" | "scanner_text") | null;
+            /** Tax Choice */
+            tax_choice: boolean | null;
         };
         /**
          * DocumentTrace
@@ -3980,6 +3966,113 @@ export interface components {
             what: string;
             /** Url */
             url: string | null;
+        };
+        /**
+         * Household
+         * @description ``GET``, ``PUT`` and ``PATCH /api/household``: the people and who each letter is for.
+         */
+        Household: {
+            /** Members */
+            members: components["schemas"]["HouseholdPerson"][];
+            /**
+             * Filed
+             * @description Letter id → the person it is filed for
+             */
+            filed: {
+                [key: string]: string;
+            };
+            /**
+             * Mine
+             * @description Letters the person said are theirs (sorted)
+             */
+            mine: string[];
+            /**
+             * Suggested
+             * @description Unanswered letter id → the one person its addressee names
+             */
+            suggested: {
+                [key: string]: string;
+            };
+            /**
+             * Version
+             * @description The list of people's version: a PUT's base
+             */
+            version: string;
+        };
+        /**
+         * HouseholdChange
+         * @description ``PUT /api/household``: the whole list of people, from the version the page saw (``base``).
+         */
+        HouseholdChange: {
+            /** Base */
+            base: string;
+            /** Members */
+            members: components["schemas"]["MemberIn"][];
+            /**
+             * Also File
+             * @description Letters to file for the one new person, at once
+             */
+            also_file?: string[];
+        };
+        /**
+         * HouseholdFiling
+         * @description ``PATCH /api/household``: who each letter is for — a person's id, ``"me"``, or ``null`` (not
+         *     answered).
+         */
+        HouseholdFiling: {
+            /** Letters */
+            letters: {
+                [key: string]: string | null;
+            };
+        };
+        /**
+         * HouseholdMember
+         * @description A person of the household, as the person typed them in.
+         */
+        HouseholdMember: {
+            /**
+             * Id
+             * @description hhm_…, kept across renames
+             */
+            id: string;
+            /**
+             * Name
+             * @description As typed in Settings, on one line
+             */
+            name: string;
+            /**
+             * Signs
+             * @description Replies to their letters may go out in their name
+             * @default true
+             */
+            signs: boolean;
+        };
+        /**
+         * HouseholdPerson
+         * @description A person of the household with the number of letters filed for them.
+         */
+        HouseholdPerson: {
+            /**
+             * Id
+             * @description hhm_…, kept across renames
+             */
+            id: string;
+            /**
+             * Name
+             * @description As typed in Settings, on one line
+             */
+            name: string;
+            /**
+             * Signs
+             * @description Replies to their letters may go out in their name
+             * @default true
+             */
+            signs: boolean;
+            /**
+             * Letters
+             * @description Letters filed for them, outside the trash
+             */
+            letters: number;
         };
         /** Identifier */
         Identifier: {
@@ -4458,6 +4551,67 @@ export interface components {
             closable: boolean;
         };
         /**
+         * LetterDetail
+         * @description ``GET /api/documents/{id}``: the letter's page (``models.DocumentDetail``) with what the person chose
+         *     about the letter, kept apart from Claude's reading. Route-local, so ``models.py`` (a benchmark digest
+         *     file) stays as it is; Ask never reads it.
+         */
+        LetterDetail: {
+            document: components["schemas"]["Document"];
+            advice: components["schemas"]["LetterAdvice"] | null;
+            /** Pages */
+            pages: components["schemas"]["PageInfo"][];
+            /** Items */
+            items: components["schemas"]["Item"][];
+            /** Contracts */
+            contracts: components["schemas"]["Contract"][];
+            party: components["schemas"]["Party"] | null;
+            case: components["schemas"]["Case"] | null;
+            /** Related */
+            related: components["schemas"]["Document"][];
+            /** Suggestions */
+            suggestions: components["schemas"]["Suggestion"][];
+            /** Drafts */
+            drafts: components["schemas"]["Draft"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
+            /** Girocodes */
+            girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
+            /** Attachments */
+            attachments: components["schemas"]["EmailAttachment"][];
+            /**
+             * Attachments More
+             * @default 0
+             */
+            attachments_more: number;
+            email: components["schemas"]["Document"] | null;
+            /**
+             * Can Wait Again
+             * @default false
+             */
+            can_wait_again: boolean;
+            /** Proof Of */
+            proof_of: components["schemas"]["ProofLink"][];
+            /** Scam Signs */
+            scam_signs: string[];
+            /**
+             * Given To Model
+             * @default false
+             */
+            given_to_model: boolean;
+            region_suggestion: components["schemas"]["RegionSuggestion"] | null;
+            /** Addressed To */
+            addressed_to: string | null;
+            /** Scan Text Pages */
+            scan_text_pages: number[];
+            /**
+             * Tax Choice
+             * @description The person's own For taxes choice; null: none, Claude's mark (document.tax_relevant) counts
+             */
+            tax_choice: boolean | null;
+            household: components["schemas"]["LetterFor"];
+        };
+        /**
          * LetterDetails
          * @description Facts a template letter needs besides the letter, contract or person it is about.
          *
@@ -4551,6 +4705,129 @@ export interface components {
              * @description name and address of a recipient not in Ordnung yet
              */
             recipient?: string | null;
+        };
+        /**
+         * LetterFor
+         * @description Who one letter is for, worked out on read for its page (all empty without a household).
+         */
+        LetterFor: {
+            /** @description Filed for this person */
+            filed_for: components["schemas"]["HouseholdMember"] | null;
+            /**
+             * Mine
+             * @description The person said the letter is theirs
+             * @default false
+             */
+            mine: boolean;
+            /** @description Not answered yet: the one person its addressee names */
+            suggested: components["schemas"]["HouseholdMember"] | null;
+            /**
+             * Add
+             * @description Not answered yet: the addressee to offer to add to the household
+             */
+            add: string | null;
+        };
+        /**
+         * LetterRecord
+         * @description A letter in the copy of your records (``GET /api/documents.json``): the letter whole, as stored, with
+         *     the person's own "For taxes" choice (``None``: none).
+         */
+        LetterRecord: {
+            /** Id */
+            id: string;
+            /** Sha256 */
+            sha256: string;
+            /** Filename */
+            filename: string;
+            /** Mime */
+            mime: string;
+            /**
+             * Pages
+             * @default 1
+             */
+            pages: number;
+            /**
+             * Direction
+             * @default incoming
+             * @enum {string}
+             */
+            direction: "incoming" | "outgoing" | "note";
+            /**
+             * Source
+             * @default upload
+             */
+            source: string;
+            /**
+             * Status
+             * @default queued
+             * @enum {string}
+             */
+            status: "queued" | "processing" | "processed" | "needs_review" | "failed" | "held";
+            /** Error */
+            error: string | null;
+            /** Kind */
+            kind: ("tax_assessment" | "tax_letter" | "authority_letter" | "residence_permit" | "social_insurance" | "health_insurance" | "invoice" | "dunning" | "contract" | "contract_change" | "price_increase" | "cancellation_confirmation" | "payslip" | "bank_letter" | "insurance" | "rent_lease" | "utility_bill" | "university" | "employment" | "appointment" | "fine" | "receipt" | "identity_document" | "broadcasting_fee" | "certificate" | "personal" | "other" | "court_payment_order" | "enforcement_order" | "dismissal" | "landlord_notice" | "rent_increase" | "operating_costs") | null;
+            /** Area */
+            area: ("home" | "work" | "study" | "health" | "money" | "residence" | "tax" | "mobility" | "insurance" | "leisure" | "family" | "other") | null;
+            /** Title */
+            title: string | null;
+            /** Summary */
+            summary: string | null;
+            /** Explanation */
+            explanation: string | null;
+            /** Language */
+            language: string | null;
+            /** Doc Date */
+            doc_date: string | null;
+            /** Received Date */
+            received_date: string | null;
+            /** Party Id */
+            party_id: string | null;
+            /** Case Id */
+            case_id: string | null;
+            /** Urgency */
+            urgency: ("low" | "normal" | "high" | "critical") | null;
+            /** Text Mode */
+            text_mode: ("text" | "vision") | null;
+            /** Key Facts */
+            key_facts: components["schemas"]["KeyFact"][];
+            /** References */
+            references: components["schemas"]["Identifier"][];
+            /** Warnings */
+            warnings: string[];
+            /**
+             * Tax Relevant
+             * @default false
+             */
+            tax_relevant: boolean;
+            /** Tax Note */
+            tax_note: string | null;
+            /** Tags */
+            tags: string[];
+            remedy: components["schemas"]["Remedy"] | null;
+            payment: components["schemas"]["PaymentDetails"] | null;
+            /**
+             * Hidden Text
+             * @default false
+             */
+            hidden_text: boolean;
+            /**
+             * Ai Private
+             * @default false
+             */
+            ai_private: boolean;
+            /** Ai Processed At */
+            ai_processed_at: string | null;
+            /** Created At */
+            created_at: string;
+            /** Updated At */
+            updated_at: string;
+            /** Processed At */
+            processed_at: string | null;
+            /** Deleted At */
+            deleted_at: string | null;
+            /** Tax Choice */
+            tax_choice: boolean | null;
         };
         /**
          * LetterRef
@@ -4729,6 +5006,21 @@ export interface components {
              * @description the Einschreiben's number (its check digit is checked)
              */
             tracking_number?: string | null;
+        };
+        /**
+         * MemberIn
+         * @description A person as a ``PUT`` sends them: a new one has no id.
+         */
+        MemberIn: {
+            /** Id */
+            id?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Signs
+             * @default true
+             */
+            signs?: boolean;
         };
         /**
          * ModelSettings
@@ -7327,6 +7619,64 @@ export interface components {
             /** Purged */
             purged: boolean;
         };
+        /** DocumentDetail */
+        DocumentDetail: {
+            document: components["schemas"]["Document"];
+            /** @default null */
+            advice: components["schemas"]["LetterAdvice"] | null;
+            /** Pages */
+            pages: components["schemas"]["PageInfo"][];
+            /** Items */
+            items: components["schemas"]["Item"][];
+            /** Contracts */
+            contracts: components["schemas"]["Contract"][];
+            /** @default null */
+            party: components["schemas"]["Party"] | null;
+            /** @default null */
+            case: components["schemas"]["Case"] | null;
+            /** Related */
+            related: components["schemas"]["Document"][];
+            /** Suggestions */
+            suggestions: components["schemas"]["Suggestion"][];
+            /** Drafts */
+            drafts: components["schemas"]["Draft"][];
+            /** Set Aside */
+            set_aside: components["schemas"]["ItemAside"][];
+            /** Girocodes */
+            girocodes: (components["schemas"]["GiroCodeReady"] | components["schemas"]["GiroCodeBlocked"])[];
+            /** Attachments */
+            attachments: components["schemas"]["EmailAttachment"][];
+            /**
+             * Attachments More
+             * @default 0
+             */
+            attachments_more: number;
+            /** @default null */
+            email: components["schemas"]["Document"] | null;
+            /**
+             * Can Wait Again
+             * @default false
+             */
+            can_wait_again: boolean;
+            /** Proof Of */
+            proof_of: components["schemas"]["ProofLink"][];
+            /** Scam Signs */
+            scam_signs: string[];
+            /**
+             * Given To Model
+             * @default false
+             */
+            given_to_model: boolean;
+            /** @default null */
+            region_suggestion: components["schemas"]["RegionSuggestion"] | null;
+            /**
+             * Addressed To
+             * @default null
+             */
+            addressed_to: string | null;
+            /** Scan Text Pages */
+            scan_text_pages: number[];
+        };
         /**
          * DocumentProcessedEvent
          * @description ``document.processed``: a letter was read (``status`` is its new status).
@@ -7793,6 +8143,92 @@ export interface operations {
             };
         };
     };
+    get_household_api_household_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Household"];
+                };
+            };
+        };
+    };
+    save_household_api_household_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseholdChange"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Household"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    file_letters_api_household_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HouseholdFiling"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Household"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     delete_everything_api_data_delete: {
         parameters: {
             query?: never;
@@ -7973,7 +8409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Document"][];
+                    "application/json": components["schemas"]["LetterRecord"][];
                 };
             };
         };
@@ -7995,7 +8431,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DocumentDetail"];
+                    "application/json": components["schemas"]["LetterDetail"];
                 };
             };
             /** @description Validation Error */

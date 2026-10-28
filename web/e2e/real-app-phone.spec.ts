@@ -19,7 +19,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Browser, BrowserContext, BrowserContextOptions, Locator, Page } from "@playwright/test";
-import type { Activity, PairResult, PhoneDevice, PhoneStatus } from "@/api/types";
+import type { Activity, Household, PairResult, PhoneDevice, PhoneStatus } from "@/api/types";
 import {
   CODE_ALPHABET,
   CODE_USED_MESSAGE,
@@ -65,6 +65,8 @@ const SPARE_NAME = "Spare phone";
 const PHOTOS = ["23_steuerbescheid_2025_p1.jpg", "23_steuerbescheid_2025_p2.jpg"].map((name) => join(dirname(REAL_LETTER), name));
 /** The to-do the phone ticks off (the computer adds it to the photographed letter). */
 const TODO_TITLE = "Take the tax assessment to the advisor";
+/** A letter the computer adds for the household's test: the fake Claude reads it (photos it can't). */
+const BANK_LETTER = "19_bank_preisaenderung.pdf";
 
 /** Pairing requests one address may send a minute (the gate's `PAIR_POSTS_PER_CLIENT_PER_MINUTE`, `ordnung.phone.pairing`). */
 const PAIR_POSTS_PER_MINUTE = 10;
@@ -429,6 +431,74 @@ test("a to-do ticked off on the phone is done on the computer, and the privacy l
   );
   expect(phone.refused, "401/403 answers on the phone").toEqual([]);
   phone.watching = false;
+});
+
+test("the phone answers who a letter is for, but the household's list is changed on the computer only", async ({ page }) => {
+  const { page: mobile } = phone;
+  const own = (await apiGet<{ name: string }>(page, "/api/profile")).name;
+  const ask = (path: string, init: RequestInit = {}) =>
+    mobile.evaluate(
+      async ([p, i]) => {
+        const res = await fetch(p, i);
+        return { status: res.status, body: (await res.json()) as unknown };
+      },
+      [path, init] as const,
+    );
+  // a letter the computer adds and the fake Claude reads (the bank's, addressed to the demo persona Sam Rivera)
+  const upload = await page.request.post("/api/documents", {
+    headers: CLIENT,
+    multipart: { files: { name: BANK_LETTER, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
+  });
+  expect(upload.status(), await upload.text()).toBe(201);
+  const bankId = ((await upload.json()) as { documents: { id: string }[] }).documents[0]!.id;
+  await expect
+    .poll(async () => (await apiGet<{ document: { status: string } }>(page, `/api/documents/${bankId}`)).document.status, { message: `${BANK_LETTER} is read`, timeout: 30_000 })
+    .toBe("processed");
+  try {
+    // the person renamed: the letter is someone else's; a phone never offers to add them to the household
+    await apiSend(page, "PUT", "/api/profile", { name: "Alex Rivera" });
+    phone.watching = true;
+    await open(mobile, `/documents/${bankId}`);
+    const header = mobile.getByRole("main").getByRole("article").first().locator("header");
+    await expect(header.getByText("Addressed to Sam Rivera")).toBeVisible();
+    await expect(mobile.getByRole("button", { name: /to your household/ })).toHaveCount(0);
+
+    // the computer adds Sam Rivera: the phone's page asks, and one press there files the letter
+    const before = await apiGet<Household>(page, "/api/household");
+    const sam = (await apiSend<Household>(page, "PUT", "/api/household", { base: before.version, members: [{ name: "Sam Rivera" }] })).members[0]!;
+    await open(mobile, `/documents/${bankId}`);
+    await mobile.getByRole("group", { name: "Is this letter for Sam Rivera?" }).getByRole("button", { name: "Yes" }).click();
+    await expect.poll(async () => (await apiGet<Household>(page, "/api/household")).filed, { message: "filed on the computer" }).toEqual({ [bankId]: sam.id });
+    await mobile.getByRole("button", { name: "Change who this letter is for" }).click();
+    const choices = mobile.getByRole("dialog", { name: "Who is this letter for?" });
+    await expect(choices.getByRole("button", { name: "Sam Rivera" })).toHaveAttribute("aria-pressed", "true");
+    await expect(choices.getByRole("link", { name: "Manage your household" })).toHaveCount(0);
+    await mobile.keyboard.press("Escape");
+    expect(phone.refused, "401/403 answers on the phone").toEqual([]);
+    phone.watching = false;
+
+    // the privacy log names the phone's change; the list itself is refused on the phone
+    const changes = (await activityOf(page, phoneId)).filter((a) => a.kind === "phone.changed");
+    const filing = changes.find((a) => (a.data as { operation?: string } | null)?.operation === "PATCH /api/household");
+    expect(filing?.message, "the privacy log's entry for the filing").toBe(`Changed who a letter is for on ${PHONE_NAME}`);
+    const now = await apiGet<Household>(page, "/api/household");
+    const refused = await ask("/api/household", {
+      method: "PUT",
+      headers: { ...CLIENT, "Content-Type": "application/json" },
+      body: JSON.stringify({ base: now.version, members: [] }),
+    });
+    expect(refused).toEqual({ status: 403, body: { code: "computer_only", detail: COMPUTER_ONLY_MESSAGE } });
+    expect((await apiGet<Household>(page, "/api/household")).members.map((m) => m.name)).toEqual(["Sam Rivera"]);
+  } finally {
+    // as the specs after this one expect it: the person's own name, no household, and no bank letter
+    phone.watching = false;
+    await apiSend(page, "DELETE", `/api/documents/${bankId}?purge=true`);
+    for (let n = 0; n < 2; n++) {
+      const h = await apiGet<Household>(page, "/api/household");
+      await apiSend(page, "PUT", "/api/household", { base: h.version, members: [] });
+    }
+    await apiSend(page, "PUT", "/api/profile", { name: own });
+  }
 });
 
 test("what stays on the computer is refused on the phone, and the computer's sign-in never works there", async ({ page, browser }) => {

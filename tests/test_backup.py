@@ -39,6 +39,7 @@ from ordnung.backup.container import (
 from ordnung.backup.restore import TargetInUse, TargetNotFree, existing_data, restore_backup
 from ordnung.cli import app
 from ordnung.config import PACKAGE_DIR, Paths
+from ordnung.db import store as store_module
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import Store
 from ordnung.locking import LOCK_NAME, DataDirLock
@@ -235,6 +236,34 @@ def test_the_demo_life_round_trips(tmp_path: Path) -> None:
     assert file_digests(restored) == file_digests(demo)
     assert row_counts(restored) == restored_rows(row_counts(demo))
     assert row_counts(restored)["documents"] > 20
+
+
+def test_a_backup_keeps_the_tax_choices_and_the_household(life: Path, tmp_path: Path) -> None:
+    """The person's "For taxes" choices and their household are rows of ``meta``: a backup carries both
+    and a restore brings them back as they were."""
+    store = Store.open(Paths(life))
+    try:
+        first, second = (doc.id for doc in store.list_documents()[:2])
+        store.set_tax_choice(first, True)
+        store.set_tax_choice(second, False)
+        member = {"id": "hhm_0123456789ab", "name": "Alex Rivera", "signs": True}
+        store.set_meta(
+            store_module.HOUSEHOLD_META_KEY,
+            json.dumps({"format": 1, "members": [member], "links": {first: member["id"], second: "me"}}),
+        )
+        rows = {
+            key: store.get_meta(key)
+            for key in (store_module.TAX_CHOICES_META_KEY, store_module.HOUSEHOLD_META_KEY)
+        }
+    finally:
+        store.close()
+    restored = restore_backup(make_backup(life, tmp_path / "b"), PASS, tmp_path / "r").target
+    store = Store.open(Paths(restored))
+    try:
+        assert {key: store.get_meta(key) for key in rows} == rows
+        assert store.tax_choices() == {first: True, second: False}
+    finally:
+        store.close()
 
 
 def test_a_scans_scanner_text_is_backed_up_and_restored_with_its_page_images(

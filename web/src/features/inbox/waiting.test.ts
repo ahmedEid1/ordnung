@@ -57,10 +57,10 @@ describe("the letters waiting from the folder", () => {
     const found = heldMatches(
       [scan, bill, read, answered],
       [
-        { ...read, found_in: "letter" },
-        { ...mail, found_in: "letter" }, // answered since the search ran
-        { ...scan, found_in: "scanner_text" },
-        { ...bill, found_in: "letter" },
+        { ...read, found_in: "letter", tax_choice: null },
+        { ...mail, found_in: "letter", tax_choice: null }, // answered since the search ran
+        { ...scan, found_in: "scanner_text", tax_choice: null },
+        { ...bill, found_in: "letter", tax_choice: null },
       ],
     );
     expect([...found]).toEqual([

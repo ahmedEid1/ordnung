@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyCopy, isNarrowed, resultLine, type InboxView } from "./status";
 
-const view = (v: Partial<InboxView> = {}): InboxView => ({ filter: "all", kindLabel: null, typed: "", q: "", ...v });
+const view = (v: Partial<InboxView> = {}): InboxView => ({ filter: "all", kindLabel: null, typed: "", q: "", year: null, who: null, ...v });
 
 describe("the Inbox's result line", () => {
   it("says nothing while the whole inbox shows", () => {
@@ -33,6 +33,13 @@ describe("the Inbox's result line", () => {
     expect(resultLine(view({ filter: "check" }), 1, 22, false)).toEqual({ text: "Showing 1 of 22 letters", visible: true });
     expect(resultLine(view({ kindLabel: "Invoice" }), 3, 22, false).text).toBe("Showing 3 of 22 letters");
     expect(resultLine(view({ filter: "private" }), 0, 22, false)).toEqual({ text: "No letters here", visible: false });
+  });
+
+  it("counts a year and whose letters as filters too", () => {
+    expect(isNarrowed(view({ year: 2025 }))).toBe(true);
+    expect(resultLine(view({ year: 2025 }), 4, 22, false)).toEqual({ text: "Showing 4 of 22 letters", visible: true });
+    expect(isNarrowed(view({ who: { kind: "mine" } }))).toBe(true);
+    expect(resultLine(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 } }), 3, 22, false).text).toBe("Showing 3 of 22 letters");
   });
 });
 
@@ -73,6 +80,79 @@ describe("the Inbox's empty states", () => {
 
   it("keeps the all-clear of Please check", () => {
     expect(emptyCopy(view({ filter: "check" }))).toMatchObject({ title: "Nothing to check", illustration: "clear", action: null });
+  });
+
+  it("an empty year says “No letters dated 2019”", () => {
+    expect(emptyCopy(view({ year: 2019 }))).toEqual({
+      title: "No letters dated 2019",
+      description: "Ordnung files a letter under the year of the date on it, else the day it arrived. Choose another year, or clear the filters.",
+      illustration: "search",
+      action: "clear-filters",
+    });
+    // with a kind, a tab or a search as well: the year joins their words
+    expect(emptyCopy(view({ year: 2025, kindLabel: "Invoice" }))).toMatchObject({ title: "No “Invoice” letters dated 2025", description: "Clear the filters to see all your letters." });
+    expect(emptyCopy(view({ year: 2025, filter: "private" }))).toMatchObject({ title: "No private letters dated 2025", action: "clear-filters" });
+    expect(emptyCopy(view({ year: 2025, filter: "check" }))).toMatchObject({ title: "No letters dated 2025 to check", action: "clear-filters" });
+    expect(emptyCopy(view({ year: 2025, filter: "check", kindLabel: "Invoice" })).title).toBe("No “Invoice” letters dated 2025 to check");
+    expect(emptyCopy(view({ year: 2025, q: "Muster" }))).toEqual({
+      title: "No letters match “Muster”",
+      description: "Filters are on as well — clear them to search all your letters.",
+      illustration: "search",
+      action: "clear-filters",
+    });
+  });
+
+  it("a year counts as a filter for the waiting letters' search state", () => {
+    expect(emptyCopy(view({ q: "Rechnung", year: 2025 }), false, 1)).toEqual({
+      title: "1 letter not read yet matches “Rechnung”",
+      description: "It's above, in “From your folder — not read yet”. Filters are on as well — clear them to search all your letters.",
+      illustration: "search",
+      action: "clear-filters",
+    });
+    expect(emptyCopy(view({ q: "Rechnung", who: { kind: "mine" } }), false, 1).action).toBe("clear-filters");
+  });
+
+  it("keeps the all-clear of Please check and the Private explanation for the whole inbox only", () => {
+    expect(emptyCopy(view({ filter: "check", year: 2025 })).title).toBe("No letters dated 2025 to check");
+    expect(emptyCopy(view({ filter: "private", year: 2025 })).action).toBe("clear-filters");
+    expect(emptyCopy(view({ filter: "check", who: { kind: "mine" } })).title).toBe("No letters of yours to check");
+    expect(emptyCopy(view({ filter: "private", who: { kind: "person", name: "Alex Rivera", suggested: 0 } })).title).toBe("No private letters for Alex Rivera");
+    expect(emptyCopy(view({ filter: "private", who: { kind: "person", name: "Alex Rivera", suggested: 0 } })).action).toBe("clear-filters");
+  });
+
+  it("says how to file a person's letters when none is filed for them yet", () => {
+    expect(emptyCopy(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 } }))).toEqual({
+      title: "No letters filed for Alex Rivera",
+      description: "Open a letter and press “Change” next to “For you” to file it for Alex Rivera.",
+      illustration: "letter",
+      action: "clear-filters",
+    });
+    // the letters addressed to them wait in the card above
+    expect(emptyCopy(view({ who: { kind: "person", name: "Alex Rivera", suggested: 2 } }))).toMatchObject({
+      title: "No letters filed for Alex Rivera",
+      description: "The letters above are addressed to Alex Rivera. File them with one press.",
+    });
+    expect(emptyCopy(view({ who: { kind: "mine" } }))).toEqual({
+      title: "No letters for you here",
+      description: "Every letter is filed for someone in your household.",
+      illustration: "letter",
+      action: "clear-filters",
+    });
+    // with a year, a kind or a search as well: the words of those, as for any filter, and whose letters are missing —
+    // never "choose another year" when that year has letters of someone else's
+    expect(emptyCopy(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 }, year: 2017 }))).toEqual({
+      title: "No letters for Alex Rivera dated 2017",
+      description: "Clear the filters to see all your letters.",
+      illustration: "search",
+      action: "clear-filters",
+    });
+    expect(emptyCopy(view({ who: { kind: "mine" }, year: 2025 }))).toMatchObject({
+      title: "No letters of yours dated 2025",
+      description: "Clear the filters to see all your letters.",
+    });
+    expect(emptyCopy(view({ who: { kind: "mine" }, year: 2025, filter: "check" })).title).toBe("No letters of yours dated 2025 to check");
+    expect(emptyCopy(view({ who: { kind: "mine" }, kindLabel: "Invoice" })).title).toBe("No “Invoice” letters of yours");
+    expect(emptyCopy(view({ who: { kind: "mine" }, q: "Muster" })).action).toBe("clear-filters");
   });
 
   it("names the kind and filter that left the list empty, and clears them all", () => {

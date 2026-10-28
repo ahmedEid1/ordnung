@@ -10,6 +10,11 @@
  *
  * While searching, a letter found only in the text its scanner added says so on a line of its own ("not
  * checked", ADR 0020).
+ *
+ * The Inbox asks for two more things: while it shows one year (`filedYear`), a row that arrived in another
+ * year says its own (" · dated 2025"; in the table's date column on a line under the date), and in its
+ * Everyone view a letter filed for someone in the household carries a tag ("For Alex Rivera", `filedFor`),
+ * with the status. Other pages (the Tax year page) leave both out.
  */
 import { Link } from "react-router";
 import { useId, useMemo, type ReactNode } from "react";
@@ -32,7 +37,8 @@ import { KindBadge } from "@/components/ui/KindBadge";
 import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Stepper } from "@/components/ui/Stepper";
-import { inboxDateInfo, isReading, pinJustRead, type LetterGroup, type OpenSummary } from "./filters";
+import { PersonTag } from "@/features/household/PersonTag";
+import { inboxDateInfo, isReading, otherYearDated, pinJustRead, type LetterGroup, type OpenSummary } from "./filters";
 import { useSeenLetters } from "./seen";
 
 /** A next step this close (in days) is spelled out under the letter. */
@@ -47,6 +53,8 @@ export function LettersList({
   open,
   note,
   dated = false,
+  filedYear = null,
+  filedFor,
 }: {
   groups: LetterGroup[];
   parties: Map<string, Party>;
@@ -55,6 +63,10 @@ export function LettersList({
   note?: (doc: ListedLetter) => ReactNode | null;
   /** Each row shows the date on the letter (else the day it arrived): for a page that files letters by it (Tax year). */
   dated?: boolean;
+  /** The year the list shows (the Inbox's `?year=`): a row that arrived in another year says its own ("dated 2025"). */
+  filedYear?: number | null;
+  /** Whom a letter is filed for in the household (the Inbox's Everyone view), shown as a tag; null: nobody. */
+  filedFor?: (doc: ListedLetter) => string | null;
 }) {
   const tray = useTrayByDoc();
   const justRead = useOpenedTrayDocs();
@@ -99,6 +111,8 @@ export function LettersList({
                     scam={scams.has(d.id)}
                     note={note?.(d) ?? null}
                     dated={dated}
+                    otherYear={otherYearDated(d, filedYear)}
+                    person={filedFor?.(d) ?? null}
                   />
                 );
               })}
@@ -172,6 +186,8 @@ function LetterRow({
   scam,
   note,
   dated = false,
+  otherYear = null,
+  person = null,
 }: {
   doc: ListedLetter;
   party: Party | null;
@@ -181,6 +197,10 @@ function LetterRow({
   scam?: boolean;
   note?: ReactNode;
   dated?: boolean;
+  /** The letter's own year, said beside its date (the list shows that year; it arrived in another one). */
+  otherYear?: number | null;
+  /** Whom it is filed for in the household (a tag); null: nobody, or the page doesn't say. */
+  person?: string | null;
 }) {
   const today = useTodayISO();
   const describedBy = useId();
@@ -211,6 +231,7 @@ function LetterRow({
       New
     </Badge>
   );
+  const personTag = person ? <PersonTag name={person} /> : null;
 
   return (
     <li className="group relative transition-colors hover:bg-surface-2/50 focus-within:bg-surface-2/50">
@@ -228,6 +249,9 @@ function LetterRow({
             </Link>
             {/* table rows: status and "New" after the title (stacked rows: on the chip line) */}
             {status ? <span className="hidden shrink-0 @4xl:inline-flex">{status}</span> : null}
+            {/* whose letter it is: after the status, at its own width up to a cap — the title, with its tooltip, gives
+                way first, so a short name is never cut; a long one is cut at the cap (the whole name in its tooltip) */}
+            {personTag ? <span className="hidden max-w-[12rem] shrink-0 @4xl:inline-flex">{personTag}</span> : null}
             {isNew ? <span className="hidden shrink-0 @4xl:inline-flex">{newBadge}</span> : null}
             {/* the to-do count for a screen reader moving from letter to letter */}
             {todos ? (
@@ -254,8 +278,9 @@ function LetterRow({
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 empty:hidden @4xl:hidden">
             {isNew ? newBadge : null}
             {status}
+            {personTag}
             {doc.kind ? <KindBadge docKind={doc.kind} /> : null}
-            {reading ? null : <ArrivalDate doc={doc} served={open?.served} dated={dated} className="text-sm text-muted" />}
+            {reading ? null : <ArrivalDate doc={doc} served={open?.served} dated={dated} otherYear={otherYear} className="text-sm text-muted" />}
             {open?.count ? <TodoCount open={open} urgent={urgent} /> : null}
           </div>
           {urgent && next && action ? (
@@ -280,7 +305,7 @@ function LetterRow({
         </div>
         <div className="hidden min-w-0 @4xl:block">{doc.kind ? <KindBadge docKind={doc.kind} /> : null}</div>
         <div className="hidden text-right text-sm text-muted @4xl:block">
-          <ArrivalDate doc={doc} served={open?.served} dated={dated} />
+          <ArrivalDate doc={doc} served={open?.served} dated={dated} otherYear={otherYear} column />
         </div>
         <div className="hidden justify-end @4xl:flex">{open?.count ? <TodoCount open={open} urgent={urgent} /> : null}</div>
       </div>
@@ -291,9 +316,25 @@ function LetterRow({
 /**
  * When the letter arrived ("26 Sep") — the date its group is built from — with the letter's own
  * date in the tooltip ("Arrived Sat 26 Sep · letter dated Thu 24 Sep"). `dated`: the date on the letter
- * instead, when it has one ("Dated Thu 24 Sep · arrived Sat 26 Sep").
+ * instead, when it has one ("Dated Thu 24 Sep · arrived Sat 26 Sep"). `otherYear`: the letter's own year, said
+ * after the date ("4 Jan · dated 2025"; `column`: the table's date column, on a line under it, so the column
+ * keeps its width), heard as "Arrived 4 Jan, dated 2025".
  */
-function ArrivalDate({ doc, served, dated = false, className }: { doc: ListedLetter; served?: boolean; dated?: boolean; className?: string }) {
+function ArrivalDate({
+  doc,
+  served,
+  dated = false,
+  otherYear = null,
+  column = false,
+  className,
+}: {
+  doc: ListedLetter;
+  served?: boolean;
+  dated?: boolean;
+  otherYear?: number | null;
+  column?: boolean;
+  className?: string;
+}) {
   const today = useTodayISO();
   const { date, verb, docDate } = inboxDateInfo(doc, served);
   const own = dated ? doc.doc_date : null;
@@ -304,6 +345,14 @@ function ArrivalDate({ doc, served, dated = false, className }: { doc: ListedLet
     <span title={tip} className={cn("whitespace-nowrap", className)}>
       <span className="sr-only">{own ? "Dated" : verb} </span>
       <DateText date={own ?? date} style="day" />
+      {otherYear != null ? (
+        <>
+          <span className="sr-only">, dated {otherYear}</span>
+          <span aria-hidden className={column ? "block text-[12px]" : undefined}>
+            {column ? `dated ${otherYear}` : ` · dated ${otherYear}`}
+          </span>
+        </>
+      ) : null}
     </span>
   );
 }

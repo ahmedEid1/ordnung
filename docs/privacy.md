@@ -15,6 +15,8 @@ goes where.
 | A scanner's text (the hidden text a scanner adds to a "searchable PDF") | `<data dir>/derived/` (`scan-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown ([below](#searchable-scans)) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
+| Your *For taxes* choices (the letters you marked for taxes yourself, or took off your letters for taxes) | `ordnung.db` (`meta`, the `tax_choices` row: letter ids with yes or no) | Only inside your encrypted backups and hand-off sync's encrypted copy, and in *Download a copy of your records* when you save it — never sent to Claude: Ask and *Weekly Ideas* see Claude's own mark ([below](#what-is-sent-to-claude-per-feature)) |
+| Your household (the people whose letters come to you too, whether each signs their own letters, and which letters you filed for whom) | `ordnung.db` (`meta`, the `household` row) | Only inside your encrypted backups and hand-off sync's encrypted copy, in *Download a copy of your records* when you save it, and on the screen of a phone you paired — never sent to Claude ([below](#your-household)) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | How each letter was read (its steps: counts, scores, computed dates, ids of records) | `ordnung.db` (`trace_spans`) — **no letter text**, the newest five readings per letter | Never (unless you export one with `ordnung trace`) |
@@ -68,6 +70,12 @@ never puts an organisation on it ([ADR 0021](decisions/0021-a-move-is-said-never
 contain an address: like every Idea's, their titles (an organisation's name, the day to register by) are part
 of what *Weekly Ideas* and the daily note send.
 
+Your *For taxes* choices never reach Claude: Ask and *Weekly Ideas* see the mark Claude gave a letter when it
+read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays. Your choices
+can make the tax-season Idea appear or go away; its title (*Your 2025 tax documents are ready to collect*: no
+letter, no count), like every Idea's, is part of what *Weekly Ideas* and the daily note send. Your household
+never reaches Claude either ([below](#your-household)).
+
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
 every letter whose text a tool result sent — a search hit's title and snippet, the letter a listed to-do
@@ -110,6 +118,33 @@ your numbers.
 
 The weekly session (*Weekly review*) stores only the moments you finished it or said "Not now".
 
+## Your household
+
+Settings → Profile & address → *Your household* lists the people whose letters come to you too — a partner,
+your children — and whether each signs their own letters
+([ADR 0023](decisions/0023-letters-for-your-household-are-suggested-never-filed.md)). Ordnung suggests who a
+letter is for from the addressee its reading names, on your computer, and files a letter for someone only when
+you press *Yes*, choose them under *Change*, file a set of letters in the Inbox, or add them from a letter with
+*Also file this letter for …* left ticked; nothing is filed by itself, by a reading, by the daily check or by
+sync.
+
+- **Where it lives.** One row of your database (`meta`, `household`): the names as you typed them, whether
+  each signs, and which letters you filed for whom or said are yours. It goes where your database goes: into
+  your encrypted backups and hand-off sync's encrypted copy. *Download a copy of your records* includes it (the
+  people, the letters filed for each and the ones you said are yours), and a phone you paired shows the names
+  on its screen, like the rest of your letters, and keeps no copy.
+- **Never sent to Claude.** The list is not put into a prompt, a draft request, Ask's tools, a notification,
+  a calendar or anything *Weekly Ideas* and the daily note send. A reply in a household member's name is like
+  any letter in another name: Ordnung doesn't add the name to the request (see *Letters* above), though the
+  related letter's title and summary, sent as read, often name them. Ask and the Ideas still treat their
+  letters as yours.
+- **Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file
+  letters, and the privacy log notes each time ("Changed who a letter is for on Anna's iPhone").
+- **Removing and deleting.** Removing a person takes them off the list, and their letters are in your own
+  letters again; which letters were filed for them is kept until your next change of the list, so the toast's
+  *Undo* can file them again. Deleting a letter for good removes its filing in the same step; the trash keeps
+  it, as it keeps the letter. *Delete everything* removes the row with the rest of the database.
+
 ## Your controls
 
 - **Keep private — no AI** — every upload asks first: switch it on and the document is never sent to
@@ -128,8 +163,8 @@ The weekly session (*Weekly review*) stores only the moments you finished it or 
 - **Delete means delete** — deleting a letter removes it for good: the original, page images (and
   the text a scanner added to it), everything read from it, its to-dos and Ideas, its search-index
   entries, its entries in the activity log, quotes from it in contracts you keep, the record of how it
-  was read, and the cached model responses of every call that carried it (a secretary's note or review
-  built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
+  was read, your *For taxes* choice for it and whom you filed it for, and the cached model responses of
+  every call that carried it (a secretary's note or review built from several letters included). The usage log keeps only anonymous numbers (its calls' replay keys, which hash the
   letter's content, and their error texts, which may quote Claude's answer, are cleared too), and deleted
   database rows are overwritten rather than left behind. Originals and page images are never kept in the
   browser's cache, and deleting a letter for good or deleting everything also tells the browser to empty
@@ -360,9 +395,11 @@ on while Ordnung runs without its session token (`--no-token`). The policy is in
 `ordnung/phone/__init__.py`, the decision in [ADR 0017](decisions/0017-phone-access-over-the-home-network.md).
 
 - **What a phone can do.** Look at everything the everyday pages show, add letters (photos or files)
-  and to-dos, write letters, answer Ideas, ask, and correct or tick off what exists. It can't delete
+  and to-dos, write letters, answer Ideas, ask, correct or tick off what exists, mark a letter for taxes and
+  file a letter for someone in your household. It can't delete
   anything, download originals, letter PDFs, the calendar file or your records, export your letters,
-  change settings, your profile, phone access, calendar sync, the watched folder or backups, decide
+  change settings, your profile, your household's list, phone access, calendar sync, the watched folder or
+  backups, decide
   about letters waiting from your watched folder, let Claude read a letter you kept private, or start
   the weekly Ideas. The exact list is checked before a request reaches the rest of Ordnung, and anything
   not on it is refused.
@@ -479,7 +516,8 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
   file sits at your provider for years, open to guessing offline (and at least 12 characters, as for
   backups). Without it nobody can open the folder: not your sync provider, not Ordnung's makers, not
   you. Changing it isn't possible yet; a new sync folder with a new passphrase is.
-- **What stays on each computer.** Only your ledger and your letters' files travel. Never: phone access and
+- **What stays on each computer.** Only your ledger and your letters' files travel. Your household and your
+  *For taxes* choices travel with your ledger. Never: phone access and
   the paired phones; the calendar connection and its app password (connect calendar sync on each computer;
   which events were already sent travels, so nothing is sent twice); the watched folder, its path and what
   it remembers (only a fingerprint of each file it brought in travels, so a folder both computers watch
@@ -526,7 +564,7 @@ password store. The policy is in `ordnung/sync/__init__.py`, the decision in
 
 `ordnung backup` (and Settings → Data → *Download encrypted backup*) makes one file with everything
 Ordnung keeps: the database (letters' text and what was read from them, to-dos, contracts, drafts,
-your *Ask* conversations, the usage log and cached model answers), your original files, the page
+your household and your *For taxes* choices, your *Ask* conversations, the usage log and cached model answers), your original files, the page
 images (with the text a scanner added to a scan) and the letter PDFs. Not in it: the watched folder
 (those files are your own; what Ordnung took from them is), the lock, the running server's session file,
 phone access — neither its certificates nor the paired phones (they are taken out of the backup's copy of

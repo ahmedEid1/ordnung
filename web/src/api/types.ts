@@ -537,11 +537,18 @@ export type Document = Schemas["Document"];
  * A letter as `GET /api/documents` lists it: without what Claude read from inside it in detail (explanation,
  * key facts, references, bank details) and the file hash — the letter's own page (`GET /api/documents/{id}`)
  * has them — and with `found_in`, where a search found it (`letter`: its own words; `scanner_text`: only in
- * the unchecked text a scanner added; null: the list wasn't searched).
+ * the unchecked text a scanner added; null: the list wasn't searched), and `tax_choice`, the person's own
+ * "For taxes" choice (null: none, Claude's mark `tax_relevant` counts).
  */
 export type DocumentRow = Schemas["DocumentRow"];
-/** What every list view reads of a letter: a list row without `found_in`. A full `Document` has all of it too. */
-export type ListedLetter = Omit<DocumentRow, "found_in">;
+/**
+ * What every list view reads of a letter: a list row without `found_in`. A full `Document` has all of it too:
+ * `tax_choice` is optional here because a `Document` never carries it (a list row always does; missing means
+ * no choice).
+ */
+export type ListedLetter = Omit<DocumentRow, "found_in" | "tax_choice"> & Partial<Pick<DocumentRow, "tax_choice">>;
+/** A letter in the copy of your records (`GET /api/documents.json`): whole, with the person's `tax_choice`. */
+export type LetterRecord = Schemas["LetterRecord"];
 export type SearchFoundIn = NonNullable<DocumentRow["found_in"]>;
 export type ContractComputation = Schemas["ContractComputation"];
 export type Contract = Schemas["Contract"];
@@ -574,6 +581,17 @@ export type ChatMessage = Schemas["ThreadMessage"];
 // ------------------------------------------------------------------------------------------------
 
 export type Profile = Schemas["Profile"];
+/** A person of the household, as typed in Settings (`signs`: replies may go out in their name). */
+export type HouseholdMember = Schemas["HouseholdMember"];
+/** A person of the household with the number of letters filed for them. */
+export type HouseholdPerson = Schemas["HouseholdPerson"];
+/**
+ * `GET /api/household`: the people, the letters filed for each (`filed`: letter id → member id), the ones the
+ * person said are theirs (`mine`), the suggestions (`suggested`) and the list's `version` (a PUT's `base`).
+ */
+export type Household = Schemas["Household"];
+/** Who one letter is for (`DocumentDetail.household`): filed for someone, the person's own, a suggestion. */
+export type LetterFor = Schemas["LetterFor"];
 export type ModelSettings = Schemas["ModelSettings"];
 export type AppSettings = Schemas["AppSettings"];
 
@@ -588,7 +606,11 @@ export type MoneySummary = Schemas["MoneySummary"];
 export type DashboardStats = Schemas["DashboardStats"];
 export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
-export type DocumentDetail = Schemas["DocumentDetail"];
+/**
+ * The letter's page (`GET /api/documents/{id}`, `LetterDetail`): everything the viewer shows, the person's own
+ * "For taxes" choice (`tax_choice`, null: none) and who the letter is for (`household`).
+ */
+export type DocumentDetail = Schemas["LetterDetail"];
 /** A GiroCode (EPC QR) for one payment — or why there is none — worked out on read by the server. */
 export type GiroCode = DocumentDetail["girocodes"][number];
 export type GiroCodeReady = Schemas["GiroCodeReady"];
@@ -814,6 +836,11 @@ export type ProfilePatch = Schemas["ProfilePatch"];
 export type SettingsPatch = Schemas["SettingsPatch"];
 export type OnboardingRequest = Schemas["OnboardingRequest"];
 export type DocumentPatch = Schemas["DocumentPatch"];
+/** `PUT /api/household`: the whole list of people (a new one has no id), from the version the page saw. */
+export type HouseholdChange = Schemas["HouseholdChange"];
+export type MemberIn = Schemas["MemberIn"];
+/** `PATCH /api/household`: who each letter is for — a member's id, `"me"`, or null (not answered). */
+export type HouseholdFiling = Schemas["HouseholdFiling"];
 export type ItemCreate = Schemas["ItemCreate"];
 export type ItemPatch = Schemas["ItemPatch"];
 export type ContractPatch = Schemas["ContractPatch"];

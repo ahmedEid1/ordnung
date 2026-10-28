@@ -44,6 +44,8 @@ _PHONE = _operations(
     GET /api/jobs
     GET /api/events
     GET /api/profile
+    GET /api/household
+    PATCH /api/household
     GET /api/documents
     POST /api/documents
     GET /api/documents/{doc_id}
@@ -98,8 +100,8 @@ _PHONE = _operations(
     POST /api/phone/pair
     """
 )
-"""System and live updates, reading the profile, letters received (upload, correct, read again, page
-images), to-dos, records, the overview, Ideas and the daily note, Ask, letters you write (including
+"""System and live updates, reading the profile, the household (reading it and filing letters for its
+people), letters received (upload, correct, read again, page images), to-dos, records, the overview, Ideas and the daily note, Ask, letters you write (including
 "answered" and its undo, which deletes no data), waiting and calls, and pairing itself — the only
 operation a phone reaches before it is paired. ``GET /api/health`` with ``probe`` is refused by the
 gate. The calendar files (``.ics``) are computer-only: they are a copy of the records (to-dos, amounts,
@@ -111,6 +113,7 @@ NEVER_ON_PHONE: dict[Operation, str] = {
     ("PUT", "/api/settings"): "settings",
     ("PUT", "/api/profile"): "profile edits",
     ("POST", "/api/onboarding"): "profile edits",
+    ("PUT", "/api/household"): "household edits",
     ("GET", "/api/phone"): "phone access",
     ("PUT", "/api/phone"): "phone access",
     ("POST", "/api/phone/pairing"): "phone access",
@@ -154,6 +157,7 @@ _COMPUTER = _operations(
     PUT /api/settings
     PUT /api/profile
     POST /api/onboarding
+    PUT /api/household
     GET /api/phone
     PUT /api/phone
     POST /api/phone/pairing
@@ -212,7 +216,7 @@ _COMPUTER = _operations(
     DELETE /api/sync/kept/{name}
     """
 )
-"""Admin settings and profile edits, phone access and its devices, backups, deleting data, files and
+"""Admin settings, profile and household edits, phone access and its devices, backups, deleting data, files and
 records that would leave the computer (originals and the ZIP of them, every letter whole for the copy of
 your records, generated PDFs, the calendar files and the note that they were downloaded, traces), the
 watched folder and held letters (privacy decisions), calendar sync (its password is in the computer's
@@ -229,6 +233,7 @@ COMPUTER_ONLY: frozenset[Operation] = frozenset(_COMPUTER)
 CHANGE_LABELS: dict[Operation, str] = {
     ("POST", "/api/documents"): "Added letters",
     ("PATCH", "/api/documents/{doc_id}"): "Corrected a letter",
+    ("PATCH", "/api/household"): "Changed who a letter is for",
     ("POST", "/api/documents/{doc_id}/reprocess"): "Had a letter read again",
     ("POST", "/api/items"): "Added a to-do",
     ("PATCH", "/api/items/{item_id}"): "Changed a to-do",

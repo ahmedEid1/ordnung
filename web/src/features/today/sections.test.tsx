@@ -3,24 +3,25 @@
  * repeating the date and never cut it to one line, week headings that read right, Ideas that keep
  * their "Show fewer" button and hand focus on (not to <body>), announce once, name what each
  * button is about and use the Top-3 Pay panel for "Pay", Recent letters in the order of the dates
- * they show with a way to all letters, and a secretary's note in the app's date and money style.
+ * they show with a way to all letters, a secretary's note in the app's date and money style, and whose letter a row
+ * is when it is filed for someone of the household (a tag, never a filter).
  * jsdom has no layout; e2e/today-sections.spec.ts checks the real one.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
-import type { Brief, Suggestion } from "@/api/types";
+import type { Brief, Household, Suggestion } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
-import { item } from "@/mocks/data/helpers";
+import { contract, item } from "@/mocks/data/helpers";
 import { makeTestQueryClient, renderWithProviders, TEST_TODAY } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { createMockServer } from "@/mocks/server";
 import { ComingUp } from "./ComingUp";
-import { comingUpMeta, ideaActionLabel, ideaHref, noteText, payActionFor, recentLetterDate, sortRecentLetters } from "./helpers";
+import { comingUpMeta, ideaActionLabel, ideaHref, noteText, payActionFor, recentLetterDate, recentLetterMeta, sortRecentLetters } from "./helpers";
 import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { RecentLetters } from "./RecentLetters";
-import { actionFromItem, type TodayAction } from "./selection";
+import { actionFromContract, actionFromItem, type TodayAction } from "./selection";
 import { TodayView } from "./TodayView";
 
 beforeEach(() => {
@@ -403,5 +404,112 @@ describe("the secretary's note", () => {
     expect(more.className).toMatch(/inline-flex/);
     expect(more.className).toMatch(/min-h-6/);
     expect(document.getElementById(more.getAttribute("aria-controls")!)).toHaveTextContent(/^Sam, your first priority/);
+  });
+});
+
+// ------------------------------------------------------------------------------------------------
+// Whose letter it is (your household, ADR 0023): a tag on a row, never a filter
+// ------------------------------------------------------------------------------------------------
+
+const ALEX = { id: "hhm_alex000000001", name: "Alex Rivera", signs: true, letters: 1 };
+const MIA = { id: "hhm_mia0000000001", name: "Mia Rivera", signs: false, letters: 1 };
+
+/** A test client that has the household, as if `GET /api/household` had answered: `filed` is letter id → person id. */
+function withHousehold(filed: Record<string, string>, client = makeTestQueryClient()) {
+  const household: Household = { members: [ALEX, MIA], filed, mine: [], suggested: {}, version: "0123456789abcdef" };
+  client.setQueryData(qk.household, household);
+  return client;
+}
+
+describe("whose letter it is", () => {
+  it("a Coming-up row's second line, and a recent letter's, start with who the letter is filed for", () => {
+    expect(comingUpMeta({ dateRole: "transfer_by", time: null }, { name: "Stadtwerke Musterstadt GmbH" }, "Alex Rivera")).toBe(
+      "For Alex Rivera · Transfer · Stadtwerke Musterstadt GmbH",
+    );
+    expect(comingUpMeta({ dateRole: "due", time: null }, undefined, "Mia Rivera")).toBe("For Mia Rivera");
+    expect(comingUpMeta({ dateRole: "send_by", time: null }, undefined, null)).toBe("Send");
+    expect(recentLetterMeta({ kind: "invoice" }, { name: "TechMarkt GmbH" }, "Alex Rivera")).toBe("For Alex Rivera · TechMarkt GmbH · Invoice");
+    expect(recentLetterMeta({ kind: null }, undefined, "Mia Rivera")).toBe("For Mia Rivera");
+    expect(recentLetterMeta({ kind: "invoice" }, { name: "TechMarkt GmbH" }, null)).toBe("TechMarkt GmbH · Invoice");
+  });
+
+  it("tags the Coming-up rows of letters filed for someone — a contract's by the letter it came from", () => {
+    const ctx = { today: TEST_TODAY };
+    const fee = actionFromItem(item({ id: "itm_fee", kind: "payment", title: "Pay the fee", amount: 5, due_date: "2026-10-02", doc_id: "doc_fee" }), ctx)!;
+    const own = actionFromItem(item({ id: "itm_own", kind: "task", title: "Water the plants", due_date: "2026-10-03" }), ctx)!;
+    const yours = actionFromItem(item({ id: "itm_yours", kind: "task", title: "Renew the passport", due_date: "2026-10-05", doc_id: "doc_yours" }), ctx)!;
+    const phone = actionFromContract(
+      contract({
+        id: "ctr_phone",
+        name: "FunkNetz Allnet L",
+        category: "mobile",
+        source_doc_id: "doc_phone",
+        computed: {
+          regime: "tkg56",
+          current_term_end: "2026-11-14",
+          cancel_by: "2026-10-14",
+          send_by: "2026-10-08",
+          safe_date: null,
+          confidence: "high",
+          warnings: [],
+          next_renewal: null,
+          earliest_exit: "2026-11-14",
+          summary: "Minimum term ends Sat 14 Nov.",
+          notes: [],
+          steps: [],
+          rule_ids: [],
+        },
+      }),
+      ctx,
+    )!;
+    renderWithProviders(<ComingUp actions={[fee, own, yours, phone]} partyById={new Map()} today={TEST_TODAY} />, {
+      client: withHousehold({ doc_fee: ALEX.id, doc_phone: MIA.id }),
+    });
+    const meta = (title: string) => screen.getByText(title).closest("a")!.querySelector<HTMLElement>("[data-part=meta]");
+    expect(meta("Pay the fee")!.textContent).toMatch(/^€5\.00 · For Alex Rivera · /);
+    expect(meta("Pay the fee")!.title).toBe(meta("Pay the fee")!.textContent);
+    expect(meta("Decide on FunkNetz Allnet L")!.textContent).toBe("For Mia Rivera · Send");
+    expect(meta("Water the plants")?.textContent ?? "").not.toMatch(/For /);
+    expect(meta("Renew the passport")?.textContent ?? "").not.toMatch(/For /);
+  });
+
+  it("tags the recent letters filed for someone, the tag first on the row's second line", async () => {
+    const user = userEvent.setup();
+    const srv = createMockServer({ staticDemo: false, latency: 0 });
+    const docs = srv.db.state.documents.slice(0, 3);
+    const filed = docs[1]!;
+    renderWithProviders(<RecentLetters docs={docs} partyById={new Map()} />, { client: withHousehold({ [filed.id]: ALEX.id }) });
+    await user.click(screen.getByRole("button", { name: /^Recent letters/ }));
+    const rows = screen.getAllByRole("listitem");
+    const row = rows.find((r) => r.textContent?.includes(filed.title ?? filed.filename))!;
+    const second = within(row).getByText(/^For Alex Rivera/);
+    expect(second).toHaveAttribute("title", second.textContent);
+    for (const other of rows.filter((r) => r !== row)) expect(within(other).queryByText(/^For /)).toBeNull();
+  });
+
+  it("Today has the tags but no filter: no choice of whose letters, no link to one person's", async () => {
+    const { srv } = useMockApi();
+    const filed = Object.fromEntries(srv.db.liveDocuments().map((d) => [d.id, ALEX.id]));
+    await renderToday(withHousehold(filed));
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByText(/Whose letters/)).toBeNull();
+    expect(screen.getAllByRole("link").filter((a) => /[?&]for=/.test(a.getAttribute("href") ?? ""))).toEqual([]);
+    const coming = screen.getByRole("region", { name: /Coming up/ });
+    expect(within(coming).getAllByText(/(^|· )For Alex Rivera( ·|$)/).length).toBeGreaterThan(0);
+  });
+});
+
+describe("whose letter it is in the static demo", () => {
+  it("tags Today's rows of the letters a visitor filed for someone, through the demo's own household", async () => {
+    const { srv } = useMockApi({ staticDemo: true });
+    const none = new URLSearchParams();
+    const empty = (await (await srv.handle("GET", "/household", none, undefined)).json()) as Household;
+    const added = (await (await srv.handle("PUT", "/household", none, { base: empty.version, members: [{ id: null, name: "Alex Rivera", signs: true }] })).json()) as Household;
+    const letters = Object.fromEntries(srv.db.liveDocuments().map((d) => [d.id, added.members[0]!.id]));
+    expect((await srv.handle("PATCH", "/household", none, { letters })).status).toBe(200);
+    await renderToday();
+    const coming = screen.getByRole("region", { name: /Coming up/ });
+    expect((await within(coming).findAllByText(/(^|· )For Alex Rivera( ·|$)/)).length).toBeGreaterThan(0);
+    expect(within(screen.getByRole("region", { name: "Top 3 this week" })).getAllByText("For Alex Rivera").length).toBeGreaterThan(0);
   });
 });

@@ -3,7 +3,8 @@
 On startup and every 15 minutes :class:`DailyTick` checks the person's local date (their profile's
 time zone, or the simulated demo date). When it changed since meta ``last_tick_date`` it moves
 recurring to-dos whose date has passed on to their current occurrence (:mod:`ordnung.recurrence`),
-runs the triggers and expires stale Ideas, rebuilds the agenda and the brief (model-written only when
+runs the triggers and expires stale Ideas, forgets the household's filings of letters that no longer exist
+(:func:`ordnung.secretary.household.prune_gone`), rebuilds the agenda and the brief (model-written only when
 ``settings.llm_brief`` is on and the backend can answer), starts the weekly review in the background
 if the last one is more than 7 days old, and announces ``day.changed`` and ``suggestions.updated``.
 On every check (not only when the day changed) it shows the morning desktop notification once it is
@@ -41,6 +42,7 @@ from ordnung.llm.runtime import LLMService
 from ordnung.models import CalendarSyncReport
 from ordnung.notify import desktop
 from ordnung.recurrence import roll_forward
+from ordnung.secretary import household
 from ordnung.secretary.brief import Brief, generate_brief
 from ordnung.secretary.review import LAST_REVIEW_KEY, run_review
 from ordnung.secretary.triggers import TriggerRun, parse_day, run_and_reconcile
@@ -175,12 +177,21 @@ class DailyTick:
         async with ledger_lock():  # the pipeline links and reconciles under the same lock
             await _in_thread(roll_forward, store, today, item_contexts())
             run = await _in_thread(run_and_reconcile, store, today)
+        await self._prune_household()
         store.set_meta(LAST_TICK_KEY, today.isoformat())
         self._publish("day.changed", date=today.isoformat(), previous=previous)
         self._publish("suggestions.updated", reason="tick", **run.as_dict())
         brief = await self._refresh_brief(today)
         started = self._start_review(today)
         return TickResult(today=today, day_changed=True, triggers=run, brief=brief, review_started=started)
+
+    async def _prune_household(self) -> None:
+        """Forget the household's filings of letters deleted for good on a computer still on 0.2.0 (it writes
+        only when there is one); a failure is logged, never fatal."""
+        try:
+            await _in_thread(household.prune_gone, self.ctx.store)
+        except Exception:
+            log.exception("the household's daily check failed")
 
     async def _desktop(self, today: date) -> desktop.Outcome | None:
         """The morning desktop notification, if due; a failure is logged, never fatal."""

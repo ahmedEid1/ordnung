@@ -1,5 +1,5 @@
 {
-  "about": "Which letters an export holds (letters_zip.matches and selection.ts), and the ZIP's name. Read by tests/test_letters_zip.py and selection.test.ts. A letter not given a field has its default: status processed, source upload, direction incoming, no dates, no sender, not for taxes, not private, not in the trash.",
+  "about": "Which letters an export holds (letters_zip.matches and selection.ts), and the ZIP's name. Read by tests/test_letters_zip.py and selection.test.ts. A letter not given a field has its default: status processed, source upload, direction incoming, no dates, no sender, not marked for taxes by Claude (tax_relevant) and no choice of the person's (tax_choice: true or false is theirs and counts over Claude's mark), not private, not in the trash.",
   "today": "2026-10-09",
   "docs": [
     { "id": "doc_payslip_2025", "doc_date": "2025-08-31", "tax_relevant": true, "party_id": "pty_work" },
@@ -16,7 +16,10 @@
     { "id": "doc_trashed", "doc_date": "2025-05-06", "deleted_at": "2026-01-02T10:00:00Z", "tax_relevant": true },
     { "id": "doc_proof", "doc_date": "2025-05-07", "source": "proof", "direction": "outgoing", "ai_private": true, "tax_relevant": true },
     { "id": "doc_sent_2025", "doc_date": "2025-06-15", "direction": "outgoing", "party_id": "pty_landlord" },
-    { "id": "doc_failed_2025", "received_date": "2025-07-01", "status": "failed" }
+    { "id": "doc_failed_2025", "received_date": "2025-07-01", "status": "failed" },
+    { "id": "doc_private_marked_2025", "doc_date": "2025-09-01", "ai_private": true, "tax_choice": true },
+    { "id": "doc_unmarked_2025", "doc_date": "2025-10-01", "tax_relevant": true, "tax_choice": false },
+    { "id": "doc_held_marked", "doc_date": "2025-05-08", "status": "held", "ai_private": true, "tax_choice": true }
   ],
   "cases": [
     {
@@ -34,7 +37,9 @@
         "doc_invoice_2026",
         "doc_undated",
         "doc_sent_2025",
-        "doc_failed_2025"
+        "doc_failed_2025",
+        "doc_private_marked_2025",
+        "doc_unmarked_2025"
       ],
       "expected_name": "ordnung-letters-2026-10-09.zip"
     },
@@ -48,20 +53,22 @@
         "doc_arrived_2025",
         "doc_misread_2025",
         "doc_sent_2025",
-        "doc_failed_2025"
+        "doc_failed_2025",
+        "doc_private_marked_2025",
+        "doc_unmarked_2025"
       ],
       "expected_name": "ordnung-letters-2025.zip"
     },
     {
       "name": "a year's letters for taxes",
       "choice": { "year": 2025, "tax": true },
-      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025"],
+      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025", "doc_private_marked_2025"],
       "expected_name": "ordnung-letters-for-taxes-2025.zip"
     },
     {
       "name": "and the ones for taxes dated January to May of the next year",
       "choice": { "year": 2025, "until": "2026-05-31", "tax": true },
-      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025", "doc_new_year_2026", "doc_may_2026"],
+      "expected_ids": ["doc_payslip_2025", "doc_arrived_2025", "doc_misread_2025", "doc_new_year_2026", "doc_may_2026", "doc_private_marked_2025"],
       "expected_name": "ordnung-letters-for-taxes-2025.zip"
     },
     {
@@ -75,7 +82,9 @@
         "doc_misread_2025",
         "doc_new_year_2026",
         "doc_sent_2025",
-        "doc_failed_2025"
+        "doc_failed_2025",
+        "doc_private_marked_2025",
+        "doc_unmarked_2025"
       ],
       "expected_name": "ordnung-letters-2025.zip"
     },
@@ -89,7 +98,8 @@
         "doc_new_year_2026",
         "doc_may_2026",
         "doc_june_2026",
-        "doc_undated"
+        "doc_undated",
+        "doc_private_marked_2025"
       ],
       "expected_name": "ordnung-letters-for-taxes-2026-10-09.zip"
     },

@@ -9,7 +9,7 @@
 import type { ListedLetter } from "@/api/types";
 import { documentKindLabel } from "@/lib/copy";
 import type { LetterGroup } from "@/features/inbox/filters";
-import { EARLY_UNTIL, exportable, letterDay, letterYear } from "@/features/export/selection";
+import { EARLY_UNTIL, exportable, forTaxes, letterDay, letterYear, parseYear } from "@/features/export/selection";
 
 /** The tax season ends with July (`TAX_SEASON_LAST_MONTH` on the server): until then the tax Idea is about last year. */
 export const TAX_SEASON_LAST_MONTH = 7;
@@ -22,8 +22,8 @@ export const EARLY_GROUP = "early";
 const yearOf = (iso: string) => Number(iso.slice(0, 4));
 const monthOf = (iso: string) => Number(iso.slice(5, 7));
 
-/** A letter on the Tax year page: one that can be exported and is marked as mattering for taxes. */
-export const isTaxLetter = (d: ListedLetter) => exportable(d) && d.tax_relevant;
+/** A letter on the Tax year page: one that can be exported and counts for taxes ({@link forTaxes}). */
+export const isTaxLetter = (d: ListedLetter) => exportable(d) && forTaxes(d);
 
 /** The letters for taxes dated in `year`, in their order. */
 export function taxLetters(docs: readonly ListedLetter[], year: number): ListedLetter[] {
@@ -94,9 +94,5 @@ export function taxGroups(docs: readonly ListedLetter[], year: number, today: st
   return groups;
 }
 
-/** A `?year=` the page can show: four digits, 1900–2100 (as the export accepts); else null. */
-export function parseTaxYear(value: string | null): number | null {
-  if (!value || !/^\d{4}$/.test(value)) return null;
-  const year = Number(value);
-  return year >= 1900 && year <= 2100 ? year : null;
-}
+/** A `?year=` the page can show: four digits, 1900–2100 (as the export accepts); else null ({@link parseYear}). */
+export const parseTaxYear = parseYear;

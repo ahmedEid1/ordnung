@@ -52,6 +52,7 @@ import { isDirectDebit, isIncomingMoney } from "@/lib/payments";
 import { paysOnSite } from "@/features/document/item-meta";
 import { CALL_NOTES, PROOF_DOCUMENTS, PROOF_DRAFTS, PROOF_ITEMS, PROOF_PARTIES, PROOFS } from "./data/proof";
 import type { ReadingSeed } from "./data/traces";
+import { emptyHousehold, type StoredHousehold } from "./household";
 
 const clone = <T>(v: T): T => (typeof structuredClone === "function" ? structuredClone(v) : JSON.parse(JSON.stringify(v)));
 
@@ -224,6 +225,10 @@ export interface MockState {
   readings: Record<string, ReadingSeed[]>;
   /** when the newest encrypted backup was downloaded in this session (`null`: none yet), as `BackupInfo.last_copy` says */
   lastBackupAt: string | null;
+  /** the person's own "For taxes" choices by letter id, kept apart from the letters (`./taxChoices`) */
+  taxChoices: Record<string, boolean>;
+  /** the person's household and who each letter is filed for (`./household`); empty, as in `ordnung demo` */
+  household: StoredHousehold;
 }
 
 /**
@@ -273,6 +278,8 @@ export class MockDb {
       calls: clone(CALL_NOTES),
       readings: {},
       lastBackupAt: null,
+      taxChoices: {},
+      household: emptyHousehold(),
     };
   }
 

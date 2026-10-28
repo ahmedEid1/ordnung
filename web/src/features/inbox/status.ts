@@ -10,6 +10,12 @@ import type { InboxFilter } from "./filters";
 /** A search starts at this many characters. */
 export const MIN_SEARCH = 2;
 
+/**
+ * Whose letters the list shows (the household's *For* select): the person's own (`mine`: every letter not filed for
+ * someone), or one person's (`suggested`: their letters not filed yet, listed in the card above the list).
+ */
+export type InboxWho = { kind: "mine" } | { kind: "person"; name: string; suggested: number };
+
 export interface InboxView {
   filter: InboxFilter;
   /** The picked kind as its label ("Invoice"), or null. */
@@ -18,11 +24,15 @@ export interface InboxView {
   typed: string;
   /** The search that runs ({@link MIN_SEARCH} characters or more), else "". */
   q: string;
+  /** The year chosen (by the date on the letter, else the day it arrived), or null: every year. */
+  year: number | null;
+  /** Whose letters, or null: everyone's (also when the household has no people). */
+  who: InboxWho | null;
 }
 
-/** Is the list narrowed by a filter, a kind or a search? */
+/** Is the list narrowed by a filter, a kind, a year, whose letters or a search? */
 export function isNarrowed(v: InboxView): boolean {
-  return v.filter !== "all" || Boolean(v.kindLabel) || Boolean(v.q);
+  return v.filter !== "all" || Boolean(v.kindLabel) || Boolean(v.q) || v.year != null || v.who != null;
 }
 
 export interface ResultLine {
@@ -62,13 +72,14 @@ export interface EmptyCopy {
 /**
  * The empty state of a filtered list — it says which filter left it empty and how to get out (`phone`: on a paired
  * phone, where the letters are on "your computer"). `held`: waiting letters the search found — never "No letters
- * match" then: it says where they are.
+ * match" then: it says where they are. The all-clear of *Please check*, the explanation of *Private* and the words
+ * about whose letters show only while nothing else narrows the list.
  */
 export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
-  const plain = !v.q && !v.kindLabel;
+  const plain = !v.q && !v.kindLabel && v.year == null;
   if (v.q && held) {
-    // a filter or a kind narrows only the letters read: the waiting ones are in none
-    const searchOnly = v.filter === "all" && !v.kindLabel;
+    // a filter, a kind or a year narrows only the letters read: the waiting ones are in none
+    const searchOnly = v.filter === "all" && !v.kindLabel && v.year == null && !v.who;
     return {
       title: heldMatch(held, v.q),
       description: `${held === 1 ? "It's" : "They're"} above, in “From your folder — not read yet”. ${searchOnly ? "No other letter matches." : "Filters are on as well — clear them to search all your letters."}`,
@@ -76,7 +87,21 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       action: searchOnly ? "clear-search" : "clear-filters",
     };
   }
-  if (plain && v.filter === "check") {
+  if (plain && v.who && v.filter === "all") {
+    if (v.who.kind === "mine") {
+      return { title: "No letters for you here", description: "Every letter is filed for someone in your household.", illustration: "letter", action: "clear-filters" };
+    }
+    const { name, suggested } = v.who;
+    return {
+      title: `No letters filed for ${name}`,
+      description: suggested
+        ? `The letters above are addressed to ${name}. File them with one press.`
+        : `Open a letter and press “Change” next to “For you” to file it for ${name}.`,
+      illustration: "letter",
+      action: "clear-filters",
+    };
+  }
+  if (plain && !v.who && v.filter === "check") {
     return {
       title: "Nothing to check",
       description: "Every date and amount was found in its letter. Ordnung asks here when something doesn't add up.",
@@ -84,7 +109,7 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       action: null,
     };
   }
-  if (plain && v.filter === "private") {
+  if (plain && !v.who && v.filter === "private") {
     return {
       title: "No private letters",
       description: `Letters you add with “Keep private — no AI” are kept here, on ${phone ? "your" : "this"} computer only. Claude never reads them.`,
@@ -92,7 +117,7 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       action: "add",
     };
   }
-  if (v.q && v.filter === "all" && !v.kindLabel) {
+  if (v.q && v.filter === "all" && !v.kindLabel && v.year == null && !v.who) {
     return {
       title: `No letters match “${v.q}”`,
       description: "Try another word — a sender, a title or an amount.",
@@ -100,17 +125,26 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       action: "clear-search",
     };
   }
-  const letters = v.kindLabel ? `“${v.kindLabel}” letters` : "letters";
+  // whose letters are missing, when the For choice narrows the list too
+  const whose = !v.who ? "" : v.who.kind === "mine" ? " of yours" : ` for ${v.who.name}`;
+  const letters = `${v.kindLabel ? `“${v.kindLabel}” letters` : "letters"}${whose}`;
+  const dated = v.year != null ? ` dated ${v.year}` : "";
   const title = v.q
     ? `No letters match “${v.q}”`
     : v.filter === "check"
-      ? `No ${letters} to check`
+      ? `No ${letters}${dated} to check`
       : v.filter === "private"
-        ? `No private ${letters}`
-        : `No ${letters}`;
+        ? `No private ${letters}${dated}`
+        : `No ${letters}${dated}`;
+  // only the year narrows the list: that year has no letters at all
+  const yearAlone = v.year != null && !v.q && !v.kindLabel && !v.who && v.filter === "all";
   return {
     title,
-    description: v.q ? "Filters are on as well — clear them to search all your letters." : "Clear the filters to see all your letters.",
+    description: v.q
+      ? "Filters are on as well — clear them to search all your letters."
+      : yearAlone
+        ? "Ordnung files a letter under the year of the date on it, else the day it arrived. Choose another year, or clear the filters."
+        : "Clear the filters to see all your letters.",
     illustration: "search",
     action: "clear-filters",
   };

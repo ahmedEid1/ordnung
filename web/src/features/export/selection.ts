@@ -43,6 +43,21 @@ export function letterYear(d: Pick<ListedLetter, "doc_date" | "received_date">):
   return day ? Number(day.slice(0, 4)) : null;
 }
 
+/** A `?year=` a page can show: four digits, 1900–2100 (as the export accepts); else null. */
+export function parseYear(value: string | null): number | null {
+  if (!value || !/^\d{4}$/.test(value)) return null;
+  const year = Number(value);
+  return year >= 1900 && year <= 2100 ? year : null;
+}
+
+/**
+ * Whether a letter counts for taxes: the person's own choice if they made one, else Claude's mark
+ * (`secretary.tax_choice.for_taxes` on the server). A full `Document` carries no choice: Claude's mark counts.
+ */
+export function forTaxes(d: Pick<ListedLetter, "tax_relevant" | "tax_choice">): boolean {
+  return d.tax_choice ?? d.tax_relevant;
+}
+
 /** A letter that can be exported at all: not in the trash, not waiting to be read (held), not a proof file. */
 export function exportable(d: ListedLetter): boolean {
   return !d.deleted_at && d.status !== "held" && d.source !== "proof";
@@ -51,7 +66,7 @@ export function exportable(d: ListedLetter): boolean {
 /** Whether `d` belongs in the export `c` describes. */
 export function matchesChoice(d: ListedLetter, c: ExportChoice): boolean {
   if (!exportable(d)) return false;
-  if (c.tax && !d.tax_relevant) return false;
+  if (c.tax && !forTaxes(d)) return false;
   if (c.party_id && d.party_id !== c.party_id) return false;
   if (c.year == null) return true;
   const day = letterDay(d);

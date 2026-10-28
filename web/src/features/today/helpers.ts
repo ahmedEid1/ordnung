@@ -1,7 +1,7 @@
 /** Small non-React helpers of the Today page (kept apart so component files stay component-only). */
 import { api } from "@/api/endpoints";
 import type { Document, Party, Suggestion } from "@/api/types";
-import { DRAFT_KIND_COPY } from "@/lib/copy";
+import { DRAFT_KIND_COPY, documentKindLabel } from "@/lib/copy";
 import { formatDate, formatInlineText, formatTime } from "@/lib/format";
 import { composerHref, type DateRole, type TodayAction } from "./selection";
 import { contractHref } from "@/features/contracts/links";
@@ -115,10 +115,16 @@ const ROLE_WORD: Partial<Record<DateRole, string>> = {
   expires: "Expires",
 };
 
-/** A Coming-up row's second line: what the date means (or the time), and who it is with. */
-export function comingUpMeta(action: Pick<TodayAction, "dateRole" | "time">, party: Pick<Party, "name"> | undefined): string {
+/** The start of a row's second line for a letter filed for someone of the household ("For Alex Rivera"). */
+const forWhom = (name: string | null | undefined) => (name ? `For ${name}` : null);
+
+/**
+ * A Coming-up row's second line: whose letter it is when it is filed for someone of the household (`forName`), what
+ * the date means (or the time), and who it is with.
+ */
+export function comingUpMeta(action: Pick<TodayAction, "dateRole" | "time">, party: Pick<Party, "name"> | undefined, forName: string | null = null): string {
   const role = ROLE_WORD[action.dateRole];
-  return [role ?? null, action.time ? formatTime(action.time) : null, party?.name ?? null].filter(Boolean).join(" · ");
+  return [forWhom(forName), role ?? null, action.time ? formatTime(action.time) : null, party?.name ?? null].filter(Boolean).join(" · ");
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -128,6 +134,11 @@ export function comingUpMeta(action: Pick<TodayAction, "dateRole" | "time">, par
 /** The day a recent letter is listed under: when it arrived, else its date, else when it was added. */
 export function recentLetterDate(d: Pick<Document, "received_date" | "doc_date" | "created_at">): string {
   return d.received_date ?? d.doc_date ?? d.created_at.slice(0, 10);
+}
+
+/** A recent letter's second line: whose letter it is when it is filed for someone of the household, who sent it, its kind. */
+export function recentLetterMeta(d: Pick<Document, "kind">, party: Pick<Party, "name"> | undefined, forName: string | null = null): string {
+  return [forWhom(forName), party?.name, d.kind ? documentKindLabel(d.kind) : null].filter(Boolean).join(" · ");
 }
 
 /** Recent letters newest first by the day each one shows, so the list reads in order (20 Sep never above 21 Sep). */

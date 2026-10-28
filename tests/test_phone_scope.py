@@ -58,7 +58,21 @@ def test_every_operation_is_classified(schema: dict[str, Any]) -> None:
     gone = sorted((PHONE_ROUTES | COMPUTER_ONLY) - operations)
     assert not gone, f"classified operations that don't exist: {gone}"
     assert not PHONE_ROUTES & COMPUTER_ONLY
-    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (117, 57, 60)
+    assert (len(operations), len(PHONE_ROUTES), len(COMPUTER_ONLY)) == (120, 59, 61)
+
+
+def test_a_phone_reads_and_files_the_household_but_edits_it_on_the_computer() -> None:
+    """Your household: a paired phone sees who a letter is for and can file it (like correcting a letter,
+    and logged as such); the list of people is edited on the computer, like the profile."""
+    assert {("GET", "/api/household"), ("PATCH", "/api/household")} <= PHONE_ROUTES
+    edit = ("PUT", "/api/household")
+    assert edit in COMPUTER_ONLY and edit not in PHONE_ROUTES
+    assert NEVER_ON_PHONE[edit] == "household edits"
+    assert scope.CHANGE_LABELS[("PATCH", "/api/household")] == "Changed who a letter is for"
+    assert edit not in scope.CHANGE_LABELS and ("GET", "/api/household") not in scope.CHANGE_LABELS
+    assert classify("PUT", "/api/household") == "computer"
+    assert classify("PATCH", "/api/household") == "phone"
+    assert scope.match("PUT", "/api/household") is None
 
 
 def test_never_on_phone_stays_on_the_computer() -> None:

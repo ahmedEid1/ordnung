@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Document } from "@/api/types";
-import { makeDoc } from "@/features/document/fixtures";
+import { makeDoc, makeRow } from "@/features/document/fixtures";
 import {
   TAX_SEASON_SENTENCE,
   defaultTaxYear,
@@ -47,6 +47,28 @@ describe("taxLetters and taxYears", () => {
 
   it("keeps undated letters out of every year and names them apart", () => {
     expect(undatedTaxLetters(DOCS).map((d) => d.id)).toEqual(["undated"]);
+  });
+
+  it("a letter the person marked is on its year's page, a private one too; one they unmarked isn't", () => {
+    const rows = [
+      makeRow({ id: "receipt", doc_date: "2025-06-01", tax_relevant: false, tax_choice: true }),
+      makeRow({ id: "donation", doc_date: "2025-07-01", tax_relevant: false, ai_private: true, tax_choice: true }),
+      makeRow({ id: "unmarked", doc_date: "2025-08-01", tax_relevant: true, tax_choice: false }),
+      makeRow({ id: "claudes", doc_date: "2025-09-01", tax_relevant: true }),
+      makeRow({ id: "undated_marked", doc_date: null, received_date: null, tax_choice: true }),
+      makeRow({ id: "undated_unmarked", doc_date: null, received_date: null, tax_relevant: true, tax_choice: false }),
+      makeRow({ id: "early", doc_date: "2026-02-01", tax_choice: true }),
+      makeRow({ id: "early_unmarked", doc_date: "2026-03-01", tax_relevant: true, tax_choice: false }),
+      // waiting from the folder: never on the page, whatever the choice
+      makeRow({ id: "waiting", doc_date: "2025-10-01", status: "held", ai_private: true, tax_choice: true }),
+    ];
+    expect(taxLetters(rows, 2025).map((d) => d.id)).toEqual(["receipt", "donation", "claudes"]);
+    expect(taxYears(rows)).toEqual([
+      { year: 2026, count: 1 },
+      { year: 2025, count: 3 },
+    ]);
+    expect(undatedTaxLetters(rows).map((d) => d.id)).toEqual(["undated_marked"]);
+    expect(earlyStatements(rows, 2025, "2026-09-28").map((d) => d.id)).toEqual(["early"]);
   });
 });
 

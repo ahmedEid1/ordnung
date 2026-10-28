@@ -177,7 +177,8 @@ async def test_document_detail_and_files(data_dir: Path) -> None:
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         response = await api.client.get(f"/api/documents/{doc_id}")
         detail = DocumentDetail.model_validate(response.json())
-        assert set(response.json()) == set(DocumentDetail.model_fields)
+        # the letter's page (LetterDetail): DocumentDetail with the person's tax choice and who it is for
+        assert set(response.json()) == set(DocumentDetail.model_fields) | {"tax_choice", "household"}
         assert [(page.page, page.text_source) for page in detail.pages] == [(1, "text"), (2, "text")]
         assert detail.party is not None and detail.party.name == "Finanzamt Musterstadt"
         assert detail.case is not None and detail.document.case_id == detail.case.id
@@ -211,7 +212,7 @@ async def test_the_list_says_where_a_search_found_each_letter(data_dir: Path) ->
         doc_id = await _read_letter(api, TAX_LETTER.pdf())
         listed = (await api.client.get("/api/documents")).json()
         assert [(row["id"], row["found_in"]) for row in listed] == [(doc_id, None)]
-        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in"}
+        assert set(listed[0]) == (set(Document.model_fields) - LEFT_OUT_OF_LIST) | {"found_in", "tax_choice"}
         blank = (await api.client.get("/api/documents", params={"q": "  "})).json()
         assert [row["found_in"] for row in blank] == [None]
         found = (await api.client.get("/api/documents", params={"q": "Finanzamt"})).json()
@@ -320,8 +321,11 @@ async def test_the_copy_of_your_records_has_every_letter_whole(data_dir: Path) -
         assert set(ids) == {tax, invoice} and trashed not in ids and proof.id not in ids
         assert ids == [row["id"] for row in listed]
         stored = [api.ctx.store.get_document(row["id"]) for row in records]
-        assert records == [doc.model_dump(mode="json") for doc in stored if doc is not None]
-        assert all(set(row) == set(Document.model_fields) for row in records)
+        # each letter as stored, with the person's own "For taxes" choice (none here)
+        assert records == [
+            {**doc.model_dump(mode="json"), "tax_choice": None} for doc in stored if doc is not None
+        ]
+        assert all(set(row) == set(Document.model_fields) | {"tax_choice"} for row in records)
         whole = next(row for row in records if row["id"] == tax)
         assert whole["explanation"] and whole["key_facts"] and whole["references"] and whole["sha256"]
         assert whole["payment"]["iban"]
@@ -393,6 +397,172 @@ async def test_patch_document_fields(data_dir: Path) -> None:
         unknown_party = await api.client.patch(f"/api/documents/{doc_id}", json={"party_id": "pty_nobody"})
         assert unknown_party.status_code == 404
         assert (await api.client.patch("/api/documents/doc_nothing", json={"title": "x"})).status_code == 404
+
+
+# --------------------------------------------------------------------------------------------------
+# "For taxes": the person's own choice, kept apart from Claude's mark (secretary.tax_choice)
+# --------------------------------------------------------------------------------------------------
+
+
+async def _tax_choice_everywhere(api: Api, doc_id: str) -> tuple[object, object, object]:
+    """The letter's ``tax_choice`` as its page, its list row and the copy of your records say it."""
+    detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+    row = next(row for row in (await api.client.get("/api/documents")).json() if row["id"] == doc_id)
+    record = next(row for row in (await api.client.get("/api/documents.json")).json() if row["id"] == doc_id)
+    return detail["tax_choice"], row["tax_choice"], record["tax_choice"]
+
+
+async def test_patch_tax_choice_marks_unmarks_and_clears(data_dir: Path) -> None:
+    """true → false → null: each answers the letter (its own fields as they were, Claude's mark kept), and the
+    letter's page, its row and the records say the choice. The letter's row in the database isn't touched."""
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        before = api.ctx.store.get_document(doc_id)
+        assert before is not None and before.tax_relevant is True
+        assert await _tax_choice_everywhere(api, doc_id) == (None, None, None)
+        for choice in (True, False, None):
+            response = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": choice})
+            assert response.status_code == 200, response.text
+            assert response.json() == before.model_dump(mode="json")
+            assert "tax_choice" not in response.json()
+            assert await _tax_choice_everywhere(api, doc_id) == (choice, choice, choice)
+            assert api.ctx.store.get_document(doc_id) == before  # updated_at too
+        assert api.ctx.store.tax_choices() == {}
+        # with the letter's own fields in one request
+        both = await api.client.patch(
+            f"/api/documents/{doc_id}", json={"tax_choice": False, "title": "Bescheid"}
+        )
+        assert both.status_code == 200 and both.json()["title"] == "Bescheid"
+        assert api.ctx.store.tax_choices() == {doc_id: False}
+
+
+async def test_patch_tax_choice_is_refused_for_trashed_held_and_proof_letters(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        trashed = await _read_letter(api, TAX_LETTER.pdf())
+        assert (await api.client.delete(f"/api/documents/{trashed}")).status_code == 200
+        held = add_doc(store, "waiting", status="held", ai_private=True)
+        proof = store.add_document(
+            sha256="0" * 64,
+            filename="einlieferungsbeleg.jpg",
+            mime="image/jpeg",
+            file_path="files/einlieferungsbeleg.jpg",
+            source=PROOF_SOURCE,
+            direction="outgoing",
+            status="processed",
+        ).id
+        for doc_id, detail in (
+            (trashed, "This letter is in the trash."),
+            (
+                held,
+                "This letter isn't read yet: choose “Read” or “Keep private” for it first (Inbox → From your folder).",
+            ),
+            (proof, "A proof file goes with its letter: mark that letter for taxes instead."),
+        ):
+            for body in ({"tax_choice": True}, {"tax_choice": None, "title": "x"}):
+                refused = await api.client.patch(f"/api/documents/{doc_id}", json=body)
+                assert (refused.status_code, refused.json()["detail"]) == (409, detail), (doc_id, body)
+            assert store.get_document(doc_id) is not None and store.get_document(doc_id).title != "x"  # type: ignore[union-attr]
+        assert store.tax_choices() == {}
+        missing = await api.client.patch("/api/documents/doc_nothing", json={"tax_choice": True})
+        assert (missing.status_code, missing.json()["detail"]) == (
+            404,
+            "This letter doesn't exist (any more).",
+        )
+        # a letter in the trash keeps a choice made before, and Read again stays refused for it
+        assert (await api.client.post(f"/api/documents/{trashed}/reprocess")).json()["detail"] == (
+            "This letter is in the trash."
+        )
+
+
+async def test_a_private_letter_can_be_marked_for_taxes(data_dir: Path) -> None:
+    """Claude never reads it, so only the person can: their own act, on their computer."""
+    async with api_for(data_dir) as api:
+        body = await api.upload(("einladung.txt", TEXT_LETTER), private=True)
+        doc_id = body["documents"][0]["id"]
+        await api.read_all()
+        letter = api.ctx.store.get_document(doc_id)
+        assert letter is not None and letter.ai_private and not letter.tax_relevant
+        marked = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": True})
+        assert marked.status_code == 200, marked.text
+        assert await _tax_choice_everywhere(api, doc_id) == (True, True, True)
+        assert [call.purpose for call in api.backend.calls] == []  # nothing went to Claude
+
+
+async def test_a_letter_being_read_can_be_marked_and_keeps_the_choice(data_dir: Path) -> None:
+    """The page hides the toggle while a letter is read; a choice sent then (another window, the phone) is
+    kept apart and is still there when the reading ends."""
+    async with api_for(data_dir) as api:
+        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
+        doc_id = body["documents"][0]["id"]
+        assert body["documents"][0]["status"] == "queued"
+        assert (
+            await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": False})
+        ).status_code == 200
+        await api.read_all()
+        detail = (await api.client.get(f"/api/documents/{doc_id}")).json()
+        assert (detail["document"]["status"], detail["document"]["tax_relevant"], detail["tax_choice"]) == (
+            "processed",
+            True,
+            False,
+        )
+
+
+async def test_patch_tax_choice_publishes_document_updated_and_refreshes_ideas(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The open pages refetch (``document.updated``) and the tax Idea follows at once; an unchanged choice
+    writes nothing (no person change, no new version for sync)."""
+    from fixtures_llm import record_events
+    from ordnung.db.store import PERSON_META_KEY
+
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        refreshes: list[None] = []
+        monkeypatch.setattr(api.ctx.worker, "refresh_ideas", lambda: refreshes.append(None))
+        events = record_events(api.ctx.bus)
+        assert (
+            await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": False})
+        ).status_code == 200
+        assert events == [("document.updated", {"doc_id": doc_id})] and len(refreshes) == 1
+        person = api.ctx.store.get_meta(PERSON_META_KEY)
+        again = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": False})
+        assert again.status_code == 200
+        assert api.ctx.store.get_meta(PERSON_META_KEY) == person
+        # a PATCH without it publishes and refreshes as before: only a recompute refreshes the Ideas
+        del events[:], refreshes[:]
+        assert (
+            await api.client.patch(f"/api/documents/{doc_id}", json={"title": "Bescheid"})
+        ).status_code == 200
+        assert events == [("document.updated", {"doc_id": doc_id})] and refreshes == []
+
+
+async def test_patch_rejects_a_tax_choice_that_isnt_true_false_or_null(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        for bad in ("yes", "true", 1, 2, [True], {"choice": True}):
+            response = await api.client.patch(f"/api/documents/{doc_id}", json={"tax_choice": bad})
+            assert response.status_code == 422, bad
+        assert api.ctx.store.tax_choices() == {}
+
+
+async def test_a_paired_phone_can_mark_a_letter_for_taxes(data_dir: Path) -> None:
+    """The same correction as on the computer, logged as "Corrected a letter"; the records stay computer only."""
+    from phone_support import pair, phone_app, phone_client
+
+    async with phone_app(data_dir) as (api, _, _):
+        doc_id = await _read_letter(api, TAX_LETTER.pdf())
+        async with phone_client(api) as phone:
+            signed = await pair(api, phone)
+            marked = await phone.patch(f"/api/documents/{doc_id}", json={"tax_choice": False})
+            assert marked.status_code == 200, marked.text
+            assert (await phone.get(f"/api/documents/{doc_id}")).json()["tax_choice"] is False
+            assert [row["tax_choice"] for row in (await phone.get("/api/documents")).json()] == [False]
+            undone = await phone.patch(f"/api/documents/{doc_id}", json={"tax_choice": None})
+            assert undone.status_code == 200, undone.text
+        assert api.ctx.store.tax_choices() == {}
+        changes = api.ctx.store.list_activity(kinds=["phone.changed"])
+        assert [e.message for e in changes] == [f"Corrected a letter on {signed['name']}"] * 2
 
 
 async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data_dir: Path) -> None:

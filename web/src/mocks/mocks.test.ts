@@ -15,8 +15,10 @@ import type {
   DocumentRow,
   Draft,
   Evidence,
+  Household,
   Item,
   Lane,
+  LetterRecord,
   RuleInfo,
   TimelineEntry,
   ListedItem,
@@ -560,7 +562,8 @@ describe("mock dataset", () => {
     expect(records.map((d) => d.id)).not.toContain(trashed.id);
     expect(records.some((d) => d.source === "proof")).toBe(false);
     expect(s.db.state.documents.some((d) => d.source === "proof")).toBe(true);
-    expect(records).toEqual(JSON.parse(JSON.stringify(records.map((d) => s.db.document(d.id)))));
+    // each letter as stored, with the person's own "For taxes" choice (none here)
+    expect(records).toEqual(JSON.parse(JSON.stringify(records.map((d) => ({ ...s.db.document(d.id), tax_choice: null })))));
     const read = records.filter((d) => d.status === "processed" && d.ai_processed_at && !d.ai_private);
     expect(read.length).toBeGreaterThan(5);
     expect(read.filter((d) => !d.explanation).map((d) => d.id)).toEqual([]);
@@ -739,5 +742,74 @@ describe("mock reminders outside the browser", () => {
     s.db.state.health.demo = false;
     const own = await get<DesktopReminders>(s, "/reminders/desktop");
     expect(own.shortcut).toEqual({ ...demo.shortcut, command: "ordnung shortcut" });
+  });
+});
+
+describe("the person's own choices beside the letters (D3: For taxes, the household)", () => {
+  const NOBODY_ELSE = { filed_for: null, mine: false, suggested: null, add: null };
+  const EMPTY_HOUSEHOLD = { members: [], filed: {}, mine: [], suggested: {}, version: "4f53cda18c2baa0c" };
+
+  it("starts with no tax choice and an empty household, as `ordnung demo` does, and says so like the API", async () => {
+    const s = srv();
+    expect(s.db.state.taxChoices).toEqual({});
+    expect(s.db.state.household).toEqual({ format: 1, members: [], links: {} });
+    const rows = await get<DocumentRow[]>(s, "/documents");
+    expect(rows.length).toBeGreaterThan(10);
+    expect(rows.filter((row) => row.tax_choice !== null).map((row) => row.id)).toEqual([]);
+    const records = await get<LetterRecord[]>(s, "/documents.json");
+    expect(records.filter((record) => record.tax_choice !== null).map((record) => record.id)).toEqual([]);
+    const page = await get<DocumentDetail>(s, `/documents/${rows[0]!.id}`);
+    expect([page.tax_choice, page.household]).toEqual([null, NOBODY_ELSE]);
+    expect(await get<Household>(s, "/household")).toEqual(EMPTY_HOUSEHOLD);
+  });
+
+  it("shows the person's choice on the letter's row, its page and the records, apart from Claude's mark", async () => {
+    const s = srv();
+    const [marked, unmarked] = s.db.liveDocuments();
+    s.db.state.taxChoices[marked!.id] = true;
+    s.db.state.taxChoices[unmarked!.id] = false;
+    const rows = await get<DocumentRow[]>(s, "/documents");
+    const choiceOf = (list: { id: string; tax_choice: boolean | null }[], id: string) => list.find((d) => d.id === id)?.tax_choice;
+    expect([choiceOf(rows, marked!.id), choiceOf(rows, unmarked!.id)]).toEqual([true, false]);
+    const records = await get<LetterRecord[]>(s, "/documents.json");
+    expect([choiceOf(records, marked!.id), choiceOf(records, unmarked!.id)]).toEqual([true, false]);
+    expect((await get<DocumentDetail>(s, `/documents/${marked!.id}`)).tax_choice).toBe(true);
+    // the letter itself keeps Claude's own mark
+    expect("tax_choice" in s.db.document(marked!.id)!).toBe(false);
+  });
+
+  it("leaves a letter as it was for a PATCH that changes none of its own fields, like the API", async () => {
+    const s = srv();
+    const d = s.db.liveDocuments()[0]!;
+    const before = JSON.stringify(d);
+    const res = await s.handle("PATCH", `/documents/${d.id}`, new URLSearchParams(), {});
+    expect(res.status).toBe(200);
+    expect(JSON.stringify(s.db.document(d.id))).toBe(before);
+  });
+
+  it("forgets a letter deleted for good in both, and keeps them for a letter in the trash", async () => {
+    const s = srv();
+    const [gone, trashed, kept] = s.db.liveDocuments();
+    for (const d of [gone!, trashed!, kept!]) {
+      s.db.state.taxChoices[d.id] = true;
+      s.db.state.household.links[d.id] = "me";
+    }
+    expect((await s.handle("DELETE", `/documents/${gone!.id}`, new URLSearchParams("purge=true"), undefined)).ok).toBe(true);
+    expect((await s.handle("DELETE", `/documents/${trashed!.id}`, new URLSearchParams(), undefined)).ok).toBe(true);
+    expect(Object.keys(s.db.state.taxChoices).sort()).toEqual([trashed!.id, kept!.id].sort());
+    expect(Object.keys(s.db.state.household.links).sort()).toEqual([trashed!.id, kept!.id].sort());
+  });
+
+  it("starts over with the demo: a new mock forgets the choices and the household", () => {
+    const s = srv();
+    s.db.state.taxChoices.doc_x = true;
+    s.db.state.household.links.doc_x = "me";
+    const again = srv();
+    expect([again.db.state.taxChoices, again.db.state.household.links]).toEqual([{}, {}]);
+  });
+
+  it("keeps the shared household vectors (d3-household-core fills them; the API and the mock both meet them)", () => {
+    const vectors = JSON.parse(readFileSync(resolve(__dirname, "householdVectors.json"), "utf8")) as unknown;
+    expect(Array.isArray(vectors)).toBe(true);
   });
 });

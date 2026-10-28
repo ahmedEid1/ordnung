@@ -20,6 +20,7 @@ from ordnung.api.routes import (
     export,
     folder,
     girocode,
+    household,
     items,
     numbers,
     overview,
@@ -40,6 +41,7 @@ from ordnung.api.routes import (
 ROUTERS: tuple[APIRouter, ...] = (
     system.router,
     profile.router,
+    household.router,
     data.router,
     privacy.router,
     documents.router,

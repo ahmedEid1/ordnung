@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Document } from "@/api/types";
-import { makeDoc } from "@/features/document/fixtures";
+import type { DocumentRow } from "@/api/types";
+import { makeRow } from "@/features/document/fixtures";
 import CASES from "./selection-cases.json";
-import { earlyUntil, exportQuery, letterDay, letterYear, matchesChoice, parseDay, selectForExport, zipName, type ExportChoice } from "./selection";
+import { earlyUntil, exportQuery, forTaxes, letterDay, letterYear, matchesChoice, parseDay, selectForExport, zipName, type ExportChoice } from "./selection";
 
-/** A letter of the shared table: no dates, no sender, processed — unless the case says otherwise. */
-const shared = (fields: Partial<Document>): Document => makeDoc({ doc_date: null, received_date: null, party_id: null, ...fields });
-const DOCS = (CASES.docs as Partial<Document>[]).map(shared);
+/** A letter of the shared table as the list gives it: no dates, no sender, processed, no choice of the person's — unless the case says otherwise. */
+const shared = (fields: Partial<DocumentRow>): DocumentRow => makeRow({ doc_date: null, received_date: null, party_id: null, ...fields });
+const DOCS = (CASES.docs as Partial<DocumentRow>[]).map(shared);
 
 describe("selectForExport", () => {
   it("takes the letters the server puts in the ZIP, for every case the server's test reads too", () => {
@@ -17,6 +17,17 @@ describe("selectForExport", () => {
         c.name,
       ).toEqual(c.expected_ids);
     }
+  });
+
+  it("counts the letters the person marked or unmarked for taxes as the server does (their choice over Claude's mark)", () => {
+    const choices = Object.fromEntries(DOCS.filter((d) => d.tax_choice != null).map((d) => [d.id, d.tax_choice]));
+    expect(choices).toEqual({ doc_private_marked_2025: true, doc_unmarked_2025: false, doc_held_marked: true });
+    const forTaxesIds = selectForExport(DOCS, { tax: true }).map((d) => d.id);
+    // a private letter the person marked counts; one Claude marked that they took off doesn't; a waiting one never goes
+    expect(forTaxesIds).toContain("doc_private_marked_2025");
+    expect(forTaxesIds).not.toContain("doc_unmarked_2025");
+    expect(forTaxesIds).not.toContain("doc_held_marked");
+    expect(forTaxes(DOCS.find((d) => d.id === "doc_unmarked_2025")!)).toBe(false);
   });
 
   it("names the ZIP as the server does", () => {

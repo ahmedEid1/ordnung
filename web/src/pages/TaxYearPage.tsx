@@ -26,10 +26,15 @@ import { useTodayISO } from "@/lib/today";
 import { plural } from "@/lib/utils";
 
 const DESCRIPTION =
-  "Letters that could matter for your tax return — payslips, insurance, receipts for work or study costs — by the date on the letter. Claude marks them when it reads a letter.";
+  "Letters that could matter for your tax return — payslips, insurance, receipts for work or study costs — by the date on the letter. Claude marks them when it reads a letter; you can mark or unmark any letter on its page.";
+const EMPTY_DESCRIPTION =
+  "When Claude reads a letter that could matter for your tax return — a payslip, an insurance statement, a receipt for work or study costs — it shows here, by year. You can also mark a letter yourself: open it and press For taxes.";
 const NO_TO_DOS = new Map<string, OpenSummary>();
 
-/** Under each letter: Claude's note on why it could matter for taxes ("Marked for taxes." without one). */
+/**
+ * Under each letter: Claude's note on why it could matter for taxes; without one, "You marked this for taxes." for a
+ * letter the person marked themselves (*For taxes* on its page), else "Marked for taxes.".
+ */
 function TaxNote({ doc }: { doc: ListedLetter }) {
   return (
     <span className="flex items-start gap-1.5 text-k-expiry-ink">
@@ -42,7 +47,7 @@ function TaxNote({ doc }: { doc: ListedLetter }) {
           </ModelText>
         </span>
       ) : (
-        <span>Marked for taxes.</span>
+        <span>{doc.tax_choice === true ? "You marked this for taxes." : "Marked for taxes."}</span>
       )}
     </span>
   );
@@ -140,7 +145,7 @@ export default function TaxYearPage() {
         <EmptyState
           illustration="letter"
           title="No letters for taxes yet"
-          description="When Claude reads a letter that could matter for your tax return — a payslip, an insurance statement, a receipt for work or study costs — it shows here, by year."
+          description={EMPTY_DESCRIPTION}
           action={
             <Link to="/inbox" className={buttonVariants({ size: "sm" })}>
               Go to the Inbox

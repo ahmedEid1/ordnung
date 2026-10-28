@@ -19,6 +19,7 @@ import threading
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -31,12 +32,12 @@ from ordnung import clock
 from ordnung.api.routes.documents import LEFT_OUT_OF_LIST
 from ordnung.assistant import ask
 from ordnung.config import Paths
-from ordnung.db.store import Store
+from ordnung.db.store import TAX_CHOICES_META_KEY, Store
 from ordnung.ingest import pipeline
 from ordnung.ingest.pipeline import add_file
 from ordnung.llm.base import Usage
 from ordnung.models import DocumentExtraction, Evidence, Identifier, PaymentDetails
-from ordnung.secretary import triggers
+from ordnung.secretary import household, triggers
 from ordnung.secretary.week import pending_items
 from ordnung.views import weekly_session
 from test_api_support import Api, api_for, client_for
@@ -64,6 +65,18 @@ WIRE_SHARE = 0.10
 _PARTY_KINDS = ("utility", "telecom", "insurer", "health_insurer", "retailer", "landlord", "bank", "gym")
 _SENDER_WORDS = ("Stadtwerke", "Netz", "Versicherung", "Kasse", "Handel", "Wohnen", "Bank", "Fitness")
 _KINDS = ("invoice", "invoice", "utility_bill", "dunning", "insurance", "contract_change", "bank_letter")
+#: Who the letters are addressed to: mostly the person, now and then someone of the household or a family.
+_RECIPIENTS = (
+    "Sam Rivera",
+    "Sam Rivera",
+    "Alex Rivera",
+    "Sam Rivera",
+    "Mia Rivera",
+    "Familie Rivera",
+    "Kim Rivera",
+)
+#: The household of the big inbox: three people, a few letters filed for them (``/api/household``).
+_HOUSEHOLD = ("Alex Rivera", "Mia Rivera", "Jo Rivera")
 _TEXT = (
     "Sehr geehrte Damen und Herren, wir bedanken uns für Ihr Vertrauen. Bitte überweisen Sie den Betrag "
     "bis zum genannten Datum auf das angegebene Konto. Bei Fragen erreichen Sie uns werktags. "
@@ -133,6 +146,7 @@ def fill_inbox(store: Store, letters: int = LETTERS, senders: int = SENDERS) -> 
                 explanation=_TEXT * 4,
                 references=references,
                 payment=payment,
+                recipient_name=_RECIPIENTS[i % len(_RECIPIENTS)],
             )
             store.update_document(
                 doc.id,
@@ -213,9 +227,21 @@ def inbox(tmp_path_factory: pytest.TempPathFactory) -> Path:
     put it back as it was)."""
     data_dir = tmp_path_factory.mktemp("inbox") / "data"
     with Store.open(Paths(data_dir)) as store:
-        fill_inbox(store)
+        letters = fill_inbox(store)
         triggers.run_and_reconcile(store, TODAY)
+        people = household.change(store, base=household.version([]), members=[_Person(n) for n in _HOUSEHOLD])
+        alex, mia, _jo = (person["id"] for person in people["members"])
+        household.file(store, {letters[2]: alex, letters[4]: mia, letters[9]: household.MINE})
     return data_dir
+
+
+@dataclass(frozen=True)
+class _Person:
+    """A new person of the household (``MemberIn``)."""
+
+    name: str
+    id: str | None = None
+    signs: bool = True
 
 
 @pytest.fixture
@@ -225,7 +251,7 @@ async def api(inbox: Path) -> AsyncIterator[Api]:
 
 
 #: The requests of the pages that read the whole ledger: Today, Timeline, Week, Numbers, the shell's
-#: background-problem check, the calendar file and the waiting list.
+#: background-problem check, the calendar file, the waiting list and the household (Inbox, Settings).
 LEDGER_PAGES = (
     "/api/dashboard",
     "/api/brief",
@@ -239,6 +265,7 @@ LEDGER_PAGES = (
     "/api/calendar.ics",
     "/api/calendar/sync",
     "/api/reminders/desktop?preview=false",
+    "/api/household",
 )
 
 
@@ -544,3 +571,25 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         worker.join()
         assert seen == [before, before + 1]
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
+
+
+@pytest.mark.slow  # a wall-clock budget
+def test_setting_a_tax_choice_among_5000_stays_fast(paths: Paths) -> None:
+    """The person's "For taxes" choices are one JSON row, read and written whole on every press: with
+    5,000 choices a press still takes under 50 ms."""
+    with Store.open(paths) as store:
+        with store.tx() as conn:
+            conn.executemany(
+                "INSERT INTO documents (id, sha256, filename, mime, file_path, created_at, updated_at) VALUES "
+                "(?, ?, ?, 'application/pdf', ?, '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z')",
+                [(f"doc_{n:012d}", f"{n:064x}", f"{n}.pdf", f"files/{n}.pdf") for n in range(5000)],
+            )
+        choices = {f"doc_{n:012d}": n % 2 == 0 for n in range(5000)}
+        store.set_meta(TAX_CHOICES_META_KEY, json.dumps(choices, sort_keys=True, separators=(",", ":")))
+        took = []
+        for n, choice in ((7, True), (8, False), (9, None)):
+            start = time.perf_counter()
+            assert store.set_tax_choice(f"doc_{n:012d}", choice) is True
+            took.append(time.perf_counter() - start)
+        assert len(store.tax_choices()) == 4999
+        assert sorted(took)[1] < 0.05, took

@@ -22,6 +22,7 @@ import weakref
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
+from functools import cached_property
 from typing import Any, cast
 
 from ordnung.clock import now_iso
@@ -37,6 +38,7 @@ from ordnung.drafts.tracking import tracking_info
 from ordnung.ids import content_id
 from ordnung.ingest.attachments import attached_to, attachment_ids, is_email
 from ordnung.ingest.gaps import CHECK_SLOT, is_check_slot
+from ordnung.ingest.held import is_held
 from ordnung.ingest.link import attachment_repeats, reminder_covers
 from ordnung.models import (
     PAYMENT_DEMAND_KINDS,
@@ -64,6 +66,7 @@ from ordnung.payments import is_collected_or_incoming, is_direct_debit
 from ordnung.rules import RuleContext, compute_contract, get_rule, price_increase_window
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
 from ordnung.rules.explain import fmt_date
+from ordnung.secretary.tax_choice import for_taxes
 
 try:  # the scam checks are optional: the triggers work without them
     from ordnung.secretary import scam as _scam
@@ -572,6 +575,13 @@ class Ledger:
         self._price_windows: list[PriceIncreaseWindow] | None = None
         self._items_by_doc: dict[str, list[Item]] | None = None
         self._items_by_party: dict[str, list[Item]] | None = None
+
+    @cached_property
+    def tax_choices(self) -> dict[str, bool]:
+        """The person's own "For taxes" choices by letter id (:meth:`Store.tax_choices`), for
+        :func:`~ordnung.secretary.tax_choice.for_taxes`. Read on first use only, on purpose: Ask's server
+        builds Ledgers and never reads them (Ask keeps Claude's own mark)."""
+        return self.store.tax_choices()
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""
@@ -1929,9 +1939,10 @@ def iban_misprint(ledger: Ledger) -> list[Suggestion]:
 
 
 def tax_documents(ledger: Ledger) -> list[Suggestion]:
-    """January–July: collect last year's tax-relevant letters for the tax return. They are counted by
-    :func:`letter_day`, as the Tax year page files them, and "See the documents" opens that page
-    (``target_type="tax_year"``, ``target_id`` the year)."""
+    """January–July: collect last year's letters for taxes for the tax return — the person's own choice,
+    else Claude's mark (:func:`~ordnung.secretary.tax_choice.for_taxes`), and not the letters waiting from
+    the folder. They are counted by :func:`letter_day`, as the Tax year page files them, and "See the
+    documents" opens that page (``target_type="tax_year"``, ``target_id`` the year)."""
     today = ledger.today
     if today.month > TAX_SEASON_LAST_MONTH:
         return []
@@ -1940,7 +1951,9 @@ def tax_documents(ledger: Ledger) -> list[Suggestion]:
         (
             doc
             for doc in ledger.documents.values()
-            if doc.tax_relevant and (letter_day(doc) or date.min).year == year
+            if for_taxes(doc, ledger.tax_choices)
+            and not is_held(doc)
+            and (letter_day(doc) or date.min).year == year
         ),
         key=lambda doc: (doc.doc_date or "", doc.id),
     )

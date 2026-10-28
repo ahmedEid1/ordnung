@@ -17,7 +17,7 @@ import { classifyPhoneRequest, phoneScopeFromOpenApi } from "@/mocks/phone";
 import { SchemaChecker, type OpenApiDoc, type Operation, type Schema } from "@/test/jsonSchema";
 import { ApiError } from "./client";
 import { api, type Api } from "./endpoints";
-import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type Document, type DocumentRow, type StreamEvent } from "./types";
+import { PHONE_ERROR_CODES, SYNC_ERROR_CODES, type DocumentRow, type LetterRecord, type StreamEvent } from "./types";
 
 const doc = JSON.parse(openapiText) as OpenApiDoc;
 /** What the letter list leaves out of each letter, like the API (`LEFT_OUT_OF_LIST`): its page and the copy of your records have it. */
@@ -185,6 +185,11 @@ const CASES = {
   updateSettings: { run: () => api.updateSettings({ llm_brief: true, models: { brief: "haiku" } }) },
   onboarding: { run: () => api.onboarding({ profile: { region: "NW" }, skip_ai: false }) },
   deleteEverything: { run: () => api.deleteEverything(), status: 409 },
+  household: { run: () => api.household() },
+  saveHousehold: {
+    run: () => api.saveHousehold({ base: "4f53cda18c2baa0c", members: [{ id: null, name: "Alex Rivera", signs: true }], also_file: [] }),
+  },
+  fileLetters: { run: (ids) => api.fileLetters({ letters: { [ids.doc]: "me" } }) },
 
   documents: { run: () => api.documents({ q: "Rechnung", status: "processed", limit: 20, offset: 0 }) },
   documentsFull: { run: () => api.documentsFull() },
@@ -524,7 +529,11 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     const props = (name: string) => Object.keys((doc.components.schemas[name] as { properties: Record<string, unknown> }).properties);
     // what the list leaves out, read from the API's own schemas
     expect(props("Document").filter((k) => !props("DocumentRow").includes(k)).sort()).toEqual([...LEFT_OUT_OF_LIST].sort());
-    expect(props("DocumentRow").filter((k) => !props("Document").includes(k))).toEqual(["found_in"]);
+    // what the route adds to each row: where a search found it, and the person's own "For taxes" choice
+    expect(props("DocumentRow").filter((k) => !props("Document").includes(k))).toEqual(["found_in", "tax_choice"]);
+    // the copy of your records: every letter whole, with the person's choice
+    expect(props("LetterRecord").filter((k) => !props("Document").includes(k))).toEqual(["tax_choice"]);
+    expect(props("Document").filter((k) => !props("LetterRecord").includes(k))).toEqual([]);
 
     const problems: string[] = [];
     const answers: unknown[] = [];
@@ -536,7 +545,7 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
       problems.push(...(await responseProblems(match.op, response)).map((p) => `${method} ${url.pathname}${url.search}: ${p}`));
     }
     expect(problems).toEqual([]);
-    const [rows, found, records] = answers as [DocumentRow[], DocumentRow[], Document[]];
+    const [rows, found, records] = answers as [DocumentRow[], DocumentRow[], LetterRecord[]];
     expect(found.length).toBeGreaterThan(0);
     expect([...rows, ...found].filter((row) => LEFT_OUT_OF_LIST.some((field) => field in row)).map((row) => row.id)).toEqual([]);
     expect(records.map((d) => d.id)).toEqual(rows.map((row) => row.id));
@@ -551,8 +560,11 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
     for (const field of LEFT_OUT_OF_LIST) expect(strict.check({ ...row, [field]: whole[field] }, rowSchema)).toEqual([`$.${field}: not declared by the API`]);
     expect(strict.check({ ...whole, found_in: null }, rowSchema).sort()).toEqual(LEFT_OUT_OF_LIST.map((field) => `$.${field}: not declared by the API`).sort());
     // …and the copy of your records needs every one of them
+    const recordSchema = { $ref: "#/components/schemas/LetterRecord" };
+    expect(strict.check(row, recordSchema).sort()).toEqual(LEFT_OUT_OF_LIST.map((field) => `$: missing required “${field}”`).concat("$.found_in: not declared by the API").sort());
+    // a letter as stored has no choice of the person's: the route adds it
     const docSchema = { $ref: "#/components/schemas/Document" };
-    expect(strict.check(row, docSchema).sort()).toEqual(LEFT_OUT_OF_LIST.map((field) => `$: missing required “${field}”`).concat("$.found_in: not declared by the API").sort());
+    expect(strict.check(whole, docSchema)).toEqual(["$.tax_choice: not declared by the API"]);
   });
 
   it("the schema checker catches drift (sanity check of the checker itself)", () => {
@@ -640,6 +652,17 @@ describe("API contract on a phone (the mock as the phone listener, its allow-lis
     expect(classifyPhoneRequest(scope, "GET", "/api/documents.json")).toBe("computer");
     expect(await refusal(() => api.documentsFull())).toEqual({ status: 403, code: "computer_only" });
     expect(srv.refused).toEqual(["GET /api/documents.json"]);
+  });
+
+  it("lets a phone read the household and file letters, and keeps editing the household on the computer", async () => {
+    srv = createMockServer({ staticDemo: false, latency: 0, phoneScope: scope });
+    expect(await checked("household", () => api.household())).toEqual([]);
+    expect(classifyPhoneRequest(scope, "GET", "/api/household")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "PATCH", "/api/household")).toBe("phone");
+    expect(classifyPhoneRequest(scope, "PUT", "/api/household")).toBe("computer");
+    const change = { base: "4f53cda18c2baa0c", members: [{ id: null, name: "Alex Rivera", signs: true }], also_file: [] };
+    expect(await refusal(() => api.saveHousehold(change))).toEqual({ status: 403, code: "computer_only" });
+    expect(srv.refused).toEqual(["PUT /api/household"]);
   });
 
   it("pairs a phone like the API, and refuses a wrong, reused or locked-out code with the declared statuses", async () => {

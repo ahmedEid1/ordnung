@@ -438,4 +438,23 @@ describe("Explained simply", () => {
     renderWithProviders(<ExplainedSimply doc={makeDoc({ explanation: "x", tax_relevant: true, tax_note: "Keep it.", doc_date: null, received_date: null })} />, { client: client() });
     expect(screen.queryByRole("link", { name: /All letters for taxes/ })).toBeNull();
   });
+
+  it("Claude's tax note is hidden once the person took the letter off their letters for taxes", () => {
+    const doc = makeDoc({ explanation: "Your payslip.", tax_relevant: true, tax_note: "Keep it.", doc_date: "2025-12-31" });
+    const off = renderWithProviders(<ExplainedSimply doc={doc} taxChoice={false} />, { client: client() });
+    expect(screen.getByText("Your payslip.")).toBeInTheDocument();
+    expect(screen.queryByText(/For your tax return/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /All letters for taxes/ })).toBeNull();
+    off.unmount();
+    // a note alone, taken off: nothing to explain, no empty section
+    const alone = renderWithProviders(<ExplainedSimply doc={{ ...doc, explanation: null }} taxChoice={false} />, { client: client() });
+    expect(alone.container).toBeEmptyDOMElement();
+    alone.unmount();
+    // marked again by the person (or no choice: Claude's mark), the note is back
+    for (const taxChoice of [true, null]) {
+      const on = renderWithProviders(<ExplainedSimply doc={doc} taxChoice={taxChoice} />, { client: client() });
+      expect(screen.getByText(/For your tax return/)).toBeInTheDocument();
+      on.unmount();
+    }
+  });
 });
