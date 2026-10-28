@@ -535,7 +535,9 @@ async def test_after_taking_over_this_computer_is_the_one_in_use_at_once(
 async def test_a_waiting_take_over_gives_up_after_its_time(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 0.3)
+    # long enough that a slow runner can't spend it before use-here answers (the scan loop looks only every
+    # WAIT_POLL_S = 5 s, so the give-up still comes at the first look after it): 0.3 s once ran out first
+    monkeypatch.setattr(agent_module, "TAKE_OVER_WAIT_MAX_S", 3.0)
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
