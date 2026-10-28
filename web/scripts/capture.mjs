@@ -61,6 +61,12 @@ const STATEMENT_FILE = "13_nebenkostenabrechnung_2025.pdf";
 const TRACKING = "RT 123 456 785 DE";
 /** The mock world's court payment order (web/src/mocks/data/documents.ts), opened by `?mock=full`. */
 const COURT_ORDER = `/documents/doc_mahnbescheid?mock=full`;
+/**
+ * How long the page stands still before a full page load, which the video leaves out from the start of this moment:
+ * the cut, and the GIF that ends where one starts, end on the page as it was, never on the blank page that follows
+ * a frame or two later (milliseconds).
+ */
+const HOLD = 400;
 
 // ------------------------------------------------------------------------------------------------
 // A visible cursor and a caption bar (a headless recording shows neither), kept across page loads
@@ -161,14 +167,31 @@ function forbiddenWords() {
 const FORBIDDEN = forbiddenWords();
 
 /**
+ * The first folder of every path of this computer the capture knows ("/home/", "/tmp/", "C:\Users\"). A path on
+ * screen is often drawn in pieces (a command wraps at each "/") and cut off by the window's edge, so the whole path
+ * is never there to find; its start is.
+ */
+function pathRoots() {
+  const roots = new Set();
+  for (const path of [homedir(), REPO, resolve(opts.data), OUT, tmpdir()]) {
+    const root = `${path}/`.match(/^(?:[A-Za-z]:)?[\\/][^\\/]+[\\/]/)?.[0];
+    if (root) roots.add(root);
+  }
+  return [...roots];
+}
+
+const ROOTS = pathRoots();
+
+/**
  * In every page the capture opens (an init script): at most every 250 ms after the page changes or scrolls, it looks
  * at the text on screen and the values of the fields on screen for a `forbidden` word (anywhere but inside a longer
- * word or number, in any case), and at the theme (`theme`: "dark" only for the two dark pictures). On screen, because
+ * word or number, in any case) or the start of a path of this computer (`roots`, see {@link pathRoots}), and at the
+ * theme (`theme`: "dark" only for the two dark pictures). On screen, because
  * that is what a picture or a frame shows: the letter's "How it was read" holds an export command with the data
  * folder further down, which no picture shows. What it finds is kept in sessionStorage "cap-leaks", across the
  * tour's page loads, for {@link assertClean}.
  */
-function guardPage({ forbidden, theme }) {
+function guardPage({ forbidden, roots, theme }) {
   if (!location.protocol.startsWith("http")) return; // a new tab's blank page, before the capture opens one
   const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const rules = forbidden.map(({ text, what }) => ({ what, pattern: new RegExp(`(?<![\\p{L}\\p{N}])${escape(text)}(?![\\p{L}\\p{N}])`, "iu") }));
@@ -202,6 +225,7 @@ function guardPage({ forbidden, theme }) {
     // joined both ways: a path may be drawn in pieces, and a name may stand between two other texts
     const text = `${texts.join("")}\n${texts.join("\n")}`;
     for (const { what, pattern } of rules) if (pattern.test(text)) note(what);
+    for (const root of roots) if (text.includes(root)) note("the start of a path of this computer");
     if (document.documentElement.classList.contains("dark") !== (theme === "dark")) note(theme === "dark" ? "the light theme" : "the dark theme");
   };
   let timer = 0;
@@ -264,9 +288,22 @@ async function scrollBy(page, dy, { steps = 12, pause = 45 } = {}) {
   }
 }
 
-/** The page's heading is on screen (its data may still be loading). */
+/** Scroll the window smoothly until the top of `locator` is at `at` (0 top, 1 bottom) of its height. */
+async function scrollTo(page, locator, at) {
+  await locator.waitFor();
+  const dy = await locator.evaluate((el, share) => el.getBoundingClientRect().top - window.innerHeight * share, at);
+  if (Math.abs(dy) < 8) return;
+  await page.evaluate((top) => window.scrollBy({ top, behavior: "smooth" }), dy);
+  await page.waitForTimeout(700);
+}
+
+/**
+ * The page's own heading is on screen (its data may still be loading): not the start screen's while the app starts
+ * (its `<main>` is busy, its heading for screen readers only) and not a letter page's stand-in while the letter
+ * loads (`data-loading`).
+ */
 async function shown(page) {
-  await page.getByRole("main").getByRole("heading", { level: 1 }).first().waitFor();
+  await page.locator('main:not([aria-busy="true"]) h1:not([data-loading])').first().waitFor();
 }
 
 /**
@@ -291,7 +328,7 @@ async function nav(page, label, text) {
 /** A browser context on the demo, every page of it guarded: in the dark theme only when `extra` asks for it. */
 async function newContext(browser, extra = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "en-GB", timezoneId: "Europe/Berlin", ...extra });
-  await context.addInitScript(guardPage, { forbidden: FORBIDDEN, theme: extra.colorScheme === "dark" ? "dark" : "light" });
+  await context.addInitScript(guardPage, { forbidden: FORBIDDEN, roots: ROOTS, theme: extra.colorScheme === "dark" ? "dark" : "light" });
   await context.addCookies([{ name: `ordnung_token_${opts.port}`, value: TOKEN, url: BASE, httpOnly: true, sameSite: "Strict" }]);
   await context.request.patch(`${BASE}/api/demo/tour`, { data: { active: false, completed: true }, headers: CLIENT });
   return context;
@@ -353,6 +390,20 @@ async function objectionEvidence(page, taxId) {
     .first()
     .getByRole("button", { name: /on the page$/ })
     .first();
+}
+
+/**
+ * Today's secretary's note is the one Claude wrote for the demo's day ("Written for today"), recorded with the demo,
+ * not the one written from the to-dos and dates ("From your to-dos & dates"), which Today shows once a letter read
+ * since changes what the note was written from. Waits for it on `page` (Today), or stops the capture.
+ */
+async function claudesNote(page) {
+  const note = page.getByRole("region", { name: "Your secretary's note" });
+  try {
+    await note.getByText("Written for today", { exact: true }).waitFor({ timeout: 15_000 });
+  } catch {
+    throw new Error("Today's note is not the one Claude wrote for the demo's day (\"Written for today\"): was a letter read before this picture?");
+  }
 }
 
 /** A step of the weekly review, in its list of steps. */
@@ -477,6 +528,10 @@ async function recordVideo(browser) {
  * (walkthrough of phase 2: "The year ahead…" showed over the weekly review).
  */
 async function tour(page) {
+  // the video's clock starts with its first frame, when the tab first paints a page (not when it opens): paint one
+  // before the tour's clock starts, so the seconds the tour returns are the video's. Otherwise every cut comes late
+  // by the time Today took to paint, and the start of each page load (a blank page) stays in the video and the GIF
+  await page.setContent('<!doctype html><body style="margin:0;background:#fff"></body>');
   const started = Date.now();
   const seconds = () => (Date.now() - started) / 1000;
   const mark = (what) => console.log(`  ${seconds().toFixed(1).padStart(5)} s  ${what}`);
@@ -484,22 +539,26 @@ async function tour(page) {
   /** A full page load (switching between the demo and mock mode): cut from the video until `ready` is on screen. */
   const reload = async (url, ready) => {
     const from = seconds();
+    await page.waitForTimeout(HOLD);
     await page.goto(url);
     await ready().waitFor({ timeout: 60_000 });
     await settle(page, 300);
     gaps.push([from, seconds()]);
     await assertClean(page);
   };
-  /** A full page load within the demo: cut from the video too (the app's boot screen), the caption changes with the heading. */
+  /** A full page load within the demo: cut from the video too (the app's start screen), the caption changes once the page has drawn. */
   const load = async (url, text) => {
     const from = seconds();
     await caption(page, "");
+    await page.waitForTimeout(HOLD);
     await page.goto(url);
     await shown(page);
+    await settle(page, 300);
     gaps.push([from, seconds()]);
     await caption(page, text);
   };
   await page.goto(`${BASE}/`);
+  await claudesNote(page);
   await settle(page, 400);
   const start = seconds();
 
@@ -618,7 +677,11 @@ async function tour(page) {
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   await click(page, steps.getByRole("button", { name: /^Claude reads the letter/ }).first());
   await page.waitForTimeout(2600);
-  await click(page, steps.getByRole("button", { name: /^Dates computed/ }).first());
+  // the command that exports this reading, under the steps, names the demo's data folder (a path of this computer):
+  // "Dates computed" low on screen keeps it below the window's edge, before the step opens and after
+  const dates = steps.getByRole("button", { name: /^Dates computed/ }).first();
+  await scrollTo(page, dates, 0.6);
+  await click(page, dates);
   await page.waitForTimeout(2600);
 
   mark("the end");
@@ -666,16 +729,18 @@ async function screenshots(browser) {
 
   await page.goto(`${BASE}/`);
   await settle(page);
+  await claudesNote(page);
   await shot(page, "today");
 
-  // Today in dark and on a phone too, before a letter is read: a letter read since makes Claude's note stale,
-  // and Today then shows the note written from the to-dos instead
+  // Today in dark and on a phone too, before the pictures read a letter: a letter read since can make Claude's
+  // note stale, and Today then shows the note written from the to-dos instead (claudesNote stops the capture)
   const dark = await newContext(browser, { colorScheme: "dark" });
   const darkPage = await dark.newPage();
   await darkPage.goto(`${BASE}/`);
   await darkPage.evaluate(() => localStorage.setItem("ordnung.theme", "dark"));
   await darkPage.reload();
   await settle(darkPage);
+  await claudesNote(darkPage);
   await shot(darkPage, "today-dark");
   await dark.close();
 
@@ -684,6 +749,7 @@ async function screenshots(browser) {
   const phonePage = await phone.newPage();
   await phonePage.goto(`${BASE}/`);
   await settle(phonePage);
+  await claudesNote(phonePage);
   await shot(phonePage, "mobile");
   await phone.close();
 

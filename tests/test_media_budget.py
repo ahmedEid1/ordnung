@@ -3,9 +3,7 @@
 asks no model, reads no words in pictures, checks every frame and every page for the theme, a path of the
 capturing computer or a name, and leaves contact sheets to look at before anything is committed.
 
-The media are public and stay in the history, so these budgets keep them from growing unseen. The tests that
-read the committed GIF, MP4 and the folder's total wait for the media recorded with the new settings
-(``UNTIL_D5_MEDIA``: strict, so a mark left behind fails as XPASS).
+The media are public and stay in the history, so these budgets keep them from growing unseen.
 """
 
 from __future__ import annotations
@@ -14,14 +12,13 @@ import re
 import tomllib
 from pathlib import Path
 
-import pytest
-
 from helpers_media import gif_info, mp4_info, png_info
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "docs" / "assets"
 CAPTURE_SH = ROOT / "scripts" / "capture.sh"
 CAPTURE_MJS = ROOT / "web" / "scripts" / "capture.mjs"
+PICTURES_SPEC = ROOT / "web" / "e2e" / "readme-pictures.spec.ts"
 
 GIF_BYTES = 4_500_000
 MP4_BYTES = 3_500_000
@@ -66,10 +63,6 @@ DARK_PICTURES = frozenset({"today-dark.png", "mobile-dark.png"})
 EVAL_CHART = "eval-due-date-accuracy.png"
 #: what a path of the capturing computer starts with, in any file's bytes
 PATH_MARKS = (b"/home/", b"/Users/", b"/root/", b"/tmp/", b"\\Users\\")
-
-UNTIL_D5_MEDIA = pytest.mark.xfail(
-    strict=True, reason="until d5-media records the media with the new settings"
-)
 
 
 def _capture_sh() -> str:
@@ -209,6 +202,119 @@ def test_make_capture_checks_every_frame_and_picture() -> None:
                 assert not re.search(rf"\b{re.escape(word)}\b", text, re.I), "a word of the author's name"
 
 
+def test_today_s_pictures_show_the_note_claude_wrote_for_the_day() -> None:
+    """Today, Today in dark, Today on a phone and the tour's first view of Today show the secretary's note Claude
+    wrote for the demo's day ("Written for today"), not the one written from the to-dos and dates, which a letter
+    read before them would bring: ``capture.mjs`` waits for it on the page it is about to show, and stops when
+    it isn't there."""
+    capture = _capture_mjs()
+    note = _function(capture, "claudesNote")
+    assert '"Your secretary\'s note"' in note and '"Written for today"' in note
+    assert "throw new Error(" in note  # a missing note stops the capture
+    shots = _function(capture, "screenshots")
+    for name in ("today", "today-dark", "mobile"):
+        call = re.search(rf'await shot\((\w+), "{name}"\)', shots)
+        assert call, name
+        before = shots[: call.start()]
+        checked = before.rfind(f"await claudesNote({call.group(1)})")
+        assert checked >= 0, name
+        # nothing opens another page between the check and the picture
+        assert ".goto(" not in before[checked:] and ".reload(" not in before[checked:], name
+    # the tour: on Today, before its first caption
+    tour = _function(capture, "tour")
+    today = tour.index("await page.goto(`${BASE}/`)")
+    assert "await claudesNote(page)" in tour[today : tour.index("await caption(page, ", today)]
+
+
+def test_the_tour_s_clock_is_the_video_s() -> None:
+    """A recording's clock starts with its first frame, which comes when the tab first paints a page, not when the
+    tab opens. The tour paints one before it starts its own clock, so the seconds it writes for ``make capture``
+    (where the video starts, where the GIF ends, the page loads to cut) are the video's. Otherwise each cut comes
+    late by the time the first page took to paint: the start of every page load stays in the video, and the GIF
+    can end on a blank page."""
+    tour = _function(_capture_mjs(), "tour")
+    painted = tour.index("await page.setContent(")
+    started = tour.index("const started = Date.now();")
+    assert painted < started < tour.index("await page.goto(")
+
+
+def test_a_page_load_is_cut_from_the_video_whole() -> None:
+    """A full page load (the app's start screen, then the page) is cut from the video from a still moment before
+    it to the page's own heading: not the start screen's (its ``main`` is busy while the app starts, with a heading
+    for screen readers only) and not a letter page's stand-in heading while the letter loads (``data-loading``).
+    Otherwise the video shows the start screen after each cut, and the GIF, which ends where the next load
+    starts, can end on a blank page."""
+    capture = _capture_mjs()
+    shown = _function(capture, "shown")
+    assert 'main:not([aria-busy="true"])' in shown and "h1:not([data-loading])" in shown
+    tour = _function(capture, "tour")
+    for name in ("reload", "load"):
+        start = tour.index(f"const {name} = async (")
+        body = tour[start : tour.index("\n  };\n", start)]
+        held = body.index("const from = seconds();")
+        goto = body.index("await page.goto(url);")
+        assert held < body.index("await page.waitForTimeout(HOLD);") < goto, name
+        # the cut ends once the page has drawn and its data came, not when its heading is first there
+        drawn = body.index("await ready()" if name == "reload" else "await shown(page);")
+        assert drawn < body.index("await settle(page, ") < body.index("gaps.push("), name
+    assert re.search(r"^const HOLD = [1-9]\d{2};", capture, re.M)  # a moment, in milliseconds
+
+
+def test_the_guard_sees_a_path_cut_off_at_the_window_s_edge() -> None:
+    """A path on screen is often drawn in pieces (a command wraps at each "/") and cut off by the window's edge, so
+    the whole path is never there to find. The guard also looks for the start of every path of this computer it
+    knows (its first folder: "/home/", "/tmp/", "C:\\Users\\"), wherever the rest is."""
+    capture = _capture_mjs()
+    roots = _function(capture, "pathRoots")
+    for source in ("homedir()", "REPO", "opts.data", "OUT", "tmpdir()"):
+        assert source in roots, source
+    context = _function(capture, "newContext")
+    assert "addInitScript(guardPage, { forbidden: FORBIDDEN, roots: ROOTS," in context
+    guard = _function(capture, "guardPage")
+    assert guard.startswith("function guardPage({ forbidden, roots, theme })")
+    assert ".includes(root)" in guard
+
+
+def test_the_tour_keeps_the_trace_export_command_below_the_fold() -> None:
+    """How it was read ends with the command that exports a reading, which names the demo's data folder (a path of
+    this computer). The tour scrolls "Dates computed" low enough on screen before it clicks it that the command
+    stays below the window's edge, before and after the step opens."""
+    tour = _function(_capture_mjs(), "tour")
+    trace = tour[tour.index('mark("how it was read")') : tour.index('mark("the end")')]
+    dates = 'const dates = steps.getByRole("button", { name: /^Dates computed/ }).first();'
+    assert dates in trace
+    lowered = re.search(r"await scrollTo\(page, dates, (0\.\d+)\);", trace)
+    assert lowered and float(lowered.group(1)) >= 0.55, "Dates computed is low enough on screen"
+    assert trace.index(lowered.group(0)) < trace.index("await click(page, dates);")
+
+
+def test_the_pictures_of_the_real_app_show_nothing_of_this_computer() -> None:
+    """The two pictures from the real app (pairing a phone, Your computers) show no path of the capturing computer
+    and not its name: the spec checks the text of every part it puts in a picture (the pairing dialog before and
+    after the phone pairs, the phone's page, the Your computers page), never repeating what it looks for."""
+    spec = PICTURES_SPEC.read_text(encoding="utf-8")
+    start = spec.index("function nothingOfThisComputer(")
+    guard = spec[start : spec.index("\n}\n", start)]
+    assert "homedir()" in guard and "hostname()" in guard
+    assert "length >= 4" in guard  # a short computer name would match ordinary words
+    assert ".not.toContain(" not in guard  # a failed check says what it found, not the word itself
+    start = spec.index('test("pair-phone.png')
+    pair = spec[start : spec.index("\n});\n", start)]
+    # each part of the picture, by the text checked and the screenshot it becomes
+    parts = {
+        '(await dialog.innerText(), "the dialog': "codePart",
+        '(await mobile.locator("body").innerText(), "the phone': "phonePart",
+        '(await dialog.innerText(), "the paired dialog': "pairedPart",
+    }
+    for text, part in parts.items():
+        check = f"nothingOfThisComputer{text}"
+        assert check in pair, part
+        # checked right before its screenshot is taken
+        assert pair.index(check) < pair.index(f"path: {part}"), part
+    computers = spec[spec.index('test("your-computers.png') :]
+    assert computers.index("nothingOfThisComputer(") < computers.index("b.screenshot(")
+
+
 # --------------------------------------------------------------------------------------------------
 # What it made
 # --------------------------------------------------------------------------------------------------
@@ -244,7 +350,6 @@ def test_no_picture_or_video_carries_a_path() -> None:
             assert mark not in data, (path.name, mark)
 
 
-@UNTIL_D5_MEDIA
 def test_the_demo_gif_is_what_make_capture_makes() -> None:
     """README's GIF: 720 px wide, 6 frames a second, at most 64 colours, every frame light, the first part of the
     tour (up to the court order) and within its budget."""
@@ -258,7 +363,6 @@ def test_the_demo_gif_is_what_make_capture_makes() -> None:
     assert gif.seconds <= GIF_SECONDS_MAX
 
 
-@UNTIL_D5_MEDIA
 def test_the_tour_video_starts_at_once_and_fits_its_budget() -> None:
     path = ASSETS / "demo.mp4"
     assert path.stat().st_size <= MP4_BYTES
@@ -267,7 +371,6 @@ def test_the_tour_video_starts_at_once_and_fits_its_budget() -> None:
     assert video.seconds <= MP4_SECONDS_MAX
 
 
-@UNTIL_D5_MEDIA
 def test_the_readme_media_fit_their_budget() -> None:
     total = sum(path.stat().st_size for path in ASSETS.rglob("*") if path.is_file())
     assert total <= ASSETS_BYTES, total
