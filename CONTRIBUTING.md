@@ -103,7 +103,8 @@ check shows in the numbers at once, and costs nothing.
   skipped until the packages that need TypeScript (openapi-typescript, typescript-eslint) take them: a test
   in `tests/test_repo_hygiene.py` fails then, saying to remove the rule. `ci.yml` names actions by their
   major version (`actions/checkout@v7`), and `release.yml` pins each to a commit with its version beside it;
-  keep both on the same major (`tests/test_release_workflow.py` compares them).
+  keep both on the same major (`tests/test_release_workflow.py` compares them). `demo.yml`, which publishes
+  the online demo, names them as `ci.yml` does (`tests/test_demo_workflow.py`).
 - CI's weekly "latest" job tests every Python package at its newest version, and its dependency audit
   checks `constraints.txt` and the web app's packages for known vulnerabilities.
 

@@ -163,6 +163,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   page loads them, and *Download a copy of your records* still has every letter whole. Live updates, downloads,
   signing in and pairing are never compressed
   ([ADR 0022](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md)).
+- The online demo moved to GitHub Pages, <https://ahmedeid1.github.io/ordnung/>. Anyone can open it there
+  without an account; the old page asked visitors to sign in to Claude. It is built again from `main` whenever
+  the web app changes (`.github/workflows/demo.yml`, [docs/releasing.md](docs/releasing.md)).
 
 ### Fixed
 
