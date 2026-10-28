@@ -22,7 +22,8 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   entries, so a program in the current folder never runs, then in each system's install folders. It installs
   nothing. The worker looks once when it starts; `ordnung doctor` looks on every run.
 - **Which pages.** Only those of a letter Claude isn't reading: kept private or held, waiting for Claude (not
-  ready, or a usage limit) or failed; a photo or a PDF, not in the trash and not a proof file. And of those,
+  ready, or a usage limit) or failed; a photo or a PDF, not in the trash, not a proof file and never read by
+  Claude (once it has, a page without text is one it found illegible). And of those,
   only a page that (1) has no text of its own, (2) has no scanner's text, (3) wasn't looked at yet, and (4) for
   a PDF, whose own text was looked for already. Newest letter first, one page at a time.
 - **Read from a picture Ordnung made.** Tesseract never sees the uploaded file. Ordnung draws the page as a
@@ -45,8 +46,10 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   so search can find the letter: they aren't checked, aren't shown as the letter's words and are never sent to
   Claude." The same words on a phone: the file travels with the page images.
 - **It goes with the page.** `forget_scan_text_once_read`, which the text stage calls after Claude's reading,
-  removes a page's picture text with its scanner text; the worker also tidies a file that Claude's reading on
-  another computer made out of date. Deleting the letter for good deletes it with `derived/<doc>/`.
+  removes a page's picture text with its scanner text. Once Claude has read the letter, search and its page
+  ignore what is left (a page Claude found illegible keeps no text of its own), and the worker removes it, as it
+  tidies a file that Claude's reading on another computer made out of date. Deleting the letter for good deletes
+  it with `derived/<doc>/`.
 - **When it runs.** The worker's loop waits 30 seconds after the worker starts, as the scanner text's catch-up
   does, and stops with the worker (never while hand-off sync stands this computer by). It is woken when a
   reading ends, because a letter may just have become one Claude isn't reading, and looks again every five

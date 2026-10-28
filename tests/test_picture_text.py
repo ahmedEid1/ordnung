@@ -169,6 +169,20 @@ DUE_CASES: dict[str, tuple[dict[str, Any], Callable[[Store, Document], None] | N
     "queued to be read": ({"status": "queued"}, _queued, False),
     "put back after a stop": ({"status": "queued"}, _put_back_after_a_stop, False),
     "read": ({"status": "processed"}, None, False),
+    "read, kept private since": (
+        {"ai_private": True, "status": "processed", "ai_processed_at": "2026-09-20T10:00:00Z"},
+        None,
+        False,
+    ),
+    "read, failed on Read again": (
+        {
+            "status": "failed",
+            "error": "Couldn't read this letter.",
+            "ai_processed_at": "2026-09-20T10:00:00Z",
+        },
+        None,
+        False,
+    ),
     "needs a look": ({"status": "needs_review"}, None, False),
     "in the trash": (
         {"ai_private": True, "status": "processed", "deleted_at": "2026-09-20T10:00:00Z"},
@@ -201,7 +215,8 @@ def test_only_letters_claude_isnt_reading_are_due(store: Store, case: str) -> No
     """Pages without text of their own of photos and PDFs Claude isn't reading — kept private, held, waiting for
     Claude (not ready, or a usage limit) or failed — and nothing else: not a letter queued to be read or read,
     one in the trash, a proof file, a text file, a page with its own or a scanner's text, or a PDF whose own text
-    hasn't been looked for yet. What is due is also what may be kept."""
+    hasn't been looked for yet, nor one Claude has read (kept private or failed since). What is due is also what may
+    be kept."""
     fields, more, due = DUE_CASES[case]
     fields = dict(fields)
     mime, texts = fields.pop("mime", "image/jpeg"), fields.pop("texts", None)
@@ -273,7 +288,8 @@ def test_a_file_that_cant_be_written_is_logged_without_its_words(
     letter = private_photo(store)
     (store.paths.derived / letter.id).mkdir(parents=True)
     picture_file(store, letter.id).mkdir()  # a folder where the file should be
-    assert store.write_picture_text(letter.id, 1, PICTURE_WORDS) is False
+    with pytest.raises(OSError):  # not a refusal: the worker counts the page as failed
+        store.write_picture_text(letter.id, 1, PICTURE_WORDS)
     assert "Kellerabteil" not in caplog.text and letter.id in caplog.text
 
 
@@ -364,6 +380,28 @@ def test_reading_a_page_forgets_its_picture_text(store: Store) -> None:
     assert scan.id not in store._picture_text_cache
     store.forget_scan_text_once_read(scan.id)  # nothing left to forget
     store.forget_scan_text_once_read("doc_missing")
+
+
+def test_claude_reading_the_letter_forgets_its_picture_text_also_on_a_page_it_found_illegible(
+    store: Store,
+) -> None:
+    """A page Claude transcribed as empty keeps no text of its own, yet Claude read it: once Claude has read the
+    letter, what Ordnung read in its pictures no longer finds it, isn't named on its page, and is tidied away."""
+    scan = private_scan(store, pages=2)
+    store.write_picture_text(scan.id, 1, "Seite eins")
+    store.write_picture_text(scan.id, 2, "Kündigung Mietvertrag")
+    store.update_document(scan.id, ai_private=False, status="queued")  # let through to Claude
+    # Claude's reading: page 1 transcribed, page 2 illegible (stored as transcribe_pages does), the text stage
+    store.set_page_text(scan.id, 1, "Transkript der ersten Seite", "transcript")
+    store.set_page_text(scan.id, 2, "", "none")
+    store.forget_scan_text_once_read(scan.id)
+    store.update_document(scan.id, status="processed", ai_processed_at="2026-09-24T10:00:00Z")
+    assert store.picture_text_matches("Kündigung") == set()
+    assert store.picture_text_pages(scan.id) == []
+    assert store.picture_text_due() == [] and store.write_picture_text(scan.id, 2, "Kündigung") is False
+    assert store.picture_text_stale() == [scan.id]
+    store.forget_scan_text_once_read(scan.id)
+    assert not picture_file(store, scan.id).exists() and store.picture_text_stale() == []
 
 
 def test_picture_text_out_of_date_is_tidied(store: Store) -> None:

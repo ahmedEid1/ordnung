@@ -86,7 +86,7 @@ export function WaitingFromFolder({
         const kept = res.documents.map((d) => d.id);
         const count = kept.length;
         toast.success(count === 1 ? "Kept private" : `Kept ${plural(count, "letter")} private`, {
-          description: `${count === 1 ? "It stays" : "They stay"} on this computer and ${count === 1 ? "is" : "are"} never sent to Claude — nothing in ${count === 1 ? "it" : "them"} was read.`,
+          description: `${count === 1 ? "It stays" : "They stay"} on this computer and ${count === 1 ? "is" : "are"} never sent to Claude.`,
           undo: count
             ? () =>
                 wait

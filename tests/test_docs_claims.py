@@ -4708,10 +4708,13 @@ PRIVACY_PICTURES = (
     "deletes it with the page images.",
     "**Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started, "
     "search ignores the words read before, and Ordnung removes them when it starts.",
-    "`ordnung doctor` then shows *Turned off (ORDNUNG_OCR=off)*.",
+    # the doctor reads its own terminal's switch; setx changes no window already open, and a Start-at-login entry
+    # written while the switch was set keeps what it recorded
+    "`ordnung doctor`, run where it is set, then shows *Turned off (ORDNUNG_OCR=off)*.",
     "On Linux and macOS, set it before `ordnung serve`, or before `ordnung autostart enable` or `ordnung "
     "shortcut`, which record it (run them again after setting or unsetting it). On Windows, run `setx ORDNUNG_OCR "
-    "off`, then start Ordnung again.",
+    "off`, then start Ordnung again from a new terminal window or the Start menu (`setx` doesn't change a window "
+    "already open), and run `ordnung autostart enable` again there if Ordnung starts at login.",
     "With hand-off sync, set it the same way on every computer: one with it off removes the words the others "
     "read, and they read them again once they are in use.",
 )

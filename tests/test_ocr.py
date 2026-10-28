@@ -15,6 +15,7 @@ import io
 import json
 import logging
 import os
+import random
 import stat
 import subprocess
 import sys
@@ -549,6 +550,22 @@ def test_recognise_sends_a_png_on_stdin_and_reads_utf8_from_stdout(
     assert json.loads(report.read_text("utf-8"))["argv"] == ["stdin", "stdout", "-l", "eng"]
     mode("ok")  # a page without words
     assert ocr.recognise(_fake_engine(), png) == ""
+
+
+def test_a_picture_larger_than_the_pipe_reaches_a_tesseract_that_takes_it_late(
+    turned_on: None, mode: Callable[[str], None]
+) -> None:
+    """A phone photo's PNG is megabytes; the pipe holds 64 KiB, and Tesseract loads its language data before it
+    reads its stdin. The whole picture still reaches it, however many polls pass first."""
+    mode("slow")
+    noise = random.Random(24).randbytes(400 * 400)
+    buffer = io.BytesIO()
+    Image.frombytes("L", (400, 400), noise).save(buffer, "PNG")
+    png = buffer.getvalue()
+    assert len(png) > 2 * 65536
+    started = time.monotonic()
+    assert ocr.recognise(_fake_engine(), png, timeout_s=10.0) == ECHO_TEXT
+    assert time.monotonic() - started < 10
 
 
 def test_recognise_runs_one_thread_at_low_priority(

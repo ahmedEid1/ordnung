@@ -151,6 +151,8 @@ def test_the_fake_reads_a_picture_from_stdin_and_prints_its_words_to_stdout() ->
     assert _fake("ok", "stdin", "stdout", "-l", "deu+eng", stdin=png).stdout == b""
     echoed = _fake("echo", "stdin", "stdout", "-l", "deu+eng", stdin=png)
     assert echoed.returncode == 0 and echoed.stdout.decode("utf-8") == "Ihr Kellerabteil 7 · Gebäude Süd\n"
+    slow = _fake("slow", "stdin", "stdout", "-l", "deu+eng", stdin=png)
+    assert slow.returncode == 0 and slow.stdout == echoed.stdout  # it only takes its picture late
     failed = _fake("fail", "stdin", "stdout", "-l", "deu", stdin=png)
     assert failed.returncode == 1 and failed.stdout  # it says something a caller must never pass on
 

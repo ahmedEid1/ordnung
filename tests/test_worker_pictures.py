@@ -19,6 +19,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from PIL import Image
@@ -311,6 +312,59 @@ async def test_a_page_tesseract_fails_on_waits_for_the_next_start(
         await wait_for(lambda: ctx.store.picture_text_matches("Hausverwaltung") == {broken})
     finally:
         await later.stop()
+
+
+async def test_a_page_whose_letter_was_let_through_meanwhile_is_read_once_it_is_due_again(
+    ctx: AppContext, engine: Engine, ocr_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The person lets Claude read the letter while Tesseract reads its page: nothing is kept, and that isn't a
+    failure. Once the letter is one Claude isn't reading again (its reading failed), the page is read in this run
+    of Ordnung."""
+    store = ctx.store
+    doc_id = await private_photo(ctx, "foto.jpg")
+    engine.words = {file_name(store, doc_id): "Ihr Kellerabteil 7"}
+    reading = engine.recognise
+
+    def let_through_while_reading(tesseract: Tesseract, png: bytes, **kwargs: Any) -> str:
+        if not engine.read:
+            store.update_document(doc_id, ai_private=False, status="queued")
+        return reading(tesseract, png, **kwargs)
+
+    kept: list[bool] = []
+    write = store.write_picture_text
+
+    def writes(doc: str, page: int, text: str) -> bool:
+        kept.append(write(doc, page, text))
+        return kept[-1]
+
+    monkeypatch.setattr(ocr, "recognise", let_through_while_reading)
+    monkeypatch.setattr(store, "write_picture_text", writes)
+    ctx.worker.pictures_poll_s = 0.05
+    await ctx.worker.start()
+    try:
+        await wait_for(lambda: kept == [False])
+        store.update_document(doc_id, status="failed", error="Couldn't read this letter.")
+        await wait_for(lambda: store.picture_text_matches("Kellerabteil") == {doc_id})
+    finally:
+        await ctx.worker.stop()
+    assert kept == [False, True] and engine.read == [(file_name(store, doc_id), 1)] * 2
+
+
+async def test_a_page_whose_words_cant_be_kept_waits_for_the_next_start(
+    ctx: AppContext, engine: Engine, ocr_on: None
+) -> None:
+    """A file that can't be written (a full disk) is a failure: the page isn't read again and again."""
+    doc_id = await private_photo(ctx, "foto.jpg")
+    engine.words = {file_name(ctx.store, doc_id): "Ihr Kellerabteil 7"}
+    picture_file(ctx.store, doc_id).mkdir(parents=True)  # a folder where the file should be
+    ctx.worker.pictures_poll_s = 0.05
+    await ctx.worker.start()
+    try:
+        await wait_for(lambda: (doc_id, 1) in ctx.worker._picture_failed)
+        await asyncio.sleep(0.3)  # several looks
+    finally:
+        await ctx.worker.stop()
+    assert len(engine.read) == 1
 
 
 async def test_a_reload_tries_failed_pages_again(ctx: AppContext, engine: Engine, ocr_on: None) -> None:

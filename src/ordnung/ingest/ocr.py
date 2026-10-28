@@ -43,6 +43,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import IO
 
 import pypdfium2 as pdfium
 from PIL import Image
@@ -421,22 +422,51 @@ def _start(argv: Sequence[str], env: dict[str, str], folder: str, *, piped: bool
 def _communicate(
     process: subprocess.Popen[bytes], data: bytes | None, *, timeout_s: float, stop: threading.Event | None
 ) -> tuple[bytes, bytes]:
-    """Feed ``data`` and wait, checking ``stop`` and the time limit every :data:`POLL_S` seconds. The input is
-    given only once: a later ``communicate`` goes on writing it (a second ``input`` raises)."""
+    """Hand ``data`` over and wait, checking ``stop`` and the time limit every :data:`POLL_S` seconds.
+
+    ``data`` goes to stdin from a thread of its own (:func:`_hand_over`), never through ``communicate(input=…)``:
+    after a poll that timed out, Python before 3.13 never writes the rest of the input nor closes stdin, so a
+    picture larger than the pipe holds would never reach a Tesseract that loads its language data first, and on
+    Windows the first ``communicate`` writes it all before it looks at the time. So the stop and the time limit
+    apply while Tesseract takes its picture too."""
     deadline = time.monotonic() + timeout_s
-    payload = data
-    while True:
-        try:
-            return process.communicate(input=payload, timeout=POLL_S)
-        except subprocess.TimeoutExpired:  # what it printed so far stays in there
-            payload = None
-        if stop is not None and stop.is_set():
-            _kill(process)
-            raise Stopped("Ordnung stopped while Tesseract was reading a page")
-        if time.monotonic() >= deadline:
-            _kill(process)
-            _log.info("Tesseract took longer than %g s and was stopped", timeout_s)
-            raise RecognitionError(f"Tesseract took longer than {timeout_s:g} s")
+    writer: threading.Thread | None = None
+    if data is not None and process.stdin is not None:
+        stdin, process.stdin = process.stdin, None  # communicate() leaves it to the thread
+        writer = threading.Thread(
+            target=_hand_over, args=(stdin, data), name="ordnung-ocr-stdin", daemon=True
+        )
+        writer.start()
+    try:
+        while True:
+            try:
+                return process.communicate(timeout=POLL_S)
+            except subprocess.TimeoutExpired:  # what it printed so far stays in there
+                pass
+            if stop is not None and stop.is_set():
+                _kill(process)
+                raise Stopped("Ordnung stopped while Tesseract was reading a page")
+            if time.monotonic() >= deadline:
+                _kill(process)
+                _log.info("Tesseract took longer than %g s and was stopped", timeout_s)
+                raise RecognitionError(f"Tesseract took longer than {timeout_s:g} s")
+    finally:
+        if writer is not None:
+            if process.poll() is None:  # only on the way out of an unexpected error: its stdin breaks with it
+                _kill(process)
+            writer.join(LOOK_TIMEOUT_S)
+
+
+def _hand_over(stdin: IO[bytes], data: bytes) -> None:
+    """Write the picture to Tesseract's stdin and close it (in a thread: it blocks while the pipe is full). A
+    Tesseract that ended or was killed meanwhile breaks the pipe; there is nothing left to do then."""
+    try:
+        stdin.write(data)
+    except OSError:  # BrokenPipeError; EINVAL on Windows
+        pass
+    finally:
+        with contextlib.suppress(OSError):
+            stdin.close()
 
 
 def _kill(process: subprocess.Popen[bytes]) -> None:

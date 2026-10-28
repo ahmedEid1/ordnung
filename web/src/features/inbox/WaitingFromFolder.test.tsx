@@ -83,7 +83,9 @@ describe("the letters waiting from the folder", () => {
     const user = userEvent.setup();
     renderInbox();
     await user.click(within(await group()).getByRole("button", { name: "Keep private" }));
-    expect(await screen.findByText(/nothing in them was read/)).toBeInTheDocument();
+    expect(await screen.findByText("They stay on this computer and are never sent to Claude.")).toBeInTheDocument();
+    // never "nothing in them was read": Ordnung may have read the words in their pictures (ADR 0024)
+    expect(document.body.textContent).not.toMatch(/nothing in (it|them) (is|was) read/i);
     await user.click(screen.getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(srv.db.document("doc_folder_scan")!.status).toBe("held"));
     expect(calls.find((c) => c.method === "POST" && c.path === "/documents/held/wait")?.body).toEqual({

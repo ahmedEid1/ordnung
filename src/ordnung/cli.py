@@ -1500,13 +1500,17 @@ def doctor(
     for check in report.checks:
         table.add_row(STATUS_ICONS[check.status], escape(check.label), escape(check.detail))
     console.print(table)
+    # a fix often holds a command to copy: one line each, which the terminal wraps softly (a hard break inside
+    # `sudo apt install …` would paste as two commands)
     for check in report.checks:
         if check.fix and check.status in ("warn", "fail"):
-            console.print(f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}")
+            console.print(
+                f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}", soft_wrap=True
+            )
     # an ok row with a fix (Text in pictures: not installed) is a tip, not a problem
     for check in report.checks:
         if check.fix and check.status == "ok":
-            console.print(f"[dim]Optional — {escape(check.label)}: {escape(check.fix)}[/]")
+            console.print(f"[dim]Optional — {escape(check.label)}: {escape(check.fix)}[/]", soft_wrap=True)
     if not report.ok:
         raise typer.Exit(1)
 

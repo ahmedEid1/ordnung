@@ -479,17 +479,17 @@ class IngestWorker:
             for doc_id, page in due:
                 if halt.is_set() or wake.is_set():
                     break  # stopping, or a reading ended: what is due first may have changed
+                # nothing kept is no failure (the letter was let through to Claude meanwhile, or is gone): the
+                # next look lists the page again only once it is due again
                 try:
-                    kept = await asyncio.to_thread(self._read_picture, engine, doc_id, page, stop)
+                    await asyncio.to_thread(self._read_picture, engine, doc_id, page, stop)
                 except ocr.Stopped:
                     return
                 except ocr.RecognitionError as exc:  # its message never holds what Tesseract printed
                     log.warning("could not read the words on page %d of %s: %s", page, doc_id, exc)
-                    kept = False
-                except Exception:
+                    self._picture_failed.add((doc_id, page))
+                except Exception:  # a file that can't be written too (OSError: the store logged it)
                     log.warning("could not read the words on page %d of %s", page, doc_id, exc_info=True)
-                    kept = False
-                if not kept:
                     self._picture_failed.add((doc_id, page))
 
     def _pictures_due(self) -> list[tuple[str, int]]:
@@ -500,7 +500,8 @@ class IngestWorker:
         return [pair for pair in store.picture_text_due() if pair not in self._picture_failed]
 
     def _read_picture(self, engine: Tesseract, doc_id: str, page: int, stop: threading.Event) -> bool:
-        """Draw the page, have Tesseract read it and keep the words (in a thread); ``False``: nothing kept."""
+        """Draw the page, have Tesseract read it and keep the words (in a thread); ``False``: nothing kept, as the
+        letter is gone or no longer one whose pictures are read. Raises when the reading or the keeping failed."""
         store = self.ctx.store
         document = store.get_document(doc_id)
         original = store.get_document_file(doc_id)

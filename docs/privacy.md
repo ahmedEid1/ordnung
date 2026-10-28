@@ -265,7 +265,8 @@ In *Settings → Watched folder* you can point Ordnung at a folder your scanner 
 into — best a folder just for letters. It is off until you choose one.
 
 - **Nothing is sent until you say so.** A new file is copied into Ordnung's data folder like an
-  upload and read on this computer only (its text layer, for search and the page images; an e-mail is
+  upload and read only on this computer (its text layer, for search and the page images; with Tesseract,
+  the words in its pictures, for search only ([below](#words-in-pictures-optional)); an e-mail is
   named by its subject and sender) — then it waits. *Read these* sends it to Claude like any letter you
   add; *Keep private* keeps it as if you had added it with "Keep private — no AI". Waiting letters are
   private in every other way too: *Ask*, *Weekly Ideas*, the daily note and drafting never see them.
@@ -346,12 +347,13 @@ Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung fo
 - **It goes with the page.** Once Claude reads a page, what Ordnung read there is removed; deleting the letter
   deletes it with the page images.
 - **Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started,
-  search ignores the words read before, and Ordnung removes them when it starts. `ordnung doctor` then shows
-  *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it before `ordnung serve`, or before
-  `ordnung autostart enable` or `ordnung shortcut`, which record it (run them again after setting or unsetting
-  it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again. With hand-off sync, set it the same
-  way on every computer: one with it off removes the words the others read, and they read them again once
-  they are in use.
+  search ignores the words read before, and Ordnung removes them when it starts. `ordnung doctor`, run where
+  it is set, then shows *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it before `ordnung serve`, or
+  before `ordnung autostart enable` or `ordnung shortcut`, which record it (run them again after setting or
+  unsetting it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again from a new terminal window
+  or the Start menu (`setx` doesn't change a window already open), and run `ordnung autostart enable` again
+  there if Ordnung starts at login. With hand-off sync, set it the same way on every computer: one with it
+  off removes the words the others read, and they read them again once they are in use.
 
 ## Reminders while Ordnung is closed
 

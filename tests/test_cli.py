@@ -729,6 +729,40 @@ def test_doctor_prints_an_optional_tip_for_an_ok_row_with_a_fix(
     assert "Turned off (ORDNUNG_OCR=off)" in text and "Optional —" not in text
 
 
+def test_the_doctors_install_lines_stay_whole_in_a_narrow_terminal(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A command people copy from the doctor (the *Optional —* tip, a warning's fix) is printed as one line, which
+    the terminal wraps softly: in 80 columns a hard break inside ``sudo apt install tesseract-ocr tesseract-ocr-deu``
+    would paste as two commands."""
+    from ordnung import doctor
+    from ordnung.ingest import ocr
+
+    bin_dir = tmp_path / "bin"
+    fake_claude(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}/bin{os.pathsep}/usr/bin")
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ORDNUNG_OCR")
+    monkeypatch.setattr(cli.console, "_width", 80)
+    monkeypatch.setattr(ocr, "find", lambda **_: None)
+    result = invoke("doctor", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    lines = plain(result.output).splitlines()
+    tip = (
+        "Optional — Text in pictures: To find photos and scans Claude doesn't read by their words, install "
+        f"Tesseract: {doctor.tesseract_install()}"
+    )
+    assert len(tip) > 80 and tip in lines
+    # Tesseract without German: the warning's fix, also one line
+    english_only = ocr.Tesseract("/usr/bin/tesseract", (5, 3, 4), ("eng",))
+    monkeypatch.setattr(ocr, "find", lambda **_: english_only)
+    result = invoke("doctor", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    fix = f"! Text in pictures: {doctor.tesseract_german()}"
+    assert len(fix) > 80 and fix in plain(result.output).splitlines()
+
+
 def test_doctor_probes_on_the_model_every_call_runs_on(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

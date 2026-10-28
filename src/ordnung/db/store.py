@@ -443,11 +443,13 @@ _SNIPPET_RADIUS = 60
 _WORD_RE = re.compile(r"[^\W_]+")
 _PDF = "application/pdf"
 #: The letters (``documents d``) Claude isn't reading, whose pictures Ordnung may read itself (ADR 0024):
-#: photos and PDFs, not in the trash and not a proof file, kept private or held (both ``ai_private``),
-#: failed, or with a job waiting for Claude (not ready, or a usage limit). Named parameters ``:pdf``,
-#: ``:proof`` and ``:waiting`` (:data:`_NOT_READING_PARAMS`).
+#: photos and PDFs, not in the trash and not a proof file, that Claude never read (``ai_processed_at``:
+#: once it has, a page without text is one Claude found illegible), kept private or held (both
+#: ``ai_private``), failed, or with a job waiting for Claude (not ready, or a usage limit). Named parameters
+#: ``:pdf``, ``:proof`` and ``:waiting`` (:data:`_NOT_READING_PARAMS`).
 _CLAUDE_ISNT_READING = (
-    "d.deleted_at IS NULL AND d.source != :proof AND (d.mime = :pdf OR d.mime LIKE 'image/%') "
+    "d.deleted_at IS NULL AND d.source != :proof AND d.ai_processed_at IS NULL "
+    "AND (d.mime = :pdf OR d.mime LIKE 'image/%') "
     "AND (d.ai_private = 1 OR d.status = 'failed' OR EXISTS ("
     "SELECT 1 FROM jobs j WHERE j.doc_id = d.id AND j.status IN ('queued', 'waiting') "
     "AND substr(j.waiting_reason, 1, length(:waiting)) = :waiting))"
@@ -1586,10 +1588,14 @@ class Store:
         """Forget the scanner text, and the words Ordnung read in the picture (ADR 0024), of the letter's
         pages that have text of their own (Claude transcribed them): they would never count for search
         again. Each file keeps the pages still without text (picture text's ``""`` too: looked at, no
-        words), and goes once none is left. A file that can't be changed is logged. The text stage calls
-        it by this name after Claude's reading."""
+        words), and goes once none is left. The picture text goes as a whole once Claude has read the letter
+        (``ai_processed_at``), also from a page Claude found illegible. A file that can't be changed is logged.
+        The text stage calls it by this name after Claude's reading."""
         with self.tx() as conn:
             blank = self._pages_without_text(conn, doc_id)
+            read = conn.execute(
+                "SELECT 1 FROM documents WHERE id = ? AND ai_processed_at IS NOT NULL", (doc_id,)
+            ).fetchone()
             try:
                 if not blank:
                     scan_text.remove(self.paths.derived, doc_id)
@@ -1602,7 +1608,7 @@ class Store:
                 log.warning("could not forget the scanner text of %s", doc_id, exc_info=True)
             try:
                 pictures = scan_text.read(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME)
-                still = {page: text for page, text in pictures.items() if page in blank}
+                still = {} if read else {page: text for page, text in pictures.items() if page in blank}
                 if not still:
                     scan_text.remove(self.paths.derived, doc_id, name=scan_text.PICTURE_NAME)
                 elif still != pictures:
@@ -1616,17 +1622,21 @@ class Store:
         rows = conn.execute("SELECT page FROM pages WHERE doc_id = ? AND trim(text) = ''", (doc_id,))
         return {row["page"] for row in rows}
 
-    def _blank_scan_pages(self, doc_id: str | None = None, *, images: bool = False) -> dict[str, list[int]]:
+    def _blank_scan_pages(self, doc_id: str | None = None, *, pictures: bool = False) -> dict[str, list[int]]:
         """Letter → its pages without text of their own, for the PDF letters not in the trash (with
-        ``doc_id``: that letter's, in the trash or not); with ``images`` for photos too."""
-        mime = "(d.mime = ? OR d.mime LIKE 'image/%')" if images else "d.mime = ?"
+        ``doc_id``: that letter's, in the trash or not); with ``pictures`` for the letters whose picture text
+        counts: photos too, and never a letter Claude has read (``ai_processed_at``)."""
+        if pictures:
+            kind = "(d.mime = ? OR d.mime LIKE 'image/%') AND d.ai_processed_at IS NULL"
+        else:
+            kind = "d.mime = ?"
         if doc_id is None:
             which, params = "d.deleted_at IS NULL", [_PDF]
         else:
             which, params = "d.id = ?", [doc_id, _PDF]
         rows = self._conn().execute(
             "SELECT p.doc_id, p.page FROM pages p JOIN documents d ON d.id = p.doc_id "
-            f"WHERE {which} AND {mime} AND trim(p.text) = '' ORDER BY d.created_at, p.doc_id, p.page",
+            f"WHERE {which} AND {kind} AND trim(p.text) = '' ORDER BY d.created_at, p.doc_id, p.page",
             params,
         )
         blank: dict[str, list[int]] = {}
@@ -1679,7 +1689,7 @@ class Store:
         if not tokens:
             return set()
         found: set[str] = set()
-        for doc_id, pages in self._blank_scan_pages(images=name == scan_text.PICTURE_NAME).items():
+        for doc_id, pages in self._blank_scan_pages(pictures=name == scan_text.PICTURE_NAME).items():
             folds = self._scan_text_folds(doc_id, name)
             texts = [folds[page] for page in pages if page in folds]
             plain = "\n".join(text for text, _ in texts)
@@ -1760,7 +1770,7 @@ class Store:
         reading the letter, and that the page still has no text of its own and no scanner's text: ``False``
         (nothing kept) when that changed meanwhile — the letter was let through to Claude, read, or deleted
         for good, so it never gets the file back. A file that can't be written is logged (letter and page,
-        never the words): ``False``."""
+        never the words) and its :class:`OSError` raised: unlike a refusal, that reading failed."""
         with self.tx() as conn:
             row = conn.execute(
                 f"SELECT d.mime FROM documents d WHERE d.id = :id AND {_CLAUDE_ISNT_READING}",
@@ -1781,31 +1791,31 @@ class Store:
                 log.warning(
                     "could not keep the words read on page %d of %s (%s)", page, doc_id, type(exc).__name__
                 )
-                return False
+                raise
         self._forget_scan_text(doc_id)
         return True
 
     def picture_text_matches(self, q: str) -> set[str]:
         """The letters (not in the trash) the words Ordnung read in their pictures find, on their pages
-        without text of their own — matched as the scanner text is (:meth:`scan_text_matches`). Whether
-        Claude reads the letter now isn't asked again: a letter just let through keeps its unchecked match
-        until Claude reads the page. For the person's letter search alone (``list_documents(also_ids=…)``);
+        without text of their own — matched as the scanner text is (:meth:`scan_text_matches`) — never a
+        letter Claude has read. A letter just let through keeps its unchecked match until Claude has read
+        it. For the person's letter search alone (``list_documents(also_ids=…)``);
         never :meth:`search`."""
         return self._found_text_matches(q, scan_text.PICTURE_NAME)
 
     def picture_text_pages(self, doc_id: str) -> list[int]:
         """The letter's pages without text of their own on which Ordnung read words in the picture (search
-        only; a page looked at without words isn't one)."""
-        pages = self._blank_scan_pages(doc_id, images=True).get(doc_id, [])
+        only; a page looked at without words isn't one); none once Claude has read the letter."""
+        pages = self._blank_scan_pages(doc_id, pictures=True).get(doc_id, [])
         folds = self._scan_text_folds(doc_id, scan_text.PICTURE_NAME) if pages else {}
         return [page for page in pages if page in folds]
 
     def picture_text_stale(self) -> list[str]:
         """Letters (not in the trash) whose kept picture text is out of date: it names a page that has text
         of its own by now — Claude read it on a computer without text in pictures, then hand-off sync brought
-        it here — or every page has. The worker tidies them (:meth:`forget_scan_text_once_read`), oldest
-        first."""
-        blank = self._blank_scan_pages(images=True)
+        it here — or every page has, or Claude has read the letter (a page it found illegible has no text).
+        The worker tidies them (:meth:`forget_scan_text_once_read`), oldest first."""
+        blank = self._blank_scan_pages(pictures=True)
         rows = self._conn().execute(
             "SELECT id FROM documents WHERE deleted_at IS NULL AND (mime = ? OR mime LIKE 'image/%') "
             "ORDER BY created_at, id",

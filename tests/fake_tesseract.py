@@ -13,7 +13,9 @@ no shell wrapper, so it runs on Windows too. ``FAKE_TESSERACT_MODE`` says what i
 * ``silent`` — ``--version`` never answers (it sleeps until it is killed);
 * ``hang`` — a reading never ends (it sleeps until it is killed);
 * ``fail`` — a reading prints text on stdout and exits 1;
-* ``report`` — like ``echo``; ``FAKE_TESSERACT_REPORT`` must name the report file.
+* ``report`` — like ``echo``; ``FAKE_TESSERACT_REPORT`` must name the report file;
+* ``slow`` — like ``echo``, but it waits :data:`SLOW_S` seconds before it takes its stdin, as a real Tesseract
+  loads its language data first (a picture larger than the pipe holds then waits for it).
 
 A reading always takes its whole stdin first. When ``FAKE_TESSERACT_REPORT`` names a file, every reading writes
 one JSON object there before it prints, fails or hangs: ``argv``, whether stdin began with a PNG signature
@@ -38,7 +40,7 @@ PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 VERSIONS = {"old": "4.0.0"}
 LANGUAGES = {"no-deu": ("eng", "osd"), "no-langs": ("osd",)}
-MODES = ("ok", "echo", "old", "no-deu", "no-langs", "silent", "hang", "fail", "report")
+MODES = ("ok", "echo", "old", "no-deu", "no-langs", "silent", "hang", "fail", "report", "slow")
 #: The real 5.3.4's answer after its first line (on stdout).
 VERSION_TAIL = (
     " leptonica-1.82.0\n"
@@ -47,6 +49,8 @@ VERSION_TAIL = (
 )
 TESSDATA = "/usr/share/tesseract-ocr/5/tessdata/"
 FOREVER_S = 120
+#: How long ``slow`` waits before it takes its stdin.
+SLOW_S = 0.5
 
 
 def _priority() -> int:
@@ -73,6 +77,8 @@ def _report(argv: list[str], picture: bytes) -> None:
 
 
 def _read(mode: str, argv: list[str]) -> int:
+    if mode == "slow":
+        time.sleep(SLOW_S)
     picture = sys.stdin.buffer.read() if argv[:1] == ["stdin"] else b""
     _report(argv, picture)
     if mode == "report" and not os.environ.get(REPORT_ENV):
@@ -84,7 +90,7 @@ def _read(mode: str, argv: list[str]) -> int:
         sys.stdout.write("Error in pixReadMem: what the page said\n")
         sys.stdout.flush()
         return 1
-    if mode in ("echo", "report"):
+    if mode in ("echo", "report", "slow"):
         sys.stdout.buffer.write(f"{ECHO_TEXT}\n".encode())
         sys.stdout.flush()
     return 0
