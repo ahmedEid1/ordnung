@@ -16,10 +16,11 @@ Written policy (ADR 0007):
 * **What runs.** ``<this Python> -m ordnung --data-dir <the data folder> serve --no-browser`` (and
   ``--port`` when it isn't the default) — absolute paths, so the login environment's ``PATH`` does
   not matter for Ordnung itself; the ``PATH`` of the terminal that ran ``enable`` is recorded
-  (Linux, macOS) so the service finds the same ``claude`` command, and so is Claude Code's telemetry
-  opt-out ``CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`` when it is set there (every system; see
-  docs/privacy.md), which the login environment would not have. A crash is restarted (systemd:
-  after 30 s; launchd: on an unsuccessful exit); a clean stop stays stopped.
+  (Linux, macOS) so the service finds the same ``claude`` command, and so are Claude Code's telemetry
+  opt-out ``CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`` and the off switch for text in pictures
+  ``ORDNUNG_OCR`` (ADR 0024) when they are set there (every system; see docs/privacy.md), which the
+  login environment would not have. A crash is restarted (systemd: after 30 s; launchd: on an
+  unsuccessful exit); a clean stop stays stopped.
 * **The sign-in link stays private.** ``serve`` prints its link with the session token on standard
   output, so the service discards standard output (systemd ``StandardOutput=null``, launchd
   ``/dev/null``): the token never lands in the system journal or a log file. Errors go to the
@@ -53,6 +54,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from ordnung.config import OCR_SWITCH
 from ordnung.durable import write_atomic
 from ordnung.server import DEFAULT_PORT
 
@@ -67,6 +69,9 @@ ENTRY_MODE = 0o600
 HEADER = "Written by `ordnung autostart enable`; `ordnung autostart disable` removes it."
 #: Claude Code's telemetry opt-out (docs/privacy.md): recorded into the entry when set at ``enable``
 TELEMETRY_OPT_OUT = "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"
+#: The switches recorded into the entry when set at ``enable``, in this order (after ``PATH`` on Linux and macOS):
+#: the telemetry opt-out, and ``ORDNUNG_OCR`` (text in pictures, ADR 0024). Unset, the entry doesn't name them.
+SWITCHES = (TELEMETRY_OPT_OUT, OCR_SWITCH)
 KINDS: dict[System, str] = {
     "linux": "systemd user service",
     "macos": "LaunchAgent",
@@ -214,7 +219,7 @@ def _linux(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry:
     return Entry(
         system="linux",
         path=unit,
-        content=_unit(argv, _recorded(env, "PATH", TELEMETRY_OPT_OUT)),
+        content=_unit(argv, _recorded(env, "PATH", *SWITCHES)),
         argv=argv,
         link=folder / "default.target.wants" / UNIT_NAME,
         start_now=f"systemctl --user daemon-reload && systemctl --user restart {UNIT_NAME}",
@@ -247,7 +252,7 @@ def _macos(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry:
     return Entry(
         system="macos",
         path=path,
-        content=_plist(argv, _recorded(env, "PATH", TELEMETRY_OPT_OUT), home),
+        content=_plist(argv, _recorded(env, "PATH", *SWITCHES), home),
         argv=argv,
         start_now=f"launchctl bootout {target} 2>/dev/null; launchctl bootstrap gui/$(id -u) '{path}'",
         stop_now=f"launchctl bootout {target}",
@@ -288,7 +293,7 @@ def _windows(argv: tuple[str, ...], env: Mapping[str, str], home: Path) -> Entry
     return Entry(
         system="windows",
         path=path,
-        content=_cmd(argv, _recorded(env, TELEMETRY_OPT_OUT)),
+        content=_cmd(argv, _recorded(env, *SWITCHES)),
         argv=argv,
         start_now=f'"{path}"',
         stop_now="Close the minimised “Ordnung” window.",
@@ -314,7 +319,7 @@ def plan(
     env = os.environ if env is None else env
     home = home or Path.home()
     argv = serve_argv(Path(data_dir).expanduser().absolute(), port=port, python=python)
-    values = [*argv, env.get("PATH") or "", env.get(TELEMETRY_OPT_OUT) or "", str(home)]
+    values = [*argv, *(env.get(name) or "" for name in ("PATH", *SWITCHES)), str(home)]
     _no_line_breaks(values)
     builders = {"linux": _linux, "macos": _macos, "windows": _windows}
     return builders[system](argv, env, home)
@@ -405,7 +410,7 @@ def state(
 ) -> State:
     """Is there an entry, which data folder does it start, and does it run what ``enable`` would
     write now for ``data_dir`` (default: its own folder) — this Python, that folder, its port?
-    The recorded variables (``PATH``, the telemetry opt-out) are not compared: they differ between
+    The recorded variables (``PATH`` and :data:`SWITCHES`) are not compared: they differ between
     terminals without making anything stale."""
     where = location(platform=platform, env=env, home=home)
     if not where.path.is_file():

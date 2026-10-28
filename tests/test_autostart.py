@@ -29,6 +29,7 @@ from ordnung.autostart import (
     systemd_unquote,
 )
 from ordnung.cli import app
+from ordnung.config import OCR_SWITCH
 
 PY = "/opt/ordnung/venv/bin/python3"
 PATH_ENV = "/home/sam/.local/bin:/usr/local/bin:/usr/bin:/bin"
@@ -293,6 +294,43 @@ def test_the_telemetry_opt_out_set_at_enable_goes_into_the_entry(tmp_path: Path)
         plan(Path("/data"), platform="linux", env={TELEMETRY_OPT_OUT: "1\n[Service]"}, home=tmp_path)
 
 
+def test_the_off_switch_for_text_in_pictures_is_recorded_when_set(tmp_path: Path) -> None:
+    """ADR 0024: ``ORDNUNG_OCR=off`` set where ``enable`` runs reaches Ordnung at login too, on every system,
+    after the telemetry opt-out. Unset or empty (the usual case), no entry names it: the bytes of before."""
+    opted_out = {"PATH": PATH_ENV, "APPDATA": str(tmp_path), TELEMETRY_OPT_OUT: "1"}
+    off = {**opted_out, OCR_SWITCH: "off"}
+    unit = plan(Path("/data"), platform="linux", env=off, home=tmp_path, python=PY)
+    lines = unit.content.splitlines()
+    first = lines.index(f'Environment="{TELEMETRY_OPT_OUT}=1"')
+    assert lines[first + 1] == f'Environment="{OCR_SWITCH}=off"' and lines[first + 2].startswith("ExecStart=")
+    assert entry_argv("linux", unit.content) == list(unit.argv)
+    agent = plistlib.loads(
+        plan(Path("/data"), platform="darwin", env=off, home=tmp_path, python=PY).content.encode()
+    )
+    assert agent["EnvironmentVariables"] == {"PATH": PATH_ENV, TELEMETRY_OPT_OUT: "1", OCR_SWITCH: "off"}
+    cmd = plan(Path("C:\\d"), platform="win32", env=off, home=tmp_path, python="py.exe")
+    lines = cmd.content.split("\r\n")
+    assert lines[4:6] == [f'set "{TELEMETRY_OPT_OUT}=1"', f'set "{OCR_SWITCH}=off"']
+    assert lines[6].startswith('start "Ordnung" /min')
+    assert entry_argv("windows", cmd.content) == list(cmd.argv)
+
+    empty = {**opted_out, OCR_SWITCH: ""}
+    for platform, folder, python in (
+        ("linux", "/data", PY),
+        ("darwin", "/data", PY),
+        ("win32", "C:\\d", "py"),
+    ):
+        before = plan(Path(folder), platform=platform, env=opted_out, home=tmp_path, python=python)
+        assert OCR_SWITCH not in before.content
+        after = plan(Path(folder), platform=platform, env=empty, home=tmp_path, python=python)
+        assert after.content == before.content
+    with pytest.raises(AutostartError, match="line break"):
+        plan(Path("/data"), platform="linux", env={OCR_SWITCH: "off\n[Service]"}, home=tmp_path)
+    # whatever the switch says, the entry stays current: the recorded variables are never compared
+    enable(plan(tmp_path / "d", platform="darwin", env=off, home=tmp_path, python=PY))
+    assert state(tmp_path / "d", platform="darwin", env=opted_out, home=tmp_path, python=PY).current
+
+
 # --------------------------------------------------------------------------------------------------
 # rewrite, remove, status
 # --------------------------------------------------------------------------------------------------
@@ -479,6 +517,18 @@ def test_enable_carries_the_telemetry_opt_out_of_this_terminal(
     dry = invoke("autostart", "enable", "--data-dir", str(tmp_path / "data"), "--dry-run")
     assert dry.exit_code == 0, dry.output
     assert f'Environment="{TELEMETRY_OPT_OUT}=1"' in dry.output.splitlines()
+
+
+def test_enable_carries_the_off_switch_for_text_in_pictures_of_this_terminal(
+    fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv(OCR_SWITCH, "off")
+    dry = invoke("autostart", "enable", "--data-dir", str(tmp_path / "data"), "--dry-run")
+    assert dry.exit_code == 0, dry.output
+    assert f'Environment="{OCR_SWITCH}=off"' in dry.output.splitlines()
+    monkeypatch.delenv(OCR_SWITCH)
+    dry = invoke("autostart", "enable", "--data-dir", str(tmp_path / "data"), "--dry-run")
+    assert dry.exit_code == 0 and OCR_SWITCH not in dry.output
 
 
 def test_the_demo_does_not_start_at_login(
