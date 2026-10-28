@@ -158,7 +158,7 @@ test("a letter for someone of the household is asked about, filed with one press
       await open(page, "/settings?section=profile#set-household", "Settings");
       await card(page).getByRole("button", { name: `Remove ${ADDRESSEE}` }).click();
       const asking = page.getByRole("dialog", { name: `Remove ${ADDRESSEE}?` });
-      await expect(asking).toContainText("Their 1 letter counts as yours again. Nothing is deleted.");
+      await expect(asking).toContainText("Their 1 letter is in your own letters again. Nothing is deleted.");
       await asking.getByRole("button", { name: "Remove" }).click();
       await expect(card(page).getByRole("listitem")).toHaveCount(1);
       await open(page, `/documents/${letter.id}`);

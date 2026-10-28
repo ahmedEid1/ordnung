@@ -148,6 +148,33 @@ for (const width of [320, 1280]) {
   });
 }
 
+test("at 1280 px, short names on the person tags are never cut: the title gives way first", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const docs = await apiGet<{ id: string }[]>(page, "/api/documents");
+  const members = [
+    { id: "hhm_alex00000001", name: "Alex Rivera", signs: true, letters: 0 },
+    { id: "hhm_alex00000002", name: "Alexandra Rivera", signs: true, letters: 0 },
+  ];
+  // two people with names alike, every letter filed for one of them in turn
+  const filed = Object.fromEntries(docs.map((d, i) => [d.id, members[i % 2]!.id]));
+  await page.route("**/api/household", (route) =>
+    route.fulfill({ json: { members, filed, mine: [], suggested: {}, version: "0123456789abcdef" } }),
+  );
+  await open(page, "/inbox", "Inbox");
+  const tags = page.locator("section[aria-labelledby^='grp-'] [data-person-tag]").filter({ visible: true });
+  await expect(tags.first()).toBeVisible();
+  const cut = await tags.evaluateAll((els) =>
+    els.filter((el) => {
+      const inner = el.querySelector<HTMLElement>(".truncate")!;
+      return inner.scrollWidth > inner.clientWidth;
+    }).map((el) => el.textContent),
+  );
+  expect(cut, "a short name is cut on its tag").toEqual([]);
+  const report = await rows(page);
+  expect(report.sideways).toBe(0);
+  for (const r of report.rows) expect(r.rowOverflow, `${r.title}: the row is wider than the card`).toBeLessThanOrEqual(0);
+});
+
 test("headings go h1 → h2 → h3, and the month groups say how many letters", async ({ page }) => {
   await open(page, "/inbox", "Inbox");
   const levels = await page.getByRole("main").locator("h1, h2, h3, h4").evaluateAll((hs) => hs.map((h) => Number(h.tagName[1])));

@@ -1,10 +1,11 @@
 /**
  * Settings → Profile & address → "Your household" (computer only; ADR 0023): the people whose letters come to the
  * person too. Add one at a time, edit a name or whether they sign their own letters, remove someone — asked first
- * when letters are filed for them, which then count as the person's again (nothing is deleted), with Undo that puts
- * the same person back so their letters are filed again. The API checks every name and says why it can't be one
- * person of the household; the reason shows under the field. A name typed but not added yet counts as unsaved (the
- * page's "Save and go"). Claude never sees this list.
+ * when letters are filed for them, which are then in the person's own letters again (nothing is deleted), with Undo
+ * that puts the same person back so their letters are filed again; a later change takes that Undo away (one toast id
+ * for every change of the list). The API checks every name and says why it can't be one person of the household; the
+ * reason shows under the field. A name typed but not added yet counts as unsaved (the page's "Save and go"). Claude
+ * never sees this list.
  */
 import { useEffect, useRef, useState, type FormEvent, type Ref, type RefObject } from "react";
 import { Link } from "react-router";
@@ -18,7 +19,8 @@ import { SkeletonText } from "@/components/ui/Skeleton";
 import { toast } from "@/components/ui/Toast";
 import { useReportDirty } from "@/features/settings/dirty";
 import { SettingsCard } from "@/features/settings/SettingsCard";
-import { countAsYours, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
+import { focusWhenReady } from "@/features/today/focus";
+import { backToYours, HOUSEHOLD_CHANGE_TOAST, lettersLabel, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
 
 /** The card's title id: `/settings?section=profile#set-household` opens Settings at it. */
 export const HOUSEHOLD_CARD_ID = "set-household";
@@ -83,7 +85,7 @@ function AddPerson({ household, inputRef }: { household: Household; inputRef: Re
     const after = await save(household, [...membersOf(household), { id: null, name: oneLine(name), signs }], refuse);
     if (!after) return false;
     const added = after.members.find((m) => !household.members.some((before) => before.id === m.id));
-    toast.success(`Added ${added?.name ?? name.trim()}`);
+    toast.success(`Added ${added?.name ?? name.trim()}`, { id: HOUSEHOLD_CHANGE_TOAST });
     setName("");
     setSigns(true);
     setError(null);
@@ -165,7 +167,7 @@ function PersonRow({ person, household, onRemove }: { person: HouseholdPerson; h
     }
     const members = membersOf(household).map((m) => (m.id === person.id ? { id: person.id, name: oneLine(name), signs } : m));
     if (!(await save(household, members, refuse))) return false;
-    toast.success("Saved");
+    toast.success("Saved", { id: HOUSEHOLD_CHANGE_TOAST });
     stop();
     return true;
   };
@@ -223,7 +225,7 @@ function PersonRow({ person, household, onRemove }: { person: HouseholdPerson; h
         </p>
       </div>
       <div className="flex shrink-0 gap-2">
-        <Button ref={editRef} size="sm" aria-label={`Edit ${person.name}`} onClick={start}>
+        <Button ref={editRef} size="sm" aria-label={`Edit ${person.name}`} onClick={start} data-person-edit>
           Edit
         </Button>
         <Button size="sm" variant="ghost" aria-label={`Remove ${person.name}`} onClick={() => onRemove(person)}>
@@ -241,20 +243,29 @@ export function HouseholdCard() {
   const { save } = useSaveList();
   const [asking, setAsking] = useState<HouseholdPerson | null>(null);
   const addRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
 
   const remove = async (person: HouseholdPerson) => {
     if (!h) return;
     setAsking(null);
+    const at = h.members.findIndex((m) => m.id === person.id);
     const after = await save(
       h,
       membersOf(h).filter((m) => m.id !== person.id),
     );
     if (!after) return;
-    // the row is gone: the keyboard goes on from the add form
-    addRef.current?.focus();
+    // the row is gone: the keyboard goes on from the Edit of the person now in its place, else the card's heading —
+    // never a text field, where Alt+N can't reach the toast's Undo
+    focusWhenReady(() => {
+      const rows = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-person]") ?? []);
+      if (rows.some((row) => row.dataset.person === person.id)) return null;
+      const edits = Array.from(listRef.current?.querySelectorAll<HTMLElement>("[data-person-edit]") ?? []);
+      return edits[Math.min(at, edits.length - 1)] ?? document.getElementById(HOUSEHOLD_CARD_ID);
+    });
     toast({
+      id: HOUSEHOLD_CHANGE_TOAST,
       title: `Removed ${person.name}`,
-      description: person.letters ? countAsYours(person.letters) : undefined,
+      description: person.letters ? backToYours(person.letters) : undefined,
       // the same person, with the same id, where they were: their letters are filed for them again
       undo: () => save(after, membersOf(h)).then(() => undefined),
     });
@@ -283,7 +294,7 @@ export function HouseholdCard() {
         <>
           <div>
             {h.members.length ? (
-              <ul aria-label="People in your household" className="-my-3 divide-y divide-line">
+              <ul ref={listRef} aria-label="People in your household" className="-my-3 divide-y divide-line">
                 {h.members.map((person) => (
                   <PersonRow key={person.id} person={person} household={h} onRemove={(p) => (p.letters ? setAsking(p) : void remove(p))} />
                 ))}
@@ -300,7 +311,7 @@ export function HouseholdCard() {
         onClose={() => setAsking(null)}
         size="sm"
         title={asking ? `Remove ${asking.name}?` : ""}
-        description={asking ? `${countAsYours(asking.letters)} Nothing is deleted.` : undefined}
+        description={asking ? `${backToYours(asking.letters)} Nothing is deleted.` : undefined}
         footer={
           <>
             <Button onClick={() => setAsking(null)}>Cancel</Button>

@@ -1185,9 +1185,12 @@ class Store:
     ) -> Document:
         """Insert a document. The id defaults to :func:`ordnung.ids.doc_id_for_sha` of ``sha256``.
 
-        ``file_path`` is the original's location, absolute or relative to the data directory.
+        ``file_path`` is the original's location, absolute or relative to the data directory. A letter
+        only just added has no "For taxes" choice and no filing: a choice left under its id (the id comes from
+        the file's hash, and a computer still on 0.2.0 deletes a letter for good without removing it) goes in
+        the same transaction.
         """
-        with self.tx():
+        with self.tx() as conn:
             document = self._insert(
                 _DOCUMENTS,
                 {
@@ -1204,6 +1207,7 @@ class Store:
                     "ai_private": ai_private,
                 },
             )
+            self._forget_letter_choices(conn, document.id)
             self.reindex_document(document.id)
         return document
 
@@ -1376,9 +1380,15 @@ class Store:
                 (json.dumps(others), call["id"]),
             )
         conn.execute("DELETE FROM trace_spans WHERE doc_id = ?", (doc_id,))
+        self._forget_letter_choices(conn, doc_id)
+
+    @staticmethod
+    def _forget_letter_choices(conn: sqlite3.Connection, doc_id: str) -> None:
+        """Remove the person's choices about a letter id (For taxes, whose letter it is) from the rows that
+        name letters (:data:`_LETTER_KEYED_META`); writes only a row that names it."""
         for key, path in _LETTER_KEYED_META:
-            # the person's choices about the letter (For taxes, whose letter it is): the id is quoted in the
-            # path, so it names one key whatever it holds ("." or "["); a row that isn't JSON is left alone
+            # the id is quoted in the path, so it names one key whatever it holds ("." or "["); a row that
+            # isn't JSON is left alone
             conn.execute(
                 "UPDATE meta SET value = json_remove(value, ? || '.\"' || ? || '\"') WHERE key = ? "
                 "AND json_valid(value) AND json_type(value, ? || '.\"' || ? || '\"') IS NOT NULL",

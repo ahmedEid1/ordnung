@@ -28,7 +28,7 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { focusWhenReady } from "@/features/today/focus";
 import { cn } from "@/lib/utils";
 import { answerOf, memberById, MINE } from "./logic";
-import { MANAGE_HOUSEHOLD_HREF, MAX_PEOPLE, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
+import { HOUSEHOLD_CHANGE_TOAST, MANAGE_HOUSEHOLD_HREF, MAX_PEOPLE, membersOf, nameProblem, oneLine, refusal, useChangeHousehold } from "./save";
 
 const SIGNS_HINT = "Untick for a child: a reply to their letter then goes out in your name.";
 const CHOICES_LABEL = "Who is this letter for?";
@@ -203,6 +203,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
   const qc = useQueryClient();
   const changeRef = useRef<HTMLButtonElement>(null);
   const questionRef = useRef<HTMLDivElement>(null);
+  const addRef = useRef<HTMLButtonElement>(null);
   const questionId = useId();
 
   // the household when it has loaded (live in every window), else the letter's page
@@ -214,6 +215,16 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
   const current = filed?.id ?? (mine ? MINE : null);
   const add = known.add && !phone && editable && !filed && !mine && !suggested && people.length < MAX_PEOPLE ? known.add : null;
 
+  /**
+   * After an Undo of an answer, the keyboard goes on from what the letter shows again (only when focus was lost, as
+   * the toast hands it back): the question when it asks again — waited for, as *Change* goes with the answer — else
+   * *Change*.
+   */
+  const backToAnswer = (after: Household) => {
+    const asks = !answerOf(after, doc.id) && Boolean(after.suggested[doc.id]);
+    focusWhenReady(() => (asks ? (questionRef.current?.querySelector("button") ?? null) : changeRef.current?.isConnected ? changeRef.current : null));
+  };
+
   /** File the letter (a person's id, or {@link MINE}); the toast's Undo puts back the answer it had. */
   const answer = (next: string, name: string | null) => {
     const before = h ? answerOf(h, doc.id) : current;
@@ -224,7 +235,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
         focusWhenReady(() => changeRef.current);
         toast({
           title: next === MINE ? "Filed as yours" : `Filed for ${name ?? ""}`,
-          undo: () => file.mutateAsync({ letters: { [doc.id]: before } }).then(() => undefined),
+          undo: () => file.mutateAsync({ letters: { [doc.id]: before } }).then(backToAnswer, () => undefined),
         });
       },
       () => undefined, // the mutation's error toast says what went wrong
@@ -246,11 +257,14 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
     // filed: Change takes the offer's place; not filed: the letter now asks
     focusWhenReady(() => (filedToo ? changeRef.current : (questionRef.current?.querySelector("button") ?? null)));
     toast({
+      // a later change of the list replaces it: this Undo names the list as it is now
+      id: HOUSEHOLD_CHANGE_TOAST,
       title: `Added ${person.name} to your household`,
       description: filedToo ? `This letter is filed for ${person.name}.` : "Ordnung asks before it files a letter for them.",
       undo: () =>
         change.mutateAsync({ base: after.version, members: membersOf(before), also_file: [] }).then(
-          () => undefined,
+          // the offer comes back with the person gone: the keyboard goes on from it
+          () => focusWhenReady(() => addRef.current),
           (err: unknown) => void refusal(err, qc),
         ),
     });
@@ -279,7 +293,7 @@ export function useLetterFor(detail: DocumentDetail, editable: boolean): LetterF
           className="w-[22rem] p-4"
           content={(close) => <AddForm addressee={add} household={h} docId={doc.id} close={close} onAdded={added} />}
         >
-          <Button variant="link" size="sm" icon={UserPlus} className="max-w-full whitespace-normal text-left text-[13px]">
+          <Button ref={addRef} variant="link" size="sm" icon={UserPlus} className="max-w-full whitespace-normal text-left text-[13px]">
             <span className="min-w-0 whitespace-normal [overflow-wrap:anywhere]">Add {add} to your household</span>
           </Button>
         </Popover>

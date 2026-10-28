@@ -249,8 +249,9 @@ function LetterRow({
             </Link>
             {/* table rows: status and "New" after the title (stacked rows: on the chip line) */}
             {status ? <span className="hidden shrink-0 @4xl:inline-flex">{status}</span> : null}
-            {/* whose letter it is: after the status, cut before the title is (the whole name in its tooltip) */}
-            {personTag ? <span className="hidden min-w-0 max-w-[40%] @4xl:inline-flex">{personTag}</span> : null}
+            {/* whose letter it is: after the status, at its own width up to a cap — the title, with its tooltip, gives
+                way first, so a short name is never cut; a long one is cut at the cap (the whole name in its tooltip) */}
+            {personTag ? <span className="hidden max-w-[12rem] shrink-0 @4xl:inline-flex">{personTag}</span> : null}
             {isNew ? <span className="hidden shrink-0 @4xl:inline-flex">{newBadge}</span> : null}
             {/* the to-do count for a screen reader moving from letter to letter */}
             {todos ? (

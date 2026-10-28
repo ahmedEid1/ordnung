@@ -160,7 +160,7 @@ test("your household: the Settings card, a letter's question, its choices and â€
       await open(page, "/settings?section=profile#set-household", "Settings");
       await card(page).getByRole("button", { name: `Remove ${ADDRESSEE}` }).click();
       const removing = page.getByRole("dialog", { name: `Remove ${ADDRESSEE}?` });
-      await expect(removing).toContainText("Their 1 letter counts as yours again. Nothing is deleted.");
+      await expect(removing).toContainText("Their 1 letter is in your own letters again. Nothing is deleted.");
       await checkView(page, testInfo, `household-settings-remove-${width}`);
       await removing.getByRole("button", { name: "Cancel" }).click();
       await emptyHousehold(page);

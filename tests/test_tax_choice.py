@@ -13,6 +13,7 @@ import io
 import shutil
 import zipfile
 from collections.abc import Iterator
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from ordnung.db.store import TAX_CHOICES_META_KEY, Store
 from ordnung.letters_zip import INDEX_NAME
 from ordnung.llm.base import LLMRequest
 from ordnung.secretary.review import build_snapshot
+from ordnung.secretary.triggers import run_and_reconcile
 from test_api_support import TODAY as API_TODAY
 from test_api_support import Api, ApiRouter, api_for
 
@@ -227,15 +229,32 @@ def test_asks_tools_never_read_the_tax_choices(store: Store, monkeypatch: pytest
     assert ledger_fingerprint(store)
 
 
-def test_the_weekly_review_snapshot_keeps_claudes_own_mark(store: Store) -> None:
-    """The review's per-letter snapshot keeps ``tax_relevant`` as Claude read it: the person's choice would
-    change the review's input and its recordings (plan §11)."""
+def test_the_weekly_review_snapshot_keeps_claudes_own_mark_on_each_letter(store: Store) -> None:
+    """The review's rows of letters keep ``tax_relevant`` as Claude read it: the person's choice would change
+    the review's input and its recordings (plan §11). In tax season the tax-season Idea follows the choice
+    (point 3), and its title is among the open Ideas the review is given, like every Idea's: a choice can make
+    it go away there, or appear (docs/privacy.md). Nothing else in the snapshot moves."""
     ids = seed_ledger(store)
-    before = build_snapshot(store, TODAY)
+    season = date(2027, 2, 15)
+    idea = "Your 2026 tax documents are ready to collect"
+    run_and_reconcile(store, season)
+    before = build_snapshot(store, season)
     assert any(row["tax_relevant"] for row in before.data["recent_documents"])
+    assert idea in before.data["existing_ideas"]["open"]
     store.set_tax_choice(ids["doc_tax"], False)
     store.set_tax_choice(ids["doc_payslip"], False)
-    store.set_tax_choice(ids["doc_invoice"], True)
-    after = build_snapshot(store, TODAY)
-    assert after.data == before.data
-    assert after.cache_key == before.cache_key
+    run_and_reconcile(store, season)
+    after = build_snapshot(store, season)
+    assert after.data["recent_documents"] == before.data["recent_documents"]
+    assert _without_ideas(after.data) == _without_ideas(before.data)
+    assert idea not in after.data["existing_ideas"]["open"]
+    # and back: the person's own mark brings it back, Claude's marks still as they were
+    store.set_tax_choice(ids["doc_tax"], True)
+    run_and_reconcile(store, season)
+    again = build_snapshot(store, season)
+    assert idea in again.data["existing_ideas"]["open"]
+    assert again.data["recent_documents"] == before.data["recent_documents"]
+
+
+def _without_ideas(data: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in data.items() if key != "existing_ideas"}

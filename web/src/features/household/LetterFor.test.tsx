@@ -76,7 +76,7 @@ describe("the letter's question", () => {
     expect(patches(calls)).toEqual([]);
   });
 
-  it("Yes files it with one press, then the Change button takes the question's place; Undo asks again", async () => {
+  it("Yes files it with one press, then the Change button takes the question's place; Undo asks again, focus on Yes", async () => {
     const { user, calls, id } = await openLetter(useMockApi(), "Alex Rivera", [ALEX]);
     await user.click(within(await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" })).getByRole("button", { name: "Yes" }));
     const toast = await toastOf("Filed for Alex Rivera");
@@ -87,7 +87,9 @@ describe("the letter's question", () => {
     expect(screen.queryByRole("group", { name: /Is this letter for/ })).toBeNull();
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(patches(calls).at(-1)).toEqual({ letters: { [id]: null } }));
-    expect(await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" })).toBeInTheDocument();
+    const again = await screen.findByRole("group", { name: "Is this letter for Alex Rivera?" });
+    // Change is gone with the answer: the keyboard goes on from the question that came back
+    await waitFor(() => expect(within(again).getByRole("button", { name: "Yes" })).toHaveFocus());
   });
 
   it("“No, it's mine” files it as the person's own; Undo forgets the answer", async () => {
@@ -153,7 +155,7 @@ describe("Change", () => {
 });
 
 describe("Add … to your household", () => {
-  it("adds the addressee with the letter filed for them, the box visible and ticked; Undo removes them again", async () => {
+  it("adds the addressee with the letter filed for them, the box visible and ticked; Undo removes them again, focus on the offer", async () => {
     const { user, calls, id } = await openLetter(useMockApi(), "Frau Alex Rivera", []);
     await user.click(await screen.findByRole("button", { name: "Add Alex Rivera to your household" }));
     const form = await screen.findByRole("dialog", { name: "Add to your household" });
@@ -174,6 +176,21 @@ describe("Add … to your household", () => {
     expect(screen.queryByRole("button", { name: /to your household/ })).toBeNull();
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(puts(calls).at(-1)).toMatchObject({ members: [] }));
+    // Change is gone with the person: the keyboard goes on from the offer that came back
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add Alex Rivera to your household" })).toHaveFocus());
+  });
+
+  it("a later change of the list takes the “Added …” Undo away, so no Undo is offered that can't work", async () => {
+    const { user } = await openLetter(useMockApi(), "Alex Rivera", []);
+    await user.click(await screen.findByRole("button", { name: "Add Alex Rivera to your household" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Add to your household" })).getByRole("button", { name: "Add" }));
+    await toastOf("Added Alex Rivera to your household");
+    const { toast } = await import("@/components/ui/Toast");
+    const { HOUSEHOLD_CHANGE_TOAST } = await import("./save");
+    act(() => void toast({ id: HOUSEHOLD_CHANGE_TOAST, title: "Removed Alex Rivera" })); // as Settings says a removal
+    await new Promise((r) => setTimeout(r, 100));
+    expect(screen.queryByText("Added Alex Rivera to your household")).toBeNull();
+    expect(screen.getByText("Removed Alex Rivera")).toBeInTheDocument();
   });
 
   it("adds only the person when the box is unticked: the letter then asks", async () => {

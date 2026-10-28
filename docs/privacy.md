@@ -71,8 +71,8 @@ contain an address: like every Idea's, their titles (an organisation's name, the
 of what *Weekly Ideas* and the daily note send.
 
 Your *For taxes* choices never reach Claude: Ask and *Weekly Ideas* see the mark Claude gave a letter when it
-read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays. When a letter
-you marked makes the tax-season Idea appear, its title (*Your 2025 tax documents are ready to collect*: no
+read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays. Your choices
+can make the tax-season Idea appear or go away; its title (*Your 2025 tax documents are ready to collect*: no
 letter, no count), like every Idea's, is part of what *Weekly Ideas* and the daily note send. Your household
 never reaches Claude either ([below](#your-household)).
 
@@ -124,8 +124,9 @@ Settings → Profile & address → *Your household* lists the people whose lette
 your children — and whether each signs their own letters
 ([ADR 0023](decisions/0023-letters-for-your-household-are-suggested-never-filed.md)). Ordnung suggests who a
 letter is for from the addressee its reading names, on your computer, and files a letter for someone only when
-you press *Yes*, choose them under *Change*, or file a set of letters in the Inbox; nothing is filed by itself,
-by a reading, by the daily check or by sync.
+you press *Yes*, choose them under *Change*, file a set of letters in the Inbox, or add them from a letter with
+*Also file this letter for …* left ticked; nothing is filed by itself, by a reading, by the daily check or by
+sync.
 
 - **Where it lives.** One row of your database (`meta`, `household`): the names as you typed them, whether
   each signs, and which letters you filed for whom or said are yours. It goes where your database goes: into
@@ -139,10 +140,10 @@ by a reading, by the daily check or by sync.
   letters as yours.
 - **Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file
   letters, and the privacy log notes each time ("Changed who a letter is for on Anna's iPhone").
-- **Removing and deleting.** Removing a person takes them off the list, and their letters count as yours again;
-  which letters were filed for them is kept until your next change of the list, so the toast's *Undo* can file
-  them again. Deleting a letter for good removes its filing in the same step; the trash keeps it, as it keeps
-  the letter. *Delete everything* removes the row with the rest of the database.
+- **Removing and deleting.** Removing a person takes them off the list, and their letters are in your own
+  letters again; which letters were filed for them is kept until your next change of the list, so the toast's
+  *Undo* can file them again. Deleting a letter for good removes its filing in the same step; the trash keeps
+  it, as it keeps the letter. *Delete everything* removes the row with the rest of the database.
 
 ## Your controls
 

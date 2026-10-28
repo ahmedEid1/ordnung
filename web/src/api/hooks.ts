@@ -264,20 +264,39 @@ export function useSaveHousehold() {
 /** The most letters one `PATCH /api/household` takes (the body's cap). */
 export const FILE_LETTERS_MAX = 1_000;
 
+/** The letters a chunked filing filed before one of its requests failed, by the error it failed with. */
+const filedBefore = new WeakMap<object, string[]>();
+
+/**
+ * The letters {@link useFileLetters} filed before a later chunk failed with `err` (the mutation's error), for a toast
+ * and an Undo of those; `[]` when it filed none (the first chunk failed, or it was one request).
+ */
+export function filedBeforeFailure(err: unknown): string[] {
+  return (typeof err === "object" && err !== null && filedBefore.get(err)) || [];
+}
+
 /**
  * File letters: a member's id, `"me"`, or null (forget the answer) per letter id. More than
  * {@link FILE_LETTERS_MAX} go in chunks, one after the other, inside this one mutation (an Undo sends its own
- * answers back the same way); the answer is the household after the last one.
+ * answers back the same way); the answer is the household after the last one. When a later chunk fails, the
+ * earlier ones stay filed: {@link filedBeforeFailure} names their letters.
  */
 export function useFileLetters() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ letters }: HouseholdFiling) => {
       const entries = Object.entries(letters);
+      const filed: string[] = [];
       let household: Household | undefined;
       for (let start = 0; start === 0 || start < entries.length; start += FILE_LETTERS_MAX) {
         const chunk = Object.fromEntries(entries.slice(start, start + FILE_LETTERS_MAX));
-        household = await api.fileLetters({ letters: chunk });
+        try {
+          household = await api.fileLetters({ letters: chunk });
+        } catch (err) {
+          if (filed.length && typeof err === "object" && err !== null) filedBefore.set(err, filed);
+          throw err;
+        }
+        filed.push(...Object.keys(chunk));
       }
       return household as Household;
     },

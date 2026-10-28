@@ -13,9 +13,9 @@ import { Link } from "react-router";
 import { Landmark } from "lucide-react";
 import type { Document, DocumentDetail } from "@/api/types";
 import { useUpdateDocument } from "@/api/hooks";
-import { Button } from "@/components/ui/Button";
 import { toast } from "@/components/ui/Toast";
 import { forTaxes, letterYear } from "@/features/export/selection";
+import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/features/today/focus";
 
 /** The toggle's id, and its line's (`aria-describedby`). */
@@ -101,7 +101,8 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
   };
 
   return (
-    <Button
+    // busy while it saves, never `disabled`, which would drop a keyboard user's focus to the page
+    <AnswerButton
       id={toggleId(doc.id)}
       size="sm"
       // a toggle keeps its name; whether it is on is aria-pressed, and the accent tint shows it
@@ -109,10 +110,10 @@ export function TaxToggle({ detail }: { detail: DocumentDetail }) {
       icon={Landmark}
       aria-pressed={on}
       aria-describedby={described}
-      loading={update.isPending}
+      busy={update.isPending}
       onClick={press}
     >
       For taxes
-    </Button>
+    </AnswerButton>
   );
 }

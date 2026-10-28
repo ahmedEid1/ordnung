@@ -10,10 +10,13 @@ mark any letter themselves, or take one Claude marked off, with *For taxes* on t
    never the choice, and nothing Claude is asked changes.
 3. **What follows it:** the Tax year page, *Export letters* with *Only letters for taxes* (the ZIP and its
    ``index.csv``), the tax-season Idea and the weekly session's "Keep it with your tax papers".
-4. **What doesn't:** Ask and the weekly review keep Claude's own mark. Their inputs are recorded, so giving
-   them the choice would need new recordings.
+4. **What doesn't:** Ask and the weekly review keep Claude's own mark on each letter. Their inputs are
+   recorded, so giving them the choice would need new recordings. The tax-season Idea follows the choice
+   (point 3), and its title, like every Idea's, is part of what the weekly review and the daily note send: in
+   tax season a choice can make it appear there or go away.
 5. **Only a press sets it:** the toggle or its Undo. Readings, sync and Ideas never do. Deleting a letter for
-   good drops its choice; the trash keeps it.
+   good drops its choice; the trash keeps it. A letter just added has none, even when one was left under its
+   id (:meth:`ordnung.db.store.Store.add_document`).
 """
 
 from __future__ import annotations

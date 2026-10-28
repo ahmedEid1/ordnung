@@ -98,4 +98,5 @@ is for on …"), `PUT /api/household` is computer-only ("household edits").
   edit.
 - A computer still on 0.2.0 keeps the row but doesn't show it: every letter is the person's there. A letter
   deleted for good there leaves its filing (an id, nothing of the letter) until an updated computer in use runs
-  its daily check.
+  its daily check. A letter's id comes from its file, so the same file added again gets that id: on an updated
+  computer it starts unfiled (adding a letter drops a filing left under its id), on 0.2.0 it is filed as before.

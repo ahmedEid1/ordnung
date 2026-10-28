@@ -254,6 +254,48 @@ def test_the_purge_removes_exactly_the_letter_s_key(store: Store) -> None:
     assert json.loads(_raw(store, HOUSEHOLD_META_KEY) or "{}")["links"] == {bracket: "me"}
 
 
+def test_a_letter_added_again_after_0_2_0_deleted_it_starts_with_no_choice_and_no_filing(
+    store: Store,
+) -> None:
+    """A letter's id comes from its file's hash. A computer still on 0.2.0 deletes a letter for good without
+    knowing either row, so they keep its id; the same file added again here gets that id back, but nothing the
+    person chose for the old letter: a letter only just added has no choice and no filing."""
+    gone, kept = _letter(store, "same file"), _letter(store, "kept")
+    store.set_tax_choice(gone, False)
+    store.set_tax_choice(kept, True)
+    store.set_meta(HOUSEHOLD_META_KEY, _household({gone: "hhm_0123456789ab", kept: "me"}))
+    with store.tx() as conn:  # what 0.2.0's delete_document leaves: the letter gone, both rows as they were
+        conn.execute("DELETE FROM documents WHERE id = ?", (gone,))
+    assert gone in store.tax_choices()
+    again = _letter(store, "same file")
+    assert again == gone
+    assert store.tax_choices() == {kept: True}
+    household = json.loads(_raw(store, HOUSEHOLD_META_KEY) or "{}")
+    assert household["links"] == {kept: "me"}
+    assert household["members"] == [{"id": "hhm_0123456789ab", "name": "Alex Rivera", "signs": True}]
+    marked = store.update_document(again, tax_relevant=True)  # Claude marks the new letter: it counts
+    assert for_taxes(marked, store.tax_choices()) is True
+    # the last choice going takes the row with it
+    store.set_tax_choice(kept, None)
+    store.set_tax_choice(gone, True)
+    with store.tx() as conn:
+        conn.execute("DELETE FROM documents WHERE id = ?", (gone,))
+    _letter(store, "same file")
+    assert _raw(store, TAX_CHOICES_META_KEY) is None
+
+
+def test_adding_a_letter_leaves_both_rows_as_they_are_when_neither_names_it(store: Store) -> None:
+    _letter(store, "first")
+    assert _raw(store, TAX_CHOICES_META_KEY) is None and _raw(store, HOUSEHOLD_META_KEY) is None
+    kept = _letter(store, "kept")
+    store.set_tax_choice(kept, True)
+    store.set_meta(HOUSEHOLD_META_KEY, _household({kept: "me"}))
+    choices, household = _raw(store, TAX_CHOICES_META_KEY), _raw(store, HOUSEHOLD_META_KEY)
+    _letter(store, "new")
+    assert _raw(store, TAX_CHOICES_META_KEY) == choices
+    assert _raw(store, HOUSEHOLD_META_KEY) == household
+
+
 @pytest.mark.parametrize("raw", ["not json", '{"format": 1, "links": []}', "[]"])
 def test_a_purge_never_fails_on_a_row_it_can_t_read(store: Store, raw: str) -> None:
     letter = _letter(store, "letter")

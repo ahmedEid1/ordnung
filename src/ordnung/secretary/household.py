@@ -22,7 +22,8 @@ person says so.
    change of the list drops them. Filing letters meanwhile leaves them as they are.
 8. **Letters:** a link to a letter in the trash is dormant and returns with it; deleting a letter for good
    removes its link in the same transaction (:meth:`ordnung.db.store.Store.delete_document`); the daily check
-   removes links to letters that no longer exist (left by a computer still on 0.2.0).
+   removes links to letters that no longer exist (left by a computer still on 0.2.0); a letter just added
+   starts unfiled, even when a link was left under its id (:meth:`ordnung.db.store.Store.add_document`).
 9. **Never seen by Claude:** nothing here goes into a prompt, a draft request, Ask or a notification. Dates,
    reminders, numbers, Ask and Ideas keep treating every letter as the person's.
 

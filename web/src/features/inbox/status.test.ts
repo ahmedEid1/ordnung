@@ -115,8 +115,8 @@ describe("the Inbox's empty states", () => {
   it("keeps the all-clear of Please check and the Private explanation for the whole inbox only", () => {
     expect(emptyCopy(view({ filter: "check", year: 2025 })).title).toBe("No letters dated 2025 to check");
     expect(emptyCopy(view({ filter: "private", year: 2025 })).action).toBe("clear-filters");
-    expect(emptyCopy(view({ filter: "check", who: { kind: "mine" } })).title).toBe("No letters to check");
-    expect(emptyCopy(view({ filter: "private", who: { kind: "person", name: "Alex Rivera", suggested: 0 } })).title).toBe("No private letters");
+    expect(emptyCopy(view({ filter: "check", who: { kind: "mine" } })).title).toBe("No letters of yours to check");
+    expect(emptyCopy(view({ filter: "private", who: { kind: "person", name: "Alex Rivera", suggested: 0 } })).title).toBe("No private letters for Alex Rivera");
     expect(emptyCopy(view({ filter: "private", who: { kind: "person", name: "Alex Rivera", suggested: 0 } })).action).toBe("clear-filters");
   });
 
@@ -138,9 +138,20 @@ describe("the Inbox's empty states", () => {
       illustration: "letter",
       action: "clear-filters",
     });
-    // with a year, a kind or a search as well: the words of those, as for any filter
-    expect(emptyCopy(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 }, year: 2025 })).title).toBe("No letters dated 2025");
-    expect(emptyCopy(view({ who: { kind: "mine" }, kindLabel: "Invoice" })).title).toBe("No “Invoice” letters");
+    // with a year, a kind or a search as well: the words of those, as for any filter, and whose letters are missing —
+    // never "choose another year" when that year has letters of someone else's
+    expect(emptyCopy(view({ who: { kind: "person", name: "Alex Rivera", suggested: 0 }, year: 2017 }))).toEqual({
+      title: "No letters for Alex Rivera dated 2017",
+      description: "Clear the filters to see all your letters.",
+      illustration: "search",
+      action: "clear-filters",
+    });
+    expect(emptyCopy(view({ who: { kind: "mine" }, year: 2025 }))).toMatchObject({
+      title: "No letters of yours dated 2025",
+      description: "Clear the filters to see all your letters.",
+    });
+    expect(emptyCopy(view({ who: { kind: "mine" }, year: 2025, filter: "check" })).title).toBe("No letters of yours dated 2025 to check");
+    expect(emptyCopy(view({ who: { kind: "mine" }, kindLabel: "Invoice" })).title).toBe("No “Invoice” letters of yours");
     expect(emptyCopy(view({ who: { kind: "mine" }, q: "Muster" })).action).toBe("clear-filters");
   });
 

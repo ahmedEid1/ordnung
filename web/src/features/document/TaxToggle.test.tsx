@@ -153,6 +153,34 @@ describe("the For taxes toggle", () => {
     expect(patches(calls, "doc_dentist")).toEqual([{ tax_choice: true }, { tax_choice: false }, { tax_choice: true }]);
   });
 
+  it("a keyboard press keeps focus on the toggle while it saves, and a second press then sends nothing", async () => {
+    const { calls } = useMockApi();
+    const mocked = globalThis.fetch;
+    let release: () => void = () => undefined;
+    let held = 0;
+    vi.stubGlobal("fetch", (input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method !== "PATCH") return mocked(input, init);
+      held += 1;
+      return new Promise<Response>((resolve) => (release = () => resolve(mocked(input, init))));
+    });
+    const user = userEvent.setup();
+    renderLetter("doc_dentist");
+    const button = await toggle();
+    act(() => button.focus());
+    await user.keyboard("{Enter}");
+    // busy, but never `disabled`: a disabled button would drop focus to the page
+    await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"));
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(held).toBe(1);
+    await act(async () => release());
+    await waitFor(async () => expect(await toggle()).toHaveAttribute("aria-pressed", "true"));
+    expect(await toggle()).not.toHaveAttribute("aria-busy");
+    expect(await toggle()).toHaveFocus();
+    expect(patches(calls, "doc_dentist")).toEqual([{ tax_choice: true }]);
+  });
+
   it("it is hidden for a waiting letter, one being read and one in the trash, and shown for a private letter and on a phone", async () => {
     const shown = (doc: Partial<DocumentDetail["document"]>) => taxToggleShown(makeDoc(doc));
     expect(shown({ status: "held", ai_private: true })).toBe(false);

@@ -4119,7 +4119,8 @@ D3_FOR_TAXES = (
     "one Claude marked off them — private letters too, and on your phone, with Undo.",
     "Your choice stays when the letter is read again; the Tax year page, *Export letters* with *Only letters for "
     "taxes*, the tax-season Idea and the weekly review's *Keep it with your tax papers* follow it.",
-    "Ask and *Weekly Ideas* still see Claude's own mark.",
+    "Ask and *Weekly Ideas* still see Claude's own mark on each letter; the tax-season Idea, whose title *Weekly "
+    "Ideas* and the daily note send like every Idea's, follows your choice.",
 )
 #: CHANGELOG, Unreleased → Added: the Inbox's year (d3-inbox).
 D3_YEAR = (
@@ -4146,19 +4147,21 @@ D3_UPGRADING = (
     "A computer still on 0.2.0 keeps the letters you marked or unmarked for taxes but doesn't use your choices: "
     "its Tax year page, export and tax-season Idea go by Claude's marks alone, and a letter deleted for good "
     "there leaves its choice behind (its id and yes or no, nothing of the letter) until you next mark or unmark "
-    "a letter on an updated computer. Update both computers.",
+    "a letter on an updated computer: the same file added again on 0.2.0 meanwhile takes that choice back (on an "
+    "updated computer it starts with none). Update both computers.",
     "A computer still on 0.2.0 keeps your household and the letters you filed for its people when it receives "
     "them by hand-off sync or from a backup, but doesn't show them: there every letter is yours, as before. "
     "Update both computers.",
     "A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the "
-    "letter) until an updated computer in use runs its daily check.",
+    "letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile "
+    "is filed as before (on an updated computer it starts unfiled).",
 )
 #: README's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet").
 README_TAX_LIMIT = (
     "Claude marks a letter for taxes when it reads it; *For taxes* on a letter's page changes that, for private "
     "letters too, and your choice stays when the letter is read again. Ask, and the Ideas Claude suggests each "
-    "week, still go by Claude's own mark. A letter still waiting under *From your folder — not read yet* can't "
-    "be marked"
+    "week, still see Claude's own mark on each letter (the tax-season Idea follows your choice). A letter still "
+    "waiting under *From your folder — not read yet* can't be marked"
 )
 #: README "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
 README_D3_ALSO = (
@@ -4173,14 +4176,15 @@ PRIVACY_FOR_TAXES = (
     "it read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays."
 )
 PRIVACY_TAX_IDEA = (
-    "When a letter you marked makes the tax-season Idea appear, its title (*{title}*: no letter, no count), like "
+    "Your choices can make the tax-season Idea appear or go away; its title (*{title}*: no letter, no count), like "
     "every Idea's, is part of what *Weekly Ideas* and the daily note send."
 )
 #: docs/privacy.md, "Your household": when a letter is filed, what never reaches Claude, who may change it.
 PRIVACY_HOUSEHOLD = (
     "Ordnung suggests who a letter is for from the addressee its reading names, on your computer, and files a "
-    "letter for someone only when you press *Yes*, choose them under *Change*, or file a set of letters in the "
-    "Inbox; nothing is filed by itself, by a reading, by the daily check or by sync.",
+    "letter for someone only when you press *Yes*, choose them under *Change*, file a set of letters in the "
+    "Inbox, or add them from a letter with *Also file this letter for …* left ticked; nothing is filed by itself, "
+    "by a reading, by the daily check or by sync.",
     "**Never sent to Claude.** The list is not put into a prompt, a draft request, Ask's tools, a notification, "
     "a calendar or anything *Weekly Ideas* and the daily note send.",
     "**Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file "
@@ -4470,10 +4474,12 @@ def test_the_spec_and_architecture_say_how_for_taxes_and_the_household_work() ->
     for words in (
         "**For taxes** is the person's own choice over Claude's mark",
         "`Ledger.tax_choices` is read lazily, so Ask's server, which builds Ledgers, never reads the row",
-        "Ask and the weekly review's snapshot for *Weekly Ideas* keep Claude's own mark.",
+        "Ask and the weekly review's snapshot for *Weekly Ideas* keep Claude's own mark on each letter; the "
+        "tax-season Idea, whose title is among the snapshot's open Ideas, follows the choice.",
         "**Your household** (`secretary/household.py`, a written policy;",
         f"[ADR 0023](decisions/{_ADR_HOUSEHOLD.name})",
         "a letter is filed for someone of the person's household only when they press",
+        "(*Yes*, *Change*, *File these N*, or *Add* with *Also file this letter* left ticked)",
     ):
         assert words in architecture, words
 

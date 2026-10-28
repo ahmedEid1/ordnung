@@ -18,6 +18,13 @@ export const MAX_PEOPLE = 12;
 /** Where Settings keeps the household: Profile & address, its second card. */
 export const MANAGE_HOUSEHOLD_HREF = "/settings?section=profile#set-household";
 
+/**
+ * The id of every toast that follows a change of the list (added, saved, removed): each one replaces the one before,
+ * so only the newest *Undo* is offered. An older one could never work: it names the list as it was before the later
+ * change (`base`), and a removed person's letters wait for the next change only.
+ */
+export const HOUSEHOLD_CHANGE_TOAST = "household-change";
+
 /** `PUT /api/household` without the app's error toast: the caller says what went wrong ({@link refusal}). */
 export function useChangeHousehold() {
   const qc = useQueryClient();
@@ -70,7 +77,10 @@ export function lettersLabel(n: number): string {
   return n === 1 ? "1 letter" : `${n} letters`;
 }
 
-/** What a removal does to a person's letters: "Their 4 letters count as yours again." */
-export function countAsYours(n: number): string {
-  return n === 1 ? "Their 1 letter counts as yours again." : `Their ${n} letters count as yours again.`;
+/**
+ * What a removal does to a person's letters: "Their 4 letters are in your own letters again." It says whose list they
+ * show in; their dates, reminders and numbers were the person's all along.
+ */
+export function backToYours(n: number): string {
+  return n === 1 ? "Their 1 letter is in your own letters again." : `Their ${n} letters are in your own letters again.`;
 }

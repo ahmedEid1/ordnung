@@ -93,6 +93,24 @@ for (const width of [320, 390, 1280]) {
       }
     });
 
+    test("a keyboard press keeps focus on For taxes while it saves and after", async ({ page }) => {
+      const id = await openLetter(page);
+      try {
+        await toggle(page).focus();
+        await page.keyboard.press("Enter");
+        await expect(toast(page, "Marked for taxes")).toBeVisible();
+        await expect(toggle(page)).toHaveAttribute("aria-pressed", "true");
+        await expect(toggle(page)).toBeFocused();
+        await page.keyboard.press("Space");
+        await expect(toast(page, "Not marked for taxes")).toBeVisible();
+        await expect(toggle(page)).toHaveAttribute("aria-pressed", "false");
+        await expect(toggle(page)).toBeFocused();
+        expect(await choiceOf(page, id)).toBe(false);
+      } finally {
+        await apiPatch(page, `/api/documents/${id}`, { tax_choice: null });
+      }
+    });
+
     test("axe: no serious or critical violations on the letter page with the toast open", async ({ page }, testInfo) => {
       const id = await openLetter(page);
       try {

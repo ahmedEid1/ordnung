@@ -151,10 +151,44 @@ describe("Your household (Settings)", () => {
     await user.click(await screen.findByRole("button", { name: "Remove Alex Rivera" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     const toast = (await screen.findByText("Removed Alex Rivera")).closest("[data-toast]") as HTMLElement;
-    expect(toast).not.toHaveTextContent("count as yours again");
+    expect(toast).not.toHaveTextContent("in your own letters again");
     await waitFor(() => expect(screen.getByText("No one yet.")).toBeInTheDocument());
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect(srv.db.state.household.members).toEqual([ALEX]));
+  });
+
+  it("after a removal the keyboard goes on from the next person's Edit, not a text field, so Alt+N reaches the Undo", async () => {
+    const { user } = renderCard(useMockApi(), { members: [ALEX, MIA] });
+    await user.click(await screen.findByRole("button", { name: "Remove Alex Rivera" }));
+    await screen.findByText("Removed Alex Rivera");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Edit Mia Rivera" })).toHaveFocus());
+    // the last one gone: the card's heading
+    await user.click(screen.getByRole("button", { name: "Remove Mia Rivera" }));
+    await screen.findByText("Removed Mia Rivera");
+    await waitFor(() => expect(document.getElementById("set-household")).toHaveFocus());
+    expect(addField()).not.toHaveFocus();
+  });
+
+  it("a later change takes the earlier Undo away: only the newest one is offered, and it works", async () => {
+    const { user, srv } = renderCard(useMockApi(), { members: [ALEX, MIA] });
+    await user.click(await screen.findByRole("button", { name: "Remove Alex Rivera" }));
+    await screen.findByText("Removed Alex Rivera");
+    await waitFor(() => expect(people()).toHaveLength(1));
+    await user.click(screen.getByRole("button", { name: "Remove Mia Rivera" }));
+    const toast = (await screen.findByText("Removed Mia Rivera")).closest("[data-toast]") as HTMLElement;
+    expect(screen.queryByText("Removed Alex Rivera")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Undo" })).toHaveLength(1);
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+    await waitFor(() => expect(srv.db.state.household.members).toEqual([MIA]));
+    expect(screen.queryByText(/changed in another window/)).toBeNull();
+    // an edit or an add takes it away too
+    await user.click(await screen.findByRole("button", { name: "Remove Mia Rivera" }));
+    await screen.findByText("Removed Mia Rivera");
+    await user.type(addField(), "Kim Rivera");
+    await user.click(within(card()).getByRole("button", { name: "Add to household" }));
+    expect(await screen.findByText("Added Kim Rivera")).toBeInTheDocument();
+    expect(screen.queryByText("Removed Mia Rivera")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
   });
 
   it("asks before removing someone with letters, and Undo files their letters again", async () => {
@@ -174,10 +208,10 @@ describe("Your household (Settings)", () => {
     expect(row).toHaveTextContent("Signs their own letters · 2 letters");
     await user.click(within(row).getByRole("button", { name: "Remove Alex Rivera" }));
     const dialog = await screen.findByRole("dialog", { name: "Remove Alex Rivera?" });
-    expect(dialog).toHaveTextContent("Their 2 letters count as yours again. Nothing is deleted.");
+    expect(dialog).toHaveTextContent("Their 2 letters are in your own letters again. Nothing is deleted.");
     await user.click(within(dialog).getByRole("button", { name: "Remove" }));
     const toast = (await screen.findByText("Removed Alex Rivera")).closest("[data-toast]") as HTMLElement;
-    expect(toast).toHaveTextContent("Their 2 letters count as yours again.");
+    expect(toast).toHaveTextContent("Their 2 letters are in your own letters again.");
     await waitFor(() => expect(people()).toHaveLength(1));
     await user.click(within(toast).getByRole("button", { name: "Undo" }));
     await waitFor(() => expect((api.srv.db.state.household.members ?? []).map((m) => m.id)).toEqual([ALEX.id, MIA.id]));
@@ -198,7 +232,7 @@ describe("Your household (Settings)", () => {
   );
     await user.click(await screen.findByRole("button", { name: "Remove Alex Rivera" }));
     const dialog = await screen.findByRole("dialog", { name: "Remove Alex Rivera?" });
-    expect(dialog).toHaveTextContent("Their 1 letter counts as yours again. Nothing is deleted.");
+    expect(dialog).toHaveTextContent("Their 1 letter is in your own letters again. Nothing is deleted.");
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(api.srv.db.state.household.members).toEqual([ALEX]);
   });

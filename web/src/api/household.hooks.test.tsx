@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Household } from "@/api/types";
 import { makeTestQueryClient } from "@/test/render";
 import { makeDetail } from "@/features/document/fixtures";
-import { FILE_LETTERS_MAX, invalidateLedger, qk, useFileLetters, useHousehold, useSaveHousehold } from "./hooks";
+import { FILE_LETTERS_MAX, filedBeforeFailure, invalidateLedger, qk, useFileLetters, useHousehold, useSaveHousehold } from "./hooks";
 import { __resetEventsForTests, handleServerEvent } from "./sse";
 
 const EMPTY: Household = { members: [], filed: {}, mine: [], suggested: {}, version: "4f53cda18c2baa0c" };
@@ -81,6 +81,35 @@ describe("your household's hooks", () => {
     expect(Object.assign({}, ...bodies)).toEqual(letters);
     expect(qc.getQueryData(qk.household)).toEqual(WITH_ALEX);
     expect(qc.getQueryState(qk.documents.detail("doc_1"))?.isInvalidated).toBe(true);
+  });
+
+  it("a chunk that fails after others went through says which letters were filed", async () => {
+    const { wrapper } = setup();
+    const answered = vi.mocked(globalThis.fetch);
+    const ok = answered.getMockImplementation()!;
+    let patches = 0;
+    answered.mockImplementation(async (url, init) => {
+      if (init?.method === "PATCH" && ++patches === 2) {
+        return new Response(JSON.stringify({ detail: "This letter is in the trash." }), { status: 404, headers: { "Content-Type": "application/json" } });
+      }
+      return ok(url, init);
+    });
+    const { result } = renderHook(() => useFileLetters(), { wrapper });
+    const letters = Object.fromEntries(Array.from({ length: 2_345 }, (_, n) => [`doc_${n}`, ALEX.id]));
+    let failed: unknown = null;
+    await act(async () => {
+      await result.current.mutateAsync({ letters }).catch((err: unknown) => (failed = err));
+    });
+    expect(failed).toBeInstanceOf(Error);
+    expect(sent.filter((c) => c.method === "PATCH")).toHaveLength(1); // the second chunk was refused, the third never sent
+    expect(filedBeforeFailure(failed)).toEqual(Object.keys(letters).slice(0, 1_000));
+    // a first chunk that fails filed nothing
+    patches = 1;
+    await act(async () => {
+      await result.current.mutateAsync({ letters }).catch((err: unknown) => (failed = err));
+    });
+    expect(filedBeforeFailure(failed)).toEqual([]);
+    expect(filedBeforeFailure(new Error("x"))).toEqual([]);
   });
 
   it("a small filing is one request", async () => {

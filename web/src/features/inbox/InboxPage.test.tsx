@@ -483,7 +483,7 @@ describe("Inbox", () => {
       const user = userEvent.setup();
       renderInbox(`/inbox?for=${ALEX}`);
       const card = await screen.findByRole("region", { name: /Addressed to Alex Rivera, not filed yet/ });
-      expect(within(card).getByText("Ordnung read Alex Rivera's name on these letters. They count as yours until you file them.")).toBeInTheDocument();
+      expect(within(card).getByText("Ordnung read Alex Rivera's name on these letters. They're in your own letters until you file them; their dates and reminders stay yours either way.")).toBeInTheDocument();
       expect(
         within(card)
           .getAllByRole("link")

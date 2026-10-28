@@ -706,11 +706,11 @@ More in [docs/architecture.md](docs/architecture.md).
   letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
   January payslip for the new year and misses a statement dated in June. Claude marks a letter for taxes when
   it reads it; *For taxes* on a letter's page changes that, for private letters too, and your choice stays when
-  the letter is read again. Ask, and the Ideas Claude suggests each week, still go by Claude's own mark. A
-  letter still waiting under *From your folder — not read yet* can't be marked, and *Export letters* with *Only
-  letters for taxes* off takes all of a year's letters, private ones too, but not those: choose *Read these* or
-  *Keep private* first. The ZIP *Export letters* saves isn't encrypted, and letters you wrote in Ordnung and
-  their proofs of sending aren't in it.
+  the letter is read again. Ask, and the Ideas Claude suggests each week, still see Claude's own mark on each
+  letter (the tax-season Idea follows your choice). A letter still waiting under *From your folder — not read
+  yet* can't be marked, and *Export letters* with *Only letters for taxes* off takes all of a year's letters,
+  private ones too, but not those: choose *Read these* or *Keep private* first. The ZIP *Export letters* saves
+  isn't encrypted, and letters you wrote in Ordnung and their proofs of sending aren't in it.
 - The moving checklist knows only the organisations Ordnung has seen in your contracts and letters (a running
   contract, or a letter of the last three years from a bank, an insurer, your employer, a landlord, a utility,
   an office and the like); others, such as your doctor or online shops, aren't on it. It doesn't cover moving

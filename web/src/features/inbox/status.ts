@@ -125,7 +125,9 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       action: "clear-search",
     };
   }
-  const letters = v.kindLabel ? `“${v.kindLabel}” letters` : "letters";
+  // whose letters are missing, when the For choice narrows the list too
+  const whose = !v.who ? "" : v.who.kind === "mine" ? " of yours" : ` for ${v.who.name}`;
+  const letters = `${v.kindLabel ? `“${v.kindLabel}” letters` : "letters"}${whose}`;
   const dated = v.year != null ? ` dated ${v.year}` : "";
   const title = v.q
     ? `No letters match “${v.q}”`
@@ -134,7 +136,8 @@ export function emptyCopy(v: InboxView, phone = false, held = 0): EmptyCopy {
       : v.filter === "private"
         ? `No private ${letters}${dated}`
         : `No ${letters}${dated}`;
-  const yearAlone = v.year != null && !v.q && !v.kindLabel && v.filter === "all";
+  // only the year narrows the list: that year has no letters at all
+  const yearAlone = v.year != null && !v.q && !v.kindLabel && !v.who && v.filter === "all";
   return {
     title,
     description: v.q

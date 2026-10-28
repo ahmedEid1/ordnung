@@ -99,7 +99,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   to your letters for taxes, or to take one Claude marked off them — private letters too, and on your phone,
   with Undo. Your choice stays when the letter is read again; the Tax year page, *Export letters* with *Only
   letters for taxes*, the tax-season Idea and the weekly review's *Keep it with your tax papers* follow it. Ask
-  and *Weekly Ideas* still see Claude's own mark.
+  and *Weekly Ideas* still see Claude's own mark on each letter; the tax-season Idea, whose title *Weekly
+  Ideas* and the daily note send like every Idea's, follows your choice.
 - **The Inbox shows one year at a time.** A *Year* choice next to the kind of letter shows the letters dated
   in that year (else arrived in it), as the Tax year page files them; its *Letters for taxes* link then opens
   that year.
@@ -249,12 +250,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - A computer still on 0.2.0 keeps the letters you marked or unmarked for taxes but doesn't use your choices:
   its Tax year page, export and tax-season Idea go by Claude's marks alone, and a letter deleted for good there
   leaves its choice behind (its id and yes or no, nothing of the letter) until you next mark or unmark a letter
-  on an updated computer. Update both computers.
+  on an updated computer: the same file added again on 0.2.0 meanwhile takes that choice back (on an updated
+  computer it starts with none). Update both computers.
 - A computer still on 0.2.0 keeps your household and the letters you filed for its people when it receives
   them by hand-off sync or from a backup, but doesn't show them: there every letter is yours, as before. Update
   both computers.
 - A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the
-  letter) until an updated computer in use runs its daily check.
+  letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile
+  is filed as before (on an updated computer it starts unfiled).
 
 ## 0.2.0 — 2026-10-08
 
