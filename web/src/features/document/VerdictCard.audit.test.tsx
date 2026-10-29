@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
+import { labelInName } from "@/test/labelInName";
 import { qk } from "@/api/hooks";
 import type { DocumentDetail, Draft, Item } from "@/api/types";
 import * as ToastModule from "@/components/ui/Toast";
@@ -203,7 +204,9 @@ describe("what the verdict leads with", () => {
     expect(within(verdict).queryByText(/overdue/)).toBeNull();
     const row = within(verdict).getByRole("list", { name: "Probably dealt with" });
     expect(row).toHaveTextContent("Still open? Security deposit (Kaution) was due 1 Oct 2025");
-    expect(within(row).getByRole("button", { name: "Mark “Security deposit (Kaution)” done" })).toBeInTheDocument();
+    // named with what it shows, "Mark done", whole and first (WCAG 2.5.3: axe 4.14 didn't find it in "Mark “…” done")
+    const done = within(row).getByRole("button", { name: "Mark done: “Security deposit (Kaution)”" });
+    expect(labelInName(done)).toMatchObject({ ok: true, shown: "Mark done" });
   });
 });
 

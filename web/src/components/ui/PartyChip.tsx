@@ -39,8 +39,14 @@ export function PartyChip({ party, id, name, kind, size = "sm", showKind, classN
     <>
       <Avatar name={pname} kind={pkind} size={size === "sm" ? "xs" : "sm"} className="rounded-full" />
       <span className="min-w-0 truncate">{pname}</span>
-      {/* the kind shrinks (and ends in "…") long before the name does */}
-      {kindLabel ? <span className="min-w-0 shrink-[999] truncate font-normal text-muted">· {kindLabel}</span> : null}
+      {/* the kind shrinks (and ends in "…") long before the name does; the space keeps the two apart in the
+          button's name (a flex row doesn't draw it) */}
+      {kindLabel ? (
+        <>
+          {" "}
+          <span className="min-w-0 shrink-[999] truncate font-normal text-muted">· {kindLabel}</span>
+        </>
+      ) : null}
     </>
   );
   const title = kindLabel ? `${pname} · ${kindLabel}` : pname;
@@ -56,9 +62,9 @@ export function PartyChip({ party, id, name, kind, size = "sm", showKind, classN
       onClick={() => drawer.open(pid)}
       title={title}
       className={cn(cls, "transition-[color,background-color,border-color] hover:border-line-strong hover:bg-surface-2")}
-      aria-label={`${pname} — open details`}
     >
-      {inner}
+      {/* named by what it shows (WCAG 2.5.3; the initials are decoration), then what a press does */}
+      {inner} <span className="sr-only">— open details</span>
     </button>
   );
 }

@@ -167,7 +167,7 @@ describe("Stepper", () => {
 describe("PartyChip", () => {
   it("keeps the name and lets the kind give way, with the full name in its tooltip and a 24 px target", () => {
     renderWithProviders(<PartyChip id="pty_abh" name="Ausländerbehörde Musterstadt" kind="immigration_office" showKind />);
-    const chip = screen.getByRole("button", { name: /Ausländerbehörde Musterstadt — open details/ });
+    const chip = screen.getByRole("button", { name: "Ausländerbehörde Musterstadt · Immigration office — open details" });
     expect(chip).toHaveAttribute("title", "Ausländerbehörde Musterstadt · Immigration office");
     expect(chip.className).toMatch(/\bmin-h-6\b/);
     expect(chip.className).toContain("transition-[color,background-color,border-color]");
@@ -177,6 +177,13 @@ describe("PartyChip", () => {
     expect(name.className).toMatch(/\bmin-w-0\b.*\btruncate\b/);
     expect(kind.className).toMatch(/shrink-\[999\]/);
     expect(kind.className).toMatch(/\btruncate\b/);
+  });
+
+  it("is named by what it shows, first (WCAG 2.5.3): the name, then what a press does; the initials are decoration", () => {
+    renderWithProviders(<PartyChip id="pty_wohnbau" name="Wohnbau Musterstadt eG" kind="landlord" />);
+    const chip = screen.getByRole("button", { name: "Wohnbau Musterstadt eG — open details" });
+    expect(chip).not.toHaveAttribute("aria-label");
+    expect(within(chip).getByText("WM")).toHaveAttribute("aria-hidden", "true");
   });
 });
 

@@ -64,9 +64,10 @@ for (const width of [1024, 1280, 1440, 1920]) {
     });
     expect(gap).toBeLessThanOrEqual(25);
 
-    // the header's chips are whole (they have their own row until the buttons leave room)
+    // the header's chips are whole (they have their own row until the buttons leave room); "— open details" is
+    // for screen readers only, a 1 px box on purpose
     const chip = page.getByRole("button", { name: /FunkNetz Mobil GmbH — open details/ });
-    expect(await chip.evaluate((el) => [...el.querySelectorAll("span")].every((s) => s.scrollWidth <= s.clientWidth + 1))).toBe(true);
+    expect(await chip.evaluate((el) => [...el.querySelectorAll("span:not(.sr-only)")].every((s) => s.scrollWidth <= s.clientWidth + 1))).toBe(true);
   });
 }
 
