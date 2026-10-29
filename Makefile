@@ -3,7 +3,7 @@ UV ?= uv
 SAMPLES_MANIFEST = src/ordnung/demo/samples/manifest.json
 DE_ZIP ?= DE.zip
 
-.PHONY: install dev web-dev serve test lint typecheck check build-web openapi demo eval browser e2e ui-audit capture samples postcodes constraints clean
+.PHONY: install dev web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints clean
 
 install:            ## install backend (editable, dev extras, the versions CI pins) and frontend deps
 	$(UV) venv -q .venv || true
@@ -55,6 +55,9 @@ demo:               ## explore the sample life (replayed model outputs, zero tok
 
 eval:               ## recompute benchmark metrics from recorded outputs
 	.venv/bin/ordnung eval
+
+eval-reproduce:     ## replay every published number (no model call, no API key) and compare with evals/results/INDEX.json
+	$(PY) -m evals.reproduce --check
 
 browser:            ## the Chromium Playwright drives (skipped when PW_CHROMIUM_PATH names one)
 	@if [ -z "$$PW_CHROMIUM_PATH" ]; then cd web && npx playwright install chromium; fi

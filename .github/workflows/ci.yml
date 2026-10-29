@@ -115,6 +115,11 @@ jobs:
           --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
       - name: The evaluation's README block, report, history page and charts are what the results files render
         run: .venv/bin/python -m evals.present --check
+      - name: Every published number replays with no model call (evals/results/INDEX.json declares every change)
+        # every split, condition, Ask set, end-to-end run and ablation with a recording replayed, the analysis, the
+        # pages and items.csv checked, all compared with the results index (evals/reproduce.py); a cell recorded
+        # after the code freeze shows as "not recorded yet" until it is
+        run: make eval-reproduce
       - name: Demo rebuilds identically from the samples and recordings
         run: .venv/bin/ordnung demo --check
 

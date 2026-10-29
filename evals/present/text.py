@@ -962,7 +962,16 @@ def _reproduce(doc: Mapping[str, Any]) -> Section:
     return Section(
         "15. Reproduce",
         [
-            Paragraph("With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`):"),
+            Paragraph(
+                "With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`), one command "
+                "replays every split, condition, Ask set, end-to-end run and ablation that has a recording, checks "
+                "the analysis and these pages, and compares every number with the [results "
+                "index](repo:evals/results/INDEX.json): each file's hash, role and replay verdict, and every date "
+                "the code changed since its recording with the fix that changed it. The per-item results are in "
+                "[items.csv](repo:evals/results/items.csv) (ids, dates and outcomes only)."
+            ),
+            Code(["make eval-reproduce                  # python -m evals.reproduce --check; CI runs it"]),
+            Paragraph("Its parts, one at a time:"),
             Code(
                 [
                     "python -m evals.present --check      # this page, the README block, the history page, the charts",

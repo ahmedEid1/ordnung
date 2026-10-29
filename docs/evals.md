@@ -361,7 +361,17 @@ Not reminded, by cause: set aside as a scam: 15.
 
 ## 15. Reproduce
 
-With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`):
+With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`), one command replays every split,
+condition, Ask set, end-to-end run and ablation that has a recording, checks the analysis and these pages, and
+compares every number with the [results index](../evals/results/INDEX.json): each file's hash, role and replay
+verdict, and every date the code changed since its recording with the fix that changed it. The per-item results are
+in [items.csv](../evals/results/items.csv) (ids, dates and outcomes only).
+
+```bash
+make eval-reproduce                  # python -m evals.reproduce --check; CI runs it
+```
+
+Its parts, one at a time:
 
 ```bash
 python -m evals.present --check      # this page, the README block, the history page, the charts

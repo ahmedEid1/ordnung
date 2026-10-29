@@ -129,6 +129,47 @@ def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_p
     assert "dev" in done.stderr
 
 
+def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() -> None:
+    """One command reproduces every published number (plan EV4): every split, condition, Ask set, end-to-end,
+    ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
+    compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
+    gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""
+    slow = _jobs()["backend-slow"]
+    at, step = _step(slow, "make eval-reproduce")
+    assert step["run"].strip() == "make eval-reproduce" and "env" not in step
+    gates_at, _ = _step(slow, "--split holdout2")
+    assert gates_at < at  # the gates say first what failed, then reproduce says everything that differs
+    assert set(_gates(_script(slow))) == set(GATED_SPLITS)  # the gates stay
+    workflow = json.dumps(slow)
+    assert "secrets." not in workflow and "ANTHROPIC_API_KEY" not in workflow and "install.sh" not in workflow
+    makefile = (ROOT / "Makefile").read_text(encoding="utf-8")
+    assert "eval-reproduce" in makefile.split(".PHONY:", 1)[1].splitlines()[0]
+    recipe = makefile.split("\neval-reproduce:", 1)[1].split("\n\n", 1)[0]
+    assert "$(PY) -m evals.reproduce --check" in recipe and "--live" not in recipe
+
+
+def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
+    """evals/reproduce.py reads the gates from this file (it shows them on its scoreboard and in INDEX.json), so the
+    two can't disagree."""
+    from evals import reproduce
+
+    gates = reproduce.ci_gates(ROOT / ".github/workflows/ci.yml")
+    parsed = _gates(_script(_jobs()["backend-slow"]))
+    assert {
+        name.split("/", 1)[1]: (gate["min_accuracy"], gate["max_dangerous_late"])
+        for name, gate in gates.items()
+        if name.startswith("benchmark/")
+    } == parsed
+    (ask,) = [
+        step["run"] for step in _jobs()["backend-slow"]["steps"] if "-m evals.ask" in step.get("run", "")
+    ]
+    assert gates["ask/dev"]["args"] == shlex.split(ask.split("-m evals.ask", 1)[1])
+    (without_land,) = [
+        step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
+    ]
+    assert gates["without-land"] == {"published": Path(without_land["env"]["PUBLISHED"]).name}
+
+
 def test_the_weekly_run_fails_once_the_rules_were_last_checked_more_than_ninety_days_ago() -> None:
     job = _jobs()["rules-age"]
     assert _weekly(job) and not job.get("continue-on-error")
