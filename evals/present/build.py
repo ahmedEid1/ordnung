@@ -96,11 +96,19 @@ def write(root: Path = ROOT, results_dir: Path | None = None) -> list[str]:
     written = []
     for relative, content in outputs(root, results_dir).items():
         path = root / relative
-        if not path.is_file() or path.read_text(encoding="utf-8") != content:
+        if not _same(path, content):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
             written.append(relative)
     return written
+
+
+def _same(path: Path, content: str) -> bool:
+    """Whether ``path`` holds ``content`` (a file that is missing or not UTF-8 any more does not)."""
+    try:
+        return path.is_file() and path.read_text(encoding="utf-8") == content
+    except UnicodeDecodeError:
+        return False
 
 
 def _stale(root: Path) -> list[str]:
@@ -117,6 +125,6 @@ def check(root: Path = ROOT, results_dir: Path | None = None) -> list[str]:
     differ = []
     for relative, content in outputs(root, results_dir).items():
         path = root / relative
-        if not path.is_file() or path.read_text(encoding="utf-8") != content:
+        if not _same(path, content):
             differ.append(relative)
     return differ + _stale(root)
