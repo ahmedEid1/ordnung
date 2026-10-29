@@ -174,7 +174,7 @@ export const START_OVER_HREF = "/settings?section=data#set-data-reset";
 const CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[12.5px] text-ink";
 
 /**
- * What the demo shows once the person changed its letters or to-dos (`error_code: "demo_changed"`, and on
+ * What the demo shows once the person changed its letters, to-dos or household (`error_code: "demo_changed"`, and on
  * the Ask page instead of the suggested questions): its answers were recorded on Sam's letters as the demo
  * started, so every suggested question misses until it starts over (FEAT G2: the note said to try a
  * suggested question — what had just failed). The words of the backend's `DEMO_CHANGED`: the reset doesn't touch
@@ -193,8 +193,8 @@ export function DemoChangedNote({ className }: { className?: string }) {
         </Link>
       }
     >
-      The demo's answers were recorded for Sam's letters as the demo started, and you have changed his to-dos or letters since. To ask the
-      suggested questions again, start the demo over. Stop the demo (Ctrl+C where it runs), then run <code className={CODE}>ordnung demo --reset</code>.
+      The demo's answers were recorded for Sam's letters as the demo started, and you have changed his to-dos, letters or household
+      since. To ask the suggested questions again, start the demo over. Stop the demo (Ctrl+C where it runs), then run <code className={CODE}>ordnung demo --reset</code>.
     </Callout>
   );
 }

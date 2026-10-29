@@ -16,7 +16,10 @@ terms that could not be verified). Each row builder below says which field goes 
 
 For a question asked on a paired phone the server masks the person's own numbers in
 ``get_my_numbers`` to their last 4 characters (:data:`MASKED_NUMBERS_ENV`, :mod:`ordnung.phone.mask`),
-as the phone's *My numbers* page shows them.
+as the phone's *My numbers* page shows them — and those of the people of their household with them.
+
+What the tools give of the household is what Ask may see (:func:`ordnung.secretary.household.ask_view`,
+ADR 0025): who is in it and which letters are filed for whom. Without people every answer is as it was.
 
 Heavy modules (views, triggers, rules) are imported on first use so the server starts quickly.
 """
@@ -52,6 +55,7 @@ if TYPE_CHECKING:
         ComputationReceipt,
         Contract,
         Document,
+        IdentityDocument,
         Item,
         KeyFact,
         MyNumber,
@@ -81,6 +85,16 @@ PARTY_MATCH_SCORE = 80.0
 ITEM_STATUSES = ("open", "done", "dismissed", "snoozed", "missed", "all")
 CONTRACT_STATUSES = ("active", "cancelled", "ended", "all")
 PRIVATE_NOTE = "The person marked this document private (no AI): its contents are not shared."
+#: What ``get_document`` says when the person chose *For taxes* on a letter (``tax_choice``, the record).
+TAX_MARKED_BY_PERSON = "The person marked this letter for taxes themselves."
+TAX_UNMARKED_BY_PERSON = "The person took this letter off their letters for taxes."
+#: At most this many letters filed for one person of the household in ``get_profile`` (newest first).
+MAX_HOUSEHOLD_LETTERS = 50
+HOUSEHOLD_NOTE = (
+    "household lists the other people whose letters come to the person (a partner, their children), with "
+    "the names the person typed and the letters the person filed for each, newest first. Those letters and "
+    "what they show are about that person, not the person's own; every other letter is the person's own."
+)
 INSTRUCTIONS = (
     "Read-only access to the person's Ordnung ledger: letters, to-dos & dates, contracts, parties, "
     "money and date calculations. Each result has Ordnung's record (<ordnung_record>: ids, computed "
@@ -186,9 +200,36 @@ class LedgerTools:
         return ToolAnswer({"today": day.isoformat(), "weekday": day.strftime("%A"), "simulated": pinned})
 
     def get_profile(self) -> ToolAnswer:
-        """The person's name, preferred language and holiday region — nothing else (they entered it)."""
+        """The person's name, preferred language and holiday region (they entered it) — and, once they listed
+        the people whose letters come to them too, each of those (``household``: id and name as typed) with the
+        letters the person filed for them, newest first (:data:`MAX_HOUSEHOLD_LETTERS`, then
+        ``letters_left_out``). What it reads of the household is what Ask may see
+        (:func:`ordnung.secretary.household.ask_view`): never who signs, "mine" or a suggestion, and never a
+        letter the person keeps private. Without people the answer is as it always was."""
+        from ordnung.secretary.household import ask_view
+
         profile = self.store.get_profile()
-        return ToolAnswer({"name": profile.name, "language": profile.language, "region": profile.region})
+        record: dict[str, Any] = {
+            "name": profile.name,
+            "language": profile.language,
+            "region": profile.region,
+        }
+        shown = [doc.id for doc in self.store.list_documents(ai_private=False)]  # newest first
+        seen = ask_view(self.store, set(shown))
+        if seen is not None:
+            people = []
+            for member_id, name in seen["members"]:
+                letters = [doc_id for doc_id in shown if seen["filed"].get(doc_id) == member_id]
+                row: dict[str, Any] = {
+                    "id": member_id,
+                    "name": name,
+                    "letters": letters[:MAX_HOUSEHOLD_LETTERS],
+                }
+                if len(letters) > MAX_HOUSEHOLD_LETTERS:
+                    row["letters_left_out"] = len(letters) - MAX_HOUSEHOLD_LETTERS
+                people.append(row)
+            record |= {"household": people, "household_note": HOUSEHOLD_NOTE}
+        return ToolAnswer(record)
 
     # ---------------------------------------------------------------------------------- documents
 
@@ -334,13 +375,15 @@ class LedgerTools:
             item = self.store.get_item(ref_id)
             if item is None:
                 return _not_found("item", ref_id)
-            in_person = paid_at_appointment(self.ledger(), item)
+            ledger = self.ledger()
+            in_person = paid_at_appointment(ledger, item)
             letter = self.store.get_document(item.doc_id) if item.doc_id else None
             return _explain_item(
                 item,
                 in_person=in_person,
                 withheld=letter is not None and not _shareable(letter),
-                scam=_scam_signs(self.ledger(), item),
+                scam=_scam_signs(ledger, item),
+                repeat=_repeat_fields(ledger, item),
             )
         if ref_id.startswith("ctr_"):
             contract = self.store.get_contract(ref_id)
@@ -515,6 +558,7 @@ class LedgerTools:
         row["payment_note"] = payment_note(item) if item is not None else None
         if item is not None:
             row.update(_aside_fields(ledger, item))
+            row.update(_repeat_fields(ledger, item))
         if entry.amount is not None:
             note = self._unverified_amount(entry.ref.type, entry.ref.id)
             if note is None:
@@ -640,6 +684,13 @@ class LedgerTools:
         ``needs_check`` when not confirmed against the letter) and an open case's next to-do. Labels,
         values, names, contact details and titles are letter text, under the id of the letter (or
         organisation) they come from; a row's ``ref`` names its value there.
+
+        Whose a number is follows the page (:class:`~ordnung.models.NumbersPage`, from the letters the person
+        filed for someone of their household): with ``about_you``, each such person's numbers and identity
+        documents under ``household`` (their id and name as typed); a call sheet's number or a case all of whose
+        letters are filed for one person says so (``filed_for``), and a number other people's letters show too
+        says whose (``also_for``); ``household_note`` says what that means. Without a household none of these
+        is there and the answer is as it always was.
         """
         from ordnung.views import my_numbers
 
@@ -664,24 +715,22 @@ class LedgerTools:
         sheets.sort(key=lambda s: (s.last_letter.date or "") if s.last_letter else "", reverse=True)
         cases = [c for c in page.open_cases if parties is None or c.party_id in parties]
         left_out = {"open_cases": max(0, len(cases) - MAX_OPEN_CASES) if "open_cases" in wanted else 0}
-        rows = _NumberRows()
+        rows = _NumberRows(page.filed_for, page.also_for)
         record: dict[str, Any] = {"today": page.today}
         if "about_you" in wanted:
             record["about_you"] = [rows.number(found) for found in page.about_you]
-            record["documents"] = [
-                {
-                    "id": doc.item_id,
-                    "kind": "expiry" if doc.item_id else None,
-                    "document": doc.kind,
-                    "due_date": doc.valid_until,
-                    "needs_check": doc.needs_check or None,
-                    "status": doc.status,
-                    "note": doc.note,
-                    "doc_id": doc.letter.id if doc.letter else None,
-                    "number": rows.number(doc.number) if doc.number else None,
-                }
-                for doc in page.documents
-            ]
+            record["documents"] = [rows.document(doc) for doc in page.documents]
+            if page.household:  # only with numbers of someone of the household: else as it always was
+                rows.whose = True
+                record["household"] = [
+                    {
+                        "id": person.id,
+                        "name": person.name,
+                        "about": [rows.number(found) for found in person.about],
+                        "documents": [rows.document(doc) for doc in person.documents],
+                    }
+                    for person in page.household
+                ]
         if "open_cases" in wanted:
             record["open_cases"] = [rows.case(found) for found in cases[:MAX_OPEN_CASES]]
         if "organisations" in wanted:
@@ -703,6 +752,8 @@ class LedgerTools:
             record["left_out"] = shown_out
             record["left_out_note"] = NUMBERS_LEFT_OUT
         record["note"] = NUMBERS_NOTE
+        if rows.whose:
+            record["household_note"] = NUMBERS_HOUSEHOLD_NOTE
         for owner, found in rows.values.items():
             rows.letters.add(owner, numbers=found)
         return ToolAnswer(record, rows.letters.by_id)
@@ -716,14 +767,33 @@ class LedgerTools:
 class _NumberRows:
     """``get_my_numbers``' rows: each number once in ``numbers`` (what code decided, the letter and party
     it came from), named by a ``ref`` everywhere else; each open case once, named ``c1`` …; labels and
-    values in the letter text of the letter that shows them."""
+    values in the letter text of the letter that shows them. ``filed_for`` and ``also_for`` are the page's
+    (:class:`~ordnung.models.NumbersPage`): whose a call sheet's number or a case is, and the other people whose
+    letters show a number too; ``whose`` says whether a row carried either."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, filed_for: Mapping[str, str] | None = None, also_for: Mapping[str, Sequence[str]] | None = None
+    ) -> None:
         self.letters = LetterText()
         self.numbers: list[dict[str, Any]] = []
         self.values: dict[str, dict[str, dict[str, str]]] = {}
+        self.whose = False
+        self._filed_for = filed_for or {}
+        self._also_for = also_for or {}
         self._refs: dict[str, str] = {}
         self._cases: dict[str, dict[str, Any]] = {}
+
+    def _person(self, key: str, *, also: bool = True) -> dict[str, Any]:
+        """Whose a number (or, without ``also``, a case) is, when the page says: the person of the household
+        all its letters are filed for (``filed_for``) and the other people whose letters show it too
+        (``also_for``); else nothing."""
+        found = {
+            "filed_for": self._filed_for.get(key),
+            "also_for": list(self._also_for.get(key, ())) if also else [],
+        }
+        kept = {name: value for name, value in found.items() if value}
+        self.whose |= bool(kept)
+        return kept
 
     def number(self, found: MyNumber) -> str:
         if found.key in self._refs:
@@ -746,9 +816,25 @@ class _NumberRows:
                 "doc_id": doc_id,
                 "party_id": found.party_id,
                 "letters": found.letters,
+                **self._person(found.key),
             }
         )
         return ref
+
+    def document(self, doc: IdentityDocument) -> dict[str, Any]:
+        """An identity document's row: its expiry to-do, the expiry's date and status (code), the letter, and
+        its number by ``ref``."""
+        return {
+            "id": doc.item_id,
+            "kind": "expiry" if doc.item_id else None,
+            "document": doc.kind,
+            "due_date": doc.valid_until,
+            "needs_check": doc.needs_check or None,
+            "status": doc.status,
+            "note": doc.note,
+            "doc_id": doc.letter.id if doc.letter else None,
+            "number": self.number(doc.number) if doc.number else None,
+        }
 
     def case(self, found: OpenCase) -> dict[str, Any] | str:
         """The case's row the first time, its ``ref`` after that."""
@@ -776,6 +862,7 @@ class _NumberRows:
             if nxt
             else None,
             "open_items": found.open_items,
+            **self._person(found.key, also=False),
         }
         return row
 
@@ -849,10 +936,19 @@ def _flagged_ref(ledger: Ledger, doc: Document, letters: LetterText) -> dict[str
 
 
 def _document_head(doc: Document, letters: LetterText, ledger: Ledger) -> dict[str, Any]:
-    letters.add(doc.id, tax_note=doc.tax_note)
+    """A shareable letter's record head. Whether it counts for taxes goes by the person's *For taxes* choice,
+    else Claude's mark (:func:`~ordnung.secretary.tax_choice.for_taxes`), and a choice says itself
+    (``tax_choice``); Claude's ``tax_note`` is left out of the letter text only when the person took the letter
+    off — without a choice the head is as it always was. A letter filed for someone of the household says for
+    whom (``filed_for``, :attr:`~ordnung.secretary.triggers.Ledger.household_filed`)."""
+    from ordnung.secretary.tax_choice import for_taxes
+
+    choice = ledger.tax_choices.get(doc.id)
+    letters.add(doc.id, tax_note=None if choice is False else doc.tax_note)
     _add_party_name(letters, ledger, doc.party_id)
     if language_code(doc.language) is None:  # the letter's reading, not a code: letter text
         letters.add(doc.id, language=doc.language)
+    member = ledger.household_filed.get(doc.id)
     return {
         **_document_ref(doc, letters),
         "status": "please check" if doc.status == "needs_review" else doc.status,
@@ -863,7 +959,9 @@ def _document_head(doc: Document, letters: LetterText, ledger: Ledger) -> dict[s
         "case_id": doc.case_id,
         "urgency": doc.urgency,
         "pages": doc.pages,
-        "tax_relevant": doc.tax_relevant or None,
+        "tax_relevant": for_taxes(doc, ledger.tax_choices) or None,
+        "tax_choice": None if choice is None else TAX_MARKED_BY_PERSON if choice else TAX_UNMARKED_BY_PERSON,
+        "filed_for": {"id": member.id, "name": member.name} if member is not None else None,
     }
 
 
@@ -920,6 +1018,7 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
         "payment_note": payment_note(item),
     }
     row.update(_aside_fields(ledger, item))
+    row.update(_repeat_fields(ledger, item))
     if item.amount is not None:
         note = _amount_note(item.grounding)
         if note is None:
@@ -928,6 +1027,36 @@ def _item_row(ledger: Ledger, item: Item, letters: LetterText) -> dict[str, Any]
             letters.add(item.id, amount=item.amount, currency=item.currency)
             row["amount_unverified"] = note
     return row
+
+
+def _repeat_fields(ledger: Ledger, item: Item) -> dict[str, Any]:
+    """How a to-do whose schedule still runs (open or snoozed) repeats, as code works it out (ADR 0008: the
+    record), in its row, its timeline entry and its ``explain_date``: ``repeats``, the rule its dates follow in
+    the app's words (:func:`ordnung.recurrence.describe` of :func:`~ordnung.recurrence.schedule_rule` — a rent
+    that keeps the earlier rent's working day says so); ``following_due_date``, the due date it moves on to once
+    this one is marked done (:func:`~ordnung.recurrence.moved_on`, as marking it done moves it — for a date moved
+    by hand, the schedule's next one after it); and, for a rent a later one replaces (point 9),
+    ``replaced_by`` (that rent's to-do) and ``replaced_from_month`` (the month it starts in) instead of a
+    following date when this one is the last. Nothing for a to-do that doesn't repeat or whose series ended
+    (done, dismissed); an undated one says only how it repeats."""
+    from ordnung.recurrence import ROLLING_STATUSES, describe, moved_on, replacement, schedule_rule
+    from ordnung.secretary.triggers import postal_buffer
+
+    if item.recurrence is None or item.status not in ROLLING_STATUSES:
+        return {}
+    contexts = ledger.item_contexts
+    ctx = contexts(ledger.store, item, ledger.today)
+    fields: dict[str, Any] = {"repeats": describe(schedule_rule(item, ctx) or item.recurrence)}
+    replaced = replacement(ledger.store, item, ctx, contexts)
+    if item.due_date:
+        ends = replaced.starts if replaced is not None else None
+        moved = moved_on(item, ctx, postal_buffer_days=postal_buffer(ledger.profile), ends=ends)
+        if moved is not None and moved.due_date and moved.due_date != item.due_date:
+            fields["following_due_date"] = moved.due_date
+    if replaced is not None:
+        fields["replaced_by"] = replaced.newer.id
+        fields["replaced_from_month"] = f"{replaced.starts:%Y-%m}"
+    return fields
 
 
 def _aside_fields(ledger: Ledger, item: Item) -> dict[str, Any]:
@@ -994,6 +1123,13 @@ NUMBERS_NOTE = (
     "ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no "
     "digit was misread — it does not prove the number is the person's), fails (compare it with the "
     "letter) or none (no public check for this kind of number)."
+)
+NUMBERS_HOUSEHOLD_NOTE = (
+    "household holds, for each person of the household, the numbers and identity documents that letters the "
+    "person filed for them show. filed_for marks a number or open case all of whose letters are filed for that "
+    "person of the household. also_for: letters of other people show the same number too (me: the person), so "
+    "it is not certain whose it is — say so. Say whose a number is, and never give a household person's number "
+    "as the person's own."
 )
 SET_ASIDE_ATTACHED = (
     "Not a payment of its own: the bill that came attached to this e-mail (set_aside_by) asks for the same "
@@ -1260,10 +1396,9 @@ def _rents(ledger: Ledger, contract: Contract, letters: LetterText) -> list[dict
     of the contract held it, and its first payment is past ``money_summary``'s 30 days."""
     if contract.category != "rent":
         return None
-    from ordnung.ingest.plan import item_contexts
     from ordnung.recurrence import ROLLING_STATUSES, Replacement, is_rent, replacement
 
-    store, today, contexts = ledger.store, ledger.today, item_contexts()
+    store, today, contexts = ledger.store, ledger.today, ledger.item_contexts
     rents = [item for item in ledger.items if item.status in ROLLING_STATUSES and is_rent(item, contract)]
     replaced: dict[str, Replacement | None] = {}
     proposals: dict[str, Replacement] = {}
@@ -1391,14 +1526,20 @@ def _cites_document(contract: Contract, doc_id: str) -> bool:
 
 
 def _explain_item(
-    item: Item, *, in_person: bool = False, withheld: bool = False, scam: Sequence[str] = ()
+    item: Item,
+    *,
+    in_person: bool = False,
+    withheld: bool = False,
+    scam: Sequence[str] = (),
+    repeat: Mapping[str, Any] | None = None,
 ) -> ToolAnswer:
     """The receipt, how the date was made and the rules are code; the wording and quotes are letter text.
     ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date.
     ``withheld``: the to-do's letter is private (or in the trash) — its wording and quotes are left out, as
     ``get_document`` leaves out its text (review round 2 of phase 2). ``scam``: the scam signs of its letter
     (:func:`_scam_signs`) — flagged like ``list_items`` flags it, with its ``payment_note``, so the answer
-    check's notes follow a "why that date?" too (review round 3 of phase 2)."""
+    check's notes follow a "why that date?" too (review round 3 of phase 2). ``repeat``: how it repeats
+    (:func:`_repeat_fields`), as its row says — the receipt of a date the person set says nothing of it."""
     receipt = item.computation
     spec = item.date_spec
     letters = LetterText()
@@ -1424,6 +1565,7 @@ def _explain_item(
         "needs_check": item.grounding == "unverified" or None,
         "scam_warning": bool(scam) or None,
         "payment_note": payment_note(item),
+        **(repeat or {}),
         "receipt": _receipt(receipt) if receipt is not None else None,
         "rules": _rules(receipt.rule_ids, receipt.steps) if receipt is not None else [],
         "disclaimer": _disclaimer(),

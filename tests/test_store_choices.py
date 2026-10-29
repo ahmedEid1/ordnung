@@ -313,16 +313,20 @@ def test_a_purge_without_either_row_writes_neither(store: Store) -> None:
     assert _raw(store, HOUSEHOLD_META_KEY) is None
 
 
-def test_neither_row_moves_asks_ledger_token(store: Store) -> None:
-    """Ask's fingerprint reads only the profile row of ``meta``: a choice or a household write leaves its
-    token as it was."""
+def test_each_row_moves_asks_ledger_token(store: Store) -> None:
+    """Ask's fingerprint reads both rows (``LEDGER_META_KEYS``: its get_document says what the person chose
+    for taxes, its tools whose a letter is): every write of either moves its token, so a fingerprint worked
+    out before is never handed out after."""
     letter = _letter(store, "letter")
-    token = store.ledger_token()
-    store.set_tax_choice(letter, True)
-    store.set_meta(HOUSEHOLD_META_KEY, _household({letter: "me"}))
-    store.set_tax_choice(letter, None)
-    store.set_meta(HOUSEHOLD_META_KEY, None)
-    assert store.ledger_token() == token
+    for write in (
+        lambda: store.set_tax_choice(letter, True),
+        lambda: store.set_meta(HOUSEHOLD_META_KEY, _household({letter: "me"})),
+        lambda: store.set_tax_choice(letter, None),
+        lambda: store.set_meta(HOUSEHOLD_META_KEY, None),
+    ):
+        token = store.ledger_token()
+        write()
+        assert store.ledger_token() != token
 
 
 # --------------------------------------------------------------------------------------------------

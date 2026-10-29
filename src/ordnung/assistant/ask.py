@@ -76,6 +76,7 @@ from ordnung.llm.base import LLMRequest, StreamEvent
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, ChatMessage
+from ordnung.secretary.household import ask_view
 from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
 from ordnung.secretary.triggers import IDEA_LAWS
 from ordnung.tick import local_today
@@ -112,14 +113,14 @@ DEMO_NOT_RECORDED = (
 )
 #: The message for a question the demo has no recorded answer for, while the suggested questions are offered.
 DEMO_MISS = f"{DEMO_NOT_RECORDED} Try one of the suggested questions."
-#: The message for a suggested question the demo recorded, asked after the person changed the letters or to-dos
-#: (sent with ``error_code`` ``demo_changed``): its answers were recorded on Sam's letters as the demo started,
-#: so every suggested question misses until the demo starts over — which ``ordnung demo --reset`` does only
-#: once the running demo is stopped.
+#: The message for a suggested question the demo recorded, asked after the person changed the letters, to-dos
+#: or household (sent with ``error_code`` ``demo_changed``): its answers were recorded on Sam's letters as the
+#: demo started, so every suggested question misses until the demo starts over — which ``ordnung demo --reset``
+#: does only once the running demo is stopped.
 DEMO_CHANGED = (
     "The demo's answers were recorded for Sam's letters as the demo started, and you have changed his "
-    "to-dos or letters since, so they no longer fit. To ask the suggested questions again, start the demo "
-    "over. Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
+    "to-dos, letters or household since, so they no longer fit. To ask the suggested questions again, start "
+    "the demo over. Stop the demo (Ctrl+C where it runs), then run “ordnung demo --reset”."
 )
 EMPTY_QUESTION = "Please type a question."
 
@@ -145,8 +146,8 @@ class AskContext(Protocol):
 
 #: Why an answer could not be given, when the UI shows more than the message: ``demo_miss`` — the demo
 #: has no recorded answer for the question (asking again cannot help, a suggested question can);
-#: ``demo_changed`` — a suggested question the demo recorded, but the person changed the letters or to-dos
-#: since the demo started (only starting the demo over helps).
+#: ``demo_changed`` — a suggested question the demo recorded, but the person changed the letters, to-dos or
+#: household since the demo started (only starting the demo over helps).
 AskErrorCode = Literal["demo_miss", "demo_changed"]
 
 
@@ -183,29 +184,34 @@ def ledger_fingerprint(store: Store) -> str:
     """Hash of everything Ask's read-only tools can see (every field of letters, to-dos and contracts,
     the letters' page texts, the parties' shared fields, no timestamps), so a recorded answer replays
     only against the ledger it was recorded from — a changed warning, IBAN or page text makes a new
-    recording necessary.
+    recording necessary. Of the letters Ask may read, the person's *For taxes* choices and whose they are
+    (:func:`ordnung.secretary.household.ask_view`) count too, each only when there is one: a ledger without a
+    choice or a household hashes as it did before Ask read either, so the answers recorded then still replay.
 
     :func:`ask_cache_key` keeps it per state of the ledger (:class:`_LedgerMemo`); a table it starts to read
-    must join :data:`ordnung.db.store.LEDGER_TABLES`.
+    must join :data:`ordnung.db.store.LEDGER_TABLES`, a ``meta`` row :data:`ordnung.db.store.LEDGER_META_KEYS`.
     """
     profile = store.get_profile()
     documents = store.list_documents()
-    return stable_hash(
-        {
-            "profile": [profile.name, profile.language, profile.region, profile.country],
-            "documents": _rows(documents),
-            "texts": {doc.id: stable_hash(store.get_document_text(doc.id)) for doc in documents},
-            "items": _rows(store.list_items()),
-            "contracts": _rows(store.list_contracts()),
-            "parties": sorted(
-                (
-                    p.model_dump(mode="json", include={*PARTY_FIELDS, "identifiers"})
-                    for p in store.list_parties()
-                ),
-                key=lambda row: str(row["id"]),
-            ),
-        }
-    )
+    shown = {doc.id for doc in documents if not doc.ai_private}
+    basis: dict[str, Any] = {
+        "profile": [profile.name, profile.language, profile.region, profile.country],
+        "documents": _rows(documents),
+        "texts": {doc.id: stable_hash(store.get_document_text(doc.id)) for doc in documents},
+        "items": _rows(store.list_items()),
+        "contracts": _rows(store.list_contracts()),
+        "parties": sorted(
+            (p.model_dump(mode="json", include={*PARTY_FIELDS, "identifiers"}) for p in store.list_parties()),
+            key=lambda row: str(row["id"]),
+        ),
+    }
+    choices = {doc_id: choice for doc_id, choice in store.tax_choices().items() if doc_id in shown}
+    if choices:
+        basis["tax_choices"] = choices
+    household = ask_view(store, shown)
+    if household is not None:
+        basis["household"] = household
+    return stable_hash(basis)
 
 
 def _ledger_token(store: Store) -> tuple[int, int, int] | None:
@@ -435,7 +441,7 @@ def demo_miss_event(*, offered: bool = True) -> AskEvent:
 
 def demo_changed_event() -> AskEvent:
     """The event shown instead of a recorded answer that no longer fits: a suggested question asked after
-    the person changed the demo's letters or to-dos (:data:`DEMO_CHANGED`; nothing was stored)."""
+    the person changed the demo's letters, to-dos or household (:data:`DEMO_CHANGED`; nothing was stored)."""
     return AskEvent(type="error", error=DEMO_CHANGED, text=DEMO_CHANGED, error_code="demo_changed")
 
 

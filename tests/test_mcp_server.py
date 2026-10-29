@@ -52,7 +52,7 @@ from ordnung.assistant.support import TurnEvidence, check_answer
 from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ingest.attachments import EMAIL_MIME, email_source
-from ordnung.models import DocumentExtraction, Evidence, ExtractedChange, Identifier
+from ordnung.models import DocumentExtraction, Evidence, ExtractedChange, Identifier, Recurrence
 from ordnung.secretary.triggers import Ledger
 from ordnung.views import my_numbers
 from test_recurring_rent_replaced import DEMO_DB, DEMO_NEW_RENT, DEMO_RENT
@@ -1766,3 +1766,482 @@ def test_get_my_numbers_gives_no_transfer_day_for_a_fee_paid_at_the_appointment(
     (case,) = [c for c in tools.get_my_numbers().record["open_cases"] if c["doc_id"] == doc]
     assert case["next_item"]["id"] == fee
     assert (case["next_item"]["send_by"], case["next_item"]["at_appointment"]) == (None, True)
+
+
+# --------------------------------------------------------------------------------------------------
+# what Ask's tools answered before they told of the household: every answer on the demo's ledger, as digests
+# --------------------------------------------------------------------------------------------------
+
+#: The digest of every answer :func:`demo_tool_texts` gives on a copy of the demo's ledger, taken at the
+#: commit before the household and the *For taxes* choices reached Ask: without a household or a choice,
+#: Ask's tools answer exactly that (the repeat fields aside, which are new for every repeating to-do). Take
+#: them again only for a change meant to move a tool's answer, and record again the Ask answers it makes stale.
+BASE_TOOL_TEXTS = Path(__file__).resolve().parent / "data" / "ask_tools_at_e2_base.json"
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def demo_tool_texts(store: Store) -> dict[str, str]:
+    """Every answer of Ask's tools on ``store`` (a copy of the demo's ledger) as Claude reads it, by call:
+    the profile, My numbers by section (as on the computer and on a phone), every letter, every to-do's and
+    contract's date, every party, the lists and the overviews."""
+    calls: dict[str, Any] = {"get_profile": lambda tools: tools.get_profile()}
+    for section in ("all", *mcp_server.NUMBER_SECTIONS):
+        calls[f"get_my_numbers {section}"] = lambda tools, s=section: tools.get_my_numbers(s)
+    for doc in store.list_documents():
+        calls[f"get_document {doc.id}"] = lambda tools, d=doc.id: tools.get_document(d)
+    calls |= {
+        "list_items all": lambda tools: tools.list_items(status="all", limit=mcp_server.MAX_LIST),
+        "list_items open": lambda tools: tools.list_items(),
+        "list_contracts all": lambda tools: tools.list_contracts(status="all"),
+        "money_summary": lambda tools: tools.money_summary(),
+        "timeline": lambda tools: tools.timeline("2026-01-01", "2027-12-31"),
+    }
+    for party in store.list_parties():
+        calls[f"get_party {party.id}"] = lambda tools, p=party.id: tools.get_party(p)
+    for record_id in [item.id for item in store.list_items()] + [c.id for c in store.list_contracts()]:
+        calls[f"explain_date {record_id}"] = lambda tools, r=record_id: tools.explain_date(r)
+    texts: dict[str, str] = {}
+    for masked in (False, True):
+        tools = LedgerTools(store, today=TODAY, masked_numbers=masked)
+        for name, call in calls.items():
+            if masked and not name.startswith("get_my_numbers"):
+                continue  # only My numbers is masked on a phone
+            texts[f"{name}{' masked' if masked else ''}"] = render_result(call(tools))
+    return texts
+
+
+def text_digests(texts: dict[str, str]) -> dict[str, str]:
+    return {name: hashlib.sha256(text.encode()).hexdigest() for name, text in sorted(texts.items())}
+
+
+def test_without_a_household_the_tools_answer_byte_for_byte_as_before(
+    settled_demo_store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without anyone in the household and without a *For taxes* choice, every answer of Ask's tools on the
+    demo's ledger — the profile, My numbers by section on the computer and on a phone, every letter, every
+    date's explanation, every party, the lists and the overviews — is the text the tools gave before the household
+    reached Ask, so no recorded answer stops matching for the household or the choices. The new repeat fields
+    of a repeating to-do (tested below) are left out here: they are new on purpose."""
+    monkeypatch.setattr(mcp_server, "_repeat_fields", lambda ledger, item: {})
+    stored = json.loads(BASE_TOOL_TEXTS.read_text(encoding="utf-8"))
+    now = text_digests(demo_tool_texts(settled_demo_store))
+    assert sorted(now) == sorted(stored)
+    assert [name for name in stored if now[name] != stored[name]] == []
+
+
+# --------------------------------------------------------------------------------------------------
+# whose a letter is (ADR 0025): the household as Ask's tools give it
+# --------------------------------------------------------------------------------------------------
+
+ALEX = "Alex Rivera"
+
+
+class _Member:
+    """A person of the household as a change of the list sends them (``household.MemberLike``)."""
+
+    def __init__(self, name: str, id: str | None = None, signs: bool = True) -> None:
+        self.name, self.id, self.signs = name, id, signs
+
+
+def _household(store: Store, *names: str, filed: dict[str, int] | None = None) -> list[str]:
+    """Save a household of ``names`` and file each letter of ``filed`` for the person at that index."""
+    from ordnung.secretary import household
+
+    base = household.version(household.load(store).members)
+    people = [
+        p["id"] for p in household.change(store, base=base, members=[_Member(n) for n in names])["members"]
+    ]
+    if filed:
+        household.file(store, {doc_id: people[index] for doc_id, index in filed.items()})
+    return people
+
+
+def test_get_profile_lists_the_household_and_its_letters(store: Store, ids: dict[str, str]) -> None:
+    """With people in the household, the profile lists each — id and name as the person typed it — with the
+    letters filed for them, newest first, and a note on what that means; no household, no field."""
+    tools = LedgerTools(store, today=TODAY)
+    assert tools.get_profile() == ToolAnswer({"name": "Sam Rivera", "language": "en", "region": "NW"})
+    alex, mia = _household(
+        store, ALEX, "Mia Rivera", filed={ids["doc_passport"]: 0, ids["doc_permit"]: 0, ids["doc_tax"]: 1}
+    )
+    record = record_of(render_result(tools.get_profile()))
+    assert record["household"] == [
+        {"id": alex, "name": ALEX, "letters": [ids["doc_permit"], ids["doc_passport"]]},
+        {"id": mia, "name": "Mia Rivera", "letters": [ids["doc_tax"]]},
+    ]
+    assert record["household_note"] == mcp_server.HOUSEHOLD_NOTE
+    assert "signs" not in json.dumps(record) and "me" not in record["household"][0]
+    # a person with no letter filed for them is listed all the same; "it's mine" files nothing
+    from ordnung.secretary import household
+
+    household.file(store, {ids["doc_tax"]: household.MINE})
+    (_, mia_row) = record_of(render_result(tools.get_profile()))["household"]
+    assert mia_row == {"id": mia, "name": "Mia Rivera"}
+
+
+def test_get_profile_leaves_private_letters_out_of_the_household(store: Store, ids: dict[str, str]) -> None:
+    """A letter the person keeps private, or one in the trash, is never named — not even as filed for
+    someone; a long list is cut at :data:`MAX_HOUSEHOLD_LETTERS` and says how many it left out."""
+    (alex,) = _household(
+        store, ALEX, filed={ids["doc_passport"]: 0, ids["doc_private"]: 0, ids["doc_tax"]: 0}
+    )
+    store.trash_document(ids["doc_tax"])
+    tools = LedgerTools(store, today=TODAY)
+    (row,) = tools.get_profile().record["household"]
+    assert row == {"id": alex, "name": ALEX, "letters": [ids["doc_passport"]]}
+    rendered = render_result(tools.get_profile())
+    assert ids["doc_private"] not in rendered and ids["doc_tax"] not in rendered
+    letters = [
+        add_doc(store, f"club-{n}", kind="other", doc_date=f"2026-0{1 + n % 9}-1{n % 10}") for n in range(53)
+    ]
+    from ordnung.secretary import household
+
+    household.file(store, dict.fromkeys(letters, alex))
+    (row,) = tools.get_profile().record["household"]
+    assert len(row["letters"]) == mcp_server.MAX_HOUSEHOLD_LETTERS
+    assert row["letters_left_out"] == 54 - mcp_server.MAX_HOUSEHOLD_LETTERS
+
+
+def test_get_document_says_whom_a_letter_is_filed_for(store: Store, ids: dict[str, str]) -> None:
+    """A letter filed for someone of the household says so in its record (their id and name); a letter of the
+    person's own, or one only "mine", says nothing; a private letter's short record never does."""
+    tools = LedgerTools(store, today=TODAY)
+    before = render_result(tools.get_document(ids["doc_passport"]))
+    (alex,) = _household(store, ALEX, filed={ids["doc_passport"]: 0, ids["doc_private"]: 0})
+    record = record_of(render_result(tools.get_document(ids["doc_passport"])))
+    assert record["filed_for"] == {"id": alex, "name": ALEX}
+    assert "filed_for" not in record_of(render_result(tools.get_document(ids["doc_tax"])))
+    assert "filed_for" not in record_of(render_result(tools.get_document(ids["doc_private"])))
+    from ordnung.secretary import household
+
+    household.file(store, {ids["doc_passport"]: household.MINE})
+    assert render_result(tools.get_document(ids["doc_passport"])) == before
+
+
+def _grouped_page(store: Store, alex: str) -> Any:
+    """The seeded My numbers page as :mod:`ordnung.numbers` groups it once the payslip's Steuer-ID and the
+    passport are about Alex (letters filed for him), his SV number is on a letter of the person's too, and the
+    parking fine's case and FunkNetz's customer number are all on his letters."""
+    from ordnung.models import PersonNumbers
+
+    page = my_numbers(store, TODAY, shareable_only=True)
+    tax_id = next(n for n in page.about_you if n.kind == "tax_id")
+    social = next(n for n in page.about_you if n.kind == "social_insurance")
+    passport = next(d for d in page.documents if d.kind == "passport")
+    (case,) = page.open_cases
+    customer = next(n for sheet in page.organisations for n in sheet.numbers if n.kind == "customer")
+    his_tax_id = tax_id.model_copy(update={"key": f"{tax_id.key}:{alex}"})
+    return page.model_copy(
+        update={
+            "about_you": [n for n in page.about_you if n.kind != "tax_id"],
+            "documents": [d for d in page.documents if d.kind != "passport"],
+            "household": [PersonNumbers(id=alex, name=ALEX, about=[his_tax_id], documents=[passport])],
+            "filed_for": {customer.key: alex, case.key: alex},
+            "also_for": {social.key: [alex]},
+        }
+    )
+
+
+def test_get_my_numbers_puts_a_member_s_numbers_under_household(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A number or identity document from letters filed for someone of the household is listed under that
+    person (``household``), never under the person's own; a number of the person's that a member's letters
+    show too says so (``also_for``); the note says what both mean. Their values stay letter text."""
+    _numbers_ledger(store, ids)
+    tools = LedgerTools(store, today=TODAY)
+    plain = tools.get_my_numbers()
+    assert "household" not in plain.record and "household_note" not in plain.record
+    (alex,) = _household(store, ALEX)
+    page = _grouped_page(store, alex)
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    answer = tools.get_my_numbers()
+    record = record_of(render_result(answer))
+    rows = {row["ref"]: row for row in record["numbers"]}
+    assert [rows[ref]["kind"] for ref in record["about_you"]] == ["social_insurance"]
+    assert "passport" not in [doc["document"] for doc in record["documents"]]
+    (group,) = record["household"]
+    assert (group["id"], group["name"]) == (alex, ALEX)
+    assert [rows[ref]["kind"] for ref in group["about"]] == ["tax_id"]
+    (passport,) = group["documents"]
+    assert (passport["document"], passport["due_date"], rows[passport["number"]]["kind"]) == (
+        "passport",
+        "2027-02-10",
+        "passport",
+    )
+    assert rows[record["about_you"][0]]["also_for"] == [alex]
+    assert record["household_note"] == mcp_server.NUMBERS_HOUSEHOLD_NOTE
+    # the refs in the order the page has them: about you, documents, household, open cases, organisations
+    order = [row["ref"] for row in record["numbers"]]
+    assert order.index(group["about"][0]) == len(record["about_you"])
+    keys = list(record)
+    assert keys.index("documents") < keys.index("household") < keys.index("open_cases")
+    rendered = render_result(answer)
+    record_part = rendered[: rendered.index(RECORD_CLOSE)]
+    assert "86095742719" not in record_part and "X1234567" not in record_part
+    assert answer.letters[ids["doc_payslip"]]["numbers"][group["about"][0]]["value"] == "86095742719"
+    # the section of one's own numbers has the household too
+    about = record_of(render_result(tools.get_my_numbers(section="about_you")))
+    assert set(about) == {"today", "about_you", "documents", "household", "numbers", "note", "household_note"}
+    # Alex's passport expiry is the record's, citable by its to-do as the person's own was
+    evidence = TurnEvidence.from_results([rendered], today=TODAY, catalog=known_laws())
+    said = f"Alex Rivera's passport is valid until Wed 10 Feb 2027 [item:{passport['id']}]."
+    assert check_answer(said, evidence, citable=evidence.seen_ids).text == said
+
+
+def test_get_my_numbers_marks_call_sheet_numbers_and_cases_filed_for_a_member(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A call sheet's number or an open case all of whose letters are filed for one person of the household
+    says whose it is (``filed_for``); the person's own say nothing."""
+    _numbers_ledger(store, ids)
+    (alex,) = _household(store, ALEX)
+    page = _grouped_page(store, alex)
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    record = record_of(render_result(LedgerTools(store, today=TODAY).get_my_numbers()))
+    rows = {row["ref"]: row for row in record["numbers"]}
+    (case,) = record["open_cases"]
+    assert case["filed_for"] == alex
+    phone = next(sheet for sheet in record["organisations"] if sheet["party_id"] == ids["funknetz"])
+    assert [rows[ref].get("filed_for") for ref in phone["numbers"]] == [alex]
+    assert [rows[ref].get("filed_for") for ref in phone["their_numbers"]] == [None]
+
+
+def test_one_organisation_s_numbers_leave_the_household_groups_out(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Asked for one organisation (or for open cases alone), the person's own numbers are left out — and so
+    are the household's: a member's Steuer-ID is no organisation's number."""
+    _numbers_ledger(store, ids)
+    (alex,) = _household(store, ALEX)
+    page = _grouped_page(store, alex)
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    tools = LedgerTools(store, today=TODAY)
+    for answer in (tools.get_my_numbers(organisation="FunkNetz"), tools.get_my_numbers(section="open_cases")):
+        rendered = render_result(answer)
+        assert (
+            "household" not in answer.record and "86095742719" not in rendered and "X1234567" not in rendered
+        )
+    one = record_of(render_result(tools.get_my_numbers(organisation="FunkNetz")))
+    assert one["household_note"] == mcp_server.NUMBERS_HOUSEHOLD_NOTE  # its customer number is Alex's
+
+
+def test_a_phone_s_question_gets_a_member_s_numbers_masked(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On a phone, the household's numbers come from the masked page, like the person's own: what
+    :func:`ordnung.phone.mask.mask_numbers` gives is what the tool hands over, about people of the household
+    included."""
+    from ordnung.phone import mask
+
+    _numbers_ledger(store, ids)
+    (alex,) = _household(store, ALEX)
+    page = _grouped_page(store, alex)
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    masked: list[Any] = []
+
+    def masking(page: Any) -> Any:
+        (person,) = page.household
+        hidden = [n.model_copy(update={"value": "•••• 2719"}) for n in person.about]
+        masked.append(page.model_copy(update={"household": [person.model_copy(update={"about": hidden})]}))
+        return masked[-1]
+
+    monkeypatch.setattr(mask, "mask_numbers", masking)
+    answer = LedgerTools(store, today=TODAY, masked_numbers=True).get_my_numbers()
+    assert len(masked) == 1
+    (ref,) = answer.record["household"][0]["about"]
+    assert answer.letters[ids["doc_payslip"]]["numbers"][ref]["value"] == "•••• 2719"
+
+
+# --------------------------------------------------------------------------------------------------
+# how a to-do repeats: the rule in the app's words and where the next one stands
+# --------------------------------------------------------------------------------------------------
+
+REPEAT_KEYS = ("repeats", "following_due_date", "replaced_by", "replaced_from_month")
+DEMO_GYM_FEE = "itm_chhc59r0d16v"  # the gym's fee, "every month on the 1st", due Thu 1 Oct 2026
+DEMO_RENT_CONTRACT = "ctr_y2hc77av3ps4"
+REPEAT_LABELS = (
+    Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "items" / "repeatLabels.json"
+)
+
+
+def _repeat(row: dict[str, Any]) -> dict[str, Any]:
+    return {key: row[key] for key in REPEAT_KEYS if key in row}
+
+
+def test_a_repeating_to_do_says_how_it_repeats_in_every_tool(demo_store: Store) -> None:
+    """Every Ask tool that gives a repeating to-do gives the same four fields with it: its rule in the app's
+    words, the due date it moves on to once marked done, and — for a rent a later rent replaces — that rent
+    and the month it starts in."""
+    tools = LedgerTools(demo_store, today=TODAY)
+    fee = demo_store.get_item(DEMO_GYM_FEE)
+    assert fee is not None and fee.doc_id and fee.party_id
+    listed = {row["id"]: row for row in record_of(render_result(tools.list_items(status="all")))["items"]}
+    expected = _repeat(listed[DEMO_GYM_FEE])
+    assert expected["repeats"] == "every month on the 1st"
+    assert expected["following_due_date"] > fee.due_date
+    (party,) = tools.get_party(fee.party_id).record["parties"]
+    money = tools.money_summary().record
+    timeline = tools.timeline("2026-09-28", "2026-10-31").record["entries"]
+    explained = record_of(render_result(tools.explain_date(DEMO_GYM_FEE)))
+    for found in (
+        next(row for row in tools.get_document(fee.doc_id).record["items"] if row["id"] == DEMO_GYM_FEE),
+        next(row for row in party["open_items"] if row["id"] == DEMO_GYM_FEE),
+        next(row for row in money["upcoming_payments"] if row["id"] == DEMO_GYM_FEE),
+        next(row for row in timeline if row["id"] == DEMO_GYM_FEE),
+        explained,
+    ):
+        assert _repeat(found) == expected, found
+    # a rent row of the rent contract, wherever the contract is given
+    rows = _contract_rows(tools)
+    (rent,) = rows[DEMO_RENT_CONTRACT]["rent"]
+    assert _repeat(rent) == {
+        "repeats": "every month on the 3rd working day",
+        "replaced_by": DEMO_NEW_RENT,
+        "replaced_from_month": "2026-11",
+    }
+    assert _repeat(listed[DEMO_RENT]) == _repeat(rent)
+    assert _repeat(rent["next_rent"]) == _repeat(listed[DEMO_NEW_RENT])
+
+
+def test_a_rent_a_later_rent_replaces_names_it_and_has_no_following_date(demo_store: Store) -> None:
+    """Point 9 of ordnung.recurrence: October's €640 rent is the last of its series — the €670 rent replaces
+    it from November — so marking it done moves it nowhere, and its record says which rent follows from when
+    instead of a next due date."""
+    tools = LedgerTools(demo_store, today=TODAY)
+    rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
+    rent = rows[DEMO_RENT]
+    assert (rent["replaced_by"], rent["replaced_from_month"]) == (DEMO_NEW_RENT, "2026-11")
+    assert "following_due_date" not in rent
+    assert "replaced_by" not in rows[DEMO_NEW_RENT]
+
+
+def test_a_rent_that_keeps_the_earlier_rents_working_day_says_so(demo_store: Store) -> None:
+    """The new total rent stores "every month" but keeps the earlier rent's 3rd working day (point 9): Ask is
+    given the rule its dates follow, not the stored one, and the due date after Wed 4 Nov 2026."""
+    item = demo_store.get_item(DEMO_NEW_RENT)
+    assert item is not None and item.recurrence is not None and item.recurrence.working_day is None
+    rows = {r["id"]: r for r in LedgerTools(demo_store, today=TODAY).list_items(status="all").record["items"]}
+    assert _repeat(rows[DEMO_NEW_RENT]) == {
+        "repeats": "every month on the 3rd working day",
+        "following_due_date": "2026-12-03",
+    }
+
+
+def test_done_dismissed_and_one_off_to_dos_say_nothing_of_repeating(store: Store, demo_store: Store) -> None:
+    """A to-do whose series has ended (done or dismissed) or that never repeats has none of the fields."""
+    tools = LedgerTools(demo_store, today=TODAY)
+    for status in ("done", "dismissed"):
+        demo_store.update_item(DEMO_GYM_FEE, status=status)
+        rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
+        assert _repeat(rows[DEMO_GYM_FEE]) == {}, status
+        assert _repeat(tools.explain_date(DEMO_GYM_FEE).record) == {}, status
+    demo_store.update_item(DEMO_GYM_FEE, status="snoozed")
+    rows = {row["id"]: row for row in tools.list_items(status="all").record["items"]}
+    assert _repeat(rows[DEMO_GYM_FEE])["repeats"] == "every month on the 1st"  # put off, it still runs
+    ids = seed_ledger(store)
+    seeded = LedgerTools(store, today=TODAY).list_items(status="all").record["items"]
+    assert ids["tax_objection"] in {row["id"] for row in seeded}
+    assert all(_repeat(row) == {} for row in seeded)
+
+
+def test_an_undated_repeating_to_do_says_how_it_repeats_without_a_date(store: Store) -> None:
+    """A repeating to-do whose day nobody knows yet (a rent the letter gave no day) says how it repeats, and
+    no next due date."""
+    item = add_item(
+        store,
+        kind="payment",
+        title="Monthly rent",
+        recurrence=Recurrence(interval=1, unit="months"),
+        amount=640.0,
+        currency="EUR",
+        direction="out",
+    )
+    (row,) = [
+        r for r in LedgerTools(store, today=TODAY).list_items(status="all").record["items"] if r["id"] == item
+    ]
+    assert _repeat(row) == {"repeats": "every month"}
+
+
+def test_repeat_words_are_the_apps_words(store: Store) -> None:
+    """Ask's words for a rule are the app's (``recurrence.describe``, the web's ``repeatLabel``): each pair of
+    the shared ``repeatLabels.json`` through the record."""
+    pairs = json.loads(REPEAT_LABELS.read_text(encoding="utf-8"))
+    assert pairs
+    ledger = Ledger(store, TODAY)
+    for rule, label in pairs:
+        item = store.get_item(
+            add_item(store, kind="reminder", title="Repeats", recurrence=Recurrence.model_validate(rule))
+        )
+        assert item is not None
+        assert mcp_server._repeat_fields(ledger, item) == {"repeats": label}, rule
+
+
+@pytest.fixture
+def api_day() -> Iterator[None]:
+    """The routes' tests' day, Fri 25 Sep 2026 (``test_api_support.TODAY``)."""
+    from ordnung import clock
+    from test_api_support import TODAY as API_TODAY
+
+    clock.set_today(API_TODAY)
+    yield
+    clock.set_today(None)
+
+
+@pytest.mark.parametrize(
+    ("rule", "due"),
+    [
+        ({"interval": 1, "unit": "weeks"}, "2026-10-01"),
+        ({"interval": 2, "unit": "weeks"}, "2026-09-10"),
+        ({"interval": 1, "unit": "months"}, "2026-10-15"),
+        ({"interval": 3, "unit": "months"}, "2026-10-15"),
+        ({"interval": 1, "unit": "years"}, "2026-10-15"),
+        ({"interval": 1, "unit": "months", "working_day": 3}, "2026-10-01"),
+        ({"interval": 1, "unit": "months", "working_day": -1}, "2026-10-01"),
+        ({"interval": 1, "unit": "months", "day_of_month": 31}, "2026-10-01"),
+        ({"interval": 1, "unit": "weeks", "moved": "2026-10-02"}, "2026-10-01"),
+    ],
+)
+async def test_following_due_date_is_where_marking_it_done_moves_it(
+    data_dir: Path, rule: dict[str, Any], due: str, api_day: None
+) -> None:
+    """``following_due_date`` is the due date the to-do moves on to when the person marks it done (``PATCH
+    status=done``, :func:`ordnung.recurrence.mark_done`), for every kind of rule — and for a date moved by hand
+    ("only this one", point 7), the schedule's next one after it."""
+    from test_api_support import TODAY as API_TODAY
+    from test_api_support import api_for
+
+    rule = dict(rule)
+    moved = rule.pop("moved", None)
+    async with api_for(data_dir) as api:
+        response = await api.client.post(
+            "/api/items", json={"kind": "reminder", "title": "Repeats", "due_date": due, "recurrence": rule}
+        )
+        assert response.status_code == 201, response.text
+        item = response.json()
+        if moved is not None:
+            response = await api.client.patch(f"/api/items/{item['id']}", json={"due_date": moved})
+            item = response.json()
+            assert item["due_date"] == moved
+        tools = LedgerTools(api.ctx.store, today=date.fromisoformat(API_TODAY))
+        (row,) = [r for r in tools.list_items(status="all").record["items"] if r["id"] == item["id"]]
+        following = row["following_due_date"]
+        assert following > item["due_date"]
+        done = (await api.client.patch(f"/api/items/{item['id']}", json={"status": "done"})).json()
+        assert (done["status"], done["due_date"]) == ("open", following)
+
+
+@pytest.fixture
+def settled_demo_store(tmp_path: Path) -> Iterator[Store]:
+    """A copy of the demo's ledger with every record stamped at the start of its day, as the Ask benchmark
+    stamps it (:func:`evals.ask.ledger._settle_stamps`), so ties fall to insertion order at any hour."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    from evals.ask.ledger import _settle_stamps
+
+    data = tmp_path / "demo"
+    shutil.copytree(DEMO_DB, data)
+    _settle_stamps(data)
+    store = Store.open(Paths(data))
+    yield store
+    store.close()

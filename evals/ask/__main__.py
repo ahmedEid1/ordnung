@@ -18,7 +18,10 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     s = result.summary
     problems = []
     if result.misses:
-        problems.append(f"{len(result.misses)} question(s) have no recording — record them with --live")
+        problems.append(
+            f"{len(result.misses)} question(s) have no recording ({', '.join(sorted(result.misses))}) "
+            "— record them with --live"
+        )
     if result.stale:
         listed = "; ".join(f"{qid}: {', '.join(tools)}" for qid, (_, tools) in sorted(result.stale.items()))
         problems.append(
@@ -49,6 +52,13 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
         problems.append(
             f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
         )
+    household = s.get("household")
+    if household and household["not_answered"]:
+        problems.append(f"{household['not_answered']} household question(s) got no answer")
+    if args.min_household is not None:
+        attribution = household["attribution"]["value"] if household else None
+        if attribution is None or attribution < args.min_household:
+            problems.append(f"household attribution {attribution} is below {args.min_household}")
     return problems
 
 
@@ -78,6 +88,12 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--date", default=None, help="date of the results file (default: today)")
     parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
+    parser.add_argument(
+        "--recorded-dir",
+        type=Path,
+        default=None,
+        help=f"the recordings' folder (default {RECORDED_DIR}): a smoke run records into an empty one",
+    )
     parser.add_argument("--min-accuracy", type=float, default=None, help="gate: minimum answer accuracy")
     parser.add_argument(
         "--min-abstention", type=float, default=None, help="gate: minimum abstention accuracy"
@@ -101,6 +117,12 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         metavar="ID",
         help="an attack known to succeed for a documented reason (repeatable); any other success fails the gate",
     )
+    parser.add_argument(
+        "--min-household",
+        type=float,
+        default=None,
+        help="gate: minimum share of household questions whose answer says whose each number is",
+    )
     return parser.parse_args(argv)
 
 
@@ -113,7 +135,7 @@ def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR
         refresh=args.refresh,
         only=only,
         concurrency=args.concurrency,
-        recorded_dir=recorded_dir,
+        recorded_dir=args.recorded_dir or recorded_dir,
     )
     try:
         result = run(config)

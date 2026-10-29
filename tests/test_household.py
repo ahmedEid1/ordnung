@@ -563,14 +563,14 @@ def test_also_file_files_the_letter_for_the_one_new_person(sam: Store) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# never seen by Claude (point 9)
+# what reaches Claude (point 9)
 # --------------------------------------------------------------------------------------------------
 
 
-def test_ask_and_the_prompts_never_read_the_household() -> None:
-    """Nothing Claude is given reads the household: not Ask, not a prompt, not a draft request."""
+def test_prompts_drafts_review_and_brief_never_read_the_household() -> None:
+    """No prompt, draft request, weekly review or daily note reads the household itself (a person's name
+    reaches the last two only inside the title of an Idea about their letters)."""
     places = [
-        *sorted((ROOT / "src" / "ordnung" / "assistant").rglob("*.py")),
         *sorted((ROOT / "src" / "ordnung" / "llm").rglob("*")),
         ROOT / "src" / "ordnung" / "drafts" / "compose.py",
         ROOT / "src" / "ordnung" / "secretary" / "review.py",
@@ -582,3 +582,50 @@ def test_ask_and_the_prompts_never_read_the_household() -> None:
             # word itself may stand in a letter Claude helps with: "a hardship for you or your household")
             text = path.read_text(encoding="utf-8", errors="replace")
             assert not _REACHES_HOUSEHOLD.search(text), (path, _REACHES_HOUSEHOLD.search(text))
+
+
+#: What Ask's code may use of the household module: what Ask may see (point 9), and its shape.
+ASK_MAY_USE = {"ask_view", "AskView"}
+
+
+def test_ask_reads_the_household_only_through_ask_view() -> None:
+    """Ask (its tools and its ledger fingerprint) reads the household only as ``household.ask_view`` gives it
+    and as ``Ledger.household_filed`` files the letters: never the stored row, its meta key, ``signs``, "mine"
+    or a suggestion (point 9)."""
+    import ast
+
+    used: set[str] = set()
+    for path in sorted((ROOT / "src" / "ordnung" / "assistant").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        aliases: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "ordnung.secretary.household":
+                names = {alias.name for alias in node.names}
+                assert names <= ASK_MAY_USE, (path, names - ASK_MAY_USE)
+                used |= names
+            elif isinstance(node, ast.ImportFrom) and node.module == "ordnung.secretary":
+                aliases |= {alias.asname or alias.name for alias in node.names if alias.name == "household"}
+            elif isinstance(node, ast.Import):
+                assert not any(alias.name == "ordnung.secretary.household" for alias in node.names), path
+            elif isinstance(node, ast.Name):
+                assert node.id != "HOUSEHOLD_META_KEY", (path, node.lineno)
+            elif (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "get_meta"
+            ):
+                keys = [arg.value for arg in node.args if isinstance(arg, ast.Constant)]
+                assert "household" not in keys, (path, node.lineno)
+            elif isinstance(node, ast.Attribute) and node.attr in ("signs", "links", "suggested", "mine"):
+                raise AssertionError(f"{path.name}:{node.lineno} reads .{node.attr}")
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Attribute)
+                and isinstance(node.value, ast.Name)
+                and node.value.id in aliases
+            ):
+                assert node.attr in ASK_MAY_USE, (path, node.lineno, node.attr)
+                used.add(node.attr)
+    assert "ask_view" in used  # the fingerprint and get_profile read what Ask may see, and nothing else
+    mcp = (ROOT / "src" / "ordnung" / "assistant" / "mcp_server.py").read_text(encoding="utf-8")
+    assert ".household_filed" in mcp  # get_document's filed_for
