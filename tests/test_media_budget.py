@@ -8,9 +8,15 @@ The media are public and stay in the history, so these budgets keep them from gr
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import shutil
+import subprocess
 import tomllib
 from pathlib import Path
+
+import pytest
 
 from helpers_media import gif_info, mp4_info, png_info
 
@@ -18,6 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "docs" / "assets"
 CAPTURE_SH = ROOT / "scripts" / "capture.sh"
 CAPTURE_MJS = ROOT / "web" / "scripts" / "capture.mjs"
+#: what no picture may show, shared by ``capture.mjs`` and the real app's pictures
+CAPTURE_GUARD = ROOT / "web" / "scripts" / "capture-guard.mjs"
 PICTURES_SPEC = ROOT / "web" / "e2e" / "readme-pictures.spec.ts"
 
 GIF_BYTES = 4_500_000
@@ -63,6 +71,10 @@ DARK_PICTURES = frozenset({"today-dark.png", "mobile-dark.png"})
 EVAL_CHART = "eval-due-date-accuracy.png"
 #: what a path of the capturing computer starts with, in any file's bytes
 PATH_MARKS = (b"/home/", b"/Users/", b"/root/", b"/tmp/", b"\\Users\\")
+#: everything else ``docs/assets`` holds: the README's video, its GIF and the logo
+OTHER_MEDIA = frozenset({"demo.gif", "demo.mp4", "logo.svg"})
+
+_needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
 
 
 def _capture_sh() -> str:
@@ -73,15 +85,20 @@ def _capture_mjs() -> str:
     return CAPTURE_MJS.read_text(encoding="utf-8")
 
 
+def _capture_guard() -> str:
+    return CAPTURE_GUARD.read_text(encoding="utf-8")
+
+
 def _code(script: str) -> str:
     """A shell script without its comments (whole-line ones), so a check never passes on a comment."""
     return "\n".join(line for line in script.splitlines() if not line.lstrip().startswith("#"))
 
 
 def _function(source: str, name: str) -> str:
-    """The body of the top-level JavaScript function ``name`` in ``source`` (up to the next line that is ``}``)."""
-    start = re.search(rf"^(?:async )?function {name}\(", source, re.M)
-    assert start, f"capture.mjs has a function {name}"
+    """The body of the top-level JavaScript function ``name`` in ``source``, exported or not (up to the next line that
+    is ``}``)."""
+    start = re.search(rf"^(?:export )?(?:async )?function {name}\(", source, re.M)
+    assert start, f"the script has a function {name}"
     return source[start.start() : source.index("\n}\n", start.start())]
 
 
@@ -191,14 +208,18 @@ def test_make_capture_checks_every_frame_and_picture() -> None:
     guard = _function(capture, "guardPage")
     # what is on screen, whenever the page changes or scrolls
     assert "MutationObserver" in guard and 'addEventListener("scroll"' in guard and '"cap-leaks"' in guard
-    words = _function(capture, "forbiddenWords")
+    # the words come from capture-guard.mjs, which the real app's pictures share; the capture adds its own folders
+    words = _function(_capture_guard(), "forbiddenWords")
     for source in ("homedir()", "hostname()", '"user.email"', "pyproject.toml", "CAPTURE_FORBIDDEN"):
         assert source in words, source
+    assert 'import { forbiddenWords, pathRoots } from "./capture-guard.mjs";' in capture
+    (found,) = re.findall(r"^const FORBIDDEN = forbiddenWords\((.*)\);$", capture, re.M)
+    assert found.startswith("REPO, [") and "resolve(opts.data)" in found and "OUT" in found
     # no name is written into the repo: the author's is read from pyproject.toml when the capture runs
     authors = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["authors"]
     for author in authors:
         for word in re.findall(r"[^\W\d_]{3,}", author["name"]):
-            for text in (capture, _capture_sh()):
+            for text in (capture, _capture_guard(), PICTURES_SPEC.read_text(encoding="utf-8"), _capture_sh()):
                 assert not re.search(rf"\b{re.escape(word)}\b", text, re.I), "a word of the author's name"
 
 
@@ -220,10 +241,13 @@ def test_today_s_pictures_show_the_note_claude_wrote_for_the_day() -> None:
         assert checked >= 0, name
         # nothing opens another page between the check and the picture
         assert ".goto(" not in before[checked:] and ".reload(" not in before[checked:], name
-    # the tour: on Today, before its first caption
+    # the tour: on Today, before its first caption, and never on Today again: once it has read the tax assessment,
+    # Today shows the note written from the to-dos (the video ended on it, review of D5)
     tour = _function(capture, "tour")
     today = tour.index("await page.goto(`${BASE}/`)")
     assert "await claudesNote(page)" in tour[today : tour.index("await caption(page, ", today)]
+    assert tour.count("`${BASE}/`") == 1
+    assert not re.search(r'\bnav\(page, "Today"', tour)
 
 
 def test_the_tour_s_clock_is_the_video_s() -> None:
@@ -265,9 +289,12 @@ def test_the_guard_sees_a_path_cut_off_at_the_window_s_edge() -> None:
     the whole path is never there to find. The guard also looks for the start of every path of this computer it
     knows (its first folder: "/home/", "/tmp/", "C:\\Users\\"), wherever the rest is."""
     capture = _capture_mjs()
-    roots = _function(capture, "pathRoots")
-    for source in ("homedir()", "REPO", "opts.data", "OUT", "tmpdir()"):
+    roots = _function(_capture_guard(), "pathRoots")
+    for source in ("homedir()", "tmpdir()"):
         assert source in roots, source
+    (known,) = re.findall(r"^const ROOTS = pathRoots\((.*)\);$", capture, re.M)
+    for source in ("REPO", "opts.data", "OUT"):
+        assert source in known, source
     context = _function(capture, "newContext")
     assert "addInitScript(guardPage, { forbidden: FORBIDDEN, roots: ROOTS," in context
     guard = _function(capture, "guardPage")
@@ -289,15 +316,25 @@ def test_the_tour_keeps_the_trace_export_command_below_the_fold() -> None:
 
 
 def test_the_pictures_of_the_real_app_show_nothing_of_this_computer() -> None:
-    """The two pictures from the real app (pairing a phone, Your computers) show no path of the capturing computer
-    and not its name: the spec checks the text of every part it puts in a picture (the pairing dialog before and
-    after the phone pairs, the phone's page, the Your computers page), never repeating what it looks for."""
+    """The two pictures from the real app (pairing a phone, Your computers) are checked for what the demo's pictures
+    are: no path of the capturing computer or its start, not its name, not the git e-mail, no word of the author's
+    name and none of CAPTURE_FORBIDDEN's (``capture-guard.mjs``, shared with ``capture.mjs``; it only checked the
+    home folder and the computer's name, review of D5). The spec checks the text of every part it puts in a picture
+    (the pairing dialog before and after the phone pairs, the phone's page, the Your computers page as the picture
+    shows it), never repeating what it looks for."""
     spec = PICTURES_SPEC.read_text(encoding="utf-8")
+    assert 'import { forbiddenWords, leaks, pathRoots } from "../scripts/capture-guard.mjs";' in spec
     start = spec.index("function nothingOfThisComputer(")
     guard = spec[start : spec.index("\n}\n", start)]
-    assert "homedir()" in guard and "hostname()" in guard
-    assert "length >= 4" in guard  # a short computer name would match ordinary words
+    assert "forbiddenWords(" in guard and "pathRoots(" in guard and "leaks(text, " in guard
+    assert "homedir()" not in guard and "hostname()" not in guard  # the shared list has them
     assert ".not.toContain(" not in guard  # a failed check says what it found, not the word itself
+    words = _function(_capture_guard(), "forbiddenWords")
+    assert "length >= 4" in words  # a short computer name would match ordinary words
+    # CAPTURE_FORBIDDEN reaches the pictures' run: capture.sh exports it and never takes it away
+    script = _code(_capture_sh())
+    assert re.search(r"^export CAPTURE_FORBIDDEN=", script, re.M)
+    assert "CAPTURE_FORBIDDEN" not in _pictures_command(script)
     start = spec.index('test("pair-phone.png')
     pair = spec[start : spec.index("\n});\n", start)]
     # each part of the picture, by the text checked and the screenshot it becomes
@@ -311,13 +348,175 @@ def test_the_pictures_of_the_real_app_show_nothing_of_this_computer() -> None:
         assert check in pair, part
         # checked right before its screenshot is taken
         assert pair.index(check) < pair.index(f"path: {part}"), part
+    # Your computers: checked as the picture shows it, once the throwaway folder's path has made way for a typical one
     computers = spec[spec.index('test("your-computers.png') :]
-    assert computers.index("nothingOfThisComputer(") < computers.index("b.screenshot(")
+    replaced = computers.index("code.textContent = to")
+    picture = computers.index(
+        'const picture = (await b.locator("body").innerText()).replaceAll(SHOWN_FOLDER, "");'
+    )
+    checked = computers.index('nothingOfThisComputer(picture, "Your computers")')
+    assert replaced < picture < checked < computers.index("b.screenshot(")
+
+
+def _guard_in_node(tmp_path: Path, forbidden: str, texts: list[str]) -> dict[str, object]:
+    """What ``capture-guard.mjs`` finds in a checkout at ``tmp_path`` whose author is "Jo Bergmann", with
+    CAPTURE_FORBIDDEN set to ``forbidden``: its words (word and what it is) and what each of ``texts`` leaks."""
+    repo = tmp_path / "checkout"
+    repo.mkdir()
+    (repo / "pyproject.toml").write_text(
+        '[project]\nauthors = [{ name = "Jo Bergmann" }]\n', encoding="utf-8"
+    )
+    script = (
+        f"import {{ forbiddenWords, leaks, pathRoots }} from {json.dumps(CAPTURE_GUARD.as_uri())};\n"
+        "const [repo, texts] = [process.argv[1], JSON.parse(process.argv[2])];\n"
+        'const words = forbiddenWords(repo, [[`${repo}-data`, "the run\'s data folder"]]);\n'
+        "const roots = pathRoots([repo]);\n"
+        "console.log(JSON.stringify({ words: words.map((w) => [w.text, w.what]), "
+        "leaks: texts.map((t) => leaks(t, words, roots)) }));\n"
+    )
+    run = subprocess.run(
+        ["node", "--input-type=module", "-e", script, str(repo), json.dumps(texts)],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "CAPTURE_FORBIDDEN": forbidden},
+        check=False,
+    )
+    assert run.returncode == 0, run.stderr
+    found: dict[str, object] = json.loads(run.stdout)
+    return found
+
+
+@_needs_node
+def test_a_word_you_name_is_looked_for_however_short(tmp_path: Path) -> None:
+    """CAPTURE_FORBIDDEN's words are the owner's own (a short surname, initials): each is looked for, however short
+    (two letters were dropped without a word, review of D5). The author's name in pyproject.toml is split into
+    words, and only those keep the three-letter floor ("Jo" would match too much). A word is found on its own,
+    never inside a longer one, and the start of a path of this computer wherever it is."""
+    found = _guard_in_node(
+        tmp_path,
+        "Li, Wu ,,",
+        ["Frau Li schreibt", "Lieferung an Wuppertal", "Bergmann", "Jo", f"{tmp_path}/x", "nothing"],
+    )
+    words = {text: what for text, what in found["words"]}  # type: ignore[attr-defined]
+    assert words["Li"] == words["Wu"] == "a word of CAPTURE_FORBIDDEN"
+    assert words["Bergmann"] == "a word of the author's name"
+    assert "Jo" not in words and "" not in words
+    assert words[f"{tmp_path / 'checkout'}-data"] == "the run's data folder"
+    assert found["leaks"] == [
+        ["a word of CAPTURE_FORBIDDEN"],
+        [],
+        ["a word of the author's name"],
+        [],
+        ["the start of a path of this computer"],
+        [],
+    ]
+
+
+def test_a_stopped_tour_leaves_no_recording_with_the_pictures() -> None:
+    """The video records into a temporary folder of its own, never into ``<out>`` (``docs/assets``): when the guard
+    stops the tour, the recording up to then, with the page it stopped on, is deleted with that folder, and only a
+    clean tour's ``demo.webm`` and ``cut`` reach ``<out>/video``. A stopped run left it in ``docs/assets/video``,
+    where ``git add`` would have found it (review of D5). ``capture.sh`` removes ``$OUT/video`` too when the run
+    fails, and git ignores that folder."""
+    record = _function(_capture_mjs(), "recordVideo")
+    assert "const recording = mkdtempSync(join(tmpdir(), " in record
+    assert "recordVideo: { dir: recording, size }" in record
+    assert "dir: dir" not in record and "recordVideo: { dir," not in record
+    # whatever happens, the temporary folder goes
+    cleanup = record.index("rmSync(recording, { recursive: true, force: true })")
+    assert record.rindex("} finally {", 0, cleanup) > record.index("const recording = ")
+    # <out>/video only after the tour ran clean
+    clean = record.index("cut = await tour(page);")
+    assert clean < record.index("mkdirSync(dir, { recursive: true })")
+    assert clean < record.index('join(dir, "demo.webm")')
+    script = _code(_capture_sh())
+    (trap,) = re.findall(r"^trap '(.*)' EXIT$", script, re.M)
+    assert 'kill "$SERVER"' in trap and 'rm -rf "$OUT/video"' in trap
+    assert '[ "$status" = 0 ] || rm -rf "$OUT/video"' in trap  # a clean run removes it itself
+    gitignore = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
+    assert "/docs/assets/video/" in gitignore
+
+
+def test_the_review_folder_is_refused_under_docs_also_through_a_symlink(tmp_path: Path) -> None:
+    """``CAPTURE_REVIEW`` under ``docs/`` is refused before anything starts, also when the checkout is opened through
+    a symlink: the review folder is a physical path (``realpath``), so the checkout's must be too (review of D5: the
+    logical one let ``docs/review`` through)."""
+    real = tmp_path / "real"
+    (real / "scripts").mkdir(parents=True)
+    (real / "docs").mkdir()
+    shutil.copy2(CAPTURE_SH, real / "scripts" / "capture.sh")
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+    env = {
+        **os.environ,
+        "CAPTURE_REVIEW": "docs/review",
+        "CAPTURE_DATA": str(tmp_path / "data" / "ordnung-capture"),
+        "CAPTURE_OUT": str(tmp_path / "out"),
+    }
+    run = subprocess.run(
+        ["bash", str(link / "scripts" / "capture.sh")],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert run.returncode == 1, run.stderr
+    assert "CAPTURE_REVIEW is under docs/" in run.stderr
+    assert not (real / "docs" / "review").exists()
+
+
+def test_the_frame_check_measures_brightness_from_0_to_255(tmp_path: Path) -> None:
+    """ffmpeg measures an H.264 frame's luma on the video range, 16 black to 235 white. The frame check maps it to
+    0–255 before it compares and says it, so its 150 is :data:`LIGHT`, the pictures' measure (review of D5: a white
+    frame read 235, a frame of 32 read 43)."""
+    script = _capture_sh()
+    (program,) = re.findall(r"awk -v min=150 '(.*?)'\)", script, re.S)
+    metadata = "".join(
+        f"frame:{i}    pts:{i}       pts_time:{i / 2:g}\nlavfi.signalstats.YAVG={luma}\n"
+        for i, luma in enumerate(("235.000000", "145.000000", "60.000000", "16.000000"))
+    )
+    run = subprocess.run(
+        ["awk", "-v", "min=150", program], input=metadata, capture_output=True, text=True, check=False
+    )
+    assert run.returncode == 0, run.stderr
+    # 145 on the video range is 150 from 0 to 255: light; 60 is 51
+    assert run.stdout.strip() == (
+        "A frame of demo.mp4 is dark (mean brightness 51 at 1.0 s): the tour must stay in the light theme."
+    )
+
+
+def test_the_tour_cuts_the_letter_as_it_was_while_being_read() -> None:
+    """Once the tax assessment is read, the app opens it by itself and draws it first as it was while being read
+    (its file name, "Reading your letter", "Not sent to Claude"), under the caption that says Claude reads it. The
+    tour cuts that from the video: from a moment before the letter's page opens until its own title, as read, is
+    its heading (review of D5)."""
+    tour = _function(_capture_mjs(), "tour")
+    arrives = tour[tour.index('mark("a letter arrives")') : tour.index('mark("the letter")')]
+    clicked = arrives.index('getByRole("button", { name: "Let Ordnung read it" })')
+    opened = arrives.index("await page.waitForURL(/\\/documents\\/doc_/")
+    titled = arrives.index("await (await titleOf(page, taxId)).waitFor(")
+    cut = arrives.index("gaps.push([opening, seconds()]);")
+    assert clicked < opened < titled < cut
+    assert re.search(r"const opening = seconds\(\) - 0\.\d+;", arrives)
+    title = _function(_capture_mjs(), "titleOf")
+    assert 'getByRole("heading", { level: 1, name: shownAs(' in title
 
 
 # --------------------------------------------------------------------------------------------------
 # What it made
 # --------------------------------------------------------------------------------------------------
+
+
+def test_docs_assets_holds_the_readme_media_only() -> None:
+    """``docs/assets`` holds README's pictures, the benchmark chart, the video, its GIF and the logo, and nothing else:
+    no folder (a stopped capture's ``video``) and no recording."""
+    entries = {path.name: path for path in ASSETS.iterdir()}
+    assert not [name for name, path in entries.items() if path.is_dir()]
+    assert set(entries) == set(PICTURES) | {EVAL_CHART} | OTHER_MEDIA, set(entries) ^ (
+        set(PICTURES) | {EVAL_CHART} | OTHER_MEDIA
+    )
 
 
 def test_the_readme_pictures_are_small_and_in_their_theme() -> None:

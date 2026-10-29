@@ -4,10 +4,12 @@
 # The court payment order comes from the app's mock mode (see web/scripts/capture.mjs).
 # Pairing a phone and Your computers come from the real app (see web/e2e/readme-pictures.spec.ts).
 # The media are public and stay in the history: small by design (tests/test_media_budget.py keeps them in
-# budget), from replay only, every frame of the video light, and every page checked for a path of this computer
-# or a real name while it is captured. Look at the contact sheets and the pictures before you commit them.
+# budget), from replay only, every frame of the video light, and every page and picture checked for a path of this
+# computer or a real name while it is captured (web/scripts/capture-guard.mjs). Look at the contact sheets and the
+# pictures before you commit them.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+# the checkout's physical path, as realpath gives the folders below, also when it is opened through a symlink
+cd -P "$(dirname "$0")/.."
 
 PORT=${CAPTURE_PORT:-8797}
 DATA=${CAPTURE_DATA:-$(mktemp -d)/ordnung-capture}
@@ -24,7 +26,8 @@ case "$REVIEW/" in
     exit 1
     ;;
 esac
-# words no page may show besides the ones web/scripts/capture.mjs finds itself (comma-separated, e.g. a name)
+# words no page or picture may show besides the ones web/scripts/capture-guard.mjs finds itself (comma-separated,
+# e.g. a name, each however short)
 export CAPTURE_FORBIDDEN=${CAPTURE_FORBIDDEN:-}
 
 rm -rf "$DATA"
@@ -42,7 +45,8 @@ export ORDNUNG_CLAUDE_BIN="$PWD/tests/fake_claude.py" FAKE_CLAUDE_SCENARIO="$SCE
 export CAPTURE_REVIEW="$REVIEW"
 .venv/bin/ordnung demo --serve --no-browser --reset --port "$PORT" --data-dir "$DATA" >"$DATA.log" 2>&1 &
 SERVER=$!
-trap 'kill "$SERVER" 2>/dev/null || true' EXIT
+# a run that fails leaves no recording in $OUT (a clean one removes it itself, once the MP4 is made)
+trap 'status=$?; kill "$SERVER" 2>/dev/null || true; [ "$status" = 0 ] || rm -rf "$OUT/video"' EXIT
 for _ in $(seq 120); do
   curl -sf "http://127.0.0.1:$PORT/api/health" >/dev/null && break
   sleep 0.5
@@ -69,11 +73,12 @@ if [ -f "$OUT/video/demo.webm" ]; then
   ffmpeg -v error -y -ss "$START" -i "$OUT/video/demo.webm" -vf "fps=25,select='$KEEP',setpts=N/(25*TB)" \
     -c:v libx264 -pix_fmt yuv420p -crf "$MP4_CRF" -preset slow -movflags +faststart "$OUT/demo.mp4"
   rm -rf "$OUT/video"
-  # every frame light, two a second (the mean brightness of each, 0 black to 255 white): the tour never shows the
-  # dark theme
+  # every frame light, two a second (the mean brightness of each, 0 black to 255 white, as tests/test_media_budget.py
+  # measures the pictures; ffmpeg gives a video's luma from 16 black to 235 white, mapped here): the tour never shows
+  # the dark theme
   DARK=$(ffmpeg -v error -i "$OUT/demo.mp4" -vf "fps=2,signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG:file=-" -f null - |
     awk -v min=150 '/pts_time:/ { t = substr($0, index($0, "pts_time:") + 9) + 0 }
-      /lavfi.signalstats.YAVG=/ { y = substr($0, index($0, "=") + 1) + 0
+      /lavfi.signalstats.YAVG=/ { y = (substr($0, index($0, "=") + 1) - 16) * 255 / 219
         if (y < min && !dark) { printf "A frame of demo.mp4 is dark (mean brightness %.0f at %.1f s): the tour must stay in the light theme.\n", y, t; dark = 1 } }')
   if [ -n "$DARK" ]; then
     echo "$DARK" >&2

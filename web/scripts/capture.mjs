@@ -19,17 +19,19 @@
  * Set PW_CHROMIUM_PATH to use a Chromium that is already installed.
  *
  * Every page it opens is guarded (`guardPage`): the theme the picture is in, and nothing that would tell a reader
- * about the computer that made it — a path, its name, the git e-mail, the author's name (`forbiddenWords`, found
- * when it runs; none is written here). A page that shows one stops the capture (`assertClean`). A failed run's
- * screenshot goes to CAPTURE_REVIEW (`make capture`'s review folder), never to `<out>`.
+ * about the computer that made it — a path, its name, the git e-mail, the author's name (`forbiddenWords` in
+ * capture-guard.mjs, found when it runs; none is written here). A page that shows one stops the capture
+ * (`assertClean`). A failed run's screenshot goes to CAPTURE_REVIEW (`make capture`'s review folder), never to
+ * `<out>`; the video records into a temporary folder until the tour has run clean, so a stopped tour's recording
+ * never reaches `<out>` either.
  */
-import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { homedir, hostname, tmpdir } from "node:os";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
+import { forbiddenWords, pathRoots } from "./capture-guard.mjs";
 import { shownAs } from "./ui-audit/steps.mjs";
 
 const { values: opts } = parseArgs({
@@ -132,55 +134,13 @@ function hideDemoTour() {
 // ------------------------------------------------------------------------------------------------
 
 /**
- * What no page may show, found when the capture runs (none of it is written into the repo): the paths of this
- * computer the capture knows (the home folder, the checkout, the demo's data folder, where the pictures go), the
- * computer's name, the git e-mail address, each word of the author's name in pyproject.toml, and CAPTURE_FORBIDDEN's
- * words (comma-separated). Each comes with what it is, for the message, which never repeats it.
+ * What no page may show (capture-guard.mjs, which the real app's two pictures share), found when the capture runs:
+ * this computer's paths, the demo's data folder and where the pictures go among them, its name, the git e-mail, the
+ * author's name and CAPTURE_FORBIDDEN's words. None of it is written into the repo.
  */
-function forbiddenWords() {
-  const found = [];
-  const add = (text, what) => {
-    const word = (text ?? "").trim();
-    if (word.length < 3 || word === "/" || found.some((f) => f.text.toLowerCase() === word.toLowerCase())) return;
-    found.push({ text: word, what });
-  };
-  add(homedir(), "the home folder");
-  add(REPO, "the checkout's folder");
-  add(resolve(opts.data), "the demo's data folder");
-  add(OUT, "the pictures' folder");
-  const host = hostname();
-  if (host.length >= 4 && host.toLowerCase() !== "localhost") add(host, "this computer's name");
-  try {
-    const email = execFileSync("git", ["config", "user.email"], { cwd: REPO, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
-    add(email, "the git e-mail address");
-  } catch {
-    // no e-mail set
-  }
-  const authors = readFileSync(join(REPO, "pyproject.toml"), "utf8").match(/^authors\s*=\s*\[(.*?)\]$/ms)?.[1] ?? "";
-  for (const [, name] of authors.matchAll(/\bname\s*=\s*"([^"]*)"/g)) {
-    for (const word of name.split(/[^\p{L}]+/u)) add(word, "a word of the author's name");
-  }
-  for (const word of (process.env.CAPTURE_FORBIDDEN ?? "").split(",")) add(word, "a word of CAPTURE_FORBIDDEN");
-  return found;
-}
-
-const FORBIDDEN = forbiddenWords();
-
-/**
- * The first folder of every path of this computer the capture knows ("/home/", "/tmp/", "C:\Users\"). A path on
- * screen is often drawn in pieces (a command wraps at each "/") and cut off by the window's edge, so the whole path
- * is never there to find; its start is.
- */
-function pathRoots() {
-  const roots = new Set();
-  for (const path of [homedir(), REPO, resolve(opts.data), OUT, tmpdir()]) {
-    const root = `${path}/`.match(/^(?:[A-Za-z]:)?[\\/][^\\/]+[\\/]/)?.[0];
-    if (root) roots.add(root);
-  }
-  return [...roots];
-}
-
-const ROOTS = pathRoots();
+const FORBIDDEN = forbiddenWords(REPO, [[resolve(opts.data), "the demo's data folder"], [OUT, "the pictures' folder"]]);
+/** The start of every path of this computer the capture knows: a path cut off at the window's edge still shows it. */
+const ROOTS = pathRoots([REPO, resolve(opts.data), OUT]);
 
 /**
  * In every page the capture opens (an init script): at most every 250 ms after the page changes or scrolls, it looks
@@ -359,6 +319,15 @@ async function verdictOf(page, id) {
   return page.getByRole("article", { name: shownAs(document.title ?? document.filename) });
 }
 
+/**
+ * The letter `id`'s own heading: its title as read (from the API), not the file's name it has while it is being
+ * read (its "Reading your letter" card).
+ */
+async function titleOf(page, id) {
+  const { document } = await apiGet(page.context(), `/api/documents/${id}`);
+  return page.getByRole("main").getByRole("heading", { level: 1, name: shownAs(document.title ?? document.filename) });
+}
+
 /** The New-mail letter from `sender`, read if it wasn't yet (in the page, as a person would): its letter id. */
 async function readMail(page, sender) {
   const tray = await apiGet(page.context(), "/api/demo/mail");
@@ -491,35 +460,42 @@ async function sendCancellation(context) {
 async function recordVideo(browser) {
   const dir = join(OUT, "video");
   rmSync(dir, { recursive: true, force: true });
-  const size = { width: 1280, height: 800 };
-  const context = await newContext(browser, { viewport: size, recordVideo: { dir, size } });
-  await context.addInitScript(overlay);
-  await context.addInitScript(hideDemoTour);
-  const page = await context.newPage();
-  page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
-  page.on("console", (m) => m.type() === "error" && console.error(`console: ${m.text()}`));
-  let cut;
+  // the recording goes to a folder of its own until the tour has run clean: when the guard stops it, what was
+  // recorded up to then shows what no picture may, and is deleted with the folder, never left in `<out>`
+  const recording = mkdtempSync(join(tmpdir(), "ordnung-capture-video-"));
   try {
-    cut = await tour(page);
-    await assertClean(page);
-  } catch (err) {
-    mkdirSync(REVIEW, { recursive: true });
-    await page.screenshot({ path: join(REVIEW, "capture-error.png") }).catch(() => {});
-    console.error(`the page when it stopped → ${join(REVIEW, "capture-error.png")}`);
+    const size = { width: 1280, height: 800 };
+    const context = await newContext(browser, { viewport: size, recordVideo: { dir: recording, size } });
+    await context.addInitScript(overlay);
+    await context.addInitScript(hideDemoTour);
+    const page = await context.newPage();
+    page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
+    page.on("console", (m) => m.type() === "error" && console.error(`console: ${m.text()}`));
+    let cut;
+    try {
+      cut = await tour(page);
+      await assertClean(page);
+    } catch (err) {
+      mkdirSync(REVIEW, { recursive: true });
+      await page.screenshot({ path: join(REVIEW, "capture-error.png") }).catch(() => {});
+      console.error(`the page when it stopped → ${join(REVIEW, "capture-error.png")}`);
+      await context.close();
+      throw err;
+    }
+    const video = page.video();
     await context.close();
-    throw err;
+    mkdirSync(dir, { recursive: true });
+    // a copy: the temporary folder may be on another file system
+    copyFileSync(await video.path(), join(dir, "demo.webm"));
+    // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
+    // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
+    // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
+    const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
+    writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
+    console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
+  } finally {
+    rmSync(recording, { recursive: true, force: true });
   }
-  const video = page.video();
-  await context.close();
-  const recorded = await video.path();
-  renameSync(recorded, join(dir, "demo.webm"));
-  for (const name of readdirSync(dir)) if (name !== "demo.webm") rmSync(join(dir, name));
-  // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
-  // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
-  // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
-  const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
-  writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
-  console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
 }
 
 /**
@@ -581,9 +557,16 @@ async function tour(page) {
   await page.waitForTimeout(900);
   await caption(page, "Claude reads it. Code checks every fact and computes the dates.");
   await click(page, letter.getByRole("button", { name: "Let Ordnung read it" }));
+  // once read, the app opens the letter by itself and draws it first as it was while being read (its file's name,
+  // "Reading your letter", "Not sent to Claude"), under the caption that says Claude reads it: cut from a moment
+  // before the page opens (seen a little after it has drawn) until the letter's own title is its heading
   await page.waitForURL(/\/documents\/doc_/, { timeout: 60_000 });
+  const opening = seconds() - 0.3;
   const taxId = new URL(page.url()).pathname.split("/").pop();
-  await settle(page, 900);
+  await (await titleOf(page, taxId)).waitFor({ timeout: 60_000 });
+  await settle(page, 300);
+  gaps.push([opening, seconds()]);
+  await settle(page, 600);
 
   mark("the letter");
   await caption(page, "What it is, what to do and by when.");
@@ -685,7 +668,9 @@ async function tour(page) {
   await page.waitForTimeout(2600);
 
   mark("the end");
-  await nav(page, "Today", "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
+  // on the Inbox, not Today: once a letter has been read, Today's note is the one written from the to-dos, not
+  // Claude's (claudesNote)
+  await nav(page, "Inbox", "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
   await page.waitForTimeout(3400);
   mark("done");
   return { start, gifEnd, gaps };
