@@ -7,9 +7,29 @@ import sys
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
+from typing import Any
 
-from evals.ask.report import headline, results_payload, stale_docs, write_docs, write_results
-from evals.ask.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, BenchmarkError, Config, RunResult, run
+from evals.ask.report import (
+    headline,
+    recorded_on,
+    results_payload,
+    stale_docs,
+    strict_headline,
+    write_docs,
+    write_results,
+)
+from evals.ask.run import (
+    DEFAULT_MODEL,
+    HELDOUT_RECORDED_DIR,
+    RECORDED_DIR,
+    RESULTS_DIR,
+    SETS,
+    BenchmarkError,
+    Config,
+    RunResult,
+    load_harness,
+    run,
+)
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
 
 
@@ -49,6 +69,29 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
         problems.append(
             f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
         )
+    return problems + strict_gate_failures(result, args)
+
+
+def strict_gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
+    """The gates on the strict scores, the request lock and the budget (empty when every threshold holds)."""
+    problems = []
+    if result.drift:
+        problems.append(
+            f"{len(result.drift)} recording(s) differ from the request lock: {result.drift[0]} — see "
+            "`python -m evals.harness diff-requests HEAD --ask`"
+        )
+    budget = next(
+        (t.error for t in result.turns.values() if (t.error or "").startswith("budget reached")), None
+    )
+    if budget:
+        problems.append(budget)
+    strict = result.strict_summary
+    value = strict.get("strict_accuracy", {}).get("value")
+    if args.min_strict_accuracy is not None and (value is None or value < args.min_strict_accuracy):
+        problems.append(f"strict answer accuracy {value} is below {args.min_strict_accuracy}")
+    harmful = strict.get("harmful_answers", [])
+    if args.max_harmful is not None and len(harmful) > args.max_harmful:
+        problems.append(f"{len(harmful)} harmful answer(s): {', '.join(harmful)} (max {args.max_harmful})")
     return problems
 
 
@@ -101,26 +144,83 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         metavar="ID",
         help="an attack known to succeed for a documented reason (repeatable); any other success fails the gate",
     )
+    add_heldout_arguments(parser)
     return parser.parse_args(argv)
 
 
-def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR) -> int:
+def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
+    """The held-out set, repeated runs, the recording's budget and waiting, and the strict gates."""
+    parser.add_argument(
+        "--set",
+        choices=SETS,
+        default="dev",
+        help="dev: the development set (default); heldout: the held-out set of evals/ask/heldout/, written after "
+        "the code freeze (recordings in evals/recorded/ask-heldout/, results …-ask-heldout.json, no page)",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help="run N of the same questions (default 1, the recorded run): run N ≥ 2 is recorded and replayed under "
+        "keys of its own, with the same request; its results file ends in -rN",
+    )
+    parser.add_argument(
+        "--max-cost-usd",
+        type=float,
+        default=None,
+        metavar="USD",
+        help="with --live: start no new call once the run's calls cost this much (what is recorded is kept)",
+    )
+    parser.add_argument(
+        "--wait-on-limit",
+        type=float,
+        default=None,
+        metavar="HOURS",
+        help="with --live: on a usage limit, wait for its reset (no call is made) and go on, until HOURS after the "
+        "start",
+    )
+    parser.add_argument(
+        "--min-strict-accuracy",
+        type=float,
+        default=None,
+        help="gate: minimum strict answer accuracy (every gold value, nothing harmful, no false inclusion)",
+    )
+    parser.add_argument(
+        "--max-harmful", type=int, default=None, help="gate: answers stating a harmful value (a later date …)"
+    )
+
+
+def main(
+    argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR, heldout_dir: Path | None = None
+) -> int:
     args = parse_args(argv)
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
+    harness = load_harness()
     config = Config(
         model=args.model,
         live=args.live or args.refresh,
         refresh=args.refresh,
         only=only,
         concurrency=args.concurrency,
-        recorded_dir=recorded_dir,
+        recorded_dir=HELDOUT_RECORDED_DIR
+        if args.set == "heldout" and recorded_dir == RECORDED_DIR
+        else recorded_dir,
+        set_name=args.set,
+        heldout_dir=heldout_dir,
+        repeat=args.repeat,
+        max_cost_usd=args.max_cost_usd,
+        wait_on_limit_hours=args.wait_on_limit,
+        recorder_lock=harness.RECORDER_LOCK
+        if harness is not None
+        else None,  # one recorder for every benchmark
     )
     try:
         result = run(config)
     except BenchmarkError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
-    for line in headline(result.summary):
+    for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:
         for qid, (path, _) in sorted(result.stale.items()):
@@ -134,18 +234,44 @@ def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR
         if only:
             print("error: --write needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        payload = results_payload(result, run_date=args.date or date.today().isoformat())
-        print(f"wrote {write_results(payload, args.results_dir)} and {write_docs(payload)}")
+        payload = _payload(result, args, args.date or date.today().isoformat())
+        written = write_results(payload, args.results_dir)
+        if _has_page(args):
+            print(f"wrote {written} and {write_docs(payload)}")
+        else:  # a held-out run or a repeat sits beside the page's run, never replaces it
+            print(f"wrote {written}")
     problems = gate_failures(result, args)
     if args.check_docs:
         if only:
             print("error: --check-docs needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        stale = stale_docs(lambda day: results_payload(result, run_date=day), args.results_dir, args.model)
+        stale = stale_docs(
+            lambda day: _payload(result, args, day),
+            args.results_dir,
+            args.model,
+            as_recorded=lambda day: results_payload(result, run_date=day, schema=1),
+            set_name=args.set,
+            repeat=args.repeat,
+        )
         problems += [f"{problem} — regenerate with --write --date <its date>" for problem in stale]
     for problem in problems:
         print(f"gate: {problem}", file=sys.stderr)
     return 1 if problems else 0
+
+
+def _payload(result: RunResult, args: argparse.Namespace, day: str) -> dict[str, Any]:
+    """The results file of ``day``: a replay re-scores the live run of the newest committed file before it."""
+    recorded = (
+        None
+        if result.config.live
+        else recorded_on(args.results_dir, args.model, day, set_name=args.set, repeat=args.repeat)
+    )
+    return results_payload(result, run_date=day, recorded=recorded)
+
+
+def _has_page(args: argparse.Namespace) -> bool:
+    """Only the development set's run 1 writes ``docs/evals-ask.md``."""
+    return bool(args.set == "dev" and args.repeat == 1)
 
 
 if __name__ == "__main__":
