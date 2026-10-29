@@ -302,7 +302,7 @@ test.describe.serial("high-stakes letters", () => {
       await expect(verdict.getByText(/overdue/)).toHaveCount(0);
       const vbox = (await verdict.boundingBox())!;
       for (const row of await rows.all()) {
-        await expect(row.getByRole("button", { name: /^Mark .* done$/ })).toBeVisible();
+        await expect(row.getByRole("button", { name: /^Mark done: “.+”$/ })).toBeVisible();
         const r = (await row.boundingBox())!;
         expect(r.x + r.width, "a law deadline row sticks out of the verdict card").toBeLessThanOrEqual(vbox.x + vbox.width + 0.5);
       }

@@ -1422,15 +1422,18 @@ def test_readme_pictures_exist_and_have_alt_text() -> None:
 
 def test_readme_s_axe_claim_names_its_axe_and_what_is_open() -> None:
     """README's *Light and dark*: "no serious or critical axe violations" holds for the axe-core the e2e suite runs
-    (its version in the lockfile) and its WCAG 2.2 AA rules. axe's newer Label in Name check (WCAG 2.5.3, an
-    experimental rule in that version) flags links and buttons whose name leaves out initials or a count they show;
-    README says that is open, not that there is nothing (review of D5)."""
+    (its version in the lockfile) and its WCAG 2.2 AA rules. From axe 4.14 these include the Label in Name check
+    (WCAG 2.5.3), which 0.3.0's README still listed as open: the Inbox link, the profile row and the sender chips
+    are now named by what they show (issue #37), so nothing is listed as open."""
     lock = json.loads((ROOT / "web" / "package-lock.json").read_text(encoding="utf-8"))
     axe = lock["packages"]["node_modules/axe-core"]["version"]
     (cell,) = [line for line in _readme().splitlines() if "<b>Light and dark.</b>" in line]
     version = ".".join(axe.split(".")[:2])
     assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
-    assert "Still open: axe's newer Label in Name check (WCAG 2.5.3)" in cell
+    assert tuple(int(part) for part in axe.split(".")[:2]) >= (4, 14), (
+        "the Label in Name check runs from axe 4.14 on"
+    )
+    assert "Still open" not in cell
 
 
 def _claimed(pattern: str) -> int:
@@ -2675,11 +2678,12 @@ def _unreleased(heading: str, changelog: str | None = None) -> str:
 
 def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
     """docs/releasing.md renames "## Unreleased" to the version, and CONTRIBUTING.md starts a new one for the
-    next change: the claims about what came after 0.2.0 still find their bullets then."""
+    next change: the claims about what came after 0.2.0 still find their bullets then. What is under Unreleased
+    now (empty or not) becomes the release's section, under a new Unreleased with a fix of its own."""
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     released = changelog.replace(
         "\n## Unreleased\n",
-        "\n## Unreleased\n\n## 0.3.1 — 2026-11-02\n\n### Fixed\n\n- A small fix after the release.\n",
+        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.1 — 2026-11-02\n",
         1,
     )
     fix = _flat("- A small fix after the release.")
@@ -2687,6 +2691,20 @@ def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
         assert _unreleased(heading, released) == _unreleased(heading)
     assert _unreleased("Fixed", released) == f"{fix} {_unreleased('Fixed')}"
     assert "**Open Ordnung from your app menu.**" in _unreleased("Added", released)
+
+
+def test_the_changelog_s_label_in_name_fix_quotes_the_inbox_link_as_the_app_names_it() -> None:
+    """CHANGELOG, Unreleased → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
+    The Inbox link's new name is the one the web app's shell test pins, and the shell no longer builds the old
+    one ("Inbox, 1 letter to check, …")."""
+    (bullet,) = [part for part in _unreleased("Fixed").split(" - ") if "*Label in Name*" in part]
+    new, old = "Inbox 4 — 1 letter to check, 3 not read yet", "Inbox, 1 letter to check, 3 not read yet"
+    assert f'The Inbox link is "{new}"; it was "{old}".' in bullet
+    assert "Each still says everything it said before." in bullet
+    shell = ROOT / "web" / "src" / "components" / "shell"
+    assert f'getByRole("link", {{ name: "{new}" }})' in (shell / "shell.test.tsx").read_text(encoding="utf-8")
+    for name in ("Sidebar.tsx", "MobileTabBar.tsx"):
+        assert "`${item.label}, ${inboxCountText(" not in (shell / name).read_text(encoding="utf-8"), name
 
 
 def _bullet(flat_list: str, lead: str) -> str:

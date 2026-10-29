@@ -98,7 +98,7 @@ To read your own letters, see [Install and run](#install-and-run).
 </tr>
 <tr>
 <td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag the letter, and its demand is never counted, listed or given a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
-<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.13's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both. Still open: axe's newer Label in Name check (WCAG 2.5.3) flags links and buttons whose name leaves out initials or a count they show.</td>
+<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/pair-phone.png" alt="Pairing a phone: on the computer, a QR code and a pairing code; on the phone, once paired, two check words; on the computer, the same two words"><br><b>Your phone at home.</b> Settings → Phone shows a QR code for the phone's camera. Once the phone pairs, both screens show the same two words, so you know the phone that paired is yours. Then it opens Ordnung in its browser over your home Wi-Fi: photograph a letter, tick off a to-do, read what a letter means. Settings, backups and deleting stay on the computer.‡</td>
@@ -570,8 +570,9 @@ client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-fr
 and `--remove-ledger` takes that entry out again.
 
 **From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](CONTRIBUTING.md) has
-the checks CI runs and how to send a change:
+(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`; the accessibility checker that `make e2e`
+and `make ui-audit` use asks for 22.12+). [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and
+how to send a change:
 
 ```bash
 make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
