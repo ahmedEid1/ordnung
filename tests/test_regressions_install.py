@@ -263,6 +263,9 @@ def test_the_readme_says_how_to_update() -> None:
     flat = " ".join(updating.split())
     assert f'`pipx install --force "{tagged}"`' in flat
     assert f'`uv tool install "{tagged}"`' in flat
+    # 0.2.0 was released without a tag: tags start with 0.3.0 (review of D5)
+    assert "From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`." in flat
+    assert "and a tag on GitHub" not in flat
     going_back = flat.split("To go back,", 1)[1]
     assert '`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`' in going_back
     assert "ordnung restore FILE --force" in going_back

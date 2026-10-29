@@ -30,7 +30,7 @@ Nothing is ever paid, sent or cancelled for you.
 <p align="center">
   <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card">
 </p>
-<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 36 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
+<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
 
 <p align="center">
   <a href="https://ahmedeid1.github.io/ordnung/">Online demo</a> ·
@@ -98,7 +98,7 @@ To read your own letters, see [Install and run](#install-and-run).
 </tr>
 <tr>
 <td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag the letter, and its demand is never counted, listed or given a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
-<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical axe violations (WCAG 2.2 AA rules), with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
+<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.13's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both. Still open: axe's newer Label in Name check (WCAG 2.5.3) flags links and buttons whose name leaves out initials or a count they show.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/pair-phone.png" alt="Pairing a phone: on the computer, a QR code and a pairing code; on the phone, once paired, two check words; on the computer, the same two words"><br><b>Your phone at home.</b> Settings → Phone shows a QR code for the phone's camera. Once the phone pairs, both screens show the same two words, so you know the phone that paired is yours. Then it opens Ordnung in its browser over your home Wi-Fi: photograph a letter, tick off a to-do, read what a letter means. Settings, backups and deleting stay on the computer.‡</td>
@@ -583,10 +583,10 @@ make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 
 ### Updating
 
-Each release has a version number (`ordnung --version` shows yours), an entry in [CHANGELOG.md](CHANGELOG.md)
-and a tag on GitHub, such as `v0.3.0`. Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the
-window the shortcut opened; if it starts at login, `ordnung autostart disable` prints how to stop it and
-`ordnung autostart enable` how to start it again).
+Each release has a version number (`ordnung --version` shows yours) and an entry in [CHANGELOG.md](CHANGELOG.md).
+From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`. Stop Ordnung first (Ctrl+C where
+`ordnung serve` runs, or close the window the shortcut opened; if it starts at login, `ordnung autostart disable`
+prints how to stop it and `ordnung autostart enable` how to start it again).
 A backup first lets you go back: an older Ordnung can't open a database a newer one has updated.
 
 ```bash
