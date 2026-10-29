@@ -252,11 +252,29 @@ def test_the_changelog_names_this_version_and_the_package_links_to_it() -> None:
 
 def test_the_readme_says_how_to_update() -> None:
     """The README installed from git but never said how to update; ``pipx upgrade`` alone keeps the old
-    code when the version didn't change (measured with pipx 1.17 on its pip backend)."""
+    code when the version didn't change (measured with pipx 1.17 on its pip backend). A release is
+    installed by its tag, the newest one by name (measured with pipx 1.18 and uv 0.11: an install from a
+    tag stays on it when reinstalled or upgraded), and going back names the tag of the version you had."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     updating = readme.split("### Updating", 1)[1].split("\n## ", 1)[0]
     for command in ("pipx reinstall ordnung", "uv tool upgrade ordnung", "ordnung doctor"):
         assert command in updating, command
+    tagged = f"git+https://github.com/ahmedEid1/ordnung@v{ordnung.__version__}"
+    flat = " ".join(updating.split())
+    assert f'`pipx install --force "{tagged}"`' in flat
+    assert f'`uv tool install "{tagged}"`' in flat
+    # 0.2.0 was released without a tag: tags start with 0.3.0 (review of D5)
+    assert "From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`." in flat
+    assert "and a tag on GitHub" not in flat
+    going_back = flat.split("To go back,", 1)[1]
+    assert '`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`' in going_back
+    assert "ordnung restore FILE --force" in going_back
+
+
+def test_the_bug_template_suggests_this_version() -> None:
+    """The bug report's version field shows what ``ordnung --version`` prints for this version."""
+    form = (ROOT / ".github/ISSUE_TEMPLATE/bug_report.yml").read_text(encoding="utf-8")
+    assert f"placeholder: ordnung {ordnung.__version__}\n" in form
 
 
 # --------------------------------------------------------------------------------------------------

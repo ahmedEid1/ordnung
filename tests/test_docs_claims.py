@@ -27,6 +27,7 @@ from typing import Any
 import pytest
 from fastapi.routing import APIRoute
 
+from helpers_media import gif_info, mp4_info
 from helpers_secretary import TODAY, seed_ledger
 from ordnung import clock, letters_zip, shortcut, sync
 from ordnung.api.app import openapi_schema
@@ -1390,6 +1391,23 @@ def test_readme_tour_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
         assert len(data) <= 400_000, name
 
 
+def test_readme_hero_shows_the_gif_as_made_and_the_video_s_length() -> None:
+    """The README's first picture is ``demo.gif`` at the width ``make capture`` makes it, its alt text doesn't
+    say "live" (every answer in it is a recording), and the link to the whole tour states the MP4's length."""
+    assets = ROOT / "docs" / "assets"
+    (hero,) = [tag for tag in re.findall(r"<img\b[^>]*>", _readme()) if 'src="docs/assets/demo.gif"' in tag]
+    width = re.search(r'\bwidth="(\d+)"', hero)
+    assert width and int(width.group(1)) == gif_info(assets / "demo.gif").width
+    alt = re.search(r'\balt="([^"]*)"', hero)
+    assert alt and "arrives as new mail and is read;" in alt.group(1)
+    assert "read live" not in alt.group(1)
+    minutes, seconds = divmod(round(mp4_info(assets / "demo.mp4").seconds), 60)
+    assert (
+        f'<a href="docs/assets/demo.mp4">Watch the whole tour (MP4, {minutes} min {seconds} s)</a>'
+        in _readme()
+    )
+
+
 def test_readme_pictures_exist_and_have_alt_text() -> None:
     """Every picture README shows from ``docs/assets`` is a file in the repo and has alt text (the logo's is empty:
     it is decorative). The two from the real app are checked by the test above."""
@@ -1400,6 +1418,19 @@ def test_readme_pictures_exist_and_have_alt_text() -> None:
         assert alt.strip() or src == "docs/assets/logo.svg", src
         if Path(src).name not in _REAL_APP_PICTURES:
             assert (ROOT / src).is_file(), src
+
+
+def test_readme_s_axe_claim_names_its_axe_and_what_is_open() -> None:
+    """README's *Light and dark*: "no serious or critical axe violations" holds for the axe-core the e2e suite runs
+    (its version in the lockfile) and its WCAG 2.2 AA rules. axe's newer Label in Name check (WCAG 2.5.3, an
+    experimental rule in that version) flags links and buttons whose name leaves out initials or a count they show;
+    README says that is open, not that there is nothing (review of D5)."""
+    lock = json.loads((ROOT / "web" / "package-lock.json").read_text(encoding="utf-8"))
+    axe = lock["packages"]["node_modules/axe-core"]["version"]
+    (cell,) = [line for line in _readme().splitlines() if "<b>Light and dark.</b>" in line]
+    version = ".".join(axe.split(".")[:2])
+    assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
+    assert "Still open: axe's newer Label in Name check (WCAG 2.5.3)" in cell
 
 
 def _claimed(pattern: str) -> int:
@@ -1618,7 +1649,7 @@ async def test_the_changelog_says_what_0_2_0_prints_for_a_letter_in_someone_else
     signer = ctx.store.get_sent_signer(draft.id)
     assert signer is not None and signer.name == "Alex Rivera"
     assert letter_profile(ctx.store, draft).name == "Alex Rivera"
-    upgrading = _flat((ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1])
+    upgrading = _unreleased("Upgrading")
     assert (
         "On a computer still on 0.2.0, a letter written in someone else's name prints your name under its "
         "signature until it is marked as sent. Print such letters on an updated computer."
@@ -2316,7 +2347,7 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     assert days == 30
     documents = {
         "docs/privacy.md": _privacy_section("Encrypted backups"),
-        "CHANGELOG.md": _flat((ROOT / "CHANGELOG.md").read_text(encoding="utf-8").split("\n## ", 2)[1]),
+        "CHANGELOG.md": _unreleased("Added"),
         _ADR_BACKUP.name: _flat(_ADR_BACKUP.read_text(encoding="utf-8")),
     }
     for name, text in documents.items():
@@ -2648,7 +2679,7 @@ def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     released = changelog.replace(
         "\n## Unreleased\n",
-        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.0 — 2026-10-12\n",
+        "\n## Unreleased\n\n## 0.3.1 — 2026-11-02\n\n### Fixed\n\n- A small fix after the release.\n",
         1,
     )
     fix = _flat("- A small fix after the release.")
@@ -3075,6 +3106,7 @@ def test_the_changelog_adds_the_app_menu_shortcut_and_releases() -> None:
         "Trusted Publishing, so no token is stored anywhere",
         "a pull request never publishes",
         "On PyPI the README's links and pictures point to GitHub.",
+        "[Updating](README.md#updating) says how to install one release by its tag.",
     ):
         assert words in releases, words
     assert (

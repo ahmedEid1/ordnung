@@ -17,11 +17,21 @@
  * It writes `<out>/video/demo.webm` and `<out>/video/cut` (the seconds where the video starts and the
  * GIF ends); `make capture` turns them into `demo.mp4` and `demo.gif`.
  * Set PW_CHROMIUM_PATH to use a Chromium that is already installed.
+ *
+ * Every page it opens is guarded (`guardPage`): the theme the picture is in, and nothing that would tell a reader
+ * about the computer that made it — a path, its name, the git e-mail, the author's name (`forbiddenWords` in
+ * capture-guard.mjs, found when it runs; none is written here). A page that shows one stops the capture
+ * (`assertClean`). A failed run's screenshot goes to CAPTURE_REVIEW (`make capture`'s review folder), never to
+ * `<out>`; the video records into a temporary folder until the tour has run clean, so a stopped tour's recording
+ * never reaches `<out>` either.
  */
-import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
+import { forbiddenWords, pathRoots } from "./capture-guard.mjs";
 import { shownAs } from "./ui-audit/steps.mjs";
 
 const { values: opts } = parseArgs({
@@ -35,6 +45,9 @@ const { values: opts } = parseArgs({
 
 const BASE = `http://127.0.0.1:${opts.port}`;
 const OUT = resolve(opts.out);
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** Where a failed run's screenshot goes: it may show what the guard found, so never into `<out>`. */
+const REVIEW = resolve(process.env.CAPTURE_REVIEW || join(tmpdir(), "ordnung-capture-review"));
 const TOKEN = JSON.parse(readFileSync(join(opts.data, "server.json"), "utf8")).token;
 const CLIENT = { "X-Ordnung-Client": "web" };
 const FINANZAMT = "Finanzamt Musterstadt";
@@ -50,6 +63,12 @@ const STATEMENT_FILE = "13_nebenkostenabrechnung_2025.pdf";
 const TRACKING = "RT 123 456 785 DE";
 /** The mock world's court payment order (web/src/mocks/data/documents.ts), opened by `?mock=full`. */
 const COURT_ORDER = `/documents/doc_mahnbescheid?mock=full`;
+/**
+ * How long the page stands still before a full page load, which the video leaves out from the start of this moment:
+ * the cut, and the GIF that ends where one starts, end on the page as it was, never on the blank page that follows
+ * a frame or two later (milliseconds).
+ */
+const HOLD = 400;
 
 // ------------------------------------------------------------------------------------------------
 // A visible cursor and a caption bar (a headless recording shows neither), kept across page loads
@@ -110,8 +129,92 @@ function hideDemoTour() {
   else document.addEventListener("DOMContentLoaded", install);
 }
 
+// ------------------------------------------------------------------------------------------------
+// The guard: README's media are public, so no page may show this computer, its owner or the wrong theme
+// ------------------------------------------------------------------------------------------------
+
+/**
+ * What no page may show (capture-guard.mjs, which the real app's two pictures share), found when the capture runs:
+ * this computer's paths, the demo's data folder and where the pictures go among them, its name, the git e-mail, the
+ * author's name and CAPTURE_FORBIDDEN's words. None of it is written into the repo.
+ */
+const FORBIDDEN = forbiddenWords(REPO, [[resolve(opts.data), "the demo's data folder"], [OUT, "the pictures' folder"]]);
+/** The start of every path of this computer the capture knows: a path cut off at the window's edge still shows it. */
+const ROOTS = pathRoots([REPO, resolve(opts.data), OUT]);
+
+/**
+ * In every page the capture opens (an init script): at most every 250 ms after the page changes or scrolls, it looks
+ * at the text on screen and the values of the fields on screen for a `forbidden` word (anywhere but inside a longer
+ * word or number, in any case) or the start of a path of this computer (`roots`, see {@link pathRoots}), and at the
+ * theme (`theme`: "dark" only for the two dark pictures). On screen, because
+ * that is what a picture or a frame shows: the letter's "How it was read" holds an export command with the data
+ * folder further down, which no picture shows. What it finds is kept in sessionStorage "cap-leaks", across the
+ * tour's page loads, for {@link assertClean}.
+ */
+function guardPage({ forbidden, roots, theme }) {
+  if (!location.protocol.startsWith("http")) return; // a new tab's blank page, before the capture opens one
+  const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const rules = forbidden.map(({ text, what }) => ({ what, pattern: new RegExp(`(?<![\\p{L}\\p{N}])${escape(text)}(?![\\p{L}\\p{N}])`, "iu") }));
+  const note = (what) => {
+    const where = `${location.pathname}${location.search}`;
+    const found = JSON.parse(sessionStorage.getItem("cap-leaks") ?? "[]");
+    if (found.some((f) => f.what === what && f.where === where)) return;
+    found.push({ what, where });
+    sessionStorage.setItem("cap-leaks", JSON.stringify(found));
+  };
+  const onScreen = (rect) => rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.right > 0 && rect.top < innerHeight && rect.left < innerWidth;
+  const visible = { checkOpacity: true, checkVisibilityCSS: true, opacityProperty: true, visibilityProperty: true };
+  /** The texts on screen, in the page's order. */
+  const shown = () => {
+    const texts = [];
+    const range = document.createRange();
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.nodeValue.trim() || !node.parentElement?.checkVisibility(visible)) continue;
+      range.selectNodeContents(node);
+      if ([...range.getClientRects()].some(onScreen)) texts.push(node.nodeValue);
+    }
+    for (const field of document.querySelectorAll("input, textarea")) {
+      if (field.value && field.checkVisibility(visible) && onScreen(field.getBoundingClientRect())) texts.push(field.value);
+    }
+    return texts;
+  };
+  const check = () => {
+    if (!document.body || document.readyState === "loading") return;
+    const texts = shown();
+    // joined both ways: a path may be drawn in pieces, and a name may stand between two other texts
+    const text = `${texts.join("")}\n${texts.join("\n")}`;
+    for (const { what, pattern } of rules) if (pattern.test(text)) note(what);
+    for (const root of roots) if (text.includes(root)) note("the start of a path of this computer");
+    if (document.documentElement.classList.contains("dark") !== (theme === "dark")) note(theme === "dark" ? "the light theme" : "the dark theme");
+  };
+  let timer = 0;
+  const soon = () => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = 0;
+      check();
+    }, 250);
+  };
+  new MutationObserver(soon).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["class", "value"] });
+  document.addEventListener("scroll", soon, { capture: true, passive: true });
+  window.addEventListener("resize", soon);
+  window.addEventListener("load", check);
+  window.__capCheck = check;
+}
+
+/** Stops the capture when the page showed, at any time since its tab opened, what no picture may (never repeating it). */
+async function assertClean(page) {
+  const found = await page.evaluate(() => {
+    window.__capCheck?.();
+    return JSON.parse(sessionStorage.getItem("cap-leaks") ?? "[]");
+  });
+  if (found.length) throw new Error(`A page showed what no picture may: ${found.map((f) => `${f.what} on ${f.where}`).join("; ")}`);
+}
+
 async function caption(page, text) {
   await page.evaluate((t) => window.__caption?.(t), text);
+  await assertClean(page);
 }
 
 async function pointAt(page, locator) {
@@ -145,9 +248,22 @@ async function scrollBy(page, dy, { steps = 12, pause = 45 } = {}) {
   }
 }
 
-/** The page's heading is on screen (its data may still be loading). */
+/** Scroll the window smoothly until the top of `locator` is at `at` (0 top, 1 bottom) of its height. */
+async function scrollTo(page, locator, at) {
+  await locator.waitFor();
+  const dy = await locator.evaluate((el, share) => el.getBoundingClientRect().top - window.innerHeight * share, at);
+  if (Math.abs(dy) < 8) return;
+  await page.evaluate((top) => window.scrollBy({ top, behavior: "smooth" }), dy);
+  await page.waitForTimeout(700);
+}
+
+/**
+ * The page's own heading is on screen (its data may still be loading): not the start screen's while the app starts
+ * (its `<main>` is busy, its heading for screen readers only) and not a letter page's stand-in while the letter
+ * loads (`data-loading`).
+ */
 async function shown(page) {
-  await page.getByRole("main").getByRole("heading", { level: 1 }).first().waitFor();
+  await page.locator('main:not([aria-busy="true"]) h1:not([data-loading])').first().waitFor();
 }
 
 /**
@@ -162,14 +278,17 @@ async function nav(page, label, text) {
   await shown(page);
   if (text !== undefined) await caption(page, text);
   await page.waitForLoadState("networkidle");
+  await assertClean(page);
 }
 
 // ------------------------------------------------------------------------------------------------
 // Session and demo state
 // ------------------------------------------------------------------------------------------------
 
+/** A browser context on the demo, every page of it guarded: in the dark theme only when `extra` asks for it. */
 async function newContext(browser, extra = {}) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "en-GB", timezoneId: "Europe/Berlin", ...extra });
+  await context.addInitScript(guardPage, { forbidden: FORBIDDEN, roots: ROOTS, theme: extra.colorScheme === "dark" ? "dark" : "light" });
   await context.addCookies([{ name: `ordnung_token_${opts.port}`, value: TOKEN, url: BASE, httpOnly: true, sameSite: "Strict" }]);
   await context.request.patch(`${BASE}/api/demo/tour`, { data: { active: false, completed: true }, headers: CLIENT });
   return context;
@@ -198,6 +317,15 @@ async function letterIdFor(context, file) {
 async function verdictOf(page, id) {
   const { document } = await apiGet(page.context(), `/api/documents/${id}`);
   return page.getByRole("article", { name: shownAs(document.title ?? document.filename) });
+}
+
+/**
+ * The letter `id`'s own heading: its title as read (from the API), not the file's name it has while it is being
+ * read (its "Reading your letter" card).
+ */
+async function titleOf(page, id) {
+  const { document } = await apiGet(page.context(), `/api/documents/${id}`);
+  return page.getByRole("main").getByRole("heading", { level: 1, name: shownAs(document.title ?? document.filename) });
 }
 
 /** The New-mail letter from `sender`, read if it wasn't yet (in the page, as a person would): its letter id. */
@@ -231,6 +359,20 @@ async function objectionEvidence(page, taxId) {
     .first()
     .getByRole("button", { name: /on the page$/ })
     .first();
+}
+
+/**
+ * Today's secretary's note is the one Claude wrote for the demo's day ("Written for today"), recorded with the demo,
+ * not the one written from the to-dos and dates ("From your to-dos & dates"), which Today shows once a letter read
+ * since changes what the note was written from. Waits for it on `page` (Today), or stops the capture.
+ */
+async function claudesNote(page) {
+  const note = page.getByRole("region", { name: "Your secretary's note" });
+  try {
+    await note.getByText("Written for today", { exact: true }).waitFor({ timeout: 15_000 });
+  } catch {
+    throw new Error("Today's note is not the one Claude wrote for the demo's day (\"Written for today\"): was a letter read before this picture?");
+  }
 }
 
 /** A step of the weekly review, in its list of steps. */
@@ -318,32 +460,42 @@ async function sendCancellation(context) {
 async function recordVideo(browser) {
   const dir = join(OUT, "video");
   rmSync(dir, { recursive: true, force: true });
-  const size = { width: 1280, height: 800 };
-  const context = await newContext(browser, { viewport: size, recordVideo: { dir, size } });
-  await context.addInitScript(overlay);
-  await context.addInitScript(hideDemoTour);
-  const page = await context.newPage();
-  page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
-  page.on("console", (m) => m.type() === "error" && console.error(`console: ${m.text()}`));
-  let cut;
+  // the recording goes to a folder of its own until the tour has run clean: when the guard stops it, what was
+  // recorded up to then shows what no picture may, and is deleted with the folder, never left in `<out>`
+  const recording = mkdtempSync(join(tmpdir(), "ordnung-capture-video-"));
   try {
-    cut = await tour(page);
-  } catch (err) {
-    await page.screenshot({ path: join(OUT, "capture-error.png") }).catch(() => {});
+    const size = { width: 1280, height: 800 };
+    const context = await newContext(browser, { viewport: size, recordVideo: { dir: recording, size } });
+    await context.addInitScript(overlay);
+    await context.addInitScript(hideDemoTour);
+    const page = await context.newPage();
+    page.on("pageerror", (err) => console.error(`page error: ${err.stack ?? err}`));
+    page.on("console", (m) => m.type() === "error" && console.error(`console: ${m.text()}`));
+    let cut;
+    try {
+      cut = await tour(page);
+      await assertClean(page);
+    } catch (err) {
+      mkdirSync(REVIEW, { recursive: true });
+      await page.screenshot({ path: join(REVIEW, "capture-error.png") }).catch(() => {});
+      console.error(`the page when it stopped → ${join(REVIEW, "capture-error.png")}`);
+      await context.close();
+      throw err;
+    }
+    const video = page.video();
     await context.close();
-    throw err;
+    mkdirSync(dir, { recursive: true });
+    // a copy: the temporary folder may be on another file system
+    copyFileSync(await video.path(), join(dir, "demo.webm"));
+    // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
+    // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
+    // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
+    const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
+    writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
+    console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
+  } finally {
+    rmSync(recording, { recursive: true, force: true });
   }
-  const video = page.video();
-  await context.close();
-  const recorded = await video.path();
-  renameSync(recorded, join(dir, "demo.webm"));
-  for (const name of readdirSync(dir)) if (name !== "demo.webm") rmSync(join(dir, name));
-  // `make capture` starts the video and the GIF once Today is on screen (the recording starts with a blank
-  // page), ends the README's GIF after the court order, before the tour moves on, and leaves out the full page
-  // loads (the app's boot screen and skeletons, e.g. between the demo and mock mode: walkthrough of phase 2)
-  const gaps = cut.gaps.map(([from, to]) => `${from.toFixed(2)} ${to.toFixed(2)}`).join(" ");
-  writeFileSync(join(dir, "cut"), `${cut.start.toFixed(2)} ${cut.gifEnd.toFixed(2)} ${gaps}`.trim() + "\n");
-  console.log(`video → ${join(dir, "demo.webm")} (from ${cut.start.toFixed(1)} s; GIF to ${cut.gifEnd.toFixed(1)} s; ${cut.gaps.length} page loads cut)`);
 }
 
 /**
@@ -352,6 +504,10 @@ async function recordVideo(browser) {
  * (walkthrough of phase 2: "The year ahead…" showed over the weekly review).
  */
 async function tour(page) {
+  // the video's clock starts with its first frame, when the tab first paints a page (not when it opens): paint one
+  // before the tour's clock starts, so the seconds the tour returns are the video's. Otherwise every cut comes late
+  // by the time Today took to paint, and the start of each page load (a blank page) stays in the video and the GIF
+  await page.setContent('<!doctype html><body style="margin:0;background:#fff"></body>');
   const started = Date.now();
   const seconds = () => (Date.now() - started) / 1000;
   const mark = (what) => console.log(`  ${seconds().toFixed(1).padStart(5)} s  ${what}`);
@@ -359,21 +515,26 @@ async function tour(page) {
   /** A full page load (switching between the demo and mock mode): cut from the video until `ready` is on screen. */
   const reload = async (url, ready) => {
     const from = seconds();
+    await page.waitForTimeout(HOLD);
     await page.goto(url);
     await ready().waitFor({ timeout: 60_000 });
     await settle(page, 300);
     gaps.push([from, seconds()]);
+    await assertClean(page);
   };
-  /** A full page load within the demo: cut from the video too (the app's boot screen), the caption changes with the heading. */
+  /** A full page load within the demo: cut from the video too (the app's start screen), the caption changes once the page has drawn. */
   const load = async (url, text) => {
     const from = seconds();
     await caption(page, "");
+    await page.waitForTimeout(HOLD);
     await page.goto(url);
     await shown(page);
+    await settle(page, 300);
     gaps.push([from, seconds()]);
     await caption(page, text);
   };
   await page.goto(`${BASE}/`);
+  await claudesNote(page);
   await settle(page, 400);
   const start = seconds();
 
@@ -396,9 +557,16 @@ async function tour(page) {
   await page.waitForTimeout(900);
   await caption(page, "Claude reads it. Code checks every fact and computes the dates.");
   await click(page, letter.getByRole("button", { name: "Let Ordnung read it" }));
+  // once read, the app opens the letter by itself and draws it first as it was while being read (its file's name,
+  // "Reading your letter", "Not sent to Claude"), under the caption that says Claude reads it: cut from a moment
+  // before the page opens (seen a little after it has drawn) until the letter's own title is its heading
   await page.waitForURL(/\/documents\/doc_/, { timeout: 60_000 });
+  const opening = seconds() - 0.3;
   const taxId = new URL(page.url()).pathname.split("/").pop();
-  await settle(page, 900);
+  await (await titleOf(page, taxId)).waitFor({ timeout: 60_000 });
+  await settle(page, 300);
+  gaps.push([opening, seconds()]);
+  await settle(page, 600);
 
   mark("the letter");
   await caption(page, "What it is, what to do and by when.");
@@ -492,11 +660,17 @@ async function tour(page) {
   const steps = page.getByRole("list", { name: "Steps of this reading" });
   await click(page, steps.getByRole("button", { name: /^Claude reads the letter/ }).first());
   await page.waitForTimeout(2600);
-  await click(page, steps.getByRole("button", { name: /^Dates computed/ }).first());
+  // the command that exports this reading, under the steps, names the demo's data folder (a path of this computer):
+  // "Dates computed" low on screen keeps it below the window's edge, before the step opens and after
+  const dates = steps.getByRole("button", { name: /^Dates computed/ }).first();
+  await scrollTo(page, dates, 0.6);
+  await click(page, dates);
   await page.waitForTimeout(2600);
 
   mark("the end");
-  await nav(page, "Today", "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
+  // on the Inbox, not Today: once a letter has been read, Today's note is the one written from the to-dos, not
+  // Claude's (claudesNote)
+  await nav(page, "Inbox", "Everything stays on your computer. Try it: ordnung demo (no Claude account needed).");
   await page.waitForTimeout(3400);
   mark("done");
   return { start, gifEnd, gaps };
@@ -510,6 +684,7 @@ async function shot(page, name, options = {}) {
   // the pointer rests on the sidebar's empty space: no hover tooltip in the picture
   if ((page.viewportSize()?.width ?? 0) >= 1024) await page.mouse.move(120, 600);
   await page.waitForTimeout(500);
+  await assertClean(page);
   await page.screenshot({ path: join(OUT, `${name}.png`), ...options });
   console.log(`shot → ${name}.png`);
 }
@@ -539,16 +714,18 @@ async function screenshots(browser) {
 
   await page.goto(`${BASE}/`);
   await settle(page);
+  await claudesNote(page);
   await shot(page, "today");
 
-  // Today in dark and on a phone too, before a letter is read: a letter read since makes Claude's note stale,
-  // and Today then shows the note written from the to-dos instead
+  // Today in dark and on a phone too, before the pictures read a letter: a letter read since can make Claude's
+  // note stale, and Today then shows the note written from the to-dos instead (claudesNote stops the capture)
   const dark = await newContext(browser, { colorScheme: "dark" });
   const darkPage = await dark.newPage();
   await darkPage.goto(`${BASE}/`);
   await darkPage.evaluate(() => localStorage.setItem("ordnung.theme", "dark"));
   await darkPage.reload();
   await settle(darkPage);
+  await claudesNote(darkPage);
   await shot(darkPage, "today-dark");
   await dark.close();
 
@@ -557,6 +734,7 @@ async function screenshots(browser) {
   const phonePage = await phone.newPage();
   await phonePage.goto(`${BASE}/`);
   await settle(phonePage);
+  await claudesNote(phonePage);
   await shot(phonePage, "mobile");
   await phone.close();
 
@@ -575,6 +753,7 @@ async function screenshots(browser) {
   const receipt = page.getByRole("dialog", { name: "Why this date?" });
   await receipt.getByRole("button", { name: "Show the rules" }).click();
   await page.waitForTimeout(700);
+  await assertClean(page);
   await receipt.screenshot({ path: join(OUT, "why.png") });
   console.log("shot → why.png");
   await page.keyboard.press("Escape");

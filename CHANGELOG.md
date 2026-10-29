@@ -5,6 +5,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-29
+
+The second numbered release. [Updating](README.md#updating) says how to install it; *Upgrading* below says
+what a computer still on 0.2.0 does with what this version adds, if you use hand-off sync between the two.
+
 ### Added
 
 - **Dates you add yourself can repeat.** *Add a date* has a *Repeats* choice: every week or every 2 weeks on
@@ -127,7 +132,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Release with this changelog's section. Publishing to PyPI waits until the owner has set it up
   ([docs/releasing.md](docs/releasing.md)): until then a release goes to GitHub only. It uses PyPI's
   Trusted Publishing, so no token is stored anywhere, and a pull request never publishes. On PyPI the
-  README's links and pictures point to GitHub.
+  README's links and pictures point to GitHub. [Updating](README.md#updating) says how to install one release
+  by its tag.
 - **CI checks more.** It replays the holdout, holdout2 and dev splits too, and the numbers without the
   sender's Land, each gated at the published number (no model calls); its slow checks run in a job of their
   own. Coverage now counts branches and has floors for the whole package, hand-off sync and phone access.
@@ -164,6 +170,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   of GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer
   ask for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript
   take them.
+- The release workflow takes the built files from its first job with version 8 of GitHub's download-artifact
+  action, which stops the release when a file doesn't match the checksum it was uploaded with.
 - Ask no longer goes through every letter to work out the key a question is logged and replayed under when
   nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s
   less per question with 500 letters, more with a bigger archive.
@@ -236,6 +244,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle
   it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung
   another computer had already kept, exactly as it is, is no longer asked again.
+- An e-mail from a Windows mail program that labels its text ISO-8859-1 but writes "…" or "€" in it is read,
+  with the "…" and "€" as written: Ordnung reads that label as Windows-1252, as mail programs and browsers do.
+  Before, the "…" became a paragraph separator, and where the text layout has raqm (Linux, as a rule) the
+  e-mail couldn't be added: the upload or proof failed with an error, the watched folder only logged it and
+  `ordnung add` said *Unexpected error*. Other paragraph separators in an e-mail's text (U+2029, U+0085,
+  U+001C–U+001E) start a new line now. Should Pillow's layout fail on anything else, the e-mail is refused
+  with a reason at every way in, not with an error.
 
 ### Upgrading
 

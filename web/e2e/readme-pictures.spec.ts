@@ -14,12 +14,13 @@
  * through the screens. The pairing code, the two words and "just now" change on every capture.
  */
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import type { Browser, Page } from "@playwright/test";
 import type { components } from "@/api/schema";
 import type { PhoneStatus } from "@/api/types";
-import { DATA_DIR, PHONE_ADDRESS, PHONE_PORT, REAL_B_BASE_URL, REAL_B_STORAGE_STATE, REAL_DATA_DIR } from "./env";
+import { forbiddenWords, leaks, pathRoots } from "../scripts/capture-guard.mjs";
+import type { ForbiddenWord } from "../scripts/capture-guard.mjs";
+import { DATA_DIR, PHONE_ADDRESS, PHONE_PORT, REAL_B_BASE_URL, REAL_B_STORAGE_STATE, REAL_DATA_DIR, WEB_DIR } from "./env";
 import { apiGet, apiSend, expect, open, phoneContext, settle, test } from "./helpers";
 import { SyncTool } from "./sync-tool";
 
@@ -70,6 +71,26 @@ test.afterAll(() => {
 async function ready(page: Page): Promise<void> {
   await expect(page.locator("html")).not.toHaveClass(/\bdark\b/);
   await settle(page);
+}
+
+/** What no picture may show (scripts/capture-guard.mjs, as for the demo's pictures), found when first needed. */
+let guard: { forbidden: ForbiddenWord[]; roots: string[] } | undefined;
+
+/**
+ * `text`, the words of a part of a picture (`what`), shows nothing of this computer's: no path of it or the start of
+ * one (the run's data folders and where the pictures go among them), not its name, not the git e-mail, no word of the
+ * author's name and none of CAPTURE_FORBIDDEN's. A failed check says what it found, never the word itself.
+ */
+function nothingOfThisComputer(text: string, what: string): void {
+  if (!guard) {
+    const folders: [string, string][] = [
+      [DATA_DIR, "the test run's data folder"],
+      [OUT, "the pictures' folder"],
+    ];
+    const repo = resolve(WEB_DIR, "..");
+    guard = { forbidden: forbiddenWords(repo, folders), roots: pathRoots([repo, ...folders.map(([path]) => path)]) };
+  }
+  expect(leaks(text, guard.forbidden, guard.roots), `${what}: nothing of this computer's`).toEqual([]);
 }
 
 const dataUri = (path: string) => `data:image/png;base64,${readFileSync(path).toString("base64")}`;
@@ -134,6 +155,7 @@ test("pair-phone.png: the QR code, the phone's two words, the computer's same tw
     const card = await dialog.boundingBox();
     const qrFrame = await dialog.getByRole("img", { name: /^Pairing code as a QR code/ }).locator("..").boundingBox();
     expect(card && qrFrame, "the dialog and its QR code are on screen").toBeTruthy();
+    nothingOfThisComputer(await dialog.innerText(), "the dialog with the pairing code");
     const codePart = testInfo.outputPath("code.png");
     await page.screenshot({
       path: codePart,
@@ -149,6 +171,7 @@ test("pair-phone.png: the QR code, the phone's two words, the computer's same tw
     const phoneWords = (await words.innerText()).trim();
     expect(phoneWords, "the phone shows two words").toMatch(/^\S+ \S+$/);
     await ready(mobile);
+    nothingOfThisComputer(await mobile.locator("body").innerText(), "the phone's page");
     const phonePart = testInfo.outputPath("phone.png");
     await mobile.screenshot({ path: phonePart });
 
@@ -156,6 +179,7 @@ test("pair-phone.png: the QR code, the phone's two words, the computer's same tw
     await expect(dialog).toContainText(`Paired: ${PHONE_NAME}`, { timeout: 6_000 });
     await expect(dialog).toContainText(`Your phone should show “${phoneWords}”`);
     await ready(page);
+    nothingOfThisComputer(await dialog.innerText(), "the paired dialog");
     const pairedPart = testInfo.outputPath("paired.png");
     await dialog.screenshot({ path: pairedPart });
 
@@ -225,7 +249,6 @@ test("your-computers.png: this computer in use, the other standing by with its l
     await ready(b);
     const text = await b.getByRole("main").innerText();
     expect(text, "the folder shown is the throwaway one").toContain(FOLDERS.b);
-    expect(text, "no path of this computer's").not.toContain(homedir());
     // the throwaway folder's temporary path says nothing to a reader: the picture shows a typical one in its place
     // (the path is drawn in pieces that may break at any slash, so the whole <code> that holds it is replaced)
     await b.evaluate(
@@ -236,7 +259,13 @@ test("your-computers.png: this computer in use, the other standing by with its l
       },
       [FOLDERS.b, SHOWN_FOLDER] as const,
     );
-    expect(await b.getByRole("main").innerText()).toContain(SHOWN_FOLDER);
+    const shownText = await b.getByRole("main").innerText();
+    expect(shownText).toContain(SHOWN_FOLDER);
+    expect(shownText.includes(FOLDERS.b), "the throwaway folder's path is not in the picture").toBe(false);
+    // the picture as it is, but for the typical folder put there, which is made up ("/home/…" starts this computer's
+    // own paths on Linux)
+    const picture = (await b.locator("body").innerText()).replaceAll(SHOWN_FOLDER, "");
+    nothingOfThisComputer(picture, "Your computers");
     const path = join(OUT, "your-computers.png");
     await b.screenshot({ path });
     saved("your-computers.png", path);

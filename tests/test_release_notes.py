@@ -73,11 +73,17 @@ def _relative_links(text: str) -> list[str]:
 
 
 def test_the_notes_are_the_changelog_s_section_for_the_version() -> None:
-    released = section(CHANGELOG, VERSION)
-    assert released.startswith("The first numbered release.")
-    assert "### Since the first commit" in released and "### Upgrading" in released
-    assert not re.search(r"^## ", released, re.M)  # neither its own heading nor the next one
-    assert "Dates you add yourself can repeat" not in released  # Unreleased stays out
+    first = section(CHANGELOG, "0.2.0")
+    assert first.startswith("The first numbered release.")
+    assert "### Since the first commit" in first and "### Upgrading" in first
+    assert "Dates you add yourself can repeat" not in first  # the next version's lines stay out
+    second = section(CHANGELOG, "0.3.0")
+    assert second.startswith("The second numbered release.")
+    assert "### Added" in second and "### Upgrading" in second
+    assert "Dates you add yourself can repeat" in second
+    for released in (first, second, section(CHANGELOG, VERSION)):
+        assert not re.search(r"^## ", released, re.M)  # neither its own heading nor the next one
+    assert not section(CHANGELOG, VERSION).startswith("#")  # a sentence first, not a heading
     assert section(TWO_VERSIONS, "0.3.0") == (
         "The third one.\n\n### Added\n\n- **A thing.** See [Updating](README.md#updating)."
     )
@@ -187,12 +193,13 @@ def test_the_lines_of_a_paragraph_or_list_item_are_joined_for_the_release_page()
         "The first numbered release.\n\n### Added\n\n- **A thing.** It does this, and that.\n"
         "  - a nested item\n- Another, with a break  \n  kept.\n\n```\ncode stays\nas it is\n```\nAfter."
     )
-    released = notes(CHANGELOG, VERSION)
     assert (
         "Every install before it reports 0.1.0, the version of the first commit (2026-09-25), and pip"
-        in released
+        in notes(CHANGELOG, "0.2.0")
     )
-    assert not re.search(r"^ +\S", released, re.M)  # no list item of 0.2.0's goes on over two lines
+    for version in ("0.2.0", VERSION):
+        # no list item goes on over two lines
+        assert not re.search(r"^ +\S", notes(CHANGELOG, version), re.M), version
 
 
 def test_every_link_in_the_released_notes_names_a_file_of_the_tagged_commit() -> None:
@@ -255,15 +262,37 @@ def test_the_workflow_run_writes_the_notes_and_its_outputs(
 
 
 def test_without_a_tag_it_prints_the_notes_of_this_version_or_of_unreleased(
-    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     assert main([]) == 0
     assert capsys.readouterr().out == notes(CHANGELOG, VERSION)
-    assert main(["Unreleased"]) == 0  # a preview before the release commit: links to main, no tag yet
+    root = _root(tmp_path, "0.3.0", TWO_VERSIONS)
+    # a preview before the release commit: links to main, no tag yet
+    assert main(["--root", str(root), "Unreleased"]) == 0
     preview = capsys.readouterr().out
-    assert preview.startswith("### Added\n")
+    assert preview.startswith("- Something not released yet.\n")
     assert f"{REPOSITORY}/blob/main/README.md#updating" in preview and "/blob/v" not in preview
+
+
+def test_an_empty_unreleased_section_has_no_preview(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Right after a release, Unreleased is empty: there is nothing to preview yet."""
+    root = _root(tmp_path, "0.3.0", RELEASED)
+    assert main(["--root", str(root), "Unreleased"]) == 1
+    assert "CHANGELOG.md's section for Unreleased is empty." in capsys.readouterr().err
+
+
+def test_every_released_section_starts_with_a_sentence() -> None:
+    """A release page opens with the section's first paragraph (what the release is), never with a list's
+    heading."""
+    versions = re.findall(r"^## (\S+) — \d{4}-\d{2}-\d{2}$", CHANGELOG, re.M)
+    assert "0.2.0" in versions and VERSION in versions
+    for version in versions:
+        first = section(CHANGELOG, version).split("\n\n", 1)[0]
+        assert not first.startswith(("#", "-", "*", ">", "|", "`")), version
+        assert first.rstrip().endswith((".", ":")), version
 
 
 def test_the_script_runs_with_the_standard_library_alone(tmp_path: Path) -> None:

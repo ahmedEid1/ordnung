@@ -246,7 +246,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/query-core 5.104.1
+@tanstack/query-core 5.104.5
 Licence: MIT
 
 MIT License
@@ -272,7 +272,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-@tanstack/react-query 5.104.1
+@tanstack/react-query 5.104.5
 Licence: MIT
 
 MIT License
@@ -579,7 +579,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-framer-motion 14.0.0
+framer-motion 14.6.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -649,7 +649,7 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
 
 --------------------------------------------------------------------------------
-lucide-react 1.52.0
+lucide-react 1.61.0
 Licence: ISC
 
 ISC License
@@ -697,7 +697,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-motion-dom 14.0.0
+motion-dom 14.6.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -723,7 +723,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-motion-utils 14.0.0
+motion-utils 14.6.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -749,7 +749,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-motion 14.0.0
+motion 14.6.0
 Licence: MIT
 
 The MIT License (MIT)
@@ -775,7 +775,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-react-dom 19.3.0
+react-dom 19.3.1
 Licence: MIT
 
 MIT License
@@ -853,7 +853,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-react-router 8.4.0
+react-router 8.5.0
 Licence: MIT
 
 MIT License
@@ -881,7 +881,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-react 19.3.0
+react 19.3.1
 Licence: MIT
 
 MIT License
@@ -1011,7 +1011,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 --------------------------------------------------------------------------------
-rolldown 1.2.11
+rolldown 1.2.15
 Licence: MIT
 
 MIT License
@@ -1206,7 +1206,7 @@ Author: Formidable
 Source: https://github.com/FormidableLabs/victory
 
 --------------------------------------------------------------------------------
-vite 8.3.3
+vite 8.3.5
 Licence: MIT
 
 # Vite core license

@@ -23,6 +23,7 @@ from ordnung.drafts import sent
 from ordnung.drafts.proof import MAX_NOTE
 from ordnung.drafts.tracking import MAX_INPUT
 from ordnung.ingest.intake import MAX_BYTES, IntakeError
+from ordnung.ingest.layout_guard import text_layout_refused
 from ordnung.ingest.own_files import remember_own_file
 from ordnung.models import ProofKind, ProofOverview
 
@@ -86,9 +87,17 @@ async def add_proof(
     already in Ordnung is linked as it is, and ``notice`` says what that means for it."""
     data = await file.read(MAX_BYTES + 1)
     try:
-        added = await sent.add_proof(
-            ctx, draft_id, data, file.filename or "proof", kind=kind, on_date=on_date, note=note, today=today
-        )
+        with text_layout_refused():
+            added = await sent.add_proof(
+                ctx,
+                draft_id,
+                data,
+                file.filename or "proof",
+                kind=kind,
+                on_date=on_date,
+                note=note,
+                today=today,
+            )
     except IntakeError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     await ledger_changed(ctx)

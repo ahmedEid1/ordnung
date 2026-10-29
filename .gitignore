@@ -33,6 +33,9 @@ web/.vite/
 .env
 .DS_Store
 
+# make capture's recording, before it becomes demo.mp4 (scripts/capture.sh removes it)
+/docs/assets/video/
+
 # Scratch scripts from local debugging
 *.tmp.mjs
 *.tmp.py

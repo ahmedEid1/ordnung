@@ -71,6 +71,7 @@ from ordnung.ingest.intake import (
     safe_filename,
     sniff_mime,
 )
+from ordnung.ingest.layout_guard import text_layout_refused
 from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, DUNNING_ITEM_NOTE, rewarn_for_kind
 from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
@@ -545,9 +546,10 @@ async def _add_group(
     (filename, data), rest = group[0], [entry[1] for entry in group[1:]]
     store = ctx.store
     try:
-        body, name = await asyncio.to_thread(_normalised, data, filename, rest)
-        existing = store.get_document_by_sha(hashlib.sha256(body).hexdigest())
-        document = await add_file(ctx, body, name, private=private, answer_held=True, source=source)
+        with text_layout_refused():
+            body, name = await asyncio.to_thread(_normalised, data, filename, rest)
+            existing = store.get_document_by_sha(hashlib.sha256(body).hexdigest())
+            document = await add_file(ctx, body, name, private=private, answer_held=True, source=source)
     except IntakeError as exc:
         result.errors.append(UploadError(filename=safe_filename(filename), detail=str(exc)))
         return

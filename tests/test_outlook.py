@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import HealthCheck, given, settings
+from hypothesis import HealthCheck, example, given, settings
 from hypothesis import strategies as st
 
 from helpers_msg import (
@@ -49,6 +49,7 @@ from helpers_timing import assert_linear
 from ordnung.ingest import intake, outlook
 from ordnung.ingest.attachments import email_attachments
 from ordnung.ingest.intake import IntakeError, normalise_upload
+from ordnung.ingest.layout_guard import text_layout_refused
 from ordnung.ingest.outlook import (
     DAMAGED,
     ENCRYPTED,
@@ -721,8 +722,12 @@ def test_input_over_50_mb_refused_with_intakes_words(monkeypatch: pytest.MonkeyP
 
 @settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(flips=st.lists(st.tuples(st.integers(0, 2**31), st.integers(1, 255)), min_size=1, max_size=12))
+# found in CI: the "T" of the body's "Tag" becomes U+001C, a paragraph separator raqm couldn't lay out (a line break now)
+@example(flips=[(44076, 72)])
 def test_flipped_bytes_never_crash(flips: list[tuple[int, int]]) -> None:
-    """Flipped bytes anywhere: refused with a reason, or an e-mail intake reads — never another error."""
+    """Flipped bytes anywhere: refused with a reason, or an e-mail intake reads — never another error.
+
+    Intake runs inside :func:`~ordnung.ingest.layout_guard.text_layout_refused`, as at every way in."""
     damaged = bytearray(FUZZ_BASE)
     for position, value in flips:
         damaged[8 + position % (len(damaged) - 8)] ^= value  # the magic stays: the converter is used
@@ -733,7 +738,8 @@ def test_flipped_bytes_never_crash(flips: list[tuple[int, int]]) -> None:
         return
     assert name == "kaputt.eml"
     try:
-        _body, mime, _name = normalise_upload(eml, name)
+        with text_layout_refused():
+            _body, mime, _name = normalise_upload(eml, name)
     except IntakeError:
         return
     assert mime == "message/rfc822"
