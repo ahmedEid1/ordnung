@@ -187,6 +187,15 @@ export function householdVersion(members: readonly HouseholdMember[]): string {
   return sha256Hex(JSON.stringify(members.map((m) => ({ id: m.id, name: m.name, signs: m.signs })))).slice(0, 16);
 }
 
+/**
+ * A name's English possessive for an Idea's title about letters filed for that person ("Alex Rivera's", "Hans's"), as
+ * `household.possessive` gives it; null when the name doesn't end in a letter ("Kim 2"), which takes "For Kim 2: ".
+ */
+export function possessive(name: string): string | null {
+  const last = Array.from(name).at(-1);
+  return last !== undefined && /\p{L}/u.test(last) ? `${name}'s` : null;
+}
+
 const NOBODY: LetterFor = { filed_for: null, mine: false, suggested: null, add: null };
 
 function matching(addressee: string, members: readonly HouseholdMember[]): HouseholdMember[] {

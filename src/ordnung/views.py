@@ -27,7 +27,7 @@ from ordnung.models import (
     Lane,
     LaneBar,
     MoneySummary,
-    MyNumbers,
+    NumbersPage,
     RefLink,
     Suggestion,
     TimelineEntry,
@@ -1033,7 +1033,7 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
 # --------------------------------------------------------------------------------------------------
 
 
-def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> MyNumbers:
+def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> NumbersPage:
     """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger.
 
     ``shareable_only`` leaves out letters marked "Keep private — no AI" and their to-dos (Ask's tool,

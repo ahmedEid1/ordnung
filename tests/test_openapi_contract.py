@@ -194,6 +194,98 @@ def test_health_documents_probe_and_rules_date(schema: dict[str, Any]) -> None:
     assert {"rules_last_checked", "checks"} <= set(schema["components"]["schemas"]["Health"]["properties"])
 
 
+def test_text_in_pictures_has_a_setting_and_a_state(schema: dict[str, Any]) -> None:
+    """*Text in pictures* (ADR 0024): the person's choice is a setting (``read_picture_text``, on by default,
+    changed with ``PUT /api/settings``); this computer's state is ``Health.picture_text`` (none on a phone)."""
+    components = schema["components"]["schemas"]
+    setting = components["AppSettings"]["properties"]["read_picture_text"]
+    assert (setting["type"], setting["default"]) == ("boolean", True)
+    assert "read_picture_text" in components["AppSettings"]["required"]
+    assert components["SettingsPatch"]["properties"]["read_picture_text"]["anyOf"] == [
+        {"type": "boolean"},
+        {"type": "null"},
+    ]
+    state = components["Health"]["properties"]["picture_text"]
+    assert state["anyOf"] == [{"$ref": "#/components/schemas/PictureTextStatus"}, {"type": "null"}]
+    assert "picture_text" in components["Health"]["required"]
+    status = components["PictureTextStatus"]
+    assert set(status["properties"]) == set(status["required"]) == {"state", "detail", "fix"}
+    assert sorted(status["properties"]["state"]["enum"]) == sorted(get_args(models.PictureTextState))
+    assert set(get_args(models.PictureTextState)) == {
+        "reading",
+        "off",
+        "off_by_variable",
+        "not_installed",
+        "not_usable",
+    }
+    assert models.AppSettings().read_picture_text is True
+
+
+def test_a_doctor_check_can_be_info(schema: dict[str, Any]) -> None:
+    """A row that is neither ok nor a problem (an optional part not installed, something off by choice): ``info``.
+    Only ``fail`` fails the doctor."""
+    assert get_args(models.CheckStatus) == ("ok", "info", "warn", "fail")
+    status = schema["components"]["schemas"]["DoctorCheck"]["properties"]["status"]
+    assert sorted(status["enum"]) == ["fail", "info", "ok", "warn"]
+
+
+async def test_the_health_of_this_computer_says_nothing_of_text_in_pictures_yet(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        health = (await api.client.get("/api/health")).json()
+        assert health["picture_text"] is None
+
+
+async def test_the_text_in_pictures_setting_is_saved(data_dir: Path) -> None:
+    """``PUT /api/settings`` saves the switch (hand-off sync carries it: ``tests/test_sync_contract.py``)."""
+    async with api_for(data_dir) as api:
+        store = api.ctx.store
+        assert (await api.client.get("/api/settings")).json()["read_picture_text"] is True
+        saved = await api.client.put("/api/settings", json={"read_picture_text": False})
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["read_picture_text"] is False
+        assert store.get_settings().read_picture_text is False
+        assert (await api.client.put("/api/settings", json={"llm_brief": False})).json()[
+            "read_picture_text"
+        ] is False
+        assert (await api.client.put("/api/settings", json={"read_picture_text": "maybe"})).status_code == 422
+
+
+def test_my_numbers_answers_the_numbers_page(schema: dict[str, Any]) -> None:
+    """``GET /api/numbers`` answers ``NumbersPage``: the person's page as before, and each person of the
+    household's numbers (``household``), the call-sheet numbers and cases that are only a member's
+    (``filed_for``) and the numbers other people's letters show too (``also_for``)."""
+    components = schema["components"]["schemas"]
+    answer = schema["paths"]["/api/numbers"]["get"]["responses"]["200"]["content"]["application/json"][
+        "schema"
+    ]
+    assert answer == {"$ref": "#/components/schemas/NumbersPage"}
+    page, person = components["NumbersPage"], components["PersonNumbers"]
+    assert set(page["properties"]) == set(models.MyNumbers.model_fields) | {
+        "household",
+        "filed_for",
+        "also_for",
+    }
+    assert set(page["required"]) == set(page["properties"])
+    assert page["properties"]["household"]["items"] == {"$ref": "#/components/schemas/PersonNumbers"}
+    assert page["properties"]["filed_for"]["additionalProperties"] == {"type": "string"}
+    assert page["properties"]["also_for"]["additionalProperties"] == {
+        "items": {"type": "string"},
+        "type": "array",
+    }
+    assert set(person["properties"]) == set(person["required"]) == {"id", "name", "about", "documents"}
+    assert issubclass(models.NumbersPage, models.MyNumbers)
+
+
+async def test_my_numbers_without_a_household_has_empty_household_parts(data_dir: Path) -> None:
+    async with api_for(data_dir) as api:
+        body = await api.upload(("bescheid.pdf", TAX_LETTER.pdf()))
+        await api.read_all()
+        assert body["documents"]
+        page = (await api.client.get("/api/numbers")).json()
+        assert (page["household"], page["filed_for"], page["also_for"]) == ([], {}, {})
+        models.NumbersPage.model_validate(page)
+
+
 def test_party_and_letter_details_carry_a_region_suggestion(schema: dict[str, Any]) -> None:
     """The Land the postcode on a sender's letter suggests: on both details, ``null`` when there is none."""
     components = schema["components"]["schemas"]
@@ -288,13 +380,15 @@ def test_the_letter_list_says_where_a_search_found_each_letter(schema: dict[str,
     assert sorted(found_in[0]["enum"]) == ["letter", "picture_text", "scanner_text"]
     assert found_in[1] == {"type": "null"}
     assert "found_in" not in models.Document.model_fields
-    # the route's own type (ADR 0024 adds picture_text); models.SearchFoundIn stays as it was (models.py is a
-    # benchmark digest file)
+    # the route's own type (ADR 0024 adds picture_text); the unused models.SearchFoundIn and
+    # models.DocumentListEntry are gone (in no schema Claude is given: tests/test_llm_schemas.py)
     assert get_args(documents.LetterFoundIn) == ("letter", "scanner_text", "picture_text")
-    assert get_args(models.SearchFoundIn) == ("letter", "scanner_text")
+    assert not hasattr(models, "SearchFoundIn") and not hasattr(models, "DocumentListEntry")
     assert row["properties"]["tax_choice"]["anyOf"] == [{"type": "boolean"}, {"type": "null"}]
-    # models.DocumentListEntry stays in models.py (a benchmark digest file), unused by any route
     assert "DocumentListEntry" not in components
+    # the published description names the route's own type, and no model that is gone
+    assert "LetterFoundIn" in row["description"]
+    assert "SearchFoundIn" not in row["description"] and "DocumentListEntry" not in row["description"]
     detail = components["DocumentDetail"]
     assert detail["properties"]["scan_text_pages"] == {
         "items": {"type": "integer"},

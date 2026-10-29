@@ -17,7 +17,7 @@ import hashlib
 import hmac
 import secrets
 
-from ordnung.models import CallSheet, IdentityDocument, MyNumber, MyNumbers, OpenCase, Profile
+from ordnung.models import CallSheet, IdentityDocument, MyNumber, NumbersPage, OpenCase, Profile
 
 MASK = "••••"
 _KEY_SALT = secrets.token_bytes(16)  # per process: a masked key never says which number it was
@@ -58,7 +58,7 @@ def _sheet(sheet: CallSheet) -> CallSheet:
     )
 
 
-def mask_numbers(page: MyNumbers) -> MyNumbers:
+def mask_numbers(page: NumbersPage) -> NumbersPage:
     """*My numbers* on a phone (``masked: true``)."""
     return page.model_copy(
         update={

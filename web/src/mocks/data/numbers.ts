@@ -1023,7 +1023,10 @@ export const MOCK_NUMBERS: MyNumbers = {
       }
     }
   ],
-  "masked": false
+  "masked": false,
+  "household": [],
+  "filed_for": {},
+  "also_for": {}
 };
 
 /** `GET /api/week` for the mock demo's letters on its today, before any session. */

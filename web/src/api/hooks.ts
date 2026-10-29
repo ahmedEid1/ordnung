@@ -42,6 +42,7 @@ import type {
   ItemListParams,
   ItemPatch,
   MarkSentRequest,
+  NumbersPage,
   OnboardingRequest,
   PairRequest,
   PartyDetail,
@@ -646,9 +647,9 @@ export function useDashboard({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: qk.dashboard, queryFn: api.dashboard, staleTime: 30_000, enabled });
 }
 
-/** `GET /numbers` — My numbers (derived from the letters, refreshed with the ledger). */
+/** `GET /numbers` — My numbers (derived from the letters, refreshed with the ledger): the person's and the household's. */
 export function useNumbers() {
-  return useQuery({ queryKey: qk.numbers, queryFn: api.numbers, staleTime: MINUTE });
+  return useQuery<NumbersPage>({ queryKey: qk.numbers, queryFn: api.numbers, staleTime: MINUTE });
 }
 
 /** `GET /week` — the weekly review (Today asks it whether to suggest one). */

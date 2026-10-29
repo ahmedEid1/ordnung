@@ -924,10 +924,11 @@ export class MockDb {
 
   /**
    * The pages with words Ordnung read in their pictures (`picture_text_pages`, ADR 0024): while Claude hasn't read
-   * the letter, and not the pages where it found none.
+   * the letter and the *Text in pictures* switch is on (`read_picture_text`), and not the pages where it found none.
+   * So a search finds no letter by those words while the switch is off ({@link foundIn}).
    */
   pictureTextPages(doc: Document): number[] {
-    if (doc.ai_processed_at) return [];
+    if (doc.ai_processed_at || this.state.settings.read_picture_text === false) return [];
     return Object.entries(this.state.pictureText[doc.id] ?? {})
       .filter(([, text]) => text.trim())
       .map(([page]) => Number(page))

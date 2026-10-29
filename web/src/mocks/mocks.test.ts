@@ -6,6 +6,7 @@ import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type {
   Activity,
+  AppSettings,
   BackupInfo,
   Contract,
   Dashboard,
@@ -15,11 +16,14 @@ import type {
   DocumentRow,
   Draft,
   Evidence,
+  Health,
   Household,
   Item,
   Lane,
   LetterRecord,
+  NumbersPage,
   RuleInfo,
+  Suggestion,
   TimelineEntry,
   ListedItem,
   Profile,
@@ -870,5 +874,53 @@ describe("text Ordnung read from a picture (ADR 0024): search only, like the sca
       const rows = await get<DocumentRow[]>(s, "/documents", `q=${encodeURIComponent(d.filename.replace(/\.[^.]+$/, ""))}`);
       expect(rows.find((row) => row.id === d.id)?.found_in, d.filename).toBe("letter");
     }
+  });
+});
+
+describe("Text in pictures: the switch and this computer's state (ADR 0024)", () => {
+  it("with the switch off, search drops the words read from a picture and the letter's page names no such page, like the API", async () => {
+    const s = srv();
+    s.db.state.pictureText.doc_folder_invoice = { 1: "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7" };
+    const off = await s.handle("PUT", "/settings", new URLSearchParams(), { read_picture_text: false });
+    expect(off.ok, `PUT /settings → ${off.status}`).toBe(true);
+    expect(((await off.json()) as AppSettings).read_picture_text).toBe(false);
+    expect(await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil")).toEqual([]);
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_invoice")).picture_text_pages).toEqual([]);
+    await s.handle("PUT", "/settings", new URLSearchParams(), { read_picture_text: true });
+    const found = await get<DocumentRow[]>(s, "/documents", "q=Kellerabteil");
+    expect(found.map((d) => [d.id, d.found_in])).toEqual([["doc_folder_invoice", "picture_text"]]);
+    expect((await get<DocumentDetail>(s, "/documents/doc_folder_invoice")).picture_text_pages).toEqual([1]);
+  });
+
+  it("health says what this computer has of Text in pictures, and Run check lists its row as info", async () => {
+    const s = srv();
+    expect((await get<AppSettings>(s, "/settings")).read_picture_text).toBe(true);
+    const health = await get<Health>(s, "/health");
+    expect(health.picture_text).toEqual({
+      state: "not_installed",
+      detail: "Not installed (optional)",
+      fix: expect.stringContaining("install Tesseract") as unknown as string,
+    });
+    const probed = await get<Health>(s, "/health", "probe=1");
+    const row = probed.checks.find((c) => c.id === "ocr");
+    expect(row).toMatchObject({ label: "Text in pictures", status: "info", detail: "Not installed (optional)" });
+    expect(row?.fix).toBe(health.picture_text?.fix);
+    expect(probed.checks.filter((c) => c.status !== "ok").map((c) => c.id)).toEqual(["ocr"]);
+  });
+});
+
+describe("whose it is (ADR 0023): before anything is filed for someone of the household", () => {
+  it("answers My numbers with empty household parts", async () => {
+    const page = await get<NumbersPage>(srv(), "/numbers");
+    expect([page.household, page.filed_for, page.also_for]).toEqual([[], {}, {}]);
+    expect(page.about_you.length).toBeGreaterThan(0);
+  });
+
+  it("lists the Ideas with their own titles", async () => {
+    const s = srv();
+    const ideas = await get<Suggestion[]>(s, "/suggestions");
+    const own = new Map(s.db.state.suggestions.map((idea) => [idea.id, idea.title]));
+    expect(ideas.length).toBeGreaterThan(0);
+    for (const idea of ideas) expect(idea.title, idea.id).toBe(own.get(idea.id));
   });
 });

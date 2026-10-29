@@ -134,6 +134,7 @@ def test_the_shared_keys_are_the_same_strings() -> None:
 def test_every_settings_field_is_classified() -> None:
     assert set(AppSettings.model_fields) == set(LOCAL_SETTINGS) | set(SYNCED_SETTINGS)
     assert not set(LOCAL_SETTINGS) & set(SYNCED_SETTINGS)
+    assert "read_picture_text" in SYNCED_SETTINGS  # Text in pictures: the person's choice travels
 
 
 def test_every_data_folder_entry_is_classified(paths: Paths) -> None:

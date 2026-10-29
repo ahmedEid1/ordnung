@@ -5,7 +5,7 @@
  * its step (and the ending moves on to the next day to act), and "Finish" / "Not now" are remembered for
  * this mock database.
  */
-import type { CallSheet, Item, MyNumber, MyNumbers, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
+import type { CallSheet, Item, MyNumber, NumbersPage, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import type { MockDb } from "./db";
 import { MOCK_NUMBERS, MOCK_WEEK, MOCK_WEEK_DEADLINES } from "./data/numbers";
 
@@ -27,8 +27,8 @@ function stateOf(db: MockDb): WeekState {
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-/** My numbers of the letters still in the demo. */
-export function mockNumbers(db: MockDb): MyNumbers {
+/** My numbers of the letters still in the demo (its household parts as the generated page has them). */
+export function mockNumbers(db: MockDb): NumbersPage {
   const live = new Set(db.liveDocuments().map((d) => d.id));
   const shown = (n: MyNumber | null | undefined): n is MyNumber => Boolean(n && (!n.letter || live.has(n.letter.id)));
   const openCase = (c: OpenCase): OpenCase | null => {

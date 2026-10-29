@@ -92,6 +92,7 @@ async def health(
         rules_last_checked=LAST_CHECKED,
         checks=checks,
         client="phone" if phone else "computer",
+        picture_text=None,  # this computer's Text in pictures is not reported here yet
     )
 
 

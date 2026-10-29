@@ -132,9 +132,12 @@ export function classifyPhoneRequest(scope: PhoneScope, method: string, path: st
 // What a phone gets that the computer doesn't
 // ------------------------------------------------------------------------------------------------
 
-/** `/api/health` on a phone: `client: "phone"`, never the data folder, Claude's path or the checks — and never the demo. */
+/**
+ * `/api/health` on a phone: `client: "phone"`, never the data folder, Claude's path, the checks or the computer's Text
+ * in pictures — and never the demo.
+ */
 export function phoneHealth(health: Health): Health {
-  return { ...health, client: "phone", demo: false, data_dir: "", claude: { ...health.claude, path: null }, checks: [] };
+  return { ...health, client: "phone", demo: false, data_dir: "", claude: { ...health.claude, path: null }, checks: [], picture_text: null };
 }
 
 /** A number on a phone: only its last 4 characters ("•••• 3000"); the full one is on the computer. */

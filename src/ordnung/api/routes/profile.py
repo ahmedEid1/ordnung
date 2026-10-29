@@ -174,6 +174,10 @@ class SettingsPatch(BaseModel):
     desktop_notify_time: str | None = Field(
         default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="Local time of day, HH:MM (24 h)"
     )
+    read_picture_text: bool | None = Field(
+        default=None,
+        description="read the words in photos and scans Claude isn't reading, for search only (ADR 0024)",
+    )
     demo: bool | None = None
     simulated_today: str | None = None
 

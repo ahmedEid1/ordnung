@@ -23,7 +23,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from functools import cached_property
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
@@ -67,6 +67,10 @@ from ordnung.rules import RuleContext, compute_contract, get_rule, price_increas
 from ordnung.rules.deadlines import POSTAL_BUFFER_DAYS, sending_time_passed
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.tax_choice import for_taxes
+
+if TYPE_CHECKING:
+    from ordnung.recurrence import ItemContext
+    from ordnung.secretary.household import HouseholdMember
 
 try:  # the scam checks are optional: the triggers work without them
     from ordnung.secretary import scam as _scam
@@ -579,9 +583,26 @@ class Ledger:
     @cached_property
     def tax_choices(self) -> dict[str, bool]:
         """The person's own "For taxes" choices by letter id (:meth:`Store.tax_choices`), for
-        :func:`~ordnung.secretary.tax_choice.for_taxes`. Read on first use only, on purpose: Ask's server
-        builds Ledgers and never reads them (Ask keeps Claude's own mark)."""
+        :func:`~ordnung.secretary.tax_choice.for_taxes`. Read on first use only, on purpose: of Ask's tools
+        only ``get_document`` reads them, and the weekly review's snapshot does; Ask's other tools build Ledgers
+        and never read the row."""
         return self.store.tax_choices()
+
+    @cached_property
+    def household_filed(self) -> dict[str, HouseholdMember]:
+        """Each live letter the person filed for someone of their household, with that person
+        (:func:`ordnung.secretary.household.filed`). Read on first use only, like :attr:`tax_choices`."""
+        from ordnung.secretary import household
+
+        return household.filed(household.load(self.store), self.documents)
+
+    @cached_property
+    def item_contexts(self) -> ItemContext:
+        """The context of each to-do's dates (:func:`ordnung.ingest.plan.item_contexts`), worked out once per
+        Ledger and shared by everything that answers from it."""
+        from ordnung.ingest.plan import item_contexts
+
+        return item_contexts()
 
     def party_name(self, party_id: str | None) -> str | None:
         """Display name of a party (``None`` if unknown)."""

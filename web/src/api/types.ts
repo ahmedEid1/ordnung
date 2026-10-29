@@ -646,13 +646,20 @@ export type TraceChange = Schemas["TraceChange"];
 export type TraceComparison = Schemas["TraceComparison"];
 export type TraceExport = Schemas["TraceExport"];
 export type ClaudeStatus = Schemas["ClaudeStatus"];
-/** One `ordnung doctor` check (listed by `GET /api/health?probe=1`). */
+/**
+ * One `ordnung doctor` check (listed by `GET /api/health?probe=1`): `info` is neither ok nor a problem (an optional
+ * part not installed, something off by choice); only `fail` fails the doctor.
+ */
 export type DoctorCheck = Schemas["DoctorCheck"];
+/** *Text in pictures* on this computer (`Health.picture_text`, ADR 0024), in the words of the doctor's row. */
+export type PictureTextStatus = Schemas["PictureTextStatus"];
+export type PictureTextState = PictureTextStatus["state"];
 /**
  * `GET /api/health` for the signed-in app. `today` is the app's "today" (ISO date) — always use
  * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date. `client` says who asked:
  * this computer's browser, or a paired phone (which gets no data folder, Claude path or checks) —
- * `usePhoneCompanion()` in `features/phone/client.ts`.
+ * `usePhoneCompanion()` in `features/phone/client.ts`. `picture_text` is *Text in pictures* on this computer (null
+ * on a phone).
  */
 export type Health = Schemas["Health"];
 /** `GET /api/health` without the session token (the endpoint client turns it into a 401 error). */
@@ -683,8 +690,17 @@ export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray; `received_date` is the day it arrived (the postmark). */
 export type MailTrayItem = Schemas["MailTrayItem"];
-/** `GET /api/numbers`: About you, identity documents, a call sheet per organisation, open cases. */
-export type MyNumbers = Schemas["MyNumbers"];
+/**
+ * `GET /api/numbers`: About you, identity documents, a call sheet per organisation, open cases, and the household's
+ * parts — each person's numbers and documents from letters filed for them (`household`), the call-sheet numbers
+ * and cases that are only one person's (`filed_for`: key → person id) and the numbers other people's letters show
+ * too (`also_for`: key → `"me"` or person ids). All three are empty without a household.
+ */
+export type NumbersPage = Schemas["NumbersPage"];
+/** The *My numbers* page under its earlier name. */
+export type MyNumbers = NumbersPage;
+/** A person of the household on *My numbers*: what the letters filed for them show. */
+export type PersonNumbers = Schemas["PersonNumbers"];
 /** One number, sorted by whose it is, with its check-digit test and the letter that shows it. */
 export type MyNumber = Schemas["MyNumber"];
 export type IdentityDocument = Schemas["IdentityDocument"];

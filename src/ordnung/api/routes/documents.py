@@ -175,9 +175,9 @@ LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment
 #: What the route adds to each row of the list: where a search found the letter, and the person's own
 #: "For taxes" choice (``None``: none, Claude's mark counts).
 ROUTE_FIELDS = frozenset({"found_in", "tax_choice"})
-#: Where a search found a letter (route-local: ``models.SearchFoundIn`` stays, models.py is a digest file):
-#: ``letter`` — its own words; ``scanner_text`` — only in the text a scanner added (ADR 0020);
-#: ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
+#: Where a search found a letter (route-local, like every field the list adds): ``letter`` — its own words
+#: (title, file name, Claude's reading, page text, sender); ``scanner_text`` — only in the text a scanner added
+#: (ADR 0020); ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
 LetterFoundIn = Literal["letter", "scanner_text", "picture_text"]
 
 _ROW_FIELDS: dict[str, Any] = {
@@ -189,17 +189,16 @@ _ROW_FIELDS: dict[str, Any] = {
 DocumentRow = create_model(
     "DocumentRow",
     __config__=ConfigDict(json_schema_serialization_defaults_required=True),
-    # the published description stays as it was (D3's and D4's contracts change only the fields): the
-    # ROUTE_FIELDS are found_in (LetterFoundIn: models.SearchFoundIn and picture_text) and tax_choice, the
-    # person's own "For taxes" choice (None: none, Claude's mark counts)
+    # the ROUTE_FIELDS are found_in (LetterFoundIn) and tax_choice, the person's own "For taxes" choice
+    # (None: none, Claude's mark counts)
     __doc__=(
         "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
         "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
-        "(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\n"
+        "(``LetterFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\n"
         "never stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n"
         "\n"
         "Its fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\n"
-        "itself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
+        "itself."
     ),
     __module__=__name__,
     **_ROW_FIELDS,

@@ -105,6 +105,7 @@ import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
+from typing import TYPE_CHECKING
 
 from ordnung.models import (
     CallSheet,
@@ -116,9 +117,9 @@ from ordnung.models import (
     Item,
     LetterRef,
     MyNumber,
-    MyNumbers,
     NumberCheck,
     NumberGroup,
+    NumbersPage,
     OpenCase,
     Party,
 )
@@ -131,6 +132,9 @@ from ordnung.secretary.triggers import (
     paid_at_appointment,
     unconfirmed_reason,
 )
+
+if TYPE_CHECKING:
+    from ordnung.secretary.household import HouseholdMember
 
 # --------------------------------------------------------------------------------------------------
 # Kinds
@@ -733,6 +737,11 @@ class NumbersInput:
     suspicious: frozenset[str] = frozenset()
     expiry_classes: Mapping[str, str] = field(default_factory=dict)
     own_iban: str | None = None
+    #: letter id → the id of the person of the household it is filed for
+    #: (:func:`ordnung.secretary.household.filed`); every other letter is the person's own
+    people: Mapping[str, str] = field(default_factory=dict)
+    #: the people of the household, in household order
+    members: Sequence[HouseholdMember] = ()
 
 
 def _day_of(doc: Document) -> str:
@@ -1122,8 +1131,10 @@ def _call_sheets(
     return sorted(sheets, key=lambda sheet: (sheet.name.casefold(), sheet.party_id))
 
 
-def build_my_numbers(data: NumbersInput) -> MyNumbers:
-    """The *My numbers* page: About you, identity documents, call sheets and open cases (module policy)."""
+def build_numbers_page(data: NumbersInput) -> NumbersPage:
+    """The *My numbers* page: About you, identity documents, call sheets and open cases (module policy). Its
+    household parts (``household``, ``filed_for``, ``also_for``) stay empty: ``people`` and ``members`` are not
+    read yet."""
     by_party, personal = _collect(data)
     order = {kind: index for index, kind in enumerate(KINDS)}
     about = sorted(
@@ -1131,10 +1142,14 @@ def build_my_numbers(data: NumbersInput) -> MyNumbers:
         key=lambda entry: (order[entry.kind], compact(entry.sighting.value)),
     )
     open_cases = _open_cases(data, by_party.values())
-    return MyNumbers(
+    return NumbersPage(
         today=data.today.isoformat(),
         about_you=[entry.model() for entry in about],
         documents=_identity_documents(data, personal),
         organisations=_call_sheets(data, by_party, open_cases),
         open_cases=open_cases,
     )
+
+
+#: The name the page's builder had before the household parts (kept for its callers).
+build_my_numbers = build_numbers_page
