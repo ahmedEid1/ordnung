@@ -6,7 +6,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { Lock, Plus, X } from "lucide-react";
-import { useContracts, useItems, useLanes, useParties, useTimeline } from "@/api/hooks";
+import { useContracts, useHousehold, useItems, useLanes, useParties, useTimeline } from "@/api/hooks";
 import type { Item, RefLink, TimelineEntry, TimelineMarker } from "@/api/types";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { PageHeader } from "@/components/shell/Page";
@@ -21,6 +21,7 @@ import { plural } from "@/lib/utils";
 import { LanesChart, defaultLaneRange, refTarget, type LaneSelection, type LaneTarget } from "@/features/lanes";
 import { AddDateButton, EditDateDialog } from "@/features/items/AddDateDialog";
 import { repeatLabel } from "@/features/items/repeat";
+import { filedMember } from "@/features/household/logic";
 import { CalendarExport } from "./CalendarExport";
 import { TimelineFilters } from "./TimelineFilters";
 import { TimelineList } from "./TimelineList";
@@ -30,6 +31,7 @@ import {
   emptyFilterHint,
   emptyLanesCopy,
   entryForDate,
+  entryLetterId,
   filterLanes,
   filterOptions,
   filterSummary,
@@ -163,6 +165,15 @@ export function TimelineView() {
     },
     [ownItem],
   );
+  // whose letter a date comes from: only a letter filed for someone of the household (ADR 0023)
+  const household = useHousehold().data;
+  const whoseFor = useCallback(
+    (e: TimelineEntry) => {
+      const letter = entryLetterId(e, itemsById);
+      return letter ? (filedMember(household, letter)?.name ?? null) : null;
+    },
+    [itemsById, household],
+  );
 
   // A retry of a failed load starts over as "pending" (and forgets the error): remember the error,
   // so the message stays on screen, worded the same, while "Try again" runs.
@@ -266,6 +277,7 @@ export function TimelineView() {
           hrefFor={hrefFor}
           openFor={openFor}
           repeatsFor={repeatsFor}
+          whoseFor={whoseFor}
           highlight={highlight}
           scrollKey={String(filters.showPast)}
           header={

@@ -3,15 +3,21 @@ plus fingerprints and reconciliation."""
 
 from __future__ import annotations
 
+import shutil
+from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ids import content_id
 from ordnung.models import CalendarSyncState, CancellationSent, ExtractedChange, Suggestion
+from ordnung.secretary import household
 from ordnung.secretary.brief import build_agenda
+from ordnung.secretary.household import MINE, HouseholdMember
 from ordnung.secretary.triggers import (
     HIDDEN_TEXT_SIGN,
     TRIGGERS,
@@ -24,8 +30,10 @@ from ordnung.secretary.triggers import (
     yearly_extra_cost,
     zusatzbeitrag_raised,
 )
+from ordnung.tick import local_today
 
 FAR_FUTURE = "2999-01-01T00:00:00Z"
+DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
 
 
 @pytest.fixture
@@ -722,6 +730,263 @@ def test_calendar_outdated_is_quiet_while_calendar_sync_is_connected(
     state = CalendarSyncState(url="https://cal.example.org/dav/sam/ordnung/", username="sam", paused=paused)
     store.set_meta("calendar_sync", state.model_dump_json())
     assert ideas(store, "calendar_outdated") == []
+
+
+# --------------------------------------------------------------------------------------------------
+# whose an Idea is about (household point 10, ADR 0023): the letters the person filed for someone
+# --------------------------------------------------------------------------------------------------
+
+#: What an Idea about a person of the household says instead of "your" (the rationale stays).
+MEMBER_IDENTITY_BODY = (
+    "Renewing a passport or ID card can take weeks or months (embassy or consulate appointments), so start "
+    "early. Their residence permit can usually only run as long as their passport is valid."
+)
+MEMBER_PERMIT_AHEAD_BODY = (
+    "Apply at the immigration office (Ausländerbehörde) before it expires. If the application is in time, the "
+    "current permit continues to count until the office decides (§ 81 Abs. 4 AufenthG) — ask for a "
+    "Fiktionsbescheinigung. Appointments are often booked out for weeks."
+)
+MEMBER_PERMIT_PAST_BODY = (
+    "Contact the immigration office (Ausländerbehörde) right away and get advice — a migration counselling "
+    "service can help."
+)
+MEMBER_PASSPORT_FIRST_REST = (
+    "The immigration office (Ausländerbehörde) usually extends a permit only as long as the passport is valid, "
+    "which would mean another appointment soon. Ask the embassy or consulate about a new passport now."
+)
+
+
+@dataclass(frozen=True)
+class _Person:
+    """A new person as Settings → Your household sends them."""
+
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+def _add_people(store: Store, *names: str) -> list[HouseholdMember]:
+    """Add people to the household (nothing filed for them yet); the household's people in order."""
+    kept = household.load(store).members
+    household.change(store, base=household.version(kept), members=[*kept, *(_Person(name) for name in names)])
+    return household.load(store).members
+
+
+def _file(store: Store, who: HouseholdMember | str, *letters: str) -> None:
+    """File letters for a person of the household (or as the person's own: :data:`MINE`)."""
+    household.file(store, dict.fromkeys(letters, who.id if isinstance(who, HouseholdMember) else who))
+
+
+def _by_item(store: Store, rule_id: str, today: date = TODAY) -> dict[str, Suggestion]:
+    return {idea.refs[0].id: idea for idea in ideas(store, rule_id, today)}
+
+
+def _every_idea(store: Store, today: date = TODAY) -> dict[str, tuple[str, str, str | None]]:
+    return {
+        idea.fingerprint: (idea.title, idea.body, idea.rationale)
+        for batch in run_triggers(store, today).values()
+        for idea in batch
+    }
+
+
+def test_an_idea_about_a_member_s_letter_names_them(store: Store, ids: dict[str, str]) -> None:
+    before = _every_idea(store)
+    (alex,) = _add_people(store, "Alex Rivera")
+    assert _every_idea(store) == before  # someone in the household, nothing filed: every Idea as before
+    _file(store, alex, ids["doc_parking"])
+    pay = _by_item(store, "deadline_soon")[ids["parking_payment"]]
+    assert pay.title == "For Alex Rivera: Pay parking fine: pay by Tue 29 Sep"
+    assert (pay.body, pay.rationale) == ("That's tomorrow.", "From the letter of Tue 22 Sep.")
+    (check,) = ideas(store, "please_check")
+    assert check.title == "For Alex Rivera: Please check: Parking fine"
+    # the person isn't in the fingerprint: the same Idea, renamed
+    after = _every_idea(store)
+    assert set(after) == set(before)
+    assert after[pay.fingerprint][1:] == before[pay.fingerprint][1:]
+    renamed = {fp for fp in after if after[fp] != before[fp]}
+    assert renamed == {pay.fingerprint, check.fingerprint}
+
+
+def test_a_member_s_passport_and_permit_say_whose(store: Store, ids: dict[str, str]) -> None:
+    (alex,) = _add_people(store, "Alex Rivera")
+    _file(store, alex, ids["doc_passport"], ids["doc_permit"])
+    expiries = _by_item(store, "expiry_soon")
+    passport, permit = expiries[ids["passport_expiry"]], expiries[ids["permit_expiry"]]
+    assert (passport.title, passport.body) == (
+        "Alex Rivera's passport expires Wed 10 Feb 2027",
+        MEMBER_IDENTITY_BODY,
+    )
+    assert passport.rationale == "Identity documents are flagged 180 days before they expire."
+    assert (permit.title, permit.body) == (
+        "Alex Rivera's residence permit expires Tue 15 Dec — apply for the extension now",
+        MEMBER_PERMIT_AHEAD_BODY,
+    )
+    assert permit.rationale == "Residence permits: apply before expiry (§ 81 Abs. 4 AufenthG)."
+    (first,) = ideas(store, "passport_before_permit")
+    assert first.title == "Renew Alex Rivera's passport before extending their residence permit"
+    assert first.body == (
+        "Alex Rivera's passport expires on Wed 10 Feb 2027 — soon after their residence permit (Tue 15 Dec). "
+        + MEMBER_PASSPORT_FIRST_REST
+    )
+    assert first.rationale == "Passport expires within 180 days of the residence permit."
+
+    late = date(2026, 12, 20)
+    expired = _by_item(store, "expiry_soon", late)[ids["permit_expiry"]]
+    assert (expired.title, expired.body) == (
+        "Alex Rivera's residence permit expired on Tue 15 Dec",
+        MEMBER_PERMIT_PAST_BODY,
+    )
+    assert (
+        expired.rationale == "Residence permits must be extended before they expire (§ 81 Abs. 4 AufenthG)."
+    )
+    store.update_item(ids["passport_expiry"], due_date="2026-11-30", title="Personalausweis expires")
+    id_card = _by_item(store, "expiry_soon", date(2026, 12, 2))[ids["passport_expiry"]]
+    assert (id_card.title, id_card.body) == (
+        "Alex Rivera's passport or ID expired on Mon 30 Nov",
+        MEMBER_IDENTITY_BODY,
+    )
+    (before_permit,) = ideas(store, "passport_before_permit", date(2026, 11, 1))
+    assert before_permit.body == (
+        "Alex Rivera's passport expires on Mon 30 Nov — before their residence permit (Tue 15 Dec). "
+        + MEMBER_PASSPORT_FIRST_REST
+    )
+
+
+def test_a_name_that_does_not_end_in_a_letter_gets_the_for_form(store: Store, ids: dict[str, str]) -> None:
+    (kim,) = _add_people(store, "Kim 2")
+    _file(store, kim, ids["doc_passport"], ids["doc_permit"], ids["doc_parking"])
+    expiries = _by_item(store, "expiry_soon")
+    passport, permit = expiries[ids["passport_expiry"]], expiries[ids["permit_expiry"]]
+    assert (passport.title, passport.body) == (
+        "For Kim 2: Passport expires Wed 10 Feb 2027",
+        MEMBER_IDENTITY_BODY,
+    )
+    assert (permit.title, permit.body) == (
+        "For Kim 2: Residence permit expires Tue 15 Dec — apply for the extension now",
+        MEMBER_PERMIT_AHEAD_BODY,
+    )
+    expired = _by_item(store, "expiry_soon", date(2026, 12, 20))[ids["permit_expiry"]]
+    assert expired.title == "For Kim 2: Residence permit expired on Tue 15 Dec"
+    (first,) = ideas(store, "passport_before_permit")
+    assert first.title == "For Kim 2: Renew the passport before extending the residence permit"
+    assert first.body == (
+        "The passport expires on Wed 10 Feb 2027 — soon after their residence permit (Tue 15 Dec). "
+        + MEMBER_PASSPORT_FIRST_REST
+    )
+    pay = _by_item(store, "deadline_soon")[ids["parking_payment"]]
+    assert pay.title == "For Kim 2: Pay parking fine: pay by Tue 29 Sep"
+
+
+def test_another_expiry_of_a_member_s_letter_gets_the_for_form(store: Store, ids: dict[str, str]) -> None:
+    (alex,) = _add_people(store, "Alex Rivera")
+    card = add_doc(store, "card", kind="other", area="other", title="Library card", doc_date="2025-10-01")
+    item = add_item(store, kind="expiry", title="Library card expires", doc_id=card, due_date="2026-10-05")
+    plain = _by_item(store, "expiry_soon")[item]
+    assert plain.title == "Library card expires: expires Mon 5 Oct"
+    _file(store, alex, card)
+    named = _by_item(store, "expiry_soon")[item]
+    assert (named.title, named.body) == (
+        "For Alex Rivera: Library card expires: expires Mon 5 Oct",
+        plain.body,
+    )
+    assert named.fingerprint == plain.fingerprint
+
+
+def test_passport_before_permit_pairs_one_person_s_documents(store: Store, ids: dict[str, str]) -> None:
+    """A child's passport is never set against the person's own permit, nor the person's passport against a
+    partner's permit."""
+    (alex,) = _add_people(store, "Alex Rivera")
+    _file(store, alex, ids["doc_passport"])
+    assert ideas(store, "passport_before_permit") == []
+    own = add_doc(store, "own passport", kind="identity_document", area="residence", title="Reisepass")
+    mine = add_item(store, kind="expiry", title="Passport expires", doc_id=own, due_date="2027-01-20")
+    (first,) = ideas(store, "passport_before_permit")
+    assert first.title == "Renew your passport before extending your residence permit"
+    assert refs_of(first) >= {("item", mine), ("item", ids["permit_expiry"])}
+    assert ("item", ids["passport_expiry"]) not in refs_of(first)
+    _file(store, alex, ids["doc_permit"])
+    (theirs,) = ideas(store, "passport_before_permit")  # each person's pair; the person now has no permit
+    assert theirs.title == "Renew Alex Rivera's passport before extending their residence permit"
+    assert refs_of(theirs) >= {("item", ids["passport_expiry"]), ("item", ids["permit_expiry"])}
+    _file(store, MINE, ids["doc_passport"], ids["doc_permit"])  # "No, it's mine": the person's own again
+    assert {idea.title for idea in ideas(store, "passport_before_permit")} == {
+        "Renew your passport before extending your residence permit"
+    }
+
+
+def test_student_permit_info_uses_the_person_s_own_permit(store: Store, ids: dict[str, str]) -> None:
+    (alex,) = _add_people(store, "Alex Rivera")
+    _file(store, alex, ids["doc_permit"])
+    (card,) = ideas(store, "student_permit_info")
+    assert card.title == "Working on a student permit: know your limits"
+    assert card.refs == [] and card.action is not None and card.action.type == "none"
+    own = add_doc(
+        store,
+        "own permit",
+        kind="residence_permit",
+        area="residence",
+        title="Aufenthaltstitel",
+        doc_date="2024-03-01",
+    )
+    (card,) = ideas(store, "student_permit_info")
+    assert refs_of(card) == {("document", own)}
+    assert card.action is not None and card.action.target_id == own
+
+
+def test_an_idea_over_letters_of_two_people_names_no_one(store: Store, ids: dict[str, str]) -> None:
+    alex, mia = _add_people(store, "Alex Rivera", "Mia Rivera")
+    title = "Pay TechMarkt reminder €94.99 by Wed 30 Sep"
+    _file(store, alex, ids["doc_dunning"])  # its earlier invoice is still the person's
+    (reminder,) = ideas(store, "dunning_escalation")
+    assert reminder.title == title
+    _file(store, mia, ids["doc_invoice"])
+    assert ideas(store, "dunning_escalation")[0].title == title
+    _file(store, alex, ids["doc_invoice"])
+    assert ideas(store, "dunning_escalation")[0].title == f"For Alex Rivera: {title}"
+
+
+def test_the_person_s_own_ideas_never_name_a_member(store: Store, ids: dict[str, str]) -> None:
+    """Rules about the person's own affairs (their tax return, calendar, profile and move, a sender's Land) and a
+    contract's decision never name anyone, even when every letter they refer to is filed for someone; nor does
+    an Idea whose letters are the person's, or a to-do without a letter."""
+    tax_season = date(2026, 3, 2)
+    before = {day: _every_idea(store, day) for day in (TODAY, tax_season)}
+    (alex,) = _add_people(store, "Alex Rivera")
+    _file(store, alex, ids["doc_parking"])
+    after = _every_idea(store)
+    assert set(after) == set(before[TODAY])
+    named = {fp.split(":")[0] for fp in after if after[fp] != before[TODAY][fp]}
+    assert named == {"deadline_soon", "please_check"}  # only the two Ideas about the parking fine
+    letters = [doc.id for doc in store.list_documents() if doc.source != "proof"]
+    _file(store, alex, *letters)
+    never = ("tax_documents", "calendar_outdated", "student_permit_info", "contract_cancel_window")
+    seen: set[str] = set()
+    for day in (TODAY, tax_season):
+        results = run_triggers(store, day)
+        for rule in never:
+            for idea in results[rule]:
+                assert before[day][idea.fingerprint][0] == idea.title, rule
+                seen.add(rule)
+    assert seen >= {"tax_documents", "student_permit_info", "contract_cancel_window"}
+    (books,) = ideas(store, "overdue")  # a to-do without a letter
+    assert books.title == "Overdue: Return library books"
+
+
+def test_without_a_household_every_title_is_as_before(tmp_path: Path) -> None:
+    """The demo's Ideas, refreshed by today's rules: every title, body and fingerprint as stored (so its weekly
+    review and daily note are asked the same)."""
+    shutil.copytree(DEMO_DB, tmp_path / "demo")
+    store = Store.open(Paths(tmp_path / "demo"))
+    try:
+        stored = {s.fingerprint: (s.title, s.body, s.rationale, s.status) for s in store.list_suggestions()}
+        assert len(stored) == 17
+        run = run_and_reconcile(store, local_today(store))
+        assert (run.new, run.expired) == (0, 0)
+        assert {
+            s.fingerprint: (s.title, s.body, s.rationale, s.status) for s in store.list_suggestions()
+        } == stored
+    finally:
+        store.close()
 
 
 # --------------------------------------------------------------------------------------------------

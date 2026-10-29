@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Household } from "@/api/types";
 import { makeRow } from "@/features/document/fixtures";
+import { comingUpMeta } from "@/features/today/helpers";
 import {
   MINE,
   answerOf,
   fileTheseLabel,
   filedMember,
+  forLine,
   forOptions,
   matchesFor,
   memberById,
@@ -88,5 +90,11 @@ describe("household logic", () => {
   it("names the button that files the listed letters", () => {
     expect(fileTheseLabel(3, "Alex Rivera")).toBe("File these 3 for Alex Rivera");
     expect(fileTheseLabel(1, "Alex Rivera")).toBe("File it for Alex Rivera");
+  });
+
+  it(`forLine says "For <name>", the same words as Today's Coming up`, () => {
+    expect(forLine("Alex Rivera")).toBe("For Alex Rivera");
+    // a Coming-up row whose date needs no word ("due") and has no time or party: only the name
+    expect(forLine("Alex Rivera")).toBe(comingUpMeta({ dateRole: "due", time: null }, undefined, "Alex Rivera"));
   });
 });

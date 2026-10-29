@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { DateLeaf } from "@/components/ui/DateLeaf";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
+import { forLine } from "@/features/household/logic";
 import { TIMELINE_TYPE_COPY, TONES, copyFor } from "@/lib/copy";
 import { formatDate, formatTime, formatTotals } from "@/lib/format";
 import { useIsTabletUp } from "@/lib/hooks";
@@ -33,6 +34,11 @@ export interface TimelineListProps {
   openFor?: (e: TimelineEntry) => (() => void) | null;
   /** How an entry's to-do repeats ("Repeats every month on the 3rd working day"), on a line of its own under its detail. */
   repeatsFor?: (e: TimelineEntry) => string | null;
+  /**
+   * Whose letter an entry's date comes from: the name of the person of the household it is filed for (null: the
+   * person's own, or no letter). The second line then starts with "For Alex Rivera · ", as Today's Coming up.
+   */
+  whoseFor?: (e: TimelineEntry) => string | null;
   /** entry to scroll to and highlight (e.g. after clicking a lane marker) */
   highlight?: { id: string; nonce: number } | null;
   /** header content (title + filters) */
@@ -56,6 +62,7 @@ function Entry({
   href,
   open,
   repeats,
+  whose,
   highlighted,
 }: {
   e: TimelineEntry;
@@ -63,6 +70,7 @@ function Entry({
   href: string | null;
   open: (() => void) | null;
   repeats: string | null;
+  whose: string | null;
   highlighted: boolean;
 }) {
   const past = isPastEntry(e, today);
@@ -70,7 +78,7 @@ function Entry({
   const role = entryRole(e);
   const kind = copyFor(TIMELINE_TYPE_COPY, e.type);
   const detail = [entryDetail(e), e.time ? formatTime(e.time) : null].filter(Boolean).join(" · ") || null;
-  const meta = [role, e.party_name, detail].filter(Boolean).join(" · ");
+  const meta = [whose ? forLine(whose) : null, role, e.party_name, detail].filter(Boolean).join(" · ");
   const amount = e.amount && e.type !== "contract" ? <Money amount={e.amount} currency={e.currency} tone={past ? "muted" : "default"} className="text-base" /> : null;
   const pill = status ? (
     <span className={cn("inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium leading-4", TONES[status.tone].soft, TONES[status.tone].text)}>
@@ -89,6 +97,7 @@ function Entry({
         </span>
         <span title={meta} className="mt-0.5 block break-words text-sm leading-5 text-muted sm:truncate">
           <kind.icon className={cn("mr-1 inline size-3.5 -translate-y-px align-middle sm:hidden", TONES[kind.tone].icon, past && "opacity-60")} aria-hidden />
+          {whose ? `${forLine(whose)} · ` : null}
           <span className="font-medium">{role}</span>
           {e.party_name ? ` · ${e.party_name}` : null}
           {detail ? <span className="max-sm:hidden"> · {detail}</span> : null}
@@ -189,7 +198,7 @@ function MonthHeader({ g }: { g: MonthGroup }) {
   );
 }
 
-export function TimelineList({ groups, today, hrefFor, openFor, repeatsFor, highlight, header, empty, scrollKey = "", className }: TimelineListProps) {
+export function TimelineList({ groups, today, hrefFor, openFor, repeatsFor, whoseFor, highlight, header, empty, scrollKey = "", className }: TimelineListProps) {
   const wide = useIsTabletUp();
   const scroller = useRef<HTMLDivElement | null>(null);
   const card = useRef<HTMLElement | null>(null);
@@ -320,7 +329,7 @@ export function TimelineList({ groups, today, hrefFor, openFor, repeatsFor, high
                 <ol className="divide-y divide-line/70">
                   {g.entries.map((e, i) => (
                     <FragmentWithToday key={e.id} show={g.todayIndex === i} today={today}>
-                      <Entry e={e} today={today} href={hrefFor(e)} open={openFor?.(e) ?? null} repeats={repeatsFor?.(e) ?? null} highlighted={highlight?.id === e.id} />
+                      <Entry e={e} today={today} href={hrefFor(e)} open={openFor?.(e) ?? null} repeats={repeatsFor?.(e) ?? null} whose={whoseFor?.(e) ?? null} highlighted={highlight?.id === e.id} />
                     </FragmentWithToday>
                   ))}
                   {g.todayIndex !== null && g.todayIndex >= g.entries.length ? (

@@ -9,6 +9,10 @@ Fingerprints are ``rule_id:entity_id:hash(triggering values)``: while the facts 
 Idea keeps its identity (and the person's "dismissed"/"snoozed" choice); when they change, a fresh
 Idea replaces it and the old one expires. :func:`run_and_reconcile` persists everything. Nothing in
 this module closes, dismisses or marks an obligation — overdue is computed on read (SPEC §21).
+
+An Idea about letters the person filed for someone of their household names that person ("For Alex Rivera:
+…", "Alex Rivera's passport expires …"; :func:`named`, ADR 0023). Who it is is not in the fingerprint, so filing
+a letter renames the same Idea and keeps the person's choice; without a household every Idea is as before.
 """
 
 from __future__ import annotations
@@ -595,6 +599,42 @@ class Ledger:
         from ordnung.secretary import household
 
         return household.filed(household.load(self.store), self.documents)
+
+    def member_of(self, doc_id: str | None) -> HouseholdMember | None:
+        """The person of the household a letter is filed for (:attr:`household_filed`); ``None`` for the
+        person's own letter, a letter in the trash and no letter at all."""
+        return self.household_filed.get(doc_id) if doc_id else None
+
+    @cached_property
+    def _items_by_id(self) -> dict[str, Item]:
+        return {item.id: item for item in self.items}
+
+    def letters_of(self, refs: Iterable[SuggestionRef]) -> set[str]:
+        """The letters an Idea refers to: its letters, each to-do's letter and the letter each of the person's
+        own letters answers. A contract or a sender is no letter."""
+        letters: set[str | None] = set()
+        for ref in refs:
+            if ref.type == "document":
+                letters.add(ref.id)
+            elif ref.type == "item":
+                item = self._items_by_id.get(ref.id)
+                letters.add(item.doc_id if item is not None else None)
+            elif ref.type == "draft":
+                draft = next((d for d in self.sent_drafts() if d.id == ref.id), None) or self.store.get_draft(
+                    ref.id
+                )
+                letters.add(draft.doc_id if draft is not None else None)
+        return {letter for letter in letters if letter}
+
+    def idea_member(self, refs: Iterable[SuggestionRef]) -> HouseholdMember | None:
+        """The person of the household an Idea is about: every letter it refers to (:meth:`letters_of`, at least
+        one) is filed for them. Letters of two people, one of the person's own, or none: no one."""
+        if not self.household_filed:
+            return None
+        people = [self.member_of(letter) for letter in self.letters_of(refs)]
+        if not people or None in people or len({member.id for member in people if member}) != 1:
+            return None
+        return people[0]
 
     @cached_property
     def item_contexts(self) -> ItemContext:
@@ -1303,9 +1343,55 @@ IDEA_LAWS = (RESIDENCE_EXTENSION_LAW, STUDENT_WORK_LAW, REGISTRATION_LAW)
 the catalog's (ADR 0008), so a correct "§ 81 Abs. 4 AufenthG" is not taken for an unvouched law."""
 
 
-def _expiry_text(klass: str, item: Item, expiry: date, today: date) -> IdeaText:
+def _whose(member: HouseholdMember, what: str) -> str:
+    """``what`` (a phrase that starts with a document: "passport expires …") said of a person of the household:
+    "Alex Rivera's passport expires …", or "For Kim 2: Passport expires …" for a name that doesn't end in a
+    letter (:func:`ordnung.secretary.household.possessive`)."""
+    from ordnung.secretary.household import possessive
+
+    owner = possessive(member.name)
+    return f"{owner} {what}" if owner else for_member(member, what[:1].upper() + what[1:])
+
+
+def for_member(member: HouseholdMember, title: str) -> str:
+    """An Idea's title about letters filed for a person of the household: "For Alex Rivera: …"."""
+    return f"For {member.name}: {title}"
+
+
+def _member_expiry_text(klass: str, item: Item, member: HouseholdMember, day: str, past: bool) -> IdeaText:
+    """:func:`_expiry_text` for a passport or residence permit of a person of the household: their name instead
+    of "your" (the rationale is the same)."""
+    if klass == "permit":
+        if past:
+            return IdeaText(
+                _whose(member, f"residence permit expired on {day}"),
+                "Contact the immigration office (Ausländerbehörde) right away and get advice — a migration "
+                "counselling service can help.",
+                f"Residence permits must be extended before they expire ({RESIDENCE_EXTENSION_LAW}).",
+            )
+        return IdeaText(
+            _whose(member, f"residence permit expires {day} — apply for the extension now"),
+            "Apply at the immigration office (Ausländerbehörde) before it expires. If the application is in time, "
+            f"the current permit continues to count until the office decides ({RESIDENCE_EXTENSION_LAW}) — ask "
+            "for a Fiktionsbescheinigung. Appointments are often booked out for weeks.",
+            f"Residence permits: apply before expiry ({RESIDENCE_EXTENSION_LAW}).",
+        )
+    document = "passport or ID" if "ausweis" in item.title.casefold() else "passport"
+    return IdeaText(
+        _whose(member, f"{document} {'expired on' if past else 'expires'} {day}"),
+        "Renewing a passport or ID card can take weeks or months (embassy or consulate appointments), so start "
+        "early. Their residence permit can usually only run as long as their passport is valid.",
+        f"Identity documents are flagged {IDENTITY_WINDOW_DAYS} days before they expire.",
+    )
+
+
+def _expiry_text(
+    klass: str, item: Item, expiry: date, today: date, member: HouseholdMember | None = None
+) -> IdeaText:
     day = day_label(expiry, today)
     past = expiry < today
+    if member is not None and klass in ("permit", "identity"):
+        return _member_expiry_text(klass, item, member, day, past)
     if klass == "permit":
         if past:
             return IdeaText(
@@ -1359,12 +1445,16 @@ def expiry_soon(ledger: Ledger) -> list[Suggestion]:
             priority = "high" if days <= 7 else "normal"
             label = "Check the letter"
         action = _open("document", doc.id, label) if doc else _open("item", item.id, "Open the to-do")
+        member = ledger.member_of(item.doc_id)
+        text = _expiry_text(klass, item, expiry, today, member)
+        if member is not None and klass == "other":
+            text = IdeaText(for_member(member, text.title), text.body, text.rationale)
         ideas.append(
             make_idea(
                 "expiry_soon",
                 item.id,
                 (item.due_date, klass),
-                _expiry_text(klass, item, expiry, today),
+                text,
                 kind="deadline",
                 priority=priority,
                 refs=_item_refs(ledger, item),
@@ -1384,29 +1474,61 @@ def _expiries(ledger: Ledger, klass: str) -> list[tuple[Item, date]]:
     return sorted(found, key=lambda pair: (pair[1], pair[0].id))
 
 
+def _passport_first_text(
+    member: HouseholdMember | None, relation: str, passport_day: str, permit_day: str
+) -> tuple[str, str]:
+    """:func:`passport_before_permit`'s title and body, for the person or a person of the household."""
+    if member is None:
+        return (
+            "Renew your passport before extending your residence permit",
+            _sentences(
+                f"Your passport expires on {passport_day} — {relation} your residence permit ({permit_day}).",
+                "The immigration office (Ausländerbehörde) usually extends a permit only as long as your passport "
+                "is valid, which would mean another appointment soon. Ask your embassy or consulate about a new "
+                "passport now.",
+            ),
+        )
+    from ordnung.secretary.household import possessive
+
+    owner = possessive(member.name)
+    title = (
+        f"Renew {owner} passport before extending their residence permit"
+        if owner
+        else for_member(member, "Renew the passport before extending the residence permit")
+    )
+    body = _sentences(
+        f"{owner or 'The'} passport expires on {passport_day} — {relation} their residence permit ({permit_day}).",
+        "The immigration office (Ausländerbehörde) usually extends a permit only as long as the passport is "
+        "valid, which would mean another appointment soon. Ask the embassy or consulate about a new passport now.",
+    )
+    return title, body
+
+
 def passport_before_permit(ledger: Ledger) -> list[Suggestion]:
-    """A passport expiring before (or within 180 days after) the residence permit: the permit can
-    usually only be extended as long as the passport is valid, so renew the passport first."""
+    """A passport expiring before (or within 180 days after) the residence permit of the same person (the
+    person's own, or one person's of the household): the permit can usually only be extended as long as the
+    passport is valid, so renew the passport first."""
     today = ledger.today
-    permits = [
-        (item, day)
-        for item, day in _expiries(ledger, "permit")
-        if (day - today).days <= PASSPORT_CHECK_HORIZON_DAYS
-    ]
+    # each person's first residence permit to expire, by the person of the household its letter is filed for
+    permits: dict[str | None, tuple[Item, date]] = {}
+    for item, day in _expiries(ledger, "permit"):
+        if (day - today).days <= PASSPORT_CHECK_HORIZON_DAYS:
+            owner = ledger.member_of(item.doc_id)
+            permits.setdefault(owner.id if owner else None, (item, day))
     if not permits:
         return []
-    permit, permit_day = permits[0]
     ideas: list[Suggestion] = []
     for passport, passport_day in _expiries(ledger, "identity"):
+        member = ledger.member_of(passport.doc_id)
+        pair = permits.get(member.id if member else None)
+        if pair is None:
+            continue
+        permit, permit_day = pair
         if passport_day > permit_day + timedelta(days=PASSPORT_MARGIN_DAYS):
             continue
         relation = "before" if passport_day < permit_day else "soon after"
-        body = _sentences(
-            f"Your passport expires on {day_label(passport_day, today)} — {relation} your residence permit "
-            f"({day_label(permit_day, today)}).",
-            "The immigration office (Ausländerbehörde) usually extends a permit only as long as your passport "
-            "is valid, which would mean another appointment soon. Ask your embassy or consulate about a new "
-            "passport now.",
+        title, body = _passport_first_text(
+            member, relation, day_label(passport_day, today), day_label(permit_day, today)
         )
         doc = ledger.document(passport.doc_id)
         action = (
@@ -1420,7 +1542,7 @@ def passport_before_permit(ledger: Ledger) -> list[Suggestion]:
                 passport.id,
                 (passport.due_date, permit.due_date),
                 IdeaText(
-                    "Renew your passport before extending your residence permit",
+                    title,
                     body,
                     f"Passport expires within {PASSPORT_MARGIN_DAYS} days of the residence permit.",
                 ),
@@ -2143,11 +2265,16 @@ def confirm_cancellation(ledger: Ledger) -> list[Suggestion]:
 
 
 def student_permit_info(ledger: Ledger) -> list[Suggestion]:
-    """Static info card on working with a student residence permit (replaces a work-days trigger, §21)."""
+    """Static info card on working with a student residence permit (replaces a work-days trigger, §21). It
+    refers to the person's own newest residence permit, never to one filed for someone of their household."""
     if not ledger.profile.is_student_visa:
         return []
     permits = sorted(
-        (doc for doc in ledger.documents.values() if doc.kind == "residence_permit"),
+        (
+            doc
+            for doc in ledger.documents.values()
+            if doc.kind == "residence_permit" and ledger.member_of(doc.id) is None
+        ),
         key=lambda doc: (doc.doc_date or "", doc.id),
     )
     refs = [_ref("document", permits[-1].id)] if permits else []
@@ -2200,6 +2327,22 @@ def moved_house(ledger: Ledger) -> list[Suggestion]:
 
 Trigger = Callable[[Ledger], list[Suggestion]]
 
+#: Rules whose Ideas never name a person of the household (ADR 0023): the person's own tax return, calendar,
+#: profile (the student permit card) and move, a sender's Land, and the decision on a contract, which is the
+#: person's (its letters can be several people's).
+NEVER_NAMED = frozenset(
+    {
+        "tax_documents",
+        "calendar_outdated",
+        STUDENT_PERMIT_RULE,
+        "moved_house",
+        "sender_land",
+        "contract_cancel_window",
+    }
+)
+#: Rules that say whose a passport or a residence permit is in their own words ("Alex Rivera's passport …").
+NAMED_BY_THE_RULE = frozenset({"expiry_soon", "passport_before_permit"})
+
 #: Every rule in evaluation order (the keys are the ``rule_id``s stored on the Ideas).
 TRIGGERS: dict[str, Trigger] = {
     "deadline_soon": deadline_soon,
@@ -2228,16 +2371,28 @@ TRIGGERS: dict[str, Trigger] = {
 # --------------------------------------------------------------------------------------------------
 
 
+def named(ledger: Ledger, idea: Suggestion) -> Suggestion:
+    """``idea`` with "For Alex Rivera: " in front of its title when every letter it refers to is filed for that
+    person of the household (:meth:`Ledger.idea_member`). The person isn't in the fingerprint, so filing a letter
+    renames the same Idea and keeps the person's choice; without a household nothing changes."""
+    rule_id = idea.rule_id or ""
+    if rule_id in NEVER_NAMED or rule_id in NAMED_BY_THE_RULE:
+        return idea
+    member = ledger.idea_member(idea.refs)
+    return idea if member is None else idea.model_copy(update={"title": for_member(member, idea.title)})
+
+
 def run_triggers(store: Store, today: date) -> dict[str, list[Suggestion]]:
     """Evaluate every trigger against the store as of ``today`` (reads only).
 
     Returns ``{rule_id: [Suggestion, …]}`` for every rule (empty lists included); within a rule each
-    fingerprint appears once.
+    fingerprint appears once. An Idea about letters filed for someone of the household names them
+    (:func:`named`).
     """
     ledger = Ledger(store, today)
     results: dict[str, list[Suggestion]] = {}
     for rule_id, trigger in TRIGGERS.items():
-        unique = {idea.fingerprint: idea for idea in trigger(ledger)}
+        unique = {idea.fingerprint: named(ledger, idea) for idea in trigger(ledger)}
         results[rule_id] = list(unique.values())
     return results
 
