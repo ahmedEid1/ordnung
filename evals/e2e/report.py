@@ -19,8 +19,9 @@ SCHEMA = 1
 NAME = "e2e"
 #: The splits a run covers unless told otherwise: the four scored ones (pooled) and dev.
 DEFAULT_SPLITS: tuple[str, ...] = ("test", "holdout", "holdout2", "holdout3", "dev")
-#: The meta fields a replay at another commit or on another day may change without changing a number.
-VOLATILE_META = ("date", "commit")
+#: The meta fields a replay at another commit or on another day may change without changing a number (the code's
+#: fingerprint covers every source file, so any change moves it).
+VOLATILE_META = ("date", "commit", "fingerprint")
 
 DEFINITIONS: dict[str, str] = {
     "obligation": "a required labelled item with one date, of a letter not labelled a scam",
@@ -129,8 +130,8 @@ def gate_failures(
 
 
 def differences(fresh: Mapping[str, Any], published: Mapping[str, Any]) -> list[str]:
-    """The top-level parts (and meta fields) where a fresh run differs from a published file, the date and the
-    commit aside."""
+    """The top-level parts (and meta fields) where a fresh run differs from a published file, its date, commit and
+    fingerprint aside (:data:`VOLATILE_META`)."""
     found = []
     for key in sorted(set(fresh) | set(published)):
         if key == "meta":

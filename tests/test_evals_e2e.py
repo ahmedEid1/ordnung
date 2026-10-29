@@ -634,10 +634,17 @@ def test_the_minimum_share_reminded_is_a_gate() -> None:
 
 
 def test_a_published_file_equals_a_fresh_run_whatever_its_date_and_commit() -> None:
+    """…and whatever the code's fingerprint, which moves with any source file (evals.conditions.fingerprint): the
+    numbers are what is compared (make eval-reproduce runs this compare after every change)."""
     fresh = _results()
-    fresh["meta"] = {"date": "2026-10-29", "commit": "abc1234", "checker_sha256": "1"}
+    fresh["meta"] = {
+        "date": "2026-10-29",
+        "commit": "abc1234",
+        "fingerprint": "a" * 16,
+        "checker_sha256": "1",
+    }
     published = copy.deepcopy(fresh)
-    published["meta"] |= {"date": "2026-10-01", "commit": "def5678"}
+    published["meta"] |= {"date": "2026-10-01", "commit": "def5678", "fingerprint": "b" * 16}
     assert report.differences(fresh, published) == []
     published["meta"]["checker_sha256"] = "2"
     published["metrics"]["pooled"]["parity"] = {"k": 1, "n": 2, "differ": ["test-x-1#0"]}

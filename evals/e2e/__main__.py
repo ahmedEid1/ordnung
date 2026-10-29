@@ -3,8 +3,8 @@
 A replay only (no model is called; a reading without its recording is an error, by id). Writes
 ``evals/results/<date>-<model>-e2e.json`` (``--out``: another folder; ``--no-write``: none) and prints one line per
 split. The gates (``--exact-parity``, ``--max-late-reminders``, ``--known-set-aside``, ``--min-reminded``) and
-``--compare FILE`` (a published file must equal the fresh run, its date and commit aside) exit 1 on a failure; a
-letter the harness could not run always does.
+``--compare FILE`` (a published file must equal the fresh run, its date, commit and fingerprint aside) exit 1 on a
+failure; a letter the harness could not run always does.
 """
 
 from __future__ import annotations
