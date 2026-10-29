@@ -143,7 +143,8 @@ test.describe("tablet 768 px: the rail", () => {
       expect(await text.evaluate((el) => el.scrollWidth <= el.clientWidth), `${label} is not cut off`).toBe(true);
     }
     const toCheck = await apiGet<unknown[]>(page, "/api/documents?status=needs_review");
-    if (toCheck.length) await expect(nav.getByRole("link", { name: /^Inbox, / })).toContainText(String(toCheck.length));
+    // named by its label, then the bubble's number and what it counts (WCAG 2.5.3): "Inbox 1 — 1 letter to check"
+    if (toCheck.length) await expect(nav.getByRole("link", { name: /^Inbox \d+ — / })).toContainText(String(toCheck.length));
   });
 });
 

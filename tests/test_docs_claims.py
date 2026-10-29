@@ -1422,15 +1422,18 @@ def test_readme_pictures_exist_and_have_alt_text() -> None:
 
 def test_readme_s_axe_claim_names_its_axe_and_what_is_open() -> None:
     """README's *Light and dark*: "no serious or critical axe violations" holds for the axe-core the e2e suite runs
-    (its version in the lockfile) and its WCAG 2.2 AA rules. axe's newer Label in Name check (WCAG 2.5.3, an
-    experimental rule in that version) flags links and buttons whose name leaves out initials or a count they show;
-    README says that is open, not that there is nothing (review of D5)."""
+    (its version in the lockfile) and its WCAG 2.2 AA rules. From axe 4.14 these include the Label in Name check
+    (WCAG 2.5.3), which 0.3.0's README still listed as open: the Inbox link, the profile row and the sender chips
+    are now named by what they show (issue #37), so nothing is listed as open."""
     lock = json.loads((ROOT / "web" / "package-lock.json").read_text(encoding="utf-8"))
     axe = lock["packages"]["node_modules/axe-core"]["version"]
     (cell,) = [line for line in _readme().splitlines() if "<b>Light and dark.</b>" in line]
     version = ".".join(axe.split(".")[:2])
     assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
-    assert "Still open: axe's newer Label in Name check (WCAG 2.5.3)" in cell
+    assert tuple(int(part) for part in axe.split(".")[:2]) >= (4, 14), (
+        "the Label in Name check runs from axe 4.14 on"
+    )
+    assert "Still open" not in cell
 
 
 def _claimed(pattern: str) -> int:

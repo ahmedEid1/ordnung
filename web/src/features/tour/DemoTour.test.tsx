@@ -8,6 +8,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import { Toaster, TOAST_LIFT_VAR, __clearToasts, toast } from "@/components/ui/Toast";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { labelInName } from "@/test/labelInName";
 import { DemoTour, TOUR_BAR_VAR, TOUR_CLEARANCE_VAR } from "./DemoTour";
 import { MORE_TO_TRY, TOUR_DOCK_ID, TOUR_STEPS, TOUR_TARGETS } from "./steps";
 import { SUGGESTED_QUESTIONS } from "@/features/ask/suggestions";
@@ -300,8 +301,10 @@ describe("the card never covers the page", () => {
     viewport(390, 844);
     renderWithProviders(<DemoTour />);
     const open = await screen.findByRole("button", { name: /^Demo tour · 1 of 4: You have new mail — show the whole step$/ });
-    // it says what it shows first (WCAG 2.5.3), and that it opens something
+    // it says what it shows first (WCAG 2.5.3), and that it opens something: "4" and the title stay two words
+    // in what it shows (axe 4.14 read "4You" and didn't find it in the name)
     expect(open.textContent).toMatch(/^Demo tour · 1 of 4/);
+    expect(labelInName(open)).toMatchObject({ ok: true, shown: "Demo tour · 1 of 4 You have new mail" });
     expect(open).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("heading", { name: "You have new mail" })).not.toBeInTheDocument();
     fireEvent.click(open);

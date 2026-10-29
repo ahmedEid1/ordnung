@@ -11,6 +11,7 @@ import { __clearToasts } from "@/components/ui/Toast";
 import { RULES, USAGE } from "@/mocks/data/system";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { labelInName } from "@/test/labelInName";
 import SettingsPage from "@/pages/SettingsPage";
 import { activityHref, askChecksMessage, askCheckWhat, groupActivity, groupRules, matchesRule, OTHER_RULES_TOPIC, splitCitation } from "./logic";
 
@@ -193,6 +194,10 @@ describe("How dates are computed", () => {
     expect(links[0]).toHaveTextContent("(opens in a new tab)");
 
     const priceIncreases = RULES.filter((r) => r.topic === "Price increases").length;
+    // each topic's name holds what it shows, the topic and its count as two words (WCAG 2.5.3: axe 4.14 read
+    // "Price increases3" and didn't find it in "Price increases, 3 rules")
+    for (const button of within(jump).getAllByRole("button")) expect(labelInName(button)).toMatchObject({ ok: true });
+    expect(labelInName(within(jump).getByRole("button", { name: /^Price increases, / })).shown).toBe(`Price increases ${priceIncreases}`);
     await user.click(within(jump).getByRole("button", { name: `Price increases, ${priceIncreases} ${priceIncreases === 1 ? "rule" : "rules"}` }));
     expect(screen.getByRole("heading", { level: 3, name: "Price increases" })).toHaveFocus();
   });

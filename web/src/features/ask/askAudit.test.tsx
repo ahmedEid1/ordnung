@@ -8,6 +8,7 @@ import userEvent from "@testing-library/user-event";
 import { FileText, Users } from "lucide-react";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
+import { labelInName } from "@/test/labelInName";
 import { qk } from "@/api/hooks";
 import { CitationChip, CitationMarker } from "./CitationChip";
 import { AskTurnView, QuestionBubble } from "./AskTurnView";
@@ -70,12 +71,33 @@ describe("sources and markers", () => {
     useMockApi();
     const title = "Operating and Heating Cost Statement 2025 (Betriebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG";
     renderIn(<CitationChip info={info(title)} n={11} />);
-    const chip = screen.getByRole("link", { name: `Source 11: Letter “${title}”` });
+    const chip = screen.getByRole("link", { name: `Source 11: “${title}” — Letter` });
     const text = within(chip).getByText(title);
     expect(text.className).toContain("line-clamp-3");
     expect(text.className).not.toContain("truncate");
     // the number keeps its width next to a long title (UI audit round 1: "11" squeezed to 12 px)
     expect(chip.querySelector("[aria-hidden]")?.className).toContain("shrink-0");
+  });
+
+  it("a source is named with what it shows, its number then its title, in that order (WCAG 2.5.3), then its kind", () => {
+    useMockApi();
+    const person: RefInfo = { type: "party", id: "pty_x", title: "Stadtwerke Musterstadt", kindLabel: "Person or organisation", icon: Users, href: null };
+    renderIn(
+      <>
+        <CitationChip info={info("Phone contract")} n={1} />
+        <CitationChip info={person} n={2} />
+        <CitationChip info={info("Tax assessment 2025")} />
+      </>,
+    );
+    const letter = screen.getByRole("link", { name: "Source 1: “Phone contract” — Letter" });
+    const party = screen.getByRole("button", { name: "Source 2: “Stadtwerke Musterstadt” — Person or organisation" });
+    const plain = screen.getByRole("link", { name: "“Tax assessment 2025” — Letter" });
+    // axe 4.14 read "1Phone contract" and missed it in "Source 1: Letter “Phone contract”"
+    expect(labelInName(letter)).toMatchObject({ ok: true, shown: "1 Phone contract" });
+    expect(labelInName(party)).toMatchObject({ ok: true, shown: "2 Stadtwerke Musterstadt" });
+    expect(labelInName(plain)).toMatchObject({ ok: true, shown: "Tax assessment 2025" });
+    // its hover text is its name
+    for (const chip of [letter, party, plain]) expect(chip).toHaveAttribute("title", chip.getAttribute("aria-label"));
   });
 
   // jsdom lays nothing out: the size is read off the classes that make it (Tailwind's 6 is 24 px)

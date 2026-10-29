@@ -118,7 +118,7 @@ describe("tab bar", () => {
     const qc = makeTestQueryClient();
     qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }, { id: "b" }]);
     renderWithProviders(<MobileTabBar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 2 to check" });
+    const inbox = screen.getByRole("link", { name: "Inbox 2 — 2 to check" });
     const badge = within(inbox).getByText("2");
     expect(badge.className).toContain("text-2xs");
   });
@@ -128,15 +128,28 @@ describe("tab bar", () => {
     qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
     qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
     renderWithProviders(<MobileTabBar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 1 to check, 3 not read yet" });
+    const inbox = screen.getByRole("link", { name: "Inbox 4 — 1 to check, 3 not read yet" });
     expect(within(inbox).getByText("4")).toBeInTheDocument();
+  });
+
+  it("names each tab with the words it shows, first (WCAG 2.5.3): no aria-label in place of them", () => {
+    const qc = makeTestQueryClient();
+    qc.setQueryData(qk.documents.list({ status: "needs_review" }), [{ id: "a" }]);
+    qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
+    renderWithProviders(<MobileTabBar />, { client: qc });
+    const links = within(screen.getByRole("navigation", { name: "Primary" })).getAllByRole("link");
+    expect(links.map((a) => a.getAttribute("aria-label"))).toEqual(links.map(() => null));
+    // the label under the icon is part of the name; the bubble's number follows it, then what it counts
+    const inbox = screen.getByRole("link", { name: /^Inbox 4 — / });
+    expect(within(inbox).getByText("Inbox")).not.toHaveAttribute("aria-hidden");
+    expect(screen.getByRole("link", { name: "Timeline" })).toBeInTheDocument();
   });
 
   it("with only letters waiting, the bubble is not the warning colour", () => {
     const qc = makeTestQueryClient();
     qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }]);
     renderWithProviders(<MobileTabBar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 2 not read yet" });
+    const inbox = screen.getByRole("link", { name: "Inbox 2 — 2 not read yet" });
     expect(within(inbox).getByText("2").className).toContain("bg-accent");
   });
 
@@ -146,7 +159,9 @@ describe("tab bar", () => {
     qc.setQueryData(qk.documents.list({ status: "held" }), [{ id: "b" }, { id: "c" }, { id: "d" }]);
     viewport(1280);
     renderWithProviders(<Sidebar />, { client: qc });
-    const inbox = screen.getByRole("link", { name: "Inbox, 1 letter to check, 3 not read yet" });
+    // what it shows first, "Inbox 4" (WCAG 2.5.3), then what the 4 counts
+    const inbox = screen.getByRole("link", { name: "Inbox 4 — 1 letter to check, 3 not read yet" });
+    expect(inbox).not.toHaveAttribute("aria-label");
     // not two unlabelled bubbles side by side ("1" and "3") where the rail and the tab bar show one "4"
     expect(within(inbox).getByText("4")).toBeInTheDocument();
     expect(within(inbox).queryByText("1")).toBeNull();
@@ -302,11 +317,24 @@ describe("sidebar", () => {
     const qc = makeTestQueryClient();
     qc.setQueryData(qk.profile, PROFILE);
     renderSidebar("/settings", qc);
-    const profile = screen.getByRole("link", { name: "Sam Rivera — your profile" });
+    // the two lines it shows, in order (WCAG 2.5.3; the initials are decoration), then where it goes
+    const profile = screen.getByRole("link", { name: "Sam Rivera Your data stays local — your profile" });
+    expect(profile).not.toHaveAttribute("aria-label");
+    expect(within(profile).getByText("SR")).toHaveAttribute("aria-hidden", "true");
     expect(profile).toHaveAttribute("href", "/settings?section=profile");
     expect(profile).not.toHaveAttribute("aria-current");
     expect(screen.getAllByRole("link").filter((a) => a.getAttribute("aria-current") === "page")).toHaveLength(1);
     expect(within(profile).getByText("Your data stays local").className).toContain("text-xs");
+  });
+
+  it("without a name, the profile row says “Your profile” once, named by what it shows", () => {
+    viewport(1280);
+    const qc = makeTestQueryClient();
+    qc.setQueryData(qk.profile, { ...PROFILE, name: "" });
+    renderSidebar("/", qc);
+    const profile = screen.getByRole("link", { name: "Your profile Your data stays local" });
+    expect(profile).not.toHaveAttribute("aria-label");
+    expect(profile).toHaveAttribute("href", "/settings?section=profile");
   });
 
   it("holds the profile's place while it loads, with the theme button on the right", () => {
@@ -323,7 +351,9 @@ describe("sidebar", () => {
     renderSidebar("/", qc);
     const nav = screen.getByRole("navigation", { name: "Primary" });
     for (const item of NAV_ITEMS) expect(within(nav).getByText(item.short ?? item.label)).toBeVisible();
-    const inbox = within(nav).getByRole("link", { name: "Inbox, 1 letter to check" });
+    // the label under the icon first, then the bubble's number and what it counts (WCAG 2.5.3)
+    const inbox = within(nav).getByRole("link", { name: "Inbox 1 — 1 letter to check" });
+    expect(inbox).not.toHaveAttribute("aria-label");
     expect(within(inbox).getByText("1")).toBeInTheDocument();
     // no toggle on tablets: the rail always has its labels
     expect(screen.queryByRole("button", { name: /sidebar$/ })).toBeNull();

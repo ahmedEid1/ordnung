@@ -756,7 +756,8 @@ function AsideRow({ entry, detail }: { entry: AsideItem; detail: DocumentDetail 
           )}
         </span>
       </span>
-      <Button variant="ghost" size="sm" icon={Check} className="ml-auto" aria-label={`Mark “${item.title}” done`} onClick={() => actions.markDone(item)}>
+      {/* named with what it shows, "Mark done", whole and first (WCAG 2.5.3), then which to-do */}
+      <Button variant="ghost" size="sm" icon={Check} className="ml-auto" aria-label={`Mark done: “${item.title}”`} onClick={() => actions.markDone(item)}>
         Mark done
       </Button>
     </li>
