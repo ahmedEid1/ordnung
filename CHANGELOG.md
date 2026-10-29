@@ -13,6 +13,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   Ask's sources and *Mark done* under a letter's *Probably dealt with* now name all the words they show, and the
   tour's slim bar and Settings' rule topics no longer run two words together ("4You"). Each still says
   everything it said before.
+- The demo tour on a narrow phone: when a step's card shows *Show me the Ideas* or another long button, that
+  button and *Back* move to a line of their own instead of lying over the step dots, so tapping a dot goes to
+  that step.
 
 ## 0.3.0 — 2026-10-29
 

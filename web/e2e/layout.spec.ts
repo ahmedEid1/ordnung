@@ -149,6 +149,54 @@ test.describe("phone: focus stays clear of the demo tour", () => {
   });
 });
 
+// E1 review: at 320 px a step's "Show me …" button left its step dots no room, and "Previous step" lay over
+// the last of them (a press on "Step 4" went back a step instead)
+test.describe("phone: the tour card's step dots stay clear of its buttons", () => {
+  test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  test.afterEach(async ({ page }) => {
+    await setTour(page, null);
+  });
+
+  for (const [step, path, h1] of [
+    [1, "/inbox", "Inbox"],
+    [2, "/timeline", "Timeline"],
+  ] as const) {
+    test(`step ${step + 1} of the tour, its whole card opened on ${path}`, async ({ page }) => {
+      await setTour(page, step);
+      await open(page, path, h1);
+      await page.getByRole("button", { name: new RegExp(`^Demo tour · ${step + 1} of 4: .* — show the whole step$`) }).click();
+      const card = page.getByRole("region", { name: "Demo tour" });
+      await expect(card.getByRole("heading")).toBeVisible();
+      // the step's own page is elsewhere: its long "Show me …" or "Try a question" leads, with Back beside it
+      await expect(card.getByRole("button", { name: "Previous step" })).toBeVisible();
+      await expect(card.getByRole("button", { name: /^(Show me|Try a question)/ })).toBeVisible();
+      await settle(page);
+      const dots = card.getByRole("list", { name: /^Steps/ }).getByRole("button");
+      await expect(dots).toHaveCount(4);
+      const buttons = await Promise.all(
+        [card.getByRole("button", { name: "Previous step" }), card.getByRole("button", { name: /^(Show me|Try a question)/ })].map(async (b) => (await b.boundingBox())!),
+      );
+      for (const dot of await dots.all()) {
+        const name = await dot.getAttribute("aria-label");
+        const free = await dot.evaluate((b) => {
+          const r = b.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return hit === b || b.contains(hit);
+        });
+        expect(free, `“${name}” takes a press at its centre`).toBe(true);
+        // and none of its 24 × 24 px lies under Back or the step's button (WCAG 2.5.8)
+        const d = (await dot.boundingBox())!;
+        for (const b of buttons) {
+          const apart = d.x + d.width <= b.x + 0.5 || b.x + b.width <= d.x + 0.5 || d.y + d.height <= b.y + 0.5 || b.y + b.height <= d.y + 0.5;
+          expect(apart, `“${name}” is clear of the card's buttons`).toBe(true);
+        }
+      }
+      await dots.last().click();
+      await expect(card.getByRole("heading")).toHaveText("Your year ahead");
+    });
+  }
+});
+
 /**
  * Put a toast up that stays (an error waits for the person), then go to `path` in the app — the toast stays
  * with it, as an Undo toast does for 15 s after "Mark as paid" or "Save notice period".

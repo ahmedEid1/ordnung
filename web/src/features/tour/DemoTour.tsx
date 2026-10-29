@@ -400,10 +400,14 @@ function CardContent({ step, steps, stepIndex, here, compact, headingRef, go, on
         </>
       ) : (
         <>
-          <div className="mt-4 flex items-center gap-2">
-            <div className="min-w-0 flex-1">{dots}</div>
-            {back}
-            {primary}
+          {/* the dots keep their 24 px targets: where Back and a long "Show me the Ideas" leave them no room (a
+              phone at 320 px), the two buttons go to a row of their own, never over the dots (WCAG 2.5.8) */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {dots}
+            <div className="ml-auto flex items-center gap-2">
+              {back}
+              {primary}
+            </div>
           </div>
           {skip ? <div className="mt-2">{skip}</div> : null}
         </>
