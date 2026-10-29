@@ -570,8 +570,9 @@ client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-fr
 and `--remove-ledger` takes that entry out again.
 
 **From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](CONTRIBUTING.md) has
-the checks CI runs and how to send a change:
+(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`; the accessibility checker that `make e2e`
+and `make ui-audit` use asks for 22.12+). [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and
+how to send a change:
 
 ```bash
 make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies

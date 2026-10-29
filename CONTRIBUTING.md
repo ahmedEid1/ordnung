@@ -14,7 +14,8 @@ or a letter you write yourself, and describe a real letter in your own words.
 ## Setting up
 
 You need Python 3.11 or newer, [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+ (`nvm use`
-picks the one in `.nvmrc`; `web/package.json` says the same).
+picks the one in `.nvmrc`; `web/package.json` says the same). Use 22.12+ for the browser checks
+(`make e2e`, `make ui-audit`): their accessibility checker (`@axe-core/playwright`) asks for it.
 
 ```bash
 make install     # .venv with the dev extras at the versions in constraints.txt, and web/node_modules (npm ci)
