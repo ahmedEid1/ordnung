@@ -170,6 +170,8 @@ what a computer still on 0.2.0 does with what this version adds, if you use hand
   of GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer
   ask for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript
   take them.
+- The release workflow takes the built files from its first job with version 8 of GitHub's download-artifact
+  action, which stops the release when a file doesn't match the checksum it was uploaded with.
 - Ask no longer goes through every letter to work out the key a question is logged and replayed under when
   nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s
   less per question with 500 letters, more with a bigger archive.
@@ -242,6 +244,11 @@ what a computer still on 0.2.0 does with what this version adds, if you use hand
   keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle
   it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung
   another computer had already kept, exactly as it is, is no longer asked again.
+- An e-mail with a control character in its text, such as U+001C, is refused with a reason ("This e-mail has
+  characters Ordnung can't put on a page …") wherever it comes in: an upload, the phone, proof of a sent
+  letter, the watched folder or `ordnung add`. Before, the upload or proof failed with an error, the watched
+  folder only logged it and `ordnung add` said *Unexpected error*. Where the text layout has raqm (Linux, as a
+  rule), such an e-mail can't be put on a page; elsewhere it is read as before.
 
 ### Upgrading
 
