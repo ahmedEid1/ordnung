@@ -54,8 +54,8 @@ class StreamEvent(BaseModel):
     error_code: Literal["demo_miss", "demo_changed"] | None = Field(
         default=None,
         description="why there is no answer (error), when asking again can't help: demo_miss — the demo has no "
-        "recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos "
-        "changed since the demo started (it has to start over)",
+        "recorded answer for this question; demo_changed — the demo recorded it, but the letters, to-dos or "
+        "household changed since the demo started (it has to start over)",
     )
     note: str | None = Field(
         default=None, description="what the answer check left out or quoted (done); shown apart from the text"
