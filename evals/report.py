@@ -44,7 +44,7 @@ from ordnung.secretary.triggers import is_scam_warning
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_PATH = ROOT / "docs" / "evals.md"
 CHART_PATH = ROOT / "docs" / "assets" / "eval-due-date-accuracy.png"
-RESULTS_SCHEMA = 1
+RESULTS_SCHEMA = 2  # 2: meta.repeat, meta.cli_version and meta.dirty (evals/harness.py)
 GALLERY_SIZE = 8
 GALLERY_PER_FAMILY = 2
 #: The split written after extraction prompt 11 and recorded once with frozen prompts (evals/generate.py).
