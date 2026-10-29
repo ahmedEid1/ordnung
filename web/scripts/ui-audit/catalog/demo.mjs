@@ -6,11 +6,12 @@
  * Phases:
  *  1. main       — read-only states on the untouched demo, run in parallel (tour hidden)
  *  2. tour       — the guided tour at every step (server-side tour state, so one at a time)
- *  3. mutations  — on a second, reset demo data folder: extra drafts, a sent letter
- *  4. mail       — the New-mail letters read the way the e2e helper `openMail` does it
- *  5. folder     — the watched folder on its own demo data folder (./folder.mjs)
- *  6. high-stakes — letters re-filed as high-stakes kinds on another demo data folder
- *  7. contracts-edit — a notice period saved for real, on its own demo data folder
+ *  3. ask        — the Ask page on its own demo data folder: its recorded answers fit only the untouched letters
+ *  4. mutations  — on a second, reset demo data folder: extra drafts, a sent letter
+ *  5. mail       — the New-mail letters read the way the e2e helper `openMail` does it
+ *  6. folder     — the watched folder on its own demo data folder (./folder.mjs)
+ *  7. high-stakes — letters re-filed as high-stakes kinds on another demo data folder
+ *  8. contracts-edit — a notice period saved for real, on its own demo data folder
  */
 import { fakeApi, failApi, holdApi, pinToasts, settle } from "../browser.mjs";
 import { inMain, shownAs } from "../steps.mjs";
@@ -751,11 +752,21 @@ export async function demoCatalog({ api, server }) {
     id: "contracts-notice-errors",
     group: "contracts",
     route: "/contracts",
-    how: "open /contracts, “Add notice period”, then “Save notice period” with nothing entered",
+    how: "open /contracts, “Add notice period”, untick “The contract names the statutory notice periods” where it shows, then “Save notice period” with nothing entered (a PATCH would be answered with HTTP 500 by the audit: nothing is stored)",
     description: "The notice-period form's validation errors.",
     run: async (c) => {
+      // the main phase shares one untouched demo: a lease that names the statutory periods is complete without a
+      // period, and saving it changed the contract — and with it every recorded Ask answer stopped fitting
+      let saved = false;
+      await fakeApi(c.page, "PATCH", /^\/api\/contracts\/[^/]+$/, async () => {
+        saved = true;
+        return { status: 500, json: { detail: "Not saved (UI audit)" } };
+      });
       const form = await noticeForm(c);
+      const statutory = form.getByRole("checkbox", { name: /^The contract names the statutory notice periods/ });
+      if ((await c.exists(statutory)) && (await statutory.isChecked())) await c.click(statutory);
       await c.click(form.getByRole("button", { name: "Save notice period" }));
+      if (saved) throw new Error("the empty form was sent to be saved: it shows no validation errors");
     },
   });
   /** Fill the notice-period form: 3 months, to the end of a month. */
@@ -898,10 +909,14 @@ export async function demoCatalog({ api, server }) {
   }
 
   // ---------------------------------------------------------------------------------------------
-  // Ask
+  // Ask: its own phase on its own demo data folder (see the phases below). The recorded answers replay only on
+  // the letters, to-dos and contracts they were recorded on: one change by any other state and the page offers
+  // no suggested question (“The recorded answers no longer fit”).
   // ---------------------------------------------------------------------------------------------
-  add({ id: "ask", group: "ask", route: "/ask", how: "open /ask", description: "Ask with an empty thread: suggested questions and the composer.", run: (c) => c.goto("/ask") });
-  add({
+  const askStates = [];
+  const addAsk = (s) => askStates.push(s);
+  addAsk({ id: "ask", group: "ask", route: "/ask", how: "open /ask", description: "Ask with an empty thread: suggested questions and the composer.", run: (c) => c.goto("/ask") });
+  addAsk({
     id: "ask-typed",
     group: "ask",
     route: "/ask",
@@ -914,7 +929,7 @@ export async function demoCatalog({ api, server }) {
     },
   });
   questions.forEach((q, i) => {
-    add({
+    addAsk({
       id: `ask-answer-${i + 1}`,
       group: "ask",
       route: "/ask",
@@ -930,7 +945,7 @@ export async function demoCatalog({ api, server }) {
       },
     });
   });
-  add({
+  addAsk({
     id: "ask-citation-tooltip",
     group: "ask",
     route: "/ask",
@@ -944,7 +959,7 @@ export async function demoCatalog({ api, server }) {
       await c.hover(main(c.page).getByRole("article").locator('a[aria-label^="Source"], button[aria-label^="Source"]'));
     },
   });
-  add({
+  addAsk({
     id: "ask-unrecorded",
     group: "ask",
     route: "/ask",
@@ -1000,7 +1015,7 @@ export async function demoCatalog({ api, server }) {
         { events, open },
       );
     const askState = (id, question, events, description, { open = false, expand = true } = {}) =>
-      add({
+      addAsk({
         id: `ask-${id}`,
         group: "ask",
         route: "/ask",
@@ -2288,6 +2303,15 @@ export async function demoCatalog({ api, server }) {
     phases: [
       { name: "main", parallel: true, states: S },
       { name: "tour", parallel: false, states: tour, after: async () => setTour(api, null) },
+      {
+        name: "ask",
+        parallel: true,
+        states: askStates,
+        before: async ({ restart }) => {
+          await restart("ask");
+          await setTour(api, null);
+        },
+      },
       {
         name: "mutations",
         parallel: false,

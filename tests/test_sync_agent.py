@@ -63,6 +63,12 @@ async def _switch(a: Api, b: Api, folder: Path) -> None:
     await eventually(lambda: agent_of(a).mode == "standing_by")
 
 
+def _withhold_laptop_s(folder: Path) -> str:
+    """Mark the laptop's last saved version as not arrived yet, by its id: the newest version of all can
+    be the desktop's own save as it stood by, landing late on a slow runner."""
+    return withhold(folder, head_of(folder, "laptop")["version"])
+
+
 async def _connected_pair(tmp_path: Path, folder: Path, engine: FakeEngine) -> tuple[Path, Path]:
     """desktop sets up (in use, with one to-do saved), and laptop's data folder exists."""
     desk, lap = _dirs(tmp_path)
@@ -508,7 +514,7 @@ async def test_a_take_over_waits_for_what_hasn_t_arrived_and_finishes_by_itself(
         await _switch(a, b, folder)
         assert (await _add_todo(b, "Arrives late")).status_code == 201
         await agent_of(b).save()
-        withhold(folder)
+        _withhold_laptop_s(folder)
         waiting = await a.client.post("/api/sync/use-here", json={})
         assert waiting.json()["take_over_waiting"] is True and waiting.json()["mode"] == "standing_by"
         assert waiting.json()["activity"] == "waiting"
@@ -542,7 +548,7 @@ async def test_a_waiting_take_over_gives_up_after_its_time(
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
         await _switch(a, b, folder)
-        withhold(folder)
+        _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
         found = await eventually(lambda: agent_of(a)._waiting is None and agent_of(a).summary)
         notices = [notice["code"] for notice in found.notices]
@@ -559,11 +565,11 @@ async def test_a_waiting_take_over_gives_up_when_the_other_computer_changes_more
         await _switch(a, b, folder)
         assert (await _add_todo(b, "First")).status_code == 201
         await agent_of(b).save()
-        withhold(folder)
+        _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
         assert (await _add_todo(b, "Second")).status_code == 201
         await agent_of(b).save()
-        withhold(folder)
+        _withhold_laptop_s(folder)
         await eventually(lambda: agent_of(a)._waiting is None)
         assert agent_of(a).mode == "standing_by"
         assert any(n["code"] == "take_over_cancelled" for n in agent_of(a).summary.notices)  # type: ignore[union-attr]
@@ -574,8 +580,44 @@ async def test_cancel_stops_a_waiting_take_over(tmp_path: Path, folder: Path) ->
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
         await _switch(a, b, folder)
-        withhold(folder)
+        _withhold_laptop_s(folder)
         assert (await a.client.post("/api/sync/use-here", json={})).json()["take_over_waiting"] is True
+        cancelled = await a.client.post("/api/sync/use-here", json={"cancel": True})
+        assert cancelled.json()["take_over_waiting"] is False
+
+
+async def test_a_waiting_take_over_waits_for_the_laptop_s_change_when_the_desktop_saved_last(
+    tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CI once failed the test above: on a slow runner the desktop's own save as it stood by (a change
+    of its data that wasn't the person's) landed after the laptop's change, and withholding the newest
+    version held that one back, so the take-over didn't wait. Here that save waits until the laptop has
+    saved."""
+    engine = FakeEngine()
+    desk, lap = _dirs(tmp_path)
+    release, saved = threading.Event(), threading.Event()
+    push = FakeSession.push
+
+    def late_hand_over(session: FakeSession, store: Store, *, reason: str, hand_over: bool = False) -> None:
+        late = reason == "hand_over" and session.paths.data_dir.resolve() == desk.resolve()
+        if late:
+            store.set_meta("written_in_the_background", "1")  # not the person's: no new lineage
+            release.wait(10)
+        push(session, store, reason=reason, hand_over=hand_over)
+        if late:
+            saved.set()
+
+    monkeypatch.setattr(FakeSession, "push", late_hand_over)
+    async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
+        await _switch(a, b, folder)
+        release.set()
+        await eventually(saved.is_set)
+        newest = withhold(folder)  # what these tests withheld before: the newest version …
+        deliver(folder, newest)
+        assert newest == head_of(folder, "desktop")["version"]  # … is the desktop's here
+        assert _withhold_laptop_s(folder) != newest
+        waiting = await a.client.post("/api/sync/use-here", json={})
+        assert waiting.json()["take_over_waiting"] is True
         cancelled = await a.client.post("/api/sync/use-here", json={"cancel": True})
         assert cancelled.json()["take_over_waiting"] is False
 
