@@ -12,7 +12,9 @@ One method per question, stated once:
 * **Clustered items** (a photo and the PDF it was rendered from are one letter; a letter can hold several dates):
   :func:`cluster_signflip`, a sign-flip randomisation test on the per-cluster differences, exact up to
   :data:`SIGNFLIP_EXACT_MAX` non-zero clusters and Monte Carlo beyond; :func:`paired_cluster_bootstrap` for the
-  interval of a paired difference, resampling clusters as the scorer does (``evals/metrics.py``).
+  interval of a paired difference, resampling clusters as the scorer does (``evals/metrics.py``), and
+  :func:`cluster_bootstrap` for a rate over clusters (a mean over reads). Neither collapses to a point: when every
+  resample is equal, the interval is Bonett–Price, or Clopper–Pearson, over the clusters.
 * **Several comparisons in one family**: :func:`holm`.
 * **Repeated reads** of the same letters: :func:`pass_all_k` (right in every read), :func:`pass_any_k` (right in at
   least one), :func:`flip_rate` (the answer is not identical in every read) and :func:`run_noise_share` (the share of
@@ -21,7 +23,7 @@ One method per question, stated once:
   :func:`aurc` — the area under the risk–coverage curve, with ties in the confidence averaged, its oracle and the
   excess over it (E-AURC).
 * **Harm-weighted loss**: :func:`harm_loss` (``early + r · harmful`` per 100 dated items) and :func:`crossover`, the
-  ratio ``r`` at which two conditions' losses are equal.
+  ratio ``r`` at which two conditions' losses are equal; :func:`crossover_outcome` says which side is lower where.
 
 Everything that draws random numbers takes a seed, and the draws use only :meth:`random.Random.choices` and
 :meth:`random.Random.getrandbits`, whose output is the same on every supported Python. Counts are added as integers or
@@ -303,9 +305,17 @@ def percentile(values: Sequence[float], q: float) -> float | None:
     return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
 
 
+#: How a cluster-bootstrap interval was found: the percentile interval of the resamples, or (every resample equal,
+#: so the percentile interval would be a point) an exact or adjusted interval over the clusters.
+PERCENTILE = "percentile"
+PAIRED_FALLBACK = "bonett-price over clusters"
+RATE_FALLBACK = "clopper-pearson over clusters"
+
+
 @dataclass(frozen=True)
 class PairedBootstrap:
-    """A paired difference of two rates over the same clusters, with a percentile cluster-bootstrap interval."""
+    """A paired difference of two rates over the same clusters, with a percentile cluster-bootstrap interval (or, when
+    every resample gives the same difference, Bonett–Price over the clusters: ``method``)."""
 
     diff: float | None
     lo: float | None
@@ -313,6 +323,22 @@ class PairedBootstrap:
     clusters: int
     resamples: int
     seed: int
+    method: str = PERCENTILE
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass(frozen=True)
+class RateBootstrap:
+    """A rate over clusters with its cluster-bootstrap interval (or, when every resample gives the same rate,
+    Clopper–Pearson over the clusters: ``method``)."""
+
+    value: float | None
+    lo: float | None
+    hi: float | None
+    clusters: int
+    method: str = PERCENTILE
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -329,7 +355,10 @@ def paired_cluster_bootstrap(
     percentile bootstrap that resamples clusters with replacement.
 
     It draws as :func:`evals.metrics.bootstrap_difference` does, so the same clusters (in the scorer's order), seed
-    and resamples give the scorer's published interval.
+    and resamples give the scorer's published interval. When every resample gives the same difference (nothing
+    differs, or every cluster differs alike), the percentile interval is a point; the interval is then
+    :func:`bonett_price` over the clusters, with the clusters where the first is ahead and behind as its discordant
+    pairs (``method``), so it is never of zero width.
     """
     pairs = list(clusters)
     total_n = sum(c[2] for c in pairs)
@@ -343,6 +372,12 @@ def paired_cluster_bootstrap(
             draws.append(sum(map(first.__getitem__, drawn)) / n - sum(map(second.__getitem__, drawn)) / n)
     alpha = (1.0 - level) / 2.0 * 100.0
     diff = sum(first) / total_n - sum(second) / total_n
+    if draws and min(draws) == max(draws):
+        counted = [c for c in pairs if c[2] > 0]
+        ahead = sum(1 for a, b, _ in counted if a > b)
+        behind = sum(1 for a, b, _ in counted if a < b)
+        lo, hi = bonett_price(ahead, behind, len(counted), level=level)
+        return PairedBootstrap(diff, lo, hi, len(pairs), resamples, seed, PAIRED_FALLBACK)
     return PairedBootstrap(
         diff, percentile(draws, alpha), percentile(draws, 100.0 - alpha), len(pairs), resamples, seed
     )
@@ -364,21 +399,34 @@ def cluster_bootstrap(
     resamples: int = BOOTSTRAP_RESAMPLES,
     seed: int = SEED,
     level: float = CONFIDENCE_LEVEL,
-) -> tuple[float | None, float | None, float | None]:
+) -> RateBootstrap:
     """``Σk / Σn`` over clusters ``(k, n)`` with a percentile cluster-bootstrap interval (for a mean over reads, where
-    an exact interval does not apply): ``(value, lo, hi)``."""
+    an exact interval does not apply).
+
+    When every resample gives the same rate (every item right in every read, or none; or every cluster at the same
+    rate) the percentile interval is a point. The interval is then Clopper–Pearson with the clusters as the trials
+    (``method``): ``m/m`` or ``0/m`` at 1 or 0, and between them the outer bounds of the two nearest counts, so it
+    is never of zero width (conservative: a cluster may hold several items and reads).
+    """
     pairs = list(clusters)
     total_n = sum(c[1] for c in pairs)
     if total_n <= 0:
-        return None, None, None
+        return RateBootstrap(None, None, None, len(pairs))
     hits, items = [c[0] for c in pairs], [c[1] for c in pairs]
     draws = []
     for drawn in resample_indices(len(pairs), resamples, seed):
         n = sum(map(items.__getitem__, drawn))
         if n > 0:
             draws.append(sum(map(hits.__getitem__, drawn)) / n)
+    value = sum(hits) / total_n
+    if draws and min(draws) == max(draws):
+        m = sum(1 for n in items if n > 0)
+        k = value * m
+        lo = clopper_pearson(math.floor(k + 1e-9), m, level=level)[0]
+        hi = clopper_pearson(math.ceil(k - 1e-9), m, level=level)[1]
+        return RateBootstrap(value, lo, hi, len(pairs), RATE_FALLBACK)
     alpha = (1.0 - level) / 2.0 * 100.0
-    return sum(hits) / total_n, percentile(draws, alpha), percentile(draws, 100.0 - alpha)
+    return RateBootstrap(value, percentile(draws, alpha), percentile(draws, 100.0 - alpha), len(pairs))
 
 
 # --------------------------------------------------------------------------------------------------
@@ -508,19 +556,49 @@ def harm_loss(early: int, harmful: int, n: int, r: float) -> float:
 def crossover(early_a: int, harmful_a: int, early_b: int, harmful_b: int) -> float | None:
     """The cost ratio ``r*`` at which a's and b's losses are equal, when a has more harmful dates than b: below it a's
     loss is lower, above it b's. ``None`` when a has no more harmful dates than b (b never overtakes a as ``r``
-    grows). A negative value means b's loss is lower at every ``r ≥ 0``."""
+    grows). A negative value means b's loss is lower at every ``r ≥ 0``. :func:`crossover_outcome` says which."""
     if harmful_a <= harmful_b:
         return None
     return (early_b - early_a) / (harmful_a - harmful_b)
 
 
+#: What two harm-weighted losses do as ``r`` grows from 0 (:func:`crossover_outcome`).
+CROSSOVER_OUTCOMES = ("a_then_b", "b_then_a", "a_lower", "b_lower", "identical")
+
+
+def crossover_outcome(early_a: int, harmful_a: int, early_b: int, harmful_b: int) -> tuple[str, float | None]:
+    """Which loss is lower as ``r`` grows, with the crossing ratio ``r*`` when they cross at some ``r > 0``:
+
+    * ``a_then_b``: a's loss is lower below ``r*`` and b's above (a has fewer early dates, more harmful ones);
+    * ``b_then_a``: the other way round;
+    * ``a_lower`` / ``b_lower``: that side's loss is lower at every ``r > 0`` (no crossing);
+    * ``identical``: the same early and harmful counts.
+    """
+    if harmful_a == harmful_b:
+        if early_a == early_b:
+            return "identical", None
+        return ("a_lower" if early_a < early_b else "b_lower"), None
+    if harmful_a > harmful_b:
+        if early_a < early_b:
+            return "a_then_b", (early_b - early_a) / (harmful_a - harmful_b)
+        return "b_lower", None
+    if early_a > early_b:
+        return "b_then_a", (early_a - early_b) / (harmful_b - harmful_a)
+    return "a_lower", None
+
+
 __all__ = [
     "BOOTSTRAP_RESAMPLES",
     "CONFIDENCE_LEVEL",
+    "CROSSOVER_OUTCOMES",
+    "PAIRED_FALLBACK",
+    "PERCENTILE",
+    "RATE_FALLBACK",
     "SEED",
     "SIGNFLIP_DRAWS",
     "SIGNFLIP_EXACT_MAX",
     "PairedBootstrap",
+    "RateBootstrap",
     "RiskCoverage",
     "SignFlip",
     "aurc",
@@ -532,6 +610,7 @@ __all__ = [
     "cluster_bootstrap",
     "cluster_signflip",
     "crossover",
+    "crossover_outcome",
     "flip_rate",
     "harm_loss",
     "holm",

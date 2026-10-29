@@ -568,18 +568,21 @@ def _with_holm(family: dict[str, dict[str, Any]], alpha: float) -> dict[str, dic
 
 
 def _verdict(row: Mapping[str, Any], alpha: float) -> str:
-    """``clear`` when the Holm-adjusted mid-p is below ``alpha`` and Bonett–Price excludes 0; ``suggestive`` when only
-    the unadjusted mid-p is; else ``none``."""
+    """``clear`` when the Holm-adjusted exact McNemar p and the Holm-adjusted letter-cluster sign-flip p are both below
+    ``alpha`` and Bonett–Price excludes 0 (the item-level mid-p treats a letter and its photo as two independent
+    pairs, so it alone never makes a difference clear); ``suggestive`` when the unadjusted mid-p is below ``alpha``;
+    else ``none``."""
     lo, hi = row["bonett_price"]
     excludes_zero = lo is not None and hi is not None and (lo > 0 or hi < 0)
-    if row["holm_midp"] < alpha and excludes_zero:
+    if row["holm_exact"] < alpha and row["signflip"]["holm"] < alpha and excludes_zero:
         return "clear"
     return "suggestive" if row["midp"] < alpha else "none"
 
 
 def _crossover(first: Sequence[Item], second: Sequence[Item], settings: Settings) -> dict[str, Any]:
-    """The cost ratio at which the two conditions' harm-weighted losses are equal, with a letter-cluster bootstrap
-    (``None`` / ``never``: the second never overtakes the first as a harmful date costs more)."""
+    """Where the two conditions' harm-weighted losses cross as a harmful date costs more (:func:`stats.crossover_outcome`:
+    which side is lower, and ``r*`` when they cross), with a letter-cluster bootstrap: the share of resamples with each
+    outcome, and the interval of ``r*`` over the resamples that cross the same way as the point estimate."""
     a = {item.key: item for item in first}
     b = {item.key: item for item in second}
     keys = sorted(a.keys() & b.keys())
@@ -593,27 +596,27 @@ def _crossover(first: Sequence[Item], second: Sequence[Item], settings: Settings
     clusters = [sums[name] for name in sorted(sums)]
     columns = [[row[i] for row in clusters] for i in range(4)]
     totals = [sum(column) for column in columns]
-    point = stats.crossover(*totals)
+    outcome, point = stats.crossover_outcome(*totals)
+    counts = dict.fromkeys(stats.CROSSOVER_OUTCOMES, 0)
     draws: list[float] = []
-    for drawn in stats.resample_indices(len(clusters), settings.crossover_resamples, settings.seed):
-        value = stats.crossover(*(sum(map(column.__getitem__, drawn)) for column in columns))
-        draws.append(math.inf if value is None else value)
-    finite = sum(1 for value in draws if not math.isinf(value))
-
-    def quantile(q: float) -> float | None:
-        value = stats.percentile(draws, q)
-        return None if value is None or math.isinf(value) else value
-
+    resamples = stats.resample_indices(len(clusters), settings.crossover_resamples, settings.seed)
+    for drawn in resamples:
+        found, value = stats.crossover_outcome(*(sum(map(column.__getitem__, drawn)) for column in columns))
+        counts[found] += 1
+        if found == outcome and value is not None:
+            draws.append(value)
     alpha = (1.0 - settings.level) / 2.0 * 100.0
     return {
         "early": [totals[0], totals[2]],
         "harmful": [totals[1], totals[3]],
+        "outcome": outcome,
         "r_star": point,
-        "share_with_crossover": finite / len(draws) if draws else None,
+        "shares": {name: count / len(resamples) if resamples else None for name, count in counts.items()},
         "bootstrap": {
-            "lo": quantile(alpha),
-            "median": quantile(50.0),
-            "hi": quantile(100.0 - alpha),
+            "lo": stats.percentile(draws, alpha),
+            "median": stats.percentile(draws, 50.0),
+            "hi": stats.percentile(draws, 100.0 - alpha),
+            "draws": len(draws),
             "resamples": settings.crossover_resamples,
             "seed": settings.seed,
         },
@@ -812,15 +815,23 @@ def _methods(settings: Settings) -> dict[str, str]:
         f"clusters, else {settings.signflip_draws} seeded draws); paired cluster bootstrap, {settings.resamples} "
         "resamples, percentile interval",
         "multiplicity": "Holm within each family",
-        "verdict": f"clear: Holm-adjusted mid-p below {settings.alpha} and the Bonett-Price interval excludes 0; "
-        f"suggestive: the unadjusted mid-p below {settings.alpha}; else no clear difference",
+        "verdict": f"clear: the Holm-adjusted exact p and the Holm-adjusted cluster sign-flip p both below "
+        f"{settings.alpha}, and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p below "
+        f"{settings.alpha}; else no clear difference",
         "harmful": "late or missed",
         "tiers": "please_check: low confidence, Please check, or found without a date; second_look: medium "
-        "confidence; none: no flag, or missed",
+        "confidence; none: no flag, or missed (a missed deadline shows nothing, so it counts among the deadlines "
+        "without a flag)",
+        "selective_reads": "one read: every item once; over repeated reads, read 1's items, and each wrong date "
+        "counted once (caught: flagged Please check in every read in which it was wrong)",
+        "mean_over_reads": "cluster bootstrap, percentile interval; Clopper-Pearson over the clusters when every "
+        "resample is equal",
         "aurc": "risk-coverage from the most confident tier down, errors spread evenly within a tier",
         "loss": "per 100 scored items: early + r * harmful",
-        "crossover": f"r at which the losses are equal; letter-cluster bootstrap, {settings.crossover_resamples} "
-        "resamples, percentile interval (null: never)",
+        "crossover": f"r at which the losses are equal, when they cross; letter-cluster bootstrap, "
+        f"{settings.crossover_resamples} resamples: the share of each outcome (a lower then b, b lower then a, a "
+        "lower at every r, b lower at every r, identical), and the percentile interval of r over the resamples that "
+        "cross the same way as the point estimate",
     }
 
 
@@ -842,11 +853,23 @@ def _findings(body: Mapping[str, Any]) -> dict[str, Any]:
     if row is not None:
         claim: dict[str, Any] = {
             key: row[key]
-            for key in ("n", "b", "c", "diff", "exact_p", "midp", "holm_midp", "bonett_price", "verdict")
+            for key in (
+                "n",
+                "b",
+                "c",
+                "diff",
+                "exact_p",
+                "holm_exact",
+                "midp",
+                "holm_midp",
+                "bonett_price",
+                "verdict",
+            )
         }
         claim["text"] = (
-            f"{row['b']} vs {row['c']} discordant, exact p {p_text(row['exact_p'])} (mid-p {p_text(row['midp'])}, "
-            f"Holm {p_text(row['holm_midp'])}): {VERDICTS[row['verdict']]}"
+            f"{row['b']} vs {row['c']} discordant, exact p {p_text(row['exact_p'])}, Holm-adjusted "
+            f"{p_text(row['holm_exact'])} (mid-p {p_text(row['midp'])}, Holm-adjusted {p_text(row['holm_midp'])}): "
+            f"{VERDICTS[row['verdict']]}"
         )
         published = row.get("published_bootstrap")
         if published is not None and published["value"] is not None and None not in published["ci"]:
@@ -857,19 +880,24 @@ def _findings(body: Mapping[str, Any]) -> dict[str, Any]:
             )
         findings["rules_text_claim"] = claim
     crossover = body["crossover"].get(_pair_key(REFERENCE, "llm_rules_text"))
-    if crossover is not None and crossover["r_star"] is not None:
-        boot = crossover["bootstrap"]
-        low = "never" if boot["lo"] is None else f"{boot['lo']:.1f}"
-        high = "never" if boot["hi"] is None else f"{boot['hi']:.1f}"
+    if crossover is not None and crossover["outcome"] == "a_then_b":
+        boot, shares = crossover["bootstrap"], crossover["shares"]
         findings["rules_text_crossover"] = {
             "r_star": crossover["r_star"],
             "lo": boot["lo"],
             "hi": boot["hi"],
-            "share_with_crossover": crossover["share_with_crossover"],
+            "shares": shares,
             "text": f"Ordnung's harm-weighted loss is the lower one until a late or missed date costs "
-            f"{crossover['r_star']:.1f} early ones (95 % bootstrap range {low} to {high})",
+            f"{crossover['r_star']:.1f} early ones; in {_share(shares['a_then_b'])} of {boot['resamples']:,} "
+            f"resamples of the letters the losses cross the same way (95 % of those crossings between "
+            f"{boot['lo']:.1f} and {boot['hi']:.1f}), and in {_share(shares['a_lower'])} Ordnung's loss is the lower "
+            "one whatever a harmful date costs",
         }
     return findings
+
+
+def _share(value: float) -> str:
+    return f"{value * 100:.0f} %"
 
 
 def reanalyse(runs: Sequence[Run], *, date: str, settings: Settings | None = None) -> dict[str, Any]:
@@ -1186,6 +1214,7 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
             seed=settings.seed,
             level=level,
         )
+        first_read = list(reads[0].items[condition])
         exact_runs = [sum(1 for item in run.items[condition] if item.right) for run in reads]
         summary: dict[str, Any] = {
             "exact_per_read": [rate(right, n, level) for right in exact_runs],
@@ -1196,8 +1225,12 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
                 rate(sum(1 for item in run.items[condition] if item.late), n, level) for run in reads
             ],
             "exact_range": [min(exact_runs), max(exact_runs)],
-            "mean_accuracy": {"value": mean[0], "ci": [mean[1], mean[2]]},
-            "mean_harmful": {"value": mean_harm[0], "ci": [mean_harm[1], mean_harm[2]]},
+            "mean_accuracy": {"value": mean.value, "ci": [mean.lo, mean.hi], "method": mean.method},
+            "mean_harmful": {
+                "value": mean_harm.value,
+                "ci": [mean_harm.lo, mean_harm.hi],
+                "method": mean_harm.method,
+            },
             "pass_all": rate(*stats.pass_all_k(right_matrix), level),
             "pass_any": rate(*stats.pass_any_k(right_matrix), level),
             "unstable": rate(
@@ -1208,7 +1241,9 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
             ),
             "late_any_read": rate(sum(1 for items in table.values() if any(i.late for i in items)), n, level),
             "run_noise_share": stats.run_noise_share([[int(x) for x in row] for row in right_matrix]),
-            "selective": selective(flat, level),
+            # one item is one trial: read 1's items (an item wrong alike in every read is one wrong date, not three)
+            "selective": selective(first_read, level),
+            "flags_over_reads": _flags_over_reads(table, level),
             "loss": {
                 _ratio_key(r): stats.harm_loss(
                     sum(1 for i in flat if i.early), sum(1 for i in flat if i.harmful), len(flat), r
@@ -1278,6 +1313,39 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
     }
 
 
+def _flags_over_reads(rows: Mapping[tuple[str, str, int], Sequence[Item]], level: float) -> dict[str, Any]:
+    """ "Please check" over repeated reads, each date once: the dates wrong in at least one read, and of those the
+    ones flagged Please check in every read in which they were wrong (caught); the item × read counts beside them."""
+    wrong = [reads for reads in rows.values() if any(not item.right for item in reads)]
+    caught = [
+        reads for reads in wrong if all(item.tier == "please_check" for item in reads if not item.right)
+    ]
+    return {
+        "reads": max((len(reads) for reads in rows.values()), default=0),
+        "wrong_dates": len(wrong),
+        "caught_dates": len(caught),
+        "wrong_reads": sum(1 for reads in rows.values() for item in reads if not item.right),
+        "caught_reads": sum(
+            1 for reads in rows.values() for item in reads if not item.right and item.tier == "please_check"
+        ),
+        "caught": rate(len(caught), len(wrong), level),
+    }
+
+
+#: The pre-registered decision codes (§6.11) and the sentence each stands for; the presenter's phase 2 fills the
+#: placeholders from the final analysis (``{d}``: Ordnung minus the baseline in points, ``{ci}``: its interval).
+DECISION_SENTENCES = {
+    "clear": "Ordnung is ahead of {baseline} ({d} points, 95 % CI {ci}).",
+    "baseline_ahead": "{baseline} is ahead of Ordnung ({d} points, 95 % CI {ci}).",
+    "no_clear_difference": "Against {baseline}: no clear difference ({d} points, 95 % CI {ci}).",
+    "level_within_noise": "Against {baseline}: level within noise ({d} points, 95 % CI {ci}).",
+    "non_inferior": "{baseline} is not ahead by more than 5 points ({d} points, 95 % CI {ci}).",
+    "agent_higher": "The agent scored higher ({d} points, 95 % CI {ci}).",
+    "baseline_higher": "{baseline} scored higher ({d} points, 95 % CI {ci}).",
+    "cannot_tell": "Against {baseline}, we cannot tell whether Ordnung is within 5 points ({d} points, 95 % CI {ci}).",
+}
+
+
 def _decisions(
     families: Mapping[str, Mapping[str, Mapping[str, Any]]],
     summaries: Mapping[str, Mapping[str, Any]],
@@ -1289,16 +1357,21 @@ def _decisions(
     alpha, margin = settings.alpha, settings.noninferiority_margin
     accuracy = families["F1_accuracy"]
 
-    def clear(baseline: str) -> bool:
+    def judged(baseline: str, otherwise: str) -> str:
+        """``clear`` (Ordnung ahead), ``baseline_ahead`` (the baseline ahead, by the same rule) or ``otherwise``."""
         row = accuracy[_pair_key(prereg.reference, baseline)]
-        lo = row["bootstrap"]["lo"]
-        return bool(row["holm"] < alpha and lo is not None and lo > 0)
+        lo, hi = row["bootstrap"]["lo"], row["bootstrap"]["hi"]
+        if row["holm"] < alpha and lo is not None and lo > 0:
+            return "clear"
+        if row["holm"] < alpha and hi is not None and hi < 0:
+            return "baseline_ahead"
+        return otherwise
 
     decisions: dict[str, Any] = {}
     if "llm_only" in prereg.baselines:
-        decisions["beats_llm_only"] = "clear" if clear("llm_only") else "no_clear_difference"
+        decisions["beats_llm_only"] = judged("llm_only", "no_clear_difference")
     if "llm_rules_text" in prereg.baselines:
-        decisions["vs_llm_rules_text"] = "clear" if clear("llm_rules_text") else "level_within_noise"
+        decisions["vs_llm_rules_text"] = judged("llm_rules_text", "level_within_noise")
     for baseline in prereg.noninferior_to:
         boot = accuracy[_pair_key(prereg.reference, baseline)]["bootstrap"]
         if boot["lo"] is not None and boot["lo"] > -margin:
@@ -1314,8 +1387,13 @@ def _decisions(
     if "llm_only" in prereg.baselines:
         row = families["F3_stability"][_pair_key(prereg.reference, "llm_only")]
         decisions["more_stable_than_llm_only"] = bool(row["holm"] < alpha and (row["diff"] or 0) < 0)
-    recall = ours["selective"]["please_check"]["recall_wrong"]
-    decisions["flags_caught"] = {"caught": recall["k"], "wrong": recall["n"]}
+    flags = ours["flags_over_reads"]
+    decisions["flags_caught"] = {
+        "caught": flags["caught_dates"],
+        "wrong": flags["wrong_dates"],
+        "caught_reads": flags["caught_reads"],
+        "wrong_reads": flags["wrong_reads"],
+    }
     return decisions
 
 
@@ -1528,6 +1606,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 __all__ = [
     "ANALYSIS_SCHEMA",
+    "DECISION_SENTENCES",
     "FINAL_KIND",
     "HELD_OUT_AS_RECORDED",
     "PREREG_SCHEMA",

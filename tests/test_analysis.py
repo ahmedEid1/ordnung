@@ -10,7 +10,9 @@ whose statistics are worked out by hand.
 from __future__ import annotations
 
 import json
+import math
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import analysis, report  # noqa: E402
+from evals import analysis, report, stats  # noqa: E402
 
 RESULTS = ROOT / "evals" / "results"
 BASELINES = ("llm_only", "llm_rules_text", "llm_rules_tool")
@@ -98,6 +100,27 @@ def test_paired_tests_on_the_pooled_items(reanalysis: dict[str, Any]) -> None:
     assert harmful["b"] - harmful["c"] == 3 - 13 and harmful["b"] in (2, 3)
 
 
+def test_a_clear_verdict_needs_the_exact_and_the_clustered_test_after_holm(
+    reanalysis: dict[str, Any],
+) -> None:
+    """Late or missed, Ordnung vs the model alone: 3 vs 13 discordant. Exact McNemar 0.0213 (Holm 0.0638), mid-p
+    0.0127 (Holm 0.0382), letter-cluster sign-flip 0.0296 (Holm 0.0888): only the item-level mid-p clears 0.05, so
+    the verdict is suggestive, not clear. Late alone (2 vs 13) clears both tests after Holm."""
+    harmful = reanalysis["paired"]["harmful"]["ordnung-vs-llm_only"]
+    assert (harmful["b"], harmful["c"]) == (3, 13)
+    assert harmful["exact_p"] == pytest.approx(0.02127, abs=5e-5)
+    assert harmful["holm_exact"] == pytest.approx(0.06381, abs=5e-5)
+    assert harmful["holm_midp"] == pytest.approx(0.03818, abs=5e-5)
+    assert harmful["signflip"]["p"] == pytest.approx(0.02960, abs=5e-5)
+    assert harmful["signflip"]["holm"] == pytest.approx(0.08881, abs=5e-5)
+    assert harmful["verdict"] == "suggestive"
+    late = reanalysis["paired"]["late"]["ordnung-vs-llm_only"]
+    assert late["holm_exact"] < 0.05 and late["signflip"]["holm"] < 0.05 and late["verdict"] == "clear"
+    assert reanalysis["paired"]["accuracy"]["ordnung-vs-llm_only"]["verdict"] == "clear"
+    method = reanalysis["meta"]["methods"]["verdict"]
+    assert "Holm-adjusted exact p" in method and "Holm-adjusted cluster sign-flip p" in method
+
+
 def test_paired_bootstraps_reproduce_the_published_differences(
     reanalysis: dict[str, Any], held_out_runs: list[analysis.Run]
 ) -> None:
@@ -112,10 +135,11 @@ def test_paired_bootstraps_reproduce_the_published_differences(
 
 def test_the_rules_text_claim_is_corrected(reanalysis: dict[str, Any]) -> None:
     claim = reanalysis["findings"]["rules_text_claim"]
-    assert (
-        claim["text"]
-        == "14 vs 5 discordant, exact p 0.064 (mid-p 0.041, Holm 0.083): suggestive, not settled"
+    assert claim["text"] == (
+        "14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, "
+        "not settled"
     )
+    assert claim["holm_exact"] == pytest.approx(0.12714, abs=5e-5)
     assert claim["published_text"] == "+5.4 points, 95 % interval +0.6 to +10.6"
 
 
@@ -170,17 +194,29 @@ def test_harm_weighted_loss_and_crossover(reanalysis: dict[str, Any]) -> None:
     assert (round(loss["1"], 1), round(loss["5"], 1), round(loss["20"], 1)) == (3.0, 10.1, 36.9)
     assert round(reanalysis["conditions"]["llm_only"]["loss"]["1"], 1) == 19.0
     crossover = reanalysis["crossover"]["ordnung-vs-llm_rules_text"]
-    assert crossover["r_star"] == 5.5
-    assert 0 < crossover["share_with_crossover"] < 1
+    assert crossover["outcome"] == "a_then_b" and crossover["r_star"] == 5.5
+    shares = crossover["shares"]
+    assert set(shares) == {"a_then_b", "b_then_a", "a_lower", "b_lower", "identical"}
+    assert sum(shares.values()) == pytest.approx(1.0) and 0 < shares["a_then_b"] < 1
+    boot = crossover["bootstrap"]
+    # r* is resampled only where the losses cross the same way: a finite range around the point
+    assert boot["draws"] == round(shares["a_then_b"] * boot["resamples"])
+    assert 1 <= boot["lo"] < 5.5 < boot["hi"] and math.isfinite(boot["hi"])
+    # Ordnung (2 early, 3 harmful) against the agent (0 early, 1 harmful): the agent is lower at every r, not a
+    # crossing at a negative r; and the model alone (13 harmful) is never lower than Ordnung
+    tool = reanalysis["crossover"]["ordnung-vs-llm_rules_tool"]
+    assert (tool["outcome"], tool["r_star"]) == ("b_lower", None)
+    assert tool["bootstrap"]["lo"] is None and tool["bootstrap"]["draws"] == 0
+    assert tool["shares"]["b_lower"] > 0.5
+    assert reanalysis["crossover"]["ordnung-vs-llm_only"]["outcome"] == "a_lower"
     assert reanalysis["crossover"]["ordnung-vs-llm_only"]["r_star"] is None
     assert reanalysis["conditions"]["ordnung"]["days_late"] == [1, 7]
     finding = reanalysis["findings"]["rules_text_crossover"]
-    assert finding["r_star"] == 5.5 and finding["hi"] is None and 1 <= finding["lo"] < 5.5
+    assert finding["r_star"] == 5.5 and 1 <= finding["lo"] < 5.5 < finding["hi"]
     assert finding["text"].startswith(
-        "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones "
-        "(95 % bootstrap range "
+        "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones; "
     )
-    assert finding["text"].endswith(" to never)")
+    assert "never" not in finding["text"] and "% of 2,000 resamples" in finding["text"]
 
 
 def test_letters_fully_right_and_cost(reanalysis: dict[str, Any]) -> None:
@@ -310,12 +346,13 @@ def _synthetic_run(
     *,
     model: str = "claude-sonnet-5",
     letters: tuple[tuple[str, str, int], ...] = LETTERS,
+    outcome: Callable[[str, int, str, int], str] = _outcome,
 ) -> dict[str, Any]:
     entries = []
     for letter, cluster, count in letters:
         conditions = {}
         for condition in CONDITIONS:
-            items = [_score_item(i, _outcome(condition, read, letter, i)) for i in range(count)]
+            items = [_score_item(i, outcome(condition, read, letter, i)) for i in range(count)]
             prediction_items = [
                 {"spec": {"type": "relative", "amount": 2, "unit": "weeks", "anchor": "document_date"}}
                 for _ in range(count)
@@ -451,11 +488,78 @@ def test_the_final_run_stability_and_secondary_numbers(final_inputs: tuple[Path,
     assert decisions["vs_llm_rules_tool"] == "cannot_tell"
     assert decisions["more_stable_than_llm_only"] is False
     assert decisions["harmful"] == {"dates": 1, "reads": 21, "none": False}
-    assert decisions["flags_caught"] == {"caught": 0, "wrong": 1}
+    assert decisions["flags_caught"] == {"caught": 0, "wrong": 1, "caught_reads": 0, "wrong_reads": 1}
+    # a rate of 1 over three reads gets an exact bound over its 5 clusters, never "100 % [100–100]"
+    perfect = primary["conditions"]["llm_rules_text"]
+    assert perfect["mean_accuracy"]["value"] == 1.0
+    assert (
+        perfect["mean_accuracy"]["ci"][0] == pytest.approx(0.025 ** (1 / 5))
+        and perfect["mean_accuracy"]["ci"][1] == 1
+    )
+    assert perfect["mean_accuracy"]["method"] == "clopper-pearson over clusters"
+    assert perfect["mean_harmful"]["ci"][1] > 0
+    # selective prediction counts items, not item × read: read 1's items, and each wrong date once over the reads
+    alone = llm_only["selective"]["please_check"]["recall_wrong"]
+    assert (alone["k"], alone["n"]) == (0, 3)  # read 1: L1 early, L2's first date missed, L4 late
+    assert llm_only["flags_over_reads"] == {
+        "reads": 3,
+        "wrong_dates": 3,
+        "caught_dates": 0,
+        "wrong_reads": 7,
+        "caught_reads": 0,
+        "caught": {"k": 0, "n": 3, "value": 0.0, "ci": [0.0, pytest.approx(0.7076, abs=5e-5)]},
+    }
+    assert ordnung["selective"]["please_check"]["recall_wrong"]["n"] == 0  # L3 is wrong in read 2 only
+    assert ordnung["flags_over_reads"]["wrong_dates"] == 1
     result = analysis.final_from_files(prereg_path, paths)
     newkinds = result["secondary"]["newkinds"]
     assert newkinds["conditions"]["ordnung"]["exact"]["k"] == 3
     assert newkinds["conditions"]["ordnung"]["kind_recognised"]["k"] == 1  # L1's kind is not recognised
+
+
+#: Eight one-date letters, each its own cluster.
+EIGHT = tuple((f"L{i}", f"L{i}", 1) for i in range(1, 9))
+
+
+def _baselines_ahead(condition: str, read: int, letter: str, index: int) -> str:
+    """Ordnung early on every letter in every read; every baseline right."""
+    return "early" if condition == "ordnung" else "right"
+
+
+def test_a_baseline_clearly_ahead_is_said_so_never_no_clear_difference(tmp_path: Path) -> None:
+    """Ordnung wrong on all 8 clusters in every read, every baseline right: sign-flip p = 2/256 for each pair, Holm
+    0.023, and the interval lies below 0. The pre-registered rules must code that as the baseline ahead (never "no
+    clear difference" or "level within noise"), and the 3-read selective numbers count 8 wrong dates, not 24."""
+    prereg = {"analysis": {**analysis.default_prereg_analysis(), "pool_with": []}}
+    prereg_path = _write(tmp_path, "final.json", prereg)
+    reads = [
+        _write(
+            tmp_path,
+            f"r{r}.json",
+            _synthetic_run("holdout4", r, letters=EIGHT, outcome=_baselines_ahead),
+        )
+        for r in (1, 2, 3)
+    ]
+    nk = _write(tmp_path, "nk.json", _synthetic_run("newkinds", 1, letters=EIGHT[:2]))
+    primary = analysis.final_from_files(prereg_path, [*reads, nk])["primary"]
+    f1 = primary["families"]["F1_accuracy"]["ordnung-vs-llm_only"]
+    assert f1["signflip"]["p"] == pytest.approx(2 / 256) and f1["holm"] == pytest.approx(3 * 2 / 256)
+    assert f1["bootstrap"]["hi"] < 0 and f1["bootstrap"]["lo"] < f1["bootstrap"]["hi"]
+    decisions = primary["decisions"]
+    assert decisions["beats_llm_only"] == "baseline_ahead"
+    assert decisions["vs_llm_rules_text"] == "baseline_ahead"
+    assert decisions["vs_llm_rules_tool"] == "agent_higher"
+    assert decisions["flags_caught"] == {"caught": 0, "wrong": 8, "caught_reads": 0, "wrong_reads": 24}
+    ours = primary["conditions"]["ordnung"]
+    assert ours["selective"]["please_check"]["recall_wrong"]["n"] == 8
+    assert ours["selective"]["please_check"]["recall_wrong"]["ci"][1] == pytest.approx(0.3694, abs=5e-5)
+    assert ours["selective"]["unflagged"]["accuracy"]["n"] == 8
+    assert ours["mean_accuracy"]["ci"] == [0.0, pytest.approx(stats.clopper_pearson(0, 8)[1])]
+    # every code the rules can give has its sentence for the presenter
+    for code in ("clear", "baseline_ahead", "no_clear_difference", "level_within_noise"):
+        assert code in analysis.DECISION_SENTENCES
+    for code in ("non_inferior", "agent_higher", "baseline_higher", "cannot_tell"):
+        assert code in analysis.DECISION_SENTENCES
 
 
 def test_the_final_run_refuses_reads_that_do_not_fit(tmp_path: Path) -> None:

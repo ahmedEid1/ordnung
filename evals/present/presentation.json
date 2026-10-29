@@ -14,7 +14,7 @@
   "note": "The held-out splits as recorded once, each with the code and prompts of its day, pooled and re-analysed with the final run's statistics after their results were known.",
   "source": {
    "file": "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
-   "sha256": "a0a56749cdd281ff598f3c47db7526f7c74b99c769b1d11853f74a6849c360e5",
+   "sha256": "cdcd3087323e27690d8e0113f2d4ba0b9e34b42d4ffffa85c5d67b9dd33b6ec6",
    "role": "re-analysis"
   },
   "methods": {
@@ -23,12 +23,14 @@
    "paired_one_read": "exact McNemar (two-sided) on the discordant pairs, mid-p beside it; Bonett-Price interval",
    "paired_clustered": "sign-flip test over letter clusters (exact up to 20 non-zero clusters, else 100000 seeded draws); paired cluster bootstrap, 10000 resamples, percentile interval",
    "multiplicity": "Holm within each family",
-   "verdict": "clear: Holm-adjusted mid-p below 0.05 and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p below 0.05; else no clear difference",
+   "verdict": "clear: the Holm-adjusted exact p and the Holm-adjusted cluster sign-flip p both below 0.05, and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p below 0.05; else no clear difference",
    "harmful": "late or missed",
-   "tiers": "please_check: low confidence, Please check, or found without a date; second_look: medium confidence; none: no flag, or missed",
+   "tiers": "please_check: low confidence, Please check, or found without a date; second_look: medium confidence; none: no flag, or missed (a missed deadline shows nothing, so it counts among the deadlines without a flag)",
+   "selective_reads": "one read: every item once; over repeated reads, read 1's items, and each wrong date counted once (caught: flagged Please check in every read in which it was wrong)",
+   "mean_over_reads": "cluster bootstrap, percentile interval; Clopper-Pearson over the clusters when every resample is equal",
    "aurc": "risk-coverage from the most confident tier down, errors spread evenly within a tier",
    "loss": "per 100 scored items: early + r * harmful",
-   "crossover": "r at which the losses are equal; letter-cluster bootstrap, 2000 resamples, percentile interval (null: never)"
+   "crossover": "r at which the losses are equal, when they cross; letter-cluster bootstrap, 2000 resamples: the share of each outcome (a lower then b, b lower then a, a lower at every r, b lower at every r, identical), and the percentile interval of r over the resamples that cross the same way as the point estimate"
   },
   "settings": {
    "seed": 20261029,
@@ -108,6 +110,10 @@
      "ci": [
       0.9319151303,
       0.990267184
+     ],
+     "published_ci": [
+      0.9428489327,
+      0.9940828402
      ]
     },
     "late": {
@@ -117,6 +123,10 @@
      "ci": [
       0.001444987505,
       0.04234055907
+     ],
+     "published_ci": [
+      0.0,
+      0.03125
      ]
     },
     "early": {
@@ -348,6 +358,10 @@
      "ci": [
       0.7418790493,
       0.8659156422
+     ],
+     "published_ci": [
+      0.7470570517,
+      0.8703703704
      ]
     },
     "late": {
@@ -357,6 +371,10 @@
      "ci": [
       0.04184445176,
       0.1286888005
+     ],
+     "published_ci": [
+      0.03680981595,
+      0.1217987805
      ]
     },
     "early": {
@@ -616,6 +634,10 @@
      "ci": [
       0.8641334053,
       0.9536914628
+     ],
+     "published_ci": [
+      0.8727114165,
+      0.9562635031
      ]
     },
     "late": {
@@ -625,6 +647,10 @@
      "ci": [
       0.0001506898831,
       0.03271680406
+     ],
+     "published_ci": [
+      0.0,
+      0.01829548855
      ]
     },
     "early": {
@@ -866,6 +892,10 @@
      "ci": [
       0.9672831959,
       0.9998493101
+     ],
+     "published_ci": [
+      0.9817045114,
+      1.0
      ]
     },
     "late": {
@@ -875,6 +905,10 @@
      "ci": [
       0.0001506898831,
       0.03271680406
+     ],
+     "published_ci": [
+      0.0,
+      0.01829548855
      ]
     },
     "early": {
@@ -1103,6 +1137,7 @@
      "c": 4,
      "diff": 0.1607142857,
      "exact_p": 3.4654513e-06,
+     "holm_exact": 1.03963539e-05,
      "midp": 1.941574737e-06,
      "holm_midp": 5.824724212e-06,
      "bonett_price": [
@@ -1111,10 +1146,18 @@
      ],
      "verdict": "clear",
      "signflip_p": 9.999900001e-06,
+     "signflip_holm": 2.99997e-05,
      "bootstrap": [
       0.09444444444,
       0.2307692308
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.1607142857,
+      "ci": [
+       0.09814454586,
+       0.231214776
+      ]
+     }
     },
     "ordnung-vs-llm_rules_text": {
      "n": 168,
@@ -1122,6 +1165,7 @@
      "c": 5,
      "diff": 0.05357142857,
      "exact_p": 0.06356811523,
+     "holm_exact": 0.1271362305,
      "midp": 0.04138946533,
      "holm_midp": 0.08277893066,
      "bonett_price": [
@@ -1130,10 +1174,18 @@
      ],
      "verdict": "suggestive",
      "signflip_p": 0.06356811523,
+     "signflip_holm": 0.1271362305,
      "bootstrap": [
       0.005780346821,
       0.1040462428
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.05357142857,
+      "ci": [
+       0.005649717514,
+       0.1058915441
+      ]
+     }
     },
     "ordnung-vs-llm_rules_tool": {
      "n": 168,
@@ -1141,6 +1193,7 @@
      "c": 5,
      "diff": -0.02380952381,
      "exact_p": 0.21875,
+     "holm_exact": 0.21875,
      "midp": 0.125,
      "holm_midp": 0.125,
      "bonett_price": [
@@ -1149,10 +1202,18 @@
      ],
      "verdict": "none",
      "signflip_p": 0.21875,
+     "signflip_holm": 0.21875,
      "bootstrap": [
       -0.05357142857,
       0.0
-     ]
+     ],
+     "published_bootstrap": {
+      "value": -0.02380952381,
+      "ci": [
+       -0.05263931889,
+       0.0
+      ]
+     }
     }
    },
    "harmful": {
@@ -1162,14 +1223,16 @@
      "c": 13,
      "diff": -0.05952380952,
      "exact_p": 0.02127075195,
+     "holm_exact": 0.06381225586,
      "midp": 0.01272583008,
      "holm_midp": 0.03817749023,
      "bonett_price": [
       -0.1069318908,
       -0.01071516805
      ],
-     "verdict": "clear",
+     "verdict": "suggestive",
      "signflip_p": 0.02960205078,
+     "signflip_holm": 0.08880615234,
      "bootstrap": [
       -0.1084337349,
       -0.01226993865
@@ -1181,6 +1244,7 @@
      "c": 1,
      "diff": 0.0119047619,
      "exact_p": 0.625,
+     "holm_exact": 1.0,
      "midp": 0.375,
      "holm_midp": 0.75,
      "bonett_price": [
@@ -1189,6 +1253,7 @@
      ],
      "verdict": "none",
      "signflip_p": 0.625,
+     "signflip_holm": 1.0,
      "bootstrap": [
       -0.01169590643,
       0.03636363636
@@ -1200,6 +1265,7 @@
      "c": 1,
      "diff": 0.0119047619,
      "exact_p": 0.625,
+     "holm_exact": 1.0,
      "midp": 0.375,
      "holm_midp": 0.75,
      "bonett_price": [
@@ -1208,6 +1274,7 @@
      ],
      "verdict": "none",
      "signflip_p": 0.625,
+     "signflip_holm": 1.0,
      "bootstrap": [
       -0.01169590643,
       0.03636363636
@@ -1221,6 +1288,7 @@
      "c": 13,
      "diff": -0.06547619048,
      "exact_p": 0.007385253906,
+     "holm_exact": 0.02215576172,
      "midp": 0.004180908203,
      "holm_midp": 0.01254272461,
      "bonett_price": [
@@ -1229,10 +1297,18 @@
      ],
      "verdict": "clear",
      "signflip_p": 0.01135253906,
+     "signflip_holm": 0.03405761719,
      "bootstrap": [
       -0.1132075472,
       -0.02312138728
-     ]
+     ],
+     "published_bootstrap": {
+      "value": -0.06547619048,
+      "ci": [
+       -0.1149477534,
+       -0.02379908104
+      ]
+     }
     },
     "ordnung-vs-llm_rules_text": {
      "n": 168,
@@ -1240,6 +1316,7 @@
      "c": 1,
      "diff": 0.005952380952,
      "exact_p": 1.0,
+     "holm_exact": 1.0,
      "midp": 0.625,
      "holm_midp": 1.0,
      "bonett_price": [
@@ -1248,10 +1325,18 @@
      ],
      "verdict": "none",
      "signflip_p": 1.0,
+     "signflip_holm": 1.0,
      "bootstrap": [
       -0.01226993865,
       0.02825260015
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.005952380952,
+      "ci": [
+       -0.01250196541,
+       0.02793296089
+      ]
+     }
     },
     "ordnung-vs-llm_rules_tool": {
      "n": 168,
@@ -1259,6 +1344,7 @@
      "c": 1,
      "diff": 0.005952380952,
      "exact_p": 1.0,
+     "holm_exact": 1.0,
      "midp": 0.625,
      "holm_midp": 1.0,
      "bonett_price": [
@@ -1267,10 +1353,18 @@
      ],
      "verdict": "none",
      "signflip_p": 1.0,
+     "signflip_holm": 1.0,
      "bootstrap": [
       -0.01226993865,
       0.02825260015
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.005952380952,
+      "ci": [
+       -0.01250196541,
+       0.02793296089
+      ]
+     }
     }
    },
    "agent": {
@@ -1280,6 +1374,7 @@
      "c": 0,
      "diff": 0.1845238095,
      "exact_p": 9.313225746e-10,
+     "holm_exact": 1.862645149e-09,
      "midp": 4.656612873e-10,
      "holm_midp": 9.313225746e-10,
      "bonett_price": [
@@ -1288,10 +1383,18 @@
      ],
      "verdict": "clear",
      "signflip_p": 9.999900001e-06,
+     "signflip_holm": 1.99998e-05,
      "bootstrap": [
       0.125,
       0.25
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.1845238095,
+      "ci": [
+       0.1257142857,
+       0.25
+      ]
+     }
     },
     "llm_rules_tool-vs-llm_rules_text": {
      "n": 168,
@@ -1299,6 +1402,7 @@
      "c": 0,
      "diff": 0.07738095238,
      "exact_p": 0.000244140625,
+     "holm_exact": 0.000244140625,
      "midp": 0.0001220703125,
      "holm_midp": 0.0001220703125,
      "bonett_price": [
@@ -1307,10 +1411,18 @@
      ],
      "verdict": "clear",
      "signflip_p": 0.000244140625,
+     "signflip_holm": 0.000244140625,
      "bootstrap": [
       0.04046242775,
       0.119760479
-     ]
+     ],
+     "published_bootstrap": {
+      "value": 0.07738095238,
+      "ci": [
+       0.0395480226,
+       0.1228070175
+      ]
+     }
     }
    }
   },
@@ -1324,12 +1436,20 @@
      3,
      13
     ],
+    "outcome": "a_lower",
     "r_star": null,
-    "share_with_crossover": 0.0025,
+    "shares": {
+     "a_then_b": 0.0025,
+     "b_then_a": 0.0,
+     "a_lower": 0.9975,
+     "b_lower": 0.0,
+     "identical": 0.0
+    },
     "bootstrap": {
      "lo": null,
      "median": null,
      "hi": null,
+     "draws": 0,
      "resamples": 2000,
      "seed": 20261029
     }
@@ -1343,12 +1463,20 @@
      3,
      1
     ],
+    "outcome": "a_then_b",
     "r_star": 5.5,
-    "share_with_crossover": 0.762,
+    "shares": {
+     "a_then_b": 0.7615,
+     "b_then_a": 0.0,
+     "a_lower": 0.238,
+     "b_lower": 0.0005,
+     "identical": 0.0
+    },
     "bootstrap": {
-     "lo": 1.284821429,
-     "median": 6.0,
-     "hi": null,
+     "lo": 1.168333333,
+     "median": 4.5,
+     "hi": 16.0,
+     "draws": 1523,
      "resamples": 2000,
      "seed": 20261029
     }
@@ -1362,12 +1490,20 @@
      3,
      1
     ],
-    "r_star": -1.0,
-    "share_with_crossover": 0.762,
+    "outcome": "b_lower",
+    "r_star": null,
+    "shares": {
+     "a_then_b": 0.0,
+     "b_then_a": 0.0905,
+     "a_lower": 0.0095,
+     "b_lower": 0.8865,
+     "identical": 0.0135
+    },
     "bootstrap": {
-     "lo": -4.0,
-     "median": -0.5,
+     "lo": null,
+     "median": null,
      "hi": null,
+     "draws": 0,
      "resamples": 2000,
      "seed": 20261029
     }
@@ -2030,6 +2166,7 @@
    "c": 5,
    "diff": 0.05357142857,
    "exact_p": 0.06356811523,
+   "holm_exact": 0.1271362305,
    "midp": 0.04138946533,
    "holm_midp": 0.08277893066,
    "bonett_price": [
@@ -2037,7 +2174,7 @@
     0.105171798
    ],
    "verdict": "suggestive",
-   "text": "14 vs 5 discordant, exact p 0.064 (mid-p 0.041, Holm 0.083): suggestive, not settled",
+   "text": "14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, not settled",
    "published": {
     "value": 0.05357142857,
     "ci": [
@@ -2049,10 +2186,16 @@
   },
   "rules_text_crossover": {
    "r_star": 5.5,
-   "lo": 1.284821429,
-   "hi": null,
-   "share_with_crossover": 0.762,
-   "text": "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones (95 % bootstrap range 1.3 to never)"
+   "lo": 1.168333333,
+   "hi": 16.0,
+   "shares": {
+    "a_then_b": 0.7615,
+    "b_then_a": 0.0,
+    "a_lower": 0.238,
+    "b_lower": 0.0005,
+    "identical": 0.0
+   },
+   "text": "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones; in 76 % of 2,000 resamples of the letters the losses cross the same way (95 % of those crossings between 1.2 and 16.0), and in 24 % Ordnung's loss is the lower one whatever a harmful date costs"
   },
   "adversarial_classes": [
    {
@@ -3267,7 +3410,43 @@
   "not_reminded": {
    "set_aside:scam_signs": 15
   },
-  "set_aside": 15
+  "set_aside": 15,
+  "scam": {
+   "letters": 12,
+   "kept_off_the_calendar": {
+    "k": 10,
+    "n": 12,
+    "value": 0.8333333333,
+    "ci": [
+     0.5158622513,
+     0.9791374745
+    ]
+   },
+   "in_the_calendar": [
+    {
+     "entry_id": "holdout3-adversarial-scam-1",
+     "events": 1
+    },
+    {
+     "entry_id": "holdout3-adversarial-scam-2",
+     "events": 2
+    }
+   ],
+   "without_scam_idea": [
+    "holdout3-adversarial-scam-1",
+    "holdout3-adversarial-scam-2"
+   ],
+   "genuine_letters": 240,
+   "false_scam_idea": {
+    "k": 13,
+    "n": 240,
+    "value": 0.0541666667,
+    "ci": [
+     0.029153247,
+     0.0908456138
+    ]
+   }
+  }
  },
  "llm_only_first_run": {
   "file": "2026-09-25-sonnet-test.json",
@@ -3360,7 +3539,7 @@
   },
   {
    "split": "holdout4",
-   "role": "pre-registered final run on the version that ships: not yet written",
+   "role": "the final run on the version that ships, to be pre-registered before it is recorded: not yet written",
    "recorded": null
   }
  ],

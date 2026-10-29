@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="740" height="318" viewBox="0 0 740 318" role="img" aria-labelledby="risk-coverage-light-w-t risk-coverage-light-w-d" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
 <title id="risk-coverage-light-w-t">Does “Please check” catch the wrong dates?</title>
-<desc id="risk-coverage-light-w-d">Risk against coverage: of the dates a condition would show if it held back the flagged ones, the share that is wrong. LLM + rules tool: no flag 1 of 159 (0.6 %; 94.6 % shown), no flag or “worth a second look” 1 of 168 (0.6 %; 100.0 % shown), every date 1 of 168 (0.6 %; 100.0 % shown); Ordnung: no flag 5 of 128 (3.9 %; 76.2 % shown), no flag or “worth a second look” 5 of 162 (3.1 %; 96.4 % shown), every date 5 of 168 (3.0 %; 100.0 % shown); LLM + rules text: no flag 12 of 157 (7.6 %; 93.5 % shown), no flag or “worth a second look” 14 of 164 (8.5 %; 97.6 % shown), every date 14 of 168 (8.3 %; 100.0 % shown); LLM only: no flag 17 of 123 (13.8 %; 73.2 % shown), no flag or “worth a second look” 32 of 165 (19.4 %; 98.2 % shown), every date 32 of 168 (19.0 %; 100.0 % shown).</desc>
+<desc id="risk-coverage-light-w-d">Risk against coverage: of the deadlines a condition would keep if it held back the flagged ones, the share that is wrong (a missed deadline has no flag, so it is kept). LLM + rules tool: no flag 1 of 159 (0.6 %; 94.6 % kept), no flag or “worth a second look” 1 of 168 (0.6 %; 100.0 % kept), every date 1 of 168 (0.6 %; 100.0 % kept); Ordnung: no flag 5 of 128 (3.9 %; 76.2 % kept), no flag or “worth a second look” 5 of 162 (3.1 %; 96.4 % kept), every date 5 of 168 (3.0 %; 100.0 % kept); LLM + rules text: no flag 12 of 157 (7.6 %; 93.5 % kept), no flag or “worth a second look” 14 of 164 (8.5 %; 97.6 % kept), every date 14 of 168 (8.3 %; 100.0 % kept); LLM only: no flag 17 of 123 (13.8 %; 73.2 % kept), no flag or “worth a second look” 32 of 165 (19.4 %; 98.2 % kept), every date 32 of 168 (19.0 %; 100.0 % kept).</desc>
 <rect width="740" height="318" style="fill:#fcfcfb"/>
 <text x="16" y="26" style="fill:#0b0b0b" font-size="15" font-weight="600" text-anchor="start">Does “Please check” catch the wrong dates?</text>
-<text x="16" y="46" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">Wrong dates among those shown, holding back flagged dates first · 168 deadlines in 189 synthetic letters · 3</text>
-<text x="16" y="63" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">held-out splits, each as recorded once · claude-sonnet-5</text>
+<text x="16" y="46" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">Wrong among the deadlines kept, flagged ones held back first; a missed deadline has no flag, so it is kept ·</text>
+<text x="16" y="63" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">168 deadlines in 189 synthetic letters · 3 held-out splits, each as recorded once · claude-sonnet-5</text>
 <line x1="80" y1="266" x2="560" y2="266" style="stroke:#e1e0d9;stroke-width:1"/>
 <text x="72" y="270" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="end">0 %</text>
 <line x1="80" y1="224" x2="560" y2="224" style="stroke:#e1e0d9;stroke-width:1"/>
@@ -19,23 +19,23 @@
 <text x="240" y="284" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">80 %</text>
 <text x="400" y="284" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">90 %</text>
 <text x="560" y="284" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">100 %</text>
-<text x="320" y="304" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">share of dates shown</text>
+<text x="320" y="304" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">share of deadlines kept</text>
 <path d="M474.3,260.7 L560,261 L560,261" style="fill:none;stroke:#008300;stroke-width:2;stroke-linejoin:round"/>
-<polygon points="474.3,253 482,260.7 474.3,268.4 466.6,260.7" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, no flag: 1 of 159 wrong (0.6 %), 94.6 % of dates shown</title></polygon>
-<polygon points="560,253.3 567.7,261 560,268.7 552.3,261" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, no flag or “worth a second look”: 1 of 168 wrong (0.6 %), 100.0 % of dates shown</title></polygon>
-<polygon points="560,253.3 567.7,261 560,268.7 552.3,261" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, every date: 1 of 168 wrong (0.6 %), 100.0 % of dates shown</title></polygon>
+<polygon points="474.3,253 482,260.7 474.3,268.4 466.6,260.7" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, no flag: 1 of 159 wrong (0.6 %), 94.6 % of deadlines kept</title></polygon>
+<polygon points="560,253.3 567.7,261 560,268.7 552.3,261" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, no flag or “worth a second look”: 1 of 168 wrong (0.6 %), 100.0 % of deadlines kept</title></polygon>
+<polygon points="560,253.3 567.7,261 560,268.7 552.3,261" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool, every date: 1 of 168 wrong (0.6 %), 100.0 % of deadlines kept</title></polygon>
 <path d="M179,233.2 L502.9,240.1 L560,241" style="fill:none;stroke:#2a78d6;stroke-width:2;stroke-linejoin:round"/>
-<circle cx="179" cy="233.2" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, no flag: 5 of 128 wrong (3.9 %), 76.2 % of dates shown</title></circle>
-<circle cx="502.9" cy="240.1" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, no flag or “worth a second look”: 5 of 162 wrong (3.1 %), 96.4 % of dates shown</title></circle>
-<circle cx="560" cy="241" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, every date: 5 of 168 wrong (3.0 %), 100.0 % of dates shown</title></circle>
+<circle cx="179" cy="233.2" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, no flag: 5 of 128 wrong (3.9 %), 76.2 % of deadlines kept</title></circle>
+<circle cx="502.9" cy="240.1" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, no flag or “worth a second look”: 5 of 162 wrong (3.1 %), 96.4 % of deadlines kept</title></circle>
+<circle cx="560" cy="241" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung, every date: 5 of 168 wrong (3.0 %), 100.0 % of deadlines kept</title></circle>
 <path d="M455.2,201.8 L521.9,194.3 L560,196" style="fill:none;stroke:#eda100;stroke-width:2;stroke-linejoin:round"/>
-<rect x="450.4" y="197" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, no flag: 12 of 157 wrong (7.6 %), 93.5 % of dates shown</title></rect>
-<rect x="517.1" y="189.5" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, no flag or “worth a second look”: 14 of 164 wrong (8.5 %), 97.6 % of dates shown</title></rect>
-<rect x="555.2" y="191.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, every date: 14 of 168 wrong (8.3 %), 100.0 % of dates shown</title></rect>
+<rect x="450.4" y="197" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, no flag: 12 of 157 wrong (7.6 %), 93.5 % of deadlines kept</title></rect>
+<rect x="517.1" y="189.5" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, no flag or “worth a second look”: 14 of 164 wrong (8.5 %), 97.6 % of deadlines kept</title></rect>
+<rect x="555.2" y="191.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text, every date: 14 of 168 wrong (8.3 %), 100.0 % of deadlines kept</title></rect>
 <path d="M131.4,149.9 L531.4,103.1 L560,106" style="fill:none;stroke:#e87ba4;stroke-width:2;stroke-linejoin:round"/>
-<polygon points="131.4,142.5 138.9,155.8 124,155.8" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, no flag: 17 of 123 wrong (13.8 %), 73.2 % of dates shown</title></polygon>
-<polygon points="531.4,95.7 538.9,109 524,109" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, no flag or “worth a second look”: 32 of 165 wrong (19.4 %), 98.2 % of dates shown</title></polygon>
-<polygon points="560,98.6 567.4,111.9 552.6,111.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, every date: 32 of 168 wrong (19.0 %), 100.0 % of dates shown</title></polygon>
+<polygon points="131.4,142.5 138.9,155.8 124,155.8" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, no flag: 17 of 123 wrong (13.8 %), 73.2 % of deadlines kept</title></polygon>
+<polygon points="531.4,95.7 538.9,109 524,109" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, no flag or “worth a second look”: 32 of 165 wrong (19.4 %), 98.2 % of deadlines kept</title></polygon>
+<polygon points="560,98.6 567.4,111.9 552.6,111.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only, every date: 32 of 168 wrong (19.0 %), 100.0 % of deadlines kept</title></polygon>
 <text x="574" y="110" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="start">LLM only · 19.0 %</text>
 <text x="574" y="200" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="start">LLM + rules text · 8.3 %</text>
 <text x="574" y="245" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="start">Ordnung · 3.0 %</text>

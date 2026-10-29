@@ -207,14 +207,41 @@ def test_paired_cluster_bootstrap_reproduces_the_scorers_paired_difference() -> 
     assert (ours.diff, ours.lo, ours.hi) == (published.value, published.lo, published.hi)
 
 
-def test_paired_cluster_bootstrap_is_deterministic_and_degenerate_when_nothing_differs() -> None:
+def test_paired_cluster_bootstrap_is_deterministic_and_never_collapses_when_nothing_differs() -> None:
+    """When every resample gives the same difference (nothing differs, or every cluster differs alike), the
+    percentile interval would be a point ("+0.0 [+0.0, +0.0]"): the interval is then Bonett–Price over the clusters
+    (b: clusters where the first is ahead, c: behind), never of zero width."""
     clusters = [(1.0, 1.0, 1.0)] * 5 + [(2.0, 2.0, 2.0)] * 3
     result = stats.paired_cluster_bootstrap(clusters, resamples=500, seed=3)
-    assert (result.diff, result.lo, result.hi) == (0.0, 0.0, 0.0)
+    assert result.diff == 0.0 and result.method == "bonett-price over clusters"
+    assert (result.lo, result.hi) == pytest.approx(stats.bonett_price(0, 0, 8))
+    assert result.lo < 0.0 < result.hi
+    ahead = stats.paired_cluster_bootstrap([(1.0, 0.0, 1.0)] * 6, resamples=500, seed=3)
+    assert ahead.diff == 1.0 and (ahead.lo, ahead.hi) == pytest.approx(stats.bonett_price(6, 0, 6))
+    assert ahead.lo < 1.0
     varied = [(1.0, 0.0, 1.0), (0.0, 0.0, 1.0), (1.0, 1.0, 1.0), (0.0, 1.0, 1.0), (1.0, 0.0, 1.0)]
     first = stats.paired_cluster_bootstrap(varied, resamples=500, seed=3)
     assert first == stats.paired_cluster_bootstrap(varied, resamples=500, seed=3)
     assert first.lo <= first.diff <= first.hi and first.resamples == 500 and first.clusters == 5
+    assert first.method == "percentile"
+
+
+def test_cluster_bootstrap_of_a_rate_never_collapses_at_0_or_1() -> None:
+    """A mean over reads of 100 % (or 0 %) gets an exact bound over the clusters, never "100 % [100–100]"."""
+    everything = stats.cluster_bootstrap([(3.0, 3.0)] * 7 + [(6.0, 6.0)] * 3, resamples=500, seed=3)
+    assert everything.value == 1.0 and everything.method == "clopper-pearson over clusters"
+    assert (everything.lo, everything.hi) == pytest.approx(stats.clopper_pearson(10, 10))
+    assert everything.lo < 1.0
+    nothing = stats.cluster_bootstrap([(0.0, 3.0)] * 10, resamples=500, seed=3)
+    assert nothing.value == 0.0 and (nothing.lo, nothing.hi) == pytest.approx(stats.clopper_pearson(0, 10))
+    assert nothing.hi > 0.0
+    # every cluster at the same rate in between: the exact bounds of the nearest counts, still never a point
+    half = stats.cluster_bootstrap([(1.0, 2.0)] * 9, resamples=500, seed=3)
+    assert half.value == 0.5 and half.lo == pytest.approx(stats.clopper_pearson(4, 9)[0])
+    assert half.hi == pytest.approx(stats.clopper_pearson(5, 9)[1])
+    varied = stats.cluster_bootstrap([(1.0, 1.0), (0.0, 1.0), (2.0, 3.0), (1.0, 1.0)], resamples=500, seed=3)
+    assert varied.method == "percentile" and varied.lo <= varied.value <= varied.hi
+    assert stats.cluster_bootstrap([]).value is None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -293,3 +320,17 @@ def test_harm_weighted_loss_and_crossover() -> None:
     assert stats.crossover(2, 3, 19, 13) is None  # the other has more harmful dates: it never overtakes
     assert stats.crossover(2, 3, 0, 1) == -1.0  # the other is lower at every r ≥ 0
     assert math.isnan(stats.harm_loss(0, 0, 0, 1))
+
+
+def test_the_crossover_outcome_says_which_side_is_lower_and_where() -> None:
+    """(early a, harmful a, early b, harmful b): five outcomes, each with the side that is lower; ``r*`` only for a
+    crossing (a positive ratio), never a negative one counted as one."""
+    assert stats.crossover_outcome(2, 3, 13, 1) == ("a_then_b", 5.5)  # a lower until r* = 5.5, then b
+    assert stats.crossover_outcome(13, 1, 2, 3) == ("b_then_a", 5.5)  # b lower until r* = 5.5, then a
+    assert stats.crossover_outcome(2, 3, 0, 1) == ("b_lower", None)  # b fewer of both: lower at every r
+    assert stats.crossover_outcome(2, 3, 2, 1) == ("b_lower", None)  # as early, fewer harmful
+    assert stats.crossover_outcome(0, 1, 2, 3) == ("a_lower", None)
+    assert stats.crossover_outcome(1, 2, 3, 2) == ("a_lower", None)  # as harmful, fewer early
+    assert stats.crossover_outcome(3, 2, 1, 2) == ("b_lower", None)
+    assert stats.crossover_outcome(2, 2, 2, 2) == ("identical", None)
+    assert set(stats.CROSSOVER_OUTCOMES) == {"a_then_b", "b_then_a", "a_lower", "b_lower", "identical"}

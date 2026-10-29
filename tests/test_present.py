@@ -198,8 +198,15 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
         "Ordnung dates **97.0 %** exactly right (95 % CI 93.2–99.0), with **3 of 168** late or missed."
         in block
     )
-    assert "gets **81.0 %**, with **13** late or missed (31 vs 4 discordant, exact p < 0.001)." in block
-    assert "An agent given Ordnung's engine as a tool is level (99.4 %, 1 vs 5 discordant)" in block
+    # the accuracy test sits with the accuracy it tests, not with the harm count after it
+    assert "gets **81.0 %** (31 vs 4 discordant, exact p < 0.001), with **13** late or missed." in block
+    # Ordnung minus the agent is −2.4 points, cluster-bootstrap interval −5.4 to 0.0: the lower bound is not above
+    # −5 points, so the rule says "we cannot tell", never "level"
+    assert (
+        "An agent given Ordnung's engine as a tool scores 99.4 % (1 vs 5 discordant): we cannot tell whether "
+        "Ordnung is within 5 points of it (−2.4 points, 95 % CI −5.4 to +0.0)." in block
+    )
+    assert "is level" not in block
     assert "“Please check” caught 0 of Ordnung's 5 wrong dates" in block
     assert "**Ask:** 0 of 21 injected claims reach you (8 of 21 without the answer check;" in block
     assert "development set, not held out" in block
@@ -225,11 +232,18 @@ def _variant(doc: dict[str, Any], **changes: Any) -> dict[str, Any]:
             headline["paired"]["accuracy"][f"ordnung-vs-{key.removeprefix('verdict_')}"]["verdict"] = value
         elif key.startswith("diff_"):
             headline["paired"]["accuracy"][f"ordnung-vs-{key.removeprefix('diff_')}"]["diff"] = value
+        elif key.startswith("bootstrap_"):
+            headline["paired"]["accuracy"][f"ordnung-vs-{key.removeprefix('bootstrap_')}"]["bootstrap"] = (
+                value
+            )
         elif key == "caught":
             headline["flags"]["caught"] = value
         elif key == "set_aside":  # the end-to-end run's genuine obligations set aside (when it exists)
             if new.get("e2e"):
                 new["e2e"]["set_aside"] = value
+        elif key == "scam_in_calendar":  # … and its scam letters that put demands in the calendar
+            if new.get("e2e"):
+                new["e2e"]["scam"]["in_the_calendar"] = value
         else:
             raise KeyError(key)
     return new
@@ -253,11 +267,21 @@ def test_the_sentence_says_good_and_bad_results_the_same_way(doc: dict[str, Any]
     assert "scores lower (99.4 %" in agent_behind
     agent_unsettled = _flat(text.headline(_variant(doc, verdict_llm_rules_tool="suggestive")))
     assert "scores higher, not settled (99.4 %" in agent_unsettled
-    caught = _flat(text.readme_block(_variant(doc, caught=5, set_aside=0)))
+    # "level" only when the interval's lower bound is above −5 points (the pre-registered margin)
+    level = _flat(text.headline(_variant(doc, bootstrap_llm_rules_tool=[-0.04, 0.01])))
+    assert "is level within 5 points (99.4 %, 1 vs 5 discordant; −2.4 points, 95 % CI −4.0 to +1.0)" in level
+    assert "we cannot tell" not in level
+    cannot = _flat(text.headline(doc))
+    assert "we cannot tell whether Ordnung is within 5 points of it" in cannot and "is level" not in cannot
+    caught = _flat(text.readme_block(_variant(doc, caught=5, set_aside=0, scam_in_calendar=[])))
     assert "**Where it falls short:**" not in caught and "caught 5 of Ordnung's 5 wrong dates" in caught
     if doc.get("e2e"):  # every wrong date caught, but real obligations still set aside: still short
-        set_aside = _flat(text.readme_block(_variant(doc, caught=5)))
+        set_aside = _flat(text.readme_block(_variant(doc, caught=5, scam_in_calendar=[])))
         assert "**Where it falls short:**" in set_aside and "set aside as a scam" in set_aside
+        scam = _flat(
+            text.readme_block(_variant(doc, caught=5, set_aside=0))
+        )  # a scam's demand in the calendar
+        assert "**Where it falls short:**" in scam and "scam letters still put their demands" in scam
 
 
 # --------------------------------------------------------------------------------------------------
@@ -293,9 +317,43 @@ def test_the_report_has_its_sections_in_the_order_an_expert_reads(doc: dict[str,
 
 def test_the_report_corrects_the_rules_text_claim(doc: dict[str, Any]) -> None:
     page = _flat(text.report(doc))
-    assert "14 vs 5 discordant, exact p 0.064 (mid-p 0.041, Holm 0.083): suggestive, not settled" in page
+    assert (
+        "14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, "
+        "not settled" in page
+    )
     assert "+5.4 points, 95 % interval +0.6 to +10.6" in page  # what was published, shown as superseded
     assert "not pre-registered" in page
+    # the card names the tests a verdict rests on
+    assert "exact McNemar with Holm for paired comparisons" not in page
+    assert (
+        "for paired comparisons, exact McNemar and a sign-flip test over letter clusters, each with Holm"
+        in page
+    )
+
+
+def test_every_headline_number_0_3_0_published_is_shown_beside_its_replacement(doc: dict[str, Any]) -> None:
+    """The 0.3.0 README published an interval, a safety count and three differences for the same three held-out
+    splits; each one the new methods replace is listed old beside new, from the re-analysis's own fields."""
+    page = text.report(doc)
+    table = page.split("**What changed since 0.3.0.**", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in table.splitlines() if line.startswith("| ")]
+    assert rows[0] == "| Number | As 0.3.0 published it | Now |"
+    flat = "\n".join(rows)
+    assert (
+        "| Ordnung, exact date right | 97.0 % [94.3–99.4] (percentile bootstrap over letters) | "
+        "97.0 % [93.2–99.0] (Clopper–Pearson) |" in flat
+    )
+    assert (
+        "| Ordnung, the safety count | 2 of 168 dangerously late (a missed deadline left out) | "
+        "3 of 168 late or missed |" in flat
+    )
+    assert "| Ordnung minus LLM only | +16.1 points [+9.8 to +23.1] | +16.1 points [+9.3 to +22.5]" in flat
+    assert (
+        "| Ordnung minus LLM + rules text | +5.4 points [+0.6 to +10.6] | +5.4 points [+0.1 to +10.5]" in flat
+    )
+    assert (
+        "| Ordnung minus LLM + rules tool | −2.4 points [−5.3 to +0.0] | −2.4 points [−5.6 to +0.9]" in flat
+    )
 
 
 def test_a_harm_comparison_says_who_has_fewer_harmful_dates(doc: dict[str, Any]) -> None:
@@ -307,7 +365,11 @@ def test_a_harm_comparison_says_who_has_fewer_harmful_dates(doc: dict[str, Any])
         if line.startswith(("| Late or missed | LLM only", "| Late | LLM only"))
     ]
     assert len(harm) == 2
-    assert all(line.endswith("| fewer with Ordnung, clearly |") for line in harm), harm
+    # late alone (2 vs 13) clears the exact and the clustered test after Holm; late or missed (3 vs 13: exact Holm
+    # 0.064, cluster sign-flip Holm 0.089) clears only the item-level mid-p, so it is not called clear
+    late_or_missed, late = harm
+    assert late_or_missed.endswith("| fewer with Ordnung, suggestive, not settled |"), late_or_missed
+    assert late.endswith("| fewer with Ordnung, clearly |"), late
     accuracy = [line for line in page.splitlines() if line.startswith("| Exact date right | LLM only")]
     assert accuracy and accuracy[0].endswith("| Ordnung ahead, clearly |")
 
@@ -352,8 +414,17 @@ def test_sections_without_results_yet_say_so(doc: dict[str, Any]) -> None:
     bare["e2e"] = None
     bare["ablation"] = None
     page = _flat(text.report(bare))
-    assert "The pre-registered final run on the version that ships has not been recorded yet" in page
+    assert "The final run on the version that ships has not been recorded yet" in page
     assert "Not yet run: the targeted injections and distractor dates" in page
+    # nothing is pre-registered yet: the pages say what will be, never that it is
+    for claim in (
+        "The final run is.",
+        "pre-registered stress cells",
+        "pre-registered: not yet",
+        "The pre-registered final",
+    ):
+        assert claim not in page, claim
+    assert "will be pre-registered before it is recorded" in page
     assert "No results file of the check ablation yet" in page
     assert "No results file of the end-to-end run yet" in page
 
@@ -394,12 +465,64 @@ def test_the_ablation_and_end_to_end_sections_fill_from_their_results_files(doc:
         "late_reminders": 0,
         "not_reminded": {"set_aside:scam_signs": 15},
         "set_aside": 15,
+        "scam": {
+            "letters": 12,
+            "kept_off_the_calendar": {"k": 10, "n": 12, "value": 10 / 12, "ci": [0.516, 0.979]},
+            "in_the_calendar": [{"entry_id": "x-scam-1", "events": 1}, {"entry_id": "x-scam-2", "events": 2}],
+            "without_scam_idea": ["x-scam-1", "x-scam-2"],
+            "genuine_letters": 240,
+            "false_scam_idea": {"k": 13, "n": 240, "value": 13 / 240, "ci": [0.029, 0.091]},
+        },
     }
     page = _flat(text.report(with_both))
     assert "| All code checks off | 161/168 | 4 | 1 | 2 |" in page
     assert "209 of 224" in page and "set aside as a scam: 15" in page
+    assert (
+        "2 of 12 scam letters still put their demands in the calendar: `x-scam-1` (1 event) and `x-scam-2` "
+        "(2 events)" in page
+    )
+    assert "2 of the 12 got no scam warning (`x-scam-1` and `x-scam-2`)" in page
+    assert "13 of 240 genuine letters got a scam warning by mistake" in page
     block = _flat(text.readme_block(with_both))
     assert "15 of 224 real obligations got no reminder because their letter was set aside as a scam" in block
+    assert "2 of 12 scam letters still put their demands in the calendar" in block
+    # every scam letter kept off the calendar: nothing to say in the README's short line
+    kept = copy.deepcopy(with_both)
+    kept["e2e"]["scam"]["in_the_calendar"] = []
+    assert "in the calendar" not in _flat(text.readme_block(kept))
+
+
+def test_a_missed_deadline_is_counted_with_the_deadlines_without_a_flag_and_said_so(
+    doc: dict[str, Any],
+) -> None:
+    """A missed deadline shows no date and no flag: the selective numbers count it with the unflagged ones
+    (Ordnung's 123 of 128), so the labels say so rather than "dates shown"."""
+    page = text.report(doc)
+    assert "Unflagged dates right" not in page and "Harmful among unflagged" not in page
+    assert (
+        "| Without a flag: right (a missed deadline counts here) | Without a flag: late or missed |" in page
+    )
+    assert "| 123/128 (96.1 %) | 3/128 |" in page
+    for theme in ("light", "dark"):
+        svg = charts.svg("risk-coverage", doc, theme)
+        assert "among those shown" not in svg and "a missed deadline has no flag" in svg
+
+
+def test_the_end_to_end_scam_result_is_published_from_its_results_file(doc: dict[str, Any]) -> None:
+    """The end-to-end run's scam letters, as the results file holds them: 2 of 12 put payment demands in the
+    calendar with no scam warning; the report and the README say so by id."""
+    scam = doc["e2e"]["scam"]
+    assert scam["letters"] == 12
+    assert (scam["kept_off_the_calendar"]["k"], scam["kept_off_the_calendar"]["n"]) == (10, 12)
+    assert scam["in_the_calendar"] == [
+        {"entry_id": "holdout3-adversarial-scam-1", "events": 1},
+        {"entry_id": "holdout3-adversarial-scam-2", "events": 2},
+    ]
+    assert (scam["false_scam_idea"]["k"], scam["false_scam_idea"]["n"]) == (13, 240)
+    page = _flat(text.report(doc))
+    assert "2 of 12 scam letters still put their demands in the calendar" in page
+    assert "`holdout3-adversarial-scam-1` (1 event) and `holdout3-adversarial-scam-2` (2 events)" in page
+    assert "2 of 12 scam letters still put their demands in the calendar" in _flat(text.readme_block(doc))
 
 
 def test_the_history_page_keeps_the_runs_as_they_were_published(rendered: dict[str, str]) -> None:

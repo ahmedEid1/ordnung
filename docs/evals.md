@@ -15,9 +15,9 @@
 | Primary metric | Exact date right: the deadline's date exactly, no tolerance |
 | Safety metric | Harmful: late or missed (the person would act too late, or never) |
 | Held-out protocol | Each split written before any recording on it, recorded once, nothing tuned on it ([Data and labels](#3-data-and-labels)) |
-| Pre-registration | Not yet: these statistics were chosen after the results were known (**not pre-registered**). The final run on the version that ships is pre-registered before it is recorded |
+| Pre-registration | Not yet: these statistics were chosen after the results were known (**not pre-registered**). The final run on the version that ships will be pre-registered before it is recorded |
 | Reads | One read per letter |
-| Intervals | Clopper–Pearson for a rate; exact McNemar with Holm for paired comparisons ([Statistics](#7-statistics)) |
+| Intervals | Clopper–Pearson for a rate; for paired comparisons, exact McNemar and a sign-flip test over letter clusters, each with Holm ([Statistics](#7-statistics)) |
 | Replay | Every number replays from the recorded answers with no model call ([Reproduce](#15-reproduce)) |
 | Sources | `2026-10-29-claude-sonnet-5-heldout-reanalysis.json`, from `2026-09-30-claude-sonnet-5-holdout.json`, `2026-10-01-claude-sonnet-5-holdout2.json` and `2026-10-06-claude-sonnet-5-holdout3.json` |
 | Newest recording | holdout3, 2026-10-06, commit `55bedab` |
@@ -26,9 +26,9 @@
 
 **Held out, read once.** On 168 deadlines in 189 synthetic letters that nothing was tuned on, Ordnung dates
 **97.0 %** exactly right (95 % CI 93.2–99.0), with **3 of 168** late or missed. The same model doing the date
-arithmetic itself gets **81.0 %**, with **13** late or missed (31 vs 4 discordant, exact p < 0.001). An agent given
-Ordnung's engine as a tool is level (99.4 %, 1 vs 5 discordant): what the pipeline adds is a receipt and a checked
-quote for every date.
+arithmetic itself gets **81.0 %** (31 vs 4 discordant, exact p < 0.001), with **13** late or missed. An agent given
+Ordnung's engine as a tool scores 99.4 % (1 vs 5 discordant): we cannot tell whether Ordnung is within 5 points of
+it (−2.4 points, 95 % CI −5.4 to +0.0).
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-held-out-dark.svg"><img src="assets/eval-held-out-light.svg" width="740" alt="Dot plot of 168 held-out deadlines, with 95 % Clopper–Pearson intervals. LLM + rules tool: 167 of 168 exactly right (99.4 %, 95 % CI 96.7–100.0); 1 late, 0 missed, 0 early: 1 of 168 late or missed; Ordnung: 163 of 168 exactly right (97.0 %, 95 % CI 93.2–99.0); 2 late, 1 missed, 2 early: 3 of 168 late or missed; LLM + rules text: 154 of 168 exactly right (91.7 %, 95 % CI 86.4–95.4); 1 late, 0 missed, 13 early: 1 of 168 late or missed; LLM only: 136 of 168 exactly right (81.0 %, 95 % CI 74.2–86.6); 13 late, 0 missed, 19 early: 13 of 168 late or missed."></picture>
 
@@ -42,8 +42,8 @@ quote for every date.
 Four findings, each with its paired test on the same deadlines:
 
 - Against the model alone: 31 vs 4 discordant, exact p < 0.001: Ordnung ahead, clearly.
-- Against the rules-text prompt: 14 vs 5 discordant, exact p 0.064 (mid-p 0.041, Holm 0.083): suggestive, not
-  settled.
+- Against the rules-text prompt: 14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted
+  0.083): suggestive, not settled.
 - Against the agent with the engine as a tool: 1 vs 5 discordant, exact p 0.219: no clear difference.
 - “Please check” caught 0 of Ordnung's 5 wrong dates ([Safety and selective
   prediction](#10-safety-and-selective-prediction)).
@@ -74,7 +74,7 @@ photos of them. Each label is the generator's own arithmetic, checked again by `
 has template variants of its own. A photo repeats the dated deadlines of the PDF it was made from, so a letter and
 its photo are one cluster in the statistics.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-timeline-dark.svg"><img src="assets/eval-timeline-light.svg" width="740" alt="Timeline of the benchmark's splits, in the order they were written. dev: prompts tuned on it; recorded 2026-09-30; letters (photos, adversarial) 28 (4, 0); dated deadlines 25; Ordnung not a held-out number; test: iterated on; recorded 2026-09-25; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung not a held-out number; holdout: held out, code fixed after; recorded 2026-09-30; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 53 of 56; holdout2: held out, code fixed after; recorded 2026-10-01; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 54 of 56; holdout3: frozen code, blind labels; recorded 2026-10-06; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 56 of 56; holdout4: pre-registered: not yet written; recorded not yet; letters (photos, adversarial) not yet; dated deadlines not yet; Ordnung not a held-out number."></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-timeline-dark.svg"><img src="assets/eval-timeline-light.svg" width="740" alt="Timeline of the benchmark's splits, in the order they were written. dev: prompts tuned on it; recorded 2026-09-30; letters (photos, adversarial) 28 (4, 0); dated deadlines 25; Ordnung not a held-out number; test: iterated on; recorded 2026-09-25; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung not a held-out number; holdout: held out, code fixed after; recorded 2026-09-30; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 53 of 56; holdout2: held out, code fixed after; recorded 2026-10-01; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 54 of 56; holdout3: frozen code, blind labels; recorded 2026-10-06; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 56 of 56; holdout4: final run: not yet written, to be pre-registered; recorded not yet; letters (photos, adversarial) not yet; dated deadlines not yet; Ordnung not a held-out number."></picture>
 
 | Split | Recorded | Letters (photos, adversarial) | Dated deadlines | Protocol | Ordnung, as recorded |
 |---|---|---|---|---|---|
@@ -83,7 +83,7 @@ its photo are one cluster in the statistics.
 | holdout | 2026-09-30 | 63 (11, 12) | 56 | held out, code fixed after | 53 of 56 |
 | holdout2 | 2026-10-01 | 63 (11, 12) | 56 | held out, code fixed after | 54 of 56 |
 | holdout3 | 2026-10-06 | 63 (11, 12) | 56 | frozen code, blind labels | 56 of 56 |
-| holdout4 | not yet | not yet | not yet | pre-registered: not yet written | not a held-out number |
+| holdout4 | not yet | not yet | not yet | final run: not yet written, to be pre-registered | not a held-out number |
 
 The held-out splits were written before any recording on them, by agents that saw neither the reading code nor the
 prompts nor any result; holdout2's labels were audited blind, and holdout3's dates were derived by two more agents
@@ -130,9 +130,9 @@ page](evals-history.md) lists them), the baselines' prompts were tuned on the de
 
 ### 6.1 The final run (three reads)
 
-The pre-registered final run on the version that ships has not been recorded yet: its split, holdout4, is written
-after the code freeze. When it is recorded, its numbers take the headline by the pre-registered rule, whatever they
-show.
+The final run on the version that ships has not been recorded yet: its split, holdout4, is written after the code
+freeze, and the run will be pre-registered before it is recorded. When it is recorded, its numbers take the headline
+by the rule the pre-registration sets, whatever they show.
 
 ### 6.2 The held-out splits pooled, as recorded
 
@@ -176,30 +176,42 @@ One interval method per kind of number. A rate: Clopper–Pearson, exact and nev
 the same deadlines: exact McNemar on the discordant pairs (*b*: only Ordnung right, *c*: only the baseline right),
 its mid-p beside it, Holm within each family of three, a Bonett–Price interval, and a sign-flip test and paired
 bootstrap over letter clusters (a letter and its photo; 100,000 draws and 10,000 resamples, seed 20261029). Verdict:
-clear: Holm-adjusted mid-p below 0.05 and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p
-below 0.05; else no clear difference.
+clear: the Holm-adjusted exact p and the Holm-adjusted cluster sign-flip p both below 0.05, and the Bonett-Price
+interval excludes 0; suggestive: the unadjusted mid-p below 0.05; else no clear difference.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-differences-dark.svg"><img src="assets/eval-differences-light.svg" width="740" alt="Forest plot of paired differences on the same held-out deadlines, Ordnung minus each baseline, in percentage points with 95 % paired letter-cluster bootstrap intervals. Ordnung minus LLM + rules tool: exact dates −2.4 [−5.4, +0.0] points, 1 vs 5 discordant, exact p 0.219; harmful dates +1.2 [−1.2, +3.6] points, 3 vs 1 discordant, exact p 0.625. Ordnung minus LLM + rules text: exact dates +5.4 [+0.6, +10.4] points, 14 vs 5 discordant, exact p 0.064; harmful dates +1.2 [−1.2, +3.6] points, 3 vs 1 discordant, exact p 0.625. Ordnung minus LLM only: exact dates +16.1 [+9.4, +23.1] points, 31 vs 4 discordant, exact p < 0.001; harmful dates −6.0 [−10.8, −1.2] points, 3 vs 13 discordant, exact p 0.021."></picture>
 
-| Metric | Ordnung vs | b vs c | Difference, points [Bonett–Price 95 %] | Exact p | Mid-p | Holm (mid-p) | Cluster sign-flip p | Verdict |
-|---|---|---|---|---|---|---|---|---|
-| Exact date right | LLM + rules tool | 1 vs 5 | −2.4 [−5.6 to +0.9] | 0.219 | 0.125 | 0.125 | 0.219 | no clear difference |
-| Exact date right | LLM + rules text | 14 vs 5 | +5.4 [+0.1 to +10.5] | 0.064 | 0.041 | 0.083 | 0.064 | Ordnung ahead, suggestive, not settled |
-| Exact date right | LLM only | 31 vs 4 | +16.1 [+9.3 to +22.5] | < 0.001 | < 0.001 | < 0.001 | < 0.001 | Ordnung ahead, clearly |
-| Late or missed | LLM + rules tool | 3 vs 1 | +1.2 [−1.6 to +4.0] | 0.625 | 0.375 | 0.750 | 0.625 | no clear difference |
-| Late or missed | LLM + rules text | 3 vs 1 | +1.2 [−1.6 to +4.0] | 0.625 | 0.375 | 0.750 | 0.625 | no clear difference |
-| Late or missed | LLM only | 3 vs 13 | −6.0 [−10.7 to −1.1] | 0.021 | 0.013 | 0.038 | 0.030 | fewer with Ordnung, clearly |
-| Late | LLM + rules tool | 2 vs 1 | +0.6 [−2.0 to +3.2] | 1.000 | 0.625 | 1.000 | 1.000 | no clear difference |
-| Late | LLM + rules text | 2 vs 1 | +0.6 [−2.0 to +3.2] | 1.000 | 0.625 | 1.000 | 1.000 | no clear difference |
-| Late | LLM only | 2 vs 13 | −6.5 [−11.1 to −1.8] | 0.007 | 0.004 | 0.013 | 0.011 | fewer with Ordnung, clearly |
+| Metric | Ordnung vs | b vs c | Difference, points [Bonett–Price 95 %] | Exact p | Holm (exact) | Mid-p | Holm (mid-p) | Cluster sign-flip p | Holm (sign-flip) | Verdict |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Exact date right | LLM + rules tool | 1 vs 5 | −2.4 [−5.6 to +0.9] | 0.219 | 0.219 | 0.125 | 0.125 | 0.219 | 0.219 | no clear difference |
+| Exact date right | LLM + rules text | 14 vs 5 | +5.4 [+0.1 to +10.5] | 0.064 | 0.127 | 0.041 | 0.083 | 0.064 | 0.127 | Ordnung ahead, suggestive, not settled |
+| Exact date right | LLM only | 31 vs 4 | +16.1 [+9.3 to +22.5] | < 0.001 | < 0.001 | < 0.001 | < 0.001 | < 0.001 | < 0.001 | Ordnung ahead, clearly |
+| Late or missed | LLM + rules tool | 3 vs 1 | +1.2 [−1.6 to +4.0] | 0.625 | 1.000 | 0.375 | 0.750 | 0.625 | 1.000 | no clear difference |
+| Late or missed | LLM + rules text | 3 vs 1 | +1.2 [−1.6 to +4.0] | 0.625 | 1.000 | 0.375 | 0.750 | 0.625 | 1.000 | no clear difference |
+| Late or missed | LLM only | 3 vs 13 | −6.0 [−10.7 to −1.1] | 0.021 | 0.064 | 0.013 | 0.038 | 0.030 | 0.089 | fewer with Ordnung, suggestive, not settled |
+| Late | LLM + rules tool | 2 vs 1 | +0.6 [−2.0 to +3.2] | 1.000 | 1.000 | 0.625 | 1.000 | 1.000 | 1.000 | no clear difference |
+| Late | LLM + rules text | 2 vs 1 | +0.6 [−2.0 to +3.2] | 1.000 | 1.000 | 0.625 | 1.000 | 1.000 | 1.000 | no clear difference |
+| Late | LLM only | 2 vs 13 | −6.5 [−11.1 to −1.8] | 0.007 | 0.022 | 0.004 | 0.013 | 0.011 | 0.034 | fewer with Ordnung, clearly |
 
 **An earlier claim, corrected.** The README said Ordnung is ahead of the rules-text prompt by “+5.4 points, 95 %
 interval +0.6 to +10.6” (a percentile bootstrap over letters). The exact test gives 14 vs 5 discordant, exact p
-0.064 (mid-p 0.041, Holm 0.083): suggestive, not settled. Only 19 of 168 deadlines tell the two apart: a difference
-of this size needs more letters to be settled.
+0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, not settled. Only 19 of 168 deadlines
+tell the two apart: a difference of this size needs more letters to be settled.
+
+**What changed since 0.3.0.** The 0.3.0 README published these numbers for the same three held-out splits; the
+methods above replace them (the [history page](evals-history.md) keeps the page as it was):
+
+| Number | As 0.3.0 published it | Now |
+|---|---|---|
+| Ordnung, exact date right | 97.0 % [94.3–99.4] (percentile bootstrap over letters) | 97.0 % [93.2–99.0] (Clopper–Pearson) |
+| Ordnung, the safety count | 2 of 168 dangerously late (a missed deadline left out) | 3 of 168 late or missed |
+| Ordnung minus LLM only | +16.1 points [+9.8 to +23.1] | +16.1 points [+9.3 to +22.5] (Bonett–Price; cluster bootstrap +9.4 to +23.1), exact p < 0.001: Ordnung ahead, clearly |
+| Ordnung minus LLM + rules text | +5.4 points [+0.6 to +10.6] | +5.4 points [+0.1 to +10.5] (Bonett–Price; cluster bootstrap +0.6 to +10.4), exact p 0.064: Ordnung ahead, suggestive, not settled |
+| Ordnung minus LLM + rules tool | −2.4 points [−5.3 to +0.0] | −2.4 points [−5.6 to +0.9] (Bonett–Price; cluster bootstrap −5.4 to +0.0), exact p 0.219: no clear difference |
 
 Weighing harm against early dates: Ordnung's harm-weighted loss is the lower one until a late or missed date costs
-5.5 early ones (95 % bootstrap range 1.3 to never).
+5.5 early ones; in 76 % of 2,000 resamples of the letters the losses cross the same way (95 % of those crossings
+between 1.2 and 16.0), and in 24 % Ordnung's loss is the lower one whatever a harmful date costs.
 
 The held-out splits as recorded once, each with the code and prompts of its day, pooled and re-analysed with the
 final run's statistics after their results were known. Labelled **not pre-registered**.
@@ -254,8 +266,8 @@ Text PDFs against phone photos, every condition (a photo is read by the model fi
 | LLM + rules text | 125/138 (90.6 %) [84.4–94.9] | 29/30 (96.7 %) [82.8–99.9] |
 | LLM only | 110/138 (79.7 %) [72.0–86.1] | 26/30 (86.7 %) [69.3–96.2] |
 
-Not yet run: the targeted injections and distractor dates of the pre-registered stress cells
-(`scripts/eval_perturb.py`), on held-out letters re-rendered with one planted paragraph each.
+Not yet run: the targeted injections and distractor dates of the planned stress cells, to be pre-registered with the
+final run (`scripts/eval_perturb.py`), on held-out letters re-rendered with one planted paragraph each.
 
 ## 10. Safety and selective prediction
 
@@ -266,12 +278,12 @@ Not yet run: the targeted injections and distractor dates of the pre-registered 
 | LLM + rules text | 1/168 [0.0–3.3] | 1 | 0 | 3 |
 | LLM only | 13/168 [4.2–12.9] | 13 | 0 | 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2 |
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-risk-coverage-dark.svg"><img src="assets/eval-risk-coverage-light.svg" width="740" alt="Risk against coverage: of the dates a condition would show if it held back the flagged ones, the share that is wrong. LLM + rules tool: no flag 1 of 159 (0.6 %; 94.6 % shown), no flag or “worth a second look” 1 of 168 (0.6 %; 100.0 % shown), every date 1 of 168 (0.6 %; 100.0 % shown); Ordnung: no flag 5 of 128 (3.9 %; 76.2 % shown), no flag or “worth a second look” 5 of 162 (3.1 %; 96.4 % shown), every date 5 of 168 (3.0 %; 100.0 % shown); LLM + rules text: no flag 12 of 157 (7.6 %; 93.5 % shown), no flag or “worth a second look” 14 of 164 (8.5 %; 97.6 % shown), every date 14 of 168 (8.3 %; 100.0 % shown); LLM only: no flag 17 of 123 (13.8 %; 73.2 % shown), no flag or “worth a second look” 32 of 165 (19.4 %; 98.2 % shown), every date 32 of 168 (19.0 %; 100.0 % shown)."></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/eval-risk-coverage-dark.svg"><img src="assets/eval-risk-coverage-light.svg" width="740" alt="Risk against coverage: of the deadlines a condition would keep if it held back the flagged ones, the share that is wrong (a missed deadline has no flag, so it is kept). LLM + rules tool: no flag 1 of 159 (0.6 %; 94.6 % kept), no flag or “worth a second look” 1 of 168 (0.6 %; 100.0 % kept), every date 1 of 168 (0.6 %; 100.0 % kept); Ordnung: no flag 5 of 128 (3.9 %; 76.2 % kept), no flag or “worth a second look” 5 of 162 (3.1 %; 96.4 % kept), every date 5 of 168 (3.0 %; 100.0 % kept); LLM + rules text: no flag 12 of 157 (7.6 %; 93.5 % kept), no flag or “worth a second look” 14 of 164 (8.5 %; 97.6 % kept), every date 14 of 168 (8.3 %; 100.0 % kept); LLM only: no flag 17 of 123 (13.8 %; 73.2 % kept), no flag or “worth a second look” 32 of 165 (19.4 %; 98.2 % kept), every date 32 of 168 (19.0 %; 100.0 % kept)."></picture>
 
 Ordnung's “Please check” caught 0 of its 5 wrong dates: it is safer because it makes fewer errors, not because it
 flags them.
 
-| Condition | Wrong dates “Please check” caught | Wrong dates any flag caught | Unflagged dates right | Harmful among unflagged | AURC (excess over a perfect flag) | AUROC |
+| Condition | Wrong dates “Please check” caught | Wrong dates any flag caught | Without a flag: right (a missed deadline counts here) | Without a flag: late or missed | AURC (excess over a perfect flag) | AUROC |
 |---|---|---|---|---|---|---|
 | LLM + rules tool | 0 of 1 | 0 of 1 | 158/159 (99.4 %) | 1/159 | 0.0063 (0.0062) | 0.47 |
 | Ordnung | 0 of 5 | 0 of 5 | 123/128 (96.1 %) | 3/128 | 0.0378 (0.0373) | 0.38 |
@@ -287,8 +299,9 @@ Harm-weighted loss per 100 deadlines, early + r × harmful, for a harmful date t
 | LLM + rules text | 8.3 | 8.9 | 10.7 | 13.7 | 19.6 | 37.5 |
 | LLM only | 19.0 | 26.8 | 50.0 | 88.7 | 166.1 | 398.2 |
 
-Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones (95 % bootstrap range
-1.3 to never).
+Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones; in 76 % of 2,000
+resamples of the letters the losses cross the same way (95 % of those crossings between 1.2 and 16.0), and in 24 %
+Ordnung's loss is the lower one whatever a harmful date costs.
 
 ## 11. Failure analysis
 
@@ -344,11 +357,17 @@ one only after the deadline. The stored dates equal the replay without the sende
 
 Not reminded, by cause: set aside as a scam: 15.
 
+2 of 12 scam letters still put their demands in the calendar: `holdout3-adversarial-scam-1` (1 event) and
+`holdout3-adversarial-scam-2` (2 events); 10 of 12 kept them off it (95 % CI 51.6–97.9). 2 of the 12 got no scam
+warning (`holdout3-adversarial-scam-1` and `holdout3-adversarial-scam-2`). 13 of 240 genuine letters got a scam
+warning by mistake (95 % CI 2.9–9.1).
+
 ## 14. Limitations
 
 - The letters are synthetic, one or two clean pages each: real post is messier.
 - The held-out splits were recorded with the code and prompts of their day; pooled, they mix versions.
-- These statistics were chosen after the results were known: **not pre-registered**. The final run is.
+- These statistics were chosen after the results were known: **not pre-registered**. The final run will be
+  pre-registered before it is recorded.
 - One read per letter: run-to-run noise is not measured yet (the final run reads each letter three times).
 - The labels are code, audited by agents of the same model family; no lawyer reviewed the rules.
 - The letter families leave out the rarer high-stakes kinds the engine covers; the final run adds a small set of new

@@ -65,12 +65,14 @@
    "paired_one_read": "exact McNemar (two-sided) on the discordant pairs, mid-p beside it; Bonett-Price interval",
    "paired_clustered": "sign-flip test over letter clusters (exact up to 20 non-zero clusters, else 100000 seeded draws); paired cluster bootstrap, 10000 resamples, percentile interval",
    "multiplicity": "Holm within each family",
-   "verdict": "clear: Holm-adjusted mid-p below 0.05 and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p below 0.05; else no clear difference",
+   "verdict": "clear: the Holm-adjusted exact p and the Holm-adjusted cluster sign-flip p both below 0.05, and the Bonett-Price interval excludes 0; suggestive: the unadjusted mid-p below 0.05; else no clear difference",
    "harmful": "late or missed",
-   "tiers": "please_check: low confidence, Please check, or found without a date; second_look: medium confidence; none: no flag, or missed",
+   "tiers": "please_check: low confidence, Please check, or found without a date; second_look: medium confidence; none: no flag, or missed (a missed deadline shows nothing, so it counts among the deadlines without a flag)",
+   "selective_reads": "one read: every item once; over repeated reads, read 1's items, and each wrong date counted once (caught: flagged Please check in every read in which it was wrong)",
+   "mean_over_reads": "cluster bootstrap, percentile interval; Clopper-Pearson over the clusters when every resample is equal",
    "aurc": "risk-coverage from the most confident tier down, errors spread evenly within a tier",
    "loss": "per 100 scored items: early + r * harmful",
-   "crossover": "r at which the losses are equal; letter-cluster bootstrap, 2000 resamples, percentile interval (null: never)"
+   "crossover": "r at which the losses are equal, when they cross; letter-cluster bootstrap, 2000 resamples: the share of each outcome (a lower then b, b lower then a, a lower at every r, b lower at every r, identical), and the percentile interval of r over the resamples that cross the same way as the point estimate"
   }
  },
  "items": 168,
@@ -1237,7 +1239,8 @@
      "hi": 0.2307692308,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.03963539e-05,
     "holm_midp": 5.824724212e-06,
@@ -1277,7 +1280,8 @@
      "hi": 0.1040462428,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 0.1271362305,
     "holm_midp": 0.08277893066,
@@ -1317,7 +1321,8 @@
      "hi": 0.0,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 0.21875,
     "holm_midp": 0.125,
@@ -1359,11 +1364,12 @@
      "hi": -0.01226993865,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 0.06381225586,
     "holm_midp": 0.03817749023,
-    "verdict": "clear"
+    "verdict": "suggestive"
    },
    "ordnung-vs-llm_rules_text": {
     "n": 168,
@@ -1392,7 +1398,8 @@
      "hi": 0.03636363636,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.0,
     "holm_midp": 0.75,
@@ -1425,7 +1432,8 @@
      "hi": 0.03636363636,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.0,
     "holm_midp": 0.75,
@@ -1460,7 +1468,8 @@
      "hi": -0.02312138728,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 0.02215576172,
     "holm_midp": 0.01254272461,
@@ -1500,7 +1509,8 @@
      "hi": 0.02825260015,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.0,
     "holm_midp": 1.0,
@@ -1540,7 +1550,8 @@
      "hi": 0.02825260015,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.0,
     "holm_midp": 1.0,
@@ -1582,7 +1593,8 @@
      "hi": 0.25,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 1.862645149e-09,
     "holm_midp": 9.313225746e-10,
@@ -1622,7 +1634,8 @@
      "hi": 0.119760479,
      "clusters": 129,
      "resamples": 10000,
-     "seed": 20261029
+     "seed": 20261029,
+     "method": "percentile"
     },
     "holm_exact": 0.000244140625,
     "holm_midp": 0.0001220703125,
@@ -1647,12 +1660,20 @@
     3,
     13
    ],
+   "outcome": "a_lower",
    "r_star": null,
-   "share_with_crossover": 0.0025,
+   "shares": {
+    "a_then_b": 0.0025,
+    "b_then_a": 0.0,
+    "a_lower": 0.9975,
+    "b_lower": 0.0,
+    "identical": 0.0
+   },
    "bootstrap": {
     "lo": null,
     "median": null,
     "hi": null,
+    "draws": 0,
     "resamples": 2000,
     "seed": 20261029
    }
@@ -1666,12 +1687,20 @@
     3,
     1
    ],
+   "outcome": "a_then_b",
    "r_star": 5.5,
-   "share_with_crossover": 0.762,
+   "shares": {
+    "a_then_b": 0.7615,
+    "b_then_a": 0.0,
+    "a_lower": 0.238,
+    "b_lower": 0.0005,
+    "identical": 0.0
+   },
    "bootstrap": {
-    "lo": 1.284821429,
-    "median": 6.0,
-    "hi": null,
+    "lo": 1.168333333,
+    "median": 4.5,
+    "hi": 16.0,
+    "draws": 1523,
     "resamples": 2000,
     "seed": 20261029
    }
@@ -1685,12 +1714,20 @@
     3,
     1
    ],
-   "r_star": -1.0,
-   "share_with_crossover": 0.762,
+   "outcome": "b_lower",
+   "r_star": null,
+   "shares": {
+    "a_then_b": 0.0,
+    "b_then_a": 0.0905,
+    "a_lower": 0.0095,
+    "b_lower": 0.8865,
+    "identical": 0.0135
+   },
    "bootstrap": {
-    "lo": -4.0,
-    "median": -0.5,
+    "lo": null,
+    "median": null,
     "hi": null,
+    "draws": 0,
     "resamples": 2000,
     "seed": 20261029
    }
@@ -3150,6 +3187,7 @@
    "c": 5,
    "diff": 0.05357142857,
    "exact_p": 0.06356811523,
+   "holm_exact": 0.1271362305,
    "midp": 0.04138946533,
    "holm_midp": 0.08277893066,
    "bonett_price": [
@@ -3157,7 +3195,7 @@
     0.105171798
    ],
    "verdict": "suggestive",
-   "text": "14 vs 5 discordant, exact p 0.064 (mid-p 0.041, Holm 0.083): suggestive, not settled",
+   "text": "14 vs 5 discordant, exact p 0.064, Holm-adjusted 0.127 (mid-p 0.041, Holm-adjusted 0.083): suggestive, not settled",
    "published": {
     "value": 0.05357142857,
     "ci": [
@@ -3169,10 +3207,16 @@
   },
   "rules_text_crossover": {
    "r_star": 5.5,
-   "lo": 1.284821429,
-   "hi": null,
-   "share_with_crossover": 0.762,
-   "text": "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones (95 % bootstrap range 1.3 to never)"
+   "lo": 1.168333333,
+   "hi": 16.0,
+   "shares": {
+    "a_then_b": 0.7615,
+    "b_then_a": 0.0,
+    "a_lower": 0.238,
+    "b_lower": 0.0005,
+    "identical": 0.0
+   },
+   "text": "Ordnung's harm-weighted loss is the lower one until a late or missed date costs 5.5 early ones; in 76 % of 2,000 resamples of the letters the losses cross the same way (95 % of those crossings between 1.2 and 16.0), and in 24 % Ordnung's loss is the lower one whatever a harmful date costs"
   }
  }
 }

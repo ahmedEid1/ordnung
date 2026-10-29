@@ -171,32 +171,47 @@ def headline(doc: Mapping[str, Any]) -> str:
         f"{fmt.ci(ordnung['exact']['ci'])}), with {harm} late or missed."
     )
     pair = _pair(doc, "accuracy", "llm_only")
+    # the accuracy test sits with the accuracy it tests, before the harm count
     tail = f"({_discordant(pair)}, {_exact_p(pair)})"
     if pair["verdict"] == "clear" and pair["diff"] > 0:
-        judged = f" {tail}."
+        judged = f" {tail}"
     elif pair["verdict"] == "clear":
-        judged = f": **the model alone is ahead** {tail}."
+        judged = f": **the model alone is ahead** {tail}"
     else:
-        judged = f": **no clear difference** {tail}."
+        judged = f": **no clear difference** {tail}"
     second = (
-        f"The same model doing the date arithmetic itself gets **{fmt.pct(alone['exact']['value'])}**, with "
-        f"**{alone['harmful']['k']}** late or missed{judged}"
+        f"The same model doing the date arithmetic itself gets **{fmt.pct(alone['exact']['value'])}**{judged}, "
+        f"with **{alone['harmful']['k']}** late or missed."
     )
     pair = _pair(doc, "accuracy", "llm_rules_tool")
     shown = f"{fmt.pct(agent['exact']['value'])}, {_discordant(pair)}"
     agent_text = "An agent given Ordnung's engine as a tool"
-    if pair["verdict"] == "none" or pair["diff"] == 0:
-        third = f"{agent_text} is level ({shown}): what the pipeline adds is a receipt and a checked quote for every date."
-    elif pair["verdict"] == "clear" and pair["diff"] < 0:
+    # "level" only when Ordnung minus the agent is above −margin at the interval's lower bound (the pre-registered
+    # non-inferiority rule, on the letter-cluster bootstrap); otherwise we cannot tell
+    margin = float(h["settings"]["noninferiority_margin"])
+    within = f"within {margin * 100:g} points"
+    low = pair["bootstrap"][0]
+    interval = f"{fmt.points(pair['diff'])} points, 95 % CI {fmt.interval_points(pair['bootstrap'])}"
+    if pair["verdict"] == "clear" and pair["diff"] < 0:
         third = (
             f"{agent_text} scores higher ({shown}, {_exact_p(pair)}): the pipeline's case rests on receipts and "
             "checked quotes, not accuracy."
         )
     elif pair["verdict"] == "clear":
         third = f"{agent_text} scores lower ({shown}, {_exact_p(pair)})."
-    else:
+    elif pair["verdict"] == "suggestive":
         side = "higher" if pair["diff"] < 0 else "lower"
         third = f"{agent_text} scores {side}, not settled ({shown}, {_exact_p(pair)})."
+    elif low is not None and low > -margin:
+        third = (
+            f"{agent_text} is level {within} ({shown}; {interval}): what the pipeline adds is a receipt and a "
+            "checked quote for every date."
+        )
+    else:
+        third = (
+            f"{agent_text} scores {fmt.pct(agent['exact']['value'])} ({_discordant(pair)}): we cannot tell whether "
+            f"Ordnung is {within} of it ({interval})."
+        )
     return " ".join((first, second, third))
 
 
@@ -211,7 +226,12 @@ def shortfall(doc: Mapping[str, Any]) -> str:
             f"{e2e['set_aside']} of {e2e['obligations']} real obligations got no reminder because their letter was set "
             "aside as a scam"
         )
-    short = flags["caught"] < flags["wrong"] or bool(e2e and e2e["set_aside"])
+    in_calendar = len(e2e["scam"]["in_the_calendar"]) if e2e and e2e.get("scam") else 0
+    if e2e and in_calendar:
+        parts.append(
+            f"{in_calendar} of {e2e['scam']['letters']} scam letters still put their demands in the calendar"
+        )
+    short = flags["caught"] < flags["wrong"] or bool(e2e and e2e["set_aside"]) or bool(in_calendar)
     lead = "**Where it falls short:**" if short else "**Flags:**"
     return f"{lead} " + "; ".join(parts) + "."
 
@@ -270,13 +290,13 @@ def _card(doc: Mapping[str, Any]) -> Section:
         [
             "Pre-registration",
             "Not yet: these statistics were chosen after the results were known (**not pre-registered**). The final "
-            "run on the version that ships is pre-registered before it is recorded",
+            "run on the version that ships will be pre-registered before it is recorded",
         ],
         ["Reads", "One read per letter"],
         [
             "Intervals",
-            "Clopper–Pearson for a rate; exact McNemar with Holm for paired comparisons "
-            "([Statistics](#7-statistics))",
+            "Clopper–Pearson for a rate; for paired comparisons, exact McNemar and a sign-flip test over letter "
+            "clusters, each with Holm ([Statistics](#7-statistics))",
         ],
         [
             "Replay",
@@ -496,9 +516,9 @@ def _results(doc: Mapping[str, Any]) -> Section:
     blocks: list[Block] = [
         Subheading("6.1 The final run (three reads)"),
         Paragraph(
-            "The pre-registered final run on the version that ships has not been recorded yet: its split, holdout4, "
-            "is written after the code freeze. When it is recorded, its numbers take the headline by the "
-            "pre-registered rule, whatever they show."
+            "The final run on the version that ships has not been recorded yet: its split, holdout4, is written after "
+            "the code freeze, and the run will be pre-registered before it is recorded. When it is recorded, its "
+            "numbers take the headline by the rule the pre-registration sets, whatever they show."
         ),
         Subheading("6.2 The held-out splits pooled, as recorded"),
     ]
@@ -608,9 +628,11 @@ def _statistics(doc: Mapping[str, Any]) -> Section:
                     f"{pair['b']} vs {pair['c']}",
                     f"{fmt.points(pair['diff'])} [{fmt.interval_points(pair['bonett_price'])}]",
                     fmt.p_value(pair["exact_p"]),
+                    fmt.p_value(pair["holm_exact"]),
                     fmt.p_value(pair["midp"]),
                     fmt.p_value(pair["holm_midp"]),
                     fmt.p_value(pair["signflip_p"]),
+                    fmt.p_value(pair["signflip_holm"]),
                     verdict(pair, harm=family != "accuracy"),
                 ]
             )
@@ -631,9 +653,11 @@ def _statistics(doc: Mapping[str, Any]) -> Section:
                 "b vs c",
                 "Difference, points [Bonett–Price 95 %]",
                 "Exact p",
+                "Holm (exact)",
                 "Mid-p",
                 "Holm (mid-p)",
                 "Cluster sign-flip p",
+                "Holm (sign-flip)",
                 "Verdict",
             ],
             rows,
@@ -651,11 +675,58 @@ def _statistics(doc: Mapping[str, Any]) -> Section:
                 "tell the two apart: a difference of this size needs more letters to be settled."
             )
         )
+    changed = _since_0_3_0(doc)
+    if changed:
+        blocks += [
+            Paragraph(
+                "**What changed since 0.3.0.** The 0.3.0 README published these numbers for the same three "
+                "held-out splits; the methods above replace them (the [history page](repo:docs/evals-history.md) "
+                "keeps the page as it was):"
+            ),
+            Table(["Number", "As 0.3.0 published it", "Now"], changed, "Published numbers since 0.3.0"),
+        ]
     crossing = h.get("rules_text_crossover")
     if crossing:
         blocks.append(Paragraph(f"Weighing harm against early dates: {crossing['text']}."))
     blocks.append(Paragraph(f"{h['note']} Labelled **not pre-registered**."))
     return Section("7. Statistics", blocks)
+
+
+def _since_0_3_0(doc: Mapping[str, Any]) -> list[list[str]]:
+    """Each headline number 0.3.0 published for the pooled held-out splits (the re-analysis keeps the scorer's
+    interval as ``published_ci`` and ``published_bootstrap``), old beside new."""
+    ours = _c(doc, _REFERENCE)
+    rows: list[list[str]] = []
+    exact = ours["exact"]
+    if exact.get("published_ci"):
+        rows.append(
+            [
+                "Ordnung, exact date right",
+                f"{fmt.pct(exact['value'])} [{fmt.ci(exact['published_ci'])}] (percentile bootstrap over letters)",
+                f"{fmt.pct(exact['value'])} [{fmt.ci(exact['ci'])}] (Clopper–Pearson)",
+            ]
+        )
+        rows.append(
+            [
+                "Ordnung, the safety count",
+                f"{ours['late']['k']} of {ours['late']['n']} dangerously late (a missed deadline left out)",
+                f"{ours['harmful']['k']} of {ours['harmful']['n']} late or missed",
+            ]
+        )
+    for baseline in ("llm_only", "llm_rules_text", "llm_rules_tool"):
+        pair = _pair(doc, "accuracy", baseline)
+        published = pair.get("published_bootstrap")
+        if not published or published["value"] is None:
+            continue
+        rows.append(
+            [
+                f"Ordnung minus {_label(baseline)}",
+                f"{fmt.points(published['value'])} points [{fmt.interval_points(published['ci'])}]",
+                f"{fmt.points(pair['diff'])} points [{fmt.interval_points(pair['bonett_price'])}] (Bonett–Price; "
+                f"cluster bootstrap {fmt.interval_points(pair['bootstrap'])}), {_exact_p(pair)}: {verdict(pair)}",
+            ]
+        )
+    return rows
 
 
 def _ablations(doc: Mapping[str, Any]) -> Section:
@@ -736,8 +807,9 @@ def _robustness(doc: Mapping[str, Any]) -> Section:
                 ["Condition", "Text PDFs [95 % CI]", "Phone photos [95 % CI]"], modality, "Text against photo"
             ),
             Paragraph(
-                "Not yet run: the targeted injections and distractor dates of the pre-registered stress cells "
-                "(`scripts/eval_perturb.py`), on held-out letters re-rendered with one planted paragraph each."
+                "Not yet run: the targeted injections and distractor dates of the planned stress cells, to be "
+                "pre-registered with the final run (`scripts/eval_perturb.py`), on held-out letters re-rendered with "
+                "one planted paragraph each."
             ),
         ],
     )
@@ -793,8 +865,8 @@ def _safety(doc: Mapping[str, Any]) -> Section:
                 "Condition",
                 "Wrong dates “Please check” caught",
                 "Wrong dates any flag caught",
-                "Unflagged dates right",
-                "Harmful among unflagged",
+                "Without a flag: right (a missed deadline counts here)",
+                "Without a flag: late or missed",
                 "AURC (excess over a perfect flag)",
                 "AUROC",
             ],
@@ -919,19 +991,48 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
         or "none"
     )
     reminded = e2e["reminded_in_time"]
-    return Section(
-        "13. From a letter to a reminder",
-        [
+    blocks: list[Block] = [
+        Paragraph(
+            f"Every letter of {fmt.join(e2e['splits'])} read by the real app in a fresh data folder, from the "
+            f"recorded readings, through to the calendar and the morning note (`python -m evals.e2e`, "
+            f"`{e2e['file']}`): {fmt.of(reminded)} genuine dated obligations got a reminder in time "
+            f"({fmt.pct(reminded['value'])}); {e2e['late_reminders']} got one only after the deadline. The stored "
+            f"dates equal the replay without the sender's Land for {e2e['parity']['k']} of {e2e['parity']['n']}."
+        ),
+        Paragraph(f"Not reminded, by cause: {causes}."),
+    ]
+    scam = e2e.get("scam")
+    if scam:
+        kept = scam["kept_off_the_calendar"]
+        placed = scam["in_the_calendar"]
+        listed = fmt.join(
+            [
+                f"`{row['entry_id']}` ({row['events']} event{'' if row['events'] == 1 else 's'})"
+                for row in placed
+            ]
+        )
+        calendar = (
+            f"{len(placed)} of {scam['letters']} scam letters still put their demands in the calendar: {listed}; "
+            f"{fmt.of(kept)} kept them off it (95 % CI {fmt.ci(kept['ci'])})"
+            if placed
+            else f"Every one of the {scam['letters']} scam letters kept its demands off the calendar (95 % CI "
+            f"{fmt.ci(kept['ci'])})"
+        )
+        unwarned = scam["without_scam_idea"]
+        warned = (
+            f"{len(unwarned)} of the {scam['letters']} got no scam warning "
+            f"({fmt.join([f'`{entry}`' for entry in unwarned])})"
+            if unwarned
+            else f"All {scam['letters']} got a scam warning"
+        )
+        false = scam["false_scam_idea"]
+        blocks.append(
             Paragraph(
-                f"Every letter of {fmt.join(e2e['splits'])} read by the real app in a fresh data folder, from the "
-                f"recorded readings, through to the calendar and the morning note (`python -m evals.e2e`, "
-                f"`{e2e['file']}`): {fmt.of(reminded)} genuine dated obligations got a reminder in time "
-                f"({fmt.pct(reminded['value'])}); {e2e['late_reminders']} got one only after the deadline. The stored "
-                f"dates equal the replay without the sender's Land for {e2e['parity']['k']} of {e2e['parity']['n']}."
-            ),
-            Paragraph(f"Not reminded, by cause: {causes}."),
-        ],
-    )
+                f"{calendar}. {warned}. {fmt.of(false)} genuine letters got a scam warning by mistake (95 % CI "
+                f"{fmt.ci(false['ci'])})."
+            )
+        )
+    return Section("13. From a letter to a reminder", blocks)
 
 
 def _limitations(doc: Mapping[str, Any]) -> Section:
@@ -939,7 +1040,8 @@ def _limitations(doc: Mapping[str, Any]) -> Section:
     items = [
         "The letters are synthetic, one or two clean pages each: real post is messier.",
         "The held-out splits were recorded with the code and prompts of their day; pooled, they mix versions.",
-        "These statistics were chosen after the results were known: **not pre-registered**. The final run is.",
+        "These statistics were chosen after the results were known: **not pre-registered**. The final run will be "
+        "pre-registered before it is recorded.",
         "One read per letter: run-to-run noise is not measured yet (the final run reads each letter three times).",
         "The labels are code, audited by agents of the same model family; no lawyer reviewed the rules.",
         "The letter families leave out the rarer high-stakes kinds the engine covers; the final run adds a small set "

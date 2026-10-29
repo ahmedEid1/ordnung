@@ -45,7 +45,8 @@ SPLIT_ROLES = {
     "holdout": "held out; code fixed after its result",
     "holdout2": "held out; code fixed after its result",
     "holdout3": "held out; written after the code freeze, audited blind",
-    "holdout4": "pre-registered final run on the version that ships: not yet written",
+    "holdout4": "the final run on the version that ships, to be pre-registered before it is recorded: not yet "
+    "written",
 }
 #: The scorer's adversarial classes Ordnung is scored on (``evals.metrics``), in the order the report lists them.
 ADVERSARIAL_CLASSES = (
@@ -169,7 +170,7 @@ def _rate(k: float, n: float) -> dict[str, Any]:
 
 
 def _kn(metric: Mapping[str, Any]) -> dict[str, Any]:
-    keep = {key: metric[key] for key in ("k", "n", "value", "ci") if key in metric}
+    keep = {key: metric[key] for key in ("k", "n", "value", "ci", "published_ci") if key in metric}
     keep["k"], keep["n"] = int(metric["k"]), int(metric["n"])
     return keep
 
@@ -258,12 +259,25 @@ def _headline(results_dir: Path, found: Mapping[str, tuple[str, str, dict[str, A
         family: {
             pair: {
                 key: row[key]
-                for key in ("n", "b", "c", "diff", "exact_p", "midp", "holm_midp", "bonett_price", "verdict")
+                for key in (
+                    "n",
+                    "b",
+                    "c",
+                    "diff",
+                    "exact_p",
+                    "holm_exact",
+                    "midp",
+                    "holm_midp",
+                    "bonett_price",
+                    "verdict",
+                )
             }
             | {
                 "signflip_p": row["signflip"]["p"],
+                "signflip_holm": row["signflip"]["holm"],
                 "bootstrap": [row["cluster_bootstrap"]["lo"], row["cluster_bootstrap"]["hi"]],
             }
+            | ({"published_bootstrap": row["published_bootstrap"]} if "published_bootstrap" in row else {})
             for pair, row in rows.items()
         }
         for family, rows in analysis["paired"].items()
@@ -393,6 +407,7 @@ def _e2e(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
     data = found[name][2]
     pooled = data["metrics"]["pooled"]
     not_reminded = {str(cause): int(count) for cause, count in sorted(pooled["not_reminded"].items())}
+    scam = pooled["scam"]
     return {
         "file": name,
         "splits": list(data["meta"]["pooled"]),
@@ -403,6 +418,21 @@ def _e2e(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
         "late_reminders": len(pooled["late_reminders"]),
         "not_reminded": not_reminded,
         "set_aside": sum(count for cause, count in not_reminded.items() if cause.startswith("set_aside:")),
+        # the scam letters: kept off the calendar (or not, by id), warned of (or not), and genuine letters taken
+        # for a scam; rates with their Clopper-Pearson interval, as every rate on the pages
+        "scam": {
+            "letters": int(scam["scam_letters"]),
+            "kept_off_the_calendar": _rate(
+                scam["kept_off_the_calendar"]["k"], scam["kept_off_the_calendar"]["n"]
+            ),
+            "in_the_calendar": [
+                {"entry_id": str(row["entry_id"]), "events": int(row["events"])}
+                for row in scam["in_the_calendar"]
+            ],
+            "without_scam_idea": [str(entry) for entry in scam["without_scam_idea"]],
+            "genuine_letters": int(scam["genuine_letters"]),
+            "false_scam_idea": _rate(scam["false_scam_idea"]["k"], scam["false_scam_idea"]["n"]),
+        },
     }
 
 

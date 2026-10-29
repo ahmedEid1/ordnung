@@ -32,7 +32,7 @@ SPLIT_SHORT = {
     "holdout": "held out, code fixed after",
     "holdout2": "held out, code fixed after",
     "holdout3": "frozen code, blind labels",
-    "holdout4": "pre-registered: not yet written",
+    "holdout4": "final run: not yet written, to be pre-registered",
 }
 
 
@@ -649,11 +649,11 @@ def _coverage_points(doc: Mapping[str, Any], condition: str) -> list[tuple[str, 
 
 
 def _risk_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]], str]:
-    header = ["Condition", *(f"{label}: wrong of shown" for _, label in _SHOWN)]
+    header = ["Condition", *(f"{label}: wrong of kept" for _, label in _SHOWN)]
     rows, said = [], []
     for condition in doc["order"]:
         cells = [
-            f"{wrong} of {shown} ({fmt.pct(wrong / shown if shown else None)}; {fmt.pct(shown / n)} shown)"
+            f"{wrong} of {shown} ({fmt.pct(wrong / shown if shown else None)}; {fmt.pct(shown / n)} kept)"
             for _, shown, wrong, n in _coverage_points(doc, condition)
         ]
         rows.append([_label(condition), *cells])
@@ -662,8 +662,8 @@ def _risk_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]], str
             + ", ".join(f"{label.lower()} {cell}" for (_, label), cell in zip(_SHOWN, cells, strict=True))
         )
     description = (
-        "Risk against coverage: of the dates a condition would show if it held back the flagged ones, the share "
-        "that is wrong. " + "; ".join(said) + "."
+        "Risk against coverage: of the deadlines a condition would keep if it held back the flagged ones, the share "
+        "that is wrong (a missed deadline has no flag, so it is kept). " + "; ".join(said) + "."
     )
     return header, rows, description
 
@@ -676,7 +676,10 @@ def _risk_coverage(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str)
     x_low = min(_floor(min(coverages), 0.1), 0.9)
     y_high = max(_ceil(max(risks), 0.05), 0.05)
     title = "Does “Please check” catch the wrong dates?"
-    subtitle = "Wrong dates among those shown, holding back flagged dates first · " + _subtitle(doc)
+    subtitle = (
+        "Wrong among the deadlines kept, flagged ones held back first; a missed deadline has no flag, so it is kept · "
+        + _subtitle(doc)
+    )
     size = 12.0 if not narrow else 14.0
     title_lines = _wrap(title, 80 if not narrow else 32)
     sub_lines = _wrap(subtitle, 110 if not narrow else 38)
@@ -714,7 +717,7 @@ def _risk_coverage(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str)
     for i in range(round((1 - x_low) / 0.1) + 1):
         value = x_low + 0.1 * i
         canvas.text(x(value), y0 + 18, f"{value * 100:.0f} %", size=tick, role="text2", anchor="middle")
-    canvas.text((x0 + x1) / 2, y0 + 38, "share of dates shown", size=tick, role="text2", anchor="middle")
+    canvas.text((x0 + x1) / 2, y0 + 38, "share of deadlines kept", size=tick, role="text2", anchor="middle")
     ends = []
     for condition, points in series.items():
         coords = [(x(shown / n), yv(wrong / shown)) for _, shown, wrong, n in points if shown]
@@ -725,7 +728,7 @@ def _risk_coverage(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str)
                 px,
                 py,
                 f"{_label(condition)}, {label.lower()}: {wrong} of {shown} wrong ({fmt.pct(wrong / shown)}), "
-                f"{fmt.pct(shown / n)} of dates shown",
+                f"{fmt.pct(shown / n)} of deadlines kept",
             )
         ends.append((coords[-1][1], condition, points[-1]))
     if not narrow:

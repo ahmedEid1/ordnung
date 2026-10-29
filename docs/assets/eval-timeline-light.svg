@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="740" height="226" viewBox="0 0 740 226" role="img" aria-labelledby="timeline-light-w-t timeline-light-w-d" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
 <title id="timeline-light-w-t">What was held out, and when</title>
-<desc id="timeline-light-w-d">Timeline of the benchmark's splits, in the order they were written. dev: prompts tuned on it; recorded 2026-09-30; letters (photos, adversarial) 28 (4, 0); dated deadlines 25; Ordnung not a held-out number; test: iterated on; recorded 2026-09-25; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung not a held-out number; holdout: held out, code fixed after; recorded 2026-09-30; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 53 of 56; holdout2: held out, code fixed after; recorded 2026-10-01; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 54 of 56; holdout3: frozen code, blind labels; recorded 2026-10-06; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 56 of 56; holdout4: pre-registered: not yet written; recorded not yet; letters (photos, adversarial) not yet; dated deadlines not yet; Ordnung not a held-out number.</desc>
+<desc id="timeline-light-w-d">Timeline of the benchmark's splits, in the order they were written. dev: prompts tuned on it; recorded 2026-09-30; letters (photos, adversarial) 28 (4, 0); dated deadlines 25; Ordnung not a held-out number; test: iterated on; recorded 2026-09-25; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung not a held-out number; holdout: held out, code fixed after; recorded 2026-09-30; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 53 of 56; holdout2: held out, code fixed after; recorded 2026-10-01; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 54 of 56; holdout3: frozen code, blind labels; recorded 2026-10-06; letters (photos, adversarial) 63 (11, 12); dated deadlines 56; Ordnung 56 of 56; holdout4: final run: not yet written, to be pre-registered; recorded not yet; letters (photos, adversarial) not yet; dated deadlines not yet; Ordnung not a held-out number.</desc>
 <rect width="740" height="226" style="fill:#fcfcfb"/>
 <text x="16" y="26" style="fill:#0b0b0b" font-size="15" font-weight="600" text-anchor="start">What was held out, and when</text>
 <text x="16" y="46" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">Each split in the order it was written; Ordnung's exact dates where it was held out</text>
@@ -32,10 +32,11 @@
 <text x="556" y="152" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">frozen code, blind</text>
 <text x="556" y="167" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">labels</text>
 <text x="556" y="184" style="fill:#0b0b0b" font-size="11" font-weight="600" text-anchor="middle">Ordnung 56 of 56</text>
-<circle cx="680" cy="88" r="7" style="fill:none;stroke:#0b0b0b;stroke-width:1.5"><title>holdout4: pre-registered: not yet written; recorded not yet; Ordnung not a held-out number</title></circle>
+<circle cx="680" cy="88" r="7" style="fill:none;stroke:#0b0b0b;stroke-width:1.5"><title>holdout4: final run: not yet written, to be pre-registered; recorded not yet; Ordnung not a held-out number</title></circle>
 <text x="680" y="118" style="fill:#0b0b0b" font-size="13" font-weight="600" text-anchor="middle">holdout4</text>
 <text x="680" y="135" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">not yet</text>
-<text x="680" y="152" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">pre-registered:</text>
-<text x="680" y="167" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">not yet written</text>
+<text x="680" y="152" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">final run: not yet</text>
+<text x="680" y="167" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">written, to be</text>
+<text x="680" y="182" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">pre-registered</text>
 <text x="16" y="216" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="start">Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run.</text>
 </svg>
