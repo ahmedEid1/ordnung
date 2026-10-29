@@ -459,6 +459,52 @@ def test_a_pull_takes_the_incoming_choices_and_household(tmp_path: Path) -> None
         here.close()
 
 
+def _pull_settings(tmp_path: Path, theirs: str, mine: AppSettings) -> AppSettings:
+    """What this computer's settings are after pulling a copy whose settings row is ``theirs`` (raw JSON, as the
+    pushing computer's own scrub wrote it)."""
+    them = Store.open(Paths(tmp_path / "them").ensure())
+    here = Store.open(Paths(tmp_path / "here").ensure())
+    try:
+        here.save_settings(mine)
+        staged = _staged_from(them, tmp_path)
+        staged.execute(
+            "INSERT INTO meta (key, value) VALUES ('settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (theirs,),
+        )
+        live = sqlite3.connect(here.db_path, isolation_level=None)
+        merge_local(staged, live, target=VersionId(computer="c" * 32, seq=1), calendar=None)
+        meta = dict(staged.execute("SELECT key, value FROM meta"))
+        live.close()
+        staged.close()
+        return AppSettings.model_validate_json(meta["settings"])
+    finally:
+        them.close()
+        here.close()
+
+
+def test_a_settings_row_without_the_switch_keeps_this_computer_s_choice(tmp_path: Path) -> None:
+    """A computer still on 0.3.x drops ``read_picture_text`` when it rewrites the settings (it doesn't know the
+    field). Pulling that copy keeps this computer's own choice, so *Text in pictures* turned off here is never
+    turned back on by a round trip; the other synced settings are theirs as usual. A copy that names the switch
+    brings its value, off or on."""
+    from ordnung.sync import KEPT_WHEN_ABSENT
+
+    assert KEPT_WHEN_ABSENT == ("read_picture_text",)
+    old = AppSettings(model="opus").model_dump(mode="json")
+    del old["read_picture_text"]  # as Ordnung 0.3.x writes it
+    pulled = _pull_settings(
+        tmp_path / "a", json.dumps(old), AppSettings(model="sonnet", read_picture_text=False)
+    )
+    assert (pulled.read_picture_text, pulled.model) == (False, "opus")
+    pulled = _pull_settings(tmp_path / "b", json.dumps(old), AppSettings(read_picture_text=True))
+    assert pulled.read_picture_text is True
+    # a copy that names it brings its value (the switch travels)
+    on = AppSettings(read_picture_text=True).model_dump_json()
+    assert _pull_settings(tmp_path / "c", on, AppSettings(read_picture_text=False)).read_picture_text is True
+    off = AppSettings(read_picture_text=False).model_dump_json()
+    assert _pull_settings(tmp_path / "d", off, AppSettings(read_picture_text=True)).read_picture_text is False
+
+
 def test_a_meta_row_this_version_does_not_know_travels_untouched(tmp_path: Path) -> None:
     """What a computer still on 0.2.0 relies on for the D3 rows: a row it has no name for is neither
     scrubbed nor merged, so it travels as it is, and the schema version stays the same (no migration)."""

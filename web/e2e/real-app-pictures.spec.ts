@@ -3,7 +3,9 @@
  * the real app (`ordnung serve`): a photo kept private (*Keep private — no AI*) is read in the background, the search
  * box and the Inbox's search find it by its words with the line "Found in text Ordnung read from the picture — not
  * checked", and its page says what those words are kept for — and never shows them. At 320, 375 and 1280 px, light and
- * dark, with axe and the layout sweep's probes. The photo is deleted for good at the end, and its words with it.
+ * dark, with axe and the layout sweep's probes. Switched off in Settings → Data → *Text in pictures*, those words go
+ * at once; on again, the photo is read again without the start's wait. The photo is deleted for good at the end, and
+ * its words with it.
  *
  * The photo is a committed, fictional printed letter (`e2e/fixtures/private-photo.jpg`, drawn by
  * `scripts/make_photo_fixture.py`); "Kellerabteil" is a word only it has among the real app's letters.
@@ -171,6 +173,38 @@ test("a photo kept private is found by the words Ordnung read from it, marked no
         await checkView(page, testInfo, `photo-${width}`);
       });
     }
+
+    await test.step("Text in pictures switched off: search drops the not-checked line; on again, the photo is read again", async () => {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await open(page, "/settings?section=data", "Settings");
+      const card = page.getByRole("main").getByRole("region", { name: "Text in pictures" });
+      const theSwitch = card.getByRole("switch", { name: /^Read the words in photos and scans Claude isn't reading/ });
+      // the line says this computer reads pictures, with the Tesseract it found
+      await expect(card.locator("[data-tone]")).toContainText(/^Tesseract \d/);
+      const toast = (title: string) => page.locator("li[data-toast]").filter({ hasText: title });
+
+      await theSwitch.click();
+      await card.getByRole("button", { name: "Save changes" }).click();
+      await expect(toast("Text in pictures is off.")).toContainText("The words Ordnung had read in pictures are deleted.");
+      // at once: no letter is found by those words, and the photo's page names no page read
+      expect((await apiGet<FoundLetter[]>(page, `/api/documents?q=${WORD}`)).map((d) => d.id)).not.toContain(id);
+      expect((await apiGet<PhotoPage>(page, `/api/documents/${id}`)).picture_text_pages).toEqual([]);
+      await open(page, `/inbox?q=${WORD}`, "Inbox");
+      await expect(page.getByText(PICTURE_TEXT_MATCH)).toHaveCount(0);
+
+      await open(page, "/settings?section=data", "Settings");
+      await theSwitch.click();
+      await card.getByRole("button", { name: "Save changes" }).click();
+      await expect(toast("Text in pictures is on.")).toContainText("Ordnung reads the pictures of letters Claude isn't reading, one page at a time.");
+      // read again without the start's 30 s wait
+      await expect
+        .poll(async () => (await apiGet<FoundLetter[]>(page, `/api/documents?q=${WORD}`)).find((d) => d.id === id)?.found_in ?? null, {
+          message: "the photo is found by its words again",
+          timeout: 25_000,
+          intervals: [500],
+        })
+        .toBe("picture_text");
+    });
 
     await test.step("deleted for good, the photo goes with the words Ordnung read from it", async () => {
       await page.setViewportSize({ width: 1280, height: 800 });

@@ -5,8 +5,12 @@ zero tokens). ``?probe=1`` is Settings' "Run check": every ``ordnung doctor`` ch
 live call to Claude — allowed once a minute (``429`` with ``Retry-After`` otherwise). Backends that
 never run the ``claude`` CLI (the recorded demo, the test fake) get the local checks only.
 
-A paired phone gets ``client: "phone"`` and no data folder, Claude path or checks (its gate refuses
-``probe``, and answers before sign-in with 401, never this route's minimal answer).
+A paired phone gets ``client: "phone"`` and no data folder, Claude path, checks or Text in pictures (its gate
+refuses ``probe``, and answers before sign-in with 401, never this route's minimal answer).
+
+``picture_text`` is this computer's *Text in pictures* (ADR 0024) for Settings' card: the doctor's row as a
+state (:func:`ordnung.doctor.picture_text_status`), from the switch as saved, ``ORDNUNG_OCR`` and the Tesseract
+the engine already found.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ from pydantic import BaseModel, ConfigDict
 from ordnung import __version__
 from ordnung.api.deps import ApiState, StateDep, StoreDep, backend_uses_cli, is_phone
 from ordnung.api.security import request_authenticated
-from ordnung.doctor import DoctorReport, local_checks
+from ordnung.doctor import DoctorReport, local_checks, picture_text_status
 from ordnung.models import DoctorCheck, Health, Job, RuleInfo
 from ordnung.rules import LAST_CHECKED, list_rules
 from ordnung.tick import local_today, simulated_day
@@ -48,9 +52,10 @@ async def _probe(state: ApiState, uses_cli: bool) -> list[DoctorCheck]:
             headers={"Retry-After": str(wait)},
         )
     data_dir = state.ctx.paths.data_dir
-    if not uses_cli:
-        return DoctorReport(checks=await asyncio.to_thread(local_checks, data_dir)).checks
-    # on the model every call runs on, so a name Claude Code refuses shows up here, next to the field
+    if not uses_cli:  # with the app's own settings (Text in pictures as saved)
+        return DoctorReport(checks=await asyncio.to_thread(local_checks, data_dir, state.ctx.settings)).checks
+    # on the model every call runs on, so a name Claude Code refuses shows up here, next to the field (the
+    # doctor reads the saved settings from the data folder, as the CLI's does)
     report = await state.doctor(data_dir, probe=True, model=state.ctx.settings.model)
     state.claude.remember(report.claude)
     return report.checks
@@ -80,6 +85,9 @@ async def health(
     checks = await _probe(state, uses_cli) if probe and not phone else []
     pinned = simulated_day(store)
     claude = await state.claude.get(ctx.backend_name, uses_cli=uses_cli)
+    # this computer's Text in pictures, in the doctor's words (the Tesseract already found: cheap, but the
+    # first ask may look, so in a thread); a phone gets none
+    pictures = None if phone else await asyncio.to_thread(picture_text_status, ctx.settings.read_picture_text)
     return Health(
         version=__version__,
         data_dir="" if phone else str(ctx.paths.data_dir),
@@ -92,7 +100,7 @@ async def health(
         rules_last_checked=LAST_CHECKED,
         checks=checks,
         client="phone" if phone else "computer",
-        picture_text=None,  # this computer's Text in pictures is not reported here yet
+        picture_text=pictures,
     )
 
 

@@ -265,9 +265,13 @@ def test_this_computers_checks_end_with_disk_backup_and_encryption(
     monkeypatch.setattr(doctor.encryption, "disk_encryption", lambda path: Encryption("on", "LUKS"))
     ids = [check.id for check in doctor.local_checks(data_dir)]
     assert ids[-4:] == ["database", "disk", "backup", "disk_encryption"]
-    # where Ordnung can't tell, there is no row at all
+    # where Ordnung can't tell, there is no row at all (but on Windows: an info row that says where to look)
     monkeypatch.setattr(doctor.encryption, "disk_encryption", lambda path: None)
-    assert [check.id for check in doctor.local_checks(data_dir)][-1] == "backup"
+    last = doctor.local_checks(data_dir)[-1]
+    if sys.platform == "win32":
+        assert (last.id, last.status) == ("disk_encryption", "info")
+    else:
+        assert last.id == "backup"
 
 
 def test_a_damaged_database_points_to_a_backup(tmp_path: Path) -> None:
@@ -502,7 +506,66 @@ def test_disk_encryption_only_ever_warns(
 
 
 def test_no_disk_encryption_row_where_ordnung_cant_tell(tmp_path: Path) -> None:
-    assert doctor.disk_encryption_check(tmp_path, probe=lambda path: None) is None
+    """Linux without an answer (WSL: the disk is Windows') and the other systems: no row."""
+    for platform in ("linux", "freebsd"):
+        assert doctor.disk_encryption_check(tmp_path, probe=lambda path: None, platform=platform) is None
+
+
+#: what the Windows row says: where to look, as docs/privacy.md says (Microsoft's "Device encryption in Windows")
+WINDOWS_ENCRYPTION = (
+    "Ordnung can't check this on Windows: see that BitLocker or Device encryption is on (Settings → Privacy & "
+    "security → Device encryption, or BitLocker Drive Encryption in the Control Panel)."
+)
+
+
+def test_windows_gets_an_info_row_for_disk_encryption(tmp_path: Path) -> None:
+    """On Windows Ordnung can't read BitLocker's state without administrator rights, so it never asks: the row is
+    info, with no fix, and says where the person looks. It never fails or warns."""
+
+    def never(path: Path) -> Encryption:
+        raise AssertionError("the doctor probed the disk on Windows")
+
+    check = doctor.disk_encryption_check(tmp_path, probe=never, platform="win32")
+    assert check is not None
+    assert (check.id, check.label, check.status, check.fix) == (
+        "disk_encryption",
+        "Disk encryption",
+        "info",
+        None,
+    )
+    assert check.detail == WINDOWS_ENCRYPTION
+    assert DoctorReport(checks=[check]).ok
+
+
+def test_info_rows_never_fail_the_doctor_or_its_exit_code(
+    monkeypatch: pytest.MonkeyPatch, data_dir: Path
+) -> None:
+    """An info row is neither ok nor a problem: the report stays ok, and ``ordnung doctor`` exits 0 and marks the row
+    ``i``, its fix printed as an *Optional —* tip, never as a problem's ``!`` line. Only a ``fail`` exits 1."""
+    from typer.testing import CliRunner
+
+    from ordnung.cli import STATUS_ICONS, app
+
+    assert set(STATUS_ICONS) == {"ok", "info", "warn", "fail"} and STATUS_ICONS["info"] == "[blue]i[/]"
+    info = doctor.DoctorCheck(id="ocr", label="Text in pictures", status="info", detail="Off", fix="Add it.")
+    report = DoctorReport(
+        checks=[info, doctor.DoctorCheck(id="disk", label="Disk space", status="ok", detail="ok")]
+    )
+    assert report.ok
+    monkeypatch.setattr(doctor, "run_doctor_sync", lambda *args, **kwargs: report)
+    runner = CliRunner(env={"COLUMNS": "200", "NO_COLOR": "1"})
+    result = runner.invoke(app, ["doctor", "--data-dir", str(data_dir)])
+    assert result.exit_code == 0, result.output
+    lines = [" ".join(line.replace("│", " ").split()) for line in result.output.splitlines()]
+    assert "i Text in pictures Off" in lines
+    assert "Optional — Text in pictures: Add it." in lines
+    assert not [line for line in lines if line.startswith("! ")]
+    failing = report.model_copy(
+        update={"checks": [*report.checks, info.model_copy(update={"status": "fail"})]}
+    )
+    assert not failing.ok
+    monkeypatch.setattr(doctor, "run_doctor_sync", lambda *args, **kwargs: failing)
+    assert runner.invoke(app, ["doctor", "--data-dir", str(data_dir)]).exit_code == 1
 
 
 def test_the_disk_encryption_probe_looks_at_the_data_folder(tmp_path: Path) -> None:

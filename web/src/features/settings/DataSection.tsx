@@ -4,7 +4,7 @@ import { Check, Copy, Download, FolderDown, FolderOpen, RotateCcw, Trash2 } from
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
 import { useCalendarSync, useDeleteEverything, usePhone, useSync } from "@/api/hooks";
-import type { Health } from "@/api/types";
+import type { AppSettings, Health } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Callout } from "@/components/ui/Callout";
 import { Dialog } from "@/components/ui/Dialog";
@@ -21,6 +21,7 @@ import { BackupCard } from "./BackupCard";
 import { deleteCalendarNote, hostOf } from "./calendarSync";
 import { exportFileName } from "./logic";
 import { REMOVE_STEPS } from "./phoneAccess";
+import { PictureTextCard } from "./PictureTextCard";
 import { otherComputers, unreceivedLine } from "./sync";
 import { FOOTER_ACTION, SectionHeading, SettingsCard } from "./SettingsCard";
 import { TourCard } from "./TourCard";
@@ -311,8 +312,8 @@ function DeleteEverythingDialog({
   );
 }
 
-/** "Data": where everything lives, a copy of your records, and how to delete everything. */
-export function DataSection({ health }: { health: Health }) {
+/** "Data": where everything lives, Text in pictures, a copy of your records, and how to delete everything. */
+export function DataSection({ health, settings }: { health: Health; settings: AppSettings }) {
   const today = useTodayISO();
   const { copy, copied } = useClipboard();
   const [busy, setBusy] = useState(false);
@@ -373,6 +374,8 @@ export function DataSection({ health }: { health: Health }) {
             )}
           </p>
         </SettingsCard>
+
+        <PictureTextCard settings={settings} />
 
         <BackupCard open={backupOpen} onOpenChange={setBackupOpen} returnFocus={deleteButtonRef} />
 
