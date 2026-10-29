@@ -5263,8 +5263,8 @@ E2_SWITCH = (
     "Settings → Data → *Text in pictures* turns off reading the words in photos and scans Claude isn't reading.",
     "It counts at once: a reading under way stops and the words read before are deleted; turned on again, Ordnung "
     "starts reading and looks for Tesseract afresh.",
-    "The line under the switch says what this computer does: reading, with Tesseract's version; not installed, "
-    "with the line to install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer.",
+    "The card says what this computer does: reading, with Tesseract's version; not installed, with the line to "
+    "install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer.",
     "With hand-off sync the switch travels with your settings.",
 )
 #: CHANGELOG, Unreleased → Changed: Ask and the weekly Ideas follow *For taxes* (e2-ask).
@@ -5385,7 +5385,7 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
         "**Status:** accepted · **Date:** 2026-10-29 · Amends [ADR 0023]",
         "a letter is someone's of the household only when the person filed it for them",
         "`household.ask_view` and `Ledger.household_filed`",
-        'never whether someone signs, "mine", a suggestion or a letter the person keeps private',
+        'Ask is told never whether someone signs, "mine" or a suggestion',
         "One of two sentences says when the person chose",
         "No tool description, server instruction or prompt changes.",
         "Without people and without a choice, no tool's answer carries either, byte for byte,",
@@ -5425,7 +5425,8 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
     spec = _spec()
     for words in (
         "A letter is someone's of the household only when the person filed it for them (`household.filed`, ADR "
-        "0023): its numbers and identity documents go under that person (`NumbersPage.household`)",
+        "0023): its numbers and identity documents go under that person (`NumbersPage.household`; the label rule "
+        "still comes first, and whom a letter is addressed to is never read)",
         "`get_profile` adds `household` (each person's id and name as typed, with the letters the person filed for "
         "them, newest first, at most 50) and `household_note`",
         "`get_document` adds `filed_for`",

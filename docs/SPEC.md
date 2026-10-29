@@ -1003,8 +1003,8 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   digit OK" or "does not check — compare with the letter". A call sheet per organisation adds its phone,
   e-mail and website, open cases and last letter; a number from an older letter links to it. A letter is
   someone's of the household only when the person filed it for them (`household.filed`, ADR 0023): its numbers
-  and identity documents go under that person (`NumbersPage.household`), never by whom it is addressed to and
-  after the label rule; a call-sheet number, a case reference or an open case all of whose letters are one
+  and identity documents go under that person (`NumbersPage.household`; the label rule still comes first, and
+  whom a letter is addressed to is never read); a call-sheet number, a case reference or an open case all of whose letters are one
   person's says so (`filed_for`), and a number letters of several people show lists the others (`also_for`,
   `"me"` for the person). Without a household the page is as before (ADR 0025).
 
@@ -1063,7 +1063,7 @@ HTML and without remote images.
   and `Ledger.household_filed`). `get_profile` adds `household` (each person's id and name as typed, with the
   letters the person filed for them, newest first, at most 50) and `household_note`; `get_document` adds
   `filed_for`; `get_my_numbers` (with `about_you`) adds each person's numbers and documents under `household`,
-  `filed_for` and `also_for` on rows and cases, and `household_note`. Private letters are left out; never who
+  `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`. Private letters are left out; never who
   signs, "mine" or a suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else
   Claude's mark, with `tax_choice`: "The person marked this letter for taxes themselves." or "The person took
   this letter off their letters for taxes." when they chose; Claude's `tax_note` is left out of a letter they

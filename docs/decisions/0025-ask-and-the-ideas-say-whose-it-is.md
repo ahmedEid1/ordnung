@@ -4,7 +4,7 @@
 (its point 9)
 
 ## Context
-[ADR 0023](0023-letters-for-your-household-are-suggested-never-filed.md) lets the person file a letter for
+[ADR 0023](0023-letters-for-your-household-are-suggested-never-filed.md) let the person file a letter for
 someone of their household, and kept Claude out of it: Ask, the Ideas, My numbers and the reminders went on
 treating every letter as the person's, because what Ask's tools return and what the weekly review is given are
 recorded, and changing them stops recorded answers from replaying. That left real gaps. A partner's health
@@ -35,8 +35,7 @@ more than their own screen shows.
   as typed, with the letters the person filed for them, newest first, at most 50) and `household_note`;
   `get_document` adds `filed_for`; `get_my_numbers` puts their numbers under `household`, marks `filed_for` and
   `also_for`, and adds a note that says never to give a household person's number as the person's own. Letters
-  the person keeps private are left out, and never whether someone signs, "mine", a suggestion or a letter the
-  person keeps private reaches Ask.
+  the person keeps private are left out, and Ask is told never whether someone signs, "mine" or a suggestion.
 - ***For taxes*** (`secretary/tax_choice.py` point 4): `get_document` says whether a letter counts for taxes by
   the person's choice, else Claude's mark (`for_taxes`). One of two sentences says when the person chose
   (`tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off their

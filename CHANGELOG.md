@@ -25,10 +25,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   month.
 - **Text in pictures can be turned off in Settings.** Settings → Data → *Text in pictures* turns off reading the
   words in photos and scans Claude isn't reading. It counts at once: a reading under way stops and the words
-  read before are deleted; turned on again, Ordnung starts reading and looks for Tesseract afresh. The line under
-  the switch says what this computer does: reading, with Tesseract's version; not installed, with the line to
-  install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer. With hand-off sync the
-  switch travels with your settings.
+  read before are deleted; turned on again, Ordnung starts reading and looks for Tesseract afresh. The card says
+  what this computer does: reading, with Tesseract's version; not installed, with the line to install it; or
+  turned off by `ORDNUNG_OCR=off`, which still wins on that computer. With hand-off sync the switch travels with
+  your settings.
 
 ### Changed
 
