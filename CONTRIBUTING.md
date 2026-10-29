@@ -63,7 +63,8 @@ These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more 
   numbers and statements against the code; change the docs in the same pull request.
 - **Text in pictures stays off in tests.** Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a
   Tesseract installed on your computer reads none of their letters; the engine's tests use a fake one
-  (`tests/fake_tesseract.py`). A test that needs it on unsets the switch itself.
+  (`tests/fake_tesseract.py`). A test that needs it on unsets the variable itself (`monkeypatch.delenv`), as the
+  tests of the Settings switch do (`tests/test_picture_text_switch.py`).
 
 **Writing an end-to-end test.** Before the next key press or click, wait for what the person sees (a toast,
 a status line, a button that is enabled again), not only for focus. Read the API with `apiGet`, or pass
@@ -85,6 +86,24 @@ check shows in the numbers at once, and costs nothing.
 - Recording new answers calls Claude with your own account and costs tokens. It is done on purpose,
   when a prompt or what is sent to Claude changes, never as part of an ordinary change. If a replay
   misses a recording after your change, say so in the pull request instead of recording.
+- **Digest files and recordings.** `_code_digest` in `evals/conditions.py` hashes the code a benchmark prediction
+  depends on (`models.py`, `llm/schemas.py`, `ingest/extract.py`, `intake.py`, `text.py` and, for some
+  conditions, more). It keys only your local prediction cache and the fingerprint written into a new results
+  file, so changing one of those files moves it and needs no recording by itself. A recording is needed only
+  when what is sent changes: a prompt's text or version, a schema Claude is given, what a request's key holds
+  (a letter's text, the date, the ledger Ask reads) or what Ask's tools return. A replay shows which: it misses
+  the recordings whose requests changed, the prompts locks (`prompts.lock.json`: each prompt's and schema's
+  hash, and for Ask also its tools, server instructions and cost cap) refuse a changed text under the same
+  version, and the Ask benchmark and `ordnung demo --check` answer every recorded tool call again and name the
+  answers whose tool results changed.
+- **Recording, when it is time.** Record from a checkout with its own virtual environment (`uv venv` and `uv pip
+  install -e ".[dev,eval]" -c constraints.txt` in it), never through `PYTHONPATH`: Ask's MCP server is started
+  with that environment's Python and runs whatever it has installed. Keep `ORDNUNG_CLAUDE_MODEL` unset, so every
+  call runs on the recorded model, and run one recorder at a time. `python -m evals.ask --prune-stale` deletes
+  the Ask answers that went stale, and `python -m evals.ask --live` records only what is missing; the demo
+  records with `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`, and a benchmark run of the test
+  split takes `--no-docs` so it leaves `docs/evals.md` alone. Right after, replay what you recorded and check
+  that nothing is stale or missing, then say in the pull request what was recorded and what it cost.
 
 ## Tests
 

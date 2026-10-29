@@ -76,6 +76,35 @@ reading of a letter; Tesseract's words, for search only, came later: ADR 0024), 
 letter kinds, most CLI commands. (The watched inbox folder, cut here, came in phase 2:
 § 8.1.)
 
+**Decided not to build (after 0.3.0, #37's deferred list):**
+- **An IMAP mailbox:** it would keep a sign-in that opens all your mail and poll an outside server, and no
+  provider can be tested here; e-mails come in as saved `.eml` or `.msg` files.
+- **An activity line "from your e-mail folder":** only a mailbox would need it.
+- **Keyset paging of the letter list:** the web app counts and groups every letter in the browser, and the list
+  is light (ADR 0022).
+- **A *Whose letters* filter on the Timeline, Letters or Tax year page, a ZIP per person, a one-press name for a
+  letter that answers none:** the Inbox's *Whose letters* finds a person's letters, Today and the Timeline say
+  whose a date is, and a draft goes out in the name on the first line of its *From*.
+- **Weekly dates as calendar series (RRULE):** a repeating date is one entry at its next day; a stale imported
+  series would keep ringing, and how calendar apps show one can't be tested.
+- **macOS Vision and Windows OCR:** each works on one system and needs a platform package; Tesseract works on
+  all three (ADR 0024).
+- **A BitLocker probe:** Microsoft documents the state only through admin tools; the doctor's info row says
+  where to look.
+- ***Let Claude decide*, an Inbox *Undated* year, *Not for taxes* on Tax-year rows:** pressing *For taxes*
+  again gives the same result; undated letters are under *All years*.
+- **Ask tool-description clauses for the household (deferred):** a description reaches every Ask turn; revisit
+  only if the Ask benchmark's household group shows the record's notes aren't enough (ADR 0025).
+- **A permanent per-request content lock (`requests.lock.json`) (deferred):** the content of every benchmark
+  request was compared once, before and after #36's changes; a CI guard is a follow-up.
+- **The web's repeat words for a rent that keeps an earlier rent's working day (deferred):** the dates are
+  right; the label says "every month".
+- **An Ask benchmark question about the next occurrence (deferred):** its gold would need the sample life's
+  truth, and it changes the published counts.
+- **Scrubbing a name of the household from dismissed Ideas (deferred):** a known limit (ADR 0025).
+- **Naming contracts' dates after someone of the household, a demo household:** a contract's decision is the
+  person's; a demo household would make every demo answer stale.
+
 ## 3. Architecture
 
 ```
@@ -177,8 +206,8 @@ Key additions in v2 (to implement in models.py):
 - `DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`,
   `explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`,
   `picture_text`, or `null` without a search) is what `GET /api/documents` lists, made by the route and never
-  stored — `Document` stays what Ask's ledger fingerprint hashes, and `models.DocumentListEntry` (the whole letter plus `found_in`) stays
-  unused, because editing `models.py` changes the benchmark's code digest (ADR 0022);
+  stored — `Document` stays what Ask's ledger fingerprint hashes (`models.DocumentListEntry`, an unused twin with
+  `found_in`, was removed in 0.4.0: it was in no schema Claude is given, ADR 0022);
   `DocumentDetail.scan_text_pages` (the pages whose scanner text is kept for search only,
   never the text; § 8); `Profile.moved_on` (`null`: no move told) and `Profile.old_address` (the moving
   checklist, § 9).
@@ -189,9 +218,18 @@ Key additions in v2 (to implement in models.py):
   `LetterRecord` (`Document` plus `tax_choice`) what `documents.json` answers. They live in
   `api/routes/documents.py`, and the choices and the household are `meta` rows (§ 5), not `Document` fields,
   for the same reason as `DocumentRow` (ADR 0022, ADR 0023).
-- `found_in` is the route's own `LetterFoundIn` (`models.SearchFoundIn` stays `letter` or `scanner_text`), and
+- `found_in` is the route's own `LetterFoundIn` (`letter`, `scanner_text` or `picture_text`), and
   `LetterDetail` also carries `picture_text_pages` (the pages whose words Ordnung read in the picture, kept for
   search only, never the words; § 8, ADR 0024).
+- `AppSettings.read_picture_text: bool = True` (Settings → Data → *Text in pictures*, § 8; travels with hand-off
+  sync, § 12c) and `Health.picture_text` (`PictureTextStatus`: `state` — `reading`, `off`, `off_by_variable`,
+  `not_installed`, `not_usable` —, `detail`, `fix`; `null` for a phone), this computer's *Text in pictures* in
+  the doctor's words. `CheckStatus` is `ok | info | warn | fail`: an `info` row is neither ok nor a problem (an
+  optional part missing, something off by the person's choice, a check Ordnung can't make on this system) and
+  never fails the doctor.
+- `NumbersPage` (`MyNumbers` plus `household: PersonNumbers[]` — each person of the household's `id`, `name`,
+  `about` and `documents` —, `filed_for` and `also_for`) is what `GET /api/numbers` answers (§ 9, ADR 0025);
+  without a household its three parts are empty.
 
 ## 5. Persistence — `db/`
 
@@ -460,20 +498,27 @@ claude -p --input-format stream-json --output-format stream-json --verbose
   waits); a version that can't be read is only a warning. Two more checks of this computer only ever warn:
   `backup` (the newest copy kept elsewhere, `backup/reminder.py`; left out for a demo folder or one without
   a database) and `disk_encryption` (whether the disk under the data folder is encrypted, read from
-  `fdesetup` on macOS and `findmnt`/`lsblk` on Linux by `encryption.py`, a best effort; left out on other
-  systems).
+  `fdesetup` on macOS and `findmnt`/`lsblk` on Linux by `encryption.py`, a best effort; on Windows an info row
+  that says where to look (`doctor.WINDOWS_ENCRYPTION`: BitLocker or Device encryption; no probe runs); left out
+  on other systems). An `info` row (the CLI marks it `i`) is neither ok nor a problem; its fix, if any, is
+  printed as an *Optional —* tip, and only a `fail` row fails the doctor.
 - The `ocr` row (*Text in pictures*, right after the web app; ADR 0024) never fails: ok with the version and
-  languages of the Tesseract found; ok *Not installed (optional)* with the install line for this system as its
-  fix (the CLI prints it as an *Optional —* tip), the one row that is ok and has a fix (`models.DoctorCheck`
-  stays as it is); ok *Turned off (ORDNUNG_OCR=off)*; a warning for a Tesseract older than 4.1, without German
-  language data, or that didn't answer.
+  languages of the Tesseract found; info *Not installed (optional)* with the install line for this system as its
+  fix (the CLI prints an info row's fix as an *Optional —* tip); info *Turned off (ORDNUNG_OCR=off)*, which wins,
+  and info *Off (Settings → Data → Text in pictures)*, which look for nothing (the CLI reads the data folder's
+  saved settings read-only); a warning for a Tesseract older than 4.1, without German language data, or that
+  didn't answer.
 
 ## 8. Ingestion pipeline — `ingest/`
 
 Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
 1. **intake** — size cap 50 MB, page cap 60; sha256 → dedupe; HEIC via pillow-heif; images uploaded
    together with `combine=true` become one multi-page PDF (default when several photos are dropped at
-   once); render pages (`derived/<doc>/page-N.jpg`, 1600 px) + thumbnail; EXIF transpose.
+   once); render pages (`derived/<doc>/page-N.jpg`, 1600 px) + thumbnail; EXIF transpose. A type it doesn't
+   read is refused with `intake.UNSUPPORTED`, which names the types it takes (`.msg` among them); an OLE file (an
+   Outlook e-mail or older Office file every way in should have opened first) is refused by name
+   (`intake.OLE_UNOPENED`) before `%PDF-` is looked for, so an attached PDF in its first bytes never makes it a
+   PDF.
 2. **text** — per page: pdfplumber text + words (coordinates normalised to the page box, CropBox
    and rotation handled) → `text_source="text"` if ≥ 40 meaningful chars, else needs transcription.
    The text layer is read on a pdfminer document that gives up after 1000 lookups answering with
@@ -492,7 +537,8 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    scanner text of PDFs stored before Ordnung kept it, 30 s after it starts, one letter at a time
    (`pipeline.catch_up_scan_text`: no database row changes).
    **Text in pictures** (optional, ADR 0024; `ingest/ocr.py`): with Tesseract 4.1 or newer installed (German
-   and/or English) and `ORDNUNG_OCR` not `off`, the worker reads the words in the pages of letters Claude isn't
+   and/or English) and *Text in pictures* on (`AppSettings.read_picture_text`, Settings → Data; `ORDNUNG_OCR=off`
+   turns it off whatever the switch says, `config.picture_text_off`), the worker reads the words in the pages of letters Claude isn't
    reading — kept private or held, waiting for Claude or failed; photos, and PDF pages with neither text of
    their own nor a scanner's — 30 s after it starts, one page at a time, newest letter first, and looks again
    after each reading ends and every five minutes. Each page is drawn as a grayscale PNG (at most 2400 px on
@@ -501,8 +547,11 @@ Stages (jobs table is the queue of record; CPU work in `asyncio.to_thread`):
    folder, with 120 s a page. The words go into `derived/<doc>/picture-text.json` (the scanner text's format,
    `""` for a page with no words), and the letter search matches them as it matches the scanner's,
    `found_in="picture_text"` (the scanner's text wins when both match). Nothing else reads them; a page's words
-   go once Claude reads it, a page Tesseract fails on waits for the next start, and while `ORDNUNG_OCR=off`
-   search ignores them and the worker removes every such file when it starts. No database row changes.
+   go once Claude reads it, a page Tesseract fails on waits for the next start, and while it is off search
+   ignores them and the worker removes every such file when it starts. A save of the switch counts at once
+   (`IngestWorker.picture_text_changed`, one change at a time): off stops a reading under way, ends the loop and
+   removes every such file; on starts the loop without the start delay and looks for Tesseract afresh. No
+   database row changes.
 3. **transcribe** — for each page without a text layer: vision call (`purpose="transcribe"`, image
    block, cached by page-image sha) → verbatim text → `pages.text`, `text_source="transcript"`.
 4. **extract** — one text-mode call with page-delimited text (`=== Page N ===`) + context (today,
@@ -882,6 +931,17 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   the answer?"), a confirmation of the cancellation is named as one; without proof they say what
   they said before.
   Fingerprint = rule_id + entity id + hash(triggering values). Savings are yearly-normalised.
+  `passport_before_permit` pairs a passport only with a residence permit of the same person (the person's own,
+  or one person's of the household), and `student_permit_info` reads only the person's own permit.
+  **Whose an Idea is** (`triggers.named`): an Idea all of whose letters — its letters, each to-do's letter and
+  the letter each sent letter answers (`Ledger.letters_of`) — are filed for one person of the household
+  (`Ledger.idea_member`) starts "For Alex Rivera: …"; `expiry_soon` and `passport_before_permit` say it
+  themselves ("Alex Rivera's passport expires …", "Renew Alex Rivera's passport before extending their residence
+  permit"; a name that doesn't end in a letter: "For Kim 2: Passport expires …"), with the same law and
+  rationale; never `tax_documents`, `calendar_outdated`, `student_permit_info`, `moved_house`, `sender_land` or
+  `contract_cancel_window` (a contract's decision is the person's). The name is not in the fingerprint, so
+  filing a letter renames the same Idea and keeps the person's choice on it; household writes refresh the Ideas
+  (ADR 0025). The review's own Ideas get no name added.
 - **Review** — compact snapshot → ≤ 6 new Ideas with refs to existing ids (validated; duplicates by
   fuzzy title dropped); `source="review"`.
 - **Brief** — deterministic agenda + optional 2–3 sentence prose (cached per day + agenda hash). The
@@ -941,7 +1001,12 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   the digit-repetition rule), Rentenversicherungsnummer (§ 147 SGB VI, § 2 Abs. 6 VKVV),
   Krankenversichertennummer (§ 290 SGB V), IBAN (ISO 13616; a misread IBAN still counts as one) — "check
   digit OK" or "does not check — compare with the letter". A call sheet per organisation adds its phone,
-  e-mail and website, open cases and last letter; a number from an older letter links to it.
+  e-mail and website, open cases and last letter; a number from an older letter links to it. A letter is
+  someone's of the household only when the person filed it for them (`household.filed`, ADR 0023): its numbers
+  and identity documents go under that person (`NumbersPage.household`), never by whom it is addressed to and
+  after the label rule; a call-sheet number, a case reference or an open case all of whose letters are one
+  person's says so (`filed_for`), and a number letters of several people show lists the others (`also_for`,
+  `"me"` for the person). Without a household the page is as before (ADR 0025).
 
 ## 10. Ask — `assistant/`
 
@@ -994,6 +1059,23 @@ HTML and without remote images.
   (`left_out`), so every `ref` it gives resolves. Letters marked private give nothing — not their
   numbers, nor their to-dos as a case's next step. Numbers are no date, time or amount, so the claim
   check leaves them as the model wrote them (a known limit: a misquoted identifier is not caught).
+- **Whose it is and *For taxes*** (ADR 0025; the tools read the household only through `household.ask_view`
+  and `Ledger.household_filed`). `get_profile` adds `household` (each person's id and name as typed, with the
+  letters the person filed for them, newest first, at most 50) and `household_note`; `get_document` adds
+  `filed_for`; `get_my_numbers` (with `about_you`) adds each person's numbers and documents under `household`,
+  `filed_for` and `also_for` on rows and cases, and `household_note`. Private letters are left out; never who
+  signs, "mine" or a suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else
+  Claude's mark, with `tax_choice`: "The person marked this letter for taxes themselves." or "The person took
+  this letter off their letters for taxes." when they chose; Claude's `tax_note` is left out of a letter they
+  took off. Without a household and a choice none of these is there, byte for byte. Ask's ledger fingerprint
+  hashes the choices of the letters Ask may read and what `ask_view` gives, each only when there is one, and the
+  ledger token watches the `meta` rows of `LEDGER_META_KEYS` (profile, `tax_choices`, `household`).
+- **How a date repeats.** A to-do whose schedule still runs (open or snoozed) carries, in every row of it, its
+  timeline entry and its `explain_date`, `repeats`, `following_due_date`, `replaced_by` and `replaced_from_month`:
+  the rule in the app's words (`recurrence.describe`, "every month on the 3rd working day"), the due date it
+  moves on to once marked done (also after a date moved by hand), and for a rent a later rent replaces that
+  rent's to-do and the month it starts in. A one-off, done or dismissed to-do has none; an undated one only
+  `repeats`.
 - **What the record says.** `money_summary` lists open payments with no stored due date and, apart, the
   demands of letters with scam signs (`do_not_pay`: not to be paid until the person has checked with
   the sender — a real sender whose bank details changed shows the same signs), with `today` and each
@@ -1319,7 +1401,9 @@ organisation and/or a thread; typed by the person, no model call; a promise with
 
 ## 12. Calendar — `calendar/ics.py`
 One-click `.ics` export of open dated items + contract send_by dates, VALARMs from
-`profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import. Left out:
+`profile.reminder_days`, stable UIDs, per-item `.ics`; guides for Google/Apple/Outlook import. A to-do of a
+letter filed for someone of the household names them after the symbol ("⌛ Alex Rivera: Passport expires",
+ADR 0025; a contract's dates never). Left out:
 to-dos set aside (`Ledger.is_set_aside`), open one-offs whose date had long passed when their letter was
 read (a backfilled archive's 2025 deposit), and the send-by dates of contracts whose cancellation was sent
 or confirmed. The Timeline marks money coming in "Money in" (never overdue) and a to-do set aside by why
@@ -1337,7 +1421,9 @@ are in their docstrings):
   Full: the counts in the title, the first three things with amounts and days — what ends today
   first (deadlines, decisions and appointments before tasks, tasks before payments), then what is
   overdue, then the week by day ("Decide on FitWell: cancel today · Pay the parking fine €30 —
-  overdue · Dental appointment on Thu 10:30 · and 1 more"; an appointment says its time). Once per
+  overdue · Dental appointment on Thu 10:30 · and 1 more"; an appointment says its time). Full puts the name of
+  the person of the household a to-do's letter is filed for in front of its title ("Alex Rivera: Dentist
+  appointment today 10:30", cut like a title; a contract's decision never); Discreet never names. Once per
   local day at the chosen time (the tick wakes up for it), or a minute after start-up when Ordnung
   wasn't running then; a notification the system couldn't show is tried again at the next checks
   (3 a day at most) and the last failure is shown in Settings; a missing tool uses the day up;
@@ -1574,6 +1660,9 @@ outside the database, Delete everything leaves first, a restored backup starts w
   Meta `household` and `tax_choices` (the person's household and *For taxes* choices) travel as they are, like
   the profile: a pull takes the incoming copy and nothing is merged; a computer still on 0.2.0 carries them
   untouched, since its scrub deletes only the keys that stay on each computer (and the demo's).
+  The setting `read_picture_text` (*Text in pictures*) travels with the settings (`SYNCED_SETTINGS`); an incoming
+  settings row that doesn't name it (Ordnung 0.3.0 drops the fields it doesn't know when it rewrites the
+  settings) leaves this computer's value as it was (`KEPT_WHEN_ABSENT`).
 - **Versions** (`sync/lineage.py`, `sync/decide.py`). A version records which *person changes* it holds:
   ranges of per-computer person numbers, plus ranges a choice dropped. `Store` bumps meta `sync_person`
   inside the transaction of every write made under `PERSON_WRITE` (set by the gate for writes that aren't
@@ -1718,7 +1807,7 @@ scanner's text wins when both match); `null` without `q` — and `tax_choice`), 
 letter, its `waiting` counting this letter's open dates, `addressed_to`: who the letter is addressed to, as
 read, when that isn't the profile's person — `secretary/addressee.py`, worked out on read —,
 `scan_text_pages`: the pages whose scanner text is kept for search only, `picture_text_pages`: the pages whose
-picture text is kept for search only (`[]` while `ORDNUNG_OCR=off`), `tax_choice` and `household`: whom
+picture text is kept for search only (`[]` while text in pictures is off), `tax_choice` and `household`: whom
 the letter is filed for, whether it is the person's own, the one person of the household its addressee names,
 or whom to offer *Add … to your household* (worked out on read) / PATCH, also `tax_choice`: `true` or `false`
 is the person's own *For taxes* choice, `null` goes back to Claude's mark; kept apart from the letter, so *Read
@@ -1754,7 +1843,9 @@ is in, `null` the select's "Don't know" — recomputes the to-dos of that sender
 *Yes* is this PATCH), `cases/{id}`, `timeline?from&to`, `lanes?from&to`, `dashboard`,
 `suggestions` (GET), `suggestions/{id}` (PATCH status/snooze; the question's *Don't know* dismisses the
 sender's `sender_land` Idea here), `suggestions/review` (POST),
-`brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers),
+`brief` (GET cached — a code-written note current —, POST regenerate), `numbers` (GET: My numbers, a `NumbersPage`
+with each person of the household's numbers and documents, `filed_for` and `also_for`; fetched again by the web
+app after a household change),
 `week` (GET: the weekly session, with `backup` only when it is time for one), `week/done` and
 `week/dismiss` (POST: remember the session or a "Not now"; answer the session), `ask`
 (POST → SSE), `chat/{thread_id}`, `drafts` (GET/POST; POST `sender_name`: the name the letter goes out in
@@ -1819,7 +1910,8 @@ is never stored in the database, logged or returned. **While another computer is
 brought over), every other write — on the computer's listener and the phone's — answers 409 `standby`
 ("Ordnung is in use on desktop. Use it here first (Settings → Your computers).") before any handler runs,
 except `POST /api/backup` and the phone admin writes. `settings` takes `inbox_auto_read` and `model` (trimmed;
-no spaces, not starting with a dash, else 422 with the reason); a waiting letter can't
+no spaces, not starting with a dash, else 422 with the reason); `settings` (GET/PUT) takes `read_picture_text`,
+which counts at once (a save that names it tells the worker, § 8); a waiting letter can't
 be reprocessed or made non-private by `PATCH` (`409`) — only an answer changes it.
 A letter's detail carries `girocodes`: per payment to-do a GiroCode (`ready`, with the EPC payload)
 or why there is none (`blocked`, a reason code and plain words), worked out on read (§ 21).
@@ -1837,7 +1929,8 @@ Hand-off sync's models live next to their routes (`SyncStatus`, `SyncComputer`, 
 `sync.updated` {replaced} (`replaced`: the data was replaced, every page reloads its data).
 
 Contract details: list endpoints answer plain JSON arrays. `health` carries `client` (`computer` or
-`phone`) and `rules_last_checked`
+`phone`), `picture_text` (this computer's *Text in pictures* as the doctor words it, from the switch as saved,
+`ORDNUNG_OCR` and the Tesseract already found; `null` for a phone) and `rules_last_checked`
 (the catalog's `LAST_CHECKED`, shown as "Based on the law as of …"); `health?probe=1` ("Run check")
 adds the doctor's `checks` plus one tiny live call, at most once a minute (else `429` +
 `Retry-After`). `ask` streams default SSE `message` events whose JSON carries `type`: the tool trace,
@@ -1968,6 +2061,9 @@ Pages:
    page, or its Timeline row when it has no letter): changing the day of a repeating one asks whether only
    that one moves or every one after
    it (one on a working day moves alone), and *Remove* dismisses it with Undo. A repeating to-do's row says how it repeats.
+   A date from a letter filed for someone in the household starts its second line with *For Alex Rivera ·*, as
+   Today's Coming up does (the whole line in its `title`); contracts' dates and dates without a letter never do,
+   and there is no filter by person.
 5. **Contracts** — lanes chart (bars, hatched notice windows, send-by marker, today line), cards,
    fixed costs total, "Decide by" callouts. A contract whose terms couldn't be worked out ("Please
    check", usually no notice period in the letter) offers "Check the letter" and "Add notice
@@ -1994,7 +2090,12 @@ Pages:
 7. **Ask** — chat, streamed tool-trace chips ("Searched your letters for “Kündigung”", dates as
    "Mon 28 Sep 2026"),
    citation chips → viewer, suggested questions (recorded in demo).
-8. **My numbers** — tabs About you (your numbers, your documents with expiry badges) · Open cases ·
+8. **My numbers** — tabs About you (your numbers, your documents with expiry badges; the first tab is **People**
+   once someone of the household has numbers or documents: the person's own first — "None of your own numbers
+   yet. …" when they have none —, then an *About Alex Rivera* section per person, "From letters you filed for
+   Alex Rivera.", with "Numbers for …" and "Documents for …"; a number letters of several people show says "Also
+   on letters for … — check whose it is"; a call-sheet number, a case reference or an open case that is only one
+   person's carries a *For Alex Rivera* tag) · Open cases ·
    Organisations (phones: "Orgs"; a call sheet each: phone, e-mail, website, your numbers, open cases,
    their own numbers folded away behind a chevron — opened when a search matches only them —, last
    letter; a search box). Every value of yours is **hidden until "Show"** (the last characters stay,
@@ -2039,6 +2140,10 @@ Pages:
    catalog), calendar (the `.ics` download next to its import guide; "Sync with your own calendar":
    find the calendars, choose one, discreet or with details with a preview of every event — dates
    still to come first — sync now, disconnect optionally removing Ordnung's events), data location,
+   **Text in pictures** (`#set-data-picture-text`, right after "Where your data lives", never on a phone: a switch
+   saved with the card's Save — off deletes the words read before, on starts reading —, the line under it in the
+   doctor's words from `health.picture_text`, and a callout while `ORDNUNG_OCR=off` turns it off on this
+   computer; the static demo's line says it would come from your computer),
    *Download a copy of your records* (one JSON file: every letter whole with its `tax_choice`, to-dos & dates,
    contracts, people & organisations, the household — its `members`, the letters `filed` for each and the ones
    that are the person's (`mine`), never the suggestions —, drafts, Ideas and how each letter was read),
@@ -2161,7 +2266,7 @@ mail* letters are ingested live through the real pipeline on the `ReplayBackend`
 600 ms each in demo), producing a live Idea over SSE. `simulated_today = 2026-09-28` is stored in
 `meta` (shared with the MCP subprocess). `demo --check` rebuilds the demo DB from samples with a
 strict replay backend and asserts: zero misses, stable canonical dump, all fixtures schema-valid,
-all recorded refs/citations resolve. Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild`.
+all recorded refs/citations resolve. Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`.
 The demo never syncs: every `/api/sync` write answers 409 `unavailable` (`GET /api/sync`: `available:
 false`), the sync agent never starts, `ordnung sync` refuses a demo folder, a push refuses a demo database
 and a pull refuses a database that carries the demo's keys, and the static demo says it has nothing to
@@ -2219,7 +2324,14 @@ a letter's, unreadable, unvouched § and other), tool calls, turns, cost and lat
 recording they no longer match fails the run (`--prune-stale`, then `--live`); the benchmark ledger
 puts every record's stamp at the start of its day, so the order of a tie (two payments due the same
 day) never depends on the hour of the run; results in
-`evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay.
+`evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay. A household group
+(`evals/ask/household.py`, ADR 0025: five questions on a copy of the ledger with *Alex Rivera* in the household
+and two letters filed for him by the household code, gold from the truth and the filing) is reported apart
+(`summary["household"]`, `--min-household`); the headline numbers keep counting the other questions. The prompts
+lock also takes `ask_tools` (the digest of the server's instructions, its tools, the allowed tools and the cost
+cap), written by a live run, so once written a changed tool description is stale until the Ask prompt's version
+moves.
+`--recorded-dir` replays or records into another folder (a smoke run).
 
 ## 18. Quality bar
 ruff + `mypy --strict` clean (the package and `evals/`); pytest incl. Hypothesis properties for rules

@@ -5,8 +5,53 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+### Added
+
+- **Whose number it is.** A number from a letter you filed for someone in your household is listed under *About
+  Alex Rivera* on My numbers, whose first tab is then *People*. A number that letters for two of you show says
+  "Also on letters for Alex Rivera — check whose it is", and a sender's numbers or a case that are only theirs
+  say *For Alex Rivera*. On a paired phone their numbers show only their last 4 characters, like yours.
+- **Ask, the Ideas, your reminders and the Timeline say whose it is.** Ask is told who is in your household,
+  which letters you filed for whom and whose each number is; letters you keep private stay out. An Idea about
+  their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*); filing a letter later
+  renames the same Idea, so *Not relevant* or *Remind me in a week* still holds. The calendar file, calendar
+  sync *With details* and the morning notification *With details* put their name in front of a to-do of their
+  letter; *Discreet* never names anyone. On the Timeline, a date from their letter says *For Alex Rivera ·*, as
+  Today does. Ordnung still files a letter only when you say so
+  ([ADR 0025](docs/decisions/0025-ask-and-the-ideas-say-whose-it-is.md)).
+- **Ask knows how your dates repeat.** For a to-do or date that repeats, Ask is told how, in the words the app
+  uses (*every month on the 3rd working day*), and the date it moves on to once you mark this one done — also for
+  a date you moved by hand, whose schedule carries on after it. A rent a later rent replaces says from which
+  month.
+- **Text in pictures can be turned off in Settings.** Settings → Data → *Text in pictures* turns off reading the
+  words in photos and scans Claude isn't reading. It counts at once: a reading under way stops and the words
+  read before are deleted; turned on again, Ordnung starts reading and looks for Tesseract afresh. The line under
+  the switch says what this computer does: reading, with Tesseract's version; not installed, with the line to
+  install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer. With hand-off sync the
+  switch travels with your settings.
+
+### Changed
+
+- **Ask and *Weekly Ideas* follow your *For taxes* choice.** A letter you took off your letters for taxes no
+  longer reaches them as one for taxes, and Ask no longer gets Claude's note on why it could matter for your tax
+  return; a letter you marked yourself reaches them as one for taxes, and Ask is told you marked it. Letters you
+  keep private stay private: neither sees anything of them, your choice included.
+- `ordnung doctor` marks a row that is neither fine nor a problem as info (`i`): Tesseract not installed, text
+  in pictures turned off, and on Windows a new *Disk encryption* row that says where to check BitLocker or
+  Device encryption, which Ordnung can't read there. An info row never fails the check, and its fix is printed
+  as an *Optional —* tip.
+- A file of a type Ordnung doesn't read is refused with a message that names Outlook's `.msg` among the types it
+  takes.
+- In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions'
+  recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.
+
 ### Fixed
 
+- *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
+  same person, and the student permit card reads only your own residence permit: a letter filed for someone of
+  your household no longer counts as yours there.
+- An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if it
+  reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.
 - Screen readers and voice control: the names of links and buttons hold the words they show, in the order shown
   (WCAG 2.5.3, *Label in Name*). The Inbox link is "Inbox 4 — 1 letter to check, 3 not read yet"; it was
   "Inbox, 1 letter to check, 3 not read yet". Your name in the sidebar, the buttons that open a sender's details,
@@ -16,6 +61,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The demo tour on a narrow phone: when a step's card shows *Show me the Ideas* or another long button, that
   button and *Back* move to a line of their own instead of lying over the step dots, so tapping a dot goes to
   that step.
+
+### Upgrading
+
+- A computer still on 0.3.0 shows every number as yours and the Ideas' titles without names, and Ideas it
+  refreshes lose the name until an updated computer refreshes them. Update both computers.
+- A computer still on 0.3.0 doesn't know the *Text in pictures* switch: it reads pictures as its `ORDNUNG_OCR`
+  says, and the settings it saves leave the switch out. An updated computer that then receives them by hand-off
+  sync keeps its own choice.
 
 ## 0.3.0 — 2026-10-29
 

@@ -16,8 +16,8 @@ goes where.
 | Text Ordnung read from a picture (only with Tesseract installed: the words in a photo or scan Claude isn't reading) | `<data dir>/derived/` (`picture-text.json`): kept with the letter's page images (so also in backups and hand-off sync), only for search | Only inside your encrypted backups and hand-off sync's encrypted copy, like the page images — never to Claude, and never shown. Tesseract runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture ([below](#words-in-pictures-optional)) |
 | Your ledger (letters, to-dos, contracts, ideas, drafts) | `<data dir>/ordnung.db` (SQLite) | Excerpts, when you use *Ask*, *Weekly Ideas* or *Letters* |
 | Profile (name, address, region, the IBAN you may add for refunds; after you say you moved, the day you moved in and your old address) | `ordnung.db` | Name, language and region in prompts; the address and IBAN you enter here, and your old address, are never put into a prompt (a letter you add is read as printed, with the address in its window; letters Ordnung drafts that contain them reach Claude with placeholders, also when translated again, and get the real values back in the translation); the day you moved in reaches Claude only as the day to register by (two weeks later) in the moving checklist's first row, whose title and date *Weekly Ideas* and the daily note send like every Idea's, and as a new-address letter you write states it |
-| Your *For taxes* choices (the letters you marked for taxes yourself, or took off your letters for taxes) | `ordnung.db` (`meta`, the `tax_choices` row: letter ids with yes or no) | Only inside your encrypted backups and hand-off sync's encrypted copy, and in *Download a copy of your records* when you save it — never sent to Claude: Ask and *Weekly Ideas* see Claude's own mark ([below](#what-is-sent-to-claude-per-feature)) |
-| Your household (the people whose letters come to you too, whether each signs their own letters, and which letters you filed for whom) | `ordnung.db` (`meta`, the `household` row) | Only inside your encrypted backups and hand-off sync's encrypted copy, in *Download a copy of your records* when you save it, and on the screen of a phone you paired — never sent to Claude ([below](#your-household)) |
+| Your *For taxes* choices (the letters you marked for taxes yourself, or took off your letters for taxes) | `ordnung.db` (`meta`, the `tax_choices` row: letter ids with yes or no) | Inside your encrypted backups and hand-off sync's encrypted copy, and in *Download a copy of your records* when you save it; to Claude only whether a letter Claude may read counts for taxes, when *Ask* or *Weekly Ideas* reads that letter ([below](#what-is-sent-to-claude-per-feature)) |
+| Your household (the people whose letters come to you too, whether each signs their own letters, and which letters you filed for whom) | `ordnung.db` (`meta`, the `household` row) | Inside your encrypted backups and hand-off sync's encrypted copy, in *Download a copy of your records* when you save it, and on the screen of a phone you paired; to Claude only the names and which letters you filed for whom, through *Ask*, and a name in the title of an Idea about their letters ([below](#your-household)) |
 | Model responses | `ordnung.db` (`llm_cache`) | — (they came from Anthropic) |
 | Usage log (tokens, cost, which document, the prompt's name and version, how the answer turned out) | `ordnung.db` (`llm_calls`) — **no prompt or response bodies** | Never |
 | How each letter was read (its steps: counts, scores, computed dates, ids of records) | `ordnung.db` (`trace_spans`) — **no letter text**, the newest five readings per letter | Never (unless you export one with `ordnung trace`) |
@@ -71,11 +71,13 @@ never puts an organisation on it ([ADR 0021](decisions/0021-a-move-is-said-never
 contain an address: like every Idea's, their titles (an organisation's name, the day to register by) are part
 of what *Weekly Ideas* and the daily note send.
 
-Your *For taxes* choices never reach Claude: Ask and *Weekly Ideas* see the mark Claude gave a letter when it
-read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays. Your choices
-can make the tax-season Idea appear or go away; its title (*Your 2025 tax documents are ready to collect*: no
-letter, no count), like every Idea's, is part of what *Weekly Ideas* and the daily note send. Your household
-never reaches Claude either ([below](#your-household)).
+Your *For taxes* choice reaches Claude only for letters Claude may read: Ask and *Weekly Ideas* see whether
+such a letter counts for taxes, Ask is told when you marked or unmarked it, and Ask isn't given Claude's tax
+note on a letter you took off. *Read again* asks Claude exactly what it would ask without your choice, which
+stays. A private letter's choice never reaches Claude. Your choices can make the tax-season Idea
+appear or go away; its title (*Your 2025 tax documents are ready to collect*: no letter, no count), like every
+Idea's, is part of what *Weekly Ideas* and the daily note send. Your household reaches Claude only as
+[below](#your-household) says.
 
 You can inspect every call in **Settings → Privacy & AI usage**: purpose, which documents, how many
 pages and bytes were sent, tokens, API-equivalent cost, and whether it came from cache. For Ask, that is
@@ -97,6 +99,12 @@ its letter and the Pay panel print it in full anyway. On a [paired phone](#phone
 shows your own numbers with only their last 4 characters, also after *Show* or *Copy*, and so do the
 IBAN in your profile and the numbers *Ask*'s numbers tool hands over for a question asked there: the full
 numbers are on your computer. A letter itself still shows what is printed on it.
+
+A number on a letter you filed for someone of your household is listed under *About* them instead
+(*About Alex Rivera*), worked out on your computer from your filings, never from whom a letter is addressed to;
+a number that letters for two people show says so ("Also on letters for … — check whose it is"). Their numbers
+are hidden, masked on a phone and handed to *Ask* like yours, and *Ask*'s numbers tool says whose each one is
+([below](#your-household)).
 
 The numbers live in your ledger with the letters that show them. *My numbers* lists a number only
 while a letter in your ledger shows it: delete that letter and the number leaves the page. One copy
@@ -134,11 +142,19 @@ sync.
   your encrypted backups and hand-off sync's encrypted copy. *Download a copy of your records* includes it (the
   people, the letters filed for each and the ones you said are yours), and a phone you paired shows the names
   on its screen, like the rest of your letters, and keeps no copy.
-- **Never sent to Claude.** The list is not put into a prompt, a draft request, Ask's tools, a notification,
-  a calendar or anything *Weekly Ideas* and the daily note send. A reply in a household member's name is like
-  any letter in another name: Ordnung doesn't add the name to the request (see *Letters* above), though the
-  related letter's title and summary, sent as read, often name them. Ask and the Ideas still treat their
-  letters as yours.
+- **What reaches Claude.** When you ask *Ask* a question, its tools can hand over the names as you typed them,
+  which letters you filed for whom and whose a number on *My numbers* is; letters you keep private are left
+  out. A name also stands in the title of an Idea about letters you filed for that person (*Alex Rivera's
+  passport expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what *Weekly Ideas* and the daily
+  note send. Never sent to Claude: whether someone signs their own letters, the letters you said are yours, or
+  Ordnung's suggestions; no prompt or draft request reads the list itself
+  ([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)). A reply in a household member's name is
+  like any letter in another name: Ordnung doesn't add the name to the request (see *Letters* above), though the
+  related letter's title and summary, sent as read, often name them. An Idea you dismissed keeps the title it
+  had, a name too, until *Delete everything*.
+- **Off the screen, not to Claude.** The calendar file, calendar sync *With details* and the morning
+  notification *With details* put the person's name in front of a to-do of a letter filed for them;
+  *Discreet* never names anyone.
 - **Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file
   letters, and the privacy log notes each time ("Changed who a letter is for on Anna's iPhone").
 - **Removing and deleting.** Removing a person takes them off the list, and their letters are in your own
@@ -346,14 +362,17 @@ Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung fo
   index *Ask* uses.
 - **It goes with the page.** Once Claude reads a page, what Ordnung read there is removed; deleting the letter
   deletes it with the page images.
-- **Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started,
+- **Turning it off.** Settings → Data → *Text in pictures* turns it off at once: a reading under way stops,
+  search ignores the words read before, and Ordnung deletes them; turned on again, Ordnung starts reading and
+  looks for Tesseract afresh. With hand-off sync the switch travels with your settings. `ORDNUNG_OCR=off` (or
+  `0`, `false`, `no`) turns it off on one computer, whatever the switch says: Tesseract is never started,
   search ignores the words read before, and Ordnung removes them when it starts. `ordnung doctor`, run where
   it is set, then shows *Turned off (ORDNUNG_OCR=off)*. On Linux and macOS, set it before `ordnung serve`, or
   before `ordnung autostart enable` or `ordnung shortcut`, which record it (run them again after setting or
   unsetting it). On Windows, run `setx ORDNUNG_OCR off`, then start Ordnung again from a new terminal window
   or the Start menu (`setx` doesn't change a window already open), and run `ordnung autostart enable` again
-  there if Ordnung starts at login. With hand-off sync, set it the same way on every computer: one with it
-  off removes the words the others read, and they read them again once they are in use.
+  there if Ordnung starts at login. With hand-off sync, set the variable the same way on every computer: one
+  with it off removes the words the others read, and they read them again once they are in use.
 
 ## Reminders while Ordnung is closed
 
@@ -363,7 +382,8 @@ Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung fo
   notification can be seen on a lock screen, a shared screen or in the system's notification
   history, so the app switches it on as **Discreet**: "Ordnung — 1 due today · 2 more this week",
   never a title, a name, an organisation or an amount. **With details** shows the first three things with
-  their amounts and days; choose it only on a screen nobody else sees. Letters with scam signs are
+  their amounts and days, and a to-do of a letter filed for someone of your household after that person's
+  name; choose it only on a screen nobody else sees. Letters with scam signs are
   never in it. The activity log notes that it was sent to the system, with the count only. (That
   is all Ordnung can know: the system may still keep it back — on macOS until notifications are
   allowed for Script Editor, and under Focus or Do not disturb; Settings says where to look.)
@@ -392,7 +412,8 @@ third party** — your calendar provider — so:
   deadline" (or "… payment", "… appointment", "… money in") with a note to look in Ordnung — no
   letter's title, no name or organisation, no amount, no place. A date Ordnung couldn't confirm in
   the letter says "— check the date" (that reveals nothing private). *With details* sends what Ordnung's calendar file
-  holds (the title, what to do, the amount, who it is with, why that date); choose it only if you
+  holds (the title, after the name of the person of your household its letter is filed for; what to do, the
+  amount, who it is with, why that date); choose it only if you
   are comfortable with your provider storing it. Settings shows every event exactly as it would be
   sent, in either mode, before you connect.
 - **Your app password stays in your system's password store** (Keychain, Credential Locker, GNOME
@@ -663,7 +684,7 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
   Windows, turn on BitLocker, or Device encryption on Windows Home: Settings → Privacy & security → Device
   encryption, or BitLocker Drive Encryption in the Control Panel. On Linux, disk encryption (LUKS) is
   usually chosen when the system is installed. On a Mac and on Linux, `ordnung doctor` (and *Run check* in
-  Settings) says what it found, as a best effort; on Windows it doesn't check, so look yourself. Microsoft's
+  Settings) says what it found, as a best effort; on Windows it can't check, and its row says where to look. Microsoft's
   page [Device encryption in Windows](https://support.microsoft.com/windows/device-encryption-in-windows-cf7e2b6f-3e70-4882-9532-18633605b7df)
   shows where to look; if Settings has no Device encryption page, your PC may not support it, or you're
   signed in with a standard account.
@@ -761,7 +782,7 @@ then see depends on which server you add:
 | You add | The client can see | Leaves your computer? |
 |---|---|---|
 | **The rules tools** (the default) | Nothing of yours. The tools open no data folder: they compute dates, holidays, working days and IBAN checks from what the client passes them (the dates and words of a letter you shared there yourself). | Only what you type or share in that client, as always |
-| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, *My numbers* (your Steuer-ID, social insurance number and the like, as your letters show them), and your profile's name, language and Land. For letters you marked *Keep private — no AI* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
+| **The full server** (`--with-ledger`) | Your ledger, read-only, as *Ask* sees it: letters' titles, summaries, page text and quotes, to-dos, contracts, people and organisations, money, *My numbers* (your Steuer-ID, social insurance number and the like, as your letters show them, and whose each is), your profile's name, language and Land, and the people of your household with the letters you filed for each. For letters you marked *Keep private — no AI* the text is withheld — also the quotes and wording behind a to-do's date — but the letter's date, the to-dos you added for it (their titles, dates and amounts, which can name the subject) and, when you linked the letter to a sender, that sender (its name and contact details, like any other person or organisation) are still listed. | Whatever Claude reads through it becomes part of that conversation, sent to Anthropic under that client's account and settings |
 
 With the full server, **every other tool of that client can see what Claude read from your
 ledger** through the model: another MCP server loaded there (web search, e-mail, files) and, in
