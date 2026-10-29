@@ -1,0 +1,3 @@
+# the built stress letters and the runner's manifest (python -m scripts.eval_perturb --build-only); they rebuild
+# byte for byte from the dataset, the templates and the seed, checked against evals/perturb/manifest.json
+/build/
