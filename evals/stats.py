@@ -30,6 +30,7 @@ fractions, so an answer does not depend on the order of its input.
 
 from __future__ import annotations
 
+import functools
 import math
 import random
 from bisect import bisect_left, bisect_right
@@ -334,18 +335,27 @@ def paired_cluster_bootstrap(
     total_n = sum(c[2] for c in pairs)
     if total_n <= 0:
         return PairedBootstrap(None, None, None, len(pairs), resamples, seed)
-    rng = random.Random(seed)
+    first, second, items = ([c[i] for c in pairs] for i in range(3))
     draws = []
-    for _ in range(resamples):
-        drawn = rng.choices(pairs, k=len(pairs))
-        n = sum(c[2] for c in drawn)
+    for drawn in resample_indices(len(pairs), resamples, seed):
+        n = sum(map(items.__getitem__, drawn))
         if n > 0:
-            draws.append(sum(c[0] for c in drawn) / n - sum(c[1] for c in drawn) / n)
+            draws.append(sum(map(first.__getitem__, drawn)) / n - sum(map(second.__getitem__, drawn)) / n)
     alpha = (1.0 - level) / 2.0 * 100.0
-    diff = sum(c[0] for c in pairs) / total_n - sum(c[1] for c in pairs) / total_n
+    diff = sum(first) / total_n - sum(second) / total_n
     return PairedBootstrap(
         diff, percentile(draws, alpha), percentile(draws, 100.0 - alpha), len(pairs), resamples, seed
     )
+
+
+@functools.lru_cache(maxsize=4)
+def resample_indices(size: int, resamples: int, seed: int) -> tuple[tuple[int, ...], ...]:
+    """The cluster indices of each bootstrap resample: ``random.Random(seed).choices(range(size), k=size)``, again and
+    again. A resample of ``size`` clusters draws exactly these whatever the clusters hold, so every comparison over
+    the same clusters shares them (and the scorer, which draws the clusters themselves, draws the same ones)."""
+    rng = random.Random(seed)
+    population = range(size)
+    return tuple(tuple(rng.choices(population, k=size)) for _ in range(resamples))
 
 
 def cluster_bootstrap(
@@ -361,15 +371,14 @@ def cluster_bootstrap(
     total_n = sum(c[1] for c in pairs)
     if total_n <= 0:
         return None, None, None
-    rng = random.Random(seed)
+    hits, items = [c[0] for c in pairs], [c[1] for c in pairs]
     draws = []
-    for _ in range(resamples):
-        drawn = rng.choices(pairs, k=len(pairs))
-        n = sum(c[1] for c in drawn)
+    for drawn in resample_indices(len(pairs), resamples, seed):
+        n = sum(map(items.__getitem__, drawn))
         if n > 0:
-            draws.append(sum(c[0] for c in drawn) / n)
+            draws.append(sum(map(hits.__getitem__, drawn)) / n)
     alpha = (1.0 - level) / 2.0 * 100.0
-    return sum(c[0] for c in pairs) / total_n, percentile(draws, alpha), percentile(draws, 100.0 - alpha)
+    return sum(hits) / total_n, percentile(draws, alpha), percentile(draws, 100.0 - alpha)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -532,5 +541,6 @@ __all__ = [
     "pass_all_k",
     "pass_any_k",
     "percentile",
+    "resample_indices",
     "run_noise_share",
 ]
