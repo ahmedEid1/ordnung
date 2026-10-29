@@ -1488,6 +1488,122 @@ export async function demoCatalog({ api, server }) {
         await c.click(main(c.page).getByRole("button", { name: "Remove Alex Rivera" }));
       },
     });
+
+    // E2: whose it is (ADR 0025) — My numbers per person and the Timeline's tag. The demo has no household: these
+    // states answer `GET /api/numbers` from the demo's own page with the health insurance number and the passport
+    // moved to Alex Rivera (the tax ID on his letters too, the health insurer's call-sheet number and the first open
+    // case his), and `GET /api/household` as for today-household. Nothing of the shared demo changes.
+    /** A number as a paired phone shows it (`phone/mask.py`: the last 4 characters). */
+    const maskValue = (value) => {
+      const compact = value.replace(/\s+/g, "");
+      return compact.length <= 4 ? compact : `•••• ${compact.slice(-4)}`;
+    };
+    const maskNumber = (n) => ({ ...n, value: maskValue(n.value), display: maskValue(n.value), copy_value: maskValue(n.value) });
+    /** The demo's My numbers with Alex Rivera's numbers taken out of it, masked as a phone sees them with `phone`. */
+    const peoplePage = (real, { phone = false } = {}) => {
+      const health = real.about_you.find((n) => n.kind === "health_insurance");
+      const tax = real.about_you.find((n) => n.kind === "tax_id");
+      const passport = real.documents.find((d) => d.kind === "passport");
+      const [firstCase] = real.open_cases;
+      const theirs = health ? [{ ...health, key: `${health.key}-alex` }] : [];
+      const theirDocs = passport ? [{ ...passport, key: `${passport.key}-alex`, number: passport.number ? { ...passport.number, key: `${passport.number.key}-alex` } : null }] : [];
+      const mask = (n) => (phone ? maskNumber(n) : n);
+      return {
+        ...real,
+        masked: phone || real.masked,
+        about_you: real.about_you.filter((n) => n !== health).map(mask),
+        documents: real.documents.filter((d) => d !== passport).map((d) => ({ ...d, number: d.number ? mask(d.number) : null })),
+        household: [{ id: ALEX.id, name: ALEX.name, about: theirs.map(mask), documents: theirDocs.map((d) => ({ ...d, number: d.number ? mask(d.number) : null })) }],
+        filed_for: Object.fromEntries([health && [health.key, ALEX.id], firstCase && [firstCase.key, ALEX.id]].filter(Boolean)),
+        also_for: tax ? { [tax.key]: [ALEX.id] } : {},
+      };
+    };
+    const answerNumbers = (c, opts) => fakeApi(c.page, "GET", /^\/api\/numbers$/, (_r, real) => ({ json: peoplePage(real, opts) }), { passthrough: true });
+    for (const [suffix, phone, description] of [
+      ["desktop", false, "My numbers → People with a household: your numbers (“Also on letters for Alex Rivera — check whose it is” on the tax ID), then “About Alex Rivera” with “From letters you filed for Alex Rivera.”, his health insurance number and passport."],
+      ["phone", true, "The same page as a paired phone gets it: every number masked to its last 4 characters, also Alex Rivera's."],
+    ]) {
+      add({
+        id: `numbers-people-${suffix}`,
+        group: "numbers",
+        route: "/numbers",
+        how: `open /numbers with GET /api/numbers answered from the demo's own page, Alex Rivera's numbers taken out of it${phone ? ", masked as a phone sees them" : ""}`,
+        description,
+        run: async (c) => {
+          await answerNumbers(c, { phone });
+          await answerHousehold(c, everyoneFiled());
+          await c.goto("/numbers");
+          await c.scrollTo(main(c.page).getByRole("heading", { name: `About ${ALEX.name}` }));
+        },
+      });
+    }
+    add({
+      id: "numbers-people-cases",
+      group: "numbers",
+      route: "/numbers?tab=cases",
+      how: "as numbers-people-desktop, then the Open cases tab",
+      description: "Open cases with a household: “For Alex Rivera” on the case that is only his.",
+      run: async (c) => {
+        await answerNumbers(c, { phone: false });
+        await c.goto("/numbers?tab=cases");
+      },
+    });
+    add({
+      id: "timeline-whose",
+      group: "timeline",
+      route: "/timeline",
+      how: "open /timeline with GET /api/household answered as for today-household",
+      description: "Timeline with a household: each date from a filed letter starts its second line with “For Alex Rivera · ” (Mia Rivera's for the library's reminder); contracts' dates never do. No filter.",
+      run: async (c) => {
+        await answerHousehold(c, everyoneFiled());
+        await c.goto("/timeline");
+        const tagged = main(c.page).getByText(/^For (Alex|Mia) Rivera · /).first();
+        if (!(await c.exists(tagged))) c.notApplicable("no dated to-do from a letter in the list");
+        await c.scrollTo(tagged);
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // E2: Settings → Data → Text in pictures (ADR 0024). The demo runs with ORDNUNG_OCR=off, so its own line is the
+  // variable's callout; the other states answer `GET /api/health` with this computer's state as the doctor words it
+  // on Linux, and "off" answers `GET /api/settings` with the switch saved off. Nothing of the shared demo changes.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const INSTALL =
+      "To find photos and scans Claude doesn't read by their words, install Tesseract: `sudo apt install tesseract-ocr tesseract-ocr-deu` " +
+      "(Fedora: `sudo dnf install tesseract tesseract-langpack-deu`), then restart Ordnung.";
+    const PICTURE_TEXT = {
+      reading: { state: "reading", detail: "Tesseract 5.3.4 (German and English): photos and scans Claude doesn't read are found by their words, not checked", fix: null },
+      "not-installed": { state: "not_installed", detail: "Not installed (optional)", fix: INSTALL },
+      off: { state: "off", detail: "Off (Settings → Data → Text in pictures)", fix: null },
+      variable: null, // the demo's own: ORDNUNG_OCR=off
+    };
+    const DESCRIBE = {
+      reading: "Text in pictures on, with Tesseract found: the switch on and the version line under it.",
+      "not-installed": "Text in pictures on, Tesseract not installed: “Not installed on this computer (optional).” and the install line, its commands set as code.",
+      off: "Text in pictures saved off: the switch off, no line under it.",
+      variable: "Text in pictures turned off by ORDNUNG_OCR=off (the demo's own): the callout above the switch, the switch as saved.",
+    };
+    for (const [suffix, status] of Object.entries(PICTURE_TEXT)) {
+      add({
+        id: `settings-data-picture-text-${suffix}`,
+        group: "settings",
+        route: "/settings?section=data#set-data-picture-text",
+        how: status
+          ? `open Settings → Data with GET /api/health answering picture_text ${status.state}${suffix === "off" ? " and GET /api/settings read_picture_text false" : ""}`
+          : "open Settings → Data (the demo runs with ORDNUNG_OCR=off)",
+        description: DESCRIBE[suffix],
+        run: async (c) => {
+          if (status) await fakeApi(c.page, "GET", /^\/api\/health$/, (_r, real) => ({ json: { ...real, picture_text: status } }), { passthrough: true });
+          if (suffix === "off") await fakeApi(c.page, "GET", /^\/api\/settings$/, (_r, real) => ({ json: { ...real, read_picture_text: false } }), { passthrough: true });
+          await c.goto("/settings?section=data#set-data-picture-text");
+          const card = main(c.page).getByRole("region", { name: "Text in pictures" });
+          if (!(await c.exists(card))) c.notApplicable("Settings → Data has no Text in pictures card here");
+          await c.scrollTo(card);
+        },
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------------------------
