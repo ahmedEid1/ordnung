@@ -519,7 +519,7 @@ def results_payload(result: RunResult, *, run_date: str) -> dict[str, Any]:
         }
         for a in result.attacks
     ]
-    return {
+    payload = {
         "benchmark": "ask",
         "date": run_date,
         "model": result.config.model,
@@ -529,6 +529,19 @@ def results_payload(result: RunResult, *, run_date: str) -> dict[str, Any]:
         "questions": questions,
         "attacks": attacks,
     }
+    if result.household:  # the household group, apart (a run without it writes the file as before)
+        household_scores = {score.id: score for score in result.household_scored}
+        payload["household"] = [
+            {
+                "id": q.id,
+                "question": q.text,
+                "gold": q.gold(),
+                "turn": asdict(turns[q.id]),
+                "scores": asdict(household_scores[q.id]),
+            }
+            for q in result.household
+        ]
+    return payload
 
 
 def write_results(payload: Mapping[str, Any], results_dir: Path) -> Path:
@@ -639,6 +652,7 @@ def render(payload: Mapping[str, Any]) -> str:
         "|---|---|",
         *(f"| {source}s | {pct(value)} |" for source, value in s["accuracy_by_source"].items()),
         "",
+        *_household_section(payload),
         "## Injected letters",
         "",
         "Each attack adds one passage to one real letter's page text or summary; what Ordnung filed for "
@@ -734,6 +748,36 @@ def render(payload: Mapping[str, Any]) -> str:
         "",
     ]
     return "\n".join(lines)
+
+
+def _household_section(payload: Mapping[str, Any]) -> list[str]:
+    """The household group's section (:mod:`evals.ask.household`), apart from the numbers above; none for a
+    results file from before the group."""
+    block = payload["summary"].get("household")
+    if not block or not payload.get("household"):
+        return []
+    rows = [
+        f"| `{item['id']}` — *{item['question']}* | {_yes(item['scores']['correct_raw'])} | "
+        f"{_yes(item['scores']['correct_final'])} |"
+        for item in payload["household"]
+    ]
+    return [
+        "## Household: whose a number is",
+        "",
+        "The same kind of questions on a copy of the ledger where *Alex Rivera* is in the household and two "
+        "letters are filed for him (the health insurer's notice and the passport): each answer must give the "
+        "number or date asked for — or, where the person has none of their own, lead with saying so — and say "
+        "whose each number is: a value of Alex's never as the person's own, the person's own never as his "
+        "(`evals/ask/household.py`). These questions are counted here only, not in the numbers above.",
+        "",
+        f"Answer correct and whose it is said: {pct(block['attribution'])} (raw {pct(block['attribution_raw'])}). "
+        f"Not answered: {block['not_answered']}. Cost: {_money(block['cost_usd'])}.",
+        "",
+        "| Question | Raw | Final |",
+        "|---|---|---|",
+        *rows,
+        "",
+    ]
 
 
 def _num(value: float | None) -> str:
@@ -834,6 +878,7 @@ def stale_docs(
 def headline(summary: Mapping[str, Any]) -> Sequence[str]:
     """A few lines for the terminal."""
     guard = summary["guard"]
+    household = summary.get("household")
     return (
         f"answer correct      {pct(summary['accuracy'])}  (raw {pct(summary['accuracy_raw'])})",
         f"citation precision  {pct(summary['citation_support'])}  (from the right letter "
@@ -843,4 +888,12 @@ def headline(summary: Mapping[str, Any]) -> Sequence[str]:
         f"attack success      {pct(summary['attack_success'])}  (raw {pct(summary['attack_success_raw'])})",
         f"unsupported values left in final answers (read by the scorer): {guard['unsupported_in_final']}",
         f"not answered: {summary['not_answered']}   cost total: {_money(summary['cost_usd']['total'])}",
+        *(
+            (
+                f"household (whose a number is) {pct(household['attribution'])}  "
+                f"(raw {pct(household['attribution_raw'])}), not answered: {household['not_answered']}",
+            )
+            if household
+            else ()
+        ),
     )

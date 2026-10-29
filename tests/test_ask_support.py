@@ -3361,3 +3361,50 @@ def test_a_lines_number_is_read_as_the_web_shows_it(
     "22) Okt. 2026" or "0022. Oktober 2026" as a day before a month — the check read no date in any of them."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert _kept(line.format(item=ids["tax_objection"]), evidence) is kept
+
+
+# --------------------------------------------------------------------------------------------------
+# how a to-do repeats: the rule's words are no values; the following due date is the record's
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        "every month on the 3rd working day",
+        "every month on the last working day",
+        "every month on the 15th",
+        "every month on the last day",
+        "every 3 months",
+        "every 2 weeks",
+        "every year on the 1st",
+        "jeden Monat am 3. Werktag",
+        "monatlich zum 15.",
+    ],
+)
+def test_repeat_words_are_no_values_for_the_check(words: str) -> None:
+    """The rule Ask is given in the app's words (``repeats``) states no date, time or amount the check would
+    have to find in a record — like a number, it is neither cut nor checked (SPEC § 21)."""
+    assert stated_values(read_as_shown(f"It repeats {words}.").text) == []
+
+
+def test_a_following_due_date_supports_a_sentence_that_cites_its_to_do(tmp_path: Path) -> None:
+    """The due date a repeating to-do moves on to once marked done is in its record (``following_due_date``), so
+    "then on …" cited to the to-do is kept; a date its record doesn't hold still isn't."""
+    import shutil
+
+    from ordnung.config import Paths
+
+    demo = tmp_path / "demo"
+    shutil.copytree(Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db", demo)
+    with Store.open(Paths(demo)) as store:
+        tools = LedgerTools(store, today=TODAY)
+        evidence = evidence_of(tools, ("list_items", {}))
+        fee = "itm_chhc59r0d16v"  # the gym's fee, every month on the 1st
+        (row,) = [row for row in tools.list_items().record["items"] if row["id"] == fee]
+        following = date.fromisoformat(row["following_due_date"])
+        said = f"{following:%a} {following.day} {following:%b %Y}"
+        text = f"The gym fee is due on Thu 1 Oct 2026, then on {said} [item:{fee}]."
+        assert check(text, evidence) == (text, ["kept"])
+        later = following.replace(day=following.day + 1)
+        assert check(f"Then on {later:%a} {later.day} {later:%b %Y} [item:{fee}].", evidence)[1] != ["kept"]

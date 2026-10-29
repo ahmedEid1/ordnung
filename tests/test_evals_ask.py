@@ -581,6 +581,237 @@ def test_a_run_records_then_replays_exactly(tmp_path: Path) -> None:
     ]
 
 
+# --------------------------------------------------------------------------------------------------
+# the household group: does Ask say whose a number is? (ADR 0025)
+# --------------------------------------------------------------------------------------------------
+
+HOUSEHOLD_IDS = [
+    "hh-my-health-number",
+    "hh-alex-health-number",
+    "hh-alex-passport",
+    "hh-my-passport",
+    "hh-my-tax-id",
+]
+
+
+def test_the_household_questions_have_gold_from_the_truth_and_the_filing() -> None:
+    """Five hand-written questions, apart from the headline set: Alex's numbers and passport expiry, the
+    person's tax ID, and — where the person has none of their own — saying so. Every gold value is the truth's,
+    and the numbers of the two letters filed for Alex stand on no other letter of the sample life."""
+    from evals.ask.household import FILED, household_questions, household_truth
+
+    questions = {q.id: q for q in household_questions(TRUTH)}
+    assert list(questions) == HOUSEHOLD_IDS
+    assert not set(questions) & {q.id for q in QUESTIONS}
+    truth = household_truth(TRUTH)
+    assert questions["hh-alex-health-number"].values == truth.member_values[:1]
+    assert questions["hh-alex-passport"].dates == truth.member_dates == (date(2027, 2, 10),)
+    assert questions["hh-my-tax-id"].values == truth.own_values
+    assert questions["hh-my-health-number"].none_of_own and questions["hh-my-passport"].none_of_own
+    theirs = {re.sub(r"\s", "", r["value"]) for slug in FILED for r in TRUTH[slug].truth["references"]}
+    others = {
+        re.sub(r"\s", "", r["value"])
+        for slug, doc in TRUTH.items()
+        if slug not in FILED
+        for r in doc.truth.get("references", [])
+    }
+    assert set(truth.member_values) <= theirs and not theirs & others
+    assert set(truth.own_values) <= others
+
+
+def test_the_household_ledger_files_two_letters_for_alex(tmp_path: Path) -> None:
+    """The household ledger is the base ledger with Alex Rivera in the household and the health insurer's
+    notice and the passport filed for him, by the household code itself; the same ledger on every run (his id
+    comes from his name). Well-posed: no number those two letters show is on a letter of the person's own, so
+    Ask's tools never say a number is on other people's letters too."""
+    from evals.ask.household import FILED, MEMBER_ID, MEMBER_NAME, build_household
+    from evals.ask.ledger import SampleLife, build_base
+
+    from ordnung.assistant.ask import ledger_fingerprint
+    from ordnung.config import Paths
+    from ordnung.db.store import Store
+    from ordnung.secretary import household
+
+    life = SampleLife.load()
+    base = build_base(tmp_path / "base", life)
+    built = build_household(base, tmp_path / "household", life)
+    again = build_household(base, tmp_path / "again", life)
+    filed = {life.doc_ids[slug] for slug in FILED}
+    with (
+        Store.open(Paths(built)) as store,
+        Store.open(Paths(again)) as other,
+        Store.open(Paths(base)) as plain,
+    ):
+        stored = household.load(store)
+        assert [(m.id, m.name) for m in stored.members] == [(MEMBER_ID, MEMBER_NAME)]
+        assert stored.links == dict.fromkeys(sorted(filed), MEMBER_ID)
+        documents = store.list_documents()
+        theirs = {re.sub(r"\s", "", ref.value) for d in documents if d.id in filed for ref in d.references}
+        others = {
+            re.sub(r"\s", "", ref.value) for d in documents if d.id not in filed for ref in d.references
+        }
+        assert theirs and not theirs & others
+        tools = LedgerTools(store, today=TODAY)
+        (person,) = tools.get_profile().record["household"]
+        assert (person["id"], person["name"], set(person["letters"])) == (MEMBER_ID, MEMBER_NAME, filed)
+        assert not any(row.get("also_for") for row in tools.get_my_numbers().record["numbers"])
+        assert ledger_fingerprint(store) == ledger_fingerprint(other) != ledger_fingerprint(plain)
+
+
+def test_household_attribution_scoring() -> None:
+    """An answer passes when it gives its gold — or, where the person has none of their own, leads with
+    saying so — and says whose each number is: every sentence with a value of Alex's names him (a list item
+    under a line that names him does), and no sentence with the person's own tax ID names him."""
+    from evals.ask.household import household_questions, household_truth
+    from evals.ask.score import Turn, score_household
+
+    questions = {q.id: q for q in household_questions(TRUTH)}
+    truth = household_truth(TRUTH)
+    health, _ = truth.member_values
+    (tax,) = truth.own_values
+    spaced = " ".join(health[i : i + 4] for i in range(0, len(health), 4))
+
+    def passes(qid: str, final: str, raw: str | None = None) -> bool | None:
+        turn = Turn(
+            id=qid, question="", ledger="household", raw=raw or final, final=final, cited=[], tools=[]
+        )
+        return score_household(questions[qid], turn, truth).correct_final
+
+    assert passes("hh-alex-health-number", f"Alex Rivera's health insurance number is {spaced} [doc:doc_x].")
+    assert not passes("hh-alex-health-number", f"Your health insurance number is {health} [doc:doc_x].")
+    assert not passes("hh-alex-health-number", "I couldn't find one in your records.")
+    none_of_own = (
+        f"I couldn't find a health insurance number of your own in your records.\n\n"
+        f"The one on file, {health} [doc:doc_x], is on the letter you filed for Alex Rivera."
+    )
+    assert passes("hh-my-health-number", none_of_own)
+    assert passes("hh-my-health-number", "There is no health insurance number of yours in your records.")
+    assert not passes("hh-my-health-number", f"Your health insurance number is {health} [doc:doc_x].")
+    listed = "Alex Rivera's passport, filed for him:\n- Expires: Wed 10 Feb 2027 [item:itm_x]"
+    assert passes("hh-alex-passport", listed)
+    assert not passes("hh-alex-passport", "His passport expires on Wed 10 Feb 2027 [item:itm_x].")
+    assert not passes("hh-my-passport", "Your passport expires on Wed 10 Feb 2027 [item:itm_x].")
+    assert passes(
+        "hh-my-passport",
+        "You have no passport of your own on record.\n\nAlex's passport expires on Wed 10 Feb 2027 [item:itm_x].",
+    )
+    assert passes("hh-my-tax-id", f"Your tax ID is {tax} [doc:doc_y].")
+    assert not passes("hh-my-tax-id", f"Your tax ID, like Alex's, is {tax} [doc:doc_y].")
+    # the check's note is not the answer; the raw answer is scored apart
+    noted = f"Your tax ID is {tax} [doc:doc_y].\n\nChecked by Ordnung: For Alex Rivera's letters see above."
+    assert passes("hh-my-tax-id", noted)
+    turn = Turn(
+        id="hh-my-tax-id", question="", ledger="household", raw="", final="", cited=[], tools=[], error="x"
+    )
+    unanswered = score_household(questions["hh-my-tax-id"], turn, truth)
+    assert (unanswered.answered, unanswered.correct_final, unanswered.kind) == (False, False, "household")
+
+
+def test_the_household_group_is_asked_on_its_ledger_and_reported_apart(tmp_path: Path) -> None:
+    """The household questions are asked on the household ledger, recorded and replayed like the others, and
+    reported in a block of their own: the headline numbers (and the README's counts) keep counting the other
+    questions. ``--min-household`` gates the block; a question without a recording is named."""
+    only = ["deadline-steuerbescheid_2025-0", "hh-my-health-number", "hh-alex-passport"]
+    recorded = tmp_path / "recorded"
+    live = run(
+        Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path
+    )
+    assert live.turns["hh-alex-passport"].ledger == "household" and not live.misses
+    assert live.summary["questions"] == 1 and live.summary["not_answered"] == 0
+    block = live.summary["household"]
+    assert (block["questions"], block["not_answered"]) == (2, 0)
+    # the stand-in finds nothing: right for the person's own health insurance number, wrong for Alex's passport
+    assert (block["attribution"]["k"], block["attribution"]["n"]) == (1, 2)
+    replayed = run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)
+    assert replayed.summary == live.summary and not replayed.misses and not replayed.stale
+    payload = results_payload(replayed, run_date="2026-10-30")
+    assert [item["id"] for item in payload["household"]] == ["hh-my-health-number", "hh-alex-passport"]
+    page = render(payload)
+    assert "## Household: whose a number is" in page and "hh-alex-passport" in page
+    json.dumps(payload)
+    assert gate_failures(replayed, parse_args(["--min-household", "1"])) == [
+        "household attribution 0.5 is below 1.0"
+    ]
+    assert gate_failures(replayed, parse_args(["--min-household", "0.5"])) == []
+    missing = run(Config(only=only, recorded_dir=tmp_path / "nothing-recorded"), work_dir=tmp_path)
+    assert gate_failures(missing, parse_args([]))[0] == (
+        "3 question(s) have no recording (deadline-steuerbescheid_2025-0, hh-alex-passport, "
+        "hh-my-health-number) — record them with --live"
+    )
+    assert missing.summary["household"]["not_answered"] == 2
+
+
+def test_a_results_file_without_the_household_group_renders_as_before() -> None:
+    """The committed results (recorded before the household group) render exactly as the page they wrote."""
+    from evals.ask.report import DOCS_PATH
+    from evals.ask.run import RESULTS_DIR
+
+    latest = latest_results(RESULTS_DIR, DEFAULT_MODEL)
+    assert latest is not None
+    payload = json.loads(latest.read_text(encoding="utf-8"))
+    assert "household" not in payload and "household" not in payload["summary"]
+    assert render(payload) == DOCS_PATH.read_text(encoding="utf-8")
+
+
+def test_a_changed_tool_description_needs_a_new_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """What every Ask turn is given besides its prompts — the server's instructions and its tools as tools/list
+    gives them, the allowed tools and the cost cap — is locked under the Ask prompt's version (``ask_tools`` in
+    ``prompts.lock.json``, written by a live run): a replay refuses once any of it changes, as for a changed
+    prompt, since none of it is in a recording's key."""
+    from evals.ask.run import ASK_TOOLS, BenchmarkError, locked_inputs, prompt_hashes
+
+    from ordnung.assistant import ask as ask_module
+    from ordnung.assistant import mcp_server
+
+    only = ["deadline-steuerbescheid_2025-0"]
+    recorded = tmp_path / "recorded"
+    run(Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path)
+    lock = json.loads((recorded / DEFAULT_MODEL / "prompts.lock.json").read_text(encoding="utf-8"))
+    version = prompt_hashes()["ask_system"][0]
+    assert lock[ASK_TOOLS] == {version: locked_inputs()[ASK_TOOLS][1]}
+    assert ASK_TOOLS not in prompt_hashes()  # the published prompt versions stay the prompts'
+    run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)  # replays
+
+    original = mcp_server.build_server
+
+    def described_otherwise(*args: Any, **kwargs: Any) -> Any:
+        server = original(*args, **kwargs)
+        listed = server.list_tools
+
+        async def list_tools() -> Any:
+            return [
+                tool.model_copy(update={"description": f"{tool.description} Changed."})
+                if tool.name == "get_profile"
+                else tool
+                for tool in await listed()
+            ]
+
+        server.list_tools = list_tools  # type: ignore[method-assign]
+        return server
+
+    with monkeypatch.context() as patch:
+        patch.setattr(mcp_server, "build_server", described_otherwise)
+        with pytest.raises(BenchmarkError, match="record again"):
+            run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)
+        assert main(["--only", only[0]], recorded_dir=recorded) == 2
+    with monkeypatch.context() as patch:
+        patch.setattr(ask_module, "MAX_BUDGET_USD", 1.0)
+        with pytest.raises(BenchmarkError, match="ask_tools"):
+            run(Config(only=only, recorded_dir=recorded), work_dir=tmp_path)
+
+
+def test_the_recorded_dir_option_replays_another_folder(tmp_path: Path) -> None:
+    """``--recorded-dir`` replays (or records) another folder than the committed recordings — a smoke run's."""
+    only = ["deadline-steuerbescheid_2025-0"]
+    recorded = tmp_path / "smoke"
+    run(Config(live=True, only=only, recorded_dir=recorded, live_backend=StandInAgent()), work_dir=tmp_path)
+    assert parse_args(["--recorded-dir", str(recorded)]).recorded_dir == recorded
+    assert main(["--only", only[0], "--recorded-dir", str(recorded)]) == 0
+    assert main(["--only", only[0], "--recorded-dir", str(tmp_path / "empty")]) == 1
+
+
 def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) -> None:
     """Review finding: replays re-ran the check on tool results as recorded, so a change that moved
     letter text into the record part would have passed the gate. Every replayed call is answered again

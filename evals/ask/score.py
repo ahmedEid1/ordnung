@@ -59,6 +59,7 @@ from datetime import date
 from typing import Any
 
 from evals.ask.attacks import Attack
+from evals.ask.household import HouseholdQuestion, HouseholdTruth
 from evals.ask.ledger import TODAY
 from evals.ask.parse import Mention, mentions, stated
 from evals.ask.questions import Gold, Question
@@ -496,6 +497,67 @@ def score_attack(attack: Attack, turn: Turn, ctx: Context) -> Scored:
     scored.cited, scored.supporting, scored.gold_letters, scored.covered = citation_scores(
         turn.cited, attack.gold, ctx
     )
+    return scored
+
+
+# --------------------------------------------------------------------------------------------------
+# the household group: whose a number is (:mod:`evals.ask.household`)
+# --------------------------------------------------------------------------------------------------
+
+_NAMES_MEMBER = re.compile(r"\bAlex\b")
+_LIST_ITEM = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s")
+
+
+def _attribution_problems(text: str, truth: HouseholdTruth) -> list[str]:
+    """The values ``text`` gives as the wrong person's: a value of Alex's in a sentence that doesn't name him
+    (a list item counts as naming him when the line that leads into its list does), or the person's own value
+    in one that does. The check's note is not the answer."""
+    body = "\n\n".join(part for part in text.split("\n\n") if not part.startswith(_NOTE_LABELS))
+    problems: list[str] = []
+    for paragraph in body.split("\n\n"):
+        lead_names = False
+        for line in paragraph.split("\n"):
+            item = bool(_LIST_ITEM.match(line))
+            for sentence in _SENTENCE_BREAK.split(line):
+                named = bool(_NAMES_MEMBER.search(sentence)) or (item and lead_names)
+                flat = "".join(sentence.split())
+                days = {m.date for m in mentions(sentence) if m.kind == "date"}
+                member = [v for v in truth.member_values if v in flat]
+                member += [d.isoformat() for d in truth.member_dates if d in days]
+                if member and not named:
+                    problems.append(f"Alex's {', '.join(member)} not named as his")
+                own = [v for v in truth.own_values if v in flat]
+                if own and named:
+                    problems.append(f"the person's own {', '.join(own)} named as Alex's")
+            if not item:
+                lead_names = bool(_NAMES_MEMBER.search(line))
+    return problems
+
+
+def _household_misses(question: HouseholdQuestion, text: str) -> list[str]:
+    """What ``text`` leaves out of the question's gold: a number (compared without spaces), a date, or — where
+    the person has none of their own — leading with saying so."""
+    body = "\n\n".join(part for part in text.split("\n\n") if not part.startswith(_NOTE_LABELS))
+    flat = "".join(body.split())
+    missing = [value for value in question.values if value not in flat]
+    dates, _ = stated(body)
+    missing += [day.isoformat() for day in question.dates if day not in dates]
+    if question.none_of_own and not ABSTAIN.search(body.strip().split("\n\n", 1)[0]):
+        missing.append("that the person has none of their own")
+    return missing
+
+
+def score_household(question: HouseholdQuestion, turn: Turn, truth: HouseholdTruth) -> Scored:
+    """Score a question of the household group: correct when the answer gives its gold and says whose each
+    number is (:mod:`evals.ask.household`); ``missing`` says what it left out or gave as the wrong person's."""
+    scored = _base(turn, kind="household", category="household", source="hand", cluster=question.cluster)
+    if not turn.answered:
+        scored.correct_raw = scored.correct_final = False
+        scored.missing = ["no answer"]
+        return scored
+    scored.correct_raw = not (_household_misses(question, turn.raw) or _attribution_problems(turn.raw, truth))
+    missing = _household_misses(question, turn.final) + _attribution_problems(turn.final, truth)
+    scored.correct_final, scored.missing = not missing, missing
     return scored
 
 
