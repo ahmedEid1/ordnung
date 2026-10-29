@@ -114,6 +114,12 @@ content-type = "text/markdown"
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
 path = "README.md"
 
+# The evaluation's charts are SVG, which GitHub's raw files serve as text and PyPI can't show: they load from the
+# report page's copy on GitHub Pages (python -m evals.present --site, .github/workflows/demo.yml).
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '(src|srcset)="docs/assets/(eval-[a-z-]+-(?:light|dark)\.svg)"'
+replacement = '\1="https://ahmedeid1.github.io/ordnung/evals/\2"'
+
 [[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
 pattern = 'src="(?![a-z][a-z0-9+.-]*:)([^"]+)"'
 replacement = 'src="https://raw.githubusercontent.com/ahmedEid1/ordnung/main/\1"'

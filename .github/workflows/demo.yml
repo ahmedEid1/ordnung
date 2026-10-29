@@ -1,6 +1,8 @@
 # The online demo: the web app's browser-only build (VITE_STATIC_DEMO=1, on the mock world in web/src/mocks,
 # with no server and no model), published on GitHub Pages at https://ahmedeid1.github.io/ordnung/ whenever
-# main's web/ changes, so anyone can open it without an account. A pull request only builds it.
+# main's web/ changes, so anyone can open it without an account; beside it, the evaluation's report page at
+# /ordnung/evals/ (python -m evals.present --site, from evals/present/presentation.json). A pull request only
+# builds them.
 # The owner turns Pages on once: Settings → Pages → Build and deployment → Source: GitHub Actions
 # (docs/releasing.md). Actions are named by major version, as in ci.yml (tests/test_demo_workflow.py).
 name: Online demo
@@ -8,9 +10,9 @@ name: Online demo
 on:
   push:
     branches: [main]
-    paths: ["web/**", ".github/workflows/demo.yml"]
+    paths: ["web/**", "evals/results/**", "evals/present/**", ".github/workflows/demo.yml"]
   pull_request:
-    paths: ["web/**", ".github/workflows/demo.yml"]
+    paths: ["web/**", "evals/results/**", "evals/present/**", ".github/workflows/demo.yml"]
   workflow_dispatch:
 
 permissions:
@@ -41,6 +43,10 @@ jobs:
         working-directory: web
         env:
           VITE_STATIC_DEMO: "1"
+      # The evaluation's report page beside the demo: the standard library only (the runner's python3, no
+      # install), from the committed presentation.json; --check-site fails on a chart without its table, a link to
+      # nowhere, a number the presenter does not render or a sentence of a benchmark letter.
+      - run: python3 -m evals.present --site "$RUNNER_TEMP/demo/evals" --check-site --commit "$GITHUB_SHA"
       - uses: actions/upload-pages-artifact@v5
         with:
           path: ${{ runner.temp }}/demo

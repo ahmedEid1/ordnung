@@ -1,9 +1,13 @@
-"""Benchmark output: the results JSON, ``docs/evals.md`` and the due-date accuracy chart.
+"""Benchmark output: the results JSON, and a run's page in the order the runs happened, with its chart.
 
-Everything in ``docs/evals.md`` is rendered from the results JSON alone, so a published page can be
-regenerated (``python -m evals.report evals/results/<file>.json``) without re-running the benchmark.
-The chart is a PNG made with matplotlib (``pip install -e '.[eval]'``); without matplotlib an SVG
-is written by hand instead.
+The page is rendered from the results JSON alone, so it can be regenerated (``python -m evals.report
+evals/results/<file>.json --docs <page>.md``) without re-running the benchmark. The chart is a PNG made with
+matplotlib (``pip install -e '.[eval]'``); without matplotlib an SVG is written by hand instead.
+
+What a reader sees is the presenter's (``python -m evals.present``): ``docs/evals.md``, the evaluation report;
+``docs/evals-history.md``, which keeps the page this module rendered as ``docs/evals.md`` until 0.3.0
+(:func:`render_markdown`, from the same results files); and the charts in ``docs/assets``. A run never writes
+over them (:func:`check_docs_paths`).
 """
 
 from __future__ import annotations
@@ -2531,6 +2535,24 @@ def svg_chart(results: Mapping[str, Any], *, rescored: Mapping[str, Any] | None 
 # --------------------------------------------------------------------------------------------------
 
 
+#: What ``python -m evals.present`` renders: a run's page and chart are never written there.
+PRESENTER_PAGES = (ROOT / "docs" / "evals.md", ROOT / "docs" / "evals-history.md")
+PRESENTER_ASSETS = ROOT / "docs" / "assets"
+
+
+def check_docs_paths(docs_path: Path, chart_path: Path | None) -> None:
+    """Raises ``ValueError`` when a run's page or chart would land on the presenter's pages or charts (``chart_path``
+    is ``None`` when no chart is written: the page for no results yet)."""
+    pages = {path.resolve() for path in PRESENTER_PAGES}
+    in_assets = chart_path is not None and chart_path.resolve().parent == PRESENTER_ASSETS.resolve()
+    if docs_path.resolve() in pages or in_assets:
+        raise ValueError(
+            "docs/evals.md, docs/evals-history.md and docs/assets are rendered by python -m evals.present from "
+            "evals/results: give this run's page and chart a path of their own (--docs-path and --chart-path, or "
+            "evals.report's --docs and --chart)"
+        )
+
+
 def write_docs(
     runs: Sequence[Mapping[str, Any]],
     *,
@@ -2547,7 +2569,8 @@ def write_docs(
     holdout3_run: Mapping[str, Any] | None = None,
     holdout3_rescored: Mapping[str, Any] | None = None,
 ) -> tuple[Path, Path | None]:
-    """Regenerate ``docs/evals.md`` (and the chart of the first run); returns both paths."""
+    """Render the page of ``runs`` to ``docs_path`` (and the chart of the first run); returns both paths."""
+    check_docs_paths(docs_path, chart_path if runs else None)
     for run in runs:
         if run["meta"].get("split") in HELD_OUT_SPLITS:
             raise ValueError(
