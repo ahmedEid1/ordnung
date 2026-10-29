@@ -2928,8 +2928,8 @@
   ]
  },
  "ask": {
-  "file": "2026-10-01-claude-sonnet-5-ask.json",
-  "date": "2026-10-01",
+  "file": "2026-10-29-claude-sonnet-5-ask.json",
+  "date": "2026-10-29",
   "set": "dev",
   "questions": 52,
   "answerable": 44,
@@ -3167,8 +3167,108 @@
    }
   }
  },
- "ablation": null,
- "e2e": null,
+ "ablation": {
+  "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
+  "splits": [
+   "holdout",
+   "holdout2",
+   "holdout3"
+  ],
+  "rows": [
+   {
+    "name": "all_on",
+    "label": "As it ships",
+    "scored": 168,
+    "right": 166,
+    "late": 0,
+    "missed": 0,
+    "early": 2
+   },
+   {
+    "name": "no_two_dates_check",
+    "label": "Two-dates check off",
+    "scored": 168,
+    "right": 162,
+    "late": 4,
+    "missed": 0,
+    "early": 2
+   },
+   {
+    "name": "no_notice_guard",
+    "label": "Notice guard off",
+    "scored": 168,
+    "right": 166,
+    "late": 0,
+    "missed": 0,
+    "early": 2
+   },
+   {
+    "name": "no_reask",
+    "label": "Re-ask off",
+    "scored": 168,
+    "right": 166,
+    "late": 0,
+    "missed": 0,
+    "early": 2
+   },
+   {
+    "name": "no_reading_check",
+    "label": "Reading check off",
+    "scored": 168,
+    "right": 166,
+    "late": 0,
+    "missed": 0,
+    "early": 2
+   },
+   {
+    "name": "no_reask_no_reading_check",
+    "label": "Re-ask and reading check off",
+    "scored": 168,
+    "right": 165,
+    "late": 0,
+    "missed": 1,
+    "early": 2
+   },
+   {
+    "name": "all_off",
+    "label": "All code checks off",
+    "scored": 168,
+    "right": 161,
+    "late": 4,
+    "missed": 1,
+    "early": 2
+   }
+  ]
+ },
+ "e2e": {
+  "file": "2026-10-29-claude-sonnet-5-e2e.json",
+  "splits": [
+   "test",
+   "holdout",
+   "holdout2",
+   "holdout3"
+  ],
+  "letters": 252,
+  "obligations": 224,
+  "parity": {
+   "k": 224,
+   "n": 224
+  },
+  "reminded_in_time": {
+   "k": 209,
+   "n": 224,
+   "value": 0.9330357142857143,
+   "ci": [
+    0.8960994887465475,
+    0.9642896825396826
+   ]
+  },
+  "late_reminders": 0,
+  "not_reminded": {
+   "set_aside:scam_signs": 15
+  },
+  "set_aside": 15
+ },
  "llm_only_first_run": {
   "file": "2026-09-25-sonnet-test.json",
   "date": "2026-09-25",
@@ -3682,6 +3782,36 @@
    "file": "2026-10-08-claude-sonnet-5-without-land.json",
    "date": "2026-10-08",
    "kind": "without-land",
+   "role": "replay",
+   "split": null,
+   "backend": null,
+   "conditions": [],
+   "ordnung": null
+  },
+  {
+   "file": "2026-10-29-claude-sonnet-5-ask.json",
+   "date": "2026-10-29",
+   "kind": "ask",
+   "role": "iterated",
+   "split": null,
+   "backend": null,
+   "conditions": [],
+   "ordnung": null
+  },
+  {
+   "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
+   "date": "2026-10-29",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "split": null,
+   "backend": null,
+   "conditions": [],
+   "ordnung": null
+  },
+  {
+   "file": "2026-10-29-claude-sonnet-5-e2e.json",
+   "date": "2026-10-29",
+   "kind": "e2e",
    "role": "replay",
    "split": null,
    "backend": null,

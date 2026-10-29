@@ -211,7 +211,18 @@ call (the agent), as text (rules text) and not at all (the model alone) ([Summar
 
 ### Ordnung's code checks, switched off one at a time
 
-No results file of the check ablation yet (`scripts/eval_ablate_checks.py`).
+The recorded readings of holdout, holdout2 and holdout3 replayed with each check switched off
+(`scripts/eval_ablate_checks.py`, `2026-10-29-claude-sonnet-5-checks-ablated.json`): what each layer prevents.
+
+| Configuration | Exactly right | Late | Missed | Early |
+|---|---|---|---|---|
+| As it ships | 166/168 | 0 | 0 | 2 |
+| Two-dates check off | 162/168 | 4 | 0 | 2 |
+| Notice guard off | 166/168 | 0 | 0 | 2 |
+| Re-ask off | 166/168 | 0 | 0 | 2 |
+| Reading check off | 166/168 | 0 | 0 | 2 |
+| Re-ask and reading check off | 165/168 | 0 | 1 | 2 |
+| All code checks off | 161/168 | 4 | 1 | 2 |
 
 ### Ask's answer check, on and off
 
@@ -326,7 +337,12 @@ CLI reports them; latency is the model's time per letter.
 
 ## 13. From a letter to a reminder
 
-No results file of the end-to-end run yet (`python -m evals.e2e`).
+Every letter of test, holdout, holdout2 and holdout3 read by the real app in a fresh data folder, from the recorded
+readings, through to the calendar and the morning note (`python -m evals.e2e`,
+`2026-10-29-claude-sonnet-5-e2e.json`): 209 of 224 genuine dated obligations got a reminder in time (93.3 %); 0 got
+one only after the deadline. The stored dates equal the replay without the sender's Land for 224 of 224.
+
+Not reminded, by cause: set aside as a scam: 15.
 
 ## 14. Limitations
 

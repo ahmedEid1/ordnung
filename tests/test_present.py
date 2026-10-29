@@ -227,6 +227,9 @@ def _variant(doc: dict[str, Any], **changes: Any) -> dict[str, Any]:
             headline["paired"]["accuracy"][f"ordnung-vs-{key.removeprefix('diff_')}"]["diff"] = value
         elif key == "caught":
             headline["flags"]["caught"] = value
+        elif key == "set_aside":  # the end-to-end run's genuine obligations set aside (when it exists)
+            if new.get("e2e"):
+                new["e2e"]["set_aside"] = value
         else:
             raise KeyError(key)
     return new
@@ -250,8 +253,11 @@ def test_the_sentence_says_good_and_bad_results_the_same_way(doc: dict[str, Any]
     assert "scores lower (99.4 %" in agent_behind
     agent_unsettled = _flat(text.headline(_variant(doc, verdict_llm_rules_tool="suggestive")))
     assert "scores higher, not settled (99.4 %" in agent_unsettled
-    caught = _flat(text.readme_block(_variant(doc, caught=5)))
+    caught = _flat(text.readme_block(_variant(doc, caught=5, set_aside=0)))
     assert "**Where it falls short:**" not in caught and "caught 5 of Ordnung's 5 wrong dates" in caught
+    if doc.get("e2e"):  # every wrong date caught, but real obligations still set aside: still short
+        set_aside = _flat(text.readme_block(_variant(doc, caught=5)))
+        assert "**Where it falls short:**" in set_aside and "set aside as a scam" in set_aside
 
 
 # --------------------------------------------------------------------------------------------------

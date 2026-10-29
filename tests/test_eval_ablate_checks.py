@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -443,7 +444,9 @@ def test_the_published_file_is_a_replay_of_every_split_under_every_ablation() ->
     assert results["schema"] == SCHEMA
     assert meta["model"] == DEFAULT_MODEL and meta["condition"] == "ordnung" and meta["backend"] == "replay"
     assert meta["script"] == "scripts/eval_ablate_checks.py"
-    assert meta["fingerprint"] == conditions.fingerprint("ordnung", DEFAULT_MODEL)
+    # the code it ran on (evals.conditions.fingerprint now covers every source file, so any later change moves it:
+    # the numbers are checked by replaying them, test_check_replays_the_published_file and make eval-reproduce)
+    assert re.fullmatch(r"[0-9a-f]{16}", meta["fingerprint"])
     assert list(meta["ablations"]) == list(ABLATIONS)
     assert list(results["splits"]) == list(eval_ablate_checks.SPLITS)
     for numbers in results["splits"].values():
