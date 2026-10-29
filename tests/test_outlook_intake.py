@@ -1,8 +1,8 @@
 """Outlook ``.msg`` files at every way in: upload, the phone, the watched folder, ``ordnung add`` and proof
 of a sent letter. Each becomes an e-mail (``.eml``) whose attachments are letters of their own, adding it
 again finds it, a damaged one is refused with the Outlook reason, and one whose first kilobyte holds an
-attached PDF is no longer called a broken PDF (intake's sniffing sees ``%PDF-`` there: the conversion runs
-before it, and intake itself is unchanged)."""
+attached PDF is never called a broken PDF: the conversion runs before intake looks at the bytes, and intake
+itself names an Outlook file that reaches it unopened (``intake.OLE_UNOPENED``) before it looks for ``%PDF-``."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from ordnung.config import Paths
 from ordnung.db.store import Store
 from ordnung.ingest import held, watcher
 from ordnung.ingest.attachments import email_attachments, email_source
-from ordnung.ingest.intake import normalise_upload, sniff_mime
+from ordnung.ingest.intake import OLE_UNOPENED, IntakeError, normalise_upload, sniff_mime
 from ordnung.ingest.outlook import DAMAGED, msg_to_eml
 from ordnung.ingest.text import email_heading, text_document
 from ordnung.llm.fake import FakeBackend
@@ -46,10 +46,14 @@ def pinned_today() -> Iterator[None]:
     clock.set_today(None)
 
 
-def test_the_bill_holds_a_pdf_in_its_first_kilobyte() -> None:
-    """The trap every test here walks into: intake alone takes this Outlook file for a PDF."""
+def test_intake_names_an_unopened_outlook_file_never_a_pdf() -> None:
+    """The trap every test here walks into: this Outlook file holds an attached PDF in its first kilobyte. Should it
+    ever reach intake unopened, intake names it for what it is, never a PDF, whatever its name."""
     assert b"%PDF-" in BILL[:1024]
-    assert sniff_mime(BILL, "Rechnung.msg") == "application/pdf"
+    for name in ("Rechnung.msg", "Rechnung.pdf", "Rechnung"):
+        with pytest.raises(IntakeError) as caught:
+            sniff_mime(BILL, name)
+        assert str(caught.value) == OLE_UNOPENED
 
 
 def test_converted_text_has_header_lines_and_attachment_list() -> None:

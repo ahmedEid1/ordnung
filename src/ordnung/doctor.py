@@ -6,16 +6,18 @@ bills the API), and checks the local machine: SQLite FTS5 + trigram search, a wr
 the database in it (opened read-only: SQLite's quick check and the schema version), free disk space,
 the bundled letter fonts and the built web app; when the last copy kept elsewhere was made (a backup, or
 hand-off sync's save: :mod:`ordnung.backup.reminder`) and whether the disk under the data folder is
-encrypted (:mod:`ordnung.encryption`, on macOS and Linux) — both only ever warn — and, while hand-off sync
-is connected, the sync folder (reachable), the password store (usable), the mode and the age of the last
-save, never reading the passphrase. Right after the web app, *Text in pictures* (ADR 0024) says whether
-Ordnung found Tesseract, the optional program that reads the words in photos and scans Claude isn't reading,
-for search only. ``probe=True`` adds one tiny live model call. The structured :class:`DoctorReport` feeds the
-CLI, ``/api/health`` (via :func:`claude_status`) and the Settings page.
+encrypted (:mod:`ordnung.encryption`, on macOS and Linux; on Windows an info row says where to look) — both
+only ever warn — and, while hand-off sync is connected, the sync folder (reachable), the password store
+(usable), the mode and the age of the last save, never reading the passphrase. Right after the web app, *Text in
+pictures* (ADR 0024) says whether Ordnung found Tesseract, the optional program that reads the words in photos
+and scans Claude isn't reading, for search only, or that it is off (in Settings, or by ``ORDNUNG_OCR=off``, which
+wins). ``probe=True`` adds one tiny live model call. The structured :class:`DoctorReport` feeds the CLI,
+``/api/health`` (via :func:`claude_status`, and :func:`picture_text_status` for Settings' *Text in pictures*
+card) and the Settings page.
 
-A row's ``fix`` is usually for a row that isn't ok (``models.DoctorCheck`` says so, and stays as it is: it is a
-digest file). One ok row carries a fix too: *Text in pictures* — *Not installed (optional)* names how to install
-Tesseract, and the CLI prints it as an *Optional —* tip, never as a problem.
+An info row is neither ok nor a problem: an optional part not installed, something off by the person's choice,
+a check Ordnung can't make on this system; its fix, if any, is a tip (the CLI prints it as *Optional —*). Only a
+``fail`` row fails the doctor.
 """
 
 from __future__ import annotations
@@ -41,7 +43,14 @@ from ordnung.config import OCR_SWITCH, Paths, ocr_turned_off, web_dist_dir
 from ordnung.db.migrate import SchemaError, applied_versions, current_version, discover
 from ordnung.llm import claude_cli
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, parse_version, version_text
-from ordnung.models import CheckStatus, ClaudeStatus, DoctorCheck
+from ordnung.models import (
+    AppSettings,
+    CheckStatus,
+    ClaudeStatus,
+    DoctorCheck,
+    PictureTextState,
+    PictureTextStatus,
+)
 
 if TYPE_CHECKING:
     from ordnung.ingest.ocr import Tesseract
@@ -536,13 +545,27 @@ LINUX_ENCRYPTION_FIX = (
 )
 
 
+#: The Windows row: Ordnung can't read BitLocker's state there without administrator rights (:mod:`ordnung.encryption`),
+#: so it says where the person looks (Microsoft's "Device encryption in Windows", as docs/privacy.md cites it).
+WINDOWS_ENCRYPTION = (
+    "Ordnung can't check this on Windows: see that BitLocker or Device encryption is on (Settings → Privacy & "
+    "security → Device encryption, or BitLocker Drive Encryption in the Control Panel)."
+)
+
+
 def disk_encryption_check(
-    data_dir: Path, *, probe: Callable[[Path], encryption.Encryption | None] | None = None
+    data_dir: Path,
+    *,
+    probe: Callable[[Path], encryption.Encryption | None] | None = None,
+    platform: str = sys.platform,
 ) -> DoctorCheck | None:
     """Whether the disk under the data folder is encrypted (:mod:`ordnung.encryption`, a best effort):
-    on is fine, off or "couldn't tell" warn — never a failure. ``None`` where Ordnung can't tell on this
-    system (Windows, WSL, others). It describes this computer, so a demo folder gets it too."""
+    on is fine, off or "couldn't tell" warn — never a failure. On Windows, where Ordnung can't tell, an info row
+    says where to look (no probe runs); ``None`` where it can't tell elsewhere (WSL, others). It describes this
+    computer, so a demo folder gets it too."""
     label = "Disk encryption"
+    if platform == "win32":
+        return DoctorCheck(id="disk_encryption", label=label, status="info", detail=WINDOWS_ENCRYPTION)
     found = (probe or encryption.disk_encryption)(Path(data_dir))
     if found is None:
         return None
@@ -651,39 +674,43 @@ def tesseract_german(platform: str = sys.platform) -> str:
     )
 
 
-def text_in_pictures_check(
-    *, platform: str = sys.platform, env: Mapping[str, str] | None = None, find: FindTesseract | None = None
-) -> DoctorCheck:
-    """Whether Ordnung reads the words in photos and scans Claude isn't reading (ADR 0024): the Tesseract it
-    found, with its version and languages. Tesseract is optional, so this row never fails: *Not installed
-    (optional)* is ok, with this system's install line as its fix; a Tesseract Ordnung can't use (older than 4.1,
-    without German, or one that didn't answer) warns and says what to do. Turned off (``ORDNUNG_OCR=off``) it is
-    ok and looks for nothing. Otherwise it looks again on every run (``find``: tests pass their own)."""
+#: What the *Text in pictures* row says when the person turned it off in Settings.
+OFF_IN_SETTINGS = "Off (Settings → Data → Text in pictures)"
+
+
+def _text_in_pictures(
+    read_picture_text: bool, platform: str, env: Mapping[str, str] | None, find: FindTesseract
+) -> tuple[PictureTextState, DoctorCheck]:
+    """The *Text in pictures* row and the state it stands for (:class:`~ordnung.models.PictureTextStatus`)."""
     label = "Text in pictures"
-    if ocr_turned_off(env):
-        return DoctorCheck(id="ocr", label=label, status="ok", detail=f"Turned off ({OCR_SWITCH}=off)")
+    if ocr_turned_off(env):  # the variable wins over Settings
+        row = DoctorCheck(id="ocr", label=label, status="info", detail=f"Turned off ({OCR_SWITCH}=off)")
+        return "off_by_variable", row
+    if not read_picture_text:
+        return "off", DoctorCheck(id="ocr", label=label, status="info", detail=OFF_IN_SETTINGS)
     from ordnung.ingest import ocr
 
-    engine = find() if find is not None else ocr.find(refresh=True, platform=platform, env=env)
+    engine = find()
     if engine is None:
-        return DoctorCheck(
+        row = DoctorCheck(
             id="ocr",
             label=label,
-            status="ok",
+            status="info",
             detail="Not installed (optional)",
             fix="To find photos and scans Claude doesn't read by their words, install Tesseract: "
             + tesseract_install(platform),
         )
+        return "not_installed", row
     if engine.version is None:
         detail = f"Tesseract at {engine.path} didn't answer, so Ordnung reads no pictures"
         fix = f"Install it again: {tesseract_install(platform)}"
-        return DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
+        return "not_usable", DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
     version = ".".join(str(part) for part in engine.version)
     if engine.version < ocr.MIN_VERSION:
         needed = ".".join(str(part) for part in ocr.MIN_VERSION)
         detail = f"Tesseract {version} is too old: Ordnung needs {needed} or newer, so it reads no pictures"
         fix = f"Install a newer one: {tesseract_install(platform)}"
-        return DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
+        return "not_usable", DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=fix)
     if "deu" not in engine.languages:
         missing = (
             "no German language data: words with ä, ö, ü or ß are often misread"
@@ -691,15 +718,56 @@ def text_in_pictures_check(
             else "neither German nor English language data, so Ordnung reads no pictures"
         )
         detail = f"Tesseract {version} has {missing}"
-        return DoctorCheck(
-            id="ocr", label=label, status="warn", detail=detail, fix=tesseract_german(platform)
-        )
+        row = DoctorCheck(id="ocr", label=label, status="warn", detail=detail, fix=tesseract_german(platform))
+        return "not_usable", row
     languages = " and ".join(_LANGUAGE_NAMES[language] for language in engine.languages)
     detail = (
         f"Tesseract {version} ({languages}): photos and scans Claude doesn't read are found by their words, "
         "not checked"
     )
-    return DoctorCheck(id="ocr", label=label, status="ok", detail=detail)
+    return "reading", DoctorCheck(id="ocr", label=label, status="ok", detail=detail)
+
+
+def text_in_pictures_check(
+    *,
+    read_picture_text: bool = True,
+    platform: str = sys.platform,
+    env: Mapping[str, str] | None = None,
+    find: FindTesseract | None = None,
+) -> DoctorCheck:
+    """Whether Ordnung reads the words in photos and scans Claude isn't reading (ADR 0024): the Tesseract it
+    found, with its version and languages. Tesseract is optional, so this row never fails: *Not installed
+    (optional)* is info, with this system's install line as its fix; a Tesseract Ordnung can't use (older than 4.1,
+    without German, or one that didn't answer) warns and says what to do. Turned off — by ``ORDNUNG_OCR=off``,
+    which wins, or in Settings (``read_picture_text``) — it is info and looks for nothing. Otherwise it looks again
+    on every run (``find``: tests pass their own)."""
+    from ordnung.ingest import ocr
+
+    def look_again() -> Tesseract | None:
+        return ocr.find(refresh=True, platform=platform, env=env)
+
+    _, row = _text_in_pictures(read_picture_text, platform, env, find or look_again)
+    return row
+
+
+def picture_text_status(
+    read_picture_text: bool,
+    *,
+    platform: str = sys.platform,
+    env: Mapping[str, str] | None = None,
+    find: FindTesseract | None = None,
+) -> PictureTextStatus:
+    """*Text in pictures* on this computer for Settings' card (``Health.picture_text``): the doctor's row as a state,
+    in its words. It asks the engine for the Tesseract it already found (the worker looks again once per start and
+    when the switch is turned on, the doctor on every run), so a plain ``GET /api/health`` stays cheap; the first
+    ask may look (``--version``, ``--list-langs``), so the route calls it in a thread."""
+    from ordnung.ingest import ocr
+
+    def found() -> Tesseract | None:
+        return ocr.find(platform=platform, env=env)
+
+    state, row = _text_in_pictures(read_picture_text, platform, env, find or found)
+    return PictureTextStatus(state=state, detail=row.detail, fix=row.fix)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -707,16 +775,34 @@ def text_in_pictures_check(
 # --------------------------------------------------------------------------------------------------
 
 
-def local_checks(data_dir: str | Path) -> list[DoctorCheck]:
+def _saved_settings(data_dir: Path) -> AppSettings:
+    """The data folder's saved settings, read without creating or changing anything; the defaults when there is
+    no database yet or its settings can't be read (the database check says why)."""
+    from ordnung.db.store import SETTINGS_META_KEY
+
+    db = Paths(data_dir).db
+    if not db.is_file():
+        return AppSettings()
+    try:
+        with contextlib.closing(sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+            row = conn.execute("SELECT value FROM meta WHERE key = ?", (SETTINGS_META_KEY,)).fetchone()
+        return AppSettings.model_validate_json(row[0]) if row else AppSettings()
+    except (sqlite3.Error, ValueError):
+        return AppSettings()
+
+
+def local_checks(data_dir: str | Path, settings: AppSettings | None = None) -> list[DoctorCheck]:
     """The checks of this computer (no Claude involved), in the order shown; the backup, disk-encryption
-    and sync rows only where they apply."""
+    and sync rows only where they apply. ``settings``: the app's own (the API hands them in); without them (the
+    CLI) the data folder's saved settings are read, read-only."""
     folder = Path(data_dir).expanduser()
+    read_picture_text = (settings or _saved_settings(folder)).read_picture_text
     checks: list[DoctorCheck | None] = [
         api_key_check(),
         sqlite_check(),
         fonts_check(),
         web_ui_check(),
-        text_in_pictures_check(),
+        text_in_pictures_check(read_picture_text=read_picture_text),
         data_dir_check(folder),
         database_check(folder),
         disk_check(folder),
@@ -731,7 +817,7 @@ async def run_doctor(
     data_dir: str | Path, *, probe: bool = False, binary: str | None = None, model: str | None = None
 ) -> DoctorReport:
     """Run every check. Zero tokens unless ``probe`` is set (one tiny live call, on ``model`` — the one
-    every call runs on — when the caller knows it)."""
+    every call runs on — when the caller knows it). The settings are read from the data folder."""
     claude_checks, status = await check_claude(binary, probe=probe, model=model)
     checks = await asyncio.to_thread(local_checks, data_dir)
     return DoctorReport(checks=[*claude_checks, *checks], claude=status)

@@ -217,9 +217,16 @@ def test_tesseract_is_installed_only_where_a_real_binary_test_needs_it() -> None
 
 def test_the_installed_wheels_doctor_finds_text_in_pictures_optional_on_other_systems() -> None:
     """Where Tesseract is missing (the macOS and Windows runners) the wheel's doctor shows *Text in pictures* as
-    ok: *Not installed (optional)*, never a warning that would say something is wrong."""
+    info: *Not installed (optional)*, never a warning that would say something is wrong. On Windows the *Disk
+    encryption* row is info too (Ordnung can't check BitLocker there; the row says where to look). An info row
+    never fails the doctor: only Claude's checks may, as before."""
     (step,) = [step for step in _jobs()["other-systems"]["steps"] if "run_doctor_sync" in step.get("run", "")]
-    assert 'check.id == "ocr"' in step["run"] and 'ocr.status == "ok"' in step["run"]
+    script = step["run"]
+    assert 'check.id == "ocr"' in script and 'ocr.status == "info"' in script
+    assert 'ocr.detail == "Not installed (optional)"' in script
+    assert 'sys.platform == "win32"' in script and 'check.id == "disk_encryption"' in script
+    assert 'disk.status == "info"' in script
+    assert 'check.status == "fail"' in script and 'name.startswith("claude")' in script
 
 
 def test_coverage_counts_branches_and_has_floors_for_the_whole_package_sync_and_phone() -> None:

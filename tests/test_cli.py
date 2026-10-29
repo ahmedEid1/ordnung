@@ -696,11 +696,11 @@ def test_doctor_with_a_fake_claude(tmp_path: Path, data_dir: Path, monkeypatch: 
     assert "2.1.5" in result.output
 
 
-def test_doctor_prints_an_optional_tip_for_an_ok_row_with_a_fix(
+def test_doctor_prints_an_optional_tip_for_an_info_row_with_a_fix(
     tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """*Text in pictures* is ok without Tesseract (it is optional), yet its fix says how to add it: after the
-    table, one *Optional —* line, never the ``!`` of a problem, and the exit code stays 0."""
+    """*Text in pictures* is info without Tesseract (it is optional, marked ``i``), and its fix says how to add it:
+    after the table, one *Optional —* line, never the ``!`` of a problem, and the exit code stays 0."""
     from ordnung import doctor
     from ordnung.ingest import ocr
 
@@ -721,12 +721,22 @@ def test_doctor_prints_an_optional_tip_for_an_ok_row_with_a_fix(
     assert text.count("Optional —") == 1 and tip in text
     assert text.index("Not installed (optional)") < text.index(tip)
     assert "! Text in pictures" not in text and "✓ Text in pictures" not in text
-    # turned off: an ok row without a fix, so no tip
+    assert "│ i │ Text in pictures │ Not installed (optional)" in text
+    # turned off: an info row without a fix, so no tip
     monkeypatch.setenv("ORDNUNG_OCR", "off")
     result = invoke("doctor", "--data-dir", str(data_dir))
     assert result.exit_code == 0, result.output
     text = " ".join(plain(result.output).split())
-    assert "Turned off (ORDNUNG_OCR=off)" in text and "Optional —" not in text
+    assert "│ i │ Text in pictures │ Turned off (ORDNUNG_OCR=off)" in text and "Optional —" not in text
+    # off in Settings (read from the data folder, which the doctor doesn't create): the same, no tip
+    monkeypatch.delenv("ORDNUNG_OCR")
+    with Store.open(Paths(data_dir)) as store:
+        store.save_settings(store.get_settings().model_copy(update={"read_picture_text": False}))
+    result = invoke("doctor", "--data-dir", str(data_dir))
+    assert result.exit_code == 0, result.output
+    text = " ".join(plain(result.output).split())
+    assert "│ i │ Text in pictures │ Off (Settings → Data → Text in pictures)" in text
+    assert "Optional —" not in text
 
 
 def test_the_doctors_install_lines_stay_whole_in_a_narrow_terminal(

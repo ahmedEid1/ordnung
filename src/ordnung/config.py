@@ -53,6 +53,14 @@ def ocr_turned_off(env: Mapping[str, str] | None = None) -> bool:
     return value.strip().lower() in _OFF_VALUES
 
 
+def picture_text_off(read_picture_text: bool, env: Mapping[str, str] | None = None) -> bool:
+    """Whether text in pictures is off on this computer: off in Settings (``read_picture_text``, the person's
+    choice, which travels with hand-off sync) or by :data:`OCR_SWITCH` (this computer only). The variable only
+    ever turns it off, and wins: ``ORDNUNG_OCR=on`` forces nothing. The worker and the letter routes ask this;
+    the engine's own guard stays :func:`ocr_turned_off`."""
+    return not read_picture_text or ocr_turned_off(env)
+
+
 def default_data_dir() -> Path:
     env = os.environ.get("ORDNUNG_HOME")
     if env:

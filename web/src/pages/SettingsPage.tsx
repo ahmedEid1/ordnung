@@ -210,7 +210,7 @@ function ComputerSettings() {
               ) : section === "computers" ? (
                 <ComputersSection />
               ) : (
-                <DataSection health={health.data} />
+                <DataSection health={health.data} settings={settings.data} />
               )}
             </div>
           </div>

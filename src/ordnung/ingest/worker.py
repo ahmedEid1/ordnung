@@ -38,9 +38,13 @@ delay the worker looks for Tesseract once, then reads one page at a time, newest
 priority, and keeps the words for the letter search only (``picture-text.json``, through the store); no
 row of the database changes and no model is called. It looks again after each reading ends and every
 :data:`PICTURES_POLL_S` seconds; a page Tesseract fails on is left until Ordnung starts again. Stopping the
-worker stops a reading under way (Tesseract is killed). ``ORDNUNG_OCR=off``: Tesseract is never looked
-for, and the words read earlier are removed when the worker starts. Without a usable Tesseract the loop
-ends after its one look.
+worker stops a reading under way (Tesseract is killed). Off — in Settings (*Text in pictures*) or by
+``ORDNUNG_OCR=off``, which wins (:func:`~ordnung.config.picture_text_off`) — Tesseract is never looked for,
+and the words read earlier are removed when the worker starts. Without a usable Tesseract the loop ends after
+its one look. The switch counts while Ordnung runs (:meth:`IngestWorker.picture_text_changed`, one change at a
+time): saved off, the reading under way stops, the loop ends and every word read is removed; saved on, the loop
+starts at once and looks for Tesseract afresh. While the worker is stopped nothing happens: the next start
+reads the switch.
 
 Readings and the Ideas refresh are background work for hand-off sync: they run in a context where the
 person's writes aren't counted (:func:`~ordnung.db.store.background_context`), even when a request of
@@ -64,6 +68,7 @@ from typing import TYPE_CHECKING, ClassVar
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 # how a job's ``waiting_reason`` starts while it waits for Claude: the store's, re-exported (the CLI reads it)
+from ordnung.config import picture_text_off
 from ordnung.db.store import WAITING_FOR_CLAUDE as WAITING_FOR_CLAUDE
 from ordnung.db.store import background_context, person_write
 from ordnung.ingest import ocr, pipeline
@@ -213,8 +218,12 @@ class IngestWorker:
         #: Seconds between looks for pictures to read when no reading ended meanwhile.
         self.pictures_poll_s = PICTURES_POLL_S
         self._pictures: asyncio.Task[None] | None = None
+        #: Ends the pictures loop alone (the switch turned off), apart from the scanner text's catch-up.
+        self._pictures_halt: asyncio.Event | None = None
         self._pictures_wake: asyncio.Event | None = None
         self._picture_stop: threading.Event | None = None
+        #: One change of the *Text in pictures* switch at a time (:meth:`picture_text_changed`).
+        self._pictures_switch = asyncio.Lock()
         #: (letter, page) Tesseract failed on in this run of Ordnung: left until Ordnung starts again.
         self._picture_failed: set[tuple[str, int]] = set()
 
@@ -317,13 +326,52 @@ class IngestWorker:
         self._catch_up = asyncio.create_task(
             self._catch_up_scan_text(self._halt), name="ordnung-scan-text", context=background_context()
         )
+        self._start_pictures(self.catch_up_delay_s)
+
+    def _start_pictures(self, delay: float) -> None:
+        """Start the pictures loop (:meth:`_read_pictures`), with its own halt, wake and stop, after ``delay``."""
+        self._pictures_halt = asyncio.Event()
         self._pictures_wake = asyncio.Event()
         self._picture_stop = threading.Event()
         self._pictures = asyncio.create_task(
-            self._read_pictures(self._halt, self._pictures_wake, self._picture_stop),
+            self._read_pictures(self._pictures_halt, self._pictures_wake, self._picture_stop, delay=delay),
             name="ordnung-pictures",
             context=background_context(),
         )
+
+    async def picture_text_changed(self) -> None:
+        """The *Text in pictures* switch was saved: do what it says now (Settings → Data; ``ORDNUNG_OCR=off`` wins).
+        Off: a reading under way stops (Tesseract is killed within a poll), the loop ends, and every word read in
+        pictures is removed. On, with no loop running: the loop starts without the start delay and looks for
+        Tesseract afresh (it may have been installed since). One change at a time, so saves made together never
+        leave two loops; nothing while the worker is stopped (the next :meth:`start` reads the switch)."""
+        async with self._pictures_switch:
+            if self._stopping or not self.running:
+                return
+            if picture_text_off(self.ctx.settings.read_picture_text):
+                task = self._pictures
+                if task is not None and not task.done():
+                    for event in (self._pictures_halt, self._pictures_wake):
+                        if event is not None:
+                            event.set()
+                    if self._picture_stop is not None:
+                        self._picture_stop.set()
+                    await asyncio.gather(task, return_exceptions=True)
+                if self._pictures is task:
+                    self._pictures = None
+                await self._forget_picture_text()
+            elif self._pictures is None or self._pictures.done():
+                self._start_pictures(0)
+
+    async def _forget_picture_text(self) -> None:
+        """Text in pictures is off: remove every word read in pictures (a scanner's text stays)."""
+        try:
+            forgotten = await asyncio.to_thread(self.ctx.store.forget_all_picture_text)
+        except Exception:
+            log.warning("could not forget the words read in pictures", exc_info=True)
+            return
+        if forgotten:
+            log.info("text in pictures is turned off: forgot the words read in %d letter(s)", forgotten)
 
     def reload(self) -> None:
         """The database was replaced (hand-off sync brought another computer's Ordnung here) while the
@@ -348,8 +396,9 @@ class IngestWorker:
         catch_up, pictures = self._catch_up, self._pictures
         background = {task for task in (catch_up, pictures) if task is not None}
         if background:  # the letter or page under way gets ``grace`` seconds too
-            if self._halt is not None:
-                self._halt.set()
+            for halt in (self._halt, self._pictures_halt):
+                if halt is not None:
+                    halt.set()
             if self._picture_stop is not None:
                 self._picture_stop.set()  # a reading under way stops (Tesseract is killed) within a poll
             if self._pictures_wake is not None:
@@ -436,24 +485,19 @@ class IngestWorker:
             except Exception:
                 log.warning("could not keep the scanner text of %s", doc_id, exc_info=True)
 
-    async def _read_pictures(self, halt: asyncio.Event, wake: asyncio.Event, stop: threading.Event) -> None:
+    async def _read_pictures(
+        self, halt: asyncio.Event, wake: asyncio.Event, stop: threading.Event, *, delay: float
+    ) -> None:
         """Read the words in the pictures of the letters Claude isn't reading (ADR 0024; the module docstring).
-        Turned off: forget what was read before, and end. Else after :attr:`catch_up_delay_s` look for Tesseract
-        once (none usable: end), then read the due pages one at a time until ``halt``, looking again whenever
-        ``wake`` is set (a reading ended) or :attr:`pictures_poll_s` passed; ``stop`` stops a reading under
-        way."""
-        store = self.ctx.store
-        if ocr.turned_off():
-            try:
-                forgotten = await asyncio.to_thread(store.forget_all_picture_text)
-            except Exception:
-                log.warning("could not forget the words read in pictures", exc_info=True)
-                return
-            if forgotten:
-                log.info("text in pictures is turned off: forgot the words read in %d letter(s)", forgotten)
+        Turned off (in Settings or by ``ORDNUNG_OCR``): forget what was read before, and end. Else after ``delay``
+        seconds look for Tesseract once (none usable: end), then read the due pages one at a time until ``halt``,
+        looking again whenever ``wake`` is set (a reading ended) or :attr:`pictures_poll_s` passed; ``stop`` stops
+        a reading under way."""
+        if picture_text_off(self.ctx.settings.read_picture_text):
+            await self._forget_picture_text()
             return
         with contextlib.suppress(TimeoutError):
-            await asyncio.wait_for(halt.wait(), self.catch_up_delay_s)
+            await asyncio.wait_for(halt.wait(), delay)
         if halt.is_set():
             return
         try:

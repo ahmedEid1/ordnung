@@ -85,7 +85,9 @@ STAGE_LABELS = {
     "plan": "Planning to-dos",
     "done": "Done",
 }
-STATUS_ICONS = {"ok": "[green]✓[/]", "warn": "[yellow]![/]", "fail": "[red]✗[/]"}
+#: The doctor's marks: ``i`` is an info row (an optional part missing, something turned off, a check Ordnung can't
+#: make here), neither ok nor a problem.
+STATUS_ICONS = {"ok": "[green]✓[/]", "info": "[blue]i[/]", "warn": "[yellow]![/]", "fail": "[red]✗[/]"}
 
 console = Console(highlight=False)
 err_console = Console(stderr=True, highlight=False)
@@ -1509,9 +1511,9 @@ def doctor(
             console.print(
                 f"{STATUS_ICONS[check.status]} {escape(check.label)}: {escape(check.fix)}", soft_wrap=True
             )
-    # an ok row with a fix (Text in pictures: not installed) is a tip, not a problem
+    # an info row's fix (Text in pictures: not installed) is a tip, not a problem
     for check in report.checks:
-        if check.fix and check.status == "ok":
+        if check.fix and check.status == "info":
             console.print(f"[dim]Optional — {escape(check.label)}: {escape(check.fix)}[/]", soft_wrap=True)
     if not report.ok:
         raise typer.Exit(1)

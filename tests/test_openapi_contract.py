@@ -229,10 +229,16 @@ def test_a_doctor_check_can_be_info(schema: dict[str, Any]) -> None:
     assert sorted(status["enum"]) == ["fail", "info", "ok", "warn"]
 
 
-async def test_the_health_of_this_computer_says_nothing_of_text_in_pictures_yet(data_dir: Path) -> None:
+async def test_the_health_of_this_computer_says_what_text_in_pictures_does(data_dir: Path) -> None:
+    """The computer's health carries its Text in pictures (each state: ``tests/test_picture_text_switch.py``); here
+    the tests' own ``ORDNUNG_OCR=off``."""
     async with api_for(data_dir) as api:
         health = (await api.client.get("/api/health")).json()
-        assert health["picture_text"] is None
+        assert health["picture_text"] == {
+            "state": "off_by_variable",
+            "detail": "Turned off (ORDNUNG_OCR=off)",
+            "fix": None,
+        }
 
 
 async def test_the_text_in_pictures_setting_is_saved(data_dir: Path) -> None:

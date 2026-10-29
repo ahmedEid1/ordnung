@@ -365,6 +365,13 @@ def read_settings(store: StoreDep) -> AppSettings:
 async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
     """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
     restarts the folder watcher, a new model counts from the next call to Claude."""
+    # (the published description stays as it was) Text in pictures (read_picture_text) counts at once: saved off,
+    # search and the letter's page leave out the words read in pictures, a reading under way stops and those words
+    # are deleted; saved on, reading starts. The worker does what the switch now says, so a save that names it
+    # tells the worker even when the value is the same (it changes nothing then): two saves made together can't
+    # leave it out of step.
     settings = await asyncio.to_thread(_merge_settings, state.ctx, patch)
     await state.folder.reconfigure()
+    if patch.read_picture_text is not None:
+        await state.ctx.worker.picture_text_changed()
     return settings
