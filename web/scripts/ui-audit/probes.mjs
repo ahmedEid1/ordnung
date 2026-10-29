@@ -591,12 +591,13 @@ function layoutProbeInPage(opts) {
  *   view (which keeps the scroll container's scroll-padding clear, as focus does) doesn't free it.
  * - Otherwise page content is checked at the top and at the very bottom of the page, and counts
  *   as covered when the cover is in the page flow (a real overlap), or is fixed/sticky chrome that
- *   can't be scrolled away there: a top bar at the top of the page, a bottom bar at the bottom. A
- *   fixed layer is top or bottom chrome by the edge it is nearer (a tall card or toast fixed above
- *   the tab bar is bottom chrome even when its top is above the middle of the screen); a column
- *   pinned only sideways (a chart's lane labels) is neither: what is under it scrolls out sideways.
+ *   can't be scrolled away there: a top bar at the top of the page, a bottom bar at the bottom, either
+ *   on a page that doesn't scroll. A fixed layer is top or bottom chrome by the edge it is nearer (a
+ *   tall card or toast fixed above the tab bar is bottom chrome even when its top is above the middle
+ *   of the screen); a column pinned only sideways (a chart's lane labels) is neither: a control under
+ *   it counts only when no sideways scroll of its box frees it (tried at both ends, then put back).
  *   A control under another control in the page flow (a bar drawn on a chart bar; the overlap probe
- *   reports the pair) counts only when no 24 px of it is left to click.
+ *   reports the pair), or under a sideways column, counts only when no 24 px of it is left to click.
  * - Fixed controls outside overlays (tour card, toasts, tab bar) are checked where they are.
  */
 async function coveredProbeInPage() {
@@ -702,18 +703,30 @@ async function coveredProbeInPage() {
     }
     return true;
   };
-  const hitOf = (el) => {
-    // a link that wraps onto the next line is two boxes (its bounding box spans the text between them):
-    // the centre of its biggest box
+  // the centre a click aims at, when it is on the screen and not scrolled away inside a list: a link
+  // that wraps onto the next line is two boxes (its bounding box spans the text between them), so the
+  // centre of its biggest box
+  const centreOf = (el) => {
     const boxes = Array.from(el.getClientRects()).filter((b) => b.width > 0 && b.height > 0);
     const r = boxes.length > 1 ? boxes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a)) : el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
     if (cx < 0 || cy < 0 || cx >= vw || cy >= vh) return null;
-    if (!insideParents(el, cx, cy)) return null;
-    const hit = document.elementFromPoint(cx, cy);
-    if (!hit || hit === el || el.contains(hit) || hit.contains(el)) return null;
+    return insideParents(el, cx, cy) ? [cx, cy] : null;
+  };
+  const own = (el, hit) => hit === el || el.contains(hit) || hit.contains(el);
+  const hitOf = (el) => {
+    const at = centreOf(el);
+    if (!at) return null;
+    const hit = document.elementFromPoint(...at);
+    if (!hit || own(el, hit)) return null;
     return hit;
+  };
+  // its centre is on the screen and takes the click
+  const centreFree = (el) => {
+    const at = centreOf(el);
+    const hit = at && document.elementFromPoint(...at);
+    return Boolean(hit && own(el, hit));
   };
   // covered at its centre, yet a person can still click it: a 24 px stretch of its middle line (or all
   // of it, when narrower) takes the click — a chart bar under the notice window drawn on it
@@ -739,6 +752,41 @@ async function coveredProbeInPage() {
     const lr = layer.getBoundingClientRect();
     if (s.position === "fixed") return lr.top <= vh - lr.bottom ? "top" : "bottom";
     return lr.top < vh / 2 ? "top" : "bottom";
+  };
+  // the box a column pinned sideways sticks in: its nearest ancestor that scrolls (or clips) sideways
+  const boxOf = (layer) => {
+    for (let a = layer.parentElement; a && a !== document.body && a !== root; a = a.parentElement) {
+      const o = getComputedStyle(a).overflowX;
+      if (o !== "visible" && o !== "clip") return a;
+    }
+    return document.scrollingElement ?? root;
+  };
+  // of the controls under a column pinned sideways, those no sideways scroll of its box frees: covered
+  // where the box is now (no 24 px of it to click) and at both ends of its scroll; every scroll put back
+  const stuckSideways = async (under) => {
+    const byBox = new Map();
+    for (const u of under) {
+      const box = boxOf(u.layer);
+      byBox.set(box, [...(byBox.get(box) ?? []), u]);
+    }
+    const stuck = [];
+    for (const [box, items] of byBox) {
+      let left = items.filter((u) => !reachable(u.el));
+      const from = box.scrollLeft;
+      const end = box.scrollWidth - box.clientWidth;
+      for (const x of end > 0 ? [0, end] : []) {
+        if (!left.length || Math.abs(x - from) < 1) continue;
+        box.scrollLeft = x;
+        await frame();
+        left = left.filter((u) => !centreFree(u.el) && !reachable(u.el));
+      }
+      if (box.scrollLeft !== from) {
+        box.scrollLeft = from;
+        await frame();
+      }
+      stuck.push(...left);
+    }
+    return stuck;
   };
 
   // 1. where the page is now: overlay controls, and fixed controls outside overlays
@@ -768,10 +816,14 @@ async function coveredProbeInPage() {
   const content = els.filter((el) => !layerOf(el));
   const start = window.scrollY;
   const max = root.scrollHeight - vh;
-  for (const [where, y] of [["top of page", 0], ["bottom of page", Math.max(0, max)]]) {
-    if (where === "bottom of page" && max <= 4) break;
+  // a page that doesn't scroll: its top is its bottom too, and neither a top nor a bottom layer moves off it
+  const still = max <= 4;
+  for (const [pass, y] of [["top of page", 0], ["bottom of page", Math.max(0, max)]]) {
+    if (pass === "bottom of page" && still) break;
+    const where = still ? "page that doesn't scroll" : pass;
     window.scrollTo(0, y);
     await frame();
+    const sideways = [];
     for (const el of content) {
       const hit = hitOf(el);
       if (!hit) continue;
@@ -783,8 +835,10 @@ async function coveredProbeInPage() {
         continue;
       }
       const side = sideOf(layer);
-      if ((where === "top of page" && side === "top") || (where === "bottom of page" && side === "bottom")) report(el, hit, `${where} (can't be scrolled out from under it)`);
+      if (side === "sideways") sideways.push({ el, hit, layer });
+      else if (still || (pass === "top of page" && side === "top") || (pass === "bottom of page" && side === "bottom")) report(el, hit, `${where} (can't be scrolled out from under it)`);
     }
+    for (const { el, hit } of await stuckSideways(sideways)) report(el, hit, `${where} (a column pinned sideways no scroll of its box frees it from)`);
   }
   window.scrollTo(0, start);
   await frame();

@@ -2,7 +2,8 @@
  * The UI audit's covered and target-size rules (`scripts/ui-audit/probes.mjs`), on pages drawn here. They
  * still report a control behind something the person did not open: a top bar at the top of the page, a
  * floating panel nobody opened, a card fixed at the bottom over the last control when the page leaves it no
- * room, a note drawn over a button, a button wholly under another, small targets side by side. They no longer
+ * room or doesn't scroll at all, a column pinned sideways over a control no scroll of its box frees, a note
+ * drawn over a button, a button wholly under another, small targets side by side. They no longer
  * report the page behind what the person opened (a search box's message panel), a control a person can still
  * click on 24 px of it (a chart bar under the notice window drawn on it), a bar under a lane-label column pinned
  * sideways, a control the end of the page scrolls clear of a card fixed at the bottom, or a target axe finds
@@ -82,6 +83,26 @@ test.describe("laptop", () => {
     );
     await page.locator("#scroller").evaluate((el) => (el.scrollLeft = 300));
     expect(await covered(page)).toEqual([]);
+    expect(await page.locator("#scroller").evaluate((el) => el.scrollLeft), "the box is scrolled back").toBe(300);
+  });
+
+  test("a control under a lane-label column pinned sideways is covered when no scroll of its box frees it", async ({ page }) => {
+    // a marker wholly under the column, in a box as wide as its content (it can't scroll), then in one that
+    // scrolls but is at its start (scrolling only moves the marker further under the column, then out of view)
+    const lanes = (width: number) =>
+      doc(`<main><h1>Probe</h1>
+        <div id="scroller" style="overflow-x:auto;width:800px;margin:16px">
+          <div style="position:relative;width:${width}px;height:60px">
+            <div style="position:sticky;left:0;width:150px;height:60px;background:#fff;z-index:1">Contracts</div>
+            <button id="marker" style="position:absolute;left:60px;top:18px;width:24px;height:24px;${plain}">!</button>
+          </div>
+        </div>
+      </main>`);
+    await page.setContent(lanes(800));
+    expect(await covered(page)).toEqual(["marker"]);
+    await page.setContent(lanes(2000));
+    expect(await covered(page)).toEqual(["marker"]);
+    expect(await page.locator("#scroller").evaluate((el) => el.scrollLeft), "the box is scrolled back").toBe(0);
   });
 });
 
@@ -106,6 +127,17 @@ test.describe("phone", () => {
     // no room: the last control stays under the card
     await page.setContent(cardPage(100));
     expect(await covered(page)).toEqual(["last"]);
+    // a page that doesn't scroll at all: a control under the card stays there
+    await page.setContent(
+      doc(`<main><h1 style="margin:0">Probe</h1>
+        <div style="height:300px"></div><button id="under-card" style="height:32px">Write a new note</button>
+      </main>
+      <section aria-label="Card" style="position:fixed;left:12px;right:12px;bottom:76px;height:283px;background:#fff;border:1px solid #888">
+        <p>A step of the tour.</p><button id="minimise">Minimise</button>
+      </section>`),
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight), "the page doesn't scroll").toBeLessThanOrEqual(0);
+    expect(await covered(page)).toEqual(["under-card"]);
   });
 });
 

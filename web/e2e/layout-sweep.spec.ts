@@ -16,14 +16,21 @@
  *   on: a marker alone in a list item or on a line of its own, and any other small text button, are not
  *   excepted), and the evidence highlights on a letter's page image (each has a full-size "show … on the page" button next to
  *   its fact); a stretched link counts as its whole row;
- * - an interactive element whose centre is covered: by the sticky top bar or the phone's tab bar where
- *   the page can't be scrolled out from under them, or by anything else on the page;
+ * - an interactive element whose centre is covered: by the sticky top bar, the phone's tab bar or another
+ *   layer fixed to the top or bottom, where the page can't be scrolled out from under it (a fixed layer is
+ *   a top or bottom bar by the edge it is nearer, so the end of the page may scroll a control clear of a
+ *   card or toast fixed above the tab bar); by a column pinned sideways that no sideways scroll of its box
+ *   frees it from; or by anything else on the page. Excepted: the page behind an overlay the person opened
+ *   (a dialog, menu, popover, or the popup of a combobox or menu button they expanded), and a control under
+ *   another control or a sideways column with 24 px of its middle line still left to click;
  * - text cut off by its box — unless it is cut on purpose (an ellipsis or a line clamp in its classes) and
  *   the whole value is at hand: in its `title` or accessible name, or behind the "Read more" that controls
  *   it (`aria-expanded` + `aria-controls`);
  * - a control cut off by a box that clips it (not one that scrolls), an icon drawn at zero size, a screen
  *   without exactly one `<h1>` and one `<main>` (a modal dialog is its own screen);
- * - an axe-core WCAG 2.2 A/AA violation (any impact), at 390 and 1280 px in both themes;
+ * - an axe-core WCAG 2.2 A/AA violation (any impact), at 390 and 1280 px in both themes; a target-size one
+ *   only if the target still fails scrolled to the middle of the screen (not because the buttons of a
+ *   sticky bar happen to lie over it where the state left the page scrolled);
  * - an uncaught error in the page.
  *
  * The probes are the UI audit's (`scripts/ui-audit/probes.mjs`, `make ui-audit`). A failure names the
