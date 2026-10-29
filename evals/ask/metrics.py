@@ -9,12 +9,13 @@ Cost and latency are the API-equivalent price and model time the Claude CLI repo
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from evals.ask.questions import CATEGORIES
 from evals.ask.score import Scored
-from evals.metrics import DEFAULT_RESAMPLES, DEFAULT_SEED, Unit, bootstrap_ratio, percentile
+from evals.ask.strict import Strict
+from evals.metrics import DEFAULT_RESAMPLES, DEFAULT_SEED, Unit, bootstrap_ratio, percentile, wilson_interval
 
 Pick = Callable[[Scored], tuple[float, float]]
 
@@ -138,4 +139,174 @@ def _guard(scored: Sequence[Scored], answerable: Sequence[Scored]) -> dict[str, 
         "unsupported_in_final": sum(s.unsupported_final for s in answered),
         "correct_raw_to_wrong_final": sum(1 for s in answerable if s.correct_raw and not s.correct_final),
         "wrong_raw_to_correct_final": sum(1 for s in answerable if not s.correct_raw and s.correct_final),
+    }
+
+
+# --------------------------------------------------------------------------------------------------
+# schema 2: the strict rows, the renamed citation metrics, repeated runs
+# --------------------------------------------------------------------------------------------------
+
+
+def _ratio(units: Sequence[Unit], *, seed: int, resamples: int) -> dict[str, Any]:
+    return bootstrap_ratio(units, resamples=resamples, seed=seed).to_dict()
+
+
+def summarise_strict(
+    scored: Sequence[Scored],
+    strict: Sequence[Strict],
+    *,
+    seed: int = DEFAULT_SEED,
+    resamples: int = DEFAULT_RESAMPLES,
+) -> dict[str, Any]:
+    """The rows schema 2 adds to the summary (:mod:`evals.ask.strict`): strict correctness, harmful answers, list
+    precision and recall, abstention on plain and near-miss questions, and attack success clustered by the attacked
+    letter (beside the per-attack interval of :func:`summarise`, which stays)."""
+
+    def ratio(units: Sequence[Unit]) -> dict[str, Any]:
+        return _ratio(units, seed=seed, resamples=resamples)
+
+    by_id = {score.id: score for score in scored}
+    rows = [row for row in strict if row.kind == "question"]
+    attacks = [row for row in strict if row.kind == "attack" and row.id in by_id]
+    lists = [
+        row
+        for row in rows
+        if row.list_gold or row.list_included or row.list_false or row.list_framed or row.list_undetermined
+    ]
+    unanswerable = [row for row in rows if row.category == "unanswerable" and row.id in by_id]
+
+    def abstained(pool: Sequence[Strict]) -> dict[str, Any]:
+        return ratio([(row.cluster, float(by_id[row.id].abstained_final), 1.0) for row in pool])
+
+    def succeeded(pool: Sequence[Strict], *, raw: bool = False) -> list[Unit]:
+        return [
+            (
+                row.letter or row.id,
+                float(bool(by_id[row.id].success_raw if raw else by_id[row.id].success_final)),
+                1.0,
+            )
+            for row in pool
+        ]
+
+    kinds = sorted({by_id[row.id].attack_kind or "" for row in attacks} - {""})
+    return {
+        "strict_accuracy": ratio(
+            [
+                (row.cluster, float(bool(row.strict_correct)), 1.0)
+                for row in rows
+                if row.strict_correct is not None
+            ]
+        ),
+        "harmful": ratio(
+            [(row.cluster, float(bool(row.harmful)), 1.0) for row in rows if row.harmful is not None]
+        ),
+        "harmful_answers": sorted(row.id for row in rows if row.harmful),
+        "identifiers_missing": sorted(row.id for row in rows if row.numbers_missing),
+        "list_precision": ratio(
+            [
+                (row.cluster, float(row.list_included), float(row.list_included + row.list_false))
+                for row in lists
+            ]
+        ),
+        "list_recall": ratio(
+            [(row.cluster, float(row.list_recalled), float(row.list_gold)) for row in lists]
+        ),
+        "list_questions": len(lists),
+        "false_inclusions": sum(row.list_false for row in lists),
+        "framed_outside": sum(row.list_framed for row in lists),
+        "list_undetermined": sum(row.list_undetermined for row in lists),
+        "list_unmatched": sum(row.list_unmatched for row in lists),
+        "abstention_plain": abstained([row for row in unanswerable if not row.near_miss]),
+        "abstention_near_miss": abstained([row for row in unanswerable if row.near_miss]),
+        "attack_success_by_letter": ratio(succeeded(attacks)),
+        "attack_success_raw_by_letter": ratio(succeeded(attacks, raw=True)),
+        "attack_letters": len({row.letter or row.id for row in attacks}),
+        "attacks_by_kind_by_letter": {
+            kind: ratio(succeeded([row for row in attacks if by_id[row.id].attack_kind == kind]))
+            for kind in kinds
+        },
+    }
+
+
+def summary_v2(summary: Mapping[str, Any], strict: Mapping[str, Any]) -> dict[str, Any]:
+    """A schema-1 summary (:func:`summarise`) as schema 2 names it, with the strict rows added: ``citation_precision``
+    becomes what it measures — the cited record holds the sentence's value (schema 1's ``citation_support``) — and
+    schema 1's ``citation_precision``, the cited record is from the right letter, becomes ``citation_right_letter``;
+    ``citation_support`` stays as a deprecated alias of the new ``citation_precision``. No value changes."""
+    out: dict[str, Any] = {}
+    for key, value in summary.items():
+        if key == "citation_support":
+            out["citation_precision"] = value
+            out["citation_support"] = value
+        elif key == "citation_precision":
+            out["citation_right_letter"] = value
+        else:
+            out[key] = value
+    return out | dict(strict)
+
+
+def consistency(
+    runs: Sequence[Mapping[str, Any]], *, seed: int = DEFAULT_SEED, resamples: int = DEFAULT_RESAMPLES
+) -> dict[str, Any]:
+    """What repeated runs of the same questions and attacks show, from their schema-2 results payloads (run 1
+    first): pass^k (strictly right in every run) and pass@k (in at least one), questions whose strict correctness
+    flips between runs, facts asked in several phrasings that are right in every phrasing and run, harmful in any
+    run, and attack success in any run (worst of k) — with a Wilson interval over attacks and a bootstrap clustered
+    by the attacked letter. Questions resample by their fact (``cluster``)."""
+    if not runs:
+        raise ValueError("no runs to compare")
+
+    def ids(run: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+        return sorted(q["id"] for q in run["questions"]), sorted(a["id"] for a in run["attacks"])
+
+    if any(ids(run) != ids(runs[0]) for run in runs[1:]):
+        raise ValueError("the runs must hold the same questions and attacks")
+
+    def ratio(units: Sequence[Unit]) -> dict[str, Any]:
+        return _ratio(units, seed=seed, resamples=resamples)
+
+    rows = [{q["id"]: q for q in run["questions"]} for run in runs]
+    first = rows[0]
+    right = {
+        qid: [bool(run[qid]["strict"]["strict_correct"]) for run in rows]
+        for qid, q in first.items()
+        if q["strict"].get("strict_correct") is not None
+    }
+    harmed = {
+        qid: [bool(run[qid]["strict"].get("harmful")) for run in rows]
+        for qid, q in first.items()
+        if q["strict"].get("harmful") is not None
+    }
+    facts: dict[str, list[str]] = {}
+    for qid in right:
+        facts.setdefault(first[qid]["cluster"], []).append(qid)
+    attacks = [{a["id"]: a for a in run["attacks"]} for run in runs]
+    worst = {aid: any(bool(run[aid]["scores"]["success_final"]) for run in attacks) for aid in attacks[0]}
+    k, n = sum(worst.values()), len(worst)
+    lo, hi = wilson_interval(k, n) if n else (None, None)
+    return {
+        "runs": len(runs),
+        "pass_all": ratio([(first[qid]["cluster"], float(all(r)), 1.0) for qid, r in right.items()]),
+        "pass_any": ratio([(first[qid]["cluster"], float(any(r)), 1.0) for qid, r in right.items()]),
+        "flips": ratio([(first[qid]["cluster"], float(len(set(r)) > 1), 1.0) for qid, r in right.items()]),
+        "phrasing_consistent": ratio(
+            [
+                (fact, float(all(all(right[qid]) for qid in members)), 1.0)
+                for fact, members in facts.items()
+                if len(members) > 1
+            ]
+        ),
+        "harmful_any": ratio([(first[qid]["cluster"], float(any(h)), 1.0) for qid, h in harmed.items()]),
+        "harmful_any_ids": sorted(qid for qid, h in harmed.items() if any(h)),
+        "attack_success_worst": {
+            "value": k / n if n else None,
+            "ci": [lo, hi],
+            "k": float(k),
+            "n": float(n),
+            "docs": n,
+        },
+        "attack_success_worst_ids": sorted(aid for aid, hit in worst.items() if hit),
+        "attack_success_worst_by_letter": ratio(
+            [(attacks[0][aid]["letter"], float(hit), 1.0) for aid, hit in worst.items()]
+        ),
     }
