@@ -305,8 +305,12 @@ def test_the_pypi_page_is_the_readme_with_every_link_and_picture_pointing_to_git
     pictures = re.findall(rf"{re.escape(RAW)}([^)\"\s]+)", description)
     assert len(pictures) >= 20 and all((ROOT / picture).is_file() for picture in pictures)
     assert re.search(rf'href="{re.escape(GITHUB)}#install-and-run"', description)
-    # nothing else changed: taking the prefixes away gives the README back
-    assert description.replace(RAW, "").replace(BLOB, "").replace(f"{GITHUB}#", "#") == readme
+    # nothing else changed: taking the prefixes away (and the evaluation charts' copy on the report page, which PyPI
+    # loads instead of GitHub's raw SVG) gives the README back
+    restored = re.sub(
+        r"https://ahmedeid1\.github\.io/ordnung/evals/(eval-[a-z-]+\.svg)", r"docs/assets/\1", description
+    )
+    assert restored.replace(RAW, "").replace(BLOB, "").replace(f"{GITHUB}#", "#") == readme
 
 
 def test_the_readme_plugin_is_pinned_and_the_sdist_leaves_out_the_readme_s_pictures() -> None:

@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import report  # noqa: E402
+from evals import harness, report  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 from evals.conditions import TOOL_PREFIX  # noqa: E402
 from evals.records import Entry, TruthItem, load_manifest  # noqa: E402
@@ -429,8 +429,10 @@ async def test_all_four_conditions_end_to_end(tmp_path: Path) -> None:
         f"assets/eval-due-date-accuracy{suffix}", f"chart{suffix}"
     )
 
-    # A rerun resumes entirely from the per-letter cache and reproduces the metrics.
-    again = await eval_run.run_benchmark(make_config(tmp_path, write_docs=False), backend=Refusing())
+    # A rerun asked to resume (a replay doesn't by default) comes entirely from the per-letter cache.
+    again = await eval_run.run_benchmark(
+        make_config(tmp_path, write_docs=False, resume=True), backend=Refusing()
+    )
     assert again.ok
     assert again.runs[0].results is not None
     assert (
@@ -607,42 +609,138 @@ async def test_an_empty_reading_s_read_this_letter_placeholder_is_never_scored(t
 
 
 @pytest.mark.parametrize(
-    ("module", "shared"),
+    "module",
     [
-        ("ingest/gaps.py", False),
-        ("ingest/conflicts.py", False),
-        ("recurrence.py", False),  # a working day or day of the month: graded by plan
-        ("money/iban.py", False),  # the invalid-IBAN signal
-        ("llm/claude_cli.py", True),  # parses every condition's answer
+        "ingest/gaps.py",
+        "ingest/conflicts.py",
+        "recurrence.py",  # a working day or day of the month: graded by plan
+        "money/iban.py",  # the invalid-IBAN signal
+        "llm/claude_cli.py",  # parses every condition's answer
+        "llm/runtime.py",  # the replay key itself: outside the hand-written list the digest had until 0.4.0
+        "payments.py",
+        "brand_new_module.py",  # a file added anywhere under src/ordnung/
     ],
 )
-def test_the_ordnung_condition_s_cache_depends_on_the_code_it_runs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str, shared: bool
+def test_the_prediction_cache_depends_on_every_source_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, module: str
 ) -> None:
-    import shutil
-
+    """A stale cache must never stand in for a replay: any change to the package's code is a new fingerprint for
+    every condition, so a resumed run predicts again (harness design, weakness 2)."""
     from evals import conditions
 
     source = ROOT / "src" / "ordnung"
     copy = tmp_path / "ordnung"
-    for part in ("ingest", "rules", "llm", "secretary", "money"):
-        shutil.copytree(source / part, copy / part)
-    for name in ("models.py", "recurrence.py"):
-        shutil.copy(source / name, copy / name)
+    for path in source.rglob("*.py"):
+        target = copy / path.relative_to(source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(path.read_bytes())
     monkeypatch.setattr(conditions, "_SRC", copy)
     conditions._code_digest.cache_clear()
     try:
-        before = conditions._code_digest("ordnung")
-        baseline = conditions._code_digest("llm_only")
+        before = {condition: conditions._code_digest(condition) for condition in eval_run.CONDITIONS}
         path = copy / module
-        path.write_text(path.read_text(encoding="utf-8") + "\n# changed\n", encoding="utf-8")
+        old = path.read_text(encoding="utf-8") if path.exists() else ""
+        path.write_text(old + "\n# changed\n", encoding="utf-8")
         conditions._code_digest.cache_clear()
-        assert conditions._code_digest("ordnung") != before
-        # the baselines run only the shared code
-        assert (conditions._code_digest("llm_only") != baseline) == shared
+        after = {condition: conditions._code_digest(condition) for condition in eval_run.CONDITIONS}
+        assert all(after[condition] != before[condition] for condition in eval_run.CONDITIONS)
     finally:
         monkeypatch.undo()
         conditions._code_digest.cache_clear()
+
+
+def test_the_prediction_cache_depends_on_the_runner_and_the_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from evals import conditions
+
+    copy = tmp_path / "evals"
+    copy.mkdir()
+    for path in (ROOT / "evals").glob("*.py"):
+        (copy / path.name).write_bytes(path.read_bytes())
+    monkeypatch.setattr(conditions, "EVALS_DIR", copy)
+    conditions._code_digest.cache_clear()
+    try:
+        before = conditions._code_digest("llm_only")
+        (copy / "report.py").write_text("# changed\n", encoding="utf-8")
+        conditions._code_digest.cache_clear()
+        changed = conditions._code_digest("llm_only")
+        assert changed != before
+        monkeypatch.setattr(
+            conditions, "_package_version", lambda name: "99.0" if name == "pillow" else "1.0"
+        )
+        conditions._code_digest.cache_clear()
+        assert conditions._code_digest("llm_only") != changed  # a new pillow renders other page images
+    finally:
+        monkeypatch.undo()
+        conditions._code_digest.cache_clear()
+
+
+async def test_a_replay_reads_no_cached_prediction_unless_asked(tmp_path: Path) -> None:
+    """The cache saves nothing on replay and could hide a broken replay key: a replay reads it only with
+    --resume; a live run resumes by default (--no-resume predicts everything again)."""
+    first = await eval_run.run_benchmark(
+        make_config(tmp_path, write_docs=False), backend=FakeBackend(Responder())
+    )
+    assert first.ok and list((tmp_path / "results" / "cache").rglob("*.json"))
+    fresh = await eval_run.run_benchmark(make_config(tmp_path, write_docs=False), backend=Refusing())
+    assert len(fresh.runs[0].errors) == 4 * len(IDS)  # every prediction asked the backend again
+    resumed = await eval_run.run_benchmark(
+        make_config(tmp_path, write_docs=False, resume=True), backend=Refusing()
+    )
+    assert resumed.ok
+    parse = eval_run.build_parser().parse_args
+    assert not eval_run.config_from_args(parse([])).effective_resume
+    assert eval_run.config_from_args(parse(["--resume"])).effective_resume
+    assert eval_run.config_from_args(parse(["--live"])).effective_resume
+    assert not eval_run.config_from_args(parse(["--live", "--no-resume"])).effective_resume
+
+
+def test_a_quiet_gate_says_why_it_failed(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """CI runs the gates with --quiet: a gate that fails must still say why (it printed nothing before)."""
+    args = ["--split", "dev", "--ids", "dev-tax_assessment-A1", "--conditions", "ordnung", "--quiet"]
+    args += [
+        "--recorded-dir",
+        str(tmp_path / "empty"),
+        "--date",
+        "2026-09-25",
+        "--resamples",
+        "50",
+        "--no-docs",
+    ]
+    assert eval_run.run_cli([*args, "--min-accuracy", "0.96", "--max-dangerous-late", "0"]) == 1
+    err = capsys.readouterr().err
+    assert "1 prediction(s) failed to run" in err
+    assert "ordnung dev-tax_assessment-A1: no recorded response" in err
+    assert "Recorded outputs are missing" in err
+
+
+async def test_results_meta_names_the_repeat_the_cli_and_the_tree(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    outcome = await eval_run.run_benchmark(
+        make_config(tmp_path, write_docs=False), backend=FakeBackend(Responder())
+    )
+    results = outcome.runs[0].results
+    assert results is not None and results["schema"] == 2
+    meta = results["meta"]
+    assert meta["repeat"] == 1 and meta["cli_version"] is None  # a replay ran no claude
+    assert meta["dirty"] is None or all(isinstance(path, str) for path in meta["dirty"])
+
+    class Cli(FakeBackend):
+        binary = "/the/claude"
+
+    asked: list[str | None] = []
+
+    async def version(binary: str | None = None) -> str:
+        asked.append(binary)
+        return "2.1.5 (Claude Code)"
+
+    monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: Cli(Responder()))
+    monkeypatch.setattr(harness, "claude_version", version)
+    live = await eval_run.run_benchmark(make_config(tmp_path / "live", live=True, write_docs=False))
+    assert live.ok and asked == ["/the/claude"]
+    assert live.runs[0].results["meta"]["cli_version"] == "2.1.5 (Claude Code)"  # type: ignore[index]
 
 
 def test_cli_rejects_bad_arguments() -> None:
@@ -655,19 +753,33 @@ def test_cli_rejects_bad_arguments() -> None:
 
 def test_backends(tmp_path: Path) -> None:
     config = make_config(tmp_path)
-    wrapped = eval_run.make_backend(config, "claude-family-x-1", {"a"})
+    locked = eval_run.make_backend(config, "claude-family-x-1", {"a"})
+    assert isinstance(locked, harness.LockedRequests) and not locked.record
+    assert locked.lock.path == tmp_path / "recorded" / "claude-family-x-1" / harness.LOCK_FILE
+    wrapped = locked.inner
     assert isinstance(wrapped, eval_run.RecordedFailures) and not wrapped.record
     replay = wrapped.inner
     assert isinstance(replay, ReplayBackend) and replay.fallback is None
     assert replay.root == tmp_path / "recorded" / "claude-family-x-1"
-    wrapped = eval_run.make_backend(make_config(tmp_path, live=True), "sonnet", {"a"})
+    locked = eval_run.make_backend(make_config(tmp_path, live=True), "sonnet", {"a"})
+    assert isinstance(locked, harness.LockedRequests) and locked.record
+    wrapped = locked.inner
     assert isinstance(wrapped, eval_run.RecordedFailures) and wrapped.record and wrapped.replay
     live = wrapped.inner
     assert isinstance(live, ReplayBackend) and isinstance(live.fallback, RecordingBackend)
     assert live.fallback.allowed_doc_ids == {"a"}
-    wrapped = eval_run.make_backend(make_config(tmp_path, live=True, refresh=True), "sonnet", {"a"})
+    calls = live.fallback.inner
+    assert isinstance(calls, harness.LiveCalls) and calls.ledger is not None
+    assert calls.ledger.path == tmp_path / "recorded" / "sonnet" / harness.LEDGER_FILE
+    locked = eval_run.make_backend(make_config(tmp_path, live=True, refresh=True), "sonnet", {"a"})
+    wrapped = locked.inner
     assert isinstance(wrapped, eval_run.RecordedFailures) and not wrapped.replay
     assert isinstance(wrapped.inner, RecordingBackend)
+    repeated = eval_run.make_backend(make_config(tmp_path, repeat=3), "sonnet", {"a"})
+    assert isinstance(repeated, harness.RepeatKey) and repeated.repeat == 3
+    assert isinstance(repeated.inner, harness.LockedRequests) and repeated.inner.repeat == 3
+    unchecked = eval_run.make_backend(make_config(tmp_path, check_requests=False), "sonnet", {"a"})
+    assert isinstance(unchecked, eval_run.RecordedFailures)
     assert eval_run.safe_name("us.anthropic/claude:1") == "us.anthropic_claude_1"
 
 

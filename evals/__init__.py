@@ -13,8 +13,9 @@ holiday region:
 
 Modules: :mod:`evals.records` (manifest and prediction models), :mod:`evals.conditions` (the four
 conditions), :mod:`evals.metrics` (matching, error taxonomy, bootstrap CIs — pure),
-:mod:`evals.report` (results JSON, ``docs/evals.md``, chart) and :mod:`evals.run` (CLI:
-``python -m evals.run``; :func:`evals.run.run_cli` for ``ordnung eval``).
+:mod:`evals.report` (results JSON, a run's page and chart), :mod:`evals.run` (CLI:
+``python -m evals.run``; :func:`evals.run.run_cli` for ``ordnung eval``) and :mod:`evals.present` (what a reader
+sees: the README block, ``docs/evals.md``, the history page, the charts and the report page).
 """
 
 from __future__ import annotations

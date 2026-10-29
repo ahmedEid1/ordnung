@@ -1,2 +1,7 @@
 # Per-letter prediction cache of benchmark runs (resumable; rebuilt from evals/recorded/ by replay)
 results/cache/
+# The one recorder lock of a live recording (python -m evals.harness unlock frees one a dead recorder left)
+recorded/.recording.lock
+# A recording that would not parse, set aside by a live run before it records it again; a write cut short
+recorded/**/*.bad
+recorded/**/*.tmp
