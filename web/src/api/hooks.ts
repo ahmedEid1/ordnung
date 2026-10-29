@@ -246,10 +246,13 @@ export function useHousehold(opts: { enabled?: boolean } = {}) {
   return useQuery({ queryKey: qk.household, queryFn: api.household, enabled: opts.enabled ?? true });
 }
 
-/** A household write answers the new household: keep it, and let the letters' pages say again who each is for. */
+/**
+ * A household write answers the new household: keep it, and let the letters' pages say again who each is for, and
+ * My numbers whose each number is.
+ */
 function householdSaved(qc: QueryClient, household: Household): Promise<void> {
   qc.setQueryData(qk.household, household);
-  return qc.invalidateQueries({ queryKey: ["documents", "detail"] });
+  return Promise.all([qc.invalidateQueries({ queryKey: ["documents", "detail"] }), qc.invalidateQueries({ queryKey: qk.numbers })]).then(() => undefined);
 }
 
 /** Replace the list of people (computer only; 409 when `base` is not the household's `version` any more). */

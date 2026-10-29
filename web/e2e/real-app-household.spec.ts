@@ -5,8 +5,9 @@
  * longer the addressee, as in `real-app-addressee.spec.ts`.
  *
  * The person adds Sam Rivera and Mia Rivera in Settings; the letter then asks *Is this letter for Sam Rivera?* and
- * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Filed for Sam, Today
- * says so, a reply offers *Reply in Sam Rivera's name* (never filled in by itself), and the records copy holds the
+ * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Filed for Sam, My
+ * numbers tags the bank's call sheet *For Sam Rivera* (and Undo or his removal makes the numbers the person's again),
+ * Today says so, a reply offers *Reply in Sam Rivera's name* (never filled in by itself), and the records copy holds the
  * household; once Sam no longer signs his letters, the reply goes out in the person's name with no offer of his.
  * Removed from the household, Sam's letter is the person's again ("For you", and Sam can be added back); filed as the
  * person's own, then deleted for good, it leaves no trace in the household. Nothing is drafted. `finally` puts the
@@ -14,7 +15,7 @@
  */
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import type { Household } from "@/api/types";
+import type { Household, NumbersPage } from "@/api/types";
 import { REAL_LETTER } from "./env";
 import { apiGet, apiSend, expect, open, test, type Letter } from "./helpers";
 
@@ -102,12 +103,27 @@ test("a letter for someone of the household is asked about, filed with one press
       await expect(header(page).getByText(`For ${ADDRESSEE}`, { exact: true })).toBeVisible();
       const sam = (await apiGet<Household>(page, "/api/household")).members[0]!;
       expect((await apiGet<Household>(page, "/api/household")).filed).toEqual({ [letter.id]: sam.id });
+      // My numbers: the bank's numbers on its call sheet are Sam's now
+      const numbers = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect(Object.values(numbers.filed_for), "the bank's numbers are Sam's").toContain(sam.id);
+      expect(numbers.household.map((p) => [p.id, p.name])).toEqual([[sam.id, ADDRESSEE]]);
       await toast.getByRole("button", { name: "Undo" }).click();
       await expect(question).toBeVisible();
       expect((await apiGet<Household>(page, "/api/household")).filed, "Undo: not answered again").toEqual({});
+      const undone = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect([undone.household, undone.filed_for], "Undo: the numbers are the person's again").toEqual([[], {}]);
       await question.getByRole("button", { name: "Yes" }).click();
       await expect(header(page).getByText(`For ${ADDRESSEE}`, { exact: true })).toBeVisible();
       expect((await apiGet<{ household: { filed_for: { name: string } | null } }>(page, `/api/documents/${letter.id}`)).household.filed_for?.name).toBe(ADDRESSEE);
+    });
+
+    await test.step("My numbers: the bank's call sheet says its numbers are Sam Rivera's", async () => {
+      await open(page, "/numbers?tab=organisations", "My numbers");
+      const tags = page.getByRole("main").locator("article [data-person-tag]");
+      await expect(tags.first()).toBeVisible();
+      for (const tag of await tags.all()) await expect(tag).toHaveText(`For ${ADDRESSEE}`);
+      // the first tab stays About you: a bank's customer numbers are no numbers about Sam
+      await expect(page.getByRole("tab", { name: /^About you/ })).toBeVisible();
     });
 
     await test.step("Today says whose letter it is; a reply offers Sam Rivera's name, who signs", async () => {
@@ -161,6 +177,8 @@ test("a letter for someone of the household is asked about, filed with one press
       await expect(asking).toContainText("Their 1 letter is in your own letters again. Nothing is deleted.");
       await asking.getByRole("button", { name: "Remove" }).click();
       await expect(card(page).getByRole("listitem")).toHaveCount(1);
+      const numbers = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect([numbers.household, numbers.filed_for], "the numbers are the person's again").toEqual([[], {}]);
       await open(page, `/documents/${letter.id}`);
       await expect(header(page).getByText("For you", { exact: true })).toBeVisible();
       await expect(header(page).getByRole("button", { name: `Add ${ADDRESSEE} to your household` })).toBeVisible();

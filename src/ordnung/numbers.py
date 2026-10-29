@@ -74,6 +74,18 @@ when nothing else is open; a fee paid at the appointment
 overdue. Within an organisation the same number (compared without spaces and marks) is one
 entry; the latest letter's label wins.
 
+**Whose number** (``secretary.household`` point 10, ADR 0023). A letter the person filed for someone of their
+household (a partner, a child) is that person's; every other letter is the person's own — no answer, only a
+suggestion, "mine", or filed for someone since removed — and the addressee never decides. *About you* and the
+person's documents come from the person's own letters; each person of the household with numbers gets an *About*
+group of their own (``household``) from the letters filed for them, and an identity document goes with the letter
+of its expiry to-do (a to-do of no letter is the person's). Their entries have keys of their own; the person's
+keep theirs. A number that letters of two people show is listed under each, saying so (``also_for``): whose it is
+is for the person to check. Call sheets stay one per organisation; a number on one, a case's reference or an open
+case is marked as someone's (``filed_for``) only when all its letters are filed for that one person. The label
+still comes first: a number labelled as someone else's ("des Kindes") is in no *About* group, whoever's letter it
+is on. Nothing is stored: filing, *Undo*, removing someone and *Restore* from the trash change it on the next read.
+
 **Check digits** (:func:`check_number`), where a public algorithm exists: the Steuer-ID (§ 139b AO; the
 BZSt's specification: eleven digits, not starting with 0, in the first ten one digit twice — or three
 times, never three in a row — and the ISO/IEC 7064 MOD 11,10 check digit), the Rentenversicherungsnummer
@@ -122,6 +134,7 @@ from ordnung.models import (
     NumbersPage,
     OpenCase,
     Party,
+    PersonNumbers,
 )
 from ordnung.money.iban import grouped as iban_grouped
 from ordnung.money.iban import inspect_iban
@@ -193,6 +206,16 @@ RESIDENCE_EXTENSION_NOTE = (
 RESIDENCE_EXPIRED_NOTE = (
     "If you applied before it expired, it counts as valid until the office decides (§ 81 Abs. 4 S. 1 "
     "AufenthG) — keep your Fiktionsbescheinigung. If not, contact the Ausländerbehörde now: after a late "
+    "application the office may keep it in force only to avoid undue hardship (§ 81 Abs. 4 S. 3 AufenthG)."
+)
+#: The two notes for a residence permit of someone of the household: the same law, about them.
+MEMBER_RESIDENCE_EXTENSION_NOTE = (
+    "Apply before it expires: their permit then counts as still valid until the office decides "
+    "(§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung."
+)
+MEMBER_RESIDENCE_EXPIRED_NOTE = (
+    "If they applied before it expired, it counts as valid until the office decides (§ 81 Abs. 4 S. 1 "
+    "AufenthG) — keep their Fiktionsbescheinigung. If not, contact the Ausländerbehörde now: after a late "
     "application the office may keep it in force only to avoid undue hardship (§ 81 Abs. 4 S. 3 AufenthG)."
 )
 IDENTITY_NOTE = (
@@ -743,6 +766,16 @@ class NumbersInput:
     #: the people of the household, in household order
     members: Sequence[HouseholdMember] = ()
 
+    def person(self, doc_id: str | None) -> str:
+        """Whose letter ``doc_id`` is: the id of the person of the household it is filed for, else :data:`ME`
+        (no letter, or one filed for someone not in :attr:`members`)."""
+        member = self.people.get(doc_id) if doc_id else None
+        return member if member is not None and any(m.id == member for m in self.members) else ME
+
+
+#: Whose a number is when it is no one else's: the person's own (``household.MINE``, ``NumbersPage.also_for``).
+ME = "me"
+
 
 def _day_of(doc: Document) -> str:
     return doc.doc_date or doc.received_date or doc.created_at[:10]
@@ -793,6 +826,16 @@ class _Entry:
     sighting: Sighting
     letters: set[str] = field(default_factory=set)
     cases: set[str] = field(default_factory=set)
+    #: whose letters it comes from: :data:`ME`, or a household person's id (an About or document entry of
+    #: theirs; a call sheet's entries are every letter's and stay :data:`ME`)
+    person: str = ME
+
+    @property
+    def key(self) -> str:
+        """The person's own entry keeps the key it has always had; a household person's has one of its own."""
+        s = self.sighting
+        parts = (self.kind, s.party.id if s.party else "", compact(s.value))
+        return _key(*parts) if self.person == ME else _key(*parts, self.person)
 
     def model(self) -> MyNumber:
         group, name = KINDS[self.kind]
@@ -800,7 +843,7 @@ class _Entry:
         check = check_number(self.kind, s.value)
         return MyNumber.model_validate(
             {
-                "key": _key(self.kind, s.party.id if s.party else "", compact(s.value)),
+                "key": self.key,
                 "kind": self.kind,
                 "group": group,
                 "name": name,
@@ -818,10 +861,13 @@ class _Entry:
         )
 
 
-def _collect(data: NumbersInput) -> tuple[dict[tuple[str, str], _Entry], dict[tuple[str, str], _Entry]]:
-    """Entries per (party, number) — the call sheets' — and per (kind, number) for About you."""
+def _collect(
+    data: NumbersInput,
+) -> tuple[dict[tuple[str, str], _Entry], dict[tuple[str, str, str], _Entry]]:
+    """Entries per (party, number) — the call sheets', whoever's letters show them — and per (person, kind,
+    number) for the About groups and identity documents, each from that person's letters only."""
     by_party: dict[tuple[str, str], _Entry] = {}
-    personal: dict[tuple[str, str], _Entry] = {}
+    personal: dict[tuple[str, str, str], _Entry] = {}
     for s in _sightings(data):
         ctx = Context(s.party.kind if s.party else None, s.doc.kind, data.own_iban)
         kind = (s.kind if is_number(s.value) else None) if s.kind else classify(s.label, s.value, ctx)
@@ -833,7 +879,8 @@ def _collect(data: NumbersInput) -> tuple[dict[tuple[str, str], _Entry], dict[tu
         if s.doc.case_id:
             entry.cases.add(s.doc.case_id)
         if KINDS[kind][0] in ("about_you", "document"):
-            mine = personal.setdefault((kind, flat), _Entry(kind, s))
+            person = data.person(s.doc.id)
+            mine = personal.setdefault((person, kind, flat), _Entry(kind, s, person=person))
             mine.letters.add(s.doc.id)
     return by_party, personal
 
@@ -868,9 +915,10 @@ def _next_item(data: NumbersInput, item: Item) -> CaseItemRef:
     )
 
 
-def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]:
+def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> tuple[list[OpenCase], dict[str, set[str]]]:
     """Case references grouped by thread (else letter), while it has an open one-off to-do — of the
-    thread (its own, or of one of its letters), else of the letter."""
+    thread (its own, or of one of its letters), else of the letter. Also each case's letters by its key: the
+    thread's (else the letter) and every letter that shows one of its references."""
     groups: dict[str, list[_Entry]] = {}
     for entry in entries:
         if KINDS[entry.kind][0] != "case":
@@ -878,6 +926,7 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
         for thread in sorted(entry.cases) or sorted(f"doc:{doc}" for doc in entry.letters):
             groups.setdefault(thread, []).append(entry)
     cases: list[OpenCase] = []
+    case_letters: dict[str, set[str]] = {}
     documents = {doc.id: doc for doc in data.documents}
     thread_letters: dict[str, set[str]] = {}
     for doc in data.documents:
@@ -909,6 +958,7 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
             documents[doc_id] for entry in refs for doc_id in entry.letters if doc_id in documents
         )
         party = refs[0].sighting.party
+        case_letters[_key("case", thread)] = set(letters_of) | {doc.id for doc in letters}
         cases.append(
             OpenCase.model_validate(
                 {
@@ -924,7 +974,7 @@ def _open_cases(data: NumbersInput, entries: Iterable[_Entry]) -> list[OpenCase]
                 }
             )
         )
-    return sorted(cases, key=lambda c: (_action_day_of(c), c.title.casefold(), c.key))
+    return sorted(cases, key=lambda c: (_action_day_of(c), c.title.casefold(), c.key)), case_letters
 
 
 def _action_day_of(case: OpenCase) -> str:
@@ -988,11 +1038,16 @@ def _identity_kind(item: Item, klass: str, numbers: Sequence[MyNumber]) -> str:
 
 
 def _identity_documents(
-    data: NumbersInput, personal: Mapping[tuple[str, str], _Entry]
+    data: NumbersInput, personal: Mapping[tuple[str, str, str], _Entry], person: str = ME
 ) -> list[IdentityDocument]:
-    """One entry per identity-document expiry to-do, with the number its letter shows; numbers of an
-    identity document without an expiry to-do get an entry of their own (valid until unknown)."""
-    numbers = [entry.model() for entry in personal.values() if entry.kind in IDENTITY_KINDS]
+    """``person``'s identity documents: one entry per identity-document expiry to-do of their letters (a to-do
+    of no letter is the person's own), with the number its letter shows; their numbers of an identity document
+    without an expiry to-do get an entry of their own (valid until unknown)."""
+    numbers = [
+        entry.model()
+        for entry in personal.values()
+        if entry.kind in IDENTITY_KINDS and entry.person == person
+    ]
     documents = {doc.id: doc for doc in data.documents}
     used: set[str] = set()
     found: list[IdentityDocument] = []
@@ -1004,6 +1059,7 @@ def _identity_documents(
         and data.expiry_classes.get(item.id) in ("permit", "identity")
         and item.doc_id not in data.suspicious
         and (item.doc_id is None or item.doc_id in documents)
+        and data.person(item.doc_id) == person
         and is_identity_expiry(item, data.expiry_classes[item.id], documents.get(item.doc_id or ""))
     ]
     for item in sorted(expiries, key=lambda i: (i.due_date or "9999", i.id)):
@@ -1017,21 +1073,28 @@ def _identity_documents(
         )
         if number is not None:
             used.add(number.key)
-        found.append(_identity_document(data, kind, number, item, documents.get(item.doc_id or "")))
+        found.append(_identity_document(data, kind, number, item, documents.get(item.doc_id or ""), person))
     for number in numbers:
         if number.key not in used:
-            found.append(_identity_document(data, number.kind, number, None, None))
+            found.append(_identity_document(data, number.kind, number, None, None, person))
     return found
 
 
 def _identity_document(
-    data: NumbersInput, kind: str, number: MyNumber | None, item: Item | None, doc: Document | None
+    data: NumbersInput,
+    kind: str,
+    number: MyNumber | None,
+    item: Item | None,
+    doc: Document | None,
+    person: str = ME,
 ) -> IdentityDocument:
     until = date.fromisoformat(item.due_date) if item and item.due_date else None
     status = _document_status(kind, until, data.today)
     note = None
-    if kind == "residence_permit":
+    if kind == "residence_permit" and person == ME:
         note = RESIDENCE_EXPIRED_NOTE if status == "expired" else RESIDENCE_EXTENSION_NOTE
+    elif kind == "residence_permit":
+        note = MEMBER_RESIDENCE_EXPIRED_NOTE if status == "expired" else MEMBER_RESIDENCE_EXTENSION_NOTE
     if kind == "passport" and status in ("renew_soon", "expired"):
         note = IDENTITY_NOTE
     letter = doc or next(
@@ -1131,24 +1194,105 @@ def _call_sheets(
     return sorted(sheets, key=lambda sheet: (sheet.name.casefold(), sheet.party_id))
 
 
+def _also_for(data: NumbersInput, personal: Mapping[tuple[str, str, str], _Entry]) -> dict[str, list[str]]:
+    """Each About or identity-document number that letters of other people show too: its key → those people
+    (:data:`ME` first, then the household's order)."""
+    rank = {person: index for index, person in enumerate((ME, *(member.id for member in data.members)))}
+    owners: dict[tuple[str, str], list[_Entry]] = {}
+    for (_, kind, flat), entry in personal.items():
+        owners.setdefault((kind, flat), []).append(entry)
+    found: dict[str, list[str]] = {}
+    for entries in owners.values():
+        if len(entries) < 2:
+            continue
+        people = sorted((entry.person for entry in entries), key=rank.__getitem__)
+        for entry in entries:
+            found[entry.key] = [person for person in people if person != entry.person]
+    return found
+
+
+def _filed_for(
+    data: NumbersInput,
+    by_party: Mapping[tuple[str, str], _Entry],
+    sheets: Sequence[CallSheet],
+    open_cases: Sequence[OpenCase],
+    case_letters: Mapping[str, set[str]],
+) -> dict[str, str]:
+    """Each call-sheet number, case reference and open case all of whose letters are filed for one person of the
+    household: its key → that person."""
+    letters = {entry.key: entry.letters for entry in by_party.values()}
+
+    def only(found: set[str]) -> str | None:
+        people = {data.person(doc_id) for doc_id in found}
+        return people.pop() if len(people) == 1 and ME not in people else None
+
+    found: dict[str, str] = {}
+    shown = [
+        *(n for sheet in sheets for n in sheet.numbers),
+        *(n for case in open_cases for n in case.references),
+    ]
+    for number in shown:
+        if (person := only(letters.get(number.key, set()))) is not None:
+            found[number.key] = person
+    for case in open_cases:
+        if (person := only(case_letters.get(case.key, set()))) is not None:
+            found[case.key] = person
+    return found
+
+
 def build_numbers_page(data: NumbersInput) -> NumbersPage:
-    """The *My numbers* page: About you, identity documents, call sheets and open cases (module policy). Its
-    household parts (``household``, ``filed_for``, ``also_for``) stay empty: ``people`` and ``members`` are not
-    read yet."""
+    """The *My numbers* page: About you, identity documents, call sheets and open cases (module policy), and
+    each person of the household's numbers and documents from the letters filed for them (``household``),
+    with ``filed_for`` and ``also_for``. Without a household (``people`` empty) it is the person's page alone,
+    the three household parts empty."""
     by_party, personal = _collect(data)
     order = {kind: index for index, kind in enumerate(KINDS)}
-    about = sorted(
-        (entry for entry in personal.values() if KINDS[entry.kind][0] == "about_you"),
-        key=lambda entry: (order[entry.kind], compact(entry.sighting.value)),
-    )
-    open_cases = _open_cases(data, by_party.values())
+
+    def about(person: str) -> list[MyNumber]:
+        entries = (e for e in personal.values() if e.person == person and KINDS[e.kind][0] == "about_you")
+        return [e.model() for e in sorted(entries, key=lambda e: (order[e.kind], compact(e.sighting.value)))]
+
+    open_cases, case_letters = _open_cases(data, by_party.values())
+    sheets = _call_sheets(data, by_party, open_cases)
+    filed_for = _filed_for(data, by_party, sheets, open_cases, case_letters)
+    also_for = _also_for(data, personal)
+    # every person of the household the page names: their sections, and the names its tags need
+    named = set(filed_for.values()) | {person for people in also_for.values() for person in people}
+    household: list[PersonNumbers] = []
+    for member in data.members:
+        numbers, documents = about(member.id), _identity_documents(data, personal, member.id)
+        if numbers or documents or member.id in named:
+            household.append(
+                PersonNumbers(id=member.id, name=member.name, about=numbers, documents=documents)
+            )
     return NumbersPage(
         today=data.today.isoformat(),
-        about_you=[entry.model() for entry in about],
+        about_you=about(ME),
         documents=_identity_documents(data, personal),
-        organisations=_call_sheets(data, by_party, open_cases),
+        organisations=sheets,
         open_cases=open_cases,
+        household=household,
+        filed_for=filed_for,
+        also_for=also_for,
     )
+
+
+def entry_letters(data: NumbersInput) -> dict[str, list[str]]:
+    """Every letter that shows each number and case of the page, newest first (for the static demo,
+    ``scripts/gen_mock_numbers.py``): ``you:<key>`` an About or identity-document number (one person's letters),
+    ``sheet:<key>`` a call-sheet number or a case's reference (an organisation's letters), ``case:<key>`` an open
+    case (its thread's letters and those showing its references)."""
+    by_party, personal = _collect(data)
+    documents = {doc.id: doc for doc in data.documents}
+
+    def newest(ids: Iterable[str]) -> list[str]:
+        return [doc.id for doc in _newest_first(documents[doc_id] for doc_id in ids if doc_id in documents)]
+
+    found = {f"you:{entry.key}": newest(entry.letters) for entry in personal.values()}
+    found |= {f"sheet:{entry.key}": newest(entry.letters) for entry in by_party.values()}
+    _, case_letters = _open_cases(data, by_party.values())
+    found |= {f"case:{key}": newest(letters) for key, letters in case_letters.items()}
+    return found
 
 
 #: The name the page's builder had before the household parts (kept for its callers).
