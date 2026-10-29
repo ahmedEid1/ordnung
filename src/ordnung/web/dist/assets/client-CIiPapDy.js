@@ -1,1 +1,0 @@
-import{ir as e}from"./dateLabels-BdTV__ZU.js";function t(){return e().data?.client===`phone`}export{t};
