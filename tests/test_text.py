@@ -836,3 +836,52 @@ def test_the_invisible_text_check_holds_the_pdfium_lock(
     monkeypatch.setattr(text_module.pdfium, "PdfDocument", spy)
     found = text_module._invisible_chars(pdf_path, [1])
     assert opened == [True] and found[1]
+
+
+# -- e-mails whose text Pillow's layout couldn't take ---------------------------------------------------
+
+#: The characters Unicode counts as paragraph separators besides "\n". Where Pillow lays text out with raqm,
+#: a line holding one made the layout fail (``RuntimeError: raqm_layout() failed``).
+PARAGRAPH_SEPARATORS = ["\r", "\x1c", "\x1d", "\x1e", "\x85", " "]
+
+
+def _mail(body: bytes, charset: str = "utf-8") -> bytes:
+    return (
+        b"From: stadtwerke@example.org\r\nTo: sam@example.org\r\nSubject: Ihre Rechnung\r\n"
+        b"Content-Type: text/plain; charset="
+        + charset.encode()
+        + b"\r\nContent-Transfer-Encoding: 8bit\r\n\r\n"
+        + body
+    )
+
+
+@pytest.mark.parametrize("separator", PARAGRAPH_SEPARATORS, ids=lambda ch: f"U+{ord(ch):04X}")
+def test_a_paragraph_separator_starts_a_new_line(separator: str) -> None:
+    document = text_module.text_document(
+        _mail(f"Guten Tag,{separator}anbei Ihre Rechnung.".encode()), "message/rfc822"
+    )
+    assert document.text.endswith("Guten Tag,\nanbei Ihre Rechnung.")
+    rows = [
+        line.text for page in layout_text(f"Guten Tag,{separator}anbei Ihre Rechnung.") for line in page.lines
+    ]
+    assert rows == ["Guten Tag,", "anbei Ihre Rechnung."]
+
+
+def test_an_e_mail_with_a_paragraph_separator_is_added() -> None:
+    from ordnung.ingest.intake import normalise_upload
+
+    for separator in PARAGRAPH_SEPARATORS:
+        _body, mime, _name = normalise_upload(_mail(f"Guten{separator}Tag".encode()), "rechnung.eml")
+        assert mime == "message/rfc822"
+
+
+def test_an_e_mail_labelled_iso_8859_1_is_read_as_windows_1252_as_mail_programs_do() -> None:
+    """A Windows mail program labels its mail ISO-8859-1 but writes "…" and "€" as Windows-1252 bytes; read
+    as ISO-8859-1, the "…" (0x85) became a paragraph separator. Browsers and mail programs read the label as
+    Windows-1252 (WHATWG), and so does Ordnung; the five bytes Windows-1252 leaves out keep their old meaning."""
+    body = b"anbei Ihre Rechnung \x85 \x80 12,50 mit freundlichen Gr\xfc\xdfen \x81"
+    for label in ("iso-8859-1", "ISO-8859-1", "latin-1", "latin1"):
+        text = text_module.text_document(_mail(body, label), "message/rfc822").text
+        assert text.endswith("anbei Ihre Rechnung … € 12,50 mit freundlichen Grüßen \x81"), label
+    utf8 = text_module.text_document(_mail("Grüße … €".encode(), "utf-8"), "message/rfc822").text
+    assert utf8.endswith("Grüße … €")

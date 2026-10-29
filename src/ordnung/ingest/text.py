@@ -884,7 +884,8 @@ def layout_text(text: str, *, max_pages: int | None = None) -> list[TextLayoutPa
     font = text_font()
     width = TEXT_PAGE_SIZE[0] - 2 * _TEXT_MARGIN
     per_page = (TEXT_PAGE_SIZE[1] - 2 * _TEXT_MARGIN) // _TEXT_LINE_HEIGHT
-    rows = (wrapped for raw in text.split("\n") for wrapped in _wrap(raw.expandtabs(4).rstrip(), font, width))
+    raws = _LINE_BREAKS_RE.sub("\n", text).split("\n")
+    rows = (wrapped for raw in raws for wrapped in _wrap(raw.expandtabs(4).rstrip(), font, width))
     lines = list(rows if max_pages is None else itertools.islice(rows, per_page * max_pages + 1))
     chunks = [lines[i : i + per_page] for i in range(0, len(lines), per_page)] or [[]]
     return [_layout_page(chunk, font) for chunk in chunks]
@@ -958,8 +959,14 @@ def _looks_like_text(text: str) -> bool:
     return printable >= 0.97 * len(sample)
 
 
+#: Line ends and the characters Unicode counts as paragraph separators besides "\n" (bidi class B), and the form
+#: feed. Each starts a new line: where Pillow lays text out with raqm, a line holding a separator made the layout
+#: fail ("raqm_layout() failed").
+_LINE_BREAKS_RE = re.compile("\r\n?|[\f\x1c-\x1e\x85\u2029]")
+
+
 def _clean_text(text: str) -> str:
-    return text.replace("\r\n", "\n").replace("\r", "\n").replace("\f", "\n").strip("\n")
+    return _LINE_BREAKS_RE.sub("\n", text).strip("\n")
 
 
 def _email_document(data: bytes) -> TextDocument:
@@ -1025,7 +1032,21 @@ def _email_body(message: EmailMessage) -> tuple[str, str]:
     return content, ""
 
 
+#: The labels that name ISO-8859-1. Browsers and mail programs read text so labelled as Windows-1252 (WHATWG
+#: Encoding), as Windows mail programs write it: "…" and "€" are 0x85 and 0x80, which ISO-8859-1 reads as control
+#: characters.
+_LATIN_1_LABELS = frozenset({"iso-8859-1", "iso8859-1", "iso_8859-1", "latin-1", "latin1", "l1", "cp819"})
+#: Windows-1252's characters for 0x80-0x9F; the five bytes it leaves out keep their ISO-8859-1 meaning.
+_C1_AS_WINDOWS_1252 = {
+    code: char for code in range(0x80, 0xA0) if (char := bytes([code]).decode("cp1252", errors="ignore"))
+}
+
+
 def _part_text(part: MIMEPart) -> str:
+    if (part.get_content_charset() or "").lower() in _LATIN_1_LABELS:
+        payload = part.get_payload(decode=True)
+        if isinstance(payload, bytes):
+            return payload.decode("latin-1").translate(_C1_AS_WINDOWS_1252)
     try:
         return str(part.get_content())
     except (LookupError, UnicodeError):  # unknown or wrong charset

@@ -1,9 +1,10 @@
-"""An e-mail whose text Pillow can't lay out on a page (a control character such as U+001C in its body) is
-refused with a reason at every way in: upload, the phone (the same route), the watched folder, ``ordnung add``
-and proof of a sent letter. Never a server error or a traceback (:mod:`ordnung.ingest.layout_guard`).
+"""An e-mail whose text Pillow can't lay out on a page is refused with a reason at every way in: upload, the
+phone (the same route), the watched folder, ``ordnung add`` and proof of a sent letter. Never a server error or
+a traceback (:mod:`ordnung.ingest.layout_guard`).
 
-Pillow lays text out with raqm where it has it (Linux here and in CI). Where it doesn't, the fixture
-``unlaid`` makes the font fail the way raqm does, so these tests run the same on every system."""
+No character Ordnung knows of makes the layout fail any more: the paragraph separators that did are line
+breaks now (``tests/test_text.py``). So the fixture ``unlaid`` makes the font fail the way raqm did, on a
+private-use character, and these tests run the same on every system."""
 
 from __future__ import annotations
 
@@ -12,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from PIL import ImageFont, features
+from PIL import ImageFont
 
 from fixtures_llm import TODAY, Router, fake_backend
 from ordnung import cli, clock
@@ -24,31 +25,27 @@ from test_api_proof import _sent
 from test_api_support import api_for
 from test_cli import invoke
 from test_folder_watcher import eventually, logged, use_folder, watching
-from test_outlook import FUZZ_BASE
 
-CONTROL = "\x1c"
+#: A private-use character the font stand-in fails on, as raqm did on a paragraph separator.
+UNLAYABLE = "\ue000"
 MAIL = (
     b"From: stadtwerke@example.org\r\nTo: sam@example.org\r\nSubject: Ihre Rechnung\r\n"
     b"Content-Type: text/plain; charset=utf-8\r\n\r\nGuten "
-    + CONTROL.encode()
-    + b"ag,\r\nanbei Ihre Rechnung.\r\n"
+    + UNLAYABLE.encode()
+    + b"Tag,\r\nanbei Ihre Rechnung.\r\n"
 )
-#: The input Hypothesis found in CI: one flipped byte turns the "T" of a body's "Tag" into U+001C.
-FLIPPED_MSG = bytes(FUZZ_BASE[:8]) + bytes(
-    byte ^ 72 if index == 44076 % (len(FUZZ_BASE) - 8) else byte for index, byte in enumerate(FUZZ_BASE[8:])
-)
-#: Raised as if from Pillow's font module, as raqm's failure is.
+#: Raised as if from Pillow's font module, as raqm's failure was.
 FONT_ERROR = compile("raise RuntimeError('raqm_layout() failed.')", ImageFont.__file__, "exec")
 
 
 class _LikeRaqm:
-    """The bundled font, failing on a control character the way it does with raqm."""
+    """The bundled font, failing on :data:`UNLAYABLE` the way raqm failed on a paragraph separator."""
 
     def __init__(self, font: ImageFont.FreeTypeFont) -> None:
         self._font = font
 
     def getlength(self, line: str, *args: Any, **kwargs: Any) -> float:
-        if CONTROL in line:
+        if UNLAYABLE in line:
             exec(FONT_ERROR)
         return self._font.getlength(line, *args, **kwargs)
 
@@ -58,9 +55,8 @@ class _LikeRaqm:
 
 @pytest.fixture
 def unlaid(monkeypatch: pytest.MonkeyPatch) -> None:
-    if not features.check("raqm"):
-        real = text.text_font
-        monkeypatch.setattr(text, "text_font", lambda: _LikeRaqm(real()))
+    real = text.text_font
+    monkeypatch.setattr(text, "text_font", lambda: _LikeRaqm(real()))
 
 
 @pytest.fixture(autouse=True)
@@ -93,13 +89,6 @@ async def test_an_uploaded_e_mail_whose_text_cant_be_laid_out_is_refused_with_th
         assert response.status_code == 422, response.text
         assert response.json()["errors"] == [{"filename": "rechnung.eml", "detail": UNLAID_TEXT}]
         assert api.ctx.store.list_documents() == []
-
-
-async def test_the_outlook_file_ci_found_is_refused_with_the_reason(data_dir: Path, unlaid: None) -> None:
-    async with api_for(data_dir) as api:
-        response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", FLIPPED_MSG))])
-        assert response.status_code == 422, response.text
-        assert response.json()["errors"] == [{"filename": "kaputt.msg", "detail": UNLAID_TEXT}]
 
 
 async def test_a_proof_whose_text_cant_be_laid_out_is_refused_with_the_reason(

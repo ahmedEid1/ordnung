@@ -114,6 +114,21 @@ async def test_upload_of_a_damaged_msg_says_why(data_dir: Path) -> None:
         assert response.json()["errors"] == [{"filename": "Rechnung.msg", "detail": DAMAGED}]
 
 
+async def test_the_outlook_file_hypothesis_found_in_ci_is_read(data_dir: Path) -> None:
+    """One flipped byte turns the "T" of the body's "Tag" into U+001C, a paragraph separator; where Pillow
+    lays text out with raqm, that failed the layout. It is a line break now, and the e-mail is added."""
+    from test_outlook import FUZZ_BASE
+
+    flipped = bytes(FUZZ_BASE[:8]) + bytes(
+        byte ^ 72 if index == 44076 % (len(FUZZ_BASE) - 8) else byte
+        for index, byte in enumerate(FUZZ_BASE[8:])
+    )
+    async with api_for(data_dir) as api:
+        response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", flipped))])
+        assert response.status_code == 201, response.text
+        assert response.json()["documents"][0]["filename"] == "kaputt.eml"
+
+
 async def test_upload_of_a_msg_full_of_zeros_says_it_is_damaged(data_dir: Path) -> None:
     async with api_for(data_dir) as api:
         response = await api.client.post("/api/documents", files=[("files", ("kaputt.msg", b"\0" * 8192))])

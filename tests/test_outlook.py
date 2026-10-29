@@ -722,7 +722,7 @@ def test_input_over_50_mb_refused_with_intakes_words(monkeypatch: pytest.MonkeyP
 
 @settings(max_examples=200, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(flips=st.lists(st.tuples(st.integers(0, 2**31), st.integers(1, 255)), min_size=1, max_size=12))
-# found in CI: the "T" of the body's "Tag" becomes U+001C, which raqm can't lay out
+# found in CI: the "T" of the body's "Tag" becomes U+001C, a paragraph separator raqm couldn't lay out (a line break now)
 @example(flips=[(44076, 72)])
 def test_flipped_bytes_never_crash(flips: list[tuple[int, int]]) -> None:
     """Flipped bytes anywhere: refused with a reason, or an e-mail intake reads — never another error.

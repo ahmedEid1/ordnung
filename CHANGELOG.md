@@ -244,11 +244,13 @@ what a computer still on 0.2.0 does with what this version adds, if you use hand
   keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle
   it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung
   another computer had already kept, exactly as it is, is no longer asked again.
-- An e-mail with a control character in its text, such as U+001C, is refused with a reason ("This e-mail has
-  characters Ordnung can't put on a page …") wherever it comes in: an upload, the phone, proof of a sent
-  letter, the watched folder or `ordnung add`. Before, the upload or proof failed with an error, the watched
-  folder only logged it and `ordnung add` said *Unexpected error*. Where the text layout has raqm (Linux, as a
-  rule), such an e-mail can't be put on a page; elsewhere it is read as before.
+- An e-mail from a Windows mail program that labels its text ISO-8859-1 but writes "…" or "€" in it is read,
+  with the "…" and "€" as written: Ordnung reads that label as Windows-1252, as mail programs and browsers do.
+  Before, the "…" became a paragraph separator, and where the text layout has raqm (Linux, as a rule) the
+  e-mail couldn't be added: the upload or proof failed with an error, the watched folder only logged it and
+  `ordnung add` said *Unexpected error*. Other paragraph separators in an e-mail's text (U+2029, U+0085,
+  U+001C–U+001E) start a new line now. Should Pillow's layout fail on anything else, the e-mail is refused
+  with a reason at every way in, not with an error.
 
 ### Upgrading
 
