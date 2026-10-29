@@ -244,11 +244,12 @@ async def test_household_writes_announce_profile_updated(data_dir: Path) -> None
         (alex,) = (m["id"] for m in (await _ok(await _put(api, {"name": ALEX})))["members"])
         letter = _letter(api.ctx.store, "letter", ALEX)
         await _ok(await api.client.patch("/api/household", json={"letters": {letter: alex}}))
-        assert [kind for kind, _ in events] == ["profile.updated", "profile.updated"]
+        # each write refreshes the Ideas too: their titles say whose a letter is
+        assert [kind for kind, _ in events] == ["profile.updated", "suggestions.updated"] * 2
         stale = await _put(api, {"name": MIA}, base=EMPTY["version"])
         mistake = await _put(api, {"id": alex, "name": ALEX}, {"name": SAM})
         assert (stale.status_code, mistake.status_code) == (409, 422)
-        assert len(events) == 2  # refused: nothing changed, nothing announced
+        assert len(events) == 4  # refused: nothing changed, nothing announced
 
 
 async def test_household_writes_are_person_changes_and_wait_while_standing_by(data_dir: Path) -> None:

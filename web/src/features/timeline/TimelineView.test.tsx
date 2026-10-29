@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { qk } from "@/api/hooks";
-import type { Contract, Item, Lane, Party, Profile, TimelineEntry } from "@/api/types";
+import type { Contract, Household, Item, Lane, Party, Profile, TimelineEntry } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { createMockServer, type MockServer } from "@/mocks/server";
@@ -393,5 +393,66 @@ describe("calendar export", () => {
     renderWithProviders(<TimelineView />, { client, route: "/timeline" });
     expect(screen.getByRole("region", { name: "Every date" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add your dates to your calendar" })).toBeNull();
+  });
+});
+
+describe("Timeline: your household (ADR 0023)", () => {
+  const ALEX = { id: "hhm_alexalexalex", name: "Alex Rivera", signs: true, letters: 2 };
+  const MIA = { id: "hhm_miamiamiamia", name: "Mia Rivera", signs: false, letters: 0 };
+  const EMPTY: Household = { members: [], filed: {}, mine: [], suggested: {}, version: "4f53cda18c2baa0c" };
+  const HOUSEHOLD: Household = {
+    members: [ALEX, MIA],
+    // the dentist's letter and the parking fine are Alex's; the health insurer's is filed for someone since removed
+    filed: { doc_dentist: ALEX.id, doc_parking: ALEX.id, doc_bkk: "hhm_gonegonegone" },
+    mine: ["doc_lease"],
+    suggested: { doc_library: MIA.id },
+    version: "0123456789abcdef",
+  };
+  const PAST = "/timeline?past=1";
+
+  async function rows(household: Household | undefined) {
+    const client = await seededClient();
+    if (household) client.setQueryData(qk.household, household);
+    const view = renderWithProviders(<TimelineView />, { client, route: PAST });
+    const list = screen.getByRole("region", { name: "Every date" });
+    const texts = new Map([...list.querySelectorAll("li[data-entry-id]")].map((li) => [li.getAttribute("data-entry-id")!, li.textContent ?? ""]));
+    return { view, list, texts };
+  }
+  const row = (list: HTMLElement, name: RegExp) => within(list).getByRole("link", { name });
+
+  it('starts a row\'s second line with "For Alex Rivera · " for a letter filed for them and for a to-do from it', async () => {
+    const { list } = await rows(HOUSEHOLD);
+    expect(row(list, /^.*Pay the parking fine/)).toHaveTextContent(/For Alex Rivera · Payment due/);
+    expect(row(list, /Dentist: check-up/)).toHaveTextContent(/For Alex Rivera · /);
+    expect(row(list, /Dentist appointment reminder/)).toHaveTextContent(/For Alex Rivera · Letter/);
+    expect(row(list, /Parking fine \(Verwarnungsgeld\)/)).toHaveTextContent(/For Alex Rivera · Letter/);
+  });
+
+  it("names nobody for a suggested letter, one that is yours, one filed for someone removed, a contract's dates or a date without a letter", async () => {
+    const { list, texts } = await rows(HOUSEHOLD);
+    for (const name of [/Pay library fee/, /Rent for October/, /Health insurance contribution/, /FunkNetz Allnet L: current term ends/, /Follow up: Wohnbau/]) {
+      const found = [...texts.values()].filter((text) => name.test(text));
+      expect(found.length, String(name)).toBeGreaterThan(0);
+      for (const text of found) expect(text).not.toMatch(/For (Alex|Mia) Rivera/);
+    }
+    expect(list).not.toHaveTextContent(/For Mia Rivera/);
+  });
+
+  it("keeps every row as it was without people in the household, and adds no Whose letters filter", async () => {
+    const before = await rows(undefined);
+    before.view.unmount();
+    const empty = await rows(EMPTY);
+    expect(empty.texts).toEqual(before.texts);
+    empty.view.unmount();
+    const nobodyFiled = await rows({ ...HOUSEHOLD, filed: {} });
+    expect(nobodyFiled.texts).toEqual(before.texts);
+    expect(document.querySelector("#tl-for")).toBeNull();
+    expect(screen.queryByRole("combobox", { name: /whose|for/i })).toBeNull();
+  });
+
+  it("puts the name in the row's title, where the line is cut to one line", async () => {
+    const { list } = await rows(HOUSEHOLD);
+    const line = within(row(list, /^.*Pay the parking fine/)).getByTitle(/^For Alex Rivera · Payment due/);
+    expect(line).toHaveClass("sm:truncate", "break-words");
   });
 });

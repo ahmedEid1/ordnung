@@ -72,6 +72,14 @@ export function suggestedFor<T extends Pick<ListedLetter, "id">>(docs: readonly 
   return docs.filter((d) => h.suggested[d.id] === memberId);
 }
 
+/**
+ * The start of a row's second line for a date from a letter filed for someone of the household: "For Alex Rivera",
+ * the words Today's Coming up uses.
+ */
+export function forLine(name: string): string {
+  return `For ${name}`;
+}
+
 /** The button that files the listed letters for a person. */
 export function fileTheseLabel(n: number, name: string): string {
   return n === 1 ? `File it for ${name}` : `File these ${n} for ${name}`;

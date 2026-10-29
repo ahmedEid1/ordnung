@@ -13,6 +13,7 @@ import contextlib
 import sqlite3
 import ssl
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
@@ -51,6 +52,7 @@ from ordnung.calendar.secrets import (
     install_command,
 )
 from ordnung.db.store import Store
+from ordnung.secretary import household
 from ordnung.tick import DailyTick
 
 URL = "https://cal.example.org" + CALENDAR_PATH
@@ -235,6 +237,28 @@ def test_a_date_ordnung_couldnt_confirm_says_so_in_discreet_mode_too(
     assert "Pay parking fine" not in parking.body.decode("utf-8")
     # a confirmed date doesn't
     assert discreet[ids["semester_fee"]].preview.summary == "Ordnung: payment"
+
+
+@dataclass(frozen=True)
+class _Person:
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+def test_discreet_sync_still_names_no_one(store: Store, ids: dict[str, str]) -> None:
+    """*With details* sends the calendar file's events, so a to-do of a letter filed for someone of the
+    household carries their name; *Discreet* sends no name, and still says when a date needs checking."""
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    (alex,) = household.load(store).members
+    household.file(store, {doc.id: alex.id for doc in store.list_documents() if doc.source != "proof"})
+    full = {e.uid.split("@")[0]: e.preview for e in caldav.build_events(store, "full")}
+    assert full[ids["parking_payment"]].summary == f"{ics.CHECK_PREFIX}€ Alex Rivera: Pay parking fine"
+    discreet = caldav.build_events(store, "discreet")
+    for event in discreet:
+        assert "Alex" not in event.body.decode("utf-8") and "Alex" not in event.preview.summary
+    parking = next(e for e in discreet if e.stable_uid.startswith(ids["parking_payment"]))
+    assert parking.preview.summary == "Ordnung: payment — check the date"
 
 
 def test_the_preview_says_what_each_event_holds_and_when_its_alarms_ring(

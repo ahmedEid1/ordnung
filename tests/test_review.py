@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
@@ -13,6 +14,7 @@ from ordnung.db.store import Store
 from ordnung.llm.base import LLMRequest
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
+from ordnung.secretary import household
 from ordnung.secretary.review import (
     MAX_IDEAS,
     Facts,
@@ -90,6 +92,28 @@ def test_snapshot_lists_existing_and_dismissed_idea_titles(store: Store, ids: di
     ideas = build_snapshot(store, TODAY).data["existing_ideas"]
     assert first.title in ideas["dismissed"]
     assert first.title not in ideas["open"] and ideas["open"]
+
+
+@dataclass(frozen=True)
+class _Person:
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+def test_a_member_s_idea_title_reaches_the_review_as_stored(store: Store, ids: dict[str, str]) -> None:
+    """The review's code is unchanged: an Idea about a letter filed for someone of the household reaches it with
+    the name in its title, as stored (household point 9, ADR 0025)."""
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    (alex,) = household.load(store).members
+    household.file(store, {ids["doc_passport"]: alex.id})
+    run_and_reconcile(store, TODAY)
+    ideas = build_snapshot(store, TODAY).data["existing_ideas"]
+    assert "Alex Rivera's passport expires Wed 10 Feb 2027" in ideas["open"]
+    assert "Your passport expires Wed 10 Feb 2027" not in ideas["open"]
+    assert "Alex Rivera" not in json.dumps(
+        {k: v for k, v in build_snapshot(store, TODAY).data.items() if k != "existing_ideas"}
+    )
 
 
 def test_untrusted_json_cannot_close_the_tag_or_inject_placeholders() -> None:

@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import shutil
+from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from helpers_secretary import TODAY, add_doc, add_item, seed_ledger
+from ordnung.config import Paths, fixtures_dir
 from ordnung.db.store import Store
 from ordnung.llm.base import LLMError, LLMRequest, LLMResponse
 from ordnung.llm.fake import FakeBackend
+from ordnung.llm.replay import ReplayBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, Profile, RefLink
+from ordnung.secretary import household
 from ordnung.secretary.brief import (
     Agenda,
     AgendaEntry,
@@ -27,8 +33,11 @@ from ordnung.secretary.brief import (
     grounded_note,
     mislabelled_dates,
 )
-from ordnung.secretary.review import Facts
+from ordnung.secretary.review import Facts, run_review
 from ordnung.secretary.triggers import run_and_reconcile
+from ordnung.tick import local_today
+
+DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
 
 GOOD_NOTE = (
     "Good morning, Sam! Your library books were due on 20 Sep, and the TechMarkt reminder of €94.99 is "
@@ -181,6 +190,52 @@ async def test_private_letters_never_reach_the_model(store: Store, ids: dict[str
     await brief_text(LLMService(backend), agenda, store.get_profile())
     assert "Therapy invoice" not in backend.calls[0].prompt
     assert ids["doc_private"] not in backend.calls[0].doc_ids
+
+
+@dataclass(frozen=True)
+class _Person:
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+async def test_a_member_s_idea_title_reaches_the_daily_note(store: Store, ids: dict[str, str]) -> None:
+    """The note's code is unchanged: a new Idea about a letter filed for someone of the household reaches it with
+    the name in its title, as stored (household point 9, ADR 0025); its to-do rows stay as they are."""
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    (alex,) = household.load(store).members
+    household.file(store, {ids["doc_parking"]: alex.id})
+    run_and_reconcile(store, TODAY)
+    agenda = build_agenda(store, TODAY)
+    named = "For Alex Rivera: Pay parking fine: pay by Tue 29 Sep"
+    assert named in [entry.title for entry in agenda.new_ideas]
+    assert "Pay parking fine" in [entry.title for entry in agenda.next_7_days]
+    backend = FakeBackend({"brief": {"text": GOOD_NOTE}})
+    await brief_text(LLMService(backend), agenda, store.get_profile())
+    assert named in backend.calls[0].prompt
+
+
+async def test_the_demo_s_review_and_brief_keys_are_unchanged(tmp_path: Path) -> None:
+    """The demo has no household: its Ideas refreshed by today's rules ask the weekly review and the daily note
+    exactly what was recorded (strict replay of the demo's fixtures, no model)."""
+    shutil.copytree(DEMO_DB, tmp_path / "demo")
+    store = Store.open(Paths(tmp_path / "demo"))
+    try:
+        today = local_today(store)
+        stored = get_brief(store, today)
+        assert stored is not None and stored.source == "llm"
+        run_and_reconcile(store, today)
+        agenda = build_agenda(store, today)
+        assert brief_cache_key(agenda, store.get_profile()) == stored.agenda
+        replay = LLMService(ReplayBackend(fixtures_dir()))
+        brief = await brief_text(replay, agenda, store.get_profile(), settings=store.get_settings())
+        assert (brief.source, brief.text) == ("llm", stored.text)
+        # the review ran before its own Ideas existed: asked again without them, it replays
+        with store.tx() as conn:
+            assert conn.execute("DELETE FROM suggestions WHERE source = 'review'").rowcount == 6
+        assert len(await run_review(store, replay, today)) == 6
+    finally:
+        store.close()
 
 
 def test_cache_key_depends_on_language(store: Store, ids: dict[str, str]) -> None:

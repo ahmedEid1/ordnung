@@ -4,7 +4,8 @@
 ``GET /api/household`` answers the list with each person's letters, the letters filed for each, the ones the
 person said are theirs and the suggestions. ``PUT`` replaces the list of people (computer only, like the
 profile); ``PATCH`` files letters (the phone too, logged "Changed who a letter is for"). Both are person
-changes and publish ``profile.updated``. Nothing here is ever given to Claude.
+changes: they publish ``profile.updated`` and refresh the Ideas, whose titles say whose a letter is (the policy's
+points 9 and 10). The routes give Claude nothing themselves.
 """
 
 from __future__ import annotations
@@ -82,13 +83,15 @@ def get_household(store: StoreDep) -> Household:
 
 async def _written(ctx: CtxDep, write: Callable[[], HouseholdView]) -> Household:
     """Run a household change in a worker thread (one transaction), answer the household after it and
-    announce it as ``profile.updated`` (no event of its own: the events are in ``models.py``). A refusal is
-    the policy's status and words; nothing is announced then."""
+    announce it as ``profile.updated`` (no event of its own: the events are in ``models.py``), then refresh the
+    Ideas in the background so their titles follow whose a letter is at once (they publish
+    ``suggestions.updated``). A refusal is the policy's status and words; nothing is announced then."""
     try:
         answer = await asyncio.to_thread(write)
     except HouseholdError as refused:
         raise HTTPException(refused.status, refused.detail) from None
     ctx.bus.publish("profile.updated")
+    ctx.worker.refresh_ideas()
     return Household.model_validate(answer)
 
 
