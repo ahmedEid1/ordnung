@@ -151,16 +151,21 @@ function maskNumber(n: MyNumber): MyNumber {
   return { ...n, value: shown, display: shown, copy_value: shown };
 }
 
-/** *My numbers* on a phone: your numbers masked (an organisation's own registry and bank numbers stay). */
+/**
+ * *My numbers* on a phone: your numbers and your household's masked (an organisation's own registry and bank numbers
+ * stay). The mock keeps its keys on a phone, so `filed_for` and `also_for` stay as they are.
+ */
 export function maskNumbers(numbers: MyNumbers): MyNumbers {
   const references = <T extends { references: MyNumber[] }>(x: T): T => ({ ...x, references: x.references.map(maskNumber) });
+  const documents = (list: MyNumbers["documents"]) => list.map((d) => ({ ...d, number: d.number ? maskNumber(d.number) : d.number }));
   return {
     ...numbers,
     masked: true,
     about_you: numbers.about_you.map(maskNumber),
-    documents: numbers.documents.map((d) => ({ ...d, number: d.number ? maskNumber(d.number) : d.number })),
+    documents: documents(numbers.documents),
     organisations: numbers.organisations.map((o) => ({ ...o, numbers: o.numbers.map(maskNumber), open_cases: o.open_cases.map(references) })),
     open_cases: numbers.open_cases.map(references),
+    household: numbers.household.map((p) => ({ ...p, about: p.about.map(maskNumber), documents: documents(p.documents) })),
   };
 }
 

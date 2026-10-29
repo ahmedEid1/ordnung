@@ -5,9 +5,9 @@
  * its step (and the ending moves on to the next day to act), and "Finish" / "Not now" are remembered for
  * this mock database.
  */
-import type { CallSheet, Item, MyNumber, NumbersPage, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
+import type { CallSheet, IdentityDocument, Item, LetterRef, MyNumber, NumbersPage, OpenCase, WeekEntry, WeekStep, WeeklySession } from "@/api/types";
 import type { MockDb } from "./db";
-import { MOCK_NUMBERS, MOCK_WEEK, MOCK_WEEK_DEADLINES } from "./data/numbers";
+import { MEMBER_NOTES, MOCK_NUMBER_LETTERS, MOCK_NUMBERS, MOCK_WEEK, MOCK_WEEK_DEADLINES } from "./data/numbers";
 
 interface WeekState {
   lastSession: string | null;
@@ -27,9 +27,23 @@ function stateOf(db: MockDb): WeekState {
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-/** My numbers of the letters still in the demo (its household parts as the generated page has them). */
+/** Whose a letter is when it is no one else's: the person's own (`also_for`'s "me"). */
+const ME = "me";
+
+/**
+ * My numbers of the letters still in the demo. Once the visitor files a letter for someone of the household, its
+ * numbers move to their *About* group as `ordnung/numbers.py` moves them (`regroup`); without one the page is the
+ * generated one, following deleted letters.
+ */
 export function mockNumbers(db: MockDb): NumbersPage {
   const live = new Set(db.liveDocuments().map((d) => d.id));
+  const members = new Set(db.state.household.members.map((m) => m.id));
+  const filed = Object.fromEntries(Object.entries(db.state.household.links).filter(([doc, link]) => live.has(doc) && members.has(link)));
+  return Object.keys(filed).length ? regroup(db, live, filed) : alone(live);
+}
+
+/** The person's page alone: a number goes with its latest letter. */
+function alone(live: Set<string>): NumbersPage {
   const shown = (n: MyNumber | null | undefined): n is MyNumber => Boolean(n && (!n.letter || live.has(n.letter.id)));
   const openCase = (c: OpenCase): OpenCase | null => {
     const references = c.references.filter(shown);
@@ -54,6 +68,91 @@ export function mockNumbers(db: MockDb): NumbersPage {
       .map((d) => ({ ...d, number: shown(d.number) ? d.number : null })),
     organisations: sheets,
     open_cases: cases,
+  };
+}
+
+/** A letter as the page names it (`numbers._letter_ref`). */
+function letterRef(db: MockDb, id: string): LetterRef | null {
+  const d = db.document(id);
+  return d ? { id: d.id, title: d.title || d.filename, date: d.doc_date ?? d.received_date ?? d.created_at.slice(0, 10), kind: d.kind } : null;
+}
+
+/**
+ * The page with letters filed for people of the household (`filed`: letter → person), as `ordnung/numbers.py` builds
+ * it: each person's numbers and documents from their letters (`MOCK_NUMBER_LETTERS`), a person's entries under keys of
+ * their own (`<key>:<person>`), the person's keeping theirs; `filed_for` where all of a call sheet's number's, a case
+ * reference's or a case's letters are one person's; `also_for` where two people's letters show a number.
+ */
+function regroup(db: MockDb, live: Set<string>, filed: Record<string, string>): NumbersPage {
+  const page = clone(MOCK_NUMBERS);
+  const order = [ME, ...db.state.household.members.map((m) => m.id)];
+  const personOf = (doc: string | null | undefined) => (doc && filed[doc]) || ME;
+  const lettersOf = (prefix: string, key: string, fallback?: string | null) =>
+    (MOCK_NUMBER_LETTERS[`${prefix}:${key}`] ?? (fallback ? [fallback] : [])).filter((id) => live.has(id));
+  /** One number split by whose letters show it: person → the number as their entry. */
+  const split = (n: MyNumber): Map<string, MyNumber> => {
+    const byPerson = new Map<string, string[]>();
+    for (const id of lettersOf("you", n.key, n.letter?.id)) byPerson.set(personOf(id), [...(byPerson.get(personOf(id)) ?? []), id]);
+    const entries = new Map<string, MyNumber>();
+    for (const person of order) {
+      const ids = byPerson.get(person);
+      if (ids?.length) entries.set(person, { ...n, key: person === ME ? n.key : `${n.key}:${person}`, letter: letterRef(db, ids[0]!), letters: ids.length });
+    }
+    return entries;
+  };
+  const about = new Map(order.map((person): [string, MyNumber[]] => [person, []]));
+  const documents = new Map(order.map((person): [string, IdentityDocument[]] => [person, []]));
+  const alsoFor: Record<string, string[]> = {};
+  const note = (person: string, d: IdentityDocument) => (person === ME || !d.note ? d.note : (MEMBER_NOTES[d.note] ?? d.note));
+  const shared = (entries: Map<string, MyNumber>) => {
+    if (entries.size < 2) return;
+    for (const [person, n] of entries) alsoFor[n.key] = [...entries.keys()].filter((other) => other !== person);
+  };
+  for (const n of page.about_you) {
+    const entries = split(n);
+    for (const [person, entry] of entries) about.get(person)!.push(entry);
+    shared(entries);
+  }
+  for (const d of page.documents) {
+    const entries = d.number ? split(d.number) : new Map<string, MyNumber>();
+    if (d.item_id) {
+      // a document goes with its expiry to-do's letter (one of no letter is the person's)
+      const item = db.state.items.find((i) => i.id === d.item_id);
+      if (item?.doc_id && !live.has(item.doc_id)) continue;
+      const person = personOf(item?.doc_id);
+      documents.get(person)!.push({ ...d, number: entries.get(person) ?? null, note: note(person, d) });
+    } else {
+      for (const [person, number] of entries) documents.get(person)!.push({ ...d, key: person === ME ? d.key : `${d.key}:${person}`, number, letter: number.letter, note: note(person, d) });
+    }
+    shared(entries);
+  }
+  const base = alone(live);
+  const filedFor: Record<string, string> = {};
+  const onlyOne = (ids: string[]) => {
+    const people = new Set(ids.map(personOf));
+    const [person] = people;
+    return people.size === 1 && person !== ME ? person : undefined;
+  };
+  const sheetNumbers = base.organisations.flatMap((s) => s.numbers);
+  const references = base.open_cases.flatMap((c) => c.references);
+  for (const n of [...sheetNumbers, ...references]) {
+    const person = onlyOne(lettersOf("sheet", n.key, n.letter?.id));
+    if (person) filedFor[n.key] = person;
+  }
+  for (const c of base.open_cases) {
+    const person = onlyOne(lettersOf("case", c.key, c.letter?.id));
+    if (person) filedFor[c.key] = person;
+  }
+  const named = new Set([...Object.values(filedFor), ...Object.values(alsoFor).flat()]);
+  return {
+    ...base,
+    about_you: about.get(ME)!,
+    documents: documents.get(ME)!,
+    household: db.state.household.members
+      .map((m) => ({ id: m.id, name: m.name, about: about.get(m.id)!, documents: documents.get(m.id)! }))
+      .filter((p) => p.about.length || p.documents.length || named.has(p.id)),
+    filed_for: filedFor,
+    also_for: alsoFor,
   };
 }
 

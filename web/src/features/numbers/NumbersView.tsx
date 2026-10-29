@@ -4,14 +4,18 @@
  * Open cases and a call sheet per organisation. Values are hidden until "Show"; Copy works either way.
  * URL state: `?tab=you|cases|organisations`.
  *
+ * With letters filed for someone of the household, the first tab is *People*: your numbers, then an *About Alex
+ * Rivera* group per person; a call sheet's number or a case that is only theirs carries a *For Alex Rivera* tag, and
+ * a number on letters of two people says so (`people.ts`). Without one, the page is as it always was.
+ *
  * On a paired phone the API sends your numbers with only their last 4 characters (`masked`): someone holding the
  * phone can't read them, and the full numbers are on the computer (each row says so, `NumberRow`).
  */
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import { IdCard, Lock, Plus, Search, UserRound } from "lucide-react";
+import { IdCard, Lock, Plus, Search, UserRound, UsersRound } from "lucide-react";
 import { useNumbers } from "@/api/hooks";
-import type { MyNumbers } from "@/api/types";
+import type { IdentityDocument, MyNumber, MyNumbers, NumbersPage, PersonNumbers } from "@/api/types";
 import { PageHeader } from "@/components/shell/Page";
 import { useAddLetters } from "@/components/shell/AddLetters";
 import { Button } from "@/components/ui/Button";
@@ -28,6 +32,7 @@ import { filesStay, NUMBERS_MASKED } from "@/features/phone/copy";
 import { plural } from "@/lib/utils";
 import { CallSheetCard, DocumentCard, OpenCaseCard } from "./cards";
 import { NumberRow } from "./NumberRow";
+import { peopleTab, peopleWithNumbers, whoseOf, type Whose } from "./people";
 import { useStickyError } from "@/lib/hooks";
 
 export type NumbersTab = "you" | "cases" | "organisations";
@@ -118,8 +123,59 @@ function FirstRun() {
   );
 }
 
-function AboutYou({ data }: { data: MyNumbers }) {
-  if (!data.about_you.length && !data.documents.length) {
+/** A list of numbers in a card, each with whose else it may be (`also_for`); `label` names the list (a person's). */
+function NumberCard({ numbers, whose, label }: { numbers: MyNumber[]; whose: Whose; label?: string }) {
+  return (
+    <Card padding="none" className="px-4 sm:px-5">
+      <ul className="divide-y divide-line" aria-label={label}>
+        {numbers.map((n) => (
+          <li key={n.key}>
+            <NumberRow number={n} showParty alsoFor={whose.alsoFor(n.key)} />
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/** Identity documents as cards side by side; `label` names the list (a person's). */
+function DocumentGrid({ documents, whose, label }: { documents: IdentityDocument[]; whose: Whose; label?: string }) {
+  return (
+    <ul className={CARD_GRID} aria-label={label}>
+      {documents.map((doc) => (
+        <li key={doc.key} className="flex min-w-0">
+          <DocumentCard doc={doc} alsoFor={doc.number ? whose.alsoFor(doc.number.key) : undefined} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A person of the household's numbers and documents: from the letters the person filed for them. */
+function PersonSection({ person, whose }: { person: PersonNumbers; whose: Whose }) {
+  const titleId = `numbers-person-${person.id}-title`;
+  return (
+    <section aria-labelledby={titleId}>
+      <SectionHeader
+        id={titleId}
+        icon={UsersRound}
+        title={`About ${person.name}`}
+        count={person.about.length + person.documents.length}
+        description={`From letters you filed for ${person.name}.`}
+      />
+      <div className="flex flex-col gap-4">
+        {person.about.length ? <NumberCard numbers={person.about} whose={whose} label={`Numbers for ${person.name}`} /> : null}
+        {person.documents.length ? <DocumentGrid documents={person.documents} whose={whose} label={`Documents for ${person.name}`} /> : null}
+      </div>
+    </section>
+  );
+}
+
+/** The first tab: the person's own numbers and documents, then each person of the household's (`people.ts`). */
+function AboutPeople({ data }: { data: NumbersPage }) {
+  const people = peopleWithNumbers(data);
+  const whose = whoseOf(data);
+  if (!data.about_you.length && !data.documents.length && !people.length) {
     return (
       <EmptyState
         headingLevel={2}
@@ -132,37 +188,30 @@ function AboutYou({ data }: { data: MyNumbers }) {
   }
   return (
     <div className="flex flex-col gap-8">
+      {!data.about_you.length && !data.documents.length ? (
+        <p className="text-base text-muted">None of your own numbers yet. They appear here once a letter of yours shows them.</p>
+      ) : null}
       {data.about_you.length ? (
         <section aria-labelledby="numbers-you-title">
           <SectionHeader id="numbers-you-title" icon={UserRound} title="Your numbers" count={data.about_you.length} />
-          <Card padding="none" className="px-4 sm:px-5">
-            <ul className="divide-y divide-line">
-              {data.about_you.map((n) => (
-                <li key={n.key}>
-                  <NumberRow number={n} showParty />
-                </li>
-              ))}
-            </ul>
-          </Card>
+          <NumberCard numbers={data.about_you} whose={whose} />
         </section>
       ) : null}
       {data.documents.length ? (
         <section aria-labelledby="numbers-docs-title">
           <SectionHeader id="numbers-docs-title" icon={IdCard} title="Your documents" count={data.documents.length} />
-          <ul className={CARD_GRID}>
-            {data.documents.map((doc) => (
-              <li key={doc.key} className="flex min-w-0">
-                <DocumentCard doc={doc} />
-              </li>
-            ))}
-          </ul>
+          <DocumentGrid documents={data.documents} whose={whose} />
         </section>
       ) : null}
+      {people.map((person) => (
+        <PersonSection key={person.id} person={person} whose={whose} />
+      ))}
     </div>
   );
 }
 
-function OpenCases({ data }: { data: MyNumbers }) {
+function OpenCases({ data }: { data: NumbersPage }) {
+  const whose = whoseOf(data);
   if (!data.open_cases.length) {
     return (
       <EmptyState
@@ -183,7 +232,7 @@ function OpenCases({ data }: { data: MyNumbers }) {
       <ul className={CARD_GRID} aria-label={plural(data.open_cases.length, "open case")}>
         {data.open_cases.map((found) => (
           <li key={found.key} className="flex min-w-0">
-            <OpenCaseCard found={found} />
+            <OpenCaseCard found={found} whose={whose} />
           </li>
         ))}
       </ul>
@@ -191,8 +240,9 @@ function OpenCases({ data }: { data: MyNumbers }) {
   );
 }
 
-function Organisations({ data }: { data: MyNumbers }) {
+function Organisations({ data }: { data: NumbersPage }) {
   const [query, setQuery] = useState("");
+  const whose = whoseOf(data);
   const shown = useMemo(
     () => data.organisations.map((s) => ({ sheet: s, match: sheetMatch(s, query) })).filter((m) => m.match !== null),
     [data.organisations, query],
@@ -236,7 +286,7 @@ function Organisations({ data }: { data: MyNumbers }) {
         <ul className={CARD_GRID} aria-label={plural(shown.length, "organisation")}>
           {shown.map(({ sheet, match }) => (
             <li key={sheet.party_id} className="flex min-w-0">
-              <CallSheetCard sheet={sheet} openTheirs={match === "theirs"} />
+              <CallSheetCard sheet={sheet} openTheirs={match === "theirs"} whose={whose} />
             </li>
           ))}
         </ul>
@@ -299,7 +349,8 @@ export function NumbersView() {
     );
   }
   const data = q.data;
-  if (!data.about_you.length && !data.documents.length && !data.organisations.length && !data.open_cases.length) {
+  const first = peopleTab(data);
+  if (!first.count && !data.organisations.length && !data.open_cases.length) {
     return (
       <>
         {header}
@@ -309,7 +360,7 @@ export function NumbersView() {
   }
 
   const items: TabItem<NumbersTab>[] = [
-    { value: "you", label: "About you", shortLabel: "You", count: data.about_you.length + data.documents.length },
+    { value: "you", label: first.label, shortLabel: first.shortLabel, count: first.count },
     { value: "cases", label: "Open cases", shortLabel: "Cases", count: data.open_cases.length },
     { value: "organisations", label: "Organisations", shortLabel: "Orgs", count: data.organisations.length },
   ];
@@ -324,7 +375,7 @@ export function NumbersView() {
       <Tabs id="numbers" label="Which numbers" items={items} value={tab} onChange={setTab} fill className="mb-6" />
       {/* no tabindex: the panel's first control (a Show button) takes the focus after the tabs */}
       <div role="tabpanel" id={`numbers-panel-${tab}`} aria-labelledby={`numbers-tab-${tab}`}>
-        {tab === "you" ? <AboutYou data={data} /> : tab === "cases" ? <OpenCases data={data} /> : <Organisations data={data} />}
+        {tab === "you" ? <AboutPeople data={data} /> : tab === "cases" ? <OpenCases data={data} /> : <Organisations data={data} />}
       </div>
     </>
   );

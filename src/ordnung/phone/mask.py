@@ -4,7 +4,8 @@
 Whoever holds an unlocked paired phone shouldn't read the person's tax ID, social security number or
 IBAN off it. So on a phone *My numbers* (``GET /api/numbers``) shows the person's own numbers — those
 about them, on their identity documents, the ones organisations' letters show for them and a case's
-references — as ``•••• 1234`` (``masked: true``; the full number is on the computer), and the profile
+references — and those of the people of their household as ``•••• 1234`` (``masked: true``; the full
+number is on the computer), and the profile
 its IBAN the same way. An organisation's own numbers (its register entry, its bank account) stay
 whole: the phone pays with them. Ask's tools mask the same numbers for a phone's question
 (``ordnung.assistant.mcp_server``). Each masked number gets a key of its own, so a key can't be traced
@@ -17,7 +18,15 @@ import hashlib
 import hmac
 import secrets
 
-from ordnung.models import CallSheet, IdentityDocument, MyNumber, NumbersPage, OpenCase, Profile
+from ordnung.models import (
+    CallSheet,
+    IdentityDocument,
+    MyNumber,
+    NumbersPage,
+    OpenCase,
+    PersonNumbers,
+    Profile,
+)
 
 MASK = "••••"
 _KEY_SALT = secrets.token_bytes(16)  # per process: a masked key never says which number it was
@@ -58,14 +67,32 @@ def _sheet(sheet: CallSheet) -> CallSheet:
     )
 
 
+def _person(person: PersonNumbers) -> PersonNumbers:
+    return person.model_copy(
+        update={
+            "about": [mask_number(n) for n in person.about],
+            "documents": [_document(d) for d in person.documents],
+        }
+    )
+
+
 def mask_numbers(page: NumbersPage) -> NumbersPage:
-    """*My numbers* on a phone (``masked: true``)."""
+    """*My numbers* on a phone (``masked: true``): a household person's numbers too, and ``filed_for`` and
+    ``also_for`` under the masked keys (an open case's key names no number and stays)."""
+    cases = {case.key for case in page.open_cases} | {c.key for s in page.organisations for c in s.open_cases}
+
+    def rekey(key: str) -> str:
+        return key if key in cases else _masked_key(key)
+
     return page.model_copy(
         update={
             "about_you": [mask_number(n) for n in page.about_you],
             "documents": [_document(d) for d in page.documents],
             "organisations": [_sheet(s) for s in page.organisations],
             "open_cases": [_case(c) for c in page.open_cases],
+            "household": [_person(p) for p in page.household],
+            "filed_for": {rekey(key): person for key, person in page.filed_for.items()},
+            "also_for": {rekey(key): list(people) for key, people in page.also_for.items()},
             "masked": True,
         }
     )
