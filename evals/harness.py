@@ -46,7 +46,7 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from collections.abc import AsyncIterator, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta, tzinfo
 from pathlib import Path
@@ -440,13 +440,14 @@ class BudgetReached(LLMError):
 
 
 class Budget:
-    """The run's live spend against its cap (``--max-cost-usd``); replayed answers cost nothing."""
+    """The run's live spend against its cap (``--max-cost-usd``); replayed answers cost nothing. ``spent`` starts at
+    what this step already spent (:func:`ledger_spent`), so resuming with the same command gets no new cap."""
 
-    def __init__(self, cap: float) -> None:
+    def __init__(self, cap: float, *, spent: float = 0.0) -> None:
         if cap < 0:
             raise ValueError("a budget is not negative")
         self.cap = cap
-        self.spent = 0.0
+        self.spent = max(0.0, spent)
 
     @property
     def reached(self) -> bool:
@@ -454,8 +455,8 @@ class Budget:
 
     def message(self) -> str:
         return (
-            f"budget reached: ${self.spent:.4f} spent of --max-cost-usd {self.cap:g}; what is recorded is kept — "
-            "resume with a higher --max-cost-usd"
+            f"budget reached: ${self.spent:.4f} spent of --max-cost-usd {self.cap:g} (counting this step's earlier "
+            "calls in its ledger); what is recorded is kept — resume with a higher --max-cost-usd"
         )
 
     def check(self) -> None:
@@ -592,6 +593,27 @@ class Ledger:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as out:
             out.write(json.dumps(line, sort_keys=True) + "\n")
+
+
+def ledger_spent(paths: Sequence[Path], *, docs: Collection[str] | None, repeat: int) -> float:
+    """What the ledgers say was spent on these letters at this repeat: the lines with ``repeat`` whose ``docs`` name
+    one of ``docs`` (``None``: every line at that repeat, for a ledger that holds one set, as Ask's). A recording step
+    is one split (or set) at one repeat, so this is what the step spent so far, over every earlier run and resume."""
+    wanted = None if docs is None else set(docs)
+    total = 0.0
+    for path in paths:
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            if int(row.get("repeat") or 1) != repeat:
+                continue
+            if wanted is not None and not wanted.intersection(row.get("docs") or []):
+                continue
+            total += float(row.get("cost_usd") or 0.0)
+    return total
 
 
 def _rate_limited(text: str | None) -> bool:
@@ -1122,6 +1144,36 @@ def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dic
     }
 
 
+def smoke_ok(report: Mapping[str, Any], *, ids: Sequence[str], ask_only: Sequence[str]) -> bool:
+    """Whether the smoke passed: the lock and the budget stop, the benchmark's repeat; and, when Ask turns were asked
+    for, Ask's too (it ran, each turn once, under keys of its own with run 1's request, one ledger line per call)."""
+    checks = report["benchmark"]
+    benchmark = bool(
+        report["recorder_lock_refuses_a_second_recording"]
+        and report["zero_budget_stops_before_any_call"]
+        and report["recording_exit"] == 0
+        and checks["keys_differ_from_run_1"]
+        and checks["repeated"] >= len(ids)
+        and checks["requests_identical_to_run_1"]
+        and checks["one_ledger_line_per_call"]
+        and checks["within_budget"]
+    )
+    if not ask_only:
+        return benchmark
+    ask = report.get("ask")
+    return bool(
+        benchmark
+        and isinstance(ask, Mapping)
+        and report.get("ask_exit") == 0
+        and ask["calls"] == len(ask_only)
+        and ask["repeated"] >= len(ask_only)
+        and ask["keys_differ_from_run_1"]
+        and ask["requests_identical_to_run_1"]
+        and ask["one_ledger_line_per_call"]
+        and ask["within_budget"]
+    )
+
+
 def run_smoke(
     scratch: Path,
     *,
@@ -1196,26 +1248,18 @@ def run_smoke(
         asked = _child(
             _python_args(
                 "evals.ask", "--live", "--repeat", "2", "--only", ",".join(ask_only), "--recorded-dir", str(ask_dir),
-                "--max-cost-usd", "0.3",
+                "--recorder-lock", str(recorder_lock), "--concurrency", "1", "--max-cost-usd", "0.3",
             )
         )  # fmt: skip
         report["ask_exit"] = asked.returncode
+        report["ask_stderr_tail"] = asked.stderr.strip().splitlines()[-5:]
         report["ask"] = smoke_checks(
             ask_dir / safe_name(DEFAULT_MODEL), ASK_RECORDED_DIR / safe_name(DEFAULT_MODEL), cap=0.3
         )
     else:
         report["ask"] = "not run: evals.ask takes no --repeat yet" if ask_only else "not asked"
     checks = report["benchmark"]
-    report["ok"] = bool(
-        report["recorder_lock_refuses_a_second_recording"]
-        and report["zero_budget_stops_before_any_call"]
-        and run.returncode == 0
-        and checks["keys_differ_from_run_1"]
-        and checks["repeated"] >= len(ids)
-        and checks["requests_identical_to_run_1"]
-        and checks["one_ledger_line_per_call"]
-        and checks["within_budget"]
-    )
+    report["ok"] = smoke_ok(report, ids=ids, ask_only=ask_only)
     if checks["answers_compared"] and not checks["answers_that_differ_from_run_1"]:
         report["note"] = (
             "every repeated answer equals run 1's: repeats measure nothing new, so the pre-registration drops the "

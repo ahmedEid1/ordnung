@@ -19,10 +19,13 @@ cells) is listed as *not recorded yet*, never faked. It prints one scoreboard.
 
 **INDEX.json** has one row per results file: its sha256, its role (the presenter's, :mod:`evals.present.model`), when
 and how it was recorded, how this command checks it, and the verdict of the replay at HEAD — ``exact``,
-``same-dates`` (every scored date and outcome equal; the fields that differ are listed as drift: added since,
-removed, or other values) or ``changed``. A changed date is listed with the fix that changed it (``because``: a
-commit, an ADR or the re-scored results file that shows it), written by a person: ``--write`` records a new change
-with an empty reason, and ``--check`` fails until it is declared. A run of another model can't be replayed (its
+``same-dates`` (every scored date and outcome equal, and the counts the pages read too; the fields that differ are
+listed as drift: added since, removed, or other values) or ``changed``. A changed date is listed with the fix that
+changed it (``because``: a commit, an ADR or the re-scored results file that shows it), written by a person:
+``--write`` records a new change with an empty reason, and ``--check`` fails until it is declared. So is a count the
+pages and gates read (dates right, late, missed) that moved by more than its dates did. Each condition also pins a
+digest of the replay's metrics (``metrics_at_head``), so a number cannot move under a field that already drifts by
+name: ``--check`` fails when it moves, and ``--write`` records the move with an empty reason (``metrics_moved``). A run of another model can't be replayed (its
 recordings are not in the repository) and an older summary is superseded: both are checked by hash. The index also
 pins the dataset's and the recordings' hashes, the CI gates (read from ``.github/workflows/ci.yml``) and every cell.
 
@@ -625,10 +628,97 @@ def _item_changes(
 
 
 def _right(metrics: Mapping[str, Any] | None) -> list[int] | None:
-    accuracy = (metrics or {}).get("due_date_accuracy")
-    if not isinstance(accuracy, Mapping) or accuracy.get("k") is None:
+    return _count(metrics, "due_date_accuracy")
+
+
+def _count(metrics: Mapping[str, Any] | None, key: str) -> list[int] | None:
+    rate = (metrics or {}).get(key)
+    if not isinstance(rate, Mapping) or rate.get("k") is None or rate.get("n") is None:
         return None
-    return [int(accuracy["k"]), int(accuracy["n"])]
+    return [int(rate["k"]), int(rate["n"])]
+
+
+#: The counts the pages and the CI gates read, and the scored items each one counts: such a count may move only with
+#: its dates (a moved date is a change of its own); anything else that moves it is a change that needs a reason.
+AGGREGATES: tuple[tuple[str, Callable[[Mapping[str, Any]], bool], bool], ...] = (
+    ("due_date_accuracy", lambda item: item.get("outcome") == "correct", True),
+    ("dangerous_late_rate", lambda item: item.get("direction") == "late", False),
+    ("missed_rate", lambda item: item.get("outcome") == "missed", False),
+)
+#: Floats in the metrics digest are read to this many significant digits (a sum in another order is the same value).
+DIGEST_DIGITS = 10
+
+
+def _canonical(value: Any) -> Any:
+    if isinstance(value, bool) or value is None or isinstance(value, (int, str)):
+        return value
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return repr(value)
+        rounded = float(f"{value:.{DIGEST_DIGITS}g}")
+        return int(rounded) if rounded.is_integer() else rounded
+    if isinstance(value, Mapping):
+        return {str(key): _canonical(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_canonical(item) for item in value]
+    return repr(value)
+
+
+def metrics_digest(metrics: Mapping[str, Any] | None) -> str | None:
+    """A digest of one condition's metrics as the replay gives them (floats to :data:`DIGEST_DIGITS` significant
+    digits): INDEX.json pins it, so a number may not move under a field that already drifts by name alone."""
+    if metrics is None:
+        return None
+    text = json.dumps(_canonical(metrics), sort_keys=True, ensure_ascii=True, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _item_counts(entries: Iterable[Mapping[str, Any]], condition: str) -> dict[str, list[int]]:
+    """Per aggregate: (items it counts, scored items) over the entries' scores of ``condition``."""
+    counts = {key: [0, 0] for key, _, _ in AGGREGATES}
+    for entry in entries:
+        score = ((entry.get("conditions") or {}).get(condition) or {}).get("score") or {}
+        for item in score.get("items") or []:
+            if not _scored(item):
+                continue
+            for key, counted, _ in AGGREGATES:
+                counts[key][0] += int(counted(item))
+                counts[key][1] += 1
+    return counts
+
+
+def _aggregate_changes(
+    metrics: Mapping[str, Any] | None,
+    head_metrics: Mapping[str, Any] | None,
+    recorded_items: Mapping[str, list[int]],
+    head_items: Mapping[str, list[int]],
+) -> list[dict[str, Any]]:
+    """The published counts that moved by more than their dates moved: each a change with an empty ``because``."""
+    changes = []
+    for key, _, higher_is_better in AGGREGATES:
+        recorded, at_head = _count(metrics, key), _count(head_metrics, key)
+        if recorded is None or at_head is None:
+            continue
+        # what the dates explain: each count moves with its own items, so its offset from them stays the same
+        offset = [recorded[0] - recorded_items[key][0], recorded[1] - recorded_items[key][1]]
+        offset_at_head = [at_head[0] - head_items[key][0], at_head[1] - head_items[key][1]]
+        if offset == offset_at_head:
+            continue
+        if recorded[1] != at_head[1] or recorded[0] == at_head[0]:
+            direction = "other"
+        else:
+            direction = "better" if (at_head[0] > recorded[0]) == higher_is_better else "worse"
+        changes.append(
+            {
+                "entry_id": f"metrics.{key}",
+                "item": None,
+                "recorded": {"outcome": key, "predicted": f"{recorded[0]}/{recorded[1]}"},
+                "at_head": {"outcome": key, "predicted": f"{at_head[0]}/{at_head[1]}"},
+                "direction": direction,
+                "because": "",
+            }
+        )
+    return changes
 
 
 def compare_run(published: Mapping[str, Any], replayed: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
@@ -653,12 +743,19 @@ def compare_run(published: Mapping[str, Any], replayed: Mapping[str, Any]) -> di
         metrics = published.get("metrics", {}).get(condition)
         head_metrics = replayed.get("metrics", {}).get(condition)
         _diff(metrics, head_metrics, "metrics", drift)
+        changes += _aggregate_changes(
+            metrics,
+            head_metrics,
+            _item_counts(published["entries"], condition),
+            _item_counts(at_head.values(), condition),
+        )
         compared[condition] = {
             "verdict": "changed" if changes else ("same-dates" if drift else "exact"),
             "right": _right(metrics),
             "right_at_head": _right(head_metrics),
             "drift": drift.as_dict(),
             "changes": changes,
+            "metrics_at_head": metrics_digest(head_metrics),
         }
     return compared
 
@@ -680,6 +777,22 @@ def _said(state: Mapping[str, Any]) -> str:
     return f"{state['outcome']} {state['predicted'] or 'no date'}"
 
 
+def _place(change: Mapping[str, Any]) -> str:
+    """A changed date's letter and item, or a count's name."""
+    return change["entry_id"] if change.get("item") is None else f"{change['entry_id']} item {change['item']}"
+
+
+def _moved(where: str, verdict: Mapping[str, Any]) -> str | None:
+    """The problem with a declared move of the replay's metrics that has no reason yet."""
+    moved = verdict.get("metrics_moved")
+    if moved is None or str(moved.get("because", "")).strip():
+        return None
+    return (
+        f"{where}: the replay's metrics moved since {INDEX_NAME} pinned them (was {moved.get('from')}), undeclared: say "
+        "in its metrics_moved.because which commit or ADR changed them"
+    )
+
+
 def run_problems(row: Mapping[str, Any], fresh: Mapping[str, Mapping[str, Any]]) -> list[str]:
     """What the replay gives that the row doesn't declare, or declares and no longer gives."""
     name = row.get("file", "")
@@ -696,10 +809,19 @@ def run_problems(row: Mapping[str, Any], fresh: Mapping[str, Mapping[str, Any]])
                 problems.append(
                     f"{where}: {field} is {old.get(field)} in {INDEX_NAME} but {new.get(field)} at HEAD"
                 )
+        if old.get("metrics_at_head") != new.get("metrics_at_head"):
+            problems.append(
+                f"{where}: the replay's metrics moved since {INDEX_NAME} pinned them ({old.get('metrics_at_head')} → "
+                f"{new.get('metrics_at_head')}): run --write and say in its metrics_moved.because which commit or "
+                "ADR changed them"
+            )
+        unexplained = _moved(where, old)
+        if unexplained:
+            problems.append(unexplained)
         declared = {_change_key(change): change for change in old.get("changes", [])}
         given = {_change_key(change): change for change in new["changes"]}
         for key, change in given.items():
-            label = f"{where} {change['entry_id']} item {change['item']}"
+            label = f"{where} {_place(change)}"
             moved = f"{_said(change['recorded'])} → {_said(change['at_head'])}"
             if key not in declared:
                 problems.append(
@@ -713,8 +835,7 @@ def run_problems(row: Mapping[str, Any], fresh: Mapping[str, Mapping[str, Any]])
         for key, change in declared.items():
             if key not in given:
                 problems.append(
-                    f"{where} {change['entry_id']} item {change['item']}: declared in {INDEX_NAME}, but the replay "
-                    "no longer gives it"
+                    f"{where} {_place(change)}: declared in {INDEX_NAME}, but the replay no longer gives it"
                 )
     return problems
 
@@ -722,27 +843,40 @@ def run_problems(row: Mapping[str, Any], fresh: Mapping[str, Mapping[str, Any]])
 def merge_conditions(
     row: Mapping[str, Any] | None, fresh: Mapping[str, Mapping[str, Any]]
 ) -> dict[str, dict[str, Any]]:
-    """``fresh`` with the reasons the row gave for the changes the replay still gives."""
+    """``fresh`` with the reasons the row gave for the changes the replay still gives; and, when the replay's metrics
+    moved since the row pinned them, that move with an empty reason (a person gives it), else the row's move."""
     reasons: dict[tuple[str, tuple[Any, ...]], str] = {}
-    for condition, verdict in ((row or {}).get("conditions") or {}).items():
+    committed: Mapping[str, Mapping[str, Any]] = (row or {}).get("conditions") or {}
+    for condition, verdict in committed.items():
         for change in verdict.get("changes", []):
             reasons[(condition, _change_key(change))] = str(change.get("because", ""))
     merged = json.loads(json.dumps(fresh))
     for condition, verdict in merged.items():
         for change in verdict["changes"]:
             change["because"] = reasons.get((condition, _change_key(change)), "")
+        old = committed.get(condition) or {}
+        pinned = old.get("metrics_at_head")
+        if pinned is not None and pinned != verdict.get("metrics_at_head"):
+            verdict["metrics_moved"] = {"from": pinned, "because": ""}
+        elif old.get("metrics_moved") is not None:
+            verdict["metrics_moved"] = dict(old["metrics_moved"])
     return dict(merged)
 
 
 def undeclared(row: Mapping[str, Any]) -> list[str]:
-    return [
-        f"{row['file']} {condition} {change['entry_id']} item {change['item']}: changed since its recording "
+    problems = [
+        f"{row['file']} {condition} {_place(change)}: changed since its recording "
         f"({_said(change['recorded'])} → {_said(change['at_head'])}), undeclared: say in {INDEX_NAME} which commit, "
         "ADR or re-scored results file changed it"
         for condition, verdict in (row.get("conditions") or {}).items()
         for change in verdict["changes"]
         if not str(change.get("because", "")).strip()
     ]
+    for condition, verdict in (row.get("conditions") or {}).items():
+        moved = _moved(f"{row['file']} {condition}", verdict)
+        if moved:
+            problems.append(moved)
+    return problems
 
 
 # --------------------------------------------------------------------------------------------------

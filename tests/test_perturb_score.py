@@ -401,6 +401,57 @@ def test_recording_needs_a_budget_and_the_recording_harness() -> None:
     assert eval_perturb.harness_options(live=False, max_cost_usd=None, wait_on_limit=None) == {}
 
 
+def test_the_stress_cells_share_one_budget_and_one_recorder_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One --max-cost-usd for the whole stress recording (plan §7, R7: $17 for I1 and D1 together), never one per
+    cell; and the recorder lock held from the first cell to the last, so no other recorder starts in between."""
+    import asyncio
+
+    from evals import harness
+    from scripts import eval_perturb
+
+    lock = tmp_path / "recording.lock"
+    seen: list[tuple[str, Any, bool]] = []
+
+    async def predictions(config: Any, *, quiet: bool) -> tuple[dict[str, Any], dict[str, Any]]:
+        seen.append((config.split, config.live_setup, lock.exists()))
+        return {condition: {} for condition in eval_perturb.CONDITIONS}, {"backend": "live"}
+
+    monkeypatch.setattr(eval_perturb, "_predictions", predictions)
+    options = {"max_cost_usd": 17.0, "recorder_lock": lock}
+
+    async def record() -> Any:
+        with eval_perturb.recording_session(
+            live=True, options=options, model="claude-sonnet-5", recorded_dir=tmp_path / "stress", entries=()
+        ) as shared:
+            for cell in ("I1", "D1"):
+                await eval_perturb.cell_predictions(
+                    cell,
+                    build_dir=tmp_path / "build",
+                    model="claude-sonnet-5",
+                    recorded_dir=tmp_path / "stress",
+                    live=True,
+                    concurrency=2,
+                    timeout_s=300.0,
+                    options=options,
+                    work=tmp_path,
+                    shared=shared,
+                )
+            return shared
+
+    shared = asyncio.run(record())
+    assert [split for split, _, _ in seen] == ["stress-I1", "stress-D1"]
+    assert all(setup is shared for _, setup, _ in seen) and isinstance(shared, harness.LiveSetup)
+    assert shared.budget is not None and shared.budget.cap == 17.0
+    assert all(held for _, _, held in seen) and not lock.exists()  # held throughout, freed after
+    # a replay shares nothing and takes no lock
+    with eval_perturb.recording_session(
+        live=False, options={}, model="claude-sonnet-5", recorded_dir=tmp_path, entries=()
+    ) as none:
+        assert none is None
+
+
 def test_a_replay_needs_its_own_results_folder(capsys: pytest.CaptureFixture[str]) -> None:
     from scripts import eval_perturb
 

@@ -300,7 +300,8 @@ def _card(doc: Mapping[str, Any]) -> Section:
         ],
         [
             "Replay",
-            "Every number replays from the recorded answers with no model call ([Reproduce](#15-reproduce))",
+            "Every number is checked against a replay of the recorded answers with no model call; where today's code "
+            "gives another value, the results index pins it and names the change ([Reproduce](#15-reproduce))",
         ],
         ["Sources", f"`{h['source']['file']}`, from {inputs}"],
         ["Newest recording", f"{newest['split']}, {newest['date']}, commit `{newest['commit']}`"],
@@ -1068,8 +1069,9 @@ def _reproduce(doc: Mapping[str, Any]) -> Section:
                 "With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`), one command "
                 "replays every split, condition, Ask set, end-to-end run and ablation that has a recording, checks "
                 "the analysis and these pages, and compares every number with the [results "
-                "index](repo:evals/results/INDEX.json): each file's hash, role and replay verdict, and every date "
-                "the code changed since its recording with the fix that changed it. The per-item results are in "
+                "index](repo:evals/results/INDEX.json): each file's hash, role and replay verdict, a digest of "
+                "every number the replay gives, and every date or count the code changed since its recording with "
+                "the fix that changed it. The per-item results are in "
                 "[items.csv](repo:evals/results/items.csv) (ids, dates and outcomes only)."
             ),
             Code(["make eval-reproduce                  # python -m evals.reproduce --check; CI runs it"]),

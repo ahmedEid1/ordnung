@@ -48,8 +48,9 @@ The harness (:mod:`evals.harness`) wraps every model call:
 * every replayed request is checked against ``requests.lock.json`` beside the recordings (a hash of everything the
   CLI gets): one that changed under the same key fails as a *stale recording*, never replays silently;
 * a live run takes the one recorder lock (``evals/recorded/.recording.lock``), stops starting calls at
-  ``--max-cost-usd``, waits through a usage limit with ``--wait-on-limit HOURS``, writes each cassette whole, and
-  adds one line per call to ``ledger.jsonl`` beside the recordings.
+  ``--max-cost-usd`` (counting what the ledger says earlier runs of the same letters at the same ``--repeat`` spent,
+  so a resume gets no new cap), waits through a usage limit with ``--wait-on-limit HOURS``, writes each cassette
+  whole, and adds one line per call to ``ledger.jsonl`` beside the recordings.
 
 A replay doesn't read the prediction cache unless ``--resume`` is given (it saves no time and could stand in for a
 broken replay); a live run resumes from it unless ``--no-resume``.
@@ -160,6 +161,9 @@ class RunConfig:
     #: The recorder lock a live run holds (``None``: ``.recording.lock`` in ``recorded_dir``; the CLI always names
     #: the shared :data:`evals.harness.RECORDER_LOCK`).
     recorder_lock: Path | None = None
+    #: A live setup shared with other runs (one budget, one waiting, one ledger for several runs, as the stress
+    #: cells' recording): the run uses it instead of its own, and its caller holds the recorder lock throughout.
+    live_setup: harness.LiveSetup | None = None
     #: Check every replayed request against the request lock (``lock-requests`` captures without it).
     check_requests: bool = True
     #: Tests: stands in for the ``claude`` CLI on a live run (the rest of the stack is the real one).
@@ -348,11 +352,24 @@ def make_backend(
     return stack
 
 
-def live_setup(config: RunConfig, say: Progress) -> harness.LiveSetup:
-    """What a live run's stacks share: its budget, its waiting, its provenance."""
+def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) -> harness.LiveSetup:
+    """What a live run's stacks share: its budget, its waiting, its provenance.
+
+    The budget starts from what the ledgers already say this step spent: the calls on these ``entries`` at this
+    repeat, in every earlier run and resume of the same command (said once, when there is any)."""
+    budget = None
+    if config.max_cost_usd is not None:
+        ledgers = [config.recorded_dir / safe_name(model) / harness.LEDGER_FILE for model in config.models]
+        spent = harness.ledger_spent(ledgers, docs={entry.id for entry in entries}, repeat=config.repeat)
+        if spent > 0:
+            say(
+                f"already spent ${spent:.4f} of --max-cost-usd {config.max_cost_usd:g} on these letters at run "
+                f"{config.repeat} (from the ledger): the cap counts it"
+            )
+        budget = harness.Budget(config.max_cost_usd, spent=spent)
     return harness.LiveSetup(
         repeat=config.repeat,
-        budget=harness.Budget(config.max_cost_usd) if config.max_cost_usd is not None else None,
+        budget=budget,
         waiter=harness.LimitWaiter(config.wait_on_limit_hours, say=say)
         if config.wait_on_limit_hours
         else None,
@@ -658,10 +675,12 @@ async def run_benchmark(
         raise ValueError("no benchmark entries match the selection")
     with contextlib.ExitStack() as held:
         live: harness.LiveSetup | None = None
-        if config.live and backend is None:
+        if config.live and backend is None and config.live_setup is not None:
+            live = config.live_setup  # shared with other runs: their caller holds the recorder lock
+        elif config.live and backend is None:
             lock = config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME
             held.enter_context(harness.RecorderLock(lock, command=" ".join(["evals.run", *sys.argv[1:]])))
-            live = live_setup(config, tell)
+            live = live_setup(config, tell, entries)
         return await _run_models(config, entries, manifest, backend, live, say, tell)
 
 
@@ -931,7 +950,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-cost-usd",
         type=float,
         metavar="USD",
-        help="with --live: start no new call once the run's live calls cost this much (what is recorded is kept)",
+        help="with --live: start no new call once this step's live calls cost this much, counting what the ledger "
+        "says earlier runs of the same letters at this --repeat spent (what is recorded is kept)",
     )
     parser.add_argument(
         "--wait-on-limit",

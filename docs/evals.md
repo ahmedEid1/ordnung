@@ -18,7 +18,7 @@
 | Pre-registration | Not yet: these statistics were chosen after the results were known (**not pre-registered**). The final run on the version that ships will be pre-registered before it is recorded |
 | Reads | One read per letter |
 | Intervals | Clopper–Pearson for a rate; for paired comparisons, exact McNemar and a sign-flip test over letter clusters, each with Holm ([Statistics](#7-statistics)) |
-| Replay | Every number replays from the recorded answers with no model call ([Reproduce](#15-reproduce)) |
+| Replay | Every number is checked against a replay of the recorded answers with no model call; where today's code gives another value, the results index pins it and names the change ([Reproduce](#15-reproduce)) |
 | Sources | `2026-10-29-claude-sonnet-5-heldout-reanalysis.json`, from `2026-09-30-claude-sonnet-5-holdout.json`, `2026-10-01-claude-sonnet-5-holdout2.json` and `2026-10-06-claude-sonnet-5-holdout3.json` |
 | Newest recording | holdout3, 2026-10-06, commit `55bedab` |
 
@@ -383,8 +383,9 @@ warning by mistake (95 % CI 2.9–9.1).
 With no API key and no tokens, from a source checkout (`pip install -e '.[dev]'`), one command replays every split,
 condition, Ask set, end-to-end run and ablation that has a recording, checks the analysis and these pages, and
 compares every number with the [results index](../evals/results/INDEX.json): each file's hash, role and replay
-verdict, and every date the code changed since its recording with the fix that changed it. The per-item results are
-in [items.csv](../evals/results/items.csv) (ids, dates and outcomes only).
+verdict, a digest of every number the replay gives, and every date or count the code changed since its recording
+with the fix that changed it. The per-item results are in [items.csv](../evals/results/items.csv) (ids, dates and
+outcomes only).
 
 ```bash
 make eval-reproduce                  # python -m evals.reproduce --check; CI runs it

@@ -261,6 +261,101 @@ async def test_the_budget_stops_new_calls_and_a_higher_budget_resumes(tmp_path: 
     assert model.calls + more.calls == total == len(_cassettes(tmp_path))
 
 
+async def test_the_same_cap_again_counts_what_the_ledger_says_was_spent(tmp_path: Path) -> None:
+    """Resuming with the same command (the runbook's "run the same command again") must not get a whole new cap: the
+    budget starts from what the ledger says this run already spent on these letters at this repeat."""
+    model = Limited(after=None)
+    cap = 0.004
+    first = await eval_run.run_benchmark(
+        make_config(
+            tmp_path, live=True, write_docs=False, live_backend=model, max_cost_usd=cap, concurrency=1
+        )
+    )
+    assert first.runs[0].fatal is not None and "budget reached" in first.runs[0].fatal
+    spent = sum(line["cost_usd"] for line in _ledger(tmp_path))
+    assert spent >= cap
+    lines = len(_ledger(tmp_path))
+    again = Limited(after=None)
+    said: list[str] = []
+    second = await eval_run.run_benchmark(
+        make_config(
+            tmp_path, live=True, write_docs=False, live_backend=again, max_cost_usd=cap, concurrency=1
+        ),
+        alert=said.append,
+    )
+    run = second.runs[0]
+    assert run.fatal is not None and "budget reached" in run.fatal
+    assert again.calls == 0 and len(_ledger(tmp_path)) == lines  # nothing new is recorded
+    assert f"${spent:.4f}" in run.fatal
+    assert any("already spent" in line and f"${spent:.4f}" in line for line in said)
+    # another repeat of the same letters is another step: its own spend only
+    repeat = Limited(after=None)
+    third = await eval_run.run_benchmark(
+        make_config(
+            tmp_path,
+            live=True,
+            write_docs=False,
+            live_backend=repeat,
+            max_cost_usd=cap,
+            concurrency=1,
+            repeat=2,
+        )
+    )
+    assert repeat.calls > 0 and third.runs[0].fatal is not None
+
+
+async def test_runs_that_share_a_live_setup_share_one_budget(tmp_path: Path) -> None:
+    """Two runs given one :class:`evals.harness.LiveSetup` (the stress cells) spend against one cap: once the first
+    reached it, the second makes no call."""
+    shared = harness.LiveSetup(budget=harness.Budget(0.004))
+    first = Limited(after=None)
+    one = await eval_run.run_benchmark(
+        make_config(
+            tmp_path,
+            live=True,
+            write_docs=False,
+            live_backend=first,
+            concurrency=1,
+            ids=IDS[:1],
+            live_setup=shared,
+        )
+    )
+    assert first.calls > 0 and shared.budget is not None and shared.budget.reached
+    assert one.runs[0].predictions  # the first letter's calls reached the cap
+    second = Limited(after=None)
+    two = await eval_run.run_benchmark(
+        make_config(
+            tmp_path,
+            live=True,
+            write_docs=False,
+            live_backend=second,
+            concurrency=1,
+            ids=IDS[1:],
+            live_setup=shared,
+        )
+    )
+    assert second.calls == 0 and two.runs[0].fatal is not None and "budget reached" in two.runs[0].fatal
+
+
+def test_the_budget_seed_counts_only_this_steps_lines(tmp_path: Path) -> None:
+    ledger = tmp_path / harness.LEDGER_FILE
+    rows = [
+        {"docs": ["a"], "repeat": 1, "cost_usd": 0.5},
+        {"docs": ["b", "a"], "repeat": 1, "cost_usd": 0.25},
+        {"docs": ["a"], "repeat": 2, "cost_usd": 4.0},  # another repeat
+        {"docs": ["c"], "repeat": 1, "cost_usd": 8.0},  # other letters
+        {"docs": ["a"], "repeat": 1, "cost_usd": None},  # a failed call costs nothing
+    ]
+    ledger.write_text("".join(json.dumps(row) + "\n" for row in rows) + "\n", encoding="utf-8")
+    assert harness.ledger_spent([ledger], docs={"a"}, repeat=1) == pytest.approx(0.75)
+    assert harness.ledger_spent([ledger], docs={"a"}, repeat=2) == pytest.approx(4.0)
+    assert harness.ledger_spent([tmp_path / "missing.jsonl"], docs={"a"}, repeat=1) == 0.0
+    budget = harness.Budget(1.0, spent=0.75)
+    assert not budget.reached and budget.spent == 0.75
+    budget.add(0.25)
+    assert budget.reached and "$1.0000 spent" in budget.message()
+
+
 async def test_a_zero_budget_makes_no_call(tmp_path: Path) -> None:
     model = Limited(after=None)
     config = make_config(tmp_path, live=True, write_docs=False, live_backend=model, max_cost_usd=0)

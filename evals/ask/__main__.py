@@ -121,6 +121,14 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     parser.add_argument("--date", default=None, help="date of the results file (default: today)")
     parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR)
+    parser.add_argument(
+        "--recorded-dir",
+        type=Path,
+        default=None,
+        help="the recordings folder (default: evals/recorded/ask, or evals/recorded/ask-heldout with --set heldout); "
+        "a smoke records into a scratch one",
+    )
+    parser.add_argument("--recorder-lock", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--min-accuracy", type=float, default=None, help="gate: minimum answer accuracy")
     parser.add_argument(
         "--min-abstention", type=float, default=None, help="gate: minimum abstention accuracy"
@@ -170,7 +178,8 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=None,
         metavar="USD",
-        help="with --live: start no new call once the run's calls cost this much (what is recorded is kept)",
+        help="with --live: start no new call once this set's calls at this --repeat cost this much, counting what "
+        "its ledger says earlier runs spent (what is recorded is kept)",
     )
     parser.add_argument(
         "--wait-on-limit",
@@ -197,6 +206,8 @@ def main(
     args = parse_args(argv)
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
     harness = load_harness()
+    if args.recorded_dir is not None:
+        recorded_dir = args.recorded_dir
     config = Config(
         model=args.model,
         live=args.live or args.refresh,
@@ -211,9 +222,8 @@ def main(
         repeat=args.repeat,
         max_cost_usd=args.max_cost_usd,
         wait_on_limit_hours=args.wait_on_limit,
-        recorder_lock=harness.RECORDER_LOCK
-        if harness is not None
-        else None,  # one recorder for every benchmark
+        recorder_lock=args.recorder_lock
+        or (harness.RECORDER_LOCK if harness is not None else None),  # one recorder for every benchmark
     )
     try:
         result = run(config)

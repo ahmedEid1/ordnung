@@ -282,6 +282,7 @@ def test_the_committed_held_out_set_is_the_pre_registered_one() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_a_held_out_run_records_then_replays(tmp_path: Path) -> None:
     folder = _write(
         tmp_path / "heldout",
@@ -350,6 +351,7 @@ def dev_run(tmp_path_factory: pytest.TempPathFactory) -> RunResult:
     return run(Config(only=only, recorded_dir=recorded), work_dir=tmp)
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_schema_1_is_the_as_recorded_file_and_schema_2_adds_to_it(dev_run: RunResult) -> None:
     old = results_payload(dev_run, run_date="2026-10-01", schema=1)
     new = results_payload(dev_run, run_date="2026-10-29")
@@ -374,6 +376,7 @@ def test_schema_1_is_the_as_recorded_file_and_schema_2_adds_to_it(dev_run: RunRe
     assert citation_rows and all(row in page.splitlines() for row in citation_rows)
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_check_docs_checks_the_newest_file_and_the_as_recorded_one(
     dev_run: RunResult, tmp_path: Path
 ) -> None:
@@ -392,6 +395,7 @@ def test_check_docs_checks_the_newest_file_and_the_as_recorded_one(
     ]
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_a_re_scored_file_names_the_live_run_it_re_scores(dev_run: RunResult, tmp_path: Path) -> None:
     results_dir = tmp_path / "results"
     assert recorded_on(results_dir, DEFAULT_MODEL, "2026-10-29") is None
@@ -426,6 +430,7 @@ def test_results_names_say_the_set_and_the_run() -> None:
     )
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_a_gate_on_harm_and_strict_correctness(dev_run: RunResult) -> None:
     args = parse_args(["--max-harmful", "0", "--min-strict-accuracy", "0.9"])
     problems = gate_failures(dev_run, args)
@@ -463,6 +468,7 @@ def test_without_the_harness_repeats_and_budgets_are_refused(tmp_path: Path) -> 
 ONE = ["deadline-steuerbescheid_2025-0"]
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 @needs_harness
 def test_a_repeat_is_recorded_under_keys_of_its_own_with_the_same_request(tmp_path: Path) -> None:
     harness = _harness()
@@ -482,6 +488,14 @@ def test_a_repeat_is_recorded_under_keys_of_its_own_with_the_same_request(tmp_pa
     ledger = (root / harness.LEDGER_FILE).read_text(encoding="utf-8").splitlines()
     assert len(ledger) == 2 and json.loads(ledger[1])["repeat"] == 2
     assert not lock.exists()  # freed after the run
+    # each cassette says which run, commit and claude made it, as the benchmark's do
+    summaries = [
+        json.loads(path.read_text(encoding="utf-8"))["request"]
+        for path in sorted((root / "ask").glob("*.json"))
+    ]
+    assert sorted(summary["repeat"] for summary in summaries) == [1, 2]
+    for summary in summaries:
+        assert {"recorded_at", "commit", "cli_version"} <= set(summary)
     # run 2 replays from its own recordings; a run 3 never recorded misses (it never reads run 1's)
     assert not run(Config(only=ONE, recorded_dir=recorded, repeat=2), work_dir=tmp_path).misses
     assert len(run(Config(only=ONE, recorded_dir=recorded, repeat=3), work_dir=tmp_path).misses) == 1
@@ -515,6 +529,36 @@ def test_a_live_run_stops_at_its_budget_and_one_recorder_runs_at_a_time(tmp_path
     assert agent.calls == []
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
+@needs_harness
+def test_the_same_cap_again_counts_what_the_ledger_says_was_spent(tmp_path: Path) -> None:
+    """Resuming with the same command gets no new cap: the budget starts from this set's ledger at this repeat."""
+    harness = _harness()
+    recorded = tmp_path / "recorded"
+    two = [ONE[0], "none-car-insurance"]
+    common: dict[str, Any] = {
+        "only": two,
+        "recorded_dir": recorded,
+        "recorder_lock": tmp_path / "lock",
+        "live": True,
+        "concurrency": 1,
+        "max_cost_usd": 0.005,  # one call (0.01) passes it
+    }
+    first = StandInAgent()
+    run(Config(live_backend=first, **common), work_dir=tmp_path)
+    assert len(first.calls) == 1
+    ledger = recorded / DEFAULT_MODEL / harness.LEDGER_FILE
+    lines = ledger.read_text(encoding="utf-8").splitlines()
+    again = StandInAgent()
+    result = run(Config(live_backend=again, **common), work_dir=tmp_path)
+    assert again.calls == [] and ledger.read_text(encoding="utf-8").splitlines() == lines
+    assert any("budget reached" in (turn.error or "") for turn in result.turns.values())
+    # run 2 of the same questions is another step, with its own spend
+    other = StandInAgent()
+    run(Config(live_backend=other, repeat=2, **common), work_dir=tmp_path)
+    assert len(other.calls) == 1
+
+
 class LimitedOnce(StandInAgent):
     """The stand-in agent behind a usage limit for its first call (the CLI yields the limit as an error event)."""
 
@@ -529,6 +573,7 @@ class LimitedOnce(StandInAgent):
             yield event
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 @needs_harness
 def test_a_live_run_waits_through_a_usage_limit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     harness = _harness()

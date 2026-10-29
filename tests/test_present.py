@@ -578,6 +578,7 @@ def _tree(tmp_path: Path) -> Path:
     return root
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_check_passes_and_fails_after_a_one_character_edit_to_any_output(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     assert build.check(root, RESULTS) == []
@@ -615,6 +616,7 @@ def test_the_readme_outside_the_block_is_left_as_it_is(tmp_path: Path) -> None:
         build.outputs(root, RESULTS)
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_the_cli_checks_and_says_what_differs(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     ok = subprocess.run(

@@ -65,6 +65,7 @@ from evals.ask.strict import (
     truth_items,
 )
 from evals.conditions import text_sha
+from evals.run import _commit as checkout_commit
 from evals.run import load_prompts_lock, stale_prompts, write_prompts_lock
 from ordnung.assistant.ask import ask_cache_key, ask_stream, check_turn
 from ordnung.assistant.citations import tool_name
@@ -230,15 +231,29 @@ def _check_options(config: Config) -> None:
 
 
 def live_setup(config: Config) -> Any:
-    """What a live run's backend stacks share (:class:`evals.harness.LiveSetup`): its budget and its waiting."""
+    """What a live run's backend stacks share (:class:`evals.harness.LiveSetup`): its budget, its waiting and the
+    provenance each new cassette is stamped with (the repeat, the commit, and once asked, the ``claude`` version).
+
+    The budget starts from what this set's ledger already says was spent at this repeat (an Ask turn's documents are
+    the ones the model read, not the question's, so every line of the repeat counts): resuming with the same command
+    gets no new cap."""
     harness = load_harness()
+    budget = None
+    if config.max_cost_usd is not None:
+        spent = harness.ledger_spent([config.root / harness.LEDGER_FILE], docs=None, repeat=config.repeat)
+        if spent > 0:
+            _say(
+                f"already spent ${spent:.4f} of --max-cost-usd {config.max_cost_usd:g} on this set at run "
+                f"{config.repeat} (from the ledger): the cap counts it"
+            )
+        budget = harness.Budget(config.max_cost_usd, spent=spent)
     return harness.LiveSetup(
         repeat=config.repeat,
-        budget=harness.Budget(config.max_cost_usd) if config.max_cost_usd is not None else None,
+        budget=budget,
         waiter=harness.LimitWaiter(config.wait_on_limit_hours, say=_say)
         if config.wait_on_limit_hours
         else None,
-        provenance={"repeat": config.repeat},
+        provenance={"repeat": config.repeat, "commit": checkout_commit()},
     )
 
 
@@ -288,6 +303,7 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
         cli: LLMBackend = config.live_backend or ClaudeCLIBackend(
             concurrency=1, interactive_concurrency=max(1, config.concurrency)
         )
+        provenance = None
         if harness is not None:
             setup = live if live is not None else live_setup(config)
             if setup.cli is None:
@@ -296,7 +312,8 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
             ledger.cli_version = setup.cli_version
             setup.ledgers.append(ledger)
             cli = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter)
-        recorder = RecordingBackend(cli, root, allowed_doc_ids=allowed_doc_ids)
+            provenance = setup.provenance  # stamped on each new cassette, as the benchmark's are
+        recorder = RecordingBackend(cli, root, allowed_doc_ids=allowed_doc_ids, provenance=provenance)
         stack = recorder if config.refresh else ReplayBackend(root, fallback=recorder)
     if harness is None:
         return stack

@@ -247,6 +247,7 @@ def _answering_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return log
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_the_live_smoke_checks_a_repeat_against_run_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -267,6 +268,98 @@ def test_the_live_smoke_checks_a_repeat_against_run_one(
     assert json.loads((scratch / "smoke.json").read_text(encoding="utf-8")) == report
     with pytest.raises(harness.HarnessError):  # always into a fresh folder
         harness.run_smoke(scratch, ids=REAL_IDS, recorder_lock=tmp_path / "recording.lock")
+
+
+#: Three Ask questions of the development set, recorded at run 1.
+ASK_IDS = ["deadline-steuerbescheid_2025-0", "cross-pay-this-week", "none-car-insurance"]
+
+
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
+def test_the_live_smoke_asks_its_ask_turns_and_judges_them(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With Ask turns, the smoke records them at run 2 into its scratch folder (``--recorded-dir``) and is ok only
+    when Ask ran: every turn asked once, under keys of its own, with run 1's request, one ledger line per call."""
+    log = _answering_claude(tmp_path, monkeypatch)
+    scenario = json.loads(Path(tmp_path / "answer.json").read_text(encoding="utf-8"))
+    benchmark = scenario["calls"][0]
+    text = "I could not find that in your letters."  # an Ask answer that calls no tool
+    said = {
+        "type": "assistant",
+        "message": {
+            "model": eval_run.DEFAULT_MODEL,
+            "id": "m",
+            "type": "message",
+            "role": "assistant",
+            "content": [{"type": "text", "text": text}],
+            "stop_reason": None,
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+        },
+    }
+    done = {
+        "type": "result",
+        "subtype": "success",
+        "is_error": False,
+        "duration_ms": 5,
+        "num_turns": 1,
+        "result": text,
+        "total_cost_usd": 0.001,
+        "usage": {"input_tokens": 1, "output_tokens": 1},
+        "modelUsage": {eval_run.DEFAULT_MODEL: {}},
+    }
+    scenario["calls"] = [benchmark, benchmark, {"lines": [json.dumps(said), json.dumps(done)]}]
+    (tmp_path / "answer.json").write_text(json.dumps(scenario), encoding="utf-8")
+    scratch = tmp_path / "smoke"
+    report = harness.run_smoke(
+        scratch,
+        ids=REAL_IDS,
+        conditions=["llm_only"],
+        ask_only=ASK_IDS,
+        cap=0.5,
+        recorder_lock=tmp_path / "recording.lock",
+    )
+    assert report["ask_exit"] == 0, report
+    ask = report["ask"]
+    assert ask["calls"] == ask["cassettes"] == ask["locked"] == ask["repeated"] == len(ASK_IDS)
+    assert ask["keys_differ_from_run_1"] and ask["requests_identical_to_run_1"]
+    assert ask["one_ledger_line_per_call"] and report["ok"], report
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 2 + len(ASK_IDS)
+    assert (scratch / "ask" / eval_run.DEFAULT_MODEL).is_dir()  # recorded where the smoke said, nowhere else
+    assert not (tmp_path / "recording.lock").exists()
+
+
+def test_the_smoke_is_not_ok_when_its_ask_turns_do_not_run() -> None:
+    """A smoke asked for Ask turns is ok only with the Ask checks passed (never on the benchmark's alone)."""
+    benchmark = {
+        "keys_differ_from_run_1": True,
+        "repeated": 2,
+        "requests_identical_to_run_1": True,
+        "one_ledger_line_per_call": True,
+        "within_budget": True,
+    }
+    report = {
+        "recorder_lock_refuses_a_second_recording": True,
+        "zero_budget_stops_before_any_call": True,
+        "recording_exit": 0,
+        "benchmark": benchmark,
+    }
+    assert harness.smoke_ok(report, ids=["a", "b"], ask_only=[])
+    failed = {
+        **report,
+        "ask_exit": 2,
+        "ask": {**benchmark, "calls": 0, "repeated": 0, "keys_differ_from_run_1": False},
+    }
+    assert not harness.smoke_ok(failed, ids=["a", "b"], ask_only=["q1", "q2", "q3"])
+    passed = {**report, "ask_exit": 0, "ask": {**benchmark, "calls": 3, "repeated": 3}}
+    assert harness.smoke_ok(passed, ids=["a", "b"], ask_only=["q1", "q2", "q3"])
+    assert not harness.smoke_ok({**report, "ask": "not run"}, ids=["a", "b"], ask_only=["q1"])
+
+
+def test_the_ask_command_takes_a_recordings_folder(tmp_path: Path) -> None:
+    from evals.ask.__main__ import parse_args
+
+    args = parse_args(["--live", "--recorded-dir", str(tmp_path), "--recorder-lock", str(tmp_path / "lock")])
+    assert args.recorded_dir == tmp_path and args.recorder_lock == tmp_path / "lock"
 
 
 # --------------------------------------------------------------------------------------------------

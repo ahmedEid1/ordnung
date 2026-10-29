@@ -278,6 +278,7 @@ def _dates_in_text(text: str) -> set[date]:
     return found
 
 
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
 def test_inserted_dates_differ_from_every_truth_date_and_every_date_in_the_letter(
     base: list[Entry], plan: dict[str, list[build.Assignment]]
 ) -> None:

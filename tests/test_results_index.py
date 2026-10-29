@@ -315,6 +315,8 @@ def test_a_replay_that_differs_only_in_what_a_run_measures_itself_is_exact() -> 
         prediction["calls"][0].update(wall_ms=99, backend="replay")
     replayed["metrics"]["ordnung"]["cost_usd"]["total"] = 0.3  # summed in another order
     (verdict,) = reproduce.compare_run(published, replayed).values()
+    # the replay's numbers are pinned by value; a float summed in another order is the same value
+    assert verdict.pop("metrics_at_head") == reproduce.metrics_digest(published["metrics"]["ordnung"])
     assert verdict == {
         "verdict": "exact",
         "right": [1, 1],
@@ -385,6 +387,98 @@ def test_a_changed_date_is_listed_with_its_direction() -> None:
             "because": "",
         },
     ]
+
+
+def test_a_published_count_that_moved_with_no_date_is_a_change_that_needs_a_reason() -> None:
+    """The dates right (and late, and missed) as published must move only with the dates: a count that differs from
+    the replay's while every date is the same is a change, which --write records and --check refuses until a person
+    gives its reason."""
+    published = _run(
+        {"dev-a-A1": [_item(0, "correct", "2026-03-16")], "dev-b-A1": [_item(0, "correct", "2026-03-16")]}
+    )
+    replayed = copy.deepcopy(published)
+    published["metrics"]["ordnung"]["due_date_accuracy"]["k"] = (
+        1.0  # the count edited, or counted another way
+    )
+    published["metrics"]["ordnung"]["dangerous_late_rate"] = {"k": 1.0, "n": 2.0}
+    replayed["metrics"]["ordnung"]["dangerous_late_rate"] = {"k": 0.0, "n": 2.0}
+    fresh = reproduce.compare_run(published, replayed)
+    verdict = fresh["ordnung"]
+    assert verdict["verdict"] == "changed"
+    assert (verdict["right"], verdict["right_at_head"]) == ([1, 2], [2, 2])
+    assert verdict["changes"] == [
+        {
+            "entry_id": "metrics.due_date_accuracy",
+            "item": None,
+            "recorded": {"outcome": "due_date_accuracy", "predicted": "1/2"},
+            "at_head": {"outcome": "due_date_accuracy", "predicted": "2/2"},
+            "direction": "better",
+            "because": "",
+        },
+        {
+            "entry_id": "metrics.dangerous_late_rate",
+            "item": None,
+            "recorded": {"outcome": "dangerous_late_rate", "predicted": "1/2"},
+            "at_head": {"outcome": "dangerous_late_rate", "predicted": "0/2"},
+            "direction": "better",
+            "because": "",
+        },
+    ]
+    row = {
+        "file": "2026-03-02-claude-sonnet-5-dev.json",
+        "conditions": reproduce.merge_conditions(None, fresh),
+    }
+    written = reproduce.undeclared(row)
+    assert (
+        len(written) == 2
+        and "metrics.due_date_accuracy" in written[0]
+        and "1/2 → due_date_accuracy 2/2" in written[0]
+    )
+    assert len(reproduce.run_problems(row, fresh)) == 2
+    for change in row["conditions"]["ordnung"]["changes"]:
+        change["because"] = "the published file was edited by hand (this test)"
+    assert reproduce.run_problems(row, fresh) == [] and reproduce.undeclared(row) == []
+    # a date that moved explains its own count: no second entry for the count
+    moved = _run(
+        {"dev-a-A1": [_item(0, "wrong", "2026-03-17")], "dev-b-A1": [_item(0, "correct", "2026-03-16")]}
+    )
+    assert [c["entry_id"] for c in reproduce.compare_run(moved, replayed)["ordnung"]["changes"]] == [
+        "dev-a-A1"
+    ]
+
+
+def test_the_replays_numbers_are_pinned_by_value_not_only_by_name() -> None:
+    """A field that already drifts (published 62/63, the replay 63/63) must not hide a later move of its value: the
+    index pins a digest of the replay's metrics, --check fails when it moves, and --write records the move with an
+    empty reason that a person fills in."""
+    published = _run({"dev-a-A1": [_item(0, "correct", "2026-03-16")]})
+    replayed = copy.deepcopy(published)
+    published["metrics"]["ordnung"]["extraction"] = {"sender": {"k": 62.0, "n": 63.0}}
+    replayed["metrics"]["ordnung"]["extraction"] = {"sender": {"k": 63.0, "n": 63.0}}
+    fresh = reproduce.compare_run(published, replayed)
+    assert fresh["ordnung"]["drift"]["values"] == ["metrics.extraction"]
+    row = {
+        "file": "2026-03-02-claude-sonnet-5-dev.json",
+        "conditions": reproduce.merge_conditions(None, fresh),
+    }
+    assert reproduce.run_problems(row, fresh) == [] and reproduce.undeclared(row) == []
+    later = copy.deepcopy(replayed)
+    later["metrics"]["ordnung"]["extraction"]["sender"]["k"] = 10.0
+    again = reproduce.compare_run(published, later)
+    assert again["ordnung"]["drift"] == fresh["ordnung"]["drift"]  # the names alone cannot tell
+    problems = reproduce.run_problems(row, again)
+    assert len(problems) == 1 and "metrics" in problems[0] and "moved" in problems[0]
+    rewritten = {"file": row["file"], "conditions": reproduce.merge_conditions(row, again)}
+    assert rewritten["conditions"]["ordnung"]["metrics_moved"] == {
+        "from": fresh["ordnung"]["metrics_at_head"],
+        "because": "",
+    }
+    assert reproduce.undeclared(rewritten) and reproduce.run_problems(rewritten, again)
+    rewritten["conditions"]["ordnung"]["metrics_moved"]["because"] = "the extraction scorer (abc1234)"
+    assert reproduce.run_problems(rewritten, again) == [] and reproduce.undeclared(rewritten) == []
+    # the reason stays with the index while the replay gives the same numbers
+    kept = reproduce.merge_conditions(rewritten, again)
+    assert kept["ordnung"]["metrics_moved"]["because"] == "the extraction scorer (abc1234)"
 
 
 def _row(published: dict[str, Any], replayed: dict[str, Any], because: str = "") -> dict[str, Any]:
@@ -547,9 +641,14 @@ def _stand_in(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, results: Path, *,
                     for entry in data["entries"]:
                         if entry["id"] == "holdout2-adversarial-injection_visible-1":
                             item = entry["conditions"]["ordnung"]["score"]["items"][0]
+                            assert item["outcome"] == "missed"
                             item.update(
                                 outcome="correct", predicted=item["expected"], direction=None, days_off=None
                             )
+                    # as a replay counts it: the date found and right moves its counts with it
+                    metrics = data["metrics"]["ordnung"]
+                    metrics["due_date_accuracy"]["k"] += 1
+                    metrics["missed_rate"]["k"] -= 1
                 (task.out / source.name).write_text(json.dumps(data), encoding="utf-8")
             done[task.name] = reproduce.Done(task.name, 0, 0.1, tmp_path / "log")
         return done

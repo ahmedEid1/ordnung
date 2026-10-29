@@ -26,13 +26,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import dataclasses
 import hashlib
 import importlib
 import json
 import sys
 import tempfile
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -41,7 +42,7 @@ from evals import conditions, report
 from evals.perturb import build, score
 from evals.perturb import templates as tpl
 from evals.records import Entry, Prediction, load_manifest
-from evals.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, RunConfig, _commit, run_benchmark
+from evals.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, RunConfig, _commit, live_setup, run_benchmark
 
 STRESS_RECORDED_DIR = RECORDED_DIR / "stress"
 CONDITIONS = score.CONDITIONS
@@ -117,6 +118,36 @@ async def clean_reference(
     return predictions, meta
 
 
+@contextlib.contextmanager
+def recording_session(
+    *,
+    live: bool,
+    options: Mapping[str, Any],
+    model: str,
+    recorded_dir: Path,
+    entries: Sequence[Entry],
+    say: Any = None,
+) -> Iterator[Any]:
+    """Around the cells' recording: the recorder lock, held from the first cell to the last, and one live setup for
+    every cell (one budget for ``--max-cost-usd``, started from what the ledger says the cells' letters already cost;
+    one waiting, one ledger). A replay shares nothing: ``None``."""
+    if not live:
+        yield None
+        return
+    harness = importlib.import_module("evals.harness")
+    config = RunConfig(
+        models=[model],
+        live=True,
+        recorded_dir=recorded_dir,
+        **{key: value for key, value in options.items() if key != "recorder_lock"},
+    )
+    lock = options.get("recorder_lock") or recorded_dir / harness.RECORDER_LOCK_NAME
+    with harness.RecorderLock(lock, command=" ".join(["scripts.eval_perturb", *sys.argv[1:]])):
+        yield live_setup(
+            config, say or (lambda message: print(message, file=sys.stderr, flush=True)), entries
+        )
+
+
 async def cell_predictions(
     cell: str,
     *,
@@ -129,8 +160,14 @@ async def cell_predictions(
     options: Mapping[str, Any],
     work: Path,
     quiet: bool = True,
+    shared: Any = None,
 ) -> tuple[dict[str, dict[str, Prediction]], dict[str, Any]]:
-    """One cell's predictions for both conditions: replayed from ``recorded_dir``, or recorded there (``live``)."""
+    """One cell's predictions for both conditions: replayed from ``recorded_dir``, or recorded there (``live``), with
+    the ``shared`` live setup of :func:`recording_session` (one budget and one lock for every cell)."""
+    if live and shared is None:
+        raise StressError(
+            "a live cell records inside recording_session: one budget and one lock for every cell"
+        )
     config = RunConfig(
         split=f"stress-{cell}",
         models=[model],
@@ -144,6 +181,7 @@ async def cell_predictions(
         manifest_path=build_dir / "manifest.json",
         recorded_dir=recorded_dir,
         results_dir=work / f"cell-{cell}",
+        live_setup=shared,
         **options,
     )
     return await _predictions(config, quiet=quiet)
@@ -341,20 +379,34 @@ async def _run(args: argparse.Namespace) -> int:
         clean, runs["clean"] = await clean_reference(base, model=args.model, work=work, quiet=args.quiet)
         cells: dict[str, dict[str, dict[str, Prediction]]] = {}
         if stress_doc is not None:
-            for cell in args.cells:
-                say(f"{cell}: {'recording' if args.live else 'replaying'} …")
-                cells[cell], runs[cell] = await cell_predictions(
-                    cell,
-                    build_dir=args.build_dir,
-                    model=args.model,
-                    recorded_dir=args.recorded_dir,
-                    live=args.live,
-                    concurrency=args.concurrency,
-                    timeout_s=args.timeout,
-                    options=options,
-                    work=work,
-                    quiet=args.quiet,
-                )
+            recorded = [
+                entry
+                for entry in load_manifest(args.build_dir / "manifest.json")
+                if entry.split in {f"stress-{cell}" for cell in args.cells}
+            ]
+            with recording_session(
+                live=args.live,
+                options=options,
+                model=args.model,
+                recorded_dir=args.recorded_dir,
+                entries=recorded,
+                say=say,
+            ) as shared:
+                for cell in args.cells:
+                    say(f"{cell}: {'recording' if args.live else 'replaying'} …")
+                    cells[cell], runs[cell] = await cell_predictions(
+                        cell,
+                        build_dir=args.build_dir,
+                        model=args.model,
+                        recorded_dir=args.recorded_dir,
+                        live=args.live,
+                        concurrency=args.concurrency,
+                        timeout_s=args.timeout,
+                        options=options,
+                        work=work,
+                        quiet=args.quiet,
+                        shared=shared,
+                    )
     perturbed = (
         {e.id: e for e in load_manifest(args.build_dir / "manifest.json")} if stress_doc is not None else {}
     )

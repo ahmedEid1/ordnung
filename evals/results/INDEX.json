@@ -366,7 +366,8 @@
        "score.tokens"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -402,7 +403,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "e266447c17d35da8"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -438,7 +440,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "764bcf99b81a97c3"
     }
    }
   },
@@ -518,7 +521,8 @@
        "score.tokens"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -548,7 +552,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -578,7 +583,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -608,7 +614,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
     }
    }
   },
@@ -768,7 +775,8 @@
        "direction": "better",
        "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
       }
-     ]
+     ],
+     "metrics_at_head": "28e14cb201b40e58"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -798,7 +806,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -828,7 +837,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -858,7 +868,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
     }
    }
   },
@@ -930,7 +941,8 @@
        "score.tokens"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -961,7 +973,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "e266447c17d35da8"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -992,7 +1005,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "764bcf99b81a97c3"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -1024,7 +1038,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "54353a56395d4ec9"
     }
    }
   },
@@ -1104,7 +1119,8 @@
        "score.tokens"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -1134,7 +1150,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -1164,7 +1181,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -1194,7 +1212,8 @@
        "prediction.model"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
     }
    }
   },
@@ -1370,7 +1389,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
     }
    }
   },
@@ -1416,7 +1436,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "7e8d2efb06264eb5"
     }
    }
   },
@@ -1507,7 +1528,8 @@
        "direction": "better",
        "because": "the two-dates check (304e2bf8), written after this held-out run: 2026-09-30-claude-sonnet-5-holdout-rescored.json replays its readings with it"
       }
-     ]
+     ],
+     "metrics_at_head": "7e8d2efb06264eb5"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -1535,7 +1557,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "172317d6e6a54bc1"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -1563,7 +1586,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "e2ab5c11c148b29f"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -1591,7 +1615,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "453599351eeb616f"
     }
    }
   },
@@ -1641,7 +1666,8 @@
        "score.items[]"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
     }
    }
   },
@@ -1783,7 +1809,8 @@
        "score.true_positives"
       ]
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
     }
    }
   },
@@ -1883,7 +1910,8 @@
        "direction": "better",
        "because": "the completeness re-ask, ADR 0016 (d6caeae8), written after this held-out run, with its one answer recorded then: 2026-10-06-claude-sonnet-5-holdout2-rescored.json"
       }
-     ]
+     ],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
     },
     "llm_only": {
      "verdict": "same-dates",
@@ -1911,7 +1939,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "7c2f3a05c2e6852b"
     },
     "llm_rules_text": {
      "verdict": "same-dates",
@@ -1939,7 +1968,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "79dc0b965c9bf9b6"
     },
     "llm_rules_tool": {
      "verdict": "same-dates",
@@ -1967,7 +1997,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "4fa52a2ef8df1628"
     }
    }
   },
@@ -2002,7 +2033,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
     }
    }
   },
@@ -2037,7 +2069,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "13332134c6c94856"
     },
     "llm_only": {
      "verdict": "exact",
@@ -2054,7 +2087,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "f0001936b6a16d1d"
     },
     "llm_rules_text": {
      "verdict": "exact",
@@ -2071,7 +2105,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "35b5bb2eca0ab2ff"
     },
     "llm_rules_tool": {
      "verdict": "exact",
@@ -2088,7 +2123,8 @@
       "removed": [],
       "values": []
      },
-     "changes": []
+     "changes": [],
+     "metrics_at_head": "d86e385417807879"
     }
    }
   },
@@ -2200,7 +2236,7 @@
   },
   {
    "file": "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
-   "sha256": "a0a56749cdd281ff598f3c47db7526f7c74b99c769b1d11853f74a6849c360e5",
+   "sha256": "cdcd3087323e27690d8e0113f2d4ba0b9e34b42d4ffffa85c5d67b9dd33b6ec6",
    "kind": "analysis",
    "role": "re-analysis",
    "analysis": "heldout-reanalysis",
