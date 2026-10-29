@@ -2678,11 +2678,12 @@ def _unreleased(heading: str, changelog: str | None = None) -> str:
 
 def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
     """docs/releasing.md renames "## Unreleased" to the version, and CONTRIBUTING.md starts a new one for the
-    next change: the claims about what came after 0.2.0 still find their bullets then."""
+    next change: the claims about what came after 0.2.0 still find their bullets then. What is under Unreleased
+    now (empty or not) becomes the release's section, under a new Unreleased with a fix of its own."""
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     released = changelog.replace(
         "\n## Unreleased\n",
-        "\n## Unreleased\n\n## 0.3.1 — 2026-11-02\n\n### Fixed\n\n- A small fix after the release.\n",
+        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.1 — 2026-11-02\n",
         1,
     )
     fix = _flat("- A small fix after the release.")
@@ -2690,6 +2691,20 @@ def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
         assert _unreleased(heading, released) == _unreleased(heading)
     assert _unreleased("Fixed", released) == f"{fix} {_unreleased('Fixed')}"
     assert "**Open Ordnung from your app menu.**" in _unreleased("Added", released)
+
+
+def test_the_changelog_s_label_in_name_fix_quotes_the_inbox_link_as_the_app_names_it() -> None:
+    """CHANGELOG, Unreleased → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
+    The Inbox link's new name is the one the web app's shell test pins, and the shell no longer builds the old
+    one ("Inbox, 1 letter to check, …")."""
+    (bullet,) = [part for part in _unreleased("Fixed").split(" - ") if "*Label in Name*" in part]
+    new, old = "Inbox 4 — 1 letter to check, 3 not read yet", "Inbox, 1 letter to check, 3 not read yet"
+    assert f'The Inbox link is "{new}"; it was "{old}".' in bullet
+    assert "Each still says everything it said before." in bullet
+    shell = ROOT / "web" / "src" / "components" / "shell"
+    assert f'getByRole("link", {{ name: "{new}" }})' in (shell / "shell.test.tsx").read_text(encoding="utf-8")
+    for name in ("Sidebar.tsx", "MobileTabBar.tsx"):
+        assert "`${item.label}, ${inboxCountText(" not in (shell / name).read_text(encoding="utf-8"), name
 
 
 def _bullet(flat_list: str, lead: str) -> str:

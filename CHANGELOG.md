@@ -5,6 +5,15 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+### Fixed
+
+- Screen readers and voice control: the names of links and buttons hold the words they show, in the order shown
+  (WCAG 2.5.3, *Label in Name*). The Inbox link is "Inbox 4 — 1 letter to check, 3 not read yet"; it was
+  "Inbox, 1 letter to check, 3 not read yet". Your name in the sidebar, the buttons that open a sender's details,
+  Ask's sources and *Mark done* under a letter's *Probably dealt with* now name all the words they show, and the
+  tour's slim bar and Settings' rule topics no longer run two words together ("4You"). Each still says
+  everything it said before.
+
 ## 0.3.0 — 2026-10-29
 
 The second numbered release. [Updating](README.md#updating) says how to install it; *Upgrading* below says
