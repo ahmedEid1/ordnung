@@ -26,7 +26,7 @@ import { useEvidence } from "./EvidenceContext";
 import { GlossaryText } from "./Explained";
 import { PanelSection } from "./PanelSection";
 import { WhyThisDate } from "./WhyThisDate";
-import { icsFileName, icsHref, useItemActions } from "./actions";
+import { fitsACalendar, icsFileName, icsHref, useItemActions } from "./actions";
 import { englishInline, isGermanText } from "./fact-text";
 import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { plainText } from "@/lib/glue";
@@ -410,7 +410,7 @@ function ItemRow({
         label={`Actions for ${item.title}`}
         heading={item.title}
         items={[
-          ...(item.due_date && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
+          ...(fitsACalendar(item) && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
           own ? { label: "Edit", icon: Pencil, onSelect: () => setEditingOwn(true) } : { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
           open ? { label: "Mark done", icon: Check, onSelect: () => markDone(item) } : { label: "Reopen", icon: RotateCcw, onSelect: () => reopen(item) },
           "separator" as const,

@@ -118,6 +118,7 @@ from __future__ import annotations
 
 import calendar
 import itertools
+import logging
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
@@ -141,6 +142,8 @@ from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING
 from ordnung.rules.deadlines import place_region
 from ordnung.rules.explain import ordinal
 from ordnung.secretary.triggers import postal_buffer
+
+log = logging.getLogger(__name__)
 
 _MAX_STEPS = 10_000  # safety net against pathological schedules
 #: Days the rules engine can move a fixed date to a later working day (Good Friday → Tuesday is 4).
@@ -1228,7 +1231,12 @@ def roll_forward(store: Store, today: date, context: ItemContext) -> int:
             ctx = context(store, item, today)
             replaced = replacement(store, item, ctx, context)
             ends = replaced.starts if replaced is not None else None
-            moved = roll_item(store, item, ctx, postal_buffer_days=buffer, ends=ends)
+            try:
+                moved = roll_item(store, item, ctx, postal_buffer_days=buffer, ends=ends)
+            except NoNextDate:
+                # a schedule that can't reach today (a misread year): it stays as it is, the rest move on
+                log.warning("repeating to-do %s: its schedule doesn't reach today, left as it is", item.id)
+                continue
             changed += moved is not item
     return changed
 

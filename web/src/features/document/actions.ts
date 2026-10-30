@@ -117,6 +117,17 @@ export function useStartDraft() {
   return { start: (...args: Parameters<typeof start>) => void start(...args), pending: create.isPending || looking };
 }
 
+/**
+ * Whether a to-do's date fits a calendar: its event ends by 31 Dec 9999, the last day a calendar holds
+ * (`ordnung.calendar.ics.fits_a_calendar`; an hour from 23:00 on that day doesn't). The server refuses the
+ * calendar file of any other date (a misread year), so "Add to calendar" isn't offered for it.
+ */
+export function fitsACalendar(item: Pick<Item, "due_date" | "due_time">): boolean {
+  if (!item.due_date) return false;
+  if (item.due_date < "9999-12-31") return true;
+  return Boolean(item.due_time) && item.due_time! < "23:00";
+}
+
 /** Download link for one to-do as an .ics file ("Add to calendar"). */
 export function icsHref(item: Item): string {
   return api.itemIcsUrl(item.id);

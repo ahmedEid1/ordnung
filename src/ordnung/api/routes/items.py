@@ -39,6 +39,7 @@ from ordnung.models import (
 from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
+    NoNextDate,
     first_scheduled,
     kept_occurrence,
     mark_done,
@@ -200,6 +201,10 @@ def _check_links(store: Store, fields: dict[str, Any]) -> None:
             require(lookup(fields[name]), message)
 
 
+#: A schedule that can't reach today from its date (:class:`~ordnung.recurrence.NoNextDate`: a misread year, a typo).
+TOO_FAR_BACK = "This date is too far in the past to repeat from: choose a later one."
+
+
 def _create(store: Store, body: ItemCreate, today: date) -> Item:
     fields = body.model_dump()
     _check_links(store, fields)
@@ -217,13 +222,16 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
     )
     if due is not None and body.recurrence is not None:
         dates["date_spec"] = schedule_spec(due, nature)
-    with store.tx():
-        item = store.add_item(
-            **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
-        )
-        if body.recurrence is not None:
-            item = _scheduled_start(store, item, today)
-        return _follow_schedule(store, item, today)
+    try:
+        with store.tx():
+            item = store.add_item(
+                **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
+            )
+            if body.recurrence is not None:
+                item = _scheduled_start(store, item, today)
+            return _follow_schedule(store, item, today)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
 
 
 @router.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
@@ -384,12 +392,15 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
     reopened = item.status in ("open", "done") and fields.get("status") == "open"
     done = item.status != "done" and fields.get("status") == "done"
-    with store.tx():
-        updated = store.update_item(item_id, **fields)
-        if restart:
-            updated = _scheduled_start(store, updated, today)
-        updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
-        refresh_review_status(store, updated.doc_id)
+    try:
+        with store.tx():
+            updated = store.update_item(item_id, **fields)
+            if restart:
+                updated = _scheduled_start(store, updated, today)
+            updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
+            refresh_review_status(store, updated.doc_id)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
     return updated
 
 

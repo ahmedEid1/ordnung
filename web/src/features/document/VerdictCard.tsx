@@ -68,7 +68,7 @@ import {
   type MainAction,
   type NotOwed,
 } from "./verdict";
-import { icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
+import { fitsACalendar, icsFileName, icsHref, useItemActions, useStartDraft } from "./actions";
 import { KindPicker } from "./KindPicker";
 import { useLetterFor } from "@/features/household/LetterFor";
 import { isDeadlineCheck, READING_CHECK_SLOT } from "./Warnings";
@@ -902,7 +902,7 @@ function Actions({
           </Popover>
         );
       case "calendar":
-        return phone ? null : <CalendarButton item={main.item} primary />;
+        return phone || !fitsACalendar(main.item) ? null : <CalendarButton item={main.item} primary />;
       case "done":
         return (
           <Button variant="primary" icon={Check} onClick={() => actions.markDone(main.item)}>
@@ -928,7 +928,7 @@ function Actions({
     }
   })();
 
-  const showCalendar = !phone && primary?.due_date && main.type !== "calendar" && main.type !== "scam" && main.type !== "decide";
+  const showCalendar = !phone && primary && fitsACalendar(primary) && main.type !== "calendar" && main.type !== "scam" && main.type !== "decide";
   const showDone = primary && main.type !== "done" && main.type !== "scam" && main.type !== "decide";
   const buttons = Boolean(mainEl || showCalendar || showDone);
   if (!buttons && !footer) return null;
