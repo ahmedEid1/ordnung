@@ -526,6 +526,84 @@ def test_the_note_says_when_citations_were_removed_or_weekdays_corrected(
     assert clean.note is None
 
 
+WEEKDAYS_NOTE = "Corrected weekday names to match their dates."
+WEEKDAYS_NOTE_DE = "Wochentage an ihre Daten angepasst."
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected", "note"),
+    [
+        # the demo's recorded answers: the date in bold at the head of a list line ("**Thu 2 Oct 2026**"
+        # for a Friday, "**Tue 30 Sep 2026**" for a Wednesday)
+        (
+            "- **Thu 21 Oct 2026** – Object to the tax assessment [item:{item}].",
+            "- **Wed 21 Oct 2026** – Object to the tax assessment [item:{item}].",
+            WEEKDAYS_NOTE,
+        ),
+        (
+            "Your objection deadline is **Thu** 21 Oct 2026 [item:{item}].",
+            "Your objection deadline is **Wed** 21 Oct 2026 [item:{item}].",
+            WEEKDAYS_NOTE,
+        ),
+        (
+            "Your objection deadline is 21 Oct 2026 (Thu) [item:{item}].",
+            "Your objection deadline is 21 Oct 2026 (Wed) [item:{item}].",
+            WEEKDAYS_NOTE,
+        ),
+        (
+            "Your objection deadline is 21 October 2026, a Thursday [item:{item}].",
+            "Your objection deadline is 21 October 2026, a Wednesday [item:{item}].",
+            WEEKDAYS_NOTE,
+        ),
+        (
+            "Ihre Einspruchsfrist endet am Donnerstag, den 21. Oktober 2026 [item:{item}].",
+            "Ihre Einspruchsfrist endet am Mittwoch, den 21. Oktober 2026 [item:{item}].",
+            WEEKDAYS_NOTE_DE,
+        ),
+        (
+            "Ihre Einspruchsfrist endet am 21.10.2026 (Do.) [item:{item}].",
+            "Ihre Einspruchsfrist endet am 21.10.2026 (Mi.) [item:{item}].",
+            WEEKDAYS_NOTE_DE,
+        ),
+    ],
+)
+def test_the_final_answer_gives_each_date_its_own_weekday(
+    store: Store, ids: dict[str, str], tools: LedgerTools, answer: str, expected: str, note: str
+) -> None:
+    """A weekday name next to a date is that date's weekday in the final answer, in English and German,
+    on either side of the date; the note says so."""
+    item = ids["tax_objection"]
+    results = [render_result(tools.list_items())]
+    checked = check_turn(store, answer.format(item=item), results, question="When?", today=TODAY)
+    assert checked.body == expected.format(item=item)
+    assert checked.note == note
+
+
+def test_a_citation_that_names_no_record_is_dropped_from_the_final_answer(
+    store: Store, ids: dict[str, str], tools: LedgerTools
+) -> None:
+    """Ask benchmark (hh-my-health-number): the answer cited ``get_my_numbers``' refs as to-dos,
+    ``[item:n1]`` … ``[item:n5]``; no record has those ids, yet the markers stayed in the final answer."""
+    item = ids["tax_objection"]
+    results = [render_result(tools.list_items())]
+    checked = check_turn(
+        store,
+        "No health insurance number is stored for you; your own numbers are a tax ID and a tax number "
+        f"[item:n1][item:n2]. Your objection deadline is Wed 21 Oct 2026 [item:n3, item:{item}].",
+        results,
+        question="What is my health insurance number?",
+        today=TODAY,
+    )
+    assert checked.body == (
+        "No health insurance number is stored for you; your own numbers are a tax ID and a tax number. "
+        f"Your objection deadline is Wed 21 Oct 2026 [item:{item}]."
+    )
+    assert checked.removed_ids == ["n1", "n2", "n3"]
+    assert (
+        checked.note == "Removed 3 sources that aren't among the records Ordnung looked up for this answer."
+    )
+
+
 def test_an_answer_the_check_empties_still_says_why(
     store: Store, ids: dict[str, str], tools: LedgerTools
 ) -> None:
