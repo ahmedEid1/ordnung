@@ -140,6 +140,55 @@ def test_the_mcp_server_s_interpreter_and_data_folder_are_not_part_of_it(
     assert harness.request_sha256(masked) != harness.request_sha256(two)
 
 
+#: Interpreters a recording or a replay may run under: a venv on Linux, macOS and Windows, CI's toolcache, a Nix
+#: wrapper, a launcher whose name says nothing. Each starts the same MCP server (``<interpreter> -m ordnung mcp``).
+INTERPRETERS = (
+    "/home/user/new-project/.venv/bin/python",
+    "/tmp/claude-0/scratch/ev-int/.venv/bin/python3.11",
+    "/Users/sam/src/ordnung/.venv/bin/python3",
+    "C:\\Users\\sam\\ordnung\\.venv\\Scripts\\python.exe",
+    "/opt/hostedtoolcache/Python/3.11.14/x64/bin/python3",
+    "/nix/store/0abc-python3-3.11.14/bin/.python3.11-wrapped",
+    "/usr/local/bin/py",
+)
+
+
+@pytest.mark.parametrize("interpreter", INTERPRETERS[1:])
+def test_two_venvs_give_the_same_lock_entry(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, interpreter: str
+) -> None:
+    """The rules-tool condition's ``--mcp-config`` starts the server with ``sys.executable``, and Ask's with it too:
+    a path of the machine and the venv, in what the CLI gets but in no replay key. The lock's entry (its content hash
+    and every part's hash) is the same whichever interpreter made it, so a lock built on one machine checks on
+    another (E2's recording found it: its request dumps differed in every rules-tool cell between two venvs)."""
+    monkeypatch.setattr(sys, "executable", INTERPRETERS[0])
+    here = [
+        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "one", rules_tools=False)),
+    ]
+    monkeypatch.setattr(sys, "executable", interpreter)
+    there = [
+        _request(tmp_path, mcp_config=rules_server_config(today="2026-10-01")),
+        _request(tmp_path, purpose="ask", mcp_config=server_config(tmp_path / "two", rules_tools=False)),
+    ]
+    for one, two in zip(here, there, strict=True):
+        assert one.mcp_config != two.mcp_config
+        assert harness.lock_entry(one) == harness.lock_entry(two)
+        assert harness.lock_entry(one, repeat=2) == harness.lock_entry(two, repeat=2)
+        assert harness.request_content(one) == harness.request_content(two)
+
+
+def test_a_server_that_is_not_python_keeps_its_command(tmp_path: Path) -> None:
+    """Only the interpreter that starts a module (``<interpreter> -m …``) is set aside: another server's command is
+    what the model is given, and a change to it is a change to the request."""
+    npx = {"mcpServers": {"x": {"command": "npx", "args": ["some-server"]}}}
+    uvx = {"mcpServers": {"x": {"command": "uvx", "args": ["some-server"]}}}
+    assert harness.normalized_mcp(npx) == npx
+    assert harness.lock_entry(_request(tmp_path, mcp_config=npx)) != harness.lock_entry(
+        _request(tmp_path, mcp_config=uvx)
+    )
+
+
 # --------------------------------------------------------------------------------------------------
 # Recording and replaying with a lock
 # --------------------------------------------------------------------------------------------------

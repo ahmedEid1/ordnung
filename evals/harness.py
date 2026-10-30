@@ -168,21 +168,38 @@ class RepeatKey:
 # --------------------------------------------------------------------------------------------------
 
 
-def normalized_mcp(config: Mapping[str, Any] | None) -> Any:
-    """The MCP config as far as the model can tell: the interpreter that starts a server (``sys.executable``, which
-    differs between machines and venvs) and the data folder Ask's server reads (a fresh temporary folder each
-    run) are placeholders; the server, its arguments and its environment stay."""
+_INTERPRETER = re.compile(r"(?i)^\.?(?:python|pypy)[\w.+-]*?(?:\.exe)?$")
+"""An interpreter's file name: ``python``, ``python3.11``, ``python.exe``, ``pythonw.exe``, ``pypy3``, a Nix
+wrapper's ``.python3.11-wrapped``."""
 
-    def walk(value: Any, key: str | None = None) -> Any:
+
+def _is_interpreter(command: Any, args: Any) -> bool:
+    """Whether an MCP server's ``command`` is the Python that starts it: it runs a module (``<command> -m …``, as
+    every server Ordnung starts does, with ``sys.executable``), or its file name is an interpreter's — on any
+    system's separators, so a lock made on Windows reads the same on Linux."""
+    if not isinstance(command, str):
+        return False
+    runs_module = isinstance(args, list) and bool(args) and args[0] == "-m"
+    return runs_module or bool(_INTERPRETER.match(re.split(r"[\\/]", command)[-1]))
+
+
+def normalized_mcp(config: Mapping[str, Any] | None) -> Any:
+    """The MCP config as far as the model can tell: the interpreter that starts a server (``sys.executable``, a
+    path of the machine and its venv, in no replay key) and the data folder Ask's server reads (a fresh temporary
+    folder each run) are placeholders; the server, its arguments and its environment stay. Another program's
+    command (``npx``, say) is kept: a change to it is a change to the request."""
+
+    def walk(value: Any) -> Any:
         if isinstance(value, Mapping):
-            return {k: walk(v, k) for k, v in value.items()}
-        if isinstance(value, list):
-            out: list[Any] = []
-            for item in value:
-                out.append("<data-dir>" if out and out[-1] == "--data-dir" else walk(item))
+            out = {k: walk(v) for k, v in value.items()}
+            if _is_interpreter(value.get("command"), value.get("args")):
+                out["command"] = "<python>"
             return out
-        if key == "command" and isinstance(value, str) and Path(value).name.lower().startswith("python"):
-            return "<python>"
+        if isinstance(value, list):
+            items: list[Any] = []
+            for item in value:
+                items.append("<data-dir>" if items and items[-1] == "--data-dir" else walk(item))
+            return items
         return value
 
     return None if config is None else walk(config)
