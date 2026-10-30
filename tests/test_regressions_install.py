@@ -90,7 +90,7 @@ def test_serve_opens_no_browser_on_the_missing_web_app(
 
     opened: list[object] = []
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
-    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda folder, info: opened.append(info))
+    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: opened.append(info))
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", 0))

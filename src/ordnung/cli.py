@@ -6,10 +6,13 @@
 in-process under an exclusive data-directory lock — refused while hand-off sync has another computer
 in use, and saved to the sync folder afterwards (best effort). ``sync`` is hand-off sync between the
 person's computers (:mod:`ordnung.sync`): through the running server's API, or in process under the
-lock after finishing an interrupted take-over. ``demo`` opens the sample life (prebuilt,
-zero tokens), ``doctor`` checks the setup, ``mcp`` is the read-only tool server Ask spawns (stdio —
-nothing else may be printed to stdout), ``openapi`` prints the API schema and ``eval`` runs the
-benchmark in a source checkout.
+lock after finishing an interrupted take-over. ``trace`` prints how a letter was read, as JSON.
+``backup`` and ``restore`` write and read one encrypted file of everything (:mod:`ordnung.backup`).
+``demo`` opens the sample life (prebuilt, zero tokens), ``doctor`` checks the setup, ``mcp`` is the
+read-only tool server Ask spawns (stdio — nothing else may be printed to stdout; ``mcp install`` puts
+it into Claude Desktop or Claude Code), ``openapi`` prints the API schema and ``eval`` runs the
+benchmark in a source checkout. ``shortcut`` puts Ordnung in the app menu (:mod:`ordnung.shortcut`)
+and ``autostart`` starts it at login (:mod:`ordnung.autostart`).
 
 Heavy modules are imported inside the commands, so ``python -m ordnung mcp`` starts quickly.
 Common problems end with a short explanation and a hint, never a traceback
@@ -20,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import html
 import importlib
 import json
 import os
@@ -46,7 +48,15 @@ from rich.table import Table
 from ordnung import __version__
 from ordnung.assistant.mcp_install import McpClient
 from ordnung.config import REPO_DIR, Paths, default_data_dir, resolve_paths
-from ordnung.server import DEFAULT_HOST, DEFAULT_PORT, ServerInfo, advertise, generate_token, running_server
+from ordnung.server import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    DEMO_PORT,
+    ServerInfo,
+    advertise,
+    generate_token,
+    running_server,
+)
 
 if TYPE_CHECKING:
     import httpx
@@ -61,7 +71,6 @@ FINAL_STATUSES = frozenset({"processed", "needs_review", "failed", "held"})
 POLL_S = 0.5
 HEALTH_TIMEOUT_S = 2.0
 BROWSER_WAIT_S = 15.0
-LOGIN_PAGE_NAME = ".ordnung-open.html"
 SCHEMA_HINT = "Update Ordnung, or restore a backup made with this version (`ordnung restore FILE --force`)."
 # C0/C1 controls except tab and newline, and bidirectional overrides: a letter's title (written by the
 # model from an attacker's letter) or a file name must not drive the terminal (e.g. OSC 52 → clipboard)
@@ -94,7 +103,7 @@ err_console = Console(stderr=True, highlight=False)
 
 app = typer.Typer(
     name="ordnung",
-    help="Ordnung — your private AI secretary for life admin. Your files stay on this computer.",
+    help="Ordnung — your private AI secretary for life admin in Germany. Your files stay on this computer.",
     no_args_is_help=True,
     add_completion=False,
     pretty_exceptions_enable=False,
@@ -437,36 +446,20 @@ def _port_free(host: str, port: int) -> bool:
     return True
 
 
-def login_page(folder: Path, info: ServerInfo) -> Path:
-    """A private page (``0600``, in the private data folder) that forwards the browser to the sign-in
-    link. The browser is opened with this file instead of the link, so the session token never
-    appears on a command line, where other accounts on the computer could read it (``ps``)."""
-    path = folder / LOGIN_PAGE_NAME
-    target = html.escape(info.login_url, quote=True)
-    page = (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        f"<meta http-equiv='refresh' content='0;url={target}'><title>Opening Ordnung</title></head>"
-        f"<body><p><a href='{target}'>Open Ordnung</a></p></body></html>\n"
-    )
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
-    with os.fdopen(os.open(path, flags, 0o600), "w", encoding="utf-8") as handle:
-        handle.write(page)
-    if os.name == "posix":
-        path.chmod(0o600)
-    return path
+def launch_browser(info: ServerInfo) -> None:
+    """Open Ordnung in the browser, signed in, without putting the session token on a command line, where
+    other accounts on the computer could read it (``ps``): the browser gets a one-time link instead, which
+    the server takes once, within a minute (:meth:`ServerInfo.open_url`). No file is written, so a browser
+    that can't read the data folder (a snap or Flatpak) opens it all the same."""
+    webbrowser.open(info.open_url())
 
 
-def launch_browser(folder: Path, info: ServerInfo) -> None:
-    """Open Ordnung in the browser without putting the session token on a command line."""
-    webbrowser.open(login_page(folder, info).as_uri() if info.token else info.login_url)
-
-
-def _open_browser_when_ready(folder: Path, info: ServerInfo) -> None:
+def _open_browser_when_ready(info: ServerInfo) -> None:
     def wait_and_open() -> None:
         deadline = time.monotonic() + BROWSER_WAIT_S
         while time.monotonic() < deadline:
             with contextlib.suppress(OSError), socket.create_connection((info.host, info.port), timeout=0.5):
-                launch_browser(folder, info)
+                launch_browser(info)
                 return
             time.sleep(0.2)
 
@@ -563,7 +556,7 @@ def _run_server(server: Any) -> None:
     * Closing the terminal window (SIGHUP, which uvicorn doesn't handle; on Windows the console's
       CTRL_CLOSE_EVENT, :func:`_stop_on_console_close`) stops it as Ctrl+C does: the app's shutdown runs
       (sync's last save, this computer marked as no longer using Ordnung), then ``serve`` ends with
-      :data:`HANG_UP_EXIT` and its clean-up takes away ``server.json`` and the sign-in page.
+      :data:`HANG_UP_EXIT` and its clean-up takes away ``server.json``.
     * A failed startup (the app's, or the port taken after the check) becomes a failure of ``serve``'s own,
       code 1, so the launcher's window waits for Enter. Newer uvicorn ends it with exit code 3, the
       launcher's "no window" (:data:`ordnung.shortcut.NO_WINDOW_EXIT`); older ones with code 1 (the port)
@@ -703,13 +696,13 @@ def _serve(
         )
     already = reachable_server(folder)
     if already is not None:
-        if from_shortcut:  # no link printed: the browser opens signed in through the private page
+        if from_shortcut:  # no link printed: the browser opens signed in with a one-time link
             console.print("Ordnung is already running for this folder: opened it in your browser.")
-            launch_browser(folder, already)
+            launch_browser(already)
             return
         console.print(f"Ordnung is already running for this folder: [bold]{escape(already.login_url)}[/]")
         if open_browser:
-            launch_browser(folder, already)
+            launch_browser(already)
         return
     if from_shortcut:
         from ordnung.shortcut import NO_WINDOW_EXIT
@@ -727,18 +720,19 @@ def _serve(
         if starting is None:
             raise
         console.print("Ordnung has just started for this folder: opened it in your browser.")
-        launch_browser(folder, starting)
+        launch_browser(starting)
         return
     with lock, _graceful_stop():
         if prepare is not None:
             prepare()
         if not _port_free(host, port):
+            other = port + 1 if port + 1 != DEMO_PORT else port + 2  # the demo's stays free for the demo
             # opened from the launcher, nobody typed a command to add --port to
             hint = (
                 "Something else uses it, maybe another Ordnung such as `ordnung demo`: stop it and open "
-                f"Ordnung again, or give the shortcut another port once: ordnung shortcut --port {port + 1}"
+                f"Ordnung again, or give the shortcut another port once: ordnung shortcut --port {other}"
                 if from_shortcut
-                else f"Choose another one, e.g. --port {port + 1}."
+                else f"Choose another one, e.g. --port {other}."
             )
             raise _fail(f"Port {port} is already in use.", hint=hint)
         context = build_context(folder, backend=backend)
@@ -756,14 +750,13 @@ def _serve(
             with advertise(folder, port=port, token=token, host=host) as info:
                 _announce(info, demo=demo, data_dir=folder, from_shortcut=from_shortcut)
                 if open_browser:
-                    _open_browser_when_ready(folder, info)
+                    _open_browser_when_ready(info)
                 # the plain asyncio loop: uvloop runs Python in the child it forks to start `claude`,
                 # where the store's thread cleanup could deadlock (see ordnung.db.store)
                 config = uvicorn.Config(asgi, host=host, port=port, log_level="warning", loop="asyncio")
                 _run_server(uvicorn.Server(config))
         finally:
             context.close()
-            (folder / LOGIN_PAGE_NAME).unlink(missing_ok=True)
 
 
 @app.command()
@@ -1312,7 +1305,7 @@ def trace(
         typer.echo(text, nl=False)
         return
     # the plain JSON names to-dos and organisations: private to this account (0600), never through a
-    # link, and never over an existing file unless asked (as the sign-in page is written)
+    # link, and never over an existing file unless asked
     flags = os.O_WRONLY | os.O_CREAT | (os.O_TRUNC if force else os.O_EXCL) | getattr(os, "O_NOFOLLOW", 0)
     with _friendly():
         try:
@@ -1438,7 +1431,8 @@ def demo(
     ] = False,
     no_browser: Annotated[bool, typer.Option("--no-browser", help="Don't open the browser.")] = False,
     host: Annotated[str, typer.Option(help="Address to listen on.")] = DEFAULT_HOST,
-    port: Annotated[int, typer.Option(help="Port to listen on.")] = DEFAULT_PORT,
+    # its own port, so the demo runs beside Ordnung (`serve --demo` keeps Ordnung's)
+    port: Annotated[int, typer.Option(help="Port to listen on.")] = DEMO_PORT,
 ) -> None:
     """Explore the sample life of Sam Rivera — recorded answers, zero tokens."""
     with _friendly():

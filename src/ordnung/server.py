@@ -4,15 +4,24 @@
 only — it holds the session token) and removes it on exit. CLI commands find a live server with
 :func:`running_server` and talk to its API (bearer token) instead of opening the database
 themselves. The file doubles as the pidfile: a stale file (its process is gone) counts as no server.
+
+The browser is opened with a one-time sign-in link (:meth:`ServerInfo.open_url`), never the token: a
+browser's command line can be read by other accounts on the computer. Its code is
+``<expires>.<nonce>.<mac>``, the mac an HMAC-SHA256 of ``<expires>|<nonce>`` keyed with the session
+token, so the CLI can make one for a server that is already running; the server takes each code once,
+within :data:`OPEN_LINK_S` (:class:`ordnung.api.security.OneTimeCodes`).
 """
 
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import hmac
 import json
 import os
 import secrets
 import sys
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from urllib.parse import quote
@@ -26,7 +35,14 @@ from ordnung.durable import write_atomic
 SERVER_FILE = "server.json"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
+#: ``ordnung demo``'s port, so the demo runs beside Ordnung (``serve --demo`` keeps :data:`DEFAULT_PORT`)
+DEMO_PORT = 8766
 TOKEN_BYTES = 32
+#: The query parameter of a one-time sign-in link (``/?open=<code>``).
+OPEN_QUERY = "open"
+#: How long a one-time sign-in link works, in seconds.
+OPEN_LINK_S = 60
+OPEN_NONCE_BYTES = 16
 
 
 class ServerInfo(BaseModel):
@@ -50,6 +66,13 @@ class ServerInfo(BaseModel):
         """The link that signs a browser in (``/?token=…``; plain ``/`` without a token)."""
         return f"{self.base_url}/?token={quote(self.token)}" if self.token else f"{self.base_url}/"
 
+    def open_url(self, *, now: float | None = None) -> str:
+        """A link that signs a browser in once, within :data:`OPEN_LINK_S` (``/?open=<code>``; plain ``/``
+        without a token): what Ordnung opens the browser with."""
+        if not self.token:
+            return f"{self.base_url}/"
+        return f"{self.base_url}/?{OPEN_QUERY}={open_code(self.token, now=now)}"
+
     def api_url(self, path: str) -> str:
         """Absolute URL of an API path (``/documents`` → ``http://…/api/documents``)."""
         return f"{self.base_url}/api/{path.lstrip('/')}"
@@ -65,6 +88,18 @@ class ServerInfo(BaseModel):
 def generate_token() -> str:
     """A fresh random session token (URL-safe)."""
     return secrets.token_urlsafe(TOKEN_BYTES)
+
+
+def open_code_mac(token: str, expires: int, nonce: str) -> str:
+    """The signature of a one-time code: HMAC-SHA256 of ``<expires>|<nonce>``, keyed with the token."""
+    return hmac.new(token.encode(), f"{expires}|{nonce}".encode(), hashlib.sha256).hexdigest()
+
+
+def open_code(token: str, *, now: float | None = None) -> str:
+    """A fresh one-time sign-in code, ``<expires>.<nonce>.<mac>``, good for :data:`OPEN_LINK_S` seconds."""
+    expires = int(time.time() if now is None else now) + OPEN_LINK_S
+    nonce = secrets.token_urlsafe(OPEN_NONCE_BYTES)
+    return f"{expires}.{nonce}.{open_code_mac(token, expires, nonce)}"
 
 
 def server_file(data_dir: str | Path) -> Path:

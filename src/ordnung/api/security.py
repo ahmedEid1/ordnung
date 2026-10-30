@@ -13,12 +13,16 @@ Ordnung listens on 127.0.0.1 only, but any web page the person visits can try to
   that cookie or ``Authorization: Bearer <token>``. The cookie is named per port because browsers send
   a cookie to every port of a host: the demo and the real app would otherwise sign each other out (the
   cookie still reaches other servers on localhost; only a token kept out of cookies would not).
-  ``ordnung serve`` opens the browser with a private local page that forwards to that link (so the
-  token is never on a command line); that page load is cross-site, so a page load carrying the *valid*
-  token is accepted from anywhere and answered with a same-origin forward instead of a redirect
-  (knowing the token is already full access). ``/api/health`` answers without it (with minimal information). The token is
-  never accepted in an API URL, where it would end up in other programs. ``token=None`` turns the
-  token check off (tests, ``--no-token``).
+  ``ordnung serve`` opens the browser with a one-time link instead, ``GET /?open=<code>``
+  (:meth:`ordnung.server.ServerInfo.open_url`), so the token is never on a command line: each code is
+  taken once, within a minute (:class:`OneTimeCodes`), and then signs in like the token. Both are taken
+  only on a top-level page load. A link opened from another site is a cross-site page load: one carrying
+  a *valid* token or code is accepted from anywhere and answered with a same-origin forward instead of a
+  redirect (knowing the token is already full access). ``/api/health`` answers without it (with minimal
+  information). Neither is ever accepted in an API URL, where it would end up in other programs.
+  ``token=None`` turns the token check off (tests, ``--no-token``);
+* refuses an ``/api`` request whose body has no stated length (``Transfer-Encoding``, 411), so the
+  200 MB cap holds before anything is read.
 
 It also adds ``X-Content-Type-Options: nosniff`` and ``Referrer-Policy: no-referrer`` to every
 response. HTML pages carry the strict Content Security Policy built by :func:`content_security_policy`.
@@ -37,7 +41,8 @@ import hashlib
 import html
 import re
 import secrets
-from collections.abc import Iterable, Sequence
+import time
+from collections.abc import Callable, Iterable, Sequence
 from typing import Protocol
 from urllib.parse import urlencode, urlsplit
 
@@ -45,8 +50,12 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from ordnung.server import OPEN_LINK_S, OPEN_QUERY, open_code_mac
+
 TOKEN_COOKIE = "ordnung_token"
 TOKEN_QUERY = "token"
+#: The query parameters that sign a page load in: the session token, or a one-time code.
+SIGN_IN_QUERIES = (TOKEN_QUERY, OPEN_QUERY)
 CLIENT_HEADER = "x-ordnung-client"
 AUTH_STATE_KEY = "ordnung_authenticated"
 #: Set in the ASGI scope by the phone listener's app (``phone_gate.PhoneListener``); no client can set it.
@@ -56,7 +65,8 @@ PHONE_LISTENER = "phone"
 DEVICE_KEY = "ordnung.device"
 COOKIE_MAX_AGE_S = 30 * 24 * 3600
 #: Largest request body: 200 MB of letters at once plus the form around them. A larger one is refused
-#: by its ``Content-Length``, before the form parser writes it to the temp folder.
+#: by its ``Content-Length``, before the form parser writes it to the temp folder (and an API request
+#: without one, 411).
 MAX_REQUEST_BYTES = 210 * 1024 * 1024
 
 ALLOWED_HOSTS = frozenset({"localhost", "127.0.0.1", "[::1]"})
@@ -72,6 +82,7 @@ _ALWAYS_HEADERS: tuple[tuple[bytes, bytes], ...] = (
 _INLINE_SCRIPT_RE = re.compile(r"<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>", re.IGNORECASE | re.DOTALL)
 _SRC_ATTR_RE = re.compile(r"\bsrc\s*=", re.IGNORECASE)
 _PORT_RE = re.compile(r"^\d{1,5}$")
+_OPEN_CODE_RE = re.compile(r"(\d{1,12})\.([A-Za-z0-9_-]{8,64})\.([0-9a-f]{64})", re.ASCII)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -187,6 +198,33 @@ def token_matches(candidate: str | None, token: str) -> bool:
     return bool(candidate) and secrets.compare_digest(str(candidate).encode(), token.encode())
 
 
+class OneTimeCodes:
+    """The one-time sign-in codes a server takes (:func:`ordnung.server.open_code`): made with its token,
+    not expired, and each only once. The ones taken are kept in memory until they expire."""
+
+    def __init__(self, token: str, *, clock: Callable[[], float] = time.time) -> None:
+        self.token = token
+        self.clock = clock
+        self._taken: dict[str, int] = {}
+
+    def redeem(self, code: str | None) -> bool:
+        """Whether ``code`` signs in; it never does again afterwards."""
+        match = _OPEN_CODE_RE.fullmatch(code or "")
+        if match is None:
+            return False
+        expires, nonce, mac = int(match[1]), match[2], match[3]
+        now = self.clock()
+        if not now <= expires <= now + OPEN_LINK_S:  # expired, or made to last longer than a link does
+            return False
+        if not secrets.compare_digest(mac, open_code_mac(self.token, expires, nonce)):
+            return False
+        self._taken = {taken: until for taken, until in self._taken.items() if until >= now}
+        if nonce in self._taken:
+            return False
+        self._taken[nonce] = expires
+        return True
+
+
 def bearer_token(request: Request) -> str | None:
     """The token of an ``Authorization: Bearer …`` header."""
     scheme, _, value = request.headers.get("authorization", "").partition(" ")
@@ -234,8 +272,9 @@ def cross_site_rejection(request: Request) -> Response | None:
 
 
 def _without_token(request: Request) -> str:
-    """The page's own path and query without the token (always one leading ``/``: never another host)."""
-    kept = [(key, value) for key, value in request.query_params.multi_items() if key != TOKEN_QUERY]
+    """The page's own path and query without the token or code (always one leading ``/``: never another
+    host)."""
+    kept = [(key, value) for key, value in request.query_params.multi_items() if key not in SIGN_IN_QUERIES]
     return "/" + request.url.path.lstrip("/\\") + (f"?{urlencode(kept)}" if kept else "")
 
 
@@ -252,14 +291,18 @@ def _forward_page(target: str) -> HTMLResponse:
     )
 
 
-def login_response(request: Request, token: str) -> Response:
-    """``GET <page>?token=…``: set the session cookie and redirect to the page without the token (a
-    cross-site page load, e.g. from the local page ``ordnung serve`` opens, gets a same-origin forward)."""
-    if not token_matches(request.query_params.get(TOKEN_QUERY), token):
+def login_response(request: Request, token: str, *, valid: bool | None = None) -> Response:
+    """``GET <page>?token=…`` (or a one-time ``?open=…`` the caller found ``valid``): set the session cookie
+    and redirect to the page without it (a cross-site page load, e.g. a link opened from another site, gets
+    a same-origin forward)."""
+    if valid is None:
+        valid = token_matches(request.query_params.get(TOKEN_QUERY), token)
+    if not valid:
         return html_page(
             "This link has expired",
             [
-                "The access link is not valid (any more). Ordnung creates a new one each time it starts.",
+                "The access link is not valid (any more). Ordnung creates a new one each time it starts, "
+                "and the link it opens your browser with works only once.",
                 "Start it again and open the link it prints:",
             ],
             status_code=401,
@@ -276,11 +319,11 @@ def login_response(request: Request, token: str) -> Response:
 
 
 def is_token_login(request: Request) -> bool:
-    """A top-level page load (not an API call, frame or fetch) carrying ``?token=``."""
+    """A top-level page load (not an API call, frame or fetch) carrying ``?token=`` or ``?open=``."""
     return (
         request.method in SAFE_METHODS
         and not _is_api(request.url.path)
-        and TOKEN_QUERY in request.query_params
+        and any(name in request.query_params for name in SIGN_IN_QUERIES)
         and request.headers.get("sec-fetch-mode", "navigate").lower() == "navigate"
         and request.headers.get("sec-fetch-dest", "document").lower() == "document"
     )
@@ -326,6 +369,7 @@ class SecurityMiddleware:
         self.app = app
         self.token = token
         self.phone = phone
+        self.codes = OneTimeCodes(token) if token is not None else None
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "websocket":  # Ordnung has none: never let one past the checks
@@ -349,11 +393,21 @@ class SecurityMiddleware:
             return
         await self.app(scope, receive, _with_headers(send))
 
+    def _signs_in(self, request: Request) -> bool:
+        """The page load carries the token, or a one-time code (which is then used up; never by a HEAD,
+        which shows no page)."""
+        query = request.query_params
+        if self.token is not None and token_matches(query.get(TOKEN_QUERY), self.token):
+            return True
+        if self.codes is None or OPEN_QUERY not in query or request.method != "GET":
+            return False
+        return self.codes.redeem(query.get(OPEN_QUERY))
+
     def _gate(self, request: Request) -> Response | None:
         if self.token is not None and is_token_login(request) and host_allowed(request.headers.get("host")):
-            valid = token_matches(request.query_params.get(TOKEN_QUERY), self.token)
+            valid = self._signs_in(request)
             if valid or cross_site_rejection(request) is None:
-                return login_response(request, self.token)
+                return login_response(request, self.token, valid=valid)
         rejection = cross_site_rejection(request)
         if rejection is not None:
             return rejection
@@ -369,6 +423,8 @@ class SecurityMiddleware:
         request.scope.setdefault("state", {})[AUTH_STATE_KEY] = authenticated
         if not authenticated and path not in PUBLIC_API_PATHS:
             return unauthenticated_response(request)
+        if _is_api(path) and "transfer-encoding" in request.headers:
+            return JSONResponse({"detail": "This request must say how long it is."}, status_code=411)
         length = request.headers.get("content-length", "")
         if length.isdigit() and int(length) > MAX_REQUEST_BYTES:
             return JSONResponse({"detail": "Please add at most 200 MB at once."}, status_code=413)

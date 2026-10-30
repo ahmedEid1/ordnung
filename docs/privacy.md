@@ -757,8 +757,10 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
 - The local web server listens on `127.0.0.1` and answers only requests addressed to this computer
   (`localhost` or `127.0.0.1`), and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict
-  Content-Security-Policy. `ordnung serve` opens your browser through a private local page, so the
-  token never appears on a command line other accounts could see.
+  Content-Security-Policy. `ordnung serve` and `ordnung demo` open your browser with a one-time sign-in
+  link, so the token never appears on a command line other accounts could see. The link's one-time code
+  does, briefly: it signs in once, within a minute, and is dead after that. An API request whose body
+  has no stated length is refused before anything is read.
 - Phone access's listener, while it is on, has checks of its own: HTTPS only, exactly
   `https://<address>:<port>` as the address asked for (no names, so DNS rebinding fails), only devices
   in your home network's subnet, `Origin` required on every change and Fetch-Metadata checked, no

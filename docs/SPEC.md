@@ -1767,8 +1767,9 @@ outside the database, Delete everything leaves first, a restored backup starts w
 
 ## 13. HTTP API — `api/`
 
-Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
-`/?token=…` → HttpOnly SameSite=Strict cookie, its name per port; CLI reads `<data>/server.json` {port,
+Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints
+`/?token=…` and opens a one-time `/?open=…` link, good once within 60 s → HttpOnly SameSite=Strict
+cookie, its name per port; CLI reads `<data>/server.json` {port,
 token, pid}); non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin,
 none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with three bounded exceptions:
 `health?probe=1` ("Run check") makes one tiny live model call, at most once a minute; `health` itself,
