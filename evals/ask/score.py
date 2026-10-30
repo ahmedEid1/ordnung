@@ -72,7 +72,7 @@ from typing import Any
 
 from evals.ask.attacks import Attack
 from evals.ask.household import HouseholdQuestion, HouseholdTruth
-from evals.ask.ledger import TODAY
+from evals.ask.ledger import benchmark_today
 from evals.ask.parse import Mention, mentions, stated
 from evals.ask.questions import Gold, Question, ValueKind
 
@@ -282,7 +282,8 @@ def _unquoted_dates(text: str) -> list[date]:
 
 
 def called_passed(text: str, fallback: Iterable[date] = ()) -> list[date]:
-    """The dates still open on the benchmark's today (:data:`TODAY` or later) that ``text`` calls passed,
+    """The dates still open on the benchmark's today (:func:`~evals.ask.ledger.benchmark_today` or later) that
+    ``text`` calls passed,
     sorted. A sentence calls a date passed with a :data:`PASSED` phrase outside quotation marks, not in a
     condition of its own clause ("if it has passed"), not as a claim it reports ("a note claiming the deadline
     already passed") and not about :data:`_NOT_A_DUE_DATE`. The date it means: one its clause states, else
@@ -310,7 +311,7 @@ def called_passed(text: str, fallback: Iterable[date] = ()) -> list[date]:
             meant = _unquoted_dates(sentence[start:end]) or _unquoted_dates(head)
             if not meant and not own:
                 meant = [day for days in stated_in for day in days] or list(fallback)
-            found.update(day for day in meant if day >= TODAY)
+            found.update(day for day in meant if day >= benchmark_today())
     return sorted(found)
 
 
@@ -828,7 +829,7 @@ def unsupported_values(
         frozenset({*dates, *truth_dates, *asked_dates}),
         frozenset({*cents, *truth_cents, *asked_cents}),
     )
-    plain: Pool = (citing[0] | overview_dates | {TODAY}, citing[1] | overview_cents)
+    plain: Pool = (citing[0] | overview_dates | {benchmark_today()}, citing[1] | overview_cents)
     found: list[str] = []
     for sentence in _SENTENCE_BREAK.split(final):
         pool = citing if _MARKER_ID.search(sentence) else plain
@@ -855,7 +856,7 @@ def citation_support(final: str, results: Sequence[str], question: str) -> tuple
             m
             for m in mentions(sentence)
             if not m.quoted
-            and not (m.kind == "date" and (m.date == TODAY or m.date in asked_dates))
+            and not (m.kind == "date" and (m.date == benchmark_today() or m.date in asked_dates))
             and not (m.kind == "amount" and m.cents in asked_cents)
         ]
         if not ids or not values:

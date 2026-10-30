@@ -133,7 +133,13 @@ DEFAULT_CONCURRENCY = 3
 DEFAULT_TIMEOUT_S = 300.0
 
 #: Errors after which further calls cannot succeed: stop scheduling, keep what is done.
-FATAL_ERRORS = (ClaudeNotInstalled, ClaudeAuthError, ClaudeRateLimited, harness.BudgetReached)
+FATAL_ERRORS = (
+    ClaudeNotInstalled,
+    ClaudeAuthError,
+    ClaudeRateLimited,
+    harness.BudgetReached,
+    harness.RecordingDayOver,
+)
 
 Progress = Callable[[str], None]
 
@@ -166,6 +172,12 @@ class RunConfig:
     live_setup: harness.LiveSetup | None = None
     #: Check every replayed request against the request lock (``lock-requests`` captures without it).
     check_requests: bool = True
+    #: The day a live run is recorded on, which every letter's simulated today must be (the plan's addendum, item 8):
+    #: ``None`` — the UTC date at the start of a run with the real ``claude`` (a stand-in, which tells the model no
+    #: date, is checked only when this is given). The run starts no call once that day is over.
+    recording_day: date | None = None
+    #: A smoke into a scratch folder may record letters pinned to another day (``--allow-another-today``).
+    allow_another_today: bool = False
     #: Tests: stands in for the ``claude`` CLI on a live run (the rest of the stack is the real one).
     live_backend: LLMBackend | None = None
     concurrency: int = DEFAULT_CONCURRENCY
@@ -330,7 +342,7 @@ def make_backend(
         ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
-        calls = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter)
+        calls = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
         recorder = RecordingBackend(calls, root, allowed_doc_ids=allowed_doc_ids, provenance=setup.provenance)
         if config.refresh:
             stack = RecordedFailures(recorder, root, record=True, replay=False)
@@ -352,6 +364,17 @@ def make_backend(
     return stack
 
 
+def recording_day(config: RunConfig, entries: Sequence[Entry]) -> date | None:
+    """The day a live run records on, once it is checked that every letter's simulated today is that day
+    (:func:`evals.harness.check_recording_day`); ``None`` when the day is not checked (a replay, a stand-in for the
+    ``claude`` CLI without an explicit ``recording_day``, or a smoke that allows another today)."""
+    if not config.live or (config.live_backend is not None and config.recording_day is None):
+        return None
+    day = config.recording_day or harness.utc_today()
+    harness.check_recording_day([entry.today for entry in entries], day, allow=config.allow_another_today)
+    return None if config.allow_another_today else day
+
+
 def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) -> harness.LiveSetup:
     """What a live run's stacks share: its budget, its waiting, its provenance.
 
@@ -367,13 +390,19 @@ def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) 
                 f"{config.repeat} (from the ledger): the cap counts it"
             )
         budget = harness.Budget(config.max_cost_usd, spent=spent)
+    day = recording_day(config, entries)
     return harness.LiveSetup(
         repeat=config.repeat,
         budget=budget,
         waiter=harness.LimitWaiter(config.wait_on_limit_hours, say=say)
         if config.wait_on_limit_hours
         else None,
-        provenance={"repeat": config.repeat, "commit": _commit()},
+        day=day,
+        provenance={
+            "repeat": config.repeat,
+            "commit": _commit(),
+            **({"today": day.isoformat()} if day else {}),
+        },
     )
 
 
@@ -610,6 +639,7 @@ def run_meta(
     *,
     left_out: Sequence[str] = (),
     cli_version: str | None = None,
+    recorded_on: date | None = None,
 ) -> dict[str, Any]:
     conditions = [condition for condition in config.conditions if condition not in left_out]
     meta: dict[str, Any] = {
@@ -638,6 +668,10 @@ def run_meta(
         "dirty": harness.dirty_paths(ROOT),
         # `claude --version` of a live run (null on a replay: no claude ran)
         "cli_version": cli_version,
+        # the letters' simulated today, and the day a live run was recorded on (null on a replay): equal after the
+        # code freeze (the evaluation plan's addendum, item 8)
+        "simulated_today": sorted({entry.today for entry in entries}),
+        "recording_day": recorded_on.isoformat() if recorded_on is not None else None,
     }
     if left_out:
         meta["left_out"] = {condition: "recorded answers missing on replay" for condition in left_out}
@@ -676,8 +710,12 @@ async def run_benchmark(
     with contextlib.ExitStack() as held:
         live: harness.LiveSetup | None = None
         if config.live and backend is None and config.live_setup is not None:
+            recording_day(
+                config, entries
+            )  # the shared setup's day was checked for its first run; this one too
             live = config.live_setup  # shared with other runs: their caller holds the recorder lock
         elif config.live and backend is None:
+            recording_day(config, entries)  # refused before the lock is taken or any call made
             lock = config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME
             held.enter_context(harness.RecorderLock(lock, command=" ".join(["evals.run", *sys.argv[1:]])))
             live = live_setup(config, tell, entries)
@@ -747,6 +785,7 @@ async def _run_models(
             label,
             left_out=run.left_out,
             cli_version=live.cli_version if live is not None else None,
+            recorded_on=(live.day or harness.utc_today()) if live is not None else None,
         )
         unrecorded = reask_unrecorded(run)
         if unrecorded:
@@ -961,6 +1000,12 @@ def build_parser() -> argparse.ArgumentParser:
         "run started, instead of stopping; no call is made while waiting",
     )
     parser.add_argument(
+        "--allow-another-today",
+        action="store_true",
+        help="with --live: record letters whose simulated today is not today's date (UTC) — only a smoke into a "
+        "scratch --recorded-dir, thrown away; a published recording's letters are built for the day it is recorded",
+    )
+    parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"model alias or id (default: {DEFAULT_MODEL})"
     )
     parser.add_argument(
@@ -1047,6 +1092,7 @@ def config_from_args(ns: argparse.Namespace) -> RunConfig:
         repeat=ns.repeat,
         max_cost_usd=ns.max_cost_usd,
         wait_on_limit_hours=ns.wait_on_limit,
+        allow_another_today=ns.allow_another_today,
         recorder_lock=ns.recorder_lock,
         concurrency=ns.concurrency,
         timeout_s=ns.timeout,
@@ -1109,7 +1155,7 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     try:
         # what went wrong is said even under --quiet (CI's gates): why predictions failed, why the run stopped
         outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress, alert=_stderr))
-    except (ValueError, harness.RecorderBusy) as exc:
+    except (ValueError, harness.RecorderBusy, harness.HarnessError) as exc:
         _stderr(f"error: {exc}")
         return 1
     for line in summary_lines(outcome):

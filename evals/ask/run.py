@@ -53,7 +53,16 @@ from evals.ask.household import (
     household_truth,
     summarise_household,
 )
-from evals.ask.ledger import TODAY, SampleLife, build_base, copy_database, inject, pinned_today
+from evals.ask.ledger import (
+    TODAY,
+    SampleLife,
+    benchmark_today,
+    build_base,
+    copy_database,
+    inject,
+    on_day,
+    pinned_today,
+)
 from evals.ask.metrics import summarise, summarise_strict
 from evals.ask.questions import Question, all_questions, load_truth, truth_values
 from evals.ask.score import (
@@ -134,6 +143,20 @@ class Config:
     check_requests: bool = True
     #: The recorder lock a live run holds (``None``: ``.recording.lock`` in ``recorded_dir``).
     recorder_lock: Path | None = None
+    #: The day the ledger, the turns and the scores are for: ``None`` — the sample life's own, :data:`TODAY` (the
+    #: development set is asked on no other). A held-out set recorded after the freeze is built for the day it is
+    #: recorded (the evaluation plan's addendum, item 8).
+    today: date | None = None
+    #: The day a live run is recorded on, which ``today`` must be: ``None`` — the UTC date at the start of a run with
+    #: the real ``claude`` (a stand-in, which tells the model no date, is checked only when this is given).
+    recording_day: date | None = None
+    #: A smoke into a scratch folder may record on another day than the set's (``--allow-another-today``).
+    allow_another_today: bool = False
+
+    @property
+    def day(self) -> date:
+        """The day this run is for (:attr:`today`, or the sample life's)."""
+        return self.today or TODAY
 
     @property
     def root(self) -> Path:
@@ -270,6 +293,27 @@ def _check_options(config: Config) -> None:
         raise BenchmarkError(f"no question set {config.set_name!r}: {' or '.join(SETS)}")
     if config.repeat < 1:
         raise BenchmarkError(f"--repeat counts from 1, not {config.repeat}")
+    if config.set_name == "dev" and config.day != TODAY:
+        raise BenchmarkError(
+            f"the development set is asked on the sample life's own day, {TODAY.isoformat()} (its gold and its "
+            f"recordings are that day's), not on {config.day.isoformat()}"
+        )
+
+
+def recording_day(config: Config) -> date | None:
+    """The day a live run records on, once it is checked that the set's day is that day
+    (:func:`evals.harness.check_recording_day`); ``None`` when it is not checked (a replay, a stand-in without an
+    explicit ``recording_day``, or a smoke that allows another today)."""
+    if not (config.live or config.refresh) or (
+        config.live_backend is not None and config.recording_day is None
+    ):
+        return None
+    day = config.recording_day or harness.utc_today()
+    try:
+        harness.check_recording_day([config.day], day, allow=config.allow_another_today)
+    except harness.HarnessError as exc:
+        raise BenchmarkError(str(exc)) from exc
+    return None if config.allow_another_today else day
 
 
 def live_setup(config: Config) -> Any:
@@ -288,13 +332,19 @@ def live_setup(config: Config) -> Any:
                 f"{config.repeat} (from the ledger): the cap counts it"
             )
         budget = harness.Budget(config.max_cost_usd, spent=spent)
+    day = recording_day(config)
     return harness.LiveSetup(
         repeat=config.repeat,
         budget=budget,
         waiter=harness.LimitWaiter(config.wait_on_limit_hours, say=_say)
         if config.wait_on_limit_hours
         else None,
-        provenance={"repeat": config.repeat, "commit": checkout_commit()},
+        day=day,
+        provenance={
+            "repeat": config.repeat,
+            "commit": checkout_commit(),
+            **({"today": day.isoformat()} if day else {}),
+        },
     )
 
 
@@ -308,6 +358,7 @@ def _recording(config: Config) -> Iterator[Any]:
     if not (config.live or config.refresh):
         yield None
         return
+    recording_day(config)  # refused before the lock is taken or any turn asked
     lock = harness.RecorderLock(
         config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME,
         command=" ".join(["evals.ask", *sys.argv[1:]]),
@@ -348,7 +399,7 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
         ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
-        cli = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter)
+        cli = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
         provenance = setup.provenance  # stamped on each new cassette, as the benchmark's are
         recorder = RecordingBackend(cli, root, allowed_doc_ids=allowed_doc_ids, provenance=provenance)
         stack = recorder if config.refresh else ReplayBackend(root, fallback=recorder)
@@ -406,17 +457,19 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
             citations = [ref.id for ref in getattr(event, "citations", None) or []]
         elif event.type == "error":
             error = event.error or "error"
-    call = capture.calls.get(ask_cache_key(ctx.store, question, [], TODAY))
+    call = capture.calls.get(ask_cache_key(ctx.store, question, [], benchmark_today()))
     if call is not None and (call.error or "").startswith("no recorded response"):
         capture.missed.append(item_id)
-    if call is not None and (stale := stale_tool_results(LedgerTools(ctx.store, today=TODAY), call.events)):
+    if call is not None and (
+        stale := stale_tool_results(LedgerTools(ctx.store, today=benchmark_today()), call.events)
+    ):
         capture.stale[item_id] = (call.path, stale)
     if final is None or call is None or call.response is None:
         return Turn(
             item_id, question, ledger, "", "", [], call.tools if call else [], error=error or "no answer"
         )
     raw = call.response.text
-    checked = check_turn(ctx.store, raw, call.results, question=question, today=TODAY)
+    checked = check_turn(ctx.store, raw, call.results, question=question, today=benchmark_today())
     usage = call.response.usage
     return Turn(
         id=item_id,
@@ -489,7 +542,7 @@ def scoring_context(base: Path, life: SampleLife, targets: dict[str, str]) -> Co
             letters[party.id] = frozenset(
                 slug[d.id] for d in documents if d.party_id == party.id and d.id in slug
             )
-        tools = LedgerTools(store, today=TODAY)
+        tools = LedgerTools(store, today=benchmark_today())
         contracts = tools.list_contracts(status="all")
         for row in contracts.record["contracts"]:  # a price letter's special window is the contract's too
             window = row.get("special_cancellation")
@@ -502,7 +555,7 @@ def scoring_context(base: Path, life: SampleLife, targets: dict[str, str]) -> Co
             render_result(tools.timeline("2026-01-01", "2027-12-31")),
             *(render_result(tools.explain_date(c.id)) for c in store.list_contracts()),
         ]
-        evidence = TurnEvidence.from_results(rendered, today=TODAY)
+        evidence = TurnEvidence.from_results(rendered, today=benchmark_today())
     finally:
         store.close()
     truth_dates, truth_cents = truth_values(load_truth().values())
@@ -537,12 +590,12 @@ def strict_context(base: Path, context: Context) -> StrictContext:
     the truth's items."""
     store = Store.open(Paths(base))
     try:
-        tools = LedgerTools(store, today=TODAY)
+        tools = LedgerTools(store, today=benchmark_today())
         rendered = [
             render_result(tools.list_items(status="all", limit=200)),
             render_result(tools.list_contracts(status="all")),
         ]
-        evidence = TurnEvidence.from_results(rendered, today=TODAY)
+        evidence = TurnEvidence.from_results(rendered, today=benchmark_today())
     finally:
         store.close()
     own = {
@@ -652,7 +705,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
     household = [q for q in household_questions() if config.wanted(q.id)]
     with (
         _recording(config) as live,
-        pinned_today(),
+        pinned_today(config.day),
         tempfile.TemporaryDirectory(prefix="ordnung-ask-eval-", dir=work_dir) as tmp,
     ):
         work = Path(tmp)
@@ -717,6 +770,13 @@ def run_heldout(config: Config, *, work_dir: Path | None = None) -> RunResult:
     """Ask the held-out set (:mod:`evals.ask.heldout`) as :func:`run` asks the development set: each question on
     its ledger, each attack on a copy of its ledger with the passage injected; score, strict-score, summarise."""
     folder = config.heldout_dir or heldout.HELDOUT_DIR
+    with on_day(config.day):
+        return _run_heldout_on_its_day(config, folder, work_dir)
+
+
+def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None) -> RunResult:
+    """:func:`run_heldout` with :func:`~evals.ask.ledger.benchmark_today` on the run's day: the files are checked,
+    the ledger built, the turns asked and scored for it."""
     try:
         items = heldout.load_questions(folder / heldout.QUESTIONS_NAME)
         hostile = heldout.load_attacks(folder / heldout.ATTACKS_NAME)
@@ -729,7 +789,7 @@ def run_heldout(config: Config, *, work_dir: Path | None = None) -> RunResult:
     life = SampleLife.load()
     with (
         _recording(config) as live,
-        pinned_today(),
+        pinned_today(config.day),
         tempfile.TemporaryDirectory(prefix="ordnung-ask-heldout-", dir=work_dir) as tmp,
     ):
         work = Path(tmp)

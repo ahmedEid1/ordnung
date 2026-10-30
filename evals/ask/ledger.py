@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import contextvars
 import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -26,7 +27,7 @@ from datetime import date
 from pathlib import Path
 
 from ordnung import clock
-from ordnung.app_context import build_context
+from ordnung.app_context import SIMULATED_TODAY_KEY, build_context
 from ordnung.config import Paths, fixtures_dir
 from ordnung.db.store import Store
 from ordnung.demo import Manifest, load_manifest, samples_root
@@ -36,6 +37,25 @@ from ordnung.llm.replay import ReplayBackend
 
 TODAY = date(2026, 9, 28)
 """The sample life's simulated today (``manifest.json``: ``simulated_today``)."""
+
+_DAY: contextvars.ContextVar[date] = contextvars.ContextVar("ask_benchmark_today", default=TODAY)
+
+
+def benchmark_today() -> date:
+    """The day this run's ledger, turns and scores are for: :data:`TODAY` (the development set's), or the day a
+    held-out run is built for (:func:`pinned_today`) — the day it is recorded, so the model never sees two todays
+    (the evaluation plan's addendum, item 8)."""
+    return _DAY.get()
+
+
+@contextlib.contextmanager
+def on_day(day: date) -> Iterator[None]:
+    """Score as of ``day`` (:func:`benchmark_today`), without touching the process clock."""
+    token = _DAY.set(day)
+    try:
+        yield
+    finally:
+        _DAY.reset(token)
 
 
 class LedgerError(RuntimeError):
@@ -67,17 +87,24 @@ class SampleLife:
 
 @contextlib.contextmanager
 def pinned_today(day: date = TODAY) -> Iterator[None]:
-    """Run with the process clock on the sample life's today (restored afterwards)."""
+    """Run with the process clock, and :func:`benchmark_today`, on ``day`` (the sample life's today by default;
+    both restored afterwards)."""
     prior = clock.today() if clock.simulated() else None
     clock.set_today(day.isoformat())
     try:
-        yield
+        with on_day(day):
+            yield
     finally:
         clock.set_today(prior)
 
 
-def build_base(target: Path, life: SampleLife, *, snapshot: Path | None = None) -> Path:
-    """Copy the demo snapshot into ``target`` and open every tray letter (strict replay)."""
+def build_base(
+    target: Path, life: SampleLife, *, snapshot: Path | None = None, day: date | None = None
+) -> Path:
+    """Copy the demo snapshot into ``target`` and open every tray letter (strict replay). ``day`` (default
+    :func:`benchmark_today`): the ledger's simulated today — on another day than the sample life's, the letters are
+    read as they were (on the sample life's day: their recorded readings), and then the copy's settings and meta, and
+    the process clock, say ``day``, so every tool answers, and Ask is told, as of it."""
     source = snapshot or snapshot_dir()
     current = demo_version(samples=life.root)
     if snapshot_version(source) != current:
@@ -87,8 +114,23 @@ def build_base(target: Path, life: SampleLife, *, snapshot: Path | None = None) 
         )
     copy_data(source, target)
     asyncio.run(_open_tray(target, life))
+    when = day or benchmark_today()
+    if when != TODAY:  # the tray letters were read on the sample life's day; the person asks on this one
+        _set_day(target, when)
+        clock.set_today(when.isoformat())  # opening the tray pinned the clock to the snapshot's day
     _settle_stamps(target)
     return target
+
+
+def _set_day(target: Path, day: date) -> None:
+    """The ledger's simulated today is ``day``: what the demo snapshot pins (its settings and meta) is moved to it."""
+    store = Store.open(Paths(target))
+    try:
+        settings = store.get_settings()
+        store.save_settings(settings.model_copy(update={"simulated_today": day.isoformat()}))
+        store.set_meta(SIMULATED_TODAY_KEY, day.isoformat())
+    finally:
+        store.close()
 
 
 _STAMPED = ("documents", "items", "contracts", "parties", "cases")

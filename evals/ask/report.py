@@ -746,6 +746,8 @@ def _schema_2(payload: Mapping[str, Any], result: RunResult, recorded: str) -> d
         "repeat": result.config.repeat,
         "date": payload["date"],
         "recorded": recorded,
+        # the day the ledger, the turns and the scores are for: the sample life's, or a held-out set's recording day
+        "today": result.config.day.isoformat(),
         "model": payload["model"],
         "prompts": payload["prompts"],
         "notes": notes,

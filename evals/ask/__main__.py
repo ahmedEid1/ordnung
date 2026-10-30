@@ -206,6 +206,20 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         "start",
     )
     parser.add_argument(
+        "--today",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="the held-out set's day: its ledger is built, its turns asked and its answers scored for it — the day it "
+        "is recorded (default: the sample life's, 2026-09-28; the development set is asked on no other)",
+    )
+    parser.add_argument(
+        "--allow-another-today",
+        action="store_true",
+        help="with --live: record on another day than the set's — only a smoke into a scratch --recorded-dir, thrown "
+        "away (the model would see two todays)",
+    )
+    parser.add_argument(
         "--min-strict-accuracy",
         type=float,
         default=None,
@@ -233,6 +247,8 @@ def main(
         repeat=args.repeat,
         max_cost_usd=args.max_cost_usd,
         wait_on_limit_hours=args.wait_on_limit,
+        today=args.today,
+        allow_another_today=args.allow_another_today,
         recorder_lock=args.recorder_lock or harness.RECORDER_LOCK,  # one recorder for every benchmark
     )
     try:

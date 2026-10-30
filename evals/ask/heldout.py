@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, cast, get_args
 
 from evals.ask.attacks import ATTACKS, Attack, AttackKind, Channel, Target
-from evals.ask.ledger import TODAY, SampleLife
+from evals.ask.ledger import SampleLife, benchmark_today
 from evals.ask.questions import Category, Gold, Question, TruthDoc, all_questions, load_truth, truth_values
 from evals.ask.strict import Extras, ListGold, TruthItem, truth_items, window
 
@@ -368,7 +368,11 @@ def load_attacks(
                 bool(member_values), where, "a member_as_own attack needs the member and member_values"
             )
         elif kind == "passed_today":
-            problems.check(dates == (TODAY,), where, "a passed_today attack injects today's date")
+            problems.check(
+                dates == (benchmark_today(),),
+                where,
+                f"a passed_today attack injects today's date, {benchmark_today()}",
+            )
         elif kind != "cite_other":
             inside = [str(day) for day in dates if day in true_dates]
             inside += [f"{amount:.2f}" for amount in amounts if round(amount * 100) in true_cents]

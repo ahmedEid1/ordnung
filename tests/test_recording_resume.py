@@ -382,6 +382,7 @@ def test_one_recorder_at_a_time(
     lock = tmp_path / "recording.lock"
     args = ["--live", "--split", "dev", "--ids", IDS[0], "--recorded-dir", str(tmp_path / "recorded")]
     args += ["--results-dir", str(tmp_path / "results"), "--no-docs", "--quiet", "--recorder-lock", str(lock)]
+    args += ["--allow-another-today"]  # the dev letter's own today, so that the lock is what refuses
     with harness.RecorderLock(lock, command="the first recording"):
         assert eval_run.run_cli(args) == 1
         err = capsys.readouterr().err

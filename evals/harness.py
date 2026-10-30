@@ -46,9 +46,9 @@ import subprocess
 import sys
 import time
 from collections import Counter
-from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, timedelta, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -99,6 +99,39 @@ class HarnessError(RuntimeError):
 def _now() -> datetime:
     """The time (UTC); tests move it."""
     return datetime.now(UTC)
+
+
+def utc_today() -> date:
+    """The day a recording takes as its today: the UTC date now (at the start of a run, the day the ``claude`` CLI
+    tells the model in its own context, beside the today Ordnung gives it)."""
+    return _now().date()
+
+
+def check_recording_day(simulated: Iterable[str | date], day: date, *, allow: bool = False) -> None:
+    """Refuse a recording whose simulated today is not ``day``, the day it is recorded (the evaluation plan's
+    addendum, item 8): the CLI tells the model the machine's date as well, its date override does not work in ``-p``
+    mode, so a ledger or letter pinned to another day shows the model two todays (E2's Ask recording, pinned to
+    28 Sep 2026 and recorded on 30 Oct, had answers call open deadlines passed). Build the letters or the ledger for
+    the day instead. ``allow``: a smoke into a scratch folder, thrown away, which repeats run 1 on its own today."""
+    days = {value.isoformat() if isinstance(value, date) else str(value) for value in simulated}
+    other = sorted(days - {day.isoformat()})
+    if other and not allow:
+        raise HarnessError(
+            f"the simulated today ({', '.join(other)}) is not the day this is recorded ({day.isoformat()}, UTC): the "
+            "claude CLI tells the model that day too, so the model would see two todays — build the letters or the "
+            "ledger for the recording day (only a smoke into a scratch folder passes --allow-another-today)"
+        )
+
+
+class RecordingDayOver(LLMError):
+    """The recording's day is over (midnight UTC): a turn recorded on a later day is invalid, so no call starts."""
+
+    def __init__(self, day: date) -> None:
+        super().__init__(
+            f"the recording day {day.isoformat()} is over (UTC): no call starts on a later day, whose turns would be "
+            "invalid — what is recorded is kept; record the rest with letters or a ledger built for the new day"
+        )
+        self.day = day
 
 
 async def _sleep(seconds: float) -> None:
@@ -639,7 +672,8 @@ def _rate_limited(text: str | None) -> bool:
 
 
 class LiveCalls:
-    """Wraps the live ``claude``: the budget stop, waiting through a usage limit, and a ledger line per call."""
+    """Wraps the live ``claude``: the budget stop, waiting through a usage limit, a ledger line per call, and (``day``)
+    no call once the recording's day is over (:class:`RecordingDayOver`)."""
 
     def __init__(
         self,
@@ -648,12 +682,17 @@ class LiveCalls:
         ledger: Ledger | None = None,
         budget: Budget | None = None,
         waiter: LimitWaiter | None = None,
+        day: date | None = None,
     ) -> None:
         self.inner = inner
         self.ledger = ledger
         self.budget = budget
         self.waiter = waiter
+        self.day = day
         self.name = inner.name
+
+    def _day_over(self) -> RecordingDayOver | None:
+        return RecordingDayOver(self.day) if self.day is not None and utc_today() != self.day else None
 
     def _log(
         self, req: LLMRequest, outcome: str, started: float, response: LLMResponse | None = None
@@ -665,6 +704,8 @@ class LiveCalls:
         while True:
             if self.budget is not None:
                 self.budget.check()
+            if (over := self._day_over()) is not None:
+                raise over
             started = time.monotonic()
             try:
                 response = await self.inner.complete(req)
@@ -687,6 +728,9 @@ class LiveCalls:
         while True:
             if self.budget is not None and self.budget.reached:
                 yield StreamEvent(type="error", error=self.budget.message())
+                return
+            if (over := self._day_over()) is not None:
+                yield StreamEvent(type="error", error=str(over))
                 return
             started = time.monotonic()
             limited: StreamEvent | None = None
@@ -725,12 +769,13 @@ async def claude_version(binary: str | None = None) -> str | None:
 
 @dataclass
 class LiveSetup:
-    """What a live run's stacks share: the budget, the waiting, the ``claude`` asked, its version, the ledgers, and
-    the provenance each new cassette is stamped with."""
+    """What a live run's stacks share: the budget, the waiting, the ``claude`` asked, its version, the ledgers, the
+    provenance each new cassette is stamped with, and the recording's day (``None``: not checked)."""
 
     repeat: int = 1
     budget: Budget | None = None
     waiter: LimitWaiter | None = None
+    day: date | None = None
     cli: Any = None
     cli_version: str | None = None
     ledgers: list[Ledger] = field(default_factory=list)
@@ -1217,7 +1262,8 @@ def run_smoke(
     scratch.mkdir(parents=True, exist_ok=True)
     report: dict[str, Any] = {"scratch": str(scratch), "ids": list(ids), "conditions": list(conditions or [])}
     base = ["--split", "dev", "--no-docs", "--quiet", "--date", _now().date().isoformat()]
-    base += ["--recorder-lock", str(recorder_lock)]
+    # the smoke repeats run 1 of dev letters on their own today, into a scratch folder that is thrown away
+    base += ["--recorder-lock", str(recorder_lock), "--allow-another-today"]
     only = ["--conditions", *conditions] if conditions else []
 
     # 1. one recorder at a time: a second recording is refused while this one holds the lock (no call)
@@ -1266,6 +1312,7 @@ def run_smoke(
             _python_args(
                 "evals.ask", "--live", "--repeat", "2", "--only", ",".join(ask_only), "--recorded-dir", str(ask_dir),
                 "--recorder-lock", str(recorder_lock), "--concurrency", "1", "--max-cost-usd", "0.3",
+                "--allow-another-today",
             )
         )  # fmt: skip
         report["ask_exit"] = asked.returncode

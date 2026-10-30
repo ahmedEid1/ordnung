@@ -60,7 +60,7 @@ from datetime import date
 from typing import Any, Literal
 
 from evals.ask.household import HouseholdTruth
-from evals.ask.ledger import TODAY
+from evals.ask.ledger import benchmark_today
 from evals.ask.parse import Mention, mentions
 from evals.ask.questions import CROSS_LETTER, Gold, Question, TruthDoc
 from evals.ask.score import _MARKER_ID, _NOTE_LABELS, _SENTENCE_BREAK, Scored, Turn, member_values_unnamed
@@ -166,7 +166,10 @@ def dev_list_gold(question_id: str, items: Sequence[TruthItem]) -> ListGold | No
     gold = frozenset(
         item.label
         for item in items
-        if item.required and item.day is not None and item.day >= TODAY and belongs(item, item.day)
+        if item.required
+        and item.day is not None
+        and item.day >= benchmark_today()
+        and belongs(item, item.day)
     )
     return ListGold(state=selection.state, window=belongs, gold=gold, pool=tuple(items))
 

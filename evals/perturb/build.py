@@ -135,14 +135,25 @@ class BuildError(ValueError):
 # --------------------------------------------------------------------------------------------------
 
 
-def eligible(entry: Entry) -> bool:
-    """A standard text letter (no photo, not adversarial) with at least one scored dated deadline."""
-    return (
+def eligible(entry: Entry, *, today: date | None = None) -> bool:
+    """A standard text letter (no photo, not adversarial) with at least one scored dated deadline — and, built for a
+    day (``today``, the day the cells are recorded: the evaluation plan's addendum, item 8), one that can be read on
+    that day with no second today: written by then (its own simulated today on or before it) and its deadline still
+    open (its earliest scored deadline on or after it). Its gold is its own: the labels count from the letter's dates
+    (a deemed delivery, the letter date or a date it names, ``evals/gen/law.py``), never from the day it is read."""
+    if not (
         not entry.photo
         and not entry.adversarial
         and entry.media_type == "application/pdf"
         and any(item.scored for item in entry.truth.items)
-    )
+    ):
+        return False
+    if today is None:
+        return True
+    deadlines = [
+        item.expected_date for item in entry.truth.items if item.scored and item.expected_date is not None
+    ]
+    return entry.today_date <= today and bool(deadlines) and min(deadlines) >= today
 
 
 def _quotas(counts: Mapping[str, int], total: int) -> dict[str, int]:
@@ -162,8 +173,10 @@ def base_set(
     seed: int = SEED,
     per_split: int = PER_SPLIT,
     splits: Sequence[str] = BASE_SPLITS,
+    today: date | None = None,
 ) -> list[Entry]:
-    """The letters the stress cells perturb: ``per_split`` eligible letters of each split, stratified by family."""
+    """The letters the stress cells perturb: ``per_split`` eligible letters of each split, stratified by family —
+    built for a day (``today``), only letters :func:`eligible` on it."""
     refused = [split for split in splits if split not in BASE_SPLITS]
     if refused:
         raise BuildError(
@@ -172,9 +185,17 @@ def base_set(
         )
     chosen: list[Entry] = []
     for split in splits:
-        pool = sorted((e for e in entries if e.split == split and eligible(e)), key=lambda e: e.id)
+        pool = sorted(
+            (e for e in entries if e.split == split and eligible(e, today=today)), key=lambda e: e.id
+        )
         if len(pool) < per_split:
-            raise BuildError(f"{split}: {len(pool)} eligible letters, {per_split} needed")
+            on = (
+                f" on {today.isoformat()} (written by then, deadline still open; these letters were written for "
+                "their own days — letters for the recording day come from a generator that takes it)"
+                if today is not None
+                else ""
+            )
+            raise BuildError(f"{split}: {len(pool)} eligible letters{on}, {per_split} needed")
         families = Counter(e.family for e in pool)
         for family, quota in sorted(_quotas(families, per_split).items()):
             ids = [e.id for e in pool if e.family == family]
@@ -686,14 +707,19 @@ def assign_cells(
     dataset_dir: Path = DATASET_DIR,
     seed: int = SEED,
     cells: Sequence[str] = CELLS,
+    today: date | None = None,
 ) -> dict[str, list[Assignment]]:
-    """What every base letter gets in each cell (no template is needed: it is chosen when the sentence is filled)."""
+    """What every base letter gets in each cell (no template is needed: it is chosen when the sentence is filled); an
+    inserted date is never ``today`` either (the day the cells are built for)."""
     unknown = [cell for cell in cells if cell not in CELLS]
     if unknown:
         raise BuildError(f"unknown cells: {', '.join(unknown)}")
     if any(e.split not in BASE_SPLITS for e in base):
         raise BuildError("a base letter is not from holdout, holdout2 or holdout3")
     taken = {e.id: taken_dates(e, e.path(dataset_dir).read_bytes()) for e in base}
+    if today is not None:
+        for dates in taken.values():
+            dates.add(today)
     plan: dict[str, list[Assignment]] = {}
     if "I1" in cells:
         plan["I1"] = _injections(base, taken, seed)
@@ -766,10 +792,14 @@ def _sha(data: bytes | str) -> str:
     return hashlib.sha256(data.encode("utf-8") if isinstance(data, str) else data).hexdigest()
 
 
-def runnable_entry(base_raw: Mapping[str, Any], row: Mapping[str, Any]) -> dict[str, Any]:
+def runnable_entry(
+    base_raw: Mapping[str, Any], row: Mapping[str, Any], *, today: date | None = None
+) -> dict[str, Any]:
     """The runner's manifest entry for a perturbed letter: the base entry with the new file (same truth; I1 expects
-    the injection warning)."""
+    the injection warning) and, built for a day, that day as its simulated today."""
     entry = copy.deepcopy(dict(base_raw))
+    if today is not None:
+        entry["today"] = today.isoformat()
     entry.update(
         {
             "id": row["id"],
@@ -799,12 +829,14 @@ def build(
     seed: int = SEED,
     only: Iterable[str] | None = None,
     cells: Sequence[str] = CELLS,
+    today: date | None = None,
 ) -> dict[str, Any]:
-    """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest."""
+    """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest. ``today``: the
+    day the cells are recorded, every letter's simulated today (the evaluation plan's addendum, item 8)."""
     manifest_bytes = manifest_path.read_bytes()
     raw = {e["id"]: e for e in json.loads(manifest_bytes)["entries"]}
-    base = base_set(load_manifest(manifest_path), seed=seed)
-    plan = assign_cells(base, dataset_dir=manifest_path.parent, seed=seed, cells=cells)
+    base = base_set(load_manifest(manifest_path), seed=seed, today=today)
+    plan = assign_cells(base, dataset_dir=manifest_path.parent, seed=seed, cells=cells, today=today)
     wanted = set(only) if only is not None else None
     by_id = {e.id: e for e in base}
     rows: list[dict[str, Any]] = []
@@ -839,7 +871,7 @@ def build(
                 "sentence_sha256": _sha(sentence),
             }
             rows.append(row)
-            runnable.append(runnable_entry(raw[assignment.base_id], row))
+            runnable.append(runnable_entry(raw[assignment.base_id], row, today=today))
     dataset = {"manifest_sha256": _sha(manifest_bytes)}
     environment = pdf_environment()
     doc: dict[str, Any] = {
@@ -854,6 +886,8 @@ def build(
         "base": [e.id for e in base],
         "entries": rows,
     }
+    if today is not None:
+        doc["today"] = today.isoformat()
     runner = {
         "name": RUNNABLE_NAME,
         "version": 1,

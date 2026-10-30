@@ -319,6 +319,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--noise-floor", type=Path, help="per-condition flip rate of holdout4's three reads (JSON)"
     )
     parser.add_argument("--date", dest="run_date", default=date.today().isoformat(), help="for the file name")
+    parser.add_argument(
+        "--today",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="build the cells for this day, the day they are recorded: every letter's simulated today (letters it "
+        "cannot be read on — written later, or with its deadline passed — are left out of the base set)",
+    )
     parser.add_argument("--out", type=Path, help=f"results folder (a live run: default {RESULTS_DIR.name}/)")
     parser.add_argument(
         "--check", type=Path, metavar="PUBLISHED", help="fail unless the run equals this file"
@@ -334,8 +342,8 @@ async def _run(args: argparse.Namespace) -> int:
         else (lambda message: print(message, file=sys.stderr, flush=True))
     )
     entries = load_manifest(build.DATASET_MANIFEST)
-    base = build.base_set(entries)
-    plan = build.assign_cells(base, cells=args.cells)
+    base = build.base_set(entries, today=args.today)
+    plan = build.assign_cells(base, cells=args.cells, today=args.today)
     if args.list_base:
         print(json.dumps({"base": [e.id for e in base], **build.plan_counts(plan, base)}, indent=1))
         return 0
@@ -354,7 +362,7 @@ async def _run(args: argparse.Namespace) -> int:
     if not args.clean_only:
         templates = tpl.load_templates(args.templates)
         say(f"building {len(base)} letters × {len(args.cells)} cell(s) into {args.build_dir} …")
-        stress_doc = build.build(templates=templates, out=args.build_dir, cells=args.cells)
+        stress_doc = build.build(templates=templates, out=args.build_dir, cells=args.cells, today=args.today)
         if args.write_manifest:
             build.write_manifest(stress_doc)
             say(f"stress manifest → {build.STRESS_MANIFEST}")

@@ -447,7 +447,9 @@ async def test_live_run_records_and_replay_reproduces(
     fake = FakeBackend(Responder())
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: fake)
     ids = ["dev-invoice_relative-A1-photo", "dev-tax_assessment-A1"]
-    live = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, live=True, write_docs=False))
+    live = await eval_run.run_benchmark(
+        make_config(tmp_path, ids=ids, live=True, write_docs=False, allow_another_today=True)
+    )
     assert live.ok
     recorded = sorted(p.parent.name for p in (tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.json"))
     assert (
@@ -738,7 +740,9 @@ async def test_results_meta_names_the_repeat_the_cli_and_the_tree(
 
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: Cli(Responder()))
     monkeypatch.setattr(harness, "claude_version", version)
-    live = await eval_run.run_benchmark(make_config(tmp_path / "live", live=True, write_docs=False))
+    live = await eval_run.run_benchmark(
+        make_config(tmp_path / "live", live=True, write_docs=False, allow_another_today=True)
+    )
     assert live.ok and asked == ["/the/claude"]
     assert live.runs[0].results["meta"]["cli_version"] == "2.1.5 (Claude Code)"  # type: ignore[index]
 
@@ -1098,7 +1102,9 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
     fake = NoStructuredOutput(Responder())
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: fake)
     ids = ["dev-tax_assessment-A1"]
-    live = await eval_run.run_benchmark(make_config(tmp_path, ids=ids, live=True, write_docs=False))
+    live = await eval_run.run_benchmark(
+        make_config(tmp_path, ids=ids, live=True, write_docs=False, allow_another_today=True)
+    )
     assert live.ok and not live.runs[0].errors
     failed = live.runs[0].predictions["llm_only"]["dev-tax_assessment-A1"]
     assert failed.failed and "no structured output" in failed.failed
@@ -1122,7 +1128,9 @@ async def test_model_failures_are_recorded_and_replayed_as_failures(
 
     # A successful re-recording replaces the stored failure.
     monkeypatch.setattr(eval_run, "ClaudeCLIBackend", lambda concurrency: FakeBackend(Responder()))
-    fresh = make_config(tmp_path, ids=ids, live=True, refresh=True, resume=False, write_docs=False)
+    fresh = make_config(
+        tmp_path, ids=ids, live=True, refresh=True, resume=False, write_docs=False, allow_another_today=True
+    )
     assert (await eval_run.run_benchmark(fresh)).ok
     assert not list((tmp_path / "recorded" / eval_run.DEFAULT_MODEL).rglob("*.failure.json"))
 
