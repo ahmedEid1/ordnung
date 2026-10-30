@@ -3,7 +3,8 @@
 Answers cite the ledger with markers written right after the fact they support: ``[doc:ID]``,
 ``[item:ID]``, ``[contract:ID]`` and ``[party:ID]``. Models sometimes group several ids in one
 bracket (``[doc:doc_a, item:itm_b]``) or spell the type out (``[document:doc_a]``); both are
-understood, and :func:`strip_invalid` rewrites every marker it keeps in the canonical one-id form.
+understood, and :func:`strip_invalid` rewrites every marker it keeps in the canonical one-id form. A
+record's type before an id no record can have (``[item:n1]``) is a marker too, so the check strips it.
 
 Tool labels are the past-tense chips of the Ask trace ("Searched your letters for "Kündigung"");
 result summaries are the short text shown once a tool answered ("Found 4 to-dos & dates"). A label
@@ -50,13 +51,18 @@ _TYPE_ALIASES: dict[str, str] = {
     "party": "party",
     "pty": "party",
 }
-_PAIR = r"[a-z]+\s*:\s*[a-z]{3}_[a-z0-9]+"
+_RECORD_TYPE = "|".join(sorted(_TYPE_ALIASES, key=len, reverse=True))
+_PAIR = rf"(?:[a-z]+\s*:\s*[a-z]{{3}}_[a-z0-9]+|(?:{_RECORD_TYPE})\s*:\s*[a-z0-9][a-z0-9_-]*)"
+"""One cited id: any type before an id of a record's shape (``case:cas_…``), or a record's type before an
+id of any shape (``item:n1``, a number's ref of ``get_my_numbers``): both are read, so the check can
+strip them (no record has such an id), and neither stays in the answer as plain text."""
 _GROUP_RE = re.compile(
     rf"(?P<lead>(?<![ \t])[ \t]*)\[\s*(?P<body>{_PAIR}(?:\s*[,;]\s*{_PAIR})*)\s*\]", re.IGNORECASE
 )
 """A citation marker with the spaces before it; a match starts only where a run of spaces starts, so a
 long run is read once (linear time)."""
-_PAIR_RE = re.compile(r"(?P<type>[a-z]+)\s*:\s*(?P<id>[a-z]{3}_[a-z0-9]+)", re.IGNORECASE)
+_PAIR_RE = re.compile(r"(?P<type>[a-z]+)\s*:\s*(?P<id>[a-z0-9][a-z0-9_-]*)", re.IGNORECASE)
+"""The ids of a marker's body (one the group pattern above has read as a marker)."""
 
 TOOL_PREFIX = "mcp__ordnung__"
 
