@@ -154,11 +154,6 @@ function layoutProbeInPage(opts) {
     if (out.length < MAX) out.push(f);
     else if (out.length === MAX) out.push({ probe: "truncated-report", selector: "", text: `more than ${MAX} findings — only the first ${MAX} are listed`, rect: null, detail: {} });
   };
-  const inModalBackground = (() => {
-    const modals = Array.from(document.querySelectorAll('[aria-modal="true"], dialog[open]')).filter((m) => visible(m));
-    if (!modals.length) return () => false;
-    return (el) => !modals.some((m) => m.contains(el) || el.contains(m));
-  })();
   const hiddenFromAT = (el) => Boolean(el.closest("[inert], [aria-hidden=true]"));
 
   const all = Array.from(document.body.getElementsByTagName("*"));
@@ -475,7 +470,7 @@ function layoutProbeInPage(opts) {
     for (let n = walker.nextNode(); n && el.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_PRECEDING; n = walker.nextNode()) before.push(n);
     for (const n of before.reverse()) {
       // spaces, no-break spaces and the word joiner that keeps a marker on its word's line are no words
-      const at = Math.max(-1, ...Array.from(n.data.matchAll(/[^\s⁠​]/g), (m) => m.index));
+      const at = Math.max(-1, ...Array.from(n.data.matchAll(/[^\s\u2060\u200b]/g), (m) => m.index));
       if (at < 0) continue;
       const mark = n.parentElement.closest("button, a[href]");
       if (mark && block.contains(mark) && isMarker(mark)) continue; // an earlier marker of the run
@@ -848,7 +843,7 @@ async function coveredProbeInPage() {
 /** a–g and k for the current page state (no scrolling except for the covered check, which restores it). */
 export async function layoutFindings(page, { max = 400 } = {}) {
   const res = await page.evaluate(layoutProbeInPage, { max });
-  let covered = [];
+  let covered;
   try {
     covered = await page.evaluate(coveredProbeInPage);
   } catch (err) {
@@ -937,7 +932,7 @@ async function focusCheckInPage() {
   // hidden control (sr-only radio) only counts what its label/parents show.
   const now = st.sig(el);
   const before = st.base.get(el);
-  let changed = false;
+  let changed;
   if (before) changed = now.some((v, i) => (!tiny || i >= 3) && v !== before[i]);
   else {
     const s = getComputedStyle(el);
