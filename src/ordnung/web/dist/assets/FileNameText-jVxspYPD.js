@@ -1,0 +1,1 @@
+import{a as e,f as t,h as n,n as r}from"./index-DQVlnza1.js";var i=n(t(),1),a=r();function o({name:t}){let n=t.split(`_`).map(t=>e(t.replace(/\d+(?:-\d+)+/g,e=>e.replace(/-/g,`‑`))));return(0,a.jsx)(a.Fragment,{children:n.map((e,t)=>(0,a.jsxs)(i.Fragment,{children:[t?(0,a.jsxs)(a.Fragment,{children:[`_`,(0,a.jsx)(`wbr`,{})]}):null,e]},t))})}export{o as t};
