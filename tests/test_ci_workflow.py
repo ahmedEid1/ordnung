@@ -1,10 +1,12 @@
-""".github/workflows/ci.yml: the slow checks have a job of their own, every published benchmark number is
-replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the
-real Claude Code's flags, and a real Tesseract is installed only where a test needs it (ADR 0024)."""
+""".github/workflows/ci.yml: the slow checks have a job of their own, the end-to-end job runs beside the backend's,
+a push to main is never cancelled, macOS and Windows must pass, every published benchmark number is replayed with
+a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude Code's flags,
+and a real Tesseract is installed only where a test needs it (ADR 0024)."""
 
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -24,10 +26,13 @@ ROOT = Path(__file__).resolve().parents[1]
 GATED_SPLITS = ("test", "holdout", "holdout2", "dev")
 
 
-def _jobs() -> dict[str, Any]:
+def _workflow() -> dict[Any, Any]:
     yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
-    workflow = yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
-    return dict(workflow["jobs"])
+    return dict(yaml.safe_load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")))
+
+
+def _jobs() -> dict[str, Any]:
+    return dict(_workflow()["jobs"])
 
 
 def _script(job: dict[str, Any]) -> str:
@@ -61,7 +66,72 @@ def test_the_slow_checks_run_in_a_job_of_their_own_and_every_check_still_runs() 
     for kept in ("ruff check", "ruff format --check", "mypy", 'pytest -m "not slow" --cov=ordnung'):
         assert kept in _script(backend), kept
     assert "--cov-fail-under=100" in _script(slow)  # the rules engine's gate
-    assert set(jobs["e2e"]["needs"]) >= {"backend", "frontend"}
+
+
+def test_the_end_to_end_job_waits_for_the_web_build_only() -> None:
+    """The end-to-end job installs its own Python, Node and Tesseract and builds the web app itself: it uses
+    nothing the backend legs make. Waiting for all four of them took a run from about 36 minutes to 70 (the
+    slowest leg, then Playwright). It waits for the frontend job alone, so a broken web build still stops it before
+    Playwright starts, and it runs beside the backend legs."""
+    jobs = _jobs()
+    e2e = jobs["e2e"]
+    assert e2e["needs"] in ("frontend", ["frontend"])
+    assert "download-artifact" not in json.dumps(e2e)
+    assert _on_pull_requests(e2e) and _on_pull_requests(jobs["frontend"])
+
+
+def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
+    """A newer push to a pull request cancels that pull request's older run. A push to main never cancels the run
+    of the push before it: release.yml releases a tag only when CI's push run on its commit passed, and a cancelled
+    run never has (demo.yml follows the same rule)."""
+    concurrency = _workflow()["concurrency"]
+    assert concurrency["cancel-in-progress"] == "${{ github.event_name == 'pull_request' }}"
+    assert "github.ref" in concurrency["group"] and "github.event_name" in concurrency["group"]
+    release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+    assert "ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success" in release
+
+
+def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
+    """The release gate counts a run as passed when its macOS or Windows job failed while that job may fail. It
+    is required now; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
+    last, still shows a failure without failing the run. The README says so."""
+    jobs = _jobs()
+    assert "continue-on-error" not in jobs["other-systems"]
+    assert [name for name, job in jobs.items() if "continue-on-error" in job] == ["claude-code"]
+    comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("  other-systems:", 1)[1]
+    assert "without failing the run" not in comment.split("    steps:", 1)[0]
+    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
+    assert "not yet required to pass" not in readme and "Not yet a gate: weekly and on main" not in readme
+
+
+def test_a_hung_test_is_named_and_no_unread_coverage_report_is_written() -> None:
+    """A test still running after 10 minutes gets every thread's stack printed (pytest's faulthandler), so a hang
+    names its test long before a job's time limit ends the run without a word. No step writes coverage.xml,
+    which nothing reads; the terminal report and the floors read the coverage data itself."""
+    pytest_ini = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["pytest"]
+    timeout = pytest_ini["ini_options"]["faulthandler_timeout"]
+    jobs = _jobs()
+    assert (
+        timeout == 600 < 60 * min(job["timeout-minutes"] for job in jobs.values() if "pytest" in _script(job))
+    )
+    for name, job in jobs.items():
+        assert "--cov-report=xml" not in _script(job) and "coverage xml" not in _script(job), name
+    assert "--cov-report=xml" not in (ROOT / "Makefile").read_text(encoding="utf-8")
+
+
+def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
+    """CI's type check (``mypy`` with pyproject.toml's list) covers scripts/ too: they write data the tests and the
+    static demo pin (the sample life, the postcode table, the mock data). scripts/eval_without_land.py is left off
+    the list and checked as ``scripts.eval_without_land``, the name evals/ imports it by: listed as a file as well,
+    mypy would find it under two names and stop before checking anything."""
+    mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
+    assert mypy["files"] == ["src/ordnung", "evals", "scripts"]
+    assert mypy["exclude"] == [r"^scripts/eval_without_land\.py$"]
+    harness = (ROOT / "evals" / "e2e" / "harness.py").read_text(encoding="utf-8")
+    assert re.search(r"^\s*from scripts\.eval_without_land import ", harness, re.M)
+    assert [step["run"] for step in _jobs()["backend"]["steps"] if "mypy" in step.get("run", "")] == [
+        ".venv/bin/mypy"
+    ]
 
 
 def _gates(script: str) -> dict[str, tuple[float, float]]:

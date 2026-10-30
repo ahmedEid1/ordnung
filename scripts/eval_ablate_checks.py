@@ -116,7 +116,7 @@ def reask_off() -> contextlib.AbstractContextManager[None]:
 @contextlib.contextmanager
 def reading_check_off() -> Iterator[None]:
     """Within the block, the benchmark's Ordnung condition verifies a reading without the reading check."""
-    original = conditions.verify_extraction
+    original = conditions.verify_extraction  # type: ignore[attr-defined]  # the name the block swaps
 
     def unchecked(*args: Any, **kwargs: Any) -> Any:
         return original(*args, **{**kwargs, "check_reading": False})
@@ -284,7 +284,7 @@ def documents_prepared_once(work: Path) -> Iterator[None]:
     """Within the block, the benchmark prepares each letter (renders its pages and reads its text layer,
     :func:`evals.conditions.prepare_document`) once into ``work`` and every replay shares it: no check this
     script switches off runs before the text stage, and preparing is most of a replay's time."""
-    original = run_mod.prepare_document
+    original = run_mod.prepare_document  # type: ignore[attr-defined]  # the name the block swaps
     prepared: dict[tuple[str, str], PreparedDocument] = {}
 
     def once(entry: Entry, dataset_dir: Path, _work_dir: Path) -> PreparedDocument:

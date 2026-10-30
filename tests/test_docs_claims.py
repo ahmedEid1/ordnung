@@ -125,15 +125,18 @@ def test_rules_branch_coverage_is_a_ci_gate() -> None:
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
     """README's quality table says the rules engine has "`mypy` strict on it, as on the whole package and the
-    benchmark code", and its CI gates row says so too: pyproject.toml gives the whole package, the rules engine
-    with it, and ``evals/`` every check of ``mypy --strict``, no module is let off, and CI's type check runs
-    mypy with pyproject.toml's list (no paths of its own)."""
+    benchmark code", and its CI gates row says so, with the scripts: pyproject.toml gives the whole package, the
+    rules engine with it, ``evals/`` and ``scripts/`` every check of ``mypy --strict``, no module is let off, and
+    CI's type check runs mypy with pyproject.toml's list (no paths of its own)."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
-    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung", "evals"]
+    assert mypy["strict"] is True and mypy["files"] == ["src/ordnung", "evals", "scripts"]
     assert "overrides" not in mypy
     readme = _flat(_readme())
     assert "`mypy` strict on it, as on the whole package and the benchmark code" in readme
-    assert "| CI gates | ruff, mypy (strict, on the package and the benchmark code), ESLint," in readme
+    assert (
+        "| CI gates | ruff, mypy (strict, on the package, the benchmark code and the scripts), ESLint,"
+        in readme
+    )
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert re.search(r"run: \.venv/bin/mypy\n", ci)
     assert re.search(
@@ -3344,13 +3347,13 @@ def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_pa
 
 
 def test_contributing_says_how_an_end_to_end_test_waits_and_reads() -> None:
-    """CONTRIBUTING's checks: mypy covers the benchmark code too; an e2e test waits for what the person sees, reads
-    with ``READ`` (web/e2e/helpers.ts: a retried read, never a retried change) and runs on Playwright's own
-    Chromium (``make browser``)."""
+    """CONTRIBUTING's checks: mypy covers the benchmark code and the scripts too; an e2e test waits for what the
+    person sees, reads with ``READ`` (web/e2e/helpers.ts: a retried read, never a retried change) and runs on
+    Playwright's own Chromium (``make browser``)."""
     contributing = (ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8")
     checks = _flat(contributing.split("## Checks", 1)[1].split("\n## ", 1)[0])
     for words in (
-        "ruff (lint and format) and mypy (strict, over the package and `evals/`)",
+        "ruff (lint and format) and mypy (strict, over the package, `evals/` and `scripts/`)",
         "**Writing an end-to-end test.** Before the next key press or click, wait for what the person sees (a "
         "toast, a status line, a button that is enabled again), not only for focus.",
         "Read the API with `apiGet`, or pass `READ` to `page.request.get`: it retries a connection the server "

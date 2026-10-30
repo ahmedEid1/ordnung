@@ -10,7 +10,8 @@ name: Release
 # commit's own copy of this file, so they catch honest mistakes; the reviewer and a tag ruleset stop the rest.
 #
 # Every action runs a fixed commit (its version beside it; Dependabot updates both), never a tag that can be
-# moved, and the build restores no cache: the PyPI job holds the token PyPI accepts as the owner.
+# moved, the tools that build and check dist/ run fixed versions (twine here, hatchling in pyproject.toml), and
+# the build restores no cache: the PyPI job holds the token PyPI accepts as the owner.
 on:
   push:
     tags: ["v*"]
@@ -73,7 +74,7 @@ jobs:
           unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
           unzip -l dist/ordnung-*.whl | grep -q " ordnung/demo/demo_db/ordnung.db$"
       - name: The description renders on PyPI
-        run: uvx twine check --strict dist/*
+        run: uvx --from 'twine==7.0.0' twine check --strict dist/*
       - name: Install the wheel into a clean venv and run it (outside the checkout)
         run: |
           version=$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/ordnung/__init__.py)
