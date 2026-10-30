@@ -2015,19 +2015,45 @@ def test_one_organisation_s_numbers_leave_the_household_groups_out(
     store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Asked for one organisation (or for open cases alone), the person's own numbers are left out — and so
-    are the household's: a member's Steuer-ID is no organisation's number."""
+    are the household's: a member's Steuer-ID is no organisation's number. Whom ``filed_for`` names is still
+    said: ``household`` gives the people the rows name, by id and name only, and the note says just that."""
     _numbers_ledger(store, ids)
-    (alex,) = _household(store, ALEX)
+    alex, _mia = _household(store, ALEX, "Mia Rivera")
     page = _grouped_page(store, alex)
     monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
     tools = LedgerTools(store, today=TODAY)
-    for answer in (tools.get_my_numbers(organisation="FunkNetz"), tools.get_my_numbers(section="open_cases")):
-        rendered = render_result(answer)
-        assert (
-            "household" not in answer.record and "86095742719" not in rendered and "X1234567" not in rendered
-        )
-    one = record_of(render_result(tools.get_my_numbers(organisation="FunkNetz")))
-    assert one["household_note"] == mcp_server.NUMBERS_HOUSEHOLD_NOTE  # its customer number is Alex's
+    for kwargs in ({"organisation": "FunkNetz"}, {"section": "open_cases"}, {"section": "organisations"}):
+        rendered = render_result(tools.get_my_numbers(**kwargs))
+        if "organisation" in kwargs or kwargs["section"] == "open_cases":
+            assert "86095742719" not in rendered and "X1234567" not in rendered
+        record = record_of(rendered)
+        assert record["household"] == [{"id": alex, "name": ALEX}]  # its customer number or case is Alex's
+        assert record["household_note"] == mcp_server.NUMBERS_NAMED_NOTE
+        assert not record["household_note"].startswith("household holds")
+    # a view whose rows name no one of the household has neither, as before
+    plain = tools.get_my_numbers(organisation="Stadtwerke")
+    assert "household" not in plain.record and "household_note" not in plain.record
+
+
+def test_get_my_numbers_names_everyone_its_rows_name(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With ``about_you``, a person of the household whom only ``also_for`` names (no number or document of
+    theirs on the page) is listed under ``household`` too, by id and name alone, so every id a row carries has its
+    name."""
+    _numbers_ledger(store, ids)
+    alex, mia = _household(store, ALEX, "Mia Rivera")
+    page = _grouped_page(store, alex)
+    social = next(n for n in page.about_you if n.kind == "social_insurance")
+    page = page.model_copy(update={"also_for": {social.key: [alex, mia]}})
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    record = record_of(render_result(LedgerTools(store, today=TODAY).get_my_numbers()))
+    assert [(group["id"], group["name"]) for group in record["household"]] == [
+        (alex, ALEX),
+        (mia, "Mia Rivera"),
+    ]
+    assert record["household"][1] == {"id": mia, "name": "Mia Rivera"}  # nothing about her on the page
+    assert record["household_note"] == mcp_server.NUMBERS_HOUSEHOLD_NOTE
 
 
 def test_a_phone_s_question_gets_a_member_s_numbers_masked(

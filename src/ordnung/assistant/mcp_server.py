@@ -691,8 +691,9 @@ class LedgerTools:
         filed for someone of their household): with ``about_you``, each such person's numbers and identity
         documents under ``household`` (their id and name as typed); a call sheet's number or a case all of whose
         letters are filed for one person says so (``filed_for``), and a number other people's letters show too
-        says whose (``also_for``); ``household_note`` says what that means. Without a household none of these
-        is there and the answer is as it always was.
+        says whose (``also_for``); ``household_note`` says what that means. Every person those name is under
+        ``household``, by id and name alone when the answer has no numbers of theirs (asked without
+        ``about_you``). Without a household none of these is there and the answer is as it always was.
         """
         from ordnung.views import my_numbers
 
@@ -747,6 +748,16 @@ class LedgerTools:
                     left_out["organisations"] = len(sheets) - index
                     break
                 shown.append(rows.sheet(sheet, left_out))
+        groups = record.get("household")
+        if rows.people:  # every person of the household a row names is named, by id and name (ADR 0025)
+            from ordnung.secretary.household import ask_view
+
+            seen = ask_view(self.store, ())
+            names = dict(seen["members"]) if seen else {}
+            listed = {group["id"] for group in groups or ()}
+            more = [{"id": person, "name": names[person]} for person in rows.people if person not in listed]
+            if more:
+                record["household"] = [*(groups or ()), *more]
         record["numbers"] = rows.numbers
         shown_out = {key: count for key, count in left_out.items() if count}
         if shown_out:
@@ -755,7 +766,7 @@ class LedgerTools:
             record["left_out_note"] = NUMBERS_LEFT_OUT
         record["note"] = NUMBERS_NOTE
         if rows.whose:
-            record["household_note"] = NUMBERS_HOUSEHOLD_NOTE
+            record["household_note"] = NUMBERS_HOUSEHOLD_NOTE if groups is not None else NUMBERS_NAMED_NOTE
         for owner, found in rows.values.items():
             rows.letters.add(owner, numbers=found)
         return ToolAnswer(record, rows.letters.by_id)
@@ -780,6 +791,8 @@ class _NumberRows:
         self.numbers: list[dict[str, Any]] = []
         self.values: dict[str, dict[str, dict[str, str]]] = {}
         self.whose = False
+        #: the people of the household the rows name (``filed_for``, ``also_for``), in the order first named
+        self.people: list[str] = []
         self._filed_for = filed_for or {}
         self._also_for = also_for or {}
         self._refs: dict[str, str] = {}
@@ -795,6 +808,9 @@ class _NumberRows:
         }
         kept = {name: value for name, value in found.items() if value}
         self.whose |= bool(kept)
+        for person in [found["filed_for"], *found["also_for"]]:
+            if person and person != "me" and person not in self.people:
+                self.people.append(person)
         return kept
 
     def number(self, found: MyNumber) -> str:
@@ -1126,12 +1142,20 @@ NUMBERS_NOTE = (
     "digit was misread — it does not prove the number is the person's), fails (compare it with the "
     "letter) or none (no public check for this kind of number)."
 )
+_NUMBERS_WHOSE = (
+    "filed_for marks a number or open case all of whose letters are filed for that person of the household. "
+    "also_for: letters of other people show the same number too (me: the person), so it is not certain whose it "
+    "is — say so. Say whose a number is, and never give a household person's number as the person's own."
+)
 NUMBERS_HOUSEHOLD_NOTE = (
     "household holds, for each person of the household, the numbers and identity documents that letters the "
-    "person filed for them show. filed_for marks a number or open case all of whose letters are filed for that "
-    "person of the household. also_for: letters of other people show the same number too (me: the person), so "
-    "it is not certain whose it is — say so. Say whose a number is, and never give a household person's number "
-    "as the person's own."
+    "person filed for them show. " + _NUMBERS_WHOSE
+)
+#: ``household_note`` of an answer without the household's numbers (asked without ``about_you``): ``household``
+#: then only names the people ``filed_for`` and ``also_for`` give by id.
+NUMBERS_NAMED_NOTE = (
+    "household names the people of the household that filed_for and also_for give by id, with the names the "
+    "person typed. " + _NUMBERS_WHOSE
 )
 SET_ASIDE_ATTACHED = (
     "Not a payment of its own: the bill that came attached to this e-mail (set_aside_by) asks for the same "

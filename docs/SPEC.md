@@ -1064,7 +1064,8 @@ HTML and without remote images.
   and `Ledger.household_filed`). `get_profile` adds `household` (each person's id and name as typed, with the
   letters the person filed for them, newest first, at most 50) and `household_note`; `get_document` adds
   `filed_for`; `get_my_numbers` (with `about_you`) adds each person's numbers and documents under `household`,
-  `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`. Private letters
+  `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`; every person
+  those name is under `household`, by id and name alone when the answer has no numbers of theirs. Private letters
   are left out, and `household_note` says whose a private letter is isn't known; never who signs, "mine" or a
   suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else Claude's mark, with
   `tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off their
