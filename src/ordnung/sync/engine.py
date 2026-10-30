@@ -107,7 +107,6 @@ from ordnung.sync.local import (
 )
 from ordnung.sync.model import (
     BaseInfo,
-    Bucket,
     BucketRef,
     FilesCacheEntry,
     Garbage,
@@ -1007,10 +1006,6 @@ class Session:
             return Outcome(decision)
         raise SyncError("folder_problem", "Ordnung couldn't save this computer's changes first. Try again.")
 
-    def cancel_wait(self) -> None:
-        self.state.waiting = None
-        self.save()
-
     def _log_take_over(
         self, store: Store, view: FolderView, *, replaced: bool, source: HeadView | None = None
     ) -> None:
@@ -1813,10 +1808,6 @@ def push_once(paths: Paths, secrets: SecretStore, store: Store) -> str:
     except SyncError as exc:
         return f"Not saved to the sync folder: {exc}"
     return "Saved to the sync folder." if result.outcome == "pushed" else "The sync folder is up to date."
-
-
-def bucket_of(content: bytes) -> Bucket:
-    return Bucket.model_validate_json(content)
 
 
 __all__ += ["Applied", "PullAborted", "PullUnfinished", "Staged", "VersionId", "unfinished"]

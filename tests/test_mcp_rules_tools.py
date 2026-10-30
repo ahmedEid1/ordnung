@@ -38,7 +38,6 @@ from ordnung.assistant.rules_tools import (
 )
 from ordnung.cli import app
 from ordnung.db.store import Store
-from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.models import DateSpec
 from ordnung.money.iban import INVALID_IBAN_ADVICE
 from ordnung.rules import LAST_CHECKED, calendar_de
@@ -1638,7 +1637,7 @@ async def test_the_full_server_has_the_rules_tools_counting_from_the_ledgers_day
     assert {tool.name for tool in await server.list_tools()} == LEDGER_TOOLS | RULES_TOOLS
     spec = {"type": "relative", "anchor": "today", "amount": 1, "unit": "days", "nature": "payment"}
     result = await server.call_tool("compute_deadline", {"spec": spec})
-    data = _json(unwrap_untrusted(result.content[0].text))
+    data = _json(result.content[0].text)  # the rules tools answer plain JSON
     assert data["due_date"] == "2026-09-29" and data["assumed"]["today"] == TODAY.isoformat()
 
 

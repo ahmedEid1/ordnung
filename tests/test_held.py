@@ -16,7 +16,7 @@ from helpers_docs import Line, make_pdf
 from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import held, pipeline
-from ordnung.ingest.pipeline import add_file, ingest_document, keep_held_private, release_held
+from ordnung.ingest.pipeline import add_file, ingest_document, keep_held_private
 from ordnung.llm.fake import FakeBackend
 
 
@@ -57,7 +57,7 @@ async def test_a_held_letter_is_private_and_waits(ctx: AppContext) -> None:
 async def test_read_reuses_the_local_job_that_has_not_started(ctx: AppContext) -> None:
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", hold=True, source="folder")
     (local,) = ctx.store.list_jobs()
-    answer = release_held(ctx, [document.id])
+    answer = held.release(ctx.store, [document.id])
     assert [job.id for job in answer.jobs] == [local.id] and len(ctx.store.list_jobs()) == 1
     assert await ctx.worker.run_until_idle() == 1
     read = ctx.store.get_document(document.id)
@@ -107,7 +107,7 @@ async def test_answers_are_logged_and_only_change_waiting_letters(ctx: AppContex
     assert unchanged is not None and (unchanged.status, unchanged.ai_private) == ("queued", False)
     messages = [entry.message for entry in ctx.store.list_activity(5, kinds=[held.KEPT_PRIVATE])]
     assert messages == ["You kept “bescheid.pdf” private · not sent to Claude"]
-    release = release_held(ctx, [waiting.id])
+    release = held.release(ctx.store, [waiting.id])
     assert release.documents == [] and release.skipped == [waiting.id]
 
 
@@ -183,7 +183,7 @@ async def test_keep_private_can_be_undone_until_something_else_happened(ctx: App
     again = held.back_to_waiting(ctx.store, [first.id])  # it waits already
     assert again.documents == [] and again.skipped == [first.id]
 
-    release_held(ctx, [first.id])  # read: there is nothing to undo any more
+    held.release(ctx.store, [first.id])  # read: there is nothing to undo any more
     private = await add_file(ctx, pdf_with("privat"), "privat.pdf", private=True)  # never waited
     await ctx.worker.run_until_idle()
     refused = held.back_to_waiting(ctx.store, [first.id, private.id, "doc_gone"])

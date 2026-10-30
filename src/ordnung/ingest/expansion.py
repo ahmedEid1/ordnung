@@ -615,16 +615,6 @@ def _last_group(stages: list[_Stage], ascii: _Ascii85 | _AsciiHex) -> Iterator[b
     yield from _through(stages, b"".join(ascii.close()))
 
 
-def _pre_decoded(data: bytes, start: int, name: bytes) -> tuple[bytes, bool]:
-    """ASCII85 (``name``) or ASCIIHex data from ``start`` decoded whole, as :class:`_Ascii85` and
-    :class:`_AsciiHex` decode it in pieces, and whether its end came before the end of ``data``."""
-    stage = _ascii_stage(name)
-    assert stage is not None
-    lead = _A85_LEAD_RE.match(data, start) if name in _ASCII85 else None
-    out = b"".join(stage.feed(data[lead.end() if lead else start :]))
-    return out + b"".join(stage.close()), stage.ended
-
-
 def _ascii85(digits: bytes) -> bytes:
     """ASCII85 digits and ``z`` (each ``z`` between two groups) decoded as PDFium does: a group above
     2**32 - 1, which Python refuses, keeps its last 32 bits."""

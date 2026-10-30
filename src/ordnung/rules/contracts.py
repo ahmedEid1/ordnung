@@ -171,7 +171,7 @@ class Notice:
         return add_period(arrival, self.amount, self.unit)[0]
 
 
-#: No notice at all: a current account (§ 675h Abs. 1 BGB, :func:`_payment_account`).
+#: No notice at all: a current account (§ 675h Abs. 1 BGB, :func:`_plan_payment_account`).
 NO_NOTICE: Final = Notice(0, "days")
 ONE_MONTH: Final = Notice(1, "months")
 THREE_MONTHS: Final = Notice(3, "months")

@@ -56,7 +56,6 @@ from ordnung.backup.container import (
     Sink,
     derive_master,
     expand,
-    normalize_passphrase,
 )
 from ordnung.sync import (
     CHUNK,
@@ -342,8 +341,3 @@ def open_key_file(name: str, data: bytes, passphrase: str) -> Vault:
     return Vault(
         body[1 : 1 + VAULT_ID_BYTES], body[1 + VAULT_ID_BYTES : 1 + VAULT_ID_BYTES + VAULT_KEY_BYTES]
     )
-
-
-def passphrase_bytes(passphrase: str) -> list[bytes]:
-    """The byte forms a passphrase could take (tests check none of them is written anywhere)."""
-    return list(dict.fromkeys([passphrase.encode("utf-8"), normalize_passphrase(passphrase)]))

@@ -634,14 +634,6 @@ def reprocess(ctx: AppContext, doc_id: str) -> Job:
     return job
 
 
-def release_held(ctx: AppContext, doc_ids: Sequence[str]) -> consent.ConsentResult:
-    """“Read these”: the held letters (and a held e-mail's held attachments) are queued for reading."""
-    result = consent.release(ctx.store, doc_ids)
-    for job in result.jobs:
-        announce_job(ctx, job)
-    return result
-
-
 def keep_held_private(ctx: AppContext, doc_ids: Sequence[str]) -> consent.ConsentResult:
     """“Keep private”: the held letters stay on this computer (one whose reading here failed is
     stored again)."""

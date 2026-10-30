@@ -44,11 +44,6 @@ def long_withdrawal_end(start: date) -> tuple[date, bool]:
     return min(directive, literal), directive != literal
 
 
-def limitation_end(arose: date) -> date:
-    """The day a claim that arose on ``arose`` becomes time-barred at the earliest (end of year + 3)."""
-    return date(arose.year + LIMITATION_YEARS, 12, 31)
-
-
 def latest_barred_year(today: date) -> int:
     """Claims that arose in this year or earlier may be time-barred on ``today`` (§§ 195, 199 BGB)."""
     return today.year - LIMITATION_YEARS - 1

@@ -36,7 +36,6 @@ from ordnung.cli import LOGIN_PAGE_NAME, launch_browser, login_page, summary_tab
 from ordnung.config import REPO_DIR, Paths
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
 from ordnung.ingest import expansion, intake, text
-from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.ingest.intake import IntakeError, normalise_upload, render_pages, safe_filename, store_original
 from ordnung.ingest.text import html_to_text, layout_text
 from ordnung.llm import claude_cli
@@ -677,6 +676,7 @@ def test_html_email_hidden_text_variants_are_excluded() -> None:
 
 
 async def test_mcp_search_snippets_are_wrapped_as_untrusted(store: Store) -> None:
+    from ordnung.assistant.channels import parse_tool_result
     from ordnung.assistant.mcp_server import build_server
 
     document = store.add_document(
@@ -692,7 +692,7 @@ async def test_mcp_search_snippets_are_wrapped_as_untrusted(store: Store) -> Non
     record, _, letters = text.partition("</ordnung_record>\n")
     assert "ignore your rules" not in record  # Ordnung's record never carries a letter's words
     assert letters.startswith("<untrusted_document>") and letters.endswith("</untrusted_document>")
-    assert "ignore your rules" in json.loads(unwrap_untrusted(letters))[document.id]["snippet"]
+    assert "ignore your rules" in parse_tool_result(text).letters[document.id]["snippet"]
 
 
 # --------------------------------------------------------------------------------------------------

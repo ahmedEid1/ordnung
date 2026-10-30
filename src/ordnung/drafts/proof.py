@@ -560,11 +560,3 @@ def timeline(
         )
     dated = sorted(events, key=lambda e: (e.date or "", _ORDER.get(e.kind, 9)))
     return dated + sorted(undated, key=lambda e: e.added_on or "")
-
-
-def day_words(day: str) -> str:
-    """``Tue 1 Sep 2026`` for a ``YYYY-MM-DD`` day (as typed when it isn't one)."""
-    try:
-        return fmt_date(date.fromisoformat(day[:10]))
-    except ValueError:
-        return day

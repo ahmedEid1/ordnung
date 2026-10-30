@@ -1703,10 +1703,17 @@ def test_phone_access_answers_only_on_the_home_network() -> None:
     for client in ("172.17.0.2", "10.8.0.6", "192.168.1.5", "8.8.8.8"):
         assert not net.client_allowed(client, bound, subnet), client
     assert net.client_allowed("192.168.178.31", bound, subnet)
-    for interface in ("utun3", "wg0", "tailscale0", "docker0", "vboxnet0", "vEthernet (WSL)"):
-        assert net.is_tunnel(interface), interface
+    router = "192.168.178.1"
+    for interface in ("utun3", "wg0", "tailscale0"):  # never, even on the router's network
+        found = [net.Interface(interface, "192.168.178.30", 24, "")]
+        assert not net.candidate_addresses(found, default="192.168.178.30", router=router), interface
+    for interface in ("docker0", "vboxnet0", "vEthernet (WSL)"):
+        found = [net.Interface(interface, "172.17.0.1", 16, "")]
+        assert not net.candidate_addresses(found, default="172.17.0.1", router=router), interface
     for interface in ("en0", "wlan0", "Wi-Fi", "eth0"):
-        assert not net.is_tunnel(interface), interface
+        found = [net.Interface(interface, "192.168.178.23", 24, "")]
+        offered = net.candidate_addresses(found, default="192.168.178.23", router=router)
+        assert [c.address for c in offered] == ["192.168.178.23"], interface
     external = net.Interface("vEthernet (External)", "192.168.178.20", 24, "Hyper-V Virtual Ethernet Adapter")
     docker = net.Interface("docker0", "172.17.0.1", 16, "")
     offered = net.candidate_addresses([external, docker], default="192.168.178.20", router="192.168.178.1")
