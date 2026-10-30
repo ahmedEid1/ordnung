@@ -18,14 +18,12 @@ afterEach(() => {
   act(() => __clearToasts());
 });
 
-const WAIT = { timeout: 5000 };
-
 describe("the sync indicator", () => {
   it("says the latest is saved and has reached the other computer, and leads to Your computers", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp();
     renderWithProviders(<SyncIndicator />);
-    const link = await screen.findByRole("link", { name: "Saved · sam-desktop has it" }, WAIT);
+    const link = await screen.findByRole("link", { name: "Saved · sam-desktop has it" });
     expect(link).toHaveAttribute("href", "/settings?section=computers");
     expect(link).toHaveAttribute("title", "Saved · sam-desktop has it");
   });
@@ -35,15 +33,15 @@ describe("the sync indicator", () => {
     srv.sync.setUp();
     srv.sync.computers[1]!.has_latest = false;
     const { unmount } = renderWithProviders(<SyncIndicator />);
-    expect(await screen.findByRole("link", { name: "Saved · sam-desktop hasn't received it yet" }, WAIT)).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Saved · sam-desktop hasn't received it yet" })).toBeInTheDocument();
     unmount();
     srv.sync.pending = true;
     const second = renderWithProviders(<SyncIndicator />);
-    expect(await screen.findByRole("link", { name: "Saving…" }, WAIT)).toHaveAttribute("data-state", "saving");
+    expect(await screen.findByRole("link", { name: "Saving…" })).toHaveAttribute("data-state", "saving");
     second.unmount();
     srv.sync.setProblem("folder_full");
     renderWithProviders(<SyncIndicator />);
-    expect(await screen.findByRole("link", { name: "Not saved: The sync folder is full" }, WAIT)).toHaveAttribute("data-state", "problem");
+    expect(await screen.findByRole("link", { name: "Not saved: The sync folder is full" })).toHaveAttribute("data-state", "problem");
   });
 
   it("isn't there when sync is off, or this computer stands by", async () => {
@@ -90,10 +88,10 @@ describe("the sync banner", () => {
     srv.sync.setUp().bothChanged();
     const user = userEvent.setup();
     renderWithProviders(<SyncBanner />);
-    const banner = await screen.findByRole("status", {}, WAIT);
+    const banner = await screen.findByRole("status");
     expect(banner).toHaveTextContent("Your two computers both have changes. Nothing is lost: choose which to keep.");
     await user.click(within(banner).getByRole("button", { name: "Choose…" }));
-    expect(await screen.findByRole("dialog", { name: "Which Ordnung do you want to keep?" }, WAIT)).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Which Ordnung do you want to keep?" })).toBeInTheDocument();
   });
 
   it("standing by (on a page that stays open): whose Ordnung is in use, and Use Ordnung here", async () => {
@@ -106,10 +104,10 @@ describe("the sync banner", () => {
         <Toaster />
       </>,
     );
-    const banner = await screen.findByText("Ordnung is in use on sam-desktop.", {}, WAIT);
+    const banner = await screen.findByText("Ordnung is in use on sam-desktop.");
     expect(banner.closest("[role=status]")).toHaveTextContent(/This computer is standing by: it changes nothing until you use Ordnung here/);
     await user.click(screen.getByRole("button", { name: "Use Ordnung here" }));
-    expect(await screen.findByText("Ordnung is in use here now", {}, WAIT)).toBeInTheDocument();
+    expect(await screen.findByText("Ordnung is in use here now")).toBeInTheDocument();
     expect(srv.sync.mode).toBe("in_use");
   });
 
@@ -118,7 +116,7 @@ describe("the sync banner", () => {
     srv.sync.setUp().arriving(9, 9);
     srv.sync.activity = "bringing_over";
     renderWithProviders(<SyncBanner />);
-    expect(await screen.findByText("Bringing over a change from sam-desktop", {}, WAIT)).toBeInTheDocument();
+    expect(await screen.findByText("Bringing over a change from sam-desktop")).toBeInTheDocument();
     expect(screen.queryByRole("button")).toBeNull();
   });
 });

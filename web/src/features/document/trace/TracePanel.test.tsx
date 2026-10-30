@@ -284,7 +284,7 @@ describe("How it was read — what it links to and offers", () => {
     // the new reading, when it is there (the server says so), opens compared with the one before
     await waitFor(async () => expect((await detailOf(srv, "doc_nebenkosten")).document.status).not.toBe("processing"));
     handleServerEvent(first.client, { type: "document.processed", data: { doc_id: "doc_nebenkosten", status: "processed" } });
-    expect(await screen.findByRole("region", { name: "What reading 2 decided differently from reading 1" }, { timeout: 4000 })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "What reading 2 decided differently from reading 1" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /^Reading 2 · read again on/ })).toBeInTheDocument();
     // and moves on to what changed
     await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: "What reading 2 decided differently from reading 1" })).toHaveFocus());
