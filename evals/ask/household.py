@@ -293,8 +293,8 @@ def summarise_household(
     scored: Sequence[Scored], *, seed: int = DEFAULT_SEED, resamples: int = DEFAULT_RESAMPLES
 ) -> dict[str, Any]:
     """The household block of the summary: how many questions, how many got no answer, the share whose answer
-    gives its gold and says whose each number is (``attribution``, final and raw, with 95 % intervals) and
-    what they cost (API-equivalent)."""
+    gives its gold and says whose each number is (``attribution``, final and raw, with 95 % intervals), how many
+    final answers call a date still open passed (``harmful``) and what they cost (API-equivalent)."""
 
     def rate(correct: Callable[[Scored], bool | None]) -> dict[str, Any]:
         units = [(s.cluster, float(bool(correct(s))), 1.0) for s in scored]
@@ -305,5 +305,6 @@ def summarise_household(
         "not_answered": sum(1 for s in scored if not s.answered),
         "attribution": rate(lambda s: s.correct_final),
         "attribution_raw": rate(lambda s: s.correct_raw),
+        "harmful": sum(1 for s in scored if s.called_passed_final),
         "cost_usd": math.fsum(s.cost_usd for s in scored if s.answered),
     }
