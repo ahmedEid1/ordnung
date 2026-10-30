@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Iterator
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -14,6 +15,7 @@ from ordnung import clock
 from ordnung.calendar.ics import CHECK_PREFIX, build_ics, mark_exported, needs_check
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import ComputationReceipt, Evidence, Item
+from ordnung.secretary import household
 
 TODAY = date(2026, 9, 28)
 
@@ -315,3 +317,50 @@ def test_an_emailed_bill_is_one_event_and_leaves_with_the_bill_paid(store: Store
     assert f"{bill['bill_payment']}@ordnung.local" not in uids
     store.trash_document(bill["bill"])  # the bill goes: the e-mail's payment is the one to pay again
     assert f"{bill['email_payment']}@ordnung.local" in set(_events(build_ics(store)))
+
+
+@dataclass(frozen=True)
+class _Person:
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+def test_a_member_s_to_do_names_them_in_the_calendar(store: Store, ids: dict[str, str]) -> None:
+    """A to-do of a letter filed for someone of the household starts with their name, after the kind's symbol and
+    any "⚠ check: " or "✓ "; its alarms repeat it. A to-do without a letter and a contract's dates name no one, and
+    with no one filed for the calendar file is byte for byte as before."""
+    before = build_ics(store, include_done=True)
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    assert build_ics(store, include_done=True) == before
+    (alex,) = household.load(store).members
+    tax = store.get_item(ids["deadline"]).doc_id  # type: ignore[union-attr]
+    assert tax is not None
+    unsure = _item(
+        store, kind="payment", title="Pay the fee", due_date="2026-10-09", doc_id=tax, grounding="unverified"
+    )
+    household.file(store, {tax: alex.id})
+    events = _events(build_ics(store, include_done=True))
+    deadline = events[f"{ids['deadline']}@ordnung.local"]
+    assert str(deadline["summary"]) == "⚑ Alex Rivera: Objection deadline"
+    alarms = {str(alarm["description"]) for alarm in deadline.walk("VALARM")}
+    assert "⚑ Alex Rivera: Objection deadline — post it today" in alarms
+    assert all(text.startswith("⚑ Alex Rivera: Objection deadline — ") for text in alarms)
+    assert str(events[f"{unsure}@ordnung.local"]["summary"]) == f"{CHECK_PREFIX}€ Alex Rivera: Pay the fee"
+    assert (
+        str(events[f"{ids['payment']}@ordnung.local"]["summary"]) == f"{CHECK_PREFIX}€ Pay TechMarkt reminder"
+    )
+    contract = ids["contract"]
+    assert (
+        str(events[f"{contract}-send-by@ordnung.local"]["summary"])
+        == "✉ Post your cancellation: FunkNetz Mobil"
+    )
+    store.update_item(ids["deadline"], status="done")
+    done = _events(build_ics(store, include_done=True))[f"{ids['deadline']}@ordnung.local"]
+    assert str(done["summary"]) == "✓ ⚑ Alex Rivera: Objection deadline"
+    store.update_item(ids["deadline"], status="open")
+    household.file(store, {tax: None})
+    assert (
+        str(_events(build_ics(store))[f"{ids['deadline']}@ordnung.local"]["summary"])
+        == "⚑ Objection deadline"
+    )

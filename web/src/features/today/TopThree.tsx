@@ -29,7 +29,7 @@ import { urgencyOf, urgencyTone, type UrgencyTone } from "@/lib/format";
 import { useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { doneLine } from "@/features/items/repeat";
-import { filedMember } from "@/features/household/logic";
+import { actionMember } from "@/features/household/logic";
 import { PersonTag } from "@/features/household/PersonTag";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
@@ -439,7 +439,7 @@ export function TopThree({
                 action={a}
                 index={i}
                 party={a.partyId ? partyById.get(a.partyId) : undefined}
-                person={a.docId ? filedMember(household, a.docId) : null}
+                person={actionMember(household, a)}
                 today={appToday}
               />
             ))}

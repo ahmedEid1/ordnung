@@ -24,8 +24,17 @@ person says so.
    removes its link in the same transaction (:meth:`ordnung.db.store.Store.delete_document`); the daily check
    removes links to letters that no longer exist (left by a computer still on 0.2.0); a letter just added
    starts unfiled, even when a link was left under its id (:meth:`ordnung.db.store.Store.add_document`).
-9. **Never seen by Claude:** nothing here goes into a prompt, a draft request, Ask or a notification. Dates,
-   reminders, numbers, Ask and Ideas keep treating every letter as the person's.
+9. **What reaches Claude** (ADR 0025): the people's names as typed and which letters are filed for whom, through
+   Ask's tools only (:func:`ask_view`) and only when the person asks; Ask's tools leave out the letters the
+   person keeps private. A person's name also stands in the title of an Idea about letters filed for them,
+   and Ideas' titles go with the weekly Ideas and the daily note. Never ``signs``, "mine", a suggestion or how
+   many letters a person has; no prompt or draft request reads the household itself.
+10. **Whose it is** (:func:`filed`): a letter is a person's of the household only when the person filed it for
+    them (a link to someone still in the list, the letter outside the trash). Every other letter is the
+    person's own: no link, a suggestion, "mine", or filed for someone since removed. It is worked out from the
+    links on every read and kept nowhere else, so filing, *Undo*, removing someone and *Restore* from the
+    trash change it at once; the addressee never decides it. My numbers, Ask's tools and the Ideas follow it to
+    say whose a number or a date is; the dates and to-dos stay the person's to act on.
 
 Storage: one ``meta`` row (:data:`ordnung.db.store.HOUSEHOLD_META_KEY`, :class:`StoredHousehold`), synced like
 the profile; no migration; no people and nothing filed: no row. Changes publish ``profile.updated``.
@@ -42,7 +51,7 @@ import hashlib
 import json
 import re
 import sqlite3
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from typing import Protocol, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -134,6 +143,15 @@ class HouseholdView(TypedDict):
     #: unanswered letters outside the trash → the one member their addressee names
     suggested: dict[str, str]
     version: str
+
+
+class AskView(TypedDict):
+    """What Ask may see of the household (point 9, :func:`ask_view`)."""
+
+    #: each person as ``[id, name]``, in household order
+    members: list[list[str]]
+    #: letter → the id of the person it is filed for, sorted by letter
+    filed: dict[str, str]
 
 
 class HouseholdError(Exception):
@@ -354,6 +372,43 @@ def view(store: Store) -> HouseholdView:
         "suggested": suggested,
         "version": version(stored.members),
     }
+
+
+# --------------------------------------------------------------------------------------------------
+# whose it is (points 9 and 10)
+# --------------------------------------------------------------------------------------------------
+
+
+def filed(stored: StoredHousehold, live_ids: Collection[str]) -> dict[str, HouseholdMember]:
+    """Each letter of ``live_ids`` (the caller's letters outside the trash) the person filed for someone still
+    in the household, with that person (point 10). Pure: a suggestion, "mine", a link to someone removed and a
+    letter not in ``live_ids`` are all left out."""
+    members = {member.id: member for member in stored.members}
+    return {
+        doc_id: members[link]
+        for doc_id, link in stored.links.items()
+        if doc_id in live_ids and link in members
+    }
+
+
+def ask_view(store: Store, live_ids: Collection[str]) -> AskView | None:
+    """What Ask may see of the household (point 9): each person's id and name as typed, and which of
+    ``live_ids`` (the letters the caller may show) are filed for whom; ``None`` without people. Never ``signs``,
+    "mine" or a suggestion."""
+    stored = load(store)
+    if not stored.members:
+        return None
+    found = filed(stored, live_ids)
+    return {
+        "members": [[member.id, member.name] for member in stored.members],
+        "filed": {doc_id: found[doc_id].id for doc_id in sorted(found)},
+    }
+
+
+def possessive(name: str) -> str | None:
+    """``name`` with an English possessive ("Alex Rivera's", "Hans's"), for an Idea's title about letters filed
+    for that person; ``None`` when the name doesn't end in a letter ("Kim 2"), which then takes "For Kim 2: "."""
+    return f"{name}'s" if name and name[-1].isalpha() else None
 
 
 # --------------------------------------------------------------------------------------------------

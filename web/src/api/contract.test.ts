@@ -650,7 +650,7 @@ describe("API contract on a phone (the mock as the phone listener, its allow-lis
     srv = createMockServer({ staticDemo: false, latency: 0, phoneScope: scope });
     const problems = [...(await checked("health", () => api.health())), ...(await checked("numbers", () => api.numbers()))];
     expect(problems).toEqual([]);
-    expect(await api.health()).toMatchObject({ client: "phone", data_dir: "", demo: false, checks: [] });
+    expect(await api.health()).toMatchObject({ client: "phone", data_dir: "", demo: false, checks: [], picture_text: null });
     expect((await api.numbers()).masked).toBe(true);
 
     expect(await refusal(() => api.settings())).toEqual({ status: 403, code: "computer_only" });

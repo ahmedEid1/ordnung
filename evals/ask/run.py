@@ -8,24 +8,37 @@ so a replay recomputes every number exactly, with no model call and no cost, and
 person's ``claude`` CLI (only sample-life documents may be recorded); ``--refresh`` records anew.
 
 ``prompts.lock.json`` next to the recordings stores the digest of the Ask prompts they were made
-with: replay refuses when a prompt's text changed under the same version (Ask's replay keys carry
-prompt versions, not texts). And every replayed tool call is answered again by the current MCP tools
-on the rebuilt ledger (:func:`ordnung.assistant.mcp_server.stale_tool_results`): a recording whose
-tool results the tools would no longer give — say, letter text moved into the record part — is
-*stale*, and the run fails until it is recorded again (``--prune-stale``, then ``--live``).
+with, and of the rest every turn is given (``ask_tools``: the server's instructions, its tools as
+tools/list gives them, the allowed tools and the cost cap, under the Ask prompt's version): replay
+refuses when any of it changed under the same version (Ask's replay keys carry prompt versions, not
+texts). And every replayed tool call is answered again by the current MCP tools on the rebuilt ledger
+(:func:`ordnung.assistant.mcp_server.stale_tool_results`): a recording whose tool results the tools
+would no longer give — say, letter text moved into the record part — is *stale*, and the run fails
+until it is recorded again (``--prune-stale``, then ``--live``).
+
+The household group (:mod:`evals.ask.household`) is asked on a ledger of its own and reported apart.
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import tempfile
 from collections.abc import AsyncIterator, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from evals.ask.attacks import ATTACKS, Attack
+from evals.ask.household import (
+    HouseholdQuestion,
+    build_household,
+    household_questions,
+    household_truth,
+    summarise_household,
+)
 from evals.ask.ledger import TODAY, SampleLife, build_base, copy_database, inject, pinned_today
 from evals.ask.metrics import summarise
 from evals.ask.questions import Question, all_questions, load_truth, truth_values
@@ -36,11 +49,14 @@ from evals.ask.score import (
     citation_support,
     letter_values,
     score_attack,
+    score_household,
     score_question,
     unsupported_values,
 )
 from evals.conditions import text_sha
 from evals.run import load_prompts_lock, stale_prompts, write_prompts_lock
+from ordnung.assistant import ask as ask_agent
+from ordnung.assistant import mcp_server
 from ordnung.assistant.ask import ask_cache_key, ask_stream, check_turn
 from ordnung.assistant.citations import tool_name
 from ordnung.assistant.mcp_server import LedgerTools, render_result, stale_tool_results
@@ -59,6 +75,8 @@ RECORDED_DIR = EVALS_DIR / "recorded" / "ask"
 RESULTS_DIR = EVALS_DIR / "results"
 DEFAULT_MODEL = "claude-sonnet-5"  # a pinned id: an alias moves with releases, the recordings do not
 ASK_PROMPTS = ("ask_system", "ask")
+#: The lock entry of what every Ask turn is given besides its prompts (:func:`ask_tools_digest`).
+ASK_TOOLS = "ask_tools"
 
 
 class BenchmarkError(RuntimeError):
@@ -97,6 +115,8 @@ class RunResult:
     summary: dict[str, Any]
     misses: list[str] = field(default_factory=list)
     stale: dict[str, tuple[Path | None, list[str]]] = field(default_factory=dict)
+    household: list[HouseholdQuestion] = field(default_factory=list)
+    household_scored: list[Scored] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -107,6 +127,40 @@ class RunResult:
 def prompt_hashes() -> dict[str, tuple[str, str]]:
     """``name → (version, digest)`` of the Ask prompts."""
     return {name: (version, text_sha(body)) for name in ASK_PROMPTS for version, body in [prompts.load(name)]}
+
+
+def ask_tools_digest() -> str:
+    """The digest of what every Ask turn is given besides its prompts, the question and the ledger: the
+    ledger-only server's instructions and its tools as tools/list gives them (names, descriptions, input
+    schemas), the tools Ask may call and its cost cap. None of it is in a recording's key, and the staleness
+    check compares tool results only: a changed description would reach every turn with nothing to notice."""
+
+    async def listed() -> list[dict[str, Any]]:
+        with tempfile.TemporaryDirectory(prefix="ordnung-ask-tools-") as tmp:
+            store = Store.open(Paths(Path(tmp)))
+            try:
+                server = mcp_server.build_server(store, rules_tools=False)
+                return [tool.model_dump(mode="json", exclude_none=True) for tool in await server.list_tools()]
+            finally:
+                store.close()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:  # its own event loop, also from inside a running one
+        tools = pool.submit(asyncio.run, listed()).result()
+    given = {
+        "instructions": mcp_server.INSTRUCTIONS,
+        "tools": tools,
+        "allowed_tools": ask_agent.ALLOWED_TOOLS,
+        "max_budget_usd": ask_agent.MAX_BUDGET_USD,
+    }
+    return text_sha(json.dumps(given, sort_keys=True, ensure_ascii=False))
+
+
+def locked_inputs() -> dict[str, tuple[str, str]]:
+    """What ``prompts.lock.json`` pins: the Ask prompts (:func:`prompt_hashes`) and, under the Ask system
+    prompt's version, :data:`ASK_TOOLS` (:func:`ask_tools_digest`). A name an older lock lacks is not stale
+    (:func:`evals.run.stale_prompts`): the next live run writes it."""
+    hashes = prompt_hashes()
+    return {**hashes, ASK_TOOLS: (hashes["ask_system"][0], ask_tools_digest())}
 
 
 @dataclass
@@ -130,7 +184,7 @@ class Capture:
         self.inner = inner
         self.root = root
         self.calls: dict[str, _Call] = {}
-        self.misses: list[str] = []
+        self.missed: list[str] = []  # the questions (by id) without a recording
         self.stale: dict[str, tuple[Path | None, list[str]]] = {}
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
@@ -150,8 +204,6 @@ class Capture:
                 call.response = event.response
             elif event.type == "error":
                 call.error = event.error
-                if (event.error or "").startswith("no recorded response"):
-                    self.misses.append(req.cache_key or req.prompt[:80])
             yield event
 
 
@@ -159,10 +211,10 @@ def make_backend(config: Config, allowed_doc_ids: set[str]) -> LLMBackend:
     """Strict replay; ``live``: replay, else record with ``claude``; ``refresh``: record everything."""
     root = config.root
     if not (config.live or config.refresh):
-        stale = stale_prompts(root, prompt_hashes())
+        stale = stale_prompts(root, locked_inputs())
         if stale:
             raise BenchmarkError(
-                f"The Ask prompts changed since the recordings were made ({', '.join(stale)}): "
+                f"The Ask prompts or tools changed since the recordings were made ({', '.join(stale)}): "
                 "record again with python -m evals.ask --live --refresh."
             )
         return ReplayBackend(root)
@@ -214,6 +266,8 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
         elif event.type == "error":
             error = event.error or "error"
     call = capture.calls.get(ask_cache_key(ctx.store, question, [], TODAY))
+    if call is not None and (call.error or "").startswith("no recorded response"):
+        capture.missed.append(item_id)
     if call is not None and (stale := stale_tool_results(LedgerTools(ctx.store, today=TODAY), call.events)):
         capture.stale[item_id] = (call.path, stale)
     if final is None or call is None or call.response is None:
@@ -380,6 +434,7 @@ async def _run_all(
     questions: list[Question],
     attacks: list[Attack],
     targets: dict[str, str],
+    household: Sequence[HouseholdQuestion] = (),
 ) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]]]:
     capture = Capture(make_backend(config, set(life.doc_ids.values())), config.root)
     limit = asyncio.Semaphore(max(1, config.concurrency))
@@ -393,26 +448,41 @@ async def _run_all(
         jobs.append(
             _ask_many(folder, capture, config.model, [(attack.id, attack.question)], attack.id, limit)
         )
+    if household:
+        folder = build_household(work / "base", work / "household", life)
+        asked = [(q.id, q.text) for q in household]
+        jobs.append(_ask_many(folder, capture, config.model, asked, "household", limit))
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
-    return {turn.id: turn for turn in turns}, capture.misses, capture.stale
+    return {turn.id: turn for turn in turns}, sorted(capture.missed), capture.stale
 
 
 def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
-    """Build the ledgers, ask everything (replayed or live), score it and summarise."""
+    """Build the ledgers, ask everything (replayed or live), score it and summarise; the household group's
+    numbers go in a block of their own (``summary["household"]``), never into the headline's."""
     life = SampleLife.load()
     questions = [q for q in all_questions() if config.wanted(q.id)]
     attacks = [a for a in ATTACKS if config.wanted(a.id)]
+    household = [q for q in household_questions() if config.wanted(q.id)]
     with pinned_today(), tempfile.TemporaryDirectory(prefix="ordnung-ask-eval-", dir=work_dir) as tmp:
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life)
-        turns, misses, stale = asyncio.run(_run_all(config, work, life, questions, attacks, targets))
+        turns, misses, stale = asyncio.run(
+            _run_all(config, work, life, questions, attacks, targets, household)
+        )
         context = scoring_context(work / "base", life, targets)
     if config.live or config.refresh:
-        write_prompts_lock(config.root, prompt_hashes())
+        write_prompts_lock(config.root, locked_inputs())
     scored = [score_question(q, turns[q.id], context) for q in questions]
     scored += [score_attack(a, turns[a.id], context) for a in attacks]
-    return RunResult(config, questions, attacks, turns, scored, summarise(scored), misses, stale)
+    truth = household_truth()
+    household_scored = [score_household(q, turns[q.id], truth) for q in household]
+    summary = summarise(scored)
+    if household:
+        summary["household"] = summarise_household(household_scored)
+    return RunResult(
+        config, questions, attacks, turns, scored, summary, misses, stale, household, household_scored
+    )
 
 
 def recorded_prompt_versions(root: Path) -> dict[str, list[str]]:

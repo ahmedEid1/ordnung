@@ -292,7 +292,11 @@ LOCAL_SETTINGS: tuple[str, ...] = (
     "simulated_today",
 )
 #: … and the ones that travel.
-SYNCED_SETTINGS: tuple[str, ...] = ("models", "model", "llm_brief", "llm_review")
+SYNCED_SETTINGS: tuple[str, ...] = ("models", "model", "llm_brief", "llm_review", "read_picture_text")
+#: Travelling settings a pulled copy may lack because Ordnung 0.3.x wrote it (it drops a field it doesn't know
+#: when it rewrites the settings): this computer keeps its own value for them then, so a choice to turn
+#: *Text in pictures* off is never lost in a round trip.
+KEPT_WHEN_ABSENT: tuple[str, ...] = ("read_picture_text",)
 
 #: Privacy-log rows that stay on the computer that wrote them (scrubbed from pushes, left out of the
 #: digest, carried over from the live database on pull): a backup made or restored here (what Settings

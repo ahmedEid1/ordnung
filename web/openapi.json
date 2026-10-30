@@ -2631,7 +2631,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/MyNumbers"
+                  "$ref": "#/components/schemas/NumbersPage"
                 }
               }
             }
@@ -5267,7 +5267,7 @@
           "demo"
         ],
         "summary": "Suggested Questions",
-        "description": "The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none\nonce the letters or to-dos changed since the demo started (the recorded answers no longer fit).",
+        "description": "The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none\nonce the letters, to-dos or household changed since the demo started (the recorded answers no longer fit).",
         "operationId": "suggested_questions_api_demo_questions_get",
         "responses": {
           "200": {
@@ -5564,6 +5564,11 @@
             "title": "Desktop Notify Time",
             "default": "08:00"
           },
+          "read_picture_text": {
+            "type": "boolean",
+            "title": "Read Picture Text",
+            "default": true
+          },
           "demo": {
             "type": "boolean",
             "title": "Demo",
@@ -5592,6 +5597,7 @@
           "llm_review",
           "desktop_notifications",
           "desktop_notify_time",
+          "read_picture_text",
           "demo",
           "simulated_today"
         ],
@@ -8773,6 +8779,7 @@
             "type": "string",
             "enum": [
               "ok",
+              "info",
               "warn",
               "fail"
             ],
@@ -8804,7 +8811,7 @@
           "fix"
         ],
         "title": "DoctorCheck",
-        "description": "One ``ordnung doctor`` check: what was looked at, the outcome and — when it is not ok — how to\nfix it."
+        "description": "One ``ordnung doctor`` check: what was looked at and the outcome. ``fix`` says how to fix a ``warn`` or\n``fail`` row, or, on an ``info`` row, how to turn on what is off or add what is missing; an ``ok`` row has\nnone."
       },
       "Document": {
         "properties": {
@@ -9808,7 +9815,7 @@
           "tax_choice"
         ],
         "title": "DocumentRow",
-        "description": "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\nnever stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n\nIts fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\nitself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
+        "description": "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n(``LetterFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\nnever stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n\nIts fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\nitself."
       },
       "DocumentTrace": {
         "properties": {
@@ -10853,6 +10860,17 @@
             "title": "Client",
             "description": "Who asked: this computer's browser, or a paired phone (which gets no data folder, Claude path or checks)",
             "default": "computer"
+          },
+          "picture_text": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PictureTextStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Text in pictures on this computer (ADR 0024); none for a phone"
           }
         },
         "type": "object",
@@ -10867,7 +10885,8 @@
           "model_pinned",
           "rules_last_checked",
           "checks",
-          "client"
+          "client",
+          "picture_text"
         ],
         "title": "Health"
       },
@@ -13134,7 +13153,7 @@
         },
         "type": "object",
         "title": "LetterDetails",
-        "description": "Facts a template letter needs besides the letter, contract or person it is about.\n\nEverything is optional here; each template names the facts it requires\n(:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused\nwith a clear message, never a server error), amounts in euros."
+        "description": "Facts a template letter needs besides the letter, contract or person it is about.\n\nEverything is optional here; each template names the facts it requires\n(:data:`ordnung.drafts.template_letters.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused\nwith a clear message, never a server error), amounts in euros."
       },
       "LetterFor": {
         "properties": {
@@ -14510,7 +14529,26 @@
         "title": "MyNumber",
         "description": "One number as Ordnung sorted it (:mod:`ordnung.numbers`): the value as printed, how to read and\ncopy it, the check-digit test and the latest letter that shows it."
       },
-      "MyNumbers": {
+      "NotificationText": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "body"
+        ],
+        "title": "NotificationText",
+        "description": "What a desktop notification says."
+      },
+      "NumbersPage": {
         "properties": {
           "today": {
             "type": "string",
@@ -14549,6 +14587,33 @@
             "title": "Masked",
             "description": "The numbers show only their last 4 characters (on a phone): the full ones are on your computer",
             "default": false
+          },
+          "household": {
+            "items": {
+              "$ref": "#/components/schemas/PersonNumbers"
+            },
+            "type": "array",
+            "title": "Household",
+            "description": "Every person of the household with a number or document on the page, in household order"
+          },
+          "filed_for": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Filed For",
+            "description": "A call-sheet number or open case all of whose letters are filed for one person: its key → that person's id"
+          },
+          "also_for": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Also For",
+            "description": "A number of yours or a person's that other people's letters show too: its key → those people (``me``: you; else a person's id)"
           }
         },
         "type": "object",
@@ -14558,29 +14623,13 @@
           "documents",
           "organisations",
           "open_cases",
-          "masked"
+          "masked",
+          "household",
+          "filed_for",
+          "also_for"
         ],
-        "title": "MyNumbers",
-        "description": "The *My numbers* page."
-      },
-      "NotificationText": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "title": "Title"
-          },
-          "body": {
-            "type": "string",
-            "title": "Body"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "body"
-        ],
-        "title": "NotificationText",
-        "description": "What a desktop notification says."
+        "title": "NumbersPage",
+        "description": "The *My numbers* page (``GET /api/numbers``): the person's own numbers as :class:`MyNumbers` has them,\nand each person of the household's (:mod:`ordnung.numbers`, ADR 0023). All three household parts are empty\nwithout a household."
       },
       "OnboardingRequest": {
         "properties": {
@@ -15064,6 +15113,45 @@
         ],
         "title": "PaymentDetails"
       },
+      "PersonNumbers": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "hhm_…, as in the household"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "As typed in Settings"
+          },
+          "about": {
+            "items": {
+              "$ref": "#/components/schemas/MyNumber"
+            },
+            "type": "array",
+            "title": "About",
+            "description": "Numbers about them, from letters filed for them"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/IdentityDocument"
+            },
+            "type": "array",
+            "title": "Documents",
+            "description": "Their identity documents, from letters filed for them"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "about",
+          "documents"
+        ],
+        "title": "PersonNumbers",
+        "description": "A person of the household on *My numbers*: what the letters the person filed for them show."
+      },
       "PhoneAccessChange": {
         "properties": {
           "enabled": {
@@ -15531,6 +15619,46 @@
         ],
         "title": "PhoneStatus",
         "description": "What Settings → Phone shows."
+      },
+      "PictureTextStatus": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "reading",
+              "off",
+              "off_by_variable",
+              "not_installed",
+              "not_usable"
+            ],
+            "title": "State"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "What the doctor's row says"
+          },
+          "fix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fix",
+            "description": "The doctor's fix: how to install Tesseract or make it usable (none: nothing to do)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "detail",
+          "fix"
+        ],
+        "title": "PictureTextStatus",
+        "description": "Whether this computer reads the words in photos and scans Claude isn't reading (ADR 0024), in the words\nof the doctor's *Text in pictures* row."
       },
       "Profile": {
         "properties": {
@@ -16882,6 +17010,18 @@
             "title": "Desktop Notify Time",
             "description": "Local time of day, HH:MM (24 h)"
           },
+          "read_picture_text": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read Picture Text",
+            "description": "read the words in photos and scans Claude isn't reading, for search only (ADR 0024)"
+          },
           "demo": {
             "anyOf": [
               {
@@ -17045,7 +17185,7 @@
               }
             ],
             "title": "Error Code",
-            "description": "why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos changed since the demo started (it has to start over)"
+            "description": "why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters, to-dos or household changed since the demo started (it has to start over)"
           },
           "note": {
             "anyOf": [

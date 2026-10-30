@@ -3,7 +3,8 @@ opened on this computer and stored as the ``.eml`` copy Ordnung already reads: i
 and text, and every attached PDF or photo as a letter of its own (:mod:`ordnung.ingest.attachments`). The
 conversion runs before intake looks at the bytes (:func:`~ordnung.ingest.intake.sniff_mime`) at every way
 in: upload and the phone, the watched folder, ``ordnung add`` and proof of a sent letter. So an Outlook
-file whose first bytes hold an attached PDF is never called a broken PDF.
+file whose first bytes hold an attached PDF is never called a broken PDF; and intake itself names an Outlook
+file that reaches it unopened (:data:`~ordnung.ingest.intake.OLE_UNOPENED`) before it looks for a PDF.
 
 The policy, which decides every case:
 
@@ -68,7 +69,7 @@ from typing import Any, cast
 from ordnung.ingest import intake
 from ordnung.ingest.intake import IntakeError, check_size
 
-OLE_MAGIC = bytes.fromhex("D0CF11E0A1B11AE1")
+OLE_MAGIC = intake.OLE_MAGIC
 MAX_BYTES = intake.MAX_BYTES
 MAX_ENTRIES = 20_000
 READ_BUDGET_FACTOR = 2
@@ -100,10 +101,9 @@ MISSING_PART = (
     "Ordnung can't open Outlook files on this computer because a part it needs is missing. "
     "Update or reinstall Ordnung, then add the file again."
 )
-NOT_OUTLOOK = (
-    "This file type is not supported. Please upload a PDF, a photo (JPEG, PNG, WEBP, HEIC) "
-    "or a text or e-mail file (.txt, .eml, .msg)."
-)
+#: Another OLE file (not an e-mail, an Office file or a damaged ``.msg``): intake's own words for a type Ordnung
+#: doesn't read.
+NOT_OUTLOOK = intake.UNSUPPORTED
 
 _POLICY = email.policy.SMTP
 _OFFICE_STREAMS = frozenset({"WORDDOCUMENT", "WORKBOOK", "BOOK", "POWERPOINT DOCUMENT"})

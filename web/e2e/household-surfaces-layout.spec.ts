@@ -1,8 +1,9 @@
 /**
- * Whose letter it is, on Today and in the composer, where jsdom can't look (ADR 0023): the "For …" tag of a Top 3
- * card, "For … · " at the start of a Coming-up row and of a recent letter, no filter on Today, and the composer's From
- * field for a letter filed for someone who signs their own letters and for someone who doesn't — at 320, 375 and
- * 1280 px, light and dark, with axe and the layout sweep's probes.
+ * Whose letter it is, on Today, the Timeline and in the composer, where jsdom can't look (ADR 0023): the "For …" tag
+ * of a Top 3 card, "For … · " at the start of a Coming-up row, of a recent letter and of a Timeline row (never a
+ * contract's), no filter on Today or the Timeline, and the composer's From field for a letter filed for someone who
+ * signs their own letters and for someone who doesn't — at 320, 375 and 1280 px, light and dark, with axe and the
+ * layout sweep's probes.
  *
  * The demo has no household, and its letters are all addressed to its persona. This spec answers `GET /api/household`
  * itself (every letter filed for someone with a long name, so a tag is cut with the whole name at hand; the library's
@@ -132,6 +133,46 @@ test("Today: whose letter it is on Top 3, Coming up and Recent letters, and no f
     await expect(recent.getByText(new RegExp(`^For ${LONG.name}`)).first()).toBeVisible();
     await recent.scrollIntoViewIfNeeded();
     await checkView(page, testInfo, `household-today-recent-${width}`);
+  }
+});
+
+test("Timeline: whose letter a date comes from, at 320, 375 and 1280 px, light and dark", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  // only two letters filed: the operating-cost statement for LONG, the library's reminder for CHILD
+  const reply = await letterId(page, REPLY);
+  const childs = await letterId(page, CHILDS);
+  const household: Household = {
+    members: [
+      { ...LONG, letters: 1 },
+      { ...CHILD, letters: 1 },
+    ],
+    filed: { [reply]: LONG.id, [childs]: CHILD.id },
+    mine: [],
+    suggested: {},
+    version: "0123456789abcdef",
+  };
+  await page.route(
+    (url) => url.pathname === "/api/household",
+    (route) => (route.request().method() === "GET" ? route.fulfill({ json: household }) : route.fallback()),
+  );
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: width === 1280 ? 800 : 700 });
+    await open(page, "/timeline", "Timeline");
+    const list = page.getByRole("region", { name: "Every date" });
+    const rows = list.locator("li[data-entry-id]");
+    // a to-do from each filed letter starts its second line with whose letter it is, the whole line in its title
+    for (const name of [LONG.name, CHILD.name]) {
+      const line = rows.locator(`[title^="For ${name} · "]`).first();
+      await expect(line).toBeVisible();
+      await expect(line).toHaveText(new RegExp(`^For ${name} · `));
+    }
+    // a contract's dates name no one, and there is no filter of whose letters
+    const contracts = rows.filter({ has: page.locator('a[href^="/contracts"]') });
+    expect(await contracts.count(), "the demo's contracts are on the Timeline").toBeGreaterThan(0);
+    await expect(contracts.filter({ hasText: /For (Alexandra|Mia) / })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("combobox", { name: /Whose letters/ })).toHaveCount(0);
+    await rows.locator(`[title^="For ${LONG.name} · "]`).first().scrollIntoViewIfNeeded();
+    await checkView(page, testInfo, `household-timeline-${width}`);
   }
 });
 

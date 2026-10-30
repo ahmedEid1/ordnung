@@ -1,6 +1,7 @@
 # ADR 0024 — Words Ordnung reads in a picture are for finding, not reading
 
-**Status:** accepted · **Date:** 2026-10-28
+**Status:** accepted · **Date:** 2026-10-28 · **Amended:** in 0.4.0 (a switch in Settings, info rows in the
+doctor; [below](#amended-in-040))
 
 ## Context
 [ADR 0020](0020-a-scanner-s-text-is-for-finding-not-reading.md) kept a scanner's text for search, so a scan
@@ -63,13 +64,12 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   for one older than 4.1, without German, or that didn't answer; *Turned off (ORDNUNG_OCR=off)*. An ok row
   with a fix is new: `models.DoctorCheck` says a fix is for a row that isn't ok, and the CLI prints this one as
   an *Optional —* tip.
-- **Only `ingest/worker.py` and `doctor.py` import the engine**, and `models.py` stays as it is (a digest file):
-  the wider `found_in` is the route's own `LetterFoundIn`, and `LetterDetail.picture_text_pages` is a
-  route-local field.
+- **Only `ingest/worker.py` and `doctor.py` import the engine.** The wider `found_in` is the route's own
+  `LetterFoundIn`, and `LetterDetail.picture_text_pages` is a route-local field.
 
 ## Rejected
 - **A Settings switch or a Health field:** both need `models.py`, which the benchmark's code digest covers.
-  The environment variable and the doctor's row do the job.
+  The environment variable and the doctor's row do the job. (Built in 0.4.0: see below.)
 - **macOS Vision or Windows.Media.Ocr:** each works on one system only.
 - **Bundling Tesseract, or `pytesseract` or `tesserocr`:** a dependency, platform wheels and licences to ship,
   for an optional feature.
@@ -88,9 +88,30 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   Ordnung.
 - A page looked at stays as read until Claude reads it; adding German later doesn't read it again.
 - Search needs every word in one text: the letter's own, the scanner's or the picture's.
-- Two computers with the switch set differently, joined by hand-off sync, remove and read again each other's
+- Two computers with the variable set differently, joined by hand-off sync, remove and read again each other's
   words. The docs say to set it the same way on both.
 - A computer still on 0.2.0 ignores the file, finds such a photo by its name, and deletes the file with the
   letter.
 - The benchmark's inputs and Ask's are unchanged: no digest file changes, no database row is written, and the
   demo has no letter that qualifies, so it writes no such file.
+
+## Amended in 0.4.0
+- **A switch in Settings.** Settings → Data → *Text in pictures* (`AppSettings.read_picture_text`, on by default)
+  turns it off and on while Ordnung runs. It is off when the switch is off or `ORDNUNG_OCR=off`
+  (`config.picture_text_off`): the letter routes ask on every call, and a save that names the switch tells the
+  worker (`IngestWorker.picture_text_changed`, one change at a time). Off stops a reading under way, ends the
+  loop and deletes every `picture-text.json`; on starts the loop at once and looks for Tesseract afresh.
+  `ORDNUNG_OCR=off` still wins, whatever the switch says, and `ocr.recognise` still refuses on the variable
+  alone. The card's line is this computer's state in the doctor's words (`Health.picture_text`; none for a
+  phone).
+- **It travels with hand-off sync**, as a setting (`sync.SYNCED_SETTINGS`). A settings row written by 0.3.0,
+  which drops the fields it doesn't know, comes in without it: `KEPT_WHEN_ABSENT` keeps this computer's choice
+  then, so a choice to stop reading private photos isn't lost in a round trip. A computer updated from 0.3.0 whose
+  row still lacks the field pushes it without the field too, so its default never overwrites the other's choice.
+  The variable stays per computer.
+- **Info rows.** `models.CheckStatus` gained `info`: neither ok nor a problem, and it never fails the doctor.
+  *Not installed (optional)*, *Turned off (ORDNUNG_OCR=off)* and *Off (Settings → Data → Text in pictures)* are
+  info rows, and the CLI prints an info row's fix as an *Optional —* tip; no ok row has a fix any more.
+- **Why `models.py` could change after all.** Its code digest keys only the local prediction cache and the
+  fingerprint of a new results file. Comparing every benchmark request before and after the change found the
+  same content, so nothing had to be recorded again (#36).

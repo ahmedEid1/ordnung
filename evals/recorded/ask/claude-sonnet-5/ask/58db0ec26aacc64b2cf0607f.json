@@ -1,0 +1,197 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"When does Alex's passport expire?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9t9tmrv1ypba",
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "The person asks:\nWhen does Alex's passport expire?\n"
+  },
+  "response": {
+    "text": "Alex's passport expires on **Wed 10 Feb 2027** [item:itm_g321eme013j2].\n\nIt's good practice to apply for renewal a few months before that, since Ordnung notes many authorities and airlines require remaining validity beyond a trip.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 308,
+      "cache_read_tokens": 19985,
+      "cache_creation_tokens": 6548,
+      "cost_usd": 0.033281,
+      "duration_ms": 7577,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_profile",
+      "input": {},
+      "tool_use_id": "toolu_01GiyJCzi75uuUDwq3WfDMw5"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"name\":\"Sam Rivera\",\"language\":\"en\",\"region\":\"NW\",\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"letters\":[\"doc_9t9tmrv1ypba\",\"doc_1dgp8tp2ga0c\"]}],\"household_note\":\"household lists the other people whose letters come to the person (a partner, their children), with the names the person typed and the letters the person filed for each, newest first. Those letters and what they show are about that person, not the person's own; every other letter whose contents are shared is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its to-dos are, is not known — say so.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01GiyJCzi75uuUDwq3WfDMw5"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9t9tmrv1ypba"
+      },
+      "tool_use_id": "toolu_01MdcnXySbbSWwuMvSEBWXBg"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_eatxsexnt9s3\",\"case_id\":\"cas_jmphbycg8vfz\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"filed_for\":{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\"},\"remedy\":{\"type\":\"widerspruch\"},\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-11-15\",\"amount\":156.55,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"doc_9t9tmrv1ypba\":{\"tax_note\":\"Statutory health and long-term care insurance contributions are deductible as special expenses (Sonderausgaben) in the German tax return.\",\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"summary\":\"Muster BKK, Alex Rivera's statutory health/long-term care insurer, raises the monthly contribution as a student member from €146.29 to €156.55 as of 1 October 2026, because the student income basis (BAföG-Bedarf) rises from €855.00 to €915.00 for the winter semester 2026/27. An objection (Widerspruch) can be filed within one month of notification.\",\"explanation\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance contributions for the new semester, so your monthly contribution goes up. The amount is collected automatically by direct debit around the 15th of each month; the new, higher amount is first collected on 15 October 2026 — make sure your account has enough funds. If you disagree with the assessment, you may file a written or electronic objection (Widerspruch); the app shows the deadline for this. Note that filing an objection does not stop the higher contribution from being due in the meantime, so you must keep paying it either way. Consider consulting the insurer or a student advisory service if unsure.\",\"key_facts\":[{\"label\":\"New monthly contribution (Monatsbeitrag)\",\"value\":\"156,55 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New income basis (Bemessungsgrundlage)\",\"value\":\"915,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous income basis\",\"value\":\"855,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Additional contribution rate (Zusatzbeitrag)\",\"value\":\"2,69 %\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Direct debit day\",\"value\":\"15. eines Monats\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"M472059139\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}],\"remedy\":{\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"Der Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"payment\":{\"iban\":\"DE18123456000006060000\",\"payee\":\"Muster BKK\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nMuster BKK\\nDie Betriebskrankenkasse für Musterstadt\\n\\nVersicherten-Nr. M472059139\\nUnser Zeichen   BZ-S/2026/0917\\nMuster BKK · Kassenstraße 3 · 12346 Musterstadt   Nadine Beispiel\\nIhr Kontakt\\nTelefon   0123 6060-417\\nHerrn\\nDatum   10.09.2026\\nAlex Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBeitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab\\n01.10.2026\\n\\nSehr geehrter Herr Rivera,\\n\\nSie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert. Als\\nbeitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V);\\ner beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €). Ab dem 01.10.2026 beträgt Ihr\\nmonatlicher Beitrag 156,55 € (bisher 146,29 €).\\n\\nBeitragsart   Satz   Monatsbeitrag\\n\\nKrankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, §   10,22 %   93,51 €\\n245 SGB V)\\n\\nKassenindividueller Zusatzbeitrag der Muster BKK (§ 242 SGB V)   2,69 %   24,61 €\\n\\nPflegeversicherung (§ 55 Abs. 1 SGB XI)   3,60 %   32,94 €\\n\\nBeitragszuschlag für Kinderlose (§ 55 Abs. 3 SGB XI)   0,60 %   5,49 €\\n\\nGesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\\n\\nWas ist der Zusatzbeitrag?\\nJede Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz einen eigenen Zusatzbeitrag.\\nAnders als Arbeitnehmer tragen Studierende ihn – wie den gesamten Beitrag – allein. Der\\nZusatzbeitragssatz der Muster BKK ist unverändert und liegt mit 2,69 % unter dem Durchschnitt von\\n2,9 %. Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am\\n15.10.2026.\\n\\nRechtsbehelfsbelehrung\\nGegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\\nDer Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift\\nbei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\\n\\nHinweis: Widerspruch und Klage haben keine aufschiebende Wirkung (§ 86a Abs. 2 Nr. 1 SGG); die Beiträge sind daher\\nauch bei einem Widerspruch zunächst in der festgesetzten Höhe zu zahlen.\\n\\nMit freundlichen Grüßen\\nIhre Muster BKK\\nNadine Beispiel\\nBeitragsservice\\n\\nMuster BKK · Körperschaft des öffentlichen Rechts   Vorstand: Andrea Beispiel   Sparkasse Musterstadt\\nKassenstraße 3 · 12346 Musterstadt   Verwaltungsratsvorsitzender: Peter Muster   IBAN DE18 1234 5600 0006 0600 00\\nServicetelefon 0123 6060-0 (Mo–Fr 8–18 Uhr)   Gläubiger-ID DE22ZZZ00000606017   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01MdcnXySbbSWwuMvSEBWXBg"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_1dgp8tp2ga0c"
+      },
+      "tool_use_id": "toolu_01BPtCTiWFZifYMUKSgtfsbR"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_1dgp8tp2ga0c\",\"kind\":\"identity_document\",\"date\":\"2017-02-11\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-20\",\"language\":\"en\",\"party_id\":\"pty_z1se3q2nn3k3\",\"case_id\":\"cas_zv7z82nbap6s\",\"urgency\":\"low\",\"pages\":1,\"filed_for\":{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\"},\"items\":[{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_g321eme013j2\":{\"title\":\"Passport expires\",\"action\":\"Apply for a passport renewal before it expires\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Alex Rivera\",\"summary\":\"Alex Rivera's Examplian passport (No. C4703958), issued by the Ministry of Interior on 11 February 2017 and valid until 10 February 2027.\",\"explanation\":\"This is a scan of Alex Rivera's Examplian passport, issued by the Ministry of Interior. It shows the passport number, personal details, and the validity dates. The passport is valid until the date of expiry shown; it is good practice to apply for a renewal a few months before that date, since many authorities and airlines require a passport to remain valid for a minimum period beyond a trip or an application. No other action is required right now.\",\"key_facts\":[{\"label\":\"Passport number (N° du passeport)\",\"value\":\"C4703958\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Nationality (Nationalité)\",\"value\":\"EXAMPLIAN\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of birth (Date de naissance)\",\"value\":\"14 MAR 2000\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Place of birth (Lieu de naissance)\",\"value\":\"EXAMPLIA CITY\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of issue (Date de délivrance)\",\"value\":\"11 FEB 2017\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of expiry (Date d'expiration)\",\"value\":\"10 FEB 2027\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Issuing authority (Autorité)\",\"value\":\"MINISTRY OF INTERIOR\",\"page\":1,\"grounding\":\"model_read\"}],\"references\":[{\"label\":\"Passport No.\",\"value\":\"C4703958\"}],\"text\":\"=== Page 1 ===\\nOBSERVATIONS / OBSERVATIONS\\n\\n3\\n\\n\\nREPUBLIC OF EXAMPLIA\\nRÉPUBLIQUE D'EXAMPLIE\\n\\nPASSPORT\\nPASSEPORT\\n\\nType / Type\\nP\\n\\nCode / Code\\nEXA\\n\\nPassport No. / N° du passeport\\nC4703958\\n\\nSurname / Nom\\nRIVERA\\n\\nGiven names / Prénoms\\nALEX\\n\\nNationality / Nationalité\\nEXAMPLIAN\\n\\nSex / Sexe\\nM\\n\\nDate of birth / Date de naissance\\n14 MAR / MARS 2000\\n\\nPlace of birth / Lieu de naissance\\nEXAMPLIA CITY\\n\\nAuthority / Autorité\\nMINISTRY OF INTERIOR\\n\\nDate of issue / Date de délivrance\\n11 FEB / FÉV 2017\\n\\nDate of expiry / Date d'expiration\\n10 FEB / FÉV 2027\\n\\nHolder's signature\\n[unleserlich - Unterschrift]\\n\\nP\\u003cEXARIVERA\\u003c\\u003cALEX\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\nC4703958\\u003c0EXA0003148M2702102\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c4\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01BPtCTiWFZifYMUKSgtfsbR"
+    },
+    {
+      "type": "text",
+      "text": "Alex's pass"
+    },
+    {
+      "type": "text",
+      "text": "port exp"
+    },
+    {
+      "type": "text",
+      "text": "ires on **W"
+    },
+    {
+      "type": "text",
+      "text": "ed "
+    },
+    {
+      "type": "text",
+      "text": "10 Feb 2027"
+    },
+    {
+      "type": "text",
+      "text": "** [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_g"
+    },
+    {
+      "type": "text",
+      "text": "321e"
+    },
+    {
+      "type": "text",
+      "text": "me"
+    },
+    {
+      "type": "text",
+      "text": "013"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "].\n\nIt"
+    },
+    {
+      "type": "text",
+      "text": "'s good"
+    },
+    {
+      "type": "text",
+      "text": " practice to apply for renew"
+    },
+    {
+      "type": "text",
+      "text": "al a few months before"
+    },
+    {
+      "type": "text",
+      "text": " that"
+    },
+    {
+      "type": "text",
+      "text": ", since "
+    },
+    {
+      "type": "text",
+      "text": "Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " not"
+    },
+    {
+      "type": "text",
+      "text": "es many"
+    },
+    {
+      "type": "text",
+      "text": " auth"
+    },
+    {
+      "type": "text",
+      "text": "orities and"
+    },
+    {
+      "type": "text",
+      "text": " airlines require rem"
+    },
+    {
+      "type": "text",
+      "text": "aining validity be"
+    },
+    {
+      "type": "text",
+      "text": "yond a"
+    },
+    {
+      "type": "text",
+      "text": " trip."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Alex's passport expires on **Wed 10 Feb 2027** [item:itm_g321eme013j2].\n\nIt's good practice to apply for renewal a few months before that, since Ordnung notes many authorities and airlines require remaining validity beyond a trip.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 308,
+          "cache_read_tokens": 19985,
+          "cache_creation_tokens": 6548,
+          "cost_usd": 0.033281,
+          "duration_ms": 7577,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

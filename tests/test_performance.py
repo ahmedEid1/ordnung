@@ -573,6 +573,55 @@ def test_the_shared_rows_follow_changes_made_in_other_threads(paths: Paths) -> N
         assert len(triggers.Ledger(store, TODAY).documents) == before + 1
 
 
+def _repeating_to_dos(store: Store, count: int) -> None:
+    """``count`` repeating payments, each to a sender of its own and by a rule of its own kind: every month on
+    a day, every few months on a working day, every year, every 2 weeks."""
+    from ordnung.models import Recurrence
+
+    rules = [
+        Recurrence(interval=1, unit="months", day_of_month=1 + n % 28)
+        if n % 4 == 0
+        else Recurrence(interval=1 + n % 3, unit="months", working_day=1 + n % 3)
+        if n % 4 == 1
+        else Recurrence(interval=1, unit="years")
+        if n % 4 == 2
+        else Recurrence(interval=2, unit="weeks")
+        for n in range(count)
+    ]
+    for n, rule in enumerate(rules):
+        party = store.add_party(name=f"Payee {n:03d}", kind="other").id
+        store.add_item(
+            kind="payment",
+            title=f"Fee {n:03d}",
+            due_date=(TODAY + timedelta(days=1 + n % 60)).isoformat(),
+            recurrence=rule,
+            amount=10.0 + n,
+            currency="EUR",
+            direction="out",
+            party_id=party,
+            grounding="verified",
+        )
+
+
+def test_ask_lists_200_repeating_to_dos_quickly(tmp_path: Path) -> None:
+    """Every repeating to-do in Ask's list says how it repeats and where it moves on to once done,
+    which the dates engine works out per to-do: four times the to-dos take about four times the time, never
+    sixteen (CPU time of this thread, the faster of two runs: ``helpers_timing``), and 200 of them a few
+    tenths of a second on a laptop."""
+    from helpers_timing import MAX_GROWTH, NOISE_FLOOR_SECONDS, read_seconds
+    from ordnung.assistant.mcp_server import LedgerTools
+
+    took: dict[int, float] = {}
+    for count in (50, 200):
+        with Store.open(Paths(tmp_path / str(count))) as store:
+            _repeating_to_dos(store, count)
+            tools = LedgerTools(store, today=TODAY)
+            rows = tools.list_items(status="all", limit=count).record["items"]
+            assert len(rows) == count and all(row.get("following_due_date") for row in rows)
+            took[count] = read_seconds("", lambda _: tools.list_items(status="all", limit=count))
+    assert took[200] < MAX_GROWTH * max(took[50], NOISE_FLOOR_SECONDS), took
+
+
 @pytest.mark.slow  # a wall-clock budget
 def test_setting_a_tax_choice_among_5000_stays_fast(paths: Paths) -> None:
     """The person's "For taxes" choices are one JSON row, read and written whole on every press: with

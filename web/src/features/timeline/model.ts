@@ -2,7 +2,7 @@
  * Timeline list logic: filters (for the list and the lanes), month grouping with the Today divider,
  * status and subtitle copy. Pure functions, unit-tested in `model.test.ts`.
  */
-import type { Area, Lane, LaneBarKind, MarkerKind, RefLink, TimelineEntry, TimelineMarker, TimelineType } from "@/api/types";
+import type { Area, Item, Lane, LaneBarKind, MarkerKind, RefLink, TimelineEntry, TimelineMarker, TimelineType } from "@/api/types";
 import { AREAS, TIMELINE_TYPES } from "@/api/types";
 import {
   AREA_COPY,
@@ -474,6 +474,16 @@ export function entryDetail(e: Pick<TimelineEntry, "party_name" | "subtitle">): 
     sub = withoutLeadingParty(sub, e.party_name) || null;
   }
   return sub;
+}
+
+/**
+ * The letter a date comes from: a letter's own entry is that letter, a to-do's is its letter. A contract's dates, a
+ * sent letter of the person's own and a date without a letter have none (whose letter a date is, ADR 0023).
+ */
+export function entryLetterId(e: Pick<TimelineEntry, "ref">, items: ReadonlyMap<string, Pick<Item, "doc_id">>): string | null {
+  if (e.ref.type === "document") return e.ref.id;
+  if (e.ref.type === "item") return items.get(e.ref.id)?.doc_id ?? null;
+  return null;
 }
 
 /** Second line of an entry: party and detail, without repeats. */

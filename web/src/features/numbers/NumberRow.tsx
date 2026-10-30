@@ -9,6 +9,7 @@ import type { MyNumber } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Tooltip } from "@/components/ui/Tooltip";
 import { isGermanText } from "@/features/document/fact-text";
+import { PersonTag } from "@/features/household/PersonTag";
 import { FULL_NUMBER_ON_COMPUTER } from "@/features/phone/copy";
 import { useClipboard } from "@/features/today/clipboard";
 import { glueText } from "@/lib/format";
@@ -16,6 +17,7 @@ import { NBSP } from "@/lib/glue";
 import { useFormatDate } from "@/lib/today";
 import { cn } from "@/lib/utils";
 import { hiddenLabel, maskValue } from "./mask";
+import { alsoForLine } from "./people";
 import { LABEL_FIRST, numberTitle, printedLabel } from "./title";
 
 /** " · " that never starts a line: the dot stays with the text before it. */
@@ -92,6 +94,10 @@ export interface NumberRowProps {
   showLetter?: boolean;
   /** Only "From <letter>" (a card that names the organisation and its latest letter already). */
   compactLetter?: boolean;
+  /** The person of the household all its letters are filed for: a *For Alex Rivera* tag after its letter. */
+  forName?: string;
+  /** Other people whose letters show it too ("you", "Mia Rivera"): the person checks whose it is. */
+  alsoFor?: string[];
   className?: string;
 }
 
@@ -103,7 +109,16 @@ export function maskedOnPhone(number: Pick<MyNumber, "copy_value">): boolean {
   return /[•…]/.test(number.copy_value);
 }
 
-export function NumberRow({ number, masked: hideable = number.group !== "case", showParty = false, showLetter = true, compactLetter = false, className }: NumberRowProps) {
+export function NumberRow({
+  number,
+  masked: hideable = number.group !== "case",
+  showParty = false,
+  showLetter = true,
+  compactLetter = false,
+  forName,
+  alsoFor,
+  className,
+}: NumberRowProps) {
   const onPhone = maskedOnPhone(number);
   const masked = hideable && !onPhone;
   const [shown, setShown] = useState(!masked);
@@ -175,8 +190,9 @@ export function NumberRow({ number, masked: hideable = number.group !== "case", 
           </>
         )}
       </div>
-      {number.check !== "none" || (showLetter && letter) ? (
-        <div className="flex basis-full flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-5 text-muted">
+      {number.check !== "none" || (showLetter && letter) || forName || alsoFor?.length ? (
+        // a tag of a long name is cut inside the row (min-w-0), never wider than the card
+        <div className={cn("flex basis-full flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] leading-5 text-muted", forName && "min-w-0")}>
           <CheckBadge number={number} />
           {showLetter && letter ? (
             <span className="min-w-0">
@@ -207,6 +223,8 @@ export function NumberRow({ number, masked: hideable = number.group !== "case", 
               ) : null}
             </span>
           ) : null}
+          {forName ? <PersonTag name={forName} className="max-w-full" /> : null}
+          {alsoFor?.length ? <span className="min-w-0 basis-full text-warn-ink [overflow-wrap:anywhere]">{alsoForLine(alsoFor)}</span> : null}
         </div>
       ) : null}
     </div>

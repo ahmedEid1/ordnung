@@ -29,6 +29,7 @@ export const TEST_HEALTH: Health = {
   rules_last_checked: "2026-09-25",
   checks: [],
   client: "computer",
+  picture_text: null,
 };
 
 /** Health as a paired phone gets it: `client: "phone"`, no data folder, never the demo (as the API trims it). */

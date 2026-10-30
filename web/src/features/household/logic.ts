@@ -31,6 +31,15 @@ export function filedMember(h: Household | undefined, docId: string): HouseholdP
   return memberById(h, h?.filed[docId]);
 }
 
+/**
+ * Whose a Today action is, for its tag: the person its letter is filed for — never a contract's, though it carries the
+ * letter it came from, since a contract's decision is the person's (ADR 0025; the Timeline, the reminders and the Ideas
+ * never name one either).
+ */
+export function actionMember(h: Household | undefined, action: { source: "item" | "contract"; docId: string | null }): HouseholdPerson | null {
+  return action.source === "contract" || !action.docId ? null : filedMember(h, action.docId);
+}
+
 /** A letter's answer now — a person's id, {@link MINE}, or null (not answered): what an Undo sends back. */
 export function answerOf(h: Household | undefined, docId: string): string | null {
   if (!h) return null;
@@ -70,6 +79,14 @@ export function forOptions(docs: readonly Pick<ListedLetter, "id">[], h: Househo
 export function suggestedFor<T extends Pick<ListedLetter, "id">>(docs: readonly T[], memberId: string, h: Household | undefined): T[] {
   if (!h) return [];
   return docs.filter((d) => h.suggested[d.id] === memberId);
+}
+
+/**
+ * The start of a row's second line for a date from a letter filed for someone of the household: "For Alex Rivera",
+ * the words Today's Coming up uses.
+ */
+export function forLine(name: string): string {
+  return `For ${name}`;
 }
 
 /** The button that files the listed letters for a person. */

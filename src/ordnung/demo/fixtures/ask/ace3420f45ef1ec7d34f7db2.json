@@ -1,0 +1,653 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"298e9b4296d2d6be6899e1da0275615eb7357f2620d4c19ac0eb940ffa298f7a\",\"question\":\"When does my residence permit expire, and what should I do before then?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550",
+      "doc_hkgxvjmpcfd5",
+      "doc_9t9tmrv1ypba",
+      "doc_nba3k0ka85q0",
+      "doc_f9b3481wq2bf",
+      "doc_1dgp8tp2ga0c",
+      "doc_d9hwr1mp3bsj",
+      "doc_1ndcj96tf28z",
+      "doc_q6fqvndrg5rr",
+      "doc_wc0nyn4ykedf",
+      "doc_vy5abr6ejqnb",
+      "doc_pa2w9q3gxzqk",
+      "doc_5c5axexztnw6",
+      "doc_qyh8m6fzk4w9",
+      "doc_drnw4v8g9856",
+      "doc_xa0f5gvpe0w2",
+      "doc_9mewc0kcj28v",
+      "doc_245408s5e3ga",
+      "doc_0b2t88kqsf2n",
+      "doc_tszxajp80vd5",
+      "doc_wtjskffj1vfq"
+    ],
+    "prompt_head": "The person asks:\nWhen does my residence permit expire, and what should I do before then?\n"
+  },
+  "response": {
+    "text": "Your residence permit (Aufenthaltserlaubnis) expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. Before then:\n\n- **Attend the appointment at the Ausländerbehörde** (Stadt Musterstadt) on Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp]. Bring your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, and your rental agreement or landlord confirmation (as listed in the invitation letter) [item:itm_64wce6sh2rpp].\n- **Pay the application fee of 100.00 €** on-site at that appointment, by girocard only — cash is not accepted [item:itm_wj2v05avgk1m].\n- If you can't apply before the expiry date, note that your extension application must be filed before Mon 30 Nov 2026; otherwise your right to stay under the current permit does not automatically continue, per §81(4) S.1–2 AufenthG, with an exception for a Schengen visa — ask the office for a *Fiktionsbescheinigung* if needed [item:itm_p0k64jp7r8bf].\n\nAlso worth keeping in mind: your passport expires Wed 10 Feb 2027 [item:itm_g321eme013j2], and since a residence permit usually runs only as long as the passport, make sure your passport stays valid well beyond your permit's new term.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 871,
+      "cache_read_tokens": 22042,
+      "cache_creation_tokens": 11595,
+      "cost_usd": 0.0595104,
+      "duration_ms": 13751,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "about_you"
+      },
+      "tool_use_id": "toolu_0181x8pgKa3xCCc4qBk6e7Sr"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "residence permit Aufenthaltstitel"
+      },
+      "tool_use_id": "toolu_01A22X8bu68KCw2MYuCJC8bo"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\",\"n6\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"health_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n5\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n6\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"numbers\":{\"n4\":{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"numbers\":{\"n5\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"numbers\":{\"n6\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Sam Rivera\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"X1234567\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0181x8pgKa3xCCc4qBk6e7Sr"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"authority_letter\",\"date\":\"2026-09-16\",\"party_id\":\"pty_w9e8zww4fzse\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to appointment for residence permit extension (Aufenthaltserlaubnis)\",\"snippet\":\"Your current residence permit is valid only until 30 November 2026. To continue your stay legally…\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01A22X8bu68KCw2MYuCJC8bo"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "status": "all",
+        "from_date": "2026-09-28",
+        "to_date": "2027-03-01"
+      },
+      "tool_use_id": "toolu_019AQuAvpBEWt5WehLEmPgZw"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"money\",\"party_id\":\"pty_adyabnsvdbpg\",\"doc_id\":\"doc_1ndcj96tf28z\",\"amount\":94.99,\"currency\":\"EUR\"},{\"id\":\"itm_hr144nz8nemm\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"date_source\":\"computed\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"work\",\"party_id\":\"pty_h9easqrf81w1\",\"doc_id\":\"doc_q6fqvndrg5rr\",\"contract_id\":\"ctr_jgb50bejm6jd\",\"repeats\":\"every month on the last working day\",\"following_due_date\":\"2026-10-30\"},{\"id\":\"itm_chhc59r0d16v\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"leisure\",\"party_id\":\"pty_evgj0fa49fwt\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"contract_id\":\"ctr_15banyk4pc92\",\"repeats\":\"every month on the 1st\",\"following_due_date\":\"2026-11-01\",\"amount\":29.9,\"currency\":\"EUR\"},{\"id\":\"itm_wpght3d75cxs\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"mobility\",\"party_id\":\"pty_wmevpbzhrm3e\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"contract_id\":\"ctr_cmeadtk38mac\",\"repeats\":\"every month on the 1st\",\"following_due_date\":\"2026-11-01\",\"amount\":63.0,\"currency\":\"EUR\"},{\"id\":\"itm_j2650a27bsty\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"in\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"repeats\":\"every month on the 1st working day\",\"following_due_date\":\"2026-11-02\",\"amount\":450.0,\"currency\":\"EUR\"},{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"mobility\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"amount_unverified\":\"The amount was read by AI from a photo or scan, so it is only in the letter text: give it as what the letter says and suggest checking it against the paper letter.\"},{\"id\":\"itm_kgsfgwac9wzx\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\",\"amount\":4.5,\"currency\":\"EUR\"},{\"id\":\"itm_b1b5643x7qy7\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-05\",\"send_by\":\"2026-10-02\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_drnw4v8g9856\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"repeats\":\"every month on the 3rd working day\",\"replaced_by\":\"itm_9dvnqv1acvka\",\"replaced_from_month\":\"2026-11\",\"amount\":640.0,\"currency\":\"EUR\"},{\"id\":\"itm_sncxha9wbsxc\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-08\",\"due_time\":\"09:15\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_m3rttkfq94qn\",\"doc_id\":\"doc_xa0f5gvpe0w2\"},{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"due_time\":\"10:30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_wj2v05avgk1m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"amount\":100.0,\"currency\":\"EUR\"},{\"id\":\"itm_3v56qs2n3q3v\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_fh8cf155ffm3\",\"doc_id\":\"doc_245408s5e3ga\",\"contract_id\":\"ctr_bbzemyapzvm5\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-11-15\",\"amount\":48.0,\"currency\":\"EUR\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-11-15\",\"amount\":156.55,\"currency\":\"EUR\"},{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"},{\"id\":\"itm_9dvnqv1acvka\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-04\",\"send_by\":\"2026-11-03\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"repeats\":\"every month on the 3rd working day\",\"following_due_date\":\"2026-12-03\",\"amount\":670.0,\"currency\":\"EUR\"},{\"id\":\"itm_espa58t15ncg\",\"kind\":\"appointment\",\"status\":\"open\",\"due_date\":\"2026-11-07\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_xna048xewpad\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-15\",\"send_by\":\"2026-11-12\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"home\",\"party_id\":\"pty_r9kabd06mafy\",\"doc_id\":\"doc_f9b3481wq2bf\",\"repeats\":\"every 3 months on the 15th\",\"following_due_date\":\"2027-02-15\",\"amount\":55.08,\"currency\":\"EUR\"},{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_w9e8zww4fzse\",\"doc_id\":\"doc_d9hwr1mp3bsj\"},{\"id\":\"itm_9qzfwbhh5m74\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-11-30\",\"send_by\":\"2026-11-24\",\"date_source\":\"fixed\",\"priority\":\"high\",\"area\":\"money\",\"party_id\":\"pty_ejzv2rmp31km\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"contract_id\":\"ctr_611d1sk7v1cr\"},{\"id\":\"itm_93jvwb6nxzhe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-12-01\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"low\",\"area\":\"insurance\",\"party_id\":\"pty_re9nde1xqtfn\",\"doc_id\":\"doc_tszxajp80vd5\",\"contract_id\":\"ctr_w97tm6xhn7zw\",\"repeats\":\"every year on the 1st\",\"following_due_date\":\"2027-12-01\",\"amount\":59.9,\"currency\":\"EUR\"},{\"id\":\"itm_zse7bv6ce3s1\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-12-15\",\"send_by\":\"2026-12-09\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_efmwq4xym8cm\",\"doc_id\":\"doc_pa2w9q3gxzqk\"},{\"id\":\"itm_85xesrap412m\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2027-01-15\",\"send_by\":\"2027-01-14\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\",\"amount\":312.4,\"currency\":\"EUR\"},{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"},{\"id\":\"itm_kn5zf3bdwew8\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-02-28\",\"send_by\":\"2027-02-22\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"study\",\"party_id\":\"pty_fhp8fzemmzvt\",\"doc_id\":\"doc_nba3k0ka85q0\"}],\"contract_deadlines\":[{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"current_term_end\":\"2026-11-14\",\"confidence\":\"high\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_c05nsrmyz6av\":{\"title\":\"Pay the reminder amount for invoice TM-2026-0048213\",\"action\":\"Transfer the total amount of €94.99 to TechMarkt Online GmbH's account using the reference TM-2026-0048213, unless you already paid the original invoice.\",\"consequence\":\"If the payment does not arrive on time, TechMarkt Online GmbH will hand the claim over to a debt collection agency (Inkassodienstleister), causing further costs.\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"itm_hr144nz8nemm\":{\"title\":\"Receive monthly salary\",\"action\":\"Check that your monthly salary, based on the hours you worked, arrives in your account.\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"itm_chhc59r0d16v\":{\"title\":\"Monthly gym membership fee\",\"action\":\"Ensure sufficient funds for the monthly SEPA direct debit\"},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\"},\"itm_wpght3d75cxs\":{\"title\":\"Pay the monthly Deutschlandticket subscription fee\",\"action\":\"Ensure your linked bank account has sufficient funds for the automatic monthly direct debit.\"},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\"},\"itm_j2650a27bsty\":{\"title\":\"Receive monthly scholarship stipend\",\"action\":\"No action needed; the stipend arrives automatically each month.\"},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\"},\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_31yxpwg03cdb\":{\"title\":\"Pay the traffic warning fine (Verwarnungsgeld)\",\"action\":\"Pay the €30.00 warning fine to the given account by the deadline shown if you agree with the warning.\",\"consequence\":\"If the fine is not paid in time, a formal fine proceeding (Bußgeldverfahren) will be opened, adding fees and costs of at least €28.50.\",\"amount\":30.0,\"currency\":\"EUR\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"itm_kgsfgwac9wzx\":{\"title\":\"Pay the accrued library fee\",\"action\":\"Pay the €4.50 fee at the service desk or the payment machine when returning the items.\",\"consequence\":\"Unpaid and growing fees can lead to your library account being blocked once the balance reaches €10.00.\"},\"itm_b1b5643x7qy7\":{\"title\":\"Pay monthly rent (Miete)\",\"action\":\"Make sure the total rent of €640.00 arrives in the landlord's account each month.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_sncxha9wbsxc\":{\"title\":\"Dental checkup and cleaning (PZR)\",\"action\":\"Arrive 10 minutes early and bring your health insurance card (Gesundheitskarte)\",\"consequence\":\"Cancel at least 24 hours in advance if you cannot attend\",\"location\":\"Lindenallee 8, 12345 Musterstadt\"},\"pty_m3rttkfq94qn\":{\"name\":\"Zahnarztpraxis Dr. Anna Beispiel\"},\"itm_dmaw27qvv18n\":{\"title\":\"Pay the operating and heating cost back payment (Nachzahlung)\",\"action\":\"Transfer €184.30 to the landlord's account by the deadline shown, using reference MV-2025-0412 NK 2025.\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_64wce6sh2rpp\":{\"title\":\"Attend appointment at the immigration office (Ausländerbehörde)\",\"action\":\"Go to the appointment with your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, your rental agreement or landlord confirmation, and the €100 fee (girocard only, cash not accepted).\",\"location\":\"Stadt Musterstadt, Ausländerbehörde, Musterplatz 1, 2. Obergeschoss, Raum 2.14\"},\"itm_wj2v05avgk1m\":{\"title\":\"Pay the application fee for the residence permit extension\",\"action\":\"Bring your girocard to the appointment to pay the €100 fee on-site; cash is not accepted.\"},\"itm_3v56qs2n3q3v\":{\"title\":\"Monthly advance payment (Abschlag) for electricity\",\"action\":\"Ensure your linked bank account has sufficient funds for the SEPA direct debit\"},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"itm_mtehckcf6q7a\":{\"title\":\"Decide whether to file an objection (Einspruch) against the assessment\",\"action\":\"Review the assessment and, if you disagree with it, file an objection (Einspruch) with Finanzamt Musterstadt in writing, electronically, or to record, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the assessment becomes final (bestandskräftig) and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"itm_9dvnqv1acvka\":{\"title\":\"New monthly total rent €670\"},\"itm_espa58t15ncg\":{\"title\":\"Attend Autumn Meeting in Berlin\",\"action\":\"Attend the Autumn Meeting for scholars in Berlin; wait for the separate invitation with the programme.\",\"location\":\"Berlin\"},\"itm_xna048xewpad\":{\"title\":\"Pay the broadcasting fee (Rundfunkbeitrag)\",\"action\":\"Transfer €55.08 to the Beitragsservice Musterstadt account by the due date, using your Beitragsnummer as the payment reference.\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"action\":\"Make sure the extension application is filed before this date; attending the scheduled appointment fulfills this.\",\"consequence\":\"If the extension is not applied for before this date, your right to stay based on the current permit does not automatically continue.\"},\"itm_9qzfwbhh5m74\":{\"title\":\"Give consent to the fee increase (Zustimmung erteilen)\",\"action\":\"Confirm your consent to the new account fee online under 'Postfach › Zustimmungen' or by returning the signed reply form\",\"consequence\":\"Without your consent, the bank may terminate this account with two months' notice\"},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\"},\"itm_93jvwb6nxzhe\":{\"title\":\"Annual liability insurance premium direct debit\",\"action\":\"Make sure the linked bank account has enough funds for the automatic direct debit.\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"},\"itm_zse7bv6ce3s1\":{\"title\":\"Submit first progress report\",\"action\":\"Submit your first progress report (max. two pages, countersigned by your academic supervisor) via the scholarship portal using the provided template.\"},\"itm_85xesrap412m\":{\"title\":\"Pay the semester fee (Semesterbeitrag) for summer semester 2027\",\"action\":\"Transfer the semester fee of €312.40 to the university's account, using the given reference, so it arrives by the deadline shown.\",\"consequence\":\"Late payment adds a €15.00 late fee (Säumnisgebühr), and if the fee is not received in time you risk being deregistered (Exmatrikulation).\"},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\"},\"itm_g321eme013j2\":{\"title\":\"Passport expires\",\"action\":\"Apply for a passport renewal before it expires\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"itm_kn5zf3bdwew8\":{\"title\":\"Cancel any separate Deutschlandticket subscription\",\"action\":\"If you hold a separate Deutschlandticket subscription, cancel it in time, since the ticket will be included in your semester fee from summer semester 2027.\",\"consequence\":\"You may otherwise end up paying for two tickets at the same time.\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_019AQuAvpBEWt5WehLEmPgZw"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__explain_date",
+      "input": {
+        "item_or_contract_id": "itm_p0k64jp7r8bf"
+      },
+      "tool_use_id": "toolu_01WQP16kTNsuPbJa5QBXEZdn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"due_date\":\"2026-11-30\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"how\":\"The date is written in the letter.\",\"grounding\":[\"verified\"],\"receipt\":{\"due_date\":\"2026-11-30\",\"holiday_calendar\":\"Germany (nationwide holidays only)\",\"summary\":\"The date given is Mon 30 Nov 2026.\",\"steps\":[{\"label\":\"The date given is Mon 30 Nov 2026\",\"date\":\"2026-11-30\",\"rule_id\":\"date_as_written\",\"citation\":\"The document's own wording\"}],\"confidence\":\"high\"},\"rules\":[{\"id\":\"date_as_written\",\"title\":\"Dates stated in the letter\",\"citation\":\"The document's own wording\"}],\"disclaimer\":\"Based on the law as of 2026-09-25. Not legal advice. Not reviewed by a lawyer.\"}\n</ordnung_record>\n<untrusted_document>\n{\"itm_p0k64jp7r8bf\":{\"title\":\"Residence permit (Aufenthaltserlaubnis) expires\",\"as_written\":\"bis zum 30.11.2026\",\"evidence\":[{\"doc_id\":\"doc_d9hwr1mp3bsj\",\"page\":1,\"quote\":\"Ihre Aufenthaltserlaubnis zum Zweck des Studiums nach § 16b Abs. 1 des Aufenthaltsgesetzes (AufenthG) ist bis zum 30.11.2026 gültig.\"}]}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WQP16kTNsuPbJa5QBXEZdn"
+    },
+    {
+      "type": "text",
+      "text": "Your resid"
+    },
+    {
+      "type": "text",
+      "text": "ence permit ("
+    },
+    {
+      "type": "text",
+      "text": "Aufenthaltserl"
+    },
+    {
+      "type": "text",
+      "text": "aubnis) expires"
+    },
+    {
+      "type": "text",
+      "text": " M"
+    },
+    {
+      "type": "text",
+      "text": "on 30 "
+    },
+    {
+      "type": "text",
+      "text": "Nov 2026 ["
+    },
+    {
+      "type": "text",
+      "text": "item"
+    },
+    {
+      "type": "text",
+      "text": ":it"
+    },
+    {
+      "type": "text",
+      "text": "m_p0k"
+    },
+    {
+      "type": "text",
+      "text": "64"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "8"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "]. Before then"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "\n\n- **Attend the app"
+    },
+    {
+      "type": "text",
+      "text": "ointment at the "
+    },
+    {
+      "type": "text",
+      "text": "Ausländerbehörde**"
+    },
+    {
+      "type": "text",
+      "text": " (Stadt"
+    },
+    {
+      "type": "text",
+      "text": " Mus"
+    },
+    {
+      "type": "text",
+      "text": "terst"
+    },
+    {
+      "type": "text",
+      "text": "adt) on W"
+    },
+    {
+      "type": "text",
+      "text": "ed 14 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026 at 10:30"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_64"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "ce"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "h"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "]. Bring your original pass"
+    },
+    {
+      "type": "text",
+      "text": "port, current enrolment cert"
+    },
+    {
+      "type": "text",
+      "text": "ificate for win"
+    },
+    {
+      "type": "text",
+      "text": "ter sem"
+    },
+    {
+      "type": "text",
+      "text": "ester 2026/27, pro"
+    },
+    {
+      "type": "text",
+      "text": "of of financial means"
+    },
+    {
+      "type": "text",
+      "text": ", proof of health"
+    },
+    {
+      "type": "text",
+      "text": " insurance, a bi"
+    },
+    {
+      "type": "text",
+      "text": "ometric photo, and your r"
+    },
+    {
+      "type": "text",
+      "text": "ental agreement or land"
+    },
+    {
+      "type": "text",
+      "text": "lord confirmation ("
+    },
+    {
+      "type": "text",
+      "text": "as listed in the inv"
+    },
+    {
+      "type": "text",
+      "text": "itation letter) [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_64wce6s"
+    },
+    {
+      "type": "text",
+      "text": "h2rpp].\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Pay the application"
+    },
+    {
+      "type": "text",
+      "text": " fee of 100."
+    },
+    {
+      "type": "text",
+      "text": "00 €"
+    },
+    {
+      "type": "text",
+      "text": "** on"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "site at that"
+    },
+    {
+      "type": "text",
+      "text": " appointment,"
+    },
+    {
+      "type": "text",
+      "text": " by giroc"
+    },
+    {
+      "type": "text",
+      "text": "ard only"
+    },
+    {
+      "type": "text",
+      "text": " — cash is not accepted"
+    },
+    {
+      "type": "text",
+      "text": " [item:itm_w"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "05"
+    },
+    {
+      "type": "text",
+      "text": "av"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "k"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "].\n- If you can"
+    },
+    {
+      "type": "text",
+      "text": "'t ap"
+    },
+    {
+      "type": "text",
+      "text": "ply before"
+    },
+    {
+      "type": "text",
+      "text": " the expiry date"
+    },
+    {
+      "type": "text",
+      "text": ", note"
+    },
+    {
+      "type": "text",
+      "text": " that your ext"
+    },
+    {
+      "type": "text",
+      "text": "ension application"
+    },
+    {
+      "type": "text",
+      "text": " must be filed before"
+    },
+    {
+      "type": "text",
+      "text": " Mon 30 Nov"
+    },
+    {
+      "type": "text",
+      "text": " 2026;"
+    },
+    {
+      "type": "text",
+      "text": " otherwise your right to st"
+    },
+    {
+      "type": "text",
+      "text": "ay under"
+    },
+    {
+      "type": "text",
+      "text": " the current"
+    },
+    {
+      "type": "text",
+      "text": " permit does not automatically contin"
+    },
+    {
+      "type": "text",
+      "text": "ue, per"
+    },
+    {
+      "type": "text",
+      "text": " §81"
+    },
+    {
+      "type": "text",
+      "text": "("
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": ")"
+    },
+    {
+      "type": "text",
+      "text": " S.1–"
+    },
+    {
+      "type": "text",
+      "text": "2 Aufen"
+    },
+    {
+      "type": "text",
+      "text": "thG, with an ex"
+    },
+    {
+      "type": "text",
+      "text": "ception for a"
+    },
+    {
+      "type": "text",
+      "text": " Schengen visa —"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "ask the"
+    },
+    {
+      "type": "text",
+      "text": " office"
+    },
+    {
+      "type": "text",
+      "text": " for a *"
+    },
+    {
+      "type": "text",
+      "text": "Fi"
+    },
+    {
+      "type": "text",
+      "text": "kt"
+    },
+    {
+      "type": "text",
+      "text": "ion"
+    },
+    {
+      "type": "text",
+      "text": "sbescheinigung*"
+    },
+    {
+      "type": "text",
+      "text": " if need"
+    },
+    {
+      "type": "text",
+      "text": "ed [item:itm_p"
+    },
+    {
+      "type": "text",
+      "text": "0k64jp7r8"
+    },
+    {
+      "type": "text",
+      "text": "bf].\n\nAlso worth"
+    },
+    {
+      "type": "text",
+      "text": " keeping in mind: your"
+    },
+    {
+      "type": "text",
+      "text": " passport expires W"
+    },
+    {
+      "type": "text",
+      "text": "ed 10 Feb "
+    },
+    {
+      "type": "text",
+      "text": "2027 [item:itm"
+    },
+    {
+      "type": "text",
+      "text": "_g"
+    },
+    {
+      "type": "text",
+      "text": "321"
+    },
+    {
+      "type": "text",
+      "text": "e"
+    },
+    {
+      "type": "text",
+      "text": "me"
+    },
+    {
+      "type": "text",
+      "text": "013"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "], and since a residence permit"
+    },
+    {
+      "type": "text",
+      "text": " usually run"
+    },
+    {
+      "type": "text",
+      "text": "s only as long as the"
+    },
+    {
+      "type": "text",
+      "text": " passport, make"
+    },
+    {
+      "type": "text",
+      "text": " sure your"
+    },
+    {
+      "type": "text",
+      "text": " passport st"
+    },
+    {
+      "type": "text",
+      "text": "ays valid well"
+    },
+    {
+      "type": "text",
+      "text": " be"
+    },
+    {
+      "type": "text",
+      "text": "yond your"
+    },
+    {
+      "type": "text",
+      "text": " permit's new term"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Your residence permit (Aufenthaltserlaubnis) expires Mon 30 Nov 2026 [item:itm_p0k64jp7r8bf]. Before then:\n\n- **Attend the appointment at the Ausländerbehörde** (Stadt Musterstadt) on Wed 14 Oct 2026 at 10:30 [item:itm_64wce6sh2rpp]. Bring your original passport, current enrolment certificate for winter semester 2026/27, proof of financial means, proof of health insurance, a biometric photo, and your rental agreement or landlord confirmation (as listed in the invitation letter) [item:itm_64wce6sh2rpp].\n- **Pay the application fee of 100.00 €** on-site at that appointment, by girocard only — cash is not accepted [item:itm_wj2v05avgk1m].\n- If you can't apply before the expiry date, note that your extension application must be filed before Mon 30 Nov 2026; otherwise your right to stay under the current permit does not automatically continue, per §81(4) S.1–2 AufenthG, with an exception for a Schengen visa — ask the office for a *Fiktionsbescheinigung* if needed [item:itm_p0k64jp7r8bf].\n\nAlso worth keeping in mind: your passport expires Wed 10 Feb 2027 [item:itm_g321eme013j2], and since a residence permit usually runs only as long as the passport, make sure your passport stays valid well beyond your permit's new term.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 871,
+          "cache_read_tokens": 22042,
+          "cache_creation_tokens": 11595,
+          "cost_usd": 0.0595104,
+          "duration_ms": 13751,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

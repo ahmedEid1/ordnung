@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { DocumentDetail, Household, HouseholdMember } from "@/api/types";
 import { openApiPhoneScope } from "@/test/mockFetch";
 import { ADDRESSEES } from "./data/documents";
-import { answerFor, checkMembers, emptyHousehold, HouseholdRefusal, householdVersion, type StoredHousehold } from "./household";
+import { answerFor, checkMembers, emptyHousehold, HouseholdRefusal, householdVersion, possessive, type StoredHousehold } from "./household";
 import { createMockServer } from "./server";
 
 interface LetterVector {
@@ -35,7 +35,14 @@ interface VersionVector {
   members: HouseholdMember[];
   expect: string;
 }
-type Vector = LetterVector | NameVector | VersionVector;
+/** A name's possessive in an Idea's title ("Alex Rivera's passport …"), or null: "For Kim 2: …". */
+interface PossessiveVector {
+  kind: "possessive";
+  case: string;
+  name: string;
+  expect: string | null;
+}
+type Vector = LetterVector | NameVector | VersionVector | PossessiveVector;
 
 const VECTORS = JSON.parse(readFileSync(resolve(__dirname, "householdVectors.json"), "utf8")) as Vector[];
 const DOC = "doc_vector00000";
@@ -73,11 +80,13 @@ describe("the shared household vectors", () => {
     expect(kinds.filter((k) => k === "letter").length).toBeGreaterThanOrEqual(30);
     expect(kinds.filter((k) => k === "name").length).toBeGreaterThanOrEqual(20);
     expect(kinds.filter((k) => k === "version").length).toBeGreaterThanOrEqual(3);
+    expect(kinds.filter((k) => k === "possessive").length).toBeGreaterThanOrEqual(6);
   });
 
   it.each(VECTORS.map((v) => [v.case, v] as const))("meets “%s” as the API does", (_case, v) => {
     if (v.kind === "letter") expect(letterAnswer(v)).toEqual(v.expect);
     else if (v.kind === "name") expect(nameAnswer(v)).toEqual(v.expect);
+    else if (v.kind === "possessive") expect(possessive(v.name)).toBe(v.expect);
     else expect(householdVersion(v.members)).toBe(v.expect);
   });
 });

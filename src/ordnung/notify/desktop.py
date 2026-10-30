@@ -17,7 +17,9 @@ Written policy (ADR 0007):
   rest of the week by day: "Decide on FitWell: cancel today · Pay the parking fine €30 — overdue ·
   Dental appointment on Thu 10:30 · and 1 more". An appointment says its time ("today 09:15").
   The titles are letters' words: control and bidirectional characters are removed, whitespace is
-  collapsed, a leading dash is dropped and each is cut to :data:`MAX_TITLE_CHARS` characters.
+  collapsed, a leading dash is dropped and each is cut to :data:`MAX_TITLE_CHARS` characters. A to-do
+  of a letter filed for someone of the household starts with their name, cut the same way ("Alex
+  Rivera: Dentist appointment today 10:30", ADR 0023); *Discreet* never says it.
 * **When.** Once per local day (the profile's time zone), at the chosen time
   (``settings.desktop_notify_time``, default 08:00) — the daily tick wakes up for it, whatever time
   it is — or, when Ordnung wasn't running then, :data:`STARTUP_GRACE_S` seconds after it starts (at
@@ -58,7 +60,7 @@ from ordnung.db.store import Store
 from ordnung.models import AppSettings
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
-from ordnung.secretary.triggers import money, parse_day
+from ordnung.secretary.triggers import Ledger, money, parse_day
 
 When = Literal["today", "overdue", "upcoming"]
 
@@ -200,18 +202,29 @@ def _when(entry: AgendaEntry, day: date, today: date, times: Mapping[str, str]) 
     return f"{on} {clock_time}" if clock_time else on
 
 
-def things_due(agenda: Agenda, times: Mapping[str, str] | None = None) -> list[_Thing]:
+def _title(entry: AgendaEntry, people: Mapping[str, str]) -> str:
+    """A to-do's title, after the name of the person of the household its letter is filed for: "Alex Rivera:
+    Dentist appointment" (each cut like a title)."""
+    name = people.get(entry.doc_id) if entry.doc_id else None
+    return f"{clean(name)}: {clean(entry.title)}" if name else clean(entry.title)
+
+
+def things_due(
+    agenda: Agenda, times: Mapping[str, str] | None = None, people: Mapping[str, str] | None = None
+) -> list[_Thing]:
     """Everything the notification counts, in the order it lists it (module policy); ``times``:
-    an appointment's time of day (``HH:MM``) by its agenda id."""
+    an appointment's time of day (``HH:MM``) by its agenda id; ``people``: the name of the person of the
+    household each letter is filed for, by letter id (a contract's decision is never named)."""
     today = parse_day(agenda.date) or clock.today()
     times = times or {}
+    people = people or {}
     found: list[_Thing] = []
     for entry in agenda.overdue:
         day = parse_day(entry.date) or today
-        found.append(_Thing(f"{clean(entry.title)}{_amount(entry)} — overdue", day, "overdue"))
+        found.append(_Thing(f"{_title(entry, people)}{_amount(entry)} — overdue", day, "overdue"))
     for entry in [*agenda.today, *agenda.next_7_days]:
         day = parse_day(entry.date) or today
-        text = f"{clean(entry.title)}{_amount(entry)} {_when(entry, day, today, times)}"
+        text = f"{_title(entry, people)}{_amount(entry)} {_when(entry, day, today, times)}"
         found.append(_Thing(text, day, "today" if day <= today else "upcoming", _RANKS.get(entry.kind, 1)))
     for entry in agenda.decisions:
         send_by = parse_day(entry.date)
@@ -276,10 +289,17 @@ def appointment_times(store: Store, agenda: Agenda) -> dict[str, str]:
     return times
 
 
+def household_names(store: Store, today: date) -> dict[str, str]:
+    """The name of the person of the household each letter outside the trash is filed for, by letter id
+    (:attr:`ordnung.secretary.triggers.Ledger.household_filed`; ADR 0023)."""
+    return {doc_id: member.name for doc_id, member in Ledger(store, today).household_filed.items()}
+
+
 def today_things(store: Store, today: date) -> list[_Thing]:
-    """What the notification says on ``today``: the day's agenda, appointments with their time."""
+    """What the notification says on ``today``: the day's agenda, appointments with their time, a letter's
+    to-do with the name of the person of the household it is filed for."""
     agenda = build_agenda(store, today)
-    return things_due(agenda, appointment_times(store, agenda))
+    return things_due(agenda, appointment_times(store, agenda), household_names(store, today))
 
 
 def preview(store: Store, today: date) -> dict[Mode, Notification | None]:

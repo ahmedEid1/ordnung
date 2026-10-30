@@ -22,8 +22,10 @@ This module is the engine and nothing else:
 What Tesseract prints is never put in an error or a log: a failure names its exit code only.
 
 ``ORDNUNG_OCR=off`` (:data:`OCR_SWITCH`, :func:`ordnung.config.ocr_turned_off`) turns it all off: :func:`find`
-answers ``None`` and runs nothing, and :func:`recognise` refuses. Only the worker (:mod:`ordnung.ingest.worker`)
-and the doctor (:mod:`ordnung.doctor`) import this module.
+answers ``None`` and runs nothing, and :func:`recognise` refuses. It can also be off in Settings (*Text in
+pictures*, ``read_picture_text``): the worker and the letter routes check that
+(:func:`ordnung.config.picture_text_off`); this module, the last guard, keeps to the variable alone. Only the
+worker (:mod:`ordnung.ingest.worker`) and the doctor (:mod:`ordnung.doctor`) import this module.
 """
 
 from __future__ import annotations

@@ -112,6 +112,18 @@ export const SUGGESTIONS: Suggestion[] = [
   }),
 ];
 
+/**
+ * The canned Ideas that say whose passport it is in their own words when its letters are filed for someone of the
+ * household (`./whose`): with the possessive ("Alex Rivera's"), or after "For Kim 2: " for a name that doesn't end
+ * in a letter — as the API words `passport_before_permit`.
+ */
+export const MEMBER_TITLES: Record<string, { possessive: (owner: string) => string; plain: string }> = {
+  sug_passport: {
+    possessive: (owner) => `Renew ${owner} passport before their residence permit appointment`,
+    plain: "Renew the passport before the residence permit appointment",
+  },
+};
+
 /** Ideas that appear once the matching New-mail letter was processed. */
 export const TRAY_SUGGESTIONS: Record<string, Suggestion[]> = {
   doc_power_price: [

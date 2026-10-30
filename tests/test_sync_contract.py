@@ -48,6 +48,11 @@ def test_what_travels_and_what_stays_are_apart() -> None:
     local, synced = set(sync.LOCAL_SETTINGS), set(sync.SYNCED_SETTINGS)
     assert not local & synced
     assert local | synced == set(AppSettings.model_fields), "decide which side a new settings field is on"
+    # Text in pictures is the person's choice: it travels, and a computer whose pulled settings don't name it
+    # (written by Ordnung 0.3.x, which drops a field it doesn't know) keeps its own
+    assert "read_picture_text" in synced
+    assert sync.KEPT_WHEN_ABSENT == ("read_picture_text",)
+    assert set(sync.KEPT_WHEN_ABSENT) <= synced
     assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
 
 

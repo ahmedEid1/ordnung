@@ -1,0 +1,203 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"When do I have to renew my driving licence?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [],
+    "prompt_head": "The person asks:\nWhen do I have to renew my driving licence?\n"
+  },
+  "response": {
+    "text": "I found nothing about a driving licence in your records — no letter, to-do, or expiry stored for it [date left out].\n\nIf you have a physical card somewhere, you could check its expiry date yourself, but Ordnung doesn't currently hold any document or deadline related to your driving licence.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 235,
+      "cache_read_tokens": 12760,
+      "cache_creation_tokens": 1233,
+      "cost_usd": 0.009842,
+      "duration_ms": 13585,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "driving licence"
+      },
+      "tool_use_id": "toolu_019wJYRaLSVsNMEiCAm6fFJw"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Führerschein"
+      },
+      "tool_use_id": "toolu_016y21az4jkdExq5gH2SiVRu"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_019wJYRaLSVsNMEiCAm6fFJw"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_016y21az4jkdExq5gH2SiVRu"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " found"
+    },
+    {
+      "type": "text",
+      "text": " n"
+    },
+    {
+      "type": "text",
+      "text": "othing about"
+    },
+    {
+      "type": "text",
+      "text": " a dri"
+    },
+    {
+      "type": "text",
+      "text": "ving lic"
+    },
+    {
+      "type": "text",
+      "text": "ence in your"
+    },
+    {
+      "type": "text",
+      "text": " records — no let"
+    },
+    {
+      "type": "text",
+      "text": "ter, to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or exp"
+    },
+    {
+      "type": "text",
+      "text": "iry st"
+    },
+    {
+      "type": "text",
+      "text": "ored for it"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "date"
+    },
+    {
+      "type": "text",
+      "text": " left"
+    },
+    {
+      "type": "text",
+      "text": " out"
+    },
+    {
+      "type": "text",
+      "text": "].\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you have"
+    },
+    {
+      "type": "text",
+      "text": " a phys"
+    },
+    {
+      "type": "text",
+      "text": "ical card"
+    },
+    {
+      "type": "text",
+      "text": " som"
+    },
+    {
+      "type": "text",
+      "text": "ewhere,"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " could check its expiry date"
+    },
+    {
+      "type": "text",
+      "text": " yourself, but"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung doesn't"
+    },
+    {
+      "type": "text",
+      "text": " currently h"
+    },
+    {
+      "type": "text",
+      "text": "old any document"
+    },
+    {
+      "type": "text",
+      "text": " or"
+    },
+    {
+      "type": "text",
+      "text": " de"
+    },
+    {
+      "type": "text",
+      "text": "adline related"
+    },
+    {
+      "type": "text",
+      "text": " to your driving licence."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I found nothing about a driving licence in your records — no letter, to-do, or expiry stored for it [date left out].\n\nIf you have a physical card somewhere, you could check its expiry date yourself, but Ordnung doesn't currently hold any document or deadline related to your driving licence.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 235,
+          "cache_read_tokens": 12760,
+          "cache_creation_tokens": 1233,
+          "cost_usd": 0.009842,
+          "duration_ms": 13585,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

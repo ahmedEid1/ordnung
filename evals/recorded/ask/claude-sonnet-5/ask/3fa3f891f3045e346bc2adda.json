@@ -1,0 +1,239 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"c5bf343951f16ee695937237b2efb8ab43009e2379a11801cbd01cc9d384dcf9\",\"question\":\"What is Alex's health insurance number?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hynqaw58f550",
+      "doc_hkgxvjmpcfd5",
+      "doc_nba3k0ka85q0",
+      "doc_f9b3481wq2bf",
+      "doc_9t9tmrv1ypba",
+      "doc_1dgp8tp2ga0c",
+      "doc_1ndcj96tf28z",
+      "doc_jcbakmxv29p8",
+      "doc_qyh8m6fzk4w9",
+      "doc_d9hwr1mp3bsj",
+      "doc_asph8a6ddy4e",
+      "doc_245408s5e3ga",
+      "doc_5c5axexztnw6",
+      "doc_0b2t88kqsf2n",
+      "doc_9mewc0kcj28v",
+      "doc_drnw4v8g9856",
+      "doc_pa2w9q3gxzqk",
+      "doc_tszxajp80vd5",
+      "doc_vy5abr6ejqnb",
+      "doc_wc0nyn4ykedf",
+      "doc_wtjskffj1vfq"
+    ],
+    "prompt_head": "The person asks:\nWhat is Alex's health insurance number?\n"
+  },
+  "response": {
+    "text": "Alex's health insurance number (Versicherten-Nr.) with Muster BKK is **M472059139** [doc:doc_9t9tmrv1ypba] [party:pty_eatxsexnt9s3].\n\n- It passes the official Krankenversichertennummer check digit (§ 290 SGB V), though that only rules out a misread digit — it doesn't prove whose number it is [doc:doc_9t9tmrv1ypba].\n- This number comes from a letter filed under Alex Rivera, not under your own numbers.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 812,
+      "cache_read_tokens": 19971,
+      "cache_creation_tokens": 15025,
+      "cost_usd": 0.0722262,
+      "duration_ms": 17129,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_profile",
+      "input": {},
+      "tool_use_id": "toolu_01NDHk1jFAtjede8ApUpJmhF"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"name\":\"Sam Rivera\",\"language\":\"en\",\"region\":\"NW\",\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"letters\":[\"doc_9t9tmrv1ypba\",\"doc_1dgp8tp2ga0c\"]}],\"household_note\":\"household lists the other people whose letters come to the person (a partner, their children), with the names the person typed and the letters the person filed for each, newest first. Those letters and what they show are about that person, not the person's own; every other letter whose contents are shared is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its to-dos are, is not known — say so.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01NDHk1jFAtjede8ApUpJmhF"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_my_numbers",
+      "input": {
+        "section": "all"
+      },
+      "tool_use_id": "toolu_0138DBtCfrhucAXunZorV9Zn"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"about_you\":[\"n1\",\"n2\",\"n3\",\"n4\",\"n5\"],\"documents\":[{\"id\":\"itm_p0k64jp7r8bf\",\"kind\":\"expiry\",\"document\":\"residence_permit\",\"due_date\":\"2026-11-30\",\"status\":\"renew_soon\",\"note\":\"Apply before it expires: your permit then counts as still valid until the office decides (§ 81 Abs. 4 S. 1–2 AufenthG; not for a Schengen visa) — ask for a Fiktionsbescheinigung.\",\"doc_id\":\"doc_d9hwr1mp3bsj\"}],\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"about\":[\"n6\"],\"documents\":[{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"document\":\"passport\",\"due_date\":\"2027-02-10\",\"needs_check\":true,\"status\":\"renew_soon\",\"note\":\"Renewing a passport can take months, and a residence permit usually runs only as long as the passport.\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"number\":\"n7\"}]}],\"open_cases\":[{\"ref\":\"c1\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"references\":[\"n8\",\"n9\"],\"next_item\":{\"id\":\"itm_c05nsrmyz6av\",\"kind\":\"payment\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\"},\"open_items\":1},{\"ref\":\"c2\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"party_id\":\"pty_w9e8zww4fzse\",\"references\":[\"n10\",\"n11\"],\"next_item\":{\"id\":\"itm_31yxpwg03cdb\",\"kind\":\"payment\",\"due_date\":\"2026-10-02\",\"send_by\":\"2026-10-01\",\"needs_check\":true},\"open_items\":2},{\"ref\":\"c3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"references\":[\"n12\"],\"next_item\":{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\"},\"open_items\":1,\"filed_for\":\"hhm_6mtw39wxdbzq\"},{\"ref\":\"c4\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"party_id\":\"pty_w9e8zww4fzse\",\"references\":[\"n13\"],\"next_item\":{\"id\":\"itm_64wce6sh2rpp\",\"kind\":\"appointment\",\"due_date\":\"2026-10-14\"},\"open_items\":3}],\"organisations\":[{\"party_id\":\"pty_fh8cf155ffm3\",\"kind\":\"utility\",\"numbers\":[\"n14\",\"n15\",\"n16\",\"n17\"],\"their_numbers\":[\"n18\",\"n19\",\"n20\",\"n21\"],\"last_letter\":{\"doc_id\":\"doc_asph8a6ddy4e\",\"date\":\"2026-09-24\"},\"open_items\":3},{\"party_id\":\"pty_w9e8zww4fzse\",\"kind\":\"immigration_office\",\"their_numbers\":[\"n22\"],\"open_cases\":[\"c2\",\"c4\"],\"last_letter\":{\"doc_id\":\"doc_qyh8m6fzk4w9\",\"date\":\"2026-09-23\"},\"open_items\":6},{\"party_id\":\"pty_d2ymm5s3htd0\",\"kind\":\"authority\",\"numbers\":[\"n23\"],\"their_numbers\":[\"n24\"],\"last_letter\":{\"doc_id\":\"doc_5c5axexztnw6\",\"date\":\"2026-09-22\"},\"open_items\":2},{\"party_id\":\"pty_ejzv2rmp31km\",\"kind\":\"bank\",\"numbers\":[\"n25\",\"n26\"],\"their_numbers\":[\"n27\",\"n28\",\"n29\"],\"last_letter\":{\"doc_id\":\"doc_0b2t88kqsf2n\",\"date\":\"2026-09-18\"},\"open_items\":1},{\"party_id\":\"pty_r9kabd06mafy\",\"kind\":\"public_broadcaster\",\"numbers\":[\"n5\"],\"their_numbers\":[\"n30\"],\"last_letter\":{\"doc_id\":\"doc_f9b3481wq2bf\",\"date\":\"2026-09-15\"},\"open_items\":1},{\"party_id\":\"pty_mcq97yavgqjy\",\"kind\":\"tax_office\",\"numbers\":[\"n1\",\"n2\"],\"last_letter\":{\"doc_id\":\"doc_hynqaw58f550\",\"date\":\"2026-09-15\"},\"open_items\":2},{\"party_id\":\"pty_eatxsexnt9s3\",\"kind\":\"health_insurer\",\"numbers\":[\"n31\"],\"their_numbers\":[\"n32\",\"n33\",\"n34\"],\"open_cases\":[\"c3\"],\"last_letter\":{\"doc_id\":\"doc_9t9tmrv1ypba\",\"date\":\"2026-09-10\"},\"open_items\":2},{\"party_id\":\"pty_adyabnsvdbpg\",\"kind\":\"retailer\",\"numbers\":[\"n35\"],\"their_numbers\":[\"n36\",\"n37\",\"n38\",\"n39\",\"n40\",\"n41\"],\"open_cases\":[\"c1\"],\"last_letter\":{\"doc_id\":\"doc_1ndcj96tf28z\",\"date\":\"2026-09-10\"},\"open_items\":1},{\"party_id\":\"pty_4by2mq3ac4sk\",\"kind\":\"landlord\",\"numbers\":[\"n42\"],\"their_numbers\":[\"n43\",\"n44\",\"n45\"],\"last_letter\":{\"doc_id\":\"doc_9mewc0kcj28v\",\"date\":\"2026-09-08\"},\"open_items\":4},{\"party_id\":\"pty_efmwq4xym8cm\",\"kind\":\"other\",\"numbers\":[\"n46\"],\"their_numbers\":[\"n47\"],\"last_letter\":{\"doc_id\":\"doc_pa2w9q3gxzqk\",\"date\":\"2026-09-05\"},\"open_items\":6},{\"party_id\":\"pty_fhp8fzemmzvt\",\"kind\":\"university\",\"numbers\":[\"n4\"],\"their_numbers\":[\"n48\"],\"last_letter\":{\"doc_id\":\"doc_nba3k0ka85q0\",\"date\":\"2026-09-01\"},\"open_items\":2},{\"party_id\":\"pty_h9easqrf81w1\",\"kind\":\"employer\",\"numbers\":[\"n49\",\"n3\",\"n50\"],\"their_numbers\":[\"n51\",\"n52\"],\"last_letter\":{\"doc_id\":\"doc_hkgxvjmpcfd5\",\"date\":\"2026-08-31\"},\"open_items\":4},{\"party_id\":\"pty_re9nde1xqtfn\",\"kind\":\"insurer\",\"numbers\":[\"n53\",\"n54\"],\"their_numbers\":[\"n55\",\"n56\",\"n57\"],\"last_letter\":{\"doc_id\":\"doc_tszxajp80vd5\",\"date\":\"2026-01-19\"},\"open_items\":1},{\"party_id\":\"pty_wmevpbzhrm3e\",\"kind\":\"transport\",\"numbers\":[\"n58\"],\"their_numbers\":[\"n59\",\"n60\",\"n61\"],\"last_letter\":{\"doc_id\":\"doc_vy5abr6ejqnb\",\"date\":\"2025-12-10\"},\"open_items\":1},{\"party_id\":\"pty_evgj0fa49fwt\",\"kind\":\"gym\",\"numbers\":[\"n62\",\"n63\"],\"their_numbers\":[\"n64\",\"n65\",\"n66\",\"n67\",\"n68\"],\"last_letter\":{\"doc_id\":\"doc_wc0nyn4ykedf\",\"date\":\"2025-01-02\"},\"open_items\":3},{\"party_id\":\"pty_gjsv4q2d3ajw\",\"kind\":\"telecom\",\"numbers\":[\"n69\"],\"their_numbers\":[\"n70\",\"n71\",\"n72\"],\"last_letter\":{\"doc_id\":\"doc_wtjskffj1vfq\",\"date\":\"2024-11-12\"},\"open_items\":0}],\"numbers\":[{\"ref\":\"n1\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":2},{\"ref\":\"n2\",\"kind\":\"tax_number\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_hynqaw58f550\",\"party_id\":\"pty_mcq97yavgqjy\",\"letters\":1},{\"ref\":\"n3\",\"kind\":\"social_insurance\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Rentenversicherungsnummer check (§ 147 SGB VI, § 2 VKVV). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n4\",\"kind\":\"student\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":2},{\"ref\":\"n5\",\"kind\":\"broadcasting_fee\",\"group\":\"about_you\",\"check\":\"none\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n6\",\"kind\":\"health_insurance\",\"group\":\"about_household_member\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n7\",\"kind\":\"passport\",\"group\":\"document\",\"check\":\"none\",\"doc_id\":\"doc_1dgp8tp2ga0c\",\"party_id\":\"pty_z1se3q2nn3k3\",\"letters\":1},{\"ref\":\"n8\",\"kind\":\"invoice\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":2},{\"ref\":\"n9\",\"kind\":\"order\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_jcbakmxv29p8\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":1},{\"ref\":\"n10\",\"kind\":\"case_file\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"party_id\":\"pty_w9e8zww4fzse\",\"letters\":1},{\"ref\":\"n11\",\"kind\":\"payment_reference\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"party_id\":\"pty_w9e8zww4fzse\",\"letters\":1},{\"ref\":\"n12\",\"kind\":\"reference\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1,\"filed_for\":\"hhm_6mtw39wxdbzq\"},{\"ref\":\"n13\",\"kind\":\"case_file\",\"group\":\"case\",\"check\":\"none\",\"doc_id\":\"doc_d9hwr1mp3bsj\",\"party_id\":\"pty_w9e8zww4fzse\",\"letters\":1},{\"ref\":\"n14\",\"kind\":\"customer\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":2},{\"ref\":\"n15\",\"kind\":\"contract\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":2},{\"ref\":\"n16\",\"kind\":\"meter\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_245408s5e3ga\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":1},{\"ref\":\"n17\",\"kind\":\"meter\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":2},{\"ref\":\"n18\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":2},{\"ref\":\"n19\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":1},{\"ref\":\"n20\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_245408s5e3ga\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":1},{\"ref\":\"n21\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_asph8a6ddy4e\",\"party_id\":\"pty_fh8cf155ffm3\",\"letters\":2},{\"ref\":\"n22\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_qyh8m6fzk4w9\",\"party_id\":\"pty_w9e8zww4fzse\",\"letters\":1},{\"ref\":\"n23\",\"kind\":\"member\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_5c5axexztnw6\",\"party_id\":\"pty_d2ymm5s3htd0\",\"letters\":1},{\"ref\":\"n24\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_5c5axexztnw6\",\"party_id\":\"pty_d2ymm5s3htd0\",\"letters\":1},{\"ref\":\"n25\",\"kind\":\"customer\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"party_id\":\"pty_ejzv2rmp31km\",\"letters\":1},{\"ref\":\"n26\",\"kind\":\"other\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"party_id\":\"pty_ejzv2rmp31km\",\"letters\":1},{\"ref\":\"n27\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"party_id\":\"pty_ejzv2rmp31km\",\"letters\":1},{\"ref\":\"n28\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"party_id\":\"pty_ejzv2rmp31km\",\"letters\":1},{\"ref\":\"n29\",\"kind\":\"bic\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_0b2t88kqsf2n\",\"party_id\":\"pty_ejzv2rmp31km\",\"letters\":1},{\"ref\":\"n30\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_f9b3481wq2bf\",\"party_id\":\"pty_r9kabd06mafy\",\"letters\":1},{\"ref\":\"n31\",\"kind\":\"health_insurance\",\"group\":\"about_household_member\",\"check\":\"ok\",\"check_note\":\"Passes the Krankenversichertennummer check (§ 290 SGB V, the GKV-Spitzenverband's guideline). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1,\"filed_for\":\"hhm_6mtw39wxdbzq\"},{\"ref\":\"n32\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n33\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n34\",\"kind\":\"bic\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"party_id\":\"pty_eatxsexnt9s3\",\"letters\":1},{\"ref\":\"n35\",\"kind\":\"customer\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":2},{\"ref\":\"n36\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":2},{\"ref\":\"n37\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":1},{\"ref\":\"n38\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_jcbakmxv29p8\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":1},{\"ref\":\"n39\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_jcbakmxv29p8\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":1},{\"ref\":\"n40\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":2},{\"ref\":\"n41\",\"kind\":\"their_tax_number\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_1ndcj96tf28z\",\"party_id\":\"pty_adyabnsvdbpg\",\"letters\":2},{\"ref\":\"n42\",\"kind\":\"contract\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_9mewc0kcj28v\",\"party_id\":\"pty_4by2mq3ac4sk\",\"letters\":2},{\"ref\":\"n43\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_drnw4v8g9856\",\"party_id\":\"pty_4by2mq3ac4sk\",\"letters\":1},{\"ref\":\"n44\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_9mewc0kcj28v\",\"party_id\":\"pty_4by2mq3ac4sk\",\"letters\":1},{\"ref\":\"n45\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_9mewc0kcj28v\",\"party_id\":\"pty_4by2mq3ac4sk\",\"letters\":2},{\"ref\":\"n46\",\"kind\":\"other\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1},{\"ref\":\"n47\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_pa2w9q3gxzqk\",\"party_id\":\"pty_efmwq4xym8cm\",\"letters\":1},{\"ref\":\"n48\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_nba3k0ka85q0\",\"party_id\":\"pty_fhp8fzemmzvt\",\"letters\":1},{\"ref\":\"n49\",\"kind\":\"tax_id\",\"group\":\"about_you\",\"check\":\"ok\",\"check_note\":\"Passes the Steuer-ID check (§ 139b AO, the BZSt's specification). A misread digit would almost always fail it; it doesn't prove the number is yours.\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":1},{\"ref\":\"n50\",\"kind\":\"employee\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":2},{\"ref\":\"n51\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":2},{\"ref\":\"n52\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_hkgxvjmpcfd5\",\"party_id\":\"pty_h9easqrf81w1\",\"letters\":2},{\"ref\":\"n53\",\"kind\":\"customer\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_tszxajp80vd5\",\"party_id\":\"pty_re9nde1xqtfn\",\"letters\":1},{\"ref\":\"n54\",\"kind\":\"policy\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_tszxajp80vd5\",\"party_id\":\"pty_re9nde1xqtfn\",\"letters\":1},{\"ref\":\"n55\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_tszxajp80vd5\",\"party_id\":\"pty_re9nde1xqtfn\",\"letters\":1},{\"ref\":\"n56\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_tszxajp80vd5\",\"party_id\":\"pty_re9nde1xqtfn\",\"letters\":1},{\"ref\":\"n57\",\"kind\":\"their_tax_number\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_tszxajp80vd5\",\"party_id\":\"pty_re9nde1xqtfn\",\"letters\":1},{\"ref\":\"n58\",\"kind\":\"contract\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"party_id\":\"pty_wmevpbzhrm3e\",\"letters\":1},{\"ref\":\"n59\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"party_id\":\"pty_wmevpbzhrm3e\",\"letters\":1},{\"ref\":\"n60\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"party_id\":\"pty_wmevpbzhrm3e\",\"letters\":1},{\"ref\":\"n61\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_vy5abr6ejqnb\",\"party_id\":\"pty_wmevpbzhrm3e\",\"letters\":1},{\"ref\":\"n62\",\"kind\":\"member\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n63\",\"kind\":\"mandate\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n64\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n65\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n66\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n67\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n68\",\"kind\":\"iban\",\"group\":\"theirs\",\"check\":\"ok\",\"check_note\":\"The IBAN's check digits are valid — that only rules out typos, not fraud.\",\"doc_id\":\"doc_wc0nyn4ykedf\",\"party_id\":\"pty_evgj0fa49fwt\",\"letters\":1},{\"ref\":\"n69\",\"kind\":\"customer\",\"group\":\"organisation\",\"check\":\"none\",\"doc_id\":\"doc_wtjskffj1vfq\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"letters\":1},{\"ref\":\"n70\",\"kind\":\"vat_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wtjskffj1vfq\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"letters\":1},{\"ref\":\"n71\",\"kind\":\"register\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wtjskffj1vfq\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"letters\":1},{\"ref\":\"n72\",\"kind\":\"creditor_id\",\"group\":\"theirs\",\"check\":\"none\",\"doc_id\":\"doc_wtjskffj1vfq\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"letters\":1}],\"note\":\"Each number's label and value are in the letter text of the letter it comes from (under numbers, by ref). check is Ordnung's check-digit test: ok (passes the published check, so almost certainly no digit was misread — it does not prove the number is the person's), fails (compare it with the letter) or none (no public check for this kind of number).\",\"household_note\":\"household holds, for each person of the household, the numbers and identity documents that letters the person filed for them show. filed_for marks a number or open case all of whose letters are filed for that person of the household. also_for: letters of other people show the same number too (me: the person), so it is not certain whose it is — say so. Say whose a number is, and never give a household person's number as the person's own.\"}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"numbers\":{\"n1\":{\"label\":\"IdNr.\",\"value\":\"57 216 480 354\"},\"n2\":{\"label\":\"Steuernummer\",\"value\":\"123/4567/8901\"}}},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\",\"phone\":\"0123 887-2204\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"numbers\":{\"n3\":{\"label\":\"SV-Nummer\",\"value\":\"65 140300 R 005\"},\"n49\":{\"label\":\"Steuer-ID\",\"value\":\"57 216 480 354\"},\"n50\":{\"label\":\"Personalnummer\",\"value\":\"10482\"},\"n51\":{\"label\":\"USt-IdNr.\",\"value\":\"DE424242072\"},\"n52\":{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"42424\"}}},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\",\"phone\":\"0123 4242-0\",\"website\":\"www.mustertech.example\"},\"doc_nba3k0ka85q0\":{\"title\":\"Semester documents for winter semester 2026/27 and re-registration for summer semester 2027\",\"numbers\":{\"n4\":{\"label\":\"Matrikelnummer\",\"value\":\"4711123\"},\"n48\":{\"label\":\"IBAN for payments to Hochschule Musterstadt\",\"value\":\"DE10123456000007700220\"}}},\"pty_fhp8fzemmzvt\":{\"name\":\"Hochschule Musterstadt\",\"phone\":\"0123 7788-2210\",\"website\":\"www.hs-musterstadt.example\"},\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"numbers\":{\"n5\":{\"label\":\"Beitragsnummer\",\"value\":\"512 345 678\"},\"n30\":{\"label\":\"IBAN for payments to Beitragsservice Musterstadt\",\"value\":\"DE57123489000055081836\"}}},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\",\"phone\":\"0123 9900-500\",\"website\":\"www.rundfunkbeitrag-musterstadt.example\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"case_title\":\"Muster BKK: increase of health &amp; long-term care insurance contribution\",\"numbers\":{\"n6\":{\"label\":\"Versicherten-Nr.\",\"value\":\"M472059139\"},\"n12\":{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},\"n31\":{\"label\":\"Versicherten-Nr.\",\"value\":\"M472059139\"},\"n32\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"},\"n33\":{\"label\":\"IBAN for payments to Muster BKK\",\"value\":\"DE18123456000006060000\"},\"n34\":{\"label\":\"BIC\",\"value\":\"MUSKDEM1XXX\"}}},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\",\"phone\":\"0123 6060-417\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Alex Rivera\",\"numbers\":{\"n7\":{\"label\":\"Passport No.\",\"value\":\"C4703958\"}}},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"itm_c05nsrmyz6av\":{\"title\":\"Pay the reminder amount for invoice TM-2026-0048213\"},\"doc_1ndcj96tf28z\":{\"title\":\"1. Mahnung – Invoice TM-2026-0048213\",\"case_title\":\"Invoice from TechMarkt Online GmbH for headphones purchase\",\"numbers\":{\"n8\":{\"label\":\"Rechnungs-Nr.\",\"value\":\"TM-2026-0048213\"},\"n35\":{\"label\":\"Kundennummer\",\"value\":\"K-7719034\"},\"n36\":{\"label\":\"USt-IdNr.\",\"value\":\"DE482133778\"},\"n37\":{\"label\":\"Amtsgericht Beispielburg HRB\",\"value\":\"48213\"},\"n40\":{\"label\":\"IBAN for payments to TechMarkt Online GmbH\",\"value\":\"DE70123478000048213000\"},\"n41\":{\"label\":\"Steuernummer\",\"value\":\"212/5812/0048\"}}},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\",\"phone\":\"0123 6655440\",\"email\":\"kundenservice@techmarkt-online.example\",\"website\":\"www.techmarkt-online.example\"},\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"numbers\":{\"n9\":{\"label\":\"Bestellnummer\",\"value\":\"302-5512094\"},\"n38\":{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielburg HRB 48213\"},\"n39\":{\"label\":\"WEEE-Reg.-Nr.\",\"value\":\"DE 00000000\"}}},\"itm_31yxpwg03cdb\":{\"title\":\"Pay the traffic warning fine (Verwarnungsgeld)\"},\"doc_qyh8m6fzk4w9\":{\"title\":\"Verwarnung mit Verwarnungsgeld – parking without a valid ticket\",\"case_title\":\"Traffic warning (Verwarnungsgeld) for parking violation\",\"numbers\":{\"n10\":{\"label\":\"Aktenzeichen\",\"value\":\"32.4-VW-2026-0184512\"},\"n11\":{\"label\":\"Kassenzeichen\",\"value\":\"5126 0184 5122\"},\"n22\":{\"label\":\"IBAN for payments to Stadtkasse Musterstadt\",\"value\":\"DE51123456000000100017\"}}},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\",\"phone\":\"0123 400-3290\",\"email\":\"abh@musterstadt.example\",\"website\":\"www.musterstadt.example\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\"},\"itm_64wce6sh2rpp\":{\"title\":\"Attend appointment at the immigration office (Ausländerbehörde)\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to appointment for residence permit extension (Aufenthaltserlaubnis)\",\"case_title\":\"Residence permit extension – Ausländerbehörde appointment\",\"numbers\":{\"n13\":{\"label\":\"Aktenzeichen\",\"value\":\"32.2-AE-24-08815\"}}},\"pty_fh8cf155ffm3\":{\"name\":\"Stadtwerke Musterstadt GmbH\",\"phone\":\"0123 5550-100\",\"website\":\"www.stadtwerke-musterstadt.example\"},\"doc_asph8a6ddy4e\":{\"title\":\"Stadtwerke Musterstadt: electricity price adjustment effective 1 November 2026\",\"numbers\":{\"n14\":{\"label\":\"Kundennummer\",\"value\":\"2004711\"},\"n15\":{\"label\":\"Vertragskonto\",\"value\":\"400123987\"},\"n17\":{\"label\":\"Zählernummer\",\"value\":\"1EMH0012345678\"},\"n18\":{\"label\":\"USt-IdNr.\",\"value\":\"DE400123982\"},\"n19\":{\"label\":\"Amtsgericht Musterstadt HRB\",\"value\":\"4711\"},\"n21\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE28ZZZ00000401239\"}}},\"doc_245408s5e3ga\":{\"title\":\"Electricity Supply Contract Confirmation – MusterStrom Flex\",\"numbers\":{\"n16\":{\"label\":\"Marktlokation\",\"value\":\"51238764017\"},\"n20\":{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 4711\"}}},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\",\"phone\":\"0123 400-7700\"},\"doc_5c5axexztnw6\":{\"title\":\"First reminder: overdue library loan (1. Mahnung)\",\"numbers\":{\"n23\":{\"label\":\"Benutzer-Nr.\",\"value\":\"0481 1123 5\"},\"n24\":{\"label\":\"IBAN for payments to Stadtkasse Musterstadt\",\"value\":\"DE51123456000000100017\"}}},\"pty_ejzv2rmp31km\":{\"name\":\"Musterbank eG\",\"phone\":\"0123 4000-218\",\"website\":\"www.musterbank.example\"},\"doc_0b2t88kqsf2n\":{\"title\":\"Girokonto Klassik fee increase – consent required by 30 November 2026\",\"numbers\":{\"n25\":{\"label\":\"Kundennummer\",\"value\":\"7004 1128\"},\"n26\":{\"label\":\"BLZ\",\"value\":\"123 467 00\"},\"n27\":{\"label\":\"USt-IdNr.\",\"value\":\"DE123467016\"},\"n28\":{\"label\":\"Amtsgericht\",\"value\":\"Musterstadt GnR 88\"},\"n29\":{\"label\":\"BIC\",\"value\":\"MUBKDEM1XXX\"}}},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\",\"phone\":\"0123 45678-214\",\"website\":\"www.wohnbau-musterstadt.example\"},\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"numbers\":{\"n42\":{\"label\":\"Vertragsnummer\",\"value\":\"MV-2025-0412\"},\"n44\":{\"label\":\"Registergericht\",\"value\":\"Amtsgericht Musterstadt GnR 123\"},\"n45\":{\"label\":\"IBAN for payments to Wohnbau Musterstadt eG\",\"value\":\"DE05123456000004455660\"}}},\"doc_drnw4v8g9856\":{\"title\":\"Rental agreement for Beispielweg 5, Musterstadt\",\"numbers\":{\"n43\":{\"label\":\"Genossenschaftsregister\",\"value\":\"GnR 123\"}}},\"pty_efmwq4xym8cm\":{\"name\":\"Global Talent Scholarship Foundation\",\"phone\":\"+49 123 555 0317\"},\"doc_pa2w9q3gxzqk\":{\"title\":\"Award of the Global Talent Scholarship 2026/27\",\"numbers\":{\"n46\":{\"label\":\"Scholarship ID\",\"value\":\"GTSF-2026-0317\"},\"n47\":{\"label\":\"Foundation register\",\"value\":\"Berlin 3/GT-2011\"}}},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\",\"phone\":\"0123 7070-0\",\"website\":\"www.muster-versicherung.example\"},\"doc_tszxajp80vd5\":{\"title\":\"Policy amendment – private liability insurance\",\"numbers\":{\"n53\":{\"label\":\"Kundennummer\",\"value\":\"K 2231 0917\"},\"n54\":{\"label\":\"Vers.-Nr.\",\"value\":\"PHV 71-4471220\"},\"n55\":{\"label\":\"Amtsgericht\",\"value\":\"Beispielstadt HRB 1887\"},\"n56\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE71ZZZ00000447122\"},\"n57\":{\"label\":\"Versicherungsteuer-Nr.\",\"value\":\"812/V/4471\"}}},\"pty_wmevpbzhrm3e\":{\"name\":\"Musterstadt Verkehrsbetriebe GmbH\",\"phone\":\"0123 6300-63\",\"email\":\"abo@mvb-musterstadt.example\",\"website\":\"www.mvb-musterstadt.example\"},\"doc_vy5abr6ejqnb\":{\"title\":\"Deutschlandticket Subscription Confirmation – MVB\",\"numbers\":{\"n58\":{\"label\":\"Abonummer\",\"value\":\"DT-2025-3304719\"},\"n59\":{\"label\":\"USt-IdNr.\",\"value\":\"DE330471969\"},\"n60\":{\"label\":\"Amtsgericht\",\"value\":\"Musterstadt HRB 3304\"},\"n61\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE58ZZZ00000330471\"}}},\"pty_evgj0fa49fwt\":{\"name\":\"FitWell Studios GmbH\",\"phone\":\"0123 889900\",\"email\":\"hallo@fitwell-studios.example\",\"website\":\"www.fitwell-studios.example\"},\"doc_wc0nyn4ykedf\":{\"title\":\"Gym Membership Contract – FitWell Studios\",\"numbers\":{\"n62\":{\"label\":\"Mitgliedsnummer\",\"value\":\"FW-10457\"},\"n63\":{\"label\":\"Mandatsreferenz\",\"value\":\"FW-10457-M1\"},\"n64\":{\"label\":\"USt-IdNr.\",\"value\":\"DE310457828\"},\"n65\":{\"label\":\"Handelsregister\",\"value\":\"HRB 31045\"},\"n66\":{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Musterstadt HRB 31045\"},\"n67\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE25ZZZ00000104570\"},\"n68\":{\"label\":\"IBAN for payments to FitWell Studios GmbH\",\"value\":\"DE05123467000029900150\"}}},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\",\"phone\":\"0123 2244660\",\"email\":\"service@funknetz-mobil.example\",\"website\":\"www.funknetz-mobil.example\"},\"doc_wtjskffj1vfq\":{\"title\":\"Mobile phone contract confirmation – FunkNetz Smart M\",\"numbers\":{\"n69\":{\"label\":\"Kundennummer\",\"value\":\"FN-88213407\"},\"n70\":{\"label\":\"USt-IdNr.\",\"value\":\"DE204175512\"},\"n71\":{\"label\":\"Handelsregister\",\"value\":\"Amtsgericht Beispielhausen HRB 20417\"},\"n72\":{\"label\":\"Gläubiger-ID\",\"value\":\"DE53ZZZ00000204170\"}}}}\n</untrusted_document>",
+      "tool_use_id": "toolu_0138DBtCfrhucAXunZorV9Zn"
+    },
+    {
+      "type": "text",
+      "text": "Alex's health insurance number"
+    },
+    {
+      "type": "text",
+      "text": " (Versicherten-"
+    },
+    {
+      "type": "text",
+      "text": "Nr.) with"
+    },
+    {
+      "type": "text",
+      "text": " Muster BKK is **"
+    },
+    {
+      "type": "text",
+      "text": "M472059139** ["
+    },
+    {
+      "type": "text",
+      "text": "doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_9t9tm"
+    },
+    {
+      "type": "text",
+      "text": "rv1ypba]"
+    },
+    {
+      "type": "text",
+      "text": " [party:pty_eat"
+    },
+    {
+      "type": "text",
+      "text": "xsexnt9s3"
+    },
+    {
+      "type": "text",
+      "text": "].\n\n- It passes the"
+    },
+    {
+      "type": "text",
+      "text": " official"
+    },
+    {
+      "type": "text",
+      "text": " Kr"
+    },
+    {
+      "type": "text",
+      "text": "ankenversich"
+    },
+    {
+      "type": "text",
+      "text": "ertennummer check digit ("
+    },
+    {
+      "type": "text",
+      "text": "§ 290"
+    },
+    {
+      "type": "text",
+      "text": " SGB V"
+    },
+    {
+      "type": "text",
+      "text": "), though that only"
+    },
+    {
+      "type": "text",
+      "text": " r"
+    },
+    {
+      "type": "text",
+      "text": "ules out a mis"
+    },
+    {
+      "type": "text",
+      "text": "read digit —"
+    },
+    {
+      "type": "text",
+      "text": " it doesn't pr"
+    },
+    {
+      "type": "text",
+      "text": "ove wh"
+    },
+    {
+      "type": "text",
+      "text": "ose number"
+    },
+    {
+      "type": "text",
+      "text": " it is [do"
+    },
+    {
+      "type": "text",
+      "text": "c:doc_9t9"
+    },
+    {
+      "type": "text",
+      "text": "tmrv1ypba"
+    },
+    {
+      "type": "text",
+      "text": "].\n- This number com"
+    },
+    {
+      "type": "text",
+      "text": "es from a"
+    },
+    {
+      "type": "text",
+      "text": " letter filed under"
+    },
+    {
+      "type": "text",
+      "text": " Alex Riv"
+    },
+    {
+      "type": "text",
+      "text": "era"
+    },
+    {
+      "type": "text",
+      "text": ", not under"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " own num"
+    },
+    {
+      "type": "text",
+      "text": "bers."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Alex's health insurance number (Versicherten-Nr.) with Muster BKK is **M472059139** [doc:doc_9t9tmrv1ypba] [party:pty_eatxsexnt9s3].\n\n- It passes the official Krankenversichertennummer check digit (§ 290 SGB V), though that only rules out a misread digit — it doesn't prove whose number it is [doc:doc_9t9tmrv1ypba].\n- This number comes from a letter filed under Alex Rivera, not under your own numbers.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 812,
+          "cache_read_tokens": 19971,
+          "cache_creation_tokens": 15025,
+          "cost_usd": 0.0722262,
+          "duration_ms": 17129,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -122,6 +122,17 @@ describe("seedFromQueue (on connecting: a reload, a new tab)", () => {
   });
 });
 
+describe("profile.updated", () => {
+  it("refreshes My numbers: a household write files letters for someone, and their numbers move", () => {
+    const qc = new QueryClient();
+    const invalidate = vi.spyOn(qc, "invalidateQueries");
+    handleServerEvent(qc, { type: "profile.updated", data: {} });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["profile"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["household"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["numbers"] });
+  });
+});
+
 describe("sync.updated (hand-off sync)", () => {
   it("asks for the sync status again", () => {
     const qc = new QueryClient();

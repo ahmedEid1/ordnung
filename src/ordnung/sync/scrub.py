@@ -4,8 +4,10 @@ findings 5, 15, 19, 25).
 * :func:`scrub` turns an in-memory copy of the database into what a push carries: this computer's own
   meta keys (:data:`~ordnung.sync.LOCAL_META`), the demo's and the local privacy-log rows go — deleted
   with ``secure_delete`` on, so not even free pages keep them; the per-computer settings fields go back
-  to their defaults (all but ``demo``, which stays so a receiver can refuse a demo database); a reading
-  in progress is queued again (``running`` → ``queued``, F34); stored paths use ``/``.
+  to their defaults (all but ``demo``, which stays so a receiver can refuse a demo database), and a
+  field of :data:`~ordnung.sync.KEPT_WHEN_ABSENT` the row doesn't name stays out (a computer updated from
+  0.3.x reads the default until its next pull, and its push doesn't turn the switch back on elsewhere); a
+  reading in progress is queued again (``running`` → ``queued``, F34); stored paths use ``/``.
 * :func:`state_digest` is a SHA-256 over the scrubbed copy's rows (every ordinary table in name order,
   every row by its ``rowid``, canonical JSON, blobs as hex — the full-text tables left out, being
   derived; the merged keys of :data:`~ordnung.sync.MERGED_META` left out, being unions), the data
@@ -16,7 +18,9 @@ findings 5, 15, 19, 25).
   serialization take 0.41 s — so the digest is taken only after ``data_version`` moved and the
   debounce passed, never on a timer.
 * :func:`merge_local` runs inside the pull's apply: the live database's local keys, local settings
-  fields and local privacy-log rows are carried into the staged copy, the merged keys are united, and
+  fields and local privacy-log rows are carried into the staged copy (and the travelling settings of
+  :data:`~ordnung.sync.KEPT_WHEN_ABSENT` the incoming row doesn't name, as Ordnung 0.3.x writes it: the
+  *Text in pictures* switch), the merged keys are united, and
   the calendar's "already sent" record is merged when this computer's own connection is to the same
   calendar in the same mode (finding 15); ``sync_mark`` names the version the database now holds.
 """
@@ -38,6 +42,7 @@ from ordnung.db.store import SETTINGS_META_KEY
 from ordnung.models import AppSettings, CalendarSyncState
 from ordnung.sync import (
     DEMO_META,
+    KEPT_WHEN_ABSENT,
     LOCAL_ACTIVITY_KINDS,
     LOCAL_ACTIVITY_PREFIXES,
     LOCAL_META,
@@ -123,6 +128,15 @@ def settings_of(conn: sqlite3.Connection) -> AppSettings:
         return AppSettings()
 
 
+def _settings_fields(conn: sqlite3.Connection) -> set[str]:
+    """The fields the settings row of ``conn`` names (none when it has no row or one that can't be read)."""
+    try:
+        found = json.loads(meta_value(conn, SETTINGS_META_KEY) or "{}")
+    except ValueError:
+        return set()
+    return {str(name) for name in found} if isinstance(found, dict) else set()
+
+
 def is_demo(conn: sqlite3.Connection) -> bool:
     """A demo database: ``settings.demo`` on, or any of the demo's own keys (the demo never syncs)."""
     if settings_of(conn).demo:
@@ -149,8 +163,12 @@ def scrub(conn: sqlite3.Connection) -> None:
                 reset = current.model_copy(
                     update={name: getattr(defaults, name) for name in SCRUBBED_SETTINGS}
                 )
+                # a field this row doesn't name (Ordnung 0.3.x dropped it) stays out, so the receiver keeps its own
+                named = _settings_fields(conn)
+                absent = {name for name in KEPT_WHEN_ABSENT if name not in named}
                 conn.execute(
-                    "UPDATE meta SET value = ? WHERE key = ?", (reset.model_dump_json(), SETTINGS_META_KEY)
+                    "UPDATE meta SET value = ? WHERE key = ?",
+                    (reset.model_dump_json(exclude=absent or None), SETTINGS_META_KEY),
                 )
         if _has_table(conn, "activity"):
             where, params = _local_activity_where()
@@ -390,7 +408,12 @@ def merge_local(
         if SETTINGS_META_KEY in live_meta:
             with contextlib.suppress(ValidationError):
                 local_settings = AppSettings.model_validate_json(live_meta[SETTINGS_META_KEY])
-        merged_settings = incoming.model_copy(update={f: getattr(local_settings, f) for f in LOCAL_SETTINGS})
+        # a travelling setting the incoming row doesn't name (an older Ordnung dropped it) keeps this computer's
+        named = _settings_fields(staged)
+        kept = [name for name in KEPT_WHEN_ABSENT if name not in named]
+        merged_settings = incoming.model_copy(
+            update={f: getattr(local_settings, f) for f in (*LOCAL_SETTINGS, *kept)}
+        )
         staged.execute(
             "INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (SETTINGS_META_KEY, merged_settings.model_dump_json()),

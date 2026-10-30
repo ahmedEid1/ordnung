@@ -1,0 +1,309 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"How much do I still have to pay back on my BAföG loan?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_f9b3481wq2bf",
+      "doc_9t9tmrv1ypba"
+    ],
+    "prompt_head": "The person asks:\nHow much do I still have to pay back on my BAföG loan?\n"
+  },
+  "response": {
+    "text": "I don't have any records of a BAföG loan or its repayment in your Ordnung ledger. The only BAföG mentions found are incidental: a Rundfunkbeitrag letter noting BAföG recipients may apply for an exemption [doc:doc_f9b3481wq2bf], and a health insurance notice referencing BAföG as the basis for contribution calculation for students [doc:doc_9t9tmrv1ypba]. Neither contains a loan balance or repayment amount.\n\nIf you have a BAföG repayment notice (from the Bundesverwaltungsamt), you could add/upload it to Ordnung so it can track the amount and due dates for you.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 296,
+      "cache_read_tokens": 12764,
+      "cache_creation_tokens": 1485,
+      "cost_usd": 0.0114608,
+      "duration_ms": 6791,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "BAföG"
+      },
+      "tool_use_id": "toolu_01AYNQ6untMefN33YzM4hr2t"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_f9b3481wq2bf\",\"kind\":\"broadcasting_fee\",\"date\":\"2026-09-15\",\"party_id\":\"pty_r9kabd06mafy\"},{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"snippet\":\"…you receive certain social benefits (e.g. BAföG), you may apply for an exemption from the…\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"…Als beitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V); er…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01AYNQ6untMefN33YzM4hr2t"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " don't have"
+    },
+    {
+      "type": "text",
+      "text": " any records"
+    },
+    {
+      "type": "text",
+      "text": " of a B"
+    },
+    {
+      "type": "text",
+      "text": "A"
+    },
+    {
+      "type": "text",
+      "text": "fö"
+    },
+    {
+      "type": "text",
+      "text": "G loan or its rep"
+    },
+    {
+      "type": "text",
+      "text": "ayment in your"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "ledger. The only BAfö"
+    },
+    {
+      "type": "text",
+      "text": "G mentions found"
+    },
+    {
+      "type": "text",
+      "text": " are inc"
+    },
+    {
+      "type": "text",
+      "text": "idental:"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " Rund"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "un"
+    },
+    {
+      "type": "text",
+      "text": "kb"
+    },
+    {
+      "type": "text",
+      "text": "eitrag let"
+    },
+    {
+      "type": "text",
+      "text": "ter no"
+    },
+    {
+      "type": "text",
+      "text": "ting BAföG rec"
+    },
+    {
+      "type": "text",
+      "text": "ipients may"
+    },
+    {
+      "type": "text",
+      "text": " ap"
+    },
+    {
+      "type": "text",
+      "text": "ply for an exemption ["
+    },
+    {
+      "type": "text",
+      "text": "doc:"
+    },
+    {
+      "type": "text",
+      "text": "do"
+    },
+    {
+      "type": "text",
+      "text": "c_f9b"
+    },
+    {
+      "type": "text",
+      "text": "3481"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "q2"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "], and a health insurance not"
+    },
+    {
+      "type": "text",
+      "text": "ice refer"
+    },
+    {
+      "type": "text",
+      "text": "encing BAföG as the"
+    },
+    {
+      "type": "text",
+      "text": " basis for cont"
+    },
+    {
+      "type": "text",
+      "text": "rib"
+    },
+    {
+      "type": "text",
+      "text": "ution calculation"
+    },
+    {
+      "type": "text",
+      "text": " for students [doc:doc"
+    },
+    {
+      "type": "text",
+      "text": "_9t9tmrv"
+    },
+    {
+      "type": "text",
+      "text": "1ypba]. Ne"
+    },
+    {
+      "type": "text",
+      "text": "ither cont"
+    },
+    {
+      "type": "text",
+      "text": "ains a loan balance or"
+    },
+    {
+      "type": "text",
+      "text": " repayment amount.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " you have"
+    },
+    {
+      "type": "text",
+      "text": " a BAföG rep"
+    },
+    {
+      "type": "text",
+      "text": "ayment not"
+    },
+    {
+      "type": "text",
+      "text": "ice (from"
+    },
+    {
+      "type": "text",
+      "text": " the Bundesver"
+    },
+    {
+      "type": "text",
+      "text": "waltungsamt),"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " could"
+    },
+    {
+      "type": "text",
+      "text": " add/"
+    },
+    {
+      "type": "text",
+      "text": "upload it to"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung so"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": " can track"
+    },
+    {
+      "type": "text",
+      "text": " the am"
+    },
+    {
+      "type": "text",
+      "text": "ount and due d"
+    },
+    {
+      "type": "text",
+      "text": "ates for you."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I don't have any records of a BAföG loan or its repayment in your Ordnung ledger. The only BAföG mentions found are incidental: a Rundfunkbeitrag letter noting BAföG recipients may apply for an exemption [doc:doc_f9b3481wq2bf], and a health insurance notice referencing BAföG as the basis for contribution calculation for students [doc:doc_9t9tmrv1ypba]. Neither contains a loan balance or repayment amount.\n\nIf you have a BAföG repayment notice (from the Bundesverwaltungsamt), you could add/upload it to Ordnung so it can track the amount and due dates for you.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 296,
+          "cache_read_tokens": 12764,
+          "cache_creation_tokens": 1485,
+          "cost_usd": 0.0114608,
+          "duration_ms": 6791,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

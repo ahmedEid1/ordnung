@@ -144,10 +144,12 @@ SETTINGS_META_KEY = _SETTINGS_KEY
 #: meta: the person's own "For taxes" choices, letter id → ``true``/``false`` (canonical JSON; no row while
 #: there are none). Kept apart from the letter's ``tax_relevant``, which a reading overwrites; what counts
 #: is :func:`ordnung.secretary.tax_choice.for_taxes`. Synced like the profile (``ordnung.sync.SYNCED_META``);
-#: Ask's ledger fingerprint never reads it. No migration: a computer still on 0.2.x carries it untouched.
+#: Ask's ledger fingerprint reads it (:data:`LEDGER_META_KEYS`). No migration: a computer still on 0.2.x
+#: carries it untouched.
 TAX_CHOICES_META_KEY = "tax_choices"
 #: meta: the person's household (:mod:`ordnung.secretary.household`): ``{"format": 1, "members": [{"id",
-#: "name", "signs"}], "links": {letter id: member id | "me"}}``. Synced like the profile; never read by Ask.
+#: "name", "signs"}], "links": {letter id: member id | "me"}}``. Synced like the profile; Ask reads it only as
+#: :func:`ordnung.secretary.household.ask_view` gives it (:data:`LEDGER_META_KEYS`).
 HOUSEHOLD_META_KEY = "household"
 #: The rows that name letters by id: deleting a letter for good removes it from each, at this JSON path.
 _LETTER_KEYED_META: tuple[tuple[str, str], ...] = (
@@ -155,10 +157,15 @@ _LETTER_KEYED_META: tuple[tuple[str, str], ...] = (
     (HOUSEHOLD_META_KEY, "$.links"),
 )
 #: The tables Ask's ledger fingerprint reads (:func:`ordnung.assistant.ask.ledger_fingerprint`; of ``meta``
-#: only the profile), and ``cases``: deleting one changes letters, to-dos and contracts (``ON DELETE SET
-#: NULL``). :meth:`Store.ledger_token` watches them; a table the fingerprint starts to read must join them
-#: (``tests/test_ask.py`` checks it with SQLite's authorizer).
+#: the rows of :data:`LEDGER_META_KEYS`), and ``cases``: deleting one changes letters, to-dos and contracts
+#: (``ON DELETE SET NULL``). :meth:`Store.ledger_token` watches them; a table the fingerprint starts to read must
+#: join them (``tests/test_ask.py`` checks it with SQLite's authorizer).
 LEDGER_TABLES = ("documents", "pages", "items", "contracts", "parties", "cases")
+#: The ``meta`` rows Ask's ledger fingerprint reads, which :meth:`Store.ledger_token` watches too: the profile,
+#: the person's *For taxes* choices (Ask's ``get_document`` says what they chose) and the household (whose a
+#: letter is, as :func:`ordnung.secretary.household.ask_view` gives it).
+LEDGER_META_KEYS = (_PROFILE_KEY, TAX_CHOICES_META_KEY, HOUSEHOLD_META_KEY)
+_WATCHED_META = ", ".join(f"'{key}'" for key in LEDGER_META_KEYS)
 #: The temporary counter of :meth:`Store.ledger_token` and the name prefix of its triggers (connection-only).
 _LEDGER_WRITES = "ordnung_ledger_writes"
 _LEDGER_TRIGGER_SQL: tuple[tuple[str, str], ...] = (
@@ -167,12 +174,12 @@ _LEDGER_TRIGGER_SQL: tuple[tuple[str, str], ...] = (
         for table in LEDGER_TABLES
         for op in ("INSERT", "UPDATE", "DELETE")
     ),
-    ("ordnung_ledger_meta_insert", f"AFTER INSERT ON main.meta WHEN NEW.key = '{_PROFILE_KEY}'"),
+    ("ordnung_ledger_meta_insert", f"AFTER INSERT ON main.meta WHEN NEW.key IN ({_WATCHED_META})"),
     (
         "ordnung_ledger_meta_update",
-        f"AFTER UPDATE ON main.meta WHEN NEW.key = '{_PROFILE_KEY}' OR OLD.key = '{_PROFILE_KEY}'",
+        f"AFTER UPDATE ON main.meta WHEN NEW.key IN ({_WATCHED_META}) OR OLD.key IN ({_WATCHED_META})",
     ),
-    ("ordnung_ledger_meta_delete", f"AFTER DELETE ON main.meta WHEN OLD.key = '{_PROFILE_KEY}'"),
+    ("ordnung_ledger_meta_delete", f"AFTER DELETE ON main.meta WHEN OLD.key IN ({_WATCHED_META})"),
 )
 
 
@@ -976,7 +983,8 @@ class Store:
 
     def ledger_token(self) -> tuple[int, int, int] | None:
         """Like :meth:`change_token`, but moved only by what Ask's ledger fingerprint can read: this
-        connection's writes to :data:`LEDGER_TABLES` and the profile, another connection's commit
+        connection's writes to :data:`LEDGER_TABLES` and the ``meta`` rows of :data:`LEDGER_META_KEYS` (the
+        profile, the *For taxes* choices, the household), another connection's commit
         (``PRAGMA data_version``) or a schema change. The usage log, chat, activity and settings written on
         this connection leave it as it was, so Ask's own writes for one question don't make the next one work
         the fingerprint out again.

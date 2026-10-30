@@ -11,8 +11,8 @@
   database, so they survive restarts and are reset with the demo.
 * A question the demo has no recording for must not look like a failure: :func:`demo_safe_stream`
   turns the replay miss into one friendly error event — and a suggested question that misses (the
-  person changed the letters or to-dos its answers were recorded on) into one that says how to start
-  the demo over. The answers were recorded on the demo as it starts, in every state of the tray, so
+  person changed the letters, to-dos or household its answers were recorded on) into one that says how
+  to start the demo over. The answers were recorded on the demo as it starts, in every state of the tray, so
   after such a change :func:`recorded_questions` offers none.
 """
 
@@ -85,10 +85,11 @@ def suggested_questions(path: Path | None = None) -> list[str]:
 
 
 def recorded_questions(ctx: AppContext) -> list[str]:
-    """``GET /api/demo/questions``: the suggested questions whose recorded answers replay on the letters and
-    to-dos as they are now — all of them in every state of the New-mail tray, none once the person changed
-    the letters or to-dos (the Ask page then says how to start over instead of offering questions that would
-    miss). A live fallback (``ordnung demo --live``) answers the rest, so then all of them."""
+    """``GET /api/demo/questions``: the suggested questions whose recorded answers replay on the letters,
+    to-dos and household as they are now — all of them in every state of the New-mail tray, none once the
+    person changed the letters, to-dos or household (the Ask page then says how to start over instead of
+    offering questions that would miss). A live fallback (``ordnung demo --live``) answers the rest, so then
+    all of them."""
     questions = suggested_questions()
     backend = ctx.llm.backend
     if not isinstance(backend, ReplayBackend) or backend.fallback is not None:
@@ -332,7 +333,8 @@ async def demo_safe_stream(
     """Pass ``events`` through; in demo mode a replay miss ends the stream with one coded event, which the
     web app shows as a note — asking again can't help — instead of a failure: ``demo_changed``
     (:data:`~ordnung.assistant.ask.DEMO_CHANGED`) for a suggested ``question`` — the demo recorded it in
-    every state of the New-mail tray, so it misses only after the person changed the letters or to-dos —
+    every state of the New-mail tray, so it misses only after the person changed the letters, to-dos or
+    household —
     else ``demo_miss`` (:data:`~ordnung.assistant.ask.DEMO_MISS`), which points to the suggested questions
     only while ``ctx``'s demo still offers them (:func:`recorded_questions`)."""
     async for event in events:

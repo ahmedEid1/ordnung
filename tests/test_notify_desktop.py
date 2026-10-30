@@ -37,6 +37,7 @@ from ordnung.notify.desktop import (
     summary,
     things_due,
 )
+from ordnung.secretary import household
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
 from ordnung.tick import DailyTick
 
@@ -185,6 +186,42 @@ def test_the_seeded_week_in_both_modes(store: Store) -> None:
     assert full is not None
     assert full.body.startswith("Return library books — overdue · Pay parking fine €25 by tomorrow")
     assert "broadcasting" not in full.body  # the scam letter's demand is never on the agenda
+
+
+@dataclass(frozen=True)
+class _Person:
+    name: str
+    id: str | None = None
+    signs: bool = True
+
+
+def test_full_mode_names_a_member_and_discreet_does_not(store: Store) -> None:
+    """*Full* puts the name of the person of the household a letter is filed for in front of its to-do, cut like
+    a title; a contract's decision and a to-do without a letter name no one; *Discreet* still counts only."""
+    ids = seed_ledger(store)
+    before = desktop.preview(store, MON)
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    assert desktop.preview(store, MON) == before  # someone in the household, nothing filed
+    (alex,) = household.load(store).members
+    household.file(store, {ids["doc_parking"]: alex.id, ids["doc_phone"]: alex.id})
+    texts = desktop.preview(store, MON)
+    full, discreet = texts["full"], texts["discreet"]
+    assert full is not None and discreet is not None
+    assert full.body.startswith(
+        "Return library books — overdue · Alex Rivera: Pay parking fine €25 by tomorrow"
+    )
+    assert discreet == before["discreet"] and "Alex" not in f"{discreet.title} {discreet.body}"
+    week = agenda(
+        next_7_days=[entry("Pay the parking fine", MON + timedelta(days=3), amount=30.0, doc_id="doc_a")],
+        decisions=[entry("FitWell membership", MON + timedelta(days=3), kind="contract", doc_id="doc_a")],
+    )
+    long = "Alexandra " + "Wilhelmina-" * 8 + "Rivera"
+    texts_long = [thing.text for thing in things_due(week, {}, {"doc_a": long})]
+    assert texts_long == [
+        f"{clean(long)}: Pay the parking fine €30 by Thu",
+        "Decide on FitWell membership: cancel by Thu",
+    ]
+    assert len(clean(long)) == 60 and clean(long).endswith("…")
 
 
 def test_nothing_due_or_switched_off_says_nothing() -> None:

@@ -75,9 +75,19 @@ _EPOCH = datetime(2000, 1, 1, tzinfo=UTC)  # fixed PDF creation date: same photo
 _A4_LONG_SIDE_PT = 841.89
 _TEXT_COLOR = (25, 25, 25)
 
-_UNSUPPORTED = (
+#: A file of a type Ordnung doesn't read (the Outlook reader says the same: ``outlook.NOT_OUTLOOK``).
+UNSUPPORTED = (
     "This file type is not supported. Please upload a PDF, a photo (JPEG, PNG, WEBP, HEIC) "
-    "or a text or e-mail file (.txt, .eml)."
+    "or a text or e-mail file (.txt, .eml, .msg)."
+)
+_UNSUPPORTED = UNSUPPORTED
+#: The first 8 bytes of an OLE compound file: an Outlook ``.msg`` or an older Office file.
+OLE_MAGIC = bytes.fromhex("D0CF11E0A1B11AE1")
+#: An OLE file that reached intake unopened. Every way in opens an Outlook file before intake looks at the bytes
+#: (:func:`ordnung.ingest.outlook.as_email`), so this is a guard: such a file is never taken for a PDF.
+OLE_UNOPENED = (
+    "This is an Outlook e-mail or an older Office file, and it wasn't opened on its way in. Add it with Add "
+    "letters or the watched folder, or save it as a PDF and add that."
 )
 
 
@@ -103,7 +113,8 @@ class StoredFile:
 @dataclass(frozen=True, slots=True)
 class RenderedPage:
     """A page image in ``derived/<doc_id>/page-<n>.jpg`` (``width``/``height`` in pixels). The same folder may
-    hold ``scan-text.json``, a scanner's text kept for search only (:mod:`ordnung.db.scan_text`)."""
+    hold ``scan-text.json`` (a scanner's text, ADR 0020) and ``picture-text.json`` (the words Ordnung read in the
+    picture itself with Tesseract, ADR 0024), both kept for search only (:mod:`ordnung.db.scan_text`)."""
 
     page: int
     width: int
@@ -132,9 +143,13 @@ def sniff_mime(data: bytes, filename: str = "") -> str:
     ``.eml`` e-mails from plain text.
 
     Returns one of ``application/pdf``, ``image/jpeg``, ``image/png``, ``image/webp``,
-    ``image/heic``, ``image/heif``, ``text/plain``, ``message/rfc822``.
+    ``image/heic``, ``image/heif``, ``text/plain``, ``message/rfc822``. An OLE file (an Outlook e-mail
+    or older Office file that wasn't opened on its way in) is refused by name first, before ``%PDF-`` is
+    looked for: an attached PDF in its first kilobyte would otherwise make it "a PDF".
     """
     head = data[:64]
+    if data[:8] == OLE_MAGIC:
+        raise IntakeError(OLE_UNOPENED)
     if b"%PDF-" in data[:1024]:
         return "application/pdf"
     if head.startswith(b"\xff\xd8\xff"):

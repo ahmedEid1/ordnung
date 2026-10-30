@@ -662,7 +662,7 @@ class LetterDetails(_Model):
     """Facts a template letter needs besides the letter, contract or person it is about.
 
     Everything is optional here; each template names the facts it requires
-    (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+    (:data:`ordnung.drafts.template_letters.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
     with a clear message, never a server error), amounts in euros.
     """
 
@@ -907,6 +907,9 @@ class AppSettings(_Model):
     desktop_notifications: DesktopNotifyMode = "off"
     #: Local time (``HH:MM``) from which the day's desktop notification is shown.
     desktop_notify_time: str = "08:00"
+    #: *Text in pictures* (Settings → Data, ADR 0024): read the words in photos and scans Claude isn't reading,
+    #: on this computer, for search only. ``ORDNUNG_OCR=off`` turns it off whatever this says.
+    read_picture_text: bool = True
     demo: bool = False
     simulated_today: str | None = None
 
@@ -1377,23 +1380,6 @@ class ListedItem(Item):
     aside: ItemAside | None = None
 
 
-#: Where a search of the letters found one: ``letter`` — its own words (title, file name, Claude's
-#: reading, page text, sender); ``scanner_text`` — only in the text a scanner added to a page nobody has
-#: read, which Ordnung hasn't checked.
-SearchFoundIn = Literal["letter", "scanner_text"]
-
-
-class DocumentListEntry(Document):
-    """A letter as the list (``GET /api/documents``) returns it — a view model made by that route, never
-    stored: :class:`Document` stays the table's model and what Ask's ledger fingerprint hashes.
-
-    ``found_in`` says where a search (``q``) found the letter (:data:`SearchFoundIn`); ``None`` when the
-    list wasn't searched.
-    """
-
-    found_in: SearchFoundIn | None = None
-
-
 class ProofLink(_Model):
     """A sent letter this document is proof of (``drafts.proof``): the letter and what the proof is."""
 
@@ -1741,12 +1727,16 @@ class ClaudeStatus(_Model):
     needs_version: str | None = None
 
 
-CheckStatus = Literal["ok", "warn", "fail"]
+#: A doctor check's outcome: ``ok``; ``info`` — neither ok nor a problem (an optional part not installed,
+#: something off by the person's choice, a check Ordnung can't make on this system); ``warn`` — works, but
+#: something should be fixed; ``fail`` — the only one that fails the doctor.
+CheckStatus = Literal["ok", "info", "warn", "fail"]
 
 
 class DoctorCheck(_Model):
-    """One ``ordnung doctor`` check: what was looked at, the outcome and — when it is not ok — how to
-    fix it."""
+    """One ``ordnung doctor`` check: what was looked at and the outcome. ``fix`` says how to fix a ``warn`` or
+    ``fail`` row, or, on an ``info`` row, how to turn on what is off or add what is missing; an ``ok`` row has
+    none."""
 
     id: str
     label: str
@@ -1757,6 +1747,23 @@ class DoctorCheck(_Model):
 
 #: Who is asking: the browser on this computer, or a paired phone over the home network.
 ClientKind = Literal["computer", "phone"]
+
+#: *Text in pictures* on this computer (ADR 0024): ``reading``; ``off`` in Settings; ``off_by_variable``
+#: (``ORDNUNG_OCR=off``, whatever Settings says); Tesseract ``not_installed`` (optional); ``not_usable``
+#: (too old, no German, or no answer).
+PictureTextState = Literal["reading", "off", "off_by_variable", "not_installed", "not_usable"]
+
+
+class PictureTextStatus(_Model):
+    """Whether this computer reads the words in photos and scans Claude isn't reading (ADR 0024), in the words
+    of the doctor's *Text in pictures* row."""
+
+    state: PictureTextState
+    detail: str = Field(description="What the doctor's row says")
+    fix: str | None = Field(
+        default=None,
+        description="The doctor's fix: how to install Tesseract or make it usable (none: nothing to do)",
+    )
 
 
 class Health(_Model):
@@ -1783,6 +1790,9 @@ class Health(_Model):
         default="computer",
         description="Who asked: this computer's browser, or a paired phone (which gets no data folder, "
         "Claude path or checks)",
+    )
+    picture_text: PictureTextStatus | None = Field(
+        default=None, description="Text in pictures on this computer (ADR 0024); none for a phone"
     )
 
 
@@ -2011,6 +2021,40 @@ class MyNumbers(_Model):
         default=False,
         description="The numbers show only their last 4 characters (on a phone): the full ones are on "
         "your computer",
+    )
+
+
+class PersonNumbers(_Model):
+    """A person of the household on *My numbers*: what the letters the person filed for them show."""
+
+    id: str = Field(description="hhm_…, as in the household")
+    name: str = Field(description="As typed in Settings")
+    about: list[MyNumber] = Field(
+        default_factory=list, description="Numbers about them, from letters filed for them"
+    )
+    documents: list[IdentityDocument] = Field(
+        default_factory=list, description="Their identity documents, from letters filed for them"
+    )
+
+
+class NumbersPage(MyNumbers):
+    """The *My numbers* page (``GET /api/numbers``): the person's own numbers as :class:`MyNumbers` has them,
+    and each person of the household's (:mod:`ordnung.numbers`, ADR 0023). All three household parts are empty
+    without a household."""
+
+    household: list[PersonNumbers] = Field(
+        default_factory=list,
+        description="Every person of the household with a number or document on the page, in household order",
+    )
+    filed_for: dict[str, str] = Field(
+        default_factory=dict,
+        description="A call-sheet number or open case all of whose letters are filed for one person: its key "
+        "→ that person's id",
+    )
+    also_for: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description="A number of yours or a person's that other people's letters show too: its key → those "
+        "people (``me``: you; else a person's id)",
     )
 
 

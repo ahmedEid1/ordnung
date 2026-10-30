@@ -132,9 +132,12 @@ export function classifyPhoneRequest(scope: PhoneScope, method: string, path: st
 // What a phone gets that the computer doesn't
 // ------------------------------------------------------------------------------------------------
 
-/** `/api/health` on a phone: `client: "phone"`, never the data folder, Claude's path or the checks — and never the demo. */
+/**
+ * `/api/health` on a phone: `client: "phone"`, never the data folder, Claude's path, the checks or the computer's Text
+ * in pictures — and never the demo.
+ */
 export function phoneHealth(health: Health): Health {
-  return { ...health, client: "phone", demo: false, data_dir: "", claude: { ...health.claude, path: null }, checks: [] };
+  return { ...health, client: "phone", demo: false, data_dir: "", claude: { ...health.claude, path: null }, checks: [], picture_text: null };
 }
 
 /** A number on a phone: only its last 4 characters ("•••• 3000"); the full one is on the computer. */
@@ -148,16 +151,21 @@ function maskNumber(n: MyNumber): MyNumber {
   return { ...n, value: shown, display: shown, copy_value: shown };
 }
 
-/** *My numbers* on a phone: your numbers masked (an organisation's own registry and bank numbers stay). */
+/**
+ * *My numbers* on a phone: your numbers and your household's masked (an organisation's own registry and bank numbers
+ * stay). The mock keeps its keys on a phone, so `filed_for` and `also_for` stay as they are.
+ */
 export function maskNumbers(numbers: MyNumbers): MyNumbers {
   const references = <T extends { references: MyNumber[] }>(x: T): T => ({ ...x, references: x.references.map(maskNumber) });
+  const documents = (list: MyNumbers["documents"]) => list.map((d) => ({ ...d, number: d.number ? maskNumber(d.number) : d.number }));
   return {
     ...numbers,
     masked: true,
     about_you: numbers.about_you.map(maskNumber),
-    documents: numbers.documents.map((d) => ({ ...d, number: d.number ? maskNumber(d.number) : d.number })),
+    documents: documents(numbers.documents),
     organisations: numbers.organisations.map((o) => ({ ...o, numbers: o.numbers.map(maskNumber), open_cases: o.open_cases.map(references) })),
     open_cases: numbers.open_cases.map(references),
+    household: numbers.household.map((p) => ({ ...p, about: p.about.map(maskNumber), documents: documents(p.documents) })),
   };
 }
 

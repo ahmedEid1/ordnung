@@ -1,6 +1,6 @@
 """``/api/household``: who the person's letters are for (D3, ADR 0023). The policy is in
 ``test_household.py``; here the routes: their answers and refusals, the letter's page, the live event, hand-off
-sync's gate, the phone, and Ask's ledger left alone."""
+sync's gate, the phone, and Ask's ledger fingerprint, which moves only with what Ask sees of the household."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from test_api_support import Api, api_for
 EMPTY = {"members": [], "filed": {}, "mine": [], "suggested": {}, "version": "4f53cda18c2baa0c"}
 SAM, ALEX, MIA = "Sam Rivera", "Alex Rivera", "Mia Rivera"
 DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
-#: Ask's ledger fingerprint of the demo (plan §1): household writes never move it.
+#: Ask's ledger fingerprint of the demo without a household, the one its answers were recorded with.
 DEMO_FINGERPRINT = "6d63e0d2ead937a6c8e4fd974c537b368c20101035bd70fc8f1038096a550b08"
 
 
@@ -244,11 +244,12 @@ async def test_household_writes_announce_profile_updated(data_dir: Path) -> None
         (alex,) = (m["id"] for m in (await _ok(await _put(api, {"name": ALEX})))["members"])
         letter = _letter(api.ctx.store, "letter", ALEX)
         await _ok(await api.client.patch("/api/household", json={"letters": {letter: alex}}))
-        assert [kind for kind, _ in events] == ["profile.updated", "profile.updated"]
+        # each write refreshes the Ideas too: their titles say whose a letter is
+        assert [kind for kind, _ in events] == ["profile.updated", "suggestions.updated"] * 2
         stale = await _put(api, {"name": MIA}, base=EMPTY["version"])
         mistake = await _put(api, {"id": alex, "name": ALEX}, {"name": SAM})
         assert (stale.status_code, mistake.status_code) == (409, 422)
-        assert len(events) == 2  # refused: nothing changed, nothing announced
+        assert len(events) == 4  # refused: nothing changed, nothing announced
 
 
 async def test_household_writes_are_person_changes_and_wait_while_standing_by(data_dir: Path) -> None:
@@ -299,31 +300,47 @@ async def test_a_phone_reads_and_files_but_never_edits_the_household(data_dir: P
         assert changes[0]["message"] == f"Changed who a letter is for on {signed['name']}"
 
 
-async def test_household_writes_leave_ask_s_ledger_alone(data_dir: Path) -> None:
-    """Ask's ledger fingerprint never reads the household, and the ledger token (moved by this connection's
-    writes to what the fingerprint reads) stays where it was for household writes on the same connection."""
+async def test_household_writes_move_ask_s_fingerprint_only_where_ask_sees_them(data_dir: Path) -> None:
+    """Ask's tools say whose a letter is (ADR 0025), so a household write moves Ask's ledger token, and its
+    fingerprint moves exactly when what Ask sees of the household changes (``household.ask_view``): a person
+    added, renamed or removed, a letter filed for them or given back. "It's mine" and whether a person signs
+    are not Ask's to see."""
     async with api_for(data_dir) as api:
         _as_sam(api)
         store = api.ctx.store
         letter = _letter(store, "letter", ALEX)
-        fingerprint = ledger_fingerprint(store)
+        fingerprints = [ledger_fingerprint(store)]
+
+        def moved() -> bool:
+            fingerprints.append(ledger_fingerprint(store))
+            return fingerprints[-1] != fingerprints[-2]
+
         alex = (await _ok(await _put(api, {"name": ALEX}, also_file=[letter])))["members"][0]["id"]
+        assert moved()  # Alex, and the letter filed for him
         await _ok(await api.client.patch("/api/household", json={"letters": {letter: "me"}}))
-        await _ok(await _put(api, {"id": alex, "name": "Alex Rivera-Smith"}))
-        assert ledger_fingerprint(store) == fingerprint
-        # the same writes on this thread's own connection: written, and the ledger token stays
-        token, changes = store.ledger_token(), store.change_token()
+        assert moved()  # the letter is the person's again
+        await _ok(await _put(api, {"id": alex, "name": ALEX, "signs": False}))
+        assert not moved()
+        await _ok(await _put(api, {"id": alex, "name": "Alex Rivera-Smith", "signs": False}))
+        assert moved()
+        # the same writes on this thread's own connection: the ledger token moves with each
+        token = store.ledger_token()
+        household.file(store, {letter: alex})
+        assert store.ledger_token() != token and moved()
+        token = store.ledger_token()
         view = household.change(store, base=household.version(household.load(store).members), members=[])
+        assert view["members"] == [] and store.ledger_token() != token and moved()
+        token = store.ledger_token()
         household.file(store, {letter: None})
-        assert view["members"] == [] and store.change_token() != changes
-        assert store.ledger_token() == token
-        assert ledger_fingerprint(store) == fingerprint
+        assert store.ledger_token() != token and not moved()
+        assert fingerprints[-1] == fingerprints[0]  # no one in the household: as before
 
 
 @pytest.mark.parametrize("demo", [DEMO_DB])
-async def test_household_writes_leave_the_demo_s_fingerprint_alone(tmp_path: Path, demo: Path) -> None:
-    """On a copy of the demo: saving a household with one filed letter leaves Ask's fingerprint as it was
-    (plan §1)."""
+async def test_the_demo_without_a_household_keeps_its_fingerprint(tmp_path: Path, demo: Path) -> None:
+    """On a copy of the demo: without a household Ask's fingerprint is the one its answers were recorded with.
+    Saving a household with a filed letter moves it (the demo's suggested questions then say the demo changed);
+    removing everyone gives it back."""
     data_dir = tmp_path / "demo"
     shutil.copytree(demo, data_dir)
     async with api_for(data_dir) as api:
@@ -332,10 +349,10 @@ async def test_household_writes_leave_the_demo_s_fingerprint_alone(tmp_path: Pat
         assert ledger_fingerprint(store) == DEMO_FINGERPRINT
         letter = store.list_documents()[0].id
         answer = await _ok(await _put(api, {"name": ALEX}, also_file=[letter]))
-        await _ok(
-            await api.client.patch("/api/household", json={"letters": {letter: answer["members"][0]["id"]}})
-        )
-        await _ok(await _put(api, {"id": answer["members"][0]["id"], "name": ALEX}, {"name": MIA}))
+        alex = answer["members"][0]["id"]
+        await _ok(await _put(api, {"id": alex, "name": ALEX}, {"name": MIA}))
         assert store.get_meta(HOUSEHOLD_META_KEY) is not None
+        assert ledger_fingerprint(store) != DEMO_FINGERPRINT
+        await _ok(await _put(api))
         assert ledger_fingerprint(store) == DEMO_FINGERPRINT
         assert store.get_meta(PERSON_META_KEY) is None  # sync off: no person counter either

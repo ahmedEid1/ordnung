@@ -1,0 +1,558 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"When do I have to object to the 2025 service-charge statement?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9mewc0kcj28v",
+      "doc_drnw4v8g9856",
+      "doc_hynqaw58f550",
+      "doc_jcbakmxv29p8",
+      "doc_hjxvf5t7dqnw",
+      "doc_tszxajp80vd5",
+      "doc_hkgxvjmpcfd5",
+      "doc_q6fqvndrg5rr",
+      "doc_d9hwr1mp3bsj",
+      "doc_wtjskffj1vfq"
+    ],
+    "prompt_head": "The person asks:\nWhen do I have to object to the 2025 service-charge statement?\n"
+  },
+  "response": {
+    "text": "You have until **Fri 10 Sep 2027** to raise objections to the 2025 service-charge statement, with a recommended send-by date of **Sun 6 Sep 2027** [item:itm_rc1nagh2qjnc].\n\n- The letter is Wohnbau Musterstadt eG's \"Betriebs- und Heizkostenabrechnung 2025\" [doc:doc_9mewc0kcj28v].\n- If you miss this deadline, the to-do notes you may lose the right to dispute the statement [item:itm_rc1nagh2qjnc].\n- Separately, there's also a back-payment of **184.30 €** due by **Fri 9 Oct 2026** [item:itm_dmaw27qvv18n] — that's a different, earlier date and not the objection deadline.\n\nTo object, you'd check the itemised statement and tell the landlord in writing about any errors you find [item:itm_rc1nagh2qjnc]. You can draft that letter in Ordnung.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 892,
+      "cache_read_tokens": 30584,
+      "cache_creation_tokens": 9763,
+      "cost_usd": 0.054104799999999995,
+      "duration_ms": 15278,
+      "turns": 7
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Nebenkostenabrechnung 2025 service charge statement"
+      },
+      "tool_use_id": "toolu_01GTnHGAGy1XCfoWkwHGsb97"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01GTnHGAGy1XCfoWkwHGsb97"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Betriebskosten"
+      },
+      "tool_use_id": "toolu_016JNP6gSXQ2shmfFvqaYdR2"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"rent_lease\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"},{\"id\":\"doc_drnw4v8g9856\",\"kind\":\"rent_lease\",\"date\":\"2025-09-15\",\"party_id\":\"pty_4by2mq3ac4sk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"snippet\":\"…Zusammenfassung Betrag Kalte Betriebskosten (Ihr Anteil, siehe Anlage) 301,01 € Heizkosten lt. Einzelabrechnung Mess-Service Beispiel…\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"doc_drnw4v8g9856\":{\"title\":\"Rental agreement for Beispielweg 5, Musterstadt\",\"snippet\":\"…Grundmiete (Nettokaltmiete) 520,00 € Vorauszahlung Betriebskosten (ohne Heizung und Warmwasser) 70,00 € Vorauszahlung Heiz- und Warmwasserkosten…\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_016JNP6gSXQ2shmfFvqaYdR2"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "service charge"
+      },
+      "tool_use_id": "toolu_01M9a9T642hxzjXhngTgNNuK"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"},{\"id\":\"doc_jcbakmxv29p8\",\"kind\":\"invoice\",\"date\":\"2026-08-20\",\"party_id\":\"pty_adyabnsvdbpg\"},{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true},{\"id\":\"doc_tszxajp80vd5\",\"kind\":\"insurance\",\"date\":\"2026-01-19\",\"party_id\":\"pty_re9nde1xqtfn\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"snippet\":\"…for 2025, setting income tax at €1,234.00 (no solidarity surcharge), and confirming a refund of €312.45 to be paid into your M…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_jcbakmxv29p8\":{\"title\":\"Invoice from TechMarkt Online GmbH – €89.99\",\"snippet\":\"…it, the seller can send a reminder (Mahnung) and eventually charge late fees or interest. Keep this invoice for warranty purpo…\"},\"pty_adyabnsvdbpg\":{\"name\":\"TechMarkt Online GmbH\"},\"doc_hjxvf5t7dqnw\":{\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"snippet\":\"A letter from a \\\"Rundfunk-Beitragsservice Zahlungszentrale\\\" claims Sam Rivera owes €254.35 in broadca…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"},\"doc_tszxajp80vd5\":{\"title\":\"Policy amendment – private liability insurance\",\"snippet\":\"…liability insurance terms. Your bank will automatically be charged €59.90 on 1 December 2026 by SEPA direct debit, so make su…\"},\"pty_re9nde1xqtfn\":{\"name\":\"Muster Versicherung AG\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01M9a9T642hxzjXhngTgNNuK"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Nebenkosten"
+      },
+      "tool_use_id": "toolu_01WqWaNXKqSjat7jwsDHLs13"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"rent_lease\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"snippet\":\"…hnung 2025 – back payment and increased advance payments 13_nebenkostenabrechnung_2025.pdf\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01WqWaNXKqSjat7jwsDHLs13"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Abrechnung"
+      },
+      "tool_use_id": "toolu_01U1z46EFdV6UxeJcuUUfm5X"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"rent_lease\",\"date\":\"2026-09-08\",\"party_id\":\"pty_4by2mq3ac4sk\"},{\"id\":\"doc_hkgxvjmpcfd5\",\"kind\":\"payslip\",\"date\":\"2026-08-31\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_drnw4v8g9856\",\"kind\":\"rent_lease\",\"date\":\"2025-09-15\",\"party_id\":\"pty_4by2mq3ac4sk\"},{\"id\":\"doc_q6fqvndrg5rr\",\"kind\":\"employment\",\"date\":\"2026-03-20\",\"party_id\":\"pty_h9easqrf81w1\"},{\"id\":\"doc_hynqaw58f550\",\"kind\":\"tax_assessment\",\"date\":\"2026-09-15\",\"party_id\":\"pty_mcq97yavgqjy\"},{\"id\":\"doc_d9hwr1mp3bsj\",\"kind\":\"authority_letter\",\"date\":\"2026-09-16\",\"party_id\":\"pty_w9e8zww4fzse\"},{\"id\":\"doc_wtjskffj1vfq\",\"kind\":\"contract\",\"date\":\"2024-11-12\",\"party_id\":\"pty_gjsv4q2d3ajw\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"snippet\":\"…MV-2025-0412 NK 2025 Anpassung Ihrer Vorauszahlungen Auf Grundlage dieser Abrechnung passen wir Ihre monatlichen…\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"doc_hkgxvjmpcfd5\":{\"title\":\"August 2026 payslip from Muster Tech GmbH\",\"snippet\":\"…Bitte bewahren Sie diese Abrechnung auf; sie dient z. B. als Einkommensnachweis. Muster Tech GmbH Geschäftsführerin…\"},\"pty_h9easqrf81w1\":{\"name\":\"Muster Tech GmbH\"},\"doc_drnw4v8g9856\":{\"title\":\"Rental agreement for Beispielweg 5, Musterstadt\",\"snippet\":\"…nach der Heizkostenverordnung verteilt. (3) Nach einer Abrechnung kann jede Vertragspartei durch Erklärung in Textform eine…\"},\"doc_q6fqvndrg5rr\":{\"title\":\"Fixed-term working student employment contract (Muster Tech GmbH)\",\"snippet\":\"…Die Abrechnung erfolgt monatlich nach den erfassten Stunden; die Vergütung wird spätestens am letzten Bankarbeitstag des…\"},\"doc_hynqaw58f550\":{\"title\":\"Income Tax Assessment 2025 – Finanzamt Musterstadt\",\"snippet\":\"…Einkommensteuer wird auf 1.234,00 € festgesetzt. Abrechnung (Stand: 15.09.2026) | Einkommensteuer | Solidaritätszuschlag Festgesetzt | 1…\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"doc_d9hwr1mp3bsj\":{\"title\":\"Invitation to appointment for residence permit extension (Aufenthaltserlaubnis)\",\"snippet\":\"…ndienzusage oder Arbeitsvertrag mit den letzten drei Gehaltsabrechnungen • einen Nachweis über ausreichenden Krankenversicherungss…\"},\"pty_w9e8zww4fzse\":{\"name\":\"Stadt Musterstadt\"},\"doc_wtjskffj1vfq\":{\"title\":\"Mobile phone contract confirmation – FunkNetz Smart M\",\"snippet\":\"…alle deutschen Netze, SMS-Flatrate, 20 GB Datenvolumen pro Abrechnungsmonat. Nach Verbrauch des Datenvolumens wird die Geschwindi…\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01U1z46EFdV6UxeJcuUUfm5X"
+    },
+    {
+      "type": "text",
+      "text": "Found it:"
+    },
+    {
+      "type": "text",
+      "text": " the document"
+    },
+    {
+      "type": "text",
+      "text": " is \"Bet"
+    },
+    {
+      "type": "text",
+      "text": "riebs- und He"
+    },
+    {
+      "type": "text",
+      "text": "izkostenab"
+    },
+    {
+      "type": "text",
+      "text": "rechnung "
+    },
+    {
+      "type": "text",
+      "text": "2025\" (doc_9"
+    },
+    {
+      "type": "text",
+      "text": "mew"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "k"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "28"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "). Let me get"
+    },
+    {
+      "type": "text",
+      "text": " the full document and its"
+    },
+    {
+      "type": "text",
+      "text": " lin"
+    },
+    {
+      "type": "text",
+      "text": "ked to-dos."
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9mewc0kcj28v"
+      },
+      "tool_use_id": "toolu_01B7UZ1Yj5X9atXiXjg1i8Cz"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9mewc0kcj28v\",\"kind\":\"rent_lease\",\"date\":\"2026-09-08\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-10\",\"language\":\"de\",\"party_id\":\"pty_4by2mq3ac4sk\",\"case_id\":\"cas_v6cazx3g7pp2\",\"urgency\":\"high\",\"pages\":2,\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_dmaw27qvv18n\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-09\",\"send_by\":\"2026-10-08\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"amount\":184.3,\"currency\":\"EUR\"},{\"id\":\"itm_9dvnqv1acvka\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-11-04\",\"send_by\":\"2026-11-03\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\",\"repeats\":\"every month on the 3rd working day\",\"following_due_date\":\"2026-12-03\",\"amount\":670.0,\"currency\":\"EUR\"},{\"id\":\"itm_rc1nagh2qjnc\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2027-09-10\",\"send_by\":\"2027-09-06\",\"date_source\":\"computed\",\"priority\":\"normal\",\"area\":\"residence\",\"party_id\":\"pty_4by2mq3ac4sk\",\"doc_id\":\"doc_9mewc0kcj28v\",\"contract_id\":\"ctr_y2hc77av3ps4\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_dmaw27qvv18n\":{\"title\":\"Pay the operating and heating cost back payment (Nachzahlung)\",\"action\":\"Transfer €184.30 to the landlord's account by the deadline shown, using reference MV-2025-0412 NK 2025.\"},\"pty_4by2mq3ac4sk\":{\"name\":\"Wohnbau Musterstadt eG\"},\"itm_9dvnqv1acvka\":{\"title\":\"New monthly total rent €670\"},\"itm_rc1nagh2qjnc\":{\"title\":\"Raise objections to the 2025 cost statement, if any\",\"action\":\"Check the itemised statement and tell the landlord in writing about any errors you find, if you disagree with the calculation.\",\"consequence\":\"If you miss the deadline shown, you may lose the right to dispute this statement.\"},\"doc_9mewc0kcj28v\":{\"title\":\"Betriebs- und Heizkostenabrechnung 2025 – back payment and increased advance payments\",\"summary\":\"Wohnbau Musterstadt eG sent the operating and heating cost statement (Betriebs- und Heizkostenabrechnung) for 2025 for Sam Rivera's flat, showing a back payment of €184.30 due by 9 October 2026. Because costs exceeded the advance payments, the landlord raises the monthly advance payments from 1 November 2026, so the total rent rises from €640.00 to €670.00.\",\"explanation\":\"This is your landlord's yearly statement of operating and heating costs for 2025, covering your period in the flat from 1 October to 31 December 2025. It shows you owe a back payment (Nachzahlung) of €184.30, due by 9 October 2026 — transfer it to the IBAN shown, using the given reference. Because your actual costs were higher than what you had paid in advance, Wohnbau Musterstadt eG also raises your monthly advance payments; from 1 November 2026 your total rent becomes €670.00 instead of €640.00. If you think the statement is wrong, you may raise objections (Einwendungen) against it; the app shows until when this is possible. Otherwise the back payment and the higher rent take effect as stated.\",\"key_facts\":[{\"label\":\"Payment due (Fälligkeit der Nachzahlung)\",\"value\":\"09.10.2026\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Back payment amount (Nachzahlung)\",\"value\":\"184,30 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New total rent (Gesamtmiete)\",\"value\":\"670,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New advance payment for operating costs (Betriebskosten-Vorauszahlung)\",\"value\":\"85,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New advance payment for heating/hot water (Heiz- und Warmwasserkosten-Vorauszahlung)\",\"value\":\"65,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Objection period (Einwendungsfrist)\",\"value\":\"zwölf Monate nach Zugang\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Usage period (Nutzungszeitraum)\",\"value\":\"01.10.–31.12.2025 (92 Tage)\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Vertragsnummer\",\"value\":\"MV-2025-0412\"},{\"label\":\"Wohnung\",\"value\":\"Nr. 05-2-03, 2. OG links\"},{\"label\":\"Registergericht\",\"value\":\"Amtsgericht Musterstadt GnR 123\"}],\"payment\":{\"iban\":\"DE05123456000004455660\",\"payee\":\"Wohnbau Musterstadt eG\",\"reference\":\"MV-2025-0412 NK 2025\"},\"text\":\"=== Page 1 ===\\nWOHNBAU\\nMusterstadt eG\\n\\nGut wohnen seit 1921\\n\\nVertragsnummer MV-2025-0412\\nWohnung   Nr. 05-2-03, 2. OG links\\nWohnbau Musterstadt eG · Genossenschaftsstraße 10 · 12345 Musterstadt   Tobias Exempel\\nAnsprechpartner\\nTelefon   0123 45678-214\\nHerrn\\nDatum   08.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBetriebs- und Heizkostenabrechnung 2025\\nAbrechnungszeitraum 01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025 (92 Tage)\\n\\nSehr geehrter Herr Rivera,\\n\\nanbei erhalten Sie die Abrechnung der Betriebs- und Heizkosten für das Jahr 2025 für Ihre Wohnung im\\nHause Beispielweg 5. Da Ihr Mietverhältnis am 01.10.2025 begonnen hat, werden die Kosten des\\nHauses zeitanteilig für 92 von 365 Tagen und nach Ihrem Wohnflächenanteil (48,60 m² von 742,80 m²)\\nberechnet. Die Einzelaufstellung finden Sie in der Anlage.\\n\\nZusammenfassung   Betrag\\n\\nKalte Betriebskosten (Ihr Anteil, siehe Anlage)   301,01 €\\n\\nHeizkosten lt. Einzelabrechnung Mess-Service Beispiel GmbH   189,77 €\\n\\nWarmwasserkosten lt. Einzelabrechnung Mess-Service Beispiel GmbH   53,52 €\\n\\nIhre Kosten 2025   544,30 €\\n\\nabzüglich Ihrer Vorauszahlungen (3 × 120,00 €)   – 360,00 €\\n\\nNachzahlung   184,30 €\\n\\nNachzahlung 184,30 €\\n\\nBitte überweisen Sie den Nachzahlungsbetrag in Höhe von 184,30 € bis zum 09.10.2026 auf unser\\nKonto bei der Sparkasse Musterstadt.\\nIBAN DE05 1234 5600 0004 4556 60 · BIC MUSKDEM1XXX · Verwendungszweck: MV-2025-0412 NK\\n2025\\n\\nAnpassung Ihrer Vorauszahlungen\\nAuf Grundlage dieser Abrechnung passen wir Ihre monatlichen Vorauszahlungen gemäß § 560 Abs. 4\\nBGB ab dem 01.11.2026 an: Betriebskosten 85,00 € (bisher 70,00 €), Heiz- und Warmwasserkosten\\n65,00 € (bisher 50,00 €). Ihre Gesamtmiete beträgt ab dem 01.11.2026 somit 670,00 € (bisher 640,00\\n€). Haben Sie uns ein SEPA-Lastschriftmandat erteilt, buchen wir den neuen Betrag automatisch ab;\\nandernfalls passen Sie bitte Ihren Dauerauftrag an.\\n\\nEinwendungen und Belegeinsicht\\nEinwendungen gegen diese Abrechnung teilen Sie uns bitte innerhalb von zwölf Monaten nach Zugang\\ndieser Abrechnung mit (§ 556 Abs. 3 Satz 5 BGB). Die Belege können Sie nach vorheriger\\nTerminvereinbarung in unserer Geschäftsstelle einsehen.\\n\\nSeite 1 von 2\\n\\nWohnbau Musterstadt eG   Vorstand: Petra Beispiel (Vors.),   Sitz der Genossenschaft: Musterstadt   Sparkasse Musterstadt\\nGenossenschaftsstraße 10   Jonas Muster   Amtsgericht Musterstadt GnR 123   IBAN DE05 1234 5600 0004 4556 60\\n12345 Musterstadt   Vorsitzender des Aufsichtsrats:   Geschäftszeiten:   BIC MUSKDEM1XXX\\nwww.wohnbau-musterstadt.example   Dr. Klaus Exempel   Mo–Do 8–16 Uhr, Fr 8–12 Uhr\\n\\n=== Page 2 ===\\nWohnbau Musterstadt eG   Vertragsnummer MV-2025-0412\\n\\nMit freundlichen Grüßen\\nWohnbau Musterstadt eG\\n\\nTobias Exempel\\nBetriebskostenabrechnung\\n\\nAnlage: Einzelaufstellung der kalten Betriebskosten 2025\\n\\nUmlageschlüssel: Wohnfläche 48,60 m² / 742,80 m² × 92 / 365 Tage (Faktor 0,016491).\\n\\nKostenart (§ 2 BetrKV)   Gesamtkosten Haus   Ihr Anteil\\n\\nGrundsteuer   2.312,40 €   38,13 €\\n\\nWasserversorgung und Entwässerung   4.986,30 €   82,23 €\\n\\nMüllbeseitigung   1.874,00 €   30,91 €\\n\\nStraßenreinigung   412,80 €   6,81 €\\n\\nGebäudereinigung   2.640,00 €   43,54 €\\n\\nGartenpflege   1.190,00 €   19,62 €\\n\\nAllgemeinstrom (Beleuchtung)   548,25 €   9,04 €\\n\\nSchornsteinfeger / Immissionsmessung   286,20 €   4,72 €\\n\\nSach- und Haftpflichtversicherung   1.842,60 €   30,39 €\\n\\nHauswart   2.160,00 €   35,62 €\\n\\nSumme kalte Betriebskosten   18.252,55 €   301,01 €\\n\\nHeiz- und Warmwasserkosten\\nDie Heiz- und Warmwasserkosten wurden von der Mess-Service Beispiel GmbH nach der\\nHeizkostenverordnung zu 70 % nach Verbrauch und zu 30 % nach Wohnfläche verteilt. Ihr Verbrauch im\\nNutzungszeitraum: Heizung 1.412 Einheiten (Heizkostenverteiler), Warmwasser 4,8 m³.\\n\\nPosition   Ihr Anteil\\n\\nHeizkosten (Grund- und Verbrauchskosten)   189,77 €\\n\\nWarmwasserkosten (Grund- und Verbrauchskosten)   53,52 €\\n\\nSumme Heiz- und Warmwasserkosten   243,29 €\\n\\nNicht umlagefähige Kosten (Verwaltung, Instandhaltung, Rücklagen) sind in dieser Abrechnung nicht enthalten. Die\\nKosten für den Kabelanschluss werden seit dem 01.07.2024 nicht mehr umgelegt.\\n\\nSeite 2 von 2\\n\\nWohnbau Musterstadt eG   Vorstand: Petra Beispiel (Vors.),   Sitz der Genossenschaft: Musterstadt   Sparkasse Musterstadt\\nGenossenschaftsstraße 10   Jonas Muster   Amtsgericht Musterstadt GnR 123   IBAN DE05 1234 5600 0004 4556 60\\n12345 Musterstadt   Vorsitzender des Aufsichtsrats:   Geschäftszeiten:   BIC MUSKDEM1XXX\\nwww.wohnbau-musterstadt.example   Dr. Klaus Exempel   Mo–Do 8–16 Uhr, Fr 8–12 Uhr\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01B7UZ1Yj5X9atXiXjg1i8Cz"
+    },
+    {
+      "type": "text",
+      "text": "You"
+    },
+    {
+      "type": "text",
+      "text": " have until"
+    },
+    {
+      "type": "text",
+      "text": " **"
+    },
+    {
+      "type": "text",
+      "text": "F"
+    },
+    {
+      "type": "text",
+      "text": "ri "
+    },
+    {
+      "type": "text",
+      "text": "10 Sep 2027"
+    },
+    {
+      "type": "text",
+      "text": "** to ra"
+    },
+    {
+      "type": "text",
+      "text": "ise objections to the "
+    },
+    {
+      "type": "text",
+      "text": "2025"
+    },
+    {
+      "type": "text",
+      "text": " service"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "charge statement, with"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " rec"
+    },
+    {
+      "type": "text",
+      "text": "ommended send-by date of **"
+    },
+    {
+      "type": "text",
+      "text": "Sun 6 S"
+    },
+    {
+      "type": "text",
+      "text": "ep 2027** [item"
+    },
+    {
+      "type": "text",
+      "text": ":itm_rc1n"
+    },
+    {
+      "type": "text",
+      "text": "agh2qjnc]."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " The"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter is"
+    },
+    {
+      "type": "text",
+      "text": " Wohnbau"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt e"
+    },
+    {
+      "type": "text",
+      "text": "G's \"Betriebs"
+    },
+    {
+      "type": "text",
+      "text": "- und Heizkost"
+    },
+    {
+      "type": "text",
+      "text": "enab"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "echnung 2025\" ["
+    },
+    {
+      "type": "text",
+      "text": "doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_9m"
+    },
+    {
+      "type": "text",
+      "text": "ew"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "k"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "28"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "].\n- If you mi"
+    },
+    {
+      "type": "text",
+      "text": "ss this deadline, the to"
+    },
+    {
+      "type": "text",
+      "text": "-do notes you"
+    },
+    {
+      "type": "text",
+      "text": " may lose the right to d"
+    },
+    {
+      "type": "text",
+      "text": "ispute the statement [item:"
+    },
+    {
+      "type": "text",
+      "text": "itm_rc1nag"
+    },
+    {
+      "type": "text",
+      "text": "h2qjnc]."
+    },
+    {
+      "type": "text",
+      "text": "\n- Separately,"
+    },
+    {
+      "type": "text",
+      "text": " there's also a back-pay"
+    },
+    {
+      "type": "text",
+      "text": "ment of **"
+    },
+    {
+      "type": "text",
+      "text": "184"
+    },
+    {
+      "type": "text",
+      "text": ".30"
+    },
+    {
+      "type": "text",
+      "text": " €** due by **F"
+    },
+    {
+      "type": "text",
+      "text": "ri 9 O"
+    },
+    {
+      "type": "text",
+      "text": "ct 2026"
+    },
+    {
+      "type": "text",
+      "text": "** [item:itm_d"
+    },
+    {
+      "type": "text",
+      "text": "ma"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "27"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "18"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "] —"
+    },
+    {
+      "type": "text",
+      "text": " that's a different, ear"
+    },
+    {
+      "type": "text",
+      "text": "lier date"
+    },
+    {
+      "type": "text",
+      "text": " and not"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": " objection deadline.\n\nTo"
+    },
+    {
+      "type": "text",
+      "text": " object"
+    },
+    {
+      "type": "text",
+      "text": ", you'd check"
+    },
+    {
+      "type": "text",
+      "text": " the it"
+    },
+    {
+      "type": "text",
+      "text": "emised stat"
+    },
+    {
+      "type": "text",
+      "text": "ement and"
+    },
+    {
+      "type": "text",
+      "text": " t"
+    },
+    {
+      "type": "text",
+      "text": "ell the"
+    },
+    {
+      "type": "text",
+      "text": " landlord in writing about any"
+    },
+    {
+      "type": "text",
+      "text": " errors you"
+    },
+    {
+      "type": "text",
+      "text": " find [item:itm_r"
+    },
+    {
+      "type": "text",
+      "text": "c1nagh2qj"
+    },
+    {
+      "type": "text",
+      "text": "nc]"
+    },
+    {
+      "type": "text",
+      "text": ". You can dra"
+    },
+    {
+      "type": "text",
+      "text": "ft that"
+    },
+    {
+      "type": "text",
+      "text": " letter in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "You have until **Fri 10 Sep 2027** to raise objections to the 2025 service-charge statement, with a recommended send-by date of **Sun 6 Sep 2027** [item:itm_rc1nagh2qjnc].\n\n- The letter is Wohnbau Musterstadt eG's \"Betriebs- und Heizkostenabrechnung 2025\" [doc:doc_9mewc0kcj28v].\n- If you miss this deadline, the to-do notes you may lose the right to dispute the statement [item:itm_rc1nagh2qjnc].\n- Separately, there's also a back-payment of **184.30 €** due by **Fri 9 Oct 2026** [item:itm_dmaw27qvv18n] — that's a different, earlier date and not the objection deadline.\n\nTo object, you'd check the itemised statement and tell the landlord in writing about any errors you find [item:itm_rc1nagh2qjnc]. You can draft that letter in Ordnung.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 892,
+          "cache_read_tokens": 30584,
+          "cache_creation_tokens": 9763,
+          "cost_usd": 0.054104799999999995,
+          "duration_ms": 15278,
+          "turns": 7
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

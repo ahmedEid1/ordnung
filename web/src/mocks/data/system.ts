@@ -1,6 +1,15 @@
-import type { Activity, AppSettings, DoctorCheck, Health, LLMCallRecord, MailTrayItem, Profile, RuleInfo, TourState, UsageStats } from "@/api/types";
+import type { Activity, AppSettings, DoctorCheck, Health, LLMCallRecord, MailTrayItem, PictureTextStatus, Profile, RuleInfo, TourState, UsageStats } from "@/api/types";
 import { SAM, TODAY, ts } from "./constants";
 import { FOLDER_PATH } from "./folder";
+
+/** *Text in pictures* on the demo's computer (the doctor's row on Linux): Tesseract isn't installed there. */
+const PICTURE_TEXT: PictureTextStatus = {
+  state: "not_installed",
+  detail: "Not installed (optional)",
+  fix:
+    "To find photos and scans Claude doesn't read by their words, install Tesseract: `sudo apt install tesseract-ocr " +
+    "tesseract-ocr-deu` (Fedora: `sudo dnf install tesseract tesseract-langpack-deu`), then restart Ordnung.",
+};
 
 export const HEALTH: Health = {
   version: "0.3.0",
@@ -15,6 +24,7 @@ export const HEALTH: Health = {
   checks: [],
   // the computer's own browser (a phone listener's mock answers `client: "phone"`, see mocks/phone.ts)
   client: "computer",
+  picture_text: PICTURE_TEXT,
 };
 
 /** What `GET /api/health?probe=1` ("Run check") lists: the `ordnung doctor` checks. */
@@ -27,6 +37,7 @@ export const DEMO_CHECKS: DoctorCheck[] = [
   { id: "sqlite_fts", label: "Search (SQLite FTS5 + trigram)", status: "ok", detail: "SQLite 3.46.1", fix: null },
   { id: "fonts", label: "Letter fonts", status: "ok", detail: "DejaVu Sans", fix: null },
   { id: "web_ui", label: "Web app", status: "ok", detail: "Built", fix: null },
+  { id: "ocr", label: "Text in pictures", status: "info", detail: PICTURE_TEXT.detail, fix: PICTURE_TEXT.fix },
   { id: "data_dir", label: "Data folder", status: "ok", detail: "~/.local/share/ordnung-demo", fix: null },
   { id: "disk", label: "Disk space", status: "ok", detail: "48.2 GB free", fix: null },
 ];
@@ -60,6 +71,7 @@ export const SETTINGS: AppSettings = {
   llm_review: true,
   desktop_notifications: "off",
   desktop_notify_time: "08:00",
+  read_picture_text: true,
   demo: true,
   simulated_today: TODAY,
 };
