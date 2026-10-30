@@ -915,7 +915,7 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   register within two weeks of moving in, § 17 Abs. 1 BMG, a `deadline` dated by the rules engine and never
   moved off a weekend or holiday; *Tell X your new address* for each organisation with a running contract
   or a letter of the last three years of a kind that keeps the address, never from a letter with scam signs
-  or kept private nor a contract read from one, opening the new-address letter to them; the broadcasting fee office when none of them is
+  the person hasn't checked or kept private nor a contract read from one, opening the new-address letter to them; the broadcasting fee office when none of them is
   it; a sender's row goes once an `address_change` letter to them is marked sent; no row names an address;
   ends 180 days after the move; shown as Today's own card; `secretary/moving.py`, ADR 0021),
   `calendar_outdated` (new dates since last .ics export),

@@ -5719,3 +5719,19 @@ def test_spec_says_what_a_checked_letter_gets_back() -> None:
     ):
         assert words in scam, words
     assert hasattr(Ledger, "shows_scam_signs") and hasattr(Ledger, "scam_checked")
+
+
+def test_the_docs_say_a_checked_letter_is_back_in_the_notification_and_ask() -> None:
+    """docs/privacy.md's morning notification, the architecture's answer check and SPEC's moving checklist leave
+    out a letter with scam signs only until the person checks it (``Ledger.shows_scam_signs``):
+    ``desktop.today_things``, Ask's citations and ``moving.who_to_tell`` read it."""
+    privacy = _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
+    assert (
+        "Letters with scam signs are never in it, until you check one with the sender and press "
+        "*I checked — it's genuine*." in privacy
+    )
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert "never a record with scam signs the person hasn't checked" in architecture
+    assert "never from a letter with scam signs the person hasn't checked" in _flat(_spec())
+    sources = [ROOT / "src" / "ordnung" / part for part in ("notify/desktop.py", "secretary/moving.py")]
+    assert all("scam_reasons(" not in path.read_text(encoding="utf-8") for path in sources)
