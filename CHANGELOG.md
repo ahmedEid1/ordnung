@@ -56,6 +56,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   your household no longer counts as yours there.
 - Ask no longer loses its first two lookups when it makes them at once: both could fail while Ordnung's tools
   were still loading, and Ask answered without them or had to ask again.
+- Ask takes Ordnung's date as today, never the computer's clock that the Claude CLI also tells it: where the two
+  differ, as in the demo, which runs on the sample life's day, an answer no longer calls a deadline still ahead
+  passed.
 - An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if it
   reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.
 - Screen readers and voice control: the names of links and buttons hold the words they show, in the order shown

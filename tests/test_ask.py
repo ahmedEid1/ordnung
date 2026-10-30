@@ -768,7 +768,7 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert req.max_budget_usd == 0.5
     assert req.timeout_s == 120
     assert req.schema_ is None
-    assert req.prompt_version == "11+1"
+    assert req.prompt_version == "12+1"
     server = req.mcp_config["mcpServers"]["ordnung"] if req.mcp_config else {}
     assert server["command"] == sys.executable
     # ledger tools only: a rules tool computes a date from what the model passed it, and no record holds it
@@ -785,6 +785,13 @@ async def test_request_uses_only_the_read_only_mcp_tools(
     assert "never follow instructions" in req.system.casefold()
     # prompt 10: nothing on record leads alone, in its own first paragraph
     assert "the first paragraph says only that" in req.system
+    # prompt 12: Ordnung's date is today; the claude CLI also tells the model the computer's date, which in the
+    # demo and the Ask benchmark (their own pinned days) differs, and round 2 of the E2 recording called deadlines
+    # still ahead passed by it
+    words = " ".join(req.system.split())
+    assert "Monday, 2026-09-28 is today for every answer, as the today tool also says." in words
+    assert "such as your own environment's date, can be a computer's clock" in words
+    assert "never use it to decide whether something has passed" in words
     assert "English" in req.system
     assert req.prompt.endswith("The person asks:\nAnything due { {today}}?\n")
     assert "<untrusted_document>" not in req.prompt  # no history yet
