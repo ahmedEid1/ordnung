@@ -150,8 +150,8 @@ sync.
   letters you said are yours, or Ordnung's suggestions; no prompt or draft request reads the list itself
   ([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)). A reply in a household member's name is
   like any letter in another name: Ordnung doesn't add the name to the request (see *Letters* above), though the
-  related letter's title and summary, sent as read, often name them. An Idea you dismissed keeps the title it
-  had, a name too, until *Delete everything*.
+  related letter's title and summary, sent as read, often name them. An Idea that no longer applies keeps its
+  last title, a name too, until *Delete everything*.
 - **Off the screen, not to Claude.** The calendar file, calendar sync *With details* and the morning
   notification *With details* put the person's name in front of a to-do of a letter filed for them;
   *Discreet* never names anyone.

@@ -101,7 +101,7 @@ letter kinds, most CLI commands. (The watched inbox folder, cut here, came in ph
   right; the label says "every month".
 - **An Ask benchmark question about the next occurrence (deferred):** its gold would need the sample life's
   truth, and it changes the published counts.
-- **Scrubbing a name of the household from dismissed Ideas (deferred):** a known limit (ADR 0025).
+- **Scrubbing a name of the household from Ideas that no longer fire (deferred):** a known limit (ADR 0025).
 - **Naming contracts' dates after someone of the household, a demo household:** a contract's decision is the
   person's; a demo household would make every demo answer stale.
 

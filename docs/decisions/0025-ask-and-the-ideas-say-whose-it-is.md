@@ -82,8 +82,9 @@ more than their own screen shows.
 - What reaches Claude grows: names as typed and which letters are filed for whom, through Ask and only when the
   person asks; a name inside an Idea's title, which *Weekly Ideas* and the daily note send like every Idea's
   title. docs/privacy.md says so.
-- A dismissed Idea keeps the title it had: one with a name stays among the dismissed titles *Weekly Ideas*
-  sends until *Delete everything*. An Idea that stops firing keeps its last title too.
+- An Idea that stops firing keeps its last title, a name too: it stays among the titles *Weekly Ideas* sends
+  until *Delete everything*. A dismissed Idea that still fires is renamed like any other, so removing someone
+  takes the name off it.
 - The dates and to-dos stay the person's to act on: Today, the Timeline and the reminders say whose a date is,
   but nothing is split by person, and the weekly review's letters carry no filing.
 - The Ask benchmark has a household group (five questions on a copy of its ledger with two letters filed for

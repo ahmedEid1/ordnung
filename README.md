@@ -762,8 +762,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
   child) says so, you can file it for them once they are in your household, and a reply to it can go out in
   their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and
-  the Timeline say whose it is; its dates and reminders are still yours to act on, and the Ideas Claude suggests
-  each week aren't told whose a letter is. A phone you pair in Settings → Phone can use it in its browser over your home
+  the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the weekly
+  Ideas get carry no filing, though the titles of Ordnung's own Ideas name the person. A phone you pair in Settings → Phone can use it in its browser over your home
   Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
   and it can't change settings, back up or delete. There is no
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it

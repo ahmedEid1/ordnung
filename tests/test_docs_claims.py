@@ -1218,8 +1218,8 @@ README_WHOSE_LIMIT = (
     "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
     "child) says so, you can file it for them once they are in your household, and a reply to it can go out in "
     "their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today "
-    "and the Timeline say whose it is; its dates and reminders are still yours to act on, and the Ideas Claude "
-    "suggests each week aren't told whose a letter is."
+    "and the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the "
+    "weekly Ideas get carry no filing, though the titles of Ordnung's own Ideas name the person."
 )
 
 
@@ -4297,6 +4297,8 @@ PRIVACY_HOUSEHOLD = (
     'letters, and the privacy log notes each time ("Changed who a letter is for on Anna\'s iPhone").',
     "Deleting a letter for good removes its filing in the same step; the trash keeps it, as it keeps the "
     "letter.",
+    # Store.upsert_suggestion renames every Idea that still fires, a dismissed one too
+    "An Idea that no longer applies keeps its last title, a name too, until *Delete everything*.",
 )
 #: The modules that build what Claude is given: Ask (its tools and fingerprint), the prompts and the model
 #: runtime, the weekly review's snapshot, the daily note and a draft request. Ask and the review read the household
@@ -5325,7 +5327,7 @@ SPEC_NOT_BUILT = (
     "**A permanent per-request content lock (`requests.lock.json`) (deferred):**",
     "**The web's repeat words for a rent that keeps an earlier rent's working day (deferred):**",
     "**An Ask benchmark question about the next occurrence (deferred):**",
-    "**Scrubbing a name of the household from dismissed Ideas (deferred):**",
+    "**Scrubbing a name of the household from Ideas that no longer fire (deferred):**",
     "**Naming contracts' dates after someone of the household, a demo household:**",
 )
 
@@ -5405,7 +5407,8 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
         "§ 81 Abs. 4 AufenthG",
         "a contract's decision is the person's",
         "*Discreet* never names anyone",
-        "A dismissed Idea keeps the title it had",
+        "An Idea that stops firing keeps its last title, a name too",
+        "A dismissed Idea that still fires is renamed like any other",
         "an Idea all of whose letters are filed for one person, none of them kept private (its title reaches Claude), starts",
     ):
         assert words in adr, words
