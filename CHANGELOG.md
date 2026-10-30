@@ -66,6 +66,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   says the number is about a household member; your own numbers are told as before.
 - An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if it
   reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.
+- Settings saved at the same time (two windows, or a switch clicked off and on quickly) take turns: neither save
+  loses the other's change, and Ordnung runs with the settings saved last. Before, it could keep running with the
+  earlier save's, so *Text in pictures* could stay off although Settings showed it on.
 - Screen readers and voice control: the names of links and buttons hold the words they show, in the order shown
   (WCAG 2.5.3, *Label in Name*). The Inbox link is "Inbox 4 — 1 letter to check, 3 not read yet"; it was
   "Inbox, 1 letter to check, 3 not read yet". Your name in the sidebar, the buttons that open a sender's details,
