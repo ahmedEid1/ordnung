@@ -50,6 +50,7 @@ from ordnung.llm.base import (
     INTERACTIVE_PURPOSES,
     ClaudeAuthError,
     ClaudeBadOutput,
+    ClaudeExited,
     ClaudeNotInstalled,
     ClaudeOutdated,
     ClaudeRateLimited,
@@ -479,7 +480,7 @@ class ClaudeCLIBackend:
             stderr = (await stderr_task).decode("utf-8", "replace")
 
         if result is None:
-            raise LLMError(_tail(stderr) or "Claude exited without an answer")
+            raise ClaudeExited(_tail(stderr) or "Claude exited without an answer")
         err = classify_result(result, _tail(stderr))
         if err is not None:
             raise err
@@ -611,11 +612,13 @@ async def auth_status(binary: str | None = None) -> dict[str, Any] | None:
 
 
 class ProbeResult(NamedTuple):
-    """What :func:`probe` found: whether Claude answered, its reply (or the error), the model it ran on."""
+    """What :func:`probe` found: whether Claude answered, its reply (or the error), the model it ran on, and
+    whether the program ended without answering (:class:`~ordnung.llm.base.ClaudeExited`)."""
 
     ok: bool
     text: str
     model: str
+    exited: bool = False
 
 
 async def probe(binary: str | None = None, timeout_s: float = 60, *, model: str | None = None) -> ProbeResult:
@@ -634,5 +637,5 @@ async def probe(binary: str | None = None, timeout_s: float = 60, *, model: str 
     try:
         resp = await backend.complete(request)
     except LLMError as exc:
-        return ProbeResult(False, str(exc), ran_on)
+        return ProbeResult(False, str(exc), ran_on, isinstance(exc, ClaudeExited))
     return ProbeResult("OK" in resp.text.upper(), resp.text.strip()[:80], ran_on)

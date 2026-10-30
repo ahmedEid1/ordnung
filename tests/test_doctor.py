@@ -247,17 +247,21 @@ async def test_the_probe_of_a_claude_that_dies_at_start_is_a_failed_row(
     monkeypatch: pytest.MonkeyPatch,
     claude_exits_first: None,
 ) -> None:
-    """The live call fails with the CLI's own words in its row, and every other check is still there."""
+    """The live call fails with the CLI's own words in its row, and every other check is still there. The fix
+    is about the program that stopped, never the sign-in (it passed) or the model's name (it was never asked)."""
     broken_claude(isolated_path, tmp_path, monkeypatch)
     report = await run_doctor(data_dir, probe=True)
     probe = report.check("claude_probe")
     assert probe is not None and probe.status == "fail" and probe.label == "Live test call"
     assert (
-        probe.detail == "env: node: No such file or directory (on haiku)" and probe.fix == doctor.LOGIN_HINT
+        probe.detail == "env: node: No such file or directory (on haiku)" and probe.fix == doctor.EXITED_HINT
     )
     assert statuses(report)["claude_version"] == "ok" and statuses(report)["claude_auth"] == "ok"
     assert {"sqlite_fts", "data_dir", "disk", "fonts"} <= set(statuses(report))
     assert report.claude.ok is False and report.claude.detail == probe.detail
+    named = (await run_doctor(data_dir, probe=True, model="claude-sonnet-5")).check("claude_probe")
+    assert named is not None and named.fix == doctor.EXITED_HINT
+    assert named.detail == "env: node: No such file or directory (on claude-sonnet-5)"
 
 
 def test_doctor_probe_prints_the_whole_report_when_claude_dies_at_start(

@@ -129,6 +129,11 @@ class ClaudeBadOutput(LLMError):
     pass
 
 
+class ClaudeExited(LLMError):
+    """The ``claude`` program ended without an answer (a broken install that dies at start, say); the message is
+    what it wrote on stderr. Not a sign-in or a model problem: those come as an answer."""
+
+
 class ReplayMiss(LLMError):
     pass
 

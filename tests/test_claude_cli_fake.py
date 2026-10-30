@@ -31,6 +31,7 @@ from ordnung.llm.base import (
     Attachment,
     ClaudeAuthError,
     ClaudeBadOutput,
+    ClaudeExited,
     ClaudeNotInstalled,
     ClaudeOutdated,
     ClaudeRateLimited,
@@ -256,7 +257,7 @@ async def test_a_claude_that_cant_be_started_is_not_installed(
     request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
     events = [event async for event in asking.stream(request)]
     assert [event.type for event in events] == ["error"] and "could not be started" in (events[0].error or "")
-    ok, message, _ = await claude_cli.probe(binary=found)  # Settings' "Run check" with that path
+    ok, message, *_ = await claude_cli.probe(binary=found)  # Settings' "Run check" with that path
     expected = "could not be started" if broken == "not_executable" else "was not found"
     assert not ok and expected in message
     assert fake.calls == []
@@ -408,7 +409,7 @@ async def test_a_cli_that_exits_before_reading_reports_stderr(fake: FakeClaude, 
     fake.play(EXITS_AT_ONCE)
     with pytest.raises(LLMError, match="env: node: No such file or directory") as caught:
         await ClaudeCLIBackend(max_retries=2).complete(request)
-    assert type(caught.value) is LLMError  # not retried, not a pause
+    assert type(caught.value) is ClaudeExited  # not retried, not a pause
     assert len(fake.calls) == 1
 
 
@@ -420,7 +421,7 @@ async def test_a_cli_gone_before_the_request_is_written_reports_stderr(
     fake.play(EXITS_AT_ONCE)
     with pytest.raises(LLMError, match="env: node: No such file or directory") as caught:
         await ClaudeCLIBackend(max_retries=0).complete(letter)
-    assert type(caught.value) is LLMError
+    assert type(caught.value) is ClaudeExited
     request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
     events = [event async for event in ClaudeCLIBackend(max_retries=0).stream(request)]
     assert [event.type for event in events] == ["error"]
@@ -431,7 +432,7 @@ async def test_a_cli_gone_before_the_request_is_written_reports_stderr(
 async def _probes_of_a_cli_that_exits_before_reading(fake: FakeClaude, runs: int) -> None:
     fake.play(EXITS_AT_ONCE)
     found = [await claude_cli.probe() for _ in range(runs)]
-    assert found == [(False, "env: node: No such file or directory", "haiku")] * runs
+    assert found == [(False, "env: node: No such file or directory", "haiku", True)] * runs
     assert len(fake.calls) == runs
 
 
@@ -466,16 +467,16 @@ async def test_the_doctor_probe(fake: FakeClaude, monkeypatch: pytest.MonkeyPatc
     monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
     result = {"type": "result", "subtype": "success", "is_error": False, "result": "OK"}
     fake.play({"lines": [json.dumps(result)]})
-    assert await claude_cli.probe() == (True, "OK", "haiku")
+    assert await claude_cli.probe() == (True, "OK", "haiku", False)
     argv = fake.calls[0]["argv"]
     assert argv[argv.index("--model") + 1] == "haiku" and "--json-schema" not in argv
     fake.play({"lines": [json.dumps(result)]})
-    assert await claude_cli.probe(model="claude-opus-5-5") == (True, "OK", "claude-opus-5-5")
+    assert await claude_cli.probe(model="claude-opus-5-5") == (True, "OK", "claude-opus-5-5", False)
     argv = fake.calls[1]["argv"]
     assert argv[argv.index("--model") + 1] == "claude-opus-5-5"
     fake.play({"transcript": "auth_error.jsonl", "exit": 1})
-    ok, message, model = await claude_cli.probe(model="claude-opus-5-5")
-    assert not ok and "not signed in" in message and model == "claude-opus-5-5"
+    ok, message, model, exited = await claude_cli.probe(model="claude-opus-5-5")
+    assert not ok and "not signed in" in message and model == "claude-opus-5-5" and not exited
 
 
 # --------------------------------------------------------------------------------------------------

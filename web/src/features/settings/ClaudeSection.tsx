@@ -4,7 +4,7 @@ import { ChevronRight, CircleAlert, CircleCheck, FlaskConical, RotateCw, Termina
 import { api } from "@/api/endpoints";
 import { ApiError } from "@/api/client";
 import { qk, useProbeHealth } from "@/api/hooks";
-import type { AppSettings, Health, SettingsPatch } from "@/api/types";
+import type { AppSettings, DoctorCheck, Health, SettingsPatch } from "@/api/types";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { toast } from "@/components/ui/Toast";
@@ -43,6 +43,21 @@ function WithCode({ text }: { text: string }) {
   );
 }
 
+/** A failed check in words: what was found (for the live call, the program's own words), then the fix. */
+function checkWords(check: DoctorCheck): string {
+  const found = check.detail && !/[.!?]$/.test(check.detail) ? `${check.detail}.` : check.detail;
+  return [found, check.fix].filter(Boolean).join(" ");
+}
+
+/**
+ * The live call failed although the sign-in passed (the doctor's rows after "Run check"): Claude is
+ * there and signed in but didn't answer — a program that stops at start, or a model name it refuses.
+ */
+function unansweredProbe(health: Health): DoctorCheck | null {
+  const signedIn = health.checks.some((c) => c.id === "claude_auth" && c.status === "ok");
+  return (signedIn && health.checks.find((c) => c.id === "claude_probe" && c.status === "fail")) || null;
+}
+
 /** "Run check": `GET /api/health?probe=1` — the doctor's checks plus one tiny live call to Claude. */
 function useProbe() {
   const probe = useProbeHealth();
@@ -51,7 +66,7 @@ function useProbe() {
       onSuccess: (h) => {
         const failed = h.checks.find((c) => c.id.startsWith("claude") && c.status === "fail");
         if (h.claude.ok && !failed) toast.success("Claude answered", { description: "Reading letters and Ask are ready." });
-        else toast.warn("Claude didn't answer", { description: failed?.fix ?? failed?.detail ?? h.claude.detail ?? "See the steps below." });
+        else toast.warn("Claude didn't answer", { description: (failed && checkWords(failed)) || h.claude.detail || "See the steps below." });
       },
     });
   return { mutate, isPending: probe.isPending };
@@ -190,6 +205,8 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
   const probe = useProbe();
   const c = health.claude;
   const state = claudeState(c);
+  // signed in, but the live call failed: its words and its fix, not the sign-in steps
+  const unanswered = state === "signed_out" ? unansweredProbe(health) : null;
   const replay = health.backend === "replay";
   // the demo replays recordings: a missing Claude is expected there, not a problem
   const good = state === "ready" || state === "unchecked" || replay;
@@ -197,7 +214,7 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
   const rows: [string, ReactNode][] = [
     ["Claude Code", c.installed ? (bareVersion(c.version) ?? "Installed") : "Not found"],
     // whether you're signed in can only be checked once Claude is there, and recent enough to ask
-    ["Signed in", !c.installed || state === "outdated" ? null : c.ok === true ? "Yes — working" : c.ok === false ? "No" : "Not checked yet"],
+    ["Signed in", !c.installed || state === "outdated" ? null : c.ok === true ? "Yes — working" : unanswered ? "Yes" : c.ok === false ? "No" : "Not checked yet"],
     ["Found at", c.path ? <BreakablePath path={c.path} /> : null],
     ["Ordnung", `Version ${health.version}`],
   ];
@@ -209,11 +226,13 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
         ? "Claude is ready"
         : state === "unchecked"
           ? "Claude is installed"
-          : state === "signed_out"
-            ? "Claude is installed, but not signed in"
-            : state === "outdated"
-              ? "Claude Code needs an update"
-              : "Claude isn't installed";
+          : unanswered
+            ? "Claude is installed, but didn't answer"
+            : state === "signed_out"
+              ? "Claude is installed, but not signed in"
+              : state === "outdated"
+                ? "Claude Code needs an update"
+                : "Claude isn't installed";
   const body: ReactNode =
     replay && state !== "ready" ? (
       "Everything you see was read by Claude once and recorded. To read your own letters, install Ordnung and connect Claude — the steps are below."
@@ -221,6 +240,8 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
       c.detail ? <WithCode text={c.detail} /> : "Signed in and working."
     ) : state === "unchecked" ? (
       "Run the check to make sure you're signed in."
+    ) : unanswered ? (
+      <WithCode text={checkWords(unanswered)} />
     ) : state === "signed_out" ? (
       <>
         Open a terminal, run <code className={code}>claude</code> once and sign in with your Claude account. Then run the check again.
@@ -230,7 +251,7 @@ export function ClaudeSection({ health, settings }: { health: Health; settings: 
     ) : (
       "Install it once in a terminal, then sign in."
     );
-  const fix: NotReady | null = state === "missing" || state === "signed_out" || state === "outdated" ? state : null;
+  const fix: NotReady | null = !unanswered && (state === "missing" || state === "signed_out" || state === "outdated") ? state : null;
 
   return (
     <section aria-labelledby="set-claude">

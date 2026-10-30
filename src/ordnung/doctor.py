@@ -89,6 +89,10 @@ MODEL_HINT = (
     "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude connection), may "
     "not be a name Claude Code accepts."
 )
+EXITED_HINT = (
+    "The `claude` program stopped before it answered. Run `claude` in a terminal to see why, and install "
+    "Claude Code again if it doesn't start."
+)
 UPDATE_HINT = (
     "Update Claude Code with `claude update` (installed with Homebrew: `brew upgrade claude-code`; with "
     "WinGet: `winget upgrade Anthropic.ClaudeCode`), then run `ordnung doctor` again."
@@ -175,11 +179,12 @@ def _auth_check(status: dict[str, Any] | None) -> DoctorCheck:
 
 async def _probe_check(binary: str | None, model: str | None) -> DoctorCheck:
     """The live call, on the model every call runs on when the caller knows it (the API, the CLI with
-    data): a failure then may as well be that model's name, so the fix says so after the sign-in."""
+    data): a failure then may as well be that model's name, so the fix says so after the sign-in. A
+    program that stopped without answering got neither far (:data:`EXITED_HINT`)."""
     probe = await claude_cli.probe(binary, model=model)
     detail = probe.text or ("Claude answered." if probe.ok else "No answer.")
-    fix = None if probe.ok else LOGIN_HINT
-    if fix and model is not None:
+    fix = None if probe.ok else EXITED_HINT if probe.exited else LOGIN_HINT
+    if fix == LOGIN_HINT and model is not None:
         fix = f"{fix} {MODEL_HINT.format(model=probe.model)}"
     return DoctorCheck(
         id="claude_probe",
