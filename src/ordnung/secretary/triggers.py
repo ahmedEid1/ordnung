@@ -2228,11 +2228,15 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
     """Open future dates (items and contract send-by days) added or changed since the last .ics export.
 
     Only dates the calendar file holds count (``ordnung.calendar.ics``): none set aside
-    (:meth:`Ledger.is_set_aside`) and no one-off whose date had long passed when its letter was read
-    (:func:`was_history_when_filed`), so "Add your 4 dates" never stands over a file with 2.
+    (:meth:`Ledger.is_set_aside`), no one-off whose date had long passed when its letter was read
+    (:func:`was_history_when_filed`), none past the calendar's last day
+    (:func:`~ordnung.calendar.ics.fits_a_calendar`) and no decided contract's
+    (:meth:`Ledger.decided_contracts`), so "Add your 4 dates" never stands over a file with 2.
 
     Not while a calendar is connected for calendar sync (paused or not): it gets the dates by itself,
     and importing the file into it as well would clash with the synced events (the same UIDs)."""
+    from ordnung.calendar.ics import fits_a_calendar
+
     if ledger.store.get_meta(CALENDAR_SYNC_META_KEY):
         return []
     today = ledger.today
@@ -2247,9 +2251,13 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
             and _changed_after(item.updated_at, since)
             and not ledger.is_set_aside(item)
             and not (item.recurrence is None and was_history_when_filed(item))
+            and fits_a_calendar(item)
         ):
             dates.append((action_day(item) or due, _ref("item", item.id)))
+    decided = ledger.decided_contracts()
     for contract in ledger.active_contracts():
+        if contract.id in decided:
+            continue
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
         if is_decision(comp) and send is not None and _changed_after(contract.updated_at, since):

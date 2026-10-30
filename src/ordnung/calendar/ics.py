@@ -212,6 +212,23 @@ def _item_description(ledger: Ledger, item: Item, due: date, send_by: date | Non
     return "\n".join(line for line in lines if line)
 
 
+def fits_a_calendar(item: Item) -> bool:
+    """Whether a dated to-do's event ends by 31 Dec 9999, the last day a calendar holds (:func:`item_event`):
+    the file leaves the others out, and the calendar Idea doesn't count them."""
+    due = parse_day(item.due_date)
+    if due is None:
+        return False
+    start_time = _parse_time(item.due_time)
+    try:
+        if start_time is None:
+            due + timedelta(days=1)
+        else:
+            datetime.combine(due, start_time) + timedelta(minutes=EVENT_MINUTES)
+    except OverflowError:
+        return False
+    return True
+
+
 def item_event(ledger: Ledger, item: Item, profile: Profile) -> Event:
     """The calendar event of one dated to-do (with its reminders while it is open); :class:`TooFarAhead` when it
     would end after 31 Dec 9999."""

@@ -124,6 +124,8 @@ class ScamSign:
     payee: str | None = None
     #: the other letter with scam signs that asks for the same IBAN (``scam_iban``)
     letter: str | None = None
+    #: the person checked the letter with its sender (*I checked — it's genuine*): still no code (ADR 0012)
+    checked: bool = False
 
 
 @dataclass(frozen=True)
@@ -264,7 +266,12 @@ def _unsafe(facts: TransferFacts) -> GiroCodeBlocked | None:
         return None
     sender = sign.party or "the sender"
     ask = "Check with them using contact details you already have, not the ones in this letter."
-    if sign.kind == "iban_changed":
+    if sign.checked:  # the check asked for below was made: say why there is still no code
+        message = (
+            "No code for a letter that showed signs of a scam, even after you checked it with the sender: "
+            "copy the details into your banking app by hand."
+        )
+    elif sign.kind == "iban_changed":
         message = f"No code: this IBAN is not the one {sender} used before. {ask}"
     elif sign.kind == "similar_party_iban":
         message = (
@@ -522,13 +529,18 @@ def _scam_sign(store: Store, ledger: Ledger, document: Document, party: Party | 
         return ScamSign(
             kind="scam_iban", party=party.name if party else None, letter=other.title or other.filename
         )
+    checked = document.id in ledger.scam_checked
     if party is not None and document.payment is not None:
         finding = payment_mismatch(store, party, document.payment, exclude_doc_id=document.id)
         if finding is not None and finding.kind != "invalid_iban":
             return ScamSign(
-                kind=finding.kind, party=party.name, look_alike=finding.known_party_name, payee=finding.payee
+                kind=finding.kind,
+                party=party.name,
+                look_alike=finding.known_party_name,
+                payee=finding.payee,
+                checked=checked,
             )
-    return ScamSign(kind="other", party=party.name if party else None)
+    return ScamSign(kind="other", party=party.name if party else None, checked=checked)
 
 
 def last_check(store: Store, item_id: str) -> TransferValues | None:

@@ -18,6 +18,8 @@ import pytest
 
 from helpers_secretary import add_doc, add_emailed_bill, add_item
 from ordnung import clock, views
+from ordnung.assistant.channels import render_tool_result
+from ordnung.assistant.mcp_server import LedgerTools
 from ordnung.calendar.ics import build_ics
 from ordnung.db.store import Store
 from ordnung.models import GiroCodeBlocked, PaymentDetails, Suggestion
@@ -189,6 +191,17 @@ def test_i_checked_it_brings_the_letters_reminders_back(store: Store) -> None:
     assert payment is not None
     code = item_girocode(store, payment, TODAY)
     assert isinstance(code, GiroCodeBlocked) and code.reason == "scam"
+    # and says so, instead of asking for the check the person made
+    assert "even after you checked it" in code.message and "Check with the sender" not in code.message
+
+
+def test_before_the_check_the_pay_panel_asks_for_it(store: Store) -> None:
+    ids = seed(store)
+    run_and_reconcile(store, TODAY)
+    payment = store.get_item(ids["genuine_payment"])
+    assert payment is not None
+    code = item_girocode(store, payment, TODAY)
+    assert isinstance(code, GiroCodeBlocked) and "Check with the sender" in code.message
 
 
 def test_a_new_sign_after_the_check_warns_again_and_sets_the_dates_aside(store: Store) -> None:
@@ -245,6 +258,25 @@ def test_a_checked_attached_bill_takes_over_its_e_mails_payment(store: Store) ->
     assert actionable(store) == {ids["email_payment"]}
     check(store, ids["bill"])
     assert actionable(store) == {ids["bill_payment"]}
+
+
+def test_my_numbers_and_ask_show_a_checked_letters_numbers(store: Store) -> None:
+    """*My numbers* and Ask's ``get_my_numbers`` leave out a letter with scam signs, and take it back once the
+    person checked it, as Today does."""
+    ids = seed(store)
+    store.update_document(ids["genuine"], references=[{"label": "Steuernummer", "value": "13/815/08151"}])
+    store.update_document(ids["control"], references=[{"label": "Steuernummer", "value": "99/999/99999"}])
+    run_and_reconcile(store, TODAY)
+
+    def shown() -> tuple[bool, bool]:
+        page = json.dumps(views.my_numbers(store, TODAY).model_dump(mode="json"))
+        ask = render_tool_result(LedgerTools(store, today=TODAY).get_my_numbers())
+        assert "99/999/99999" in page and "99/999/99999" in ask
+        return "13/815/08151" in page, "13/815/08151" in ask
+
+    assert shown() == (False, False)
+    check(store, ids["genuine"])
+    assert shown() == (True, True)
 
 
 def test_the_weekly_session_lists_a_checked_letter_with_its_to_dos(store: Store) -> None:

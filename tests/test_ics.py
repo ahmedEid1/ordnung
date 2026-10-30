@@ -25,6 +25,7 @@ from ordnung.calendar.ics import (
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import ComputationReceipt, Evidence, Item
 from ordnung.secretary import household
+from ordnung.secretary.triggers import run_triggers
 
 TODAY = date(2026, 9, 28)
 
@@ -404,3 +405,29 @@ def test_a_contract_date_past_the_calendars_last_day_leaves_only_its_events_out(
     events = _events(build_ics(store))
     assert not any(uid.startswith(ids["contract"]) for uid in events)
     assert f"{ids['deadline']}@ordnung.local" in events
+
+
+def test_the_calendar_idea_counts_no_date_the_file_leaves_out(store: Store, ids: dict[str, str]) -> None:
+    """*Add your N dates* counts what the file holds: a contract whose cancellation was sent has no days to
+    decide by in it, and a date past the calendar's last day isn't in it."""
+
+    def counted() -> tuple[str, set[str]]:
+        (idea,) = run_triggers(store, TODAY)["calendar_outdated"]
+        return idea.title, set(_events(build_ics(store)))
+
+    title, events = counted()
+    assert (
+        title == "Add your 5 dates to your calendar" and f"{ids['contract']}-send-by@ordnung.local" in events
+    )
+    draft = store.add_draft(
+        kind="cancellation", subject="Cancel FunkNetz", body="x", contract_id=ids["contract"]
+    )
+    store.update_draft(draft.id, status="sent", sent_at="2026-09-20T10:00:00Z")
+    title, events = counted()
+    assert title == "Add your 4 dates to your calendar" and len(events) == 4
+    _item(store, kind="deadline", title="Far", due_date="9999-12-31")
+    _item(store, kind="appointment", title="Late", due_date="9999-12-31", due_time="23:50")
+    assert counted() == ("Add your 4 dates to your calendar", events)
+    _item(store, kind="appointment", title="Early", due_date="9999-12-31", due_time="20:00")
+    title, events = counted()
+    assert title == "Add your 5 dates to your calendar" and len(events) == 5
