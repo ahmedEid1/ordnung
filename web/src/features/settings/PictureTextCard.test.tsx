@@ -156,6 +156,14 @@ describe("Text in pictures: saving", () => {
     expect(await screen.findByText(COPY.toastInstall[1])).toBeInTheDocument();
   });
 
+  it("turned on where Tesseract can't be used: the toast points to the line, never says pictures are read", async () => {
+    await saveFrom(useMockApi(), "not_usable", false);
+    expect(await screen.findByText(COPY.toastFix[1])).toBeInTheDocument();
+    expect(screen.getByText(COPY.toastFix[0])).toBeInTheDocument();
+    expect(screen.queryByText(COPY.toastOn[1])).toBeNull();
+    expect(status()!.textContent).toContain(STATES.not_usable.detail);
+  });
+
   it("saved while the variable turns it off: the toast says when it counts", async () => {
     const { puts } = await saveFrom(useMockApi(), "off_by_variable", true);
     expect(await screen.findByText(COPY.toastVariable[1])).toBeInTheDocument();
@@ -170,6 +178,11 @@ describe("Text in pictures: saving", () => {
     ]);
     expect(COPY.toastOn).toEqual(["Text in pictures is on.", "Ordnung reads the pictures of letters Claude isn't reading, one page at a time."]);
     expect(COPY.toastInstall).toEqual(["Text in pictures is on.", "Install Tesseract to have pictures read (see the line under the switch)."]);
+    expect(COPY.toastFix).toEqual(["Text in pictures is on.", "Tesseract needs a fix before pictures are read (see the line under the switch)."]);
+    expect(COPY.toastStaticDemo).toEqual([
+      "Text in pictures is on.",
+      "In Ordnung on your computer, this reads the pictures of letters Claude isn't reading, with Tesseract installed there.",
+    ]);
     expect(COPY.toastVariable).toEqual(["Saved.", "It counts once ORDNUNG_OCR is unset."]);
   });
 });
@@ -199,5 +212,26 @@ describe("Text in pictures: the static demo", () => {
     expect(status()!.textContent).toBe(COPY.staticDemo);
     expect(COPY.staticDemo).toBe("In Ordnung on your computer, this line says whether Tesseract is installed there.");
     expect(theSwitch()).toBeEnabled();
+  });
+
+  it("turned on, the toast says what it would do on your computer: the demo reads no pictures", async () => {
+    vi.stubEnv("VITE_STATIC_DEMO", "1");
+    const api = useMockApi();
+    api.srv.db.state.health = { ...api.srv.db.state.health, picture_text: STATES.not_installed };
+    api.srv.db.state.settings = { ...api.srv.db.state.settings, read_picture_text: false };
+    const client = makeTestQueryClient();
+    client.setQueryData(qk.health, { ...TEST_HEALTH, picture_text: STATES.off });
+    const user = userEvent.setup();
+    renderWithProviders(
+      <>
+        <PictureTextCard settings={{ ...SETTINGS, read_picture_text: false }} />
+        <Toaster />
+      </>,
+      { client },
+    );
+    await user.click(theSwitch());
+    await user.click(within(card()).getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText(COPY.toastStaticDemo[1])).toBeInTheDocument();
+    expect(screen.queryByText(COPY.toastOn[1])).toBeNull();
   });
 });

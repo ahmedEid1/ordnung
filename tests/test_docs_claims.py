@@ -5521,6 +5521,7 @@ def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
         "reads the default (on) until its next pull, and its push leaves the field out too, so it never turns the "
         "switch back on elsewhere",
         "**Text in pictures** (`#set-data-picture-text`",
+        "a save's toast says pictures are read only where Tesseract reads them, else points to that line",
         "`settings` (GET/PUT) takes `read_picture_text`",
     ):
         assert words in spec, words

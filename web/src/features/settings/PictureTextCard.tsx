@@ -26,6 +26,13 @@ export const PICTURE_TEXT_COPY = {
   toastOff: ["Text in pictures is off.", "The words Ordnung had read in pictures are deleted. Search finds those letters by their name."],
   toastOn: ["Text in pictures is on.", "Ordnung reads the pictures of letters Claude isn't reading, one page at a time."],
   toastInstall: ["Text in pictures is on.", "Install Tesseract to have pictures read (see the line under the switch)."],
+  /** On, where Tesseract is there but can't be used (too old, no German or English data, no answer). */
+  toastFix: ["Text in pictures is on.", "Tesseract needs a fix before pictures are read (see the line under the switch)."],
+  /** On, in the static demo: nothing is read there. */
+  toastStaticDemo: [
+    "Text in pictures is on.",
+    "In Ordnung on your computer, this reads the pictures of letters Claude isn't reading, with Tesseract installed there.",
+  ],
   toastVariable: ["Saved.", "It counts once ORDNUNG_OCR is unset."],
 } as const;
 
@@ -67,6 +74,20 @@ function statusLine(status: PictureTextStatus | null | undefined): { tone: Tone;
 
 const TONE: Record<Tone, string> = { muted: "text-muted", info: "text-ink/85", warn: "text-warn-ink" };
 
+/** The toast after turning it on: pictures are read only where Tesseract reads; else it points to the line. */
+function onToast(state: PictureTextStatus["state"] | undefined): readonly [string, string] {
+  switch (state) {
+    case "not_installed":
+      return PICTURE_TEXT_COPY.toastInstall;
+    case "not_usable":
+      return PICTURE_TEXT_COPY.toastFix;
+    case "off_by_variable":
+      return PICTURE_TEXT_COPY.toastVariable;
+    default:
+      return PICTURE_TEXT_COPY.toastOn; // reading
+  }
+}
+
 /**
  * Settings → Data → *Text in pictures* (ADR 0024): whether this computer reads the words in photos and scans Claude
  * isn't reading, for search only. Saved off, those words are deleted and search finds such letters by their name;
@@ -94,9 +115,9 @@ export function PictureTextCard({ settings }: { settings: AppSettings }) {
         ? PICTURE_TEXT_COPY.toastVariable
         : !s.read_picture_text
           ? PICTURE_TEXT_COPY.toastOff
-          : !staticDemo && now?.state === "not_installed"
-            ? PICTURE_TEXT_COPY.toastInstall
-            : PICTURE_TEXT_COPY.toastOn;
+          : staticDemo
+            ? PICTURE_TEXT_COPY.toastStaticDemo
+            : onToast(now?.state);
       toast.success(title, { description });
     });
 

@@ -2148,7 +2148,8 @@ Pages:
    **Text in pictures** (`#set-data-picture-text`, right after "Where your data lives", never on a phone: a switch
    saved with the card's Save — off deletes the words read before, on starts reading —, the line under it in the
    doctor's words from `health.picture_text`, and a callout while `ORDNUNG_OCR=off` turns it off on this
-   computer; the static demo's line says it would come from your computer),
+   computer; a save's toast says pictures are read only where Tesseract reads them, else points to that line; the
+   static demo's line and toast say what Ordnung does on your computer),
    *Download a copy of your records* (one JSON file: every letter whole with its `tax_choice`, to-dos & dates,
    contracts, people & organisations, the household — its `members`, the letters `filed` for each and the ones
    that are the person's (`mine`), never the suggestions —, drafts, Ideas and how each letter was read),
