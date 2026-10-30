@@ -5387,6 +5387,7 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
         "a letter is someone's of the household only when the person filed it for them",
         "`household.ask_view` and `Ledger.household_filed`",
         'Ask is told never whether someone signs, "mine" or a suggestion',
+        "Letters the person keeps private are left out, and `household_note` says whose they are isn't known",
         "One of two sentences says when the person chose",
         "No tool description, server instruction or prompt changes.",
         "Without people and without a choice, no tool's answer carries either, byte for byte,",
@@ -5432,6 +5433,7 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
         "`get_profile` adds `household` (each person's id and name as typed, with the letters the person filed for "
         "them, newest first, at most 50) and `household_note`",
         "`get_document` adds `filed_for`",
+        "Private letters are left out, and `household_note` says whose a private letter is isn't known",
         "`repeats`, `following_due_date`, `replaced_by` and `replaced_from_month`",
         '`tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off '
         'their letters for taxes."',

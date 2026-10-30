@@ -1891,6 +1891,10 @@ def test_get_profile_leaves_private_letters_out_of_the_household(store: Store, i
     assert row == {"id": alex, "name": ALEX, "letters": [ids["doc_passport"]]}
     rendered = render_result(tools.get_profile())
     assert ids["doc_private"] not in rendered and ids["doc_tax"] not in rendered
+    # the note never calls a private letter the person's own: whose it is isn't said, so it isn't known
+    note = tools.get_profile().record["household_note"]
+    assert "every other letter is the person's own;" not in note
+    assert "A letter the person keeps private is never listed here" in note
     letters = [
         add_doc(store, f"club-{n}", kind="other", doc_date=f"2026-0{1 + n % 9}-1{n % 10}") for n in range(53)
     ]

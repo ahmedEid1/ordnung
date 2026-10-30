@@ -93,7 +93,9 @@ MAX_HOUSEHOLD_LETTERS = 50
 HOUSEHOLD_NOTE = (
     "household lists the other people whose letters come to the person (a partner, their children), with "
     "the names the person typed and the letters the person filed for each, newest first. Those letters and "
-    "what they show are about that person, not the person's own; every other letter is the person's own."
+    "what they show are about that person, not the person's own; every other letter whose contents are shared "
+    "is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its "
+    "to-dos are, is not known — say so."
 )
 INSTRUCTIONS = (
     "Read-only access to the person's Ordnung ledger: letters, to-dos & dates, contracts, parties, "

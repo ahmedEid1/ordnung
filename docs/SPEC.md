@@ -1064,13 +1064,14 @@ HTML and without remote images.
   and `Ledger.household_filed`). `get_profile` adds `household` (each person's id and name as typed, with the
   letters the person filed for them, newest first, at most 50) and `household_note`; `get_document` adds
   `filed_for`; `get_my_numbers` (with `about_you`) adds each person's numbers and documents under `household`,
-  `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`. Private letters are left out; never who
-  signs, "mine" or a suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else
-  Claude's mark, with `tax_choice`: "The person marked this letter for taxes themselves." or "The person took
-  this letter off their letters for taxes." when they chose; Claude's `tax_note` is left out of a letter they
-  took off. Without a household and a choice none of these is there, byte for byte. Ask's ledger fingerprint
-  hashes the choices of the letters Ask may read and what `ask_view` gives, each only when there is one, and the
-  ledger token watches the `meta` rows of `LEDGER_META_KEYS` (profile, `tax_choices`, `household`).
+  `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`. Private letters
+  are left out, and `household_note` says whose a private letter is isn't known; never who signs, "mine" or a
+  suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else Claude's mark, with
+  `tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off their
+  letters for taxes." when they chose; Claude's `tax_note` is left out of a letter they took off. Without a
+  household and a choice none of these is there, byte for byte. Ask's ledger fingerprint hashes the choices of the
+  letters Ask may read and what `ask_view` gives, each only when there is one, and the ledger token watches the
+  `meta` rows of `LEDGER_META_KEYS` (profile, `tax_choices`, `household`).
 - **How a date repeats.** A to-do whose schedule still runs (open or snoozed) carries, in every row of it, its
   timeline entry and its `explain_date`, `repeats`, `following_due_date`, `replaced_by` and `replaced_from_month`:
   the rule in the app's words (`recurrence.describe`, "every month on the 3rd working day"), the due date it
