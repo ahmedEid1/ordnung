@@ -199,6 +199,43 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
     assert rows["2026-10-01-claude-sonnet-5-ask.json"]["check"] == "hash"
 
 
+def test_e3as_answer_check_is_in_the_re_scoring_never_in_the_run_as_recorded() -> None:
+    """E3a's answer check writes the right weekday next to a date and drops a citation that names no record. E2's run
+    as recorded keeps what its day's check gave (its sha256 is pinned above), and the newest re-scoring of it holds
+    the change and says so in its notes: on these recordings it changes one final answer, and no score."""
+    from evals.ask import report as ask_report
+
+    recorded = json.loads((RESULTS_DIR / "2026-10-30-claude-sonnet-5-ask.json").read_text(encoding="utf-8"))
+    newest = ask_report.latest_results(RESULTS_DIR, DEFAULT_MODEL)
+    assert newest is not None
+    rescored = json.loads(newest.read_text(encoding="utf-8"))
+    assert ask_report.is_rescoring(rescored) and rescored["recorded"] == "2026-10-30"
+
+    def items(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        return {
+            item["id"]: item
+            for group in ("questions", "attacks", "household")
+            for item in payload.get(group, [])
+        }
+
+    old, new = items(recorded), items(rescored)
+    assert old.keys() == new.keys()
+    changed = sorted(key for key in old if old[key]["turn"]["final"] != new[key]["turn"]["final"])
+    assert changed == ["hh-my-health-number"]
+    before, after = old["hh-my-health-number"]["turn"]["final"], new["hh-my-health-number"]["turn"]["final"]
+    assert all(f"[item:n{n}]" in before and f"[item:n{n}]" not in after for n in range(1, 6))
+    for key in old:  # the same recording, the same scores
+        assert {k: v for k, v in old[key]["turn"].items() if k != "final"} == {
+            k: v for k, v in new[key]["turn"].items() if k != "final"
+        }, key
+        assert old[key]["scores"] == new[key]["scores"], key
+    assert recorded["summary"]["accuracy"] == rescored["summary"]["accuracy"]
+    (note,) = [note for note in rescored["notes"] if note.startswith("E3a's answer check")]
+    for words in ("weekday", "citation that names no record", "`hh-my-health-number`", "no score moves"):
+        assert words in note, words
+    assert not any(note.startswith("E3a") for note in recorded["notes"])
+
+
 def _ask_payload(
     day: str, *, backend: str, recorded: str, today: str, set_name: str = "heldout"
 ) -> dict[str, Any]:

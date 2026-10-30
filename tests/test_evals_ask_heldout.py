@@ -6,6 +6,7 @@ hand-made files in a temporary folder, a stand-in for the agent (no model), and 
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import sys
@@ -32,7 +33,7 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import DEFAULT_MODEL, BenchmarkError, Config, RunResult, run  # noqa: E402
+from evals.ask.run import DEFAULT_MODEL, BenchmarkError, Config, RunResult, as_recorded, run  # noqa: E402
 
 from ordnung.llm.base import LLMRequest, StreamEvent  # noqa: E402
 from test_evals_ask import StandInAgent  # noqa: E402
@@ -396,13 +397,111 @@ def test_check_docs_checks_the_newest_file_and_the_as_recorded_one(
 ) -> None:
     results_dir, docs = tmp_path / "results", tmp_path / "evals-ask.md"
     new = lambda day: results_payload(dev_run, run_date=day)  # noqa: E731
-    old = lambda day: results_payload(dev_run, run_date=day, schema=1)  # noqa: E731
+    old = lambda day, kept=None: results_payload(as_recorded(dev_run, kept), run_date=day, schema=1)  # noqa: E731
     recorded = write_results(old("2026-10-01"), results_dir)
     write_results(new("2026-10-29"), results_dir)
     write_docs(new("2026-10-29"), docs)
     assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == []
     recorded.write_text(
         recorded.read_text(encoding="utf-8").replace('"accuracy"', '"accuracy "', 1), encoding="utf-8"
+    )
+    assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == [
+        f"{recorded.name} (as recorded, schema 1) is not what this replay writes"
+    ]
+
+
+#: A recorded answer as an older answer check left it: a citation of no record, which today's check drops (E3a).
+_OLDER_CHECK = "I can't find that in your records [item:n1]."
+
+
+def _as_an_older_check_left_it(payload: dict[str, Any], item_id: str) -> dict[str, Any]:
+    kept = copy.deepcopy(payload)
+    turn = next(item for item in kept["questions"] if item["id"] == item_id)["turn"]
+    turn.update(final=_OLDER_CHECK, cited=[], claims=[])
+    return kept
+
+
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
+def test_the_run_as_recorded_keeps_what_its_days_answer_check_made_of_each_answer(dev_run: RunResult) -> None:
+    """A recording is never rewritten. When the answer check changes what it makes of a recorded answer, the run as
+    recorded keeps the final answer, citations and claims its day's check gave (``as_recorded``), and only those:
+    today's scorer reads and scores them, and the questions, the raw answers and the tools' results are this
+    replay's."""
+    payload = json.loads(json.dumps(results_payload(dev_run, run_date="2026-10-01", schema=1)))
+    assert as_recorded(dev_run, None) is dev_run
+    same = results_payload(as_recorded(dev_run, payload), run_date="2026-10-01", schema=1)
+    assert json.loads(json.dumps(same)) == payload  # what the check gave then is what it gives now
+    item_id = "deadline-steuerbescheid_2025-0"
+    before = next(item for item in payload["questions"] if item["id"] == item_id)
+    assert before["scores"]["correct_final"] is True and before["turn"]["support"] == [1, 1]
+    kept = _as_an_older_check_left_it(payload, item_id)
+    older = json.loads(
+        json.dumps(results_payload(as_recorded(dev_run, kept), run_date="2026-10-01", schema=1))
+    )
+    item = next(item for item in older["questions"] if item["id"] == item_id)
+    assert (item["turn"]["final"], item["turn"]["cited"], item["turn"]["claims"]) == (_OLDER_CHECK, [], [])
+    # today's scorer reads the answer the older check gave: no citation backs a value, the date is missing
+    assert item["turn"]["support"] == [0, 0]
+    assert item["scores"]["correct_final"] is False and item["scores"]["correct_raw"] is True
+    assert older["summary"]["accuracy"]["k"] == payload["summary"]["accuracy"]["k"] - 1
+    assert {
+        key: value
+        for key, value in item["turn"].items()
+        if key not in ("final", "cited", "claims", "support")
+    } == {
+        key: value
+        for key, value in before["turn"].items()
+        if key not in ("final", "cited", "claims", "support")
+    }
+    for group in ("questions", "attacks"):
+        assert [entry for entry in older[group] if entry["id"] != item_id] == [
+            entry for entry in payload[group] if entry["id"] != item_id
+        ]
+    # another raw answer or other tools are another recording: the run as recorded is never taken from the file
+    for field, value in (("raw", before["turn"]["raw"] + " (recorded again)"), ("tools", [])):
+        other = copy.deepcopy(kept)
+        next(entry for entry in other["questions"] if entry["id"] == item_id)["turn"][field] = value
+        replayed = results_payload(as_recorded(dev_run, other), run_date="2026-10-01", schema=1)
+        assert json.loads(json.dumps(replayed)) == payload
+
+
+@pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
+def test_a_changed_answer_check_goes_into_a_re_scoring_never_into_the_run_as_recorded(
+    dev_run: RunResult, tmp_path: Path
+) -> None:
+    """--check-docs: the newest file is what today's answer check gives, byte for byte, so a changed check asks for
+    a re-scoring; the run as recorded before a re-scoring is checked with the answers its own day's check gave
+    (``as_recorded`` gets the committed file), so it stays as recorded."""
+    results_dir, docs = tmp_path / "results", tmp_path / "evals-ask.md"
+    item_id = "deadline-steuerbescheid_2025-0"
+    payload = json.loads(json.dumps(results_payload(dev_run, run_date="2026-10-01", schema=1)))
+    old = lambda day, kept=None: results_payload(as_recorded(dev_run, kept), run_date=day, schema=1)  # noqa: E731
+    new = lambda day: results_payload(dev_run, run_date=day, recorded="2026-10-01")  # noqa: E731
+    as_its_day_checked = old("2026-10-01", _as_an_older_check_left_it(payload, item_id))
+    recorded = write_results(as_its_day_checked, results_dir)
+    write_docs(as_its_day_checked, docs)
+    # the newest file is the run as recorded: today's check gives another answer, so the replay asks for a re-scoring
+    assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == [
+        f"{recorded.name} is not what this replay writes",
+        f"{docs.name} is not what this replay writes",
+    ]
+    as_it_was = recorded.read_bytes()
+    rescoring = write_results(new("2026-10-29"), results_dir)
+    write_docs(new("2026-10-29"), docs)
+    assert rescoring.name == f"2026-10-29-{DEFAULT_MODEL}-ask-rescored.json"
+    assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == []
+    assert recorded.read_bytes() == as_it_was
+    # the re-scoring is today's check's, byte for byte
+    text = rescoring.read_text(encoding="utf-8")
+    rescoring.write_text(text.replace('"final": "', '"final": "Older: ', 1), encoding="utf-8")
+    assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == [
+        f"{rescoring.name} is not what this replay writes"
+    ]
+    write_results(new("2026-10-29"), results_dir)
+    # the run as recorded keeps its day's answers, never its scores: a score its answers don't give is stale
+    recorded.write_text(
+        as_it_was.decode("utf-8").replace('"correct_final": false', '"correct_final": true', 1),
+        encoding="utf-8",
     )
     assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == [
         f"{recorded.name} (as recorded, schema 1) is not what this replay writes"

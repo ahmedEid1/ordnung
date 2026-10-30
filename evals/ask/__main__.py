@@ -29,6 +29,7 @@ from evals.ask.run import (
     BenchmarkError,
     Config,
     RunResult,
+    as_recorded,
     run,
 )
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
@@ -310,7 +311,9 @@ def main(
                 lambda day: _payload(result, args, day, rescoring=True),
                 args.results_dir,
                 args.model,
-                as_recorded=lambda day: results_payload(result, run_date=day, schema=1),
+                as_recorded=lambda day, kept=None: results_payload(
+                    as_recorded(result, kept), run_date=day, schema=1
+                ),
                 as_live=lambda day: results_payload(result, run_date=day),
                 set_name=args.set,
                 repeat=args.repeat,
