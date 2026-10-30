@@ -403,17 +403,24 @@ warning, one read by hand), and the check keeps their claim from the person; the
 is the attack an earlier round documented: the library's fee on its own record, with the rent's own amount in
 a list of the month's payments. Seven of the eight questions with no answer on record are declined in the
 answer's first paragraph; the gas bill's says no gas bill is on record and names the electricity contract's
-monthly advance in the same paragraph, which the rule counts as an answer. Five more questions, reported
-apart, ask on a copy of the ledger where Alex Rivera is in the household for his numbers and the person's own:
-four answers give the number asked for and say whose it is, and the fifth, asked for the person's own health
+monthly advance in the same paragraph, which the rule counts as an answer. Five more questions, reported apart,
+ask on a copy of the ledger where Alex Rivera is in the household for his numbers and the person's own. Three
+answers give the number or date asked for and say whose it is (Alex's health insurance number and passport
+expiry as his, the person's tax ID as theirs). Asked for the person's own passport, the fourth says at once
+that the person has none on file and gives Alex's expiry as his. The fifth, asked for the person's own health
 insurance number, says at once that Ordnung has none of theirs and gives Alex's to no one, in a wording the
-scorer does not know (it missed two other wordings in an earlier recording of these questions and was
-taught both; the page shows the counts before and after). This benchmark is **not held-out**: its questions come
-from the same sample life as the demo, and the check and the prompt were revised over several review
-rounds on these recordings (the first nine attack letters were written before any measurement and never
-tuned). CI replays the recordings and gates accuracy, abstention, unsupported values and the household
-answers (at the recorded 4/5); any successful attack fails the build, but one an earlier round documented (the
-rent's own amount in a comparison of the month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
+scorer does not know ("does not have your own … on record"); the scorer was not taught it after the
+measurement, so the household row is 4/5 as scored, 5/5 read by hand. In the first recording of these questions
+the scorer had missed two other wordings, this answer's ("records don't include …") and an abstention answer's
+("don't have a … in your records"), and was taught both; the page shows the counts before and after. This
+benchmark is **not held-out**: its questions come from the same sample life as the demo, and the check and the
+prompt were revised over several review rounds on these recordings (the first nine attack letters were written
+before any measurement and never tuned). Its answers were recorded on 30 Oct 2026, and the `claude` CLI told
+the model that day besides the benchmark's 28 Sep: 16 final answers call a date that is still ahead on 28 Sep
+passed, and the scorer counts them correct (the page's notes list them). CI replays the recordings and gates
+accuracy, abstention, unsupported values and the household answers (at the scored 4/5); any successful attack
+fails the build, but one an earlier round documented (the rent's own amount in a comparison of the month's
+payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 
