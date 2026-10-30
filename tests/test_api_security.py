@@ -215,12 +215,22 @@ async def test_a_one_time_link_signs_in_once(data_dir: Path, web_dist: Path) -> 
 
         login = await api.client.get(link)
         assert login.status_code == 303 and login.headers["location"] == "/"
-        assert login.headers["set-cookie"].startswith(f"ordnung_token_8765={TOKEN};")
+        # a session of the browser's own, never the token (the API's bearer, and the CLI's)
+        session = api.client.cookies["ordnung_token_8765"]
+        assert session and session != TOKEN and TOKEN not in login.headers["set-cookie"]
+        assert (await api.client.get("/api/dashboard")).status_code == 200
+        api.client.cookies.clear()
+        bearer = {"Authorization": f"Bearer {session}"}
+        assert (await api.client.get("/api/dashboard", headers=bearer)).status_code == 401
+        api.client.cookies.set("ordnung_token_8765", session)
+        # the same browser going back to the link (a reload, Back): still signed in, nothing ended
+        again = await api.client.get(link)
+        assert again.status_code == 303 and "set-cookie" not in again.headers
         assert (await api.client.get("/api/dashboard")).status_code == 200
 
         api.client.cookies.clear()  # another browser, or the same link once more
         replay = await api.client.get(link)
-        assert replay.status_code == 401 and "expired" in replay.text
+        assert replay.status_code == 401 and "used already" in replay.text
         assert "set-cookie" not in replay.headers
         assert (await api.client.get("/api/dashboard")).status_code == 401
 
@@ -272,8 +282,49 @@ async def test_one_time_links_that_are_refused(data_dir: Path, web_dist: Path) -
         assert (await api.client.get(_path(stranger.open_url()), headers=cross_site)).status_code == 403
         forward = await api.client.get(link, headers=cross_site)
         assert forward.status_code == 200 and "url=/'" in forward.text and code not in forward.text
-        assert forward.headers["set-cookie"].startswith(f"ordnung_token_8765={TOKEN};")
+        assert forward.headers["set-cookie"].startswith("ordnung_token_8765=") and TOKEN not in forward.text
         assert (await api.client.get("/api/dashboard")).status_code == 200
+
+
+async def test_a_link_another_program_used_first_signs_it_out(data_dir: Path, web_dist: Path) -> None:
+    """A one-time code sits on the browser's command line until the browser uses it, where another account
+    can read it. Whoever uses it first gets a browser session of its own, never the token, and the code's
+    second use ends that session: the person's browser, coming second, says the link was used already."""
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        link = _path(info.open_url())
+        assert (await api.client.get(link)).status_code == 303  # another program, first
+        stolen = {"Cookie": f"ordnung_token_8765={api.client.cookies['ordnung_token_8765']}"}
+        api.client.cookies.clear()
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 200
+
+        browser = await api.client.get(link)
+        assert browser.status_code == 401 and "set-cookie" not in browser.headers
+        assert "used already" in browser.text and "another program" in browser.text
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 401
+
+        # the same, when the person's browser is still signed in from before: it opens Ordnung
+        link = _path(info.open_url())
+        assert (await api.client.get(link)).status_code == 303
+        stolen = {"Cookie": f"ordnung_token_8765={api.client.cookies['ordnung_token_8765']}"}
+        api.client.cookies.clear()
+        signed_in = {"Cookie": f"ordnung_token_8765={TOKEN}"}
+        opened = await api.client.get(link, headers=signed_in)
+        assert opened.status_code == 303 and opened.headers["location"] == "/"
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 401
+        assert (await api.client.get("/api/dashboard", headers=signed_in)).status_code == 200
+
+
+async def test_a_spent_link_in_a_signed_in_browser_opens_the_page(data_dir: Path, web_dist: Path) -> None:
+    """A browser that is signed in already and loads a link that has expired (a slow start) opens Ordnung,
+    instead of "This link has expired"."""
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        expired = _path(info.open_url(now=time.time() - 61))
+        assert (await api.client.get(expired)).status_code == 401
+        opened = await api.client.get(expired, headers={"Cookie": f"ordnung_token_8765={TOKEN}"})
+        assert opened.status_code == 303 and opened.headers["location"] == "/"
+        assert "set-cookie" not in opened.headers
 
 
 async def test_a_one_time_link_keeps_the_rest_of_the_address(data_dir: Path, web_dist: Path) -> None:

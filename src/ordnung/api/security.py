@@ -15,11 +15,14 @@ Ordnung listens on 127.0.0.1 only, but any web page the person visits can try to
   cookie still reaches other servers on localhost; only a token kept out of cookies would not).
   ``ordnung serve`` opens the browser with a one-time link instead, ``GET /?open=<code>``
   (:meth:`ordnung.server.ServerInfo.open_url`), so the token is never on a command line: each code is
-  taken once, within a minute (:class:`OneTimeCodes`), and then signs in like the token. Both are taken
-  only on a top-level page load. A link opened from another site is a cross-site page load: one carrying
-  a *valid* token or code is accepted from anywhere and answered with a same-origin forward instead of a
-  redirect (knowing the token is already full access). ``/api/health`` answers without it (with minimal
-  information). Neither is ever accepted in an API URL, where it would end up in other programs.
+  taken once, within a minute (:class:`OneTimeCodes`), and signs the browser in with a session of its
+  own, never the token. The code is on the browser's command line until the browser uses it, where
+  another account can read it: its second use ends the session its first use made, and says so. Both
+  are taken only on a top-level page load. A link opened from another site is a cross-site page load:
+  one carrying a *valid* token or code is accepted from anywhere and answered with a same-origin forward
+  instead of a redirect (knowing the token is already full access). A browser that is signed in already
+  and loads a spent link opens the page. ``/api/health`` answers without it (with minimal information).
+  Neither is ever accepted in an API URL, where it would end up in other programs.
   ``token=None`` turns the token check off (tests, ``--no-token``);
 * refuses an ``/api`` request whose body has no stated length (``Transfer-Encoding``, 411), so the
   200 MB cap holds before anything is read.
@@ -39,18 +42,21 @@ from __future__ import annotations
 import base64
 import hashlib
 import html
+import logging
 import re
 import secrets
 import time
 from collections.abc import Callable, Iterable, Sequence
-from typing import Protocol
+from typing import Literal, NamedTuple, Protocol
 from urllib.parse import urlencode, urlsplit
 
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from ordnung.server import OPEN_LINK_S, OPEN_QUERY, open_code_mac
+from ordnung.server import OPEN_LINK_S, OPEN_QUERY, TOKEN_BYTES, open_code_mac
+
+logger = logging.getLogger(__name__)
 
 TOKEN_COOKIE = "ordnung_token"
 TOKEN_QUERY = "token"
@@ -198,31 +204,63 @@ def token_matches(candidate: str | None, token: str) -> bool:
     return bool(candidate) and secrets.compare_digest(str(candidate).encode(), token.encode())
 
 
+#: What presenting a one-time code did (:meth:`OneTimeCodes.redeem`): it signed in (a new session); the browser
+#: it signed in came back to it (``again``); it had been used by someone else, whose session has now ended
+#: (``used``); or it is not a code of this server's, or it has expired (``refused``).
+RedeemOutcome = Literal["signed_in", "again", "used", "refused"]
+
+
+class Redemption(NamedTuple):
+    """What presenting a one-time code did, and the session it made."""
+
+    outcome: RedeemOutcome
+    #: the browser session a code that ``signed_in`` made (the cookie's value)
+    session: str | None = None
+
+
 class OneTimeCodes:
     """The one-time sign-in codes a server takes (:func:`ordnung.server.open_code`): made with its token,
-    not expired, and each only once. The ones taken are kept in memory until they expire."""
+    not expired, and each only once. A code signs in with a browser session of its own, never the token,
+    which is also the API's bearer and lasts until the server stops.
+
+    Until the browser uses it, the code is on the browser's command line, where another account on the
+    computer can read it and use it first. Its second use (the person's browser, then, or the other
+    program after the browser) ends the session its first use made: whoever got in that way is signed
+    out again, and the second page says the link was used already. So the codes taken are kept, with
+    their sessions, for as long as the server runs: one per browser Ordnung opened."""
 
     def __init__(self, token: str, *, clock: Callable[[], float] = time.time) -> None:
         self.token = token
         self.clock = clock
-        self._taken: dict[str, int] = {}
+        #: nonce → the session its code made ("" once ended)
+        self._taken: dict[str, str] = {}
 
-    def redeem(self, code: str | None) -> bool:
-        """Whether ``code`` signs in; it never does again afterwards."""
+    def redeem(self, code: str | None, *, cookie: str | None = None) -> Redemption:
+        """What ``code`` does, presented by a browser whose session cookie is ``cookie``."""
         match = _OPEN_CODE_RE.fullmatch(code or "")
         if match is None:
-            return False
+            return Redemption("refused")
         expires, nonce, mac = int(match[1]), match[2], match[3]
+        if not secrets.compare_digest(mac, open_code_mac(self.token, expires, nonce)):
+            return Redemption("refused")
+        if nonce in self._taken:
+            session = self._taken[nonce]
+            if session and token_matches(cookie, session):
+                return Redemption("again")
+            self._taken[nonce] = ""
+            return Redemption("used")
         now = self.clock()
         if not now <= expires <= now + OPEN_LINK_S:  # expired, or made to last longer than a link does
-            return False
-        if not secrets.compare_digest(mac, open_code_mac(self.token, expires, nonce)):
-            return False
-        self._taken = {taken: until for taken, until in self._taken.items() if until >= now}
-        if nonce in self._taken:
-            return False
-        self._taken[nonce] = expires
-        return True
+            return Redemption("refused")
+        session = secrets.token_urlsafe(TOKEN_BYTES)
+        self._taken[nonce] = session
+        return Redemption("signed_in", session)
+
+    def is_session(self, cookie: str | None) -> bool:
+        """Whether ``cookie`` is a session a code made that hasn't ended."""
+        return bool(cookie) and any(
+            token_matches(cookie, session) for session in self._taken.values() if session
+        )
 
 
 def bearer_token(request: Request) -> str | None:
@@ -237,12 +275,15 @@ def token_cookie(request: Request) -> str:
     return f"{TOKEN_COOKIE}_{server[1]}" if server and server[1] else TOKEN_COOKIE
 
 
-def is_authenticated(request: Request, token: str | None) -> bool:
-    """The session cookie or a bearer header carries the session token."""
+def is_authenticated(request: Request, token: str | None, codes: OneTimeCodes | None = None) -> bool:
+    """The session cookie or a bearer header carries the session token, or the cookie a browser session a
+    one-time code made (``codes``)."""
     if token is None:
         return True
-    candidates = [request.cookies.get(token_cookie(request)), bearer_token(request)]
-    return any(token_matches(candidate, token) for candidate in candidates)
+    cookie = request.cookies.get(token_cookie(request))
+    if codes is not None and codes.is_session(cookie):
+        return True
+    return any(token_matches(candidate, token) for candidate in (cookie, bearer_token(request)))
 
 
 def _is_api(path: str) -> bool:
@@ -291,10 +332,36 @@ def _forward_page(target: str) -> HTMLResponse:
     )
 
 
-def login_response(request: Request, token: str, *, valid: bool | None = None) -> Response:
-    """``GET <page>?token=…`` (or a one-time ``?open=…`` the caller found ``valid``): set the session cookie
-    and redirect to the page without it (a cross-site page load, e.g. a link opened from another site, gets
-    a same-origin forward)."""
+def _used_link_page() -> Response:
+    return html_page(
+        "This link was used already",
+        [
+            "The link Ordnung opened your browser with works only once, and it was used before your browser "
+            "got to it: perhaps by another program on this computer. Ordnung has signed that one out again.",
+            "Start Ordnung again and open the link it prints:",
+        ],
+        status_code=401,
+        commands=("ordnung serve", "ordnung demo"),
+    )
+
+
+def _open_page(request: Request) -> Response:
+    """To the page, for a browser that is signed in already."""
+    site = request.headers.get("sec-fetch-site")
+    target = _without_token(request)
+    return (
+        RedirectResponse(target, status_code=303)
+        if site is None or site.lower() in ALLOWED_FETCH_SITES
+        else _forward_page(target)
+    )
+
+
+def login_response(
+    request: Request, token: str, *, valid: bool | None = None, session: str | None = None
+) -> Response:
+    """``GET <page>?token=…`` (or a one-time ``?open=…`` the caller found ``valid``, with the browser
+    ``session`` it made): set the session cookie and redirect to the page without it (a cross-site page
+    load, e.g. a link opened from another site, gets a same-origin forward)."""
     if valid is None:
         valid = token_matches(request.query_params.get(TOKEN_QUERY), token)
     if not valid:
@@ -308,12 +375,14 @@ def login_response(request: Request, token: str, *, valid: bool | None = None) -
             status_code=401,
             commands=("ordnung serve", "ordnung demo"),
         )
-    site = request.headers.get("sec-fetch-site")
-    same_site = site is None or site.lower() in ALLOWED_FETCH_SITES
-    target = _without_token(request)
-    response = RedirectResponse(target, status_code=303) if same_site else _forward_page(target)
+    response = _open_page(request)
     response.set_cookie(
-        token_cookie(request), token, max_age=COOKIE_MAX_AGE_S, path="/", httponly=True, samesite="strict"
+        token_cookie(request),
+        session or token,
+        max_age=COOKIE_MAX_AGE_S,
+        path="/",
+        httponly=True,
+        samesite="strict",
     )
     return response
 
@@ -393,21 +462,34 @@ class SecurityMiddleware:
             return
         await self.app(scope, receive, _with_headers(send))
 
-    def _signs_in(self, request: Request) -> bool:
-        """The page load carries the token, or a one-time code (which is then used up; never by a HEAD,
-        which shows no page)."""
+    def _signs_in(self, request: Request) -> Redemption:
+        """What the page load's token, or one-time code, does (a code is then used up; never by a HEAD, which
+        shows no page)."""
         query = request.query_params
         if self.token is not None and token_matches(query.get(TOKEN_QUERY), self.token):
-            return True
+            return Redemption("signed_in")
         if self.codes is None or OPEN_QUERY not in query or request.method != "GET":
-            return False
-        return self.codes.redeem(query.get(OPEN_QUERY))
+            return Redemption("refused")
+        return self.codes.redeem(query.get(OPEN_QUERY), cookie=request.cookies.get(token_cookie(request)))
+
+    def _sign_in(self, request: Request, token: str) -> Response | None:
+        """A page load with a token or one-time code (:func:`is_token_login`)."""
+        done = self._signs_in(request)
+        if done.outcome == "used":
+            logger.warning("A one-time sign-in link was used twice: the sign-in it made has been ended.")
+        if done.outcome == "signed_in":
+            return login_response(request, token, valid=True, session=done.session)
+        if cross_site_rejection(request) is not None:
+            return None
+        if done.outcome == "again" or is_authenticated(request, token, self.codes):
+            return _open_page(request)  # signed in already: a spent link opens the page
+        return _used_link_page() if done.outcome == "used" else login_response(request, token, valid=False)
 
     def _gate(self, request: Request) -> Response | None:
         if self.token is not None and is_token_login(request) and host_allowed(request.headers.get("host")):
-            valid = self._signs_in(request)
-            if valid or cross_site_rejection(request) is None:
-                return login_response(request, self.token, valid=valid)
+            signed_in = self._sign_in(request, self.token)
+            if signed_in is not None:
+                return signed_in
         rejection = cross_site_rejection(request)
         if rejection is not None:
             return rejection
@@ -419,7 +501,7 @@ class SecurityMiddleware:
             and TOKEN_QUERY in request.query_params
         ):
             return login_response(request, self.token)
-        authenticated = is_authenticated(request, self.token)
+        authenticated = is_authenticated(request, self.token, self.codes)
         request.scope.setdefault("state", {})[AUTH_STATE_KEY] = authenticated
         if not authenticated and path not in PUBLIC_API_PATHS:
             return unauthenticated_response(request)

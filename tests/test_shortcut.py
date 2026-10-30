@@ -1684,7 +1684,7 @@ def test_from_shortcut_opens_the_running_ordnung_with_a_one_time_link(
     assert RUNNING.token is not None
     server = OneTimeCodes(RUNNING.token)
     code = url.split("?open=", 1)[1]
-    assert server.redeem(code) and not server.redeem(code)
+    assert server.redeem(code).outcome == "signed_in" and server.redeem(code).outcome == "used"
     assert not [path for path in tmp_path.rglob("*") if path.is_file()]  # the data folder's own folders only
 
 
@@ -1841,7 +1841,8 @@ def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None
                 connection.close()
 
         status, cookie = page_load()
-        assert status == 303 and cookie is not None and cookie.startswith(f"ordnung_token_{port}={token};")
+        assert status == 303 and cookie is not None and cookie.startswith(f"ordnung_token_{port}=")
+        assert token not in cookie  # a session of its own
         assert page_load() == (401, None)  # once only
         os.close(leader)  # the window closes: the terminal hangs up
         leader = -1

@@ -121,9 +121,8 @@ async def test_a_launched_link_signs_the_browser_in_once(
         [url] = opened
         link = url.removeprefix("http://127.0.0.1:8765")
         login = await api.client.get(link)
-        assert login.status_code == 303 and login.headers["set-cookie"].startswith(
-            "ordnung_token_8765=s3cret-token;"
-        )
+        assert login.status_code == 303 and login.headers["set-cookie"].startswith("ordnung_token_8765=")
+        assert "s3cret-token" not in login.headers["set-cookie"]  # a session of its own
         api.client.cookies.clear()
         assert (await api.client.get(link)).status_code == 401  # once only
 
