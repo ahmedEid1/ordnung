@@ -1629,7 +1629,7 @@ def mcp(
             )
 
         if print_config:
-            typer.echo(json.dumps(rules_tools.rules_server_config(), indent=2))
+            typer.echo(json.dumps(_pasted(rules_tools.rules_server_config()), indent=2))
             return
         rules_tools.run_rules_only()
         return
@@ -1637,7 +1637,9 @@ def mcp(
 
     folder = _folder(ctx, data_dir)
     if print_config:
-        typer.echo(json.dumps(mcp_server.server_config(folder, rules_tools=not ledger_only), indent=2))
+        typer.echo(
+            json.dumps(_pasted(mcp_server.server_config(folder, rules_tools=not ledger_only)), indent=2)
+        )
         return
     try:
         mcp_server.run(folder, rules_tools=not ledger_only)
@@ -1645,6 +1647,16 @@ def mcp(
         raise _fail(
             str(exc), hint="Pass the data folder with --data-dir, or use --rules-only.", soft_wrap=True
         ) from None
+
+
+def _pasted(config: dict[str, Any]) -> dict[str, Any]:
+    """An MCP config to paste into a client, which starts the servers in whatever folder it was opened in:
+    ``-P`` keeps that folder's files (a project's ``json.py``) out of Python's imports, as
+    :func:`ordnung.assistant.mcp_install.server_entry` does."""
+    servers = {
+        name: {**server, "args": ["-P", *server["args"]]} for name, server in config["mcpServers"].items()
+    }
+    return {**config, "mcpServers": servers}
 
 
 @mcp_app.command("install")

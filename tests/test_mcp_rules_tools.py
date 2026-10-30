@@ -1740,7 +1740,12 @@ def test_rules_server_config_and_print_config() -> None:
         "ORDNUNG_PIN_TODAY": "1",
     }
     result = CliRunner().invoke(app, ["mcp", "--rules-only", "--print-config"])
-    assert result.exit_code == 0 and json.loads(result.output) == config
+    printed = json.loads(result.output)["mcpServers"][SERVER_NAME]
+    # pasted into a client that starts it in any folder: -P keeps that folder's files out of the imports
+    assert result.exit_code == 0 and printed == {
+        **config["mcpServers"][SERVER_NAME],
+        "args": ["-P", "-m", "ordnung", "mcp", "--rules-only"],
+    }
     both = CliRunner().invoke(app, ["mcp", "--rules-only", "--ledger-only"])
     assert both.exit_code == 1 and "exclude each other" in both.output
 

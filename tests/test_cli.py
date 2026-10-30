@@ -920,7 +920,8 @@ def test_mcp_print_config(data_dir: Path) -> None:
     result = invoke("mcp", "--print-config", "--data-dir", str(data_dir))
     assert result.exit_code == 0
     server = json.loads(result.output)["mcpServers"]["ordnung"]
-    assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
+    # pasted into a client that starts it in any folder: -P keeps that folder's files out of the imports
+    assert server["args"] == ["-P", "-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
     ledger_only = invoke("mcp", "--print-config", "--ledger-only", "--data-dir", str(data_dir))
     assert json.loads(ledger_only.output)["mcpServers"]["ordnung"]["args"][-1] == "--ledger-only"
     assert "--ledger-only" not in plain(invoke("mcp", "--help").output)  # Ask's switch, not for people

@@ -284,10 +284,11 @@ _SPACE = r"[ \t\u00a0\u202f]"
 _MONTH_NAME = "|".join(sorted(MONTH_NUMBERS, key=len, reverse=True))
 _NAME_BEFORE_DATE = re.compile(
     rf"\b(?P<name>{_WEEKDAY_NAME})"
-    rf"(?P<gap>\.?\**,?{_SPACE}+(?:(?P<word>den|the){_SPACE}+)?\**[„“\"]?)"
+    rf"(?P<gap>\.?\**,?{_SPACE}+(?:(?P<word>den|dem|der|the){_SPACE}+)?\**[„“\"]?)"
     rf"(?=\d|(?i:{_MONTH_NAME})\b)"
 )
-"""A weekday name before a date: "Thu 2 Oct", "**Thu** 2 Oct", "Thursday, October 2", "Do., den 2.10."."""
+"""A weekday name before a date: "Thu 2 Oct", "**Thu** 2 Oct", "Thursday, October 2", "Do., den 2.10.",
+"am Donnerstag, dem 2. Oktober"."""
 _NAME_AFTER_DATE = re.compile(
     rf"(?P<gap>{_SPACE}*\({_SPACE}*)(?P<name>{_WEEKDAY_NAME})(?=\.?{_SPACE}*\))"
     rf"|(?P<article_gap>,{_SPACE}+(?:a|an|ein|einem|einen){_SPACE}+)(?P<article_name>{_FULL_WEEKDAY_NAME})"
@@ -322,7 +323,7 @@ def correct_weekdays(text: str, today: date) -> str:
 
     A model adds weekday names itself and sometimes names the wrong day ("Thu 2 Oct 2026" for a
     Friday); code knows the calendar. The name may stand before the date ("**Thu** 2 Oct 2026",
-    "Donnerstag, den 2. Oktober 2026", "Thursday, October 2, 2026") or after it ("2 Oct 2026 (Thu)",
+    "Donnerstag, den 2. Oktober 2026", "am Donnerstag, dem 2. Oktober", "Thursday, October 2, 2026") or after it ("2 Oct 2026 (Thu)",
     "2.10.2026 (Do.)", "2 Oct 2026, a Thursday"); it keeps its language and form. A date without a year
     is read in the year closest to ``today``.
     """
@@ -337,8 +338,8 @@ def correct_weekdays(text: str, today: date) -> str:
         name, word = match.group("name"), match.group("word")
         german = _WEEKDAY_FORM[name] >= 2
         tail = before_fixed[match.end() : match.end() + 40]
-        # "den" goes with a German name, "the" and a month written first with an English one
-        if (word is not None and (word == "den") != german) or (german and not tail[:1].isdigit()):
+        # "den", "dem" and "der" go with a German name, "the" and a month written first with an English one
+        if (word is not None and (word != "the") != german) or (german and not tail[:1].isdigit()):
             return match.group(0)
         return name_of(name, _date_starting(tail)) + match.group("gap")
 

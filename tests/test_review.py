@@ -322,6 +322,10 @@ def test_a_weekday_without_a_year_is_read_in_the_year_closest_to_today() -> None
         # German: "den" between the name and the date, the name after the date
         ("Bis Donnerstag, den 2. Oktober 2026 zahlen.", "Bis Freitag, den 2. Oktober 2026 zahlen."),
         ("Bis Do., den 2.10.2026 zahlen.", "Bis Fr., den 2.10.2026 zahlen."),
+        # "dem" and "der" as well
+        ("Am Donnerstag, dem 2. Oktober 2026 zahlen.", "Am Freitag, dem 2. Oktober 2026 zahlen."),
+        ("Bis Mittwoch, dem 5. November 2026.", "Bis Donnerstag, dem 5. November 2026."),
+        ("Fristende ist Donnerstag, der 2. Oktober 2026.", "Fristende ist Freitag, der 2. Oktober 2026."),
         ("Bis 2.10.2026 (Donnerstag) zahlen.", "Bis 2.10.2026 (Freitag) zahlen."),
         ("Bis 2.10.2026 (Do.) zahlen.", "Bis 2.10.2026 (Fr.) zahlen."),
         ("Bis 2. Oktober 2026, einem Donnerstag, zahlen.", "Bis 2. Oktober 2026, einem Freitag, zahlen."),
@@ -344,6 +348,8 @@ def test_weekday_names_on_either_side_of_a_date_are_corrected(text: str, expecte
         "So October 2, 2026 is the day.",  # "So" is German only before a day, never before a month
         "Due 2 Oct 2026 and Thu 8 Oct 2026 (Thu).",  # already right
         "Thursday's letter is due 2 Oct 2026.",  # not next to the date
+        "Due Thursday der 2 Oct 2026.",  # "der" goes with a German name only
+        "Am Donnerstag the 2nd of October 2026.",  # and "the" with an English one
     ],
 )
 def test_weekday_names_not_next_to_a_date_stay(text: str) -> None:
