@@ -12,8 +12,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import json
 import os
+import signal
 import stat
 import sys
 import time
@@ -393,6 +395,63 @@ async def test_a_crash_without_a_result_reports_stderr(fake: FakeClaude, letter:
         await ClaudeCLIBackend(max_retries=0).complete(letter)
 
 
+#: A broken install: the ``claude`` script can't start its runtime, says so and exits, the request unread.
+EXITS_AT_ONCE = {"exit_before_reading": True, "stderr": "env: node: No such file or directory\n", "exit": 127}
+
+
+async def test_a_cli_that_exits_before_reading_reports_stderr(fake: FakeClaude, letter: LLMRequest) -> None:
+    """The request is more than a pipe holds, so writing it meets the closed pipe: the reading fails with the
+    CLI's own words, as any exit without an answer does, never with "Broken pipe"."""
+    big = letter.attachments[0].path.parent / "big-scan.png"
+    big.write_bytes(os.urandom(2 * 1024 * 1024))
+    request = letter.model_copy(update={"attachments": [Attachment(path=big, media_type="image/png")]})
+    fake.play(EXITS_AT_ONCE)
+    with pytest.raises(LLMError, match="env: node: No such file or directory") as caught:
+        await ClaudeCLIBackend(max_retries=2).complete(request)
+    assert type(caught.value) is LLMError  # not retried, not a pause
+    assert len(fake.calls) == 1
+
+
+async def test_a_cli_gone_before_the_request_is_written_reports_stderr(
+    fake: FakeClaude, letter: LLMRequest, claude_exits_first: None
+) -> None:
+    """A small request to a ``claude`` that has already exited: "Connection lost" while writing it, then the
+    same error as above."""
+    fake.play(EXITS_AT_ONCE)
+    with pytest.raises(LLMError, match="env: node: No such file or directory") as caught:
+        await ClaudeCLIBackend(max_retries=0).complete(letter)
+    assert type(caught.value) is LLMError
+    request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
+    events = [event async for event in ClaudeCLIBackend(max_retries=0).stream(request)]
+    assert [event.type for event in events] == ["error"]
+    assert "env: node: No such file or directory" in (events[0].error or "")
+    assert len(fake.calls) == 2
+
+
+async def _probes_of_a_cli_that_exits_before_reading(fake: FakeClaude, runs: int) -> None:
+    fake.play(EXITS_AT_ONCE)
+    found = [await claude_cli.probe() for _ in range(runs)]
+    assert found == [(False, "env: node: No such file or directory", "haiku")] * runs
+    assert len(fake.calls) == runs
+
+
+async def test_the_doctor_probe_of_a_cli_that_exits_before_reading(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Settings' *Run check* and ``ordnung doctor --probe`` get a failed probe with the CLI's words, 20 times
+    out of 20, however the race between the CLI's exit and the request goes."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    await _probes_of_a_cli_that_exits_before_reading(fake, 20)
+
+
+async def test_the_doctor_probe_of_a_cli_gone_before_the_request(
+    fake: FakeClaude, monkeypatch: pytest.MonkeyPatch, claude_exits_first: None
+) -> None:
+    """The same when the CLI has always exited before the request is written (it raised "Connection lost")."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    await _probes_of_a_cli_that_exits_before_reading(fake, 5)
+
+
 async def test_a_stream_reports_errors_as_an_event(fake: FakeClaude) -> None:
     fake.play({"transcript": "auth_error.jsonl", "exit": 1})
     request = LLMRequest(purpose="ask", prompt="Anything due?", system="Answer.", timeout_s=20)
@@ -471,6 +530,57 @@ async def test_a_cli_that_never_reads_the_request_times_out(fake: FakeClaude, le
         await ClaudeCLIBackend(max_retries=0).complete(request)
     (call,) = fake.calls
     assert await _gone(call["pid"], call["child_pid"])
+
+
+def _status_calls(log: Path) -> list[dict[str, Any]]:
+    if not log.exists():
+        return []
+    return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()]
+
+
+async def test_a_status_check_that_hangs_is_stopped(
+    fake: FakeClaude, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``claude --version`` and ``claude auth status`` (zero tokens, asked by the app every 10 minutes and by the
+    doctor) that don't answer in time are killed and waited for, not left running."""
+    log = tmp_path / "status.jsonl"
+    monkeypatch.setenv("FAKE_CLAUDE_STATUS_LOG", str(log))
+    monkeypatch.setenv("FAKE_CLAUDE_STATUS_HANG", "1")
+    try:
+        started = time.monotonic()
+        assert await claude_cli.run_cli_json([str(fake.path), "auth", "status"], timeout_s=1) is None
+        assert [call["pid"] for call in _status_calls(log) if _alive(call["pid"])] == []
+        assert await claude_cli.version(str(fake.path), timeout_s=1) is None
+        assert time.monotonic() - started < 10
+        calls = _status_calls(log)
+        assert [call["argv"] for call in calls] == [["auth", "status"], ["--version"]]
+        assert [call["pid"] for call in calls if _alive(call["pid"])] == []
+    finally:  # never leave one behind, even when the test fails
+        for call in _status_calls(log):
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(call["pid"], signal.SIGKILL)
+
+
+async def test_status_checks_read_nothing_from_the_servers_terminal(
+    fake: FakeClaude, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Their input is the null device, never the input Ordnung itself was started with (a terminal)."""
+    log = tmp_path / "status.jsonl"
+    monkeypatch.setenv("FAKE_CLAUDE_STATUS_LOG", str(log))
+    saved = os.dup(0)
+    reader, writer = os.pipe()  # stands in for the terminal: open, and nothing typed
+    os.dup2(reader, 0)
+    try:
+        assert await claude_cli.version(str(fake.path)) == "2.1.5 (Claude Code)"
+        assert await claude_cli.auth_status(str(fake.path)) == {"loggedIn": True, "authMethod": "claude.ai"}
+    finally:
+        os.dup2(saved, 0)
+        for fd in (saved, reader, writer):
+            os.close(fd)
+    assert [(call["argv"], call["stdin_null"]) for call in _status_calls(log)] == [
+        (["--version"], True),
+        (["auth", "status"], True),
+    ]
 
 
 async def test_cancelling_a_call_kills_the_whole_process_group(fake: FakeClaude, letter: LLMRequest) -> None:
