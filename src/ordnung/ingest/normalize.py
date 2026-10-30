@@ -85,11 +85,6 @@ def fold_punctuation(text: str) -> str:
     return unicodedata.normalize("NFKC", text.translate(_PUNCTUATION)).translate(_PUNCTUATION)
 
 
-def digits_in(text: str) -> list[str]:
-    """Digit groups of ``text`` in order, separators kept (``["15.10.2026", "1.234,56"]``)."""
-    return [token for token, _, _ in digit_tokens(fold_punctuation(text))]
-
-
 def digit_tokens(text: str) -> list[tuple[str, int, int]]:
     """Digit groups of already-normalised ``text`` as ``(token, start, end)`` spans."""
     return [(m.group(), m.start(), m.end()) for m in _DIGIT_TOKEN.finditer(text)]

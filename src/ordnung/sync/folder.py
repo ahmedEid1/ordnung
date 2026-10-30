@@ -707,13 +707,6 @@ class SyncFolder:
                     removed += 1
         return removed
 
-    def unlink_head(self, name: str) -> None:
-        if not self._inside(self.heads_dir, fresh=True):
-            return
-        with contextlib.suppress(FileNotFoundError):
-            self.fs.unlink(self.head_path(name))
-        self.fs.fsync_dir(self.heads_dir)
-
     def unlink_key_file(self, name: str) -> None:
         with contextlib.suppress(FileNotFoundError):
             self.fs.unlink(self.root / name)

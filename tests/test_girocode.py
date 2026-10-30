@@ -18,7 +18,6 @@ from ordnung.girocode import (
     amount_text,
     clean_text,
     compact,
-    creditor_reference,
     creditor_reference_valid,
     encode_payload,
     epc_payload,
@@ -245,14 +244,19 @@ def test_text_the_declared_character_set_cannot_hold_is_refused() -> None:
         epc_payload(Transfer(charset="2", name="Zahlstelle €", iban=GERMAN_IBAN))
 
 
-def test_creditor_references_from_a_body() -> None:
-    assert creditor_reference("539007547034") == "RF18539007547034"
+def _rf(body: str) -> str:
+    """The ISO 11649 RF creditor reference for ``body`` (1–21 letters or digits), worked out here: the app only
+    checks references (:func:`creditor_reference_valid`), it never writes one."""
+    remainder = int("".join(str(int(char, 36)) for char in body + "RF00")) % 97
+    return f"RF{98 - remainder:02d}{body}"
+
+
+def test_creditor_references_and_their_check_digits() -> None:
+    assert _rf("539007547034") == "RF18539007547034"  # the standard's example
     assert creditor_reference_valid("RF18 5390 0754 7034")
     assert creditor_reference_valid("RF18000000000539007547034")
     assert not creditor_reference_valid("RF18 5390 0754 7035")
     assert not creditor_reference_valid("RF185390075470341234567890")  # longer than 25 characters
-    with pytest.raises(ValueError, match="1 to 21 letters or digits"):
-        creditor_reference("ÄÖÜ")
 
 
 # --------------------------------------------------------------------------------------------------
@@ -335,7 +339,7 @@ def test_clean_text_is_one_trimmed_line_and_idempotent(text: str) -> None:
 def test_rf_check_digits_catch_every_change_of_one_letter_or_digit(body: str, data: st.DataObject) -> None:
     """MOD 97-10 catches any one letter changed to another letter, or digit to another digit (a letter
     for a digit changes the number's length, which the standard's check does not promise to catch)."""
-    reference = creditor_reference(body)
+    reference = _rf(body)
     assert creditor_reference_valid(reference) and looks_like_creditor_reference(reference)
     position = data.draw(st.integers(min_value=2, max_value=len(reference) - 1))
     same_kind = string.digits if reference[position].isdigit() else string.ascii_uppercase

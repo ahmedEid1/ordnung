@@ -18,7 +18,7 @@ from ordnung.db.store import (
     Store,
     person_write,
 )
-from ordnung.ids import PREFIXES, new_id, prefix_of
+from ordnung.ids import PREFIXES, new_id
 from ordnung.models import PROOF_SOURCE, Direction, DocumentExtraction
 from ordnung.secretary.tax_choice import for_taxes
 
@@ -90,7 +90,7 @@ def test_the_keys_and_the_household_id_prefix() -> None:
     assert HOUSEHOLD_META_KEY == "household"
     assert "hhm" in PREFIXES
     member = new_id("hhm")
-    assert prefix_of(member) == "hhm" and len(member) == len("hhm_") + 12
+    assert member.startswith("hhm_") and len(member) == len("hhm_") + 12
 
 
 # --------------------------------------------------------------------------------------------------

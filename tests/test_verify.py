@@ -23,7 +23,7 @@ from helpers_docs import (
     text_width,
 )
 from ordnung.ingest.intake import RenderedPage, render_pages
-from ordnung.ingest.normalize import digit_tokens, digits_in, fold_punctuation, normalise_with_map
+from ordnung.ingest.normalize import digit_tokens, fold_punctuation, normalise_with_map
 from ordnung.ingest.text import PageText, Word, extract_pdf_pages
 from ordnung.ingest.verify import (
     AMBIGUOUS_DATE,
@@ -146,11 +146,16 @@ def test_expanding_characters_map_to_their_source() -> None:
     assert offsets == [0, 1, 2, 2, 3, 4, 5, 5, 6]
 
 
-def test_digits_in() -> None:
+def _digits(text: str) -> list[str]:
+    """The digit groups of a quote, as the quote check takes them (after :func:`normalise_with_map`)."""
+    return [token for token, _, _ in digit_tokens(normalise_with_map(text)[0])]
+
+
+def test_the_digit_groups_of_a_quote() -> None:
     text = "am 15.10.2026 zahlen Sie 1.234,56 € (StNr 123/456/78901, 10:30 Uhr, 2026–10–15), bis 15.01."
-    assert digits_in(text) == ["15.10.2026", "1.234,56", "123/456/78901", "10:30", "2026-10-15", "15.01"]
-    assert digits_in("keine Ziffern") == []
-    assert digits_in("IBAN DE89 3704 0044") == ["89", "3704", "0044"]
+    assert _digits(text) == ["15.10.2026", "1.234,56", "123/456/78901", "10:30", "2026-10-15", "15.01"]
+    assert _digits("keine Ziffern") == []
+    assert _digits("IBAN DE89 3704 0044") == ["89", "3704", "0044"]
 
 
 def test_digit_tokens_spans_and_fold_punctuation() -> None:

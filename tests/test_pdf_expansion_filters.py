@@ -307,6 +307,15 @@ LETTER = _letter()
 A85 = base64.a85encode(LETTER, wrapcol=72)
 
 
+def _ascii_decoded(data: bytes, name: bytes) -> bytes:
+    """``data`` through the check's own ASCII85 (``name``) or ASCIIHex stage in one piece, from where the check
+    starts it (after an ASCII85 lead it skips, as :func:`expansion._measured` does)."""
+    stage = expansion._ascii_stage(name)
+    assert stage is not None
+    lead = expansion._A85_LEAD_RE.match(data) if isinstance(stage, expansion._Ascii85) else None
+    return b"".join(stage.feed(data[lead.end() if lead else 0 :])) + b"".join(stage.close())
+
+
 @pytest.mark.parametrize(
     ("filters", "data"),
     [
@@ -329,7 +338,7 @@ def test_ascii85_and_asciihex_data_is_decoded_as_pdfium_decodes_it(filters: byte
     """PDFium stops ASCII85 at the first character that can't be part of it and skips any character that
     isn't a hex digit, where Python's decoders refuse the data (so it once counted as nothing)."""
     name = filters.removeprefix(b"/")
-    assert expansion._pre_decoded(data, 0, name)[0] == _pdfium_decodes(filters, data)
+    assert _ascii_decoded(data, name) == _pdfium_decodes(filters, data)
 
 
 @pytest.mark.parametrize("size", [1, 3, 7, 4096])
@@ -351,7 +360,7 @@ def test_ascii_data_fed_in_pieces_decodes_as_it_does_whole(size: int, name: byte
     assert stage is not None
     out = b"".join(b"".join(stage.feed(data[at : at + size])) for at in range(0, len(data), size))
     out += b"".join(stage.close())
-    assert out == expansion._pre_decoded(data, 0, name)[0] == _pdfium_decodes(b"/" + name, data)
+    assert out == _ascii_decoded(data, name) == _pdfium_decodes(b"/" + name, data)
 
 
 @pytest.mark.parametrize(
@@ -364,7 +373,7 @@ def test_ascii_data_fed_in_pieces_decodes_as_it_does_whole(size: int, name: byte
 )
 def test_ascii85_that_pdfminer_reads_further_than_pdfium_counts_what_pdfminer_reads(data: bytes) -> None:
     """PDFium stops at the ``~`` and at the vertical tab; pdfminer skips both."""
-    assert expansion._pre_decoded(data, 0, b"A85")[0] == ascii85decode(data) == LETTER
+    assert _ascii_decoded(data, b"A85") == ascii85decode(data) == LETTER
 
 
 @pytest.mark.parametrize(
