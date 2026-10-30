@@ -1,0 +1,258 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a03f55f9ffa54a707576dd0cdc89e9fb8111a1b26520e7d73ef26312732c50cf\",\"question\":\"When does Alex's passport expire?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "The person asks:\nWhen does Alex's passport expire?\n"
+  },
+  "response": {
+    "text": "I couldn't find anyone named \"Alex\" in your records, and no passport information for that name either.\n\n- The only matching party was unrelated (an organisation on a suspicious payment demand) [party:pty_dbn2zg2kxj4d], not a person called Alex.\n- If you meant your own passport, let me know and I can look that up instead.",
+    "data": null,
+    "usage": {
+      "input_tokens": 6,
+      "output_tokens": 484,
+      "cache_read_tokens": 20514,
+      "cache_creation_tokens": 2652,
+      "cost_usd": 0.019562799999999998,
+      "duration_ms": 9744,
+      "turns": 4
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_party",
+      "input": {
+        "party_id_or_name": "Alex"
+      },
+      "tool_use_id": "toolu_01XrQnyNR3oVBcUziRWP1Vp3"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"parties\":[{\"id\":\"pty_dbn2zg2kxj4d\",\"kind\":\"other\",\"documents\":[{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"scam_warning\":true}],\"open_items\":[{\"id\":\"itm_zzenc1ydsw7g\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-09-30\",\"send_by\":\"2026-09-29\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"critical\",\"area\":\"home\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"doc_id\":\"doc_hjxvf5t7dqnw\",\"scam_warning\":true,\"amount\":254.35,\"currency\":\"EUR\"}]}]}\n</ordnung_record>\n<untrusted_document>\n{\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\",\"address\":\"Rundfunk Zahlungszentrale, Postfach 4 41 10, 12399 Musterstadt\",\"email\":\"zahlung@rundfunk-beitragservice.example\",\"identifiers\":[{\"label\":\"Beitrags-Nr.\",\"value\":\"623 918 044\"},{\"label\":\"Vorgangs-Nr.\",\"value\":\"ZZ-2026/88419-B\"}]},\"doc_hjxvf5t7dqnw\":{\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"],\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\"},\"itm_zzenc1ydsw7g\":{\"title\":\"Alleged broadcasting fee arrears payment demand (likely scam)\",\"action\":\"Do not pay yet: verify this claim directly with the official/known Beitragsservice through channels you already trust before sending any money.\",\"consequence\":\"The letter claims enforcement (bank or wage garnishment) will start without further notice if payment is not received in time.\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01XrQnyNR3oVBcUziRWP1Vp3"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Alex passport"
+      },
+      "tool_use_id": "toolu_01D2hSLs1RHmCNmNr5LMEwoc"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_01D2hSLs1RHmCNmNr5LMEwoc"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Alex"
+      },
+      "tool_use_id": "toolu_016Hmdk9bfyTDPTShe3x37NL"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[]}\n</ordnung_record>",
+      "tool_use_id": "toolu_016Hmdk9bfyTDPTShe3x37NL"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " cou"
+    },
+    {
+      "type": "text",
+      "text": "ldn't find an"
+    },
+    {
+      "type": "text",
+      "text": "y"
+    },
+    {
+      "type": "text",
+      "text": "one named \""
+    },
+    {
+      "type": "text",
+      "text": "Alex\" in your"
+    },
+    {
+      "type": "text",
+      "text": " records,"
+    },
+    {
+      "type": "text",
+      "text": " and no passport information"
+    },
+    {
+      "type": "text",
+      "text": " for that"
+    },
+    {
+      "type": "text",
+      "text": " name"
+    },
+    {
+      "type": "text",
+      "text": " either"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " The only"
+    },
+    {
+      "type": "text",
+      "text": " matching party"
+    },
+    {
+      "type": "text",
+      "text": " was"
+    },
+    {
+      "type": "text",
+      "text": " un"
+    },
+    {
+      "type": "text",
+      "text": "related (an"
+    },
+    {
+      "type": "text",
+      "text": " organ"
+    },
+    {
+      "type": "text",
+      "text": "isation on"
+    },
+    {
+      "type": "text",
+      "text": " a suspicious payment dem"
+    },
+    {
+      "type": "text",
+      "text": "and)"
+    },
+    {
+      "type": "text",
+      "text": " [party"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "pty"
+    },
+    {
+      "type": "text",
+      "text": "_db"
+    },
+    {
+      "type": "text",
+      "text": "n2zg"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "k"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "], not a"
+    },
+    {
+      "type": "text",
+      "text": " person called"
+    },
+    {
+      "type": "text",
+      "text": " Alex.\n- If"
+    },
+    {
+      "type": "text",
+      "text": " you me"
+    },
+    {
+      "type": "text",
+      "text": "ant your"
+    },
+    {
+      "type": "text",
+      "text": " own passport,"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": " me know and I can look that up"
+    },
+    {
+      "type": "text",
+      "text": " instead."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I couldn't find anyone named \"Alex\" in your records, and no passport information for that name either.\n\n- The only matching party was unrelated (an organisation on a suspicious payment demand) [party:pty_dbn2zg2kxj4d], not a person called Alex.\n- If you meant your own passport, let me know and I can look that up instead.",
+        "usage": {
+          "input_tokens": 6,
+          "output_tokens": 484,
+          "cache_read_tokens": 20514,
+          "cache_creation_tokens": 2652,
+          "cost_usd": 0.019562799999999998,
+          "duration_ms": 9744,
+          "turns": 4
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,462 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "10+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"a03f55f9ffa54a707576dd0cdc89e9fb8111a1b26520e7d73ef26312732c50cf\",\"question\":\"What is Alex's health insurance number?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_9t9tmrv1ypba",
+      "doc_1dgp8tp2ga0c"
+    ],
+    "prompt_head": "The person asks:\nWhat is Alex's health insurance number?\n"
+  },
+  "response": {
+    "text": "I don't have a health insurance number for Alex Rivera in the records.\n\n- Alex Rivera isn't tracked as a separate party in Ordnung, so there's no call-sheet entry for them [party:pty_eatxsexnt9s3 — not matching].\n- The two letters filed under Alex in the household are actually addressed to Sam Rivera: a health insurance contribution notice from Muster BKK [doc:doc_9t9tmrv1ypba] and a passport [doc:doc_1dgp8tp2ga0c] — both show Sam Rivera's own details, not Alex's. This mismatch (filed for Alex, but content about Sam) is worth checking/fixing in Ordnung.\n\nIf Alex has their own health insurance letter, it hasn't been filed in a way Ordnung recognizes as theirs yet.",
+    "data": null,
+    "usage": {
+      "input_tokens": 8,
+      "output_tokens": 1074,
+      "cache_read_tokens": 32278,
+      "cache_creation_tokens": 7261,
+      "cost_usd": 0.0462556,
+      "duration_ms": 17987,
+      "turns": 5
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_profile",
+      "input": {},
+      "tool_use_id": "toolu_01NZzehMyAJRy3CURB3MjUgH"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"name\":\"Sam Rivera\",\"language\":\"en\",\"region\":\"NW\",\"household\":[{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\",\"letters\":[\"doc_9t9tmrv1ypba\",\"doc_1dgp8tp2ga0c\"]}],\"household_note\":\"household lists the other people whose letters come to the person (a partner, their children), with the names the person typed and the letters the person filed for each, newest first. Those letters and what they show are about that person, not the person's own; every other letter whose contents are shared is the person's own. A letter the person keeps private is never listed here, so whose it is, and whose its to-dos are, is not known — say so.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01NZzehMyAJRy3CURB3MjUgH"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_9t9tmrv1ypba"
+      },
+      "tool_use_id": "toolu_01Jd5ai68g3prdWpBFFcFsFs"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-12\",\"language\":\"de\",\"party_id\":\"pty_eatxsexnt9s3\",\"case_id\":\"cas_jmphbycg8vfz\",\"urgency\":\"high\",\"pages\":1,\"tax_relevant\":true,\"filed_for\":{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\"},\"remedy\":{\"type\":\"widerspruch\"},\"payment\":{\"iban_valid\":true},\"items\":[{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_00sbt9f3e0pe\",\"kind\":\"payment\",\"status\":\"open\",\"due_date\":\"2026-10-15\",\"date_source\":\"fixed\",\"direction\":\"out\",\"priority\":\"normal\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\",\"repeats\":\"every month on the 15th\",\"following_due_date\":\"2026-11-15\",\"amount\":156.55,\"currency\":\"EUR\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_00sbt9f3e0pe\":{\"title\":\"Pay the health & long-term care insurance contribution (automatic direct debit)\",\"action\":\"Ensure your account has sufficient funds for the automatic direct debit around the 15th of each month.\"},\"doc_9t9tmrv1ypba\":{\"tax_note\":\"Statutory health and long-term care insurance contributions are deductible as special expenses (Sonderausgaben) in the German tax return.\",\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"summary\":\"Muster BKK, Sam Rivera's statutory health/long-term care insurer, raises the monthly contribution as a student member from €146.29 to €156.55 as of 1 October 2026, because the student income basis (BAföG-Bedarf) rises from €855.00 to €915.00 for the winter semester 2026/27. An objection (Widerspruch) can be filed within one month of notification.\",\"explanation\":\"Muster BKK adjusted the fixed notional income used to calculate student health/long-term care insurance contributions for the new semester, so your monthly contribution goes up. The amount is collected automatically by direct debit around the 15th of each month; the new, higher amount is first collected on 15 October 2026 — make sure your account has enough funds. If you disagree with the assessment, you may file a written or electronic objection (Widerspruch); the app shows the deadline for this. Note that filing an objection does not stop the higher contribution from being due in the meantime, so you must keep paying it either way. Consider consulting the insurer or a student advisory service if unsure.\",\"key_facts\":[{\"label\":\"New monthly contribution (Monatsbeitrag)\",\"value\":\"156,55 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous monthly contribution\",\"value\":\"146,29 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"New income basis (Bemessungsgrundlage)\",\"value\":\"915,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Previous income basis\",\"value\":\"855,00 €\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Additional contribution rate (Zusatzbeitrag)\",\"value\":\"2,69 %\",\"page\":1,\"grounding\":\"verified\"},{\"label\":\"Direct debit day\",\"value\":\"15. eines Monats\",\"page\":1,\"grounding\":\"verified\"}],\"references\":[{\"label\":\"Versicherten-Nr.\",\"value\":\"R482019379\"},{\"label\":\"Unser Zeichen\",\"value\":\"BZ-S/2026/0917\"},{\"label\":\"Gläubiger-ID\",\"value\":\"DE22ZZZ00000606017\"}],\"remedy\":{\"addressee\":\"Muster BKK, Kassenstraße 3, 12346 Musterstadt\",\"period_text\":\"innerhalb eines Monats nach Bekanntgabe\",\"form_text\":\"Der Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift bei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\",\"quote\":\"Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\"},\"payment\":{\"iban\":\"DE18123456000006060000\",\"payee\":\"Muster BKK\"},\"warnings\":[\"We couldn't match this letter to one of your contracts — add the contract to track it.\"],\"text\":\"=== Page 1 ===\\nMuster BKK\\nDie Betriebskrankenkasse für Musterstadt\\n\\nVersicherten-Nr. R482019379\\nUnser Zeichen   BZ-S/2026/0917\\nMuster BKK · Kassenstraße 3 · 12346 Musterstadt   Nadine Beispiel\\nIhr Kontakt\\nTelefon   0123 6060-417\\nHerrn\\nDatum   10.09.2026\\nSam Rivera\\nBeispielweg 5\\n12345 Musterstadt\\n\\nBeitragsbescheid – Ihre Beiträge zur Kranken- und Pflegeversicherung ab\\n01.10.2026\\n\\nSehr geehrter Herr Rivera,\\n\\nSie sind bei uns als Student nach § 5 Abs. 1 Nr. 9 SGB V kranken- und pflegeversichert. Als\\nbeitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V);\\ner beträgt ab dem Wintersemester 2026/27 915,00 € (bisher 855,00 €). Ab dem 01.10.2026 beträgt Ihr\\nmonatlicher Beitrag 156,55 € (bisher 146,29 €).\\n\\nBeitragsart   Satz   Monatsbeitrag\\n\\nKrankenversicherung (7/10 des allgemeinen Beitragssatzes von 14,6 %, §   10,22 %   93,51 €\\n245 SGB V)\\n\\nKassenindividueller Zusatzbeitrag der Muster BKK (§ 242 SGB V)   2,69 %   24,61 €\\n\\nPflegeversicherung (§ 55 Abs. 1 SGB XI)   3,60 %   32,94 €\\n\\nBeitragszuschlag für Kinderlose (§ 55 Abs. 3 SGB XI)   0,60 %   5,49 €\\n\\nGesamtbeitrag ab 01.10.2026 (Bemessungsgrundlage 915,00 €)   156,55 €\\n\\nWas ist der Zusatzbeitrag?\\nJede Krankenkasse erhebt zusätzlich zum allgemeinen Beitragssatz einen eigenen Zusatzbeitrag.\\nAnders als Arbeitnehmer tragen Studierende ihn – wie den gesamten Beitrag – allein. Der\\nZusatzbeitragssatz der Muster BKK ist unverändert und liegt mit 2,69 % unter dem Durchschnitt von\\n2,9 %. Wir buchen den Beitrag wie bisher zum 15. eines Monats ab, den neuen Betrag erstmals am\\n15.10.2026.\\n\\nRechtsbehelfsbelehrung\\nGegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\\nDer Widerspruch ist schriftlich, in elektronischer Form nach § 36a Abs. 2 SGB I oder zur Niederschrift\\nbei der Muster BKK, Kassenstraße 3, 12346 Musterstadt, einzulegen.\\n\\nHinweis: Widerspruch und Klage haben keine aufschiebende Wirkung (§ 86a Abs. 2 Nr. 1 SGG); die Beiträge sind daher\\nauch bei einem Widerspruch zunächst in der festgesetzten Höhe zu zahlen.\\n\\nMit freundlichen Grüßen\\nIhre Muster BKK\\nNadine Beispiel\\nBeitragsservice\\n\\nMuster BKK · Körperschaft des öffentlichen Rechts   Vorstand: Andrea Beispiel   Sparkasse Musterstadt\\nKassenstraße 3 · 12346 Musterstadt   Verwaltungsratsvorsitzender: Peter Muster   IBAN DE18 1234 5600 0006 0600 00\\nServicetelefon 0123 6060-0 (Mo–Fr 8–18 Uhr)   Gläubiger-ID DE22ZZZ00000606017   BIC MUSKDEM1XXX\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01Jd5ai68g3prdWpBFFcFsFs"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_document",
+      "input": {
+        "doc_id": "doc_1dgp8tp2ga0c"
+      },
+      "tool_use_id": "toolu_01LPiXD5MEACbGtDcvGAJ5Jf"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"id\":\"doc_1dgp8tp2ga0c\",\"kind\":\"identity_document\",\"date\":\"2017-02-11\",\"status\":\"processed\",\"direction\":\"incoming\",\"received_date\":\"2026-09-20\",\"language\":\"en\",\"party_id\":\"pty_z1se3q2nn3k3\",\"case_id\":\"cas_zv7z82nbap6s\",\"urgency\":\"low\",\"pages\":1,\"filed_for\":{\"id\":\"hhm_6mtw39wxdbzq\",\"name\":\"Alex Rivera\"},\"items\":[{\"id\":\"itm_g321eme013j2\",\"kind\":\"expiry\",\"status\":\"open\",\"due_date\":\"2027-02-10\",\"date_source\":\"fixed\",\"priority\":\"normal\",\"area\":\"other\",\"party_id\":\"pty_z1se3q2nn3k3\",\"doc_id\":\"doc_1dgp8tp2ga0c\"}],\"contracts\":[]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_g321eme013j2\":{\"title\":\"Passport expires\",\"action\":\"Apply for a passport renewal before it expires\"},\"pty_z1se3q2nn3k3\":{\"name\":\"Ministry of Interior\"},\"doc_1dgp8tp2ga0c\":{\"title\":\"Examplian Passport – Sam Rivera\",\"summary\":\"Sam Rivera's Examplian passport (No. X1234567), issued by the Ministry of Interior on 11 February 2017 and valid until 10 February 2027.\",\"explanation\":\"This is a scan of Sam Rivera's Examplian passport, issued by the Ministry of Interior. It shows the passport number, personal details, and the validity dates. The passport is valid until the date of expiry shown; it is good practice to apply for a renewal a few months before that date, since many authorities and airlines require a passport to remain valid for a minimum period beyond a trip or an application. No other action is required right now.\",\"key_facts\":[{\"label\":\"Passport number (N° du passeport)\",\"value\":\"X1234567\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Nationality (Nationalité)\",\"value\":\"EXAMPLIAN\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of birth (Date de naissance)\",\"value\":\"14 MAR 2000\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Place of birth (Lieu de naissance)\",\"value\":\"EXAMPLIA CITY\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of issue (Date de délivrance)\",\"value\":\"11 FEB 2017\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Date of expiry (Date d'expiration)\",\"value\":\"10 FEB 2027\",\"page\":1,\"grounding\":\"model_read\"},{\"label\":\"Issuing authority (Autorité)\",\"value\":\"MINISTRY OF INTERIOR\",\"page\":1,\"grounding\":\"model_read\"}],\"references\":[{\"label\":\"Passport No.\",\"value\":\"X1234567\"}],\"text\":\"=== Page 1 ===\\nOBSERVATIONS / OBSERVATIONS\\n\\n3\\n\\n\\nREPUBLIC OF EXAMPLIA\\nRÉPUBLIQUE D'EXAMPLIE\\n\\nPASSPORT\\nPASSEPORT\\n\\nType / Type\\nP\\n\\nCode / Code\\nEXA\\n\\nPassport No. / N° du passeport\\nX1234567\\n\\nSurname / Nom\\nRIVERA\\n\\nGiven names / Prénoms\\nSAM\\n\\nNationality / Nationalité\\nEXAMPLIAN\\n\\nSex / Sexe\\nM\\n\\nDate of birth / Date de naissance\\n14 MAR / MARS 2000\\n\\nPlace of birth / Lieu de naissance\\nEXAMPLIA CITY\\n\\nAuthority / Autorité\\nMINISTRY OF INTERIOR\\n\\nDate of issue / Date de délivrance\\n11 FEB / FÉV 2017\\n\\nDate of expiry / Date d'expiration\\n10 FEB / FÉV 2027\\n\\nHolder's signature\\n[unleserlich - Unterschrift]\\n\\nP\\u003cEXARIVERA\\u003c\\u003cSAM\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\nX1234567\\u003c7EXA0003148M2702102\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c\\u003c0\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01LPiXD5MEACbGtDcvGAJ5Jf"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__get_party",
+      "input": {
+        "party_id_or_name": "Alex Rivera"
+      },
+      "tool_use_id": "toolu_01MEz2BBSpGFNh1AUPMvULuG"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"found\":false,\"message\":\"No person or organisation matches in the person's records.\"}\n</ordnung_record>",
+      "tool_use_id": "toolu_01MEz2BBSpGFNh1AUPMvULuG"
+    },
+    {
+      "type": "text",
+      "text": "I"
+    },
+    {
+      "type": "text",
+      "text": " don"
+    },
+    {
+      "type": "text",
+      "text": "'t have a"
+    },
+    {
+      "type": "text",
+      "text": " health"
+    },
+    {
+      "type": "text",
+      "text": " ins"
+    },
+    {
+      "type": "text",
+      "text": "urance number for Alex"
+    },
+    {
+      "type": "text",
+      "text": " Rivera in the records."
+    },
+    {
+      "type": "text",
+      "text": "\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " Alex Rivera is"
+    },
+    {
+      "type": "text",
+      "text": "n't t"
+    },
+    {
+      "type": "text",
+      "text": "racked as a separate party"
+    },
+    {
+      "type": "text",
+      "text": " in"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung,"
+    },
+    {
+      "type": "text",
+      "text": " so there's no call"
+    },
+    {
+      "type": "text",
+      "text": "-"
+    },
+    {
+      "type": "text",
+      "text": "sheet entry for them"
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "party"
+    },
+    {
+      "type": "text",
+      "text": ":"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "ty"
+    },
+    {
+      "type": "text",
+      "text": "_e"
+    },
+    {
+      "type": "text",
+      "text": "at"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "ex"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": " "
+    },
+    {
+      "type": "text",
+      "text": "—"
+    },
+    {
+      "type": "text",
+      "text": " not"
+    },
+    {
+      "type": "text",
+      "text": " mat"
+    },
+    {
+      "type": "text",
+      "text": "ching].\n- The two letters"
+    },
+    {
+      "type": "text",
+      "text": " filed under Alex in the"
+    },
+    {
+      "type": "text",
+      "text": " household are act"
+    },
+    {
+      "type": "text",
+      "text": "ually addressed to S"
+    },
+    {
+      "type": "text",
+      "text": "am Rivera:"
+    },
+    {
+      "type": "text",
+      "text": " a"
+    },
+    {
+      "type": "text",
+      "text": " health insurance contrib"
+    },
+    {
+      "type": "text",
+      "text": "ution not"
+    },
+    {
+      "type": "text",
+      "text": "ice from Mu"
+    },
+    {
+      "type": "text",
+      "text": "ster"
+    },
+    {
+      "type": "text",
+      "text": " B"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": " [doc:do"
+    },
+    {
+      "type": "text",
+      "text": "c_9t"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "r"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "1"
+    },
+    {
+      "type": "text",
+      "text": "yp"
+    },
+    {
+      "type": "text",
+      "text": "ba"
+    },
+    {
+      "type": "text",
+      "text": "] and a passport [doc"
+    },
+    {
+      "type": "text",
+      "text": ":doc_1d"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "p8"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "p"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "ga"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "]"
+    },
+    {
+      "type": "text",
+      "text": " — both show"
+    },
+    {
+      "type": "text",
+      "text": " Sam Rivera's own"
+    },
+    {
+      "type": "text",
+      "text": " details, not Alex's."
+    },
+    {
+      "type": "text",
+      "text": " This"
+    },
+    {
+      "type": "text",
+      "text": " m"
+    },
+    {
+      "type": "text",
+      "text": "ismatch (filed for"
+    },
+    {
+      "type": "text",
+      "text": " Alex, but content"
+    },
+    {
+      "type": "text",
+      "text": " about"
+    },
+    {
+      "type": "text",
+      "text": " Sam) is worth chec"
+    },
+    {
+      "type": "text",
+      "text": "king/"
+    },
+    {
+      "type": "text",
+      "text": "fixing in Ordn"
+    },
+    {
+      "type": "text",
+      "text": "ung.\n\nIf"
+    },
+    {
+      "type": "text",
+      "text": " Alex has their"
+    },
+    {
+      "type": "text",
+      "text": " own health insurance letter,"
+    },
+    {
+      "type": "text",
+      "text": " it hasn't been filed"
+    },
+    {
+      "type": "text",
+      "text": " in a"
+    },
+    {
+      "type": "text",
+      "text": " way"
+    },
+    {
+      "type": "text",
+      "text": " Ordnung rec"
+    },
+    {
+      "type": "text",
+      "text": "ognizes as"
+    },
+    {
+      "type": "text",
+      "text": " the"
+    },
+    {
+      "type": "text",
+      "text": "irs yet."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "I don't have a health insurance number for Alex Rivera in the records.\n\n- Alex Rivera isn't tracked as a separate party in Ordnung, so there's no call-sheet entry for them [party:pty_eatxsexnt9s3 — not matching].\n- The two letters filed under Alex in the household are actually addressed to Sam Rivera: a health insurance contribution notice from Muster BKK [doc:doc_9t9tmrv1ypba] and a passport [doc:doc_1dgp8tp2ga0c] — both show Sam Rivera's own details, not Alex's. This mismatch (filed for Alex, but content about Sam) is worth checking/fixing in Ordnung.\n\nIf Alex has their own health insurance letter, it hasn't been filed in a way Ordnung recognizes as theirs yet.",
+        "usage": {
+          "input_tokens": 8,
+          "output_tokens": 1074,
+          "cache_read_tokens": 32278,
+          "cache_creation_tokens": 7261,
+          "cost_usd": 0.0462556,
+          "duration_ms": 17987,
+          "turns": 5
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
