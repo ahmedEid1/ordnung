@@ -34,6 +34,16 @@ from evals.ask.run import (
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
 
 
+def _record_flags(args: argparse.Namespace) -> str:
+    """How this set is recorded: the development set on another day than its own, in the open; the held-out set on
+    the day it is built for."""
+    return (
+        "--live --today <its day>"
+        if getattr(args, "set", "dev") == "heldout"
+        else "--live --allow-another-today"
+    )
+
+
 def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     """The CI gate: what the replayed run must meet (empty when every threshold holds)."""
     s = result.summary
@@ -41,13 +51,13 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     if result.misses:
         problems.append(
             f"{len(result.misses)} question(s) have no recording ({', '.join(sorted(result.misses))}) "
-            "— record them with --live"
+            f"— record them with {_record_flags(args)}"
         )
     if result.stale:
         listed = "; ".join(f"{qid}: {', '.join(tools)}" for qid, (_, tools) in sorted(result.stale.items()))
         problems.append(
             f"{len(result.stale)} recording(s) have tool results the current tools no longer give ({listed}) "
-            "— delete them with --prune-stale and record them again with --live"
+            f"— delete them with --prune-stale and record them again with {_record_flags(args)}"
         )
     if s["not_answered"]:
         problems.append(f"{s['not_answered']} question(s) got no answer")
@@ -217,8 +227,9 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--allow-another-today",
         action="store_true",
-        help="with --live: record on another day than the set's — only a smoke into a scratch --recorded-dir, thrown "
-        "away (the model would see two todays)",
+        help="with --live: record on another day than the set's — the development set, pinned to 2026-09-28, recorded "
+        "again in the open (the model sees two todays, and the results say both days); the held-out set only as a "
+        "smoke into a scratch --recorded-dir outside the checkout",
     )
     parser.add_argument(
         "--min-strict-accuracy",
@@ -271,12 +282,16 @@ def main(
         if only:
             print("error: --write needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        payload = _payload(result, args, args.date or date.today().isoformat())
+        try:
+            payload = _payload(result, args, args.date or date.today().isoformat())
+        except BenchmarkError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
         recording = None if result.config.live else replaces_a_recording(args.results_dir, payload)
         if recording is not None:
             print(
-                f"error: {recording.name} is a live run as recorded, which a re-scoring never replaces: write it "
-                "with a later --date (it names the run it re-scores)",
+                f"error: {recording.name} is a live run as recorded, which a re-scoring never replaces (a "
+                "re-scoring is written as <date>-<model>-ask…-rescored.json, dated the day it is made)",
                 file=sys.stderr,
             )
             return 2
@@ -290,27 +305,39 @@ def main(
         if only:
             print("error: --check-docs needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        stale = stale_docs(
-            lambda day: _payload(result, args, day),
-            args.results_dir,
-            args.model,
-            as_recorded=lambda day: results_payload(result, run_date=day, schema=1),
-            set_name=args.set,
-            repeat=args.repeat,
-        )
+        try:
+            stale = stale_docs(
+                lambda day: _payload(result, args, day, rescoring=True),
+                args.results_dir,
+                args.model,
+                as_recorded=lambda day: results_payload(result, run_date=day, schema=1),
+                as_live=lambda day: results_payload(result, run_date=day),
+                set_name=args.set,
+                repeat=args.repeat,
+            )
+        except BenchmarkError as exc:
+            stale = [str(exc)]
         problems += [f"{problem} — regenerate with --write --date <its date>" for problem in stale]
     for problem in problems:
         print(f"gate: {problem}", file=sys.stderr)
     return 1 if problems else 0
 
 
-def _payload(result: RunResult, args: argparse.Namespace, day: str) -> dict[str, Any]:
-    """The results file of ``day``: a replay re-scores the live run of the newest committed file before it."""
-    recorded = (
-        None
-        if result.config.live
-        else recorded_on(args.results_dir, args.model, day, set_name=args.set, repeat=args.repeat)
-    )
+def _payload(
+    result: RunResult, args: argparse.Namespace, day: str, *, rescoring: bool | None = None
+) -> dict[str, Any]:
+    """The results file of ``day``: a live run's own, or a replay's re-scoring (``-rescored``) of the live run it
+    replays — the newest committed one made before that day's re-scoring, the same day's included."""
+    if rescoring is None:
+        rescoring = not result.config.live
+    if not rescoring:
+        return results_payload(result, run_date=day)
+    recorded = recorded_on(args.results_dir, args.model, day, set_name=args.set, repeat=args.repeat)
+    if recorded is None:
+        raise BenchmarkError(
+            f"a replay re-scores a live run, and {args.results_dir} has no results file of one on or before {day} "
+            "for this set and run: record it with --live --write"
+        )
     return results_payload(result, run_date=day, recorded=recorded)
 
 

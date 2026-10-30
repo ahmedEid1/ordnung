@@ -402,8 +402,10 @@ python -m evals.ask                  # the Ask benchmark, replayed
 python -m evals.present --site /path/to/site   # the report page
 ```
 
-Recording costs tokens: `python -m evals.run --live --split <split> --model claude-sonnet-5` records answers the
-replays above then reuse; the [history page](evals-history.md) states what each recording cost.
+Recording costs tokens: `python -m evals.run --live --split test --allow-another-today --model claude-sonnet-5`
+records the test split's answers again, which the replays above then reuse (its letters are pinned to their own
+days, and the recording says both days); a split written after the freeze is built for the day it is recorded and
+needs no flag. The [history page](evals-history.md) states what each recording cost.
 
 More: [every earlier run](evals-history.md) · [the Ask benchmark](evals-ask.md) · [the results
 files](../evals/results).

@@ -153,6 +153,74 @@ def test_the_command_line_says_when_another_today_is_allowed() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# another today: a disclosed re-recording of a development set, or a smoke into a scratch folder
+# --------------------------------------------------------------------------------------------------
+
+COMMITTED = ROOT / "evals" / "recorded"
+
+
+def test_another_today_records_into_the_checkout_only_a_development_set() -> None:
+    """A development set is pinned to its own today and can only be recorded again on another day (E3 may change
+    what Ask's tools return before the freeze): --allow-another-today is that re-recording, disclosed. A held-out
+    or final set takes it only for a smoke into a scratch folder outside the checkout."""
+    harness.check_another_today(COMMITTED, development=True)
+    harness.check_another_today(Path("/tmp/scratch-smoke"), development=False)
+    for folder in (COMMITTED, COMMITTED / "ask", ROOT / "anything"):
+        with pytest.raises(harness.HarnessError, match="scratch folder"):
+            harness.check_another_today(folder, development=False)
+
+
+def _run_config(*args: str) -> eval_run.RunConfig:
+    return eval_run.config_from_args(eval_run.build_parser().parse_args(list(args)))
+
+
+def test_a_held_out_split_is_never_recorded_into_the_checkout_on_another_day(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _at(monkeypatch, DAY)
+    letters = [e for e in load_manifest(eval_run.MANIFEST_PATH) if e.split == "holdout3"][:1]
+    config = _run_config("--live", "--split", "holdout3", "--allow-another-today")
+    assert config.recorded_dir.resolve().is_relative_to(ROOT)
+    with pytest.raises(harness.HarnessError, match="scratch folder"):
+        eval_run.recording_day(config, letters)
+    smoke = _run_config(
+        "--live", "--split", "holdout3", "--allow-another-today", "--recorded-dir", "/tmp/smoke"
+    )
+    assert eval_run.recording_day(smoke, letters) == DAY  # a smoke still stops at midnight
+
+
+def test_a_disclosed_re_recording_says_both_days(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The development letters re-recorded on another day: every new cassette says the day it was recorded on, and
+    no "today" (the letters' today is in each request); a recording on its own day says both, the same."""
+    _at(monkeypatch, DAY)
+    letters = [e for e in load_manifest(eval_run.MANIFEST_PATH) if e.split == "dev"][:2]
+    config = _run_config("--live", "--split", "dev", "--allow-another-today")
+    live = eval_run.live_setup(config, lambda _message: None, letters)
+    assert live.day == DAY  # a turn recorded after midnight is refused here too
+    assert live.provenance["recorded_on"] == DAY.isoformat() and "today" not in live.provenance
+    own = letters[0].model_copy(update={"today": DAY.isoformat()})
+    live = eval_run.live_setup(_run_config("--live", "--split", "dev"), lambda _message: None, [own])
+    assert (live.provenance["recorded_on"], live.provenance["today"]) == (DAY.isoformat(), DAY.isoformat())
+
+
+def test_the_ask_development_set_is_re_recorded_in_the_open_and_the_held_out_set_never(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from evals.ask import run as ask_run
+
+    _at(monkeypatch, DAY)
+    dev = Config(live=True, allow_another_today=True, recorded_dir=COMMITTED / "ask")
+    assert ask_run.recording_day(dev) == DAY
+    setup = ask_run.live_setup(dev)
+    assert setup.provenance["recorded_on"] == DAY.isoformat() and "today" not in setup.provenance
+    held = Config(set_name="heldout", live=True, allow_another_today=True, recorded_dir=COMMITTED / "ask")
+    with pytest.raises(BenchmarkError, match="scratch folder"):
+        ask_run.recording_day(held)
+    own_day = Config(set_name="heldout", live=True, today=DAY, recorded_dir=COMMITTED / "ask")
+    assert ask_run.live_setup(own_day).provenance["today"] == DAY.isoformat()
+
+
+# --------------------------------------------------------------------------------------------------
 # the held-out Ask set
 # --------------------------------------------------------------------------------------------------
 
@@ -245,3 +313,23 @@ def test_the_stress_cells_are_built_for_a_day(tmp_path: Path) -> None:
     with pytest.raises(stress.BuildError, match="2026-11-20"):
         stress.base_set(entries, today=DAY)
     assert by_id  # the default build (no day) is the one the tests of evals/perturb pin
+
+
+def test_a_stress_run_says_the_day_its_cells_were_built_for(tmp_path: Path) -> None:
+    """The results file names the day (``meta.today``), so its replay (``make eval-reproduce``) builds the same
+    letters again; a build without a day (before item 8) writes none."""
+    from scripts import eval_perturb
+
+    def meta(stress_doc: dict[str, Any] | None) -> dict[str, Any]:
+        return eval_perturb.run_meta(
+            run_date=DAY.isoformat(),
+            model="claude-sonnet-5",
+            cells=["I1"],
+            live=False,
+            recorded_dir=tmp_path,
+            stress_doc=stress_doc,
+            runs={},
+        )
+
+    assert meta({"today": DAY.isoformat(), "templates_sha256": "0"})["today"] == DAY.isoformat()
+    assert "today" not in meta({"templates_sha256": "0"}) and "today" not in meta(None)

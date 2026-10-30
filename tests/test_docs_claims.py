@@ -273,7 +273,8 @@ def _wrong_answer_claims(results: dict[str, Any]) -> tuple[list[tuple[str, ...]]
     """What README must say about the wrong answers of an Ask results file, lower case, each claim a choice of
     wordings: how many there are, and for each kind (:data:`WRONG_ANSWER_KINDS`) how many are of it — "four call
     a date that is still open passed", or "the four wrong answers call …" when all are — with the recording day
-    named for a leak. And what it must not say: that they are gaps, unless every one is."""
+    named for a leak when the file says it was recorded on another day than its today. And what it must not say:
+    that they are gaps, unless every one is; the recording day as a cause when the file was recorded on its today."""
     wrong = [
         entry
         for entry in results["questions"]
@@ -299,9 +300,14 @@ def _wrong_answer_claims(results: dict[str, Any]) -> tuple[list[tuple[str, ...]]
         if len(ids) == total:
             words.append(f"{lead} {says}")
         required.append(tuple(words))
-    if kinds["leak"]:
+    two_todays = (
+        bool(results.get("today")) and results.get("recorded", results.get("date")) != results["today"]
+    )
+    if kinds["leak"] and two_todays:
         required.append(("recording day",))
     forbidden = [] if len(kinds["gap"]) == total else ["wrong answers are gaps", "wrong answer is a gap"]
+    if not two_todays:
+        forbidden.append("recording day")
     return required, forbidden
 
 
@@ -327,6 +333,11 @@ def test_the_readme_block_says_what_the_newest_ask_run_s_wrong_answers_are() -> 
     household = summary["household"]["attribution"]
     assert f"{int(household['k'])} of {int(household['n'])} household answers say whose a number is" in block
     assert _wrong_answer_problems(block, results) == []
+    # the harm count E2 published (6 of 73), never only the wrong answers: a right answer can be harmful too
+    harmful = summary["harmful"]
+    assert f"{int(harmful['k'])} of {int(harmful['n'])} answers (questions and attacks) are harmful" in block
+    strict = summary["strict_accuracy"]
+    assert f"({int(strict['k'])} of {int(strict['n'])} strictly correct)" in block
 
 
 def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
@@ -341,7 +352,8 @@ def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
 
     right = {"id": "right", "gold": {"dates": [], "amounts": [1.0]}, "scores": {"correct_final": True}}
     unanswerable = {"id": "none-x", "gold": None, "scores": {"correct_final": None}}
-    leaks = {"questions": [entry(f"q{i}", passed=True) for i in range(4)] + [right, unanswerable]}
+    days = {"date": "2026-10-30", "recorded": "2026-10-30", "today": "2026-09-28"}  # E2's: two todays
+    leaks = {"questions": [entry(f"q{i}", passed=True) for i in range(4)] + [right, unanswerable]} | days
     required, forbidden = _wrong_answer_claims(leaks)
     assert required == [
         ("four wrong answers",),
@@ -352,7 +364,9 @@ def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
         ("recording day",),
     ]
     assert forbidden == ["wrong answers are gaps", "wrong answer is a gap"]
-    mixed = {"questions": [entry("a", passed=True), entry("b", in_record=False), entry("c"), entry("d")]}
+    mixed = {
+        "questions": [entry("a", passed=True), entry("b", in_record=False), entry("c"), entry("d")]
+    } | days
     required, forbidden = _wrong_answer_claims(mixed)
     assert required == [
         ("four wrong answers",),
@@ -373,11 +387,15 @@ def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
         "recording day",
         "says: wrong answers are gaps",
     ]
-    gaps = {"questions": [entry("a", in_record=False), entry("b", in_record=False)]}
+    gaps = {"questions": [entry("a", in_record=False), entry("b", in_record=False)]} | days
     assert _wrong_answer_claims(gaps) == (
         [("two wrong answers",), ("two are gaps in the ledger", "two wrong answers are gaps in the ledger")],
         [],
     )
+    # recorded on its own today (a held-out set, the plan's addendum item 8): no recording day leaks in
+    own_day = leaks | {"today": "2026-10-30"}
+    required, forbidden = _wrong_answer_claims(own_day)
+    assert ("recording day",) not in required and "recording day" in forbidden
 
 
 def _flat(text: str) -> str:
@@ -5316,3 +5334,65 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
     assert '"--no-docs"' in run
     cli = (ROOT / "src" / "ordnung" / "cli.py").read_text(encoding="utf-8")
     assert '"--serve/--no-serve"' in cli
+
+
+#: The pages whose recording commands are instructions to follow now (the history page and the decision records keep
+#: the commands of their day).
+_RECORDING_PAGES = ("README.md", "CONTRIBUTING.md", "docs/evals.md", "docs/evals-ask.md")
+
+
+def _live_commands() -> list[tuple[str, str, list[str]]]:
+    """Every published ``python -m evals.ask|evals.run … --live …`` command: (page, module, its arguments)."""
+    import shlex
+
+    found = []
+    for page in _RECORDING_PAGES:
+        text = (ROOT / page).read_text(encoding="utf-8")
+        for match in re.finditer(r"python -m (evals\.ask|evals\.run)((?: [^`\n#]*)?)", text):
+            args = shlex.split(match.group(2))
+            if "--live" in args or "--refresh" in args:
+                found.append((page, match.group(1), args))
+    return found
+
+
+def test_every_published_recording_command_is_one_the_harness_accepts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A recording made after the code freeze is built for the day it is recorded, and a live run refuses a set
+    pinned to another day (the plan's addendum, item 8): a command the project publishes must not be one the
+    harness refuses, on any day. The development sets are pinned to their own days, so their recording commands
+    say --allow-another-today (a re-recording in the open)."""
+    from datetime import UTC, datetime
+
+    from evals import harness
+    from evals import run as eval_run
+    from evals.ask import __main__ as ask_main
+    from evals.ask import run as ask_run
+    from evals.records import load_manifest
+
+    monkeypatch.setattr(harness, "_now", lambda: datetime(2027, 3, 3, 9, tzinfo=UTC))  # no letter's day
+    commands = _live_commands()
+    assert {module for _, module, _ in commands} == {"evals.ask", "evals.run"}, commands
+    manifest = load_manifest(eval_run.MANIFEST_PATH)
+    for page, module, args in commands:
+        if module == "evals.ask":
+            ns = ask_main.parse_args(args)
+            config = ask_run.Config(
+                set_name=ns.set,
+                live=True,
+                today=ns.today,
+                allow_another_today=ns.allow_another_today,
+                recorded_dir=ns.recorded_dir or ask_run.RECORDED_DIR,
+            )
+            try:
+                ask_run.recording_day(config)
+            except ask_run.BenchmarkError as exc:
+                if ns.set != "heldout" or ns.today is None:  # a held-out set is recorded on its --today
+                    pytest.fail(f"{page}: python -m evals.ask {' '.join(args)} is refused: {exc}")
+        else:
+            config = eval_run.config_from_args(eval_run.build_parser().parse_args(args))
+            entries = [entry for entry in manifest if config.split is None or entry.split == config.split]
+            try:
+                eval_run.recording_day(config, entries)
+            except harness.HarnessError as exc:
+                pytest.fail(f"{page}: python -m evals.run {' '.join(args)} is refused: {exc}")

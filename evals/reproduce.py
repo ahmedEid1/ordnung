@@ -101,7 +101,8 @@ WEIGHTS = {
 }
 Say = Callable[[str], None]
 _ASK_NAME = re.compile(
-    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<model>.+?)-ask(?P<heldout>-heldout)?(?:-r(?P<repeat>\d+))?\.json$"
+    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<model>.+?)-ask(?P<heldout>-heldout)?(?:-r(?P<repeat>\d+))?"
+    r"(?P<rescored>-rescored)?\.json$"
 )
 _HIDDEN = (".bad", ".tmp")
 
@@ -273,6 +274,12 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
     row: dict[str, Any] = {"file": path.name, "sha256": sha256_file(path), "kind": kind, "role": role}
     if kind == "run":
         row.update(split=meta["split"], repeat=int(meta.get("repeat", 1)))
+        day = meta.get("recording_day")
+        if role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
+            raise ReproduceError(
+                f"{path.name}: a {role} recording made on {day} for letters of {', '.join(meta['simulated_today'])} "
+                "— two todays: its letters are built for the day they are recorded (the plan's addendum, item 8)"
+            )
     elif kind == "ask":
         match = _ASK_NAME.match(path.name)
         row.update(
@@ -280,7 +287,7 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
             repeat=int(match["repeat"]) if match and match["repeat"] else 1,
             schema=int(data.get("schema", 1)),
         )
-        if data.get("recorded"):  # a re-scoring of an earlier live run's recordings (schema 2)
+        if _ask_rescoring(data):  # a re-scoring of a live run's recordings (schema 2, named -rescored)
             row["rescores"] = data["recorded"]
     elif kind == "e2e":
         row["splits"] = sorted(meta.get("splits") or [])
@@ -292,7 +299,7 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         recorded = {
             "date": data.get("date"),
             "commit": None,
-            "backend": "replay" if data.get("recorded") else "live",
+            "backend": "replay" if _ask_rescoring(data) else "live",
         }
     else:
         recorded = {
@@ -302,6 +309,20 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         }
     row["recorded"] = recorded
     return row
+
+
+def _ask_rescoring(data: Mapping[str, Any]) -> bool:
+    """Whether an Ask results file re-scores a live run (schema 2 says so; every live run writes schema 2 too, with
+    its own date as "recorded"): the same reading as :func:`evals.ask.report.is_rescoring`."""
+    return int(data.get("schema", 1)) >= 2 and data.get("backend") == "replay"
+
+
+def _made(row: Mapping[str, Any]) -> tuple[str, ...]:
+    """The order a group's files were made in: by name, and an Ask set's by date with a day's re-scoring after its
+    live run (``…-ask-rescored.json`` sorts before ``…-ask.json`` by name)."""
+    if row["kind"] == "ask":
+        return (str(row["recorded"]["date"]), str("rescores" in row), row["file"])
+    return (row["file"],)
 
 
 def _group(row: Mapping[str, Any], data: Mapping[str, Any]) -> tuple[Any, ...] | None:
@@ -347,7 +368,7 @@ def _checks(
         assert key is not None
         groups.setdefault(key, []).append(row)
     for members in groups.values():
-        members.sort(key=lambda row: row["file"])
+        members.sort(key=_made)
         newest = members[-1]
         checked = [newest]
         if newest["kind"] == "ask" and newest["schema"] >= 2:
@@ -960,6 +981,9 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
                 args = list(index["gates"]["ask/dev"]["args"])
             else:
                 args = ["--set", row["set"], "--repeat", str(row["repeat"])]
+            if row["set"] == "heldout" and data.get("today"):
+                # built, asked and scored for the day it was recorded (the plan's addendum, item 8)
+                args += ["--today", str(data["today"])]
             if "--check-docs" not in args:
                 args.append("--check-docs")
             if not default:
@@ -995,6 +1019,9 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
                 "--check",
                 str(path),
             )
+            built_for = (data.get("meta") or {}).get("today")
+            if built_for:  # its cells were built for the day they were recorded (the plan's addendum, item 8)
+                argv += ["--today", str(built_for)]
             tasks.append(Task(name, argv, out))
         elif row["kind"] == "analysis":
             if row.get("analysis") == "final":

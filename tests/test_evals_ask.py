@@ -1009,7 +1009,7 @@ def test_the_household_group_is_asked_on_its_ledger_and_reported_apart(tmp_path:
     missing = run(Config(only=only, recorded_dir=tmp_path / "nothing-recorded"), work_dir=tmp_path)
     assert gate_failures(missing, parse_args([]))[0] == (
         "3 question(s) have no recording (deadline-steuerbescheid_2025-0, hh-alex-passport, "
-        "hh-my-health-number) — record them with --live"
+        "hh-my-health-number) — record them with --live --allow-another-today"
     )
     assert missing.summary["household"]["not_answered"] == 2
 
@@ -1128,7 +1128,7 @@ def test_a_replay_fails_when_the_tools_would_answer_differently(tmp_path: Path) 
     assert replayed.stale == {only[0]: (path, ["list_items"])}
     assert gate_failures(replayed, parse_args([])) == [
         "1 recording(s) have tool results the current tools no longer give (deadline-steuerbescheid_2025-0: "
-        "list_items) — delete them with --prune-stale and record them again with --live"
+        "list_items) — delete them with --prune-stale and record them again with --live --allow-another-today"
     ]
     assert main(["--only", only[0], "--prune-stale"], recorded_dir=recorded) == 1
     assert not path.exists()

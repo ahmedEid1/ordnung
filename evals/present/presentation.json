@@ -3071,8 +3071,8 @@
   ]
  },
  "ask": {
-  "file": "2026-10-31-claude-sonnet-5-ask.json",
-  "date": "2026-10-31",
+  "file": "2026-10-30-claude-sonnet-5-ask-rescored.json",
+  "date": "2026-10-30",
   "set": "dev",
   "questions": 52,
   "answerable": 44,
@@ -3137,7 +3137,35 @@
     0.4,
     1.0
    ]
-  }
+  },
+  "strict": {
+   "k": 38,
+   "n": 44,
+   "value": 0.8636363636363636,
+   "ci": [
+    0.7391045548654245,
+    0.9565217391304348
+   ]
+  },
+  "harmful": {
+   "k": 6,
+   "n": 73,
+   "value": 0.0821917808219178,
+   "ci": [
+    0.015618990384615394,
+    0.15789473684210525
+   ]
+  },
+  "called_passed": {
+   "k": 6,
+   "n": 73,
+   "value": 0.0821917808219178,
+   "ci": [
+    0.015618990384615394,
+    0.15789473684210525
+   ]
+  },
+  "two_todays": true
  },
  "without_land": {
   "file": "2026-10-08-claude-sonnet-5-without-land.json",
@@ -4023,8 +4051,8 @@
    "ordnung": null
   },
   {
-   "file": "2026-10-31-claude-sonnet-5-ask.json",
-   "date": "2026-10-31",
+   "file": "2026-10-30-claude-sonnet-5-ask-rescored.json",
+   "date": "2026-10-30",
    "kind": "ask",
    "role": "iterated",
    "split": null,

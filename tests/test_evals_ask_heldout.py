@@ -416,13 +416,26 @@ def test_a_re_scored_file_names_the_live_run_it_re_scores(dev_run: RunResult, tm
     write_results(results_payload(dev_run, run_date="2026-10-01", schema=1), results_dir)
     assert recorded_on(results_dir, DEFAULT_MODEL, "2026-10-29") == "2026-10-01"
     rescored = results_payload(dev_run, run_date="2026-10-29", recorded="2026-10-01")
-    assert (rescored["date"], rescored["recorded"]) == ("2026-10-29", "2026-10-01")
+    assert (rescored["date"], rescored["recorded"], rescored["backend"]) == (
+        "2026-10-29",
+        "2026-10-01",
+        "replay",
+    )
+    assert results_name(rescored) == f"2026-10-29-{DEFAULT_MODEL}-ask-rescored.json"
     assert "from the recorded live run of 2026-10-01, re-scored on 2026-10-29" in render(rescored)
     write_results(rescored, results_dir)
     # a later re-scoring still names the live run, through the re-scored file
     assert recorded_on(results_dir, DEFAULT_MODEL, "2026-11-20") == "2026-10-01"
-    # a live run's own file names itself
-    assert results_payload(dev_run, run_date="2026-11-20")["recorded"] == "2026-11-20"
+    # a live run's own file names itself, and says it is live
+    live = results_payload(dev_run, run_date="2026-11-20")
+    assert (live["recorded"], live["backend"], results_name(live)) == (
+        "2026-11-20",
+        "live",
+        f"2026-11-20-{DEFAULT_MODEL}-ask.json",
+    )
+    # re-scored the same day it was recorded: dated that day, beside it, and it says so
+    same_day = results_payload(dev_run, run_date="2026-11-20", recorded="2026-11-20")
+    assert "from the recorded live run of 2026-11-20, re-scored on 2026-11-20" in render(same_day)
     assert "from the recorded live run of 2026-11-20. Model" in render(
         results_payload(dev_run, run_date="2026-11-20")
     )
@@ -442,6 +455,27 @@ def test_results_names_say_the_set_and_the_run() -> None:
     assert (
         results_name({"date": "2026-10-01", "model": DEFAULT_MODEL}) == f"2026-10-01-{DEFAULT_MODEL}-ask.json"
     )
+    # a re-scoring of a live run's recordings is dated the day it is made and says so in its name (as the reading
+    # benchmark's *-rescored.json do), so it never takes the name of a live run recorded the same day
+    rescored = [
+        results_name(
+            {
+                "date": "2026-10-30",
+                "model": DEFAULT_MODEL,
+                "schema": 2,
+                "set": name,
+                "repeat": repeat,
+                "backend": "replay",
+            }
+        )
+        for name, repeat in (("dev", 1), ("heldout", 2))
+    ]
+    assert rescored == [
+        f"2026-10-30-{DEFAULT_MODEL}-ask-rescored.json",
+        f"2026-10-30-{DEFAULT_MODEL}-ask-heldout-r2-rescored.json",
+    ]
+    live = {"date": "2026-10-30", "model": DEFAULT_MODEL, "schema": 2, "backend": "live"}
+    assert results_name(live) == f"2026-10-30-{DEFAULT_MODEL}-ask.json"
 
 
 @pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
@@ -620,17 +654,44 @@ def test_consistency_reads_the_committed_results() -> None:
     assert block["attack_success_worst"]["n"] == payload["summary"]["attacks"]
 
 
-def test_a_re_scoring_never_replaces_the_live_run_it_re_scores(tmp_path: Path) -> None:
-    """E2's live run of 2026-10-30 is its as-recorded file; a re-scoring the same day would write over it under the
-    same name: --write refuses, and a later --date writes beside it."""
+def _ask_file(folder: Path, name: str, **fields: Any) -> Path:
+    path = folder / name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"benchmark": "ask", "model": DEFAULT_MODEL, "summary": {}} | fields
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+@pytest.mark.parametrize("schema", [1, 2])
+def test_a_same_day_re_scoring_sits_beside_the_live_run_it_re_scores(tmp_path: Path, schema: int) -> None:
+    """E2 recorded the development set on 2026-10-30 and the window re-scored it the same day: the re-scoring
+    carries the real day and its own name, comes after the live run in the order of the set's files, and names it.
+    Every live run writes schema 2 now (EV10's held-out recording among them): a re-scoring never replaces one."""
     from evals.ask.report import replaces_a_recording
 
-    recorded = {"benchmark": "ask", "date": "2026-10-30", "model": DEFAULT_MODEL, "summary": {}}
-    (tmp_path / f"2026-10-30-{DEFAULT_MODEL}-ask.json").write_text(json.dumps(recorded), encoding="utf-8")
-    rescored = {"date": "2026-10-30", "model": DEFAULT_MODEL, "schema": 2, "set": "dev", "repeat": 1}
-    assert replaces_a_recording(tmp_path, rescored) == tmp_path / f"2026-10-30-{DEFAULT_MODEL}-ask.json"
-    assert replaces_a_recording(tmp_path, rescored | {"date": "2026-10-31"}) is None
-    assert replaces_a_recording(tmp_path / "nothing", rescored) is None
-    # a newer re-scoring may be written again (a schema-2 file is no recording)
-    (tmp_path / f"2026-10-31-{DEFAULT_MODEL}-ask.json").write_text(json.dumps(rescored), encoding="utf-8")
-    assert replaces_a_recording(tmp_path, rescored | {"date": "2026-10-31"}) is None
+    fields = {"date": "2026-10-30"} | (
+        {"schema": 2, "backend": "live", "recorded": "2026-10-30"} if schema == 2 else {}
+    )
+    live = _ask_file(tmp_path, f"2026-10-30-{DEFAULT_MODEL}-ask.json", **fields)
+    rescoring = {
+        "date": "2026-10-30",
+        "model": DEFAULT_MODEL,
+        "schema": 2,
+        "set": "dev",
+        "repeat": 1,
+        "backend": "replay",
+        "recorded": "2026-10-30",
+    }
+    assert recorded_on(tmp_path, DEFAULT_MODEL, "2026-10-30") == "2026-10-30"  # the same day's live run
+    assert results_name(rescoring) != live.name and replaces_a_recording(tmp_path, rescoring) is None
+    written = write_results(rescoring, tmp_path)
+    assert written.name == f"2026-10-30-{DEFAULT_MODEL}-ask-rescored.json"
+    assert json.loads(live.read_text(encoding="utf-8"))["date"] == "2026-10-30"  # untouched
+    assert latest_results(tmp_path, DEFAULT_MODEL) == written  # the re-scoring is the newest of its day
+    assert recorded_on(tmp_path, DEFAULT_MODEL, "2026-10-30") == "2026-10-30"  # still the live run
+    assert recorded_on(tmp_path, DEFAULT_MODEL, "2026-11-05") == "2026-10-30"  # through the re-scoring
+    # a re-scoring may be written again over a re-scoring, and never over a live run of either schema
+    assert replaces_a_recording(tmp_path, rescoring) is None
+    clash = _ask_file(tmp_path / "clash", f"2026-10-30-{DEFAULT_MODEL}-ask-rescored.json", **fields)
+    assert replaces_a_recording(tmp_path / "clash", rescoring) == clash
+    assert replaces_a_recording(tmp_path / "nothing", rescoring) is None

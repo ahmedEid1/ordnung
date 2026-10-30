@@ -336,12 +336,24 @@ def _summed(
 # --------------------------------------------------------------------------------------------------
 
 
+def _ask_made(name: str, data: Mapping[str, Any]) -> tuple[str, bool, str]:
+    """When an Ask results file was made: its date, a day's re-scoring after the same day's live run (whose name
+    sorts after it), then its name."""
+    rescoring = int(data.get("schema", 1)) >= 2 and data.get("backend") == "replay"
+    return str(data.get("date", "")), rescoring, name
+
+
 def _ask(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
-    name = _newest(found, "ask", "iterated")
-    if name is None:
+    names = [name for name, (kind, role, _) in found.items() if kind == "ask" and role == "iterated"]
+    if not names:
         return None
+    name = max(names, key=lambda name: _ask_made(name, found[name][2]))
     data = found[name][2]
     summary = data["summary"]
+    schema_2 = int(data.get("schema", 1)) >= 2
+    # schema 1's "harmful" is an open date called passed; schema 2 keeps that as "called_passed" and makes
+    # "harmful" the one definition (called passed, a later date, a wrong amount or a member's value)
+    called_passed = summary["called_passed"] if schema_2 else summary["harmful"]
     return {
         "file": name,
         "date": data.get("date"),
@@ -357,13 +369,19 @@ def _ask(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
         "attack_success_raw": _kn(summary["attack_success_raw"]),
         "wrong": _wrong_answers(data),
         "household": _kn(summary["household"]["attribution"]) if summary.get("household") else None,
+        "strict": _kn(summary["strict_accuracy"]) if schema_2 and summary.get("strict_accuracy") else None,
+        "harmful": _kn(summary["harmful"]),
+        "called_passed": _kn(called_passed),
+        # the benchmark's today is not the day it was recorded (schema 2 says both): the claude CLI told the model
+        # that day too, so a date called passed may be the recording day leaking in (the plan's addendum, item 8)
+        "two_todays": bool(data.get("today")) and data.get("recorded", data.get("date")) != data.get("today"),
     }
 
 
 def _wrong_answers(data: Mapping[str, Any]) -> dict[str, int]:
-    """What the wrong answers to answerable questions are: a gold date still open called passed (``leak``: the
-    recording day leaking in as today), a gold value not in Ordnung's record (``gap``), or a value the record holds
-    left out (``other``)."""
+    """What the wrong answers to answerable questions are: a gold date still open called passed (``leak``: when the
+    file was recorded on another day than its today, the recording day leaking in as today), a gold value not in
+    Ordnung's record (``gap``), or a value the record holds left out (``other``)."""
     counts = {"total": 0, "leak": 0, "gap": 0, "other": 0}
     for question in data.get("questions", []):
         scores, gold = question["scores"], question.get("gold")
@@ -546,7 +564,15 @@ def _file_rows(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dic
         if kind == "run" and role != "archive" and "ordnung" in data["metrics"]:
             row["ordnung"] = _kn(data["metrics"]["ordnung"]["due_date_accuracy"])
         rows.append(row)
-    return rows
+    # in the order the runs happened: a day's Ask re-scoring after that day's live run (whose name sorts after it)
+    return sorted(
+        rows,
+        key=lambda row: (
+            row["date"],
+            row["kind"] == "ask" and _ask_made(row["file"], found[row["file"]][2])[1],
+            row["file"],
+        ),
+    )
 
 
 def build(results_dir: Path = RESULTS_DIR) -> dict[str, Any]:

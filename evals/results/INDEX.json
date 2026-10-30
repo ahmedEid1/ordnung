@@ -225,8 +225,8 @@
    "cell": "ask/dev/r1",
    "status": "replayed",
    "checks": [
-    "2026-10-30-claude-sonnet-5-ask.json",
-    "2026-10-31-claude-sonnet-5-ask.json"
+    "2026-10-30-claude-sonnet-5-ask-rescored.json",
+    "2026-10-30-claude-sonnet-5-ask.json"
    ],
    "gate": "ask/dev"
   },
@@ -2177,6 +2177,26 @@
    "verdict": "checked"
   },
   {
+   "file": "2026-10-30-claude-sonnet-5-ask-rescored.json",
+   "sha256": "a1685927ff8c4b4671e89f5dc293308574b4f1d0742e7e28601d425bf23dbca8",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 2,
+   "rescores": "2026-10-30",
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": null,
+    "backend": "replay"
+   },
+   "gates": [
+    "ask/dev"
+   ],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
    "file": "2026-10-30-claude-sonnet-5-ask.json",
    "sha256": "6ba64a0e45283481330ea266eac797e5f4f22182aaa4813d9bf5f83e9b560052",
    "kind": "ask",
@@ -2250,26 +2270,6 @@
    },
    "gates": [],
    "check": "analysis --check",
-   "verdict": "checked"
-  },
-  {
-   "file": "2026-10-31-claude-sonnet-5-ask.json",
-   "sha256": "0d5162dd730b7a6fb12abf2badac626bda01f3212a04e3208d4bb03c7adf7da6",
-   "kind": "ask",
-   "role": "iterated",
-   "set": "dev",
-   "repeat": 1,
-   "schema": 2,
-   "rescores": "2026-10-30",
-   "recorded": {
-    "date": "2026-10-31",
-    "commit": null,
-    "backend": "replay"
-   },
-   "gates": [
-    "ask/dev"
-   ],
-   "check": "ask --check-docs",
    "verdict": "checked"
   }
  ]

@@ -112,15 +112,48 @@ def check_recording_day(simulated: Iterable[str | date], day: date, *, allow: bo
     addendum, item 8): the CLI tells the model the machine's date as well, its date override does not work in ``-p``
     mode, so a ledger or letter pinned to another day shows the model two todays (E2's Ask recording, pinned to
     28 Sep 2026 and recorded on 30 Oct, had answers call open deadlines passed). Build the letters or the ledger for
-    the day instead. ``allow``: a smoke into a scratch folder, thrown away, which repeats run 1 on its own today."""
+    the day instead. ``allow`` (``--allow-another-today``, where :func:`check_another_today` lets it): a development
+    set re-recorded in the open, or a smoke into a scratch folder."""
     days = {value.isoformat() if isinstance(value, date) else str(value) for value in simulated}
     other = sorted(days - {day.isoformat()})
     if other and not allow:
         raise HarnessError(
             f"the simulated today ({', '.join(other)}) is not the day this is recorded ({day.isoformat()}, UTC): the "
             "claude CLI tells the model that day too, so the model would see two todays — build the letters or the "
-            "ledger for the recording day (only a smoke into a scratch folder passes --allow-another-today)"
+            "ledger for the recording day; a development set, pinned to its own day, is recorded again with "
+            "--allow-another-today, which every new recording and the results disclose (a held-out or final set "
+            "takes it only for a smoke into a scratch folder)"
         )
+
+
+def check_another_today(recorded_dir: Path, *, development: bool) -> None:
+    """Where ``--allow-another-today`` may record. A development set (Ask's, the reading benchmark's dev and test
+    splits) is pinned to its own today, so recording it again before the freeze — after a change to what Ask's
+    tools return, say — is always on another day: the flag records it in the open, into the committed folder too,
+    and the cassettes (``recorded_on``) and results (Ask's ``today`` and ``date``, a run's ``simulated_today`` and
+    ``recording_day``) say both days. A held-out or final set is built for the day it is recorded; for it the flag
+    is only a smoke into a scratch folder outside the checkout, which no results file or index ever reads."""
+    if development:
+        return
+    folder = recorded_dir.resolve()
+    if folder.is_relative_to(ROOT.resolve()):
+        raise HarnessError(
+            f"--allow-another-today records a held-out or final set only into a scratch folder outside the checkout "
+            f"(not {folder}): its recording is built for the day it is recorded (--today), never pinned to another"
+        )
+
+
+def recording_provenance(day: date | None, simulated: Iterable[str | date]) -> dict[str, str]:
+    """What a live run's new cassettes say about its days: ``recorded_on`` (the UTC day of its start) and, when every
+    simulated today is that day, ``today`` too (a disclosed re-recording on another day has none: the request says
+    its today)."""
+    if day is None:
+        return {}
+    days = {value.isoformat() if isinstance(value, date) else str(value) for value in simulated}
+    return {
+        "recorded_on": day.isoformat(),
+        **({"today": day.isoformat()} if days == {day.isoformat()} else {}),
+    }
 
 
 class RecordingDayOver(LLMError):

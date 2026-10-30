@@ -101,6 +101,15 @@ def test_every_published_split_is_replayed_with_a_gate_at_its_published_number()
         assert late == 0 == published["dangerous_late_rate"]["k"], split
 
 
+def _newest_ask() -> Path:
+    """The development set's newest Ask results file: a day's re-scoring (``-rescored``) after that day's live run."""
+    from evals.ask.report import latest_results
+
+    latest = latest_results(ROOT / "evals" / "results", "claude-sonnet-5")
+    assert latest is not None
+    return latest
+
+
 def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() -> None:
     """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
     measured, as each reading split is: a change that loses one of its answers fails the build. The headline
@@ -108,7 +117,7 @@ def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() ->
     (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
     args = shlex.split(line.split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
-    latest = sorted((ROOT / "evals" / "results").glob("*-ask.json"))[-1]
+    latest = _newest_ask()
     summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
     right, asked = summary["household"]["attribution"]["k"], summary["household"]["attribution"]["n"]
     assert (right - 1) / asked < float(option["--min-household"]) <= right / asked
@@ -125,7 +134,7 @@ def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_n
     (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
     args = shlex.split(line.split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
-    latest = sorted((ROOT / "evals" / "results").glob("*-ask.json"))[-1]
+    latest = _newest_ask()
     data = json.loads(latest.read_text(encoding="utf-8"))
     assert data["schema"] == 2
     summary = data["summary"]

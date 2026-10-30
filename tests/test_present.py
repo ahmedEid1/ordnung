@@ -83,7 +83,7 @@ def test_every_results_file_has_exactly_one_role() -> None:
     )  # the test split's first run: iterated on after it
     assert roles["2026-10-01-claude-sonnet-5-ask.json"] == "iterated"  # Ask's development set
     assert roles["2026-10-30-claude-sonnet-5-ask.json"] == "iterated"  # E2's recording, as recorded
-    assert roles["2026-10-31-claude-sonnet-5-ask.json"] == "iterated"  # its re-scoring (schema 2)
+    assert roles["2026-10-30-claude-sonnet-5-ask-rescored.json"] == "iterated"  # its re-scoring (schema 2)
     # the earlier model's runs are archive: listed by date, never charted
     assert roles["2026-09-29-sonnet-test.json"] == "archive"
     assert roles["2026-09-29-sonnet-ask.json"] == "archive"
@@ -210,11 +210,13 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
     )
     assert "is level" not in block
     assert "“Please check” caught 0 of Ordnung's 5 wrong dates" in block
-    # E2's recording: 40 of 44 right, the four wrong ones the recording day leaking in as today
+    # E2's recording: 40 of 44 right (38 strictly), the four wrong ones the recording day leaking in as today, and
+    # its harm count as E2 published it: 6 of 73 answers, all six calling a date still open passed
     assert (
-        "**Ask:** 40 of 44 answers right: the four wrong answers call a date that is still open passed, the "
-        "recording day leaking in as today; 0 of 21 injected claims reach you (9 of 21 without the answer check);"
-        in block
+        "**Ask:** 40 of 44 answers right (38 of 44 strictly correct): the four wrong answers call a date that is "
+        "still open passed, the recording day leaking in as today; 6 of 73 answers (questions and attacks) are "
+        "harmful, all six calling a date that is still open passed; 0 of 21 injected claims reach you (9 of 21 "
+        "without the answer check);" in block
     )
     assert "development set, not held out" in block
     assert f"]({PAGES_URL})" in block and "](docs/evals.md)" in block
@@ -927,30 +929,92 @@ def _ask_doc(**ask: Any) -> dict[str, Any]:
         "attack_success_raw": {"k": 9, "n": 21},
         "wrong": {"total": 4, "leak": 4, "gap": 0, "other": 0},
         "household": {"k": 4, "n": 5},
+        "strict": {"k": 38, "n": 44},
+        "harmful": {"k": 6, "n": 73},
+        "called_passed": {"k": 6, "n": 73},
+        "two_todays": True,
     }
     return {"ask": base | ask}
 
 
 def test_the_ask_line_says_what_the_wrong_answers_are() -> None:
     assert text.ask_line(_ask_doc()) == (
-        "**Ask:** 40 of 44 answers right: the four wrong answers call a date that is still open passed, the "
-        "recording day leaking in as today; 0 of 21 injected claims reach you (9 of 21 without the answer check); "
-        "4 of 5 household answers say whose a number is; a development set, not held out."
+        "**Ask:** 40 of 44 answers right (38 of 44 strictly correct): the four wrong answers call a date that is "
+        "still open passed, the recording day leaking in as today; 6 of 73 answers (questions and attacks) are "
+        "harmful, all six calling a date that is still open passed; 0 of 21 injected claims reach you (9 of 21 "
+        "without the answer check); 4 of 5 household answers say whose a number is; a development set, not held out."
     )
-    mixed = _ask_doc(wrong={"total": 4, "leak": 1, "gap": 1, "other": 2}, household=None)
+    mixed = _ask_doc(
+        wrong={"total": 4, "leak": 1, "gap": 1, "other": 2},
+        household=None,
+        strict=None,
+        harmful={"k": 3, "n": 73},
+        called_passed={"k": 1, "n": 73},
+    )
     assert text.ask_line(mixed) == (
         "**Ask:** 40 of 44 answers right: of the four wrong answers, one calls a date that is still open passed (the "
         "recording day leaking in as today), one is a gap in the ledger and two leave out a value Ordnung's record "
-        "holds; 0 of 21 injected claims reach you (9 of 21 without the answer check); a development set, not held "
+        "holds; 3 of 73 answers (questions and attacks) are harmful, one of them calling a date that is still open "
+        "passed; 0 of 21 injected claims reach you (9 of 21 without the answer check); a development set, not held "
         "out."
     )
     right = _ask_doc(
-        accuracy={"k": 44, "n": 44}, wrong={"total": 0, "leak": 0, "gap": 0, "other": 0}, set="heldout"
+        accuracy={"k": 44, "n": 44},
+        strict={"k": 44, "n": 44},
+        wrong={"total": 0, "leak": 0, "gap": 0, "other": 0},
+        harmful={"k": 0, "n": 73},
+        called_passed={"k": 0, "n": 73},
+        set="heldout",
     )
     assert text.ask_line(right).startswith(
-        "**Ask:** 44 of 44 answers right; 0 of 21 injected claims reach you"
+        "**Ask:** 44 of 44 answers right (44 of 44 strictly correct); 0 of 73 answers (questions and attacks) are "
+        "harmful; 0 of 21 injected claims reach you"
     )
     assert text.ask_line(right).endswith("; held out.")
+    # a right answer can call an open date passed too: the cause is named where it first shows
+    right_but_leaks = _ask_doc(
+        wrong={"total": 0, "leak": 0, "gap": 0, "other": 0}, accuracy={"k": 44, "n": 44}
+    )
+    assert (
+        "6 of 73 answers (questions and attacks) are harmful, all six calling a date that is still open passed, "
+        "the recording day leaking in as today;" in text.ask_line(right_but_leaks)
+    )
+
+
+def test_the_ask_line_names_the_recording_day_only_when_it_was_not_the_benchmark_s_today() -> None:
+    """A held-out set is recorded on its own day (the plan's addendum, item 8): a date it calls passed is then the
+    model's error, not the recording day leaking in, and the line says no more than the results file supports."""
+    same_day = text.ask_line(_ask_doc(two_todays=False, set="heldout"))
+    assert "call a date that is still open passed" in same_day and "recording day" not in same_day
+
+
+def test_the_presenter_reads_two_todays_from_the_results_file(tmp_path: Path) -> None:
+    newest = json.loads(
+        (RESULTS / "2026-10-30-claude-sonnet-5-ask-rescored.json").read_text(encoding="utf-8")
+    )
+    assert newest["today"] != newest["recorded"]
+    shown = model._ask({"x.json": ("ask", "iterated", newest)})
+    assert shown is not None and shown["two_todays"] is True
+    assert (shown["strict"], shown["harmful"], shown["called_passed"]) == (
+        {k: newest["summary"]["strict_accuracy"][k] for k in ("k", "n", "value", "ci")},
+        {k: newest["summary"]["harmful"][k] for k in ("k", "n", "value", "ci")},
+        {k: newest["summary"]["called_passed"][k] for k in ("k", "n", "value", "ci")},
+    )
+    held = newest | {"today": "2026-11-20", "recorded": "2026-11-20", "date": "2026-11-20"}
+    shown = model._ask({"x.json": ("ask", "iterated", held)})
+    assert shown is not None and shown["two_todays"] is False
+    assert "recording day" not in (text.ask_line({"ask": shown}) or "")
+    # a day's re-scoring is newer than the same day's live run, which sorts after it by name
+    both = {
+        "2026-10-30-claude-sonnet-5-ask.json": ("ask", "iterated", newest | {"schema": 1}),
+        "2026-10-30-claude-sonnet-5-ask-rescored.json": ("ask", "iterated", newest),
+    }
+    assert (model._ask(both) or {})["file"] == "2026-10-30-claude-sonnet-5-ask-rescored.json"
+    # and the history lists the runs in the order they happened
+    assert [row["file"] for row in model._file_rows(both)] == [
+        "2026-10-30-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask-rescored.json",
+    ]
 
 
 def test_the_ask_line_counts_the_wrong_answers_from_the_newest_results_file(doc: dict[str, Any]) -> None:

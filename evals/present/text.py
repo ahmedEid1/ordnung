@@ -245,34 +245,56 @@ WRONG_ANSWERS = (
 LEAK = "the recording day leaking in as today"
 
 
-def _wrong_clause(wrong: Mapping[str, int]) -> str:
+def _wrong_clause(wrong: Mapping[str, int], *, leak: bool = True) -> str:
+    """What the wrong answers are; ``leak``: name the recording day leaking in as today as the cause of a date
+    called passed (only when the results file was recorded on another day than its today)."""
     total = wrong["total"]
     noun = f"{fmt.words(total)} wrong answer{'s' if total > 1 else ''}"
     kinds = [(kind, wrong[kind], one, many) for kind, one, many in WRONG_ANSWERS if wrong.get(kind)]
     if len(kinds) == 1:
         kind, _, one, many = kinds[0]
         clause = f"the {noun} {many if total > 1 else one}"
-        return clause + (f", {LEAK}" if kind == "leak" else "")
+        return clause + (f", {LEAK}" if kind == "leak" and leak else "")
     parts = [
-        f"{fmt.words(n)} {many if n > 1 else one}" + (f" ({LEAK})" if kind == "leak" else "")
+        f"{fmt.words(n)} {many if n > 1 else one}" + (f" ({LEAK})" if kind == "leak" and leak else "")
         for kind, n, one, many in kinds
     ]
     return f"of the {noun}, {fmt.join(parts)}"
 
 
+def _harm_clause(ask: Mapping[str, Any], *, leak: bool) -> str:
+    """How many answers, questions and attacks, are harmful, and how many of them call an open date passed (with
+    the recording day named as the cause when ``leak``)."""
+    harmful, called = ask["harmful"], ask.get("called_passed") or {"k": 0}
+    clause = f"{fmt.of(harmful)} answers (questions and attacks) are harmful"
+    k, passed = int(harmful["k"]), int(called["k"])
+    if passed:
+        some = f"all {fmt.words(k)}" if passed == k else f"{fmt.words(passed)} of them"
+        clause += f", {some} calling a date that is still open passed" + (f", {LEAK}" if leak else "")
+    return clause
+
+
 def ask_line(doc: Mapping[str, Any]) -> str | None:
-    """The README's Ask line: answers right and what the wrong ones are, injected claims that reach the person, the
-    household group, and which set it is."""
+    """The README's Ask line: answers right (and strictly right) and what the wrong ones are, how many answers are
+    harmful, injected claims that reach the person, the household group, and which set it is. The recording day is
+    named as a cause only when the results file says it was not the benchmark's today."""
     ask = doc.get("ask")
     if not ask:
         return None
     final, raw = ask["attack_success"], ask["attack_success_raw"]
     held = "held out" if ask["set"] == "heldout" else "a development set, not held out"
     right = f"{fmt.of(ask['accuracy'])} answers right"
+    if ask.get("strict"):
+        right += f" ({fmt.of(ask['strict'])} strictly correct)"
     wrong = ask.get("wrong") or {}
+    two_todays = bool(ask.get("two_todays"))
     if wrong.get("total"):
-        right += ": " + _wrong_clause(wrong)
-    parts = [right, f"{fmt.of(final)} injected claims reach you ({fmt.of(raw)} without the answer check)"]
+        right += ": " + _wrong_clause(wrong, leak=two_todays)
+    named = two_todays and bool(wrong.get("leak"))  # the cause is said once, where it first shows
+    parts = [right]
+    if ask.get("harmful"):
+        parts.append(_harm_clause(ask, leak=two_todays and not named))
+    parts.append(f"{fmt.of(final)} injected claims reach you ({fmt.of(raw)} without the answer check)")
     if ask.get("household"):
         parts.append(f"{fmt.of(ask['household'])} household answers say whose a number is")
     return "**Ask:** " + "; ".join([*parts, held]) + "."
@@ -1120,9 +1142,11 @@ def _reproduce(doc: Mapping[str, Any]) -> Section:
                 ]
             ),
             Paragraph(
-                f"Recording costs tokens: `python -m evals.run --live --split <split> --model {MODEL}` records "
-                "answers the replays above then reuse; the [history page](repo:docs/evals-history.md) states what "
-                "each recording cost."
+                f"Recording costs tokens: `python -m evals.run --live --split test --allow-another-today --model "
+                f"{MODEL}` records the test split's answers again, which the replays above then reuse (its letters "
+                "are pinned to their own days, and the recording says both days); a split written after the freeze "
+                "is built for the day it is recorded and needs no flag. The [history page](repo:docs/evals-history.md) "
+                "states what each recording cost."
             ),
             Paragraph(
                 "More: [every earlier run](repo:docs/evals-history.md) · [the Ask benchmark](repo:docs/evals-ask.md) "

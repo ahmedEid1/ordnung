@@ -176,7 +176,8 @@ class RunConfig:
     #: ``None`` — the UTC date at the start of a run with the real ``claude`` (a stand-in, which tells the model no
     #: date, is checked only when this is given). The run starts no call once that day is over.
     recording_day: date | None = None
-    #: A smoke into a scratch folder may record letters pinned to another day (``--allow-another-today``).
+    #: Record letters pinned to another day (``--allow-another-today``): the development splits re-recorded in the
+    #: open, or a held-out or final split as a smoke into a scratch folder (:func:`evals.harness.check_another_today`).
     allow_another_today: bool = False
     #: Tests: stands in for the ``claude`` CLI on a live run (the rest of the stack is the real one).
     live_backend: LLMBackend | None = None
@@ -366,13 +367,23 @@ def make_backend(
 
 def recording_day(config: RunConfig, entries: Sequence[Entry]) -> date | None:
     """The day a live run records on, once it is checked that every letter's simulated today is that day
-    (:func:`evals.harness.check_recording_day`); ``None`` when the day is not checked (a replay, a stand-in for the
-    ``claude`` CLI without an explicit ``recording_day``, or a smoke that allows another today)."""
-    if not config.live or (config.live_backend is not None and config.recording_day is None):
+    (:func:`evals.harness.check_recording_day`), or that another today is allowed here
+    (:func:`evals.harness.check_another_today`: a development split re-recorded in the open, or a smoke into a
+    scratch folder); ``None`` when the day is not checked (a replay, or a stand-in for the ``claude`` CLI without an
+    explicit ``recording_day``)."""
+    if not config.live:
+        return None
+    if config.allow_another_today:
+        development = all(
+            entry.split in splits.names() and splits.get(entry.split).role in ("development", "iterated")
+            for entry in entries
+        )
+        harness.check_another_today(config.recorded_dir, development=development)
+    if config.live_backend is not None and config.recording_day is None:
         return None
     day = config.recording_day or harness.utc_today()
     harness.check_recording_day([entry.today for entry in entries], day, allow=config.allow_another_today)
-    return None if config.allow_another_today else day
+    return day
 
 
 def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) -> harness.LiveSetup:
@@ -401,7 +412,7 @@ def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) 
         provenance={
             "repeat": config.repeat,
             "commit": _commit(),
-            **({"today": day.isoformat()} if day else {}),
+            **harness.recording_provenance(day, [entry.today for entry in entries]),
         },
     )
 
@@ -852,8 +863,9 @@ REPLAY_MISS = "no recorded response"
 #: How to record a condition added after the published run again, and publish it (docs never change
 #: on the recording itself: it runs one condition). Recording costs tokens: see ``docs/evals.md``.
 RECORD_AGAIN = (
-    "record it again with `python -m evals.run --live --split dev --conditions {condition}` and then "
-    "`--split test` (neither rewrites docs/evals.md), then add the test run to the published one: "
+    "record it again with `python -m evals.run --live --split dev --conditions {condition} --allow-another-today` "
+    "and then `--split test` (neither rewrites docs/evals.md; both splits' letters are pinned to their own days), "
+    "then add the test run to the published one: "
     "`python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json "
     "--add-condition {condition}=evals/results/<new run>.json --note <finding>.md`"
 )
@@ -1002,8 +1014,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--allow-another-today",
         action="store_true",
-        help="with --live: record letters whose simulated today is not today's date (UTC) — only a smoke into a "
-        "scratch --recorded-dir, thrown away; a published recording's letters are built for the day it is recorded",
+        help="with --live: record letters whose simulated today is not today's date (UTC): the development splits "
+        "(dev, test), pinned to their letters' days, recorded again in the open (every new recording and the results "
+        "say both days); a held-out or final split only as a smoke into a scratch --recorded-dir outside the "
+        "checkout (its letters are built for the day it is recorded)",
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"model alias or id (default: {DEFAULT_MODEL})"

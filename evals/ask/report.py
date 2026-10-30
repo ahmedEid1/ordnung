@@ -719,12 +719,17 @@ def results_payload(
 ) -> dict[str, Any]:
     """The results file: configuration, notes, summary and every question with its turn and scores (``schema=1``:
     as every run wrote it before schema 2). ``recorded``: the date of the live run whose recordings a re-scoring
-    replays (:func:`recorded_on`; default ``run_date``, a live run's own)."""
+    replays (:func:`recorded_on`): the file is that re-scoring (``"backend": "replay"``, named ``-rescored``);
+    without it, the file is a live run's own (``"backend": "live"``, ``"recorded"`` its own date)."""
     payload = _schema_1(result, run_date=run_date)
-    return payload if schema == 1 else _schema_2(payload, result, recorded or run_date)
+    if schema == 1:
+        return payload
+    return _schema_2(payload, result, recorded or run_date, backend="replay" if recorded else "live")
 
 
-def _schema_2(payload: Mapping[str, Any], result: RunResult, recorded: str) -> dict[str, Any]:
+def _schema_2(
+    payload: Mapping[str, Any], result: RunResult, recorded: str, *, backend: str
+) -> dict[str, Any]:
     set_name = result.config.set_name
     strict = {row.id: as_dict(row) for row in result.strict}
     info = result.info
@@ -745,6 +750,8 @@ def _schema_2(payload: Mapping[str, Any], result: RunResult, recorded: str) -> d
         "label": LABELS[set_name],
         "repeat": result.config.repeat,
         "date": payload["date"],
+        # a live run's own file, or a re-scoring of the live run of "recorded" (dated the day it is re-scored)
+        "backend": backend,
         "recorded": recorded,
         # the day the ledger, the turns and the scores are for: the sample life's, or a held-out set's recording day
         "today": result.config.day.isoformat(),
@@ -831,19 +838,31 @@ def _schema_1(result: RunResult, *, run_date: str) -> dict[str, Any]:
 
 
 def results_name(payload: Mapping[str, Any]) -> str:
-    """``<date>-<model>-ask[-heldout][-r<N>].json``: the development set's run 1 keeps the name it always had."""
+    """``<date>-<model>-ask[-heldout][-r<N>][-rescored].json``: the development set's run 1 keeps the name it always
+    had; a re-scoring of a live run's recordings (``"backend": "replay"``) is dated the day it is made and named
+    ``-rescored``, as the reading benchmark's re-scorings are, so it never takes the name of a live run recorded the
+    same day."""
     held = "-heldout" if payload.get("set", "dev") == "heldout" else ""
     repeat = int(payload.get("repeat", 1))
-    return f"{payload['date']}-{payload['model']}-ask{held}{f'-r{repeat}' if repeat > 1 else ''}.json"
+    rescored = "-rescored" if is_rescoring(payload) else ""
+    return (
+        f"{payload['date']}-{payload['model']}-ask{held}{f'-r{repeat}' if repeat > 1 else ''}{rescored}.json"
+    )
+
+
+def is_rescoring(payload: Mapping[str, Any]) -> bool:
+    """Whether a results file re-scores an earlier live run's recordings (schema 1 is always a live run's own)."""
+    return int(payload.get("schema", 1)) >= 2 and payload.get("backend") == "replay"
 
 
 def replaces_a_recording(results_dir: Path, payload: Mapping[str, Any]) -> Path | None:
-    """The committed file of a live run as recorded (schema 1) that writing ``payload`` would replace — a re-scoring
-    of that day's recordings has the same name — or ``None``. A re-scoring is written under a later ``--date``."""
+    """The committed file of a live run (of either schema) that writing ``payload`` would replace, or ``None``. A
+    re-scoring has a name of its own (:func:`results_name`), so this guards against a file whose name says
+    otherwise: a live run as recorded is never written over by a replay."""
     path = results_dir / results_name(payload)
     if not path.is_file():
         return None
-    return path if _schema_of(path) == 1 else None
+    return None if is_rescoring(json.loads(path.read_text(encoding="utf-8"))) else path
 
 
 def write_results(payload: Mapping[str, Any], results_dir: Path) -> Path:
@@ -1070,8 +1089,13 @@ def render(payload: Mapping[str, Any]) -> str:
         "```bash",
         "python -m evals.ask                  # replay the recordings (no model calls), print the numbers",
         "python -m evals.ask --write          # … and rewrite evals/results/ and this page",
-        "python -m evals.ask --live --write   # record missing answers with your claude CLI",
+        "python -m evals.ask --live --write --allow-another-today   # record missing answers with your claude CLI",
         "```",
+        "",
+        "The set's today is the sample life's, 28 Sep 2026, so a recording is always made on another day, which the "
+        "claude CLI tells the model too: `--allow-another-today` records it in the open, and the results file says "
+        "both days (`today` and `date`). The held-out set is built for the day it is recorded instead "
+        "(`--set heldout --today <that day>`).",
         "",
     ]
     return "\n".join(lines)
@@ -1161,9 +1185,10 @@ def _v2(payload: Mapping[str, Any]) -> bool:
 
 
 def _run_dates(payload: Mapping[str, Any]) -> str:
-    """``<recorded>`` or, for a re-scoring of an earlier live run, ``<recorded>, re-scored on <date>``."""
+    """``<recorded>`` or, for a re-scoring of a live run (an earlier day's or the same day's),
+    ``<recorded>, re-scored on <date>``."""
     recorded = payload.get("recorded", payload["date"])
-    return recorded if recorded == payload["date"] else f"{recorded}, re-scored on {payload['date']}"
+    return f"{recorded}, re-scored on {payload['date']}" if is_rescoring(payload) else recorded
 
 
 def _citations(payload: Mapping[str, Any]) -> tuple[Mapping[str, Any], Mapping[str, Any]]:
@@ -1305,8 +1330,16 @@ def write_docs(payload: Mapping[str, Any], path: Path = DOCS_PATH) -> Path:
 
 
 _RESULTS_NAME = re.compile(
-    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<model>.+?)-ask(?P<held>-heldout)?(?:-r(?P<repeat>[2-9]|\d{2,}))?\.json$"
+    r"^(?P<date>\d{4}-\d{2}-\d{2})-(?P<model>.+?)-ask(?P<held>-heldout)?(?:-r(?P<repeat>[2-9]|\d{2,}))?"
+    r"(?P<rescored>-rescored)?\.json$"
 )
+
+
+def _order(path: Path) -> tuple[str, bool, str]:
+    """A set's files in the order they were made: by date, a day's re-scoring after its live run."""
+    match = _RESULTS_NAME.match(path.name)
+    assert match is not None  # only matching names are ordered
+    return match["date"], bool(match["rescored"]), path.name
 
 
 def _results(results_dir: Path, model: str, set_name: str, repeat: int) -> list[Path]:
@@ -1317,13 +1350,14 @@ def _results(results_dir: Path, model: str, set_name: str, repeat: int) -> list[
             continue
         if bool(match["held"]) == (set_name == "heldout") and int(match["repeat"] or 1) == repeat:
             found.append(path)
-    return sorted(found)
+    return sorted(found, key=_order)
 
 
 def latest_results(results_dir: Path, model: str, *, set_name: str = "dev", repeat: int = 1) -> Path | None:
     """The newest committed results file of ``model`` for a set and run (the development set's run 1:
     ``YYYY-MM-DD-<model>-ask.json``), or ``None``."""
-    return max(_results(results_dir, model, set_name, repeat), default=None)
+    found = _results(results_dir, model, set_name, repeat)
+    return found[-1] if found else None
 
 
 def _schema_of(path: Path) -> int:
@@ -1333,16 +1367,15 @@ def _schema_of(path: Path) -> int:
 def recorded_on(
     results_dir: Path, model: str, day: str, *, set_name: str = "dev", repeat: int = 1
 ) -> str | None:
-    """The live run a replay on ``day`` re-scores: the date of the newest committed results file before ``day``
-    (a schema-1 file's own date; a schema-2 file's ``recorded``), or ``None`` without one."""
+    """The live run a replay on ``day`` re-scores: the date of the newest committed results file made before that
+    day's re-scoring — a live run of the same day included — (a live run's own date; a re-scoring's ``recorded``),
+    or ``None`` without one."""
     earlier = [
-        path
-        for path in _results(results_dir, model, set_name, repeat)
-        if (match := _RESULTS_NAME.match(path.name)) and match["date"] < day
+        path for path in _results(results_dir, model, set_name, repeat) if _order(path)[:2] < (day, True)
     ]
     if not earlier:
         return None
-    data = json.loads(max(earlier).read_text(encoding="utf-8"))
+    data = json.loads(earlier[-1].read_text(encoding="utf-8"))
     return str(data.get("recorded", data["date"]))
 
 
@@ -1357,6 +1390,7 @@ def stale_docs(
     docs: Path = DOCS_PATH,
     *,
     as_recorded: Callable[[str], Mapping[str, Any]] | None = None,
+    as_live: Callable[[str], Mapping[str, Any]] | None = None,
     set_name: str = "dev",
     repeat: int = 1,
 ) -> list[str]:
@@ -1364,16 +1398,22 @@ def stale_docs(
     ``--write`` with the committed file's date would write): a change to the check, the scorer or the tools
     that moves a number must reach the page (review round 1: the § 556 BGB change never did).
 
-    ``as_recorded`` makes a schema-1 payload: a newest file of schema 1 is checked against it, and when the newest
-    is of schema 2, the newest schema-1 file before it is checked too — the run as recorded stays reproducible.
-    Only the development set's run 1 has the page."""
+    ``result_payload`` makes the re-scoring of a day; ``as_live`` a live run's own schema-2 file (a newest file that
+    is no re-scoring is checked against it); ``as_recorded`` a schema-1 payload: a newest file of schema 1 is checked
+    against it, and when the newest is of schema 2, the newest schema-1 file before it is checked too — the run as
+    recorded stays reproducible. Only the development set's run 1 has the page."""
     latest = latest_results(results_dir, model, set_name=set_name, repeat=repeat)
     if latest is None:
         return [f"no committed results file for {model} in {results_dir}"]
     match = _RESULTS_NAME.match(latest.name)
     assert match is not None  # latest_results only returns matching names
     newest_schema = _schema_of(latest)
-    make = as_recorded if newest_schema == 1 and as_recorded is not None else result_payload
+    if newest_schema == 1 and as_recorded is not None:
+        make = as_recorded
+    elif not match["rescored"] and as_live is not None:
+        make = as_live
+    else:
+        make = result_payload
     payload = make(match["date"])
     problems = []
     if _differs(latest, payload):

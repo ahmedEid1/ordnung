@@ -150,7 +150,8 @@ class Config:
     #: The day a live run is recorded on, which ``today`` must be: ``None`` — the UTC date at the start of a run with
     #: the real ``claude`` (a stand-in, which tells the model no date, is checked only when this is given).
     recording_day: date | None = None
-    #: A smoke into a scratch folder may record on another day than the set's (``--allow-another-today``).
+    #: Record on another day than the set's (``--allow-another-today``): the development set, pinned to the sample
+    #: life's day, recorded again in the open; the held-out set only as a smoke into a scratch folder.
     allow_another_today: bool = False
 
     @property
@@ -302,18 +303,22 @@ def _check_options(config: Config) -> None:
 
 def recording_day(config: Config) -> date | None:
     """The day a live run records on, once it is checked that the set's day is that day
-    (:func:`evals.harness.check_recording_day`); ``None`` when it is not checked (a replay, a stand-in without an
-    explicit ``recording_day``, or a smoke that allows another today)."""
-    if not (config.live or config.refresh) or (
-        config.live_backend is not None and config.recording_day is None
-    ):
+    (:func:`evals.harness.check_recording_day`), or that another today is allowed here
+    (:func:`evals.harness.check_another_today`: the development set re-recorded in the open, or a smoke into a
+    scratch folder); ``None`` when it is not checked (a replay, or a stand-in without an explicit
+    ``recording_day``)."""
+    if not (config.live or config.refresh):
         return None
-    day = config.recording_day or harness.utc_today()
     try:
+        if config.allow_another_today:
+            harness.check_another_today(config.recorded_dir, development=config.set_name == "dev")
+        if config.live_backend is not None and config.recording_day is None:
+            return None
+        day = config.recording_day or harness.utc_today()
         harness.check_recording_day([config.day], day, allow=config.allow_another_today)
     except harness.HarnessError as exc:
         raise BenchmarkError(str(exc)) from exc
-    return None if config.allow_another_today else day
+    return day
 
 
 def live_setup(config: Config) -> Any:
@@ -343,7 +348,7 @@ def live_setup(config: Config) -> Any:
         provenance={
             "repeat": config.repeat,
             "commit": checkout_commit(),
-            **({"today": day.isoformat()} if day else {}),
+            **harness.recording_provenance(day, [config.day]),
         },
     )
 
@@ -386,7 +391,8 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
         if stale:
             raise BenchmarkError(
                 f"The Ask prompts or tools changed since the recordings were made ({', '.join(stale)}): "
-                "record again with python -m evals.ask --live --refresh."
+                "record again with python -m evals.ask --live --refresh (and --allow-another-today for the "
+                "development set, pinned to its own day)."
             )
         stack = ReplayBackend(root)
     else:

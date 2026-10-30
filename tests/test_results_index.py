@@ -157,7 +157,7 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
     checked = {name for name, row in rows.items() if row["verdict"] == "checked"}
     assert checked == {
         "2026-10-30-claude-sonnet-5-ask.json",
-        "2026-10-31-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask-rescored.json",
         "2026-10-08-claude-sonnet-5-without-land.json",
         "2026-10-30-claude-sonnet-5-checks-ablated.json",
         "2026-10-30-claude-sonnet-5-e2e.json",
@@ -175,11 +175,13 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
     rows: dict[str, dict[str, Any]],
 ) -> None:
     """The development set's live run of 2026-10-30 (E2's recording) stays checked as recorded (schema 1) beside its
-    re-scoring with the strict scorer (schema 2), which names the run it re-scores; the earlier runs are superseded."""
+    re-scoring with the strict scorer (schema 2), made the same day, dated that day and named ``-rescored``, which
+    names the run it re-scores; the earlier runs are superseded."""
     recorded, rescored = (
         rows["2026-10-30-claude-sonnet-5-ask.json"],
-        rows["2026-10-31-claude-sonnet-5-ask.json"],
+        rows["2026-10-30-claude-sonnet-5-ask-rescored.json"],
     )
+    assert rescored["recorded"]["date"] == "2026-10-30"
     assert (recorded["schema"], recorded["recorded"]["backend"], "rescores" in recorded) == (1, "live", False)
     assert (rescored["schema"], rescored["recorded"]["backend"], rescored["rescores"]) == (
         2,
@@ -195,6 +197,79 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
         )
     assert rows["2026-09-30-claude-sonnet-5-ask.json"]["check"] == "hash"
     assert rows["2026-10-01-claude-sonnet-5-ask.json"]["check"] == "hash"
+
+
+def _ask_payload(
+    day: str, *, backend: str, recorded: str, today: str, set_name: str = "heldout"
+) -> dict[str, Any]:
+    return {
+        "benchmark": "ask",
+        "schema": 2,
+        "set": set_name,
+        "repeat": 1,
+        "date": day,
+        "backend": backend,
+        "recorded": recorded,
+        "today": today,
+        "model": DEFAULT_MODEL,
+        "summary": {},
+    }
+
+
+def test_an_ask_row_says_live_or_re_scoring_from_the_file_whatever_its_schema(tmp_path: Path) -> None:
+    """Every live run writes schema 2 now, its "recorded" its own date (EV10's held-out recording among them): the
+    index calls it live, never a re-scoring of itself; a re-scoring of the same day is the replay."""
+    live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
+    path = tmp_path / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json"
+    path.write_text(json.dumps(live), encoding="utf-8")
+    row = reproduce._row(path, live, *reproduce._kind(path.name, live))
+    assert (row["set"], row["schema"], row["recorded"]["backend"], "rescores" in row) == (
+        "heldout",
+        2,
+        "live",
+        False,
+    )
+    rescoring = live | {"backend": "replay"}
+    path = tmp_path / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout-rescored.json"
+    path.write_text(json.dumps(rescoring), encoding="utf-8")
+    row = reproduce._row(path, rescoring, *reproduce._kind(path.name, rescoring))
+    assert (row["set"], row["recorded"], row["rescores"]) == (
+        "heldout",
+        {"date": "2026-11-20", "commit": None, "backend": "replay"},
+        "2026-11-20",
+    )
+
+
+def test_a_held_out_ask_run_and_a_stress_run_are_replayed_on_the_day_they_were_built_for(
+    tmp_path: Path,
+) -> None:
+    """A recording after the freeze is built for the day it is recorded (the plan's addendum, item 8): its replay
+    must build the same ledger, prompt and letters, so reproduce passes that day on (``--today``)."""
+    results = tmp_path / "results"
+    results.mkdir()
+    live = _ask_payload("2026-11-20", backend="live", recorded="2026-11-20", today="2026-11-20")
+    (results / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json").write_text(json.dumps(live), encoding="utf-8")
+    stress = {
+        "schema": "ordnung-eval-stress/1",
+        "meta": {"date": "2026-11-21", "model": DEFAULT_MODEL, "cells": ["I1", "D1"], "today": "2026-11-21"},
+    }
+    (results / f"2026-11-21-{DEFAULT_MODEL}-stress.json").write_text(json.dumps(stress), encoding="utf-8")
+    static = reproduce.static_index(results)
+    tasks = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}
+    ask = tasks["ask/heldout/r1"]
+    assert ask[ask.index("--set") + 1] == "heldout" and ask[ask.index("--today") + 1] == "2026-11-20"
+    assert tasks["stress"][tasks["stress"].index("--today") + 1] == "2026-11-21"
+    # a file without a day of its own (the development set, a stress run built before item 8) is replayed as before
+    dev = _ask_payload(
+        "2026-10-30", backend="live", recorded="2026-10-30", today="2026-09-28", set_name="dev"
+    )
+    del stress["meta"]["today"]
+    (results / f"2026-11-20-{DEFAULT_MODEL}-ask-heldout.json").unlink()
+    (results / f"2026-10-30-{DEFAULT_MODEL}-ask.json").write_text(json.dumps(dev), encoding="utf-8")
+    (results / f"2026-11-21-{DEFAULT_MODEL}-stress.json").write_text(json.dumps(stress), encoding="utf-8")
+    static = reproduce.static_index(results)
+    tasks = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}
+    assert "--today" not in tasks["ask/dev/r1"] and "--today" not in tasks["stress"]
 
 
 def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, Any]) -> None:
@@ -564,6 +639,22 @@ def test_a_final_splits_results_file_makes_its_cell_a_replay_with_its_repeat(tmp
     argv = tasks["benchmark/holdout4/r2"].argv
     assert argv[argv.index("--split") + 1] == "holdout4" and argv[argv.index("--repeat") + 1] == "2"
     assert "benchmark/holdout4/r1" not in tasks
+
+
+def test_a_final_recording_with_two_todays_is_refused(tmp_path: Path) -> None:
+    """A final split's letters are built for the day they are recorded (the plan's addendum, item 8): a live file
+    whose recording day is not its letters' today (a smoke's --allow-another-today, or a resume on the next day)
+    is never indexed as the final run."""
+    results = _copy_results(tmp_path, ["2026-10-06-claude-sonnet-5-holdout3.json"])
+    data = json.loads((results / "2026-10-06-claude-sonnet-5-holdout3.json").read_text(encoding="utf-8"))
+    data["meta"].update(split="holdout4", simulated_today=["2027-01-10"], recording_day="2027-01-10")
+    target = results / "2027-01-10-claude-sonnet-5-holdout4.json"
+    target.write_text(json.dumps(data), encoding="utf-8")
+    reproduce.static_index(results)  # one today: indexed
+    data["meta"].update(recording_day="2027-01-11")
+    target.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(reproduce.ReproduceError, match="two todays"):
+        reproduce.static_index(results)
 
 
 def test_every_task_is_a_strict_replay_into_the_work_folder(index: dict[str, Any], tmp_path: Path) -> None:

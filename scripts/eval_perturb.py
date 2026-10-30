@@ -256,6 +256,8 @@ def run_meta(
         "stress_manifest_sha256": _sha(build.STRESS_MANIFEST),
         "templates_sha256": stress_doc.get("templates_sha256") if stress_doc else None,
         "recorded_dir": _relative(recorded_dir),
+        # the day the cells were built for, the day they are recorded (``--today``): a replay builds them again for it
+        **({"today": stress_doc["today"]} if stress_doc and stress_doc.get("today") else {}),
         "script": SCRIPT,
         "runs": {name: {key: meta.get(key) for key in keep if key in meta} for name, meta in runs.items()},
     }

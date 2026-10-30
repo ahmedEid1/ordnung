@@ -100,7 +100,8 @@ check shows in the numbers at once, and costs nothing.
   install -e ".[dev,eval]" -c constraints.txt` in it), never through `PYTHONPATH`: Ask's MCP server is started
   with that environment's Python and runs whatever it has installed. Keep `ORDNUNG_CLAUDE_MODEL` unset, so every
   call runs on the recorded model, and run one recorder at a time. `python -m evals.ask --prune-stale` deletes
-  the Ask answers that went stale, and `python -m evals.ask --live` records only what is missing; the demo
+  the Ask answers that went stale, and `python -m evals.ask --live --allow-another-today` records only what is
+  missing (see the recording day below); the demo
   records with `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`, and a benchmark run of the test
   split takes `--no-docs` so it leaves `docs/evals.md` alone. Right after, replay what you recorded and check
   that nothing is stale or missing, then say in the pull request what was recorded and what it cost.
@@ -114,8 +115,11 @@ check shows in the numbers at once, and costs nothing.
   evals.harness unlock` frees once its process is gone. A replay recomputes every prediction; it reads the
   prediction cache only with `--resume`. A recording is built for the day it is recorded: the claude CLI tells the
   model the computer's date, so letters or a ledger pinned to another day would show it two todays, and a live run
-  refuses them (`python -m evals.ask --set heldout --today <day>` builds the held-out Ask set for that day); only a
-  smoke into a scratch `--recorded-dir`, thrown away, passes `--allow-another-today`.
+  refuses them (`python -m evals.ask --set heldout --today <day>` builds the held-out Ask set for that day). The
+  development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be recorded again on
+  another day: `--allow-another-today` does that in the open, and every new recording (`recorded_on`) and results
+  file says both days. A held-out or final set takes `--allow-another-today` only for a smoke into a scratch
+  `--recorded-dir` outside the checkout, thrown away.
 
 ## Tests
 
