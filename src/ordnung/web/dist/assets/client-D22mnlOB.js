@@ -1,1 +1,0 @@
-import{ir as e}from"./dateLabels-B0HcoTBV.js";function t(){return e().data?.client===`phone`}export{t};
