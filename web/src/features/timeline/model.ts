@@ -485,8 +485,3 @@ export function entryLetterId(e: Pick<TimelineEntry, "ref">, items: ReadonlyMap<
   if (e.ref.type === "item") return items.get(e.ref.id)?.doc_id ?? null;
   return null;
 }
-
-/** Second line of an entry: party and detail, without repeats. */
-export function entryMeta(e: Pick<TimelineEntry, "party_name" | "subtitle" | "time" | "type">): string {
-  return [e.party_name, entryDetail(e)].filter(Boolean).join(" · ");
-}

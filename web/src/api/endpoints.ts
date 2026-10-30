@@ -218,7 +218,6 @@ export const api = {
   party: (id: string) => call("get", "/api/parties/{party_id}", { params: { party_id: id } }),
   /** The Land a sender is in, which only the person can tell: its letters' dates are recomputed. */
   updateParty: (id: string, patch: PartyPatch) => call("patch", "/api/parties/{party_id}", { params: { party_id: id }, body: patch }),
-  case: (id: string) => call("get", "/api/cases/{case_id}", { params: { case_id: id } }),
 
   // -- views -------------------------------------------------------------------------------------
   timeline: (from?: string, to?: string) => call("get", "/api/timeline", { query: { from, to } }),
@@ -237,8 +236,6 @@ export const api = {
   suggestions: (params: SuggestionListParams = {}) => call("get", "/api/suggestions", { query: { ...params } }),
   updateSuggestion: (id: string, patch: SuggestionPatch) =>
     call("patch", "/api/suggestions/{suggestion_id}", { params: { suggestion_id: id }, body: patch }),
-  /** 202: the review runs in the background; new Ideas arrive with `suggestions.updated`. */
-  runReview: () => call("post", "/api/suggestions/review"),
   brief: () => call("get", "/api/brief"),
   regenerateBrief: () => call("post", "/api/brief"),
 

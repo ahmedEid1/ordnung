@@ -10,7 +10,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Household } from "@/api/types";
 import { makeTestQueryClient } from "@/test/render";
 import { makeDetail } from "@/features/document/fixtures";
-import { FILE_LETTERS_MAX, filedBeforeFailure, invalidateLedger, qk, useFileLetters, useHousehold, useSaveHousehold } from "./hooks";
+import { useChangeHousehold } from "@/features/household/save";
+import { FILE_LETTERS_MAX, filedBeforeFailure, invalidateLedger, qk, useFileLetters, useHousehold } from "./hooks";
 import { __resetEventsForTests, handleServerEvent } from "./sse";
 
 const EMPTY: Household = { members: [], filed: {}, mine: [], suggested: {}, version: "4f53cda18c2baa0c" };
@@ -56,7 +57,7 @@ describe("your household's hooks", () => {
 
   it("saving the people sets the answer and refreshes the letters' pages", async () => {
     const { qc, wrapper } = setup();
-    const { result } = renderHook(() => useSaveHousehold(), { wrapper });
+    const { result } = renderHook(() => useChangeHousehold(), { wrapper });
     await act(async () => {
       await result.current.mutateAsync({ base: EMPTY.version, members: [{ name: "Alex Rivera", signs: true }], also_file: [] });
     });

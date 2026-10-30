@@ -12,11 +12,11 @@ import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { mockNumbers } from "@/mocks/numbers";
 import { MOCK_NUMBERS, MOCK_NUMBERS_FOR_ALEX } from "@/mocks/data/numbers";
-import { alsoForText, namesList, peopleNames, peopleTab } from "./people";
+import { alsoForLine, alsoForNames, namesList, peopleNames, peopleTab } from "./people";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
-import { CARD_GRID, NumbersView, matchesSheet, sheetMatch } from "./NumbersView";
+import { CARD_GRID, NumbersView, sheetMatch } from "./NumbersView";
 import { CallSheetCard, OpenCaseCard, nextStepWhen } from "./cards";
 import { NumberRow } from "./NumberRow";
 import { numberTitle, printedLabel } from "./title";
@@ -366,9 +366,9 @@ describe("the page", () => {
 
   it("finds a call sheet by a number without its spaces", () => {
     const beitrag = MOCK_NUMBERS.organisations.find((s) => s.name.startsWith("Beitragsservice"))!;
-    expect(matchesSheet(beitrag, "457812")).toBe(true);
-    expect(matchesSheet(beitrag, "Beitragsnummer")).toBe(true);
-    expect(matchesSheet(beitrag, "45")).toBe(false); // too short to match a number
+    expect(sheetMatch(beitrag, "457812")).toBe("sheet");
+    expect(sheetMatch(beitrag, "Beitragsnummer")).toBe("sheet");
+    expect(sheetMatch(beitrag, "45")).toBeNull(); // too short to match a number
   });
 
   it("offers Add letters when there is nothing yet", async () => {
@@ -512,10 +512,9 @@ describe("people.ts", () => {
     expect(namesList(["you"])).toBe("you");
     expect(namesList(["you", "Mia Rivera"])).toBe("you and Mia Rivera");
     expect(namesList(["you", "Mia Rivera", "Kim Rivera"])).toBe("you, Mia Rivera and Kim Rivera");
-    expect(alsoForText(["me", "hhm_x"], { ...MOCK_NUMBERS, household: [{ id: "hhm_x", name: "Mia Rivera", about: [], documents: [] }] })).toBe(
-      "Also on letters for you and Mia Rivera — check whose it is",
-    );
-    expect(alsoForText([], MOCK_NUMBERS)).toBeNull();
+    const mia = { ...MOCK_NUMBERS, household: [{ id: "hhm_x", name: "Mia Rivera", about: [], documents: [] }] };
+    expect(alsoForLine(alsoForNames(["me", "hhm_x"], mia))).toBe("Also on letters for you and Mia Rivera — check whose it is");
+    expect(alsoForNames([], MOCK_NUMBERS)).toEqual([]);
   });
 
   it("calls the first tab People only once someone of the household has numbers or documents", () => {

@@ -64,8 +64,6 @@ export function useTodayData() {
   };
 }
 
-export type TodayData = ReturnType<typeof useTodayData>;
-
 /** Where an action's row / "Open" leads. */
 export function actionHref(a: Pick<TodayAction, "docId" | "contractId" | "source">): string {
   if (a.docId) return `/documents/${encodeURIComponent(a.docId)}`;
