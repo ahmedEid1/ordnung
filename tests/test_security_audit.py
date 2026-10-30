@@ -432,9 +432,11 @@ def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly(
     are decoded as the filter behind them reads, and what they read counts against the budget."""
     unit = b"%d 0 obj<</Filter[" + filters + b"]>>stream\n"
     data = b"%PDF-1.4\n" + b"".join(unit % number for number in range(1, 3000)) + b"~>\nendstream endobj\n"
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler pauses the test, which took this
+    # check (about 2 s of CPU with coverage) past 5 s
+    started = time.process_time()
     expansion.check_pdf_expansion(data)  # nothing in it expands
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
 
 
 def test_unusual_but_valid_syntax_is_accepted() -> None:
