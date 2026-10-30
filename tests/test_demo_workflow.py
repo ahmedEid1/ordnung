@@ -1,9 +1,11 @@
 """.github/workflows/demo.yml: the online demo, the web app's browser-only build on the static demo's mock world,
-goes to GitHub Pages from main, so anyone can open it without an account. A pull request only builds it; only
-the deploy job may write to Pages, and only on main."""
+goes to GitHub Pages from main, so anyone can open it without an account, and the evaluation's report page goes
+beside it (``/ordnung/evals/``). A pull request only builds them; only the deploy job may write to Pages, and only
+on main."""
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEMO = ROOT / ".github" / "workflows" / "demo.yml"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 PAGES_URL = "https://ahmedeid1.github.io/ordnung/"
+REPORT_URL = f"{PAGES_URL}evals/"
 
 
 def _workflow(path: Path) -> dict[Any, Any]:
@@ -45,12 +48,40 @@ def _step(job: dict[str, Any], needle: str) -> dict[str, Any]:
     return found
 
 
-def test_main_and_pull_requests_that_touch_the_web_app_build_the_demo() -> None:
+def test_main_and_pull_requests_that_touch_the_web_app_or_the_evaluation_build_the_pages() -> None:
     on = _triggers(_workflow(DEMO))
     assert on["push"]["branches"] == ["main"]
     for event in ("push", "pull_request"):
-        assert set(on[event]["paths"]) == {"web/**", ".github/workflows/demo.yml"}
+        assert set(on[event]["paths"]) == {
+            "web/**",
+            "evals/results/**",
+            "evals/present/**",
+            ".github/workflows/demo.yml",
+        }
     assert "workflow_dispatch" in on
+
+
+def test_the_evaluation_report_page_is_built_beside_the_demo_and_checked() -> None:
+    """``python -m evals.present --site`` writes the report page into the demo's folder, from presentation.json
+    with the standard library only (the runner's own python3: no install), and checks it before the upload; the
+    page's footer names the commit."""
+    build = _workflow(DEMO)["jobs"]["build"]
+    site = _step(build, "evals.present")
+    assert site["run"].split() == [
+        "python3",
+        "-m",
+        "evals.present",
+        "--site",
+        '"$RUNNER_TEMP/demo/evals"',
+        "--check-site",
+        "--commit",
+        '"$GITHUB_SHA"',
+    ]
+    steps = [step.get("run", step.get("uses", "")) for step in build["steps"]]
+    vite = _step(build, "vite build")["run"]
+    upload = _step(build, "actions/upload-pages-artifact")["uses"]
+    assert steps.index(vite) < steps.index(site["run"]) < steps.index(upload)
+    assert not any("setup-python" in step or "pip install" in step for step in steps)
 
 
 def test_the_demo_is_the_browser_only_build_outside_the_committed_one() -> None:
@@ -103,7 +134,9 @@ def test_the_demo_uses_ci_s_versions_of_the_actions_and_node_it_shares() -> None
 
 def test_the_readme_links_the_demo_that_needs_no_account() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert readme.count(PAGES_URL) == 2  # the links under the video and in "Try it in 60 seconds"
+    # the links under the video and in "Try it in 60 seconds"; the evaluation block links the report page beside it
+    assert len(re.findall(re.escape(PAGES_URL) + r"(?!evals/)", readme)) == 2
+    assert f"]({REPORT_URL})" in readme
     assert "claude.ai/artifact" not in readme  # one demo link: the copy that main rebuilds by itself
     releasing = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
     assert PAGES_URL in releasing

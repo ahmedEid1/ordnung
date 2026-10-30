@@ -4,22 +4,42 @@ Fixture layout: ``<fixtures>/<purpose>/<key[:24]>.json`` where ``key`` is
 :func:`ordnung.llm.runtime.request_key` of the request as made (the cache keys it by the model the
 call runs on instead: ``LLMService._cache_key``). Each file holds
 ``{"request": {...summary...}, "response": LLMResponse, "stream": [StreamEvent...]?}``.
+
+A fixture is written whole or not at all (a temporary file, then a rename), so a recording that is stopped
+half-way never leaves half a file behind; one that cannot be read anyway (written by older code) is named in a
+:class:`ReplayCorrupt` error, or — for a recorder that asked for it — set aside as ``<file>.bad`` and recorded again.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from ordnung.llm.base import LLMBackend, LLMError, LLMRequest, LLMResponse, ReplayMiss, StreamEvent
 
 
+class ReplayCorrupt(ReplayMiss):
+    """A recording is there but cannot be read (a half-written or damaged file): the message names it."""
+
+
 def fixture_path(root: Path, req: LLMRequest) -> Path:
     from ordnung.llm.runtime import request_key
 
     return root / req.purpose / f"{request_key(req)[:24]}.json"
+
+
+def write_atomic(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` whole or not at all: a temporary file beside it, then a rename."""
+    tmp = path.with_name(f"{path.name}.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def _summary(req: LLMRequest) -> dict[str, Any]:
@@ -35,19 +55,35 @@ def _summary(req: LLMRequest) -> dict[str, Any]:
 
 
 class ReplayBackend:
-    """Serves recorded responses; raises :class:`ReplayMiss` (or delegates to ``fallback``)."""
+    """Serves recorded responses; raises :class:`ReplayMiss` (or delegates to ``fallback``).
+
+    A recording that cannot be read raises :class:`ReplayCorrupt`, naming the file; with ``set_aside`` (a recorder's
+    replay-first stack) it is renamed ``<file>.bad`` instead and the call goes to ``fallback``, which records it
+    again.
+    """
 
     name = "replay"
 
-    def __init__(self, root: Path, fallback: LLMBackend | None = None) -> None:
+    def __init__(self, root: Path, fallback: LLMBackend | None = None, *, set_aside: bool = False) -> None:
         self.root = Path(root)
         self.fallback = fallback
+        self.set_aside = set_aside and fallback is not None
 
     def _load(self, req: LLMRequest) -> dict[str, Any] | None:
         path = fixture_path(self.root, req)
         if not path.exists():
             return None
-        recorded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            recorded = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(recorded, dict) or "response" not in recorded:
+                raise ValueError("it holds no response")
+        except (OSError, ValueError) as exc:
+            if self.set_aside:
+                path.replace(path.with_name(f"{path.name}.bad"))
+                return None
+            raise ReplayCorrupt(
+                f"unreadable recording {path}: {exc} — delete it and record it again (--live)"
+            ) from exc
         return recorded
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
@@ -89,13 +125,25 @@ class RecordingBackend:
     Privacy guard: fixtures ship in the repository, so the recorder refuses any request that carries a
     document outside ``allowed_doc_ids`` (the sample-life manifest). Personal documents can never end
     up in a fixture by accident.
+
+    ``provenance`` (the benchmarks': the run's repeat, the ``claude`` version and the commit) is added to each
+    fixture's request summary with the time it was recorded; it is read when the fixture is written. Without it
+    the summary is as it always was.
     """
 
-    def __init__(self, inner: LLMBackend, root: Path, allowed_doc_ids: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        inner: LLMBackend,
+        root: Path,
+        allowed_doc_ids: set[str] | None = None,
+        *,
+        provenance: Mapping[str, Any] | None = None,
+    ) -> None:
         self.inner = inner
         self.root = Path(root)
         self.name = inner.name
         self.allowed_doc_ids = allowed_doc_ids
+        self.provenance = provenance
 
     def _guard(self, req: LLMRequest) -> None:
         if self.allowed_doc_ids is None:
@@ -107,12 +155,19 @@ class RecordingBackend:
     def _write(self, req: LLMRequest, payload: dict[str, Any]) -> None:
         path = fixture_path(self.root, req)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        write_atomic(path, json.dumps(payload, ensure_ascii=False, indent=2))
+
+    def _request(self, req: LLMRequest) -> dict[str, Any]:
+        summary = _summary(req)
+        if self.provenance is not None:
+            summary["recorded_at"] = datetime.now(UTC).replace(microsecond=0).isoformat()
+            summary.update(self.provenance)
+        return summary
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         self._guard(req)
         resp = await self.inner.complete(req)
-        self._write(req, {"request": _summary(req), "response": resp.model_dump()})
+        self._write(req, {"request": self._request(req), "response": resp.model_dump()})
         return resp
 
     async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
@@ -126,4 +181,6 @@ class RecordingBackend:
             yield ev
         if final is not None:
             self._guard(req)  # Ask adds the documents it read while answering: check them again
-            self._write(req, {"request": _summary(req), "response": final.model_dump(), "stream": events})
+            self._write(
+                req, {"request": self._request(req), "response": final.model_dump(), "stream": events}
+            )

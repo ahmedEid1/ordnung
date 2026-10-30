@@ -103,6 +103,8 @@ export default defineConfig({
     { name: "girocode", testMatch: /girocode-layout\.spec\.ts$/, use: desktop },
     { name: "high-stakes", testMatch: /high-stakes\.spec\.ts$/, use: desktop },
     { name: "add-date", testMatch: /add-date\.spec\.ts$/, use: desktop },
+    // the evaluation's report page, built from presentation.json into a folder of its own: no server, no shared state
+    { name: "eval-report", testMatch: /eval-report\.spec\.ts$/, use: desktop },
     { name: "real-app", testMatch: REAL_APP_SPECS, use: { ...desktop, baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE } },
     { name: "pictures", testMatch: PICTURES_SPEC, use: { ...desktop, baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE, colorScheme: "light" } },
   ],

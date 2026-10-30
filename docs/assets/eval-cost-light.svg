@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="740" height="282" viewBox="0 0 740 282" role="img" aria-labelledby="cost-light-w-t cost-light-w-d" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<title id="cost-light-w-t">What each condition costs</title>
+<desc id="cost-light-w-d">Dot plot of the API-equivalent cost per letter and per right date over 189 held-out letters. LLM + rules tool: $0.0573 per letter, $0.0649 per right date, latency p50 25.5 s, p95 54.6 s, 99.4 % exactly right; Ordnung: $0.0845 per letter, $0.0980 per right date, latency p50 50.3 s, p95 119.4 s, 97.0 % exactly right; LLM + rules text: $0.0472 per letter, $0.0579 per right date, latency p50 29.1 s, p95 58.6 s, 91.7 % exactly right; LLM only: $0.0500 per letter, $0.0695 per right date, latency p50 32.1 s, p95 71.6 s, 81.0 % exactly right.</desc>
+<rect width="740" height="282" style="fill:#fcfcfb"/>
+<text x="16" y="26" style="fill:#0b0b0b" font-size="15" font-weight="600" text-anchor="start">What each condition costs</text>
+<text x="16" y="46" style="fill:#52514e" font-size="12" font-weight="400" text-anchor="start">API-equivalent $ from the Claude CLI's own accounting, mean over 189 letters · claude-sonnet-5</text>
+<polygon points="22,96.3 29.7,104 22,111.7 14.3,104" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool</title></polygon>
+<text x="34" y="108.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM + rules tool</text>
+<circle cx="22" cy="138" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung</title></circle>
+<text x="34" y="142.5" style="fill:#0b0b0b" font-size="13" font-weight="600" text-anchor="start">Ordnung</text>
+<rect x="17.2" y="167.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text</title></rect>
+<text x="34" y="176.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM + rules text</text>
+<polygon points="22,198.6 29.4,211.9 14.6,211.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only</title></polygon>
+<text x="34" y="210.5" style="fill:#0b0b0b" font-size="13" font-weight="400" text-anchor="start">LLM only</text>
+<text x="190" y="74" style="fill:#0b0b0b" font-size="12" font-weight="600" text-anchor="start">$ per letter</text>
+<line x1="190" y1="90" x2="190" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="190" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.00</text>
+<line x1="240" y1="90" x2="240" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="240" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.02</text>
+<line x1="290" y1="90" x2="290" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="290" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.04</text>
+<line x1="340" y1="90" x2="340" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="340" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.06</text>
+<line x1="390" y1="90" x2="390" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="390" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.08</text>
+<line x1="440" y1="90" x2="440" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="440" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.10</text>
+<polygon points="333.3,96.3 341,104 333.3,111.7 325.6,104" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool: $0.0573 per letter</title></polygon>
+<circle cx="401.3" cy="138" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung: $0.0845 per letter</title></circle>
+<rect x="303.1" y="167.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text: $0.0472 per letter</title></rect>
+<polygon points="314.9,198.6 322.4,211.9 307.5,211.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only: $0.0500 per letter</title></polygon>
+<text x="508" y="108.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0573</text>
+<text x="508" y="142.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0845</text>
+<text x="508" y="176.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0472</text>
+<text x="508" y="210.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0500</text>
+<text x="560" y="74" style="fill:#0b0b0b" font-size="12" font-weight="600" text-anchor="start">$ per right date</text>
+<line x1="560" y1="90" x2="560" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="560" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.00</text>
+<line x1="610" y1="90" x2="610" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="610" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.05</text>
+<line x1="660" y1="90" x2="660" y2="221" style="stroke:#e1e0d9;stroke-width:1"/>
+<text x="660" y="236" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="middle">$0.10</text>
+<polygon points="624.9,96.3 632.6,104 624.9,111.7 617.2,104" style="fill:#008300;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules tool: $0.0649 per right date</title></polygon>
+<circle cx="658" cy="138" r="5.5" style="fill:#2a78d6;stroke:#fcfcfb;stroke-width:2"><title>Ordnung: $0.0980 per right date</title></circle>
+<rect x="613.1" y="167.2" width="9.6" height="9.6" rx="1" style="fill:#eda100;stroke:#fcfcfb;stroke-width:2"><title>LLM + rules text: $0.0579 per right date</title></rect>
+<polygon points="629.5,198.6 636.9,211.9 622,211.9" style="fill:#e87ba4;stroke:#fcfcfb;stroke-width:2"><title>LLM only: $0.0695 per right date</title></polygon>
+<text x="728" y="108.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0649</text>
+<text x="728" y="142.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0980</text>
+<text x="728" y="176.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0579</text>
+<text x="728" y="210.5" style="fill:#0b0b0b" font-size="12" font-weight="400" text-anchor="end">$0.0695</text>
+<text x="16" y="270" style="fill:#52514e" font-size="11" font-weight="400" text-anchor="start">Cheaper to the left. Ordnung also writes a summary, key facts and a checked quote for every letter.</text>
+</svg>

@@ -2334,10 +2334,12 @@ answer leads with "not in your records"),
 attack success raw vs final, guard effect (removed sentences and left-out values sorted into true,
 a letter's, unreadable, unvouched § and other), tool calls, turns, cost and latency. Replayed from
 `evals/recorded/ask/`; every replayed tool call is answered again by the current tools, and a
-recording they no longer match fails the run (`--prune-stale`, then `--live`); the benchmark ledger
-puts every record's stamp at the start of its day, so the order of a tie (two payments due the same
-day) never depends on the hour of the run; results in
-`evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay. A household group
+recording they no longer match fails the run (`--prune-stale`, then `--live --allow-another-today`: the set's
+today is the sample life's, so it is always recorded again on another day, and its results say both days); the
+benchmark ledger puts every record's stamp at the start of its day, so the order of a tie (two payments due the same
+day) never depends on the hour of the run; results in `evals/results/<date>-<model>-ask.json` (a re-scoring of a
+live run's recordings: `…-ask-rescored.json`, dated the day it is made) and `docs/evals-ask.md`; CI gates on the
+replay. A household group
 (`evals/ask/household.py`, ADR 0025: five questions on a copy of the ledger with *Alex Rivera* in the household
 and two letters addressed to him — the sample life's health insurer's notice and passport, re-addressed to him with
 his own numbers — filed for him by the household code, gold from that ledger's truth) is reported apart

@@ -7,10 +7,41 @@ import sys
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
+from typing import Any
 
-from evals.ask.report import headline, results_payload, stale_docs, write_docs, write_results
-from evals.ask.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, BenchmarkError, Config, RunResult, run
+from evals import harness
+from evals.ask.report import (
+    headline,
+    recorded_on,
+    replaces_a_recording,
+    results_payload,
+    stale_docs,
+    strict_headline,
+    write_docs,
+    write_results,
+)
+from evals.ask.run import (
+    DEFAULT_MODEL,
+    HELDOUT_RECORDED_DIR,
+    RECORDED_DIR,
+    RESULTS_DIR,
+    SETS,
+    BenchmarkError,
+    Config,
+    RunResult,
+    run,
+)
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
+
+
+def _record_flags(args: argparse.Namespace) -> str:
+    """How this set is recorded: the development set on another day than its own, in the open; the held-out set on
+    the day it is built for."""
+    return (
+        "--live --today <its day>"
+        if getattr(args, "set", "dev") == "heldout"
+        else "--live --allow-another-today"
+    )
 
 
 def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
@@ -20,13 +51,13 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     if result.misses:
         problems.append(
             f"{len(result.misses)} question(s) have no recording ({', '.join(sorted(result.misses))}) "
-            "— record them with --live"
+            f"— record them with {_record_flags(args)}"
         )
     if result.stale:
         listed = "; ".join(f"{qid}: {', '.join(tools)}" for qid, (_, tools) in sorted(result.stale.items()))
         problems.append(
             f"{len(result.stale)} recording(s) have tool results the current tools no longer give ({listed}) "
-            "— delete them with --prune-stale and record them again with --live"
+            f"— delete them with --prune-stale and record them again with {_record_flags(args)}"
         )
     if s["not_answered"]:
         problems.append(f"{s['not_answered']} question(s) got no answer")
@@ -59,6 +90,29 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
         attribution = household["attribution"]["value"] if household else None
         if attribution is None or attribution < args.min_household:
             problems.append(f"household attribution {attribution} is below {args.min_household}")
+    return problems + strict_gate_failures(result, args)
+
+
+def strict_gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
+    """The gates on the strict scores, the request lock and the budget (empty when every threshold holds)."""
+    problems = []
+    if result.drift:
+        problems.append(
+            f"{len(result.drift)} recording(s) differ from the request lock: {result.drift[0]} — see "
+            "`python -m evals.harness diff-requests HEAD --ask`"
+        )
+    budget = next(
+        (t.error for t in result.turns.values() if (t.error or "").startswith("budget reached")), None
+    )
+    if budget:
+        problems.append(budget)
+    strict = result.strict_summary
+    value = strict.get("strict_accuracy", {}).get("value")
+    if args.min_strict_accuracy is not None and (value is None or value < args.min_strict_accuracy):
+        problems.append(f"strict answer accuracy {value} is below {args.min_strict_accuracy}")
+    harmful = strict.get("harmful_answers", [])
+    if args.max_harmful is not None and len(harmful) > args.max_harmful:
+        problems.append(f"{len(harmful)} harmful answer(s): {', '.join(harmful)} (max {args.max_harmful})")
     return problems
 
 
@@ -92,8 +146,10 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         "--recorded-dir",
         type=Path,
         default=None,
-        help=f"the recordings' folder (default {RECORDED_DIR}): a smoke run records into an empty one",
+        help="the recordings folder (default: evals/recorded/ask, or evals/recorded/ask-heldout with --set heldout); "
+        "a smoke records into a scratch one",
     )
+    parser.add_argument("--recorder-lock", type=Path, default=None, help=argparse.SUPPRESS)
     parser.add_argument("--min-accuracy", type=float, default=None, help="gate: minimum answer accuracy")
     parser.add_argument(
         "--min-abstention", type=float, default=None, help="gate: minimum abstention accuracy"
@@ -123,10 +179,72 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         default=None,
         help="gate: minimum share of household questions whose answer says whose each number is",
     )
+    add_heldout_arguments(parser)
     return parser.parse_args(argv)
 
 
-def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR) -> int:
+def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
+    """The held-out set, repeated runs, the recording's budget and waiting, and the strict gates."""
+    parser.add_argument(
+        "--set",
+        choices=SETS,
+        default="dev",
+        help="dev: the development set (default); heldout: the held-out set of evals/ask/heldout/, written after "
+        "the code freeze (recordings in evals/recorded/ask-heldout/, results …-ask-heldout.json, no page)",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help="run N of the same questions (default 1, the recorded run): run N ≥ 2 is recorded and replayed under "
+        "keys of its own, with the same request; its results file ends in -rN",
+    )
+    parser.add_argument(
+        "--max-cost-usd",
+        type=float,
+        default=None,
+        metavar="USD",
+        help="with --live: start no new call once this set's calls at this --repeat cost this much, counting what "
+        "its ledger says earlier runs spent (what is recorded is kept)",
+    )
+    parser.add_argument(
+        "--wait-on-limit",
+        type=float,
+        default=None,
+        metavar="HOURS",
+        help="with --live: on a usage limit, wait for its reset (no call is made) and go on, until HOURS after the "
+        "start",
+    )
+    parser.add_argument(
+        "--today",
+        type=date.fromisoformat,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="the held-out set's day: its ledger is built, its turns asked and its answers scored for it — the day it "
+        "is recorded (default: the sample life's, 2026-09-28; the development set is asked on no other)",
+    )
+    parser.add_argument(
+        "--allow-another-today",
+        action="store_true",
+        help="with --live: record on another day than the set's — the development set, pinned to 2026-09-28, recorded "
+        "again in the open (the model sees two todays, and the results say both days); the held-out set only as a "
+        "smoke into a scratch --recorded-dir outside the checkout",
+    )
+    parser.add_argument(
+        "--min-strict-accuracy",
+        type=float,
+        default=None,
+        help="gate: minimum strict answer accuracy (every gold value, nothing harmful, no false inclusion)",
+    )
+    parser.add_argument(
+        "--max-harmful", type=int, default=None, help="gate: answers stating a harmful value (a later date …)"
+    )
+
+
+def main(
+    argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR, heldout_dir: Path | None = None
+) -> int:
     args = parse_args(argv)
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
     config = Config(
@@ -135,14 +253,22 @@ def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR
         refresh=args.refresh,
         only=only,
         concurrency=args.concurrency,
-        recorded_dir=args.recorded_dir or recorded_dir,
+        recorded_dir=args.recorded_dir or (HELDOUT_RECORDED_DIR if args.set == "heldout" else recorded_dir),
+        set_name=args.set,
+        heldout_dir=heldout_dir,
+        repeat=args.repeat,
+        max_cost_usd=args.max_cost_usd,
+        wait_on_limit_hours=args.wait_on_limit,
+        today=args.today,
+        allow_another_today=args.allow_another_today,
+        recorder_lock=args.recorder_lock or harness.RECORDER_LOCK,  # one recorder for every benchmark
     )
     try:
         result = run(config)
     except BenchmarkError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
-    for line in headline(result.summary):
+    for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:
         for qid, (path, _) in sorted(result.stale.items()):
@@ -156,18 +282,68 @@ def main(argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR
         if only:
             print("error: --write needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        payload = results_payload(result, run_date=args.date or date.today().isoformat())
-        print(f"wrote {write_results(payload, args.results_dir)} and {write_docs(payload)}")
+        try:
+            payload = _payload(result, args, args.date or date.today().isoformat())
+        except BenchmarkError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        recording = None if result.config.live else replaces_a_recording(args.results_dir, payload)
+        if recording is not None:
+            print(
+                f"error: {recording.name} is a live run as recorded, which a re-scoring never replaces (a "
+                "re-scoring is written as <date>-<model>-ask…-rescored.json, dated the day it is made)",
+                file=sys.stderr,
+            )
+            return 2
+        written = write_results(payload, args.results_dir)
+        if _has_page(args):
+            print(f"wrote {written} and {write_docs(payload)}")
+        else:  # a held-out run or a repeat sits beside the page's run, never replaces it
+            print(f"wrote {written}")
     problems = gate_failures(result, args)
     if args.check_docs:
         if only:
             print("error: --check-docs needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
-        stale = stale_docs(lambda day: results_payload(result, run_date=day), args.results_dir, args.model)
+        try:
+            stale = stale_docs(
+                lambda day: _payload(result, args, day, rescoring=True),
+                args.results_dir,
+                args.model,
+                as_recorded=lambda day: results_payload(result, run_date=day, schema=1),
+                as_live=lambda day: results_payload(result, run_date=day),
+                set_name=args.set,
+                repeat=args.repeat,
+            )
+        except BenchmarkError as exc:
+            stale = [str(exc)]
         problems += [f"{problem} — regenerate with --write --date <its date>" for problem in stale]
     for problem in problems:
         print(f"gate: {problem}", file=sys.stderr)
     return 1 if problems else 0
+
+
+def _payload(
+    result: RunResult, args: argparse.Namespace, day: str, *, rescoring: bool | None = None
+) -> dict[str, Any]:
+    """The results file of ``day``: a live run's own, or a replay's re-scoring (``-rescored``) of the live run it
+    replays — the newest committed one made before that day's re-scoring, the same day's included."""
+    if rescoring is None:
+        rescoring = not result.config.live
+    if not rescoring:
+        return results_payload(result, run_date=day)
+    recorded = recorded_on(args.results_dir, args.model, day, set_name=args.set, repeat=args.repeat)
+    if recorded is None:
+        raise BenchmarkError(
+            f"a replay re-scores a live run, and {args.results_dir} has no results file of one on or before {day} "
+            "for this set and run: record it with --live --write"
+        )
+    return results_payload(result, run_date=day, recorded=recorded)
+
+
+def _has_page(args: argparse.Namespace) -> bool:
+    """Only the development set's run 1 writes ``docs/evals-ask.md``."""
+    return bool(args.set == "dev" and args.repeat == 1)
 
 
 if __name__ == "__main__":

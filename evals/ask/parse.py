@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
-from evals.ask.ledger import TODAY
+from evals.ask.ledger import TODAY, benchmark_today
 
 _MONTHS = {
     **dict.fromkeys(("january", "jan", "januar", "jänner"), 1),
@@ -86,13 +86,14 @@ class Mention:
 
 
 def _year_near(day: int, month: int) -> date | None:
+    today = benchmark_today()
     candidates = []
-    for year in (TODAY.year - 1, TODAY.year, TODAY.year + 1):
+    for year in (today.year - 1, today.year, today.year + 1):
         try:
             candidates.append(date(year, month, day))
         except ValueError:
             continue
-    return min(candidates, key=lambda value: abs((value - TODAY).days), default=None)
+    return min(candidates, key=lambda value: abs((value - today).days), default=None)
 
 
 def _date(day: str, month: int, year: str | None) -> date | None:
@@ -154,7 +155,8 @@ def mentions(text: str) -> list[Mention]:
         taken.append(span)
         if match.group("ym"):  # the end of a month without a year: its last day, in the nearest year
             month = _MONTHS[match.group("ym").lower()]
-            last = _year_near(calendar.monthrange(TODAY.year, month)[1], month) or TODAY
+            today = benchmark_today()
+            last = _year_near(calendar.monthrange(today.year, month)[1], month) or today
             found.append((span[0], Mention("date", match.group(), quoted(*span), date=last)))
             continue
         year, month = (

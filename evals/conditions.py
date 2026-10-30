@@ -32,8 +32,10 @@ from __future__ import annotations
 import asyncio
 import functools
 import hashlib
+import importlib.metadata
 import json
 import re
+import sys
 import time
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
@@ -911,49 +913,43 @@ async def run_condition(
     return await run_baseline(entry, document, llm, model=model, condition=condition)
 
 
-def _digest(paths: Sequence[Path]) -> str:
-    sha = hashlib.sha256()
-    for path in paths:
-        if path.is_file():
-            sha.update(path.name.encode())
-            sha.update(path.read_bytes())
-    return sha.hexdigest()[:16]
+#: The packages whose version changes what a letter looks like to the model or to the code: page images
+#: (pypdfium2, pillow), text layers (pypdfium2), holidays, answer schemas (pydantic), the generated letters (fpdf2).
+ENVIRONMENT_PACKAGES = ("holidays", "pypdfium2", "pillow", "fpdf2", "pydantic")
+
+
+def _package_version(name: str) -> str:
+    try:
+        return importlib.metadata.version(name)
+    except importlib.metadata.PackageNotFoundError:
+        return "absent"
+
+
+def environment() -> dict[str, str]:
+    """Python's version and :data:`ENVIRONMENT_PACKAGES`' (part of :func:`_code_digest`)."""
+    versions = {name: _package_version(name) for name in ENVIRONMENT_PACKAGES}
+    versions["python"] = f"{sys.version_info.major}.{sys.version_info.minor}"
+    return versions
 
 
 @functools.cache
 def _code_digest(condition: str) -> str:
-    """A digest of the code a cached prediction depends on (so a code change invalidates it)."""
-    own = [EVALS_DIR / "conditions.py", EVALS_DIR / "records.py"]
-    shared = [
-        _SRC / "models.py",
-        _SRC / "llm" / "schemas.py",
-        _SRC / "llm" / "claude_cli.py",  # extract_json parses every answer
-        *(_SRC / "ingest" / f"{name}.py" for name in ("extract", "intake", "text")),
-    ]
-    if condition == TOOLS_CONDITION:  # the tools' answers come from the rules engine
-        tools = [_SRC / "assistant" / "rules_tools.py", _SRC / "money" / "iban.py"]
-        return _digest([*own, *shared, *tools, *sorted((_SRC / "rules").glob("*.py"))])
-    if condition != "ordnung":
-        return _digest([*own, *shared])
-    ingest = [
-        _SRC / "ingest" / f"{name}.py"
-        for name in (
-            "conflicts",
-            "extract",
-            "gaps",
-            "intake",
-            "normalize",
-            "pipeline",
-            "plan",
-            "text",
-            "transcribe",
-            "verify",
-        )
-    ]
-    rules = sorted((_SRC / "rules").glob("*.py"))
-    # recurrence: a working day or day of the month graded by plan (needs_check); iban: the invalid-IBAN signal
-    others = [_SRC / "secretary" / "scam.py", _SRC / "recurrence.py", _SRC / "money" / "iban.py"]
-    return _digest([*own, *shared, *ingest, *rules, *others])
+    """A digest of the code a cached prediction depends on, so that any change to it invalidates the prediction.
+
+    It covers every Python file of the package (``src/ordnung/**``) and of the runner (``evals/*.py``), and
+    :func:`environment`. Until 0.4.0 it hashed a hand-written list of files per condition, and a change outside it
+    — the replay key's own code, say — left a resumed run serving predictions from the cache (the harness design's
+    weakness 2). Every condition now shares it (``condition`` stays for the callers; :func:`fingerprint` adds the
+    condition and its prompts).
+    """
+    sha = hashlib.sha256()
+    for base, paths in ((_SRC, sorted(_SRC.rglob("*.py"))), (EVALS_DIR, sorted(EVALS_DIR.glob("*.py")))):
+        for path in paths:
+            sha.update(f"{base.name}/{path.relative_to(base).as_posix()}\0".encode())
+            sha.update(path.read_bytes())
+            sha.update(b"\0")
+    sha.update(canonical_json(environment()).encode())
+    return sha.hexdigest()[:16]
 
 
 def fingerprint(condition: str, model: str) -> str:

@@ -17,6 +17,7 @@ import tomllib
 from pathlib import Path
 
 import pytest
+from evals.present.charts import COMMITTED
 
 from helpers_media import gif_info, mp4_info, png_info
 
@@ -67,8 +68,10 @@ PICTURES: dict[str, tuple[int, int] | None] = {
 WHY_WIDTH_MAX = 600
 #: dark on purpose: README shows the dark theme once on a computer and once on a phone
 DARK_PICTURES = frozenset({"today-dark.png", "mobile-dark.png"})
-#: the benchmark's chart (``make capture`` doesn't make it): checked by its size only
-EVAL_CHART = "eval-due-date-accuracy.png"
+#: the evaluation's charts (``python -m evals.present`` writes them, not ``make capture``; tests/test_present.py
+#: checks they are what the results files render): hand-written SVG, light and dark, each within its budget
+EVAL_CHARTS = frozenset(f"eval-{name}-{theme}.svg" for name in COMMITTED for theme in ("light", "dark"))
+EVAL_CHART_BYTES = 40_000
 #: what a path of the capturing computer starts with, in any file's bytes
 PATH_MARKS = (b"/home/", b"/Users/", b"/root/", b"/tmp/", b"\\Users\\")
 #: everything else ``docs/assets`` holds: the README's video, its GIF and the logo
@@ -514,17 +517,18 @@ def test_docs_assets_holds_the_readme_media_only() -> None:
     no folder (a stopped capture's ``video``) and no recording."""
     entries = {path.name: path for path in ASSETS.iterdir()}
     assert not [name for name, path in entries.items() if path.is_dir()]
-    assert set(entries) == set(PICTURES) | {EVAL_CHART} | OTHER_MEDIA, set(entries) ^ (
-        set(PICTURES) | {EVAL_CHART} | OTHER_MEDIA
+    assert set(entries) == set(PICTURES) | EVAL_CHARTS | OTHER_MEDIA, set(entries) ^ (
+        set(PICTURES) | EVAL_CHARTS | OTHER_MEDIA
     )
 
 
 def test_the_readme_pictures_are_small_and_in_their_theme() -> None:
-    """Every picture in ``docs/assets`` is one ``make capture`` makes, or the benchmark chart; each is within its
+    """Every picture in ``docs/assets`` is one ``make capture`` makes, or an evaluation chart; each is within its
     budget and has its size, and is light, except the two dark on purpose."""
     found = {path.name for path in ASSETS.glob("*.png")}
-    assert found == set(PICTURES) | {EVAL_CHART}, found ^ (set(PICTURES) | {EVAL_CHART})
-    assert (ASSETS / EVAL_CHART).stat().st_size <= PNG_BYTES
+    assert found == set(PICTURES), found ^ set(PICTURES)
+    for name in EVAL_CHARTS:
+        assert (ASSETS / name).stat().st_size <= EVAL_CHART_BYTES, name
     for name, size in PICTURES.items():
         path = ASSETS / name
         assert path.stat().st_size <= PNG_BYTES, name

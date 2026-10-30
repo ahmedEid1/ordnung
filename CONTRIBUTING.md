@@ -42,7 +42,7 @@ make check
 # both benchmarks, replayed (deterministic, zero tokens, no results file written); CI also replays the
 # holdout, holdout2 and dev splits and the numbers without the sender's Land
 .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
-.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --check-docs
+.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
 # the demo rebuilds identically from the samples and recordings
 .venv/bin/ordnung demo --check
 # Playwright: the demo, then the real app reading with a fake Claude (installs Chromium first)
@@ -87,9 +87,9 @@ check shows in the numbers at once, and costs nothing.
   when a prompt or what is sent to Claude changes, never as part of an ordinary change. If a replay
   misses a recording after your change, say so in the pull request instead of recording.
 - **Digest files and recordings.** `_code_digest` in `evals/conditions.py` hashes the code a benchmark prediction
-  depends on (`models.py`, `llm/schemas.py`, `ingest/extract.py`, `intake.py`, `text.py` and, for some
-  conditions, more). It keys only your local prediction cache and the fingerprint written into a new results
-  file, so changing one of those files moves it and needs no recording by itself. A recording is needed only
+  depends on: every Python file of `src/ordnung` and the runner's own `evals/*.py` (and the versions of the
+  libraries that read a letter). It keys only your local prediction cache and the fingerprint written into a new results file, so a
+  code change moves it and needs no recording by itself. A recording is needed only
   when what is sent changes: a prompt's text or version, a schema Claude is given, what a request's key holds
   (a letter's text, the date, the ledger Ask reads) or what Ask's tools return. A replay shows which: it misses
   the recordings whose requests changed, the prompts locks (`prompts.lock.json`: each prompt's and schema's
@@ -100,10 +100,26 @@ check shows in the numbers at once, and costs nothing.
   install -e ".[dev,eval]" -c constraints.txt` in it), never through `PYTHONPATH`: Ask's MCP server is started
   with that environment's Python and runs whatever it has installed. Keep `ORDNUNG_CLAUDE_MODEL` unset, so every
   call runs on the recorded model, and run one recorder at a time. `python -m evals.ask --prune-stale` deletes
-  the Ask answers that went stale, and `python -m evals.ask --live` records only what is missing; the demo
+  the Ask answers that went stale, and `python -m evals.ask --live --allow-another-today` records only what is
+  missing (see the recording day below); the demo
   records with `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`, and a benchmark run of the test
   split takes `--no-docs` so it leaves `docs/evals.md` alone. Right after, replay what you recorded and check
   that nothing is stale or missing, then say in the pull request what was recorded and what it cost.
+- **The recording harness** (`evals/harness.py`, the same for `python -m evals.run` and `python -m evals.ask`).
+  `--max-cost-usd` starts no new call once a step's calls cost that much (counting what its ledger says earlier
+  runs of the same command spent), `--wait-on-limit` waits through a usage limit for up to that many hours instead
+  of stopping, and `--repeat N` records run N (2 and up) of the same requests under keys of its own. Every live
+  call adds a line to `ledger.jsonl` beside the recordings (commit it with them), every recording's request is
+  locked in `requests.lock.json` (`python -m evals.harness lock-requests --check`, and `diff-requests <ref>` says
+  what changed), and one recorder runs at a time: a recorder that died leaves its lock, which `python -m
+  evals.harness unlock` frees once its process is gone. A replay recomputes every prediction; it reads the
+  prediction cache only with `--resume`. A recording is built for the day it is recorded: the claude CLI tells the
+  model the computer's date, so letters or a ledger pinned to another day would show it two todays, and a live run
+  refuses them (`python -m evals.ask --set heldout --today <day>` builds the held-out Ask set for that day). The
+  development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be recorded again on
+  another day: `--allow-another-today` does that in the open, and every new recording (`recorded_on`) and results
+  file says both days. A held-out or final set takes `--allow-another-today` only for a smoke into a scratch
+  `--recorded-dir` outside the checkout, thrown away.
 
 ## Tests
 
