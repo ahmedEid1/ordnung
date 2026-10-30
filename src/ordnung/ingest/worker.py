@@ -133,7 +133,7 @@ def _parse_clock(text: str, now: datetime) -> datetime | None:
         zone = ZoneInfo(match["tz"]) if match["tz"] else None
         local_now = now.astimezone(zone)
         moment = local_now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-    except (ZoneInfoNotFoundError, ValueError):
+    except (ZoneInfoNotFoundError, ValueError, OSError):  # "3pm (Europe)": a folder of zones, not a zone
         return None
     return moment if moment > local_now else moment + timedelta(days=1)
 

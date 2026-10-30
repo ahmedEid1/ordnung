@@ -343,10 +343,15 @@ class _ChunkWriter(io.RawIOBase):
         return self._sealer.write(data)
 
     def close(self) -> None:
-        if not self._sealed and not self.closed and self._sealer is not None:
-            self._sealer.close()
-            self._sealed = True
-        super().close()
+        """Seal the last chunk, once: if that fails (a full disk), the writer is closed all the same, and is never
+        sealed again (when it is garbage-collected, say) — what was written reads as incomplete."""
+        sealing = not self._sealed and not self.closed and self._sealer is not None
+        self._sealed = True
+        try:
+            if sealing and self._sealer is not None:
+                self._sealer.close()
+        finally:
+            super().close()
 
     def abort(self) -> None:
         """Stop without sealing the last chunk: what was written reads as incomplete, never as whole."""

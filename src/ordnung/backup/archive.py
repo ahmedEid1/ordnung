@@ -269,8 +269,10 @@ def _add(tar: tarfile.TarFile, name: str, data: bytes, mtime: float) -> Manifest
     return ManifestFile(path=name, size=len(data), sha256=hashlib.sha256(data).hexdigest())
 
 
-class _Drain(io.RawIOBase):
-    """Where the encrypted bytes collect between two steps of :class:`BackupStream`."""
+class Drain(io.RawIOBase):
+    """Where a stream's bytes collect between two steps of a generator that sends them as they are made: the
+    encrypted bytes of :class:`BackupStream`, the ZIP of :class:`ordnung.letters_zip.LettersZip` (unseekable:
+    zipfile writes each file's sizes after its data)."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -313,7 +315,7 @@ class BackupStream:
         self._snapshot = _snapshot if _snapshot is not None else snapshot_database(data_dir / DB_NAME)
         self._files = _files
         self._stamp = created_at or real_now_iso()
-        self._drain = _Drain()
+        self._drain = Drain()
         self._writer = EncryptedWriter(self._drain, passphrase, kdf=kdf)
 
     @classmethod
