@@ -13,6 +13,7 @@ from evals import harness
 from evals.ask.report import (
     headline,
     recorded_on,
+    replaces_a_recording,
     results_payload,
     stale_docs,
     strict_headline,
@@ -271,6 +272,14 @@ def main(
             print("error: --write needs the whole benchmark (no --only)", file=sys.stderr)
             return 2
         payload = _payload(result, args, args.date or date.today().isoformat())
+        recording = None if result.config.live else replaces_a_recording(args.results_dir, payload)
+        if recording is not None:
+            print(
+                f"error: {recording.name} is a live run as recorded, which a re-scoring never replaces: write it "
+                "with a later --date (it names the run it re-scores)",
+                file=sys.stderr,
+            )
+            return 2
         written = write_results(payload, args.results_dir)
         if _has_page(args):
             print(f"wrote {written} and {write_docs(payload)}")

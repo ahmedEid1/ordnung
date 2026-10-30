@@ -249,7 +249,10 @@ def test_the_readme_types_no_benchmark_number_by_hand() -> None:
     assert not typed, typed
     counts = [
         (k, n)
-        for k, n in ((int(a), int(b)) for a, b in re.findall(r"\b(\d+) (?:of|/) (\d+)\b", outside))
+        for k, n in (
+            (int(a), int(b))
+            for a, b in re.findall(r"\b(\d+)(?: [a-z]+){0,3} (?:of|/|in) (\d+)\b", _flat(outside))
+        )
         if (k, n) in pairs and n >= 20
     ]
     assert not counts, counts
@@ -308,6 +311,22 @@ def _wrong_answer_problems(readme: str, results: dict[str, Any]) -> list[str]:
     flat = _flat(readme).lower()
     missing = [" | ".join(claim) for claim in required if not any(words in flat for words in claim)]
     return missing + [f"says: {words}" for words in forbidden if words in flat]
+
+
+def test_the_readme_block_says_what_the_newest_ask_run_s_wrong_answers_are() -> None:
+    """E2's Ask section is the generated block's Ask line now: it states the newest Ask run's accuracy and its
+    household answers, and says what each wrong answer is — never a gap in the ledger when it is not one."""
+    from evals.ask.report import latest_results
+
+    latest = latest_results(ROOT / "evals" / "results", "claude-sonnet-5")
+    assert latest is not None
+    results = json.loads(latest.read_text(encoding="utf-8"))
+    summary, block = results["summary"], _flat(_block())
+    accuracy = summary["accuracy"]
+    assert f"{int(accuracy['k'])} of {int(accuracy['n'])} answers right" in block
+    household = summary["household"]["attribution"]
+    assert f"{int(household['k'])} of {int(household['n'])} household answers say whose a number is" in block
+    assert _wrong_answer_problems(block, results) == []
 
 
 def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
@@ -5251,6 +5270,8 @@ def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
     ):
         assert words in amended, words
     assert "and `models.py` stays as it is (a digest file)" not in adr
+    # since 0.4.0 the code digest covers every Python file of the package, not models.py among a few
+    assert "every Python file of the package" in _flat(adr)
     privacy = _privacy_section("Words in pictures (optional)")
     assert "Settings → Data → *Text in pictures*" in privacy
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
@@ -5275,8 +5296,21 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
         "one recorder at a time",
         "`ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`",
         "`--no-docs`",
+        # since 0.4.0 the digest is every Python file of the package and of the runner, not a list of files
+        "every Python file of `src/ordnung` and `evals/`",
+        # the harness (evals/harness.py): a budget, waiting, repeats, the ledger, the lock and the cache
+        "`--max-cost-usd`",
+        "`--wait-on-limit`",
+        "`--repeat N`",
+        "`ledger.jsonl`",
+        "`python -m evals.harness unlock`",
+        "reads the prediction cache only with `--resume`",
+        # the evaluation plan's addendum, item 8
+        "built for the day it is recorded",
+        "`--allow-another-today`",
     ):
         assert words in contributing, words
+    assert "(`models.py`, `llm/schemas.py`" not in contributing  # the list it hashed until 0.4.0
     assert "Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`." in _spec()
     run = (ROOT / "evals" / "run.py").read_text(encoding="utf-8")
     assert '"--no-docs"' in run

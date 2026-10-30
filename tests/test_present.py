@@ -37,7 +37,7 @@ from evals.present import (
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
-REANALYSIS = "2026-10-29-claude-sonnet-5-heldout-reanalysis.json"
+REANALYSIS = "2026-10-30-claude-sonnet-5-heldout-reanalysis.json"
 HELD_OUT = {
     "2026-09-30-claude-sonnet-5-holdout.json": "holdout",
     "2026-10-01-claude-sonnet-5-holdout2.json": "holdout2",
@@ -82,6 +82,8 @@ def test_every_results_file_has_exactly_one_role() -> None:
         roles["2026-09-25-sonnet-test.json"] == "iterated"
     )  # the test split's first run: iterated on after it
     assert roles["2026-10-01-claude-sonnet-5-ask.json"] == "iterated"  # Ask's development set
+    assert roles["2026-10-30-claude-sonnet-5-ask.json"] == "iterated"  # E2's recording, as recorded
+    assert roles["2026-10-31-claude-sonnet-5-ask.json"] == "iterated"  # its re-scoring (schema 2)
     # the earlier model's runs are archive: listed by date, never charted
     assert roles["2026-09-29-sonnet-test.json"] == "archive"
     assert roles["2026-09-29-sonnet-ask.json"] == "archive"
@@ -208,7 +210,12 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
     )
     assert "is level" not in block
     assert "“Please check” caught 0 of Ordnung's 5 wrong dates" in block
-    assert "**Ask:** 0 of 21 injected claims reach you (8 of 21 without the answer check;" in block
+    # E2's recording: 40 of 44 right, the four wrong ones the recording day leaking in as today
+    assert (
+        "**Ask:** 40 of 44 answers right: the four wrong answers call a date that is still open passed, the "
+        "recording day leaking in as today; 0 of 21 injected claims reach you (9 of 21 without the answer check);"
+        in block
+    )
     assert "development set, not held out" in block
     assert f"]({PAGES_URL})" in block and "](docs/evals.md)" in block
     assert 'srcset="docs/assets/eval-held-out-dark.svg"' in block
@@ -905,3 +912,61 @@ def test_pypi_shows_the_readme_charts_from_the_pages_copy() -> None:
             assert f"docs/assets/eval-{name}-{theme}.svg" not in readme
     assert f'srcset="{PAGES_URL}eval-held-out-dark.svg"' in readme
     assert f'src="{PAGES_URL}eval-held-out-light.svg"' in readme
+
+
+# --------------------------------------------------------------------------------------------------
+# The README's Ask line (E2's facts: accuracy, what the wrong answers are, the household group)
+# --------------------------------------------------------------------------------------------------
+
+
+def _ask_doc(**ask: Any) -> dict[str, Any]:
+    base = {
+        "set": "dev",
+        "accuracy": {"k": 40, "n": 44},
+        "attack_success": {"k": 0, "n": 21},
+        "attack_success_raw": {"k": 9, "n": 21},
+        "wrong": {"total": 4, "leak": 4, "gap": 0, "other": 0},
+        "household": {"k": 4, "n": 5},
+    }
+    return {"ask": base | ask}
+
+
+def test_the_ask_line_says_what_the_wrong_answers_are() -> None:
+    assert text.ask_line(_ask_doc()) == (
+        "**Ask:** 40 of 44 answers right: the four wrong answers call a date that is still open passed, the "
+        "recording day leaking in as today; 0 of 21 injected claims reach you (9 of 21 without the answer check); "
+        "4 of 5 household answers say whose a number is; a development set, not held out."
+    )
+    mixed = _ask_doc(wrong={"total": 4, "leak": 1, "gap": 1, "other": 2}, household=None)
+    assert text.ask_line(mixed) == (
+        "**Ask:** 40 of 44 answers right: of the four wrong answers, one calls a date that is still open passed (the "
+        "recording day leaking in as today), one is a gap in the ledger and two leave out a value Ordnung's record "
+        "holds; 0 of 21 injected claims reach you (9 of 21 without the answer check); a development set, not held "
+        "out."
+    )
+    right = _ask_doc(
+        accuracy={"k": 44, "n": 44}, wrong={"total": 0, "leak": 0, "gap": 0, "other": 0}, set="heldout"
+    )
+    assert text.ask_line(right).startswith(
+        "**Ask:** 44 of 44 answers right; 0 of 21 injected claims reach you"
+    )
+    assert text.ask_line(right).endswith("; held out.")
+
+
+def test_the_ask_line_counts_the_wrong_answers_from_the_newest_results_file(doc: dict[str, Any]) -> None:
+    newest = json.loads((RESULTS / doc["ask"]["file"]).read_text(encoding="utf-8"))
+    wrong = [
+        q for q in newest["questions"] if q["gold"] is not None and q["scores"]["correct_final"] is False
+    ]
+    leaks = [q for q in wrong if set(q["scores"].get("called_passed_final") or ()) & set(q["gold"]["dates"])]
+    assert (
+        doc["ask"]["wrong"]["total"]
+        == len(wrong)
+        == int(newest["summary"]["accuracy"]["n"]) - int(newest["summary"]["accuracy"]["k"])
+    )
+    assert doc["ask"]["wrong"]["leak"] == len(leaks)
+    household = newest["summary"].get("household")
+    shown = doc["ask"]["household"]
+    assert (None if shown is None else (shown["k"], shown["n"])) == (
+        (int(household["attribution"]["k"]), int(household["attribution"]["n"])) if household else None
+    )

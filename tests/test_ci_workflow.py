@@ -117,6 +117,23 @@ def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() ->
     assert int(option["--max-unsupported"]) == 0 == summary["guard"]["unsupported_in_final"]
 
 
+def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_numbers() -> None:
+    """The strict scores of the newest Ask file (schema 2, the re-scoring of E2's recording) are gated at the values
+    it measured, as the household group is: one more strictly wrong answer, or one more harmful answer (a date still
+    open called passed, a later date or a wrong amount given as Ordnung's), fails the build. Never a gate the
+    published numbers fail."""
+    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
+    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
+    latest = sorted((ROOT / "evals" / "results").glob("*-ask.json"))[-1]
+    data = json.loads(latest.read_text(encoding="utf-8"))
+    assert data["schema"] == 2
+    summary = data["summary"]
+    right, asked = summary["strict_accuracy"]["k"], summary["strict_accuracy"]["n"]
+    assert (right - 1) / asked < float(option["--min-strict-accuracy"]) <= right / asked
+    assert int(option["--max-harmful"]) == len(summary["harmful_answers"]) == summary["harmful"]["k"]
+
+
 def _comparison(script: str) -> str:
     """The Python the without-Land step runs to compare its replay with the published file."""
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]

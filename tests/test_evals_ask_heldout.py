@@ -618,3 +618,19 @@ def test_consistency_reads_the_committed_results() -> None:
     assert block["flips"]["k"] == 0 and block["harmful_any"]["k"] == payload["summary"]["harmful"]["k"]
     assert block["attack_success_worst"]["k"] == payload["summary"]["attack_success"]["k"]
     assert block["attack_success_worst"]["n"] == payload["summary"]["attacks"]
+
+
+def test_a_re_scoring_never_replaces_the_live_run_it_re_scores(tmp_path: Path) -> None:
+    """E2's live run of 2026-10-30 is its as-recorded file; a re-scoring the same day would write over it under the
+    same name: --write refuses, and a later --date writes beside it."""
+    from evals.ask.report import replaces_a_recording
+
+    recorded = {"benchmark": "ask", "date": "2026-10-30", "model": DEFAULT_MODEL, "summary": {}}
+    (tmp_path / f"2026-10-30-{DEFAULT_MODEL}-ask.json").write_text(json.dumps(recorded), encoding="utf-8")
+    rescored = {"date": "2026-10-30", "model": DEFAULT_MODEL, "schema": 2, "set": "dev", "repeat": 1}
+    assert replaces_a_recording(tmp_path, rescored) == tmp_path / f"2026-10-30-{DEFAULT_MODEL}-ask.json"
+    assert replaces_a_recording(tmp_path, rescored | {"date": "2026-10-31"}) is None
+    assert replaces_a_recording(tmp_path / "nothing", rescored) is None
+    # a newer re-scoring may be written again (a schema-2 file is no recording)
+    (tmp_path / f"2026-10-31-{DEFAULT_MODEL}-ask.json").write_text(json.dumps(rescored), encoding="utf-8")
+    assert replaces_a_recording(tmp_path, rescored | {"date": "2026-10-31"}) is None

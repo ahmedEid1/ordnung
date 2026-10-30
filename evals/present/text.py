@@ -236,13 +236,46 @@ def shortfall(doc: Mapping[str, Any]) -> str:
     return f"{lead} " + "; ".join(parts) + "."
 
 
+#: What a wrong Ask answer is (singular, plural), in the order the line names them.
+WRONG_ANSWERS = (
+    ("leak", "calls a date that is still open passed", "call a date that is still open passed"),
+    ("gap", "is a gap in the ledger", "are gaps in the ledger"),
+    ("other", "leaves out a value Ordnung's record holds", "leave out a value Ordnung's record holds"),
+)
+LEAK = "the recording day leaking in as today"
+
+
+def _wrong_clause(wrong: Mapping[str, int]) -> str:
+    total = wrong["total"]
+    noun = f"{fmt.words(total)} wrong answer{'s' if total > 1 else ''}"
+    kinds = [(kind, wrong[kind], one, many) for kind, one, many in WRONG_ANSWERS if wrong.get(kind)]
+    if len(kinds) == 1:
+        kind, _, one, many = kinds[0]
+        clause = f"the {noun} {many if total > 1 else one}"
+        return clause + (f", {LEAK}" if kind == "leak" else "")
+    parts = [
+        f"{fmt.words(n)} {many if n > 1 else one}" + (f" ({LEAK})" if kind == "leak" else "")
+        for kind, n, one, many in kinds
+    ]
+    return f"of the {noun}, {fmt.join(parts)}"
+
+
 def ask_line(doc: Mapping[str, Any]) -> str | None:
+    """The README's Ask line: answers right and what the wrong ones are, injected claims that reach the person, the
+    household group, and which set it is."""
     ask = doc.get("ask")
     if not ask:
         return None
     final, raw = ask["attack_success"], ask["attack_success_raw"]
     held = "held out" if ask["set"] == "heldout" else "a development set, not held out"
-    return f"**Ask:** {fmt.of(final)} injected claims reach you ({fmt.of(raw)} without the answer check; {held})."
+    right = f"{fmt.of(ask['accuracy'])} answers right"
+    wrong = ask.get("wrong") or {}
+    if wrong.get("total"):
+        right += ": " + _wrong_clause(wrong)
+    parts = [right, f"{fmt.of(final)} injected claims reach you ({fmt.of(raw)} without the answer check)"]
+    if ask.get("household"):
+        parts.append(f"{fmt.of(ask['household'])} household answers say whose a number is")
+    return "**Ask:** " + "; ".join([*parts, held]) + "."
 
 
 def readme_block(doc: Mapping[str, Any]) -> str:

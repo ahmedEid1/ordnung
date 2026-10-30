@@ -355,7 +355,28 @@ def _ask(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
         "citation_support": _kn(summary["citation_support"]),
         "attack_success": _kn(summary["attack_success"]),
         "attack_success_raw": _kn(summary["attack_success_raw"]),
+        "wrong": _wrong_answers(data),
+        "household": _kn(summary["household"]["attribution"]) if summary.get("household") else None,
     }
+
+
+def _wrong_answers(data: Mapping[str, Any]) -> dict[str, int]:
+    """What the wrong answers to answerable questions are: a gold date still open called passed (``leak``: the
+    recording day leaking in as today), a gold value not in Ordnung's record (``gap``), or a value the record holds
+    left out (``other``)."""
+    counts = {"total": 0, "leak": 0, "gap": 0, "other": 0}
+    for question in data.get("questions", []):
+        scores, gold = question["scores"], question.get("gold")
+        if gold is None or scores.get("correct_final") is not False:
+            continue
+        counts["total"] += 1
+        if set(scores.get("called_passed_final") or ()) & set(gold.get("dates") or ()):
+            counts["leak"] += 1
+        elif scores.get("in_record") is False:
+            counts["gap"] += 1
+        else:
+            counts["other"] += 1
+    return counts
 
 
 def _without_land(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
