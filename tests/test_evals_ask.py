@@ -775,8 +775,19 @@ def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path
         kinds = {row["ref"]: row["kind"] for row in record["numbers"]}
         (group,) = record["household"]
         his = {*group["about"], *(entry["number"] for entry in group["documents"])}
-        assert {kinds[ref] for ref in his} == {"health_insurance", "passport"}
+        his_kinds = {kinds[ref] for ref in his}
+        assert his_kinds == {"health_insurance", "passport"}
         assert not his & set(record["about_you"])
+        # and no number of his is in the group that reads as the person's own (about_you): not under him, and
+        # not his health insurer's call sheet's, whose letters are all filed for him
+        rows = {row["ref"]: row for row in record["numbers"]}
+        assert [rows[ref]["group"] for ref in group["about"]] == ["about_household_member"]
+        on_sheets = [
+            row for row in rows.values() if row.get("filed_for") == MEMBER_ID and row["kind"] in his_kinds
+        ]
+        assert [row["group"] for row in on_sheets] == ["about_household_member"]
+        assert not [ref for ref, row in rows.items() if row["group"] == "about_you" and row.get("filed_for")]
+        assert {rows[ref]["group"] for ref in record["about_you"]} == {"about_you"}
         assert filed <= {hit["id"] for hit in tools.search("Alex").record["hits"]}
         assert ledger_fingerprint(store) == ledger_fingerprint(other) != ledger_fingerprint(plain)
 

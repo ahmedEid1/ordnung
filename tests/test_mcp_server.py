@@ -2066,6 +2066,42 @@ def test_get_my_numbers_puts_a_member_s_numbers_under_household(
     assert check_answer(said, evidence, citable=evidence.seen_ids).text == said
 
 
+def test_a_member_s_numbers_are_never_in_the_person_s_own_group(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A number about someone of the household is in a group of its own (``about_household_member``), never
+    ``about_you``, which reads as the person's own (a member's health insurance number carrying it was once given
+    as the person's: the Ask benchmark's hh-my-health-number). That is so under ``household`` and on a call sheet
+    whose number all of whose letters are filed for them (``filed_for``). Every other row keeps the group code
+    gave its kind: the person's own numbers ``about_you`` (also on a call sheet, and also when a member's letters
+    show it too), an identity document's number ``document`` whoever's it is, the rest as they were."""
+    from ordnung.numbers import KINDS
+
+    _numbers_ledger(store, ids)
+    (alex,) = _household(store, ALEX)
+    page = _grouped_page(store, alex)
+    # the payslip's Steuer-ID, now about Alex, is on its employer's call sheet too, from his letter alone
+    on_sheet = next(n for sheet in page.organisations for n in sheet.numbers if n.kind == "tax_id")
+    page = page.model_copy(update={"filed_for": {**page.filed_for, on_sheet.key: alex}})
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: page)
+    tools = LedgerTools(store, today=TODAY)
+    for section in ("all", "about_you"):
+        record = record_of(render_result(tools.get_my_numbers(section=section)))
+        rows = {row["ref"]: row for row in record["numbers"]}
+        (group,) = record["household"]
+        assert [rows[ref]["group"] for ref in group["about"]] == ["about_household_member"]
+        assert [rows[doc["number"]]["group"] for doc in group["documents"]] == ["document"]
+        his = {ref for ref, row in rows.items() if row.get("filed_for") == alex and row["kind"] == "tax_id"}
+        assert [rows[ref]["group"] for ref in his] == (["about_household_member"] if section == "all" else [])
+        assert [rows[ref]["group"] for ref in record["about_you"]] == ["about_you"]
+        # the person's own, though his letters show it too
+        assert rows[record["about_you"][0]]["also_for"] == [alex]
+        for ref, row in rows.items():
+            if ref not in {*group["about"], *his}:
+                assert row["group"] == KINDS[row["kind"]][0], ref
+    assert mcp_server.MEMBER_NUMBER_GROUP == "about_household_member"
+
+
 def test_get_my_numbers_marks_call_sheet_numbers_and_cases_filed_for_a_member(
     store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:

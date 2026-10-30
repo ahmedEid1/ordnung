@@ -1063,7 +1063,9 @@ HTML and without remote images.
   letters the person filed for them, newest first, at most 50) and `household_note`; `get_document` adds
   `filed_for`; `get_my_numbers` (with `about_you`) adds each person's numbers and documents under `household`,
   `filed_for` and `also_for` on its number rows, `filed_for` on its cases, and `household_note`; every person
-  those name is under `household`, by id and name alone when the answer has no numbers of theirs. Private letters
+  those name is under `household`, by id and name alone when the answer has no numbers of theirs. A number about
+  one of them (under `household`, or a call sheet's number `filed_for` them) has the group
+  `about_household_member`, never `about_you`, which reads as the person's own. Private letters
   are left out, and `household_note` says whose a private letter is isn't known; never who signs, "mine" or a
   suggestion. `get_document`'s `tax_relevant` follows the person's *For taxes* choice, else Claude's mark, with
   `tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off their

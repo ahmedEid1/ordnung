@@ -82,6 +82,12 @@ MAX_OPEN_CASES = 20
 MAX_SHEET_NUMBERS = 20
 MAX_NUMBER_ROWS = 150
 NUMBER_SECTIONS = ("about_you", "organisations", "open_cases")
+#: ``get_my_numbers``' group for a number about someone of the household: listed under ``household`` (from the
+#: letters filed for them), or a call sheet's whose letters are all filed for them (``filed_for``). The page's group
+#: for it is ``about_you``, which in a row reads as the person's own (a member's health insurance number was once
+#: given as the person's). A fixed word, never a name as typed: ``household`` and ``filed_for`` say whose it is.
+#: Without a household no row has it, so those answers are as they were.
+MEMBER_NUMBER_GROUP = "about_household_member"
 PARTY_MATCH_SCORE = 80.0
 ITEM_STATUSES = ("open", "done", "dismissed", "snoozed", "missed", "all")
 CONTRACT_STATUSES = ("active", "cancelled", "ended", "all")
@@ -694,7 +700,9 @@ class LedgerTools:
         letters are filed for one person says so (``filed_for``), and a number other people's letters show too
         says whose (``also_for``); ``household_note`` says what that means. Every person those name is under
         ``household``, by id and name alone when the answer has no numbers of theirs (asked without
-        ``about_you``). Without a household none of these is there and the answer is as it always was.
+        ``about_you``). A number about one of them (under ``household``, or a call sheet's number ``filed_for``
+        them) has the group :data:`MEMBER_NUMBER_GROUP`, never ``about_you``. Without a household none of these is
+        there and the answer is as it always was.
         """
         from ordnung.views import my_numbers
 
@@ -730,7 +738,7 @@ class LedgerTools:
                     {
                         "id": person.id,
                         "name": person.name,
-                        "about": [rows.number(found) for found in person.about],
+                        "about": [rows.number(found, member=True) for found in person.about],
                         "documents": [rows.document(doc) for doc in person.documents],
                     }
                     for person in page.household
@@ -787,7 +795,9 @@ class _NumberRows:
     it came from), named by a ``ref`` everywhere else; each open case once, named ``c1`` …; labels and
     values in the letter text of the letter that shows them. ``filed_for`` and ``also_for`` are the page's
     (:class:`~ordnung.models.NumbersPage`): whose a call sheet's number or a case is, and the other people whose
-    letters show a number too; ``whose`` says whether a row carried either."""
+    letters show a number too; ``whose`` says whether a row carried either. A row's ``group`` is the number's
+    (``about_you``, ``document`` …), but :data:`MEMBER_NUMBER_GROUP` in place of ``about_you`` for a household
+    person's *About* numbers and a call sheet's number ``filed_for`` one of them."""
 
     def __init__(
         self, filed_for: Mapping[str, str] | None = None, also_for: Mapping[str, Sequence[str]] | None = None
@@ -817,7 +827,9 @@ class _NumberRows:
                 self.people.append(person)
         return kept
 
-    def number(self, found: MyNumber) -> str:
+    def number(self, found: MyNumber, *, member: bool = False) -> str:
+        """The number's ``ref``, with its row the first time. ``member``: one of a household person's *About*
+        numbers (their keys are theirs alone, so their rows are made here)."""
         if found.key in self._refs:
             return self._refs[found.key]
         ref = self._refs[found.key] = f"n{len(self._refs) + 1}"
@@ -828,17 +840,19 @@ class _NumberRows:
         if found.letter:
             self.letters.add(found.letter.id, title=found.letter.title)
         self.letters.add(found.party_id, name=found.party_name)
+        whose = self._person(found.key)
+        theirs = member or "filed_for" in whose  # filed_for names a person of the household, never the person
         self.numbers.append(
             {
                 "ref": ref,
                 "kind": found.kind,
-                "group": found.group,
+                "group": MEMBER_NUMBER_GROUP if theirs and found.group == "about_you" else found.group,
                 "check": found.check,
                 "check_note": found.check_note,
                 "doc_id": doc_id,
                 "party_id": found.party_id,
                 "letters": found.letters,
-                **self._person(found.key),
+                **whose,
             }
         )
         return ref
