@@ -35,9 +35,10 @@ def _ledger_memo_verified() -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def _real_stamps() -> Iterator[None]:
-    """A demo context dates records on its simulated day, and hand-off sync makes writes durable; never
-    let either leak into the next test."""
+    """A demo context pins the clock to its simulated day and dates records on it, and hand-off sync makes
+    writes durable; never let any of them leak into the next test."""
     yield
+    clock.set_today(None)
     clock.stamp_simulated_day(False)
     durable.set_durable(False)  # hand-off sync turns process-wide fsyncs on; not for the next test
 
