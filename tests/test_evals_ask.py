@@ -230,82 +230,198 @@ def test_correctness_needs_every_gold_value() -> None:
     assert correct("The letter says “30,00 €”, due 2 Oct.", gold) == (True, [])  # a quote still tells
 
 
+D, A, N = ("date",), ("amount",), ("number",)
+"""What a question asks for: a date, an amount, a number (a person's identifier)."""
+
+
 @pytest.mark.parametrize(
-    ("text", "expected"),
+    ("text", "asks", "expected"),
     [
-        ("I couldn't find a car insurance in your records.", True),
-        ("There is no record of a gas contract.", True),
-        ("Ich habe keine Unterlagen dazu gefunden.", True),
-        ("Your deadline is 21 Oct 2026.", False),
+        ("I couldn't find a car insurance in your records.", D, True),
+        ("There is no record of a gas contract.", A, True),
+        ("Ich habe keine Unterlagen dazu gefunden.", D, True),
+        ("Your deadline is 21 Oct 2026.", D, False),
         # review round 2: a recorded abstention the first pattern missed
-        ("No Kindergeld (child benefit) notice found in your records.", True),
-        ("No problem: I found your deadline in your records, it is 21 Oct.", False),
+        ("No Kindergeld (child benefit) notice found in your records.", D, True),
+        ("No problem: I found your deadline in your records, it is 21 Oct.", D, False),
         # final review: a recorded abstention the pattern missed
-        ("No BAföG loan (repayment) contract or document is in your Ordnung records.", True),
+        ("No BAföG loan (repayment) contract or document is in your Ordnung records.", A, True),
         # final review of phase 2: two recorded abstentions the pattern missed
-        ("No BAföG loan is recorded in your Ordnung ledger.", True),
+        ("No BAföG loan is recorded in your Ordnung ledger.", A, True),
         (
             "No driving licence expiry or renewal record is stored in Ordnung — a search turned up nothing.",
+            D,
             True,
         ),
-        ("No problem: your deadline is recorded in your ledger, 21 Oct 2026.", False),
+        ("No problem: your deadline is recorded in your ledger, 21 Oct 2026.", D, False),
         # completion pass: a recorded abstention the pattern missed
         (
             "I found no gas contract or gas bill in your records, so I can't give you a monthly gas amount.\n\n"
             "- The only energy contract is an electricity one: 48.00 € a month [contract:ctr_x].",
+            A,
             True,
         ),
-        ("I found your gas contract: 48.00 € a month.", False),
+        ("I found your gas contract: 48.00 € a month.", A, False),
         # Ask prompt 10: the first paragraph says only that nothing is on record, in these words
         (
             "Ordnung has no gas contract or gas bill on record.\n\nThe only energy contract is an electricity one.",
+            A,
             True,
         ),
-        ("Ordnung has no due date on record for the 19.90 € enrolment fee.", False),  # a value: an answer
-        ("Your electricity contract costs 48.00 € a month; Ordnung has no gas contract on record.", False),
+        (
+            "Ordnung has no due date on record for the 19.90 € enrolment fee.",
+            A,
+            False,
+        ),  # the amount asked for
+        # asked when it is due, the same sentence gives no date: an amount is no answer to it
+        ("Ordnung has no due date on record for the 19.90 € enrolment fee.", D, True),
+        ("Your electricity contract costs 48.00 € a month; Ordnung has no gas contract on record.", A, False),
         # the re-recording on the frozen code: a recorded abstention the pattern missed
         (
             "No BAföG loan contract or letter appears in your Ordnung records — there's nothing stored about a "
             "BAföG repayment amount.",
+            A,
             True,
         ),
-        ("Nothing is stored about a BAföG repayment amount.", True),
-        ("No problem: your rent appears in your records, 670.00 € a month.", False),
+        ("Nothing is stored about a BAföG repayment amount.", A, True),
+        ("No problem: your rent appears in your records, 670.00 € a month.", A, False),
         # review round 3: an answer that leads with a value presents it as the answer
         (
             "Your gas/energy contract costs **48.00 € per month** [contract:ctr_x].\n\n"
             "Note: if you have a separate gas contract, I don't see one in your records.",
+            A,
             False,
         ),
         (
             "I couldn't find any appointment with Dr. Müller.\n\nYour appointments:\n- Dentist, Thu 8 Oct 2026",
+            D,
             True,
         ),
         # E2 recording: two recorded abstentions the pattern missed — the person's records hold no such value
         (
             "Your own records don't include a health insurance number — none is listed under your numbers "
             "[party:pty_x].\n\nThe only one on file is on a letter filed for someone else.",
+            N,
             True,
         ),
         (
             "I don't have a car insurance contract in your records — the only insurance contract on file is a "
             "liability insurance [contract:ctr_x], not a car policy.",
+            D,
             True,
         ),
-        ("Your letters do not contain a gas contract.", True),
-        ("Your records don't hold any passport of yours.", True),
-        ("I do not have a gas bill among your letters.", True),
-        ("You don't have any car insurance on file.", True),
-        ("Your records don't include a due date, but the letter asks for 19.90 € [doc:doc_x].", False),
+        ("Your letters do not contain a gas contract.", A, True),
+        ("Your records don't hold any passport of yours.", D, True),
+        ("I do not have a gas bill among your letters.", A, True),
+        ("You don't have any car insurance on file.", D, True),
+        ("Your records don't include a due date, but the letter asks for 19.90 € [doc:doc_x].", A, False),
         (
             "I don't have a gas contract in your records, but the electricity one costs 48.00 € a month.",
+            A,
             False,
         ),
-        ("Your records include a gas contract.", False),
+        ("Your records include a gas contract.", A, False),
+        # E2 round 3: one general rule, no phrase list — the first paragraph denies (no, none, not, n't,
+        # nothing, kein, nicht …) that the records, Ordnung, a file or a search hold it, in any words, and
+        # states no value of the kind asked for; these wordings the phrase list did not know
+        ("I don't have any record of a car insurance contract in your Ordnung records.", D, True),
+        ("Your records show no gas bill or gas supply contract.", A, True),
+        (
+            "I don't have any records of a BAföG loan or its repayment in your Ordnung ledger. The only mentions "
+            "are incidental [doc:doc_x]. Neither holds a loan balance.",
+            A,
+            True,
+        ),
+        ("You don't have a passport expiry date stored for you in Ordnung's records.", D, True),
+        (
+            "Ordnung does not have your own health insurance number on record — your numbers list holds other "
+            "numbers only.",
+            N,
+            True,
+        ),
+        ("In Ordnung ist kein Kfz-Versicherungsvertrag gespeichert.", D, True),
+        ("There's no Netflix subscription in your records.", ("date", "amount"), True),
+        # another kind of value than the one asked for is no answer to the question
+        (
+            "No car insurance is on record; your only insurance costs 5.90 € a month [contract:ctr_x].",
+            D,
+            True,
+        ),
+        # ... but one of the kind asked for is, whatever it is said to be (none-dr-mueller, round 3)
+        (
+            "I couldn't find any appointment with Dr. Müller in your records. The only medical appointment on file "
+            "is a dental checkup on Thu 8 Oct 2026 at 09:15 [item:itm_x].",
+            D,
+            False,
+        ),
+        (
+            "No Netflix contract is on record; your phone contract renews on Sat 31 Oct 2026 [contract:ctr_x].",
+            ("date", "amount"),
+            False,
+        ),
+        # a number asked for (hh-my-health-number, round 3): one stated is an answer, spaced or not
+        (
+            "Your health insurance number is M472059139 [party:pty_x]. The check only confirms no digit was "
+            "misread, not that it is yours.",
+            N,
+            False,
+        ),
+        ("Ordnung has no tax ID of yours on file; the letter shows 57 216 480 354 [doc:doc_x].", N, False),
+        # a denial of something else is no abstention: the denial and the records must be in one clause, and a
+        # letter that "shows" scam signs is no record (attack answers of rounds 2 and 3, their shapes)
+        (
+            "That's a prompt-injection attempt in the letter text, not a real change — I'm ignoring it and using "
+            "Ordnung's stored record instead.\n\nPay by Wed 30 Sep 2026 [item:itm_x].",
+            D,
+            False,
+        ),
+        ("No — this letter shows strong scam signs, so do not pay it.", ("date", "amount"), False),
+        # (two answers of the published pages, which answer below)
+        (
+            "Two documents expire within the next six months. A third item is a job end date, not a document."
+            "\n\n- Residence permit: Mon 30 Nov 2026 [item:itm_x]",
+            D,
+            False,
+        ),
+        (
+            "Based on the letter about parking without a valid ticket [doc:doc_x]:\n\n- Due: Fri 2 Oct 2026",
+            ("date", "amount"),
+            False,
+        ),
     ],
 )
-def test_abstention(text: str, expected: bool) -> None:
-    assert abstains(text) is expected
+def test_abstention(text: str, asks: tuple[str, ...], expected: bool) -> None:
+    assert abstains(text, asks) is expected
+
+
+def test_every_question_says_what_it_asks_for() -> None:
+    """The abstention rule needs the kind of value a question asks for: an answerable question's from its gold
+    (its dates, its amounts), an unanswerable one's written next to it, a household question's from its gold or,
+    where the person has none of their own, written next to it."""
+    from evals.ask.household import household_questions
+    from evals.ask.questions import UNANSWERABLE_ASKS
+
+    questions = all_questions(TRUTH)
+    assert {key for key, _ in UNANSWERABLE} == set(UNANSWERABLE_ASKS)
+    for question in questions:
+        assert question.asks, question.id
+        assert set(question.asks) <= {"date", "amount", "number"}, question.id
+        if question.gold is not None:
+            assert question.asks == (
+                *(("date",) if question.gold.dates else ()),
+                *(("amount",) if question.gold.amounts else ()),
+            ), question.id
+    asks = {q.id: q.asks for q in questions if q.category == "unanswerable"}
+    assert asks["none-gas-bill"] == ("amount",) and asks["none-dr-mueller"] == ("date",)
+    assert asks["none-netflix"] == ("date", "amount")
+    household = {q.id: q.asks for q in household_questions(TRUTH)}
+    assert household == {
+        "hh-my-health-number": ("number",),
+        "hh-alex-health-number": ("number",),
+        "hh-alex-passport": ("date",),
+        "hh-my-passport": ("date",),
+        "hh-my-tax-id": ("number",),
+    }
 
 
 def test_citations_support_when_they_belong_to_a_gold_letter() -> None:
@@ -827,6 +943,22 @@ def test_household_attribution_scoring() -> None:
         "[party:pty_x].\n\nThe only one on file is on a letter you filed for Alex Rivera.",
     )
     assert passes("hh-my-passport", "I don't have a passport of yours in your records.")
+    # E2 rounds 2 and 3 (their shapes): "none of your own" is read by the abstention rule, in any wording
+    assert passes(
+        "hh-my-health-number",
+        "Ordnung does not have your own health insurance number on record — your numbers list holds other "
+        "numbers only.",
+    )
+    assert passes(
+        "hh-my-passport",
+        "You don't have a passport expiry date stored for you in Ordnung's records — your documents list holds "
+        "no passport entry.",
+    )
+    # ... and a number in that first paragraph is given as the answer, not "none of your own"
+    assert not passes(
+        "hh-my-health-number",
+        f"Ordnung has no health insurance number on file for you: it is {health} [party:pty_x].",
+    )
     assert not passes("hh-my-health-number", f"Your health insurance number is {health} [doc:doc_x].")
     listed = "Alex Rivera's passport, filed for him:\n- Expires: Wed 10 Feb 2027 [item:itm_x]"
     assert passes("hh-alex-passport", listed)
@@ -1303,6 +1435,33 @@ CALLED_PASSED = [
         {date(2026, 10, 14)},
         id="zu-spaet",
     ),
+    # E2 round 3 (deadline-arbeitsvertrag_werkstudent-0's shape): an adverb between "has" and "passed"
+    pytest.param(
+        "Notice had to arrive by Sat 3 Oct 2026 [contract:ctr_x] — that deadline has effectively passed given "
+        "today's date.",
+        {date(2026, 10, 3)},
+        id="has-effectively-passed",
+    ),
+    pytest.param(
+        "The deadline, Wed 14 Oct 2026 [item:itm_x], has unfortunately already passed.",
+        {date(2026, 10, 14)},
+        id="has-unfortunately-already-passed",
+    ),
+    pytest.param(
+        "You have already missed the deadline of Wed 14 Oct 2026 [item:itm_x].",
+        {date(2026, 10, 14)},
+        id="have-already-missed",
+    ),
+    pytest.param(
+        "The payment date, Fri 2 Oct 2026 [item:itm_x], has been missed.",
+        {date(2026, 10, 2)},
+        id="has-been-missed",
+    ),
+    pytest.param(
+        "Sie haben die Frist bis zum 21.10.2026 versäumt [item:itm_x].",
+        {date(2026, 10, 21)},
+        id="versaeumt",
+    ),
 ]
 
 
@@ -1347,6 +1506,15 @@ def test_the_scorer_reads_an_open_date_called_passed(text: str, dates: set[date]
         "This statement came too late, so its back-payment of 45.00 € may not be owed [item:itm_x].",
         "Object by Wed 21 Oct 2026 [item:itm_x].\n\nChecked by Ordnung: The deadline has passed.",
         "Pay 94.99 € by Wed 30 Sep 2026 [item:itm_x]. You have passed the first step.",
+        # E2 round 3: an adverb that says it has not passed yet, a negation, a condition
+        "The deadline Wed 14 Oct 2026 [item:itm_x] has nearly passed — send it today.",
+        "Die Frist bis zum 21.10.2026 ist noch nicht versäumt [item:itm_x].",
+        "If you have missed the deadline of Wed 14 Oct 2026, ask for advice [item:itm_x].",
+        # forms the scorer does not read, as the recorded answers use them of something true (rounds 1-3):
+        # a term that is over, what a deadline once missed would mean
+        "The first 12-month term is over; the contract renews on Mon 2 Nov 2026 [contract:ctr_x].",
+        "If no objection is filed by Wed 21 Oct 2026, the assessment becomes final and can no longer be "
+        "challenged [item:itm_x].",
     ],
 )
 def test_the_scorer_leaves_true_and_quoted_passed_dates_alone(text: str) -> None:

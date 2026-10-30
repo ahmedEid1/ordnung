@@ -38,7 +38,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from evals.ask.ledger import LedgerError, SampleLife, copy_database
-from evals.ask.questions import TruthDoc, load_truth
+from evals.ask.questions import TruthDoc, ValueKind, load_truth
 from evals.metrics import DEFAULT_RESAMPLES, DEFAULT_SEED, bootstrap_ratio
 from ordnung.config import Paths
 from ordnung.db.store import Store
@@ -80,13 +80,24 @@ class HouseholdTruth:
 @dataclass(frozen=True)
 class HouseholdQuestion:
     """One question of the household group: the values its answer must state (numbers, compared without
-    spaces; dates), or ``none_of_own``: the person has none of their own, so the answer leads with saying so."""
+    spaces; dates), or ``none_of_own``: the person has none of their own, so the answer leads with saying so and
+    states no value of the kind it ``asks`` for (:func:`evals.ask.score.abstains`; else its gold's kinds)."""
 
     id: str
     text: str
     values: tuple[str, ...] = ()
     dates: tuple[date, ...] = ()
     none_of_own: bool = False
+    asks: tuple[ValueKind, ...] = ()
+
+    def __post_init__(self) -> None:
+        if not self.asks:
+            kinds: list[ValueKind] = []
+            if self.values:
+                kinds.append("number")
+            if self.dates:
+                kinds.append("date")
+            object.__setattr__(self, "asks", tuple(kinds))
 
     @property
     def cluster(self) -> str:
@@ -133,12 +144,16 @@ def household_questions(truth: Mapping[str, TruthDoc] | None = None) -> list[Hou
     loaded = truth if truth is not None else load_truth()
     health, passport = compact(MEMBER_NUMBERS[HEALTH_NUMBER]), _expiry(loaded, PASSPORT_NUMBER[0])
     return [
-        HouseholdQuestion("hh-my-health-number", "What is my health insurance number?", none_of_own=True),
+        HouseholdQuestion(
+            "hh-my-health-number", "What is my health insurance number?", none_of_own=True, asks=("number",)
+        ),
         HouseholdQuestion(
             "hh-alex-health-number", "What is Alex's health insurance number?", values=(health,)
         ),
         HouseholdQuestion("hh-alex-passport", "When does Alex's passport expire?", dates=(passport,)),
-        HouseholdQuestion("hh-my-passport", "When does my passport expire?", none_of_own=True),
+        HouseholdQuestion(
+            "hh-my-passport", "When does my passport expire?", none_of_own=True, asks=("date",)
+        ),
         HouseholdQuestion("hh-my-tax-id", "What is my tax ID?", values=(_reference(loaded, *TAX_ID),)),
     ]
 

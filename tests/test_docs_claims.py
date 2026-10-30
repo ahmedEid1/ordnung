@@ -525,14 +525,116 @@ def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
         entry["scores"]["unsupported_final"] == 0 for entry in results["questions"] + results["attacks"]
     )
     wrong = int(summary["accuracy"]["n"] - summary["accuracy"]["k"])
-    if wrong:
-        assert (
-            f"The {['one', 'two', 'three', 'four', 'five', 'six'][wrong - 1]} wrong answers are gaps"
-            in readme
-        )
+    if wrong:  # the README says what each wrong answer is, with its count, and calls none a gap that is not
+        assert _wrong_answer_problems(readme, results) == []
     else:  # every answer right: the README says what the earlier wrong ones were, not that some are wrong
         assert "wrong answers are gaps" not in readme
         assert "earlier recordings got wrong were gaps in the ledger" in readme.replace("\n", " ")
+
+
+#: What a wrong Ask answer is, in README's words (singular, plural): it calls a gold date still open on the
+#: benchmark's today passed (the day it was recorded leaking in as today); the gold is not in
+#: Ordnung's record (a gap in the ledger); or the record holds it and the answer leaves it out.
+WRONG_ANSWER_KINDS = {
+    "leak": ("calls a date that is still open passed", "call a date that is still open passed"),
+    "gap": ("is a gap in the ledger", "are gaps in the ledger"),
+    "other": ("leaves out a value ordnung's record holds", "leave out a value ordnung's record holds"),
+}
+
+
+def _wrong_answer_claims(results: dict[str, Any]) -> tuple[list[tuple[str, ...]], list[str]]:
+    """What README must say about the wrong answers of an Ask results file, lower case, each claim a choice of
+    wordings: how many there are, and for each kind (:data:`WRONG_ANSWER_KINDS`) how many are of it — "four call
+    a date that is still open passed", or "the four wrong answers call …" when all are — with the recording day
+    named for a leak. And what it must not say: that they are gaps, unless every one is."""
+    wrong = [
+        entry
+        for entry in results["questions"]
+        if entry["gold"] is not None and entry["scores"]["correct_final"] is False
+    ]
+    kinds: dict[str, list[str]] = {kind: [] for kind in WRONG_ANSWER_KINDS}
+    for entry in wrong:
+        scores = entry["scores"]
+        if set(scores.get("called_passed_final") or ()) & set(entry["gold"]["dates"]):
+            kinds["leak"].append(entry["id"])
+        elif scores["in_record"] is False:
+            kinds["gap"].append(entry["id"])
+        else:
+            kinds["other"].append(entry["id"])
+    total = len(wrong)
+    lead = f"{_words(total)} wrong answer{'s' if total > 1 else ''}"
+    required: list[tuple[str, ...]] = [(lead,)]
+    for kind, ids in kinds.items():
+        if not ids:
+            continue
+        says = WRONG_ANSWER_KINDS[kind][len(ids) > 1]
+        words = [f"{_words(len(ids))} {says}"]
+        if len(ids) == total:
+            words.append(f"{lead} {says}")
+        required.append(tuple(words))
+    if kinds["leak"]:
+        required.append(("recording day",))
+    forbidden = [] if len(kinds["gap"]) == total else ["wrong answers are gaps", "wrong answer is a gap"]
+    return required, forbidden
+
+
+def _wrong_answer_problems(readme: str, results: dict[str, Any]) -> list[str]:
+    """The claims of :func:`_wrong_answer_claims` README misses, and the wordings it must not use but does."""
+    required, forbidden = _wrong_answer_claims(results)
+    flat = _flat(readme).lower()
+    missing = [" | ".join(claim) for claim in required if not any(words in flat for words in claim)]
+    return missing + [f"says: {words}" for words in forbidden if words in flat]
+
+
+def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
+    """README never calls a wrong Ask answer a gap in the ledger when it is not one. Round 3 of
+    the E2 recording had four wrong answers, all of them calling a gold date still open on the benchmark's today
+    passed (the day the answers were recorded leaking in as today), none a gap."""
+
+    def entry(qid: str, *, passed: bool = False, in_record: bool = True) -> dict[str, Any]:
+        scores = {"correct_final": False, "in_record": in_record}
+        scores["called_passed_final"] = ["2026-10-14"] if passed else []
+        return {"id": qid, "gold": {"dates": ["2026-10-14"], "amounts": []}, "scores": scores}
+
+    right = {"id": "right", "gold": {"dates": [], "amounts": [1.0]}, "scores": {"correct_final": True}}
+    unanswerable = {"id": "none-x", "gold": None, "scores": {"correct_final": None}}
+    leaks = {"questions": [entry(f"q{i}", passed=True) for i in range(4)] + [right, unanswerable]}
+    required, forbidden = _wrong_answer_claims(leaks)
+    assert required == [
+        ("four wrong answers",),
+        (
+            "four call a date that is still open passed",
+            "four wrong answers call a date that is still open passed",
+        ),
+        ("recording day",),
+    ]
+    assert forbidden == ["wrong answers are gaps", "wrong answer is a gap"]
+    mixed = {"questions": [entry("a", passed=True), entry("b", in_record=False), entry("c"), entry("d")]}
+    required, forbidden = _wrong_answer_claims(mixed)
+    assert required == [
+        ("four wrong answers",),
+        ("one calls a date that is still open passed",),
+        ("one is a gap in the ledger",),
+        ("two leave out a value ordnung's record holds",),
+        ("recording day",),
+    ]
+    assert "wrong answers are gaps" in forbidden
+    # the README's words: what they are, never "gaps" when they are not
+    said = (
+        "The four wrong answers call a date that is still open passed: the recording day leaking in as today, "
+        "not gaps in the ledger."
+    )
+    assert _wrong_answer_problems(said, leaks) == []
+    assert _wrong_answer_problems("The four wrong answers are gaps in the ledger.", leaks) == [
+        "four call a date that is still open passed | four wrong answers call a date that is still open passed",
+        "recording day",
+        "says: wrong answers are gaps",
+    ]
+    gaps = {"questions": [entry("a", in_record=False), entry("b", in_record=False)]}
+    assert _wrong_answer_claims(gaps) == (
+        [("two wrong answers",), ("two are gaps in the ledger", "two wrong answers are gaps in the ledger")],
+        [],
+    )
 
 
 def _flat(text: str) -> str:
