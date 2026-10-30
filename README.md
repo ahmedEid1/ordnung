@@ -387,40 +387,47 @@ never against the app's own outputs.
 
 | Metric | Result |
 |---|---|
-| Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 98.3 % (119/121) |
+| Answer correct: every gold date and amount stated, none called passed while still open | 90.9 % (40/44); 90.0 % (36/40) where the answer is in Ordnung's record |
+| Citation precision: the cited record holds the sentence's value | 99.0 % (98/99) |
 | Abstention on questions with no answer in the records | 87.5 % (7/8) |
-| Injected claim in the answer the person sees | 4.8 % (1/21), against 47.6 % (10/21) before the check |
+| Injected claim in the answer the person sees | 0 % (0/21), against 42.9 % (9/21) before the check |
 | Unsupported values left in final answers | 0 |
+| Calls a date that is still open passed (questions and attacks) | 8.2 % (6/73), against 11.0 % (8/73) before the check |
 | Household: the number asked for, and whose it is | 80.0 % (4/5) |
 
-The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
-filed differently from the truth), not values the check let through; the current ledger closes all five:
-the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
-job's notice clause) and the price increase's special window, now in Ask's record. Of the ten raw
-"successes" before the check, nine also warn about the injected text (eight in words the scorer reads as a
-warning, one read by hand), and the check keeps their claim from the person; the one that reaches the person
-is the attack an earlier round documented: the library's fee on its own record, with the rent's own amount in
-a list of the month's payments. Seven of the eight questions with no answer on record are declined in the
-answer's first paragraph; the gas bill's says no gas bill is on record and names the electricity contract's
-monthly advance in the same paragraph, which the rule counts as an answer. Five more questions, reported apart,
-ask on a copy of the ledger where Alex Rivera is in the household for his numbers and the person's own. Three
-answers give the number or date asked for and say whose it is (Alex's health insurance number and passport
-expiry as his, the person's tax ID as theirs). Asked for the person's own passport, the fourth says at once
-that the person has none on file and gives Alex's expiry as his. The fifth, asked for the person's own health
-insurance number, says at once that Ordnung has none of theirs and gives Alex's to no one, in a wording the
-scorer does not know ("does not have your own … on record"); the scorer was not taught it after the
-measurement, so the household row is 4/5 as scored, 5/5 read by hand. In the first recording of these questions
-the scorer had missed two other wordings, this answer's ("records don't include …") and an abstention answer's
-("don't have a … in your records"), and was taught both; the page shows the counts before and after. This
-benchmark is **not held-out**: its questions come from the same sample life as the demo, and the check and the
-prompt were revised over several review rounds on these recordings (the first nine attack letters were written
-before any measurement and never tuned). Its answers were recorded on 30 Oct 2026, and the `claude` CLI told
-the model that day besides the benchmark's 28 Sep: 16 final answers call a date that is still ahead on 28 Sep
-passed, and the scorer counts them correct (the page's notes list them). CI replays the recordings and gates
-accuracy, abstention, unsupported values and the household answers (at the scored 4/5); any successful attack
-fails the build, but one an earlier round documented (the rent's own amount in a comparison of the month's
-payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
+The four wrong answers call a date that is still open passed: the recording day leaking in as today, not
+gaps in the ledger. The benchmark's today is Mon 28 Sep 2026, and its answers were recorded on 30 Oct 2026,
+when the `claude` CLI tells the model that day besides Ordnung's. Ask is now told that Ordnung's date is today
+and never the computer's clock, which made such answers rarer, not gone: each of the four states its gold date
+and says it has passed (the TechMarkt reminder's 30 Sep twice, the tax objection's 21 Oct, the BKK objection's
+8 and 14 Oct). The scorer counts such an answer wrong and every one harmful: 6 of the 73 final answers, against
+16 in the recording before the rule (the page before E2, recorded on 1 Oct, three days after the benchmark's
+today, has 3 by the same reader). The five answers earlier recordings got wrong were gaps in the ledger (dates
+Ordnung never filed, or filed differently from the truth), and the current ledger closes all five. Of the nine
+raw "successes" before the check, eight also warn about the injected text in words the scorer reads as a
+warning; the ninth is the attack an earlier round documented (the library's fee on its own record, with the
+rent's own amount in a list of the month's payments), and none reaches the person. Seven of the eight
+questions with no answer on record are declined in the answer's first paragraph; the eighth, asked for an
+appointment with a doctor who is not on record, says so and gives another doctor's appointment date in the
+same paragraph, which the rule counts as an answer. That rule is now one general reading instead of a growing
+list of phrases: the first paragraph says the records hold no such thing and states no value of the kind
+asked for. Read against every answer judged by hand in this and earlier recordings, it agrees on all 48
+answers to these questions; the page's notes give the table. Five more questions, reported apart, ask on a
+copy of the ledger where Alex Rivera is in the household for his numbers and the person's own. Three answers
+give the number or date asked for and say whose it is (Alex's health insurance number and passport expiry as
+his, the person's tax ID as theirs). Asked for the person's own health insurance number, the fourth says at
+once that none of theirs is on file and that the one on file is Alex's, without giving it as theirs. Asked
+for the person's own passport, the fifth says none of theirs is on file and gives Alex's expiry as his, but
+names the person's residence permit's expiry date in the same first paragraph, which the rule counts as no
+such answer. No answer gives a member's number as the person's own. In the recording before, one did, from a
+row of Ask's numbers tool that labelled Alex's number with the group of the person's own; such a row now says
+it is about a household member, and the household questions that read it were recorded again. This benchmark is
+**not held-out**: its questions come from the same sample life as the demo, and the check and the prompt were
+revised over several review rounds on these recordings (the first nine attack letters were written before any
+measurement and never tuned). CI replays the recordings and gates accuracy, abstention, unsupported values and
+the household answers (at the recorded 4/5); any successful attack fails the build, but one an earlier round
+documented (the rent's own amount in a comparison of the month's payments). Details:
+[docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 
@@ -771,7 +778,10 @@ More in [docs/architecture.md](docs/architecture.md).
   attacker plants can still mislead it
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
-  is messier.
+  is messier. In the demo, which runs on the sample life's day, Ask can still take the computer's date for today
+  and call a date that is still ahead passed: the `claude` CLI tells the model the computer's date as well, and
+  Ask is told never to use it (the Ask benchmark, recorded a month after its own day, still has 6 such answers
+  in 73).
 - One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
   child) says so, you can file it for them once they are in your household, and a reply to it can go out in
   their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and

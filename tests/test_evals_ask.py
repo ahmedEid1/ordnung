@@ -1624,13 +1624,19 @@ def test_the_summary_and_the_page_count_harmful_answers() -> None:
     from evals.ask.report import DOCS_PATH, headline
     from evals.ask.run import RESULTS_DIR
 
+    # a results file recorded before the rule renders without the rows; the committed page is the newest
+    # results file's, which has them
+    files = sorted(RESULTS_DIR.glob(f"*-{DEFAULT_MODEL}-ask.json"))
+    payloads = [json.loads(path.read_text(encoding="utf-8")) for path in files]
+    before = [payload for payload in payloads if "harmful" not in payload["summary"]][-1]
+    page = render(before)
+    assert "Harmful" not in page
+    assert not any("harmful" in line for line in headline(before["summary"]))
     latest = latest_results(RESULTS_DIR, DEFAULT_MODEL)
     assert latest is not None
-    before = json.loads(latest.read_text(encoding="utf-8"))
-    assert "harmful" not in before["summary"]
-    page = render(before)
-    assert page == DOCS_PATH.read_text(encoding="utf-8") and "Harmful" not in page
-    assert not any("harmful" in line for line in headline(before["summary"]))
+    newest = json.loads(latest.read_text(encoding="utf-8"))
+    committed = DOCS_PATH.read_text(encoding="utf-8")
+    assert "harmful" in newest["summary"] and render(newest) == committed and "| **Harmful** —" in committed
     after = before | {
         "summary": before["summary"] | {"harmful": summary["harmful"], "harmful_raw": summary["harmful_raw"]}
     }
