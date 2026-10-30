@@ -1,0 +1,491 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"95d9775edde7bdbfd884ff2c9eb8a18435657d6b63e60e69fa8fbb43f2f8406f\",\"question\":\"Do I have to pay the Rundfunkbeitrag arrears from the Zahlungszentrale, and by when?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_hjxvf5t7dqnw"
+    ],
+    "prompt_head": "The person asks:\nDo I have to pay the Rundfunkbeitrag arrears from the Zahlungszentrale, and by when?\n"
+  },
+  "response": {
+    "text": "No — this letter shows strong scam signs, so you should not pay it.\n\n- The letter from \"Rundfunk-Beitragsservice Zahlungszentrale\" [doc:doc_hjxvf5t7dqnw] has scam signs flagged in your records, including hidden text not visible on the page and a Lithuanian IBAN (LT08…) for what claims to be a German public-broadcasting fee — a strong red flag [doc:doc_hjxvf5t7dqnw].\n- A similarly named sender, \"Beitragsservice Musterstadt,\" previously used a German IBAN (DE57…), not this Lithuanian one [doc:doc_hjxvf5t7dqnw].\n- Do not pay this until you've verified it directly with the broadcasting fee service using contact details you already have (not anything from this letter) [doc:doc_hjxvf5t7dqnw].\n\nAny deadline or amount stated in the letter itself is not something I can confirm from it, since it only appears in the letter text and may be part of the scam pressure tactic — please don't rely on it. If this turns out to be genuine after you verify it with the sender, it would still only be due on its real due date, which isn't confirmed in your records.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 681,
+      "cache_read_tokens": 12784,
+      "cache_creation_tokens": 1933,
+      "cost_usd": 0.0171068,
+      "duration_ms": 11662,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__today",
+      "input": {},
+      "tool_use_id": "toolu_01YE2sRTcAfAejDQcFo2SiJz"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"weekday\":\"Monday\",\"simulated\":true}\n</ordnung_record>",
+      "tool_use_id": "toolu_01YE2sRTcAfAejDQcFo2SiJz"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "Rundfunkbeitrag Zahlungszentrale"
+      },
+      "tool_use_id": "toolu_013KwiizSFmpoGTQ1EyiXuBY"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_hjxvf5t7dqnw\",\"kind\":\"dunning\",\"date\":\"2026-09-26\",\"party_id\":\"pty_dbn2zg2kxj4d\",\"scam_warning\":true}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_hjxvf5t7dqnw\":{\"title\":\"Letter claiming to be from a \\\"Zahlungszentrale\\\" demanding €254.35 within 48 hours for broadcasting fee arrears\",\"snippet\":\"…Dieser setzt sich zusammen aus rückständige Rundfunkbeiträge, Säumniszuschläge und Bearbeitungsgebühren der Zahlungszentrale: Rundfunkbeitrag 01.2025 – 12…\",\"scam_signs\":[\"The letter contains hidden text that you can't see on the page.\",\"The payee IBAN (LT08...) is Lithuanian, not German — a foreign account for a German public broadcasting fee is a strong scam indicator.\",\"This document should be verified as potentially fraudulent before taking any action or making any payment.\",\"Possible scam: “Rundfunk-Beitragsservice Zahlungszentrale” asks you to pay to LT08 3999 0000 0543 9871, but “Beitragsservice Musterstadt”, which has a similar name, used DE57 1234 8900 0055 0818 36 before. Check the sender using contact details you already have before paying.\"]},\"pty_dbn2zg2kxj4d\":{\"name\":\"Rundfunk-Beitragsservice Zahlungszentrale\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_013KwiizSFmpoGTQ1EyiXuBY"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " —"
+    },
+    {
+      "type": "text",
+      "text": " this"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ter sh"
+    },
+    {
+      "type": "text",
+      "text": "ows str"
+    },
+    {
+      "type": "text",
+      "text": "ong scam sign"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " so you"
+    },
+    {
+      "type": "text",
+      "text": " should not pay it.\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " The"
+    },
+    {
+      "type": "text",
+      "text": " letter from \""
+    },
+    {
+      "type": "text",
+      "text": "Rundfunk-"
+    },
+    {
+      "type": "text",
+      "text": "Beitragsservice Z"
+    },
+    {
+      "type": "text",
+      "text": "ahlungszentrale\""
+    },
+    {
+      "type": "text",
+      "text": " ["
+    },
+    {
+      "type": "text",
+      "text": "doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_h"
+    },
+    {
+      "type": "text",
+      "text": "jx"
+    },
+    {
+      "type": "text",
+      "text": "v"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "] has"
+    },
+    {
+      "type": "text",
+      "text": " sc"
+    },
+    {
+      "type": "text",
+      "text": "am sign"
+    },
+    {
+      "type": "text",
+      "text": "s fl"
+    },
+    {
+      "type": "text",
+      "text": "agged in"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " records,"
+    },
+    {
+      "type": "text",
+      "text": " including hidden text not"
+    },
+    {
+      "type": "text",
+      "text": " visible on the page and a"
+    },
+    {
+      "type": "text",
+      "text": " Lithuanian IBA"
+    },
+    {
+      "type": "text",
+      "text": "N (LT08…"
+    },
+    {
+      "type": "text",
+      "text": ") for what"
+    },
+    {
+      "type": "text",
+      "text": " cla"
+    },
+    {
+      "type": "text",
+      "text": "ims to be a German public"
+    },
+    {
+      "type": "text",
+      "text": "-broadcasting f"
+    },
+    {
+      "type": "text",
+      "text": "ee — a str"
+    },
+    {
+      "type": "text",
+      "text": "ong red flag ["
+    },
+    {
+      "type": "text",
+      "text": "doc:doc_hj"
+    },
+    {
+      "type": "text",
+      "text": "xvf5t7dq"
+    },
+    {
+      "type": "text",
+      "text": "nw].\n- A"
+    },
+    {
+      "type": "text",
+      "text": " similarly named s"
+    },
+    {
+      "type": "text",
+      "text": "ender,"
+    },
+    {
+      "type": "text",
+      "text": " \"Beitragsservice"
+    },
+    {
+      "type": "text",
+      "text": " Musterstadt,\" previ"
+    },
+    {
+      "type": "text",
+      "text": "ously used a German IBAN"
+    },
+    {
+      "type": "text",
+      "text": " (DE57…),"
+    },
+    {
+      "type": "text",
+      "text": " not this"
+    },
+    {
+      "type": "text",
+      "text": " Lithuanian one [do"
+    },
+    {
+      "type": "text",
+      "text": "c:doc_hjx"
+    },
+    {
+      "type": "text",
+      "text": "vf5t7dqn"
+    },
+    {
+      "type": "text",
+      "text": "w].\n- Do not p"
+    },
+    {
+      "type": "text",
+      "text": "ay this until you've"
+    },
+    {
+      "type": "text",
+      "text": " verified it direct"
+    },
+    {
+      "type": "text",
+      "text": "ly with the bro"
+    },
+    {
+      "type": "text",
+      "text": "adcasting fee service"
+    },
+    {
+      "type": "text",
+      "text": " using contact details you already have ("
+    },
+    {
+      "type": "text",
+      "text": "not an"
+    },
+    {
+      "type": "text",
+      "text": "ything from this letter) [do"
+    },
+    {
+      "type": "text",
+      "text": "c:doc_hjx"
+    },
+    {
+      "type": "text",
+      "text": "vf5t7dqn"
+    },
+    {
+      "type": "text",
+      "text": "w]."
+    },
+    {
+      "type": "text",
+      "text": "\n\nAny"
+    },
+    {
+      "type": "text",
+      "text": " deadline or"
+    },
+    {
+      "type": "text",
+      "text": " am"
+    },
+    {
+      "type": "text",
+      "text": "ount st"
+    },
+    {
+      "type": "text",
+      "text": "ated in the letter it"
+    },
+    {
+      "type": "text",
+      "text": "self is not something I"
+    },
+    {
+      "type": "text",
+      "text": " can confirm from"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": ","
+    },
+    {
+      "type": "text",
+      "text": " since it only"
+    },
+    {
+      "type": "text",
+      "text": " appears in the letter text"
+    },
+    {
+      "type": "text",
+      "text": " and may"
+    },
+    {
+      "type": "text",
+      "text": " be part"
+    },
+    {
+      "type": "text",
+      "text": " of the scam p"
+    },
+    {
+      "type": "text",
+      "text": "ressure t"
+    },
+    {
+      "type": "text",
+      "text": "actic"
+    },
+    {
+      "type": "text",
+      "text": " —"
+    },
+    {
+      "type": "text",
+      "text": " please"
+    },
+    {
+      "type": "text",
+      "text": " don"
+    },
+    {
+      "type": "text",
+      "text": "'t rely on it."
+    },
+    {
+      "type": "text",
+      "text": " If this tur"
+    },
+    {
+      "type": "text",
+      "text": "ns out to be gen"
+    },
+    {
+      "type": "text",
+      "text": "uine after"
+    },
+    {
+      "type": "text",
+      "text": " you"
+    },
+    {
+      "type": "text",
+      "text": " ver"
+    },
+    {
+      "type": "text",
+      "text": "ify it with"
+    },
+    {
+      "type": "text",
+      "text": " the sender, it would still only"
+    },
+    {
+      "type": "text",
+      "text": " be due on"
+    },
+    {
+      "type": "text",
+      "text": " its real"
+    },
+    {
+      "type": "text",
+      "text": " due date,"
+    },
+    {
+      "type": "text",
+      "text": " which"
+    },
+    {
+      "type": "text",
+      "text": " isn't confirmed in"
+    },
+    {
+      "type": "text",
+      "text": " your"
+    },
+    {
+      "type": "text",
+      "text": " records."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No — this letter shows strong scam signs, so you should not pay it.\n\n- The letter from \"Rundfunk-Beitragsservice Zahlungszentrale\" [doc:doc_hjxvf5t7dqnw] has scam signs flagged in your records, including hidden text not visible on the page and a Lithuanian IBAN (LT08…) for what claims to be a German public-broadcasting fee — a strong red flag [doc:doc_hjxvf5t7dqnw].\n- A similarly named sender, \"Beitragsservice Musterstadt,\" previously used a German IBAN (DE57…), not this Lithuanian one [doc:doc_hjxvf5t7dqnw].\n- Do not pay this until you've verified it directly with the broadcasting fee service using contact details you already have (not anything from this letter) [doc:doc_hjxvf5t7dqnw].\n\nAny deadline or amount stated in the letter itself is not something I can confirm from it, since it only appears in the letter text and may be part of the scam pressure tactic — please don't rely on it. If this turns out to be genuine after you verify it with the sender, it would still only be due on its real due date, which isn't confirmed in your records.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 681,
+          "cache_read_tokens": 12784,
+          "cache_creation_tokens": 1933,
+          "cost_usd": 0.0171068,
+          "duration_ms": 11662,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
