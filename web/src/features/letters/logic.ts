@@ -24,7 +24,7 @@ import {
   type SendChannelKind,
 } from "@/api/types";
 import { SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
-import { adviceFor, type AdviceLink } from "@/components/ui/Disclaimer";
+import { objectionAdvice, type AdviceLink } from "@/components/ui/Disclaimer";
 import { toISODate } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
@@ -89,7 +89,8 @@ export const STATUTORY_REMEDY: Partial<Record<NonNullable<ListedLetter["kind"]>,
  * letter's "get advice" card, when loaded: a landlord's notice without notice period has no hardship
  * objection (§ 574 Abs. 1 S. 2 BGB) — its card offers no letter (`draft: null`), and the server refuses
  * one (`compose.objection_remedy`) with the card's words. Where it can't, it points to independent advice by the
- * letter page's rule ({@link adviceFor}: the letter's kind and its sender's kind, `partyKind`, before the area).
+ * letter page's rule (the letter's kind and its sender's kind, `partyKind`, before the area), and always names
+ * somewhere ({@link objectionAdvice}).
  */
 export function objectionCheck(
   doc: (Pick<ListedLetter, "remedy" | "area"> & Partial<Pick<ListedLetter, "kind">>) | null | undefined,
@@ -97,7 +98,7 @@ export function objectionCheck(
   partyKind?: PartyKind | null,
 ): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
-  const advice = adviceFor(doc?.area, doc?.kind, partyKind, card) ?? [];
+  const advice = objectionAdvice(doc?.area, doc?.kind, partyKind, card);
   const statutory = doc?.kind ? STATUTORY_REMEDY[doc.kind] : undefined;
   if (doc?.kind === "landlord_notice" && card?.kind === "landlord_notice" && card.draft === null) {
     const [fact] = card.facts;

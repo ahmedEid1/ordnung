@@ -11,7 +11,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/Field";
-import { adviceFor, Disclaimer } from "@/components/ui/Disclaimer";
+import { Disclaimer, objectionAdvice } from "@/components/ui/Disclaimer";
 import { Kbd } from "@/components/ui/Kbd";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { PartyChip } from "@/components/ui/PartyChip";
@@ -439,7 +439,7 @@ export function LetterView({ draft }: { draft: Draft }) {
         <CardHeader level={2} title={<span id="checks-title">Checks</span>} icon={ListChecks} />
         <ChecksPanel checks={draft.checks} stale={dirty} />
       </Card>
-      <Disclaimer advice={draft.kind === "objection" ? adviceFor(doc?.area, doc?.kind, sender?.kind) : undefined} className="px-1" />
+      <Disclaimer advice={draft.kind === "objection" ? objectionAdvice(doc?.area, doc?.kind, sender?.kind) : undefined} className="px-1" />
     </div>
   );
 

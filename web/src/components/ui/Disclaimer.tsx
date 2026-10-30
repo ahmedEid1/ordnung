@@ -76,6 +76,20 @@ export function adviceFor(
 }
 
 /**
+ * An objection's advice (the composer's objection check, a drafted objection's disclaimer): {@link adviceFor}, and
+ * where that names none, student services for a study letter and the consumer advice centre for any other. Each
+ * says "get advice" before a deadline, so it always names somewhere to start.
+ */
+export function objectionAdvice(
+  area: Area | null | undefined,
+  docKind?: DocumentKind | null,
+  partyKind?: PartyKind | null,
+  card?: Pick<LetterAdvice, "kind"> | null,
+): AdviceLink[] {
+  return adviceFor(area, docKind, partyKind, card) ?? (area === "study" ? ADVICE_LINKS.residence : ADVICE_LINKS.consumer);
+}
+
+/**
  * "Unsure? Get independent advice: Mieterverein (tenants' association) ↗." — the links open in a
  * new tab; their padding makes them taller targets without spreading the lines of the text around
  * them. They wrap like the sentence they are in: an inline box, the icon and the full stop joined to
