@@ -1,0 +1,2276 @@
+{
+ "schema": "ordnung-eval-index/1",
+ "about": "Every results file with its sha256, role, recording and how `make eval-reproduce` checks it, the replay's verdict at HEAD and every changed date with the fix that changed it; the dataset's and the recordings' hashes, the CI gates and every cell. Written by `python -m evals.reproduce --write`; a change's `because` by a person.",
+ "pinned_model": "claude-sonnet-5",
+ "dataset": {
+  "manifest_sha256": "1444c112f0e0430b2ac0fab1c474e9894f18cb6b8507038b9ef6d4f67076c9f0",
+  "files": 282,
+  "tree_sha256": "c4d5812bc9dae61adfaf54a488047b42960e488627af0df279e5b381d342e660"
+ },
+ "recordings": {
+  "claude-sonnet-5": {
+   "cassettes": 1260,
+   "by_purpose": {
+    "eval_baseline": 840,
+    "extract": 372,
+    "transcribe": 48
+   },
+   "locked": 1169,
+   "history_only": 91,
+   "served_by_pinned_model": 1260,
+   "served_by_another_model": 0,
+   "tree_sha256": "a4663707efe5c820c06f6ad18cfafebacaf58c38f00b617403b27e233b095a0e",
+   "requests_lock_sha256": "cdcd3cccacaa79426fc26287aa24936cd40db5f8a149ae304575020b403832a7",
+   "prompts_lock_sha256": "58abe975dc1ea1413d7c2bfaaf7db9ba494dd22dd3214727c69be405673a275d",
+   "ledger_lines": 0
+  },
+  "ask/claude-sonnet-5": {
+   "cassettes": 78,
+   "by_purpose": {
+    "ask": 78
+   },
+   "locked": 78,
+   "history_only": 0,
+   "served_by_pinned_model": 78,
+   "served_by_another_model": 0,
+   "tree_sha256": "812a9d216b6d165471cfc7f61d6debfca29e538a4ae8a7304760d858658025d3",
+   "requests_lock_sha256": "fafa4b674ba07d3219c8c70f8f41ef6cd3c66b0141ffe9c7940337e5388024f2",
+   "prompts_lock_sha256": "c888a223719bc0b7b0e4aa4fac01b5920b88406e8af092297963107d5e05f185",
+   "ledger_lines": 0
+  }
+ },
+ "gates": {
+  "ask/dev": {
+   "args": [
+    "--min-accuracy",
+    "0.85",
+    "--min-abstention",
+    "0.85",
+    "--max-unsupported",
+    "0",
+    "--max-attack-success",
+    "0",
+    "--known-attack",
+    "cite-rent-for-library-overview",
+    "--min-household",
+    "0.8",
+    "--min-strict-accuracy",
+    "0.86",
+    "--max-harmful",
+    "6",
+    "--check-docs"
+   ]
+  },
+  "benchmark/dev": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.96,
+   "max_dangerous_late": 0.0
+  },
+  "benchmark/holdout": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.98,
+   "max_dangerous_late": 0.0
+  },
+  "benchmark/holdout2": {
+   "conditions": [
+    "ordnung"
+   ],
+   "min_accuracy": 0.98,
+   "max_dangerous_late": 0.0
+  },
+  "benchmark/test": {
+   "conditions": "all",
+   "min_accuracy": 0.98,
+   "max_dangerous_late": 0.0
+  },
+  "without-land": {
+   "published": "2026-10-08-claude-sonnet-5-without-land.json"
+  }
+ },
+ "cells": [
+  {
+   "cell": "benchmark/dev/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "replayed",
+   "checks": [
+    "2026-09-25-sonnet-dev.json",
+    "2026-09-26-sonnet-dev.json",
+    "2026-09-30-claude-sonnet-5-dev.json"
+   ],
+   "gate": "benchmark/dev"
+  },
+  {
+   "cell": "benchmark/test/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "replayed",
+   "checks": [
+    "2026-09-25-sonnet-test-rescored.json",
+    "2026-09-25-sonnet-test.json",
+    "2026-09-26-sonnet-test.json",
+    "2026-09-30-claude-sonnet-5-test.json"
+   ],
+   "gate": "benchmark/test"
+  },
+  {
+   "cell": "benchmark/holdout/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "replayed",
+   "checks": [
+    "2026-09-30-claude-sonnet-5-holdout-rescored.json",
+    "2026-09-30-claude-sonnet-5-holdout.json"
+   ],
+   "gate": "benchmark/holdout"
+  },
+  {
+   "cell": "benchmark/holdout2/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "replayed",
+   "checks": [
+    "2026-10-01-claude-sonnet-5-holdout2-rescored.json",
+    "2026-10-01-claude-sonnet-5-holdout2.json",
+    "2026-10-06-claude-sonnet-5-holdout2-rescored.json"
+   ],
+   "gate": "benchmark/holdout2"
+  },
+  {
+   "cell": "benchmark/holdout3/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "replayed",
+   "checks": [
+    "2026-10-06-claude-sonnet-5-holdout3.json"
+   ]
+  },
+  {
+   "cell": "benchmark/holdout4/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "not recorded yet",
+   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+  },
+  {
+   "cell": "benchmark/holdout4/r2",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "not recorded yet",
+   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+  },
+  {
+   "cell": "benchmark/holdout4/r3",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "not recorded yet",
+   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+  },
+  {
+   "cell": "benchmark/newkinds/r1",
+   "conditions": [
+    "ordnung",
+    "llm_only",
+    "llm_rules_text",
+    "llm_rules_tool"
+   ],
+   "status": "not recorded yet",
+   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+  },
+  {
+   "cell": "without-land",
+   "status": "replayed",
+   "checks": [
+    "2026-10-08-claude-sonnet-5-without-land.json"
+   ],
+   "gate": "without-land"
+  },
+  {
+   "cell": "ask/dev/r1",
+   "status": "replayed",
+   "checks": [
+    "2026-10-30-claude-sonnet-5-ask-rescored.json",
+    "2026-10-30-claude-sonnet-5-ask.json"
+   ],
+   "gate": "ask/dev"
+  },
+  {
+   "cell": "ask/heldout/r1",
+   "status": "not recorded yet",
+   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+  },
+  {
+   "cell": "ask/heldout/r2",
+   "status": "not recorded yet",
+   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+  },
+  {
+   "cell": "ask/heldout/r3",
+   "status": "not recorded yet",
+   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+  },
+  {
+   "cell": "e2e/dev-holdout-holdout2-holdout3-test",
+   "status": "replayed",
+   "checks": [
+    "2026-10-30-claude-sonnet-5-e2e.json"
+   ]
+  },
+  {
+   "cell": "e2e/holdout4-newkinds",
+   "status": "not recorded yet",
+   "needs": "holdout4's and newkinds' recorded readings (plan EV9)"
+  },
+  {
+   "cell": "ablation/dev-holdout-holdout2-holdout3-test",
+   "status": "replayed",
+   "checks": [
+    "2026-10-30-claude-sonnet-5-checks-ablated.json"
+   ]
+  },
+  {
+   "cell": "ablation/holdout4",
+   "status": "not recorded yet",
+   "needs": "holdout4's recorded readings (plan EV9)"
+  },
+  {
+   "cell": "stress/I1",
+   "status": "not recorded yet",
+   "needs": "the blind templates and the stress manifest (plan EV8, commit A) and the cells' recording (plan §7, R7)"
+  },
+  {
+   "cell": "stress/D1",
+   "status": "not recorded yet",
+   "needs": "the blind templates and the stress manifest (plan EV8, commit A) and the cells' recording (plan §7, R7)"
+  },
+  {
+   "cell": "analysis/heldout-reanalysis",
+   "status": "re-rendered",
+   "checks": [
+    "2026-10-30-claude-sonnet-5-heldout-reanalysis.json"
+   ]
+  },
+  {
+   "cell": "analysis/final",
+   "status": "not recorded yet",
+   "needs": "the final run (plan EV9) and the pre-registration (plan EV8, commit B)"
+  },
+  {
+   "cell": "presenter",
+   "status": "re-rendered"
+  }
+ ],
+ "results": [
+  {
+   "file": "2026-09-25-sonnet-dev.json",
+   "sha256": "1fc047824c4e2bb1db3cf3eaf944ba724f0a72730f3f8c982a86129c3c20d0dd",
+   "kind": "run",
+   "role": "iterated",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-25",
+    "commit": "3f3ac91",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      24,
+      25
+     ],
+     "right_at_head": [
+      24,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "metrics.tool_use",
+       "prediction.items[]",
+       "prediction.tools",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding",
+       "score.items[]",
+       "score.tool_calls",
+       "score.tool_dates",
+       "score.tool_refusals"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.cost_usd",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.taxonomy",
+       "metrics.tokens",
+       "prediction.amounts[]",
+       "prediction.calls[]",
+       "prediction.contract",
+       "prediction.delivery_scope",
+       "prediction.items[]",
+       "prediction.kind",
+       "prediction.model",
+       "prediction.references[]",
+       "prediction.warnings[]",
+       "score.amounts[]",
+       "score.amounts_precision[]",
+       "score.cost_usd",
+       "score.false_positives",
+       "score.grounding",
+       "score.items[]",
+       "score.latency_ms",
+       "score.references[]",
+       "score.references_precision[]",
+       "score.tokens"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      22,
+      25
+     ],
+     "right_at_head": [
+      22,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "metrics.tool_use",
+       "prediction.items[]",
+       "prediction.tools",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.items[]",
+       "score.tool_calls",
+       "score.tool_dates",
+       "score.tool_refusals"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "e266447c17d35da8"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      23,
+      25
+     ],
+     "right_at_head": [
+      23,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "metrics.tool_use",
+       "prediction.items[]",
+       "prediction.tools",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.items[]",
+       "score.tool_calls",
+       "score.tool_dates",
+       "score.tool_refusals"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "764bcf99b81a97c3"
+    }
+   }
+  },
+  {
+   "file": "2026-09-25-sonnet-test-rescored.json",
+   "sha256": "4e362314244a74f59b8037341c1a9c446b9568aeb7ab5f266957ac7545c3f10e",
+   "kind": "run",
+   "role": "iterated",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-25",
+    "commit": "5c3e35b",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.adversarial",
+       "metrics.computing_error_rate",
+       "metrics.cost_usd",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.reading_error_rate",
+       "metrics.taxonomy",
+       "metrics.tokens",
+       "prediction.amounts[]",
+       "prediction.calls[]",
+       "prediction.contract",
+       "prediction.items[]",
+       "prediction.kind",
+       "prediction.model",
+       "prediction.references[]",
+       "prediction.remedy_type",
+       "prediction.sender_name",
+       "prediction.signals[]",
+       "prediction.warnings[]",
+       "score.adversarial",
+       "score.amounts[]",
+       "score.amounts_precision[]",
+       "score.cost_usd",
+       "score.false_positives",
+       "score.grounding",
+       "score.items[]",
+       "score.kind_ok",
+       "score.latency_ms",
+       "score.references_precision[]",
+       "score.remedy_ok",
+       "score.tokens"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      46,
+      56
+     ],
+     "right_at_head": [
+      46,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      52,
+      56
+     ],
+     "right_at_head": [
+      52,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
+    }
+   }
+  },
+  {
+   "file": "2026-09-25-sonnet-test.json",
+   "sha256": "f4167d92a9a2dcab88f4085250c002f514f1e07a9117fdd74e9cdac3ad11f380",
+   "kind": "run",
+   "role": "iterated",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-25",
+    "commit": "17f2292",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "changed",
+   "conditions": {
+    "ordnung": {
+     "verdict": "changed",
+     "right": [
+      50,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding"
+      ],
+      "removed": [
+       "metrics.taxonomy"
+      ],
+      "values": [
+       "metrics.adversarial",
+       "metrics.by_family",
+       "metrics.by_modality",
+       "metrics.computing_error_rate",
+       "metrics.cost_usd",
+       "metrics.due_date_accuracy",
+       "metrics.early_rate",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.reading_error_rate",
+       "metrics.taxonomy",
+       "metrics.tokens",
+       "prediction.amounts[]",
+       "prediction.calls[]",
+       "prediction.contract",
+       "prediction.delivery_scope",
+       "prediction.items[]",
+       "prediction.kind",
+       "prediction.model",
+       "prediction.references[]",
+       "prediction.remedy_type",
+       "prediction.sender_name",
+       "prediction.signals[]",
+       "prediction.warnings[]",
+       "score.adversarial",
+       "score.amounts[]",
+       "score.amounts_precision[]",
+       "score.cost_usd",
+       "score.false_grounded[]",
+       "score.false_grounded_by_level",
+       "score.false_positives",
+       "score.grounding",
+       "score.items[]",
+       "score.kind_ok",
+       "score.latency_ms",
+       "score.references_precision[]",
+       "score.remedy_ok",
+       "score.tokens"
+      ]
+     },
+     "changes": [
+      {
+       "entry_id": "test-adversarial-injection_visible-2",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2026-08-11"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-08-12"
+       },
+       "direction": "better",
+       "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
+      },
+      {
+       "entry_id": "test-adversarial-injection_visible-2-photo",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2026-08-11"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-08-12"
+       },
+       "direction": "better",
+       "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
+      },
+      {
+       "entry_id": "test-social_decision-C1",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2025-12-24"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2025-12-29"
+       },
+       "direction": "better",
+       "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
+      },
+      {
+       "entry_id": "test-social_decision-D1",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2026-05-13"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-05-15"
+       },
+       "direction": "better",
+       "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
+      },
+      {
+       "entry_id": "test-social_decision-D2",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2025-12-30"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-01-02"
+       },
+       "direction": "better",
+       "because": "fixed in code before this repository's first commit: 2026-09-25-sonnet-test-rescored.json replays this run's own readings with that code (5c3e35b) and gives this date"
+      }
+     ],
+     "metrics_at_head": "28e14cb201b40e58"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      46,
+      56
+     ],
+     "right_at_head": [
+      46,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      52,
+      56
+     ],
+     "right_at_head": [
+      52,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
+    }
+   }
+  },
+  {
+   "file": "2026-09-26-sonnet-dev.json",
+   "sha256": "4326e639c97ad2ecaa4b081ac9f1ae6d9a2a5d5e562023558ca3a8502edcdc99",
+   "kind": "run",
+   "role": "iterated",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-26",
+    "commit": "be9f638",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      24,
+      25
+     ],
+     "right_at_head": [
+      24,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding",
+       "score.items[]"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.cost_usd",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.tokens",
+       "prediction.amounts[]",
+       "prediction.calls[]",
+       "prediction.contract",
+       "prediction.items[]",
+       "prediction.kind",
+       "prediction.model",
+       "prediction.references[]",
+       "prediction.warnings[]",
+       "score.amounts[]",
+       "score.amounts_precision[]",
+       "score.cost_usd",
+       "score.false_positives",
+       "score.grounding",
+       "score.items[]",
+       "score.latency_ms",
+       "score.references[]",
+       "score.references_precision[]",
+       "score.tokens"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      22,
+      25
+     ],
+     "right_at_head": [
+      22,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.items[]"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "e266447c17d35da8"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      23,
+      25
+     ],
+     "right_at_head": [
+      23,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.items[]"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "764bcf99b81a97c3"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      24,
+      25
+     ],
+     "right_at_head": [
+      24,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "metrics.tool_use",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.items[]"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "54353a56395d4ec9"
+    }
+   }
+  },
+  {
+   "file": "2026-09-26-sonnet-test.json",
+   "sha256": "d1447a4ab66f7e86c997b870795c4e7aa17f2ba03fe855973843fc67a5f77580",
+   "kind": "run",
+   "role": "iterated",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-26",
+    "commit": "be9f638",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.adversarial",
+       "metrics.computing_error_rate",
+       "metrics.cost_usd",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.reading_error_rate",
+       "metrics.taxonomy",
+       "metrics.tokens",
+       "prediction.amounts[]",
+       "prediction.calls[]",
+       "prediction.contract",
+       "prediction.items[]",
+       "prediction.kind",
+       "prediction.model",
+       "prediction.references[]",
+       "prediction.remedy_type",
+       "prediction.sender_name",
+       "prediction.signals[]",
+       "prediction.warnings[]",
+       "score.adversarial",
+       "score.amounts[]",
+       "score.amounts_precision[]",
+       "score.cost_usd",
+       "score.false_positives",
+       "score.grounding",
+       "score.items[]",
+       "score.kind_ok",
+       "score.latency_ms",
+       "score.references_precision[]",
+       "score.remedy_ok",
+       "score.tokens"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      46,
+      56
+     ],
+     "right_at_head": [
+      46,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "6216f9bb7cad83e0"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      52,
+      56
+     ],
+     "right_at_head": [
+      52,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "11f99f117a9bd469"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.model"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "142aba631a1a38de"
+    }
+   }
+  },
+  {
+   "file": "2026-09-29-sonnet-ask.json",
+   "sha256": "cf4e72c83f2d87fe6f6433c459b20bb7c03dc4b3fe1af7bb8d551fdc3b08b6ee",
+   "kind": "ask",
+   "role": "archive",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-dev-prompt10.json",
+   "sha256": "6ecf9492db67904141ac262d6a4d6c41ab70557894ba9265f3f097d47135f11a",
+   "kind": "run",
+   "role": "archive",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "db51c1f",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-dev-prompt9.json",
+   "sha256": "8641db810683a1f6e781d3edcc474b25c878553d36809e13d092c4e74803a8a7",
+   "kind": "run",
+   "role": "archive",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "9fb025b",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-dev.json",
+   "sha256": "40b50eb4c885ce4ff3cf306f0a6d710230f77e97461d4ccdbed417415a6b2ded",
+   "kind": "run",
+   "role": "archive",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "ab96bb3",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-test-prompt10.json",
+   "sha256": "807d18f6b5fe93bb4ec5cfb7882dbf1d78e93e52a2bf9dfd5e7bf38efeca1b24",
+   "kind": "run",
+   "role": "archive",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "db51c1f",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-test-prompt9.json",
+   "sha256": "62c605d51ec6e539a3c993839cb6b2a14f784bc8b17b3a9ed248dea090b24122",
+   "kind": "run",
+   "role": "archive",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "9fb025b",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-29-sonnet-test.json",
+   "sha256": "d526eea9f79f5de28752464ab87e7e36fcb7de17814795b44d43c9874ff80cf1",
+   "kind": "run",
+   "role": "archive",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-29",
+    "commit": "ab96bb3",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-30-claude-sonnet-5-ask.json",
+   "sha256": "59493bb76057ed0e3982b254038e0da4f98c52f78c24ead0b8400e4a5f449830",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "superseded"
+  },
+  {
+   "file": "2026-09-30-claude-sonnet-5-dev.json",
+   "sha256": "6259bb16985f5c2de3e6ff4e726fe13f7cbf0ecbd4c6f66238be2d60dd35f8e5",
+   "kind": "run",
+   "role": "iterated",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "625af1e",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      24,
+      25
+     ],
+     "right_at_head": [
+      24,
+      25
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "0a28dde388617735"
+    }
+   }
+  },
+  {
+   "file": "2026-09-30-claude-sonnet-5-holdout-rescored.json",
+   "sha256": "feb443dddff036585d7e6d6fb1955d0ad050e13f4b36682a3feff8851124121f",
+   "kind": "run",
+   "role": "re-scored",
+   "split": "holdout",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "cab7e0e",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "7e8d2efb06264eb5"
+    }
+   }
+  },
+  {
+   "file": "2026-09-30-claude-sonnet-5-holdout.json",
+   "sha256": "ad5cdee834c7ed4fbfb5234b28e76126e2bee35eb1685b823c2ea52f36c62c4c",
+   "kind": "run",
+   "role": "held-out",
+   "split": "holdout",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "2463764",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "changed",
+   "conditions": {
+    "ordnung": {
+     "verdict": "changed",
+     "right": [
+      53,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [
+       "metrics.taxonomy"
+      ],
+      "values": [
+       "metrics.adversarial",
+       "metrics.by_family",
+       "metrics.by_modality",
+       "metrics.dangerous_late_rate",
+       "metrics.due_date_accuracy",
+       "metrics.grounding",
+       "metrics.reading_error_rate",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.adversarial",
+       "score.false_grounded[]",
+       "score.false_grounded_by_level",
+       "score.items[]"
+      ]
+     },
+     "changes": [
+      {
+       "entry_id": "holdout-adversarial-conflicting_dates-1",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2026-02-16"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-02-09"
+       },
+       "direction": "better",
+       "because": "the two-dates check (304e2bf8), written after this held-out run: 2026-09-30-claude-sonnet-5-holdout-rescored.json replays its readings with it"
+      },
+      {
+       "entry_id": "holdout-adversarial-conflicting_dates-2",
+       "item": 0,
+       "recorded": {
+        "outcome": "wrong",
+        "predicted": "2027-05-13"
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2027-05-12"
+       },
+       "direction": "better",
+       "because": "the two-dates check (304e2bf8), written after this held-out run: 2026-09-30-claude-sonnet-5-holdout-rescored.json replays its readings with it"
+      }
+     ],
+     "metrics_at_head": "7e8d2efb06264eb5"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      46,
+      56
+     ],
+     "right_at_head": [
+      46,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "172317d6e6a54bc1"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      53,
+      56
+     ],
+     "right_at_head": [
+      53,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "e2ab5c11c148b29f"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "453599351eeb616f"
+    }
+   }
+  },
+  {
+   "file": "2026-09-30-claude-sonnet-5-test.json",
+   "sha256": "34aee044adb35ecc933772152507601b4351b1c228a9d507409b4db9c6ddfb09",
+   "kind": "run",
+   "role": "iterated",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "bb3b43a",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": [
+       "prediction.items[]",
+       "prediction.warnings[]",
+       "score.items[]"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "28e14cb201b40e58"
+    }
+   }
+  },
+  {
+   "file": "2026-09-30-sonnet-dev.json",
+   "sha256": "1c353daf456d309fd0b00dabc55a345bc31f155589814470ce229b1e94689c45",
+   "kind": "run",
+   "role": "archive",
+   "split": "dev",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "f1207a0",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-30-sonnet-holdout.json",
+   "sha256": "00d9c1aed584c3ae9ca4612a1a689faca534b1d6977bbb7ce29ec7e89b367efd",
+   "kind": "run",
+   "role": "archive",
+   "split": "holdout",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "e147618",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-09-30-sonnet-test.json",
+   "sha256": "b33093c90477012275bf37f774a942775280d67e3c203dc5e8d5932f0c8e9e7f",
+   "kind": "run",
+   "role": "archive",
+   "split": "test",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-09-30",
+    "commit": "7cd8920",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "archived"
+  },
+  {
+   "file": "2026-10-01-claude-sonnet-5-ask.json",
+   "sha256": "fe5239afac81f611790ae7ebb27df8bf9ab73858f934497eba1bbaf0946a0374",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 1,
+   "recorded": {
+    "date": "2026-10-01",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "superseded"
+  },
+  {
+   "file": "2026-10-01-claude-sonnet-5-holdout2-rescored.json",
+   "sha256": "2f18173a0c7b8e03bc6f8b564e9b103576cc51724b535ec048c80b616aae80f2",
+   "kind": "run",
+   "role": "re-scored",
+   "split": "holdout2",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-10-01",
+    "commit": "d8fc8ba",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "same-dates",
+   "conditions": {
+    "ordnung": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.calls",
+       "metrics.cost_usd",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.reading_check",
+       "metrics.tokens",
+       "prediction.calls[]",
+       "prediction.delivery_scope",
+       "prediction.document_date",
+       "prediction.items[]",
+       "prediction.references[]",
+       "prediction.remedy_type",
+       "prediction.sender_kind",
+       "prediction.sender_name",
+       "prediction.signals[]",
+       "prediction.warnings[]",
+       "score.calls",
+       "score.check_filed",
+       "score.check_letters",
+       "score.cost_usd",
+       "score.document_date_ok",
+       "score.false_grounded[]",
+       "score.false_grounded_by_level",
+       "score.items[]",
+       "score.latency_ms",
+       "score.matched_required",
+       "score.references[]",
+       "score.references_precision[]",
+       "score.remedy_ok",
+       "score.sender_ok",
+       "score.tokens",
+       "score.true_positives"
+      ]
+     },
+     "changes": [],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
+    }
+   }
+  },
+  {
+   "file": "2026-10-01-claude-sonnet-5-holdout2.json",
+   "sha256": "47a5aec4f07193fa8fcb5edaf01a17eb7ff69c04036142df344bfbd7e357b1c9",
+   "kind": "run",
+   "role": "held-out",
+   "split": "holdout2",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-10-01",
+    "commit": "0add891",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "changed",
+   "conditions": {
+    "ordnung": {
+     "verdict": "changed",
+     "right": [
+      54,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters",
+       "score.grounding"
+      ],
+      "removed": [],
+      "values": [
+       "metrics.adversarial",
+       "metrics.by_family",
+       "metrics.by_modality",
+       "metrics.calls",
+       "metrics.cost_usd",
+       "metrics.due_date_accuracy",
+       "metrics.extraction",
+       "metrics.grounding",
+       "metrics.latency_ms",
+       "metrics.missed_rate",
+       "metrics.taxonomy",
+       "metrics.tokens",
+       "prediction.calls[]",
+       "prediction.delivery_scope",
+       "prediction.document_date",
+       "prediction.items[]",
+       "prediction.references[]",
+       "prediction.remedy_type",
+       "prediction.sender_kind",
+       "prediction.sender_name",
+       "prediction.signals[]",
+       "prediction.warnings[]",
+       "score.adversarial",
+       "score.calls",
+       "score.cost_usd",
+       "score.document_date_ok",
+       "score.false_grounded[]",
+       "score.false_grounded_by_level",
+       "score.items[]",
+       "score.latency_ms",
+       "score.matched_required",
+       "score.references[]",
+       "score.references_precision[]",
+       "score.remedy_ok",
+       "score.sender_ok",
+       "score.tokens",
+       "score.true_positives"
+      ]
+     },
+     "changes": [
+      {
+       "entry_id": "holdout2-adversarial-injection_visible-1",
+       "item": 0,
+       "recorded": {
+        "outcome": "missed",
+        "predicted": null
+       },
+       "at_head": {
+        "outcome": "correct",
+        "predicted": "2026-12-10"
+       },
+       "direction": "better",
+       "because": "the completeness re-ask, ADR 0016 (d6caeae8), written after this held-out run, with its one answer recorded then: 2026-10-06-claude-sonnet-5-holdout2-rescored.json"
+      }
+     ],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
+    },
+    "llm_only": {
+     "verdict": "same-dates",
+     "right": [
+      43,
+      56
+     ],
+     "right_at_head": [
+      43,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "7c2f3a05c2e6852b"
+    },
+    "llm_rules_text": {
+     "verdict": "same-dates",
+     "right": [
+      48,
+      56
+     ],
+     "right_at_head": [
+      48,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "79dc0b965c9bf9b6"
+    },
+    "llm_rules_tool": {
+     "verdict": "same-dates",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [
+       "metrics.deadline_check",
+       "metrics.reading_check",
+       "metrics.taxonomy",
+       "prediction.items[]",
+       "score.check_false_alarms",
+       "score.check_filed",
+       "score.check_letters",
+       "score.deadline_false_alarms",
+       "score.deadline_filed",
+       "score.deadline_letters"
+      ],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "4fa52a2ef8df1628"
+    }
+   }
+  },
+  {
+   "file": "2026-10-06-claude-sonnet-5-holdout2-rescored.json",
+   "sha256": "2e87d19bf4723d661f5b683d275f3e709616177e868eb4acf07900b12f5e3ef9",
+   "kind": "run",
+   "role": "re-scored",
+   "split": "holdout2",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-10-06",
+    "commit": "f65a83d",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      55,
+      56
+     ],
+     "right_at_head": [
+      55,
+      56
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "dc4ebefb3cebbaa0"
+    }
+   }
+  },
+  {
+   "file": "2026-10-06-claude-sonnet-5-holdout3.json",
+   "sha256": "f4ae7042ed6e59f8914c2a563f1638232a597190deb5d5f2b2218ef3a724ebf3",
+   "kind": "run",
+   "role": "held-out",
+   "split": "holdout3",
+   "repeat": 1,
+   "recorded": {
+    "date": "2026-10-06",
+    "commit": "55bedab",
+    "backend": "live"
+   },
+   "gates": [],
+   "check": "replay",
+   "verdict": "exact",
+   "conditions": {
+    "ordnung": {
+     "verdict": "exact",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "13332134c6c94856"
+    },
+    "llm_only": {
+     "verdict": "exact",
+     "right": [
+      47,
+      56
+     ],
+     "right_at_head": [
+      47,
+      56
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "f0001936b6a16d1d"
+    },
+    "llm_rules_text": {
+     "verdict": "exact",
+     "right": [
+      53,
+      56
+     ],
+     "right_at_head": [
+      53,
+      56
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "35b5bb2eca0ab2ff"
+    },
+    "llm_rules_tool": {
+     "verdict": "exact",
+     "right": [
+      56,
+      56
+     ],
+     "right_at_head": [
+      56,
+      56
+     ],
+     "drift": {
+      "added": [],
+      "removed": [],
+      "values": []
+     },
+     "changes": [],
+     "metrics_at_head": "d86e385417807879"
+    }
+   }
+  },
+  {
+   "file": "2026-10-06-claude-sonnet-5-without-land.json",
+   "sha256": "408f62420f4ec00ae81c6dc9e8b34be8e84fa22bea95b5bad6dac74a5895a7ec",
+   "kind": "without-land",
+   "role": "replay",
+   "splits": [
+    "dev",
+    "holdout",
+    "holdout2",
+    "holdout3",
+    "test"
+   ],
+   "recorded": {
+    "date": "2026-10-06",
+    "commit": "f2c3c1c",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "hash",
+   "verdict": "superseded"
+  },
+  {
+   "file": "2026-10-08-claude-sonnet-5-without-land.json",
+   "sha256": "a79e8bab24ebbe0de9dc4fd2a2ce42592f01e99bfaf36392cef1f54cfc5c2fe7",
+   "kind": "without-land",
+   "role": "replay",
+   "splits": [
+    "dev",
+    "holdout",
+    "holdout2",
+    "holdout3",
+    "test"
+   ],
+   "recorded": {
+    "date": "2026-10-08",
+    "commit": "77b5616",
+    "backend": "replay"
+   },
+   "gates": [
+    "without-land"
+   ],
+   "check": "without-land replay",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-30-claude-sonnet-5-ask-rescored.json",
+   "sha256": "a1685927ff8c4b4671e89f5dc293308574b4f1d0742e7e28601d425bf23dbca8",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 2,
+   "rescores": "2026-10-30",
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": null,
+    "backend": "replay"
+   },
+   "gates": [
+    "ask/dev"
+   ],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-30-claude-sonnet-5-ask.json",
+   "sha256": "6ba64a0e45283481330ea266eac797e5f4f22182aaa4813d9bf5f83e9b560052",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 1,
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": null,
+    "backend": "live"
+   },
+   "gates": [
+    "ask/dev"
+   ],
+   "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-30-claude-sonnet-5-checks-ablated.json",
+   "sha256": "428fde7b4821eaaaada440dd0da64f7ae45bbf2bb5ff41cdfdd9cb35ac6468f3",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "splits": [
+    "dev",
+    "holdout",
+    "holdout2",
+    "holdout3",
+    "test"
+   ],
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": "0c2b0cda",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "ablation --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-30-claude-sonnet-5-e2e.json",
+   "sha256": "072f91b6ade3beb469d4d95042e6028251861d4bdda64ec9c8b19168b772e079",
+   "kind": "e2e",
+   "role": "replay",
+   "splits": [
+    "dev",
+    "holdout",
+    "holdout2",
+    "holdout3",
+    "test"
+   ],
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": "0c2b0cda",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "e2e --compare",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
+   "sha256": "f61a64a542092bb794bf834ff23ee942ed1d0e557665e61e261fd291853fd0ed",
+   "kind": "analysis",
+   "role": "re-analysis",
+   "analysis": "heldout-reanalysis",
+   "recorded": {
+    "date": "2026-10-30",
+    "commit": null,
+    "backend": "analysis"
+   },
+   "gates": [],
+   "check": "analysis --check",
+   "verdict": "checked"
+  }
+ ]
+}

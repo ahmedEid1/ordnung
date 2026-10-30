@@ -883,6 +883,8 @@ def test_doctor_names_a_damaged_database_and_the_way_back(
     """``serve`` sends a damaged database to the doctor, which must say so (also with ``--probe``,
     which reads the chosen model from that database)."""
     monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    # no Claude at all: a stand-in named by ORDNUNG_CLAUDE_BIN can't start without PATH, and its probe would race
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
     with Store.open(Paths(data_dir)) as store:
         for n in range(300):
             store.set_meta(f"key-{n}", "x" * 200)

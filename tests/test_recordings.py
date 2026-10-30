@@ -17,15 +17,17 @@ from ordnung.llm.base import DEFAULT_MODEL
 ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "evals" / "recorded"
 DEMO = ROOT / "src" / "ordnung" / "demo" / "fixtures"
+#: Files beside the recordings that are no recording: the prompts lock and the harness's request lock.
+LOCKS = ("prompts.lock.json", "requests.lock.json")
 
 
 def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
-    """Each recording (not a recorded model failure, not a prompts lock), the model its folder is for, and its
-    content: ``evals/recorded/<model>/…``, ``evals/recorded/ask/<model>/…``; the demo's are the app's pinned
-    model's."""
+    """Each recording (not a recorded model failure, not a prompts lock or the harness's request lock), the model its
+    folder is for, and its content: ``evals/recorded/<model>/…``, ``evals/recorded/ask/<model>/…``; the demo's are the
+    app's pinned model's."""
     for root in (BENCHMARK, DEMO):
         for path in sorted(root.rglob("*.json")):
-            if path.name == "prompts.lock.json" or path.name.endswith(".failure.json"):
+            if path.name in LOCKS or path.name.endswith(".failure.json"):
                 continue
             parts = path.relative_to(root).parts
             model = DEFAULT_MODEL if root == DEMO else parts[1] if parts[0] == "ask" else parts[0]

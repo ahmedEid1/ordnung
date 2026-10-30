@@ -38,6 +38,22 @@ The ``holdout3`` split (``--split holdout3``, results ``<YYYY-MM-DD>-<model>-hol
 after the code freeze and is audited blind before its one recording; the same rule holds: recorded once, nothing tuned on it, its run
 never rewrites ``docs/evals.md`` (not even with ``--docs``), and a replay of it needs ``--results-dir``. It
 joins the published page with ``python -m evals.report <published run>.json --holdout3-run <holdout3 run>.json``.
+The splits and their roles live in :mod:`evals.splits` (``holdout4`` and ``newkinds``, the final run's, are
+declared there before their letters exist; the held-out rules apply to them).
+
+The harness (:mod:`evals.harness`) wraps every model call:
+
+* ``--repeat N`` records or replays run N (≥ 2) of the same letters under keys of its own (the model gets the same
+  request); its prediction cache, results file (``…-r<N>.json``) and ``meta.repeat`` say which run it is;
+* every replayed request is checked against ``requests.lock.json`` beside the recordings (a hash of everything the
+  CLI gets): one that changed under the same key fails as a *stale recording*, never replays silently;
+* a live run takes the one recorder lock (``evals/recorded/.recording.lock``), stops starting calls at
+  ``--max-cost-usd`` (counting what the ledger says earlier runs of the same letters at the same ``--repeat`` spent,
+  so a resume gets no new cap), waits through a usage limit with ``--wait-on-limit HOURS``, writes each cassette
+  whole, and adds one line per call to ``ledger.jsonl`` beside the recordings.
+
+A replay doesn't read the prediction cache unless ``--resume`` is given (it saves no time and could stand in for a
+broken replay); a live run resumes from it unless ``--no-resume``.
 
 ``ordnung eval`` delegates here via :func:`run_cli`.
 """
@@ -62,7 +78,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from evals import __version__, report
+from evals import __version__, harness, report, splits
 from evals.conditions import (
     REASK_MISSING,
     TOOLS_CONDITION,
@@ -96,7 +112,7 @@ from ordnung.llm.base import (
     StreamEvent,
 )
 from ordnung.llm.claude_cli import ClaudeCLIBackend
-from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path
+from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path, write_atomic
 from ordnung.llm.runtime import LLMService
 
 EVALS_DIR = Path(__file__).resolve().parent
@@ -110,12 +126,20 @@ DEFAULT_MODEL = (
     "claude-sonnet-5"  # a pinned id (ordnung.llm.base.DEFAULT_MODEL): an alias moves with releases
 )
 DEFAULT_SPLIT = "test"
-SPLITS = ("dev", "test", *report.HELD_OUT_SPLITS)
+#: The splits whose letters exist (what a run over "every split" replays); ``--split`` also takes the declared
+#: final splits (:mod:`evals.splits`), which say they have no letters yet.
+SPLITS = splits.recorded()
 DEFAULT_CONCURRENCY = 3
 DEFAULT_TIMEOUT_S = 300.0
 
 #: Errors after which further calls cannot succeed: stop scheduling, keep what is done.
-FATAL_ERRORS = (ClaudeNotInstalled, ClaudeAuthError, ClaudeRateLimited)
+FATAL_ERRORS = (
+    ClaudeNotInstalled,
+    ClaudeAuthError,
+    ClaudeRateLimited,
+    harness.BudgetReached,
+    harness.RecordingDayOver,
+)
 
 Progress = Callable[[str], None]
 
@@ -132,7 +156,31 @@ class RunConfig:
     limit: int | None = None
     live: bool = False
     refresh: bool = False
-    resume: bool = True
+    #: Read the per-letter prediction cache: ``None`` — only on a live run (a replay recomputes everything).
+    resume: bool | None = None
+    #: Which run of the same letters this is (``--repeat``): 1 is the recorded run every published number comes from.
+    repeat: int = 1
+    #: A live run stops starting calls once their cost reaches this many dollars (``None``: no cap).
+    max_cost_usd: float | None = None
+    #: A live run waits through usage limits until this many hours after it started (``None``: it stops at one).
+    wait_on_limit_hours: float | None = None
+    #: The recorder lock a live run holds (``None``: ``.recording.lock`` in ``recorded_dir``; the CLI always names
+    #: the shared :data:`evals.harness.RECORDER_LOCK`).
+    recorder_lock: Path | None = None
+    #: A live setup shared with other runs (one budget, one waiting, one ledger for several runs, as the stress
+    #: cells' recording): the run uses it instead of its own, and its caller holds the recorder lock throughout.
+    live_setup: harness.LiveSetup | None = None
+    #: Check every replayed request against the request lock (``lock-requests`` captures without it).
+    check_requests: bool = True
+    #: The day a live run is recorded on, which every letter's simulated today must be (the plan's addendum, item 8):
+    #: ``None`` — the UTC date at the start of a run with the real ``claude`` (a stand-in, which tells the model no
+    #: date, is checked only when this is given). The run starts no call once that day is over.
+    recording_day: date | None = None
+    #: Record letters pinned to another day (``--allow-another-today``): the development splits re-recorded in the
+    #: open, or a held-out or final split as a smoke into a scratch folder (:func:`evals.harness.check_another_today`).
+    allow_another_today: bool = False
+    #: Tests: stands in for the ``claude`` CLI on a live run (the rest of the stack is the real one).
+    live_backend: LLMBackend | None = None
     concurrency: int = DEFAULT_CONCURRENCY
     timeout_s: float = DEFAULT_TIMEOUT_S
     run_id: str | None = None
@@ -177,6 +225,16 @@ class RunConfig:
     @property
     def effective_run_id(self) -> str:
         return self.run_id or f"{self.date}-{self.split}"
+
+    @property
+    def effective_resume(self) -> bool:
+        """Whether cached predictions are read: by default only on a live run (it resumes after an interruption)."""
+        return self.live if self.resume is None else self.resume
+
+    def results_name(self, model: str) -> str:
+        """``<date>-<model>-<split>[-r<N>][-partial].json``."""
+        split = self.split + harness.repeat_suffix(self.repeat)
+        return report.results_filename(self.date, model, split, partial=self.partial)
 
 
 @dataclass
@@ -252,7 +310,7 @@ class RecordedFailures:
             if self.record:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 payload = {"request": {"purpose": req.purpose, "doc_ids": req.doc_ids}, "error": str(exc)}
-                path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                write_atomic(path, json.dumps(payload, ensure_ascii=False, indent=2))
             raise
         if self.record:
             path.unlink(missing_ok=True)  # re-recorded successfully
@@ -263,20 +321,100 @@ class RecordedFailures:
             yield event
 
 
-def make_backend(config: RunConfig, model: str, allowed_doc_ids: set[str]) -> LLMBackend:
+def make_backend(
+    config: RunConfig, model: str, allowed_doc_ids: set[str], *, live: harness.LiveSetup | None = None
+) -> LLMBackend:
     """Replay (default; a miss raises ``ReplayMiss``) or live recording (replay-first unless refresh).
 
-    Either way wrapped in :class:`RecordedFailures`, so recorded model failures replay as failures.
+    Either way wrapped in :class:`RecordedFailures`, so recorded model failures replay as failures; then in the
+    request lock's check (:class:`evals.harness.LockedRequests`, unless ``check_requests`` is off) and, for a repeat,
+    in its keys (:class:`evals.harness.RepeatKey`). A live run's ``claude`` is wrapped in
+    :class:`evals.harness.LiveCalls` (budget, waiting, ledger), shared through ``live`` with the rest of the run.
     """
     root = config.recorded_dir / safe_name(model)
+    stack: LLMBackend
     if not config.live:
-        return RecordedFailures(ReplayBackend(root), root, record=False)
-    recorder = RecordingBackend(
-        ClaudeCLIBackend(concurrency=config.concurrency), root, allowed_doc_ids=allowed_doc_ids
+        stack = RecordedFailures(ReplayBackend(root), root, record=False)
+    else:
+        setup = live or harness.LiveSetup(repeat=config.repeat)
+        cli = config.live_backend or ClaudeCLIBackend(concurrency=config.concurrency)
+        if setup.cli is None:
+            setup.cli = cli
+        ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
+        ledger.cli_version = setup.cli_version
+        setup.ledgers.append(ledger)
+        calls = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
+        recorder = RecordingBackend(calls, root, allowed_doc_ids=allowed_doc_ids, provenance=setup.provenance)
+        if config.refresh:
+            stack = RecordedFailures(recorder, root, record=True, replay=False)
+        else:
+            stack = RecordedFailures(
+                ReplayBackend(root, fallback=recorder, set_aside=True), root, record=True
+            )
+    if config.check_requests:
+        stack = harness.LockedRequests(
+            stack,
+            harness.RequestLock(root / harness.LOCK_FILE),
+            root=root,
+            record=config.live,
+            refresh=config.refresh,
+            repeat=config.repeat,
+        )
+    if config.repeat > 1:
+        stack = harness.RepeatKey(stack, config.repeat)
+    return stack
+
+
+def recording_day(config: RunConfig, entries: Sequence[Entry]) -> date | None:
+    """The day a live run records on, once it is checked that every letter's simulated today is that day
+    (:func:`evals.harness.check_recording_day`), or that another today is allowed here
+    (:func:`evals.harness.check_another_today`: a development split re-recorded in the open, or a smoke into a
+    scratch folder); ``None`` when the day is not checked (a replay, or a stand-in for the ``claude`` CLI without an
+    explicit ``recording_day``)."""
+    if not config.live:
+        return None
+    if config.allow_another_today:
+        development = all(
+            entry.split in splits.names() and splits.get(entry.split).role in ("development", "iterated")
+            for entry in entries
+        )
+        harness.check_another_today(config.recorded_dir, development=development)
+    if config.live_backend is not None and config.recording_day is None:
+        return None
+    day = config.recording_day or harness.utc_today()
+    harness.check_recording_day([entry.today for entry in entries], day, allow=config.allow_another_today)
+    return day
+
+
+def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) -> harness.LiveSetup:
+    """What a live run's stacks share: its budget, its waiting, its provenance.
+
+    The budget starts from what the ledgers already say this step spent: the calls on these ``entries`` at this
+    repeat, in every earlier run and resume of the same command (said once, when there is any)."""
+    budget = None
+    if config.max_cost_usd is not None:
+        ledgers = [config.recorded_dir / safe_name(model) / harness.LEDGER_FILE for model in config.models]
+        spent = harness.ledger_spent(ledgers, docs={entry.id for entry in entries}, repeat=config.repeat)
+        if spent > 0:
+            say(
+                f"already spent ${spent:.4f} of --max-cost-usd {config.max_cost_usd:g} on these letters at run "
+                f"{config.repeat} (from the ledger): the cap counts it"
+            )
+        budget = harness.Budget(config.max_cost_usd, spent=spent)
+    day = recording_day(config, entries)
+    return harness.LiveSetup(
+        repeat=config.repeat,
+        budget=budget,
+        waiter=harness.LimitWaiter(config.wait_on_limit_hours, say=say)
+        if config.wait_on_limit_hours
+        else None,
+        day=day,
+        provenance={
+            "repeat": config.repeat,
+            "commit": _commit(),
+            **harness.recording_provenance(day, [entry.today for entry in entries]),
+        },
     )
-    if config.refresh:
-        return RecordedFailures(recorder, root, record=True, replay=False)
-    return RecordedFailures(ReplayBackend(root, fallback=recorder), root, record=True)
 
 
 def entry_inputs(entry: Entry) -> str:
@@ -297,14 +435,11 @@ def entry_inputs(entry: Entry) -> str:
 
 
 def cache_path(config: RunConfig, model: str, condition: str, entry: Entry) -> Path:
-    return (
-        config.results_dir
-        / "cache"
-        / config.effective_run_id
-        / safe_name(model)
-        / condition
-        / f"{entry.id}.{entry_inputs(entry)}.json"
-    )
+    """The cached prediction's file; a repeat's sit in ``r<N>/`` of the run's cache, apart from run 1's."""
+    run_dir = config.results_dir / "cache" / config.effective_run_id
+    if config.repeat > 1:
+        run_dir = run_dir / f"r{config.repeat}"
+    return run_dir / safe_name(model) / condition / f"{entry.id}.{entry_inputs(entry)}.json"
 
 
 def load_cached(path: Path, expected_fingerprint: str) -> Prediction | None:
@@ -417,7 +552,9 @@ async def predict_model(
             nonlocal done
             path = cache_path(config, model, condition, entry)
             cached = (
-                load_cached(path, fingerprints[condition]) if config.resume and not config.refresh else None
+                load_cached(path, fingerprints[condition])
+                if config.effective_resume and not config.refresh
+                else None
             )
             status = "cached"
             if cached is not None:
@@ -512,6 +649,8 @@ def run_meta(
     backend_label: str,
     *,
     left_out: Sequence[str] = (),
+    cli_version: str | None = None,
+    recorded_on: date | None = None,
 ) -> dict[str, Any]:
     conditions = [condition for condition in config.conditions if condition not in left_out]
     meta: dict[str, Any] = {
@@ -519,6 +658,7 @@ def run_meta(
         "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
         "model": model,
         "split": config.split,
+        "repeat": config.repeat,
         "conditions": conditions,
         "backend": backend_label,
         "run_id": config.effective_run_id,
@@ -535,6 +675,14 @@ def run_meta(
         "fingerprints": {condition: fingerprint(condition, model) for condition in conditions},
         "dataset": _manifest_info(config.manifest_path),
         "commit": _commit(),
+        # the code paths that differ from that commit ([] when none; null without git)
+        "dirty": harness.dirty_paths(ROOT),
+        # `claude --version` of a live run (null on a replay: no claude ran)
+        "cli_version": cli_version,
+        # the letters' simulated today, and the day a live run was recorded on (null on a replay): equal after the
+        # code freeze (the evaluation plan's addendum, item 8)
+        "simulated_today": sorted({entry.today for entry in entries}),
+        "recording_day": recorded_on.isoformat() if recorded_on is not None else None,
     }
     if left_out:
         meta["left_out"] = {condition: "recorded answers missing on replay" for condition in left_out}
@@ -542,20 +690,58 @@ def run_meta(
 
 
 async def run_benchmark(
-    config: RunConfig, *, backend: LLMBackend | None = None, progress: Progress | None = None
+    config: RunConfig,
+    *,
+    backend: LLMBackend | None = None,
+    progress: Progress | None = None,
+    alert: Progress | None = None,
 ) -> RunOutcome:
     """Predict, score and report for every configured model.
 
     ``backend`` overrides the replay/live backend (tests pass a ``FakeBackend``). Results and docs
-    are written only for models whose run had no errors, unless ``allow_errors`` is set.
+    are written only for models whose run had no errors, unless ``allow_errors`` is set. ``alert`` hears what
+    must be said even when ``progress`` is silent (``--quiet``): why predictions failed, why the run stopped,
+    and a usage limit's wait. A live run holds the recorder lock throughout (:class:`evals.harness.RecorderLock`).
     """
     say = progress or (lambda _message: None)
+    tell = alert or say
+    if config.repeat < 1:
+        raise ValueError(f"--repeat counts from 1, not {config.repeat}")
     manifest = load_manifest(config.manifest_path)
     entries = select_entries(
         manifest, split=config.split, families=config.families, ids=config.ids, limit=config.limit
     )
     if not entries:
+        if config.split in splits.names() and not splits.get(config.split).recorded:
+            raise ValueError(
+                f"split {config.split} has no letters yet: it is declared in evals/splits.py for the final run, and "
+                "its letters are written after the code freeze"
+            )
         raise ValueError("no benchmark entries match the selection")
+    with contextlib.ExitStack() as held:
+        live: harness.LiveSetup | None = None
+        if config.live and backend is None and config.live_setup is not None:
+            recording_day(
+                config, entries
+            )  # the shared setup's day was checked for its first run; this one too
+            live = config.live_setup  # shared with other runs: their caller holds the recorder lock
+        elif config.live and backend is None:
+            recording_day(config, entries)  # refused before the lock is taken or any call made
+            lock = config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME
+            held.enter_context(harness.RecorderLock(lock, command=" ".join(["evals.run", *sys.argv[1:]])))
+            live = live_setup(config, tell, entries)
+        return await _run_models(config, entries, manifest, backend, live, say, tell)
+
+
+async def _run_models(
+    config: RunConfig,
+    entries: Sequence[Entry],
+    manifest: Sequence[Entry],
+    backend: LLMBackend | None,
+    live: harness.LiveSetup | None,
+    say: Progress,
+    tell: Progress,
+) -> RunOutcome:
     allowed = {entry.id for entry in manifest}
     outcome = RunOutcome(runs=[])
     current_prompts = ordnung_prompt_hashes() if "ordnung" in config.conditions else {}
@@ -569,31 +755,49 @@ async def run_benchmark(
                     "recorded, but its version header did not — replaying would score answers to the old "
                     "prompt. Bump the version (then record with --live), or re-record with --live --refresh."
                 )
-        model_backend = backend or make_backend(config, model, allowed)
+        if backend is not None:
+            model_backend = backend
+        elif live is None:  # a replay calls make_backend as it always did (tools wrap it: E2's G1 guard)
+            model_backend = make_backend(config, model, allowed)
+        else:
+            model_backend = make_backend(config, model, allowed, live=live)
+        if live is not None:
+            await live.resolve_version()
         label = backend.name if backend is not None else ("live" if config.live else "replay")
         if config.write_results:
             _refuse_to_replace_a_recording(
-                config.results_dir
-                / report.results_filename(config.date, model, config.split, partial=config.partial),
-                "live" if config.live else label,
+                config.results_dir / config.results_name(model), "live" if config.live else label
             )
-        say(f"{model}: {len(entries)} letters × {len(config.conditions)} conditions ({label})")
+        repeat = f", run {config.repeat}" if config.repeat > 1 else ""
+        say(f"{model}: {len(entries)} letters × {len(config.conditions)} conditions ({label}{repeat})")
         started = time.perf_counter()
         run = await predict_model(config, model, entries, model_backend, progress=say)
         say(f"{model}: predictions done in {time.perf_counter() - started:.1f}s")
         if backend is None and config.live and current_prompts:
             write_prompts_lock(recorded_root, current_prompts)
         outcome.runs.append(run)
+        for line in harness.drift_lines(
+            model, [p.error for p in run.errors], recorded_root / harness.LOCK_FILE
+        ):
+            tell(line)
         if run.fatal:
-            say(f"{model}: stopped — {run.fatal}")
+            tell(f"{model}: stopped — {run.fatal}")
             continue
         if config.gate_ordnung_only and not config.live:
             _leave_out_unrecorded(run, say)
         if run.errors and not config.allow_errors:
-            _report_errors(run, config, say)
+            _report_errors(run, config, tell)
             continue
         evaluation = evaluate(entries, run.predictions, seed=config.seed, resamples=config.resamples)
-        meta = run_meta(config, model, entries, label, left_out=run.left_out)
+        meta = run_meta(
+            config,
+            model,
+            entries,
+            label,
+            left_out=run.left_out,
+            cli_version=live.cli_version if live is not None else None,
+            recorded_on=(live.day or harness.utc_today()) if live is not None else None,
+        )
         unrecorded = reask_unrecorded(run)
         if unrecorded:
             # said loudly, and kept in the results: these letters were scored on their first reading
@@ -608,8 +812,7 @@ async def run_benchmark(
         if not config.write_results:
             say(f"{model}: results not written (the gate's replay; pass --results-dir to keep them)")
             continue
-        name = report.results_filename(config.date, model, config.split, partial=config.partial)
-        run.results_path = report.write_json(config.results_dir / name, run.results)
+        run.results_path = report.write_json(config.results_dir / config.results_name(model), run.results)
         say(f"{model}: results → {run.results_path}")
     finished = [run.results for run in outcome.runs if run.results is not None]
     write_docs = config.write_docs
@@ -627,9 +830,9 @@ async def run_benchmark(
             and outcome.ok
             and not any(run.errors for run in outcome.runs)
         )
-    if config.split in report.HELD_OUT_SPLITS:
+    if splits.is_held_out(config.split) or config.repeat > 1:
         # A held-out run sits beside the published one (evals.report --holdout-run / --holdout2-run /
-        # --holdout3-run); it never replaces the page.
+        # --holdout3-run); it never replaces the page. Nor does a repeat: the page shows run 1.
         write_docs = False
     if write_docs and finished:
         outcome.docs_path, outcome.chart_path = report.write_docs(
@@ -660,8 +863,9 @@ REPLAY_MISS = "no recorded response"
 #: How to record a condition added after the published run again, and publish it (docs never change
 #: on the recording itself: it runs one condition). Recording costs tokens: see ``docs/evals.md``.
 RECORD_AGAIN = (
-    "record it again with `python -m evals.run --live --split dev --conditions {condition}` and then "
-    "`--split test` (neither rewrites docs/evals.md), then add the test run to the published one: "
+    "record it again with `python -m evals.run --live --split dev --conditions {condition} --allow-another-today` "
+    "and then `--split test` (neither rewrites docs/evals.md; both splits' letters are pinned to their own days), "
+    "then add the test run to the published one: "
     "`python -m evals.report evals/results/<run>.json --rescored evals/results/<run>-rescored.json "
     "--add-condition {condition}=evals/results/<new run>.json --note <finding>.md`"
 )
@@ -779,10 +983,41 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--refresh", action="store_true", help="with --live: record every call anew")
     parser.add_argument(
         "--split",
-        choices=SPLITS,
+        choices=splits.names(),
         default=DEFAULT_SPLIT,
         help="dataset split (default: test; holdout, holdout2 and holdout3 are each recorded once, nothing is "
-        "tuned on them, and none of them rewrites docs/evals.md)",
+        "tuned on them, and none of them rewrites docs/evals.md; holdout4 and newkinds are the final run's, "
+        "declared before their letters exist: evals/splits.py)",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help="run N of the same letters (default 1, the recorded run): run N ≥ 2 is recorded and replayed under "
+        "keys of its own, with the same request; its results file ends in -rN",
+    )
+    parser.add_argument(
+        "--max-cost-usd",
+        type=float,
+        metavar="USD",
+        help="with --live: start no new call once this step's live calls cost this much, counting what the ledger "
+        "says earlier runs of the same letters at this --repeat spent (what is recorded is kept)",
+    )
+    parser.add_argument(
+        "--wait-on-limit",
+        type=float,
+        metavar="HOURS",
+        help="with --live: wait through a usage limit (until its reset, plus 2 minutes) for up to HOURS after the "
+        "run started, instead of stopping; no call is made while waiting",
+    )
+    parser.add_argument(
+        "--allow-another-today",
+        action="store_true",
+        help="with --live: record letters whose simulated today is not today's date (UTC): the development splits "
+        "(dev, test), pinned to their letters' days, recorded again in the open (every new recording and the results "
+        "say both days); a held-out or final split only as a smoke into a scratch --recorded-dir outside the "
+        "checkout (its letters are built for the day it is recorded)",
     )
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"model alias or id (default: {DEFAULT_MODEL})"
@@ -806,7 +1041,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--run-id", help="cache directory name under evals/results/cache/ (default: <date>-<split>)"
     )
     parser.add_argument("--date", dest="run_date", help="date for the results file name (default: today)")
-    parser.add_argument("--no-resume", dest="resume", action="store_false", help="ignore cached predictions")
+    resume = parser.add_mutually_exclusive_group()
+    resume.add_argument(
+        "--resume",
+        dest="resume",
+        action="store_true",
+        default=None,
+        help="read cached predictions on a replay too (a live run resumes from them by default)",
+    )
+    resume.add_argument("--no-resume", dest="resume", action="store_false", help="ignore cached predictions")
+    parser.add_argument("--recorder-lock", type=Path, default=harness.RECORDER_LOCK, help=argparse.SUPPRESS)
     docs = parser.add_mutually_exclusive_group()
     docs.add_argument(
         "--docs", dest="write_docs", action="store_true", default=None, help="always regenerate docs/evals.md"
@@ -859,6 +1103,11 @@ def config_from_args(ns: argparse.Namespace) -> RunConfig:
         live=ns.live,
         refresh=ns.refresh,
         resume=ns.resume,
+        repeat=ns.repeat,
+        max_cost_usd=ns.max_cost_usd,
+        wait_on_limit_hours=ns.wait_on_limit,
+        allow_another_today=ns.allow_another_today,
+        recorder_lock=ns.recorder_lock,
         concurrency=ns.concurrency,
         timeout_s=ns.timeout,
         run_id=ns.run_id,
@@ -888,7 +1137,20 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error(str(exc))
     if config.refresh and not config.live:
         parser.error("--refresh needs --live")
-    if config.split in report.HELD_OUT_SPLITS and config.write_docs:
+    if config.repeat < 1:
+        parser.error(f"--repeat counts runs from 1, not {config.repeat}")
+    for option, value in (
+        ("--max-cost-usd", config.max_cost_usd),
+        ("--wait-on-limit", config.wait_on_limit_hours),
+    ):
+        if value is not None and not config.live:
+            parser.error(f"{option} needs --live (a replay makes no call)")
+    if config.max_cost_usd is not None and config.max_cost_usd < 0:
+        parser.error("--max-cost-usd is a number of dollars, 0 or more")
+    if config.wait_on_limit_hours is not None and config.wait_on_limit_hours <= 0:
+        parser.error("--wait-on-limit is a number of hours above 0")
+    held_out = splits.is_held_out(config.split)
+    if held_out and config.write_docs:
         option = "--holdout-run" if config.split == report.HOLDOUT_SPLIT else f"--{config.split}-run"
         parser.error(
             f"a {config.split} run never rewrites docs/evals.md: add it to the published page with "
@@ -898,20 +1160,16 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
     # the gate writes no results file: it may replay a held-out split where it is
-    if (
-        config.split in report.HELD_OUT_SPLITS
-        and not config.live
-        and config.write_results
-        and ns.results_dir is None
-    ):
+    if held_out and not config.live and config.write_results and ns.results_dir is None:
         parser.error(
             f"a replay of the {config.split} split scores its recordings with the checked-out code, not the "
             "held-out number: pass --results-dir <dir> so it never lands beside the held-out run"
         )
     progress: Progress = (lambda _message: None) if ns.quiet else _stderr
     try:
-        outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress))
-    except ValueError as exc:
+        # what went wrong is said even under --quiet (CI's gates): why predictions failed, why the run stopped
+        outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress, alert=_stderr))
+    except (ValueError, harness.RecorderBusy, harness.HarnessError) as exc:
         _stderr(f"error: {exc}")
         return 1
     for line in summary_lines(outcome):

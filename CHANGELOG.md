@@ -50,6 +50,14 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   by one general rule ([docs/evals-ask.md](docs/evals-ask.md)).
 - In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions'
   recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.
+- **The evaluation is one generated report.** The README's evaluation section, [docs/evals.md](docs/evals.md)
+  and the [report page](https://ahmedeid1.github.io/ordnung/evals/) are written from the results files by
+  `python -m evals.present`, never by hand. They pool the held-out splits with exact confidence intervals and a
+  paired test against the same model doing the date arithmetic itself, and add what the checks are worth (each
+  turned off in turn), how many real obligations get a reminder from letter to calendar, Ask's strict score
+  with its harmful answers, and where Ordnung falls short. `make eval-reproduce` replays every published number
+  with no API key and checks it against `evals/results/INDEX.json`; every recorded request is checked against a
+  lock file, and a new recording takes the day it is made as the benchmark's today.
 
 ### Fixed
 
