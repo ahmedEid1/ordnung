@@ -68,7 +68,8 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   `LetterFoundIn`, and `LetterDetail.picture_text_pages` is a route-local field.
 
 ## Rejected
-- **A Settings switch or a Health field:** both need `models.py`, which the benchmark's code digest covers.
+- **A Settings switch or a Health field:** both need `models.py`, which the benchmark's code digest covered (since
+  0.4.0 the digest covers every Python file of the package, so any code change moves it).
   The environment variable and the doctor's row do the job. (Built in 0.4.0: see below.)
 - **macOS Vision or Windows.Media.Ocr:** each works on one system only.
 - **Bundling Tesseract, or `pytesseract` or `tesserocr`:** a dependency, platform wheels and licences to ship,
@@ -92,8 +93,8 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   words. The docs say to set it the same way on both.
 - A computer still on 0.2.0 ignores the file, finds such a photo by its name, and deletes the file with the
   letter.
-- The benchmark's inputs and Ask's are unchanged: no digest file changes, no database row is written, and the
-  demo has no letter that qualifies, so it writes no such file.
+- The benchmark's inputs and Ask's are unchanged: no file the code digest covered then changes, no database row is
+  written, and the demo has no letter that qualifies, so it writes no such file.
 
 ## Amended in 0.4.0
 - **A switch in Settings.** Settings → Data → *Text in pictures* (`AppSettings.read_picture_text`, on by default)
