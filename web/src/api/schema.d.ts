@@ -1966,7 +1966,7 @@ export interface paths {
         /**
          * Suggested Questions
          * @description The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none
-         *     once the letters or to-dos changed since the demo started (the recorded answers no longer fit).
+         *     once the letters, to-dos or household changed since the demo started (the recorded answers no longer fit).
          */
         get: operations["suggested_questions_api_demo_questions_get"];
         put?: never;
@@ -2117,6 +2117,11 @@ export interface components {
              * @default 08:00
              */
             desktop_notify_time: string;
+            /**
+             * Read Picture Text
+             * @default true
+             */
+            read_picture_text: boolean;
             /**
              * Demo
              * @default false
@@ -3273,8 +3278,9 @@ export interface components {
         };
         /**
          * DoctorCheck
-         * @description One ``ordnung doctor`` check: what was looked at, the outcome and — when it is not ok — how to
-         *     fix it.
+         * @description One ``ordnung doctor`` check: what was looked at and the outcome. ``fix`` says how to fix a ``warn`` or
+         *     ``fail`` row, or, on an ``info`` row, how to turn on what is off or add what is missing; an ``ok`` row has
+         *     none.
          */
         DoctorCheck: {
             /** Id */
@@ -3285,7 +3291,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "ok" | "warn" | "fail";
+            status: "ok" | "info" | "warn" | "fail";
             /**
              * Detail
              * @default
@@ -3430,11 +3436,11 @@ export interface components {
          * DocumentRow
          * @description A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but
          *     ``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter
-         *     (``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,
+         *     (``LetterFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,
          *     never stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.
          *
          *     Its fields are copied from ``Document`` by name, so a field the letter gains reaches the list by
-         *     itself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used.
+         *     itself.
          */
         DocumentRow: {
             /** Id */
@@ -3931,6 +3937,8 @@ export interface components {
              * @enum {string}
              */
             client: "computer" | "phone";
+            /** @description Text in pictures on this computer (ADR 0024); none for a phone */
+            picture_text: components["schemas"]["PictureTextStatus"] | null;
         };
         /**
          * HeldRequest
@@ -4621,7 +4629,7 @@ export interface components {
          * @description Facts a template letter needs besides the letter, contract or person it is about.
          *
          *     Everything is optional here; each template names the facts it requires
-         *     (:data:`ordnung.drafts.templates.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
+         *     (:data:`ordnung.drafts.template_letters.TEMPLATES`). Dates are ISO ``YYYY-MM-DD`` (anything else is refused
          *     with a clear message, never a server error), amounts in euros.
          */
         LetterDetails: {
@@ -5153,10 +5161,22 @@ export interface components {
             letters: number;
         };
         /**
-         * MyNumbers
-         * @description The *My numbers* page.
+         * NotificationText
+         * @description What a desktop notification says.
          */
-        MyNumbers: {
+        NotificationText: {
+            /** Title */
+            title: string;
+            /** Body */
+            body: string;
+        };
+        /**
+         * NumbersPage
+         * @description The *My numbers* page (``GET /api/numbers``): the person's own numbers as :class:`MyNumbers` has them,
+         *     and each person of the household's (:mod:`ordnung.numbers`, ADR 0023). All three household parts are empty
+         *     without a household.
+         */
+        NumbersPage: {
             /** Today */
             today: string;
             /** About You */
@@ -5173,16 +5193,25 @@ export interface components {
              * @default false
              */
             masked: boolean;
-        };
-        /**
-         * NotificationText
-         * @description What a desktop notification says.
-         */
-        NotificationText: {
-            /** Title */
-            title: string;
-            /** Body */
-            body: string;
+            /**
+             * Household
+             * @description Every person of the household with a number or document on the page, in household order
+             */
+            household: components["schemas"]["PersonNumbers"][];
+            /**
+             * Filed For
+             * @description A call-sheet number or open case all of whose letters are filed for one person: its key → that person's id
+             */
+            filed_for: {
+                [key: string]: string;
+            };
+            /**
+             * Also For
+             * @description A number of yours or a person's that other people's letters show too: its key → those people (``me``: you; else a person's id)
+             */
+            also_for: {
+                [key: string]: string[];
+            };
         };
         /**
          * OnboardingRequest
@@ -5341,6 +5370,32 @@ export interface components {
             iban_valid: boolean | null;
             /** Reference */
             reference: string | null;
+        };
+        /**
+         * PersonNumbers
+         * @description A person of the household on *My numbers*: what the letters the person filed for them show.
+         */
+        PersonNumbers: {
+            /**
+             * Id
+             * @description hhm_…, as in the household
+             */
+            id: string;
+            /**
+             * Name
+             * @description As typed in Settings
+             */
+            name: string;
+            /**
+             * About
+             * @description Numbers about them, from letters filed for them
+             */
+            about: components["schemas"]["MyNumber"][];
+            /**
+             * Documents
+             * @description Their identity documents, from letters filed for them
+             */
+            documents: components["schemas"]["IdentityDocument"][];
         };
         /**
          * PhoneAccessChange
@@ -5564,6 +5619,28 @@ export interface components {
             pairing: components["schemas"]["PhonePairingState"] | null;
             /** Devices */
             devices: components["schemas"]["PhoneDevice"][];
+        };
+        /**
+         * PictureTextStatus
+         * @description Whether this computer reads the words in photos and scans Claude isn't reading (ADR 0024), in the words
+         *     of the doctor's *Text in pictures* row.
+         */
+        PictureTextStatus: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "reading" | "off" | "off_by_variable" | "not_installed" | "not_usable";
+            /**
+             * Detail
+             * @description What the doctor's row says
+             */
+            detail: string;
+            /**
+             * Fix
+             * @description The doctor's fix: how to install Tesseract or make it usable (none: nothing to do)
+             */
+            fix: string | null;
         };
         /** Profile */
         Profile: {
@@ -6075,6 +6152,11 @@ export interface components {
              * @description Local time of day, HH:MM (24 h)
              */
             desktop_notify_time?: string | null;
+            /**
+             * Read Picture Text
+             * @description read the words in photos and scans Claude isn't reading, for search only (ADR 0024)
+             */
+            read_picture_text?: boolean | null;
             /** Demo */
             demo?: boolean | null;
             /** Simulated Today */
@@ -6152,7 +6234,7 @@ export interface components {
             error?: string | null;
             /**
              * Error Code
-             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters or to-dos changed since the demo started (it has to start over)
+             * @description why there is no answer (error), when asking again can't help: demo_miss — the demo has no recorded answer for this question; demo_changed — the demo recorded it, but the letters, to-dos or household changed since the demo started (it has to start over)
              */
             error_code?: ("demo_miss" | "demo_changed") | null;
             /**
@@ -9462,7 +9544,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["MyNumbers"];
+                    "application/json": components["schemas"]["NumbersPage"];
                 };
             };
         };

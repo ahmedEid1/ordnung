@@ -41,6 +41,22 @@ export function inboxCountText({ check, waiting }: InboxCounts, short = false): 
   return [check ? (short ? `${check} to check` : toCheck(check)) : "", waiting ? `${waiting} not read yet` : ""].filter(Boolean).join(", ");
 }
 
+/**
+ * The rest of the Inbox link's name, after the words it shows (WCAG 2.5.3, Label in Name): visually hidden, so
+ * "Inbox 4 — 1 letter to check, 3 not read yet" starts with "Inbox 4", as on screen. `number`: also say the
+ * bubble's number, where the bubble itself is left out of the name (it sits on the icon, before the label). The
+ * space before it is a text node of its own: a name keeps it, and a flex row or column doesn't draw it.
+ */
+export function InboxCountSuffix({ counts, short = false, number = false }: { counts: InboxCounts; short?: boolean; number?: boolean }) {
+  const total = counts.check + counts.waiting;
+  return (
+    <>
+      {" "}
+      <span className="sr-only">{`${number ? `${total} ` : ""}— ${inboxCountText(counts, short)}`}</span>
+    </>
+  );
+}
+
 /** Hover text of the Inbox's count: what each number is. */
 export function inboxCountTitle({ check, waiting }: InboxCounts): string {
   return [
@@ -87,12 +103,13 @@ function NavEntry({
   const attentionLabel = attention ? `${item.label}, needs your attention` : undefined;
 
   if (rail) {
-    // icon over a short label (like the phone tab bar): the rail is readable without hovering
+    // icon over a short label (like the phone tab bar): the rail is readable without hovering. Named by that label,
+    // then the bubble's number and what it counts (the bubble sits on the icon, before the label in the page)
     return (
       <Link
         to={href}
         aria-current={active ? "page" : undefined}
-        aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
+        aria-label={attentionLabel}
         title={counts && badge ? inboxCountTitle(counts) : undefined}
         className={cn(
           "group flex w-full flex-col items-center gap-1 rounded-lg py-1.5 text-xs font-medium outline-none transition-colors",
@@ -108,10 +125,15 @@ function NavEntry({
           )}
         >
           <Icon className="size-[18px]" aria-hidden />
-          {counts && badge ? <InboxBubble counts={counts} className="absolute -right-1 -top-1 ring-2 ring-surface-2 dark:ring-surface" /> : null}
+          {counts && badge ? (
+            <span aria-hidden className="absolute -right-1 -top-1 inline-flex">
+              <InboxBubble counts={counts} className="ring-2 ring-surface-2 dark:ring-surface" />
+            </span>
+          ) : null}
           {attention ? <AttentionDot className="absolute right-1.5 top-0.5" /> : null}
         </span>
         <span className="max-w-full truncate leading-4">{item.short ?? item.label}</span>
+        {counts && badge ? <InboxCountSuffix counts={counts} number /> : null}
       </Link>
     );
   }
@@ -120,7 +142,7 @@ function NavEntry({
     <Link
       to={href}
       aria-current={active ? "page" : undefined}
-      aria-label={counts && badge ? `${item.label}, ${inboxCountText(counts)}` : attentionLabel}
+      aria-label={attentionLabel}
       className={cn(
         // h-8 (a 32 px target): seven sections, Settings and the docked demo tour fit a 768 px laptop
         "group relative flex h-8 items-center gap-3 rounded-lg px-2.5 text-[14px] font-medium outline-none transition-colors",
@@ -133,11 +155,16 @@ function NavEntry({
       <span className="flex-1 truncate">{item.label}</span>
       {attention ? <AttentionDot /> : null}
       {counts && badge ? (
-        // one bubble, as on the rail and the phone's tab bar (warn-coloured while a letter is to check);
-        // what it counts is in its accessible name and its hover text
-        <span title={inboxCountTitle(counts)} className="inline-flex">
-          <CountBadge count={badge} tone={counts.check ? "warn" : "accent"} variant="solid" />
-        </span>
+        // one bubble, as on the rail and the phone's tab bar (warn-coloured while a letter is to check); the link
+        // is named by what it shows, "Inbox 4", then what the bubble counts, which its hover text says too. The
+        // space keeps "Inbox" and "4" apart in the name; a flex row doesn't draw it.
+        <>
+          {" "}
+          <span title={inboxCountTitle(counts)} className="inline-flex">
+            <CountBadge count={badge} tone={counts.check ? "warn" : "accent"} variant="solid" />
+          </span>
+          <InboxCountSuffix counts={counts} />
+        </>
       ) : null}
     </Link>
   );
@@ -161,8 +188,8 @@ function ProfileLink() {
   return (
     <Link
       to="/settings?section=profile"
-      // starts with the visible name (WCAG 2.5.3: "click Sam Rivera" works for voice control)
-      aria-label={name ? `${name} — your profile` : "Your profile"}
+      // named by the two lines it shows, in order (WCAG 2.5.3: "click Sam Rivera" works for voice control), then
+      // where it goes; the initials are decoration (aria-hidden). The space keeps the two lines apart in the name.
       className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       {name ? (
@@ -173,9 +200,15 @@ function ProfileLink() {
         </span>
       )}
       <span className="min-w-0">
-        <span className="block truncate text-[13px] font-medium leading-4 text-ink">{name || "Your profile"}</span>
+        <span className="block truncate text-[13px] font-medium leading-4 text-ink">{name || "Your profile"}</span>{" "}
         <span className="block truncate text-xs leading-4 text-muted">Your data stays local</span>
       </span>
+      {name ? (
+        <>
+          {" "}
+          <span className="sr-only">— your profile</span>
+        </>
+      ) : null}
     </Link>
   );
 }

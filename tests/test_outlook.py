@@ -501,6 +501,13 @@ def test_other_ole_file_refused() -> None:
     assert refusal(build([stream("Contents", b"x" * 100)])) == NOT_OUTLOOK
 
 
+def test_not_outlook_is_intakes_own_message() -> None:
+    """One text for "not a type Ordnung reads", wherever it is said: the Outlook reader's is intake's (which names
+    ``.msg``), and so is its OLE signature."""
+    assert NOT_OUTLOOK is intake.UNSUPPORTED and ".msg" in NOT_OUTLOOK
+    assert OLE_MAGIC is intake.OLE_MAGIC
+
+
 def test_other_ole_file_named_msg_is_a_damaged_outlook_file() -> None:
     """Named ``.msg``, an OLE file without a message is an Outlook file that can't be opened: “this type is
     not supported” would contradict the list of types that names ``.msg``."""

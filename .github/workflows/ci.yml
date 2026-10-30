@@ -107,12 +107,13 @@ jobs:
           sys.exit(1 if differ else 0)
           EOF
       - name: Ask benchmark (replayed, deterministic)
-        # thresholds and the one known attack (the rent's own amount in a comparison): see the notes in
-        # docs/evals-ask.md; --check-docs fails when the committed page or results file is not what this
-        # replay writes
+        # thresholds, the household group at its recorded 4/5 and the one known attack (the rent's own amount
+        # in a comparison): see the notes in docs/evals-ask.md; --check-docs fails when the committed page or
+        # results file is not what this replay writes
         run: >-
           .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
+          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
+          --check-docs
       - name: The evaluation's README block, report, history page and charts are what the results files render
         run: .venv/bin/python -m evals.present --check
       - name: Every published number is replayed with no model call and checked against evals/results/INDEX.json
@@ -308,8 +309,8 @@ jobs:
           ORDNUNG_HOME: ${{ runner.temp }}/ordnung-data
         run: |
           # it exits 1 when a check fails: Claude's checks may (no `claude`, or not signed in), every other
-          # check must pass, and the exit code must say which; text in pictures is ok (Tesseract is optional:
-          # "Not installed (optional)" here)
+          # check must pass, and the exit code must say which; text in pictures is info (Tesseract is optional:
+          # "Not installed (optional)" here), and so is disk encryption on Windows (Ordnung can't check it there)
           code=0
           "$WHEEL_BIN/ordnung" doctor || code=$?
           "$WHEEL_BIN/python" - "$code" <<'EOF'
@@ -322,7 +323,10 @@ jobs:
           assert all(name.startswith("claude") for name in failed), failed
           assert int(sys.argv[1]) == (1 if failed else 0), (sys.argv[1], failed)
           (ocr,) = [check for check in checks if check.id == "ocr"]
-          assert ocr.status == "ok", ocr
+          assert ocr.status == "info" and ocr.detail == "Not installed (optional)", ocr
+          if sys.platform == "win32":
+              (disk,) = [check for check in checks if check.id == "disk_encryption"]
+              assert disk.status == "info" and disk.fix is None, disk
           EOF
       - name: Tests of the code that differs per system
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -174,6 +175,10 @@ class SettingsPatch(BaseModel):
     desktop_notify_time: str | None = Field(
         default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$", description="Local time of day, HH:MM (24 h)"
     )
+    read_picture_text: bool | None = Field(
+        default=None,
+        description="read the words in photos and scans Claude isn't reading, for search only (ADR 0024)",
+    )
     demo: bool | None = None
     simulated_today: str | None = None
 
@@ -322,7 +327,17 @@ def _checked_inbox(value: str | None, paths: Paths) -> str | None:
     return str(folder)
 
 
+#: One settings save at a time (read, write, re-read): two saves made together (two windows, the *Text in pictures*
+#: switch clicked off and on quickly) would otherwise lose one's change or leave the app on the older settings.
+_SETTINGS_SAVE = threading.Lock()
+
+
 def _merge_settings(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
+    with _SETTINGS_SAVE:
+        return _merge_settings_now(ctx, patch)
+
+
+def _merge_settings_now(ctx: AppContext, patch: SettingsPatch) -> AppSettings:
     current = ctx.store.get_settings()
     changes = {name: value for name, value in patch.model_dump(exclude_unset=True).items()}
     for name in _READ_ONLY_SETTINGS:
@@ -361,6 +376,13 @@ def read_settings(store: StoreDep) -> AppSettings:
 async def update_settings(patch: SettingsPatch, state: StateDep) -> AppSettings:
     """Change settings (``demo`` and ``simulated_today`` can't be changed here); a new inbox folder
     restarts the folder watcher, a new model counts from the next call to Claude."""
+    # (the published description stays as it was) Text in pictures (read_picture_text) counts at once: saved off,
+    # search and the letter's page leave out the words read in pictures, a reading under way stops and those words
+    # are deleted; saved on, reading starts. The worker does what the switch now says, so a save that names it
+    # tells the worker even when the value is the same (it changes nothing then): two saves made together can't
+    # leave it out of step.
     settings = await asyncio.to_thread(_merge_settings, state.ctx, patch)
     await state.folder.reconfigure()
+    if patch.read_picture_text is not None:
+        await state.ctx.worker.picture_text_changed()
     return settings

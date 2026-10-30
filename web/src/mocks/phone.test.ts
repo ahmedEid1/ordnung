@@ -9,6 +9,7 @@ import type { MyNumbers, PairResult, PhonePairing, PhoneStatus } from "@/api/typ
 import { openApiPhoneScope } from "@/test/mockFetch";
 import { createMockServer, type MockServer } from "./server";
 import { checkWords, maskNumbers, maskValue, normalizeCode } from "./phone";
+import { MOCK_ALEX, MOCK_NUMBERS_FOR_ALEX } from "./data/numbers";
 import {
   CODE_ALPHABET,
   PAIRING_TRIES_TOTAL,
@@ -257,6 +258,18 @@ describe("the phone listener in the mock", () => {
     const full = (await call<MyNumbers>(computer(), "GET", "/numbers")).body;
     expect(full.masked).toBe(false);
     expect(maskNumbers(full).about_you.map((n) => n.value)).toEqual(numbers.about_you.map((n) => n.value));
+  });
+
+  it("masks a household member's numbers on a phone", () => {
+    const masked = maskNumbers(MOCK_NUMBERS_FOR_ALEX);
+    const [alex] = masked.household;
+    expect(alex?.name).toBe(MOCK_ALEX.name);
+    const shown = [...alex!.about, ...alex!.documents.flatMap((d) => (d.number ? [d.number] : []))];
+    expect(shown.length).toBeGreaterThanOrEqual(2);
+    for (const n of shown) expect(n.value === n.display && n.value === n.copy_value && /^•••• \S{4}$/.test(n.value)).toBe(true);
+    // whose they are stays: the same people under the same keys (the mock keeps its keys on a phone)
+    expect([masked.filed_for, masked.also_for]).toEqual([MOCK_NUMBERS_FOR_ALEX.filed_for, MOCK_NUMBERS_FOR_ALEX.also_for]);
+    expect(JSON.stringify(masked)).not.toContain(MOCK_NUMBERS_FOR_ALEX.household[0]!.about[0]!.value);
   });
 });
 

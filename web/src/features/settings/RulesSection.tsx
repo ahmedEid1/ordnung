@@ -172,7 +172,8 @@ export function RulesSection() {
                           aria-label={`${g.topic}, ${plural(g.rules.length, "rule")}`}
                           className="inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-line px-2.5 py-0.5 text-left text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink"
                         >
-                          <span className="min-w-0 wrap-anywhere">{g.topic}</span>
+                          {/* the space keeps the topic and its count two words, as in the name (WCAG 2.5.3) */}
+                          <span className="min-w-0 wrap-anywhere">{g.topic}</span>{" "}
                           <span className="shrink-0 rounded-full bg-surface-2 px-1.5 text-xs font-medium tabular-nums text-muted">{g.rules.length}</span>
                         </button>
                       </li>

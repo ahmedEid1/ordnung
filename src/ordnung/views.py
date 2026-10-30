@@ -27,7 +27,7 @@ from ordnung.models import (
     Lane,
     LaneBar,
     MoneySummary,
-    MyNumbers,
+    NumbersPage,
     RefLink,
     Suggestion,
     TimelineEntry,
@@ -39,6 +39,7 @@ from ordnung.numbers import NumbersInput, build_my_numbers
 from ordnung.payments import is_collected_or_incoming, is_direct_debit, pays_on_site
 from ordnung.rules.deadlines import sending_time_passed
 from ordnung.rules.explain import fmt_date
+from ordnung.secretary import household
 from ordnung.secretary.brief import build_agenda, is_unread
 from ordnung.secretary.triggers import (
     Ledger,
@@ -1033,33 +1034,42 @@ def lanes(store: Store, start: date, end: date, *, today: date | None = None) ->
 # --------------------------------------------------------------------------------------------------
 
 
-def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> MyNumbers:
-    """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger.
+def my_numbers(store: Store, today: date, *, shareable_only: bool = False) -> NumbersPage:
+    """The *My numbers* page (:mod:`ordnung.numbers`) over a snapshot of the ledger (:func:`numbers_input`)."""
+    return build_my_numbers(numbers_input(store, today, shareable_only=shareable_only))
+
+
+def numbers_input(store: Store, today: date, *, shareable_only: bool = False) -> NumbersInput:
+    """What *My numbers* is worked out from: a snapshot of the ledger.
 
     ``shareable_only`` leaves out letters marked "Keep private — no AI" and their to-dos (Ask's tool,
-    ADR 0006): a private letter's to-do is never a case's next step there.
+    ADR 0006): a private letter's to-do is never a case's next step there. A letter the person filed for
+    someone of their household (:attr:`Ledger.household_filed`) gives that person's numbers.
     """
     ledger = Ledger(store, today)
     private = {doc.id for doc in ledger.documents.values() if shareable_only and doc.ai_private}
     documents = [doc for doc in ledger.documents.values() if doc.id not in private]
     items = [item for item in ledger.items if item.doc_id not in private]
-    return build_my_numbers(
-        NumbersInput(
-            today=today,
-            documents=documents,
-            parties=ledger.parties,
-            cases={case.id: case for case in store.list_cases()},
-            items=items,
-            open_items=[item for item in pending_items(ledger) if item.doc_id not in private],
-            extractions={doc.id: ledger.extraction(doc.id) for doc in documents},
-            suspicious=frozenset(doc.id for doc in documents if ledger.scam_reasons(doc)),
-            expiry_classes={
-                item.id: expiry_class(item, ledger.document(item.doc_id))
-                for item in items
-                if item.kind == "expiry"
-            },
-            own_iban=ledger.profile.iban or None,
-        )
+    people = {doc_id: member.id for doc_id, member in ledger.household_filed.items() if doc_id not in private}
+    # the people in the household's order, read only when a letter is filed for one of them
+    members = list(household.load(store).members) if people else []
+    return NumbersInput(
+        today=today,
+        documents=documents,
+        parties=ledger.parties,
+        cases={case.id: case for case in store.list_cases()},
+        items=items,
+        open_items=[item for item in pending_items(ledger) if item.doc_id not in private],
+        extractions={doc.id: ledger.extraction(doc.id) for doc in documents},
+        suspicious=frozenset(doc.id for doc in documents if ledger.scam_reasons(doc)),
+        expiry_classes={
+            item.id: expiry_class(item, ledger.document(item.doc_id))
+            for item in items
+            if item.kind == "expiry"
+        },
+        own_iban=ledger.profile.iban or None,
+        people=people,
+        members=members,
     )
 
 

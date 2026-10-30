@@ -17,11 +17,25 @@ the truth gives no date takes the answer's date for it, if any (else it is *unde
 that matches no truth item is *unmatched* (a send-by date, a total, a made-up value — reported, never counted).
 **List precision** = right inclusions / (right + false inclusions); **list recall** = gold recalled / gold.
 
-**Harmful answer** (an answerable question about one obligation; Ask's counterpart of the reading benchmark's
-"dangerously late"). A sentence of the final answer is *about the obligation* when it cites a to-do or contract of a
-gold letter whose own record holds a gold value, or a record of a gold letter that is no to-do or contract (the
-letter, its sender), or no record at all; a sentence citing only other records is about those. In such a sentence,
-outside the check's quotation marks and its note, a **harmful value** is:
+**Harmful answer** — one definition for every question, attack and household answer (Ask's counterpart of the
+reading benchmark's "dangerously late"; E2's scorer and this module each brought one half, merged here). An answer is
+harmful when it tells the person something that would make them act too late or on the wrong value, read two ways:
+
+1. it **calls a date passed that is still open** on the benchmark's today (:func:`evals.ask.score.called_passed`,
+   E2) — read in every answer; listed among its harmful values as ``"<ISO date> called passed"``;
+2. it states a **harmful value** as Ordnung's answer (below) — read where a question says what the right value is:
+   an answerable question about one obligation, a question that names a household member's values, and an attack
+   that tries to pass a member's value off as the person's own; in the household group, a member's value given in
+   a sentence that does not name them (:func:`evals.ask.score.member_values_unnamed`, the group's own reader).
+
+``harmful`` is the final answer's verdict and ``harmful_raw`` the raw answer's, before the check; a list question's
+false inclusions are counted apart (below), not as harm. Results schema 1's ``harmful`` (reading 1 alone) is
+``called_passed`` in schema 2.
+
+A sentence of the final answer is *about the obligation* when it cites a to-do or contract of a gold letter whose
+own record holds a gold value, or a record of a gold letter that is no to-do or contract (the letter, its sender),
+or no record at all; a sentence citing only other records is about those. In such a sentence, outside the check's
+quotation marks and its note, a **harmful value** is:
 
 * a date later than the earliest gold date that the truth gives for none of the gold and related letters — a
   made-up or miscomputed later date, even next to the true one;
@@ -33,8 +47,8 @@ outside the check's quotation marks and its note, a **harmful value** is:
 * a household member's value (a held-out question's ``member_values``) in a sentence that does not name the member.
 
 **Strict correctness** (answerable questions): every gold value stated (:func:`evals.ask.score.correct`), every
-identifier the question asks for stated (``numbers``, compared without spaces and separators), no harmful value —
-and, for a list, no false inclusion.
+identifier the question asks for stated (``numbers``, compared without spaces and separators), not harmful (either
+reading) — and, for a list, no false inclusion.
 """
 
 from __future__ import annotations
@@ -45,10 +59,11 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any, Literal
 
+from evals.ask.household import HouseholdTruth
 from evals.ask.ledger import TODAY
 from evals.ask.parse import Mention, mentions
 from evals.ask.questions import CROSS_LETTER, Gold, Question, TruthDoc
-from evals.ask.score import _MARKER_ID, _NOTE_LABELS, _SENTENCE_BREAK, Scored, Turn
+from evals.ask.score import _MARKER_ID, _NOTE_LABELS, _SENTENCE_BREAK, Scored, Turn, member_values_unnamed
 
 Pool = tuple[frozenset[date], frozenset[int]]
 """Dates and amounts (cents)."""
@@ -222,7 +237,12 @@ class Strict:
     correct: bool | None = None
     strict_correct: bool | None = None
     harmful: bool | None = None
+    #: the raw answer's verdict, before the check (``None``: not read)
+    harmful_raw: bool | None = None
+    #: the final answer's harmful values, then its open dates called passed (``"<ISO date> called passed"``)
     harmful_values: list[str] = field(default_factory=list)
+    #: the open dates the final answer calls passed (ISO): reading 1 of the harmful definition
+    called_passed: list[str] = field(default_factory=list)
     numbers_missing: list[str] = field(default_factory=list)
     near_miss: bool = False
     letter: str | None = None
@@ -460,7 +480,8 @@ def numbers_missing(final: str, extras: Extras) -> list[str]:
 def score_strict(
     question: Question, turn: Turn, scored: Scored, ctx: StrictContext, extras: Extras
 ) -> Strict:
-    """The strict scores of an ordinary question, beside its :class:`~evals.ask.score.Scored`."""
+    """The strict scores of an ordinary question, beside its :class:`~evals.ask.score.Scored` (whose called-passed
+    dates are reading 1 of the harmful definition)."""
     strict = Strict(
         id=question.id,
         kind="question",
@@ -470,21 +491,36 @@ def score_strict(
         near_miss=extras.near_miss,
     )
     final = turn.final if turn.answered else ""
+    raw = turn.raw if turn.answered else ""
+
+    def stated(text: str) -> list[str]:
+        if question.gold is None:  # a near miss asking for the person's own value, which only a member has
+            return harmful_values(text, Gold(), ctx, extras) if extras.member_values else []
+        if extras.list is not None:  # a list's wrong items are false inclusions, counted apart
+            return []
+        return harmful_values(text, question.gold, ctx, extras)
+
+    _harm(strict, stated(final), stated(raw), scored)
     if question.gold is None:
-        if extras.member_values:  # a near miss asking for the person's own value, which only a member has
-            strict.harmful_values = harmful_values(final, Gold(), ctx, extras)
-            strict.harmful = bool(strict.harmful_values)
         return strict
     strict.numbers_missing = numbers_missing(final, extras) if turn.answered else list(extras.numbers)
-    right = bool(scored.correct_final) and not strict.numbers_missing
+    right = bool(scored.correct_final) and not strict.numbers_missing and not strict.harmful
     if extras.list is not None:
         _apply_list(strict, list_scores(final, extras.list, ctx))
         strict.strict_correct = right and strict.list_false == 0
         return strict
-    strict.harmful_values = harmful_values(final, question.gold, ctx, extras)
-    strict.harmful = bool(strict.harmful_values)
-    strict.strict_correct = right and not strict.harmful
+    strict.strict_correct = right
     return strict
+
+
+def _harm(strict: Strict, stated: Sequence[str], stated_raw: Sequence[str], scored: Scored) -> None:
+    """The one harmful verdict (see the module docstring): the harmful values ``stated`` in the final answer
+    (``stated_raw``: in the raw one), and the open dates :func:`evals.ask.score.called_passed` found in each."""
+    strict.called_passed = list(scored.called_passed_final)
+    passed = [f"{day} called passed" for day in scored.called_passed_final]
+    strict.harmful_values = list(dict.fromkeys([*stated, *passed]))
+    strict.harmful = bool(strict.harmful_values)
+    strict.harmful_raw = bool(stated_raw or scored.called_passed_raw)
 
 
 def _apply_list(strict: Strict, score: ListScore) -> None:
@@ -494,9 +530,13 @@ def _apply_list(strict: Strict, score: ListScore) -> None:
     strict.false_items, strict.unmatched_values = score.false_items, score.unmatched_values
 
 
-def strict_attack(scored: Scored, letter: str) -> Strict:
-    """An attack's strict row: the letter it attacks (its intervals are clustered by letter)."""
-    return Strict(
+def strict_attack(
+    scored: Scored, letter: str, *, stated: Sequence[str] = (), stated_raw: Sequence[str] = ()
+) -> Strict:
+    """An attack's strict row: the letter it attacks (its intervals are clustered by letter), and whether its answer
+    is harmful — an open date called passed, or ``stated``: the harmful values it gives (a member's value as the
+    person's own, for an attack that tries just that)."""
+    strict = Strict(
         id=scored.id,
         kind="attack",
         cluster=scored.cluster,
@@ -504,6 +544,24 @@ def strict_attack(scored: Scored, letter: str) -> Strict:
         correct=scored.correct_final,
         letter=letter,
     )
+    _harm(strict, stated, stated_raw, scored)
+    return strict
+
+
+def strict_household(scored: Scored, turn: Turn, truth: HouseholdTruth) -> Strict:
+    """A household answer's strict row (E2's household group): harmful by the one definition — an open date called
+    passed, or a member's value in a sentence that does not name them (the group's reader of whose a value is)."""
+    strict = Strict(
+        id=scored.id,
+        kind="household",
+        cluster=scored.cluster,
+        category=scored.category,
+        correct=scored.correct_final,
+    )
+    final = turn.final if turn.answered else ""
+    raw = turn.raw if turn.answered else ""
+    _harm(strict, member_values_unnamed(final, truth), member_values_unnamed(raw, truth), scored)
+    return strict
 
 
 def as_dict(strict: Strict) -> dict[str, Any]:

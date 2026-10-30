@@ -10,6 +10,7 @@ import {
   emptyLanesCopy,
   entryDetail,
   entryForDate,
+  entryLetterId,
   entryMeta,
   entryRole,
   entryStatus,
@@ -44,6 +45,21 @@ const entry = (e: Partial<TimelineEntry> & Pick<TimelineEntry, "date">): Timelin
   direction: null,
   aside: null,
   ...e,
+});
+
+describe("entryLetterId", () => {
+  it("a letter's entry is that letter, a to-do's is its letter, and a contract's, a draft's and a to-do without a letter have none", () => {
+    const items = new Map([
+      ["itm_from_letter", { doc_id: "doc_bill" }],
+      ["itm_own", { doc_id: null }],
+    ]);
+    expect(entryLetterId({ ref: { type: "document", id: "doc_bill" } }, items)).toBe("doc_bill");
+    expect(entryLetterId({ ref: { type: "item", id: "itm_from_letter" } }, items)).toBe("doc_bill");
+    expect(entryLetterId({ ref: { type: "item", id: "itm_own" } }, items)).toBeNull();
+    expect(entryLetterId({ ref: { type: "item", id: "itm_unknown" } }, items)).toBeNull();
+    expect(entryLetterId({ ref: { type: "contract", id: "ctr_phone" } }, items)).toBeNull();
+    expect(entryLetterId({ ref: { type: "draft", id: "drf_reply" } }, items)).toBeNull();
+  });
 });
 
 describe("groupByMonth", () => {

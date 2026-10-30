@@ -36,6 +36,7 @@ from ordnung.api.routes import export
 from ordnung.api.routes.documents import DocumentPatch
 from ordnung.api.routes.profile import ProfilePatch
 from ordnung.app_context import AppContext, build_context
+from ordnung.assistant import mcp_server
 from ordnung.assistant.rules_tools import build_rules_server
 from ordnung.backup import MAX_PASSPHRASE_CHARS, MIN_PASSPHRASE_CHARS
 from ordnung.backup.archive import FOLDERS
@@ -184,6 +185,11 @@ def _pct(value: float) -> str:
     return text.removesuffix(".0") if text in ("100.0", "0.0") else text
 
 
+def _words(n: int) -> str:
+    """A small count as README writes it ("four wrong answers")."""
+    return ("no", "one", "two", "three", "four", "five", "six")[n] if n <= 6 else str(n)
+
+
 def _results(name: str) -> dict[str, Any]:
     return json.loads((ROOT / "evals" / "results" / name).read_text(encoding="utf-8"))
 
@@ -248,6 +254,111 @@ def test_the_readme_types_no_benchmark_number_by_hand() -> None:
     ]
     assert not counts, counts
     assert not re.search(r"CI requires[^.]*\d+ ?%", _flat(outside))
+
+
+#: What a wrong Ask answer is, in README's words (singular, plural): it calls a gold date still open on the
+#: benchmark's today passed (the day it was recorded leaking in as today); the gold is not in
+#: Ordnung's record (a gap in the ledger); or the record holds it and the answer leaves it out.
+WRONG_ANSWER_KINDS = {
+    "leak": ("calls a date that is still open passed", "call a date that is still open passed"),
+    "gap": ("is a gap in the ledger", "are gaps in the ledger"),
+    "other": ("leaves out a value ordnung's record holds", "leave out a value ordnung's record holds"),
+}
+
+
+def _wrong_answer_claims(results: dict[str, Any]) -> tuple[list[tuple[str, ...]], list[str]]:
+    """What README must say about the wrong answers of an Ask results file, lower case, each claim a choice of
+    wordings: how many there are, and for each kind (:data:`WRONG_ANSWER_KINDS`) how many are of it — "four call
+    a date that is still open passed", or "the four wrong answers call …" when all are — with the recording day
+    named for a leak. And what it must not say: that they are gaps, unless every one is."""
+    wrong = [
+        entry
+        for entry in results["questions"]
+        if entry["gold"] is not None and entry["scores"]["correct_final"] is False
+    ]
+    kinds: dict[str, list[str]] = {kind: [] for kind in WRONG_ANSWER_KINDS}
+    for entry in wrong:
+        scores = entry["scores"]
+        if set(scores.get("called_passed_final") or ()) & set(entry["gold"]["dates"]):
+            kinds["leak"].append(entry["id"])
+        elif scores["in_record"] is False:
+            kinds["gap"].append(entry["id"])
+        else:
+            kinds["other"].append(entry["id"])
+    total = len(wrong)
+    lead = f"{_words(total)} wrong answer{'s' if total > 1 else ''}"
+    required: list[tuple[str, ...]] = [(lead,)]
+    for kind, ids in kinds.items():
+        if not ids:
+            continue
+        says = WRONG_ANSWER_KINDS[kind][len(ids) > 1]
+        words = [f"{_words(len(ids))} {says}"]
+        if len(ids) == total:
+            words.append(f"{lead} {says}")
+        required.append(tuple(words))
+    if kinds["leak"]:
+        required.append(("recording day",))
+    forbidden = [] if len(kinds["gap"]) == total else ["wrong answers are gaps", "wrong answer is a gap"]
+    return required, forbidden
+
+
+def _wrong_answer_problems(readme: str, results: dict[str, Any]) -> list[str]:
+    """The claims of :func:`_wrong_answer_claims` README misses, and the wordings it must not use but does."""
+    required, forbidden = _wrong_answer_claims(results)
+    flat = _flat(readme).lower()
+    missing = [" | ".join(claim) for claim in required if not any(words in flat for words in claim)]
+    return missing + [f"says: {words}" for words in forbidden if words in flat]
+
+
+def test_the_readme_says_what_the_wrong_ask_answers_are() -> None:
+    """README never calls a wrong Ask answer a gap in the ledger when it is not one. Round 3 of
+    the E2 recording had four wrong answers, all of them calling a gold date still open on the benchmark's today
+    passed (the day the answers were recorded leaking in as today), none a gap."""
+
+    def entry(qid: str, *, passed: bool = False, in_record: bool = True) -> dict[str, Any]:
+        scores = {"correct_final": False, "in_record": in_record}
+        scores["called_passed_final"] = ["2026-10-14"] if passed else []
+        return {"id": qid, "gold": {"dates": ["2026-10-14"], "amounts": []}, "scores": scores}
+
+    right = {"id": "right", "gold": {"dates": [], "amounts": [1.0]}, "scores": {"correct_final": True}}
+    unanswerable = {"id": "none-x", "gold": None, "scores": {"correct_final": None}}
+    leaks = {"questions": [entry(f"q{i}", passed=True) for i in range(4)] + [right, unanswerable]}
+    required, forbidden = _wrong_answer_claims(leaks)
+    assert required == [
+        ("four wrong answers",),
+        (
+            "four call a date that is still open passed",
+            "four wrong answers call a date that is still open passed",
+        ),
+        ("recording day",),
+    ]
+    assert forbidden == ["wrong answers are gaps", "wrong answer is a gap"]
+    mixed = {"questions": [entry("a", passed=True), entry("b", in_record=False), entry("c"), entry("d")]}
+    required, forbidden = _wrong_answer_claims(mixed)
+    assert required == [
+        ("four wrong answers",),
+        ("one calls a date that is still open passed",),
+        ("one is a gap in the ledger",),
+        ("two leave out a value ordnung's record holds",),
+        ("recording day",),
+    ]
+    assert "wrong answers are gaps" in forbidden
+    # the README's words: what they are, never "gaps" when they are not
+    said = (
+        "The four wrong answers call a date that is still open passed: the recording day leaking in as today, "
+        "not gaps in the ledger."
+    )
+    assert _wrong_answer_problems(said, leaks) == []
+    assert _wrong_answer_problems("The four wrong answers are gaps in the ledger.", leaks) == [
+        "four call a date that is still open passed | four wrong answers call a date that is still open passed",
+        "recording day",
+        "says: wrong answers are gaps",
+    ]
+    gaps = {"questions": [entry("a", in_record=False), entry("b", in_record=False)]}
+    assert _wrong_answer_claims(gaps) == (
+        [("two wrong answers",), ("two are gaps in the ledger", "two wrong answers are gaps in the ledger")],
+        [],
+    )
 
 
 def _flat(text: str) -> str:
@@ -806,18 +917,28 @@ def test_a_date_you_add_without_a_letter_counts_nationwide_holidays_only(store: 
     )
 
 
-def test_readme_says_a_letter_for_someone_else_still_counts_as_yours() -> None:
+#: README Limitations: whose a letter for someone of your household is (ADR 0023, ADR 0025).
+README_WHOSE_LIMIT = (
+    "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
+    "child) says so, you can file it for them once they are in your household, and a reply to it can go out in "
+    "their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today "
+    "and the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the "
+    "weekly Ideas get carry no filing, though the titles of Ordnung's own Ideas name the person."
+)
+
+
+def test_readme_says_whose_a_letter_for_someone_else_is() -> None:
     """README Limitations: a letter addressed to someone else says so, can be filed for them once they are in your
-    household (D3) and can be answered in their name, but its dates and numbers count as yours, and Ask and Ideas
-    still treat it as yours — there is one person's Ordnung, and My numbers takes a number as yours by its label
-    and the letter, never by the addressee."""
-    assert (
-        "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
-        "child) says so, you can file it for them once they are in your household, and a reply to it can go out "
-        "in their name, but its dates, reminders and numbers count as yours, and Ask and Ideas still treat a "
-        "household member's letters as yours."
-    ) in _limitations()
+    household (D3) and can be answered in their name; once filed, My numbers, Ask, the rule Ideas, Today and the
+    Timeline say whose it is (E2), but there is one person's Ordnung: its dates stay the person's to act on, the
+    weekly review's letters carry no filing, and My numbers takes a number as someone's by the filing, never by
+    the addressee."""
+    from ordnung.secretary import review
+
+    assert README_WHOSE_LIMIT in _limitations()
     assert "recipient_name" not in (ROOT / "src/ordnung/numbers.py").read_text(encoding="utf-8")
+    assert "household" not in inspect.getsource(review._document_row)
+    assert "named(ledger, idea)" in inspect.getsource(triggers.run_triggers)
 
 
 def _churn() -> dict[str, int]:
@@ -1016,15 +1137,18 @@ def test_readme_pictures_exist_and_have_alt_text() -> None:
 
 def test_readme_s_axe_claim_names_its_axe_and_what_is_open() -> None:
     """README's *Light and dark*: "no serious or critical axe violations" holds for the axe-core the e2e suite runs
-    (its version in the lockfile) and its WCAG 2.2 AA rules. axe's newer Label in Name check (WCAG 2.5.3, an
-    experimental rule in that version) flags links and buttons whose name leaves out initials or a count they show;
-    README says that is open, not that there is nothing (review of D5)."""
+    (its version in the lockfile) and its WCAG 2.2 AA rules. From axe 4.14 these include the Label in Name check
+    (WCAG 2.5.3), which 0.3.0's README still listed as open: the Inbox link, the profile row and the sender chips
+    are now named by what they show (issue #37), so nothing is listed as open."""
     lock = json.loads((ROOT / "web" / "package-lock.json").read_text(encoding="utf-8"))
     axe = lock["packages"]["node_modules/axe-core"]["version"]
     (cell,) = [line for line in _readme().splitlines() if "<b>Light and dark.</b>" in line]
     version = ".".join(axe.split(".")[:2])
     assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
-    assert "Still open: axe's newer Label in Name check (WCAG 2.5.3)" in cell
+    assert tuple(int(part) for part in axe.split(".")[:2]) >= (4, 14), (
+        "the Label in Name check runs from axe 4.14 on"
+    )
+    assert "Still open" not in cell
 
 
 def _claimed(pattern: str) -> int:
@@ -1964,8 +2088,8 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
     data_dir: Path, store: Store
 ) -> None:
     """README: ``ordnung doctor`` checks your last backup and disk encryption — after the disk's row, and only
-    ever as warnings (CI's doctor gate fails only on ``fail``). On Windows there is no disk-encryption row: the
-    docs say where BitLocker is instead."""
+    ever as warnings (CI's doctor gate fails only on ``fail``). On Windows Ordnung can't tell: its info row says
+    where to look (BitLocker or Device encryption), as README's Limitations and docs/privacy.md say."""
     from ordnung import doctor
 
     seed_ledger(store)  # letters, and no backup yet
@@ -1974,13 +2098,21 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
     by_id = {check.id: check for check in checks}
     assert ids.index("disk") < ids.index("backup")
     assert by_id["backup"].status == "warn" and "ordnung backup" in (by_id["backup"].fix or "")
-    if sys.platform in ("darwin", "linux"):
+    if sys.platform in ("darwin", "linux", "win32"):
         assert ids.index("backup") < ids.index("disk_encryption")
-        assert by_id["disk_encryption"].status in ("ok", "warn")
-    else:
-        assert "disk_encryption" not in ids
+        assert by_id["disk_encryption"].status in ("ok", "info", "warn")
+    windows = doctor.disk_encryption_check(data_dir, platform="win32")
+    assert windows is not None
+    assert (windows.status, windows.detail, windows.fix) == ("info", doctor.WINDOWS_ENCRYPTION, None)
+    assert "BitLocker or Device encryption" in windows.detail
     (line,) = [line for line in _readme().splitlines() if line.startswith("ordnung doctor ")]
     assert "your last backup" in line and "disk encryption" in line
+    assert (
+        "On Windows it can't check: its row there says where to see that BitLocker or Device encryption is on."
+    ) in _limitations()
+    assert "on Windows it can't check, and its row says where to look." in _flat(
+        (ROOT / "docs" / "privacy.md").read_text(encoding="utf-8")
+    )
 
 
 def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
@@ -2269,11 +2401,12 @@ def _unreleased(heading: str, changelog: str | None = None) -> str:
 
 def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
     """docs/releasing.md renames "## Unreleased" to the version, and CONTRIBUTING.md starts a new one for the
-    next change: the claims about what came after 0.2.0 still find their bullets then."""
+    next change: the claims about what came after 0.2.0 still find their bullets then. What is under Unreleased
+    now (empty or not) becomes the release's section, under a new Unreleased with a fix of its own."""
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     released = changelog.replace(
         "\n## Unreleased\n",
-        "\n## Unreleased\n\n## 0.3.1 — 2026-11-02\n\n### Fixed\n\n- A small fix after the release.\n",
+        "\n## Unreleased\n\n### Fixed\n\n- A small fix after the release.\n\n## 0.3.1 — 2026-11-02\n",
         1,
     )
     fix = _flat("- A small fix after the release.")
@@ -2281,6 +2414,20 @@ def test_the_changelog_claims_still_hold_after_the_next_release() -> None:
         assert _unreleased(heading, released) == _unreleased(heading)
     assert _unreleased("Fixed", released) == f"{fix} {_unreleased('Fixed')}"
     assert "**Open Ordnung from your app menu.**" in _unreleased("Added", released)
+
+
+def test_the_changelog_s_label_in_name_fix_quotes_the_inbox_link_as_the_app_names_it() -> None:
+    """CHANGELOG, Unreleased → Fixed: links and buttons are named by the words they show (WCAG 2.5.3, issue #37).
+    The Inbox link's new name is the one the web app's shell test pins, and the shell no longer builds the old
+    one ("Inbox, 1 letter to check, …")."""
+    (bullet,) = [part for part in _unreleased("Fixed").split(" - ") if "*Label in Name*" in part]
+    new, old = "Inbox 4 — 1 letter to check, 3 not read yet", "Inbox, 1 letter to check, 3 not read yet"
+    assert f'The Inbox link is "{new}"; it was "{old}".' in bullet
+    assert "Each still says everything it said before." in bullet
+    shell = ROOT / "web" / "src" / "components" / "shell"
+    assert f'getByRole("link", {{ name: "{new}" }})' in (shell / "shell.test.tsx").read_text(encoding="utf-8")
+    for name in ("Sidebar.tsx", "MobileTabBar.tsx"):
+        assert "`${item.label}, ${inboxCountText(" not in (shell / name).read_text(encoding="utf-8"), name
 
 
 def _bullet(flat_list: str, lead: str) -> str:
@@ -2395,8 +2542,8 @@ def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None
 def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
     """README Limitations: the tax year files a letter by its printed date (else its arrival,
     ``triggers.letter_day``), so its January–May group is a heuristic; Claude marks a letter for taxes and the
-    person's *For taxes* choice changes that (``DocumentPatch.tax_choice``, never Claude's own ``tax_relevant``,
-    which Ask keeps seeing); the ZIP isn't encrypted; a scanner's text is unchecked; the moving checklist knows
+    person's *For taxes* choice changes that (``DocumentPatch.tax_choice``, never Claude's own ``tax_relevant``),
+    and Ask and the weekly review follow it (ADR 0025); the ZIP isn't encrypted; a scanner's text is unchecked; the moving checklist knows
     only the organisations Ordnung has seen."""
     dated = Document.model_construct(doc_date="2026-02-03", received_date="2026-02-06")
     undated = Document.model_construct(doc_date=None, received_date="2026-02-06")
@@ -2996,10 +3143,10 @@ WAITING_READ_AGAIN = (
 ASK_KEY_KEPT = (
     "The replay key carries a hash of everything Ask's tools can read (the ledger fingerprint). It is worked out "
     "once per state of the ledger and kept per store and thread while no letter, page, to-do, contract, sender, "
-    "case or the profile changed (`Store.ledger_token`): temporary triggers, which live only in the open "
-    "connection and never in the database file, count this connection's writes to those tables, and another "
-    "connection's commit or a schema change counts as a change too. The value is the same either way, and the "
-    "tests work it out again wherever it was kept."
+    "case, the profile, a *For taxes* choice or the household changed (`Store.ledger_token`): temporary triggers, "
+    "which live only in the open connection and never in the database file, count this connection's writes to "
+    "those tables and rows, and another connection's commit or a schema change counts as a change too. The value "
+    "is the same either way, and the tests work it out again wherever it was kept."
 )
 
 
@@ -3137,13 +3284,14 @@ def test_the_changelog_s_package_updates_are_the_repository_s() -> None:
 
 
 def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_path: Path) -> None:
-    """docs/privacy.md, before a computer is lost: where Ordnung doesn't check (Windows), Microsoft's own page on
-    Device encryption, and what its note says when Settings shows no such page; README's Limitations say Ordnung
-    doesn't check there, and it doesn't: no answer and no process on Windows."""
+    """docs/privacy.md, before a computer is lost: where Ordnung can't check (Windows: the doctor's info row says
+    where to look), Microsoft's own page on Device encryption, and what its note says when Settings shows no such
+    page; README's Limitations say Ordnung can't check there, and it doesn't: no answer and no process on
+    Windows."""
     from ordnung import encryption
 
     assert (
-        "on Windows it doesn't check, so look yourself. Microsoft's page [Device encryption in Windows]"
+        "on Windows it can't check, and its row says where to look. Microsoft's page [Device encryption in Windows]"
         f"({DEVICE_ENCRYPTION_PAGE}) shows where to look; if Settings has no Device encryption page, your PC may "
         "not support it, or you're signed in with a standard account."
     ) in _privacy()
@@ -3153,7 +3301,7 @@ def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_pa
 
     assert encryption.disk_encryption(tmp_path, system="win32", run=no_process) is None
     assert (
-        "On Windows it doesn't check: see that BitLocker or Device encryption is on yourself."
+        "On Windows it can't check: its row there says where to see that BitLocker or Device encryption is on."
         in _limitations()
     )
 
@@ -3372,8 +3520,9 @@ def test_the_changelog_adds_e_mails_saved_from_outlook() -> None:
 
 def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     """SPEC § 4, § 12b and § 13: the list's rows are ``DocumentRow`` (``Document`` without ``LEFT_OUT_OF_LIST``,
-    plus ``found_in``), made in the route module; ``models.DocumentListEntry`` stays, unused; ``documents.json``
-    is every letter whole and computer-only ("records leave the computer", and the route checks again)."""
+    plus ``found_in``), made in the route module; ``models.DocumentListEntry``, its unused twin, is gone (ADR 0022's
+    note); ``documents.json`` is every letter whole and computer-only ("records leave the computer", and the route
+    checks again)."""
     from ordnung import models
     from ordnung.api.routes import documents
 
@@ -3383,7 +3532,7 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "found_in",
         "tax_choice",  # D3: the person's own "For taxes" choice (SPEC § 4, checked in Batch D3 below)
     }
-    assert hasattr(models, "DocumentListEntry")
+    assert not hasattr(models, "DocumentListEntry") and not hasattr(models, "SearchFoundIn")
     components = openapi_schema()["components"]["schemas"]
     assert "DocumentRow" in components and "DocumentListEntry" not in components
     operation = ("GET", "/api/documents.json")
@@ -3396,7 +3545,8 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "`DocumentRow` (in `api/routes/documents.py`: every `Document` field but `LEFT_OUT_OF_LIST` — `key_facts`, "
         "`explanation`, `references`, `payment`, `sha256` —, plus `found_in`: `letter`, `scanner_text`, "
         "`picture_text`, or `null` without a search) is what `GET /api/documents` lists",
-        "`models.DocumentListEntry` (the whole letter plus `found_in`) stays unused",
+        "`Document` stays what Ask's ledger fingerprint hashes (`models.DocumentListEntry`, an unused twin with "
+        "`found_in`, was removed in 0.4.0: it was in no schema Claude is given, ADR 0022)",
         "GET list: `DocumentRow` rows (without `key_facts`, `explanation`, `references`, `payment` and `sha256`: "
         "the letter's detail has them), each with `found_in`",
         "`documents.json` (GET: every letter whole, as stored, newest first, without trash and proof files — the "
@@ -3404,7 +3554,13 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
         "and every letter whole (`documents.json`) are computer-only too",
     ):
         assert words in spec, words
-    assert "DocumentListEntry` rows" not in spec
+    assert "DocumentListEntry` rows" not in spec and "stays unused" not in spec
+    adr = _adr(_ADR_COMPRESSED)
+    assert (
+        "`models.DocumentListEntry` was removed in 0.4.0 (#36) with no new recording: it was in no schema "
+        "Claude is given, and the benchmark's requests stayed the same."
+    ) in adr
+    assert "stays, unused, until `models.py` next changes" not in adr
 
 
 def test_the_records_copy_takes_every_letter_whole() -> None:
@@ -3744,6 +3900,7 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
 # --------------------------------------------------------------------------------------------------
 
 _ADR_HOUSEHOLD = ROOT / "docs" / "decisions" / "0023-letters-for-your-household-are-suggested-never-filed.md"
+_ADR_WHOSE = ROOT / "docs" / "decisions" / "0025-ask-and-the-ideas-say-whose-it-is.md"
 
 #: CHANGELOG, Unreleased → Added: *For taxes* on a letter's page (d3-tax-choice), its sentences in order.
 D3_FOR_TAXES = (
@@ -3788,44 +3945,68 @@ D3_UPGRADING = (
     "letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile "
     "is filed as before (on an updated computer it starts unfiled).",
 )
-#: README's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet").
+#: README Privacy: what of the household and the choices reaches Claude (ADR 0025).
+README_PRIVACY_WHOSE = (
+    "the address and IBAN in your profile are never put into a prompt. Your household's names reach Claude only "
+    "in Ask, with which letters you filed for whom, and in the titles of Ideas about their letters; your *For "
+    "taxes* choices only in Ask and *Weekly Ideas*, for letters you let Claude read."
+)
+#: README's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet"); Ask and the
+#: weekly Ideas follow the choice since ADR 0025.
 README_TAX_LIMIT = (
     "Claude marks a letter for taxes when it reads it; *For taxes* on a letter's page changes that, for private "
-    "letters too, and your choice stays when the letter is read again. Ask, and the Ideas Claude suggests each "
-    "week, still see Claude's own mark on each letter (the tax-season Idea follows your choice). A letter still "
-    "waiting under *From your folder — not read yet* can't be marked"
+    "letters too, and your choice stays when the letter is read again; Ask and the Ideas Claude suggests each "
+    "week follow it. A letter still waiting under *From your folder — not read yet* can't be marked"
 )
 #: README "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
 README_D3_ALSO = (
     "*tax year* — a year's letters for your tax return, by the date on them; mark or unmark any letter "
     "yourself, and the Inbox shows one year at a time",
     "*your household* — file a letter for your partner or your child when Ordnung asks (it never files one by "
-    "itself), find their letters, and reply in their name when they sign their own",
+    "itself), find their letters, see their numbers on My numbers and whose a date is on Today and the "
+    "Timeline, and reply in their name when they sign their own",
 )
-#: docs/privacy.md, "What is sent to Claude, per feature": the choices never reach Claude; the tax Idea's title.
+#: docs/privacy.md, "What is sent to Claude, per feature": what of the choices reaches Claude (ADR 0025); the tax
+#: Idea's title.
 PRIVACY_FOR_TAXES = (
-    "Your *For taxes* choices never reach Claude: Ask and *Weekly Ideas* see the mark Claude gave a letter when "
-    "it read it, and *Read again* asks Claude exactly what it would ask without your choice, which stays."
+    "Your *For taxes* choice reaches Claude only for letters Claude may read: Ask and *Weekly Ideas* see whether "
+    "such a letter counts for taxes, Ask is told when you marked or unmarked it, and Ask isn't given Claude's "
+    "tax note on a letter you took off. *Read again* asks Claude exactly what it would ask without your choice, "
+    "which stays. A private letter's choice never reaches Claude."
 )
 PRIVACY_TAX_IDEA = (
     "Your choices can make the tax-season Idea appear or go away; its title (*{title}*: no letter, no count), like "
     "every Idea's, is part of what *Weekly Ideas* and the daily note send."
 )
-#: docs/privacy.md, "Your household": when a letter is filed, what never reaches Claude, who may change it.
+#: docs/privacy.md, "Your household": when a letter is filed, what reaches Claude (ADR 0025) and what never does,
+#: where names go off the screen, who may change it.
 PRIVACY_HOUSEHOLD = (
     "Ordnung suggests who a letter is for from the addressee its reading names, on your computer, and files a "
     "letter for someone only when you press *Yes*, choose them under *Change*, file a set of letters in the "
     "Inbox, or add them from a letter with *Also file this letter for …* left ticked; nothing is filed by itself, "
     "by a reading, by the daily check or by sync.",
-    "**Never sent to Claude.** The list is not put into a prompt, a draft request, Ask's tools, a notification, "
-    "a calendar or anything *Weekly Ideas* and the daily note send.",
+    "**What reaches Claude.** When you ask *Ask* a question, its tools can hand over the names as you typed them, "
+    "which letters you filed for whom and whose a number on *My numbers* is; letters you keep private are left "
+    "out.",
+    "A name also stands in the title of an Idea about letters you filed for that person, none of them kept "
+    "private (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what "
+    "*Weekly Ideas* and the daily note send.",
+    "Never sent to Claude: whether someone signs their own letters, the letters you said are yours, or "
+    "Ordnung's suggestions; no prompt or draft request reads the list itself "
+    "([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)).",
+    "**Off the screen, not to Claude.** The calendar file, calendar sync *With details* and the morning "
+    "notification *With details* put the person's name in front of a to-do of a letter filed for them; "
+    "*Discreet* never names anyone.",
     "**Who may change it.** Only the computer edits the list, as with your profile; a paired phone can file "
     'letters, and the privacy log notes each time ("Changed who a letter is for on Anna\'s iPhone").',
     "Deleting a letter for good removes its filing in the same step; the trash keeps it, as it keeps the "
     "letter.",
+    # Store.upsert_suggestion renames every Idea that still fires, a dismissed one too
+    "An Idea that no longer applies keeps its last title, a name too, until *Delete everything*.",
 )
 #: The modules that build what Claude is given: Ask (its tools and fingerprint), the prompts and the model
-#: runtime, the weekly review's snapshot, the daily note and a draft request.
+#: runtime, the weekly review's snapshot, the daily note and a draft request. Ask and the review read the household
+#: and the choices only as ADR 0025 says; the rest never.
 _CLAUDE_FACING = (
     ROOT / "src" / "ordnung" / "assistant",
     ROOT / "src" / "ordnung" / "llm",
@@ -3846,6 +4027,8 @@ _D3_NAMES = frozenset(
     }
 )
 _D3_MODULES = ("ordnung.secretary.household", "ordnung.secretary.tax_choice", "ordnung.api.routes.household")
+#: What Ask and the weekly review may import of those modules (ADR 0025).
+_ALLOWED_IN_ASK = {"ordnung.secretary.household": {"ask_view"}, "ordnung.secretary.tax_choice": {"for_taxes"}}
 
 
 def test_the_changelog_adds_for_taxes_the_inbox_year_and_your_household() -> None:
@@ -3890,16 +4073,14 @@ def test_the_changelog_says_what_a_0_2_0_computer_does_with_the_choices_and_the_
 
 
 def test_readme_names_for_taxes_the_inbox_year_and_your_household() -> None:
-    """README: the "Also" line names *For taxes*, the Inbox's year and your household; Privacy says the
-    household and the choices are never put into a prompt; Documentation lists ADR 0023 after 0022."""
+    """README: the "Also" line names *For taxes*, the Inbox's year and your household; Privacy says where the
+    household and the choices reach Claude (ADR 0025); Documentation lists ADR 0023 after 0022."""
     also = _flat(_tour().split("**Also:**", 1)[1])
     for words in README_D3_ALSO:
         assert words in also, words
     privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
-    assert (
-        "the address and IBAN in your profile, the people you list as your household and your *For taxes* "
-        "choices are never put into a prompt"
-    ) in privacy
+    assert README_PRIVACY_WHOSE in privacy
+    assert "never put into a prompt" in privacy and "your household and your *For taxes*" not in privacy
     documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
     assert f"(docs/decisions/{_ADR_HOUSEHOLD.name})" in documentation
     assert documentation.index("[0022 compressed answers") < documentation.index(
@@ -3908,9 +4089,10 @@ def test_readme_names_for_taxes_the_inbox_year_and_your_household() -> None:
 
 
 def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: Store) -> None:
-    """docs/privacy.md: a row each in "At a glance" (``meta``, in backups and hand-off sync, never to Claude); the
-    choices never reach Claude, but the tax Idea's title, like every Idea's, does; "Your household"; a phone files
-    but never edits the list (the privacy log's words); deleting a letter for good removes both."""
+    """docs/privacy.md: a row each in "At a glance" (``meta``, in backups and hand-off sync, to Claude only as ADR
+    0025 lets it); what of the choices reaches Claude, and the tax Idea's title, like every Idea's; "Your household"
+    and what of it reaches Claude; a phone files but never edits the list (the privacy log's words); deleting a
+    letter for good removes both."""
     from ordnung.api import phone_gate
     from ordnung.secretary import review
 
@@ -3919,15 +4101,31 @@ def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: S
     (people,) = [line for line in text.splitlines() if line.startswith("| Your household")]
     assert "`tax_choices`" in taxes and "`household`" in people
     for row in (taxes, people):
-        assert "encrypted backups and hand-off sync's encrypted copy" in row and "never sent to Claude" in row
+        assert "encrypted backups and hand-off sync's encrypted copy" in row and "to Claude only" in row
+        assert "never sent to Claude" not in row
+    assert "whether a letter Claude may read counts for taxes" in taxes
+    assert "and in *Ask* that you marked or unmarked it yourself" in taxes  # mcp_server.TAX_*_BY_PERSON
+    assert "the names and which letters you filed for whom, through *Ask*" in people
+    assert "a name in the title of an Idea about their letters you don't keep private" in people
+    # calendar sync *With details* sends the calendar file's titles, which name the person (ics._item_summary)
+    assert "with calendar sync *With details*, to your calendar provider in the events' titles" in people
+    (calendar,) = [line for line in text.splitlines() if line.startswith("| Calendar sync (only if")]
+    assert (
+        "the events' titles (after the name of the person of your household a to-do's letter is filed for)"
+    ) in calendar
     sent = _privacy_section("What is sent to Claude, per feature")
     seed_ledger(store)
     (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
     assert PRIVACY_FOR_TAXES in sent
     assert PRIVACY_TAX_IDEA.format(title=idea.title) in sent
-    # the weekly review is given Claude's own mark and only the Ideas' titles
-    assert '"tax_relevant": doc.tax_relevant' in inspect.getsource(review._document_row)
+    # the weekly review is given the choice (else Claude's mark) on the letters it may read, and only the Ideas'
+    # titles; Ask's get_document says the choice and drops Claude's note on a letter taken off
+    assert '"tax_relevant": for_taxes(doc, choices)' in inspect.getsource(review._document_row)
+    assert "(no ``ai_private`` letters" in inspect.getsource(review.build_snapshot)
     assert '"existing_ideas": {"open": open_titles' in inspect.getsource(review)
+    head = inspect.getsource(mcp_server._document_head)
+    assert "tax_note=None if choice is False else doc.tax_note" in head
+    assert "Your household reaches Claude only as [below](#your-household) says." in sent
     household = _privacy_section("Your household")
     for sentence in PRIVACY_HOUSEHOLD:
         assert sentence in household, sentence
@@ -3946,10 +4144,11 @@ def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: S
     assert "your household and your *For taxes* choices" in _privacy_section("Encrypted backups")
 
 
-def test_nothing_claude_is_given_reads_the_household_or_the_tax_choices() -> None:
-    """docs/privacy.md, ADR 0023 and docs/architecture.md: no module that builds what Claude is given (Ask, the
-    prompts, the weekly review, the daily note, a draft request) imports or names the household or the tax
-    choices, and no prompt mentions them."""
+def test_what_claude_is_given_reads_the_household_and_the_choices_only_as_adr_0025_says() -> None:
+    """docs/privacy.md, ADR 0025 and docs/architecture.md: the prompts, the model runtime, the daily note and a
+    draft request never import or name the household or the tax choices, and no prompt mentions them; Ask and the
+    weekly review take the household only through ``household.ask_view`` and ``Ledger.household_filed``, and the
+    choices only through ``for_taxes`` and ``Ledger.tax_choices`` (Ask's fingerprint reads the row of choices)."""
     files = [
         path
         for root in _CLAUDE_FACING
@@ -3957,11 +4156,20 @@ def test_nothing_claude_is_given_reads_the_household_or_the_tax_choices() -> Non
         if path.is_file() and path.suffix in {".py", ".md"}
     ]
     assert len(files) > 20 and any(path.suffix == ".md" for path in files)
+    reads_them = {"src/ordnung/assistant", "src/ordnung/secretary/review.py"}
     for path in files:
         text = path.read_text(encoding="utf-8")
         name = path.relative_to(ROOT).as_posix()
         if path.suffix == ".md":
             assert not re.search(r"household|tax_choice", text, re.IGNORECASE), name
+            continue
+        if any(name == root or name.startswith(f"{root}/") for root in reads_them):
+            for node in ast.walk(ast.parse(text)):
+                if isinstance(node, ast.ImportFrom) and node.module in _D3_MODULES:
+                    allowed = _ALLOWED_IN_ASK.get(node.module, set())
+                    assert {alias.name for alias in node.names} <= allowed, name
+                elif isinstance(node, ast.Import):
+                    assert not any(alias.name.startswith(_D3_MODULES) for alias in node.names), name
             continue
         for node in ast.walk(ast.parse(text)):
             if isinstance(node, ast.ImportFrom):
@@ -3977,23 +4185,36 @@ def test_nothing_claude_is_given_reads_the_household_or_the_tax_choices() -> Non
                 assert node.value not in _D3_NAMES, name
 
 
-def test_the_choices_and_the_household_leave_ask_s_ledger_as_it_was(store: Store) -> None:
-    """ADR 0023 and docs/architecture.md: the two rows are not what Ask reads — its fingerprint and the store's
-    ledger token stay as they were when a choice is set and a household is saved."""
+def test_the_choices_and_the_household_move_ask_s_ledger_as_the_docs_say(store: Store) -> None:
+    """ADR 0025 and docs/architecture.md: Ask's fingerprint hashes the choices and the household only when there is
+    one — so a ledger without either hashes as before, and the answers recorded then still replay — and the store's
+    ledger token watches both rows (``LEDGER_META_KEYS``)."""
     from ordnung.assistant.ask import ledger_fingerprint
-    from ordnung.db.store import HOUSEHOLD_META_KEY
+    from ordnung.db.store import HOUSEHOLD_META_KEY, LEDGER_META_KEYS, TAX_CHOICES_META_KEY
 
+    assert {TAX_CHOICES_META_KEY, HOUSEHOLD_META_KEY} < set(LEDGER_META_KEYS)
     ids = seed_ledger(store)
     token, fingerprint = store.ledger_token(), ledger_fingerprint(store)
     assert store.set_tax_choice(ids["doc_phone"], True)
+    assert store.ledger_token() != token
+    chose = ledger_fingerprint(store)
+    assert chose != fingerprint
     household = {
         "format": 1,
         "members": [{"id": "hhm_k3j9x0a1b2c4", "name": "Alex Rivera", "signs": True}],
         "links": {ids["doc_phone"]: "hhm_k3j9x0a1b2c4"},
     }
     store.set_meta(HOUSEHOLD_META_KEY, json.dumps(household))
-    assert store.ledger_token() == token
+    assert ledger_fingerprint(store) not in (fingerprint, chose)
+    assert store.set_tax_choice(ids["doc_phone"], None)
+    store.set_meta(HOUSEHOLD_META_KEY, None)
     assert ledger_fingerprint(store) == fingerprint
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert (
+        "`LEDGER_META_KEYS` (the profile, the *For taxes* choices and the household) are the `meta` rows Ask's "
+        "fingerprint reads and the ledger token watches; a ledger with neither a choice nor a household hashes as "
+        "it did before Ask read them, so the answers recorded then still replay"
+    ) in architecture
 
 
 def test_a_phone_files_letters_but_never_edits_the_household_as_the_docs_say() -> None:
@@ -4028,7 +4249,7 @@ def test_adr_0023_says_suggest_never_file_and_the_policy_cites_it() -> None:
     for words in (
         "## Principle The addressee suggests, the person decides",
         "1. **Suggest, never file.**",
-        "9. **Never seen by Claude.**",
+        "9. **What reaches Claude** ([ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md)).",
         "## Why a `meta` row",
         "## Rejected or deferred",
         "## Consequences and known limits",
@@ -4106,9 +4327,11 @@ def test_the_spec_and_architecture_say_how_for_taxes_and_the_household_work() ->
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
     for words in (
         "**For taxes** is the person's own choice over Claude's mark",
-        "`Ledger.tax_choices` is read lazily, so Ask's server, which builds Ledgers, never reads the row",
-        "Ask and the weekly review's snapshot for *Weekly Ideas* keep Claude's own mark on each letter; the "
-        "tax-season Idea, whose title is among the snapshot's open Ideas, follows the choice.",
+        "`Ledger.tax_choices` is read lazily: of Ask's tools only `get_document` reads it, and so does the weekly "
+        "review's snapshot",
+        "Ask's `get_document` and the weekly review's snapshot for *Weekly Ideas* follow it too, for the letters they "
+        f"may read ([ADR 0025](decisions/{_ADR_WHOSE.name})); the tax-season Idea, whose title is among the "
+        "snapshot's open Ideas, follows the choice.",
         "**Your household** (`secretary/household.py`, a written policy;",
         f"[ADR 0023](decisions/{_ADR_HOUSEHOLD.name})",
         "a letter is filed for someone of the person's household only when they press",
@@ -4287,7 +4510,8 @@ README_PICTURES = (
     "to read a picture.",
     "The words are kept for your letter search only, marked *not checked*, and are never shown, checked or sent to "
     f"Claude ({_ADR_PICTURES_LINK}).",
-    "`ORDNUNG_OCR=off` turns it off ([how](docs/privacy.md#words-in-pictures-optional)).",
+    "Settings → Data → *Text in pictures* turns it off and deletes the words read before; `ORDNUNG_OCR=off` turns "
+    "it off on one computer ([how](docs/privacy.md#words-in-pictures-optional)).",
 )
 #: README Install: the line per system, the doctor's own word for word (``doctor.tesseract_install``).
 README_TESSERACT_LINES = {
@@ -4332,8 +4556,11 @@ PRIVACY_PICTURES = (
     "they are not in the search index *Ask* uses.",
     "**It goes with the page.** Once Claude reads a page, what Ordnung read there is removed; deleting the letter "
     "deletes it with the page images.",
-    "**Turning it off.** `ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off: Tesseract is never started, "
-    "search ignores the words read before, and Ordnung removes them when it starts.",
+    "**Turning it off.** Settings → Data → *Text in pictures* turns it off at once: a reading under way stops, "
+    "search ignores the words read before, and Ordnung deletes them; turned on again, Ordnung starts reading and "
+    "looks for Tesseract afresh. With hand-off sync the switch travels with your settings.",
+    "`ORDNUNG_OCR=off` (or `0`, `false`, `no`) turns it off on one computer, whatever the switch says: Tesseract "
+    "is never started, search ignores the words read before, and Ordnung removes them when it starts.",
     # the doctor reads its own terminal's switch; setx changes no window already open, and a Start-at-login entry
     # written while the switch was set keeps what it recorded
     "`ordnung doctor`, run where it is set, then shows *Turned off (ORDNUNG_OCR=off)*.",
@@ -4341,8 +4568,8 @@ PRIVACY_PICTURES = (
     "shortcut`, which record it (run them again after setting or unsetting it). On Windows, run `setx ORDNUNG_OCR "
     "off`, then start Ordnung again from a new terminal window or the Start menu (`setx` doesn't change a window "
     "already open), and run `ordnung autostart enable` again there if Ordnung starts at login.",
-    "With hand-off sync, set it the same way on every computer: one with it off removes the words the others "
-    "read, and they read them again once they are in use.",
+    "With hand-off sync, set the variable the same way on every computer: one with it off removes the words the "
+    "others read, and they read them again once they are in use.",
 )
 #: SPEC: the cut list's "OCR", read today.
 SPEC_OCR_CUT = (
@@ -4351,15 +4578,17 @@ SPEC_OCR_CUT = (
 #: SPEC: what it says of text in pictures.
 SPEC_PICTURES = (
     "plus `found_in`: `letter`, `scanner_text`, `picture_text`, or `null` without a search)",
-    "`found_in` is the route's own `LetterFoundIn` (`models.SearchFoundIn` stays `letter` or `scanner_text`), and "
+    "`found_in` is the route's own `LetterFoundIn` (`letter`, `scanner_text` or `picture_text`), and "
     "`LetterDetail` also carries `picture_text_pages` (the pages whose words Ordnung read in the picture, kept for "
     "search only, never the words; § 8, ADR 0024).",
     "normalize.py, ocr.py)",
     "The `ocr` row (*Text in pictures*, right after the web app; ADR 0024) never fails:",
-    "ok *Not installed (optional)* with the install line for this system as its fix (the CLI prints it as an "
-    "*Optional —* tip)",
-    "ok *Turned off (ORDNUNG_OCR=off)*",
+    "info *Not installed (optional)* with the install line for this system as its fix (the CLI prints an info "
+    "row's fix as an *Optional —* tip)",
+    "info *Turned off (ORDNUNG_OCR=off)*, which wins, and info *Off (Settings → Data → Text in pictures)*",
     "**Text in pictures** (optional, ADR 0024; `ingest/ocr.py`):",
+    "and *Text in pictures* on (`AppSettings.read_picture_text`, Settings → Data; `ORDNUNG_OCR=off` turns it off "
+    "whatever the switch says, `config.picture_text_off`)",
     "kept private or held, waiting for Claude or failed; photos, and PDF pages with neither text of their own nor "
     "a scanner's",
     "at most 2400 px on its long side and 300 dpi, never enlarged",
@@ -4369,7 +4598,8 @@ SPEC_PICTURES = (
     '`found_in="picture_text"` (the scanner\'s text wins when both match)',
     "`picture_text` when only the words Ordnung read in its picture did (ADR 0024; the scanner's text wins when "
     "both match)",
-    "`picture_text_pages`: the pages whose picture text is kept for search only (`[]` while `ORDNUNG_OCR=off`)",
+    "`picture_text_pages`: the pages whose picture text is kept for search only (`[]` while text in pictures is "
+    "off)",
     f'it says "{PICTURE_TEXT_MATCH}"',
     'which pages ("in this photo", "in this file", "on pages 1, 2 and 4 of this file")',
 )
@@ -4487,7 +4717,7 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
         assert (row.id, row.label, row.status, row.detail) == (
             "ocr",
             "Text in pictures",
-            "ok",
+            "info",
             "Not installed (optional)",
         )
         assert (
@@ -4497,7 +4727,12 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
         assert doctor.tesseract_install(platform) == line, name
         assert f"- {name}: {line}" in pictures, name
     off = doctor.text_in_pictures_check(env={config.OCR_SWITCH: "off"})
-    assert (off.status, off.detail, off.fix) == ("ok", "Turned off (ORDNUNG_OCR=off)", None)
+    assert (off.status, off.detail, off.fix) == ("info", "Turned off (ORDNUNG_OCR=off)", None)
+    switched = doctor.text_in_pictures_check(read_picture_text=False, env={})
+    assert (switched.status, switched.detail) == ("info", "Off (Settings → Data → Text in pictures)")
+    assert config.picture_text_off(False, env={}) and config.picture_text_off(
+        True, env={config.OCR_SWITCH: "off"}
+    )
     assert config.OCR_SWITCH in autostart.SWITCHES and shortcut.SWITCHES == autostart.SWITCHES
     privacy = _privacy_section("Words in pictures (optional)")
     assert "`ORDNUNG_OCR=off`" in privacy and "`setx ORDNUNG_OCR off`" in privacy
@@ -4587,7 +4822,6 @@ def test_adr_0024_says_found_not_read_and_its_limits_are_the_engine_s() -> None:
         '`found_in="picture_text"`',
         f"*{PICTURE_TEXT_MATCH}*",
         "Only `ingest/worker.py` and `doctor.py` import the engine",
-        "`models.py` stays as it is",
         "`LetterFoundIn`",
         "`LetterDetail.picture_text_pages`",
         "**A Settings switch or a Health field:**",
@@ -4612,15 +4846,16 @@ def test_adr_0024_says_found_not_read_and_its_limits_are_the_engine_s() -> None:
 def test_the_spec_and_architecture_describe_text_in_pictures() -> None:
     """SPEC (the cut list, the layout, the route-local models, the doctor, the text stage, the API and the web
     app) and docs/architecture.md against d4-contract's routes: ``found_in`` may say ``picture_text``
-    (``LetterFoundIn``; ``models.SearchFoundIn`` stays) and the letter's page names ``picture_text_pages``; no
-    module but the worker and the doctor imports the engine."""
+    (``LetterFoundIn``; ``models.SearchFoundIn`` is gone) and the letter's page names ``picture_text_pages``; the
+    Settings switch and the variable (E2); no module but the worker and the doctor imports the engine."""
     from typing import get_args
 
     from ordnung import models
     from ordnung.api.routes import documents
 
     assert set(get_args(documents.LetterFoundIn)) == {"letter", "scanner_text", "picture_text"}
-    assert set(get_args(models.SearchFoundIn)) == {"letter", "scanner_text"}
+    assert not hasattr(models, "SearchFoundIn")
+    assert models.AppSettings().read_picture_text is True
     assert "picture_text_pages" in documents.LetterDetail.model_fields
     assert "picture_text_pages" not in models.DocumentDetail.model_fields
     spec = _spec()
@@ -4678,7 +4913,7 @@ def test_the_engine_store_and_worker_are_what_the_docs_say() -> None:
     checks = inspect.getsource(doctor.local_checks)
     assert (
         checks.index("web_ui_check()")
-        < checks.index("text_in_pictures_check()")
+        < checks.index("text_in_pictures_check(")
         < checks.index("data_dir_check(")
     )
 
@@ -4702,3 +4937,348 @@ def test_the_tests_the_architecture_names_for_d4_exist() -> None:
     for path in D4_TESTS:
         assert f"`{path}`" in architecture, path
         assert (ROOT / path).is_file(), path
+
+
+# --------------------------------------------------------------------------------------------------
+# Batch E2 — Ask and the Ideas say whose it is, Ask follows For taxes and knows how dates repeat, a Text in
+# pictures switch, doctor info rows: README, the CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md,
+# CONTRIBUTING and ADRs 0022 to 0025
+# --------------------------------------------------------------------------------------------------
+
+_ADR_WHOSE_LINK = f"[ADR 0025](docs/decisions/{_ADR_WHOSE.name})"
+#: CHANGELOG, Unreleased → Added: My numbers per person (e2-numbers), its sentences in order.
+E2_WHOSE_NUMBER = (
+    "A number from a letter you filed for someone in your household is listed under *About Alex Rivera* on My "
+    "numbers, whose first tab is then *People*.",
+    'A number that letters for two of you show says "Also on letters for Alex Rivera — check whose it is", and a '
+    "sender's numbers or a case that are only theirs say *For Alex Rivera*.",
+    "On a paired phone their numbers show only their last 4 characters, like yours.",
+)
+#: CHANGELOG, Unreleased → Added: Ask, the Ideas, reminders and the Timeline (e2-ask, e2-ideas-whose).
+E2_WHOSE_SAID = (
+    "Ask is told who is in your household, which letters you filed for whom and whose each number is; letters you "
+    "keep private stay out.",
+    "An Idea about their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), unless "
+    "you keep one of them private; filing a letter later renames the same Idea, so *Not relevant* or *Remind me "
+    "in a week* still holds.",
+    "The calendar file, calendar sync *With details* and the morning notification *With details* put their name "
+    "in front of a to-do of their letter; *Discreet* never names anyone.",
+    "On the Timeline, a date from their letter says *For Alex Rivera ·*, as Today does.",
+    f"Ordnung still files a letter only when you say so ({_ADR_WHOSE_LINK}).",
+)
+#: CHANGELOG, Unreleased → Added: repeat fields in Ask's records (e2-ask).
+E2_REPEATS = (
+    "For a to-do or date that repeats, Ask is told how, in the words the app uses (*every month on the 3rd working "
+    "day*), and the date it moves on to once you mark this one done — also for a date you moved by hand, whose "
+    "schedule carries on after it.",
+    "A rent a later rent replaces says from which month.",
+)
+#: CHANGELOG, Unreleased → Added: the Settings switch (e2-pictures-intake).
+E2_SWITCH = (
+    "Settings → Data → *Text in pictures* turns off reading the words in photos and scans Claude isn't reading.",
+    "It counts at once: a reading under way stops and the words read before are deleted; turned on again, Ordnung "
+    "starts reading and looks for Tesseract afresh.",
+    "The card says what this computer does: reading, with Tesseract's version; not installed, with the line to "
+    "install it; or turned off by `ORDNUNG_OCR=off`, which still wins on that computer.",
+    "With hand-off sync the switch travels with your settings.",
+)
+#: CHANGELOG, Unreleased → Changed: Ask and the weekly Ideas follow *For taxes* (e2-ask).
+E2_FOR_TAXES = (
+    "A letter you took off your letters for taxes no longer reaches them as one for taxes, and Ask no longer gets "
+    "Claude's note on why it could matter for your tax return; a letter you marked yourself reaches them as one "
+    "for taxes, and Ask is told you marked it.",
+    "Letters you keep private stay private: neither sees anything of them, your choice included.",
+)
+#: CHANGELOG, Unreleased → Changed: the other lines.
+E2_CHANGED = (
+    "`ordnung doctor` marks a row that is neither fine nor a problem as info (`i`): Tesseract not installed, text "
+    "in pictures turned off, and on Windows a new *Disk encryption* row that says where to check BitLocker or "
+    "Device encryption, which Ordnung can't read there. An info row never fails the check, and its fix is printed "
+    "as an *Optional —* tip.",
+    "A file of a type Ordnung doesn't read is refused with a message that names Outlook's `.msg` among the types "
+    "it takes.",
+    "In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions' "
+    "recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.",
+)
+#: CHANGELOG, Unreleased → Fixed (e2-ideas-whose, e2-pictures-intake).
+E2_FIXED = (
+    "*Renew your passport before extending your residence permit* pairs a passport and a residence permit of the "
+    "same person, and the student permit card reads only your own residence permit: a letter filed for someone "
+    "of your household no longer counts as yours there.",
+    "An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if "
+    "it reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.",
+)
+#: CHANGELOG, Unreleased → Upgrading: what a computer still on 0.3.0 does.
+E2_UPGRADING = (
+    "A computer still on 0.3.0 shows every number as yours and the Ideas' titles without names, and Ideas it "
+    "refreshes lose the name until an updated computer refreshes them. Update both computers.",
+    "A computer still on 0.3.0 doesn't know the *Text in pictures* switch: it reads pictures as its `ORDNUNG_OCR` "
+    "says, and the settings it saves leave the switch out. An updated computer that then receives them by "
+    "hand-off sync keeps its own choice.",
+)
+#: SPEC § 2: what was decided not to build after 0.3.0 (#37's deferred list), each line's lead.
+SPEC_NOT_BUILT = (
+    "**An IMAP mailbox:**",
+    '**An activity line "from your e-mail folder":**',
+    "**Keyset paging of the letter list:**",
+    "**A *Whose letters* filter on the Timeline, Letters or Tax year page, a ZIP per person, a one-press name for "
+    "a letter that answers none:**",
+    "**Weekly dates as calendar series (RRULE):**",
+    "**macOS Vision and Windows OCR:**",
+    "**A BitLocker probe:**",
+    "***Let Claude decide*, an Inbox *Undated* year, *Not for taxes* on Tax-year rows:**",
+    "**A permanent per-request content lock (`requests.lock.json`) (deferred):**",
+    "**The web's repeat words for a rent that keeps an earlier rent's working day (deferred):**",
+    "**An Ask benchmark question about the next occurrence (deferred):**",
+    "**Scrubbing a name of the household from Ideas that no longer fire (deferred):**",
+    "**Naming contracts' dates after someone of the household, a demo household:**",
+)
+
+
+def test_the_changelog_says_what_e2_adds_changes_and_fixes() -> None:
+    """CHANGELOG, Unreleased: My numbers per person, whose it is in Ask, the Ideas, reminders and the Timeline,
+    repeat fields, the Settings switch (Added); For taxes in Ask and the review, info rows, the `.msg` message,
+    the demo (Changed); the passport rule and an unopened Outlook file (Fixed); what 0.3.0 does (Upgrading) —
+    each against the code it describes."""
+    from ordnung import cli, doctor
+    from ordnung.assistant.ask import DEMO_CHANGED
+    from ordnung.ingest import intake
+
+    added = _unreleased("Added")
+    for lead, sentences in (
+        ("**Whose number it is.**", E2_WHOSE_NUMBER),
+        ("**Ask, the Ideas, your reminders and the Timeline say whose it is.**", E2_WHOSE_SAID),
+        ("**Ask knows how your dates repeat.**", E2_REPEATS),
+        ("**Text in pictures can be turned off in Settings.**", E2_SWITCH),
+    ):
+        bullet = _bullet(added, lead)
+        for sentence in sentences:
+            assert sentence in bullet, sentence
+        assert [bullet.index(s) for s in sentences] == sorted(bullet.index(s) for s in sentences), lead
+    changed = _unreleased("Changed")
+    bullet = _bullet(changed, "**Ask and *Weekly Ideas* follow your *For taxes* choice.**")
+    for sentence in E2_FOR_TAXES:
+        assert sentence in bullet, sentence
+    for sentence in E2_CHANGED:
+        assert f"- {sentence}" in changed, sentence
+    fixed = _unreleased("Fixed")
+    for sentence in E2_FIXED:
+        assert f"- {sentence}" in fixed, sentence
+    upgrading = _unreleased("Upgrading")
+    for sentence in E2_UPGRADING:
+        assert f"- {sentence}" in upgrading, sentence
+    # the words are the code's
+    web = ROOT / "web" / "src"
+    people = (web / "features" / "numbers" / "people.ts").read_text(encoding="utf-8")
+    assert "`Also on letters for ${namesList(names)} — check whose it is`" in people
+    view = (web / "features" / "numbers" / "NumbersView.tsx").read_text(encoding="utf-8")
+    assert (
+        "title={`About ${person.name}`}" in view
+        and '{ label: "People", shortLabel: "People", count }' in people
+    )
+    assert triggers.for_member(_member("Alex Rivera"), "x") == "For Alex Rivera: x"
+    assert cli.STATUS_ICONS["info"] == "[blue]i[/]"
+    assert doctor.disk_encryption_check(Path("."), platform="win32") is not None
+    assert ".msg" in intake.UNSUPPORTED and "Outlook e-mail" in intake.OLE_UNOPENED
+    assert "household" in DEMO_CHANGED
+
+
+def _member(name: str) -> Any:
+    from ordnung.secretary.household import HouseholdMember
+
+    return HouseholdMember(id="hhm_k3j9x0a1b2c4", name=name, signs=True)
+
+
+def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
+    """ADR 0025: the whose rule, what Ask is given (only through ``ask_view`` and ``Ledger.household_filed``), the
+    *For taxes* choice, the two tool descriptions that name the household (the prompts' text unchanged, their
+    version moved), empty means as before, the Ideas and reminders, the known limits; ADR 0023's status line and
+    point 9 point to it; README lists it after 0024."""
+    adr = _adr(_ADR_WHOSE)
+    assert adr.startswith("# ADR 0025 — Ask and the Ideas say whose it is")
+    for words in (
+        "**Status:** accepted · **Date:** 2026-10-29 · Amends [ADR 0023]",
+        "a letter is someone's of the household only when the person filed it for them",
+        "`household.ask_view` and `Ledger.household_filed`",
+        'Ask is told never whether someone signs, "mine" or a suggestion',
+        "Letters the person keeps private are left out, and `household_note` says whose they are isn't known",
+        "`get_my_numbers` puts their numbers under `household` (and names there, by id and name, everyone "
+        "`filed_for` and `also_for` give)",
+        "One of two sentences says when the person chose",
+        "**Two tool descriptions name the household; no server instruction or prompt text changes.**",
+        '"and the people of their household with the letters filed for each"',
+        "listed under that person (household, filed_for), never as the person's own",
+        "so the Ask prompt's version moves with them (`ask_system`, its text unchanged)",
+        "Without people and without a choice, no tool's answer carries either, byte for byte,",
+        "`LEDGER_META_KEYS`",
+        "§ 81 Abs. 4 AufenthG",
+        "a contract's decision is the person's",
+        "*Discreet* never names anyone",
+        "An Idea that stops firing keeps its last title, a name too",
+        "A dismissed Idea that still fires is renamed like any other",
+        "an Idea all of whose letters are filed for one person, none of them kept private (its title reaches Claude), starts",
+    ):
+        assert words in adr, words
+    household = _adr(_ADR_HOUSEHOLD)
+    assert "**Status:** accepted · **Date:** 2026-10-27 · **Amended by:** [ADR 0025]" in household
+    assert "9. **What reaches Claude** ([ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md))." in household
+    assert "Never seen by Claude." not in household and "Ask keeps seeing Claude's own mark" not in household
+    assert "Left out to keep the step small." not in household
+    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    assert f"[0025 Ask and the Ideas say whose it is](docs/decisions/{_ADR_WHOSE.name})" in documentation
+    assert documentation.index("[0024 words Ordnung") < documentation.index("[0025 Ask and the Ideas")
+    for module in ("secretary/household.py", "secretary/tax_choice.py"):
+        assert "ADR 0025" in (ROOT / "src" / "ordnung" / module).read_text(encoding="utf-8"), module
+
+
+def test_the_spec_says_what_was_decided_not_to_build() -> None:
+    """SPEC § 2: after the cut list, a paragraph of what was decided not to build after 0.3.0 (#37's deferred
+    list), one line each; a deferred one says so."""
+    spec = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
+    section = _flat(spec.split("## 2. Release plan", 1)[1].split("\n## 3.", 1)[0])
+    paragraph = section.split("**Decided not to build (after 0.3.0, #37's deferred list):**", 1)[1]
+    places = [paragraph.index(f"- {lead}") for lead in SPEC_NOT_BUILT]
+    assert places == sorted(places)
+    # built after the household group's first recording (ADR 0025): no longer deferred
+    assert "Ask tool-description clauses for the household" not in paragraph
+    assert section.index("**Cut (v1.1+):**") < section.index("**Decided not to build")
+
+
+def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
+    """SPEC (My numbers, Ask, the Ideas, the calendar, the notification, the Timeline, the API), docs/privacy.md
+    (My numbers, reminders, calendar sync, other Claude clients) and docs/architecture.md against the code."""
+    spec = _spec()
+    for words in (
+        "A letter is someone's of the household only when the person filed it for them (`household.filed`, ADR "
+        "0023): its numbers and identity documents go under that person (`NumbersPage.household`; the label rule "
+        "still comes first, and whom a letter is addressed to is never read)",
+        "`get_profile` adds `household` (each person's id and name as typed, with the letters the person filed for "
+        "them, newest first, at most 50) and `household_note`",
+        "`get_document` adds `filed_for`",
+        "Private letters are left out, and `household_note` says whose a private letter is isn't known",
+        "every person those name is under `household`, by id and name alone when the answer has no numbers of "
+        "theirs",
+        "`repeats`, `following_due_date`, `replaced_by` and `replaced_from_month`",
+        '`tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off '
+        'their letters for taxes."',
+        "**Whose an Idea is** (`triggers.named`):",
+        "are filed for one person of the household and none is kept private (`Ledger.idea_member`, "
+        '`Ledger.named_member`: an Idea\'s title reaches Claude) starts "For Alex Rivera: …"',
+        "never `tax_documents`, `calendar_outdated`, `student_permit_info`, `moved_house`, `sender_land` or "
+        "`contract_cancel_window`",
+        'a letter filed for someone of the household names them after the symbol ("⌛ Alex Rivera: Passport '
+        'expires"',
+        "Full puts the name of the person of the household a to-do's letter is filed for in front of its title",
+        "`numbers` (GET: My numbers, a `NumbersPage`",
+        "A date from a letter filed for someone in the household starts its second line with *For Alex Rivera ·*",
+        "at the start of its Coming up and recent letters rows — never a contract's action, though it comes from a "
+        "letter (its decision is the person's, ADR 0025); Today has no filter for it",
+        "the first tab is **People** once someone of the household has numbers or documents",
+    ):
+        assert words in spec, words
+    assert mcp_server.TAX_MARKED_BY_PERSON == "The person marked this letter for taxes themselves."
+    assert mcp_server.TAX_UNMARKED_BY_PERSON == "The person took this letter off their letters for taxes."
+    assert mcp_server.MAX_HOUSEHOLD_LETTERS == 50
+    assert triggers.NEVER_NAMED == {
+        "tax_documents",
+        "calendar_outdated",
+        "student_permit_info",
+        "moved_house",
+        "sender_land",
+        "contract_cancel_window",
+    }
+    numbers = _privacy_section("My numbers")
+    assert (
+        "A number on a letter you filed for someone of your household is listed under *About* them instead"
+    ) in numbers
+    reminders = _privacy_section("Reminders while Ordnung is closed")
+    assert "a to-do of a letter filed for someone of your household after that person's name" in reminders
+    calendar = _privacy_section("Calendar sync (optional)")
+    assert "the name of the person of your household its letter is filed for" in calendar
+    clients = _privacy_section("Using Ordnung from Claude Desktop or Claude Code")
+    assert "the people of your household with the letters you filed for each" in clients
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    for words in (
+        "Whose a letter is (`household.filed`) decides whose its numbers are",
+        f"[ADR 0025](decisions/{_ADR_WHOSE.name})",
+        "Ask's tools read the household only through `household.ask_view` and `Ledger.household_filed`",
+    ):
+        assert words in architecture, words
+
+
+def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
+    """SPEC (settings, health, the doctor, the API and Settings → Data), ADR 0024's amendment, ADR 0022's note,
+    docs/privacy.md and docs/architecture.md against e2-pictures-intake."""
+    from typing import get_args
+
+    from ordnung import doctor, models
+    from ordnung.sync import KEPT_WHEN_ABSENT, SYNCED_SETTINGS
+
+    assert "read_picture_text" in SYNCED_SETTINGS and KEPT_WHEN_ABSENT == ("read_picture_text",)
+    assert set(get_args(models.PictureTextState)) == {
+        "reading",
+        "off",
+        "off_by_variable",
+        "not_installed",
+        "not_usable",
+    }
+    assert doctor.OFF_IN_SETTINGS == "Off (Settings → Data → Text in pictures)"
+    spec = _spec()
+    for words in (
+        "`AppSettings.read_picture_text: bool = True`",
+        "`Health.picture_text` (`PictureTextStatus`: `state` — `reading`, `off`, `off_by_variable`, "
+        "`not_installed`, `not_usable` —, `detail`, `fix`; `null` for a phone)",
+        "`CheckStatus` is `ok | info | warn | fail`",
+        "an `info` row is neither ok nor a problem",
+        "on Windows an info row that says where to look (`doctor.WINDOWS_ENCRYPTION`",
+        "`KEPT_WHEN_ABSENT`",
+        "reads the default (on) until its next pull, and its push leaves the field out too, so it never turns the "
+        "switch back on elsewhere",
+        "**Text in pictures** (`#set-data-picture-text`",
+        "a save's toast says pictures are read only where Tesseract reads them, else points to that line",
+        "`settings` (GET/PUT) takes `read_picture_text`",
+    ):
+        assert words in spec, words
+    adr = _adr(_ADR_PICTURES)
+    assert "## Amended in 0.4.0" in adr
+    amended = adr.split("## Amended in 0.4.0", 1)[1]
+    for words in (
+        "**A switch in Settings.**",
+        "`ORDNUNG_OCR=off` still wins",
+        "`KEPT_WHEN_ABSENT`",
+        "pushes it without the field too, so its default never overwrites the other's choice",
+        "**Info rows.**",
+    ):
+        assert words in amended, words
+    assert "and `models.py` stays as it is (a digest file)" not in adr
+    privacy = _privacy_section("Words in pictures (optional)")
+    assert "Settings → Data → *Text in pictures*" in privacy
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert "`IngestWorker.picture_text_changed`" in architecture
+    assert "`config.picture_text_off`" in architecture
+
+
+def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> None:
+    """CONTRIBUTING: the digest files and the recordings (a code digest keys only the local cache and a new
+    results file's fingerprint; a recording is needed when a request changes), and how to record (own venv, no
+    ``ORDNUNG_CLAUDE_MODEL``, one recorder, ``--no-serve``, ``--no-docs``, replay and audit after); SPEC's
+    recording command has ``--no-serve``; the flags exist."""
+    contributing = _flat((ROOT / "CONTRIBUTING.md").read_text(encoding="utf-8"))
+    for words in (
+        "**Digest files and recordings.**",
+        "`_code_digest` in `evals/conditions.py`",
+        "keys only your local prediction cache and the fingerprint written into a new results file",
+        "A recording is needed only when what is sent changes",
+        "**Recording, when it is time.**",
+        "its own virtual environment",
+        "`ORDNUNG_CLAUDE_MODEL` unset",
+        "one recorder at a time",
+        "`ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`",
+        "`--no-docs`",
+    ):
+        assert words in contributing, words
+    assert "Recording: `ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`." in _spec()
+    run = (ROOT / "evals" / "run.py").read_text(encoding="utf-8")
+    assert '"--no-docs"' in run
+    cli = (ROOT / "src" / "ordnung" / "cli.py").read_text(encoding="utf-8")
+    assert '"--serve/--no-serve"' in cli

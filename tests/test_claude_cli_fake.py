@@ -641,6 +641,38 @@ def test_the_chosen_model_beats_the_request_and_yields_to_the_environment(
     assert ClaudeCLIBackend().model_for(request) == "haiku"
 
 
+async def test_a_wrapper_that_clears_the_environment_still_gets_argv_stdin_and_is_killed(
+    fake: FakeClaude, letter: LLMRequest, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Recordings are made through a wrapper (``ORDNUNG_CLAUDE_BIN``) that starts ``claude`` with a cleared
+    environment — ``exec env -i`` with only what sign-in needs — so no variable of the session that records
+    (a thinking budget, an effort level) changes what is asked. The request still arrives whole (every flag
+    on argv, the letter on stdin, exactly as without it), the answer is read, and a call that hangs leaves no
+    process behind: ``exec`` keeps the process the backend started, so its process group is killed."""
+    wrapper = tmp_path / "claude-isolated"
+    wrapper.write_text(
+        "#!/bin/sh\n"
+        'exec env -i HOME="$HOME" PATH="$PATH" FAKE_CLAUDE_SCENARIO="$FAKE_CLAUDE_SCENARIO" '
+        f'"{sys.executable}" "{FAKE}" "$@"\n',
+        encoding="utf-8",
+    )
+    wrapper.chmod(wrapper.stat().st_mode | stat.S_IXUSR)
+    monkeypatch.setenv("MAX_THINKING_TOKENS", "1024")  # the recording session's own: never passed on
+    hang = {"child": True, "lines": ['{"type": "system", "subtype": "init"}'], "hang": True}
+    fake.play({"transcript": "extract_structured.jsonl"}, {"transcript": "extract_structured.jsonl"}, hang)
+    direct = await ClaudeCLIBackend(max_retries=0).complete(letter)
+    wrapped = await ClaudeCLIBackend(binary=str(wrapper), max_retries=0).complete(letter)
+    first, second = fake.calls
+    assert (second["argv"], second["stdin"]) == (first["argv"], first["stdin"])
+    assert wrapped.data == direct.data == ANSWER and wrapped.usage == direct.usage
+    with pytest.raises(ClaudeTimeout):
+        await ClaudeCLIBackend(binary=str(wrapper), max_retries=0).complete(
+            letter.model_copy(update={"timeout_s": 1.0})
+        )
+    hung = fake.calls[2]
+    assert await _gone(hung["pid"], hung["child_pid"])
+
+
 async def test_the_answer_names_the_model_the_call_ran_on(fake: FakeClaude) -> None:
     """When the CLI's result carries no ``modelUsage``, the answer (and so the usage log and the trace)
     names the model the call was made with — the chosen one, not the request's alias."""

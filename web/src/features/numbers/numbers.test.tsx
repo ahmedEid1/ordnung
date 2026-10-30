@@ -7,11 +7,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { api } from "@/api/endpoints";
-import type { MyNumbers, OpenCase } from "@/api/types";
+import type { MyNumbers, NumbersPage, OpenCase } from "@/api/types";
 import { AddLettersProvider } from "@/components/shell/AddLetters";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { mockNumbers } from "@/mocks/numbers";
-import { MOCK_NUMBERS } from "@/mocks/data/numbers";
+import { MOCK_NUMBERS, MOCK_NUMBERS_FOR_ALEX } from "@/mocks/data/numbers";
+import { alsoForText, namesList, peopleNames, peopleTab } from "./people";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { hiddenLabel, maskValue, visibleTail } from "./mask";
@@ -383,6 +384,148 @@ describe("the page", () => {
     });
     expect(await screen.findByRole("heading", { name: "No numbers yet" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add letters" })).toBeInTheDocument();
+  });
+});
+
+describe("whose a number is (the household)", () => {
+  const alex = MOCK_NUMBERS_FOR_ALEX.household[0]!;
+  const MIA = { id: "hhm_mia000000000", name: "Mia Rivera" };
+  const withAlex = (extra: Partial<NumbersPage> = {}): NumbersPage => ({ ...MOCK_NUMBERS_FOR_ALEX, ...extra });
+
+  async function renderPage(page: NumbersPage, route = "/numbers") {
+    // each test calls useMockApi() first: the page runs on the mock server, its numbers replaced
+    vi.spyOn(api, "numbers").mockResolvedValue(page);
+    return renderNumbers(route);
+  }
+
+  it("keeps today's page and tabs without household numbers", async () => {
+    useMockApi();
+    await renderPage(MOCK_NUMBERS);
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      `You About you${MOCK_NUMBERS.about_you.length + MOCK_NUMBERS.documents.length}`,
+      `Cases Open cases${MOCK_NUMBERS.open_cases.length}`,
+      `Orgs Organisations${MOCK_NUMBERS.organisations.length}`,
+    ]);
+    expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+      `Your numbers· ${MOCK_NUMBERS.about_you.length}`,
+      `Your documents· ${MOCK_NUMBERS.documents.length}`,
+    ]);
+    expect(document.querySelector("[data-person-tag]")).toBeNull();
+    expect(screen.queryByText(/Also on letters for/)).toBeNull();
+    expect(screen.queryByText(/None of your own numbers yet/)).toBeNull();
+  });
+
+  it("shows About Alex Rivera for numbers from letters filed for Alex", async () => {
+    useMockApi();
+    await renderPage(withAlex());
+    const heading = screen.getByRole("heading", { level: 2, name: /About Alex Rivera/ });
+    expect(heading).toHaveTextContent(`About Alex Rivera· ${alex.about.length + alex.documents.length}`);
+    const section = heading.closest("section")!;
+    expect(within(section).getByText("From letters you filed for Alex Rivera.")).toBeInTheDocument();
+    const numbers = within(section).getByRole("list", { name: "Numbers for Alex Rivera" });
+    expect(within(numbers).getAllByRole("listitem")).toHaveLength(alex.about.length);
+    expect(within(numbers).getByText("Health insurance number (Krankenversichertennummer)")).toBeInTheDocument();
+    const documents = within(section).getByRole("list", { name: "Documents for Alex Rivera" });
+    expect(within(documents).getByRole("heading", { name: "Passport" })).toBeInTheDocument();
+    // the person's own sections no longer list them
+    const yours = screen.getByRole("heading", { name: /Your numbers/ }).closest("section")!;
+    expect(within(yours).queryByText("Health insurance number (Krankenversichertennummer)")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /Your documents/ })?.closest("section")?.textContent ?? "").not.toMatch(/Passport/);
+    // the heading outline stays whole: h1 → h2 → h3
+    const levels = Array.from(document.querySelectorAll("h1, h2, h3")).map((h) => Number(h.tagName[1]));
+    levels.forEach((level, i) => {
+      if (i) expect(level - levels[i - 1]!).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it("names the tab People with one short label", async () => {
+    useMockApi();
+    await renderPage(withAlex());
+    const people = screen.getByRole("tab", { name: /^People/ });
+    expect(people).toHaveAttribute("aria-selected", "true");
+    const count = MOCK_NUMBERS_FOR_ALEX.about_you.length + MOCK_NUMBERS_FOR_ALEX.documents.length + alex.about.length + alex.documents.length;
+    expect(people.textContent).toBe(`People People${count}`);
+    // one word on every screen: the short label is the label, so the name is what shows
+    expect(people.querySelector("span.sm\\:hidden")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.queryByRole("tab", { name: /About you/ })).toBeNull();
+    // the URL stays ?tab=you
+    expect(people).toHaveAttribute("id", "numbers-tab-you");
+  });
+
+  it("hides a member's number until Show", async () => {
+    useMockApi();
+    const { user } = await renderPage(withAlex());
+    const number = alex.about[0]!;
+    const section = screen.getByRole("heading", { name: /About Alex Rivera/ }).closest("section")!;
+    expect(within(section).queryByText(number.display)).toBeNull();
+    await user.click(within(section).getByRole("button", { name: `Show ${numberTitle(number)}` }));
+    expect(within(section).getByText(number.display)).toBeInTheDocument();
+  });
+
+  it("says a shared number is also on another person's letters", async () => {
+    const tax = MOCK_NUMBERS_FOR_ALEX.about_you.find((n) => n.kind === "tax_id")!;
+    const theirs = { ...alex.about[0]!, key: "num_alex_health" };
+    const mia = { id: MIA.id, name: MIA.name, about: [{ ...theirs, key: "num_mia_health" }], documents: [] };
+    const page = withAlex({
+      household: [{ ...alex, about: [theirs] }, mia],
+      also_for: { [tax.key]: [alex.id], num_alex_health: ["me", MIA.id], num_mia_health: ["me", alex.id] },
+    });
+    useMockApi();
+    await renderPage(page);
+    const yours = screen.getByRole("heading", { name: /Your numbers/ }).closest("section")!;
+    expect(within(yours).getByText("Also on letters for Alex Rivera — check whose it is")).toBeInTheDocument();
+    const alexs = screen.getByRole("heading", { name: /About Alex Rivera/ }).closest("section")!;
+    expect(within(alexs).getByText("Also on letters for you and Mia Rivera — check whose it is")).toBeInTheDocument();
+    const mias = screen.getByRole("heading", { name: /About Mia Rivera/ }).closest("section")!;
+    expect(within(mias).getByText("Also on letters for you and Alex Rivera — check whose it is")).toBeInTheDocument();
+  });
+
+  it("tags a member's call-sheet number and open case", async () => {
+    const parking = MOCK_NUMBERS_FOR_ALEX.open_cases.find((c) => c.title.startsWith("Parking fine"))!;
+    const page = withAlex({ filed_for: { ...MOCK_NUMBERS_FOR_ALEX.filed_for, [parking.key]: alex.id } });
+    useMockApi();
+    const { user } = await renderPage(page, "/numbers?tab=organisations");
+    const [taggedKey] = Object.keys(MOCK_NUMBERS_FOR_ALEX.filed_for);
+    const sheet = MOCK_NUMBERS_FOR_ALEX.organisations.find((s) => s.numbers.some((n) => n.key === taggedKey))!;
+    const card = screen.getByRole("heading", { name: sheet.name }).closest("article")!;
+    const tag = within(card).getByText("For Alex Rivera");
+    expect(tag.closest("[data-person-tag]")).not.toBeNull();
+    // only that card's number is Alex's
+    expect(document.querySelectorAll("[data-person-tag]")).toHaveLength(2); // and the parking fine's sheet
+    await user.click(screen.getByRole("tab", { name: /Open cases/ }));
+    const caseCard = screen.getByRole("heading", { name: /^Parking fine/ }).closest("article")!;
+    expect(within(caseCard).getByText("For Alex Rivera")).toBeInTheDocument();
+    expect(document.querySelectorAll("[data-person-tag]")).toHaveLength(1);
+  });
+
+  it("says when none of the person's own numbers are there yet", async () => {
+    useMockApi();
+    await renderPage(withAlex({ about_you: [], documents: [] }));
+    expect(screen.getByText("None of your own numbers yet. They appear here once a letter of yours shows them.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nothing about you yet" })).toBeNull();
+    expect(screen.getByRole("heading", { name: /About Alex Rivera/ })).toBeInTheDocument();
+  });
+});
+
+describe("people.ts", () => {
+  it("lists names the way a sentence does", () => {
+    expect(namesList(["you"])).toBe("you");
+    expect(namesList(["you", "Mia Rivera"])).toBe("you and Mia Rivera");
+    expect(namesList(["you", "Mia Rivera", "Kim Rivera"])).toBe("you, Mia Rivera and Kim Rivera");
+    expect(alsoForText(["me", "hhm_x"], { ...MOCK_NUMBERS, household: [{ id: "hhm_x", name: "Mia Rivera", about: [], documents: [] }] })).toBe(
+      "Also on letters for you and Mia Rivera — check whose it is",
+    );
+    expect(alsoForText([], MOCK_NUMBERS)).toBeNull();
+  });
+
+  it("calls the first tab People only once someone of the household has numbers or documents", () => {
+    expect(peopleTab(MOCK_NUMBERS)).toEqual({ label: "About you", shortLabel: "You", count: MOCK_NUMBERS.about_you.length + MOCK_NUMBERS.documents.length });
+    // a person named only by a call sheet's tag has no section of their own
+    const tagged = { ...MOCK_NUMBERS, household: [{ id: "hhm_x", name: "Mia Rivera", about: [], documents: [] }], filed_for: { num_x: "hhm_x" } };
+    expect(peopleTab(tagged).label).toBe("About you");
+    expect(peopleNames(tagged).get("hhm_x")).toBe("Mia Rivera");
+    expect(peopleNames(tagged).get("me")).toBe("you");
+    expect(peopleTab(MOCK_NUMBERS_FOR_ALEX)).toMatchObject({ label: "People", shortLabel: "People" });
   });
 });
 

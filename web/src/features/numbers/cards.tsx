@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Countdown } from "@/components/ui/Countdown";
 import { KindIcon } from "@/components/ui/KindBadge";
+import { PersonTag } from "@/features/household/PersonTag";
 import { mailtoUrl, websiteUrl } from "@/features/party/timeline";
 import { WebsiteLink } from "@/features/party/WebsiteLink";
 import { usePartyDrawer } from "@/lib/party-drawer";
@@ -17,6 +18,7 @@ import { isIncomingMoney } from "@/lib/payments";
 import { useFormatDate, useTodayISO } from "@/lib/today";
 import { cn, plural } from "@/lib/utils";
 import { NumberRow, Sep } from "./NumberRow";
+import type { Whose } from "./people";
 
 const letterHref = (id: string) => `/documents/${encodeURIComponent(id)}`;
 
@@ -49,7 +51,8 @@ const DOCUMENT_STATUS: Record<IdentityDocument["status"], { label: string; tone:
   unknown: { label: "Expiry unknown", tone: "neutral" },
 };
 
-export function DocumentCard({ doc }: { doc: IdentityDocument }) {
+/** `alsoFor`: other people whose letters show its number too (`also_for`, in words). */
+export function DocumentCard({ doc, alsoFor }: { doc: IdentityDocument; alsoFor?: string[] }) {
   const formatDate = useFormatDate();
   const status = DOCUMENT_STATUS[doc.status];
   return (
@@ -79,7 +82,7 @@ export function DocumentCard({ doc }: { doc: IdentityDocument }) {
       {/* the card's full width: beside the badge it would be a narrow column on a phone */}
       {doc.valid_until && doc.needs_check ? <Unconfirmed what="this date" className="mt-2" /> : null}
       {doc.number ? (
-        <NumberRow number={doc.number} showLetter={false} className="mt-1 border-t border-line" />
+        <NumberRow number={doc.number} showLetter={false} alsoFor={alsoFor} className="mt-1 border-t border-line" />
       ) : (
         <p className="mt-3 border-t border-line pt-3 text-[13px] leading-5 text-muted">The number isn't in your letters yet — it's on the card or in the passport itself.</p>
       )}
@@ -181,11 +184,36 @@ function NextStep({ item }: { item: CaseStep }) {
   );
 }
 
-export function OpenCaseCard({ found, showParty = true }: { found: OpenCase; showParty?: boolean }) {
+/**
+ * A case's references, each tagged with the person of the household its letters are filed for when the case itself
+ * isn't only theirs (`whose`).
+ */
+function References({ found, whose, shownLetter }: { found: OpenCase; whose?: Whose; shownLetter?: string | null }) {
+  const caseFor = whose?.filedFor(found.key);
+  return (
+    <>
+      {found.references.map((ref) => (
+        <li key={ref.key}>
+          <NumberRow
+            number={ref}
+            showLetter={Boolean(ref.letter && ref.letter.id !== shownLetter)}
+            compactLetter
+            forName={caseFor ? undefined : whose?.filedFor(ref.key)}
+          />
+        </li>
+      ))}
+    </>
+  );
+}
+
+/** `whose`: whose its rows are, when letters of it are filed for someone of the household (`people.ts`). */
+export function OpenCaseCard({ found, showParty = true, whose }: { found: OpenCase; showParty?: boolean; whose?: Whose }) {
   const drawer = usePartyDrawer();
+  const forName = whose?.filedFor(found.key);
   return (
     <Card as="article" padding="md" className="flex min-w-0 flex-1 flex-col">
       <h3 className="text-[15px] font-semibold leading-6 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</h3>
+      {forName ? <PersonTag name={forName} className="mt-1 max-w-full self-start" /> : null}
       {showParty && found.party_name ? (
         <p className="text-[13px] leading-5 text-muted">
           {found.party_id ? (
@@ -209,11 +237,7 @@ export function OpenCaseCard({ found, showParty = true }: { found: OpenCase; sho
         </div>
       ) : null}
       <ul className="mt-1 divide-y divide-line" aria-label="References to quote">
-        {found.references.map((ref) => (
-          <li key={ref.key}>
-            <NumberRow number={ref} showLetter={Boolean(ref.letter && ref.letter.id !== found.letter?.id)} compactLetter />
-          </li>
-        ))}
+        <References found={found} whose={whose} shownLetter={found.letter?.id} />
       </ul>
       {found.letter ? (
         <div className="mt-auto border-t border-line pt-3">
@@ -264,7 +288,8 @@ function Contact({ sheet }: { sheet: CallSheet }) {
   );
 }
 
-export function CallSheetCard({ sheet, openTheirs = false }: { sheet: CallSheet; openTheirs?: boolean }) {
+/** `whose`: whose its numbers and cases are, when letters of it are filed for someone of the household (`people.ts`). */
+export function CallSheetCard({ sheet, openTheirs = false, whose }: { sheet: CallSheet; openTheirs?: boolean; whose?: Whose }) {
   const drawer = usePartyDrawer();
   const headingId = `sheet-${sheet.party_id}`;
   return (
@@ -289,27 +314,27 @@ export function CallSheetCard({ sheet, openTheirs = false }: { sheet: CallSheet;
           <ul className="divide-y divide-line">
             {sheet.numbers.map((n) => (
               <li key={n.key}>
-                <NumberRow number={n} showLetter={Boolean(n.letter && n.letter.id !== sheet.last_letter?.id)} compactLetter />
+                <NumberRow number={n} showLetter={Boolean(n.letter && n.letter.id !== sheet.last_letter?.id)} compactLetter forName={whose?.filedFor(n.key)} />
               </li>
             ))}
           </ul>
         </div>
       ) : null}
-      {sheet.open_cases.map((found) => (
-        // as far from the contact lines above as the number list is
-        <div key={found.key} className="mt-3 rounded-lg bg-surface-2/70 px-3 pt-2">
-          <p className="eyebrow">Open case</p>
-          <p className="text-[13.5px] font-medium leading-5 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</p>
-          {found.next_item ? <NextStep item={found.next_item} /> : null}
-          <ul className="divide-y divide-line">
-            {found.references.map((ref) => (
-              <li key={ref.key}>
-                <NumberRow number={ref} showLetter={Boolean(ref.letter && ref.letter.id !== sheet.last_letter?.id)} compactLetter />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {sheet.open_cases.map((found) => {
+        const caseFor = whose?.filedFor(found.key);
+        return (
+          // as far from the contact lines above as the number list is
+          <div key={found.key} className="mt-3 rounded-lg bg-surface-2/70 px-3 pt-2">
+            <p className="eyebrow">Open case</p>
+            <p className="text-[13.5px] font-medium leading-5 text-ink [overflow-wrap:anywhere]">{glueText(found.title)}</p>
+            {caseFor ? <PersonTag name={caseFor} className="mt-1 max-w-full" /> : null}
+            {found.next_item ? <NextStep item={found.next_item} /> : null}
+            <ul className="divide-y divide-line">
+              <References found={found} whose={whose} shownLetter={sheet.last_letter?.id} />
+            </ul>
+          </div>
+        );
+      })}
       {sheet.their_numbers.length ? (
         // open when a search matched only here, so the person sees why the sheet was found
         <details key={openTheirs ? "open" : "closed"} open={openTheirs} className="group mt-3 border-t border-line pt-2">

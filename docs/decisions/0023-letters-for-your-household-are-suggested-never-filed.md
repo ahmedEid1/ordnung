@@ -1,6 +1,7 @@
 # ADR 0023 — Letters for your household are suggested, never filed
 
-**Status:** accepted · **Date:** 2026-10-27
+**Status:** accepted · **Date:** 2026-10-27 · **Amended by:** [ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md)
+(Ask, the Ideas, My numbers and the reminders say whose a letter is; Ask and the weekly review follow *For taxes*)
 
 ## Context
 Many people get letters for a partner or their children: the same address, often the same surname. Since the
@@ -43,8 +44,11 @@ letter for someone.
 8. **Letters:** a filing of a letter in the trash is dormant and returns with the letter; deleting a letter for
    good removes its filing in the same transaction; the daily check removes filings of letters that no longer
    exist at all (left by a computer still on 0.2.0).
-9. **Never seen by Claude.** Nothing of the household goes into a prompt, a draft request, Ask or a
-   notification. Dates, reminders, numbers, Ask and Ideas keep treating every letter as the person's.
+9. **What reaches Claude** ([ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md)). The people's names as typed
+   and which letters are filed for whom, through Ask's tools only and only when the person asks, private letters
+   left out; a name in the title of an Idea about letters filed for that person. Never who signs, "mine" or a
+   suggestion, and no prompt or draft request reads the household itself. As first decided here, nothing of it
+   reached Claude, and dates, reminders, numbers, Ask and the Ideas treated every letter as the person's.
 
 **Where it shows.** Settings → Profile & address → *Your household* (computer only). On a letter's page, after
 *Addressed to …*: *For Alex Rivera* or *For you* with *Change* (*Who is this letter for?*), or the question
@@ -65,31 +69,34 @@ is for on …"), `PUT /api/household` is computer-only ("household edits").
   the synced versions and backups that carry the row and keeps it untouched (its scrub deletes only its own
   local keys); it just doesn't show it. A table or a column would raise the schema version, and 0.2.0 would
   refuse the newer database in hand-off sync and in a backup.
-- **Ask's inputs don't change.** `Document`, the profile and Ask's tools stay as they are: Ask's ledger
-  fingerprint and the store's ledger token read no `household` row, so recorded answers still replay.
-  `models.py` is a benchmark digest file, so the household's models live in `secretary/household.py` and
+- **`Document` and the profile don't change.** The household's models live in `secretary/household.py` and
   `api/routes/household.py`, and the letter's page answers a route-local `LetterDetail` with `household` (a
-  `LetterFor`: `filed_for`, `mine`, `suggested`, `add`).
+  `LetterFor`: `filed_for`, `mine`, `suggested`, `add`). As first decided here, Ask's ledger fingerprint and the
+  store's ledger token read no `household` row; since ADR 0025 they read what Ask may see of it, and only when
+  there is a household, so a ledger without one hashes as before and its recorded answers still replay.
 - **Writes publish `profile.updated`.** The live events are listed in `models.py`, so the household refreshes
   with the profile instead of an event of its own.
 - **The *For taxes* choices follow the same rule:** the person's own choices about letters live in `meta`
-  (`tax_choices`), not in `models.py`, and Ask keeps seeing Claude's own mark
-  ([architecture](../architecture.md#data-model-simplified)).
+  (`tax_choices`), not in `Document` ([architecture](../architecture.md#data-model-simplified)); since ADR 0025,
+  Ask and the weekly review follow them for the letters they may read.
 
 ## Rejected or deferred
 - **Filing by itself, with an Undo.** Silent, and a wrong guess takes a letter out of the person's own view.
 - **Asking Claude who a letter is for.** A model call per letter, open to injection; the reading's addressee
   is already there.
-- **Ask knowing the household, My numbers' "About" groups, Ideas or reminders naming a person.** They change
-  what Claude is given or Ask's tools, so their recordings would stop replaying; they wait for a paid
-  recording.
-- **Filters on Timeline, Letters or the Tax year page, a ZIP per person, Today's "See X's dates" and *Write in
-  X's name* for a letter that answers none.** Left out to keep the step small.
+- **Ask knowing the household, My numbers' "About" groups, Ideas or reminders naming a person.** They changed
+  what Claude is given or Ask's tools, so they waited for a new recording; built in
+  [ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md).
+- **A *Whose letters* filter on the Timeline, Letters or the Tax year page, a ZIP per person, Today's "See X's
+  dates" and *Write in X's name* for a letter that answers none.** The Inbox's *Whose letters* finds a person's
+  letters, Today and the Timeline say whose a date is, and a draft goes out in the name on the first line of its
+  *From* (SPEC § 2, *Decided not to build*).
 - **A table or a column**, and **a new live event**: see above.
 
 ## Consequences and known limits
-- A letter filed for someone is still the person's for everything Ordnung counts: its dates, reminders and
-  numbers, and Ask and the Ideas treat it as theirs (README, Limitations).
+- A letter filed for someone is still the person's to act on: its dates and reminders count as theirs, though
+  Today, the Timeline and reminders *With details* say whose it is, and since ADR 0025 its numbers are listed under that
+  person and Ask and the Ideas say whose it is (README, Limitations).
 - A suggestion can be wrong; it is only a question. Similar names ("Kim" and "Kim Rivera") are allowed, but a
   letter addressed to either then gets no suggestion.
 - The household has at most 12 people, each name at most 120 characters; one `PATCH` files at most 1,000

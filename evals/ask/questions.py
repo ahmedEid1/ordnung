@@ -36,6 +36,9 @@ from evals.ask.ledger import TODAY
 MANIFEST = Path(__file__).resolve().parents[2] / "src" / "ordnung" / "demo" / "samples" / "manifest.json"
 
 Category = Literal["deadline", "payment", "contract", "cross_letter", "unanswerable"]
+#: The kind of value a question asks for: a date, an amount, a number (one of the person's identifiers). An
+#: answer that says the records hold nothing on it states none of that kind first (:func:`evals.ask.score.abstains`).
+ValueKind = Literal["date", "amount", "number"]
 Source = Literal["template", "paraphrase", "hand"]
 CATEGORIES: tuple[Category, ...] = ("deadline", "payment", "contract", "cross_letter", "unanswerable")
 
@@ -49,6 +52,16 @@ class Gold:
     letters: tuple[str, ...] = ()
     related: tuple[str, ...] = ()
 
+    @property
+    def asks(self) -> tuple[ValueKind, ...]:
+        """What a question with this gold asks for: a date when it has gold dates, an amount when it has amounts."""
+        kinds: list[ValueKind] = []
+        if self.dates:
+            kinds.append("date")
+        if self.amounts:
+            kinds.append("amount")
+        return tuple(kinds)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "dates": [day.isoformat() for day in self.dates],
@@ -60,7 +73,8 @@ class Gold:
 
 @dataclass(frozen=True)
 class Question:
-    """One benchmark question (``gold`` is ``None`` for an unanswerable one)."""
+    """One benchmark question (``gold`` is ``None`` for an unanswerable one). ``asks``: the kinds of value it asks
+    for — its gold's (:attr:`Gold.asks`), or, unanswerable, written next to it (:data:`UNANSWERABLE_ASKS`)."""
 
     id: str
     category: Category
@@ -68,10 +82,13 @@ class Question:
     gold: Gold | None
     source: Source
     cluster: str = ""
+    asks: tuple[ValueKind, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.cluster:
             object.__setattr__(self, "cluster", self.id)
+        if not self.asks and self.gold is not None:
+            object.__setattr__(self, "asks", self.gold.asks)
 
 
 @dataclass(frozen=True)
@@ -324,9 +341,25 @@ UNANSWERABLE: tuple[tuple[str, str], ...] = (
 )
 """Things Sam's sample life has no record of (checked against the truth by a test)."""
 
+#: What each of :data:`UNANSWERABLE` asks for: an answer that says the records hold none states no value of that
+#: kind in its first paragraph (one of another kind is no answer to the question).
+UNANSWERABLE_ASKS: dict[str, tuple[ValueKind, ...]] = {
+    "car-insurance": ("date",),
+    "gas-bill": ("amount",),
+    "dog-tax": ("date",),
+    "kindergeld": ("date",),
+    "netflix": ("date", "amount"),
+    "dr-mueller": ("date",),
+    "bafoeg": ("amount",),
+    "driving-licence": ("date",),
+}
+
 
 def unanswerable_questions() -> list[Question]:
-    return [Question(f"none-{key}", "unanswerable", text, None, "hand") for key, text in UNANSWERABLE]
+    return [
+        Question(f"none-{key}", "unanswerable", text, None, "hand", asks=UNANSWERABLE_ASKS[key])
+        for key, text in UNANSWERABLE
+    ]
 
 
 #: Hand-written paraphrases: (template question id, text). Their gold is the template's.

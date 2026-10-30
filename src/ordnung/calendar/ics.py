@@ -4,10 +4,11 @@
   written in the person's time zone (with its VTIMEZONE). To-dos of letters with scam signs are left
   out, and so are invoice payments a later payment reminder took over (the reminder's is the one).
   The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
-  person's confirmation; the description says what to do, what happens otherwise, why this date and
-  who it is with, and that it is not legal advice.
+  person's confirmation; a to-do of a letter filed for someone of the household names them after the
+  symbol ("⌛ Alex Rivera: Passport expires", ADR 0023). The description says what to do, what happens
+  otherwise, why this date and who it is with, and that it is not legal advice.
 * For contracts with a renewal decision: a "post your cancellation" event on the send-by day and a
-  "cancellation must arrive" event on the cancel-by day.
+  "cancellation must arrive" event on the cancel-by day (never named: the decision is the person's).
 * VALARMs from ``Profile.reminder_days`` for the item's kind (09:00 local on the day for all-day
   events), plus one on the send-by day of a letter that must be posted before its deadline.
 * UIDs are stable (``<id>@ordnung.local``) so re-importing updates events instead of duplicating
@@ -162,9 +163,11 @@ def _set_all_day(event: Event, day: date) -> None:
     event.add("transp", "TRANSPARENT")
 
 
-def _item_summary(item: Item) -> str:
+def _item_summary(item: Item, name: str | None = None) -> str:
+    """``⌛ Passport expires``; with the name of the person of the household the to-do's letter is filed for,
+    ``⌛ Alex Rivera: Passport expires``; ``⚠ check: `` or ``✓ `` in front."""
     symbol = KIND_SYMBOLS.get(item.kind, "•")
-    text = f"{symbol} {item.title}"
+    text = f"{symbol} {name}: {item.title}" if name else f"{symbol} {item.title}"
     if item.status not in OPEN_STATUSES:
         return DONE_PREFIX + text
     return CHECK_PREFIX + text if needs_check(item) else text
@@ -205,7 +208,8 @@ def item_event(ledger: Ledger, item: Item, profile: Profile) -> Event:
         raise ValueError("This to-do has no date to add to a calendar.")
     send = parse_day(item.send_by)
     send_by = send if send is not None and send < due else None
-    summary = _item_summary(item)
+    member = ledger.member_of(item.doc_id)
+    summary = _item_summary(item, member.name if member else None)
     event = _base_event(
         _uid(item.id), summary, _item_description(ledger, item, due, send_by), _stamp(item.updated_at)
     )

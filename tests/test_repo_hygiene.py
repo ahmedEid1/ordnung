@@ -280,6 +280,20 @@ def test_contributors_get_the_node_versions_the_readme_requires() -> None:
         assert setup.get("node-version-file") == ".nvmrc" or str(setup.get("node-version")) == nvmrc, setup
 
 
+def test_contributors_learn_that_the_browser_checks_want_the_node_axe_asks_for() -> None:
+    """`@axe-core/playwright`, the accessibility checker of `make e2e` and `make ui-audit`, asks for a newer
+    Node than the web app's own range: README and CONTRIBUTING say so next to that range."""
+    lock = json.loads(_text("web/package-lock.json"))
+    axe = lock["packages"]["node_modules/@axe-core/playwright"]
+    assert axe["engines"] == {"node": ">=22.12.0"}, (
+        "a new axe: say what Node it asks for in README and CONTRIBUTING"
+    )
+    readme = " ".join(_text("README.md").split())
+    contributing = " ".join(_text("CONTRIBUTING.md").split())
+    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in readme
+    assert "Use 22.12+ for the browser checks (`make e2e`, `make ui-audit`)" in contributing
+
+
 def test_dependabot_updates_the_actions_and_the_web_packages_and_leaves_python_to_make_constraints() -> None:
     """No ``labels``: Dependabot then adds its own (``dependencies`` with ``github_actions`` or ``javascript``) and
     creates them where they are missing, while labels it is told to use must exist first. The repository had

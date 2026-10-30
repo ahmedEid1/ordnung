@@ -359,17 +359,31 @@ def test_schema_1_is_the_as_recorded_file_and_schema_2_adds_to_it(dev_run: RunRe
     assert list(old) == ["benchmark", "date", "model", "prompts", "notes", "summary", "questions", "attacks"]
     assert (new["schema"], new["set"], new["repeat"]) == (2, "dev", 1)
     assert new["label"].startswith("development set")
-    # every schema-1 number is in schema 2, under its name or its new name
+    # every schema-1 number is in schema 2, under its name or its new name: schema 1's harmful (an open date called
+    # passed) is called_passed, and harmful is the one definition (which counts every called-passed answer too)
     for key, value in old["summary"].items():
-        renamed = {"citation_precision": "citation_right_letter"}.get(key, key)
+        renamed = {
+            "citation_precision": "citation_right_letter",
+            "harmful": "called_passed",
+            "harmful_raw": "called_passed_raw",
+        }.get(key, key)
         if key == "citation_support":
             assert new["summary"]["citation_precision"] == value == new["summary"]["citation_support"]
         assert new["summary"][renamed] == value
     assert [q["scores"] for q in new["questions"]] == [q["scores"] for q in old["questions"]]
     attack = new["attacks"][0]
     assert attack["strict"]["letter"] == attack["letter"]
+    assert new["summary"]["harmful"]["k"] >= new["summary"]["called_passed"]["k"]
+    assert new["summary"]["harmful"]["n"] == new["summary"]["called_passed"]["n"]
     page, before = render(new), render(old)
-    assert "**Development set:**" in page and "Strict correctness" in page and "Harmful answers" in page
+    assert "**Development set:**" in page and "Strict correctness" in page
+    # one Harmful row, with the one definition's words, and its called-passed part under it
+    assert page.count("| **Harmful** — ") == 1 and "Harmful answers" not in page
+    assert (
+        "| **Harmful** — final answers that call a date still open on Mon 28 Sep 2026 passed, or state a later "
+        "date, a wrong amount or a household member's value as Ordnung's answer |"
+    ) in page
+    assert "| … of which call a date still open on Mon 28 Sep 2026 passed |" in page
     # a schema-1 payload renders as it always did: no strict rows, the same citation rows
     assert "## Strict scores" not in before and "Development set" not in before
     citation_rows = [line for line in before.splitlines() if "itation" in line and line.startswith("|")]
@@ -452,17 +466,6 @@ def _harness() -> Any:
 
 
 needs_harness = pytest.mark.skipif(_harness() is None, reason="evals/harness.py (EV3) is not merged yet")
-
-
-@pytest.mark.skipif(_harness() is not None, reason="evals/harness.py (EV3) is merged")
-def test_without_the_harness_repeats_and_budgets_are_refused(tmp_path: Path) -> None:
-    for config in (
-        Config(repeat=2),
-        Config(max_cost_usd=1.0, live=True),
-        Config(wait_on_limit_hours=1.0, live=True),
-    ):
-        with pytest.raises(BenchmarkError, match=r"evals/harness\.py"):
-            run(config, work_dir=tmp_path)
 
 
 ONE = ["deadline-steuerbescheid_2025-0"]

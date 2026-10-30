@@ -498,20 +498,21 @@ export function remindersBackupStates({ group = "settings", prefix = "settings" 
   add({
     id: "data-backup-dialog-left-out",
     route: DATA,
-    how: "open the backup dialog while the originals' folder is a link to another drive (GET /api/backup answered by the audit)",
+    how: "open the backup dialog while the originals' folder is a link to another drive (GET /api/backup answered by the audit: the server's answer with these links left out, and the demo's count and size without the originals' folder)",
     description: "The backup dialog names what it leaves out: links are never followed.",
     run: async (c) => {
-      await fakeApi(c.page, "GET", /^\/api\/backup$/, async () => ({
-        json: {
-          letters: 22,
-          files: 0,
-          bytes: 2_400_000,
-          file_name: "ordnung-backup-2026-09-28.ordnung-backup",
-          left_out: ["files", "drafts/Briefe-an-die-Krankenversicherung-Widerspruchsverfahren-2026"],
-          min_passphrase: 12,
-          format_version: 1,
-        },
-      }));
+      // the server's own answer, so a field the app reads (`last_copy`) is never missing, with what a linked
+      // originals' folder changes: it is left out, and so are its files from the count and the size (the
+      // demo's other files: 49, and 9,079,541 bytes with the database, as the backup's `estimate` counts them)
+      await fakeApi(
+        c.page,
+        "GET",
+        /^\/api\/backup$/,
+        async (_req, original) => ({
+          json: { ...original, files: 49, bytes: 9_079_541, left_out: ["files", "drafts/Briefe-an-die-Krankenversicherung-Widerspruchsverfahren-2026"] },
+        }),
+        { passthrough: true },
+      );
       await openBackupDialog(c);
     },
   });

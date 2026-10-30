@@ -20,7 +20,7 @@ import hashlib
 import json
 import logging
 import re
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
@@ -49,6 +49,7 @@ from ordnung.models import (
     SuggestionRef,
 )
 from ordnung.rules import list_rules
+from ordnung.secretary.tax_choice import for_taxes
 from ordnung.secretary.triggers import Ledger, action_day, is_overdue, parse_day
 
 log = logging.getLogger(__name__)
@@ -362,7 +363,9 @@ def _contract_row(ledger: Ledger, contract: Contract) -> dict[str, Any]:
     }
 
 
-def _document_row(doc: Document) -> dict[str, Any]:
+def _document_row(doc: Document, choices: Mapping[str, bool]) -> dict[str, Any]:
+    """A recent letter; ``tax_relevant`` follows the person's *For taxes* choice, else Claude's mark
+    (:func:`~ordnung.secretary.tax_choice.for_taxes`), as on the Tax year page."""
     return {
         "id": doc.id,
         "kind": doc.kind,
@@ -372,7 +375,7 @@ def _document_row(doc: Document) -> dict[str, Any]:
         "area": doc.area,
         "summary": doc.summary,
         "warnings": list(doc.warnings),
-        "tax_relevant": doc.tax_relevant,
+        "tax_relevant": for_taxes(doc, choices),
     }
 
 
@@ -413,7 +416,7 @@ def build_snapshot(store: Store, today: date) -> Snapshot:
     dismissed_titles = sorted({idea.title for idea in ideas if idea.status in ("dismissed", "done")})
     item_rows = [_item_row(ledger, item) for item in items[:MAX_ITEMS]]
     contract_rows = [_contract_row(ledger, contract) for contract in contracts]
-    document_rows = [_document_row(doc) for doc in documents]
+    document_rows = [_document_row(doc, ledger.tax_choices) for doc in documents]
     party_rows = [
         {"id": pid, "name": ledger.parties[pid].name, "kind": ledger.parties[pid].kind} for pid in party_ids
     ]

@@ -862,5 +862,53 @@
       }
     ],
     "expect": "8f0cd0287f260c43"
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in a letter takes 's",
+    "name": "Alex Rivera",
+    "expect": "Alex Rivera's"
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in s takes 's too",
+    "name": "Hans",
+    "expect": "Hans's"
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in x takes 's too",
+    "name": "Max",
+    "expect": "Max's"
+  },
+  {
+    "kind": "possessive",
+    "case": "umlauts are letters",
+    "name": "Jürgen Müller",
+    "expect": "Jürgen Müller's"
+  },
+  {
+    "kind": "possessive",
+    "case": "an accented last letter is a letter",
+    "name": "José",
+    "expect": "José's"
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in a digit takes none",
+    "name": "Kim 2",
+    "expect": null
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in a bracket takes none",
+    "name": "Alex (Sohn)",
+    "expect": null
+  },
+  {
+    "kind": "possessive",
+    "case": "a name ending in a full stop takes none",
+    "name": "Alex Rivera Jr.",
+    "expect": null
   }
 ]

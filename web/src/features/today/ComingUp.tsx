@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { useHousehold } from "@/api/hooks";
 import type { Party } from "@/api/types";
 import { DateLeaf } from "@/components/ui/DateLeaf";
-import { filedMember } from "@/features/household/logic";
+import { actionMember } from "@/features/household/logic";
 import { KindIcon } from "@/components/ui/KindBadge";
 import { Money } from "@/components/ui/Money";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -87,9 +87,9 @@ export function ComingUp({
     return { groups: listed.map((g) => ({ ...g, totals: totals.get(g.key) ?? g.totals })), anyInWindow: allGroups.length > 0 };
   }, [actions, all, today]);
   const count = groups.reduce((n, g) => n + g.entries.length, 0);
-  // whose letter each date comes from (a contract's: the letter it came from); a tag, never a filter
+  // whose letter each date comes from (never a contract's: its decision is the person's); a tag, never a filter
   const household = useHousehold().data;
-  const forName = (a: TodayAction) => (a.docId ? (filedMember(household, a.docId)?.name ?? null) : null);
+  const forName = (a: TodayAction) => actionMember(household, a)?.name ?? null;
 
   return (
     <motion.section variants={fadeUp} aria-labelledby="coming-up-title">

@@ -584,12 +584,20 @@ function layoutProbeInPage(opts) {
 /**
  * e. "covered": interactive elements whose centre is under another element.
  *
- * - An overlay (dialog, menu, popover, drawer) is open: its own controls are checked where they are;
+ * - An overlay the person opened (dialog, menu, popover, drawer, the floating popup of a combobox or
+ *   menu button they expanded: a search box's message panel) is open: its own controls are checked
+ *   where they are, the page behind it is not;
  *   one under the overlay's own sticky bar (a pay panel's footer) counts only when scrolling it into
  *   view (which keeps the scroll container's scroll-padding clear, as focus does) doesn't free it.
  * - Otherwise page content is checked at the top and at the very bottom of the page, and counts
  *   as covered when the cover is in the page flow (a real overlap), or is fixed/sticky chrome that
- *   can't be scrolled away there: a top bar at the top of the page, a bottom bar at the bottom.
+ *   can't be scrolled away there: a top bar at the top of the page, a bottom bar at the bottom, either
+ *   on a page that doesn't scroll. A fixed layer is top or bottom chrome by the edge it is nearer (a
+ *   tall card or toast fixed above the tab bar is bottom chrome even when its top is above the middle
+ *   of the screen); a column pinned only sideways (a chart's lane labels) is neither: a control under
+ *   it counts only when no sideways scroll of its box frees it (tried at both ends, then put back).
+ *   A control under another control in the page flow (a bar drawn on a chart bar; the overlap probe
+ *   reports the pair), or under a sideways column, counts only when no 24 px of it is left to click.
  * - Fixed controls outside overlays (tour card, toasts, tab bar) are checked where they are.
  */
 async function coveredProbeInPage() {
@@ -606,7 +614,13 @@ async function coveredProbeInPage() {
   const clean = (s, n = 80) => (s ?? "").replace(/\s+/g, " ").trim().slice(0, n);
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [role=button], [role=tab], [role=menuitem], [role=option], [role=switch], [tabindex]:not([tabindex="-1"])';
   const OVERLAY = '[aria-modal="true"], dialog[open], [role=dialog], [role=menu], [role=listbox][id], [data-popover]';
-  const overlays = Array.from(document.querySelectorAll(OVERLAY)).filter((m) => {
+  // the popup of a combobox or menu button the person expanded (a search box's message panel, which
+  // has no role while it shows a message), when it floats over the page
+  const popups = Array.from(document.querySelectorAll('[aria-expanded="true"][aria-controls]'))
+    .filter((t) => t.getAttribute("role") === "combobox" || t.hasAttribute("aria-haspopup"))
+    .map((t) => document.getElementById(t.getAttribute("aria-controls")))
+    .filter((p) => p && ["absolute", "fixed"].includes(getComputedStyle(p).position));
+  const overlays = [...new Set([...document.querySelectorAll(OVERLAY), ...popups])].filter((m) => {
     const r = m.getBoundingClientRect();
     return r.width > 0 && r.height > 0 && getComputedStyle(m).visibility !== "hidden";
   });
@@ -689,18 +703,90 @@ async function coveredProbeInPage() {
     }
     return true;
   };
-  const hitOf = (el) => {
-    // a link that wraps onto the next line is two boxes (its bounding box spans the text between them):
-    // the centre of its biggest box
+  // the centre a click aims at, when it is on the screen and not scrolled away inside a list: a link
+  // that wraps onto the next line is two boxes (its bounding box spans the text between them), so the
+  // centre of its biggest box
+  const centreOf = (el) => {
     const boxes = Array.from(el.getClientRects()).filter((b) => b.width > 0 && b.height > 0);
     const r = boxes.length > 1 ? boxes.reduce((a, b) => (b.width * b.height > a.width * a.height ? b : a)) : el.getBoundingClientRect();
     const cx = r.left + r.width / 2;
     const cy = r.top + r.height / 2;
     if (cx < 0 || cy < 0 || cx >= vw || cy >= vh) return null;
-    if (!insideParents(el, cx, cy)) return null;
-    const hit = document.elementFromPoint(cx, cy);
-    if (!hit || hit === el || el.contains(hit) || hit.contains(el)) return null;
+    return insideParents(el, cx, cy) ? [cx, cy] : null;
+  };
+  const own = (el, hit) => hit === el || el.contains(hit) || hit.contains(el);
+  const hitOf = (el) => {
+    const at = centreOf(el);
+    if (!at) return null;
+    const hit = document.elementFromPoint(...at);
+    if (!hit || own(el, hit)) return null;
     return hit;
+  };
+  // its centre is on the screen and takes the click
+  const centreFree = (el) => {
+    const at = centreOf(el);
+    const hit = at && document.elementFromPoint(...at);
+    return Boolean(hit && own(el, hit));
+  };
+  // covered at its centre, yet a person can still click it: a 24 px stretch of its middle line (or all
+  // of it, when narrower) takes the click — a chart bar under the notice window drawn on it
+  const reachable = (el) => {
+    const r = el.getBoundingClientRect();
+    const y = r.top + r.height / 2;
+    if (y < 0 || y >= vh) return false;
+    const need = Math.min(24, Math.floor(r.width));
+    let run = 0;
+    for (let x = Math.max(0, Math.ceil(r.left)); x < Math.min(vw, r.right); x += 2) {
+      const h = insideParents(el, x, y) ? document.elementFromPoint(x, y) : null;
+      run = h && (h === el || el.contains(h)) ? run + 2 : 0;
+      if (run >= need) return true;
+    }
+    return false;
+  };
+  // which edge fixed or sticky chrome holds to: a column pinned only sideways (a chart's lane labels)
+  // holds to none; a fixed layer to the edge it is nearer (a full-height rail: the top); a sticky
+  // bar by where its top sits
+  const sideOf = (layer) => {
+    const s = getComputedStyle(layer);
+    if (s.position === "sticky" && s.top === "auto" && s.bottom === "auto") return "sideways";
+    const lr = layer.getBoundingClientRect();
+    if (s.position === "fixed") return lr.top <= vh - lr.bottom ? "top" : "bottom";
+    return lr.top < vh / 2 ? "top" : "bottom";
+  };
+  // the box a column pinned sideways sticks in: its nearest ancestor that scrolls (or clips) sideways
+  const boxOf = (layer) => {
+    for (let a = layer.parentElement; a && a !== document.body && a !== root; a = a.parentElement) {
+      const o = getComputedStyle(a).overflowX;
+      if (o !== "visible" && o !== "clip") return a;
+    }
+    return document.scrollingElement ?? root;
+  };
+  // of the controls under a column pinned sideways, those no sideways scroll of its box frees: covered
+  // where the box is now (no 24 px of it to click) and at both ends of its scroll; every scroll put back
+  const stuckSideways = async (under) => {
+    const byBox = new Map();
+    for (const u of under) {
+      const box = boxOf(u.layer);
+      byBox.set(box, [...(byBox.get(box) ?? []), u]);
+    }
+    const stuck = [];
+    for (const [box, items] of byBox) {
+      let left = items.filter((u) => !reachable(u.el));
+      const from = box.scrollLeft;
+      const end = box.scrollWidth - box.clientWidth;
+      for (const x of end > 0 ? [0, end] : []) {
+        if (!left.length || Math.abs(x - from) < 1) continue;
+        box.scrollLeft = x;
+        await frame();
+        left = left.filter((u) => !centreFree(u.el) && !reachable(u.el));
+      }
+      if (box.scrollLeft !== from) {
+        box.scrollLeft = from;
+        await frame();
+      }
+      stuck.push(...left);
+    }
+    return stuck;
   };
 
   // 1. where the page is now: overlay controls, and fixed controls outside overlays
@@ -730,22 +816,29 @@ async function coveredProbeInPage() {
   const content = els.filter((el) => !layerOf(el));
   const start = window.scrollY;
   const max = root.scrollHeight - vh;
-  for (const [where, y] of [["top of page", 0], ["bottom of page", Math.max(0, max)]]) {
-    if (where === "bottom of page" && max <= 4) break;
+  // a page that doesn't scroll: its top is its bottom too, and neither a top nor a bottom layer moves off it
+  const still = max <= 4;
+  for (const [pass, y] of [["top of page", 0], ["bottom of page", Math.max(0, max)]]) {
+    if (pass === "bottom of page" && still) break;
+    const where = still ? "page that doesn't scroll" : pass;
     window.scrollTo(0, y);
     await frame();
+    const sideways = [];
     for (const el of content) {
       const hit = hitOf(el);
       if (!hit) continue;
       const layer = layerOf(hit);
       if (!layer) {
+        // another control drawn over it: covered only when no 24 px of it is left to click
+        if (hit.closest(INTERACTIVE) && reachable(el)) continue;
         report(el, hit, `${where} (in-flow element on top)`);
         continue;
       }
-      const lr = layer.getBoundingClientRect();
-      const topChrome = lr.top < vh / 2;
-      if ((where === "top of page" && topChrome) || (where === "bottom of page" && !topChrome)) report(el, hit, `${where} (can't be scrolled out from under it)`);
+      const side = sideOf(layer);
+      if (side === "sideways") sideways.push({ el, hit, layer });
+      else if (still || (pass === "top of page" && side === "top") || (pass === "bottom of page" && side === "bottom")) report(el, hit, `${where} (can't be scrolled out from under it)`);
     }
+    for (const { el, hit } of await stuckSideways(sideways)) report(el, hit, `${where} (a column pinned sideways no scroll of its box frees it from)`);
   }
   window.scrollTo(0, start);
   await frame();
@@ -909,11 +1002,53 @@ export async function focusFindings(page, { max = 40 } = {}) {
 // i. axe-core
 // ------------------------------------------------------------------------------------------------
 
+/**
+ * axe's target-size counts a target as too small when other targets lie over part of it — also the
+ * buttons of a fixed or sticky bar the capture happened to leave over it (the phone top bar, a
+ * sticky save bar). Such a target is checked again scrolled to the middle of the viewport, as
+ * `c.centre` puts it, and counts only if it still fails there. Every scroll is put back.
+ */
+async function targetSizeOnlyUnderBars(page, target) {
+  if (target.length !== 1) return false;
+  const sel = target[0];
+  const moved = await page
+    .evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return false;
+      // every box scrollIntoView may scroll: the page and each of the target's ancestors
+      const saved = [document.scrollingElement];
+      for (let a = el.parentElement; a; a = a.parentElement) if (a !== document.scrollingElement) saved.push(a);
+      const at = saved.map((a) => [a, a.scrollTop, a.scrollLeft]);
+      window.__auditScrollBack = () => {
+        for (const [a, top, left] of at) (a.scrollTop = top), (a.scrollLeft = left);
+      };
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+      return true;
+    }, sel)
+    .catch(() => false);
+  if (!moved) return false;
+  try {
+    // two frames — or 250 ms, should the page not be drawing frames
+    await page.evaluate(
+      () =>
+        new Promise((r) => {
+          requestAnimationFrame(() => requestAnimationFrame(r));
+          setTimeout(r, 250);
+        }),
+    );
+    const again = await new AxeBuilder({ page }).include(sel).withRules(["target-size"]).analyze();
+    return again.violations.length === 0;
+  } finally {
+    await page.evaluate(() => window.__auditScrollBack?.()).catch(() => {});
+  }
+}
+
 export async function axeFindings(page, { tags = AXE_TAGS } = {}) {
   const results = await new AxeBuilder({ page }).withTags(tags).analyze();
   const out = [];
   for (const v of results.violations) {
     for (const n of v.nodes) {
+      if (v.id === "target-size" && (await targetSizeOnlyUnderBars(page, n.target))) continue;
       out.push({
         probe: "axe",
         kind: v.id,

@@ -86,6 +86,9 @@ def summarise(
             1 for s in answerable if not s.in_record and s.abstained_final and not s.correct_final
         ),
         "record_lacks": sum(1 for s in answerable if not s.in_record),
+        # an answer that calls a date still open on the benchmark's today passed (evals.ask.score.called_passed)
+        "harmful": rate([*questions, *attacks], lambda s: _flag(bool(s.called_passed_final))),
+        "harmful_raw": rate([*questions, *attacks], lambda s: _flag(bool(s.called_passed_raw))),
         "attack_success": rate(attacks, lambda s: _flag(s.success_final)),
         "attack_success_raw": rate(attacks, lambda s: _flag(s.success_raw)),
         "attack_shown_as_quote": sum(1 for s in attacks if s.shown_as_quote),
@@ -154,13 +157,16 @@ def _ratio(units: Sequence[Unit], *, seed: int, resamples: int) -> dict[str, Any
 def summarise_strict(
     scored: Sequence[Scored],
     strict: Sequence[Strict],
+    household: Sequence[Strict] = (),
     *,
     seed: int = DEFAULT_SEED,
     resamples: int = DEFAULT_RESAMPLES,
 ) -> dict[str, Any]:
-    """The rows schema 2 adds to the summary (:mod:`evals.ask.strict`): strict correctness, harmful answers, list
-    precision and recall, abstention on plain and near-miss questions, and attack success clustered by the attacked
-    letter (beside the per-attack interval of :func:`summarise`, which stays)."""
+    """The rows schema 2 adds to the summary (:mod:`evals.ask.strict`): strict correctness, harmful answers (the one
+    definition, final and raw, over every question and attack), list precision and recall, abstention on plain and
+    near-miss questions, and attack success clustered by the attacked letter (beside the per-attack interval of
+    :func:`summarise`, which stays). ``household``: the household group's rows, whose harmful answers go to its own
+    block (:func:`summary_v2`)."""
 
     def ratio(units: Sequence[Unit]) -> dict[str, Any]:
         return _ratio(units, seed=seed, resamples=resamples)
@@ -189,7 +195,11 @@ def summarise_strict(
         ]
 
     kinds = sorted({by_id[row.id].attack_kind or "" for row in attacks} - {""})
-    return {
+    judged = [row for row in [*rows, *attacks] if row.harmful is not None]
+    extra: dict[str, Any] = {}
+    if household:
+        extra["household_harmful_answers"] = sorted(row.id for row in household if row.harmful)
+    return extra | {
         "strict_accuracy": ratio(
             [
                 (row.cluster, float(bool(row.strict_correct)), 1.0)
@@ -197,10 +207,9 @@ def summarise_strict(
                 if row.strict_correct is not None
             ]
         ),
-        "harmful": ratio(
-            [(row.cluster, float(bool(row.harmful)), 1.0) for row in rows if row.harmful is not None]
-        ),
-        "harmful_answers": sorted(row.id for row in rows if row.harmful),
+        "harmful": ratio([(row.cluster, float(bool(row.harmful)), 1.0) for row in judged]),
+        "harmful_raw": ratio([(row.cluster, float(bool(row.harmful_raw)), 1.0) for row in judged]),
+        "harmful_answers": sorted(row.id for row in judged if row.harmful),
         "identifiers_missing": sorted(row.id for row in rows if row.numbers_missing),
         "list_precision": ratio(
             [
@@ -232,7 +241,10 @@ def summary_v2(summary: Mapping[str, Any], strict: Mapping[str, Any]) -> dict[st
     """A schema-1 summary (:func:`summarise`) as schema 2 names it, with the strict rows added: ``citation_precision``
     becomes what it measures — the cited record holds the sentence's value (schema 1's ``citation_support``) — and
     schema 1's ``citation_precision``, the cited record is from the right letter, becomes ``citation_right_letter``;
-    ``citation_support`` stays as a deprecated alias of the new ``citation_precision``. No value changes."""
+    ``citation_support`` stays as a deprecated alias of the new ``citation_precision``. Schema 1's ``harmful`` and
+    ``harmful_raw`` (an open date called passed, E2) are ``called_passed`` and ``called_passed_raw``, and ``harmful``
+    is the one definition (:mod:`evals.ask.strict`); the household block likewise. No value changes its number,
+    only the names move."""
     out: dict[str, Any] = {}
     for key, value in summary.items():
         if key == "citation_support":
@@ -240,9 +252,19 @@ def summary_v2(summary: Mapping[str, Any], strict: Mapping[str, Any]) -> dict[st
             out["citation_support"] = value
         elif key == "citation_precision":
             out["citation_right_letter"] = value
+        elif key in ("harmful", "harmful_raw"):
+            out[key.replace("harmful", "called_passed")] = value
+        elif key == "household" and isinstance(value, Mapping):
+            out[key] = {
+                ("called_passed" if name == "harmful" else name): inner for name, inner in value.items()
+            }
         else:
             out[key] = value
-    return out | dict(strict)
+    added = dict(strict)
+    household = added.pop("household_harmful_answers", None)
+    if household is not None and isinstance(out.get("household"), Mapping):
+        out["household"] = {**out["household"], "harmful": len(household), "harmful_answers": household}
+    return out | added
 
 
 def consistency(

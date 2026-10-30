@@ -98,7 +98,7 @@ To read your own letters, see [Install and run](#install-and-run).
 </tr>
 <tr>
 <td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag the letter, and its demand is never counted, listed or given a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
-<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.13's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both. Still open: axe's newer Label in Name check (WCAG 2.5.3) flags links and buttons whose name leaves out initials or a count they show.</td>
+<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
 </tr>
 <tr>
 <td><img src="docs/assets/pair-phone.png" alt="Pairing a phone: on the computer, a QR code and a pairing code; on the phone, once paired, two check words; on the computer, the same two words"><br><b>Your phone at home.</b> Settings → Phone shows a QR code for the phone's camera. Once the phone pairs, both screens show the same two words, so you know the phone that paired is yours. Then it opens Ordnung in its browser over your home Wi-Fi: photograph a letter, tick off a to-do, read what a letter means. Settings, backups and deleting stay on the computer.‡</td>
@@ -138,8 +138,9 @@ Applications folder, signed in, without a terminal · *encrypted backup* in one 
 or more unrelated words, or a password manager's random password with capital and small letters) with a
 restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them;
 mark or unmark any letter yourself, and the Inbox shows one year at a time · *your household* — file a letter
-for your partner or your child when Ordnung asks (it never files one by itself), find their letters, and reply
-in their name when they sign their own · *export letters* — your originals as files in folders by year and
+for your partner or your child when Ordnung asks (it never files one by itself), find their letters, see their
+numbers on My numbers and whose a date is on Today and the Timeline, and reply in their name when they sign
+their own · *export letters* — your originals as files in folders by year and
 sender, with a list for a spreadsheet · *moving checklist* — who needs your new address, from your contracts and letters, starting with the
 Bürgeramt's two weeks · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools.
 
@@ -239,8 +240,9 @@ on your home network: HTTPS with a certificate Ordnung makes on your computer, a
 paired with a one-time code, and never their requests for settings, backups or deletion; on a phone,
 *My numbers* and your profile's IBAN show only their last 4 characters (a letter shows what is printed on
 it, also one you write there that carries your IBAN). Settings show what each feature
-sends and a usage log per document; the address and IBAN in your profile, the people you list as your
-household and your *For taxes* choices are never put into a prompt.
+sends and a usage log per document; the address and IBAN in your profile are never put into a prompt. Your
+household's names reach Claude only in Ask, with which letters you filed for whom, and in the titles of Ideas
+about their letters; your *For taxes* choices only in Ask and *Weekly Ideas*, for letters you let Claude read.
 Files from a watched folder are sent to Claude only after you say so. Tesseract, if you install it to find
 photos by their words, runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture.
 *Export letters* puts your original letters, unencrypted, into a ZIP you save, only when you click it and never
@@ -308,7 +310,8 @@ Tesseract runs on the computer Ordnung runs on, one page at a time at low priori
 to read a picture. The words are kept for your letter search only, marked *not checked*, and are never shown,
 checked or sent to Claude
 ([ADR 0024](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)).
-`ORDNUNG_OCR=off` turns it off ([how](docs/privacy.md#words-in-pictures-optional)).
+Settings → Data → *Text in pictures* turns it off and deletes the words read before; `ORDNUNG_OCR=off` turns it
+off on one computer ([how](docs/privacy.md#words-in-pictures-optional)).
 
 **Without a terminal.** `ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
 your app menu on Linux, `Ordnung.app` in the Applications folder of your home folder on a Mac (Launchpad,
@@ -387,8 +390,9 @@ client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-fr
 and `--remove-ledger` takes that entry out again.
 
 **From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`). [CONTRIBUTING.md](CONTRIBUTING.md) has
-the checks CI runs and how to send a change:
+(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`; the accessibility checker that `make e2e`
+and `make ui-audit` use asks for 22.12+). [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and
+how to send a change:
 
 ```bash
 make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
@@ -550,9 +554,8 @@ More in [docs/architecture.md](docs/architecture.md).
   letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
   January payslip for the new year and misses a statement dated in June. Claude marks a letter for taxes when
   it reads it; *For taxes* on a letter's page changes that, for private letters too, and your choice stays when
-  the letter is read again. Ask, and the Ideas Claude suggests each week, still see Claude's own mark on each
-  letter (the tax-season Idea follows your choice). A letter still waiting under *From your folder — not read
-  yet* can't be marked, and *Export letters* with *Only letters for taxes* off takes all of a year's letters,
+  the letter is read again; Ask and the Ideas Claude suggests each week follow it. A letter still waiting under
+  *From your folder — not read yet* can't be marked, and *Export letters* with *Only letters for taxes* off takes all of a year's letters,
   private ones too, but not those: choose *Read these* or *Keep private* first. The ZIP *Export letters* saves
   isn't encrypted, and letters you wrote in Ordnung and their proofs of sending aren't in it.
 - The moving checklist knows only the organisations Ordnung has seen in your contracts and letters (a running
@@ -572,11 +575,15 @@ More in [docs/architecture.md](docs/architecture.md).
   attacker plants can still mislead it
   ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
-  is messier.
+  is messier. In the demo, which runs on the sample life's day, Ask can still take the computer's date for today
+  and call a date that is still ahead passed: the `claude` CLI tells the model the computer's date as well, and
+  Ask is told never to use it (the Ask benchmark, recorded a month after its own day, still has 6 such answers
+  in 73).
 - One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
   child) says so, you can file it for them once they are in your household, and a reply to it can go out in
-  their name, but its dates, reminders and numbers count as yours, and Ask and Ideas still treat a household
-  member's letters as yours. A phone you pair in Settings → Phone can use it in its browser over your home
+  their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and
+  the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the weekly
+  Ideas get carry no filing, though the titles of Ordnung's own Ideas name the person. A phone you pair in Settings → Phone can use it in its browser over your home
   Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
   and it can't change settings, back up or delete. There is no
   app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
@@ -605,7 +612,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - Ordnung can't see backups of the whole computer (Time Machine, File History), so the weekly review reminds
   you to back up even when you make those; a scheduled `ordnung backup` counts. Its disk-encryption check is a
   best effort on macOS (FileVault) and Linux (LUKS and encrypted folders such as eCryptfs; not fscrypt or
-  ZFS's own encryption). On Windows it doesn't check: see that BitLocker or Device encryption is on yourself.
+  ZFS's own encryption). On Windows it can't check: its row there says where to see that BitLocker or Device
+  encryption is on.
 - Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
   iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
   to the computer's one address, whether the page can open their camera and whether they keep the sign-in
@@ -630,8 +638,9 @@ More in [docs/architecture.md](docs/architecture.md).
   [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md),
   [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md),
   [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md),
-  [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)
-  and [0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)
+  [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md),
+  [0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)
+  and [0025 Ask and the Ideas say whose it is](docs/decisions/0025-ask-and-the-ideas-say-whose-it-is.md)
 
 ## How this was built
 

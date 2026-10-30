@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import io
 from pathlib import Path
 from typing import cast
@@ -428,3 +429,146 @@ def test_pdf_without_pages_is_rejected() -> None:
     empty = b"%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [] /Count 0 >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
     with pytest.raises(IntakeError, match="could not be opened"):
         normalise_upload(empty, "empty.pdf")
+
+
+# --------------------------------------------------------------------------------------------------
+# Outlook files (opened before intake: ordnung.ingest.outlook)
+# --------------------------------------------------------------------------------------------------
+
+#: An OLE compound file's first 8 bytes: an Outlook ``.msg`` or an older Office file.
+OLE = bytes.fromhex("D0CF11E0A1B11AE1")
+
+
+def test_the_unsupported_message_names_outlook_files(tmp_path: Path) -> None:
+    """Any file of a type Ordnung doesn't read (a ``.docx``, ``.zip``, ``.mp3``) is answered with the types it does
+    read, ``.msg`` among them since 0.3.0: one text, intake's, which the Outlook reader uses too."""
+    assert intake.UNSUPPORTED == (
+        "This file type is not supported. Please upload a PDF, a photo (JPEG, PNG, WEBP, HEIC) or a text or e-mail "
+        "file (.txt, .eml, .msg)."
+    )
+    for data, name in ((b"PK\x03\x04\x14\x00\x00\x00", "Antrag.docx"), (b"ID3\x04\x00\x00\x00", "memo.mp3")):
+        with pytest.raises(IntakeError) as caught:
+            normalise_upload(data, name)
+        assert str(caught.value) == intake.UNSUPPORTED
+    with pytest.raises(IntakeError) as caught:
+        _render(tmp_path, b"PK\x03\x04", "application/zip")
+    assert str(caught.value) == intake.UNSUPPORTED
+
+
+@pytest.mark.parametrize("name", ["Rechnung.msg", "Rechnung.pdf", "Bericht.doc", "scan"])
+def test_an_ole_file_is_named_before_any_pdf_test(name: str) -> None:
+    """An Outlook e-mail or older Office file that reaches intake unopened (every way in opens Outlook files first,
+    so none does today) is named for what it is — never taken for a PDF because an attached one sits in its first
+    kilobyte, never stored."""
+    holds_a_pdf = OLE + b"\0" * 504 + b"%PDF-1.7\n" + b"\0" * 2000
+    assert b"%PDF-" in holds_a_pdf[:1024]
+    for data in (holds_a_pdf, OLE + b"\0" * 1000):
+        with pytest.raises(IntakeError) as caught:
+            sniff_mime(data, name)
+        assert str(caught.value) == intake.OLE_UNOPENED
+        with pytest.raises(IntakeError) as caught:
+            normalise_upload(data, name)
+        assert str(caught.value) == intake.OLE_UNOPENED
+    assert intake.OLE_MAGIC == OLE
+    assert intake.OLE_UNOPENED == (
+        "This is an Outlook e-mail or an older Office file, and it wasn't opened on its way in. Add it with Add "
+        "letters or the watched folder, or save it as a PDF and add that."
+    )
+
+
+#: Production callers of intake that don't open an Outlook file first, each with why that is right.
+NO_OUTLOOK_HERE = {
+    "ordnung/ingest/pipeline.py:add_file": "add_file_result's wrapper: its callers open Outlook files first",
+    "ordnung/ingest/pipeline.py:_prepare_upload": "intake's own pipeline: its callers open Outlook files first",
+    "ordnung/ingest/pipeline.py:_add_attachment": "an e-mail's attachment: an attached Outlook file is listed, "
+    "never opened (ordnung.ingest.attachments)",
+    "ordnung/demo/tour.py:add_sample": "the demo's samples: none is an Outlook file",
+    "ordnung/demo/__init__.py:document_id": "the demo's samples: none is an Outlook file",
+}
+#: What a way in calls to hand intake a file.
+INTAKE_CALLS = frozenset({"add_file", "add_file_result", "normalise_upload"})
+REPO_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = REPO_DIR / "src" / "ordnung"
+Function = ast.FunctionDef | ast.AsyncFunctionDef
+
+
+def _called(node: ast.Call) -> str | None:
+    func = node.func
+    return func.id if isinstance(func, ast.Name) else func.attr if isinstance(func, ast.Attribute) else None
+
+
+class _Calls(ast.NodeVisitor):
+    """The calls each function makes itself (a nested function's are its own), by name and line."""
+
+    def __init__(self) -> None:
+        self.stack: list[str] = []
+        self.calls: dict[str, list[tuple[str, int]]] = {}
+
+    def _function(self, node: Function) -> None:
+        self.stack.append(node.name)
+        self.calls.setdefault(node.name, [])
+        self.generic_visit(node)
+        self.stack.pop()
+
+    visit_FunctionDef = _function
+    visit_AsyncFunctionDef = _function
+
+    def visit_Call(self, node: ast.Call) -> None:
+        name = _called(node)
+        if name == "to_thread" and node.args:  # asyncio.to_thread(as_email, …) calls as_email
+            first = node.args[0]
+            name = (
+                first.id
+                if isinstance(first, ast.Name)
+                else first.attr
+                if isinstance(first, ast.Attribute)
+                else name
+            )
+        if self.stack and name:
+            self.calls[self.stack[-1]].append((name, node.lineno))
+        self.generic_visit(node)
+
+
+def _ways_in() -> dict[str, tuple[list[int], list[int]]]:
+    """For each function of the code (``path:name``) that hands intake a file: the lines of those calls, and the
+    lines where it opens an Outlook file (``as_email``, or a function of its module that calls it)."""
+    found: dict[str, tuple[list[int], list[int]]] = {}
+    for root, base in (
+        (SRC_DIR, SRC_DIR.parent),
+        (REPO_DIR / "evals", REPO_DIR),
+        (REPO_DIR / "scripts", REPO_DIR),
+    ):
+        for path in sorted(root.rglob("*.py")):
+            visitor = _Calls()
+            visitor.visit(ast.parse(path.read_text(encoding="utf-8")))
+            openers = {"as_email"} | {
+                name for name, calls in visitor.calls.items() if any(call == "as_email" for call, _ in calls)
+            }
+            for name, calls in visitor.calls.items():
+                intake_lines = [line for call, line in calls if call in INTAKE_CALLS]
+                if intake_lines:
+                    opens = [line for call, line in calls if call in openers]
+                    found[f"{path.relative_to(base).as_posix()}:{name}"] = (intake_lines, opens)
+    return found
+
+
+def test_every_way_in_opens_outlook_files_first() -> None:
+    """Upload, the phone, the watched folder, ``ordnung add`` and proof of a sent letter turn an Outlook ``.msg``
+    into its ``.eml`` copy before intake sees it (``ordnung.ingest.outlook.as_email``). Every other function that
+    hands intake a file is listed here with its reason, so a new way in can't forget it."""
+    ways = _ways_in()
+    unopened = {
+        name: lines
+        for name, (lines, opens) in ways.items()
+        if name not in NO_OUTLOOK_HERE and not (opens and min(opens) < min(lines))
+    }
+    assert unopened == {}, "open an Outlook file first (outlook.as_email), or list why not in NO_OUTLOOK_HERE"
+    assert set(NO_OUTLOOK_HERE) <= set(ways), "a listed function no longer hands intake a file"
+    # the ways in the docs name, each found and opening first
+    for way in (
+        "ordnung/api/routes/documents.py:_add_group",
+        "ordnung/ingest/watcher.py:_add",
+        "ordnung/cli.py:work",
+        "ordnung/drafts/sent.py:add_proof",
+    ):
+        assert way in ways and way not in NO_OUTLOOK_HERE, way

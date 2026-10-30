@@ -55,7 +55,7 @@ from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, pho
 from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
-from ordnung.config import ocr_turned_off
+from ordnung.config import picture_text_off
 from ordnung.db.store import Store
 from ordnung.drafts.proof import PROOF_SOURCE
 from ordnung.ingest.attachments import attachment_listing, email_of, parts_not_listed
@@ -175,9 +175,9 @@ LEFT_OUT_OF_LIST = frozenset({"key_facts", "explanation", "references", "payment
 #: What the route adds to each row of the list: where a search found the letter, and the person's own
 #: "For taxes" choice (``None``: none, Claude's mark counts).
 ROUTE_FIELDS = frozenset({"found_in", "tax_choice"})
-#: Where a search found a letter (route-local: ``models.SearchFoundIn`` stays, models.py is a digest file):
-#: ``letter`` — its own words; ``scanner_text`` — only in the text a scanner added (ADR 0020);
-#: ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
+#: Where a search found a letter (route-local, like every field the list adds): ``letter`` — its own words
+#: (title, file name, Claude's reading, page text, sender); ``scanner_text`` — only in the text a scanner added
+#: (ADR 0020); ``picture_text`` — only in the text Ordnung read from the picture with Tesseract (ADR 0024).
 LetterFoundIn = Literal["letter", "scanner_text", "picture_text"]
 
 _ROW_FIELDS: dict[str, Any] = {
@@ -189,17 +189,16 @@ _ROW_FIELDS: dict[str, Any] = {
 DocumentRow = create_model(
     "DocumentRow",
     __config__=ConfigDict(json_schema_serialization_defaults_required=True),
-    # the published description stays as it was (D3's and D4's contracts change only the fields): the
-    # ROUTE_FIELDS are found_in (LetterFoundIn: models.SearchFoundIn and picture_text) and tax_choice, the
-    # person's own "For taxes" choice (None: none, Claude's mark counts)
+    # the ROUTE_FIELDS are found_in (LetterFoundIn) and tax_choice, the person's own "For taxes" choice
+    # (None: none, Claude's mark counts)
     __doc__=(
         "A letter as the list (``GET /api/documents``) returns it: every ``Document`` field but\n"
         "``LEFT_OUT_OF_LIST``, plus ``found_in``, where a search (``q``) found the letter\n"
-        "(``SearchFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\n"
+        "(``LetterFoundIn``; ``None`` when the list wasn't searched). A view model made by the route,\n"
         "never stored: ``Document`` stays the table's model and what Ask's ledger fingerprint hashes.\n"
         "\n"
         "Its fields are copied from ``Document`` by name, so a field the letter gains reaches the list by\n"
-        "itself. ``models.DocumentListEntry`` (the whole letter plus ``found_in``) is no longer used."
+        "itself."
     ),
     __module__=__name__,
     **_ROW_FIELDS,
@@ -251,6 +250,7 @@ class DeleteResult(BaseModel):
 @router.get("/documents", response_model=list[DocumentRow])
 def list_documents(
     store: StoreDep,
+    ctx: CtxDep,
     q: str | None = None,
     kind: LetterKind | None = None,
     party_id: str | None = None,
@@ -269,13 +269,14 @@ def list_documents(
     text counts only on pages without text of their own and is never returned (ADR 0020)."""
     # the published description stays as it was (D4's contract changes only found_in's values): found_in
     # is also ``picture_text`` — only in the unchecked text Ordnung read from the picture itself (ADR 0024),
-    # which counts only on pages without text of their own, is never returned, and doesn't count while
-    # ORDNUNG_OCR=off
+    # which counts only on pages without text of their own, is never returned, and doesn't count while text in
+    # pictures is off (in Settings, or ORDNUNG_OCR=off)
     query = q.strip() if q else ""
     # letters found in a scan's scanner text, or in the words Ordnung read in a picture: kept apart from the
-    # indexes, ORed in here alone (the picture's not while text in pictures is turned off)
+    # indexes, ORed in here alone (the picture's not while text in pictures is off, from the moment it is saved)
     scanned = store.scan_text_matches(query) if query else set()
-    pictured = store.picture_text_matches(query) if query and not ocr_turned_off() else set()
+    pictures_off = picture_text_off(ctx.settings.read_picture_text)
+    pictured = store.picture_text_matches(query) if query and not pictures_off else set()
     docs = store.list_documents(
         q=q,
         kind=kind,
@@ -491,16 +492,17 @@ def _proof_of(store: Store, doc_id: str) -> list[ProofLink]:
 
 
 @router.get("/documents/{doc_id}", response_model=LetterDetail)
-def get_document(doc_id: str, store: StoreDep, today: TodayDep) -> LetterDetail:
+def get_document(doc_id: str, store: StoreDep, ctx: CtxDep, today: TodayDep) -> LetterDetail:
     """One letter with everything the viewer shows."""
     # with the person's own "For taxes" choice, who the letter is for, and the pages whose words Ordnung read in
-    # the picture (LetterDetail; none while text in pictures is turned off, ADR 0024)
+    # the picture (LetterDetail; none while text in pictures is off, in Settings or by ORDNUNG_OCR, ADR 0024)
     detail = document_detail(store, doc_id, today)
+    pictures_off = picture_text_off(ctx.settings.read_picture_text)
     return LetterDetail.model_construct(
         **dict(detail),
         tax_choice=store.tax_choices().get(doc_id),
         household=letter_for(store, detail.document),
-        picture_text_pages=[] if ocr_turned_off() else store.picture_text_pages(doc_id),
+        picture_text_pages=[] if pictures_off else store.picture_text_pages(doc_id),
     )
 
 
@@ -763,8 +765,9 @@ async def update_document(
             raise PhoneRefusal("computer_only", PRIVATE_ON_COMPUTER)
     async with ledger_lock():
         document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
-    if tax_set:
-        # the tax Idea counts the letters for taxes: it follows at once
+    if tax_set or "ai_private" in changes:
+        # the tax Idea counts the letters for taxes, and an Idea about a private letter names no one: both follow
+        # at once (an Idea's title reaches Claude)
         ctx.worker.refresh_ideas()
     if changed is None:
         if changes or tax_set:

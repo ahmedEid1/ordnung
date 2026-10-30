@@ -128,7 +128,7 @@ describe("Ask page", () => {
     await user.click(screen.getByRole("button", { name: phone }));
     const turn = await screen.findByRole("article", { name: `Question: ${phone}` });
     expect(await within(turn).findByText("The recorded answers no longer fit")).toBeInTheDocument();
-    expect(turn).toHaveTextContent(/recorded for Sam's letters as the demo started, and you have changed his to-dos or letters since/);
+    expect(turn).toHaveTextContent(/recorded for Sam's letters as the demo started, and you have changed his to-dos, letters or household since\./);
     // the reset doesn't touch a demo that runs: stop it first
     expect(turn).toHaveTextContent("Stop the demo (Ctrl+C where it runs), then run ordnung demo --reset.");
     expect(within(turn).getByText("ordnung demo --reset").tagName).toBe("CODE");

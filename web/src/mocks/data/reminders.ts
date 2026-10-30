@@ -9,6 +9,7 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import type { AutostartInfo, BackupCopy, BackupInfo, DesktopMode, DesktopReminders, NotificationText, ShortcutInfo } from "@/api/types";
 import type { MockDb } from "../db";
+import { filedNames } from "../whose";
 
 export const DESKTOP_STATIC_MESSAGE =
   "The online demo can't show notifications on your computer. Install Ordnung to get the morning notification.";
@@ -77,6 +78,8 @@ const RANK: Record<string, number> = { deadline: 0, expiry: 0, appointment: 0, p
 function thingsDue(db: MockDb): Thing[] {
   const today = db.today;
   const weekEnd = format(addDays(parseISO(today), WEEK), "yyyy-MM-dd");
+  // a to-do of a letter filed for someone of the household starts with their name (full mode only)
+  const names = filedNames(db);
   const things: Thing[] = [];
   for (const i of db.openItems()) {
     const due = i.due_date;
@@ -84,10 +87,12 @@ function thingsDue(db: MockDb): Thing[] {
     const act = i.send_by && i.send_by < due ? i.send_by : due;
     const amount = i.kind === "payment" && i.amount != null && (i.currency ?? "EUR") === "EUR" ? ` ${euros(i.amount)}` : "";
     const rank = RANK[i.kind] ?? 1;
-    if (due < today) things.push({ text: `${i.title}${amount} — overdue`, day: due, when: "overdue", rank });
+    const name = i.doc_id ? names[i.doc_id] : undefined;
+    const title = name ? `${name}: ${i.title}` : i.title;
+    if (due < today) things.push({ text: `${title}${amount} — overdue`, day: due, when: "overdue", rank });
     else if (act <= weekEnd) {
       const day = act < today ? today : act;
-      things.push({ text: `${i.title}${amount} ${dayWord(i, day, today)}`, day, when: day === today ? "today" : "upcoming", rank });
+      things.push({ text: `${title}${amount} ${dayWord(i, day, today)}`, day, when: day === today ? "today" : "upcoming", rank });
     }
   }
   return things.sort(

@@ -1,8 +1,8 @@
 /**
  * Changing the list of people (`PUT /api/household`) from Settings and from a letter's *Add … to your household*:
  * a refusal of a name is said under its field, not in a toast — so this save is quiet, and {@link refusal} says
- * what the app's error toast would otherwise say. The household it answers is kept, and the letters' pages say again
- * who each is for (as `useSaveHousehold` does).
+ * what the app's error toast would otherwise say. The household it answers is kept, the letters' pages say again
+ * who each is for, and My numbers whose each number is (as `useSaveHousehold` does).
  */
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";
@@ -33,7 +33,8 @@ export function useChangeHousehold() {
     meta: { silent: true },
     onSuccess: (household: Household) => {
       qc.setQueryData(qk.household, household);
-      return qc.invalidateQueries({ queryKey: ["documents", "detail"] });
+      // a letter filed for someone (`also_file`), or a person removed, moves numbers between the groups
+      return Promise.all([qc.invalidateQueries({ queryKey: ["documents", "detail"] }), qc.invalidateQueries({ queryKey: qk.numbers })]);
     },
   });
 }
@@ -79,7 +80,7 @@ export function lettersLabel(n: number): string {
 
 /**
  * What a removal does to a person's letters: "Their 4 letters are in your own letters again." It says whose list they
- * show in; their dates, reminders and numbers were the person's all along.
+ * show in; their dates and reminders were the person's all along, and their numbers go back under *About you*.
  */
 export function backToYours(n: number): string {
   return n === 1 ? "Their 1 letter is in your own letters again." : `Their ${n} letters are in your own letters again.`;

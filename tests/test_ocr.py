@@ -14,6 +14,7 @@ from __future__ import annotations
 import io
 import json
 import logging
+import math
 import os
 import random
 import stat
@@ -808,10 +809,21 @@ def test_page_picture_of_a_page_that_isnt_there_is_an_error(
 # --------------------------------------------------------------------------------------------------
 
 
+#: How many times longer than Ordnung's own limits (:data:`ocr.LOOK_TIMEOUT_S`, :data:`ocr.PAGE_TIMEOUT_S`) the real
+#: Tesseract may take here. It runs at niceness :data:`ocr.NICENESS`, and the kernel gives a process at niceness n
+#: about 1.25**-n of the CPU it gives one at 0: next to busy processes at normal priority (the suite in parallel
+#: shards, a loaded runner) Tesseract gets about a tenth of what each of them gets. Alone a page takes about half a
+#: second; with 24 busy processes on its core one took longer than 120 s. The limits themselves are tested with the
+#: fake; here they only stop a Tesseract that never ends, and what it reads is the same.
+SLOWER = math.ceil(1.25**ocr.NICENESS)
+
+
 def _real_tesseract() -> ocr.Tesseract:
     """The Tesseract installed here, with German; the test skips without one, except where
     ``ORDNUNG_REQUIRE_TESSERACT=1`` (CI's Linux legs that install it): there a missing or unusable one fails it."""
-    engine = ocr.find(refresh=True)
+    engine = ocr.find(
+        refresh=True, look_at=lambda path: ocr.look(path, timeout_s=ocr.LOOK_TIMEOUT_S * SLOWER)
+    )
     if engine is None or not engine.usable or "deu" not in engine.languages:
         why = f"needs Tesseract 4.1 or newer with German (found: {engine})"
         if os.environ.get("ORDNUNG_REQUIRE_TESSERACT") == "1":
@@ -829,6 +841,8 @@ def test_real_tesseract_reads_a_scan_and_a_photo(turned_on: None, tmp_path: Path
     sideways = tmp_path / "photo.jpg"
     sideways.write_bytes(scanned_photo(orientation=6))
     for original, mime in ((scan, "application/pdf"), (sideways, "image/jpeg")):
-        words = ocr.recognise(engine, ocr.page_picture(original, mime, 1))
+        words = ocr.recognise(
+            engine, ocr.page_picture(original, mime, 1), timeout_s=ocr.PAGE_TIMEOUT_S * SLOWER
+        )
         assert "Einkommensteuer" in words, mime
         assert "Steuerstraße" in words, mime

@@ -248,10 +248,13 @@ recorded answers.
 
 The replay key carries a hash of everything Ask's tools can read (the ledger fingerprint). It is worked out
 once per state of the ledger and kept per store and thread while no letter, page, to-do, contract, sender,
-case or the profile changed (`Store.ledger_token`): temporary triggers, which live only in the open
-connection and never in the database file, count this connection's writes to those tables, and another
-connection's commit or a schema change counts as a change too. The value is the same either way, and the
-tests work it out again wherever it was kept.
+case, the profile, a *For taxes* choice or the household changed (`Store.ledger_token`): temporary triggers,
+which live only in the open connection and never in the database file, count this connection's writes to those
+tables and rows, and another connection's commit or a schema change counts as a change too. The value is the
+same either way, and the tests work it out again wherever it was kept. `LEDGER_META_KEYS` (the profile, the
+*For taxes* choices and the household) are the `meta` rows Ask's fingerprint reads and the ledger token watches;
+a ledger with neither a choice nor a household hashes as it did before Ask read them, so the answers recorded
+then still replay ([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)).
 
 ## My numbers and the weekly session
 
@@ -263,8 +266,12 @@ apart from two `meta` moments:
   its payment IBAN — is classified by value shape, then label words, then context (a Steuernummer is
   yours only from a tax office; an "Ausweisnummer" is an ID card only from an authority), grouped into
   About you, identity documents, call sheets and open cases, and tested with its public check-digit
-  algorithm. Ask reads it through `get_my_numbers` (one organisation or one section when asked, bounded
-  by its own row caps), values in the letter-text channel (ADR 0008).
+  algorithm. Whose a letter is (`household.filed`) decides whose its numbers are: a letter filed for someone of
+  the household puts its numbers and documents under that person (`NumbersPage.household`, read by
+  `views.my_numbers` from `Ledger.household_filed`), and the page says which call-sheet numbers and cases are
+  only one person's (`filed_for`) and which numbers several people's letters show (`also_for`); the label rule
+  still comes first, and the addressee is never read. Ask reads it through `get_my_numbers` (one organisation or
+  one section when asked, bounded by its own row caps), values in the letter-text channel (ADR 0008).
 - **The weekly session** (`ordnung/secretary/week.py`; `views.weekly_session`, `GET /api/week`) arranges
   `build_agenda`, the money summary, drafts and to-dos as seven steps (and *Act now* first when
   something is overdue or due today; a snoozed to-do is listed where its date puts it) and how it ends —
@@ -564,11 +571,17 @@ each letter is for: its filing, else the one person its addressee names alone by
 query). Only the person's press files a letter; a removed person's filings and a letter in the trash stay
 dormant, a purge removes the letter's filing in its transaction, and the daily check drops filings of letters
 deleted on a computer still on 0.2.0. Writes publish
-`profile.updated` (the events are listed in `models.py`). `Document`, the profile and Ask's inputs stay as they
-are: Ask's fingerprint and `ledger_token` read no `household` row, nothing of it reaches a prompt or a draft
-request, and dates, reminders, numbers, Ask and the Ideas treat every letter as the person's. The Inbox's *Whose
-letters* choice and the person tags on Inbox and Today rows are the web app's (`features/household/`); the
-composer offers a person's name, as typed in Settings, for a letter filed for someone who signs.
+`profile.updated` (the events are listed in `models.py`) and refresh the Ideas. `Document` and the profile stay as
+they are, and nothing of the household reaches a prompt or a draft request. Since
+[ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md), whose a letter is (`household.filed`: a link to
+someone still in the list, the letter outside the trash; `Ledger.household_filed` per Ledger) is said where the
+person sees it and where Ask reads it: My numbers groups the numbers by person, Ask's tools read the household
+only through `household.ask_view` and `Ledger.household_filed`, the rule Ideas name the person
+(`triggers.named`), and the calendar file, *With details* calendar sync and the *With details* notification put
+the name in front of a to-do; dates and to-dos stay the person's to act on. The Inbox's *Whose letters* choice,
+the person tags on Inbox and Today rows and the Timeline's *For Alex Rivera ·* are the web app's
+(`features/household/`, `features/timeline/`); the composer offers a person's name, as typed in Settings, for a
+letter filed for someone who signs.
 
 **A scanner's text** (the invisible text of a "searchable PDF") is kept apart from everything a reading uses
 ([ADR 0020](decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)). The text stage returns it beside
@@ -593,17 +606,22 @@ one page as a grayscale PNG (intake's bounded decoder for a photo, PDFium under 
 shell, the PNG on stdin, one thread at low priority in a private temporary folder, polled every 0.25 s and
 killed after 120 s or when the worker stops. Only `ingest/worker.py` and `doctor.py` import it. The worker's
 loop waits 30 seconds after the worker starts, as the scanner text's catch-up does, looks for Tesseract once (one
-installed later counts from the next start), then reads one page at a time, newest letter first; it is woken
+installed later counts from the next start, or once the switch is turned on again), then reads one page at a time,
+newest letter first; it is woken
 when a reading ends (`_job_finished`) and looks again every five minutes, and a page Tesseract fails on waits
 for the next start. The store keeps the words in `derived/<doc>/picture-text.json` (`db/scan_text.py`'s
 format, `name=PICTURE_NAME`; the store alone reads and writes it): `picture_text_due` lists the pages,
 `write_picture_text` checks again in a transaction that Claude still isn't reading the letter and the page still
 has no text of its own or a scanner's, `picture_text_matches` and
 `picture_text_pages` serve the letter routes (`found_in="picture_text"`, `LetterDetail.picture_text_pages`,
-both route-local: `models.py` is a digest file), and `forget_scan_text_once_read`, which the text stage calls
-after Claude's reading, removes a page's picture text too. `ORDNUNG_OCR=off` (`config.ocr_turned_off`, read on
-every call) keeps Tesseract from starting, makes the routes ignore the file at once, and has the worker remove
-every such file when it starts (`forget_all_picture_text`). `ordnung doctor`'s *Text in pictures* row looks for
+both route-local), and `forget_scan_text_once_read`, which the text stage calls after Claude's reading, removes a
+page's picture text too. It is off when the person turns it off in Settings → Data (`AppSettings.read_picture_text`,
+which travels with hand-off sync) or `ORDNUNG_OCR=off` (`config.ocr_turned_off`, read on every call) says so, and
+the variable wins (`config.picture_text_off`): Tesseract isn't started, the routes ignore the file at once, and the
+worker removes every such file when it starts (`forget_all_picture_text`). A save of the switch tells the worker
+(`IngestWorker.picture_text_changed`, under a lock, so saves made together leave one loop): off stops the reading
+under way, ends the loop and removes the files; on starts the loop at once and looks for Tesseract afresh.
+`Health.picture_text` (`doctor.picture_text_status`) is the card's line. `ordnung doctor`'s *Text in pictures* row looks for
 Tesseract again on each run. No database row is written, so Ask's fingerprint, the ledger token and the
 benchmark's inputs stay as they were.
 
@@ -626,9 +644,11 @@ taking synced versions and backups, and `Document`, which Ask's fingerprint hash
 touching the letter's row, then refreshes the Ideas; the letter's page (`LetterDetail`), the list's rows and
 the records copy (`LetterRecord`) carry it. The Tax year page, the export dialog and `letters_zip`, the
 tax-season Idea and the weekly session's "Keep it with your tax papers" follow `for_taxes` (the web app's
-`forTaxes`, held to it by `selection-cases.json`). `Ledger.tax_choices` is read lazily, so Ask's server, which
-builds Ledgers, never reads the row. Ask and the weekly review's snapshot for *Weekly Ideas* keep Claude's own
-mark on each letter; the tax-season Idea, whose title is among the snapshot's open Ideas, follows the choice.
+`forTaxes`, held to it by `selection-cases.json`). `Ledger.tax_choices` is read lazily: of Ask's tools only
+`get_document` reads it, and so does the weekly review's snapshot. Ask's `get_document` and the weekly review's
+snapshot for *Weekly Ideas* follow it too, for the letters they may read
+([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)); the tax-season Idea, whose title is among the
+snapshot's open Ideas, follows the choice.
 
 **The moving checklist** (`secretary/moving.py`, the `moved_house` Idea rule) runs only once the person has
 said they moved: `Profile.moved_on` and `Profile.old_address` are two keys of the profile JSON, set through
@@ -711,8 +731,8 @@ build from before a renumbering) is refused with the reason, never migrated on a
 | Watched folder & attachments | A real temporary folder with short timings: settling, ignored files, symlinks, once-only pickup across restarts and deletions, held by default, auto-read, restarts, a missing folder, the folder left untouched; crafted e-mails for the attachment policy, and e-mailed bills end to end (one thread, limits, privacy inherited) |
 | Outlook files | A compound-file writer and `.msg` builder in the tests, so no binary sample is needed: round trips, the same copy from the same file, headers, texts, attachments, every refusal, hostile files within time and memory limits and a Hypothesis fuzz (`tests/test_outlook.py`); every way in, and a `.msg` holding a PDF no longer called a broken PDF (`tests/test_outlook_intake.py`); one fictional `.msg` written by `scripts/make_msg_fixture.py` for the real app |
 | Compressed answers and the letter list | Each rule of the compression middleware on both listeners' harnesses: JSON compressed; streams, downloads, files, range requests, cookies, writes and small answers not; `Vary` (`tests/test_compress.py`); on the real app, scripts and JSON gzipped, `/api/events` starting at once, a PDF range request answered 206 and downloads byte for byte (`web/e2e/real-app-compression.spec.ts`). The list's rows checked against `Document` minus the five fields, the strict mock contract refusing any of them, a size budget at 400 letters, and every screen that lists letters shown from the lighter rows with the records copy keeping each letter's explanation (`web/e2e/letter-list-rows.spec.ts`) |
-| For taxes and the household | The two `meta` rows in the store: set, clear, an unchanged value writing nothing, an unreadable row, a purge dropping the letter from both and the trash keeping both (`tests/test_store_choices.py`); the person's choice over Claude's mark, kept through *Read again* both ways with Claude asked byte for byte the same, and Ask's fingerprint, ledger token and tools never reading it (`tests/test_tax_choice.py`); the household's policy (`tests/test_household.py`) and API (`tests/test_api_household.py`), held to the static demo's port by shared vectors (`tests/test_household_vectors.py` reads `web/src/mocks/householdVectors.json`); the For taxes toggle, its toast and Undo at phone and desktop widths with axe (`web/e2e/tax-toggle-layout.spec.ts`); on the real app, a letter marked on its page going into the tax ZIP and Undo taking it out (`web/e2e/real-app-export.spec.ts`), and a letter filed for someone, with Undo, leaving no trace once deleted for good (`web/e2e/real-app-household.spec.ts`) |
-| Text in pictures | The engine against a fake Tesseract (`tests/fake_tesseract.py`, run through `Tesseract.launcher`, so on macOS and Windows too): where it is looked for on each system, versions and languages, one thread at low priority, the private temporary folder, the time limit and the stop killing it, errors that never carry what it printed, and the page pictures; the installed Tesseract reading a scan and a photo where CI installs it (`tests/test_ocr.py`); which letters are due, the search and the letter's page, the words going once Claude reads a page, and the off switch (`tests/test_picture_text.py`); Ask, its fingerprint and the demo never seeing them (`tests/test_picture_text_ask.py`); the worker's loop, wake and stop (`tests/test_worker_pictures.py`); the doctor's row on each system (`tests/test_doctor_pictures.py`); on the real app with a real Tesseract, a photo kept private found by its words, marked not checked and never shown (`web/e2e/real-app-pictures.spec.ts`), its photo drawn by `scripts/make_photo_fixture.py` and checked by `tests/test_photo_fixture.py` |
+| For taxes and the household | The two `meta` rows in the store: set, clear, an unchanged value writing nothing, an unreadable row, a purge dropping the letter from both and the trash keeping both (`tests/test_store_choices.py`); the person's choice over Claude's mark, kept through *Read again* both ways with Claude asked byte for byte the same, and Ask's `get_document`, the weekly review, the fingerprint and the ledger token following it only when there is one (`tests/test_tax_choice.py`); the household's policy (`tests/test_household.py`) and API (`tests/test_api_household.py`), held to the static demo's port by shared vectors (`tests/test_household_vectors.py` reads `web/src/mocks/householdVectors.json`); the For taxes toggle, its toast and Undo at phone and desktop widths with axe (`web/e2e/tax-toggle-layout.spec.ts`); on the real app, a letter marked on its page going into the tax ZIP and Undo taking it out (`web/e2e/real-app-export.spec.ts`), and a letter filed for someone, with Undo, leaving no trace once deleted for good (`web/e2e/real-app-household.spec.ts`). Whose it is (ADR 0025): the rule, `ask_view` and `Ledger.household_filed` (`tests/test_household_whose.py`); My numbers per person, the page as before without a household (`tests/test_numbers_household.py`, `web/e2e/numbers-household-layout.spec.ts`); Ask's tools, byte for byte as before without a household or a choice, with the texts stored at the base (`tests/test_mcp_server.py`, `tests/data/ask_tools_at_e2_base.json`); the Ideas renamed in place and refreshed on household writes (`tests/test_household_ideas.py`, `tests/test_triggers.py`) |
+| Text in pictures | The engine against a fake Tesseract (`tests/fake_tesseract.py`, run through `Tesseract.launcher`, so on macOS and Windows too): where it is looked for on each system, versions and languages, one thread at low priority, the private temporary folder, the time limit and the stop killing it, errors that never carry what it printed, and the page pictures; the installed Tesseract reading a scan and a photo where CI installs it (`tests/test_ocr.py`); which letters are due, the search and the letter's page, the words going once Claude reads a page, and the off switch (`tests/test_picture_text.py`); Ask, its fingerprint and the demo never seeing them (`tests/test_picture_text_ask.py`); the worker's loop, wake and stop (`tests/test_worker_pictures.py`); the doctor's row on each system (`tests/test_doctor_pictures.py`); the Settings switch, the variable winning and the worker turned off and on, quickly too, leaving one loop (`tests/test_picture_text_switch.py`, `web/e2e/settings-picture-text-layout.spec.ts`, `web/e2e/real-app-picture-switch.spec.ts`), and the setting kept through a pull from 0.3.0 (`tests/test_sync_scrub.py`); on the real app with a real Tesseract, a photo kept private found by its words, marked not checked and never shown (`web/e2e/real-app-pictures.spec.ts`), its photo drawn by `scripts/make_photo_fixture.py` and checked by `tests/test_photo_fixture.py` |
 | Traces | The tracer's keys, ids and layouts; the span tree of a text letter and a photo letter through the pipeline; the repair link and outcomes; that no letter text reaches a span; delete-means-delete; the API, the comparison, `ordnung trace` and the OTLP export; migration 0003 on an empty database and the demo's |
 | CLI subprocess layer | A fake `claude` executable replaying captured CLI outputs (errors, timeouts, huge lines); weekly, the real Claude Code, installed fresh and never signed in, must take every flag Ordnung passes (`scripts/check_claude_flags.py`) |
 | Demo | `ordnung demo --check`: rebuild twice with strict replay → zero misses, identical dumps, all references resolve |

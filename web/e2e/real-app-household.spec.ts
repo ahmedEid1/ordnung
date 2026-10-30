@@ -5,16 +5,19 @@
  * longer the addressee, as in `real-app-addressee.spec.ts`.
  *
  * The person adds Sam Rivera and Mia Rivera in Settings; the letter then asks *Is this letter for Sam Rivera?* and
- * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Filed for Sam, Today
- * says so, a reply offers *Reply in Sam Rivera's name* (never filled in by itself), and the records copy holds the
+ * nothing is filed until a press: *Yes* files it, the toast's Undo asks again, *Yes* once more. Filed for Sam, My
+ * numbers tags the bank's call sheet *For Sam Rivera* (and Undo or his removal makes the numbers the person's again),
+ * Today says so, a reply offers *Reply in Sam Rivera's name* (never filled in by itself), and the records copy holds the
  * household; once Sam no longer signs his letters, the reply goes out in the person's name with no offer of his.
  * Removed from the household, Sam's letter is the person's again ("For you", and Sam can be added back); filed as the
- * person's own, then deleted for good, it leaves no trace in the household. Nothing is drafted. `finally` puts the
+ * person's own, then deleted for good, it leaves no trace in the household. An Idea about Sam's letter starts with
+ * "For Sam Rivera: " while it is filed for him, on Today too, and names no one once he is removed (a date a month
+ * ahead is added to the letter, so the Idea is there whatever the day). Nothing is drafted. `finally` puts the
  * profile and the household back and deletes the letter.
  */
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import type { Household } from "@/api/types";
+import type { Household, NumbersPage } from "@/api/types";
 import { REAL_LETTER } from "./env";
 import { apiGet, apiSend, expect, open, test, type Letter } from "./helpers";
 
@@ -22,6 +25,8 @@ const FILE = "19_bank_preisaenderung.pdf";
 const RENAMED = "Alex Rivera";
 const ADDRESSEE = "Sam Rivera";
 const CHILD = "Mia Rivera";
+/** A date the person adds to the bank's letter, so that an Idea about the letter is there whatever the day. */
+const CARD = "Bank card expires";
 
 test.describe.configure({ mode: "serial" });
 
@@ -50,6 +55,12 @@ async function emptyHousehold(page: Page): Promise<void> {
     const now = await apiGet<Household>(page, "/api/household");
     await apiSend(page, "PUT", "/api/household", { base: now.version, members: [] });
   }
+}
+
+/** The Idea that a date expires soon, about the to-do `itemId` (none: no such Idea now). */
+async function ideaAbout(page: Page, itemId: string): Promise<{ title: string } | undefined> {
+  const ideas = await apiGet<{ title: string; rule_id: string | null; refs: { type: string; id: string }[] }[]>(page, "/api/suggestions");
+  return ideas.find((idea) => idea.rule_id === "expiry_soon" && idea.refs.some((ref) => ref.type === "item" && ref.id === itemId));
 }
 
 const header = (page: Page) => page.getByRole("main").getByRole("article").first().locator("header");
@@ -102,12 +113,27 @@ test("a letter for someone of the household is asked about, filed with one press
       await expect(header(page).getByText(`For ${ADDRESSEE}`, { exact: true })).toBeVisible();
       const sam = (await apiGet<Household>(page, "/api/household")).members[0]!;
       expect((await apiGet<Household>(page, "/api/household")).filed).toEqual({ [letter.id]: sam.id });
+      // My numbers: the bank's numbers on its call sheet are Sam's now
+      const numbers = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect(Object.values(numbers.filed_for), "the bank's numbers are Sam's").toContain(sam.id);
+      expect(numbers.household.map((p) => [p.id, p.name])).toEqual([[sam.id, ADDRESSEE]]);
       await toast.getByRole("button", { name: "Undo" }).click();
       await expect(question).toBeVisible();
       expect((await apiGet<Household>(page, "/api/household")).filed, "Undo: not answered again").toEqual({});
+      const undone = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect([undone.household, undone.filed_for], "Undo: the numbers are the person's again").toEqual([[], {}]);
       await question.getByRole("button", { name: "Yes" }).click();
       await expect(header(page).getByText(`For ${ADDRESSEE}`, { exact: true })).toBeVisible();
       expect((await apiGet<{ household: { filed_for: { name: string } | null } }>(page, `/api/documents/${letter.id}`)).household.filed_for?.name).toBe(ADDRESSEE);
+    });
+
+    await test.step("My numbers: the bank's call sheet says its numbers are Sam Rivera's", async () => {
+      await open(page, "/numbers?tab=organisations", "My numbers");
+      const tags = page.getByRole("main").locator("article [data-person-tag]");
+      await expect(tags.first()).toBeVisible();
+      for (const tag of await tags.all()) await expect(tag).toHaveText(`For ${ADDRESSEE}`);
+      // the first tab stays About you: a bank's customer numbers are no numbers about Sam
+      await expect(page.getByRole("tab", { name: /^About you/ })).toBeVisible();
     });
 
     await test.step("Today says whose letter it is; a reply offers Sam Rivera's name, who signs", async () => {
@@ -137,6 +163,22 @@ test("a letter for someone of the household is asked about, filed with one press
       expect(copy.household.members).toEqual([expect.objectContaining({ name: ADDRESSEE, signs: true }), expect.objectContaining({ name: CHILD, signs: false })]);
     });
 
+    await test.step("the Ideas say whose letter it is: one about Sam's letter starts with his name", async () => {
+      // a date added to the letter, a month ahead: its Idea is there whatever the day the test runs, and Today lists
+      // it under Ideas (its to-do is not one of the Top 3, which an Idea would only repeat)
+      const { today } = await apiGet<{ today: string }>(page, "/api/health");
+      const inAMonth = new Date(Date.parse(`${today}T12:00:00Z`) + 30 * 86_400_000).toISOString().slice(0, 10);
+      const date = await apiSend<{ id: string }>(page, "POST", "/api/items", { kind: "expiry", title: CARD, due_date: inAMonth, doc_id: letter.id });
+      await expect
+        .poll(async () => (await ideaAbout(page, date.id))?.title, { message: "the Idea about Sam's letter names him", timeout: 15_000 })
+        .toMatch(new RegExp(`^For ${ADDRESSEE}: ${CARD}: expires `));
+      await open(page, "/");
+      const ideas = page.getByRole("main").getByRole("region", { name: "Ideas from your secretary" });
+      const more = ideas.getByRole("button", { name: /^Show \d+ more Ideas?$/ });
+      if (await more.count()) await more.click();
+      await expect(ideas.getByText(new RegExp(`^For ${ADDRESSEE}: ${CARD}: expires `)).first()).toBeVisible();
+    });
+
     await test.step("Sam no longer signs his letters: the reply goes out in the person's name, with no offer of his", async () => {
       await open(page, "/settings?section=profile#set-household", "Settings");
       await card(page).getByRole("button", { name: `Edit ${ADDRESSEE}` }).click();
@@ -161,9 +203,16 @@ test("a letter for someone of the household is asked about, filed with one press
       await expect(asking).toContainText("Their 1 letter is in your own letters again. Nothing is deleted.");
       await asking.getByRole("button", { name: "Remove" }).click();
       await expect(card(page).getByRole("listitem")).toHaveCount(1);
+      const numbers = await apiGet<NumbersPage>(page, "/api/numbers");
+      expect([numbers.household, numbers.filed_for], "the numbers are the person's again").toEqual([[], {}]);
       await open(page, `/documents/${letter.id}`);
       await expect(header(page).getByText("For you", { exact: true })).toBeVisible();
       await expect(header(page).getByRole("button", { name: `Add ${ADDRESSEE} to your household` })).toBeVisible();
+      // and the Idea about its date names no one again, at once
+      const date = (await apiGet<{ id: string; title: string }[]>(page, `/api/items?doc_id=${letter.id}`)).find((i) => i.title === CARD)!;
+      await expect
+        .poll(async () => (await ideaAbout(page, date.id))?.title, { message: "the Idea names no one", timeout: 15_000 })
+        .toMatch(new RegExp(`^${CARD}: expires `));
     });
 
     await test.step("filed as the person's own, then deleted for good: nothing of it stays in the household", async () => {

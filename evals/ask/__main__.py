@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from evals import harness
 from evals.ask.report import (
     headline,
     recorded_on,
@@ -27,7 +28,6 @@ from evals.ask.run import (
     BenchmarkError,
     Config,
     RunResult,
-    load_harness,
     run,
 )
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
@@ -38,7 +38,10 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
     s = result.summary
     problems = []
     if result.misses:
-        problems.append(f"{len(result.misses)} question(s) have no recording — record them with --live")
+        problems.append(
+            f"{len(result.misses)} question(s) have no recording ({', '.join(sorted(result.misses))}) "
+            "— record them with --live"
+        )
     if result.stale:
         listed = "; ".join(f"{qid}: {', '.join(tools)}" for qid, (_, tools) in sorted(result.stale.items()))
         problems.append(
@@ -69,6 +72,13 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
         problems.append(
             f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
         )
+    household = s.get("household")
+    if household and household["not_answered"]:
+        problems.append(f"{household['not_answered']} household question(s) got no answer")
+    if args.min_household is not None:
+        attribution = household["attribution"]["value"] if household else None
+        if attribution is None or attribution < args.min_household:
+            problems.append(f"household attribution {attribution} is below {args.min_household}")
     return problems + strict_gate_failures(result, args)
 
 
@@ -152,6 +162,12 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         metavar="ID",
         help="an attack known to succeed for a documented reason (repeatable); any other success fails the gate",
     )
+    parser.add_argument(
+        "--min-household",
+        type=float,
+        default=None,
+        help="gate: minimum share of household questions whose answer says whose each number is",
+    )
     add_heldout_arguments(parser)
     return parser.parse_args(argv)
 
@@ -205,25 +221,19 @@ def main(
 ) -> int:
     args = parse_args(argv)
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
-    harness = load_harness()
-    if args.recorded_dir is not None:
-        recorded_dir = args.recorded_dir
     config = Config(
         model=args.model,
         live=args.live or args.refresh,
         refresh=args.refresh,
         only=only,
         concurrency=args.concurrency,
-        recorded_dir=HELDOUT_RECORDED_DIR
-        if args.set == "heldout" and recorded_dir == RECORDED_DIR
-        else recorded_dir,
+        recorded_dir=args.recorded_dir or (HELDOUT_RECORDED_DIR if args.set == "heldout" else recorded_dir),
         set_name=args.set,
         heldout_dir=heldout_dir,
         repeat=args.repeat,
         max_cost_usd=args.max_cost_usd,
         wait_on_limit_hours=args.wait_on_limit,
-        recorder_lock=args.recorder_lock
-        or (harness.RECORDER_LOCK if harness is not None else None),  # one recorder for every benchmark
+        recorder_lock=args.recorder_lock or harness.RECORDER_LOCK,  # one recorder for every benchmark
     )
     try:
         result = run(config)

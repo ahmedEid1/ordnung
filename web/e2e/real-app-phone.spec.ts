@@ -19,7 +19,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Browser, BrowserContext, BrowserContextOptions, Locator, Page } from "@playwright/test";
-import type { Activity, Household, PairResult, PhoneDevice, PhoneStatus } from "@/api/types";
+import type { Activity, Household, NumbersPage, PairResult, PhoneDevice, PhoneStatus } from "@/api/types";
 import {
   CODE_ALPHABET,
   CODE_USED_MESSAGE,
@@ -474,6 +474,23 @@ test("the phone answers who a letter is for, but the household's list is changed
     await expect(choices.getByRole("button", { name: "Sam Rivera" })).toHaveAttribute("aria-pressed", "true");
     await expect(choices.getByRole("link", { name: "Manage your household" })).toHaveCount(0);
     await mobile.keyboard.press("Escape");
+
+    // My numbers on the phone: Sam's numbers come masked like the person's, and their call sheet says whose they are
+    const full = await apiGet<NumbersPage>(page, "/api/numbers");
+    const sams = full.organisations.flatMap((s) => s.numbers).filter((n) => full.filed_for[n.key] === sam.id);
+    expect(sams.length, "the bank's numbers are Sam's").toBeGreaterThan(0);
+    const masked = await apiGet<NumbersPage>(mobile, "/api/numbers");
+    expect(masked.masked).toBe(true);
+    expect(Object.values(masked.filed_for)).toEqual(Object.values(full.filed_for));
+    expect(Object.keys(masked.filed_for).filter((key) => key in full.filed_for), "masked keys of their own").toEqual(
+      full.open_cases.map((c) => c.key).filter((key) => key in full.filed_for),
+    );
+    await open(mobile, "/numbers?tab=organisations", "My numbers");
+    const tagged = mobile.getByRole("main").getByRole("article").filter({ has: mobile.locator("[data-person-tag]") });
+    await expect(tagged.first().locator("[data-person-tag]").first()).toHaveText("For Sam Rivera");
+    await expect(tagged.first().getByText("Full number on your computer").first()).toBeVisible();
+    const shown = (await mobile.getByRole("main").textContent()) ?? "";
+    for (const n of sams.filter((s) => s.copy_value.length > 4)) expect(shown, "a full number of Sam's on the phone").not.toContain(n.display);
     expect(phone.refused, "401/403 answers on the phone").toEqual([]);
     phone.watching = false;
 

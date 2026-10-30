@@ -123,7 +123,7 @@ async def update_tour(patch: TourPatch, state: DemoDep) -> TourState:
 @router.get("/questions", response_model=list[str])
 async def suggested_questions(state: DemoDep) -> list[str]:
     """The Ask page's suggested questions — word for word the ones the demo has recorded answers for; none
-    once the letters or to-dos changed since the demo started (the recorded answers no longer fit)."""
+    once the letters, to-dos or household changed since the demo started (the recorded answers no longer fit)."""
     return [str(question) for question in await _call("recorded_questions", state.ctx)]
 
 

@@ -1,5 +1,6 @@
 """The household's shared vectors (``web/src/mocks/householdVectors.json``): who a letter is for, which names the
-list of people takes and the list's version (a PUT's base), as the API's policy (``ordnung.secretary.household``) answers them. The static demo's
+list of people takes, the list's version (a PUT's base) and a name's possessive (the Ideas' "Alex Rivera's passport"),
+as the API's policy (``ordnung.secretary.household``) answers them. The static demo's
 mock (``web/src/mocks/household.ts``) is held to the same file by ``household.test.ts``."""
 
 from __future__ import annotations
@@ -69,13 +70,20 @@ def _version(vector: dict[str, Any]) -> str:
     return household.version([HouseholdMember.model_validate(member) for member in vector["members"]])
 
 
+def _possessive(vector: dict[str, Any]) -> str | None:
+    return household.possessive(vector["name"])
+
+
 def test_the_vectors_cover_every_kind() -> None:
     kinds = [vector["kind"] for vector in VECTORS]
     assert kinds.count("letter") >= 30 and kinds.count("name") >= 20 and kinds.count("version") >= 3
+    assert kinds.count("possessive") >= 6
     assert len({vector["case"] for vector in VECTORS}) == len(VECTORS)
 
 
 @pytest.mark.parametrize("vector", VECTORS, ids=[vector["case"] for vector in VECTORS])
 def test_the_api_meets_every_vector(vector: dict[str, Any]) -> None:
-    check = {"letter": _letter, "name": _added, "version": _version}[vector["kind"]]
+    check = {"letter": _letter, "name": _added, "version": _version, "possessive": _possessive}[
+        vector["kind"]
+    ]
     assert check(vector) == vector["expect"]

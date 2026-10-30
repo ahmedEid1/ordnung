@@ -120,6 +120,8 @@ import { MockSync, SyncRefusal } from "./data/sync";
 import { MOVE_WINDOW_PROBLEM, moveAllowed, refreshMovingIdeas } from "./moving";
 import { TaxChoiceRefusal, forgetTaxChoice, patchTaxChoice, taxChoiceOf } from "./taxChoices";
 import { HouseholdRefusal, fileLetters, forgetLetterFiling, householdView, letterFor as householdFor, saveHousehold } from "./household";
+import { pictureTextHealth } from "./pictureText";
+import { filedNames, nameIdeas } from "./whose";
 
 const isHighStakes = (kind: Document["kind"]): kind is HighStakesKind => (HIGH_STAKES_KINDS as readonly (string | null)[]).includes(kind);
 
@@ -1274,12 +1276,15 @@ const routes: [string, string, Handler][] = [
   [
     "GET",
     "/health",
-    ({ db, query, opts }) =>
-      (opts.phoneScope
-        ? phoneHealth(db.state.health)
+    ({ db, query, opts }) => {
+      // Text in pictures on this computer (`./pictureText`); a phone's health has none
+      const health: Health = { ...db.state.health, picture_text: pictureTextHealth(db) };
+      return (opts.phoneScope
+        ? phoneHealth(health)
         : query.get("probe") === "1" || query.get("probe") === "true"
-          ? { ...db.state.health, checks: DEMO_CHECKS }
-          : db.state.health) satisfies Health,
+          ? { ...health, checks: DEMO_CHECKS }
+          : health) satisfies Health;
+    },
   ],
   // on a phone the IBAN shows only its last 4 characters
   ["GET", "/profile", ({ db, opts }) => (opts.phoneScope ? maskProfile(db.state.profile) : db.state.profile)],
@@ -1810,7 +1815,8 @@ const routes: [string, string, Handler][] = [
       const st = query.get("status");
       const list = db.state.suggestions.filter((s) => (st ? s.status === st : s.status !== "expired"));
       const order = { new: 0, snoozed: 1, accepted: 2, done: 3, dismissed: 4, expired: 5 };
-      return list.sort((a, b) => order[a.status] - order[b.status]).slice(0, Number(query.get("limit") ?? 100));
+      // whose an Idea is about (`./whose`, ADR 0023)
+      return nameIdeas(db, list.sort((a, b) => order[a.status] - order[b.status]).slice(0, Number(query.get("limit") ?? 100)));
     },
   ],
   [
@@ -2275,9 +2281,10 @@ export function createMockServer(opts: MockOptions): MockServer {
     m = /^\/items\/([^/]+)\.ics$/.exec(path);
     if (m) {
       const it = db.state.items.find((i) => i.id === decodeURIComponent(m![1]!));
-      return it ? icsDataUrl(itemsToIcs([it], db.state.profile.reminder_days)) : null;
+      return it ? icsDataUrl(itemsToIcs([it], db.state.profile.reminder_days, filedNames(db))) : null;
     }
-    if (path === "/calendar.ics") return icsDataUrl(itemsToIcs(db.openItems(), db.state.profile.reminder_days));
+    // a to-do of a letter filed for someone of the household names them (`./whose`, ADR 0023)
+    if (path === "/calendar.ics") return icsDataUrl(itemsToIcs(db.openItems(), db.state.profile.reminder_days, filedNames(db)));
     return null;
   }
 

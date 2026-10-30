@@ -31,9 +31,9 @@ it all travels over Wi-Fi and TLS.
   from a new `GET /api/documents.json`: every letter as stored, newest first, without trash and proof files.
   It is computer-only, like the other records that leave the computer.
 - **`models.py` is untouched on purpose.** It is part of the benchmark's code digest, and `Document` is what
-  Ask's ledger fingerprint hashes: changing either would stop the recordings from replaying. So
-  `models.DocumentListEntry` stays, unused, until `models.py` next changes for a reason that pays for new
-  recordings.
+  Ask's ledger fingerprint hashes, so `models.DocumentListEntry` was left there, unused. The digest keys only
+  the local prediction cache, though: `models.DocumentListEntry` was removed in 0.4.0 (#36) with no new
+  recording: it was in no schema Claude is given, and the benchmark's requests stayed the same.
 
 ## Why compression is safe here (BREACH)
 An attack that reads a secret out of compressed HTTPS (BREACH) needs all of these: someone who can watch the

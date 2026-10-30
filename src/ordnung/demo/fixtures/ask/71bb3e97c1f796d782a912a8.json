@@ -1,0 +1,620 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "sonnet",
+    "prompt_version": "12+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"2e2f3f43162197a7aae867f0fe980c41a85b8430ce8294052447d81c53bc1e3f\",\"question\":\"Which deadlines are coming up in October?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_5c5axexztnw6",
+      "doc_9t9tmrv1ypba",
+      "doc_hynqaw58f550",
+      "doc_wtjskffj1vfq"
+    ],
+    "prompt_head": "The person asks:\nWhich deadlines are coming up in October?\n"
+  },
+  "response": {
+    "text": "Here are the deadlines coming up in October:\n\n- **Thu 2 Oct 2026** – Return overdue library books to Stadtbibliothek Musterstadt [item:itm_ghq58jjdz149] [party:pty_d2ymm5s3htd0]. If they stay out, the per-item fee keeps rising and the library account can be blocked once it hits the fee cap named in the letter.\n- **Wed 14 Oct 2026** (send by Thu 8 Oct 2026) – Decide whether to object (Widerspruch) to Muster BKK's contribution notice [item:itm_tj3z83ve4hfg] [party:pty_eatxsexnt9s3]. Note: contributions are still owed at the assessed amount even if you object, since an objection has no suspensive effect.\n- **Wed 14 Oct 2026** (send by Thu 8 Oct 2026) – Cancel-by date for the FunkNetz Smart M mobile contract with FunkNetz Netz Mobil GmbH, current term ends Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2] [party:pty_gjsv4q2d3ajw].\n- **Wed 21 Oct 2026** (send by Thu 15 Oct 2026) – Decide whether to file an objection (Einspruch) against Finanzamt Musterstadt's tax assessment [item:itm_mtehckcf6q7a] [party:pty_mcq97yavgqjy]. If not filed in time, the assessment becomes final and can no longer be challenged.\n\nLet me know if you'd like details on any of these.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 916,
+      "cache_read_tokens": 12759,
+      "cache_creation_tokens": 2548,
+      "cost_usd": 0.021911800000000002,
+      "duration_ms": 12149,
+      "turns": 3
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__today",
+      "input": {},
+      "tool_use_id": "toolu_01ENMs9zDSjdQse65rQEZ2fP"
+    },
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__list_items",
+      "input": {
+        "from_date": "2026-10-01",
+        "to_date": "2026-10-31",
+        "kind": "deadline"
+      },
+      "tool_use_id": "toolu_01NJMzzsZjTQh2TZA3kfK6MW"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"weekday\":\"Monday\",\"simulated\":true}\n</ordnung_record>",
+      "tool_use_id": "toolu_01ENMs9zDSjdQse65rQEZ2fP"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"today\":\"2026-09-28\",\"items\":[{\"id\":\"itm_ghq58jjdz149\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-02\",\"date_source\":\"fixed\",\"priority\":\"critical\",\"area\":\"other\",\"party_id\":\"pty_d2ymm5s3htd0\",\"doc_id\":\"doc_5c5axexztnw6\"},{\"id\":\"itm_tj3z83ve4hfg\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"date_source\":\"computed\",\"direction\":\"out\",\"priority\":\"high\",\"area\":\"health\",\"party_id\":\"pty_eatxsexnt9s3\",\"doc_id\":\"doc_9t9tmrv1ypba\"},{\"id\":\"itm_mtehckcf6q7a\",\"kind\":\"deadline\",\"status\":\"open\",\"due_date\":\"2026-10-21\",\"send_by\":\"2026-10-15\",\"date_source\":\"computed\",\"priority\":\"high\",\"area\":\"tax\",\"party_id\":\"pty_mcq97yavgqjy\",\"doc_id\":\"doc_hynqaw58f550\"}],\"contract_deadlines\":[{\"id\":\"ctr_fyt9k994t9q2\",\"category\":\"mobile\",\"status\":\"active\",\"party_id\":\"pty_gjsv4q2d3ajw\",\"cancel_by\":\"2026-10-14\",\"send_by\":\"2026-10-08\",\"current_term_end\":\"2026-11-14\",\"confidence\":\"high\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"itm_ghq58jjdz149\":{\"title\":\"Return the overdue library books\",\"action\":\"Return both overdue items to the library (e.g. via the return box) by the deadline shown.\",\"consequence\":\"The fee will keep increasing by €0.50 per item for each opening day, and once it reaches €10.00 your library account will be blocked for further loans.\"},\"pty_d2ymm5s3htd0\":{\"name\":\"Stadtbibliothek Musterstadt\"},\"itm_tj3z83ve4hfg\":{\"title\":\"Decide whether to object (Widerspruch) to the contribution notice\",\"action\":\"If you disagree with the new contribution assessment, file a written or electronic objection (Widerspruch) with Muster BKK by the deadline shown.\",\"consequence\":\"Contributions must still be paid at the assessed amount even if you object, since an objection has no suspensive effect (keine aufschiebende Wirkung).\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"},\"itm_mtehckcf6q7a\":{\"title\":\"Decide whether to file an objection (Einspruch) against the assessment\",\"action\":\"Review the assessment and, if you disagree with it, file an objection (Einspruch) with Finanzamt Musterstadt in writing, electronically, or to record, by the deadline shown.\",\"consequence\":\"If no objection is filed in time, the assessment becomes final (bestandskräftig) and can no longer be challenged.\"},\"pty_mcq97yavgqjy\":{\"name\":\"Finanzamt Musterstadt\"},\"pty_gjsv4q2d3ajw\":{\"name\":\"FunkNetz Mobil GmbH\"},\"ctr_fyt9k994t9q2\":{\"name\":\"FunkNetz Smart M\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_01NJMzzsZjTQh2TZA3kfK6MW"
+    },
+    {
+      "type": "text",
+      "text": "Here are the de"
+    },
+    {
+      "type": "text",
+      "text": "adlines co"
+    },
+    {
+      "type": "text",
+      "text": "ming up in October"
+    },
+    {
+      "type": "text",
+      "text": ":\n\n-"
+    },
+    {
+      "type": "text",
+      "text": " **Th"
+    },
+    {
+      "type": "text",
+      "text": "u "
+    },
+    {
+      "type": "text",
+      "text": "2 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "** – Return overdue library"
+    },
+    {
+      "type": "text",
+      "text": " books to Stadtbib"
+    },
+    {
+      "type": "text",
+      "text": "liothek Musterstad"
+    },
+    {
+      "type": "text",
+      "text": "t [item:it"
+    },
+    {
+      "type": "text",
+      "text": "m_ghq"
+    },
+    {
+      "type": "text",
+      "text": "58"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "j"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "149"
+    },
+    {
+      "type": "text",
+      "text": "] [party:p"
+    },
+    {
+      "type": "text",
+      "text": "ty_d"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "ym"
+    },
+    {
+      "type": "text",
+      "text": "m"
+    },
+    {
+      "type": "text",
+      "text": "5"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "ht"
+    },
+    {
+      "type": "text",
+      "text": "d"
+    },
+    {
+      "type": "text",
+      "text": "0"
+    },
+    {
+      "type": "text",
+      "text": "]."
+    },
+    {
+      "type": "text",
+      "text": " If they"
+    },
+    {
+      "type": "text",
+      "text": " st"
+    },
+    {
+      "type": "text",
+      "text": "ay out"
+    },
+    {
+      "type": "text",
+      "text": ", the"
+    },
+    {
+      "type": "text",
+      "text": " per"
+    },
+    {
+      "type": "text",
+      "text": "-item"
+    },
+    {
+      "type": "text",
+      "text": " fee ke"
+    },
+    {
+      "type": "text",
+      "text": "eps r"
+    },
+    {
+      "type": "text",
+      "text": "ising and the library"
+    },
+    {
+      "type": "text",
+      "text": " account can be blocked once"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": " hits the"
+    },
+    {
+      "type": "text",
+      "text": " f"
+    },
+    {
+      "type": "text",
+      "text": "ee c"
+    },
+    {
+      "type": "text",
+      "text": "ap named"
+    },
+    {
+      "type": "text",
+      "text": " in the letter.\n- **"
+    },
+    {
+      "type": "text",
+      "text": "W"
+    },
+    {
+      "type": "text",
+      "text": "ed 14 Oct "
+    },
+    {
+      "type": "text",
+      "text": "2026** ("
+    },
+    {
+      "type": "text",
+      "text": "send by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 8 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026) – Decide"
+    },
+    {
+      "type": "text",
+      "text": " wh"
+    },
+    {
+      "type": "text",
+      "text": "ether to object ("
+    },
+    {
+      "type": "text",
+      "text": "Widersp"
+    },
+    {
+      "type": "text",
+      "text": "ruch) to Mu"
+    },
+    {
+      "type": "text",
+      "text": "ster"
+    },
+    {
+      "type": "text",
+      "text": " B"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": "K"
+    },
+    {
+      "type": "text",
+      "text": "'s contribution not"
+    },
+    {
+      "type": "text",
+      "text": "ice [item:itm_t"
+    },
+    {
+      "type": "text",
+      "text": "j3"
+    },
+    {
+      "type": "text",
+      "text": "z"
+    },
+    {
+      "type": "text",
+      "text": "83"
+    },
+    {
+      "type": "text",
+      "text": "ve"
+    },
+    {
+      "type": "text",
+      "text": "4"
+    },
+    {
+      "type": "text",
+      "text": "h"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "g"
+    },
+    {
+      "type": "text",
+      "text": "] [party:pty_e"
+    },
+    {
+      "type": "text",
+      "text": "at"
+    },
+    {
+      "type": "text",
+      "text": "x"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "ex"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "t"
+    },
+    {
+      "type": "text",
+      "text": "9"
+    },
+    {
+      "type": "text",
+      "text": "s"
+    },
+    {
+      "type": "text",
+      "text": "3"
+    },
+    {
+      "type": "text",
+      "text": "]. Note:"
+    },
+    {
+      "type": "text",
+      "text": " contributions are still ow"
+    },
+    {
+      "type": "text",
+      "text": "ed at"
+    },
+    {
+      "type": "text",
+      "text": " the assessed amount even if"
+    },
+    {
+      "type": "text",
+      "text": " you object, since an"
+    },
+    {
+      "type": "text",
+      "text": " objection has no su"
+    },
+    {
+      "type": "text",
+      "text": "spens"
+    },
+    {
+      "type": "text",
+      "text": "ive effect.\n- **"
+    },
+    {
+      "type": "text",
+      "text": "Wed 14 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026** (send by"
+    },
+    {
+      "type": "text",
+      "text": " Thu 8 Oct"
+    },
+    {
+      "type": "text",
+      "text": " 2026) – Canc"
+    },
+    {
+      "type": "text",
+      "text": "el-"
+    },
+    {
+      "type": "text",
+      "text": "by date"
+    },
+    {
+      "type": "text",
+      "text": " for the"
+    },
+    {
+      "type": "text",
+      "text": " FunkNetz Sm"
+    },
+    {
+      "type": "text",
+      "text": "art M mobile contract with"
+    },
+    {
+      "type": "text",
+      "text": " FunkNetz Net"
+    },
+    {
+      "type": "text",
+      "text": "z Mobil Gmb"
+    },
+    {
+      "type": "text",
+      "text": "H, current term ends"
+    },
+    {
+      "type": "text",
+      "text": " S"
+    },
+    {
+      "type": "text",
+      "text": "at 14"
+    },
+    {
+      "type": "text",
+      "text": " Nov 2026 "
+    },
+    {
+      "type": "text",
+      "text": "[contract:"
+    },
+    {
+      "type": "text",
+      "text": "ctr_fyt9k"
+    },
+    {
+      "type": "text",
+      "text": "994t9q2] [party"
+    },
+    {
+      "type": "text",
+      "text": ":pty_gjsv"
+    },
+    {
+      "type": "text",
+      "text": "4q2d3ajw"
+    },
+    {
+      "type": "text",
+      "text": "].\n- **Wed "
+    },
+    {
+      "type": "text",
+      "text": "21 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": "** (send by Thu "
+    },
+    {
+      "type": "text",
+      "text": "15 Oct 2026"
+    },
+    {
+      "type": "text",
+      "text": ") – Decide whether to"
+    },
+    {
+      "type": "text",
+      "text": " file an objection (Ein"
+    },
+    {
+      "type": "text",
+      "text": "spruch) against"
+    },
+    {
+      "type": "text",
+      "text": " Finanzamt Mus"
+    },
+    {
+      "type": "text",
+      "text": "terstadt's tax ass"
+    },
+    {
+      "type": "text",
+      "text": "essment [item:itm_"
+    },
+    {
+      "type": "text",
+      "text": "mt"
+    },
+    {
+      "type": "text",
+      "text": "eh"
+    },
+    {
+      "type": "text",
+      "text": "ck"
+    },
+    {
+      "type": "text",
+      "text": "c"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "6"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "7"
+    },
+    {
+      "type": "text",
+      "text": "a"
+    },
+    {
+      "type": "text",
+      "text": "] [party:pty_m"
+    },
+    {
+      "type": "text",
+      "text": "cq97yavgqj"
+    },
+    {
+      "type": "text",
+      "text": "y]. If not filed in"
+    },
+    {
+      "type": "text",
+      "text": " time, the assessment becom"
+    },
+    {
+      "type": "text",
+      "text": "es final and can no longer be"
+    },
+    {
+      "type": "text",
+      "text": " challenged.\n\nLet me"
+    },
+    {
+      "type": "text",
+      "text": " know if you'd like details on"
+    },
+    {
+      "type": "text",
+      "text": " any of these."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "Here are the deadlines coming up in October:\n\n- **Thu 2 Oct 2026** – Return overdue library books to Stadtbibliothek Musterstadt [item:itm_ghq58jjdz149] [party:pty_d2ymm5s3htd0]. If they stay out, the per-item fee keeps rising and the library account can be blocked once it hits the fee cap named in the letter.\n- **Wed 14 Oct 2026** (send by Thu 8 Oct 2026) – Decide whether to object (Widerspruch) to Muster BKK's contribution notice [item:itm_tj3z83ve4hfg] [party:pty_eatxsexnt9s3]. Note: contributions are still owed at the assessed amount even if you object, since an objection has no suspensive effect.\n- **Wed 14 Oct 2026** (send by Thu 8 Oct 2026) – Cancel-by date for the FunkNetz Smart M mobile contract with FunkNetz Netz Mobil GmbH, current term ends Sat 14 Nov 2026 [contract:ctr_fyt9k994t9q2] [party:pty_gjsv4q2d3ajw].\n- **Wed 21 Oct 2026** (send by Thu 15 Oct 2026) – Decide whether to file an objection (Einspruch) against Finanzamt Musterstadt's tax assessment [item:itm_mtehckcf6q7a] [party:pty_mcq97yavgqjy]. If not filed in time, the assessment becomes final and can no longer be challenged.\n\nLet me know if you'd like details on any of these.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 916,
+          "cache_read_tokens": 12759,
+          "cache_creation_tokens": 2548,
+          "cost_usd": 0.021911800000000002,
+          "duration_ms": 12149,
+          "turns": 3
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}

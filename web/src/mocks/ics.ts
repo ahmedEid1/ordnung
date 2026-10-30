@@ -4,7 +4,11 @@ import type { Item } from "@/api/types";
 const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
 const d8 = (iso: string) => iso.replace(/-/g, "");
 
-export function itemsToIcs(items: Item[], reminderDays: Record<string, number[]> = {}): string {
+/**
+ * The calendar file of `items`; `names`: the name of the person of the household each letter is filed for, by letter
+ * id (`./whose`), which a to-do of that letter starts with ("Alex Rivera: Pay the parking fine"), as the API's does.
+ */
+export function itemsToIcs(items: Item[], reminderDays: Record<string, number[]> = {}, names: Record<string, string> = {}): string {
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Ordnung//Demo//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Ordnung"];
   for (const i of items) {
     const date = i.send_by ?? i.due_date;
@@ -17,11 +21,13 @@ export function itemsToIcs(items: Item[], reminderDays: Record<string, number[]>
       lines.push(`DTSTART;VALUE=DATE:${d8(date)}`);
     }
     const prefix = i.send_by ? "Send by: " : "";
-    lines.push(`SUMMARY:${esc(prefix + i.title)}`);
+    const name = i.doc_id ? names[i.doc_id] : undefined;
+    const title = name ? `${name}: ${i.title}` : i.title;
+    lines.push(`SUMMARY:${esc(prefix + title)}`);
     if (i.description) lines.push(`DESCRIPTION:${esc(i.description)}`);
     if (i.location) lines.push(`LOCATION:${esc(i.location)}`);
     for (const days of reminderDays[i.kind] ?? [1]) {
-      lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(i.title)}`, `TRIGGER:-P${days}D`, "END:VALARM");
+      lines.push("BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(title)}`, `TRIGGER:-P${days}D`, "END:VALARM");
     }
     lines.push("END:VEVENT");
   }
