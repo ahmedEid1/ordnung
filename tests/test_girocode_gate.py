@@ -529,6 +529,25 @@ def test_a_look_alike_sender_and_hidden_text_are_scam_signs(store: Store) -> Non
     assert code.message.startswith("No code: this letter shows signs of a scam.")
 
 
+def test_a_checked_letter_keeps_its_reminders_but_never_gets_a_code(store: Store) -> None:
+    """*I checked — it's genuine* brings a letter's to-dos back (ADR 0012): the gate still reads the letter's scam
+    signs, so a check never unlocks a code, and the letter doesn't vouch for its IBAN on another letter."""
+    from ordnung.secretary.triggers import run_and_reconcile
+
+    party = store.add_party(name="Muster Telecom GmbH", kind="telecom", ibans=[KNOWN_IBAN]).id
+    caution = ["Muster Telecom warns of phishing e-mails that use its name."]
+    doc_id, item_id = letter(store, "cautioned", party, warnings=caution, doc_date="2026-09-20")
+    run_and_reconcile(store, TODAY)
+    (warning,) = [idea for idea in store.list_suggestions() if idea.rule_id == "scam_warning"]
+    store.update_suggestion(warning.id, status="dismissed")
+    ledger = Ledger(store, TODAY)
+    assert ledger.scam_checked == frozenset({doc_id})
+    assert item_id in {item.id for item in ledger.actionable_items()}
+    code = code_for(store, item_id)
+    assert isinstance(code, GiroCodeBlocked) and code.reason == "scam"
+    assert not known_iban(ledger, store.get_party(party), KNOWN_IBAN, "doc_other")
+
+
 def test_a_photo_letter_waits_for_the_paper_then_holds_only_while_the_values_stay(store: Store) -> None:
     doc_id, item_id = letter(store, "photo", telecom(store), source="transcript")
     code = code_for(store, item_id)

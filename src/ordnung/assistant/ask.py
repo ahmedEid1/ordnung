@@ -78,7 +78,7 @@ from ordnung.llm.runtime import LLMService
 from ordnung.models import AppSettings, ChatMessage
 from ordnung.secretary.household import ask_view
 from ordnung.secretary.review import catalog_texts, correct_weekdays, language_name, stable_hash
-from ordnung.secretary.triggers import IDEA_LAWS
+from ordnung.secretary.triggers import IDEA_LAWS, Ledger
 from ordnung.tick import local_today
 
 #: Ask keeps to the ledger (ADR 0011): its server is started ``--ledger-only`` and the CLI may call only
@@ -187,9 +187,12 @@ def ledger_fingerprint(store: Store) -> str:
     recording necessary. Of the letters Ask may read, the person's *For taxes* choices and whose they are
     (:func:`ordnung.secretary.household.ask_view`) count too, each only when there is one: a ledger without a
     choice or a household hashes as it did before Ask read either, so the answers recorded then still replay.
+    So do the letters the person checked (*I checked — it's genuine*,
+    :attr:`~ordnung.secretary.triggers.Ledger.scam_checked`), whose to-dos Ask's tools then list as any other.
 
     :func:`ask_cache_key` keeps it per state of the ledger (:class:`_LedgerMemo`); a table it starts to read
-    must join :data:`ordnung.db.store.LEDGER_TABLES`, a ``meta`` row :data:`ordnung.db.store.LEDGER_META_KEYS`.
+    must join :data:`ordnung.db.store.LEDGER_TABLES`, a ``meta`` row :data:`ordnung.db.store.LEDGER_META_KEYS`,
+    an Idea's rule :data:`ordnung.db.store.LEDGER_SUGGESTION_RULES`.
     """
     profile = store.get_profile()
     documents = store.list_documents()
@@ -211,6 +214,10 @@ def ledger_fingerprint(store: Store) -> str:
     household = ask_view(store, shown)
     if household is not None:
         basis["household"] = household
+    # the day doesn't matter: a letter is checked or not whatever the day
+    checked = Ledger(store, clock.today()).scam_checked
+    if checked:
+        basis["scam_checked"] = sorted(checked)
     return stable_hash(basis)
 
 

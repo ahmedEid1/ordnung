@@ -255,7 +255,7 @@ class LedgerTools:
             doc = self.store.get_document(hit.doc_id)
             if doc is None or not _shareable(doc):
                 continue
-            scam = ledger.scam_reasons(doc)
+            scam = _letter_scam(ledger, doc)
             hits.append(
                 {
                     "id": doc.id,
@@ -274,7 +274,9 @@ class LedgerTools:
     def get_document(self, doc_id: str, page: int | None = None) -> ToolAnswer:
         """A letter's facts, its to-dos & dates, the contracts it names (a rent contract with its rent:
         :func:`_linked_contract`), the special cancellation window it opened as a price increase
-        (:func:`_special_cancellation`), and its page text (one page, or all up to the limit)."""
+        (:func:`_special_cancellation`), and its page text (one page, or all up to the limit). A letter with scam
+        signs keeps them in its letter text; once the person checked it (*I checked — it's genuine*) the record
+        says so (``scam_checked``) instead of flagging it (``scam_warning``, :func:`_letter_scam`)."""
         doc = self.store.get_document(doc_id)
         if doc is None or doc.deleted_at is not None:
             return _not_found("document", doc_id)
@@ -297,7 +299,8 @@ class LedgerTools:
             **_document_head(doc, letters, ledger),
             "remedy": {"type": doc.remedy.type} if doc.remedy and doc.remedy.type != "none" else None,
             "payment": {"iban_valid": doc.payment.iban_valid} if doc.payment else None,
-            "scam_warning": bool(ledger.scam_reasons(doc)) or None,
+            "scam_warning": ledger.shows_scam_signs(doc) or None,
+            "scam_checked": doc.id in ledger.scam_checked or None,
             "items": items,
             "contracts": [
                 _linked_contract(ledger, c, letters) for c in ledger.contracts if _cites_document(c, doc.id)
@@ -411,7 +414,8 @@ class LedgerTools:
 
         A letter that says a contract is cancelled is only the letter's claim until the person
         confirms it in Ordnung (ADR 0006): the record names the letter and says the confirmation is
-        pending; the end date the letter gives is letter text. Letters with scam signs are left out.
+        pending; the end date the letter gives is letter text. Letters with scam signs the person hasn't
+        checked are left out.
         """
         _check_choice("status", status, CONTRACT_STATUSES)
         ledger = self.ledger()
@@ -422,7 +426,7 @@ class LedgerTools:
             if status in ("all", contract.status):
                 row = _contract_row(ledger, contract, letters)
                 letter, effective = confirmations.get(contract.id, (None, None))
-                if letter is not None and not ledger.scam_reasons(letter):
+                if letter is not None and not ledger.shows_scam_signs(letter):
                     row["cancellation_letter"] = {
                         "doc_id": letter.id,
                         "pending_person_confirmation": True,
@@ -550,7 +554,7 @@ class LedgerTools:
         """
         item = self.store.get_item(entry.ref.id) if entry.ref.type == "item" else None
         doc = ledger.document(entry.ref.id) if entry.ref.type == "document" else None
-        scam = _scam_signs(ledger, item) if item is not None else ledger.scam_reasons(doc) if doc else []
+        scam = _scam_signs(ledger, item) if item is not None else _letter_scam(ledger, doc) if doc else []
         subtitle = None if item is not None and ledger.is_suspicious_item(item) else entry.subtitle
         letters.collect(entry.ref.id, titles=entry.title, subtitles=subtitle)
         letters.add(entry.ref.id, party=entry.party_name, scam_signs=scam)
@@ -966,7 +970,7 @@ def _document_ref(doc: Document, letters: LetterText) -> dict[str, Any]:
 
 def _flagged_ref(ledger: Ledger, doc: Document, letters: LetterText) -> dict[str, Any]:
     """A letter's reference with its scam flag (``scam_warning``; the signs are letter text)."""
-    scam = ledger.scam_reasons(doc)
+    scam = _letter_scam(ledger, doc)
     letters.add(doc.id, scam_signs=scam)
     return {**_document_ref(doc, letters), "scam_warning": bool(scam) or None}
 
@@ -1119,9 +1123,17 @@ def _scam_signs(ledger: Ledger, item: Item) -> list[str]:
     """The scam signs of a to-do's letter while the to-do is still to be acted on — open, or snoozed (a
     woken-up one is listed under ``do_not_pay`` too): every tool that returns the to-do flags it, so the
     answer check's scam note follows it (review round 3 of phase 2: a snoozed demand whose snooze had passed
-    was unflagged)."""
+    was unflagged). None once the person checked the letter (:func:`_letter_scam`)."""
     doc = ledger.document(item.doc_id)
-    return ledger.scam_reasons(doc) if doc is not None and item.status in ("open", "snoozed") else []
+    return _letter_scam(ledger, doc) if doc is not None and item.status in ("open", "snoozed") else []
+
+
+def _letter_scam(ledger: Ledger, doc: Document) -> list[str]:
+    """The scam signs of a letter that shows them (``scam_warning``; the signs are letter text) — none once the
+    person checked it (*I checked — it's genuine*, :meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`):
+    its to-dos and money rows then read as any other, and the answer check adds no scam note. Only
+    ``get_document`` keeps a checked letter's signs, beside ``scam_checked``."""
+    return ledger.scam_reasons(doc) if ledger.shows_scam_signs(doc) else []
 
 
 def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
