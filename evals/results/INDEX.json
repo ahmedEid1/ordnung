@@ -2178,7 +2178,7 @@
   },
   {
    "file": "2026-10-30-claude-sonnet-5-ask-rescored.json",
-   "sha256": "a1685927ff8c4b4671e89f5dc293308574b4f1d0742e7e28601d425bf23dbca8",
+   "sha256": "b570b84b532ae80fb2a2932caa7b23ec9bb30ba128512367eadbdb4fe9e46f7b",
    "kind": "ask",
    "role": "iterated",
    "set": "dev",
