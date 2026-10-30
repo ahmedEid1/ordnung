@@ -20,7 +20,9 @@ limits, not bugs):
    changes; a second run changes nothing.
 4. Marking it done (paid) does not close it: it moves to the occurrence after its current one (after
    the one a date set by hand replaced: point 7), not before today, and stays open
-   (:func:`mark_done`); an undated one has no occurrence to move to and stays open as it is. "Undo"
+   (:func:`mark_done`); an undated one has no occurrence to move to and stays open as it is. One whose
+   next occurrence would be past 31 Dec 9999, the last day a date can have (a misread year, a typo), has
+   none either: it is done, as a to-do that doesn't repeat is. "Undo"
    (setting it open again while it stands where marking it done moved it) brings back the
    occurrence marked done, with its dates as they were (:func:`undo_done`). Dismissing it ends the
    series.
@@ -185,6 +187,11 @@ REPLACED_STEP = "Moved by you from"
 ItemContext = Callable[[Store, Item, date], RuleContext]
 
 
+class NoNextDate(ValueError):
+    """The schedule has no occurrence on or after the day asked for: the next one would be past 31 Dec 9999, the
+    last day a date can have, or further on than :data:`_MAX_STEPS` steps."""
+
+
 # --------------------------------------------------------------------------------------------------
 # the schedule
 # --------------------------------------------------------------------------------------------------
@@ -210,9 +217,12 @@ def occurrence(first: date, rule: Recurrence, n: int, anchor_day: int | None = N
 
 
 def _occurrences(first: date, rule: Recurrence, since: date, anchor_day: int | None = None) -> Iterator[date]:
-    """The schedule's occurrences (as scheduled) from the first one on or after ``since``."""
+    """The schedule's occurrences (as scheduled) from the first one on or after ``since``, up to 31 Dec 9999."""
     for n in range(_MAX_STEPS):
-        day = occurrence(first, rule, n, anchor_day)
+        try:
+            day = occurrence(first, rule, n, anchor_day)
+        except (OverflowError, ValueError):  # past 31 Dec 9999: the schedule ends there
+            return
         if day >= since:
             yield day
 
@@ -221,7 +231,7 @@ def next_occurrence(first: date, rule: Recurrence, on_or_after: date) -> date:
     """The first occurrence of the schedule that is on or after ``on_or_after`` (as scheduled)."""
     for day in _occurrences(first, rule, on_or_after):
         return day
-    raise ValueError("recurrence schedule does not reach the requested date")
+    raise NoNextDate("recurrence schedule does not reach the requested date")
 
 
 def describe(rule: Recurrence) -> str:
@@ -596,7 +606,7 @@ def _following(
         due = _parse(moved.due_date)
         if due is not None and due >= on_or_after:
             return day, moved
-    raise ValueError("recurrence schedule does not reach the requested date")
+    raise NoNextDate("recurrence schedule does not reach the requested date")
 
 
 def _moved(
@@ -693,8 +703,11 @@ def has_passed(item: Item, today: date) -> bool:
 
 def _onwards(item: Item, today: date) -> date | None:
     """Where points 3 and 4 move the item on from: after the occurrence it stands for (its own, or
-    the one a date set by hand replaced: point 7), not before ``today``; ``None`` if undated."""
+    the one a date set by hand replaced: point 7), not before ``today``; ``None`` if undated
+    (:class:`NoNextDate` when it stands for 31 Dec 9999)."""
     replaced = replaced_occurrence(item)
+    if replaced == date.max:
+        raise NoNextDate("there is no day after 31 Dec 9999")
     return max(replaced + timedelta(days=1), today) if replaced is not None else None
 
 
@@ -703,8 +716,10 @@ def rolled(item: Item, ctx: RuleContext, *, postal_buffer_days: int, ends: date 
     occurrence on or after ``ctx.today`` (and after the one a date set by hand replaced); ``None`` if
     nothing changes — also when that occurrence is scheduled on or after ``ends``, the month a later rent
     replaces it from (point 9: its last occurrence stays)."""
+    if not has_passed(item, ctx.today):
+        return None
     onwards = _onwards(item, ctx.today)
-    if not has_passed(item, ctx.today) or onwards is None:
+    if onwards is None:
         return None
     return _until(item, ctx, onwards, postal_buffer_days, ends)
 
@@ -1238,11 +1253,15 @@ def mark_done(
     ("Paid “Rent” — repeats every month"). A rent a later one ``replaced`` whose next occurrence would be in
     or past the month that one starts was at its last: it closes there (done), and the log says "Paid
     “Monthly rent” (Mon 5 Oct 2026) — replaced by “New monthly total rent €670” from Nov 2026" (point 9).
-    ``None`` for an item that doesn't repeat: it is done like any to-do."""
+    One with no next occurrence, past 31 Dec 9999, is done at its date (:func:`_ended`). ``None`` for an item
+    that doesn't repeat: it is done like any to-do."""
     if item.recurrence is None:
         return None
     ends = replaced.starts if replaced is not None else None
-    moved = moved_on(item, ctx, postal_buffer_days=postal_buffer_days, ends=ends)
+    try:
+        moved = moved_on(item, ctx, postal_buffer_days=postal_buffer_days, ends=ends)
+    except NoNextDate:  # its next occurrence would be past 31 Dec 9999
+        return _ended(store, item)
     was, now = _parse(item.due_date), _parse(moved.due_date if moved else None)
     if moved is None and was is not None and replaced is not None:  # its last occurrence (point 9)
         message = f"{_done_verb(item)} “{item.title}” ({_day(was)}) — {replaced.describe()}"
@@ -1262,6 +1281,30 @@ def mark_done(
             "due_date": item.due_date,
             "next_due_date": updated.due_date,
             "undo": {name: getattr(item, name) for name in SCHEDULE_FIELDS},
+            "occurrence": was_for.isoformat() if (was_for := replaced_occurrence(item)) else None,
+        },
+    )
+    return updated
+
+
+def _ended(store: Store, item: Item) -> Item:
+    """Point 4 for a recurring item with no next occurrence (:class:`NoNextDate`: it would be past 31 Dec 9999, a
+    misread year or a typo): done at its date, as a to-do that doesn't repeat is; the log says "Paid “Fee” (Wed
+    15 Dec 9999) — no next date" and keeps its dates for :func:`undo_done`, which opens it there again."""
+    dates = {name: getattr(item, name) for name in SCHEDULE_FIELDS}
+    completed = item.completed_at or now_iso()
+    updated = store.update_item(item.id, status="done", snoozed_until=None, completed_at=completed)
+    day = _parse(item.due_date)
+    when = f" ({_day(day)})" if day is not None else ""
+    store.log_activity(
+        "item.done",
+        f"{_done_verb(item)} “{item.title}”{when} — no next date",
+        ref_type="item",
+        ref_id=item.id,
+        data={
+            "due_date": item.due_date,
+            "next_due_date": item.due_date,
+            "undo": dates,
             "occurrence": was_for.isoformat() if (was_for := replaced_occurrence(item)) else None,
         },
     )

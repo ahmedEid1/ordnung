@@ -19,10 +19,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ordnung.api.deps import CtxDep, StoreDep, TodayDep
 from ordnung.api.routes.common import contracts_with_computations, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import recompute_party_items
+from ordnung.api.routes.regions import known_region
 from ordnung.db.store import Store
 from ordnung.ingest.pipeline import ledger_lock
 from ordnung.models import Party, PartyDetail
-from ordnung.rules import normalize_region
 from ordnung.secretary.sender_land import region_suggestion
 from ordnung.secretary.triggers import Ledger
 
@@ -38,15 +38,7 @@ class PartyPatch(BaseModel):
         description="the Land (Bundesland) the sender is in, as a code like NW or BY; null: not known"
     )
 
-    @field_validator("region")
-    @classmethod
-    def _known_region(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        code = normalize_region(value)
-        if code is None:
-            raise ValueError(f"“{value}” is not a German Bundesland (use a code like NW or BY).")
-        return code
+    _known_region = field_validator("region")(known_region)
 
 
 @router.get("/parties", response_model=list[Party])

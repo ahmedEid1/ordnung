@@ -10,6 +10,7 @@ real loopback socket.
 from __future__ import annotations
 
 import contextlib
+import logging
 import sqlite3
 import ssl
 from collections.abc import Iterator
@@ -276,6 +277,24 @@ def test_the_preview_says_what_each_event_holds_and_when_its_alarms_ring(
     assert appointment.alarms and appointment.alarms_passed == 0
     assert "Amount: €25" in parking.description
     assert caldav.preview(store, "discreet")[0].description == caldav.DISCREET_DESCRIPTION
+
+
+@pytest.mark.parametrize("mode", ["full", "discreet"])
+def test_a_date_at_the_calendars_ends_is_left_out_of_sync_not_the_rest(
+    store: Store, ids: dict[str, str], mode: caldav.CalendarSyncMode, caplog: pytest.LogCaptureFixture
+) -> None:
+    """31 Dec 9999 doesn't fit the calendar file, and an alarm days before 1 Jan 0001 doesn't fit the preview
+    (a misread year, a typo): those to-dos are left out of what sync sends and shows, and logged; every other
+    event goes as before."""
+    before = {event.stable_uid for event in caldav.build_events(store, mode)}
+    far = store.add_item(kind="deadline", title="Far", due_date="9999-12-31", grounding="user").id
+    early = store.add_item(kind="deadline", title="Early", due_date="0001-01-01", grounding="user").id
+    with caplog.at_level(logging.WARNING, logger="ordnung.calendar"):
+        events = caldav.build_events(store, mode)
+        previews = caldav.preview(store, mode)
+    assert {event.stable_uid for event in events} == before
+    assert len(previews) == len(before)
+    assert far in caplog.text and early in caplog.text
 
 
 @pytest.mark.parametrize(

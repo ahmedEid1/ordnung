@@ -100,6 +100,24 @@ async def test_stopping_a_repeat_keeps_its_date_and_done_is_done_for_good(data_d
         assert (done["status"], done["due_date"]) == ("done", "2026-10-15")
 
 
+@pytest.mark.parametrize(
+    ("due", "recurrence"),
+    [("9999-12-15", MONTHLY), ("9999-12-31", MONTHLY), ("9999-12-28", {"interval": 1, "unit": "weeks"})],
+)
+async def test_a_repeating_date_with_no_next_one_on_the_calendar_is_done(
+    data_dir: Path, due: str, recurrence: dict[str, Any]
+) -> None:
+    """The next one would be past 31 Dec 9999, the last day a date can have (a misread year, a typo): marked done,
+    it is done like a date that doesn't repeat, and "Undo" opens it again where it stood."""
+    async with api_for(data_dir) as api:
+        item = await _add(api, due, recurrence)
+        assert (item["status"], item["due_date"]) == ("open", due)
+        done = await _patch(api, item, status="done")
+        assert (done["status"], done["due_date"], done["recurrence"]) == ("done", due, item["recurrence"])
+        undone = await _patch(api, done, status="open")
+        assert (undone["status"], undone["due_date"]) == ("open", due)
+
+
 async def test_a_date_that_stopped_repeating_no_longer_says_it_repeats(data_dir: Path) -> None:
     """Its "Why this date?" (and the calendar file's) is that of a date you set: the date it stood at."""
     async with api_for(data_dir) as api:
