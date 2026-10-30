@@ -42,7 +42,7 @@ make check
 # both benchmarks, replayed (deterministic, zero tokens, no results file written); CI also replays the
 # holdout, holdout2 and dev splits and the numbers without the sender's Land
 .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
-.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --check-docs
+.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --min-strict-accuracy 0.86 --max-harmful 6 --check-docs
 # the demo rebuilds identically from the samples and recordings
 .venv/bin/ordnung demo --check
 # Playwright: the demo, then the real app reading with a fake Claude (installs Chromium first)
@@ -87,8 +87,8 @@ check shows in the numbers at once, and costs nothing.
   when a prompt or what is sent to Claude changes, never as part of an ordinary change. If a replay
   misses a recording after your change, say so in the pull request instead of recording.
 - **Digest files and recordings.** `_code_digest` in `evals/conditions.py` hashes the code a benchmark prediction
-  depends on: every Python file of `src/ordnung` and `evals/` (and the versions of the libraries that read a
-  letter). It keys only your local prediction cache and the fingerprint written into a new results file, so a
+  depends on: every Python file of `src/ordnung` and the runner's own `evals/*.py` (and the versions of the
+  libraries that read a letter). It keys only your local prediction cache and the fingerprint written into a new results file, so a
   code change moves it and needs no recording by itself. A recording is needed only
   when what is sent changes: a prompt's text or version, a schema Claude is given, what a request's key holds
   (a letter's text, the date, the ledger Ask reads) or what Ask's tools return. A replay shows which: it misses

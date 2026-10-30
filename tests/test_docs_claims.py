@@ -5297,7 +5297,7 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
         "`ORDNUNG_RECORD=1 ordnung demo --live --rebuild --no-serve`",
         "`--no-docs`",
         # since 0.4.0 the digest is every Python file of the package and of the runner, not a list of files
-        "every Python file of `src/ordnung` and `evals/`",
+        "every Python file of `src/ordnung` and the runner's own `evals/*.py`",
         # the harness (evals/harness.py): a budget, waiting, repeats, the ledger, the lock and the cache
         "`--max-cost-usd`",
         "`--wait-on-limit`",

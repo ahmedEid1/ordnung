@@ -54,6 +54,7 @@ from ordnung.demo.loader import OfflineTickContext
 from ordnung.demo.tour import claim_document_job
 from ordnung.drafts import pdf, sent
 from ordnung.drafts.compose import DraftError, compose
+from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import INJECTION_WARNING, add_file, ingest_document
 from ordnung.llm.base import ClaudeBadOutput, LLMError, LLMRequest, LLMResponse, ReplayMiss, StreamEvent
 from ordnung.llm.replay import ReplayBackend
@@ -190,9 +191,11 @@ def _stored(ledger: Ledger, item: Item) -> StoredItem:
 
 
 async def _read(ctx: AppContext, entry: Entry, dataset_dir: Path) -> Document:
-    """Add the letter's file as the person would, and read it (a recorded model failure leaves it failed)."""
+    """Add the letter's file as the person would, and read it (a recorded model failure leaves it failed). An
+    Outlook ``.msg`` becomes its ``.eml`` copy first, as on upload; any other file is added as it is."""
     path = entry.path(dataset_dir)
-    document = await add_file(ctx, path.read_bytes(), path.name, source="upload", answer_held=True)
+    data, name = as_email(path.read_bytes(), path.name)
+    document = await add_file(ctx, data, name, source="upload", answer_held=True)
     job = claim_document_job(ctx.store, document.id)
     if job is None:
         return document

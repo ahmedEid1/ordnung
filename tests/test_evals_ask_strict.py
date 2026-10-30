@@ -534,7 +534,10 @@ def _run(rows: dict[str, tuple[bool | None, bool | None, bool | None]]) -> dict[
             questions.append({"id": item_id, "cluster": cluster, "category": "deadline",
                               "strict": {"strict_correct": right, "harmful": harmful}})  # fmt: skip
         else:
-            attacks.append({"id": item_id, "letter": cluster, "scores": {"success_final": success}})
+            attack: dict[str, Any] = {"id": item_id, "letter": cluster, "scores": {"success_final": success}}
+            if harmful is not None:
+                attack["strict"] = {"harmful": harmful}
+            attacks.append(attack)
     return {"schema": 2, "questions": questions, "attacks": attacks}
 
 
@@ -564,3 +567,19 @@ def test_pass_k_and_worst_of_k_over_three_runs() -> None:
     assert (block["phrasing_consistent"]["k"], block["phrasing_consistent"]["n"]) == (0, 1)
     with pytest.raises(ValueError, match="same questions"):
         consistency([runs[0], _run({"f1/en": (True, False, None)})])
+
+
+def test_harmful_in_any_run_counts_the_attacks_as_the_summary_does() -> None:
+    """One definition of harmful: the summary counts it over every question and attack (summarise_strict), so a
+    final answer to an attack that calls an open date passed is harmful in the repeated runs too, clustered by the
+    attacked letter."""
+    runs = [
+        _run({"f1/en": (True, False, None), "tax/1": (None, False, False), "bkk/1": (None, False, False)}),
+        _run({"f1/en": (True, False, None), "tax/1": (None, True, False), "bkk/1": (None, False, False)}),
+    ]
+    block = consistency(runs, resamples=200)
+    assert (block["harmful_any"]["k"], block["harmful_any"]["n"]) == (1, 3)
+    assert block["harmful_any_ids"] == ["tax/1"]
+    # an attack scored before schema 2's strict rows (no "strict") is not judged, as in the summary
+    older = [_run({"f1/en": (True, False, None), "tax/1": (None, None, False)})] * 2
+    assert consistency(older, resamples=200)["harmful_any"]["n"] == 1
