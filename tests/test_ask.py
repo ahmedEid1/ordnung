@@ -43,7 +43,7 @@ from ordnung.assistant.channels import parse_tool_result
 from ordnung.assistant.mcp_server import TOOL_NAMES, LedgerTools, render_result
 from ordnung.assistant.support import NOTE_PREFIX
 from ordnung.config import Paths
-from ordnung.db.store import LEDGER_META_KEYS, LEDGER_TABLES, Store
+from ordnung.db.store import LEDGER_META_KEYS, LEDGER_SUGGESTION_RULES, LEDGER_TABLES, Store
 from ordnung.llm.base import LLMBackend, LLMRequest, LLMResponse, StreamEvent, Usage
 from ordnung.llm.fake import FakeBackend
 from ordnung.llm.replay import ReplayBackend, fixture_path
@@ -884,10 +884,12 @@ def test_the_ledger_fingerprint_reads_only_the_watched_tables(
             ledger_fingerprint(fresh)
         finally:
             conn.set_authorizer(None)
-    assert {"documents", "pages", "items", "contracts", "parties", "meta"} <= read
-    unwatched = read - {*LEDGER_TABLES, "meta"}
+    assert {"documents", "pages", "items", "contracts", "parties", "meta", "suggestions"} <= read
+    unwatched = read - {*LEDGER_TABLES, "meta", "suggestions"}
     assert not unwatched, f"the ledger fingerprint reads {sorted(unwatched)}: add them to LEDGER_TABLES"
     assert set(keys) == set(LEDGER_META_KEYS), "of meta the token watches the rows the fingerprint reads"
+    # of the Ideas, the scam warnings the person dismissed (the letters they checked): the token watches those
+    assert LEDGER_SUGGESTION_RULES == ("scam_warning",)
 
 
 #: Ask's ledger fingerprint of the demo, without a household or a *For taxes* choice (as at 0.3.0).
@@ -1054,6 +1056,78 @@ def test_the_ledger_token_moves_for_a_tax_choice_and_not_for_settings(
     assert store.set_tax_choice(ids["doc_invoice"], None)
     assert store.ledger_token() != token
     assert ledger_fingerprint(store) == fingerprint
+
+
+def _scam_warning(store: Store, doc_id: str, status: str = "new") -> str:
+    """The id of the letter's scam warning with ``status``, after a refresh of the Ideas."""
+    from ordnung.secretary.triggers import run_and_reconcile
+
+    run_and_reconcile(store, TODAY)
+    (idea,) = [
+        idea.id
+        for idea in store.list_suggestions(status=status)
+        if idea.rule_id == "scam_warning" and any(ref.id == doc_id for ref in idea.refs)
+    ]
+    return idea
+
+
+def test_a_scam_check_moves_the_fingerprint_only_while_it_holds(tmp_path: Path) -> None:
+    """Ask's tools treat a letter the person checked (*I checked — it's genuine*) as genuine, so the check is part
+    of the fingerprint — only while there is one: the demo, a dismissed warning no letter's signs match any more
+    and a letter with scam signs nobody checked hash as before, and undoing the check gives the old value back."""
+    data = tmp_path / "demo"
+    shutil.copytree(DEMO_DB, data)
+    store = Store.open(Paths(data))
+    try:
+        from ordnung.secretary.triggers import run_and_reconcile
+
+        run_and_reconcile(store, TODAY)
+        assert ledger_fingerprint(store) == DEMO_FINGERPRINT
+        letter = next(item.doc_id for item in store.list_items(status="open") if item.doc_id)
+        store.upsert_suggestion(
+            {
+                "kind": "scam",
+                "title": "Possible scam: an earlier reading",
+                "body": "Signs this letter no longer shows.",
+                "fingerprint": f"scam_warning:{letter}:0000000000",
+                "source": "rule",
+                "rule_id": "scam_warning",
+                "status": "dismissed",
+            }
+        )
+        assert ledger_fingerprint(store) == DEMO_FINGERPRINT
+        shown = store.get_document(letter)
+        assert shown is not None
+        store.update_document(letter, warnings=[*shown.warnings, "Phishing e-mails use this sender's name."])
+        flagged = ledger_fingerprint(store)
+        warning = _scam_warning(store, letter)
+        assert ledger_fingerprint(store) == flagged
+        store.update_suggestion(warning, status="dismissed")
+        checked = ledger_fingerprint(store)
+        assert checked != flagged
+        store.update_suggestion(warning, status="new")
+        assert ledger_fingerprint(store) == flagged
+    finally:
+        store.close()
+
+
+def test_the_ledger_token_moves_for_a_scam_check_and_not_for_other_ideas(
+    store: Store, ids: dict[str, str]
+) -> None:
+    """The memo keeps the fingerprint while the token stays: answering the scam warning moves it, refreshing the
+    warning's words or answering any other Idea leaves it (they are not what Ask reads)."""
+    memo = ask_module._LEDGER_MEMO
+    warning = _scam_warning(store, ids["doc_scam"])
+    other = next(idea for idea in store.list_suggestions(status="new") if idea.rule_id != "scam_warning")
+    token, fingerprint = store.ledger_token(), memo.fingerprint(store)
+    store.update_suggestion(other.id, status="dismissed")
+    shown = store.get_suggestion(warning)
+    assert shown is not None
+    store.upsert_suggestion(shown.model_copy(update={"body": "Reworded."}))
+    assert store.ledger_token() == token
+    store.update_suggestion(warning, status="dismissed")
+    assert store.ledger_token() != token
+    assert memo.fingerprint(store) == ledger_fingerprint(store) != fingerprint
 
 
 async def test_a_question_after_a_tax_choice_is_not_answered_from_the_cache(

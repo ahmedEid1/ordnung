@@ -18,7 +18,9 @@ reason the person reads:
    a look-alike name — used before. An attacker's IBAN with valid check digits on a letter that looks
    like a known sender's is exactly this case. Nor does its IBAN appear on another letter with scam
    signs (in the trash too): a scam letter teaches its sender's IBANs like any other, so a follow-up
-   asking for the same account looks clean on its own.
+   asking for the same account looks clean on its own. The person's *I checked — it's genuine* changes
+   none of this: it brings the letter's reminders back
+   (:meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`), but a check never unlocks a code (ADR 0012).
 4. **It is the payment to make from this letter** — not an invoice payment a payment reminder took
    over (pay once, from the reminder), not an e-mail's payment its attached bill asks for too (pay
    once, from the bill: :meth:`~ordnung.secretary.triggers.Ledger.is_covered_by_attachment`), and not

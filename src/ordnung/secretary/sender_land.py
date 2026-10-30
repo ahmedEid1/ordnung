@@ -5,8 +5,8 @@ A sender's Land decides which public holidays move the dates of their letters an
 letter counts as delivered after 3 or 4 days. Only the person sets it (``PATCH /api/parties/{id}``); until then
 Ordnung counts nationwide holidays and 3 days. :func:`region_suggestion` reads the postcode in the sender's
 address as their own letters give it (:func:`ordnung.rules.postcodes.suggest_land`): the newest
-:data:`LETTERS_LOOKED_AT` live incoming letters, without those with scam signs, each checked against the
-letter's visible text and the person's own Land. Letters that name different Länder suggest nothing, and the
+:data:`LETTERS_LOOKED_AT` live incoming letters, without those with scam signs the person hasn't checked, each
+checked against the letter's visible text and the person's own Land. Letters that name different Länder suggest nothing, and the
 party's stored address (the first letter's, never refreshed) is never a source. It counts the open dates that
 confirming the Land may change (:func:`~ordnung.rules.deadlines.waits_for_sender_land`): the sender's, or one
 letter's. Nothing here writes ``Party.region``.
@@ -115,13 +115,19 @@ def _letters(ledger: Ledger, party: Party) -> list[Document]:
     return sorted(mine, key=lambda doc: (doc.doc_date or doc.created_at, doc.created_at), reverse=True)
 
 
+def _flagged(ledger: Ledger, doc: Document) -> bool:
+    """The letter shows the signs of its scam warning (:meth:`~ordnung.secretary.triggers.Ledger.scam_signs`) and
+    the person hasn't checked it (:meth:`~ordnung.secretary.triggers.Ledger.shows_scam_signs`)."""
+    return bool(ledger.scam_signs(doc)) and ledger.shows_scam_signs(doc)
+
+
 def _read_source(ledger: Ledger, party: Party) -> _Source | None:
     home = Home.of(ledger.profile.address, ledger.profile.known_region)
     hits: list[_Source] = []
     for doc in _letters(ledger, party)[:LETTERS_LOOKED_AT]:
         reading = ledger.extraction(doc.id)
         sender = reading.sender if reading is not None else None
-        if sender is None or not sender.address or ledger.scam_signs(doc):
+        if sender is None or not sender.address or _flagged(ledger, doc):
             continue
         land = suggest_land(
             sender.address,
@@ -220,12 +226,12 @@ def _waiting(ledger: Ledger, dates: list[_Dated], region: str) -> tuple[list[_Da
 def region_suggestion(ledger: Ledger, party: Party, *, doc_id: str | None = None) -> RegionSuggestion | None:
     """The question about ``party``'s Land for their details, or with ``doc_id`` for that letter's page (its own
     dates); ``None`` once the Land is set, when the letters suggest none, and on a letter that is not a live
-    incoming one of theirs without scam signs."""
+    incoming one of theirs without scam signs the person hasn't checked."""
     if party.region:
         return None
     if doc_id is not None:
         doc = ledger.document(doc_id)
-        if doc is None or doc.party_id != party.id or doc.direction != "incoming" or ledger.scam_signs(doc):
+        if doc is None or doc.party_id != party.id or doc.direction != "incoming" or _flagged(ledger, doc):
             return None
     source = _source(ledger, party)
     if source is None:

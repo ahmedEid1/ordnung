@@ -30,7 +30,9 @@ existing scam checks only *warn*; a code would *help* pay.
 3. **Photos need the person, and the person's check is bound to the values.** A value read by AI
    from a photo waits for "These match the letter". The confirmation records the exact payee, IBAN,
    reference and amount and holds only while they stay the same. It never overrides a scam sign, and
-   it never teaches the sender's IBANs: a scam letter matches its own paper. Nothing else the person
+   it never teaches the sender's IBANs: a scam letter matches its own paper. Nor does *I checked — it's
+   genuine* on a letter's scam warning: it brings the letter's reminders back, but the gate still reads
+   the letter's scam signs, so a check never unlocks a code. Nothing else the person
    does to a to-do vouches for its amount: its `grounding="user"` comes from moving its date or
    "Correct" on a Please-check card, so it is about the date.
 4. **Stored as an activity entry, not a schema change.** `PaymentDetails` is part of the model's
