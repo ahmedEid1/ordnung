@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import stat
 import sys
 from datetime import datetime
@@ -15,6 +16,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+import ordnung
 from ordnung.assistant import mcp_install
 from ordnung.assistant.mcp_install import (
     FULL_SERVER_NAME,
@@ -39,7 +41,9 @@ from ordnung.cli import app
 from ordnung.config import Paths
 
 NOW = datetime(2026, 9, 26, 10, 15, 30)
-RULES_ENTRY = {"command": sys.executable, "args": ["-m", "ordnung", "mcp", "--rules-only"]}
+#: The folder this Ordnung is imported from, for a server started in another folder (not an installed one)
+THIS_ORDNUNG = str(Path(ordnung.__file__).resolve().parents[1])
+RULES_ENTRY = {"command": sys.executable, "args": ["-P", "-m", "ordnung", "mcp", "--rules-only"]}
 EXISTING = {
     "globalShortcut": "Ctrl+Space",
     "mcpServers": {"files": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"]}},
@@ -90,10 +94,44 @@ def test_the_entries(tmp_path: Path) -> None:
     assert name == FULL_SERVER_NAME
     assert entry == {
         "command": sys.executable,
-        "args": ["-m", "ordnung", "mcp", "--data-dir", str((tmp_path / "data").resolve())],
+        "args": ["-P", "-m", "ordnung", "mcp", "--data-dir", str((tmp_path / "data").resolve())],
     }
     with pytest.raises(ValueError, match="data folder"):
         server_entry(rules_only=False)
+
+
+async def test_the_printed_command_runs_ordnung_in_a_folder_with_lookalike_files(tmp_path: Path) -> None:
+    """Claude Code starts a server in the folder it was opened in, and ``python -m`` would put that folder first
+    on the import path: a project's ``ordnung.py``, or a ``json.py`` shadowing the standard library, would run
+    as the person instead of Ordnung. ``-P`` leaves the folder out."""
+    from mcp.client import Client
+    from mcp.client.stdio import StdioServerParameters
+
+    from ordnung.assistant.rules_tools import SERVER_NAME
+
+    project, ran = tmp_path / "project", tmp_path / "ran"
+    project.mkdir()
+    ran.mkdir()
+    for name in ("ordnung.py", "json.py"):
+        (project / name).write_text(f"open({str(ran / name)!r}, 'w').close()\n", encoding="utf-8")
+    plan = plan_install("claude-code", rules_only=True, cwd=project)
+    argv = shlex.split(claude_code_command(plan, system="linux"))
+    command, *args = argv[argv.index("--") + 1 :]
+    assert args[:3] == ["-P", "-m", "ordnung"]
+    params = StdioServerParameters(
+        command=command,
+        args=args,
+        cwd=project,
+        env={
+            "PYTHONPATH": THIS_ORDNUNG,
+            "ORDNUNG_HOME": str(tmp_path / "no-home"),
+            "ORDNUNG_TODAY": "2026-09-20",
+        },
+    )
+    async with Client(params, mode="legacy") as client:
+        assert client.server_info is not None and client.server_info.name == SERVER_NAME
+        assert (await client.list_tools()).tools
+    assert list(ran.iterdir()) == []
 
 
 def test_plans(tmp_path: Path) -> None:
@@ -126,16 +164,16 @@ def test_claude_code_command_is_quoted_for_the_shell() -> None:
         name=RULES_SERVER_NAME,
         entry={
             "command": "/Users/Sam Rivera/.local/bin/python",
-            "args": ["-m", "ordnung", "mcp", "--rules-only"],
+            "args": ["-P", "-m", "ordnung", "mcp", "--rules-only"],
         },
         path=Path(".mcp.json"),
         rules_only=True,
     )
     assert claude_code_command(plan, system="linux") == (
-        "claude mcp add --scope user ordnung_rules -- '/Users/Sam Rivera/.local/bin/python' -m ordnung mcp --rules-only"
+        "claude mcp add --scope user ordnung_rules -- '/Users/Sam Rivera/.local/bin/python' -P -m ordnung mcp --rules-only"
     )
     assert claude_code_command(plan, system="win32") == (
-        'claude mcp add --scope user ordnung_rules -- "/Users/Sam Rivera/.local/bin/python" -m ordnung mcp --rules-only'
+        'claude mcp add --scope user ordnung_rules -- "/Users/Sam Rivera/.local/bin/python" -P -m ordnung mcp --rules-only'
     )
 
 
@@ -233,7 +271,20 @@ def _c_runtime_argv(line: str) -> list[str]:
 def test_printed_windows_commands_survive_cmd_exe(path: str) -> None:
     """Reviewer repro: a folder like ``Tom&Jerry`` is legal on Windows, and cmd.exe runs whatever follows
     an unquoted ``&`` as a second command. Every argument must reach the program whole."""
-    argv = ["claude", "mcp", "add", "--scope", "user", "ordnung_rules", "--", path, "-m", "ordnung", "mcp"]
+    argv = [
+        "claude",
+        "mcp",
+        "add",
+        "--scope",
+        "user",
+        "ordnung_rules",
+        "--",
+        path,
+        "-P",
+        "-m",
+        "ordnung",
+        "mcp",
+    ]
     line = mcp_install.shell_join(argv, system="win32")
     assert _cmd_acts_on(line) == [], line
     assert _c_runtime_argv(line) == argv, line
@@ -255,7 +306,7 @@ def test_merge_adds_next_to_everything_that_is_there() -> None:
     assert merged["preferences"] == EXISTING["preferences"]
     again, status = merge_server(json.dumps(merged), RULES_SERVER_NAME, RULES_ENTRY)
     assert status == "unchanged" and again == merged
-    changed = {**RULES_ENTRY, "args": ["-m", "ordnung", "mcp", "--rules-only", "--x"]}
+    changed = {**RULES_ENTRY, "args": ["-P", "-m", "ordnung", "mcp", "--rules-only", "--x"]}
     updated, status = merge_server(json.dumps(merged), RULES_SERVER_NAME, changed)
     assert status == "updated" and updated["mcpServers"][RULES_SERVER_NAME] == changed
     assert updated["mcpServers"]["files"] == EXISTING["mcpServers"]["files"]
@@ -642,7 +693,7 @@ def test_cli_full_server_needs_a_database_and_warns_about_privacy_first(home: Pa
     # the warning comes before the file is changed, not as a footnote after it
     assert written.output.index("read access to your Ordnung ledger") < written.output.index("Added Ordnung")
     entry = json.loads(config.read_text(encoding="utf-8"))["mcpServers"][FULL_SERVER_NAME]
-    assert entry["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data.resolve())]
+    assert entry["args"] == ["-P", "-m", "ordnung", "mcp", "--data-dir", str(data.resolve())]
 
 
 def test_cli_refuses_the_ledger_in_a_projects_mcp_json(

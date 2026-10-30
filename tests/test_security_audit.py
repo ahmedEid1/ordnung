@@ -32,7 +32,7 @@ from rich.console import Console
 from fixtures_llm import INVOICE_LETTER, TAX_LETTER
 from helpers_docs import letter_pdf
 from ordnung import clock
-from ordnung.cli import LOGIN_PAGE_NAME, launch_browser, login_page, summary_table
+from ordnung.cli import launch_browser, summary_table
 from ordnung.config import REPO_DIR, Paths
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
 from ordnung.ingest import expansion, intake, text
@@ -91,27 +91,46 @@ async def test_data_folder_and_letters_are_private_to_the_owner(tmp_path: Path) 
 
 
 def test_browser_is_opened_without_the_session_token_on_its_command_line(
-    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """A one-time link instead of the token, with no page written for the browser to read (snap and Flatpak
+    browsers can't read hidden folders such as ``~/.local/share``)."""
     opened: list[str] = []
     monkeypatch.setattr("ordnung.cli.webbrowser.open", lambda url: opened.append(url))
     info = ServerInfo(port=8765, token="s3cret-token", pid=os.getpid(), started_at="2026-09-25T10:00:00Z")
 
-    launch_browser(data_dir, info)
+    launch_browser(info)
+    launch_browser(info)
 
-    [url] = opened
-    assert "s3cret-token" not in url  # webbrowser passes the URL to the browser's command line
-    page = data_dir / LOGIN_PAGE_NAME
-    assert url == page.as_uri()
-    assert info.login_url in page.read_text(encoding="utf-8")  # the page forwards to the sign-in link
-    if POSIX:
-        assert _mode(page) == 0o600
-    assert login_page(data_dir, info) == page  # rewritten in place
+    first, second = opened
+    for url in opened:
+        assert "s3cret-token" not in url  # webbrowser passes the URL to the browser's command line
+        assert url.startswith("http://127.0.0.1:8765/?open=")
+    assert first != second  # each one a new code
+    launch_browser(ServerInfo(port=8765, pid=os.getpid()))  # --no-token: nothing to sign in with
+    assert opened[-1] == "http://127.0.0.1:8765/"
+
+
+async def test_a_launched_link_signs_the_browser_in_once(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened: list[str] = []
+    monkeypatch.setattr("ordnung.cli.webbrowser.open", lambda url: opened.append(url))
+    async with api_for(data_dir, token="s3cret-token") as api:
+        launch_browser(ServerInfo(port=8765, token="s3cret-token", pid=os.getpid()))
+        [url] = opened
+        link = url.removeprefix("http://127.0.0.1:8765")
+        login = await api.client.get(link)
+        assert login.status_code == 303 and login.headers["set-cookie"].startswith(
+            "ordnung_token_8765=s3cret-token;"
+        )
+        api.client.cookies.clear()
+        assert (await api.client.get(link)).status_code == 401  # once only
 
 
 async def test_the_forwarding_page_signs_the_browser_in(data_dir: Path) -> None:
-    """The local page is a ``file://`` origin, so its forward is a cross-site page load: accepted
-    with the valid token only, and answered with a same-origin forward (not a cross-site redirect)."""
+    """A link opened from another site (a chat, a mail) is a cross-site page load: accepted with the valid
+    token only, and answered with a same-origin forward (not a cross-site redirect)."""
     cross_site = {"Sec-Fetch-Site": "cross-site", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"}
     async with api_for(data_dir, token="s3cret-token") as api:
         wrong = await api.client.get("/?token=guess", headers=cross_site)
