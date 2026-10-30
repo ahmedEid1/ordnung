@@ -24,7 +24,7 @@ import asyncio
 import json
 import sys
 import tempfile
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -38,7 +38,7 @@ from ordnung.ingest.extract import ExtractionInput, prompt_pages, read_document
 from ordnung.ingest.gaps import DEADLINE_SLOT
 from ordnung.ingest.pipeline import injection_warnings
 from ordnung.ingest.plan import verify_extraction
-from ordnung.llm.base import LLMRequest, ReplayMiss
+from ordnung.llm.base import LLMRequest, ReplayMiss, StreamEvent
 from ordnung.llm.replay import ReplayBackend
 from ordnung.llm.runtime import LLMService
 
@@ -62,8 +62,8 @@ class WithoutReask:
             raise ReplayMiss(f"no recorded response for {req.purpose} ({req.cache_key})")
         return await self.inner.complete(req)
 
-    async def stream(self, req: LLMRequest) -> Any:  # pragma: no cover - an extraction never streams
-        raise NotImplementedError
+    def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:  # pragma: no cover
+        raise NotImplementedError  # an extraction never streams
 
 
 def labelled_dates(truth: Truth) -> set[date]:

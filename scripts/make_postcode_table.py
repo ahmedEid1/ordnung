@@ -206,8 +206,8 @@ def _leave_one_block_out(postcodes: Postcodes) -> tuple[Counter[str], Counter[st
         if len(lands) == 1:
             single[code[:3]].extend(lands)
     areas: defaultdict[str, Counter[str]] = defaultdict(Counter)
-    for block, lands in blocks.items():
-        areas[block[:2]].update(lands)
+    for block, found in blocks.items():
+        areas[block[:2]].update(found)
     counts: Counter[str] = Counter()
     answered: Counter[str] = Counter()
     for block, truths in single.items():

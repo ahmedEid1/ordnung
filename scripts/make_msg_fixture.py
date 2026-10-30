@@ -47,7 +47,7 @@ HTML = (
 
 def outlook_bill() -> bytes:
     """The fixture's bytes."""
-    return build_msg(
+    fixture: bytes = build_msg(
         Message(
             subject="Ihre Stromrechnung September 2026",
             sender_name="Stadtwerke Musterstadt",
@@ -62,6 +62,7 @@ def outlook_bill() -> bytes:
             ],
         )
     )
+    return fixture
 
 
 def main(argv: Sequence[str] | None = None) -> int:
