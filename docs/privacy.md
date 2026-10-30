@@ -144,10 +144,10 @@ sync.
   on its screen, like the rest of your letters, and keeps no copy.
 - **What reaches Claude.** When you ask *Ask* a question, its tools can hand over the names as you typed them,
   which letters you filed for whom and whose a number on *My numbers* is; letters you keep private are left
-  out. A name also stands in the title of an Idea about letters you filed for that person (*Alex Rivera's
-  passport expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what *Weekly Ideas* and the daily
-  note send. Never sent to Claude: whether someone signs their own letters, the letters you said are yours, or
-  Ordnung's suggestions; no prompt or draft request reads the list itself
+  out. A name also stands in the title of an Idea about letters you filed for that person, none of them kept
+  private (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what
+  *Weekly Ideas* and the daily note send. Never sent to Claude: whether someone signs their own letters, the
+  letters you said are yours, or Ordnung's suggestions; no prompt or draft request reads the list itself
   ([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)). A reply in a household member's name is
   like any letter in another name: Ordnung doesn't add the name to the request (see *Letters* above), though the
   related letter's title and summary, sent as read, often name them. An Idea you dismissed keeps the title it

@@ -13,11 +13,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   say *For Alex Rivera*. On a paired phone their numbers show only their last 4 characters, like yours.
 - **Ask, the Ideas, your reminders and the Timeline say whose it is.** Ask is told who is in your household,
   which letters you filed for whom and whose each number is; letters you keep private stay out. An Idea about
-  their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*); filing a letter later
-  renames the same Idea, so *Not relevant* or *Remind me in a week* still holds. The calendar file, calendar
-  sync *With details* and the morning notification *With details* put their name in front of a to-do of their
-  letter; *Discreet* never names anyone. On the Timeline, a date from their letter says *For Alex Rivera ·*, as
-  Today does. Ordnung still files a letter only when you say so
+  their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), unless you keep one of
+  them private; filing a letter later renames the same Idea, so *Not relevant* or *Remind me in a week* still
+  holds. The calendar file, calendar sync *With details* and the morning notification *With details* put their
+  name in front of a to-do of their letter; *Discreet* never names anyone. On the Timeline, a date from their
+  letter says *For Alex Rivera ·*, as Today does. Ordnung still files a letter only when you say so
   ([ADR 0025](docs/decisions/0025-ask-and-the-ideas-say-whose-it-is.md)).
 - **Ask knows how your dates repeat.** For a to-do or date that repeats, Ask is told how, in the words the app
   uses (*every month on the 3rd working day*), and the date it moves on to once you mark this one done — also for

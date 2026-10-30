@@ -70,6 +70,15 @@ describe("whose it is in the mock (ADR 0023)", () => {
     expect((await titles(s)).sug_passport).toBe("For Kim 2: Renew the passport before the residence permit appointment");
   });
 
+  it("names no one in an Idea about a letter kept private, whose title would reach Claude", async () => {
+    const s = srv();
+    const own = await titles(s);
+    await addPerson(s, "Alex Rivera", ["doc_parking"]);
+    expect((await titles(s)).sug_parking).toBe(`For Alex Rivera: ${own.sug_parking}`);
+    s.db.document("doc_parking")!.ai_private = true;
+    expect((await titles(s)).sug_parking).toBe(own.sug_parking);
+  });
+
   it("forgets the name once the person is removed", async () => {
     const s = srv();
     const own = await titles(s);

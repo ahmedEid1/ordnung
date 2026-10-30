@@ -51,16 +51,16 @@ more than their own screen shows.
   and Ask's ledger fingerprint hashes as before, so the answers recorded then still replay. With them, the
   fingerprint hashes the choices of the letters Ask may read and what `ask_view` gives, and the store's ledger
   token watches both rows (`LEDGER_META_KEYS`).
-- **The Ideas** (`secretary/triggers.py`, `named`): an Idea all of whose letters are filed for one person starts
-  "For Alex Rivera: …"; the passport and residence permit Ideas say it in their own words ("Alex Rivera's
-  passport expires …", "Renew Alex Rivera's passport before extending their residence permit"), with the same
-  law (§ 81 Abs. 4 AufenthG) and rationale. A name that doesn't end in a letter gets "For Kim 2: Passport expires
-  …". Never named: the tax documents, the calendar file, the student permit card, the move, a sender's Land and a
-  contract's cancel window, because a contract's decision is the person's. The name is not in the Idea's
-  fingerprint, so filing a letter renames the same Idea and keeps the person's *Not relevant* or *Remind me in a
-  week*; household writes refresh the Ideas. `passport_before_permit` pairs a passport only with the same
-  person's permit, and the student permit card reads only the person's own permit. Claude's own weekly Ideas
-  get no name added.
+- **The Ideas** (`secretary/triggers.py`, `named`): an Idea all of whose letters are filed for one person, none
+  of them kept private (its title reaches Claude), starts "For Alex Rivera: …"; the passport and residence permit
+  Ideas say it in their own words ("Alex Rivera's passport expires …", "Renew Alex Rivera's passport before
+  extending their residence permit"), with the same law (§ 81 Abs. 4 AufenthG) and rationale. A name that doesn't
+  end in a letter gets "For Kim 2: Passport expires …". Never named: the tax documents, the calendar file, the
+  student permit card, the move, a sender's Land and a contract's cancel window, because a contract's decision is
+  the person's. The name is not in the Idea's fingerprint, so filing a letter renames the same Idea and keeps the
+  person's *Not relevant* or *Remind me in a week*; household writes refresh the Ideas. `passport_before_permit`
+  pairs a passport only with the same person's permit, and the student permit card reads only the person's own
+  permit. Claude's own weekly Ideas get no name added.
 - **Reminders and the Timeline:** the calendar file and calendar sync *With details* put the name after the
   symbol ("⌛ Alex Rivera: Passport expires"), the morning notification *With details* in front of the title;
   *Discreet* never names anyone, and a contract's dates are never named. On the Timeline a date from their

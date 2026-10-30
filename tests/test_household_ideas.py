@@ -117,3 +117,53 @@ def test_filing_renames_an_idea_in_place_and_keeps_the_person_s_choice(store: St
     assert back is not None and (back.title, back.status) == (YOURS, "dismissed")
     unfiled = store.get_suggestion(parking.id)
     assert unfiled is not None and (unfiled.title, unfiled.status) == (PARKING, "snoozed")
+
+
+def test_an_idea_about_a_private_letter_names_no_one(store: Store) -> None:
+    """An Idea's title reaches Claude (the weekly review's existing Ideas, the daily note's new ones), so a letter
+    kept private never gives an Idea its person: the Idea reads as it would without a household. The same letters
+    not private are named as before."""
+    from ordnung.secretary.brief import _model_payload, build_agenda
+    from ordnung.secretary.review import build_snapshot
+
+    ids = seed_ledger(store)
+    household.change(store, base=household.version([]), members=[_Person("Alex Rivera")])
+    (alex,) = household.load(store).members
+    household.file(
+        store, {ids["doc_passport"]: alex.id, ids["doc_permit"]: alex.id, ids["doc_parking"]: alex.id}
+    )
+    run_and_reconcile(store, TODAY)
+    named = {idea.title for idea in store.list_suggestions()}
+    assert {ALEXS, f"For Alex Rivera: {PARKING}"} <= named
+
+    # the passport private: its Ideas name no one, though the passport pairs with Alex's permit as before
+    store.update_document(ids["doc_passport"], ai_private=True)
+    run_and_reconcile(store, TODAY)
+    titles = {idea.title for idea in store.list_suggestions()}
+    assert {YOURS, "Renew your passport before extending your residence permit"} <= titles
+    assert "Alex Rivera's residence permit expires Tue 15 Dec — apply for the extension now" in titles
+
+    for doc in ("doc_permit", "doc_parking"):
+        store.update_document(ids[doc], ai_private=True)
+    run_and_reconcile(store, TODAY)
+    ideas = store.list_suggestions()
+    assert not [idea.title for idea in ideas if "Alex" in idea.title]
+    assert PARKING in {idea.title for idea in ideas}
+    review = build_snapshot(store, TODAY).data
+    assert review["existing_ideas"]["open"] and "Alex" not in str(review["existing_ideas"])
+    brief = _model_payload(build_agenda(store, TODAY))
+    assert brief["new_ideas"] and "Alex" not in str(brief["new_ideas"])
+
+
+async def test_keeping_a_letter_private_unnames_its_ideas_at_once(data_dir: Path) -> None:
+    """*Keep private — no AI* on a letter filed for someone refreshes the Ideas at once, so the next *Weekly Ideas*
+    or daily note isn't sent the name with the old title."""
+    async with api_for(data_dir) as api:
+        ids = seed_ledger(api.ctx.store)
+        passport = ids["doc_passport"]
+        await _put(api, [{"name": "Alex Rivera"}], also_file=[passport])
+        assert ALEXS in await _titles(api)
+
+        response = await api.client.patch(f"/api/documents/{passport}", json={"ai_private": True})
+        assert response.status_code == 200, response.text
+        assert YOURS in await _titles(api) and ALEXS not in await _titles(api)

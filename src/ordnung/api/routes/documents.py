@@ -765,8 +765,9 @@ async def update_document(
             raise PhoneRefusal("computer_only", PRIVATE_ON_COMPUTER)
     async with ledger_lock():
         document, changed = await asyncio.to_thread(_patch, ctx.store, doc_id, changes, confirmed, today)
-    if tax_set:
-        # the tax Idea counts the letters for taxes: it follows at once
+    if tax_set or "ai_private" in changes:
+        # the tax Idea counts the letters for taxes, and an Idea about a private letter names no one: both follow
+        # at once (an Idea's title reaches Claude)
         ctx.worker.refresh_ideas()
     if changed is None:
         if changes or tax_set:

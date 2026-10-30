@@ -4284,9 +4284,9 @@ PRIVACY_HOUSEHOLD = (
     "**What reaches Claude.** When you ask *Ask* a question, its tools can hand over the names as you typed them, "
     "which letters you filed for whom and whose a number on *My numbers* is; letters you keep private are left "
     "out.",
-    "A name also stands in the title of an Idea about letters you filed for that person (*Alex Rivera's passport "
-    "expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what *Weekly Ideas* and the daily note "
-    "send.",
+    "A name also stands in the title of an Idea about letters you filed for that person, none of them kept "
+    "private (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), and Ideas' titles are part of what "
+    "*Weekly Ideas* and the daily note send.",
     "Never sent to Claude: whether someone signs their own letters, the letters you said are yours, or "
     "Ordnung's suggestions; no prompt or draft request reads the list itself "
     "([ADR 0025](decisions/0025-ask-and-the-ideas-say-whose-it-is.md)).",
@@ -5244,8 +5244,9 @@ E2_WHOSE_NUMBER = (
 E2_WHOSE_SAID = (
     "Ask is told who is in your household, which letters you filed for whom and whose each number is; letters you "
     "keep private stay out.",
-    "An Idea about their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*); filing a "
-    "letter later renames the same Idea, so *Not relevant* or *Remind me in a week* still holds.",
+    "An Idea about their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), unless "
+    "you keep one of them private; filing a letter later renames the same Idea, so *Not relevant* or *Remind me "
+    "in a week* still holds.",
     "The calendar file, calendar sync *With details* and the morning notification *With details* put their name "
     "in front of a to-do of their letter; *Discreet* never names anyone.",
     "On the Timeline, a date from their letter says *For Alex Rivera ·*, as Today does.",
@@ -5394,6 +5395,7 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
         "a contract's decision is the person's",
         "*Discreet* never names anyone",
         "A dismissed Idea keeps the title it had",
+        "an Idea all of whose letters are filed for one person, none of them kept private (its title reaches Claude), starts",
     ):
         assert words in adr, words
     household = _adr(_ADR_HOUSEHOLD)
@@ -5434,6 +5436,7 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
         '`tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off '
         'their letters for taxes."',
         "**Whose an Idea is** (`triggers.named`):",
+        "are filed for one person of the household and none is kept private (`Ledger.idea_member`, `Ledger.named_member`: an Idea's title reaches Claude) starts \"For Alex Rivera: …\"",
         "never `tax_documents`, `calendar_outdated`, `student_permit_info`, `moved_house`, `sender_land` or "
         "`contract_cancel_window`",
         'a letter filed for someone of the household names them after the symbol ("⌛ Alex Rivera: Passport '

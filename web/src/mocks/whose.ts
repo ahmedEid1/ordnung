@@ -41,10 +41,13 @@ function lettersOf(db: MockDb, idea: Suggestion): Set<string> {
   return letters;
 }
 
-/** The person an Idea is about: every letter it refers to is filed for them (null: no letter, or not all theirs). */
+/**
+ * The person an Idea is about: every letter it refers to is filed for them and none is kept private, since an Idea's
+ * title reaches Claude (null: no letter, a private one, or not all theirs).
+ */
 function ideaMember(db: MockDb, idea: Suggestion, names: Record<string, string>): string | null {
   if (idea.source !== "rule" || NEVER_NAMED.has(idea.rule_id ?? "")) return null;
-  const people = new Set([...lettersOf(db, idea)].map((letter) => names[letter] ?? null));
+  const people = new Set([...lettersOf(db, idea)].map((letter) => (db.document(letter)?.ai_private ? null : (names[letter] ?? null))));
   if (people.size !== 1) return null;
   return [...people][0] ?? null;
 }

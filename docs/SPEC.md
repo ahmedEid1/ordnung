@@ -935,7 +935,8 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   or one person's of the household), and `student_permit_info` reads only the person's own permit.
   **Whose an Idea is** (`triggers.named`): an Idea all of whose letters — its letters, each to-do's letter and
   the letter each sent letter answers (`Ledger.letters_of`) — are filed for one person of the household
-  (`Ledger.idea_member`) starts "For Alex Rivera: …"; `expiry_soon` and `passport_before_permit` say it
+  and none is kept private (`Ledger.idea_member`, `Ledger.named_member`: an Idea's title reaches Claude)
+  starts "For Alex Rivera: …"; `expiry_soon` and `passport_before_permit` say it
   themselves ("Alex Rivera's passport expires …", "Renew Alex Rivera's passport before extending their residence
   permit"; a name that doesn't end in a letter: "For Kim 2: Passport expires …"), with the same law and
   rationale; never `tax_documents`, `calendar_outdated`, `student_permit_info`, `moved_house`, `sender_land` or

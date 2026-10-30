@@ -605,6 +605,12 @@ class Ledger:
         person's own letter, a letter in the trash and no letter at all."""
         return self.household_filed.get(doc_id) if doc_id else None
 
+    def named_member(self, doc_id: str | None) -> HouseholdMember | None:
+        """:meth:`member_of` for an Idea's words: ``None`` for a letter kept private too, since an Idea's title
+        reaches Claude (the weekly review's existing Ideas and the daily note's new ones; ADR 0025)."""
+        doc = self.document(doc_id)
+        return None if doc is None or doc.ai_private else self.member_of(doc_id)
+
     @cached_property
     def _items_by_id(self) -> dict[str, Item]:
         return {item.id: item for item in self.items}
@@ -628,10 +634,11 @@ class Ledger:
 
     def idea_member(self, refs: Iterable[SuggestionRef]) -> HouseholdMember | None:
         """The person of the household an Idea is about: every letter it refers to (:meth:`letters_of`, at least
-        one) is filed for them. Letters of two people, one of the person's own, or none: no one."""
+        one) is filed for them and none is private (:meth:`named_member`). Letters of two people, one of the
+        person's own, a private one, or none: no one."""
         if not self.household_filed:
             return None
-        people = [self.member_of(letter) for letter in self.letters_of(refs)]
+        people = [self.named_member(letter) for letter in self.letters_of(refs)]
         if not people or None in people or len({member.id for member in people if member}) != 1:
             return None
         return people[0]
@@ -1445,7 +1452,7 @@ def expiry_soon(ledger: Ledger) -> list[Suggestion]:
             priority = "high" if days <= 7 else "normal"
             label = "Check the letter"
         action = _open("document", doc.id, label) if doc else _open("item", item.id, "Open the to-do")
-        member = ledger.member_of(item.doc_id)
+        member = ledger.named_member(item.doc_id)
         text = _expiry_text(klass, item, expiry, today, member)
         if member is not None and klass == "other":
             text = IdeaText(for_member(member, text.title), text.body, text.rationale)
@@ -1527,8 +1534,12 @@ def passport_before_permit(ledger: Ledger) -> list[Suggestion]:
         if passport_day > permit_day + timedelta(days=PASSPORT_MARGIN_DAYS):
             continue
         relation = "before" if passport_day < permit_day else "soon after"
+        # paired by whose they are; named only when neither letter is private (its title reaches Claude)
+        named = (
+            member if ledger.named_member(passport.doc_id) and ledger.named_member(permit.doc_id) else None
+        )
         title, body = _passport_first_text(
-            member, relation, day_label(passport_day, today), day_label(permit_day, today)
+            named, relation, day_label(passport_day, today), day_label(permit_day, today)
         )
         doc = ledger.document(passport.doc_id)
         action = (
