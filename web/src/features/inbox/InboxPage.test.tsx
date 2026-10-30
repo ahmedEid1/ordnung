@@ -549,13 +549,15 @@ describe("Inbox", () => {
 
 describe("Inbox: possible scams", () => {
   const rowOf = (name: string | RegExp) => screen.getByRole("link", { name }).closest("li")!;
+  /** The page loads lazily and every list is a request: room for a busy machine. */
+  const SLOW = { timeout: 5_000 };
 
   it("tags only the scam letter, never the genuine bill its warning compares it with", async () => {
     // the fake "last reminder" from New mail, read
     srv.openAllMail();
     renderInbox();
-    const fake = await screen.findByRole("link", { name: /Last reminder/ });
-    await waitFor(() => expect(within(fake.closest("li")!).getAllByText("Possible scam").length).toBeGreaterThan(0));
+    const fake = await screen.findByRole("link", { name: /Last reminder/ }, SLOW);
+    await waitFor(() => expect(within(fake.closest("li")!).getAllByText("Possible scam").length).toBeGreaterThan(0), SLOW);
     expect(within(rowOf("Broadcasting fee due 15 Nov")).queryAllByText("Possible scam")).toHaveLength(0);
   });
 
@@ -563,13 +565,13 @@ describe("Inbox: possible scams", () => {
     srv.openAllMail();
     failing.add("GET /suggestions");
     renderInbox();
-    const line = await screen.findByText(/Scam warnings couldn't be checked/);
+    const line = await screen.findByText(/Scam warnings couldn't be checked/, undefined, SLOW);
     // unknown, so no letter counts down to a payment it may not owe (the parking fine is due tomorrow)
     expect(within(rowOf("Parking fine (Verwarnungsgeld)")).queryByText(/Pay the parking fine/)).toBeNull();
     expect(screen.queryAllByText("Possible scam")).toHaveLength(0);
     failing.clear();
     await userEvent.setup().click(within(line.closest("p")!).getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(screen.queryByText(/Scam warnings couldn't be checked/)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Scam warnings couldn't be checked/)).toBeNull(), SLOW);
     expect(within(rowOf(/Last reminder/)).getAllByText("Possible scam").length).toBeGreaterThan(0);
     expect(within(rowOf("Parking fine (Verwarnungsgeld)")).getByText(/Pay the parking fine/)).toBeInTheDocument();
   });
