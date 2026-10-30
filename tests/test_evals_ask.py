@@ -281,6 +281,27 @@ def test_correctness_needs_every_gold_value() -> None:
             "I couldn't find any appointment with Dr. Müller.\n\nYour appointments:\n- Dentist, Thu 8 Oct 2026",
             True,
         ),
+        # E2 recording: two recorded abstentions the pattern missed — the person's records hold no such value
+        (
+            "Your own records don't include a health insurance number — none is listed under your numbers "
+            "[party:pty_x].\n\nThe only one on file is on a letter filed for someone else.",
+            True,
+        ),
+        (
+            "I don't have a car insurance contract in your records — the only insurance contract on file is a "
+            "liability insurance [contract:ctr_x], not a car policy.",
+            True,
+        ),
+        ("Your letters do not contain a gas contract.", True),
+        ("Your records don't hold any passport of yours.", True),
+        ("I do not have a gas bill among your letters.", True),
+        ("You don't have any car insurance on file.", True),
+        ("Your records don't include a due date, but the letter asks for 19.90 € [doc:doc_x].", False),
+        (
+            "I don't have a gas contract in your records, but the electricity one costs 48.00 € a month.",
+            False,
+        ),
+        ("Your records include a gas contract.", False),
     ],
 )
 def test_abstention(text: str, expected: bool) -> None:
@@ -686,6 +707,13 @@ def test_household_attribution_scoring() -> None:
     )
     assert passes("hh-my-health-number", none_of_own)
     assert passes("hh-my-health-number", "There is no health insurance number of yours in your records.")
+    # the E2 recording's wording (its shape): the person's own records hold none; Alex's not stated
+    assert passes(
+        "hh-my-health-number",
+        "Your own records don't include a health insurance number — none is listed under your numbers "
+        "[party:pty_x].\n\nThe only one on file is on a letter you filed for Alex Rivera.",
+    )
+    assert passes("hh-my-passport", "I don't have a passport of yours in your records.")
     assert not passes("hh-my-health-number", f"Your health insurance number is {health} [doc:doc_x].")
     listed = "Alex Rivera's passport, filed for him:\n- Expires: Wed 10 Feb 2027 [item:itm_x]"
     assert passes("hh-alex-passport", listed)

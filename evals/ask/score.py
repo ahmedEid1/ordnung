@@ -80,6 +80,9 @@ ABSTAIN = re.compile(
     | \bno\s+[^.\n]{1,80}?\s+(?:is|are|was|were)\s+(?:recorded|stored|filed|kept)\s+(?:in|among)\s+(?:your|the|Ordnung)\b
     | \bnone\s+of\s+your\b
     | \b(?:has|have|holds?)\s+no\s+[^.\n]{1,80}?\s+(?:on\s+(?:record|file)|in\s+(?:your|the|its)\s+records?)\b
+    | \b(?:records?|letters|documents)\s+(?:don't|do\s+not|doesn't|does\s+not)\s+(?:include|contain|hold|have|show|list)\b
+    | \b(?:don't|do\s+not)\s+have\s+(?:a|an|any)\s+[^.\n]{1,80}?\s+(?:(?:in|among)\s+(?:your|the)\s+(?:own\s+)?
+        (?:records|letters|documents)|on\s+(?:record|file))\b
     | \bkeine[nrs]?\s+(?:Unterlagen|Briefe?|Dokumente?|Verträge?|Einträge?|Angaben|Informationen)\b
     | \bnicht\s+(?:gefunden|finden|vorhanden)\b
     """,
