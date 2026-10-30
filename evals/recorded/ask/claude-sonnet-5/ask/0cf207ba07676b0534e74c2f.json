@@ -1,0 +1,321 @@
+{
+  "request": {
+    "purpose": "ask",
+    "model": "claude-sonnet-5",
+    "prompt_version": "11+1",
+    "cache_key": "ask:{\"history\":null,\"ledger\":\"258c9eb533aae0c2414271a7fda8681ea1fb736426b2999a45141753d332ff7e\",\"question\":\"How much do I still have to pay back on my BAföG loan?\",\"today\":\"2026-09-28\"}",
+    "attachments": [],
+    "doc_ids": [
+      "doc_f9b3481wq2bf",
+      "doc_9t9tmrv1ypba"
+    ],
+    "prompt_head": "The person asks:\nHow much do I still have to pay back on my BAföG loan?\n"
+  },
+  "response": {
+    "text": "No BAföG loan record found in your records — these two letters only mention BAföG in passing (an exemption option on a Rundfunkbeitrag notice [doc:doc_f9b3481wq2bf], and how health insurance contributions for students are calculated [doc:doc_9t9tmrv1ypba]).\n\nOrdnung has no contract, to-do, or document about a BAföG loan itself, so I can't tell you a remaining balance. If you want to check it, the current amount owed is tracked by the Bundesverwaltungsamt (Darlehenskonto), not in your letters here.",
+    "data": null,
+    "usage": {
+      "input_tokens": 4,
+      "output_tokens": 267,
+      "cache_read_tokens": 12618,
+      "cache_creation_tokens": 1483,
+      "cost_usd": 0.0111336,
+      "duration_ms": 7054,
+      "turns": 2
+    },
+    "model": "claude-sonnet-5",
+    "cache_hit": false,
+    "backend": "claude",
+    "tool_calls": []
+  },
+  "stream": [
+    {
+      "type": "tool_use",
+      "name": "mcp__ordnung__search",
+      "input": {
+        "query": "BAföG"
+      },
+      "tool_use_id": "toolu_011tvosftkCd2LB8Zcv933mz"
+    },
+    {
+      "type": "tool_result",
+      "text": "<ordnung_record>\n{\"hits\":[{\"id\":\"doc_f9b3481wq2bf\",\"kind\":\"broadcasting_fee\",\"date\":\"2026-09-15\",\"party_id\":\"pty_r9kabd06mafy\"},{\"id\":\"doc_9t9tmrv1ypba\",\"kind\":\"health_insurance\",\"date\":\"2026-09-10\",\"party_id\":\"pty_eatxsexnt9s3\"}]}\n</ordnung_record>\n<untrusted_document>\n{\"doc_f9b3481wq2bf\":{\"title\":\"Rundfunkbeitrag payment request from Beitragsservice Musterstadt\",\"snippet\":\"…you receive certain social benefits (e.g. BAföG), you may apply for an exemption from the…\"},\"pty_r9kabd06mafy\":{\"name\":\"Beitragsservice Musterstadt\"},\"doc_9t9tmrv1ypba\":{\"title\":\"Notice of increased health and long-term care insurance contribution (Beitragsbescheid)\",\"snippet\":\"…Als beitragspflichtige Einnahme gilt für Studierende der monatliche Bedarf nach dem BAföG (§ 236 SGB V); er…\"},\"pty_eatxsexnt9s3\":{\"name\":\"Muster BKK\"}}\n</untrusted_document>",
+      "tool_use_id": "toolu_011tvosftkCd2LB8Zcv933mz"
+    },
+    {
+      "type": "text",
+      "text": "No"
+    },
+    {
+      "type": "text",
+      "text": " B"
+    },
+    {
+      "type": "text",
+      "text": "AföG lo"
+    },
+    {
+      "type": "text",
+      "text": "an record found in your"
+    },
+    {
+      "type": "text",
+      "text": " records — these"
+    },
+    {
+      "type": "text",
+      "text": " two"
+    },
+    {
+      "type": "text",
+      "text": " let"
+    },
+    {
+      "type": "text",
+      "text": "ters only"
+    },
+    {
+      "type": "text",
+      "text": " mention B"
+    },
+    {
+      "type": "text",
+      "text": "AföG in passing (an"
+    },
+    {
+      "type": "text",
+      "text": " ex"
+    },
+    {
+      "type": "text",
+      "text": "emption option"
+    },
+    {
+      "type": "text",
+      "text": " on"
+    },
+    {
+      "type": "text",
+      "text": " a R"
+    },
+    {
+      "type": "text",
+      "text": "undfunkb"
+    },
+    {
+      "type": "text",
+      "text": "eitrag not"
+    },
+    {
+      "type": "text",
+      "text": "ice ["
+    },
+    {
+      "type": "text",
+      "text": "doc:"
+    },
+    {
+      "type": "text",
+      "text": "do"
+    },
+    {
+      "type": "text",
+      "text": "c_f"
+    },
+    {
+      "type": "text",
+      "text": "9b3"
+    },
+    {
+      "type": "text",
+      "text": "481"
+    },
+    {
+      "type": "text",
+      "text": "w"
+    },
+    {
+      "type": "text",
+      "text": "q"
+    },
+    {
+      "type": "text",
+      "text": "2"
+    },
+    {
+      "type": "text",
+      "text": "b"
+    },
+    {
+      "type": "text",
+      "text": "f"
+    },
+    {
+      "type": "text",
+      "text": "],"
+    },
+    {
+      "type": "text",
+      "text": " and how"
+    },
+    {
+      "type": "text",
+      "text": " health"
+    },
+    {
+      "type": "text",
+      "text": " insurance cont"
+    },
+    {
+      "type": "text",
+      "text": "ributions for students"
+    },
+    {
+      "type": "text",
+      "text": " are calculated [doc:"
+    },
+    {
+      "type": "text",
+      "text": "doc_9t9tm"
+    },
+    {
+      "type": "text",
+      "text": "rv1ypba])."
+    },
+    {
+      "type": "text",
+      "text": "\n\nOrd"
+    },
+    {
+      "type": "text",
+      "text": "n"
+    },
+    {
+      "type": "text",
+      "text": "ung has"
+    },
+    {
+      "type": "text",
+      "text": " no cont"
+    },
+    {
+      "type": "text",
+      "text": "ract, to"
+    },
+    {
+      "type": "text",
+      "text": "-do, or document"
+    },
+    {
+      "type": "text",
+      "text": " about"
+    },
+    {
+      "type": "text",
+      "text": " a BAföG loan it"
+    },
+    {
+      "type": "text",
+      "text": "self, so"
+    },
+    {
+      "type": "text",
+      "text": " I can't tell you a"
+    },
+    {
+      "type": "text",
+      "text": " remaining balance. If you"
+    },
+    {
+      "type": "text",
+      "text": " want"
+    },
+    {
+      "type": "text",
+      "text": " to check"
+    },
+    {
+      "type": "text",
+      "text": " it"
+    },
+    {
+      "type": "text",
+      "text": ", the"
+    },
+    {
+      "type": "text",
+      "text": " current"
+    },
+    {
+      "type": "text",
+      "text": " am"
+    },
+    {
+      "type": "text",
+      "text": "ount ow"
+    },
+    {
+      "type": "text",
+      "text": "ed is t"
+    },
+    {
+      "type": "text",
+      "text": "racked by the Bundes"
+    },
+    {
+      "type": "text",
+      "text": "verwaltungsamt"
+    },
+    {
+      "type": "text",
+      "text": " ("
+    },
+    {
+      "type": "text",
+      "text": "Dar"
+    },
+    {
+      "type": "text",
+      "text": "l"
+    },
+    {
+      "type": "text",
+      "text": "ehen"
+    },
+    {
+      "type": "text",
+      "text": "sk"
+    },
+    {
+      "type": "text",
+      "text": "onto), not in your"
+    },
+    {
+      "type": "text",
+      "text": " letters here"
+    },
+    {
+      "type": "text",
+      "text": "."
+    },
+    {
+      "type": "done",
+      "response": {
+        "text": "No BAföG loan record found in your records — these two letters only mention BAföG in passing (an exemption option on a Rundfunkbeitrag notice [doc:doc_f9b3481wq2bf], and how health insurance contributions for students are calculated [doc:doc_9t9tmrv1ypba]).\n\nOrdnung has no contract, to-do, or document about a BAföG loan itself, so I can't tell you a remaining balance. If you want to check it, the current amount owed is tracked by the Bundesverwaltungsamt (Darlehenskonto), not in your letters here.",
+        "usage": {
+          "input_tokens": 4,
+          "output_tokens": 267,
+          "cache_read_tokens": 12618,
+          "cache_creation_tokens": 1483,
+          "cost_usd": 0.0111336,
+          "duration_ms": 7054,
+          "turns": 2
+        },
+        "model": "claude-sonnet-5",
+        "cache_hit": false,
+        "backend": "claude",
+        "tool_calls": []
+      }
+    }
+  ]
+}
