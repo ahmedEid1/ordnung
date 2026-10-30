@@ -755,7 +755,11 @@ class LedgerTools:
             seen = ask_view(self.store, ())
             names = dict(seen["members"]) if seen else {}
             listed = {group["id"] for group in groups or ()}
-            more = [{"id": person, "name": names[person]} for person in rows.people if person not in listed]
+            more = [
+                {"id": person, "name": names[person]}
+                for person in rows.people
+                if person in names and person not in listed
+            ]
             if more:
                 record["household"] = [*(groups or ()), *more]
         record["numbers"] = rows.numbers

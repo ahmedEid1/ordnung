@@ -2054,6 +2054,11 @@ def test_get_my_numbers_names_everyone_its_rows_name(
     ]
     assert record["household"][1] == {"id": mia, "name": "Mia Rivera"}  # nothing about her on the page
     assert record["household_note"] == mcp_server.NUMBERS_HOUSEHOLD_NOTE
+    # an id no one of the household has any more (a page read before a removal) is never given a name
+    gone = page.model_copy(update={"also_for": {social.key: [alex, "hhm_gonegonegone"]}})
+    monkeypatch.setattr("ordnung.views.my_numbers", lambda *args, **kwargs: gone)
+    record = record_of(render_result(LedgerTools(store, today=TODAY).get_my_numbers()))
+    assert [group["id"] for group in record["household"]] == [alex]
 
 
 def test_a_phone_s_question_gets_a_member_s_numbers_masked(
