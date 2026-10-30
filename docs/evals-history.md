@@ -45,10 +45,11 @@ Each file's role says what it may support:
 | 2026-10-06 | `2026-10-06-claude-sonnet-5-holdout3.json` | reading benchmark | holdout3 | held-out | Ordnung, LLM only, LLM + rules text, LLM + rules tool | 56/56 |
 | 2026-10-06 | `2026-10-06-claude-sonnet-5-without-land.json` | replay without the sender's Land |  | replay |  |  |
 | 2026-10-08 | `2026-10-08-claude-sonnet-5-without-land.json` | replay without the sender's Land |  | replay |  |  |
-| 2026-10-29 | `2026-10-29-claude-sonnet-5-ask.json` | Ask benchmark |  | iterated |  |  |
-| 2026-10-29 | `2026-10-29-claude-sonnet-5-checks-ablated.json` | check ablation |  | replay |  |  |
-| 2026-10-29 | `2026-10-29-claude-sonnet-5-e2e.json` | end to end |  | replay |  |  |
-| 2026-10-29 | `2026-10-29-claude-sonnet-5-heldout-reanalysis.json` | analysis |  | re-analysis |  |  |
+| 2026-10-30 | `2026-10-30-claude-sonnet-5-ask.json` | Ask benchmark |  | iterated |  |  |
+| 2026-10-30 | `2026-10-30-claude-sonnet-5-checks-ablated.json` | check ablation |  | replay |  |  |
+| 2026-10-30 | `2026-10-30-claude-sonnet-5-e2e.json` | end to end |  | replay |  |  |
+| 2026-10-30 | `2026-10-30-claude-sonnet-5-heldout-reanalysis.json` | analysis |  | re-analysis |  |  |
+| 2026-10-31 | `2026-10-31-claude-sonnet-5-ask.json` | Ask benchmark |  | iterated |  |  |
 
 ## The page as published up to 0.3.0
 

@@ -1035,7 +1035,9 @@ def test_a_results_file_without_the_household_group_renders_as_before() -> None:
         return [line for line in text.splitlines() if line.startswith("## ")]
 
     assert "## Household: whose a number is" in headings(page)
-    assert headings(old) == [line for line in headings(page) if line != "## Household: whose a number is"]
+    # the newest file is a re-scoring of schema 2, whose page adds its strict scores too
+    added = {"## Household: whose a number is", "## Strict scores"}
+    assert headings(old) == [line for line in headings(page) if line not in added]
 
 
 def test_the_committed_lock_takes_what_every_ask_turn_is_given_now() -> None:

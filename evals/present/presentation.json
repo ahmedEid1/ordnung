@@ -13,8 +13,8 @@
   "pre_registered": false,
   "note": "The held-out splits as recorded once, each with the code and prompts of its day, pooled and re-analysed with the final run's statistics after their results were known.",
   "source": {
-   "file": "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
-   "sha256": "cdcd3087323e27690d8e0113f2d4ba0b9e34b42d4ffffa85c5d67b9dd33b6ec6",
+   "file": "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
+   "sha256": "f61a64a542092bb794bf834ff23ee942ed1d0e557665e61e261fd291853fd0ed",
    "role": "re-analysis"
   },
   "methods": {
@@ -3071,37 +3071,37 @@
   ]
  },
  "ask": {
-  "file": "2026-10-29-claude-sonnet-5-ask.json",
-  "date": "2026-10-29",
+  "file": "2026-10-31-claude-sonnet-5-ask.json",
+  "date": "2026-10-31",
   "set": "dev",
   "questions": 52,
   "answerable": 44,
   "unanswerable": 8,
   "attacks": 21,
   "accuracy": {
-   "k": 44,
+   "k": 40,
    "n": 44,
-   "value": 1.0,
+   "value": 0.9090909090909091,
    "ci": [
-    0.895730002457548,
+    0.7959183673469388,
     1.0
    ]
   },
   "abstention": {
-   "k": 8,
+   "k": 7,
    "n": 8,
-   "value": 1.0,
+   "value": 0.875,
    "ci": [
-    0.6755924351161198,
+    0.625,
     1.0
    ]
   },
   "citation_support": {
-   "k": 104,
-   "n": 105,
-   "value": 0.9904761904761905,
+   "k": 98,
+   "n": 99,
+   "value": 0.98989898989899,
    "ci": [
-    0.9680851063829787,
+    0.9647058823529412,
     1.0
    ]
   },
@@ -3115,12 +3115,27 @@
    ]
   },
   "attack_success_raw": {
-   "k": 8,
+   "k": 9,
    "n": 21,
-   "value": 0.38095238095238093,
+   "value": 0.42857142857142855,
    "ci": [
-    0.19047619047619047,
-    0.5714285714285714
+    0.23809523809523808,
+    0.6190476190476191
+   ]
+  },
+  "wrong": {
+   "total": 4,
+   "leak": 4,
+   "gap": 0,
+   "other": 0
+  },
+  "household": {
+   "k": 4,
+   "n": 5,
+   "value": 0.8,
+   "ci": [
+    0.4,
+    1.0
    ]
   }
  },
@@ -3311,7 +3326,7 @@
   }
  },
  "ablation": {
-  "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
+  "file": "2026-10-30-claude-sonnet-5-checks-ablated.json",
   "splits": [
    "holdout",
    "holdout2",
@@ -3384,7 +3399,7 @@
   ]
  },
  "e2e": {
-  "file": "2026-10-29-claude-sonnet-5-e2e.json",
+  "file": "2026-10-30-claude-sonnet-5-e2e.json",
   "splits": [
    "test",
    "holdout",
@@ -3968,8 +3983,8 @@
    "ordnung": null
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-ask.json",
-   "date": "2026-10-29",
+   "file": "2026-10-30-claude-sonnet-5-ask.json",
+   "date": "2026-10-30",
    "kind": "ask",
    "role": "iterated",
    "split": null,
@@ -3978,8 +3993,8 @@
    "ordnung": null
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
-   "date": "2026-10-29",
+   "file": "2026-10-30-claude-sonnet-5-checks-ablated.json",
+   "date": "2026-10-30",
    "kind": "checks-ablated",
    "role": "replay",
    "split": null,
@@ -3988,8 +4003,8 @@
    "ordnung": null
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-e2e.json",
-   "date": "2026-10-29",
+   "file": "2026-10-30-claude-sonnet-5-e2e.json",
+   "date": "2026-10-30",
    "kind": "e2e",
    "role": "replay",
    "split": null,
@@ -3998,10 +4013,20 @@
    "ordnung": null
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
-   "date": "2026-10-29",
+   "file": "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
+   "date": "2026-10-30",
    "kind": "analysis",
    "role": "re-analysis",
+   "split": null,
+   "backend": null,
+   "conditions": [],
+   "ordnung": null
+  },
+  {
+   "file": "2026-10-31-claude-sonnet-5-ask.json",
+   "date": "2026-10-31",
+   "kind": "ask",
+   "role": "iterated",
    "split": null,
    "backend": null,
    "conditions": [],

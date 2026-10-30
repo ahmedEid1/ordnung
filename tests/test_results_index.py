@@ -156,16 +156,17 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
             assert row["conditions"][condition]["verdict"] in ("exact", "same-dates"), (name, condition)
     checked = {name for name, row in rows.items() if row["verdict"] == "checked"}
     assert checked == {
-        "2026-10-01-claude-sonnet-5-ask.json",
-        "2026-10-29-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask.json",
+        "2026-10-31-claude-sonnet-5-ask.json",
         "2026-10-08-claude-sonnet-5-without-land.json",
-        "2026-10-29-claude-sonnet-5-checks-ablated.json",
-        "2026-10-29-claude-sonnet-5-e2e.json",
-        "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
+        "2026-10-30-claude-sonnet-5-checks-ablated.json",
+        "2026-10-30-claude-sonnet-5-e2e.json",
+        "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
     }
     superseded = {name for name, row in rows.items() if row["verdict"] == "superseded"}
     assert superseded == {
         "2026-09-30-claude-sonnet-5-ask.json",
+        "2026-10-01-claude-sonnet-5-ask.json",
         "2026-10-06-claude-sonnet-5-without-land.json",
     }
 
@@ -173,17 +174,17 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
 def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
     rows: dict[str, dict[str, Any]],
 ) -> None:
-    """The development set's live run of 2026-10-01 stays checked as recorded (schema 1) beside its re-scoring with the
-    strict scorer (schema 2), which names the run it re-scores; the earlier run is superseded."""
+    """The development set's live run of 2026-10-30 (E2's recording) stays checked as recorded (schema 1) beside its
+    re-scoring with the strict scorer (schema 2), which names the run it re-scores; the earlier runs are superseded."""
     recorded, rescored = (
-        rows["2026-10-01-claude-sonnet-5-ask.json"],
-        rows["2026-10-29-claude-sonnet-5-ask.json"],
+        rows["2026-10-30-claude-sonnet-5-ask.json"],
+        rows["2026-10-31-claude-sonnet-5-ask.json"],
     )
     assert (recorded["schema"], recorded["recorded"]["backend"], "rescores" in recorded) == (1, "live", False)
     assert (rescored["schema"], rescored["recorded"]["backend"], rescored["rescores"]) == (
         2,
         "replay",
-        "2026-10-01",
+        "2026-10-30",
     )
     for row in (recorded, rescored):
         assert (row["set"], row["repeat"], row["check"], row["gates"]) == (
@@ -193,6 +194,7 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
             ["ask/dev"],
         )
     assert rows["2026-09-30-claude-sonnet-5-ask.json"]["check"] == "hash"
+    assert rows["2026-10-01-claude-sonnet-5-ask.json"]["check"] == "hash"
 
 
 def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, Any]) -> None:

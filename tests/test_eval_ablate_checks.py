@@ -37,8 +37,8 @@ from scripts.eval_ablate_checks import (  # noqa: E402
     letters_acted,
 )
 
-#: The published replay (``python -m scripts.eval_ablate_checks --date 2026-10-29``).
-PUBLISHED = RESULTS_DIR / "2026-10-29-claude-sonnet-5-checks-ablated.json"
+#: The published replay (``python -m scripts.eval_ablate_checks --date 2026-10-30``).
+PUBLISHED = RESULTS_DIR / "2026-10-30-claude-sonnet-5-checks-ablated.json"
 #: The functions the ablations swap, as (module, attribute).
 TARGETS = {
     "settle": (plan_mod, "settle"),

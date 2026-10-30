@@ -222,7 +222,7 @@ it (−2.4 points, 95 % CI −5.4 to +0.0).
 <picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-held-out-dark.svg"><img src="docs/assets/eval-held-out-light.svg" width="740" alt="Dot plot of 168 held-out deadlines, with 95 % Clopper–Pearson intervals. LLM + rules tool: 167 of 168 exactly right (99.4 %, 95 % CI 96.7–100.0); 1 late, 0 missed, 0 early: 1 of 168 late or missed; Ordnung: 163 of 168 exactly right (97.0 %, 95 % CI 93.2–99.0); 2 late, 1 missed, 2 early: 3 of 168 late or missed; LLM + rules text: 154 of 168 exactly right (91.7 %, 95 % CI 86.4–95.4); 1 late, 0 missed, 13 early: 1 of 168 late or missed; LLM only: 136 of 168 exactly right (81.0 %, 95 % CI 74.2–86.6); 13 late, 0 missed, 19 early: 13 of 168 late or missed."></picture>
 
 **Where it falls short:** “Please check” caught 0 of Ordnung's 5 wrong dates; 15 of 224 real obligations got no reminder because their letter was set aside as a scam; 2 of 12 scam letters still put their demands in the calendar.<br>
-**Ask:** 0 of 21 injected claims reach you (8 of 21 without the answer check; a development set, not held out).<br>
+**Ask:** 40 of 44 answers right: the four wrong answers call a date that is still open passed, the recording day leaking in as today; 0 of 21 injected claims reach you (9 of 21 without the answer check); 4 of 5 household answers say whose a number is; a development set, not held out.<br>
 **[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)
 <!-- evals:end -->
 
@@ -577,8 +577,8 @@ More in [docs/architecture.md](docs/architecture.md).
 - The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
   is messier. In the demo, which runs on the sample life's day, Ask can still take the computer's date for today
   and call a date that is still ahead passed: the `claude` CLI tells the model the computer's date as well, and
-  Ask is told never to use it (the Ask benchmark, recorded a month after its own day, still has 6 such answers
-  in 73).
+  Ask is told never to use it (the Ask benchmark, recorded a month after its own day, still has such answers:
+  [docs/evals-ask.md](docs/evals-ask.md) counts them).
 - One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
   child) says so, you can file it for them once they are in your household, and a reply to it can go out in
   their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and

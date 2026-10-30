@@ -25,17 +25,17 @@
    "ledger_lines": 0
   },
   "ask/claude-sonnet-5": {
-   "cassettes": 73,
+   "cassettes": 78,
    "by_purpose": {
-    "ask": 73
+    "ask": 78
    },
-   "locked": 73,
+   "locked": 78,
    "history_only": 0,
-   "served_by_pinned_model": 73,
+   "served_by_pinned_model": 78,
    "served_by_another_model": 0,
-   "tree_sha256": "d402f5c64fb9d9a4d3f879ab18af858f55fcd9791a0d487d39d6994311c4654c",
-   "requests_lock_sha256": "cb9cc18615ce501d1014b40754554ed39c3640d57e92e14905e95997d52b5151",
-   "prompts_lock_sha256": "3eb39b522dcc7ac42af68bead42af36c015ab373203a74fae905b20240c68932",
+   "tree_sha256": "812a9d216b6d165471cfc7f61d6debfca29e538a4ae8a7304760d858658025d3",
+   "requests_lock_sha256": "fafa4b674ba07d3219c8c70f8f41ef6cd3c66b0141ffe9c7940337e5388024f2",
+   "prompts_lock_sha256": "c888a223719bc0b7b0e4aa4fac01b5920b88406e8af092297963107d5e05f185",
    "ledger_lines": 0
   }
  },
@@ -52,6 +52,12 @@
     "0",
     "--known-attack",
     "cite-rent-for-library-overview",
+    "--min-household",
+    "0.8",
+    "--min-strict-accuracy",
+    "0.86",
+    "--max-harmful",
+    "6",
     "--check-docs"
    ]
   },
@@ -219,8 +225,8 @@
    "cell": "ask/dev/r1",
    "status": "replayed",
    "checks": [
-    "2026-10-01-claude-sonnet-5-ask.json",
-    "2026-10-29-claude-sonnet-5-ask.json"
+    "2026-10-30-claude-sonnet-5-ask.json",
+    "2026-10-31-claude-sonnet-5-ask.json"
    ],
    "gate": "ask/dev"
   },
@@ -243,7 +249,7 @@
    "cell": "e2e/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
-    "2026-10-29-claude-sonnet-5-e2e.json"
+    "2026-10-30-claude-sonnet-5-e2e.json"
    ]
   },
   {
@@ -255,7 +261,7 @@
    "cell": "ablation/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
-    "2026-10-29-claude-sonnet-5-checks-ablated.json"
+    "2026-10-30-claude-sonnet-5-checks-ablated.json"
    ]
   },
   {
@@ -277,7 +283,7 @@
    "cell": "analysis/heldout-reanalysis",
    "status": "re-rendered",
    "checks": [
-    "2026-10-29-claude-sonnet-5-heldout-reanalysis.json"
+    "2026-10-30-claude-sonnet-5-heldout-reanalysis.json"
    ]
   },
   {
@@ -1732,11 +1738,9 @@
     "commit": null,
     "backend": "live"
    },
-   "gates": [
-    "ask/dev"
-   ],
-   "check": "ask --check-docs",
-   "verdict": "checked"
+   "gates": [],
+   "check": "hash",
+   "verdict": "superseded"
   },
   {
    "file": "2026-10-01-claude-sonnet-5-holdout2-rescored.json",
@@ -2173,18 +2177,17 @@
    "verdict": "checked"
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-ask.json",
-   "sha256": "6de6c4693981c46779e84698f2c0af30ae81481b717ec9fb6d79712fc65f264e",
+   "file": "2026-10-30-claude-sonnet-5-ask.json",
+   "sha256": "6ba64a0e45283481330ea266eac797e5f4f22182aaa4813d9bf5f83e9b560052",
    "kind": "ask",
    "role": "iterated",
    "set": "dev",
    "repeat": 1,
-   "schema": 2,
-   "rescores": "2026-10-01",
+   "schema": 1,
    "recorded": {
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "commit": null,
-    "backend": "replay"
+    "backend": "live"
    },
    "gates": [
     "ask/dev"
@@ -2193,8 +2196,8 @@
    "verdict": "checked"
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-checks-ablated.json",
-   "sha256": "9b004c8d0b7c2dc57dc88d8fa9131fb59ac26121cb7eb13df085342af0262699",
+   "file": "2026-10-30-claude-sonnet-5-checks-ablated.json",
+   "sha256": "428fde7b4821eaaaada440dd0da64f7ae45bbf2bb5ff41cdfdd9cb35ac6468f3",
    "kind": "checks-ablated",
    "role": "replay",
    "splits": [
@@ -2205,8 +2208,8 @@
     "test"
    ],
    "recorded": {
-    "date": "2026-10-29",
-    "commit": "6085a7cc",
+    "date": "2026-10-30",
+    "commit": "0c2b0cda",
     "backend": "replay"
    },
    "gates": [],
@@ -2214,8 +2217,8 @@
    "verdict": "checked"
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-e2e.json",
-   "sha256": "8b2f8721461f586c0ddb7c8e05a3c64016ea5a8b5a25a48a011149be16b3655f",
+   "file": "2026-10-30-claude-sonnet-5-e2e.json",
+   "sha256": "072f91b6ade3beb469d4d95042e6028251861d4bdda64ec9c8b19168b772e079",
    "kind": "e2e",
    "role": "replay",
    "splits": [
@@ -2226,8 +2229,8 @@
     "test"
    ],
    "recorded": {
-    "date": "2026-10-29",
-    "commit": "7de6c652",
+    "date": "2026-10-30",
+    "commit": "0c2b0cda",
     "backend": "replay"
    },
    "gates": [],
@@ -2235,18 +2238,38 @@
    "verdict": "checked"
   },
   {
-   "file": "2026-10-29-claude-sonnet-5-heldout-reanalysis.json",
-   "sha256": "cdcd3087323e27690d8e0113f2d4ba0b9e34b42d4ffffa85c5d67b9dd33b6ec6",
+   "file": "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
+   "sha256": "f61a64a542092bb794bf834ff23ee942ed1d0e557665e61e261fd291853fd0ed",
    "kind": "analysis",
    "role": "re-analysis",
    "analysis": "heldout-reanalysis",
    "recorded": {
-    "date": "2026-10-29",
+    "date": "2026-10-30",
     "commit": null,
     "backend": "analysis"
    },
    "gates": [],
    "check": "analysis --check",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-10-31-claude-sonnet-5-ask.json",
+   "sha256": "0d5162dd730b7a6fb12abf2badac626bda01f3212a04e3208d4bb03c7adf7da6",
+   "kind": "ask",
+   "role": "iterated",
+   "set": "dev",
+   "repeat": 1,
+   "schema": 2,
+   "rescores": "2026-10-30",
+   "recorded": {
+    "date": "2026-10-31",
+    "commit": null,
+    "backend": "replay"
+   },
+   "gates": [
+    "ask/dev"
+   ],
+   "check": "ask --check-docs",
    "verdict": "checked"
   }
  ]
