@@ -4398,7 +4398,15 @@ def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: S
         assert "encrypted backups and hand-off sync's encrypted copy" in row and "to Claude only" in row
         assert "never sent to Claude" not in row
     assert "whether a letter Claude may read counts for taxes" in taxes
+    assert "and in *Ask* that you marked or unmarked it yourself" in taxes  # mcp_server.TAX_*_BY_PERSON
     assert "the names and which letters you filed for whom, through *Ask*" in people
+    assert "a name in the title of an Idea about their letters you don't keep private" in people
+    # calendar sync *With details* sends the calendar file's titles, which name the person (ics._item_summary)
+    assert "with calendar sync *With details*, to your calendar provider in the events' titles" in people
+    (calendar,) = [line for line in text.splitlines() if line.startswith("| Calendar sync (only if")]
+    assert (
+        "the events' titles (after the name of the person of your household a to-do's letter is filed for)"
+    ) in calendar
     sent = _privacy_section("What is sent to Claude, per feature")
     seed_ledger(store)
     (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
@@ -5438,7 +5446,8 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
         '`tax_choice`: "The person marked this letter for taxes themselves." or "The person took this letter off '
         'their letters for taxes."',
         "**Whose an Idea is** (`triggers.named`):",
-        "are filed for one person of the household and none is kept private (`Ledger.idea_member`, `Ledger.named_member`: an Idea's title reaches Claude) starts \"For Alex Rivera: …\"",
+        "are filed for one person of the household and none is kept private (`Ledger.idea_member`, "
+        '`Ledger.named_member`: an Idea\'s title reaches Claude) starts "For Alex Rivera: …"',
         "never `tax_documents`, `calendar_outdated`, `student_permit_info`, `moved_house`, `sender_land` or "
         "`contract_cancel_window`",
         'a letter filed for someone of the household names them after the symbol ("⌛ Alex Rivera: Passport '
