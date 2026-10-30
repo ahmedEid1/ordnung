@@ -2,7 +2,7 @@
  * The verdict card — the first thing on a letter: what this is, what you need to do, by when
  * (with "Why this date?"), what happens if you ignore it, and one main button.
  */
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import {
   ArrowRight,
@@ -23,7 +23,7 @@ import {
   Undo2,
   type LucideIcon,
 } from "lucide-react";
-import type { DocumentDetail, DocumentKind, DraftKind, Item, PartyKind, Suggestion } from "@/api/types";
+import type { DocumentDetail, DraftKind, Item, Suggestion } from "@/api/types";
 import { useUpdateSuggestion, useWaitAgain } from "@/api/hooks";
 import { isDirectDebit } from "@/lib/payments";
 import { toast } from "@/components/ui/Toast";
@@ -34,7 +34,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, buttonVariants } from "@/components/ui/Button";
 import { Countdown } from "@/components/ui/Countdown";
 import { DateText } from "@/components/ui/DateText";
-import { ADVICE_LINKS, AdviceLinks, Disclaimer } from "@/components/ui/Disclaimer";
+import { adviceFor, AdviceLinks, Disclaimer } from "@/components/ui/Disclaimer";
+import { FileNameText } from "@/components/ui/FileNameText";
 import { KindBadge } from "@/components/ui/KindBadge";
 import { useModelLang } from "@/components/ui/ModelText";
 import { PartyChip } from "@/components/ui/PartyChip";
@@ -76,9 +77,9 @@ import { composerHref } from "@/features/today/selection";
 import { PayPanel } from "./PayPanel";
 import { GlossaryText } from "./Explained";
 import { englishInline, isGermanText } from "./fact-text";
-import { adviceFor, WhyThisDate } from "./WhyThisDate";
+import { WhyThisDate } from "./WhyThisDate";
 import { GermanTerms } from "@/lib/germanTerms";
-import { keepCitations, NB_HYPHEN, protectRefs } from "@/lib/glue";
+import { keepCitations, protectRefs } from "@/lib/glue";
 import { DEMO_NOTE } from "@/mocks/mode";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { usePhoneCompanion } from "@/features/phone/client";
@@ -144,28 +145,6 @@ function LetterSays({ text, className }: { text: string; className?: string }) {
         {keepCitations(formatInlineText(text.replace(/^[„“"]|[“”"]$/g, ""), { rewrite: false }))}
       </q>
     </p>
-  );
-}
-
-/**
- * A letter's file name as its headline (one nobody read has no title): it breaks after an underscore, never
- * inside a date ("Scan_" / "2026-09-28_0914.pdf", not "Scan_2026-09-" / "28_0914.pdf" at 320 px).
- */
-function FileName({ name }: { name: string }) {
-  const parts = name.replace(/\d+(?:-\d+)+/g, (d) => d.replace(/-/g, NB_HYPHEN)).split("_");
-  return (
-    <>
-      {parts.map((p, i) => (
-        <Fragment key={i}>
-          {i ? (
-            <>
-              _<wbr />
-            </>
-          ) : null}
-          {p}
-        </Fragment>
-      ))}
-    </>
   );
 }
 
@@ -259,6 +238,8 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
   const titleLang = useModelLang(doc.title);
   const summaryLang = useModelLang(doc.summary);
   const scam = scamSuggestion(detail);
+  // the letter asks for money it may not be owed: an open payment of the person's
+  const asksForMoney = detail.items.some((i) => isOpenItem(i) && i.kind === "payment" && i.direction !== "in");
   const decisionIdea = decisionSuggestion(detail);
   // a price increase's special right / a notice window leads — not the new monthly fee
   const decision = !scam && leadsWithDecision(decisionIdea, primary) ? decisionIdea : null;
@@ -295,7 +276,8 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
   const sameDay = Boolean(doc.doc_date && doc.received_date && doc.doc_date === doc.received_date);
   // "Based on the law as of …" only where a law worked the date out — not under a passport's expiry
   const law = !scam && (Boolean(decision) || Boolean(open?.due_date && usesLaw(open)));
-  const advice = open && (open.priority === "high" || open.priority === "critical") ? verdictAdvice(detail.advice, open.area, doc.kind, detail.party?.kind) : undefined;
+  // the letter page's one advice rule: its card's, else its kind's, its sender's, then the area's
+  const advice = open && (open.priority === "high" || open.priority === "critical") ? adviceFor(open.area, doc.kind, detail.party?.kind, detail.advice) : undefined;
   const footer = law ? <Disclaimer advice={advice} /> : !scam && advice?.length ? <AdviceLinks advice={advice} className="block text-xs leading-5 text-muted" /> : null;
   // who the letter is for (the household, ADR 0023): answered where the kind is — not while it is read, nor for a
   // possible scam, a letter in the trash or a proof file
@@ -337,8 +319,9 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
           )}
         >
           {/* the letter's words as written, with an amount and its "€" ("30 €") and a reference kept whole */}
-          {/* a private letter is titled by its file name (nothing read it): shown as one */}
-          {doc.title && doc.title !== doc.filename ? <GermanTerms text={glueText(doc.title)} /> : <FileName name={doc.filename} />}
+          {/* a private letter is titled by its file name (nothing read it): shown as one — it breaks after an
+              underscore, never inside a date or a reference */}
+          {doc.title && doc.title !== doc.filename ? <GermanTerms text={glueText(doc.title)} /> : <FileNameText name={doc.filename} />}
         </h1>
         <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px] text-muted">
           {detail.party ? <PartyChip party={detail.party} /> : null}
@@ -552,13 +535,13 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
         />
       ) : null}
 
-      {/* 4 — if you ignore it */}
+      {/* 4 — if you ignore it; on a letter with signs of a scam, if you pay what it asks (whatever the sign was) */}
       {scam ? (
-        <Section label="If you pay" icon={TriangleAlert}>
-          <p className="text-[14.5px] leading-relaxed text-ink/85">
-            The money goes to an account this sender has never used before, and may be hard to get back.
-          </p>
-        </Section>
+        asksForMoney ? (
+          <Section label="If you pay" icon={TriangleAlert}>
+            <p className="text-[14.5px] leading-relaxed text-ink/85">If this letter isn't from who it claims, money you send is hard to get back.</p>
+          </Section>
+        ) : null
       ) : decision ? (
         <Section label="If you do nothing" icon={CircleCheckBig}>
           <p className="text-[14.5px] leading-relaxed text-ink/85">
@@ -762,21 +745,6 @@ function AsideRow({ entry, detail }: { entry: AsideItem; detail: DocumentDetail 
       </Button>
     </li>
   );
-}
-
-/** Letters about a tenancy: their advice is the tenants' association's, whatever area the letter was read under. */
-const TENANCY_KINDS = new Set(["landlord_notice", "rent_increase", "operating_costs"]);
-
-/**
- * The verdict's "Unsure? Get independent advice" link: a high-stakes letter's from its card's kind — the
- * tenants' association for a tenancy letter, none for the others (the card lists its own help: a court's
- * desk, a union) — never the area's (review round 2: a statement read under "residence" pointed to the
- * Studierendenwerk while its card listed the Mieterverein); any other letter's from its kind, sender and area
- * ({@link adviceFor}).
- */
-function verdictAdvice(advice: DocumentDetail["advice"], area: Item["area"], docKind?: DocumentKind | null, partyKind?: PartyKind | null) {
-  if (advice) return TENANCY_KINDS.has(advice.kind) ? ADVICE_LINKS.rent : undefined;
-  return adviceFor(area, docKind, partyKind);
 }
 
 /** "Keep it": the person decided not to cancel — the decision Idea goes (with undo). */

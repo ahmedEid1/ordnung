@@ -57,6 +57,7 @@ import {
   CLAIMANT_NOTE,
 } from "./templates";
 import { TemplateFields } from "./TemplateFields";
+import { scamLetterIds } from "@/features/document/verdict";
 
 interface KindOption {
   kind: DraftKind;
@@ -881,15 +882,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const parties = useMemo(() => new Map((partiesQ.data ?? []).map((p) => [p.id, p])), [partiesQ.data]);
   const docs = useMemo(() => usableDocuments(docsQ.data ?? []), [docsQ.data]);
   // letters flagged as a possible scam are never answered with a template (a withdrawal, instalments…)
-  const scamDocIds = useMemo(
-    () =>
-      new Set(
-        (suggestionsQ.data ?? [])
-          .filter((s) => s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired")
-          .flatMap((s) => s.refs.filter((r) => r.type === "document").map((r) => r.id)),
-      ),
-    [suggestionsQ.data],
-  );
+  const scamDocIds = useMemo(() => scamLetterIds(suggestionsQ.data ?? []), [suggestionsQ.data]);
   const templateDocs = useMemo(() => docs.filter((d) => !scamDocIds.has(d.id)), [docs, scamDocIds]);
   const objectable = useMemo(() => objectionDocuments(docsQ.data ?? []), [docsQ.data]);
   const contracts = useMemo(() => cancellableContracts(contractsQ.data ?? []), [contractsQ.data]);
@@ -902,7 +895,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   }, [kind, contractId, prefill?.docId, contractsQ.data]);
   const effContractId = contractId ?? inferredContractId;
   const contract = effContractId ? (contractsQ.data ?? []).find((c) => c.id === effContractId) ?? null : null;
-  const check = objectionCheck(doc, needsCard ? letterQ.data?.advice : null);
+  const check = objectionCheck(doc, needsCard ? letterQ.data?.advice : null, parties.get(doc?.party_id ?? "")?.kind);
   const objectionBlocked = kind === "objection" && Boolean(doc) && !check.ok;
   const noObjectable = !docsQ.isPending && objectable.length === 0 && !(doc && check.ok);
 

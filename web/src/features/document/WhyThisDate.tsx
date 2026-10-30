@@ -7,11 +7,11 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "lucide-react";
-import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, DocumentRow, Item, ItemOrigin, Party, PartyKind } from "@/api/types";
+import type { Area, ComputationReceipt, DateSpec, DocumentDetail, DocumentKind, DocumentRow, Item, ItemOrigin, Party } from "@/api/types";
 import { qk } from "@/api/hooks";
 import { isTransfer } from "@/lib/payments";
 import { usePartyDrawer } from "@/lib/party-drawer";
-import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
+import { adviceFor } from "@/components/ui/Disclaimer";
 import { Receipt, ReceiptPopover, useReceiptSteps, type ReceiptDate } from "@/components/ui/Receipt";
 import { looksAbroad } from "@/features/party/model";
 import { dueDateLabel, sendByLabel } from "./dateLabels";
@@ -27,47 +27,6 @@ export const LAND_UNKNOWN = {
   earlier: "where the deadline would be earlier",
   threeDays: "couldn't confirm this sender's",
 } as const;
-
-/** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
-const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
-
-/**
- * Companies whose letters are consumer matters (an electricity contract, a phone bill, a gym): the consumer
- * advice centre, not the tenants' association or student services, when such a letter is filed under a home
- * or residence area.
- */
-const CONSUMER_PARTIES: ReadonlySet<PartyKind> = new Set<PartyKind>(["utility", "telecom", "retailer", "gym", "bank", "insurer", "transport"]);
-
-function areaAdvice(area: Area | null | undefined): AdviceLink[] | undefined {
-  switch (area) {
-    case "tax":
-      return ADVICE_LINKS.tax;
-    case "residence":
-      return ADVICE_LINKS.residence;
-    case "home":
-      return ADVICE_LINKS.rent;
-    case "mobility":
-      return ADVICE_LINKS.fines;
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Independent advice links for high-stakes areas (tax, residence, rent, fines). The letter's kind and its
- * sender's kind come first when known: a lease or an operating-cost statement is the tenants' association's
- * (UI audit round 1: a landlord's statement read under "residence" pointed to the Studierendenwerk), a
- * residence permit the student services', a Stadtwerke bill filed under housing the consumer advice centre's.
- */
-export function adviceFor(area: Area | null | undefined, docKind?: DocumentKind | null, partyKind?: PartyKind | null): AdviceLink[] | undefined {
-  if ((docKind && TENANCY_KINDS.has(docKind)) || partyKind === "landlord") return ADVICE_LINKS.rent;
-  if (docKind === "residence_permit" || partyKind === "immigration_office") return ADVICE_LINKS.residence;
-  if (docKind === "tax_assessment" || docKind === "tax_letter" || partyKind === "tax_office") return ADVICE_LINKS.tax;
-  if (docKind === "fine") return ADVICE_LINKS.fines;
-  const byArea = areaAdvice(area);
-  if (byArea && (area === "home" || area === "residence") && partyKind && CONSUMER_PARTIES.has(partyKind)) return ADVICE_LINKS.consumer;
-  return byArea;
-}
 
 /** The to-do a receipt belongs to: what kind of date it is, and its letter. */
 export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" | "description" | "doc_id">;
@@ -96,11 +55,11 @@ export function receiptDates(
   return dates;
 }
 
-/** The to-do's letter's kind and sender, from the letter already loaded for the page (nothing is fetched). */
-function useLetter(docId: string | null | undefined): { docKind: DocumentKind | null; party: Party | null } {
+/** The to-do's letter's kind, sender and "get advice" card, from the letter already loaded for the page (nothing is fetched). */
+function useLetter(docId: string | null | undefined): { docKind: DocumentKind | null; party: Party | null; card: DocumentDetail["advice"] } {
   const qc = useQueryClient();
   const detail = docId ? qc.getQueryData<DocumentDetail>(qk.documents.detail(docId)) : undefined;
-  return { docKind: detail?.document.kind ?? null, party: detail?.party ?? null };
+  return { docKind: detail?.document.kind ?? null, party: detail?.party ?? null, card: detail?.advice ?? null };
 }
 
 /**
@@ -183,7 +142,7 @@ export interface ReceiptViewProps {
 
 export function ReceiptView({ receipt, spec, area, defaultShowRules = false, origin, item, transfer, close }: ReceiptViewProps) {
   const steps = useReceiptSteps(receipt.steps);
-  const { docKind, party } = useLetter(item?.doc_id);
+  const { docKind, party, card } = useLetter(item?.doc_id);
   const landless = senderLandUnknown(receipt, party);
   // the letter's words are in the letter's language (the law's short wording is Ordnung's)
   const language = useLetterLanguage(item?.doc_id);
@@ -197,7 +156,7 @@ export function ReceiptView({ receipt, spec, area, defaultShowRules = false, ori
       steps={steps}
       holidayCalendar={receipt.holiday_calendar}
       defaultShowRules={defaultShowRules}
-      advice={adviceFor(area, docKind, party?.kind)}
+      advice={adviceFor(area, docKind, party?.kind, card)}
     >
       {landless ? <SenderLandNote party={landless} warnings={receipt.warnings} close={close} /> : null}
     </Receipt>

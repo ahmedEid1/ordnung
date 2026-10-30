@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Draft, Item } from "@/api/types";
+import type { Draft, Item, Suggestion } from "@/api/types";
 import {
   arrivalSavedNote,
   asideItems,
@@ -30,6 +30,8 @@ import {
   sortItems,
   withoutIfYouDisagree,
   courtActionOnly,
+  LIVE_IDEAS,
+  scamLetterIds,
 } from "./verdict";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 import { splitGlossary } from "./glossary-text";
@@ -313,6 +315,47 @@ describe("what needs the person's eyes", () => {
   it("finds the active scam warning", () => {
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "saving" })] }))).toBeNull();
     expect(scamSuggestion(makeDetail({ suggestions: [makeSuggestion({ kind: "scam" })] }))?.kind).toBe("scam");
+  });
+
+  it("finds only this letter's own scam warning, never one about another letter that names it", () => {
+    // the warning about the fake reminder names the genuine bill too: the bill's page is no scam
+    const other = makeSuggestion({ kind: "scam", refs: [{ type: "document", id: "doc_fake" }, { type: "document", id: "doc_1" }] });
+    expect(scamSuggestion(makeDetail({ suggestions: [other] }))).toBeNull();
+    const aimed = makeSuggestion({
+      kind: "scam",
+      refs: [{ type: "document", id: "doc_1" }, { type: "document", id: "doc_fake" }],
+      action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_fake", label: "See why" },
+    });
+    expect(scamSuggestion(makeDetail({ suggestions: [aimed] }))).toBeNull();
+    expect(scamSuggestion(makeDetail({ document: makeDoc({ id: "doc_fake" }), suggestions: [aimed] }))).toBe(aimed);
+  });
+});
+
+describe("scamLetterIds — the letters an open scam warning is about", () => {
+  const scam = (over: Partial<Suggestion>) => makeSuggestion({ kind: "scam", ...over });
+
+  it("takes each open warning's own letter: the letter it opens, else the first letter it names", () => {
+    const ids = scamLetterIds([
+      scam({
+        id: "s1",
+        refs: [{ type: "document", id: "doc_real" }, { type: "document", id: "doc_scam" }, { type: "party", id: "pty_1" }],
+        action: { type: "open", draft_kind: null, target_type: "document", target_id: "doc_scam", label: "See why" },
+      }),
+      scam({ id: "s2", refs: [{ type: "party", id: "pty_2" }, { type: "document", id: "doc_other" }, { type: "document", id: "doc_real2" }] }),
+      // no letter of its own: nothing to mark
+      scam({ id: "s3", refs: [{ type: "party", id: "pty_3" }] }),
+    ]);
+    expect([...ids].sort()).toEqual(["doc_other", "doc_scam"]);
+  });
+
+  it("leaves out a warning the person dismissed (“I checked — it's genuine”) or the server expired, and other Ideas", () => {
+    const refs = [{ type: "document" as const, id: "doc_scam" }];
+    expect(scamLetterIds([scam({ refs, status: "dismissed" }), scam({ refs, status: "expired" }), makeSuggestion({ kind: "risk", refs })]).size).toBe(0);
+    for (const status of ["new", "snoozed", "accepted", "done"] as const) expect(scamLetterIds([scam({ refs, status })]), status).toEqual(new Set(["doc_scam"]));
+  });
+
+  it("shares one rule with the letter page's Ideas: an Idea still to act on is new, snoozed or accepted", () => {
+    expect([...LIVE_IDEAS].sort()).toEqual(["accepted", "new", "snoozed"]);
   });
 
   it("counts the open to-dos that deleting would remove", () => {

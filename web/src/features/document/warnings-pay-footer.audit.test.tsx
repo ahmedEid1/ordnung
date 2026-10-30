@@ -8,12 +8,12 @@ import userEvent from "@testing-library/user-event";
 import { makeTestQueryClient, renderWithProviders } from "@/test/render";
 import { qk } from "@/api/hooks";
 import type { DocumentDetail } from "@/api/types";
-import { ADVICE_LINKS } from "@/components/ui/Disclaimer";
+import { ADVICE_LINKS, adviceFor } from "@/components/ui/Disclaimer";
 import { DocumentFooter, keepTogether, NO_REPLY_KINDS } from "./DocumentFooter";
 import { PanelSection } from "./PanelSection";
 import { PayPanel } from "./PayPanel";
 import { DocumentWarnings, IBAN_FAILS_CHECK, squareIbanClaims } from "./Warnings";
-import { adviceFor, receiptDates, WhyThisDate } from "./WhyThisDate";
+import { receiptDates, WhyThisDate } from "./WhyThisDate";
 import { makeDetail, makeDoc, makeItem, makeReceipt, makeSuggestion } from "./fixtures";
 
 function client() {
