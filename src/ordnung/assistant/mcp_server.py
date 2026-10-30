@@ -29,6 +29,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+import threading
 from collections import deque
 from collections.abc import Callable, Coroutine, Iterable, Mapping, Sequence
 from datetime import date
@@ -1830,6 +1831,13 @@ DateArg = Annotated[str, Field(description="A date written YYYY-MM-DD")]
 OptionalDateArg = Annotated[str | None, Field(description="A date written YYYY-MM-DD, or null")]
 
 
+#: The server runs each tool call in a worker thread, so the calls a turn asks at once ran at once: each imported
+#: its tool's modules there on its first call, and two threads importing ``ordnung.rules`` together saw it
+#: half-initialised (both calls failed with a bare "Error executing tool …"); the tools also share one database
+#: connection. A call waits for the one before it; each takes milliseconds.
+_ONE_CALL_AT_A_TIME = threading.Lock()
+
+
 def build_server(
     store: Store, *, today: date | None = None, rules_tools: bool = True, masked_numbers: bool = False
 ) -> MCPServer:
@@ -1861,9 +1869,11 @@ def build_server(
     )
 
     def answer(call: Callable[[], ToolAnswer]) -> str:
-        """The tool result: Ordnung's record, then the letters' text inside <untrusted_document>."""
+        """The tool result: Ordnung's record, then the letters' text inside <untrusted_document>. One call at a
+        time (:data:`_ONE_CALL_AT_A_TIME`)."""
         try:
-            return render_result(call())
+            with _ONE_CALL_AT_A_TIME:
+                return render_result(call())
         except ToolInputError as exc:
             raise ToolError(str(exc)) from exc
 

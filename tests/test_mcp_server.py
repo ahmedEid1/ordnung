@@ -4,13 +4,16 @@ and over a real stdio handshake) and the read-only database."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterator
+import threading
+import time
+from collections.abc import Callable, Iterator
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -912,6 +915,57 @@ async def test_stdio_handshake_against_a_read_only_database(store: Store, ids: d
         items = await client.call_tool("list_items", {"kind": "deadline"})
         rows = record_of(items.content[0].text)["items"]
         assert [row["id"] for row in rows] == [ids["tax_objection"]]
+
+
+async def test_the_first_calls_of_a_turn_asked_at_once_both_answer(store: Store, ids: dict[str, str]) -> None:
+    """Ask's server as the claude CLI starts it (``ordnung mcp --ledger-only``), asked for the profile and the
+    numbers at once as a turn's first calls. Each call ran in a worker thread of its own and imported its tool's
+    modules there for the first time; two threads importing ``ordnung.rules`` together saw it half-initialised,
+    and both calls failed with a bare "Error executing tool …" (the Ask benchmark's household turn, three
+    recordings in a row)."""
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "ordnung", "mcp", "--data-dir", str(store.data_dir), "--ledger-only"],
+        env={"ORDNUNG_TODAY": "2026-09-28"},
+    )
+    async with Client(params, mode="legacy") as client:
+        results = await asyncio.gather(
+            client.call_tool("get_profile", {}), client.call_tool("get_my_numbers", {})
+        )
+    assert [result.is_error for result in results] == [False, False], [
+        result.content[0].text for result in results if result.is_error
+    ]
+
+
+async def test_the_server_answers_one_tool_call_at_a_time(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tools share one database connection and import what they need on their first call, so a call waits
+    for the one before it to end instead of running beside it in another thread."""
+    running, most = 0, 0
+    guard = threading.Lock()
+
+    def counted(method: Callable[..., Any]) -> Callable[..., Any]:
+        def call(self: LedgerTools, *args: Any, **kwargs: Any) -> Any:
+            nonlocal running, most
+            with guard:
+                running += 1
+                most = max(most, running)
+            time.sleep(0.2)
+            try:
+                return method(self, *args, **kwargs)
+            finally:
+                with guard:
+                    running -= 1
+
+        return call
+
+    monkeypatch.setattr(LedgerTools, "get_profile", counted(LedgerTools.get_profile))
+    monkeypatch.setattr(LedgerTools, "today", counted(LedgerTools.today))
+    server = build_server(store, today=TODAY, rules_tools=False)
+    results = await asyncio.gather(server.call_tool("get_profile", {}), server.call_tool("today", {}))
+    assert [result.is_error for result in results] == [False, False]
+    assert most == 1
 
 
 # --------------------------------------------------------------------------------------------------
