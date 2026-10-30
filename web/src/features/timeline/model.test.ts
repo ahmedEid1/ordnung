@@ -11,7 +11,6 @@ import {
   entryDetail,
   entryForDate,
   entryLetterId,
-  entryMeta,
   entryRole,
   entryStatus,
   filterLanes,
@@ -344,11 +343,9 @@ describe("copy", () => {
   });
 
   it("maps send channels and drops repeated party names in the second line", () => {
-    expect(entryMeta({ type: "draft", party_name: "FunkNetz Mobil GmbH", subtitle: "registered_letter", time: null })).toBe(
-      "FunkNetz Mobil GmbH · Einschreiben (registered letter)",
-    );
-    expect(entryMeta({ type: "document", party_name: "Stadtwerke", subtitle: "Letter from Stadtwerke", time: null })).toBe("Stadtwerke");
-    expect(entryMeta({ type: "deadline", party_name: null, subtitle: "Send by Thu 8 Oct", time: null })).toBe("Send by Thu 8 Oct");
+    expect(entryDetail({ party_name: "FunkNetz Mobil GmbH", subtitle: "registered_letter" })).toBe("Einschreiben (registered letter)");
+    expect(entryDetail({ party_name: "Stadtwerke", subtitle: "Letter from Stadtwerke" })).toBeNull();
+    expect(entryDetail({ party_name: null, subtitle: "Send by Thu 8 Oct" })).toBe("Send by Thu 8 Oct");
   });
 
   it("drops the sender a letter's summary starts with ('TechMarkt Online GmbH · TechMarkt Online GmbH sent …')", () => {
@@ -358,7 +355,7 @@ describe("copy", () => {
     expect(entryDetail({ party_name: "Global Talent Foundation", subtitle: "The Global Talent Foundation, represented by Dr. Exa, awards …" })).toBe("Represented by Dr. Exa, awards …");
     // only a whole name: "Muster" is not "Musterbank eG"
     expect(entryDetail({ party_name: "Muster", subtitle: "Musterbank eG raises its fees" })).toBe("Musterbank eG raises its fees");
-    expect(entryMeta({ type: "document", party_name: party, subtitle: "TechMarkt Online GmbH sent a reminder", time: null })).toBe("TechMarkt Online GmbH · Sent a reminder");
+    expect(entryDetail({ party_name: party, subtitle: "TechMarkt Online GmbH sent a reminder" })).toBe("Sent a reminder");
   });
 
   it("says what each date is", () => {

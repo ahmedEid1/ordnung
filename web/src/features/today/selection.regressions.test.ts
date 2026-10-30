@@ -1,12 +1,12 @@
 /**
  * Round-2 regression review: "To pay · next 30 days" (Greeting) is summed in the browser by
- * `toPayWithin` and was shown with `formatMoney(total)` — i.e. in euros. It added up the raw amounts
+ * `toPayTotals`. It was once one euro sum shown with `formatMoney(total)`, which added up the raw amounts
  * of every outgoing payment whatever its currency, so a $50 invoice became €50 of the total.
  */
 import { describe, expect, it } from "vitest";
 import type { Item } from "@/api/types";
 import { formatTotals } from "@/lib/format";
-import { SENDING_TIME_PASSED, actionFromItem, groupByWeek, postTooLate, toPayTotals, toPayWithin } from "./selection";
+import { SENDING_TIME_PASSED, actionFromItem, groupByWeek, postTooLate, toPayTotals } from "./selection";
 
 const TODAY = "2026-09-28";
 
@@ -50,7 +50,7 @@ function payment(id: string, due: string, amount: number, currency: string): Ite
 }
 
 describe("To pay · next 30 days (round 2)", () => {
-  // toPayWithin ignored TodayAction.currency: 100 EUR + 50 USD was reported as €150.00
+  // the euro sum ignored TodayAction.currency: 100 EUR + 50 USD was reported as €150.00
   it("never adds another currency's amount to the euro total", () => {
     const ctx = { today: TODAY };
     const actions = [
@@ -58,7 +58,7 @@ describe("To pay · next 30 days (round 2)", () => {
       actionFromItem(payment("saas", "2026-10-02", 50, "USD"), ctx)!,
     ];
     expect(actions.map((a) => a.currency)).toEqual(["EUR", "USD"]);
-    expect(toPayWithin(actions)).toBe(100);
+    expect(toPayTotals(actions).EUR).toBe(100);
     // one total per currency, euros first — the Greeting and each Coming-up week show them all
     expect(toPayTotals(actions)).toEqual({ EUR: 100, USD: 50 });
     expect(formatTotals(toPayTotals(actions), { decimals: "auto" })).toBe("€100 + US$50.00");

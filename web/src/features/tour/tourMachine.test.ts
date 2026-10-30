@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { TourState } from "@/api/types";
-import { INITIAL_TOUR, isLastStep, isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";
+import { isTourVisible, normalizeTour, reduceTour, type TourEvent } from "./tourMachine";
 import { TOUR_STEPS, onStepRoute } from "./steps";
 
-const run = (events: TourEvent[], start: TourState = INITIAL_TOUR) => events.reduce((s, e) => reduceTour(s, e), start);
+/** A tour at its first step, as the demo starts it. */
+const FIRST_STEP: TourState = { active: true, step: 0, completed: false };
+const run = (events: TourEvent[], start: TourState = FIRST_STEP) => events.reduce((s, e) => reduceTour(s, e), start);
 
 describe("tour state machine", () => {
   it("has four steps: new mail → Idea → Ask → Timeline", () => {
@@ -50,12 +52,11 @@ describe("tour state machine", () => {
   });
 
   it("is visible only in demo mode while active", () => {
-    expect(isTourVisible(INITIAL_TOUR, { demo: true })).toBe(true);
-    expect(isTourVisible(INITIAL_TOUR, { demo: false })).toBe(false);
+    expect(isTourVisible(FIRST_STEP, { demo: true })).toBe(true);
+    expect(isTourVisible(FIRST_STEP, { demo: false })).toBe(false);
     expect(isTourVisible({ active: false, step: 0, completed: false }, { demo: true })).toBe(false);
     expect(isTourVisible({ active: true, step: 2, completed: true }, { demo: true })).toBe(false);
     expect(isTourVisible(undefined, { demo: true })).toBe(false);
-    expect(isLastStep({ active: true, step: 3, completed: false })).toBe(true);
   });
 
   it("matches step routes (Today only on '/')", () => {

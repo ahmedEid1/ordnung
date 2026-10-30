@@ -30,11 +30,6 @@ export function suggestedQuestions({ today, studentVisa }: { today: Date; studen
   return [phone, pay, { question: `Which deadlines are coming up in ${month}?`, icon: CalendarClock }, ...(studentVisa ? [permit] : [])];
 }
 
-export function isSuggestedQuestion(q: string): boolean {
-  const norm = q.trim().toLowerCase();
-  return SUGGESTED_QUESTIONS.some((s) => s.question.toLowerCase() === norm);
-}
-
 /** Icons for questions served by the backend: the known ones keep theirs, new ones get a generic one. */
 export function withIcons(questions: readonly string[]): SuggestedQuestion[] {
   const known = new Map(SUGGESTED_QUESTIONS.map((s) => [s.question.toLowerCase(), s.icon]));
