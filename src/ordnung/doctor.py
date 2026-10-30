@@ -83,6 +83,7 @@ def install_hint(platform: str = sys.platform) -> str:
 
 NATIVE_INSTALL = native_install()
 INSTALL_HINT = install_hint()
+CLAUDE_BIN_HINT = "Point ORDNUNG_CLAUDE_BIN at the `claude` program, or unset it to use the one on PATH."
 LOGIN_HINT = "Run `claude auth login` (or start `claude` and type /login), then run `ordnung doctor` again."
 MODEL_HINT = (
     "Signed in already? Then `{model}`, the model every call runs on (Settings → Claude connection), may "
@@ -195,12 +196,18 @@ async def check_claude(
     """The Claude checks (install, version, sign-in, optional live probe on ``model``) and their summary."""
     path = claude_cli.find_claude(binary)
     if path is None:
+        named = None if binary else os.environ.get("ORDNUNG_CLAUDE_BIN")  # find_claude looked there first
+        detail = (
+            f"ORDNUNG_CLAUDE_BIN is set to `{named}`, which was not found."
+            if named
+            else "The `claude` command was not found on PATH."
+        )
         missing = DoctorCheck(
             id="claude_cli",
             label="Claude Code installed",
             status="fail",
-            detail="The `claude` command was not found on PATH.",
-            fix=INSTALL_HINT,
+            detail=detail,
+            fix=CLAUDE_BIN_HINT if named else INSTALL_HINT,
         )
         return [missing], ClaudeStatus(installed=False, ok=False, detail=missing.detail)
     raw_version, auth = await asyncio.gather(claude_cli.version(path), claude_cli.auth_status(path))
@@ -267,19 +274,12 @@ def sqlite_check() -> DoctorCheck:
     return DoctorCheck(id="sqlite_fts", label=label, status="ok", detail=f"SQLite {version}")
 
 
-def _existing_ancestor(path: Path) -> Path:
-    for candidate in (path, *path.parents):
-        if candidate.exists():
-            return candidate
-    return Path(path.anchor or ".")
-
-
 def data_dir_check(data_dir: Path) -> DoctorCheck:
     """The data folder exists and is writable (or can be created)."""
     label = "Data folder"
     fix = "Choose another folder with --data-dir or ORDNUNG_HOME."
     if not data_dir.exists():
-        parent = _existing_ancestor(data_dir)
+        parent = encryption.existing_ancestor(data_dir)
         if os.access(parent, os.W_OK):
             return DoctorCheck(
                 id="data_dir", label=label, status="ok", detail=f"{data_dir} (will be created)"
@@ -344,7 +344,7 @@ def database_check(data_dir: Path) -> DoctorCheck:
 def disk_check(data_dir: Path) -> DoctorCheck:
     """Free space where the data folder lives."""
     label = "Disk space"
-    free = shutil.disk_usage(_existing_ancestor(data_dir)).free
+    free = shutil.disk_usage(encryption.existing_ancestor(data_dir)).free
     detail = f"{free / 1024**3:.1f} GB free"
     if free < MIN_FREE_BYTES:
         return DoctorCheck(

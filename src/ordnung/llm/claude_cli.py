@@ -434,13 +434,15 @@ class ClaudeCLIBackend:
             result: dict[str, Any] | None = None
             deadline = started + req.timeout_s
             try:
-                proc.stdin.write(line.encode("utf-8"))
                 try:
+                    proc.stdin.write(line.encode("utf-8"))
                     await _within(req.timeout_s, proc.stdin.drain())
                 except TimeoutError as exc:
                     raise ClaudeTimeout(
                         f"Claude did not read the request within {int(req.timeout_s)} s"
                     ) from exc
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # it exited (or closed its input) unread: its exit and stderr below say why
                 proc.stdin.close()
                 while True:
                     remaining = deadline - time.monotonic()
@@ -555,14 +557,35 @@ async def _kill(proc: asyncio.subprocess.Process) -> None:
         await proc.wait()
 
 
-async def run_cli_json(args: list[str], timeout_s: float = 20) -> dict[str, Any] | None:
-    """Run a short CLI command that prints JSON (e.g. ``claude auth status``)."""
+async def _short_run(args: list[str], timeout_s: float) -> bytes | None:
+    """What a zero-token CLI command (``--version``, ``auth status``) printed; ``None`` when it can't start or
+    doesn't finish in time — then it is killed and waited for, never left running. Its input is the null
+    device, so it never reads the terminal Ordnung was started from."""
     try:
         proc = await asyncio.create_subprocess_exec(
-            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+            *args,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+            start_new_session=True,  # its own process group, as for a model call: _kill ends what it started
         )
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
-    except (OSError, TimeoutError):
+    except OSError:
+        return None
+    try:
+        out, _ = await _within(timeout_s, proc.communicate())
+    except TimeoutError:
+        await _kill(proc)
+        return None
+    except BaseException:  # the caller was cancelled: none is left running either
+        await _kill(proc)
+        raise
+    return out
+
+
+async def run_cli_json(args: list[str], timeout_s: float = 20) -> dict[str, Any] | None:
+    """Run a short CLI command that prints JSON (e.g. ``claude auth status``)."""
+    out = await _short_run(args, timeout_s)
+    if out is None:
         return None
     try:
         value = json.loads(out.decode("utf-8", "replace"))
@@ -571,18 +594,12 @@ async def run_cli_json(args: list[str], timeout_s: float = 20) -> dict[str, Any]
     return value if isinstance(value, dict) else None
 
 
-async def version(binary: str | None = None) -> str | None:
+async def version(binary: str | None = None, timeout_s: float = 15) -> str | None:
     path = find_claude(binary)
     if not path:
         return None
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            path, "--version", stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
-        )
-        out, _ = await asyncio.wait_for(proc.communicate(), timeout=15)
-    except (OSError, TimeoutError):
-        return None
-    return out.decode().strip() or None
+    out = await _short_run([path, "--version"], timeout_s)
+    return (out.decode().strip() or None) if out is not None else None
 
 
 async def auth_status(binary: str | None = None) -> dict[str, Any] | None:
