@@ -78,6 +78,41 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - The demo tour on a narrow phone: when a step's card shows *Show me the Ideas* or another long button, that
   button and *Back* move to a line of their own instead of lying over the step dots, so tapping a dot goes to
   that step.
+- **A letter you checked gets its reminders back.** A genuine letter that shows scam signs (Claude's caution
+  that it could be phishing is enough) has its dates set aside, and *I checked — it's genuine* did not bring
+  them back. Now it does: its to-dos are on Today, in the calendar, the notification, the Ideas and Ask again,
+  and a checked payment reminder takes over the invoice it repeats, so the money is asked for once. It still
+  gets no GiroCode, and a new sign (another bank account, say) warns again and sets the dates aside again. While a letter is flagged, its
+  page shows each date as *due …* (never *was due* for a day still ahead) and the warning names the days it
+  asks for; *If you pay* shows only when the letter asks for money. The calendar Idea counts only the dates
+  the calendar file holds.
+- The Inbox tags only the letter a scam warning is about as *Possible scam*: the online demo tagged the
+  genuine broadcasting-fee bill too. When the warnings can't be loaded, the Inbox says so and shows no pay
+  countdown until they load.
+- A broadcasting-fee letter's *Get independent advice* points to the consumer advice centre, never the tenants'
+  association, and a landlord's letter points to the tenants' association whatever area it was read under.
+- Settings → *Run check* and `ordnung doctor --probe` no longer fail with "Connection lost" when the `claude`
+  program stops before reading what Ordnung sends it (a broken install, say): the live test call fails with
+  the program's own words, and a reading or an Ask answer fails with the same words. A `claude` that hangs on
+  its version or sign-in check is stopped after the time limit. When `ORDNUNG_CLAUDE_BIN` names a program
+  that isn't there, `ordnung doctor` says so.
+- A to-do dated at the very end of the calendar (31 Dec 9999) no longer breaks the calendar file or calendar
+  sync's preview: it is left out, and its own `.ics` says the date is too far in the future. Marking such a
+  repeating to-do done closes it with no next date. A page, list position, time zone or repeat interval out of
+  range is refused plainly instead of failing with a server error.
+- Opening Ordnung signs in a browser that can't read Ordnung's data folder, such as Ubuntu's Firefox (a snap)
+  or a Flatpak browser: `ordnung serve`, `ordnung demo` and the app-menu shortcut open a link that works once,
+  within a minute, instead of a page saved in that folder. The link printed in the terminal is as before.
+- `ordnung demo` opens on port 8766, so it runs beside Ordnung on 8765; `--port` still chooses another.
+- The entries `ordnung mcp install` writes for Claude Desktop and Claude Code start Python with `-P`, so a file
+  in the folder the client starts them from can't stand in for one of Ordnung's modules. If you added one
+  before, run `ordnung mcp install` again with `--write`.
+- In the demo, *Write a new note* keeps Claude's note while nothing on the agenda changed; it used to replace
+  it with the note Ordnung writes without Claude.
+- A copy of a letter whose reading failed, dropped into the watched folder while *Read new files with Claude
+  straight away* is off, waits for *Try again* instead of being read again.
+- Ask writes the right weekday next to a date, however the answer puts the two together (*2 Oct 2026 (Thu)*,
+  *Donnerstag, den 2. Oktober 2026*), and drops a citation that names no record, saying so in its note.
 
 ### Upgrading
 

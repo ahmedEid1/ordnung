@@ -60,7 +60,7 @@ Sam's letters, and it keeps nothing once you reload the page. Or run the full de
 
 ```bash
 pipx install git+https://github.com/ahmedEid1/ordnung   # or: uv tool install git+https://github.com/ahmedEid1/ordnung
-ordnung demo                                             # opens http://127.0.0.1:8765 with a guided tour
+ordnung demo                                             # opens http://127.0.0.1:8766 with a guided tour
 ```
 
 Ask's recorded answers fit the demo as it starts. After you mark things paid or done, Ask says so and
