@@ -44,11 +44,16 @@ more than their own screen shows.
   letters for taxes."), and Claude's tax note is left out of a letter the person took off. The weekly review's
   snapshot (`review._document_row`) flags each letter by the same rule. A private letter's choice reaches
   neither.
-- **No tool description, server instruction or prompt changes.** The rule reaches Claude in the record, written
-  by code, beside the data it is about. A description goes with every Ask call, so changing one would give
-  every recorded Ask answer an input it wasn't recorded with. The Ask prompts lock gains an `ask_tools` entry
-  (the digest of the server's instructions, its tools, the allowed tools and the cost cap), written by the next
-  recording, which then refuses such a change until the Ask prompt's version moves.
+- **Two tool descriptions name the household; no server instruction or prompt text changes.** The rule reaches
+  Claude in the record, written by code, beside the data it is about. `get_profile`'s description adds "and the
+  people of their household with the letters filed for each", and `get_my_numbers`' says numbers from letters
+  the person filed for someone of their household are listed under that person (household, filed_for), never as
+  the person's own: the household group's first recording showed Ask looking for a household person among the
+  senders and in the letters' text, never in the profile. A description goes with every Ask call, so the Ask
+  prompt's version moves with them (`ask_system`, its text unchanged) and every recorded Ask answer is recorded
+  again. The Ask prompts lock has an `ask_tools` entry (the digest of the server's instructions, its tools, the
+  allowed tools and the cost cap), written by each recording, which refuses such a change until the Ask prompt's
+  version moves.
 - **Empty means as before.** Without people and without a choice, no tool's answer carries either, byte for byte,
   and Ask's ledger fingerprint hashes as before, so the answers recorded then still replay. With them, the
   fingerprint hashes the choices of the letters Ask may read and what `ask_view` gives, and the store's ledger

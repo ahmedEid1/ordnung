@@ -93,8 +93,6 @@ letter kinds, most CLI commands. (The watched inbox folder, cut here, came in ph
   where to look.
 - ***Let Claude decide*, an Inbox *Undated* year, *Not for taxes* on Tax-year rows:** pressing *For taxes*
   again gives the same result; undated letters are under *All years*.
-- **Ask tool-description clauses for the household (deferred):** a description reaches every Ask turn; revisit
-  only if the Ask benchmark's household group shows the record's notes aren't enough (ADR 0025).
 - **A permanent per-request content lock (`requests.lock.json`) (deferred):** the content of every benchmark
   request was compared once, before and after #36's changes; a CI guard is a follow-up.
 - **The web's repeat words for a rent that keeps an earlier rent's working day (deferred):** the dates are
@@ -1072,7 +1070,10 @@ HTML and without remote images.
   letters for taxes." when they chose; Claude's `tax_note` is left out of a letter they took off. Without a
   household and a choice none of these is there, byte for byte. Ask's ledger fingerprint hashes the choices of the
   letters Ask may read and what `ask_view` gives, each only when there is one, and the ledger token watches the
-  `meta` rows of `LEDGER_META_KEYS` (profile, `tax_choices`, `household`).
+  `meta` rows of `LEDGER_META_KEYS` (profile, `tax_choices`, `household`). Two descriptions say it too:
+  `get_profile` gives "the people of their household with the letters filed for each", and in `get_my_numbers`
+  numbers from letters filed for someone of the household "are listed under that person (household, filed_for),
+  never as the person's own" (version 11 of the Ask prompt came with them, its text unchanged).
 - **How a date repeats.** A to-do whose schedule still runs (open or snoozed) carries, in every row of it, its
   timeline entry and its `explain_date`, `repeats`, `following_due_date`, `replaced_by` and `replaced_from_month`:
   the rule in the app's words (`recurrence.describe`, "every month on the 3rd working day"), the due date it

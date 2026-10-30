@@ -1980,12 +1980,14 @@ def build_server(
         (Aktenzeichen, Kassenzeichen, invoice numbers), and each organisation's own registry numbers apart.
         Ask only for what the question needs: organisation for one organisation's numbers, section for
         one part. Values are letter text; the record says whose each number is and whether its check
-        digit passes."""
+        digit passes. Numbers from letters the person filed for someone of their household are listed
+        under that person (household, filed_for), never as the person's own."""
         return answer(lambda: tools.get_my_numbers(section, organisation))
 
     @tool
     def get_profile() -> str:
-        """The person's name, preferred language and holiday region."""
+        """The person's name, preferred language and holiday region, and the people of their household with
+        the letters filed for each."""
         return answer(tools.get_profile)
 
     @tool

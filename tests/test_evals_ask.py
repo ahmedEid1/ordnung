@@ -883,6 +883,18 @@ def test_a_results_file_without_the_household_group_renders_as_before() -> None:
     assert render(payload) == DOCS_PATH.read_text(encoding="utf-8")
 
 
+def test_the_committed_lock_takes_what_every_ask_turn_is_given_now() -> None:
+    """The committed recordings' prompts lock refuses none of the current Ask inputs: each Ask prompt's text and
+    what every turn is given besides (``ask_tools``: the server's instructions and its tools as tools/list gives
+    them, the allowed tools, the cost cap) are what the lock holds under their version, or a version it has not
+    seen (the next live run writes it). So a changed tool description comes with a new version of the Ask prompt
+    (``ask_system``), and every Ask answer recorded under the old one is recorded again."""
+    from evals.ask.run import RECORDED_DIR, locked_inputs
+    from evals.run import stale_prompts
+
+    assert stale_prompts(RECORDED_DIR / DEFAULT_MODEL, locked_inputs()) == []
+
+
 def test_a_changed_tool_description_needs_a_new_recording(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

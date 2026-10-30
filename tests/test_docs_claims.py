@@ -5323,7 +5323,6 @@ SPEC_NOT_BUILT = (
     "**macOS Vision and Windows OCR:**",
     "**A BitLocker probe:**",
     "***Let Claude decide*, an Inbox *Undated* year, *Not for taxes* on Tax-year rows:**",
-    "**Ask tool-description clauses for the household (deferred):**",
     "**A permanent per-request content lock (`requests.lock.json`) (deferred):**",
     "**The web's repeat words for a rent that keeps an earlier rent's working day (deferred):**",
     "**An Ask benchmark question about the next occurrence (deferred):**",
@@ -5388,8 +5387,9 @@ def _member(name: str) -> Any:
 
 def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
     """ADR 0025: the whose rule, what Ask is given (only through ``ask_view`` and ``Ledger.household_filed``), the
-    *For taxes* choice, no tool description or prompt changed, empty means as before, the Ideas and reminders, the
-    known limits; ADR 0023's status line and point 9 point to it; README lists it after 0024."""
+    *For taxes* choice, the two tool descriptions that name the household (the prompts' text unchanged, their
+    version moved), empty means as before, the Ideas and reminders, the known limits; ADR 0023's status line and
+    point 9 point to it; README lists it after 0024."""
     adr = _adr(_ADR_WHOSE)
     assert adr.startswith("# ADR 0025 — Ask and the Ideas say whose it is")
     for words in (
@@ -5401,7 +5401,10 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
         "`get_my_numbers` puts their numbers under `household` (and names there, by id and name, everyone "
         "`filed_for` and `also_for` give)",
         "One of two sentences says when the person chose",
-        "No tool description, server instruction or prompt changes.",
+        "**Two tool descriptions name the household; no server instruction or prompt text changes.**",
+        '"and the people of their household with the letters filed for each"',
+        "listed under that person (household, filed_for), never as the person's own",
+        "so the Ask prompt's version moves with them (`ask_system`, its text unchanged)",
         "Without people and without a choice, no tool's answer carries either, byte for byte,",
         "`LEDGER_META_KEYS`",
         "§ 81 Abs. 4 AufenthG",
@@ -5432,6 +5435,8 @@ def test_the_spec_says_what_was_decided_not_to_build() -> None:
     paragraph = section.split("**Decided not to build (after 0.3.0, #37's deferred list):**", 1)[1]
     places = [paragraph.index(f"- {lead}") for lead in SPEC_NOT_BUILT]
     assert places == sorted(places)
+    # built after the household group's first recording (ADR 0025): no longer deferred
+    assert "Ask tool-description clauses for the household" not in paragraph
     assert section.index("**Cut (v1.1+):**") < section.index("**Decided not to build")
 
 

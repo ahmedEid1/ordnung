@@ -859,6 +859,25 @@ async def test_scam_demands_are_not_to_be_paid_until_checked(store: Store, ids: 
     assert "until the person has checked with the sender" in described and "due_date" in described
 
 
+async def test_the_tool_descriptions_name_the_household(store: Store, ids: dict[str, str]) -> None:
+    """``get_profile`` and ``get_my_numbers`` say in their descriptions what the household changes (ADR 0025):
+    the profile lists the people of the household with the letters filed for each, and a number from a letter
+    filed for one of them is listed under that person, never as the person's own. The record's notes say the
+    same beside the data; the descriptions send Ask to the profile for a household person's name."""
+    listed = {
+        tool.name: tool.description or ""
+        for tool in await build_server(store, today=TODAY, rules_tools=False).list_tools()
+    }
+    assert listed["get_profile"] == (
+        "The person's name, preferred language and holiday region, and the people of their household with the "
+        "letters filed for each."
+    )
+    assert listed["get_my_numbers"].endswith(
+        "Numbers from letters the person filed for someone of their household are listed under that person "
+        "(household, filed_for), never as the person's own."
+    )
+
+
 async def test_server_call_tool_returns_json_text(store: Store, ids: dict[str, str]) -> None:
     server = build_server(store, today=TODAY)
     result = await server.call_tool("explain_date", {"item_or_contract_id": ids["tax_objection"]})
