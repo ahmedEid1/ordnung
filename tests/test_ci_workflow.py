@@ -101,6 +101,22 @@ def test_every_published_split_is_replayed_with_a_gate_at_its_published_number()
         assert late == 0 == published["dangerous_late_rate"]["k"], split
 
 
+def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() -> None:
+    """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
+    measured, as each reading split is: a change that loses one of its answers fails the build. The headline
+    thresholds hold for that recording too (its notes say why each is where it is)."""
+    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
+    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
+    latest = sorted((ROOT / "evals" / "results").glob("*-ask.json"))[-1]
+    summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
+    right, asked = summary["household"]["attribution"]["k"], summary["household"]["attribution"]["n"]
+    assert (right - 1) / asked < float(option["--min-household"]) <= right / asked
+    assert float(option["--min-accuracy"]) <= summary["accuracy"]["value"]
+    assert float(option["--min-abstention"]) <= summary["abstention"]["value"]
+    assert int(option["--max-unsupported"]) == 0 == summary["guard"]["unsupported_in_final"]
+
+
 def _comparison(script: str) -> str:
     """The Python the without-Land step runs to compare its replay with the published file."""
     return script.split("<<'EOF'\n", 1)[1].split("\nEOF", 1)[0]

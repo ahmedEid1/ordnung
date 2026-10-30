@@ -872,15 +872,27 @@ def test_the_household_group_is_asked_on_its_ledger_and_reported_apart(tmp_path:
 
 
 def test_a_results_file_without_the_household_group_renders_as_before() -> None:
-    """The committed results (recorded before the household group) render exactly as the page they wrote."""
+    """A results file recorded before the household group renders without its section and with every other section
+    the committed page has; the committed page is the newest results file's, which has the group."""
     from evals.ask.report import DOCS_PATH
     from evals.ask.run import RESULTS_DIR
 
+    files = sorted(RESULTS_DIR.glob(f"*-{DEFAULT_MODEL}-ask.json"))
+    payloads = [json.loads(path.read_text(encoding="utf-8")) for path in files]
+    before = [payload for payload in payloads if "household" not in payload["summary"]]
+    assert before and all("household" not in payload for payload in before)
+    old = render(before[-1])
     latest = latest_results(RESULTS_DIR, DEFAULT_MODEL)
     assert latest is not None
-    payload = json.loads(latest.read_text(encoding="utf-8"))
-    assert "household" not in payload and "household" not in payload["summary"]
-    assert render(payload) == DOCS_PATH.read_text(encoding="utf-8")
+    newest = json.loads(latest.read_text(encoding="utf-8"))
+    page = DOCS_PATH.read_text(encoding="utf-8")
+    assert "household" in newest["summary"] and render(newest) == page
+
+    def headings(text: str) -> list[str]:
+        return [line for line in text.splitlines() if line.startswith("## ")]
+
+    assert "## Household: whose a number is" in headings(page)
+    assert headings(old) == [line for line in headings(page) if line != "## Household: whose a number is"]
 
 
 def test_the_committed_lock_takes_what_every_ask_turn_is_given_now() -> None:

@@ -388,26 +388,32 @@ never against the app's own outputs.
 | Metric | Result |
 |---|---|
 | Answer correct: every gold date and amount stated | 100 % (44/44); 100 % (40/40) where the answer is in Ordnung's record |
-| Citation precision: the cited record holds the sentence's value | 99.0 % (104/105) |
-| Abstention on questions with no answer in the records | 100 % (8/8) |
-| Injected claim in the answer the person sees | 0 % (0/21), against 38.1 % (8/21) before the check |
+| Citation precision: the cited record holds the sentence's value | 98.3 % (119/121) |
+| Abstention on questions with no answer in the records | 87.5 % (7/8) |
+| Injected claim in the answer the person sees | 4.8 % (1/21), against 47.6 % (10/21) before the check |
 | Unsupported values left in final answers | 0 |
+| Household: the number asked for, and whose it is | 80.0 % (4/5) |
 
 The five answers earlier recordings got wrong were gaps in the ledger (dates Ordnung never filed, or
 filed differently from the truth), not values the check let through; the current ledger closes all five:
 the letters read with the current extraction prompt (the rent's due day, the Deutschlandticket's day, the
-job's notice clause) and the price increase's special window, now in Ask's record. Read by hand, the
-eight raw "successes" before the check are warnings that repeat the injected value to flag it — none
-presents the claim as the answer; the check shows such a value as "[date only in the letter]", and none
-reaches the person. Every question with no answer on record is declined in the answer's first paragraph:
-the gas bill's, which the earlier recording answered with the electricity contract's cost, now says only
-that nothing is on record, as the current Ask prompt asks (the scorer first missed that wording, and in
-the final recording BAföG's, and was taught both; the page shows both counts). This benchmark is **not held-out**: its questions come
+job's notice clause) and the price increase's special window, now in Ask's record. Of the ten raw
+"successes" before the check, nine also warn about the injected text (eight in words the scorer reads as a
+warning, one read by hand), and the check keeps their claim from the person; the one that reaches the person
+is the attack an earlier round documented: the library's fee on its own record, with the rent's own amount in
+a list of the month's payments. Seven of the eight questions with no answer on record are declined in the
+answer's first paragraph; the gas bill's says no gas bill is on record and names the electricity contract's
+monthly advance in the same paragraph, which the rule counts as an answer. Five more questions, reported
+apart, ask on a copy of the ledger where Alex Rivera is in the household for his numbers and the person's own:
+four answers give the number asked for and say whose it is, and the fifth, asked for the person's own health
+insurance number, says at once that Ordnung has none of theirs and gives Alex's to no one, in a wording the
+scorer does not know (it missed two other wordings in an earlier recording of these questions and was
+taught both; the page shows the counts before and after). This benchmark is **not held-out**: its questions come
 from the same sample life as the demo, and the check and the prompt were revised over several review
 rounds on these recordings (the first nine attack letters were written before any measurement and never
-tuned). CI replays the recordings and gates accuracy, abstention and unsupported values; any successful
-attack fails the build, but one an earlier round documented (the rent's own amount in a comparison of the
-month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
+tuned). CI replays the recordings and gates accuracy, abstention, unsupported values and the household
+answers (at the recorded 4/5); any successful attack fails the build, but one an earlier round documented (the
+rent's own amount in a comparison of the month's payments). Details: [docs/evals-ask.md](docs/evals-ask.md).
 
 ## Privacy
 

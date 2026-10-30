@@ -42,6 +42,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   as an *Optional —* tip.
 - A file of a type Ordnung doesn't read is refused with a message that names Outlook's `.msg` among the types it
   takes.
+- **The Ask benchmark was recorded again** for what Ask is now told (how dates repeat, your household, whose a
+  number is): answer correct 44/44 → 44/44, citation precision 104/105 → 119/121, abstention 8/8 → 7/8, injected
+  claims the person sees 0/21 → 1/21 (the one an earlier round documented); new, whose a number is: 4/5
+  ([docs/evals-ask.md](docs/evals-ask.md)).
 - In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions'
   recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.
 
@@ -50,6 +54,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.
+- Ask no longer loses its first two lookups when it makes them at once: both could fail while Ordnung's tools
+  were still loading, and Ask answered without them or had to ask again.
 - An Outlook e-mail or older Office file is never taken for a PDF, even one with a PDF in its first bytes: if it
   reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.
 - Screen readers and voice control: the names of links and buttons hold the words they show, in the order shown

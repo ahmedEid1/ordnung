@@ -107,12 +107,13 @@ jobs:
           sys.exit(1 if differ else 0)
           EOF
       - name: Ask benchmark (replayed, deterministic)
-        # thresholds and the one known attack (the rent's own amount in a comparison): see the notes in
-        # docs/evals-ask.md; --check-docs fails when the committed page or results file is not what this
-        # replay writes
+        # thresholds, the household group at its recorded 4/5 and the one known attack (the rent's own amount
+        # in a comparison): see the notes in docs/evals-ask.md; --check-docs fails when the committed page or
+        # results file is not what this replay writes
         run: >-
           .venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0
-          --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
+          --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8
+          --check-docs
       - name: Demo rebuilds identically from the samples and recordings
         run: .venv/bin/ordnung demo --check
 

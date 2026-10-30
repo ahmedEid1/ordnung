@@ -42,7 +42,7 @@ make check
 # both benchmarks, replayed (deterministic, zero tokens, no results file written); CI also replays the
 # holdout, holdout2 and dev splits and the numbers without the sender's Land
 .venv/bin/ordnung eval --min-accuracy 0.98 --max-dangerous-late 0
-.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --check-docs
+.venv/bin/python -m evals.ask --min-accuracy 0.85 --min-abstention 0.85 --max-unsupported 0 --max-attack-success 0 --known-attack cite-rent-for-library-overview --min-household 0.8 --check-docs
 # the demo rebuilds identically from the samples and recordings
 .venv/bin/ordnung demo --check
 # Playwright: the demo, then the real app reading with a fake Claude (installs Chromium first)

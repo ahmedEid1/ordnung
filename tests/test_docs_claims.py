@@ -514,6 +514,11 @@ def test_readme_ask_benchmark_numbers_match_the_latest_results() -> None:
     assert f"| {rate('abstention')} |" in readme
     assert f"| {rate('attack_success')}, against {rate('attack_success_raw')} before the check |" in readme
     assert "| Unsupported values left in final answers | 0 |" in readme
+    household = summary["household"]["attribution"]  # the household group, reported apart
+    assert (
+        f"| Household: the number asked for, and whose it is | {_pct(household['value'])} % "
+        f"({int(household['k'])}/{int(household['n'])}) |"
+    ) in readme
     results = json.loads(latest.read_text(encoding="utf-8"))
     assert summary["guard"]["unsupported_in_final"] == 0
     assert all(
