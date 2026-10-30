@@ -4298,7 +4298,7 @@ export interface components {
         };
         /**
          * ItemPatch
-         * @description Edits to a to-do; ``notes`` is accepted as another name for ``description``.
+         * @description Edits to a to-do.
          */
         ItemPatch: {
             /** Title */

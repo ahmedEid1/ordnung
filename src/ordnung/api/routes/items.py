@@ -17,7 +17,7 @@ from datetime import date, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from ordnung.api.deps import CtxDep, StoreDep, TodayDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, require, set_aside
@@ -86,12 +86,12 @@ class ItemCreate(BaseModel):
 
 
 class ItemPatch(BaseModel):
-    """Edits to a to-do; ``notes`` is accepted as another name for ``description``."""
+    """Edits to a to-do."""
 
-    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=300)
-    description: str | None = Field(default=None, validation_alias=AliasChoices("description", "notes"))
+    description: str | None = None
     due_date: IsoDate | None = None
     due_time: str | None = Field(default=None, pattern=_TIME_PATTERN)
     amount: float | None = None

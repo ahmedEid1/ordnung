@@ -116,11 +116,21 @@ async def test_status_changes_are_explicit(data_dir: Path) -> None:
         default = (await api.client.patch(url, json={"status": "snoozed"})).json()
         assert default["snoozed_until"] == "2026-10-02"
 
-        renamed = (await api.client.patch(url, json={"title": "Pay the tax", "notes": "From savings"})).json()
+        renamed = (
+            await api.client.patch(url, json={"title": "Pay the tax", "description": "From savings"})
+        ).json()
         assert (renamed["title"], renamed["description"]) == ("Pay the tax", "From savings")
         assert renamed["user_modified"] is True
 
-        for bad in ({"status": "gone"}, {"title": ""}, {"due_date": "tomorrow"}, {"id": "itm_x"}):
+        # the notes are the "description" field; no other name is taken for it
+        bad_fields = (
+            {"status": "gone"},
+            {"title": ""},
+            {"due_date": "tomorrow"},
+            {"id": "itm_x"},
+            {"notes": "x"},
+        )
+        for bad in bad_fields:
             assert (await api.client.patch(url, json=bad)).status_code == 422, bad
         assert (await api.client.patch("/api/items/itm_unknown", json={"status": "done"})).status_code == 404
 
