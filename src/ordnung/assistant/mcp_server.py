@@ -802,13 +802,12 @@ class _NumberRows:
         """Whose a number (or, without ``also``, a case) is, when the page says: the person of the household
         all its letters are filed for (``filed_for``) and the other people whose letters show it too
         (``also_for``); else nothing."""
-        found = {
-            "filed_for": self._filed_for.get(key),
-            "also_for": list(self._also_for.get(key, ())) if also else [],
-        }
+        filed_for = self._filed_for.get(key)
+        also_for = list(self._also_for.get(key, ())) if also else []
+        found = {"filed_for": filed_for, "also_for": also_for}
         kept = {name: value for name, value in found.items() if value}
         self.whose |= bool(kept)
-        for person in [found["filed_for"], *found["also_for"]]:
+        for person in [filed_for, *also_for]:
             if person and person != "me" and person not in self.people:
                 self.people.append(person)
         return kept
