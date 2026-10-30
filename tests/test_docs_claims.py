@@ -5459,6 +5459,8 @@ def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
         "Full puts the name of the person of the household a to-do's letter is filed for in front of its title",
         "`numbers` (GET: My numbers, a `NumbersPage`",
         "A date from a letter filed for someone in the household starts its second line with *For Alex Rivera ·*",
+        "at the start of its Coming up and recent letters rows — never a contract's action, though it comes from a "
+        "letter (its decision is the person's, ADR 0025); Today has no filter for it",
         "the first tab is **People** once someone of the household has numbers or documents",
     ):
         assert words in spec, words

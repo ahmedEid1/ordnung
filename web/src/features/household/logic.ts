@@ -31,6 +31,15 @@ export function filedMember(h: Household | undefined, docId: string): HouseholdP
   return memberById(h, h?.filed[docId]);
 }
 
+/**
+ * Whose a Today action is, for its tag: the person its letter is filed for — never a contract's, though it carries the
+ * letter it came from, since a contract's decision is the person's (ADR 0025; the Timeline, the reminders and the Ideas
+ * never name one either).
+ */
+export function actionMember(h: Household | undefined, action: { source: "item" | "contract"; docId: string | null }): HouseholdPerson | null {
+  return action.source === "contract" || !action.docId ? null : filedMember(h, action.docId);
+}
+
 /** A letter's answer now — a person's id, {@link MINE}, or null (not answered): what an Undo sends back. */
 export function answerOf(h: Household | undefined, docId: string): string | null {
   if (!h) return null;

@@ -23,6 +23,7 @@ import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { RecentLetters } from "./RecentLetters";
 import { actionFromContract, actionFromItem, type TodayAction } from "./selection";
 import { TodayView } from "./TodayView";
+import { TopThree } from "./TopThree";
 
 beforeEach(() => {
   vi.stubGlobal("scrollTo", () => {});
@@ -433,7 +434,7 @@ describe("whose letter it is", () => {
     expect(recentLetterMeta({ kind: "invoice" }, { name: "TechMarkt GmbH" }, null)).toBe("TechMarkt GmbH · Invoice");
   });
 
-  it("tags the Coming-up rows of letters filed for someone — a contract's by the letter it came from", () => {
+  it("tags the Coming-up rows of letters filed for someone — never a contract's, whose decision is the person's", () => {
     const ctx = { today: TEST_TODAY };
     const fee = actionFromItem(item({ id: "itm_fee", kind: "payment", title: "Pay the fee", amount: 5, due_date: "2026-10-02", doc_id: "doc_fee" }), ctx)!;
     const own = actionFromItem(item({ id: "itm_own", kind: "task", title: "Water the plants", due_date: "2026-10-03" }), ctx)!;
@@ -468,9 +469,46 @@ describe("whose letter it is", () => {
     const meta = (title: string) => screen.getByText(title).closest("a")!.querySelector<HTMLElement>("[data-part=meta]");
     expect(meta("Pay the fee")!.textContent).toMatch(/^€5\.00 · For Alex Rivera · /);
     expect(meta("Pay the fee")!.title).toBe(meta("Pay the fee")!.textContent);
-    expect(meta("Decide on FunkNetz Allnet L")!.textContent).toBe("For Mia Rivera · Send");
+    // its letter is filed for Mia, but a contract's dates name no one (ADR 0025), as on the Timeline
+    expect(meta("Decide on FunkNetz Allnet L")!.textContent).toBe("Send");
     expect(meta("Water the plants")?.textContent ?? "").not.toMatch(/For /);
     expect(meta("Renew the passport")?.textContent ?? "").not.toMatch(/For /);
+  });
+
+  it("tags a Top 3 card of a letter filed for someone — never a contract's", () => {
+    const ctx = { today: TEST_TODAY };
+    const fee = actionFromItem(item({ id: "itm_fee", kind: "payment", title: "Pay the fee", amount: 5, due_date: "2026-10-02", doc_id: "doc_fee" }), ctx)!;
+    const phone = actionFromContract(
+      contract({
+        id: "ctr_phone",
+        name: "FunkNetz Allnet L",
+        category: "mobile",
+        source_doc_id: "doc_phone",
+        computed: {
+          regime: "tkg56",
+          current_term_end: "2026-11-14",
+          cancel_by: "2026-10-14",
+          send_by: "2026-10-08",
+          safe_date: null,
+          confidence: "high",
+          warnings: [],
+          next_renewal: null,
+          earliest_exit: "2026-11-14",
+          summary: "Minimum term ends Sat 14 Nov.",
+          notes: [],
+          steps: [],
+          rule_ids: [],
+        },
+      }),
+      ctx,
+    )!;
+    renderWithProviders(<TopThree actions={[fee, phone]} next={undefined} partyById={new Map()} today={TEST_TODAY} />, {
+      client: withHousehold({ doc_fee: ALEX.id, doc_phone: MIA.id }),
+    });
+    const card = (title: string) => screen.getByText(title).closest("article")!;
+    expect(within(card("Pay the fee")).getByText("For Alex Rivera")).toBeInTheDocument();
+    expect(card("Decide on FunkNetz Allnet L").querySelector("[data-person-tag]")).toBeNull();
+    expect(within(card("Decide on FunkNetz Allnet L")).queryByText(/^For /)).toBeNull();
   });
 
   it("tags the recent letters filed for someone, the tag first on the row's second line", async () => {

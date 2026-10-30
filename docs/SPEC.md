@@ -1981,8 +1981,9 @@ Pages:
    leaves out: registration first, five rows before *Show N more*, each with a native checkbox (ticks it off,
    with Undo, focus to the next row), *Not needed*, and *Write the letter* (or *Open your draft* when an unsent
    new-address letter to them exists); "Ordnung never sends anything for you". A letter filed for someone of
-   the household says so: a *For Alex Rivera* tag on its Top 3 card (a contract's action by its source letter),
-   and "For Alex Rivera · " at the start of its Coming up and recent letters rows; Today has no filter for it.
+   the household says so: a *For Alex Rivera* tag on its Top 3 card, and "For Alex Rivera · " at the start of
+   its Coming up and recent letters rows — never a contract's action, though it comes from a letter (its decision
+   is the person's, ADR 0025); Today has no filter for it.
 2. **Inbox** — letters list (thumbnail, sender, kind, date, status badge), filters (All · Please
    check · Private), New-mail tray in demo, batch-import recap screen ("I read 12 letters: 5
    deadlines, 3 contracts, €312/month fixed costs, 2 need you now, 1 possible scam"). Above the list,

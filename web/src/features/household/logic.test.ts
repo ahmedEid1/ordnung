@@ -4,6 +4,7 @@ import { makeRow } from "@/features/document/fixtures";
 import { comingUpMeta } from "@/features/today/helpers";
 import {
   MINE,
+  actionMember,
   answerOf,
   fileTheseLabel,
   filedMember,
@@ -38,6 +39,15 @@ describe("household logic", () => {
     expect(filedMember(HOUSEHOLD, "doc_mine")).toBeNull();
     expect(filedMember(HOUSEHOLD, "doc_s1")).toBeNull(); // a suggestion is not a filing
     expect(filedMember(undefined, "doc_a1")).toBeNull();
+  });
+
+  it("names whose a Today action is by its letter, never a contract's (its decision is the person's, ADR 0025)", () => {
+    expect(actionMember(HOUSEHOLD, { source: "item", docId: "doc_a1" })).toEqual(ALEX);
+    expect(actionMember(HOUSEHOLD, { source: "item", docId: "doc_mine" })).toBeNull();
+    expect(actionMember(HOUSEHOLD, { source: "item", docId: null })).toBeNull();
+    // a contract's action carries the letter it came from, filed for Alex: still no one
+    expect(actionMember(HOUSEHOLD, { source: "contract", docId: "doc_a1" })).toBeNull();
+    expect(actionMember(undefined, { source: "item", docId: "doc_a1" })).toBeNull();
   });
 
   it("reads ?for=: You, a person, else Everyone — and only while the household has people", () => {
