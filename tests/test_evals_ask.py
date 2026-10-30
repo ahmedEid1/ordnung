@@ -617,47 +617,99 @@ HOUSEHOLD_IDS = [
 
 def test_the_household_questions_have_gold_from_the_truth_and_the_filing() -> None:
     """Five hand-written questions, apart from the headline set: Alex's numbers and passport expiry, the
-    person's tax ID, and — where the person has none of their own — saying so. Every gold value is the truth's,
-    and the numbers of the two letters filed for Alex stand on no other letter of the sample life."""
-    from evals.ask.household import FILED, household_questions, household_truth
+    person's tax ID, and — where the person has none of their own — saying so. Every gold value is the household
+    ledger's truth: Alex's numbers are the ones the fixture writes on the two letters it re-addresses to him
+    (:data:`MEMBER_NUMBERS`), which stand on no letter of the sample life; the passport keeps its expiry; the
+    person's tax ID is the truth's."""
+    from evals.ask.household import (
+        FILED,
+        HEALTH_NUMBER,
+        MEMBER_NUMBERS,
+        PASSPORT_NUMBER,
+        household_questions,
+        household_truth,
+    )
 
     questions = {q.id: q for q in household_questions(TRUTH)}
     assert list(questions) == HOUSEHOLD_IDS
     assert not set(questions) & {q.id for q in QUESTIONS}
     truth = household_truth(TRUTH)
-    assert questions["hh-alex-health-number"].values == truth.member_values[:1]
+    assert truth.member_values == (MEMBER_NUMBERS[HEALTH_NUMBER], MEMBER_NUMBERS[PASSPORT_NUMBER])
+    assert questions["hh-alex-health-number"].values == (MEMBER_NUMBERS[HEALTH_NUMBER],)
     assert questions["hh-alex-passport"].dates == truth.member_dates == (date(2027, 2, 10),)
     assert questions["hh-my-tax-id"].values == truth.own_values
     assert questions["hh-my-health-number"].none_of_own and questions["hh-my-passport"].none_of_own
-    theirs = {re.sub(r"\s", "", r["value"]) for slug in FILED for r in TRUTH[slug].truth["references"]}
-    others = {
-        re.sub(r"\s", "", r["value"])
-        for slug, doc in TRUTH.items()
-        if slug not in FILED
-        for r in doc.truth.get("references", [])
+    assert set(MEMBER_NUMBERS) <= {
+        (slug, r["label"]) for slug in FILED for r in TRUTH[slug].truth["references"]
     }
-    assert set(truth.member_values) <= theirs and not theirs & others
-    assert set(truth.own_values) <= others
+    everyone = {
+        re.sub(r"\s", "", r["value"]) for doc in TRUTH.values() for r in doc.truth.get("references", [])
+    }
+    assert not set(truth.member_values) & everyone  # Alex's numbers stand on no letter of the sample life
+    assert set(truth.own_values) <= everyone
 
 
-def test_the_household_ledger_files_two_letters_for_alex(tmp_path: Path) -> None:
-    """The household ledger is the base ledger with Alex Rivera in the household and the health insurer's
-    notice and the passport filed for him, by the household code itself; the same ledger on every run (his id
-    comes from his name). Well-posed: no number those two letters show is on a letter of the person's own, so
-    Ask's tools never say a number is on other people's letters too."""
-    from evals.ask.household import FILED, MEMBER_ID, MEMBER_NAME, build_household
+def test_mrz_check_digits() -> None:
+    """ICAO Doc 9303's check digit (weights 7, 3, 1; a filler counts 0, A–Z 10–35), on its specimen passport."""
+    from evals.ask.household import mrz_check_digit
+
+    line = "L898902C<3UTO6908061F9406236ZE184226B<<<<<14"
+    assert mrz_check_digit(line[0:9]) == line[9]
+    assert mrz_check_digit(line[13:19]) == line[19]
+    assert mrz_check_digit(line[21:27]) == line[27]
+    assert mrz_check_digit(line[28:42]) == line[42]
+    assert mrz_check_digit(line[0:10] + line[13:20] + line[21:43]) == line[43]
+
+
+_PERSON_GIVEN = re.compile(r"\b(?:Sam|SAM)\b")
+
+
+def _mrz_consistent(text: str) -> bool:
+    from evals.ask.household import mrz_check_digit
+
+    (line,) = [
+        line for line in text.splitlines() if re.fullmatch(r"[A-Z0-9]{8}<\d[A-Z]{3}[0-9<A-Z]{30,}", line)
+    ]
+    return (
+        mrz_check_digit(line[0:9]) == line[9]
+        and mrz_check_digit(line[0:10] + line[13:20] + line[21:-1]) == line[-1]
+    )
+
+
+def test_the_household_ledger_files_two_letters_addressed_to_alex(tmp_path: Path) -> None:
+    """The household ledger is the base ledger with Alex Rivera in the household and two letters that are his
+    filed for him, by the household code itself: the health insurer's notice and the passport, re-addressed to
+    him with his own numbers (:data:`MEMBER_NUMBERS`) in place of the person's — on every page, in Ordnung's
+    reading of them and in their case's title — so a careful answer has no reason to doubt whose they are.
+    Every other letter is the base ledger's, byte for byte, and the same ledger comes out on every run (his id
+    comes from his name). Well-posed: none of his numbers is on a letter of the person's own, the person's
+    numbers those letters showed are on no letter at all, and Ask's tools never say a number is on other
+    people's letters too."""
+    from evals.ask.household import (
+        FILED,
+        HEALTH_NUMBER,
+        MEMBER_ID,
+        MEMBER_NAME,
+        MEMBER_NUMBERS,
+        build_household,
+    )
     from evals.ask.ledger import SampleLife, build_base
 
     from ordnung.assistant.ask import ledger_fingerprint
     from ordnung.config import Paths
     from ordnung.db.store import Store
+    from ordnung.numbers import check_number
     from ordnung.secretary import household
+
+    def flat(text: str) -> str:
+        return re.sub(r"\s", "", text)
 
     life = SampleLife.load()
     base = build_base(tmp_path / "base", life)
     built = build_household(base, tmp_path / "household", life)
     again = build_household(base, tmp_path / "again", life)
     filed = {life.doc_ids[slug] for slug in FILED}
+    alex = set(MEMBER_NUMBERS.values())
     with (
         Store.open(Paths(built)) as store,
         Store.open(Paths(again)) as other,
@@ -666,16 +718,66 @@ def test_the_household_ledger_files_two_letters_for_alex(tmp_path: Path) -> None
         stored = household.load(store)
         assert [(m.id, m.name) for m in stored.members] == [(MEMBER_ID, MEMBER_NAME)]
         assert stored.links == dict.fromkeys(sorted(filed), MEMBER_ID)
+        replaced = set()  # the person's numbers those two letters showed in the base ledger
+        for doc_id in filed:
+            slug = life.slug_of(doc_id)
+            doc, was = store.get_document(doc_id), plain.get_document(doc_id)
+            reading = store.get_extraction(doc_id)
+            assert doc is not None and was is not None and reading is not None
+            case = store.get_case(doc.case_id or "")
+            assert case is not None
+            text = store.get_document_text(doc_id)
+            written = (text, doc.model_dump_json(), reading.model_dump_json(), case.title or "")
+            assert not any(_PERSON_GIVEN.search(part) for part in written), slug
+            assert reading.recipient_name == MEMBER_NAME
+            assert MEMBER_NAME in text or ("ALEX" in text and "RIVERA" in text), slug
+            for ref in doc.references:
+                if (slug, ref.label) in MEMBER_NUMBERS:
+                    assert flat(ref.value) == MEMBER_NUMBERS[(slug, ref.label)] and flat(ref.value) in flat(
+                        text
+                    )
+            replaced |= {flat(ref.value) for ref in was.references if (slug, ref.label) in MEMBER_NUMBERS}
+            # only the name and the numbers changed: the dates, the sender and the to-dos are the letter's
+            assert [fact.label for fact in doc.key_facts] == [fact.label for fact in was.key_facts]
+            assert (doc.doc_date, doc.kind, doc.party_id, doc.case_id) == (
+                was.doc_date,
+                was.kind,
+                was.party_id,
+                was.case_id,
+            )
+        assert len(replaced) == len(MEMBER_NUMBERS) and not replaced & alex
+        assert check_number("health_insurance", MEMBER_NUMBERS[HEALTH_NUMBER]).status == "ok"
+        assert _mrz_consistent(store.get_document_text(life.doc_ids["reisepass"]))
+        for d in store.list_documents(include_deleted=True):
+            reading = store.get_extraction(d.id)
+            everything = flat(
+                store.get_document_text(d.id)
+                + d.model_dump_json()
+                + (reading.model_dump_json() if reading else "")
+            )
+            assert not any(value in everything for value in replaced), d.id
+            if d.id not in filed:
+                assert d.model_dump() == plain.get_document(d.id).model_dump(), d.id  # type: ignore[union-attr]
+                assert store.get_document_text(d.id) == plain.get_document_text(d.id), d.id
+                assert not any(value in everything for value in alex), d.id
         documents = store.list_documents()
-        theirs = {re.sub(r"\s", "", ref.value) for d in documents if d.id in filed for ref in d.references}
-        others = {
-            re.sub(r"\s", "", ref.value) for d in documents if d.id not in filed for ref in d.references
-        }
-        assert theirs and not theirs & others
+        theirs = {flat(ref.value) for d in documents if d.id in filed for ref in d.references}
+        others = {flat(ref.value) for d in documents if d.id not in filed for ref in d.references}
+        assert alex <= theirs and not theirs & others
         tools = LedgerTools(store, today=TODAY)
         (person,) = tools.get_profile().record["household"]
         assert (person["id"], person["name"], set(person["letters"])) == (MEMBER_ID, MEMBER_NAME, filed)
-        assert not any(row.get("also_for") for row in tools.get_my_numbers().record["numbers"])
+        numbers = tools.get_my_numbers()
+        assert not any(row.get("also_for") for row in numbers.record["numbers"])
+        assert all(value in flat(render_result(numbers)) for value in alex)
+        # his health insurance number and passport are under him, none of the person's own is
+        record = numbers.record
+        kinds = {row["ref"]: row["kind"] for row in record["numbers"]}
+        (group,) = record["household"]
+        his = {*group["about"], *(entry["number"] for entry in group["documents"])}
+        assert {kinds[ref] for ref in his} == {"health_insurance", "passport"}
+        assert not his & set(record["about_you"])
+        assert filed <= {hit["id"] for hit in tools.search("Alex").record["hits"]}
         assert ledger_fingerprint(store) == ledger_fingerprint(other) != ledger_fingerprint(plain)
 
 

@@ -2333,7 +2333,8 @@ puts every record's stamp at the start of its day, so the order of a tie (two pa
 day) never depends on the hour of the run; results in
 `evals/results/<date>-<model>-ask.json` and `docs/evals-ask.md`; CI gates on the replay. A household group
 (`evals/ask/household.py`, ADR 0025: five questions on a copy of the ledger with *Alex Rivera* in the household
-and two letters filed for him by the household code, gold from the truth and the filing) is reported apart
+and two letters addressed to him — the sample life's health insurer's notice and passport, re-addressed to him with
+his own numbers — filed for him by the household code, gold from that ledger's truth) is reported apart
 (`summary["household"]`, `--min-household`); the headline numbers keep counting the other questions. The prompts
 lock also takes `ask_tools` (the digest of the server's instructions, its tools, the allowed tools and the cost
 cap), written by a live run, so once written a changed tool description is stale until the Ask prompt's version

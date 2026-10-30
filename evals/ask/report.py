@@ -765,10 +765,11 @@ def _household_section(payload: Mapping[str, Any]) -> list[str]:
         "## Household: whose a number is",
         "",
         "The same kind of questions on a copy of the ledger where *Alex Rivera* is in the household and two "
-        "letters are filed for him (the health insurer's notice and the passport): each answer must give the "
-        "number or date asked for — or, where the person has none of their own, lead with saying so — and say "
-        "whose each number is: a value of Alex's never as the person's own, the person's own never as his "
-        "(`evals/ask/household.py`). These questions are counted here only, not in the numbers above.",
+        "letters addressed to him are filed for him (the sample life's health insurer's notice and passport, "
+        "re-addressed to him with his own numbers): each answer must give the number or date asked for — or, "
+        "where the person has none of their own, lead with saying so — and say whose each number is: a value of "
+        "Alex's never as the person's own, the person's own never as his (`evals/ask/household.py`). These "
+        "questions are counted here only, not in the numbers above.",
         "",
         f"Answer correct and whose it is said: {pct(block['attribution'])} (raw {pct(block['attribution_raw'])}). "
         f"Not answered: {block['not_answered']}. Cost: {_money(block['cost_usd'])}.",
