@@ -4,8 +4,10 @@ findings 5, 15, 19, 25).
 * :func:`scrub` turns an in-memory copy of the database into what a push carries: this computer's own
   meta keys (:data:`~ordnung.sync.LOCAL_META`), the demo's and the local privacy-log rows go — deleted
   with ``secure_delete`` on, so not even free pages keep them; the per-computer settings fields go back
-  to their defaults (all but ``demo``, which stays so a receiver can refuse a demo database); a reading
-  in progress is queued again (``running`` → ``queued``, F34); stored paths use ``/``.
+  to their defaults (all but ``demo``, which stays so a receiver can refuse a demo database), and a
+  field of :data:`~ordnung.sync.KEPT_WHEN_ABSENT` the row doesn't name stays out (a computer updated from
+  0.3.x reads the default until its next pull, and its push doesn't turn the switch back on elsewhere); a
+  reading in progress is queued again (``running`` → ``queued``, F34); stored paths use ``/``.
 * :func:`state_digest` is a SHA-256 over the scrubbed copy's rows (every ordinary table in name order,
   every row by its ``rowid``, canonical JSON, blobs as hex — the full-text tables left out, being
   derived; the merged keys of :data:`~ordnung.sync.MERGED_META` left out, being unions), the data
@@ -161,8 +163,12 @@ def scrub(conn: sqlite3.Connection) -> None:
                 reset = current.model_copy(
                     update={name: getattr(defaults, name) for name in SCRUBBED_SETTINGS}
                 )
+                # a field this row doesn't name (Ordnung 0.3.x dropped it) stays out, so the receiver keeps its own
+                named = _settings_fields(conn)
+                absent = {name for name in KEPT_WHEN_ABSENT if name not in named}
                 conn.execute(
-                    "UPDATE meta SET value = ? WHERE key = ?", (reset.model_dump_json(), SETTINGS_META_KEY)
+                    "UPDATE meta SET value = ? WHERE key = ?",
+                    (reset.model_dump_json(exclude=absent or None), SETTINGS_META_KEY),
                 )
         if _has_table(conn, "activity"):
             where, params = _local_activity_where()

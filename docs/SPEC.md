@@ -1662,7 +1662,9 @@ outside the database, Delete everything leaves first, a restored backup starts w
   untouched, since its scrub deletes only the keys that stay on each computer (and the demo's).
   The setting `read_picture_text` (*Text in pictures*) travels with the settings (`SYNCED_SETTINGS`); an incoming
   settings row that doesn't name it (Ordnung 0.3.0 drops the fields it doesn't know when it rewrites the
-  settings) leaves this computer's value as it was (`KEPT_WHEN_ABSENT`).
+  settings) leaves this computer's value as it was (`KEPT_WHEN_ABSENT`). A computer updated from 0.3.0 whose row
+  doesn't name it reads the default (on) until its next pull, and its push leaves the field out too, so it never
+  turns the switch back on elsewhere.
 - **Versions** (`sync/lineage.py`, `sync/decide.py`). A version records which *person changes* it holds:
   ranges of per-computer person numbers, plus ranges a choice dropped. `Store` bumps meta `sync_person`
   inside the transaction of every write made under `PERSON_WRITE` (set by the gate for writes that aren't

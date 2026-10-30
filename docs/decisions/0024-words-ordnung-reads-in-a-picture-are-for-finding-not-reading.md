@@ -106,7 +106,9 @@ the letter's words: not shown, not checked against, not sent to Claude and not e
   phone).
 - **It travels with hand-off sync**, as a setting (`sync.SYNCED_SETTINGS`). A settings row written by 0.3.0,
   which drops the fields it doesn't know, comes in without it: `KEPT_WHEN_ABSENT` keeps this computer's choice
-  then, so a choice to stop reading private photos isn't lost in a round trip. The variable stays per computer.
+  then, so a choice to stop reading private photos isn't lost in a round trip. A computer updated from 0.3.0 whose
+  row still lacks the field pushes it without the field too, so its default never overwrites the other's choice.
+  The variable stays per computer.
 - **Info rows.** `models.CheckStatus` gained `info`: neither ok nor a problem, and it never fails the doctor.
   *Not installed (optional)*, *Turned off (ORDNUNG_OCR=off)* and *Off (Settings → Data → Text in pictures)* are
   info rows, and the CLI prints an info row's fix as an *Optional —* tip; no ok row has a fix any more.

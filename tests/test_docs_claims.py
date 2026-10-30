@@ -5500,6 +5500,8 @@ def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
         "an `info` row is neither ok nor a problem",
         "on Windows an info row that says where to look (`doctor.WINDOWS_ENCRYPTION`",
         "`KEPT_WHEN_ABSENT`",
+        "reads the default (on) until its next pull, and its push leaves the field out too, so it never turns the "
+        "switch back on elsewhere",
         "**Text in pictures** (`#set-data-picture-text`",
         "`settings` (GET/PUT) takes `read_picture_text`",
     ):
@@ -5511,6 +5513,7 @@ def test_the_docs_describe_the_switch_and_the_info_rows() -> None:
         "**A switch in Settings.**",
         "`ORDNUNG_OCR=off` still wins",
         "`KEPT_WHEN_ABSENT`",
+        "pushes it without the field too, so its default never overwrites the other's choice",
         "**Info rows.**",
     ):
         assert words in amended, words
