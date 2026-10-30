@@ -11,7 +11,6 @@ import { addDays, parseISO } from "date-fns";
 import {
   DRAFT_KINDS,
   SEND_CHANNELS,
-  type Area,
   type Contract,
   type Draft,
   type DraftCheck,
@@ -19,12 +18,13 @@ import {
   type Item,
   type LetterAdvice,
   type ListedLetter,
+  type PartyKind,
   type Remedy,
   type SendChannel,
   type SendChannelKind,
 } from "@/api/types";
 import { SEND_CHANNEL_COPY, copyFor } from "@/lib/copy";
-import { ADVICE_LINKS, type AdviceLink } from "@/components/ui/Disclaimer";
+import { adviceFor, type AdviceLink } from "@/components/ui/Disclaimer";
 import { toISODate } from "@/lib/format";
 import { offersEndingLetter } from "@/features/contracts/links";
 import { isRollingContract } from "@/features/contracts/model";
@@ -74,20 +74,6 @@ export type ObjectionCheck =
     }
   | { ok: false; reason: "missing" | "klage" | "none" | "unclear" | "no_hardship"; title: string; body: string; advice: AdviceLink[] };
 
-export function adviceFor(area: Area | null | undefined): AdviceLink[] {
-  switch (area) {
-    case "tax":
-      return ADVICE_LINKS.tax;
-    case "residence":
-    case "study":
-      return ADVICE_LINKS.residence;
-    case "home":
-      return ADVICE_LINKS.rent;
-    default:
-      return ADVICE_LINKS.consumer;
-  }
-}
-
 /**
  * The remedy the law gives these letters, whatever their instructions were read as (mirrors
  * `STATUTORY_REMEDIES` in `src/ordnung/drafts/templates.py`).
@@ -102,14 +88,16 @@ export const STATUTORY_REMEDY: Partial<Record<NonNullable<ListedLetter["kind"]>,
  * Can Ordnung draft an objection against this letter? (SPEC §21 "Remedies & letters") `card` is the
  * letter's "get advice" card, when loaded: a landlord's notice without notice period has no hardship
  * objection (§ 574 Abs. 1 S. 2 BGB) — its card offers no letter (`draft: null`), and the server refuses
- * one (`compose.objection_remedy`) with the card's words.
+ * one (`compose.objection_remedy`) with the card's words. Where it can't, it points to independent advice by the
+ * letter page's rule ({@link adviceFor}: the letter's kind and its sender's kind, `partyKind`, before the area).
  */
 export function objectionCheck(
   doc: (Pick<ListedLetter, "remedy" | "area"> & Partial<Pick<ListedLetter, "kind">>) | null | undefined,
   card?: LetterAdvice | null,
+  partyKind?: PartyKind | null,
 ): ObjectionCheck {
   const remedy = doc?.remedy ?? null;
-  const advice = adviceFor(doc?.area);
+  const advice = adviceFor(doc?.area, doc?.kind, partyKind, card) ?? [];
   const statutory = doc?.kind ? STATUTORY_REMEDY[doc.kind] : undefined;
   if (doc?.kind === "landlord_notice" && card?.kind === "landlord_notice" && card.draft === null) {
     const [fact] = card.facts;

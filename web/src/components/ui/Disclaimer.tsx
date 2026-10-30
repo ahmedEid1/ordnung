@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { Scale, ExternalLink } from "lucide-react";
+import type { Area, DocumentKind, LetterAdvice, PartyKind } from "@/api/types";
 import { useRulesLastChecked } from "@/api/hooks";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/format";
@@ -20,6 +21,59 @@ export const ADVICE_LINKS: Record<"residence" | "rent" | "consumer" | "tax" | "f
   tax: [{ label: "Lohnsteuerhilfeverein", note: "tax help", href: "https://www.bvl-verband.de/" }],
   fines: [{ label: "Verbraucherzentrale", note: "consumer advice centre", href: "https://www.verbraucherzentrale.de/" }],
 };
+
+/** Letters about a tenancy: the tenants' association advises, whatever area the letter was read under. */
+const TENANCY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["rent_lease", "operating_costs", "rent_increase", "landlord_notice"]);
+
+/**
+ * Senders whose letters are consumer matters (an electricity contract, a phone bill, a gym, the broadcasting fee):
+ * the consumer advice centre, not the tenants' association or student services, when such a letter is filed under
+ * a home or residence area.
+ */
+const CONSUMER_PARTIES: ReadonlySet<PartyKind> = new Set<PartyKind>(["utility", "telecom", "retailer", "gym", "bank", "insurer", "transport", "public_broadcaster"]);
+
+function areaAdvice(area: Area | null | undefined): AdviceLink[] | undefined {
+  switch (area) {
+    case "tax":
+      return ADVICE_LINKS.tax;
+    case "residence":
+      return ADVICE_LINKS.residence;
+    case "home":
+      return ADVICE_LINKS.rent;
+    case "mobility":
+      return ADVICE_LINKS.fines;
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * "Unsure? Get independent advice": the one rule for the letter page, "Why this date?", the composer's objection
+ * check and an objection's disclaimer. The letter comes first, then its sender, then the area it was read under:
+ * - a letter with a "get advice" card (`card`, a high-stakes letter): the tenants' association for a tenancy letter,
+ *   none for the others — the card lists its own help (a court's desk, a union);
+ * - the broadcasting fee (its kind, or a public broadcaster's letter): the consumer advice centre, never the tenants'
+ *   association, though it is filed under "home";
+ * - a tenancy letter or a landlord's: the tenants' association (a statement read under "residence" pointed to the
+ *   Studierendenwerk); a residence permit: student services; a tax letter: tax help; a fine: consumer advice;
+ * - otherwise the area's, with a company's letter filed under a home or residence area sent to consumer advice.
+ */
+export function adviceFor(
+  area: Area | null | undefined,
+  docKind?: DocumentKind | null,
+  partyKind?: PartyKind | null,
+  card?: Pick<LetterAdvice, "kind"> | null,
+): AdviceLink[] | undefined {
+  if (card) return TENANCY_KINDS.has(card.kind) ? ADVICE_LINKS.rent : undefined;
+  if (docKind === "broadcasting_fee" || partyKind === "public_broadcaster") return ADVICE_LINKS.consumer;
+  if ((docKind && TENANCY_KINDS.has(docKind)) || partyKind === "landlord") return ADVICE_LINKS.rent;
+  if (docKind === "residence_permit" || partyKind === "immigration_office") return ADVICE_LINKS.residence;
+  if (docKind === "tax_assessment" || docKind === "tax_letter" || partyKind === "tax_office") return ADVICE_LINKS.tax;
+  if (docKind === "fine") return ADVICE_LINKS.fines;
+  const byArea = areaAdvice(area);
+  if (byArea && (area === "home" || area === "residence") && partyKind && CONSUMER_PARTIES.has(partyKind)) return ADVICE_LINKS.consumer;
+  return byArea;
+}
 
 /**
  * "Unsure? Get independent advice: Mieterverein (tenants' association) ↗." — the links open in a

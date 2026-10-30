@@ -11,6 +11,9 @@
  * While searching, a letter found only in the text its scanner added (ADR 0020), or only in the words Ordnung read
  * from its picture (ADR 0024), says so on a line of its own ("not checked").
  *
+ * "Possible scam" comes from the open scam warnings (the Ideas): only a warning's own letter is tagged. Until the
+ * Ideas are in, no row counts down to a payment, and when they can't be loaded the list says so, with "Try again".
+ *
  * The Inbox asks for two more things: while it shows one year (`filedYear`), a row that arrived in another
  * year says its own (" · dated 2025"; in the table's date column on a line under the date), and in its
  * Everyone view a letter filed for someone in the household carries a tag ("For Alex Rivera", `filedFor`),
@@ -38,6 +41,7 @@ import { PartyChip } from "@/components/ui/PartyChip";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Stepper } from "@/components/ui/Stepper";
 import { PersonTag } from "@/features/household/PersonTag";
+import { scamLetterIds } from "@/features/document/verdict";
 import { inboxDateInfo, isReading, otherYearDated, pinJustRead, type LetterGroup, type OpenSummary } from "./filters";
 import { useSeenLetters } from "./seen";
 
@@ -76,20 +80,29 @@ export function LettersList({
   const seen = useSeenLetters();
   const suggestions = useSuggestions();
   // letters with an open scam warning never show a countdown to pay
-  const scams = useMemo(
-    () =>
-      new Set(
-        (suggestions.data ?? [])
-          .filter((s) => s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired")
-          .flatMap((s) => s.refs.filter((r) => r.type === "document").map((r) => r.id)),
-      ),
-    [suggestions.data],
-  );
+  const scams = useMemo(() => scamLetterIds(suggestions.data ?? []), [suggestions.data]);
+  // until the warnings are known, no letter does: any of them may be one (fail closed)
+  const scamsKnown = suggestions.data !== undefined;
   const shown = useMemo(() => pinJustRead(groups, justRead), [groups, justRead]);
   return (
     <div className="@container">
       {/* the page's h1 → this h2 → one h3 per group, with or without the New-mail tray above */}
       <h2 className="sr-only">Your letters</h2>
+      {suggestions.isError ? (
+        // never a silent swap of "Possible scam" for nothing: the list says it couldn't check
+        <p className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13.5px] leading-5 text-warn-ink">
+          <ShieldAlert className="size-4 shrink-0" aria-hidden />
+          <span>Scam warnings couldn't be checked</span>
+          <span aria-hidden>·</span>
+          <button
+            type="button"
+            onClick={() => void suggestions.refetch()}
+            className="inline-flex min-h-6 items-center rounded-md font-semibold underline underline-offset-2 hover:no-underline"
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
       <div className="space-y-7">
         {shown.map((g) => (
           <section key={g.key} aria-labelledby={`grp-${g.key}`}>
@@ -112,6 +125,7 @@ export function LettersList({
                     tray={item}
                     isNew={Boolean(item) && !isReading(d) && !seen.has(d.id)}
                     scam={scams.has(d.id)}
+                    scamsKnown={scamsKnown}
                     note={note?.(d) ?? null}
                     dated={dated}
                     otherYear={otherYearDated(d, filedYear)}
@@ -187,6 +201,7 @@ function LetterRow({
   tray,
   isNew,
   scam,
+  scamsKnown = true,
   note,
   dated = false,
   otherYear = null,
@@ -198,6 +213,8 @@ function LetterRow({
   tray?: MailTrayItem;
   isNew: boolean;
   scam?: boolean;
+  /** Whether the scam warnings have loaded: until then the row counts down to nothing. */
+  scamsKnown?: boolean;
   note?: ReactNode;
   dated?: boolean;
   /** The letter's own year, said beside its date (the list shows that year; it arrived in another one). */
@@ -210,7 +227,7 @@ function LetterRow({
   const reading = isReading(doc);
   // kept private and never read by Claude (as its page's "Not read"): nobody knows its sender yet
   const keptUnread = doc.ai_private && !doc.ai_processed_at;
-  const next = scam || reading ? null : open?.next ?? null;
+  const next = scam || !scamsKnown || reading ? null : open?.next ?? null;
   // the same wording as Today: "transfer by Thu 1 Oct · in 3 days", "Thu 8 Oct, 10:30 · in 10 days"
   const action = next ? actionFromItem(next, { today }) : null;
   const urgent = action ? action.daysLeft <= NEXT_STEP_DAYS : false;

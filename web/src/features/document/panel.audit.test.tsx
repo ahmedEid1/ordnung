@@ -163,7 +163,9 @@ describe("To-dos & dates", () => {
     expect(within(todos).getByText("Payment this letter demands — don't pay")).toBeInTheDocument();
     expect(within(todos).queryByRole("button", { name: /as done/ })).toBeNull();
     expect(within(todos).queryByRole("button", { name: /More actions/ })).toBeNull();
-    expect(todos.querySelector("time")).toBeNull();
+    // its date, quietly: the letter's date stays in view, without a countdown
+    expect(todos.querySelector("time")).toHaveAttribute("datetime", "2026-09-30");
+    expect(todos).not.toHaveTextContent(/in \d+ days?|tomorrow|overdue/);
     expect(within(todos).queryByText(/transfer by/)).toBeNull();
     // no count of "to-dos" in the heading
     expect(within(todos).getByRole("heading", { level: 2 })).not.toHaveTextContent("·");

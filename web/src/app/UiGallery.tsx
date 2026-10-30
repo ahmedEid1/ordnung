@@ -426,7 +426,7 @@ export default function UiGallery() {
       <Block title="Messages">
         <div className="space-y-3">
           <Callout tone="danger" title="This looks like a scam" icon={undefined}>
-            The IBAN (LT71 7300 …) differs from the one Beitragsservice Musterstadt used before. Do not pay. No warning does not mean it is safe.
+            The IBAN (LT43 1234 …) differs from the one Beitragsservice Musterstadt used before. Do not pay. No warning does not mean it is safe.
           </Callout>
           <Callout tone="warn" title="Please check: when did this letter arrive?" action={<Button size="sm" variant="primary">Set arrival date</Button>}>
             Until you tell us, we count from the letter date — the earliest possible.

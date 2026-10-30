@@ -126,7 +126,8 @@ describe("Document viewer — suspected scam", () => {
     expect(screen.getByText(/No warning does not mean it is safe/)).toBeInTheDocument();
     expect(screen.getByText("This document contains hidden text aimed at software — we ignored it")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
-    expect(screen.getByRole("link", { name: /Compare with your real letter/ })).toHaveAttribute("href", "/documents/doc_rundfunk");
+    // its warning names its own letter only, as the API's does: no genuine letter to compare with
+    expect(screen.queryByRole("link", { name: /Compare with your real letter/ })).toBeNull();
     expect(screen.getByText(/don't pay to this account/)).toBeInTheDocument();
     assertNoRawEnumsInElement(container);
   });

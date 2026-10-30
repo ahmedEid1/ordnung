@@ -202,6 +202,17 @@ describe("batch recap", () => {
     expect(r.fixedCostsMonthly).toBeCloseTo(94.99, 2);
   });
 
+  it("counts a scam warning once, for its own letter — not for the genuine letter it names too", () => {
+    const warning = makeSuggestion({
+      kind: "scam",
+      refs: [{ type: "document", id: "fake" }, { type: "document", id: "bill" }],
+      action: { type: "open", draft_kind: null, target_type: "document", target_id: "fake", label: "See why" },
+    });
+    const fake = makeDetail({ document: makeDoc({ id: "fake", status: "needs_review" }), suggestions: [warning] });
+    const bill = makeDetail({ document: makeDoc({ id: "bill" }), suggestions: [warning] });
+    expect(summarizeBatch([bill, fake], TODAY)).toMatchObject({ scams: 1, scamDocId: "fake" });
+  });
+
   it("counts as 'need you now' exactly the letters its tile leads to (Please check), and what is due soon apart", () => {
     const soon = makeDetail({ document: makeDoc({ id: "soon" }), items: [makeItem({ due_date: "2026-10-20" }), makeItem({ id: "i2", send_by: "2026-10-05", due_date: "2026-10-09" })] });
     const later = makeDetail({ document: makeDoc({ id: "later" }), items: [makeItem({ due_date: "2026-11-30" })] });
