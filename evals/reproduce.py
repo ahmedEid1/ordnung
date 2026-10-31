@@ -28,8 +28,9 @@ digest of the replay's metrics (``metrics_at_head``), so a number cannot move un
 name: ``--check`` fails when it moves, and ``--write`` records the move with an empty reason (``metrics_moved``). A run of another model can't be replayed (its
 recordings are not in the repository) and an older summary is superseded: both are checked by hash. A live Ask run as
 recorded is never rewritten, and ``--check-docs`` checks it with the answers its own day's check gave, read from the
-file: so its sha256 is pinned like a replay's metrics — ``--check`` fails when it moves, and ``--write`` records the
-move with an empty reason (``sha256_moved``). The index also
+file: so its sha256 is pinned like a replay's metrics (by its row in the index too, so bytes rewritten to say they
+are a re-scoring stay pinned) — ``--check`` fails when it moves, and ``--write`` records the move with an empty
+reason (``sha256_moved``). The index also
 pins the dataset's and the recordings' hashes, the CI gates (read from ``.github/workflows/ci.yml``) and every cell.
 
 ``--check`` exits 1 on any difference INDEX.json doesn't declare, a hash that moved, a failed check, a gate missed or a
@@ -522,6 +523,12 @@ def is_as_recorded(row: Mapping[str, Any]) -> bool:
     return row.get("kind") == "ask" and (row.get("recorded") or {}).get("backend") == "live"
 
 
+def _pinned(committed: Mapping[str, Any], fresh: Mapping[str, Any]) -> bool:
+    """Whether a row's sha256 is pinned: a run as recorded by its bytes or by the committed index (a recording
+    rewritten to say it is a re-scoring is still the recording), or one whose move is already declared there."""
+    return is_as_recorded(fresh) or is_as_recorded(committed) or committed.get("sha256_moved") is not None
+
+
 def _rewritten(row: Mapping[str, Any]) -> str | None:
     """The problem with a declared move of a run as recorded that has no reason yet."""
     moved = row.get("sha256_moved")
@@ -542,7 +549,7 @@ def pin_recordings(fresh: dict[str, Any], committed: Mapping[str, Any] | None) -
     problems = []
     for row in fresh["results"]:
         old = old_rows.get(row["file"])
-        if old is None or not is_as_recorded(row):
+        if old is None or not _pinned(old, row):
             continue
         if old.get("sha256") != row["sha256"]:
             row["sha256_moved"] = {"from": old.get("sha256"), "because": ""}
@@ -572,7 +579,7 @@ def static_problems(committed: Mapping[str, Any], fresh: Mapping[str, Any]) -> l
     for name in sorted(rows.keys() & fresh_rows.keys()):
         for key, value in fresh_rows[name].items():
             if key not in DYNAMIC and rows[name].get(key) != value:
-                if key == "sha256" and is_as_recorded(fresh_rows[name]):
+                if key == "sha256" and _pinned(rows[name], fresh_rows[name]):
                     problems.append(
                         f"{name}: a run as recorded is never rewritten, but its sha256 is not the one {INDEX_NAME} "
                         "pinned: restore its bytes, or run --write and say in its sha256_moved.because which commit "

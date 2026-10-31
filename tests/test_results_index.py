@@ -1021,6 +1021,42 @@ def test_a_run_as_recorded_is_pinned_by_its_sha256_and_write_cannot_take_new_byt
     }
 
 
+def test_a_run_as_recorded_rewritten_as_a_re_scoring_stays_pinned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A run as recorded whose bytes are rewritten to say they are a re-scoring (schema 2, "backend": "replay") is
+    still the recording INDEX.json pinned: the pin goes by the committed row as well as by the file, so --check fails,
+    --write records the move with an empty reason, and once declared the move stays through the next --write."""
+    name = "2026-10-30-claude-sonnet-5-ask.json"
+    results = _copy_results(tmp_path, [SMALL[0], name])
+    _stand_in(tmp_path, monkeypatch, results, fixed=False)
+    assert _main(results, tmp_path, "--write") == 0
+    pinned = reproduce.sha256_file(results / name)
+    path = results / name
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update(schema=2, backend="replay", recorded="2026-10-30")
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _main(results, tmp_path, "--check") == 1
+    assert f"{name}: a run as recorded is never rewritten" in capsys.readouterr().err
+    assert _main(results, tmp_path, "--write") == 1
+    assert "undeclared" in capsys.readouterr().err
+    index = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    row = next(row for row in index["results"] if row["file"] == name)
+    assert row["sha256_moved"] == {"from": pinned, "because": ""}
+    assert _main(results, tmp_path, "--check") == 1  # even after --write
+    assert "undeclared" in capsys.readouterr().err
+    row["sha256_moved"]["because"] = "relabelled by hand (this test)"
+    (results / "INDEX.json").write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
+    assert _main(results, tmp_path, "--check") == 0
+    assert _main(results, tmp_path, "--write") == 0
+    kept = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    assert next(row for row in kept["results"] if row["file"] == name)["sha256_moved"] == {
+        "from": pinned,
+        "because": "relabelled by hand (this test)",
+    }
+
+
 def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) -> None:
     """The committed index pins every live Ask run as recorded, and declares any move of one with its reason."""
     recorded = [name for name, row in rows.items() if reproduce.is_as_recorded(row)]
