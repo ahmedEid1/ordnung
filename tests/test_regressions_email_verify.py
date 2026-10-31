@@ -4,10 +4,9 @@ with it; ``test_email_html.py`` pins the policy point by point."""
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
+from helpers_timing import read_seconds
 from ordnung.ingest.text import html_to_text
 
 # --------------------------------------------------------------------------------------------------
@@ -111,11 +110,13 @@ def test_many_descendant_rules_do_not_make_reading_an_e_mail_slow() -> None:
     """``_Rule.matches`` walks every open ancestor for every rule keyed by an element's class, for every
     element and both screens: rules × elements × depth. An 8 KB e-mail with 80 such rules, 80 spans and
     200 nested divs takes about 2 s (400 of each, 28 KB: over a minute, and every upload reads the
-    e-mail at least three times); HEAD read it in about 10 ms."""
+    e-mail at least three times); HEAD read it in about 10 ms.
+
+    Timed by ``read_seconds``, in CPU time with the garbage collector paused: on the wall clock, a full
+    collection of everything a long test run holds (about 1 s) that fell inside the reading failed it."""
     rules = "\n".join(f".y .q{index} .x {{ color: #333333; }}" for index in range(80))
     body = '<div class="y">' * 200 + "".join(f'<span class="x">t{index}</span>' for index in range(80))
     markup = f"<html><head><style>{rules}</style></head><body>{body}{'</div>' * 200}</body></html>"
-    started = time.perf_counter()
     visible, _ = html_to_text(markup)
     assert "t79" in visible
-    assert time.perf_counter() - started < 0.5
+    assert read_seconds(markup) < 0.5
