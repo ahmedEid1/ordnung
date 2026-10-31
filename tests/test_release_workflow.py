@@ -252,9 +252,10 @@ def test_ci_s_wheel_job_checks_that_the_description_renders_on_pypi() -> None:
 
 
 def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
-    """The build job's dist/ is what the PyPI job uploads, so what writes and checks it runs one known version, as
-    its actions do: twine at one version, the same in CI's wheel job, and hatchling, the build backend, at one
-    version in pyproject.toml's build-system, beside the readme plugin (CI's wheel job builds with the same)."""
+    """The build job's dist/ is what the PyPI job uploads, so the tools that write and check it run one known
+    version, as its actions do: twine at one version, the same in CI's wheel job, and hatchling, the build backend,
+    at one version in pyproject.toml's build-system, beside the readme plugin (CI's wheel job builds with the same).
+    What they need themselves is not pinned (uv resolves it on each run), and release.yml's comment says so."""
     for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
         lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
         runs = [line for line in lines if "twine" in line and not line.startswith("#")]
@@ -264,6 +265,10 @@ def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
     pinned = PINNED_HATCHLING.fullmatch(backend)
     assert pinned, backend
     assert int(pinned.group(1)) >= 26  # pyproject's licence expression and licence files (PEP 639)
+    header = " ".join(RELEASE.read_text(encoding="utf-8").split("\non:", 1)[0].replace("#", " ").split())
+    assert "the tools that build and check dist/ run fixed versions" not in header
+    assert "twine (here) and hatchling (in pyproject.toml) run fixed versions" in header
+    assert "are the newest on each run" in header
 
 
 def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> None:

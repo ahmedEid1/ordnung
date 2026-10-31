@@ -14,8 +14,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
-  # a newer push to a pull request cancels its older run; a push to main is never cut off: release.yml releases a
-  # tag only when CI's push run on its commit passed, and a cancelled run never has
+  # a newer push to a pull request cancels its older run. A push to main never cuts off the run going on, but GitHub
+  # keeps one run waiting behind it: a third merge replaces the second one's waiting run. release.yml releases a tag
+  # only when CI's push run on its commit passed, so re-run a replaced run before tagging (docs/releasing.md)
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:

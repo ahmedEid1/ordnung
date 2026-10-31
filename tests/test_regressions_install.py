@@ -296,7 +296,7 @@ def test_ci_runs_the_platform_code_on_macos_and_windows() -> None:
     assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
     assert job["runs-on"] == "${{ matrix.os }}"
     assert job["if"] == "github.event_name != 'pull_request'"
-    assert "continue-on-error" not in job
+    assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
     tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
     named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
     assert "tests/test_platform_smoke.py" in named

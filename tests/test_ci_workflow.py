@@ -1,7 +1,7 @@
 """.github/workflows/ci.yml: the slow checks have a job of their own, the end-to-end job runs beside the backend's,
-a push to main is never cancelled, macOS and Windows must pass, every published benchmark number is replayed with
-a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude Code's flags,
-and a real Tesseract is installed only where a test needs it (ADR 0024)."""
+a push to main never cuts off a running run, macOS and Windows must pass, every published benchmark number is
+replayed with a gate at that number, coverage has floors, the weekly run checks the rules' age and the real Claude
+Code's flags, and a real Tesseract is installed only where a test needs it (ADR 0024)."""
 
 from __future__ import annotations
 
@@ -81,14 +81,24 @@ def test_the_end_to_end_job_waits_for_the_web_build_only() -> None:
 
 
 def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
-    """A newer push to a pull request cancels that pull request's older run. A push to main never cancels the run
-    of the push before it: release.yml releases a tag only when CI's push run on its commit passed, and a cancelled
-    run never has (demo.yml follows the same rule)."""
+    """A newer push to a pull request cancels that pull request's older run. A push to main never cancels a run
+    that is going on: release.yml releases a tag only when CI's push run on its commit passed, and a cancelled run
+    never has (demo.yml follows the same rule). GitHub still keeps only one run waiting in the group, so a third
+    merge replaces the second one's waiting run; docs/releasing.md says to re-run it before tagging, and the
+    workflow's comment says so."""
     concurrency = _workflow()["concurrency"]
     assert concurrency["cancel-in-progress"] == "${{ github.event_name == 'pull_request' }}"
     assert "github.ref" in concurrency["group"] and "github.event_name" in concurrency["group"]
     release = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     assert "ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success" in release
+    comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("concurrency:", 1)[1]
+    comment = " ".join(comment.split("cancel-in-progress:", 1)[0].replace("#", " ").split())
+    assert (
+        "replaces the second one's waiting run" in comment
+        and "re-run a replaced run before tagging" in comment
+    )
+    releasing = " ".join((ROOT / "docs/releasing.md").read_text(encoding="utf-8").split())
+    assert "cancelled because another merge followed, run it again" in releasing
 
 
 def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
@@ -98,6 +108,11 @@ def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     jobs = _jobs()
     assert "continue-on-error" not in jobs["other-systems"]
     assert [name for name, job in jobs.items() if "continue-on-error" in job] == ["claude-code"]
+    # nor may a step of any other job: a step that may fail lets its job pass all the same
+    steps = [
+        (name, step) for name, job in jobs.items() if name != "claude-code" for step in job.get("steps", [])
+    ]
+    assert [f"{name}: {step.get('name')}" for name, step in steps if "continue-on-error" in step] == []
     comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("  other-systems:", 1)[1]
     assert "without failing the run" not in comment.split("    steps:", 1)[0]
     readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())

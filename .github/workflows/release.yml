@@ -10,8 +10,9 @@ name: Release
 # commit's own copy of this file, so they catch honest mistakes; the reviewer and a tag ruleset stop the rest.
 #
 # Every action runs a fixed commit (its version beside it; Dependabot updates both), never a tag that can be
-# moved, the tools that build and check dist/ run fixed versions (twine here, hatchling in pyproject.toml), and
-# the build restores no cache: the PyPI job holds the token PyPI accepts as the owner.
+# moved, twine (here) and hatchling (in pyproject.toml) run fixed versions, and the build restores no cache: the
+# PyPI job holds the token PyPI accepts as the owner. uv, and what twine and hatchling themselves need (twine's
+# readme renderer among them), are the newest on each run.
 on:
   push:
     tags: ["v*"]
