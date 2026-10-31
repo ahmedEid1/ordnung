@@ -628,9 +628,10 @@ def test_a_reading_s_dated_to_do_of_the_kind_covers_a_looser_date() -> None:
     ids=["greetings-and-dates", "option-question"],
 )
 def test_the_looser_path_stays_fast_on_long_untrusted_text(body: str) -> None:
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     deadline_items(reading(W), [page(*HEADS["de"], "Datum: 05.10.2026", body)], today=TODAY)
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
 
 
 def test_the_option_question_is_read_as_the_strict_path_reads_it_in_linear_time() -> None:
@@ -645,7 +646,8 @@ def test_the_option_question_is_read_as_the_strict_path_reads_it_in_linear_time(
         assert _offers_option(asked) == bool(
             _OPTION_ASKED.search(asked.strip()) and not _W_QUESTION.match(asked.strip())
         ), asked
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     assert not _offers_option("möchten " * 25000 + "? x ?")
     assert _offers_option("x ? " + "möchten " * 25000 + "?")
-    assert time.monotonic() - started < 5  # a scan that backtracks takes minutes
+    assert time.process_time() - started < 5  # a scan that backtracks takes minutes
