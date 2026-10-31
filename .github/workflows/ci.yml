@@ -346,7 +346,7 @@ jobs:
     name: Frontend
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30  # 4.5 to 17 minutes seen; a slow runner was cancelled at 20
     defaults:
       run:
         working-directory: web
