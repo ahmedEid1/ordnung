@@ -115,13 +115,6 @@ export function recapFindings(r: BatchRecap): string[] {
   return parts;
 }
 
-/** "I read 3 letters: 1 deadline, €55.00/month fixed costs, 1 needs you now, 1 possible scam." */
-export function recapSentence(r: BatchRecap): string {
-  const parts = recapFindings(r);
-  const head = `I read ${plural(r.letters, "letter")}`;
-  return parts.length ? `${head}: ${parts.join(", ")}.` : `${head}. Nothing needs you right now.`;
-}
-
 /** "I read 3 letters", "I read 2 of 3 letters" (one couldn't be read), "I couldn't read 2 letters". */
 export function recapTitle(total: number, failed: number): string {
   if (!failed) return `I read ${plural(total, "letter")}`;
