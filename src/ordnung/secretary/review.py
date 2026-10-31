@@ -31,7 +31,8 @@ from rapidfuzz import fuzz
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ids import content_id
-from ordnung.ingest.verify import parse_amounts, parse_dates
+from ordnung.ingest.normalize import fold_punctuation
+from ordnung.ingest.verify import MONTH_NUMBERS, DateMention, date_spans, parse_amounts, parse_dates
 from ordnung.llm.base import LLMRequest
 from ordnung.llm.prompts import render
 from ordnung.llm.runtime import LLMService
@@ -277,25 +278,80 @@ def _nearest_year(day: int, month: int, today: date) -> date | None:
     return min(candidates, key=lambda value: abs((value - today).days), default=None)
 
 
+_WEEKDAY_NAME = "|".join(sorted(_WEEKDAY_FORM, key=len, reverse=True))
+_FULL_WEEKDAY_NAME = "|".join(names[form] for names in _WEEKDAY_NAMES for form in (0, 2))
+_SPACE = r"[ \t\u00a0\u202f]"
+_MONTH_NAME = "|".join(sorted(MONTH_NUMBERS, key=len, reverse=True))
+_NAME_BEFORE_DATE = re.compile(
+    rf"\b(?P<name>{_WEEKDAY_NAME})"
+    rf"(?P<gap>\.?\**,?{_SPACE}+(?:(?P<word>den|dem|der|the){_SPACE}+)?\**[„“\"]?)"
+    rf"(?=\d|(?i:{_MONTH_NAME})\b)"
+)
+"""A weekday name before a date: "Thu 2 Oct", "**Thu** 2 Oct", "Thursday, October 2", "Do., den 2.10.",
+"am Donnerstag, dem 2. Oktober"."""
+_NAME_AFTER_DATE = re.compile(
+    rf"(?P<gap>{_SPACE}*\({_SPACE}*)(?P<name>{_WEEKDAY_NAME})(?=\.?{_SPACE}*\))"
+    rf"|(?P<article_gap>,{_SPACE}+(?:a|an|ein|einem|einen){_SPACE}+)(?P<article_name>{_FULL_WEEKDAY_NAME})"
+    rf"(?=[ \t]*(?:[.,;:!?()\[\]*–—\n-]|$))"
+)
+"""A weekday name after a date: "2 Oct 2026 (Thu)", "2.10.2026 (Donnerstag)", "2 Oct 2026, a Thursday"."""
+_AFTER_A_DATE = "*_\"'“”‘’»«"
+"""What may stand between a date and the weekday name after it: the end of bold, of a quotation."""
+
+
+def _date_starting(text: str) -> DateMention | None:
+    """The date ``text`` starts with (the European reading of a slash date)."""
+    return next((mention for start, _, mention in date_spans(fold_punctuation(text)) if start == 0), None)
+
+
+def _date_ending(text: str, *, whole: bool) -> DateMention | None:
+    """The date ``text`` ends with; ``whole``: ``text`` starts where the answer does, so a date at its very
+    start is not the end of a longer one cut off ("21. Oktober" read as "1. Oktober")."""
+    folded = fold_punctuation(text.rstrip(_AFTER_A_DATE)).rstrip(_AFTER_A_DATE)
+    return next(
+        (
+            mention
+            for start, end, mention in date_spans(folded)
+            if end == len(folded) and (start > 0 or whole)
+        ),
+        None,
+    )
+
+
 def correct_weekdays(text: str, today: date) -> str:
-    """``text`` with every weekday name written just before a date set to that date's real weekday.
+    """``text`` with every weekday name written next to a date set to that date's real weekday.
 
     A model adds weekday names itself and sometimes names the wrong day ("Thu 2 Oct 2026" for a
-    Friday); code knows the calendar. A date without a year is read in the year closest to ``today``.
+    Friday); code knows the calendar. The name may stand before the date ("**Thu** 2 Oct 2026",
+    "Donnerstag, den 2. Oktober 2026", "am Donnerstag, dem 2. Oktober", "Thursday, October 2, 2026") or after it ("2 Oct 2026 (Thu)",
+    "2.10.2026 (Do.)", "2 Oct 2026, a Thursday"); it keeps its language and form. A date without a year
+    is read in the year closest to ``today``.
     """
 
-    def fix(match: re.Match[str]) -> str:
-        tail = text[match.end() : match.end() + 40]
-        mentions = parse_dates(tail)
-        if not mentions or not tail.startswith(mentions[0].text):
-            return match.group(0)
-        mention = mentions[0]
+    def name_of(name: str, mention: DateMention | None) -> str:
+        if mention is None:
+            return name
         day = mention.as_date() or _nearest_year(mention.day, mention.month, today)
-        if day is None:
-            return match.group(0)
-        return _WEEKDAY_NAMES[day.weekday()][_WEEKDAY_FORM[match.group(1)]] + match.group(2)
+        return name if day is None else _WEEKDAY_NAMES[day.weekday()][_WEEKDAY_FORM[name]]
 
-    return _WEEKDAY_BEFORE.sub(fix, text)
+    def before(match: re.Match[str]) -> str:
+        name, word = match.group("name"), match.group("word")
+        german = _WEEKDAY_FORM[name] >= 2
+        tail = before_fixed[match.end() : match.end() + 40]
+        # "den", "dem" and "der" go with a German name, "the" and a month written first with an English one
+        if (word is not None and (word != "the") != german) or (german and not tail[:1].isdigit()):
+            return match.group(0)
+        return name_of(name, _date_starting(tail)) + match.group("gap")
+
+    def after(match: re.Match[str]) -> str:
+        name = match.group("name") or match.group("article_name")
+        begin = max(0, match.start() - 60)
+        mention = _date_ending(after_fixed[begin : match.start()], whole=begin == 0)
+        return (match.group("gap") or match.group("article_gap")) + name_of(name, mention)
+
+    before_fixed = text
+    after_fixed = _NAME_BEFORE_DATE.sub(before, before_fixed)
+    return _NAME_AFTER_DATE.sub(after, after_fixed)
 
 
 def strip_unsupported(text: str, facts: Facts) -> str:

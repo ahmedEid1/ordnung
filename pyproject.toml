@@ -4,7 +4,7 @@ name = "ordnung"
 # changes the web app's and the demo's copies too (tests/test_regressions_install.py). The readme is
 # README.md with its links pointing to GitHub ([tool.hatch.metadata.hooks.fancy-pypi-readme])
 dynamic = ["version", "readme"]
-description = "Your private AI secretary for life admin — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
+description = "Your private AI secretary for life admin in Germany — reads your letters, bills and contracts, tracks every deadline with verifiable evidence, and reminds you before it matters. Runs locally with your own Claude subscription."
 # Ordnung's own code is MIT; the wheel also ships the web app's bundled code and fonts (ISC, OFL-1.1: the
 # notices below), the DejaVu fonts of drafted letters (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)
 license = "MIT AND ISC AND OFL-1.1 AND Bitstream-Vera AND CC-BY-4.0"

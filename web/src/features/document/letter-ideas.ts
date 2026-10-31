@@ -5,8 +5,7 @@
  */
 import type { Item, Suggestion } from "@/api/types";
 import { RECORD_ID_RE } from "@/lib/copy";
-
-const LIVE: ReadonlySet<Suggestion["status"]> = new Set(["new", "accepted", "snoozed"]);
+import { LIVE_IDEAS } from "./verdict";
 
 /**
  * The live Ideas about this letter:
@@ -23,7 +22,7 @@ export function ideasForLetter(
 ): Suggestion[] {
   const own = new Set(items.map((i) => i.id));
   return suggestions.filter((s) => {
-    if (s.kind === "scam" || !LIVE.has(s.status)) return false;
+    if (s.kind === "scam" || !LIVE_IDEAS.has(s.status)) return false;
     const docs = s.refs.filter((r) => r.type === "document").map((r) => r.id);
     const todos = s.refs.filter((r) => r.type === "item").map((r) => r.id);
     const aboutLetter = docs.includes(docId) || (todos.length > 0 && todos.every((id) => own.has(id)));

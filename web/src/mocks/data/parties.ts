@@ -61,7 +61,7 @@ export const PARTIES: Party[] = [
     email: "kundenservice@stadtwerke-musterstadt.example",
     phone: "+49 1234 700-0",
     website: "stadtwerke-musterstadt.example",
-    ibans: ["DE15370501980001234567"],
+    ibans: ["DE75123401980001234567"],
   }),
   party({
     id: "pty_versicherung",
@@ -70,7 +70,7 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Versicherungsnummer", value: "PHV-4471-2290" }],
     address: "Versicherungsallee 9, 12349 Musterstadt",
     email: "service@muster-versicherung.example",
-    ibans: ["DE84520503530000554433"],
+    ibans: ["DE34123403530000554433"],
   }),
   party({
     id: "pty_bkk",
@@ -79,7 +79,7 @@ export const PARTIES: Party[] = [
     identifiers: [{ label: "Versichertennummer", value: "R482019379" }],
     address: "Gesundheitsweg 5, 12345 Musterstadt",
     email: "post@muster-bkk.example",
-    ibans: ["DE46200400000628374650"],
+    ibans: ["DE93123400000628374650"],
   }),
   party({
     id: "pty_beitrag",
@@ -142,7 +142,7 @@ export const PARTIES: Party[] = [
     kind: "authority",
     identifiers: [{ label: "Ausweisnummer", value: "BIB-0098812" }],
     address: "Marktplatz 2, 12345 Musterstadt",
-    ibans: ["DE29100100100987654321"],
+    ibans: ["DE92123400100987654321"],
   }),
   party({
     id: "pty_verkehr",
@@ -173,7 +173,7 @@ export const PARTIES: Party[] = [
     id: "pty_musterbank",
     name: "Musterbank AG",
     kind: "bank",
-    identifiers: [{ label: "Kontonummer", value: "DE31 7601 0085 0234 5678 12" }],
+    identifiers: [{ label: "Kontonummer", value: "DE95 1234 0085 0234 5678 12" }],
     address: "Bankplatz 1, 12345 Musterstadt",
     website: "musterbank.example",
   }),
@@ -183,7 +183,7 @@ export const PARTIES: Party[] = [
     kind: "tax_office",
     identifiers: [{ label: "Steuernummer", value: "331/5012/4471" }],
     address: "Steuerring 10, 12345 Musterstadt",
-    ibans: ["DE61300500000001122334"],
+    ibans: ["DE55123450000001122334"],
   }),
   party({
     id: "pty_mahngericht",

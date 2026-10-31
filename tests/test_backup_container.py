@@ -374,6 +374,55 @@ def test_writing_after_close_is_refused() -> None:
         writer.write(b"late")
 
 
+class _FullDisk(io.BytesIO):
+    """A sink whose disk fills up at the writer's last chunk: every write after ``room`` bytes fails."""
+
+    def __init__(self, room: int) -> None:
+        super().__init__()
+        self.room = room
+        self.refused = 0
+
+    def write(self, data: object) -> int:
+        chunk = bytes(data)  # type: ignore[call-overload]
+        if self.tell() + len(chunk) > self.room:
+            self.refused += 1
+            raise OSError(28, "No space left on device")
+        return super().write(chunk)
+
+
+@pytest.mark.parametrize("keyed", [False, True])
+def test_a_writer_whose_last_chunk_failed_never_writes_again(
+    monkeypatch: pytest.MonkeyPatch, keyed: bool
+) -> None:
+    """The caller gives up on a writer whose close failed (a full disk): it is closed all the same, and once it is
+    collected nothing more reaches the sink — the backup reads as incomplete, never as whole."""
+    unraisable: list[object] = []
+    monkeypatch.setattr(sys, "unraisablehook", unraisable.append)
+    two_chunks = 2 * (CHUNK + TAG_BYTES) + (0 if keyed else HEADER_BYTES)
+    sink = _FullDisk(room=two_chunks - 1)  # the first chunk fits, the last doesn't
+    if keyed:
+        writer: container._ChunkWriter = container.KeyedWriter(
+            sink, b"k" * 32, prefix=b"p" * 7, aad=b"a", chunk_size=CHUNK
+        )
+    else:
+        writer = EncryptedWriter(sink, PASS, kdf=FAST, chunk_size=CHUNK)
+    writer.write(DATA[: 2 * CHUNK])
+    with pytest.raises(OSError):
+        writer.close()
+    assert writer.closed
+    written, refused = sink.getvalue(), sink.refused
+    with pytest.raises(ValueError):
+        writer.write(b"late")
+    writer.close()  # again: nothing to do
+    del writer
+    gc.collect()
+    assert unraisable == []
+    assert (sink.getvalue(), sink.refused) == (written, refused)
+    if not keyed:
+        with pytest.raises(DamagedBackup):
+            open_all(written)
+
+
 def test_read_to_end_counts_and_authenticates_the_rest() -> None:
     reader = EncryptedReader(io.BytesIO(seal(DATA)), PASS)
     reader.read(10)

@@ -384,7 +384,7 @@ Without Tesseract none of this happens; `ordnung doctor` says whether Ordnung fo
   never a title, a name, an organisation or an amount. **With details** shows the first three things with
   their amounts and days, and a to-do of a letter filed for someone of your household after that person's
   name; choose it only on a screen nobody else sees. Letters with scam signs are
-  never in it. The activity log notes that it was sent to the system, with the count only. (That
+  never in it, until you check one with the sender and press *I checked — it's genuine*. The activity log notes that it was sent to the system, with the count only. (That
   is all Ordnung can know: the system may still keep it back — on macOS until notifications are
   allowed for Script Editor, and under Focus or Do not disturb; Settings says where to look.)
 - **Start at login** (`ordnung autostart enable`) writes one file that starts `ordnung serve` when you
@@ -757,8 +757,12 @@ you set up before: a copy kept somewhere else, and an encrypted disk.
 - The local web server listens on `127.0.0.1` and answers only requests addressed to this computer
   (`localhost` or `127.0.0.1`), and requires a session token, same-origin
   requests and a custom header for any change (CSRF/DNS-rebinding protection), with a strict
-  Content-Security-Policy. `ordnung serve` opens your browser through a private local page, so the
-  token never appears on a command line other accounts could see.
+  Content-Security-Policy. `ordnung serve` and `ordnung demo` open your browser with a one-time sign-in
+  link, so the token never appears on a command line other accounts could see. The link's one-time code
+  does, until your browser uses it: it signs in once, within a minute, with a browser session of its own
+  (never the token). Until then, another account that reads it first can sign in with it. If that
+  happens, your browser's use of the link ends that sign-in and says the link was used already. An API
+  request whose body has no stated length is refused before anything is read.
 - Phone access's listener, while it is on, has checks of its own: HTTPS only, exactly
   `https://<address>:<port>` as the address asked for (no names, so DNS rebinding fails), only devices
   in your home network's subnet, `Origin` required on every change and Fetch-Metadata checked, no

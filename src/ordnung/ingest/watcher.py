@@ -19,7 +19,9 @@ The policy, which decides every case:
   when watching starts are picked up once as well (a scan may have arrived while Ordnung was closed).
   A file is remembered once its pickup is over — added, known or refused — never when Ordnung stops
   in the middle of it: it is picked up again next time. A file whose content Ordnung already has adds
-  nothing — document ids come from the content — and a letter in the trash stays there.
+  nothing — document ids come from the content — and a letter in the trash stays there. Only with
+  ``settings.inbox_auto_read`` on (see *Consent*) does a copy of a letter whose reading failed read it again,
+  as adding it in the app does; otherwise the letter keeps its *Try again*.
 * **How many** — a folder with more than :data:`MAX_FILES` files Ordnung could read is not watched
   (it is an archive, not an inbox; the reason is shown): choose a folder just for letters.
 * **Intake** — every file goes through the normal intake with all its limits
@@ -358,7 +360,7 @@ class FolderWatcher:
         #: the files of these types already there join the baseline.
         self._newly_watched: frozenset[str] = frozenset()
         #: Whether hand-off sync is connected (set by the API): files are then the person's changes and
-        #: remembered across computers (:data:`TAKEN_META_KEY`).
+        #: remembered across computers (:data:`FOLDER_TAKEN_META_KEY`).
         self.sync_on: Callable[[], bool] | None = None
         #: Hears of every letter the folder added (hand-off sync saves it soon after).
         self.on_added: Callable[[], None] | None = None

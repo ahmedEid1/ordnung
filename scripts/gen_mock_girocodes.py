@@ -87,7 +87,7 @@ PAYMENTS: dict[str, dict[str, Any]] = {
     # the New-mail scam letter: the genuine sender's name, another account
     "itm_scam_demand": {
         "payee": "BS Inkasso Service",
-        "iban": "LT717300010123456789",
+        "iban": "LT431234010123456789",
         "reference": "BS-2026-99812",
         "amount": 210.0,
         "scam": ScamSign("iban_changed", party="Beitragsservice Musterstadt"),

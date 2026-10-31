@@ -12,9 +12,9 @@ checklist, which Today shows as its own card:
   applies to this duty is not settled, so the checklist shows the earlier, safe day;
 - "Tell X your new address" for each organisation with the old address on record (:func:`who_to_tell`):
   one with a running contract, or one of a kind that keeps your address (:data:`KEEP_INFORMED`) that wrote
-  in the last :data:`LOOKBACK_DAYS`. A letter with scam signs is no source, and neither is a letter kept
-  private ("Keep private — no AI"), nor a contract read from one: a row's title reaches the weekly Ideas and
-  the daily note like every Idea's;
+  in the last :data:`LOOKBACK_DAYS`. A letter with scam signs the person hasn't checked is no source, and
+  neither is a letter kept private ("Keep private — no AI"), nor a contract read from one: a row's title
+  reaches the weekly Ideas and the daily note like every Idea's;
 - the broadcasting fee office, when no listed organisation is the broadcaster.
 
 Every row's fingerprint holds the move's day, so the person's ticks ("done", "Not needed") last through
@@ -163,10 +163,10 @@ def _letter_day(doc: Document) -> date | None:
 
 def who_to_tell(ledger: Ledger) -> list[Listed]:
     """Every organisation with the old address on record: a running contract (``ledger.active_contracts()``)
-    not read from a letter with scam signs or one kept private, or a live incoming letter in the last
-    :data:`LOOKBACK_DAYS`, without scam signs and not kept private, from a sender of a :data:`KEEP_INFORMED`
-    kind. Ordered by kind (employer, bank, insurers, broadcaster, landlord, utility, telecom, university, tax
-    office, immigration office, others), then name. One pass over the shared rows."""
+    not read from a letter with scam signs the person hasn't checked or one kept private, or a live incoming
+    letter in the last :data:`LOOKBACK_DAYS`, without such signs and not kept private, from a sender of a
+    :data:`KEEP_INFORMED` kind. Ordered by kind (employer, bank, insurers, broadcaster, landlord, utility,
+    telecom, university, tax office, immigration office, others), then name. One pass over the shared rows."""
     since = ledger.today - timedelta(days=LOOKBACK_DAYS)
     listed: dict[str, Listed] = {}
     fee_payees: set[str] = set()
@@ -180,7 +180,7 @@ def who_to_tell(ledger: Ledger) -> list[Listed]:
             continue
         day = _letter_day(doc)
         recent = party.kind in KEEP_INFORMED and day is not None and since <= day
-        if not (recent or doc.kind == "broadcasting_fee") or ledger.scam_reasons(doc):
+        if not (recent or doc.kind == "broadcasting_fee") or ledger.shows_scam_signs(doc):
             continue
         if doc.kind == "broadcasting_fee":
             fee_payees.add(party.id)
@@ -190,7 +190,7 @@ def who_to_tell(ledger: Ledger) -> list[Listed]:
     for contract in ledger.active_contracts():
         party = ledger.parties.get(contract.party_id) if contract.party_id else None
         source = ledger.document(contract.source_doc_id)
-        if party is None or (source is not None and (source.ai_private or ledger.scam_reasons(source))):
+        if party is None or (source is not None and (source.ai_private or ledger.shows_scam_signs(source))):
             continue
         entry(party).contracts.append(contract)
     for found in listed.values():

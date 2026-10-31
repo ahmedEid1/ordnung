@@ -308,6 +308,16 @@ export class MockDb {
   liveDocuments(): Document[] {
     return this.state.documents.filter((d) => !d.deleted_at && d.source !== "proof");
   }
+  /**
+   * Whether the letter's to-dos are set aside as a scam letter's, like the API: it shows signs of a scam (the demo's
+   * scam letter is the one hiding text) and the person hasn't dismissed its warning ("I checked — it's genuine").
+   */
+  showsScamSigns(doc: Document): boolean {
+    if (!doc.hidden_text) return false;
+    const checked = (s: Suggestion) =>
+      s.rule_id === "scam_warning" && s.status === "dismissed" && s.refs.some((r) => r.type === "document" && r.id === doc.id);
+    return !this.state.suggestions.some(checked);
+  }
 
   /** The kind a demo letter was filed as when it was read (its seed), or `null` for an upload. */
   seedKind(docId: string): Document["kind"] | null {

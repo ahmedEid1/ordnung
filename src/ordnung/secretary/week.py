@@ -30,7 +30,7 @@ how many it left out:
    after the last session's moment (without one: in the last 7 days), and older letters Ordnung has not read
    (:func:`~ordnung.secretary.brief.is_unread`: Today counts them until they are read, so the review lists
    them every week too); letters that need the person first (Please check, open or snoozed to-dos, scam
-   signs, not read yet — being read, waiting for the person's answer from the watched folder, couldn't be
+   signs the person hasn't checked, not read yet — being read, waiting for the person's answer from the watched folder, couldn't be
    read, or kept private and never read, which is never "nothing to do"), then newest first.
 2. *Compare with the letter* — to-dos whose date Ordnung could not confirm against the letter
    (:func:`~ordnung.secretary.triggers.unconfirmed_reason`: not found in the letter, read by AI from a
@@ -429,9 +429,9 @@ def _count(count: int, one: str, many: str | None = None) -> str:
 
 def pending_items(ledger: Ledger) -> list[Item]:
     """Open or snoozed (however long) to-dos worth acting on — none set aside
-    (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: a letter with scam signs, an invoice a
-    payment reminder took over, an e-mail's payment its attached bill repeats). A snoozed to-do is still
-    the person's (module policy, "Snoozed to-dos")."""
+    (:meth:`~ordnung.secretary.triggers.Ledger.is_set_aside`: a letter with scam signs the person hasn't
+    checked, an invoice a payment reminder took over, an e-mail's payment its attached bill repeats). A snoozed
+    to-do is still the person's (module policy, "Snoozed to-dos")."""
     return [
         item for item in ledger.items if item.status in ("open", "snoozed") and not ledger.is_set_aside(item)
     ]
@@ -538,7 +538,7 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
 
     def row(doc: Document) -> WeekEntry:
         count = open_count(doc)
-        if ledger.scam_reasons(doc):
+        if ledger.shows_scam_signs(doc):
             return _doc_entry(
                 ledger, doc, note="Shows signs of a scam — don't pay or reply yet.", tone="danger"
             )
@@ -560,7 +560,7 @@ def _new_letters(ledger: Ledger, window: _Window, *, first: bool) -> WeekStep:
 
     def needs_you(doc: Document) -> bool:
         return (
-            bool(ledger.scam_reasons(doc))
+            ledger.shows_scam_signs(doc)
             or doc.status != "processed"
             or open_count(doc) > 0
             or _never_read(doc)
@@ -601,7 +601,7 @@ def _to_check(ledger: Ledger) -> WeekStep:
         covered.add(item.doc_id or "")
         rows.append(_item_entry(ledger, item, note=_CHECK_NOTES[reason], tone="warn"))
     for doc in sorted(ledger.documents.values(), key=lambda d: (d.created_at, d.id), reverse=True):
-        if doc.status == "needs_review" and doc.id not in covered and not ledger.scam_reasons(doc):
+        if doc.status == "needs_review" and doc.id not in covered and not ledger.shows_scam_signs(doc):
             rows.append(
                 _doc_entry(
                     ledger,
@@ -898,7 +898,7 @@ def _file(ledger: Ledger, window: _Window) -> WeekStep:
         for item in sorted(done, key=lambda i: (i.completed_at or "", i.id), reverse=True)
     ]
     for doc in sorted(ledger.documents.values(), key=lambda d: (d.doc_date or "", d.id), reverse=True):
-        if doc.id in open_docs or ledger.scam_reasons(doc):
+        if doc.id in open_docs or ledger.shows_scam_signs(doc):
             continue
         # the person's own "For taxes" choice, else Claude's mark
         tax = " Keep it with your tax papers." if for_taxes(doc, ledger.tax_choices) else ""

@@ -166,6 +166,12 @@ LEDGER_TABLES = ("documents", "pages", "items", "contracts", "parties", "cases")
 #: letter is, as :func:`ordnung.secretary.household.ask_view` gives it).
 LEDGER_META_KEYS = (_PROFILE_KEY, TAX_CHOICES_META_KEY, HOUSEHOLD_META_KEY)
 _WATCHED_META = ", ".join(f"'{key}'" for key in LEDGER_META_KEYS)
+#: The rules whose Ideas Ask's ledger fingerprint reads, which :meth:`Store.ledger_token` watches too: the scam
+#: warnings, whose dismissal is the person's check of a letter (*I checked — it's genuine*,
+#: :attr:`ordnung.secretary.triggers.Ledger.scam_checked`). Of their rows it reads the rule, the status and the
+#: fingerprint, so refreshing an Idea's words moves nothing.
+LEDGER_SUGGESTION_RULES = ("scam_warning",)
+_WATCHED_RULES = ", ".join(f"'{rule}'" for rule in LEDGER_SUGGESTION_RULES)
 #: The temporary counter of :meth:`Store.ledger_token` and the name prefix of its triggers (connection-only).
 _LEDGER_WRITES = "ordnung_ledger_writes"
 _LEDGER_TRIGGER_SQL: tuple[tuple[str, str], ...] = (
@@ -180,6 +186,19 @@ _LEDGER_TRIGGER_SQL: tuple[tuple[str, str], ...] = (
         f"AFTER UPDATE ON main.meta WHEN NEW.key IN ({_WATCHED_META}) OR OLD.key IN ({_WATCHED_META})",
     ),
     ("ordnung_ledger_meta_delete", f"AFTER DELETE ON main.meta WHEN OLD.key IN ({_WATCHED_META})"),
+    (
+        "ordnung_ledger_suggestions_insert",
+        f"AFTER INSERT ON main.suggestions WHEN NEW.rule_id IN ({_WATCHED_RULES})",
+    ),
+    (
+        "ordnung_ledger_suggestions_update",
+        "AFTER UPDATE OF rule_id, status, fingerprint ON main.suggestions "
+        f"WHEN NEW.rule_id IN ({_WATCHED_RULES}) OR OLD.rule_id IN ({_WATCHED_RULES})",
+    ),
+    (
+        "ordnung_ledger_suggestions_delete",
+        f"AFTER DELETE ON main.suggestions WHEN OLD.rule_id IN ({_WATCHED_RULES})",
+    ),
 )
 
 
@@ -983,11 +1002,12 @@ class Store:
 
     def ledger_token(self) -> tuple[int, int, int] | None:
         """Like :meth:`change_token`, but moved only by what Ask's ledger fingerprint can read: this
-        connection's writes to :data:`LEDGER_TABLES` and the ``meta`` rows of :data:`LEDGER_META_KEYS` (the
-        profile, the *For taxes* choices, the household), another connection's commit
-        (``PRAGMA data_version``) or a schema change. The usage log, chat, activity and settings written on
-        this connection leave it as it was, so Ask's own writes for one question don't make the next one work
-        the fingerprint out again.
+        connection's writes to :data:`LEDGER_TABLES`, the ``meta`` rows of :data:`LEDGER_META_KEYS` (the
+        profile, the *For taxes* choices, the household) and the Ideas of :data:`LEDGER_SUGGESTION_RULES` (the
+        scam warnings, whose dismissal is the person's check of a letter), another connection's commit
+        (``PRAGMA data_version``) or a schema change. The usage log, chat, activity, settings and other Ideas
+        written on this connection leave it as it was, so Ask's own writes for one question don't make the next
+        one work the fingerprint out again.
 
         This connection's writes are counted by temporary triggers, made on first use. They live in the open
         connection only (SQLite's ``temp`` schema): never in the database file, a backup, a sync copy or an

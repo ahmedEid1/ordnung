@@ -525,8 +525,8 @@ function setAside(db: MockDb, items: Item[]): ItemAside[] {
   return items.flatMap((i): ItemAside[] => {
     if (i.status !== "open") return [];
     const doc = i.doc_id ? byId.get(i.doc_id) : undefined;
-    // like the server's scam signs (the demo's scam letter is the one hiding text)
-    if (doc?.hidden_text) return [{ item_id: i.id, reason: "suspicious", replaced_by: null }];
+    // like the server's scam signs, until the person checked the letter (`MockDb.showsScamSigns`)
+    if (doc && db.showsScamSigns(doc)) return [{ item_id: i.id, reason: "suspicious", replaced_by: null }];
     if (i.kind === "payment" && !i.recurrence && doc) {
       const covering = reminders.find(
         (r) => r.id !== doc.id && r.case_id === doc.case_id && (doc.kind === "dunning" ? (doc.doc_date ?? "") < (r.doc_date ?? "") : !(doc.doc_date && r.doc_date && doc.doc_date > r.doc_date)),

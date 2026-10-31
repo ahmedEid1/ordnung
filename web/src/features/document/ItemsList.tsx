@@ -26,9 +26,9 @@ import { useEvidence } from "./EvidenceContext";
 import { GlossaryText } from "./Explained";
 import { PanelSection } from "./PanelSection";
 import { WhyThisDate } from "./WhyThisDate";
-import { icsFileName, icsHref, useItemActions } from "./actions";
+import { fitsACalendar, icsFileName, icsHref, useItemActions } from "./actions";
 import { englishInline, isGermanText } from "./fact-text";
-import { formatMoney, glueText } from "@/lib/format";
+import { daysUntil, formatMoney, glueText } from "@/lib/format";
 import { plainText } from "@/lib/glue";
 import { useToday } from "@/lib/today";
 import { asideNote } from "@/features/party/model";
@@ -191,8 +191,22 @@ function evidenceOf(item: Item, docId: string) {
 }
 
 /**
- * A demand in a letter with signs of a scam: said for what it is, muted — no countdown, no "transfer
- * by", nothing to tick off (UI audit round 1: it read as an urgent to-do with "Mark done").
+ * The date of a to-do that is not one to act on, quietly: "due 9 Nov" while it is still ahead, "was due 1 Oct 2025"
+ * once it has passed — never a countdown, and never "was due" for a day still to come.
+ */
+function QuietDate({ date }: { date: string }) {
+  const today = useToday();
+  return (
+    <span className="text-muted">
+      {daysUntil(date, today) < 0 ? "was due" : "due"} <DateText date={date} style="day" className="font-medium text-ink/80" />
+    </span>
+  );
+}
+
+/**
+ * A demand in a letter with signs of a scam: said for what it is, muted — its date, but no countdown, no "transfer
+ * by", nothing to tick off (UI audit round 1: it read as an urgent to-do with "Mark done"). The date stays in view:
+ * once the person has checked the letter with the sender, it is a to-do again.
  */
 function ScamRow({ item, docId, pages }: { item: Item; docId: string; pages?: number | null }) {
   const { hover } = useEvidence();
@@ -218,6 +232,11 @@ function ScamRow({ item, docId, pages }: { item: Item; docId: string; pages?: nu
             </>
           ) : null}
         </p>
+        {item.due_date ? (
+          <p className="mt-1 text-[12.5px] leading-5">
+            <QuietDate date={item.due_date} />
+          </p>
+        ) : null}
         {ev ? (
           <div className="mt-2">
             <EvidenceChip grounding={item.grounding === "user" ? "user" : ev.grounding} page={ev.page} pages={pages} anchorId={anchorId} what={item.title} compact />
@@ -318,12 +337,8 @@ function ItemRow({
           {!open ? (
             <StatusPill of="item" status={item.status} />
           ) : aside ? (
-            // nothing to count down to: the date it had, quietly (UI audit round 2: "362 days overdue" in red)
-            item.due_date ? (
-              <span className="text-muted">
-                was due <DateText date={item.due_date} style="day" className="font-medium text-ink/80" />
-              </span>
-            ) : null
+            // nothing to count down to: its date, quietly (UI audit round 2: "362 days overdue" in red)
+            item.due_date ? <QuietDate date={item.due_date} /> : null
           ) : role === "debit" ? (
             // the bank collects it: nothing to send, never louder than amber (as on Today)
             <Countdown date={item.due_date!} prefix="collected" cap="warn" className="text-[12.5px]" />
@@ -395,7 +410,7 @@ function ItemRow({
         label={`Actions for ${item.title}`}
         heading={item.title}
         items={[
-          ...(item.due_date && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
+          ...(fitsACalendar(item) && !phone ? [{ label: "Add to calendar", icon: CalendarPlus, onSelect: () => download(icsHref(item), icsFileName(item)) }] : []),
           own ? { label: "Edit", icon: Pencil, onSelect: () => setEditingOwn(true) } : { label: item.due_date ? "Change date" : "Set a date", icon: Pencil, onSelect: () => setEditing(true) },
           open ? { label: "Mark done", icon: Check, onSelect: () => markDone(item) } : { label: "Reopen", icon: RotateCcw, onSelect: () => reopen(item) },
           "separator" as const,

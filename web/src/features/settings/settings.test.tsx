@@ -5,7 +5,8 @@ import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
 import { formatFileSize } from "@/lib/format";
-import { __clearToasts } from "@/components/ui/Toast";
+import { __clearToasts, toast } from "@/components/ui/Toast";
+import type { Health } from "@/api/types";
 import SettingsPage from "@/pages/SettingsPage";
 import { cacheRate, completeReminderDays, leadLabel, modelFamily, normalizeLeadDays, parseSection, purposeRows, sentSummary } from "./logic";
 
@@ -160,6 +161,40 @@ describe("Settings page", () => {
     // the row is called "Claude Code": its value is the bare version
     expect(await screen.findByText("2.1.4")).toBeInTheDocument();
     expect(screen.queryByText(/\(Claude Code\)/)).not.toBeInTheDocument();
+  });
+
+  it("Claude connection: a claude that stops before it answers shows its own words and its fix, not the sign-in", async () => {
+    const { calls } = useMockApi();
+    const handle = globalThis.fetch;
+    const words = "env: node: No such file or directory (on claude-sonnet-5)";
+    const fix = "The `claude` program stopped before it answered. Run `claude` in a terminal to see why, and install Claude Code again if it doesn't start.";
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const answer = await handle(input, init);
+      const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+      if (!/probe=(1|true)/.test(url)) return answer;
+      const health = (await answer.json()) as Health;
+      const checks = health.checks.map((c) => (c.id === "claude_probe" ? { ...c, status: "fail" as const, detail: words, fix } : c));
+      // Ordnung with Claude Code (not the demo's replay)
+      const probed = { ...health, backend: "claude_cli", claude: { ...health.claude, ok: false, detail: words }, checks };
+      return new Response(JSON.stringify(probed), { status: 200, headers: { "content-type": "application/json" } });
+    });
+    const warn = vi.spyOn(toast, "warn");
+    const user = userEvent.setup();
+    renderWithProviders(<SettingsPage />, { route: "/settings?section=claude" });
+    expect(await screen.findByText("Claude is ready")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Run check" }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/health" && c.method === "GET")).toBe(true));
+    expect(await screen.findByText("Claude is installed, but didn't answer")).toBeInTheDocument();
+    const status = screen.getAllByRole("status").find((el) => el.textContent?.includes("didn't answer"))!;
+    expect(status).toHaveTextContent(words);
+    expect(status).toHaveTextContent("stopped before it answered");
+    expect(screen.queryByText("Claude is installed, but not signed in")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "How to fix it" })).toBeNull();
+    // the sign-in passed: the row says so
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+    // the toast carries the program's words with the fix
+    expect(warn).toHaveBeenCalledWith("Claude didn't answer", { description: `${words}. ${fix}` });
+    warn.mockRestore();
   });
 
   it("promises only what is true about the address and IBAN: they stay out of Ordnung's requests, letters are read as printed", async () => {

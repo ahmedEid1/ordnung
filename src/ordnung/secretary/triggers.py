@@ -98,6 +98,9 @@ CALENDAR_META_KEY = "last_calendar_export_at"
 #: calendar sync's connection record (:data:`ordnung.calendar.caldav.STATE_KEY`)
 CALENDAR_SYNC_META_KEY = "calendar_sync"
 STUDENT_PERMIT_RULE = "student_permit_info"
+#: The scam warning's rule (:func:`scam_warning`): the person dismisses it with *I checked — it's genuine*
+#: (:attr:`Ledger.scam_checked`); Ask's ledger token watches its rows (``db.store.LEDGER_SUGGESTION_RULES``).
+SCAM_RULE = "scam_warning"
 
 _DEFAULT_WINDOWS = {"deadline": 14, "payment": 7, "appointment": 2, "task": 3, "reminder": 0, "milestone": 7}
 _DEFAULT_EXPIRY_WINDOW = 90
@@ -460,9 +463,10 @@ class PriceIncreaseWindow:
 @dataclass
 class _Rows:
     """The rows a :class:`Ledger` reads, as of one state of the database: every letter once (in the
-    trash and proof files too, by sender for the scam checks), the to-dos, contracts and parties — and,
-    once worked out, what depends on nothing else: each letter's scam warning signs and its reading,
-    and which payment reminders took over which letters' payments."""
+    trash and proof files too, by sender for the scam checks), the to-dos, contracts and parties, the scam
+    warnings the person dismissed — and, once worked out, what depends on nothing else: each letter's scam
+    warning signs and its reading, the letters the person checked, and which payment reminders took over
+    which letters' payments."""
 
     profile: Profile
     documents: dict[str, Document]
@@ -470,7 +474,10 @@ class _Rows:
     items: list[Item]
     contracts: list[Contract]
     parties: list[Party]
+    #: the fingerprints of the scam warnings the person dismissed (*I checked — it's genuine*)
+    dismissed_scams: frozenset[str] = frozenset()
     scam_reasons: dict[str, list[str]] = field(default_factory=dict)
+    scam_checked: frozenset[str] | None = None
     extractions: dict[str, DocumentExtraction | None] = field(default_factory=dict)
     covered: dict[str, Document] | None = None
 
@@ -492,6 +499,11 @@ class _Rows:
                 items=store.list_items(),
                 contracts=store.list_contracts(),
                 parties=store.list_parties(),
+                dismissed_scams=frozenset(
+                    idea.fingerprint
+                    for idea in store.list_suggestions(status="dismissed")
+                    if idea.rule_id == SCAM_RULE and idea.source == "rule"
+                ),
             )
 
 
@@ -689,11 +701,11 @@ class Ledger:
 
     def is_set_aside(self, item: Item) -> bool:
         """An item that is never presented as something to do, whatever its status — on Today, in the
-        weekly session, the calendar and its sync, the money figures: one of a letter with scam signs,
-        an invoice payment a later payment reminder took over (the reminder is the one to act on), or an
-        e-mail's payment its attached bill repeats (the bill is the one to act on, or the reminder that
-        took the bill over; it stays set aside after the bill is paid, so nothing asks for the money
-        twice)."""
+        weekly session, the calendar and its sync, the money figures: one of a letter with scam signs the
+        person hasn't checked (:meth:`shows_scam_signs`), an invoice payment a later payment reminder took
+        over (the reminder is the one to act on), or an e-mail's payment its attached bill repeats (the bill
+        is the one to act on, or the reminder that took the bill over; it stays set aside after the bill is
+        paid, so nothing asks for the money twice)."""
         return (
             self.is_suspicious_item(item)
             or self.is_superseded_by_reminder(item)
@@ -704,14 +716,14 @@ class Ledger:
         """Letter id → the live payment reminder (Mahnung) that took over its payments (worked out once
         per state of the database).
 
-        Worked out on read: only reminders that are not in the trash and show no scam signs count,
-        whichever of the letters was read first.
+        Worked out on read: only reminders that are not in the trash and show no scam signs (or ones the
+        person checked, :meth:`shows_scam_signs`) count, whichever of the letters was read first.
         """
         if self._rows.covered is None:
             reminders = [
                 doc
                 for doc in self.documents.values()
-                if doc.kind in PAYMENT_DEMAND_KINDS and not self.scam_reasons(doc)
+                if doc.kind in PAYMENT_DEMAND_KINDS and not self.shows_scam_signs(doc)
             ]
             in_case: dict[str, list[Document]] = {}  # a reminder covers only letters of its own case
             for doc in self.documents.values():
@@ -736,9 +748,9 @@ class Ledger:
         )
 
     def attachments_of(self, email: Document) -> list[Document]:
-        """The live letters without scam signs that came attached to ``email``: those it added
-        (``source="email:<id>"``) and those Ordnung already had when it came (recorded ``known``).
-        Worked out once per snapshot, for every e-mail."""
+        """The live letters without scam signs (or with signs the person checked, :meth:`shows_scam_signs`) that
+        came attached to ``email``: those it added (``source="email:<id>"``) and those Ordnung already had when
+        it came (recorded ``known``). Worked out once per snapshot, for every e-mail."""
         if self._attachments is None:
             self._attachments = {}
             for doc in sorted(self.documents.values(), key=lambda d: (d.created_at, d.id)):
@@ -753,19 +765,19 @@ class Ledger:
                     if known is not None and known.id not in seen and known.id != email_id:
                         listed.append(known)
                         seen.add(known.id)
-        return [doc for doc in self._attachments.get(email.id, []) if not self.scam_reasons(doc)]
+        return [doc for doc in self._attachments.get(email.id, []) if not self.shows_scam_signs(doc)]
 
     def covering_attachments(self) -> dict[str, Document]:
         """Payment to-do id of an e-mail → the attachment of that e-mail that asks for the same payment
         (cached; :func:`~ordnung.ingest.link.attachment_repeats`).
 
-        Worked out on read: only attachments that are not in the trash and show no scam signs count
-        (:meth:`attachments_of`), whichever of the letters was read first. An attachment's payments the
-        e-mail itself took over as a payment reminder don't count: the one to act on must stay. So a
-        reminder e-mail with its invoice attached keeps its own to-do (it takes the invoice's over,
-        :meth:`covering_reminders`), and the two never set each other aside. A bill another reminder took
-        over still counts, so the e-mail that repeats it stays set aside and that reminder is the one
-        payment to act on.
+        Worked out on read: only attachments that are not in the trash and show no scam signs the person
+        hasn't checked count (:meth:`attachments_of`), whichever of the letters was read first. An
+        attachment's payments the e-mail itself took over as a payment reminder don't count: the one to act
+        on must stay. So a reminder e-mail with its invoice attached keeps its own to-do (it takes the
+        invoice's over, :meth:`covering_reminders`), and the two never set each other aside. A bill another
+        reminder took over still counts, so the e-mail that repeats it stays set aside and that reminder is
+        the one payment to act on.
         """
         if self._attached is None:
             covering = self.covering_reminders()
@@ -845,9 +857,9 @@ class Ledger:
     def letter_after(
         self, case_id: str | None, since: date, *, exclude: str | None = None, contract_id: str | None = None
     ) -> Document | None:
-        """The earliest live incoming letter without scam signs, other than ``exclude``, dated (else
-        received, else added) on or after ``since``, that is in thread ``case_id`` — or, when
-        ``contract_id`` is given, confirms the cancellation of that contract."""
+        """The earliest live incoming letter without scam signs (or with signs the person checked), other
+        than ``exclude``, dated (else received, else added) on or after ``since``, that is in thread
+        ``case_id`` — or, when ``contract_id`` is given, confirms the cancellation of that contract."""
         found: list[tuple[str, str, Document]] = []
         for doc in self.documents.values():
             day = doc.doc_date or doc.received_date or doc.created_at[:10]
@@ -856,7 +868,7 @@ class Ledger:
             threaded = case_id is not None and doc.case_id == case_id
             if not (threaded or (contract_id is not None and self._confirms(doc, contract_id))):
                 continue
-            if not self.scam_reasons(doc):
+            if not self.shows_scam_signs(doc):
                 found.append((day, doc.created_at, doc))
         return min(found, key=lambda entry: (entry[0], entry[1], entry[2].id))[2] if found else None
 
@@ -872,11 +884,12 @@ class Ledger:
     def reply_to(self, draft: Draft) -> Document | None:
         """The letter that *may* have answered a sent letter (cached), or ``None``.
 
-        Written policy: the earliest live incoming letter without scam signs, other than the letter it
-        answered, dated (else received, else added) on or after the day it was sent, that is in the same
-        thread (:mod:`ordnung.ingest.link` threads letters by reference), or — for a cancellation of a
-        contract — confirms the cancellation of that contract. Nothing is closed because of it (ADR 0006):
-        the waiting entry and the follow-up Idea say which letter it was, and the person checks it.
+        Written policy: the earliest live incoming letter without scam signs (or with signs the person
+        checked), other than the letter it answered, dated (else received, else added) on or after the day
+        it was sent, that is in the same thread (:mod:`ordnung.ingest.link` threads letters by reference),
+        or — for a cancellation of a contract — confirms the cancellation of that contract. Nothing is closed
+        because of it (ADR 0006): the waiting entry and the follow-up Idea say which letter it was, and the
+        person checks it.
         Limit: any later letter of the thread counts (a new tax assessment under the same tax number, a
         monthly invoice); so it is only a *possible* answer — never proof of arrival, never written
         into the Nachweis. What counts as an answer is :meth:`answer_of`.
@@ -936,10 +949,41 @@ class Ledger:
         reasons = self.scam_reasons(doc)
         return scam_signs(doc, reasons) if reasons else []
 
+    @property
+    def scam_checked(self) -> frozenset[str]:
+        """The live letters the person checked: they pressed *I checked — it's genuine*, which dismisses the
+        letter's scam warning, and the letter still shows the signs that warning listed (the fingerprint the
+        warning has now, :func:`scam_fingerprint`). A new sign makes a new warning, so the letter shows scam signs
+        again until that one is dismissed too. Worked out once per state of the database."""
+        rows = self._rows
+        if rows.scam_checked is None:
+            warned = {fingerprint.rsplit(":", 1)[0] for fingerprint in rows.dismissed_scams}
+            rows.scam_checked = frozenset(
+                doc.id
+                for doc in rows.documents.values()
+                if f"{SCAM_RULE}:{doc.id}" in warned and self._checked(doc)
+            )
+        return rows.scam_checked
+
+    def _checked(self, doc: Document) -> bool:
+        signs = self.scam_signs(doc)
+        return bool(signs) and scam_fingerprint(doc.id, signs) in self._rows.dismissed_scams
+
+    def shows_scam_signs(self, doc: Document) -> bool:
+        """The letter shows scam signs (:meth:`scam_reasons`) the person hasn't checked (:attr:`scam_checked`).
+        Whatever lists, counts, reminds or covers asks this: a checked letter's to-dos are to-dos again. The
+        scam warning itself, the GiroCode gate (ADR 0012: a check never unlocks a code) and the letter's own
+        record of its signs read :meth:`scam_reasons`."""
+        if not self.scam_reasons(doc):
+            return False
+        held = self._rows.documents.get(doc.id)
+        return not (doc.id in self.scam_checked if held is doc or held == doc else self._checked(doc))
+
     def is_suspicious_item(self, item: Item) -> bool:
-        """Items of a letter with scam signs are never suggested as something to pay or do."""
+        """Items of a letter with scam signs the person hasn't checked are never suggested as something to pay
+        or do (:meth:`shows_scam_signs`)."""
         doc = self.document(item.doc_id)
-        return doc is not None and bool(self.scam_reasons(doc))
+        return doc is not None and self.shows_scam_signs(doc)
 
     def pending_confirmations(self) -> dict[str, tuple[Document, date | None]]:
         """Active contracts with a cancellation confirmation: contract id → (letter, effective day)."""
@@ -1096,8 +1140,9 @@ def _item_priority(kind: str, days_left: int) -> Priority:
 
 def _handled_elsewhere(ledger: Ledger, item: Item) -> bool:
     """Money coming in, direct debits (the sender collects them — nothing to do), payment reminders
-    (``dunning_escalation``), letters with scam signs (``scam_warning``) and payments another letter
-    took over (a payment reminder, an e-mail's attached bill) never become "do this by" Ideas."""
+    (``dunning_escalation``), letters with scam signs the person hasn't checked (``scam_warning``) and
+    payments another letter took over (a payment reminder, an e-mail's attached bill) never become "do this
+    by" Ideas."""
     return (
         is_collected_or_incoming(item)
         or ledger.is_dunning_item(item)
@@ -1879,7 +1924,7 @@ def dunning_escalation(ledger: Ledger) -> list[Suggestion]:
             and not ledger.is_superseded_by_reminder(i)
             and not ledger.is_covered_by_attachment(i)
         ]
-        if not payments or ledger.scam_reasons(doc):
+        if not payments or ledger.shows_scam_signs(doc):
             continue  # letters with scam signs get a scam warning instead of "pay"
         payment = min(payments, key=lambda i: (action_day(i) or today, i.id))
         act = action_day(payment) or today
@@ -1998,9 +2043,42 @@ def _scam_reasons(store: Store, doc: Document, party: Party | None) -> list[str]
     return list(dict.fromkeys(reasons))
 
 
+def scam_fingerprint(doc_id: str, signs: Sequence[str]) -> str:
+    """The fingerprint of a letter's scam warning (:func:`scam_warning`): the signs it lists, so a new sign makes
+    a new warning, and a dismissed one (the person's check, :attr:`Ledger.scam_checked`) holds only for the signs
+    the person saw."""
+    return fingerprint(SCAM_RULE, doc_id, *sorted(signs))
+
+
+def _days_asked(ledger: Ledger, doc: Document) -> str | None:
+    """The scam warning's sentence naming the days its letter asks for, so a flagged letter's dates are never
+    lost while its to-dos are set aside: each open to-do's due date from today on, earliest first, with the day
+    to send or transfer by when that comes first ("It asks you to act by Fri 6 Nov and Mon 9 Nov (send by
+    Thu 5 Nov)."); ``None`` when it asks for none."""
+    today = ledger.today
+    dated = sorted(
+        (due, item.id, item)
+        for item in ledger.items_of(doc.id)
+        if is_active(item, today) and (due := parse_day(item.due_date)) is not None and due >= today
+    )
+    days: list[str] = []
+    for due, _, item in dated:
+        act = action_day(item)
+        day = day_label(due, today)
+        if act is not None and act < due and not paid_at_appointment(item, ledger.items):
+            day += f" ({'transfer' if item.kind == 'payment' else 'send'} by {day_label(act, today)})"
+        if day not in days:
+            days.append(day)
+    if not days:
+        return None
+    listed = days[0] if len(days) == 1 else f"{', '.join(days[:-1])} and {days[-1]}"
+    return f"It asks you to act by {listed}."
+
+
 def scam_warning(ledger: Ledger) -> list[Suggestion]:
     """Scam indicators found by code (hidden text, invalid IBAN, payee mismatch) or flagged in the
-    document's warnings."""
+    document's warnings. The warning names the days the letter asks for (:func:`_days_asked`); its title and day
+    don't change with them (the morning note reads both). Its fingerprint is :func:`scam_fingerprint`."""
     ideas: list[Suggestion] = []
     today = ledger.today
     for doc in ledger.documents.values():
@@ -2013,6 +2091,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
         due = min((day for day in pay_days if day is not None), default=None)
         body = _sentences(
             *reasons,
+            _days_asked(ledger, doc),
             "Don't pay or reply until you've checked with the sender using contact details you already know "
             "— not the ones in this letter.",
         )
@@ -2021,7 +2100,7 @@ def scam_warning(ledger: Ledger) -> list[Suggestion]:
             refs.append(_ref("party", doc.party_id or ""))
         ideas.append(
             make_idea(
-                "scam_warning",
+                SCAM_RULE,
                 doc.id,
                 tuple(sorted(reasons)),
                 IdeaText(
@@ -2049,7 +2128,7 @@ def iban_misprint(ledger: Ledger) -> list[Suggestion]:
         payment = doc.payment
         if doc.direction != "incoming" or payment is None or not payment.iban or not iban_fails_checksum(doc):
             continue
-        if ledger.scam_reasons(doc):
+        if ledger.shows_scam_signs(doc):
             continue  # scam_warning lists the checksum next to the other signs
         days = [
             day
@@ -2148,8 +2227,16 @@ def _changed_after(stamp: str, since: datetime | None) -> bool:
 def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
     """Open future dates (items and contract send-by days) added or changed since the last .ics export.
 
+    Only dates the calendar file holds count (``ordnung.calendar.ics``): none set aside
+    (:meth:`Ledger.is_set_aside`), no one-off whose date had long passed when its letter was read
+    (:func:`was_history_when_filed`), none past the calendar's last day
+    (:func:`~ordnung.calendar.ics.fits_a_calendar`) and no decided contract's
+    (:meth:`Ledger.decided_contracts`), so "Add your 4 dates" never stands over a file with 2.
+
     Not while a calendar is connected for calendar sync (paused or not): it gets the dates by itself,
     and importing the file into it as well would clash with the synced events (the same UIDs)."""
+    from ordnung.calendar.ics import fits_a_calendar
+
     if ledger.store.get_meta(CALENDAR_SYNC_META_KEY):
         return []
     today = ledger.today
@@ -2158,9 +2245,19 @@ def calendar_outdated(ledger: Ledger) -> list[Suggestion]:
     dates: list[tuple[date, SuggestionRef]] = []
     for item in ledger.active_items():
         due = parse_day(item.due_date)
-        if due is not None and due >= today and _changed_after(item.updated_at, since):
+        if (
+            due is not None
+            and due >= today
+            and _changed_after(item.updated_at, since)
+            and not ledger.is_set_aside(item)
+            and not (item.recurrence is None and was_history_when_filed(item))
+            and fits_a_calendar(item)
+        ):
             dates.append((action_day(item) or due, _ref("item", item.id)))
+    decided = ledger.decided_contracts()
     for contract in ledger.active_contracts():
+        if contract.id in decided:
+            continue
         comp = ledger.computation(contract)
         send = parse_day(comp.send_by)
         if is_decision(comp) and send is not None and _changed_after(contract.updated_at, since):

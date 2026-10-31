@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { ArrowLeft, Download, Lock, Trash2 } from "lucide-react";
 import { api } from "@/api/endpoints";
@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { toast } from "@/components/ui/Toast";
 import { hasLongWord } from "@/features/document/verdict";
 import { PROOF_KIND_COPY, TONES, copyFor } from "@/lib/copy";
-import { protectRefs } from "@/lib/glue";
+import { FileNameText } from "@/components/ui/FileNameText";
 import { cn } from "@/lib/utils";
 import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
@@ -20,24 +20,6 @@ import { RemoveProofDialog } from "./RemoveProofDialog";
 /** "Proof: Posting receipt" — the proof page's name in the top bar and the tab: its kind, never the file's name. */
 export function proofPageTitle(kind: ProofKind): string {
   return `Proof: ${copyFor(PROOF_KIND_COPY, kind).label.replace(/\s*\([^)]*\)$/, "")}`;
-}
-
-/**
- * A file name that breaks after its underscores, as between words ("…_Einwurf-Einschreiben_" / "FunkNetz_…"),
- * and inside a part only when that part is wider than the line; references stay whole ("FN-88213407").
- * The break points are `<wbr>`: nothing is added to the text, so it copies as it is.
- */
-function FileName({ name }: { name: string }) {
-  return (
-    <>
-      {name.split(/(?<=_)/).map((part, i) => (
-        <Fragment key={i}>
-          {i ? <wbr /> : null}
-          {protectRefs(part)}
-        </Fragment>
-      ))}
-    </>
-  );
 }
 
 /**
@@ -106,9 +88,10 @@ export function ProofFileView({ detail, draftId }: { detail: DocumentDetail; dra
       </div>
 
       <Card padding="md">
-        {/* the file's whole name (phones can't show a tooltip): it wraps, never runs out of the card */}
+        {/* the file's whole name (phones can't show a tooltip): it wraps, never runs out of the card — after an
+            underscore, as between words, never inside a date or a reference */}
         <p className="mb-3 text-[13px] leading-5 text-muted [overflow-wrap:anywhere]" title={doc.filename}>
-          <FileName name={doc.filename} />
+          <FileNameText name={doc.filename} />
         </p>
         {hasPicture(doc) ? (
           <div className="space-y-4">

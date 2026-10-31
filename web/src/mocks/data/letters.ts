@@ -144,7 +144,7 @@ export const Q = {
   },
   scam: {
     pay: "Zahlen Sie den Betrag innerhalb von 3 Tagen",
-    iban: "IBAN: LT71 7300 0101 2345 6789",
+    iban: "IBAN: LT43 1234 0101 2345 6789",
     threat: "Andernfalls wird die Zwangsvollstreckung eingeleitet und Ihr Konto gepfändet.",
     amount: "mit 210,00 EUR im Rückstand",
   },
@@ -315,7 +315,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Stadtwerke Musterstadt GmbH · IBAN DE15 3705 0198 0001 2345 67"],
+    footer: ["Stadtwerke Musterstadt GmbH · IBAN DE75 1234 0198 0001 2345 67"],
   },
 
   doc_liability: {
@@ -338,7 +338,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Muster Versicherung AG · IBAN DE84 5205 0353 0000 5544 33"],
+    footer: ["Muster Versicherung AG · IBAN DE34 1234 0353 0000 5544 33"],
   },
 
   doc_bkk: {
@@ -361,7 +361,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Muster BKK · Körperschaft des öffentlichen Rechts · IBAN DE46 2004 0000 0628 3746 50"],
+    footer: ["Muster BKK · Körperschaft des öffentlichen Rechts · IBAN DE93 1234 0000 0628 3746 50"],
   },
 
   doc_rundfunk: {
@@ -499,7 +499,7 @@ export const LETTERS: Record<string, LetterSpec> = {
               ["Auszahlungsbetrag 1.262,14 EUR", ""],
             ],
           },
-          "Überweisung auf DE31 7601 0085 0234 5678 12 am 31.08.2026.",
+          "Überweisung auf DE95 1234 0085 0234 5678 12 am 31.08.2026.",
         ],
       },
     ],
@@ -789,7 +789,7 @@ export const LETTERS: Record<string, LetterSpec> = {
         ],
       },
     ],
-    footer: ["Stadtwerke Musterstadt GmbH · IBAN DE15 3705 0198 0001 2345 67"],
+    footer: ["Stadtwerke Musterstadt GmbH · IBAN DE75 1234 0198 0001 2345 67"],
   },
 
   doc_tax: {
@@ -815,7 +815,7 @@ export const LETTERS: Record<string, LetterSpec> = {
             ],
             boldLast: true,
           },
-          "Der Erstattungsbetrag wird auf das Konto DE31 7601 0085 0234 5678 12 überwiesen.",
+          "Der Erstattungsbetrag wird auf das Konto DE95 1234 0085 0234 5678 12 überwiesen.",
           { text: "Erläuterungen", bold: true },
           `${Q.tax.laptop}, da ein Nachweis der beruflichen Nutzung fehlt.`,
         ],

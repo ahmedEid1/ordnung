@@ -4,7 +4,8 @@ Every question goes through :func:`ordnung.assistant.ask.ask_stream` — the app
 tools and answer check — on a copy of the demo's ledger. By default the model's turns are
 **replayed** from ``evals/recorded/ask/<model>/`` (the MCP tool results are part of each recording),
 so a replay recomputes every number exactly, with no model call and no cost, and re-runs the
-*current* answer check on the recorded answers. ``--live`` records what is missing with the
+*current* answer check on the recorded answers (a run as recorded keeps what its day's check made of them:
+:func:`as_recorded`). ``--live`` records what is missing with the
 person's ``claude`` CLI (only sample-life documents may be recorded); ``--refresh`` records anew.
 
 ``prompts.lock.json`` next to the recordings stores the digest of the Ask prompts they were made
@@ -36,9 +37,9 @@ import contextlib
 import json
 import sys
 import tempfile
-from collections.abc import AsyncIterator, Iterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -189,6 +190,10 @@ class RunResult:
     drift: list[str] = field(default_factory=list)
     #: the household group's strict rows (only the unified harmful reading applies to them)
     household_strict: list[Strict] = field(default_factory=list)
+    #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
+    #: answers of the run as recorded with them
+    context: Context | None = field(default=None, repr=False, compare=False)
+    tool_results: dict[str, list[str]] = field(default_factory=dict, repr=False, compare=False)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -260,6 +265,7 @@ class Capture:
         self.missed: list[str] = []  # the questions (by id) without a recording
         self.stale: dict[str, tuple[Path | None, list[str]]] = {}
         self.drift: list[str] = []
+        self.results: dict[str, list[str]] = {}  # each question's tool results (by id)
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         return await self.inner.complete(req)
@@ -475,6 +481,7 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
             item_id, question, ledger, "", "", [], call.tools if call else [], error=error or "no answer"
         )
     raw = call.response.text
+    capture.results[item_id] = list(call.results)
     checked = check_turn(ctx.store, raw, call.results, question=question, today=benchmark_today())
     usage = call.response.usage
     return Turn(
@@ -667,7 +674,9 @@ async def _run_all(
     targets: dict[str, str],
     household: Sequence[HouseholdQuestion] = (),
     live: Any = None,
-) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str]]:
+) -> tuple[
+    dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str], dict[str, list[str]]
+]:
     capture = await _capture(config, life, live)
     limit = asyncio.Semaphore(max(1, config.concurrency))
     jobs = [
@@ -685,7 +694,13 @@ async def _run_all(
         asked = [(q.id, q.text) for q in household]
         jobs.append(_ask_many(folder, capture, config.model, asked, "household", limit))
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
-    return {turn.id: turn for turn in turns}, sorted(capture.missed), capture.stale, capture.drift
+    return (
+        {turn.id: turn for turn in turns},
+        sorted(capture.missed),
+        capture.stale,
+        capture.drift,
+        capture.results,
+    )
 
 
 async def _capture(config: Config, life: SampleLife, live: Any) -> Capture:
@@ -717,7 +732,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life)
-        turns, misses, stale, drift = asyncio.run(
+        turns, misses, stale, drift, tool_results = asyncio.run(
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
         context = scoring_context(work / "base", life, targets)
@@ -748,6 +763,73 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         strict_summary=summarise_strict(scored, strict, household_strict),
         drift=drift,
         household_strict=household_strict,
+        context=context,
+        tool_results=tool_results,
+    )
+
+
+#: What the answer check makes of a recorded answer: the answer the person sees, its citations and the check's
+#: reading of each sentence. A run as recorded keeps them as its own day's check gave them (:func:`as_recorded`).
+ANSWER_CHECK = ("final", "cited", "claims")
+
+
+def as_recorded(result: RunResult, recorded: Mapping[str, Any] | None) -> RunResult:
+    """The run as recorded, from this replay and its committed results file (``recorded``). A recording is never
+    rewritten, and a later answer check changes what a replay makes of a recorded answer (the re-scoring holds
+    that): so an answer whose recording is this replay's — the same raw answer, the same tools — keeps what its
+    day's check gave (:data:`ANSWER_CHECK`), and today's scorer reads and scores it. Everything else (the
+    questions, the raw answers, the tools' results) is this replay's; the strict rows, which schema 1 has not,
+    are left out. Without ``recorded``, or for a set scored elsewhere (the held-out set), the replay itself."""
+    if recorded is None or result.context is None:
+        return result
+    kept = {
+        str(item["id"]): item["turn"]
+        for group in ("questions", "attacks", "household")
+        for item in recorded.get(group) or []
+        if isinstance(item, Mapping) and isinstance(item.get("turn"), Mapping)
+    }
+    dates, cents = truth_values(load_truth().values())
+    turns = dict(result.turns)
+    for item_id, turn in result.turns.items():
+        old = kept.get(item_id)
+        if (
+            old is None
+            or turn.error is not None
+            or (old.get("raw"), old.get("tools")) != (turn.raw, turn.tools)
+        ):
+            continue  # another recording, or none: the replay's own
+        if all(old.get(name) == getattr(turn, name) for name in ANSWER_CHECK):
+            continue
+        results = result.tool_results.get(item_id, [])
+        final, cited = str(old["final"]), [str(ref) for ref in old["cited"]]
+        turns[item_id] = replace(
+            turn,
+            final=final,
+            cited=cited,
+            claims=[dict(claim) for claim in old["claims"]],
+            support=citation_support(final, results, turn.question),
+            unsupported_final=unsupported_values(
+                final, cited, results, turn.question, frozenset(dates), frozenset(cents)
+            ),
+        )
+    if turns == result.turns:
+        return result
+    scored = [score_question(q, turns[q.id], result.context) for q in result.questions]
+    scored += [score_attack(a, turns[a.id], result.context) for a in result.attacks]
+    truth = household_truth()
+    household_scored = [score_household(q, turns[q.id], truth) for q in result.household]
+    summary = summarise(scored)
+    if result.household:
+        summary["household"] = summarise_household(household_scored)
+    return replace(
+        result,
+        turns=turns,
+        scored=scored,
+        summary=summary,
+        household_scored=household_scored,
+        strict=[],
+        strict_summary={},
+        household_strict=[],
     )
 
 

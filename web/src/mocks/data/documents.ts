@@ -578,10 +578,10 @@ export const TRAY_DOCUMENTS: Record<string, Document> = {
       "The real Beitragsservice used a German bank account (DE57 1234 …) and your account is not in arrears — your next payment of €55.08 is due 15 Nov. This letter uses a different, foreign account, threatens immediate enforcement and hides invisible text. Do not pay. If unsure, call the Beitragsservice using the number on an older letter.",
     key_facts: [
       fact("Demanded", "€210.00 within 3 days", ev("doc_scam", Q.scam.amount)),
-      fact("Bank account", "LT71 7300 0101 2345 6789 (Lithuania)", ev("doc_scam", Q.scam.iban)),
+      fact("Bank account", "LT43 1234 0101 2345 6789 (Lithuania)", ev("doc_scam", Q.scam.iban)),
     ],
     references: [{ label: "Vorgang", value: "BS-2026-99812" }],
-    payment: { iban: "LT717300010123456789", payee: "BS Inkasso Service", iban_valid: true, reference: "BS-2026-99812" },
+    payment: { iban: "LT431234010123456789", payee: "BS Inkasso Service", iban_valid: true, reference: "BS-2026-99812" },
     warnings: [
       "The bank account (IBAN) differs from the one Beitragsservice Musterstadt used before (DE57 1234 8900 0055 0818 36).",
       "This letter contains invisible text. It was not shown to the AI.",

@@ -40,8 +40,9 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
-from typing import Any, BinaryIO
+from typing import BinaryIO
 
+from ordnung.backup.archive import Drain
 from ordnung.db.store import Store
 from ordnung.ingest.held import is_held
 from ordnung.ingest.intake import TEXT_TYPES, download_name, strip_control
@@ -303,27 +304,6 @@ def _index(rows: Sequence[Sequence[str]]) -> bytes:
 # --------------------------------------------------------------------------------------------------
 
 
-class _Drain(io.RawIOBase):
-    """Where the ZIP's bytes collect between two steps of :class:`LettersZip` (unseekable: zipfile writes
-    each file's sizes after its data)."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._parts: list[bytes] = []
-
-    def writable(self) -> bool:
-        return True
-
-    def write(self, data: Any) -> int:
-        chunk = bytes(data)
-        self._parts.append(chunk)
-        return len(chunk)
-
-    def take(self) -> bytes:
-        taken, self._parts = b"".join(self._parts), []
-        return taken
-
-
 def _stamp(day: date | None) -> tuple[int, int, int, int, int, int]:
     """A ZIP timestamp: noon of ``day`` (1980-01-01 to 2107-12-31, what a ZIP can hold)."""
     day = min(max(day or _FIRST_DAY, _FIRST_DAY), _LAST_DAY)
@@ -364,7 +344,7 @@ class LettersZip:
         self.chunk = chunk
 
     def __iter__(self) -> Iterator[bytes]:
-        drain = _Drain()
+        drain = Drain()
         rows: list[list[str]] = []
         newest: date | None = None
         with zipfile.ZipFile(drain, "w") as archive:

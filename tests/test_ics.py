@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -12,10 +13,19 @@ import pytest
 from icalendar import Calendar
 
 from ordnung import clock
-from ordnung.calendar.ics import CHECK_PREFIX, build_ics, mark_exported, needs_check
+from ordnung.calendar import ics
+from ordnung.calendar.ics import (
+    CHECK_PREFIX,
+    TOO_FAR_AHEAD,
+    TooFarAhead,
+    build_ics,
+    mark_exported,
+    needs_check,
+)
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import ComputationReceipt, Evidence, Item
 from ordnung.secretary import household
+from ordnung.secretary.triggers import run_triggers
 
 TODAY = date(2026, 9, 28)
 
@@ -364,3 +374,60 @@ def test_a_member_s_to_do_names_them_in_the_calendar(store: Store, ids: dict[str
         str(_events(build_ics(store))[f"{ids['deadline']}@ordnung.local"]["summary"])
         == "⚑ Objection deadline"
     )
+
+
+def test_a_date_past_the_calendars_last_day_is_left_out_of_the_file(
+    store: Store, ids: dict[str, str], caplog: pytest.LogCaptureFixture
+) -> None:
+    """31 Dec 9999 is the last day a calendar holds: an all-day event on it ends the day after, and an hour from
+    23:50 ends after it. Such a date (a misread year, a typo) is left out of the file and logged, never the
+    file itself; alone, it is refused with a plain sentence."""
+    far = _item(store, kind="deadline", title="Far", due_date="9999-12-31")
+    late = _item(store, kind="appointment", title="Late", due_date="9999-12-31", due_time="23:50")
+    last = _item(store, kind="deadline", title="Last", due_date="9999-12-30")
+    with caplog.at_level(logging.WARNING, logger="ordnung.calendar.ics"):
+        events = _events(build_ics(store))
+    assert f"{far}@ordnung.local" not in events and f"{late}@ordnung.local" not in events
+    assert {f"{last}@ordnung.local", f"{ids['deadline']}@ordnung.local"} <= set(events)
+    assert far in caplog.text and late in caplog.text
+    with pytest.raises(TooFarAhead, match=TOO_FAR_AHEAD):
+        build_ics(store, only_item_id=late)
+    assert list(_events(build_ics(store, only_item_id=last))) == [f"{last}@ordnung.local"]
+
+
+def test_a_contract_date_past_the_calendars_last_day_leaves_only_its_events_out(
+    store: Store, ids: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def too_far(*_args: object) -> list[Any]:
+        raise OverflowError("date value out of range")
+
+    monkeypatch.setattr(ics, "contract_events", too_far)
+    events = _events(build_ics(store))
+    assert not any(uid.startswith(ids["contract"]) for uid in events)
+    assert f"{ids['deadline']}@ordnung.local" in events
+
+
+def test_the_calendar_idea_counts_no_date_the_file_leaves_out(store: Store, ids: dict[str, str]) -> None:
+    """*Add your N dates* counts what the file holds: a contract whose cancellation was sent has no days to
+    decide by in it, and a date past the calendar's last day isn't in it."""
+
+    def counted() -> tuple[str, set[str]]:
+        (idea,) = run_triggers(store, TODAY)["calendar_outdated"]
+        return idea.title, set(_events(build_ics(store)))
+
+    title, events = counted()
+    assert (
+        title == "Add your 5 dates to your calendar" and f"{ids['contract']}-send-by@ordnung.local" in events
+    )
+    draft = store.add_draft(
+        kind="cancellation", subject="Cancel FunkNetz", body="x", contract_id=ids["contract"]
+    )
+    store.update_draft(draft.id, status="sent", sent_at="2026-09-20T10:00:00Z")
+    title, events = counted()
+    assert title == "Add your 4 dates to your calendar" and len(events) == 4
+    _item(store, kind="deadline", title="Far", due_date="9999-12-31")
+    _item(store, kind="appointment", title="Late", due_date="9999-12-31", due_time="23:50")
+    assert counted() == ("Add your 4 dates to your calendar", events)
+    _item(store, kind="appointment", title="Early", due_date="9999-12-31", due_time="20:00")
+    title, events = counted()
+    assert title == "Add your 5 dates to your calendar" and len(events) == 5

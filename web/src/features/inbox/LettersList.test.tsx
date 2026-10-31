@@ -105,7 +105,8 @@ describe("Inbox letters list", () => {
   it("spells out an appointment's day and time; the dot stays with the title", async () => {
     renderInbox();
     const row = rowOf(await screen.findByRole("link", { name: "Dentist appointment reminder" }));
-    const next = within(row).getByText(/^Dentist: check-up & cleaning/).closest("p")!;
+    // once the scam warnings are in: until then no row counts down
+    const next = (await within(row).findByText(/^Dentist: check-up & cleaning/)).closest("p")!;
     expect(next.textContent).toBe("Dentist: check-up & cleaning · Thu 8 Oct, 09:15 · in 10 days");
   });
 

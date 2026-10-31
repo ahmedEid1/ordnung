@@ -11,7 +11,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { DateText } from "@/components/ui/DateText";
 import { Dialog } from "@/components/ui/Dialog";
 import { Checkbox } from "@/components/ui/Field";
-import { Disclaimer } from "@/components/ui/Disclaimer";
+import { Disclaimer, objectionAdvice } from "@/components/ui/Disclaimer";
 import { Kbd } from "@/components/ui/Kbd";
 import { Menu, type MenuItem } from "@/components/ui/Menu";
 import { PartyChip } from "@/components/ui/PartyChip";
@@ -27,7 +27,6 @@ import { usePhoneCompanion } from "@/features/phone/client";
 import { OnYourComputer } from "@/features/phone/ComputerOnly";
 import { PDF_ON_COMPUTER } from "@/features/phone/copy";
 import {
-  adviceFor,
   changedFields,
   channelCounts,
   checksSummary,
@@ -221,6 +220,8 @@ export function LetterView({ draft }: { draft: Draft }) {
 
   const party = draft.party_id ? (parties.data ?? []).find((p) => p.id === draft.party_id) ?? null : null;
   const doc = draft.doc_id ? (docs.data ?? []).find((d) => d.id === draft.doc_id) ?? null : null;
+  // who sent the letter it objects to (its advice follows the sender's kind, as on the letter's page)
+  const sender = doc?.party_id ? (parties.data ?? []).find((p) => p.id === doc.party_id) ?? null : party;
   const contract = draft.contract_id ? (contracts.data ?? []).find((c) => c.id === draft.contract_id) ?? null : null;
   const title = draftTitle(draft, party?.name);
   const [bodyEdited, setBodyEdited] = useState(() => readEdited(draft.id));
@@ -438,7 +439,7 @@ export function LetterView({ draft }: { draft: Draft }) {
         <CardHeader level={2} title={<span id="checks-title">Checks</span>} icon={ListChecks} />
         <ChecksPanel checks={draft.checks} stale={dirty} />
       </Card>
-      <Disclaimer advice={draft.kind === "objection" ? adviceFor(doc?.area) : undefined} className="px-1" />
+      <Disclaimer advice={draft.kind === "objection" ? objectionAdvice(doc?.area, doc?.kind, sender?.kind) : undefined} className="px-1" />
     </div>
   );
 

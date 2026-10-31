@@ -115,7 +115,10 @@ test("a scam letter's demand is shown for what it is — no countdown, nothing t
   const todos = page.getByRole("region", { name: /^To-dos & dates/ });
   await expect(todos.getByText("Payment this letter demands — don't pay")).toBeVisible();
   await expect(todos.getByRole("button", { name: /as done$/ })).toHaveCount(0);
-  await expect(todos.locator("time")).toHaveCount(0);
+  // its date stays in view, quietly: "due 30 Sep", never a countdown, and never "was due" for a day still ahead
+  await expect(todos.locator("time")).toHaveCount(1);
+  await expect(todos.getByText(/^due\s/).first()).toBeVisible();
+  await expect(todos).not.toContainText(/was due|\bin \d+ days?\b|\btomorrow\b/);
   await expect(todos).not.toContainText("transfer by");
   // its bank details are flagged, with nothing to copy
   const facts = page.getByRole("region", { name: "Key facts" });

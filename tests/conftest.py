@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import gc
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -19,6 +21,32 @@ def _text_in_pictures_off(monkeypatch: pytest.MonkeyPatch) -> None:
     """Text in pictures (ADR 0024) is off in every test, so a Tesseract installed on this computer or runner never
     reads a test's letters. A test that wants it on says so: ``monkeypatch.delenv("ORDNUNG_OCR")``."""
     monkeypatch.setenv(OCR_SWITCH, "off")
+
+
+@pytest.fixture(autouse=True)
+def _no_claude_from_the_shell(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The ``claude`` and the backend a test uses are the ones it sets, never what the shell that runs pytest
+    exports (the e2e config, the replay scripts and ``make capture`` export the fake Claude as
+    ``ORDNUNG_CLAUDE_BIN``)."""
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN", raising=False)
+    monkeypatch.delenv("ORDNUNG_BACKEND", raising=False)
+
+
+@pytest.fixture
+def claude_exits_first(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every model call (``claude -p``) has exited before Ordnung writes its request: a broken install dies at
+    start (``env: node: No such file or directory``) and often wins that race; here it always does. For a
+    ``claude`` that exits without reading (``tests/fake_claude.py``'s ``exit_before_reading``)."""
+    spawn = asyncio.create_subprocess_exec
+
+    async def exited_first(*args: Any, **kwargs: Any) -> asyncio.subprocess.Process:
+        proc = await spawn(*args, **kwargs)
+        if "-p" in args:  # not ``--version`` or ``auth status``
+            await proc.wait()
+            await asyncio.sleep(0.05)  # the closed pipe is noticed
+        return proc
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", exited_first)
 
 
 @pytest.fixture(autouse=True)

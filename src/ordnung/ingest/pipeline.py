@@ -405,7 +405,12 @@ async def add_file_result(
     existing = store.get_document_by_sha(stored.sha256)
     if existing is not None:
         known = _known_upload(
-            ctx, existing, private=private, answer=answer_held and not hold, restore_trashed=restore_trashed
+            ctx,
+            existing,
+            private=private,
+            answer=answer_held and not hold,
+            restore_trashed=restore_trashed,
+            retry_failed=not hold,
         )
         if with_attachments and _attachments_unrecorded(store, known):  # stopped before its attachments
             waits = consent.is_held(known)
@@ -501,11 +506,18 @@ def _added_message(store: Store, filename: str, source: str, hold: bool) -> str:
 
 
 def _known_upload(
-    ctx: AppContext, document: Document, *, private: bool, answer: bool, restore_trashed: bool
+    ctx: AppContext,
+    document: Document,
+    *,
+    private: bool,
+    answer: bool,
+    restore_trashed: bool,
+    retry_failed: bool,
 ) -> Document:
     """A re-upload: restore it from the trash (an e-mail with its attachments) unless that is not
-    wanted, retry it if reading it failed before, and — ``answer``: added again by hand — answer a
-    held letter's question (:mod:`ordnung.ingest.held`)."""
+    wanted, retry it if reading it failed before (``retry_failed``: never for a held copy, which the
+    watched folder brings while the person decides what is read), and — ``answer``: added again by hand —
+    answer a held letter's question (:mod:`ordnung.ingest.held`)."""
     store = ctx.store
     if document.deleted_at:
         if not restore_trashed:
@@ -514,7 +526,7 @@ def _known_upload(
         for attachment in store.list_documents(source=email_source(document.id), include_deleted=True):
             if attachment.deleted_at:
                 store.restore_document(attachment.id)
-    if document.status == "failed":
+    if document.status == "failed" and retry_failed:
         document = store.update_document(document.id, status="queued", error=None)
         announce_job(ctx, store.enqueue_job("ingest", document.id), quiet=unannounced(document))
     elif consent.is_held(document) and answer:

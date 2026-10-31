@@ -78,6 +78,30 @@ def test_help_lists_every_command() -> None:
         assert command in result.output
 
 
+def test_the_module_docstring_names_every_command() -> None:
+    import typer.main
+
+    names = list(getattr(typer.main.get_command(app), "commands", {}))
+    assert len(names) >= 15
+    for name in names:
+        assert f"``{name}``" in (cli.__doc__ or ""), name
+
+
+def test_the_help_and_the_package_summary_say_it_is_for_germany() -> None:
+    import tomllib
+
+    import ordnung
+
+    assert "life admin in Germany" in " ".join(plain(invoke("--help").output).split())
+    pyproject = tomllib.loads(
+        (Path(__file__).resolve().parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    assert pyproject["project"]["description"].startswith(
+        "Your private AI secretary for life admin in Germany"
+    )
+    assert ordnung.__doc__ == "Ordnung — your private AI secretary for life admin in Germany."
+
+
 def test_version() -> None:
     result = invoke("--version")
     assert result.exit_code == 0 and result.output.startswith("ordnung ")
@@ -660,6 +684,41 @@ def test_demo_serves_the_demo_folder_with_replay(demo_env: Path, monkeypatch: py
     assert "Ordnung demo" in result.output
 
 
+def test_the_demo_runs_beside_ordnung_on_a_port_of_its_own(
+    demo_env: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The finished setup and the sign-in page suggest `ordnung demo` while Ordnung runs: their default ports
+    differ (no real port is taken here: a running server keeps its port in ``busy``)."""
+    import uvicorn
+
+    busy: set[int] = set()
+    served: list[tuple[int, bool]] = []
+    monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: {"demo": demo})
+    monkeypatch.setattr(cli, "_port_free", lambda host, port: port not in busy)
+
+    def run(self: uvicorn.Server) -> None:  # it keeps listening after the command returns
+        served.append((self.config.port, self.config.app["demo"]))
+        busy.add(self.config.port)
+
+    monkeypatch.setattr(uvicorn.Server, "run", run)
+    assert invoke("serve", "--no-browser", "--data-dir", str(data_dir)).exit_code == 0
+    demo = invoke("demo", "--no-browser", "--reset")
+    assert demo.exit_code == 0, demo.output
+    assert served == [(8765, False), (8766, True)] and cli.DEMO_PORT == 8766
+    assert "http://127.0.0.1:8766/?token=" in "".join(demo.output.replace("│", "").split())
+
+    # a busy port suggests another one, never the demo's
+    taken = invoke("serve", "--no-browser", "--data-dir", str(data_dir))
+    assert taken.exit_code == 1
+    assert "Port 8765 is already in use. Choose another one, e.g. --port 8767." in " ".join(
+        taken.output.split()
+    )
+    # `serve --demo` keeps Ordnung's own port
+    busy.clear()
+    assert invoke("serve", "--demo", "--no-browser").exit_code == 0
+    assert served[-1] == (8765, True)
+
+
 @pytest.mark.parametrize(
     "args", [("--reset",), ("--rebuild",), ("--reset", "--no-serve")], ids=["reset", "rebuild", "no-serve"]
 )
@@ -863,7 +922,8 @@ def test_mcp_print_config(data_dir: Path) -> None:
     result = invoke("mcp", "--print-config", "--data-dir", str(data_dir))
     assert result.exit_code == 0
     server = json.loads(result.output)["mcpServers"]["ordnung"]
-    assert server["args"] == ["-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
+    # pasted into a client that starts it in any folder: -P keeps that folder's files out of the imports
+    assert server["args"] == ["-P", "-m", "ordnung", "mcp", "--data-dir", str(data_dir.resolve())]
     ledger_only = invoke("mcp", "--print-config", "--ledger-only", "--data-dir", str(data_dir))
     assert json.loads(ledger_only.output)["mcpServers"]["ordnung"]["args"][-1] == "--ledger-only"
     assert "--ledger-only" not in plain(invoke("mcp", "--help").output)  # Ask's switch, not for people

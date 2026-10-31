@@ -28,6 +28,7 @@ from ordnung.recurrence import (
     LAW_DEFAULT_WARNING,
     LAW_REPLACED_WARNING,
     SCHEDULE_FIELDS,
+    NoNextDate,
     at_occurrence,
     describe,
     first_occurrence,
@@ -268,6 +269,38 @@ def test_marking_an_undated_recurring_item_done_keeps_it_open(store: Store) -> N
 def test_a_one_off_item_is_done_like_any_to_do(store: Store) -> None:
     one_off = _item(store, recurrence=None, due_date="2026-10-01")
     assert mark_done(store, one_off, RuleContext(today=TODAY), postal_buffer_days=BUFFER) is None
+
+
+def test_a_schedule_ends_at_the_last_day_a_date_can_have() -> None:
+    """31 Dec 9999 (a misread year, a typo): no occurrence comes after it."""
+    weekly = Recurrence(interval=1, unit="weeks")
+    assert next_occurrence(date(9999, 11, 15), MONTHLY, date(9999, 12, 1)) == date(9999, 12, 15)
+    assert next_occurrence(date(9999, 12, 22), weekly, date(9999, 12, 23)) == date(9999, 12, 29)
+    for first, rule, after in (
+        (date(9999, 12, 15), MONTHLY, date(9999, 12, 16)),
+        (date(9999, 12, 29), weekly, date(9999, 12, 30)),
+        (date(2026, 10, 1), Recurrence(interval=1_000_000_000, unit="years"), date(2026, 10, 2)),
+        (date(2026, 10, 1), Recurrence(interval=1_000_000_000, unit="days"), date(2026, 10, 2)),
+    ):
+        with pytest.raises(NoNextDate):
+            next_occurrence(first, rule, after)
+
+
+@pytest.mark.parametrize("due", ["9999-12-15", "9999-12-31"])
+def test_marked_done_with_no_next_date_a_repeating_item_is_done(store: Store, due: str) -> None:
+    """Point 4 at the end of the calendar: the next occurrence would be past 31 Dec 9999, so there is none to move
+    on to — it is done, as a to-do that doesn't repeat is; its date stays, and "Undo" opens it there again."""
+    fee = _item(store, due_date=due, date_spec=DateSpec(type="fixed", date=due, nature="payment"))
+    assert rolled(fee, RuleContext(today=TODAY), postal_buffer_days=BUFFER) is None
+    paid = mark_done(store, fee, RuleContext(today=TODAY), postal_buffer_days=BUFFER)
+    assert paid is not None
+    assert (paid.status, paid.due_date, paid.send_by) == ("done", due, fee.send_by)
+    assert paid.completed_at is not None
+    [entry] = [entry for entry in store.list_activity() if entry.kind == "item.done"]
+    day = date.fromisoformat(due)
+    assert entry.message == f"Paid “Monthly advance payment” ({day:%a} {day.day} Dec 9999) — no next date"
+    reopened = undo_done(store, store.update_item(fee.id, status="open", completed_at=None))
+    assert reopened is not None and (reopened.status, reopened.due_date) == ("open", due)
 
 
 def test_undo_brings_back_the_occurrence_marked_done_with_its_dates(store: Store) -> None:

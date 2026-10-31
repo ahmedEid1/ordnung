@@ -915,7 +915,7 @@ the file's SHA-256), so adding it again finds the letter already there. The `.ms
   register within two weeks of moving in, § 17 Abs. 1 BMG, a `deadline` dated by the rules engine and never
   moved off a weekend or holiday; *Tell X your new address* for each organisation with a running contract
   or a letter of the last three years of a kind that keeps the address, never from a letter with scam signs
-  or kept private nor a contract read from one, opening the new-address letter to them; the broadcasting fee office when none of them is
+  the person hasn't checked or kept private nor a contract read from one, opening the new-address letter to them; the broadcasting fee office when none of them is
   it; a sender's row goes once an `address_change` letter to them is marked sent; no row names an address;
   ends 180 days after the move; shown as Today's own card; `secretary/moving.py`, ADR 0021),
   `calendar_outdated` (new dates since last .ics export),
@@ -1767,8 +1767,9 @@ outside the database, Delete everything leaves first, a restored backup starts w
 
 ## 13. HTTP API — `api/`
 
-Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints/opens
-`/?token=…` → HttpOnly SameSite=Strict cookie, its name per port; CLI reads `<data>/server.json` {port,
+Security: bind 127.0.0.1; `Host` allow-list; **session token** (Jupyter style: `serve` prints
+`/?token=…` and opens a one-time `/?open=…` link, good once within 60 s → HttpOnly SameSite=Strict
+cookie, its name per port; CLI reads `<data>/server.json` {port,
 token, pid}); non-GET requires header `X-Ordnung-Client`; reject `Sec-Fetch-Site` not in {same-origin,
 none} and foreign `Origin`; strict CSP on the SPA; GETs are side-effect free, with three bounded exceptions:
 `health?probe=1` ("Run check") makes one tiny live model call, at most once a minute; `health` itself,
@@ -2219,7 +2220,7 @@ dark mode; `prefers-reduced-motion` respected; WCAG AA contrast incl. highlighte
 ## 15. CLI
 `serve [--data-dir D] [--host 127.0.0.1] [--port 8765] [--no-browser] [--no-token] [--demo]` · `add
 FILES… [--combine] [--private]` · `brief` · `ask "…"` · `demo [--data-dir D] [--serve/--no-serve]
-[--reset] [--check] [--live] [--rebuild] [--no-browser] [--host 127.0.0.1] [--port 8765]` · `doctor
+[--reset] [--check] [--live] [--rebuild] [--no-browser] [--host 127.0.0.1] [--port 8766]` · `doctor
 [--probe]` · `eval [--live] [--split test] [--models …]` · `mcp [--data-dir D] [--print-config]
 [--rules-only]` · `mcp install --client claude-desktop|claude-code [--rules-only|--with-ledger]
 [--data-dir D] [--config PATH] [--remove-ledger] [--write]` · `autostart enable [--port N]
@@ -2672,7 +2673,12 @@ install` prints the entry first and writes only with `--write`.
 
 **Scam checks (code, not model).** IBAN checksum validation; payee IBAN/name compared with those
 previously seen for the same party; mismatch → scam Idea quoting both. Copy: "No warning does not
-mean it is safe."
+mean it is safe." A letter with scam signs has its to-dos set aside (`Ledger.is_set_aside`: not on Today,
+in the calendar, the notification or the Ideas); its dates still show on its page ("due …", with no
+countdown and no Pay) and in the warning ("It asks you to act by …"). *I checked — it's genuine* dismisses
+the warning: while the letter shows the signs that warning listed (`Ledger.scam_checked`), its to-dos count
+again — on Today, in the calendar, the notification, the Ideas and Ask — but never get a GiroCode (ADR 0012).
+A new sign makes a new warning and sets them aside again.
 
 **GiroCode (EPC-QR).** A payment's Pay panel shows a QR code any German banking app scans to pre-fill
 the transfer (EPC069-12 v3.1, version 002, UTF-8, error correction M, at most 331 bytes; builder

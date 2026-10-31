@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, require_computer
 from ordnung.api.routes.common import ledger_changed
 from ordnung.api.routes.dates import recompute_all_items
+from ordnung.api.routes.regions import known_region
 from ordnung.app_context import AppContext
 from ordnung.config import Paths, private_dir
 from ordnung.db.store import PERSON_WRITE, person_write
@@ -38,7 +39,6 @@ from ordnung.ingest.pipeline import ledger_lock
 from ordnung.ingest.watcher import folder_chosen
 from ordnung.models import AppSettings, DesktopNotifyMode, Profile
 from ordnung.phone.mask import mask_profile
-from ordnung.rules import normalize_region
 from ordnung.secretary.moving import move_problem
 from ordnung.secretary.scam import iban_valid, normalize_iban
 from ordnung.sync import LOCAL_SETTINGS
@@ -131,15 +131,7 @@ class ProfilePatch(BaseModel):
         except ValueError as exc:
             raise ValueError(f"“{value}” is not a date; use the form YYYY-MM-DD.") from exc
 
-    @field_validator("region")
-    @classmethod
-    def _known_region(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        code = normalize_region(value)
-        if code is None:
-            raise ValueError(f"“{value}” is not a German Bundesland (use a code like NW or BY).")
-        return code
+    _known_region = field_validator("region")(known_region)
 
     @field_validator("timezone")
     @classmethod
@@ -148,7 +140,8 @@ class ProfilePatch(BaseModel):
             return None
         try:
             ZoneInfo(value)
-        except (ZoneInfoNotFoundError, ValueError) as exc:
+        # OSError: "Europe" is a folder of zones, and a very long name is too long for a file name
+        except (ZoneInfoNotFoundError, ValueError, OSError) as exc:
             raise ValueError(f"“{value}” is not a known time zone (e.g. Europe/Berlin).") from exc
         return value
 

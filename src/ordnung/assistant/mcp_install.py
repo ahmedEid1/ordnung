@@ -27,9 +27,10 @@ Written policy (ADR 0007) — nothing here guesses:
   permissions (``0600`` for a new file). A symlinked config is written through to its target; a
   ``.mcp.json`` that links to a file of another name is still a project's (the full server stays out).
 * **The command is absolute.** Apps start servers with a minimal ``PATH``, so the entry runs this
-  Python (``sys.executable -m ordnung``) and, for the full server, names the data folder. That path
-  shows this computer's folders (the user name too), so wherever an entry goes into a project's
-  ``.mcp.json`` — printed or written — the person is told before they commit it. Printed commands
+  Python (``sys.executable -P -m ordnung``; ``-P`` keeps the folder the app runs it in off the import
+  path) and, for the full server, names the data folder. That path shows this computer's folders (the
+  user name too), so wherever an entry goes into a project's ``.mcp.json`` — printed or written — the
+  person is told before they commit it. Printed commands
   are quoted for this platform's shell: POSIX, or on Windows ``cmd.exe``, where an argument with a
   space or one of its metacharacters (``& | < > ^ ( )``) goes in double quotes; a ``%NAME%`` in a
   path would still be expanded there (no quoting stops that at its prompt; paths rarely have one).
@@ -114,18 +115,20 @@ class WriteResult:
 
 
 def server_entry(*, rules_only: bool, data_dir: Path | None = None) -> tuple[str, dict[str, Any]]:
-    """The server's name and its stdio entry (``command`` and ``args``)."""
+    """The server's name and its stdio entry (``command`` and ``args``). The app starts it in whatever folder
+    it was opened in, and ``python -m`` would look for modules there first (a project's ``ordnung.py`` or
+    ``json.py`` would run as the person): ``-P`` leaves that folder out."""
     if rules_only:
         return RULES_SERVER_NAME, {
             "command": sys.executable,
-            "args": ["-m", "ordnung", "mcp", "--rules-only"],
+            "args": ["-P", "-m", "ordnung", "mcp", "--rules-only"],
         }
     if data_dir is None:
         raise ValueError("the full server needs the data folder")
     folder = str(Path(data_dir).expanduser().resolve())
     return FULL_SERVER_NAME, {
         "command": sys.executable,
-        "args": ["-m", "ordnung", "mcp", "--data-dir", folder],
+        "args": ["-P", "-m", "ordnung", "mcp", "--data-dir", folder],
     }
 
 

@@ -9,6 +9,7 @@
 import type { Contract, DocumentDetail, Item } from "@/api/types";
 import { daysUntil, formatMoney, monthlyAmount } from "@/lib/format";
 import { plural } from "@/lib/utils";
+import { scamSuggestion } from "@/features/document/verdict";
 
 export interface BatchRecap {
   letters: number;
@@ -70,8 +71,8 @@ export function summarizeBatch(details: DocumentDetail[], today: string): BatchR
     for (const c of d.contracts) contracts.set(c.id, c);
     const open = d.items.filter(isOpen);
     deadlines += open.filter((i) => i.kind === "deadline").length;
-    const scam = d.suggestions.find((s) => s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired");
-    if (scam) {
+    // its own warning only: the warning about a fake letter names the genuine one it compares with too
+    if (scamSuggestion(d)) {
       scams += 1;
       scamDocId ??= doc.id;
     }

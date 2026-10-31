@@ -752,6 +752,7 @@
             "required": false,
             "schema": {
               "type": "integer",
+              "maximum": 1000000,
               "minimum": 0,
               "default": 0,
               "title": "Offset"
@@ -1106,6 +1107,7 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 10000,
               "title": "Page"
             }
           }

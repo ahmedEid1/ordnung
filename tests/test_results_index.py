@@ -157,7 +157,7 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
     checked = {name for name, row in rows.items() if row["verdict"] == "checked"}
     assert checked == {
         "2026-10-30-claude-sonnet-5-ask.json",
-        "2026-10-30-claude-sonnet-5-ask-rescored.json",
+        "2026-10-31-claude-sonnet-5-ask-rescored.json",
         "2026-10-08-claude-sonnet-5-without-land.json",
         "2026-10-30-claude-sonnet-5-checks-ablated.json",
         "2026-10-30-claude-sonnet-5-e2e.json",
@@ -167,6 +167,7 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
     assert superseded == {
         "2026-09-30-claude-sonnet-5-ask.json",
         "2026-10-01-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask-rescored.json",
         "2026-10-06-claude-sonnet-5-without-land.json",
     }
 
@@ -175,19 +176,18 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
     rows: dict[str, dict[str, Any]],
 ) -> None:
     """The development set's live run of 2026-10-30 (E2's recording) stays checked as recorded (schema 1) beside its
-    re-scoring with the strict scorer (schema 2), made the same day, dated that day and named ``-rescored``, which
-    names the run it re-scores; the earlier runs are superseded."""
-    recorded, rescored = (
+    newest re-scoring (schema 2), E3a's answer check, dated the day it was made (2026-10-31) and named ``-rescored``,
+    which names the run it re-scores. The window's re-scoring of the same day with the strict scorer is an older
+    re-scoring, superseded and checked by its hash, as are the earlier runs."""
+    recorded, rescored, window = (
         rows["2026-10-30-claude-sonnet-5-ask.json"],
+        rows["2026-10-31-claude-sonnet-5-ask-rescored.json"],
         rows["2026-10-30-claude-sonnet-5-ask-rescored.json"],
     )
-    assert rescored["recorded"]["date"] == "2026-10-30"
+    assert (rescored["recorded"]["date"], window["recorded"]["date"]) == ("2026-10-31", "2026-10-30")
     assert (recorded["schema"], recorded["recorded"]["backend"], "rescores" in recorded) == (1, "live", False)
-    assert (rescored["schema"], rescored["recorded"]["backend"], rescored["rescores"]) == (
-        2,
-        "replay",
-        "2026-10-30",
-    )
+    for row in (rescored, window):
+        assert (row["schema"], row["recorded"]["backend"], row["rescores"]) == (2, "replay", "2026-10-30")
     for row in (recorded, rescored):
         assert (row["set"], row["repeat"], row["check"], row["gates"]) == (
             "dev",
@@ -195,8 +195,163 @@ def test_the_ask_files_say_which_is_as_recorded_and_which_is_a_re_scoring(
             "ask --check-docs",
             ["ask/dev"],
         )
-    assert rows["2026-09-30-claude-sonnet-5-ask.json"]["check"] == "hash"
-    assert rows["2026-10-01-claude-sonnet-5-ask.json"]["check"] == "hash"
+    for name in (
+        "2026-09-30-claude-sonnet-5-ask.json",
+        "2026-10-01-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask-rescored.json",
+    ):
+        assert (rows[name]["check"], rows[name]["gates"]) == ("hash", []), name
+
+
+def _ask_items(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        item["id"]: item for group in ("questions", "attacks", "household") for item in payload.get(group, [])
+    }
+
+
+def _e3a_files() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], str]:
+    """E2's run as recorded, the window's re-scoring of it (the strict scorer, 2026-10-30), E3a's re-scoring of it
+    (its answer check, 2026-10-31) and that one's E3a note."""
+    from evals.ask import report as ask_report
+
+    def load(name: str) -> dict[str, Any]:
+        data: dict[str, Any] = json.loads((RESULTS_DIR / name).read_text(encoding="utf-8"))
+        return data
+
+    recorded = load("2026-10-30-claude-sonnet-5-ask.json")
+    window = load("2026-10-30-claude-sonnet-5-ask-rescored.json")
+    rescored = load("2026-10-31-claude-sonnet-5-ask-rescored.json")
+    assert ask_report.is_rescoring(rescored) and rescored["recorded"] == "2026-10-30"
+    (note,) = [note for note in rescored["notes"] if note.startswith("E3a's answer check")]
+    return recorded, window, rescored, note
+
+
+def test_e3as_answer_check_is_in_the_re_scoring_never_in_the_run_as_recorded() -> None:
+    """E3a's answer check writes the right weekday next to a date and drops a citation that names no record. E2's run
+    as recorded keeps what its day's check gave (its sha256 is pinned, a move needs a reason), and so does the window's
+    re-scoring of it; E3a's re-scoring holds the change and says so in its notes: on these recordings it changes one
+    final answer, and no score, which the note's counts show."""
+    recorded, window, rescored, note = _e3a_files()
+    old, new = _ask_items(recorded), _ask_items(rescored)
+    assert old.keys() == new.keys() == _ask_items(window).keys()
+    changed = sorted(key for key in old if old[key]["turn"]["final"] != new[key]["turn"]["final"])
+    assert changed == ["hh-my-health-number"]
+    assert all(_ask_items(window)[key]["turn"] == old[key]["turn"] for key in old)  # the window kept them too
+    before, after = old["hh-my-health-number"]["turn"]["final"], new["hh-my-health-number"]["turn"]["final"]
+    assert all(f"[item:n{n}]" in before and f"[item:n{n}]" not in after for n in range(1, 6))
+    for key in old:  # the same recording, the same scores
+        assert {k: v for k, v in old[key]["turn"].items() if k != "final"} == {
+            k: v for k, v in new[key]["turn"].items() if k != "final"
+        }, key
+        assert old[key]["scores"] == new[key]["scores"], key
+        assert _ask_items(window)[key]["strict"] == new[key]["strict"], key
+    for words in ("weekday", "citation that names no record", "`hh-my-health-number`", "No score moves"):
+        assert words in note, words
+    # the counts the note gives are the newest file's, and the same as before E3a's check
+    summary = rescored["summary"]
+    for label, key in (
+        ("answer correct", "accuracy"),
+        ("strict", "strict_accuracy"),
+        ("harmful", "harmful"),
+        ("citation precision", "citation_precision"),
+        ("abstention", "abstention"),
+        ("attack success", "attack_success"),
+    ):
+        count = f"{int(summary[key]['k'])}/{int(summary[key]['n'])}"
+        assert f"{label} {count}" in note, label
+        assert summary[key] == window["summary"][key], key
+    household = summary["household"]["attribution"]
+    assert f"household {int(household['k'])}/{int(household['n'])}" in note
+    assert (
+        household
+        == window["summary"]["household"]["attribution"]
+        == recorded["summary"]["household"]["attribution"]
+    )
+    for key, old_key in (("accuracy", "accuracy"), ("citation_precision", "citation_support")):
+        assert summary[key] == recorded["summary"][old_key], key
+    for payload in (recorded, window):
+        assert not any(note.startswith("E3a") for note in payload["notes"])
+
+
+_WEEKDAY_NAMES = (
+    ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"),
+    ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"),
+    ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"),
+)
+_WEEKDAY = {name: number for names in _WEEKDAY_NAMES for number, name in enumerate(names)}
+_MONTH = {
+    name: number
+    for number, (english, german) in enumerate(
+        zip(
+            "January February March April May June July August September October November December".split(),
+            "Januar Februar März April Mai Juni Juli August September Oktober November Dezember".split(),
+        ),
+        start=1,
+    )
+    for name in (english, german, english[:3], german[:3], *(("Sept",) if number == 9 else ()))
+}
+_WD = "|".join(sorted(_WEEKDAY, key=len, reverse=True))
+_MO = "|".join(sorted(_MONTH, key=len, reverse=True))
+_A_DATE = (
+    rf"(?:(?P<d>\d{{1,2}})\.?\s(?P<m>{_MO})\.?\s(?P<y>\d{{4}})"  # 6 Sep 2027, 6. September 2027
+    rf"|(?P<m2>{_MO})\.?\s(?P<d2>\d{{1,2}}),?\s(?P<y2>\d{{4}})"  # September 6, 2027
+    rf"|(?P<d3>\d{{1,2}})\.(?P<m3>\d{{1,2}})\.(?P<y3>\d{{4}})"  # 06.09.2027
+    rf"|(?P<iso>\d{{4}}-\d{{2}}-\d{{2}}))"
+)
+_WEEKDAY_BEFORE = re.compile(rf"\b(?P<w>{_WD})\b\.?,?\s(?:(?:den|dem|der|the)\s)?{_A_DATE}")
+_WEEKDAY_AFTER = re.compile(rf"{_A_DATE}\s?\((?P<w>{_WD})\.?\)")
+
+
+def _weekdays_next_to_dates(text: str) -> list[tuple[str, str, bool]]:
+    """Each weekday name written next to a date, the date, and whether the name is that date's weekday: read here
+    from the text, not with the answer check, so the note's claim is worked out from the files alone."""
+    from datetime import date
+
+    found = []
+    for pattern in (_WEEKDAY_BEFORE, _WEEKDAY_AFTER):
+        for match in pattern.finditer(text):
+            g = match.groupdict()
+            try:
+                if g["iso"]:
+                    day = date.fromisoformat(g["iso"])
+                elif g["d"]:
+                    day = date(int(g["y"]), _MONTH[g["m"]], int(g["d"]))
+                elif g["d2"]:
+                    day = date(int(g["y2"]), _MONTH[g["m2"]], int(g["d2"]))
+                else:
+                    day = date(int(g["y3"]), int(g["m3"]), int(g["d3"]))
+            except ValueError:
+                continue
+            found.append((match["w"], day.isoformat(), _WEEKDAY[match["w"]] == day.weekday()))
+    return sorted(found)
+
+
+def test_the_e3a_note_says_what_the_recordings_show_about_weekdays() -> None:
+    """Worked out from the files: every weekday name next to a date in the recorded answers. The raw answers that put
+    a wrong weekday next to a date are the ones the note names; the check as recorded had already corrected each (no
+    final answer as recorded, nor as re-scored, has a wrong weekday), and E3a's wider weekday reading corrects no
+    other (every final answer names the same weekdays next to the same dates before and after it)."""
+    recorded, window, rescored, note = _e3a_files()
+    old, new = _ask_items(recorded), _ask_items(rescored)
+    read = {key: _weekdays_next_to_dates(item["turn"]["raw"]) for key, item in old.items()}
+    assert sum(map(len, read.values())) > 100  # the reading finds the answers' weekdays, not none
+    wrong_raw = sorted(key for key, found in read.items() if not all(ok for _, _, ok in found))
+    assert wrong_raw and all(
+        _weekdays_next_to_dates(new[key]["turn"]["raw"]) == read[key] for key in old
+    )  # the same recording
+    for payload in (recorded, window, rescored):
+        for key, item in _ask_items(payload).items():
+            assert all(ok for _, _, ok in _weekdays_next_to_dates(item["turn"]["final"])), key
+    for key in old:
+        assert _weekdays_next_to_dates(old[key]["turn"]["final"]) == _weekdays_next_to_dates(
+            new[key]["turn"]["final"]
+        ), key
+    words = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five"}
+    assert f"{words[len(wrong_raw)]} recorded answers put a wrong weekday next to a date" in note
+    assert set(re.findall(r"`([^`]+)`", note)) == {*wrong_raw, "hh-my-health-number"}
+    assert f"the check as recorded had already corrected all {words[len(wrong_raw)].lower()}" in note
+    assert "E3a's wider weekday reading corrects no other" in note
+    assert "no recorded answer had a wrong weekday" not in note
 
 
 def _ask_payload(
@@ -820,3 +975,100 @@ def test_check_fails_on_an_edited_results_file_a_stale_csv_or_a_failed_check(
     )
     assert _main(results, tmp_path, "--check") == 1
     assert f"{SMALL[0]}: sha256" in capsys.readouterr().err
+
+
+def test_a_run_as_recorded_is_pinned_by_its_sha256_and_write_cannot_take_new_bytes_silently(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A recording is never rewritten. A live Ask run as recorded is checked with the answers its own day's check gave
+    (``--check-docs`` reads them from the file), so its bytes are what pins it: one whose bytes moved since INDEX.json
+    pinned them fails --check, and --write does not take them silently but records the move with an empty reason
+    (``sha256_moved``), as a replay's moved metrics are; --check fails until a person gives it."""
+    name = "2026-10-30-claude-sonnet-5-ask.json"
+    results = _copy_results(tmp_path, [SMALL[0], name])
+    _stand_in(tmp_path, monkeypatch, results, fixed=False)
+    assert _main(results, tmp_path, "--write") == 0
+    pinned = reproduce.sha256_file(results / name)
+    # one kept answer edited and its scores made to match: what --check-docs alone accepts
+    path = results / name
+    data = json.loads(path.read_text(encoding="utf-8"))
+    entry = next(item for item in data["questions"] if item["id"] == "deadline-arbeitsvertrag_werkstudent-0")
+    entry["turn"].update(final="I can't find that in your records.", cited=[], claims=[])
+    entry["scores"]["correct_final"] = False
+    data["summary"]["accuracy"]["k"] -= 1
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _main(results, tmp_path, "--check") == 1
+    assert f"{name}: a run as recorded is never rewritten" in capsys.readouterr().err
+    assert _main(results, tmp_path, "--write") == 1
+    err = capsys.readouterr().err
+    assert f"{name}: a run as recorded is never rewritten" in err and "undeclared" in err
+    index = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    row = next(row for row in index["results"] if row["file"] == name)
+    assert row["sha256"] == reproduce.sha256_file(path) != pinned
+    assert row["sha256_moved"] == {"from": pinned, "because": ""}
+    assert _main(results, tmp_path, "--check") == 1  # even after --write
+    assert "undeclared" in capsys.readouterr().err
+    # a person declares it: the check passes, and a second --write keeps the reason
+    row["sha256_moved"]["because"] = "edited by hand (this test)"
+    (results / "INDEX.json").write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
+    assert _main(results, tmp_path, "--check") == 0
+    assert _main(results, tmp_path, "--write") == 0
+    kept = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    assert next(row for row in kept["results"] if row["file"] == name)["sha256_moved"] == {
+        "from": pinned,
+        "because": "edited by hand (this test)",
+    }
+
+
+def test_a_run_as_recorded_rewritten_as_a_re_scoring_stays_pinned(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A run as recorded whose bytes are rewritten to say they are a re-scoring (schema 2, "backend": "replay") is
+    still the recording INDEX.json pinned: the pin goes by the committed row as well as by the file, so --check fails,
+    --write records the move with an empty reason, and once declared the move stays through the next --write."""
+    name = "2026-10-30-claude-sonnet-5-ask.json"
+    results = _copy_results(tmp_path, [SMALL[0], name])
+    _stand_in(tmp_path, monkeypatch, results, fixed=False)
+    assert _main(results, tmp_path, "--write") == 0
+    pinned = reproduce.sha256_file(results / name)
+    path = results / name
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update(schema=2, backend="replay", recorded="2026-10-30")
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _main(results, tmp_path, "--check") == 1
+    assert f"{name}: a run as recorded is never rewritten" in capsys.readouterr().err
+    assert _main(results, tmp_path, "--write") == 1
+    assert "undeclared" in capsys.readouterr().err
+    index = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    row = next(row for row in index["results"] if row["file"] == name)
+    assert row["sha256_moved"] == {"from": pinned, "because": ""}
+    assert _main(results, tmp_path, "--check") == 1  # even after --write
+    assert "undeclared" in capsys.readouterr().err
+    row["sha256_moved"]["because"] = "relabelled by hand (this test)"
+    (results / "INDEX.json").write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
+    assert _main(results, tmp_path, "--check") == 0
+    assert _main(results, tmp_path, "--write") == 0
+    kept = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    assert next(row for row in kept["results"] if row["file"] == name)["sha256_moved"] == {
+        "from": pinned,
+        "because": "relabelled by hand (this test)",
+    }
+
+
+def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) -> None:
+    """The committed index pins every live Ask run as recorded, and declares any move of one with its reason."""
+    recorded = [name for name, row in rows.items() if reproduce.is_as_recorded(row)]
+    assert sorted(recorded) == [
+        "2026-09-29-sonnet-ask.json",
+        "2026-09-30-claude-sonnet-5-ask.json",
+        "2026-10-01-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask.json",
+    ]
+    for name in recorded:
+        moved = rows[name].get("sha256_moved")
+        assert moved is None or re.search(
+            r"\b[0-9a-f]{7,40}\b|ADR \d{4}|\d{4}-\d{2}-\d{2}-[\w.-]+\.json", moved["because"]
+        ), name
+    assert not any("sha256_moved" in row for name, row in rows.items() if name not in recorded)

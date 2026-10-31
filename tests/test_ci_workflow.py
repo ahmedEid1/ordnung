@@ -149,6 +149,15 @@ def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
     ]
 
 
+def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
+    """The web job (npm ci, lint, typecheck, the full vitest run, the build check and the build) took 4.5 to 17
+    minutes on hosted runners, and one slow runner was cancelled at 20 with vitest still passing tests: its limit
+    must leave room for that, as the backend jobs' 45 minutes do."""
+    frontend = _jobs()["frontend"]
+    assert frontend["timeout-minutes"] >= 30
+    assert "npm test" in _script(frontend)
+
+
 def _gates(script: str) -> dict[str, tuple[float, float]]:
     """Each ``ordnung eval`` gate in ``script``: its split's minimum accuracy and maximum dangerous-late rate."""
     gates = {}

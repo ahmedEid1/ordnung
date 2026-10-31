@@ -2389,3 +2389,114 @@ def settled_demo_store(tmp_path: Path) -> Iterator[Store]:
     store = Store.open(Paths(data))
     yield store
     store.close()
+
+
+# --------------------------------------------------------------------------------------------------
+# a letter the person checked (*I checked — it's genuine*)
+# --------------------------------------------------------------------------------------------------
+
+#: A caution a genuine sender prints, with a scam word in it (made up here).
+CHECKED_CAUTION = "The sender warns that phishing e-mails use its name and asks you to ignore them."
+
+
+def _dismiss_scam_warning(store: Store, doc_id: str, today: date) -> None:
+    """What *I checked — it's genuine* sends: the letter's scam warning dismissed."""
+    from ordnung.secretary.triggers import run_and_reconcile
+
+    run_and_reconcile(store, today)
+    (idea,) = [
+        idea
+        for idea in store.list_suggestions(status="new")
+        if idea.rule_id == "scam_warning" and any(ref.id == doc_id for ref in idea.refs)
+    ]
+    store.update_suggestion(idea.id, status="dismissed")
+
+
+def test_a_checked_letters_to_dos_are_to_do_and_its_record_keeps_the_signs(
+    store: Store, tools: LedgerTools, ids: dict[str, str]
+) -> None:
+    """Once the person checked a letter with scam signs, its to-dos and money rows read as any other (no
+    ``scam_warning``, so the answer check adds no scam note), and ``get_document`` keeps the letter's signs in
+    its letter text and says the person checked them (``scam_checked``); before, nothing of that is said."""
+    doc, payment = ids["doc_scam"], ids["scam_payment"]
+    before = tools.get_document(doc)
+    assert before.record["scam_warning"] is True and before.record.get("scam_checked") is None
+    _dismiss_scam_warning(store, doc, TODAY)
+
+    listed = tools.list_items()
+    rows = {row["id"]: row for row in listed.record["items"]}
+    assert rows[payment]["scam_warning"] is None
+    assert not listed.letters[payment].get("scam_signs")
+    money = tools.money_summary().record
+    assert money["do_not_pay"] == []
+    assert payment in {row["id"] for row in money["upcoming_payments"]}
+    record = tools.get_document(doc)
+    assert record.record["scam_checked"] is True and record.record["scam_warning"] is None
+    letter = store.get_document(doc)
+    assert letter is not None
+    assert record.letters[doc]["scam_signs"] == Ledger(store, TODAY).scam_reasons(letter) != []
+    (party,) = tools.get_party(ids["fake_beitrag"]).record["parties"]
+    assert all(row.get("scam_warning") is None for row in party["documents"])
+    timeline = tools.timeline("2026-09-01", "2026-12-31").record["entries"]
+    assert all(row["scam_warning"] is None for row in timeline if row["id"] in (doc, payment))
+
+
+def _every_answer(tools: LedgerTools, store: Store) -> dict[str, str]:
+    """Every tool's text on a ledger: each letter, each sender and each to-do's date, the lists and the money."""
+    calls: dict[str, ToolAnswer] = {
+        "today": tools.today(),
+        "get_profile": tools.get_profile(),
+        "list_items": tools.list_items(status="all", limit=200),
+        "list_contracts": tools.list_contracts(status="all"),
+        "timeline": tools.timeline("2026-01-01", "2027-12-31"),
+        "money_summary": tools.money_summary(),
+        "get_my_numbers": tools.get_my_numbers(),
+    }
+    for doc in store.list_documents():
+        calls[f"get_document {doc.id}"] = tools.get_document(doc.id)
+    for party in store.list_parties():
+        calls[f"get_party {party.id}"] = tools.get_party(party.id)
+        calls[f"search {party.name}"] = tools.search(party.name)
+    for item in store.list_items():
+        calls[f"explain_date {item.id}"] = tools.explain_date(item.id)
+    return {name: render_result(answer) for name, answer in calls.items()}
+
+
+def test_without_a_check_every_tool_answers_as_before_and_a_check_changes_them(
+    settled_demo_store: Store,
+) -> None:
+    """The demo's recorded answers replay only while every tool says what it said when they were recorded: a
+    dismissed scam warning that no letter's signs match any more changes no tool's text; checking a letter with
+    scam signs does."""
+    from ordnung.secretary.triggers import run_and_reconcile
+    from ordnung.tick import local_today
+
+    store = settled_demo_store
+    today = local_today(store)
+    tools = LedgerTools(store, today=today)
+    run_and_reconcile(store, today)
+    first = _every_answer(tools, store)
+    letter = next(
+        item.doc_id for item in store.list_items(status="open") if item.kind == "payment" and item.doc_id
+    )
+    store.upsert_suggestion(
+        {
+            "kind": "scam",
+            "title": "Possible scam: an earlier reading",
+            "body": "Signs this letter no longer shows.",
+            "fingerprint": f"scam_warning:{letter}:0000000000",
+            "source": "rule",
+            "rule_id": "scam_warning",
+            "status": "dismissed",
+        }
+    )
+    assert _every_answer(tools, store) == first
+
+    shown = store.get_document(letter)
+    assert shown is not None
+    store.update_document(letter, warnings=[*shown.warnings, CHECKED_CAUTION])
+    flagged = _every_answer(tools, store)
+    _dismiss_scam_warning(store, letter, today)
+    checked = _every_answer(tools, store)
+    changed = {name for name in flagged if flagged[name] != checked[name]}
+    assert {"list_items", "money_summary", f"get_document {letter}"} <= changed

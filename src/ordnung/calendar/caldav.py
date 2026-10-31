@@ -22,7 +22,8 @@ Written policy (ADR 0007):
   Switching the mode replaces every event (their names change; the old ones are removed). A date
   Ordnung couldn't confirm in the letter says so in either mode ("Ordnung: deadline — check the date"): the doubt travels with the alarm.
   *With details* sends the events as the calendar file has them. Settings shows every event in the
-  chosen mode before anything is sent (:func:`preview`).
+  chosen mode before anything is sent (:func:`preview`). An event whose date or alarm doesn't fit a
+  calendar (before 1 Jan 0001 or after 31 Dec 9999: a misread year, a typo) is left out and logged.
 * **Idempotent, and only Ordnung's own events.** An event's resource name comes from its stable UID,
   so sending it again replaces it instead of adding a copy. Ordnung remembers a SHA-256 of each event
   it sent (meta ``calendar_sync``, :class:`~ordnung.models.CalendarSyncState`): an unchanged event is
@@ -454,15 +455,20 @@ def build_events(store: Store, mode: CalendarSyncMode, *, keep_key: bool = True)
         href = resource_name(uid)
         if href in seen:  # never two events under one name
             continue
+        try:
+            body = _resource(event, timezones)
+            shown = _preview(event, today)
+        except (OverflowError, ValueError):  # an alarm days before 1 Jan 0001, say
+            log.warning("calendar sync: left out %s, a date of it doesn't fit a calendar", stable)
+            continue
         seen.add(href)
-        body = _resource(event, timezones)
         events.append(
             SyncEvent(
                 href=href,
                 uid=uid,
                 body=body,
                 digest=hashlib.sha256(body).hexdigest(),
-                preview=_preview(event, today),
+                preview=shown,
                 stable_uid=stable,
             )
         )

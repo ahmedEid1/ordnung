@@ -150,7 +150,6 @@ def test_every_data_folder_entry_is_classified(paths: Paths) -> None:
         LOCK_NAME,
         SERVER_FILE,
         MARKER_NAME,
-        ".ordnung-open.html",
         "inbox",
         "phone",
         "sync",
