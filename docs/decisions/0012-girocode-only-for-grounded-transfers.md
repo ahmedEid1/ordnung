@@ -62,7 +62,7 @@ existing scam checks only *warn*; a code would *help* pay.
   that names the account or the money, and never among the to-do's words (nor do a mandate's
   reference and the creditor's ID, which a letter asking for a transfer after the mandate ended
   prints too); a negation waves off only a transfer in its own clause.
-- The review of wave 2 found the failed-debit exception too wide the other way: any "returned" (a
+- A later review found the failed-debit exception too wide the other way: any "returned" (a
   router to be returned) and stock warnings on direct-debit bills ("bei einer Rücklastschrift berechnen
   wir 3,00 € Gebühr", "a returned debit costs €3") made a debit a transfer — the to-do got "transfer by",
   reminders and a place in the Pay total, and with the same words in its sentence a code. Now a failure

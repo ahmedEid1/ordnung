@@ -30,9 +30,8 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
    cites any record, so "the deadline passed today [item:…]" and "the period ended today" in a paragraph of
    its own are left out and the note gives the record's own date; only in an answer that cites no record does
    today stand alone, and the note then says it is today's date and gives the records' own dates, so an
-   unqualified "checked" never rests on today (review round 4 of phase 2; the prompt says so since version
-   6); a year that stands in no other value is
-   the cited record's only when it holds a date in that year; a sentence without
+   unqualified "checked" never rests on today (the prompt says so since version 6); a year that stands in no
+   other value is the cited record's only when it holds a date in that year; a sentence without
    citations of its own may state a value of a record the answer cites, and the check then adds that
    record's citation (never a scam record's, never several). A cited record's flagged amount and the
    person's own words are shown in quotation marks as unconfirmed. Everything else is left out, whatever
@@ -101,16 +100,16 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   out like a wrong one, and the note and placeholders are English or German.
 - **The value reader is a list of forms, against ADR 0007 — recorded as a follow-up.** Each review round
   found forms it did not read, and each fix added forms (`support.py` grew from about 500 to about
-  3,700 lines — 2,560 at final review 3). The core of the policy is closed (rule 3: a value is Ordnung's only when a cited record holds
-  it); the reader is not, because "what counts as a value" has no closed definition in free text. Final
-  review 3 turned the reader toward failing closed — an unknown form that looks like a date or time is
-  unreadable, not unread — but the list of forms remains. Review round 1 of phase 2 found more unread
+  3,700 lines). The core of the policy is closed (rule 3: a value is Ordnung's only when a cited record holds
+  it); the reader is not, because "what counts as a value" has no closed definition in free text. A review
+  turned the reader toward failing closed — an unknown form that looks like a date or time is
+  unreadable, not unread — but the list of forms remains. The next review found more unread
   forms in the other offered languages (marked dates such as `31-dic-2027`, month and year in those
   languages, other calendars, `31/12`, scales glued to a currency, other currencies, hour words); they
   were added the same way, and the Ask page's generated numbers are now checked in CI (`--check-docs`).
-  Review round 2 of phase 2 found more again (values glued to Chinese signs, colon look-alikes, parts of
+  The one after found more again (values glued to Chinese signs, colon look-alikes, parts of
   the day, cent and scale words, months with "of", US month/day pairs, locative month names, other
-  currencies' symbols); they were added the same way. Review round 3 of phase 2 found more (currency names of
+  currencies' symbols); they were added the same way. The next found more (currency names of
   11 of the 14 answer languages, euros followed by cents as a second number, parts of the day after another
   language's hour word or in brackets, year ends, spaced month and year, doubled marks, list numbers). This
   time the fixes are closed rules rather than forms: any currency sign, code or name makes a number an amount;
@@ -125,7 +124,7 @@ sentence, and an id a letter's text mentioned could be cited. Nothing measured A
   part of this decision.
 - **Release blocker outside Ask — resolved:** the contract page and the rules catalog's `fixed_term` rule
   said a fixed-term flat let "ends by itself" (§ 575 Abs. 1 S. 2 BGB), and the engine's summary said an
-  active one past its end date "ended". Since review round 1 of phase 2 the engine and the catalog say what
+  active one past its end date "ended". Now the engine and the catalog say what
   Ask's record says: notice may still be needed without a written reason, and an active flat let or job
   past its end date may still run (§ 575 Abs. 1 S. 2 and § 545 BGB, § 15 Abs. 6 TzBfG). Ask's record keeps
   its own text (the courts' reading of the end date as a waiver of notice, BGH VIII ZR 388/12) and its note

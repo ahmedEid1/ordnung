@@ -29,8 +29,8 @@ Claude reads through it also reaches every other MCP server loaded there, throug
   confidence, and a result is always for the server's today — a caller's `today` that differs only
   adds that day's view and a warning (the benchmark's server ignores it): a day ahead (a time zone east of
   Germany) never makes a live deadline look missed, and a day behind (a stale conversation date, a UTC
-  machine shortly after German midnight) never makes an expired one read "send it today" (review round 3
-  of phase 2: one a day behind replaced the server's day).
+  machine shortly after German midnight) never makes an expired one read "send it today" (before, a caller's
+  `today` a day behind replaced the server's).
 - The tools add no law of their own: whether a sender has deemed delivery at all (a company's letter
   counts from its arrival, but for a kind a public body may be filed as, or a period whose own words
   name an administrative act, never later than from the day a letter usually counts as delivered; an

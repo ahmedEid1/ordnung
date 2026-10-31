@@ -7,6 +7,7 @@ that makes the docs untrue fails here.
 from __future__ import annotations
 
 import ast
+import fnmatch
 import hashlib
 import importlib
 import inspect
@@ -2072,7 +2073,7 @@ def test_the_lost_computer_checklist_says_what_to_do_without_legal_periods() -> 
     (BitLocker or Device encryption on Windows, which Ordnung doesn't check); after, restore the backup, a new sync
     folder with a new passphrase, sign out of Claude by Anthropic's own help pages, the phones' certificate
     authority, the calendar's app password, and the bank account. It states no legal periods and no menu of
-    Claude's; README, the changelog and the hand-off sync section link to it."""
+    Claude's; README and the hand-off sync section link to it."""
     section = _privacy_section("If your computer is lost or stolen")
     for words in (
         "`ordnung restore FILE`",
@@ -2091,7 +2092,6 @@ def test_the_lost_computer_checklist_says_what_to_do_without_legal_periods() -> 
     assert "Settings → Claude Code" not in section and "Settings → Account" not in section
     link = "docs/privacy.md#if-your-computer-is-lost-or-stolen"
     assert link in _readme()
-    assert link in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert "(#if-your-computer-is-lost-or-stolen)" in _sync_doc("docs/privacy.md")
 
 
@@ -2102,7 +2102,6 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     assert days == 30
     documents = {
         "docs/privacy.md": _privacy_section("Encrypted backups"),
-        "CHANGELOG.md": _unreleased("Added"),
         _ADR_BACKUP.name: _flat(_ADR_BACKUP.read_text(encoding="utf-8")),
     }
     for name, text in documents.items():
@@ -2400,7 +2399,7 @@ def test_sync_letters_are_not_uploaded_again(synced: Any) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch B2 — the tax year and letter export, searchable scans and the moving checklist: README, the
+# The tax year and letter export, searchable scans and the moving checklist: README, the
 # CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md and ADRs 0020 and 0021
 # --------------------------------------------------------------------------------------------------
 
@@ -2486,74 +2485,6 @@ def _moving_limitation() -> str:
     return bullet
 
 
-def test_the_changelog_adds_the_tax_year_searchable_scans_and_the_moving_checklist() -> None:
-    """CHANGELOG, Unreleased → Added: the tax year and *Export letters* (only on a click, never from a phone, the ZIP
-    not encrypted), searchable scans (search only, marked "not checked", never sent to Claude) and the moving
-    checklist (said, never guessed; nothing sent), in the one list with what was there."""
-    added = _unreleased("Added")
-    taxes = _bullet(added, "**Your tax year, and your letters as files.**")
-    for words in (
-        "*Inbox → Letters for taxes*",
-        "by the date on the letter (else the day it arrived)",
-        "dated January–May of the next year",
-        "now opens it",
-        "*Export letters* (Settings → Data, or *Export these letters…* on a tax year)",
-        "`2025/Finanzamt Musterstadt/2025-03-14 Steuerbescheid 2025.pdf`",
-        "`index.csv`",
-        "It runs only when you click it, on your computer, never from a phone",
-        "The ZIP isn't encrypted",
-    ):
-        assert words in taxes, words
-    scans = _bullet(
-        added, "**Scans you keep private, or add while Claude isn't connected, can be found by their words.**"
-    )
-    for words in (
-        f"*{SCANNER_TEXT_MATCH}*",
-        "kept with the letter's page images for search only",
-        "never shown as the letter's words, never used to check a date or an amount, and never sent to Claude",
-        "Ask doesn't search it",
-        "Scans you added before are caught up in the background",
-        "(docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md)",
-    ):
-        assert words in scans, words
-    assert "computer only" not in scans and "on your computer" not in scans
-    moving = _bullet(added, "**A moving checklist.**")
-    for words in (
-        "tick *I moved*",
-        "within two weeks of moving in (§ 17 Abs. 1 BMG)",
-        "*Not needed*",
-        "once you mark a new-address letter to them as sent",
-        "Nothing is sent for you, and no row names an address",
-        "(docs/decisions/0021-a-move-is-said-never-guessed.md)",
-    ):
-        assert words in moving, words
-    # one list: the new features come after the sender's state and before the CI and documentation entries
-    assert added.index("**Ordnung suggests a sender's state") < added.index("**Your tax year")
-    assert added.index("**A moving checklist.**") < added.index("**CI checks more.**")
-
-
-def test_the_changelog_fixes_waiting_letters_search_and_says_what_an_older_computer_does() -> None:
-    """CHANGELOG, Unreleased: Fixed — a letter added while Claude is missing is found by its PDF's words at once
-    (only the first one was); Upgrading — 0.2.0 shows its own tax Idea, whose button opens one letter, finds scans
-    by name only, and drops a move when its profile is saved there while it never retires the checklist's rows."""
-    assert (
-        "A letter added while Claude isn't installed, isn't signed in or is too old is found by the words in its "
-        "PDF straight away. Before, only the first such letter was; the others were found by name until Claude "
-        "read them."
-    ) in _unreleased("Fixed")
-    upgrading = _unreleased("Upgrading")
-    for sentence in (
-        "A computer still on 0.2.0 shows its own tax-season Idea, whose *See the documents* opens one letter "
-        "rather than the tax year (and it may count the year's letters slightly differently).",
-        "A computer still on 0.2.0 finds a scan only by its name, as before, and deletes its scanner's text with "
-        "the letter. A scan Claude reads there keeps its scanner's text until an updated computer receives it by "
-        "hand-off sync and removes it.",
-        "A computer still on 0.2.0 that receives the moving checklist by hand-off sync shows its rows among its "
-        "Ideas and never takes them away, and saving the profile there forgets the move. Update both computers.",
-    ):
-        assert sentence in upgrading, sentence
-
-
 def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
     """README "Also:" names the three features, and Install says what search finds without Claude: a PDF's own
     text or the text a scanner added (search only), a photo by its name and, with Tesseract installed, by the
@@ -2606,9 +2537,8 @@ def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checkl
 
 
 def test_the_tax_idea_opens_the_tax_year_the_docs_describe(store: Store) -> None:
-    """SPEC § 9 and the CHANGELOG: the tax-season Idea counts letters by the letter's date (else the day it
-    arrived) and *See the documents* opens the tax year — ``open``/``tax_year``/the year, which an older web app
-    has no link for (hence its Upgrading line)."""
+    """SPEC § 9: the tax-season Idea counts letters by the letter's date (else the day it arrived) and *See the
+    documents* opens the tax year — ``open``/``tax_year``/the year."""
     seed_ledger(store)
     (idea,) = tax_documents(Ledger(store, date(2026, 3, 1)))
     assert idea.action is not None
@@ -2617,7 +2547,6 @@ def test_the_tax_idea_opens_the_tax_year_the_docs_describe(store: Store) -> None
         "`tax_documents` (Jan–Jul; counted by the letter's date, else the day it arrived; *See the documents* "
         'opens the tax year, `target_type="tax_year"`)'
     ) in _spec()
-    assert f"(*{idea.title}*) now opens it" in _unreleased("Added")
 
 
 def test_the_letters_zip_is_for_the_computer_only_and_leaves_it_only_as_the_zip_you_save() -> None:
@@ -2676,14 +2605,11 @@ def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
 
 def test_the_moving_docs_cite_no_law_but_the_duty_to_register() -> None:
     """The moving checklist states one law, § 17 Abs. 1 BMG (registering within two weeks of moving in): ADR 0021
-    and the CHANGELOG's entry cite no other, and README's Limitations bullet none."""
-    for name, text in (
-        ("ADR 0021", _adr(_ADR_MOVING)),
-        ("CHANGELOG", _bullet(_unreleased("Added"), "**A moving checklist.**")),
-    ):
-        cited = _CITATION.findall(text)
-        assert cited and set(cited) == {"§ 17 Abs. 1 BMG"}, (name, cited)
-        assert text.count("§") == len(cited), name
+    cites no other, and README's Limitations bullet none."""
+    adr = _adr(_ADR_MOVING)
+    cited = _CITATION.findall(adr)
+    assert cited and set(cited) == {"§ 17 Abs. 1 BMG"}, cited
+    assert adr.count("§") == len(cited)
     assert "§" not in _moving_limitation()
 
 
@@ -2710,16 +2636,12 @@ LATE_MOVE = "Moved recently? Start the moving checklist"
 
 
 def test_a_move_can_be_told_after_the_new_address_was_saved_as_the_docs_say() -> None:
-    """ADR 0021, SPEC, the CHANGELOG and docs/privacy.md: a move is told with *I moved* next to a changed address, or,
-    once the new address is saved, with the button the web app shows — no doc says ticking *I moved* is the only way.
+    """ADR 0021, SPEC and docs/privacy.md: a move is told with *I moved* next to a changed address, or, once the new
+    address is saved, with the button the web app shows — no doc says ticking *I moved* is the only way.
     The letter composer's note (``TemplateFields.tsx``) no longer says to change the address and tick it."""
     web = ROOT / "web" / "src" / "features"
     assert LATE_MOVE in _flat((web / "settings" / "ProfileSection.tsx").read_text(encoding="utf-8"))
-    for name, text in (
-        ("ADR 0021", _adr(_ADR_MOVING)),
-        ("CHANGELOG", _bullet(_unreleased("Added"), "**A moving checklist.**")),
-        ("SPEC", _spec()),
-    ):
+    for name, text in (("ADR 0021", _adr(_ADR_MOVING)), ("SPEC", _spec())):
         assert "I moved*" in text and f"*{LATE_MOVE}*" in text, name
     privacy = _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
     assert "after you tick *I moved*" not in privacy and "after you tell Ordnung you moved" in privacy
@@ -2796,14 +2718,14 @@ def test_the_export_s_folders_list_and_name_are_the_ones_the_docs_show() -> None
 
 
 def test_the_moving_checklist_s_window_and_law_are_the_code_s() -> None:
-    """ADR 0021, SPEC and the CHANGELOG: a move counts for the last six months or the next three (422 otherwise),
-    the list ends six months after it, and its one law is the one Ask's check knows (``IDEA_LAWS``)."""
+    """ADR 0021 and SPEC: a move counts for the last six months or the next three (422 otherwise), the list ends
+    six months after it, and its one law is the one Ask's check knows (``IDEA_LAWS``)."""
     assert (moving.MOVE_WINDOW_DAYS, moving.MOVE_AHEAD_DAYS) == (180, 90)
     assert triggers.REGISTRATION_LAW == "§ 17 Abs. 1 BMG" and triggers.REGISTRATION_LAW in triggers.IDEA_LAWS
     assert "moved_house" in triggers.TRIGGERS
-    for text in (_adr(_ADR_MOVING), _bullet(_unreleased("Added"), "**A moving checklist.**")):
-        assert "a move in the last six months or the next three" in text
-        assert "ends six months after the move" in text
+    adr = _adr(_ADR_MOVING)
+    assert "a move in the last six months or the next three" in adr
+    assert "ends six months after the move" in adr
     assert moving.MOVE_WINDOW_PROBLEM in _spec()
 
 
@@ -2833,7 +2755,7 @@ def test_no_moving_row_carries_an_address_as_the_privacy_page_says(store: Store)
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch C — open Ordnung from the app menu (`ordnung shortcut`) and releases from a version tag: README, the
+# Open Ordnung from the app menu (`ordnung shortcut`) and releases from a version tag: README, the
 # CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md and ADR 0013
 # --------------------------------------------------------------------------------------------------
 
@@ -2853,55 +2775,9 @@ def _privacy() -> str:
     return _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
 
 
-def test_the_changelog_adds_the_app_menu_shortcut_and_releases() -> None:
-    """CHANGELOG, Unreleased → Added: `ordnung shortcut` (the three places, signed in, a window of its own whose
-    closing stops Ordnung, never started unseen, the mark, --dry-run and --remove, Settings, not the demo) and
-    releases from a tag, PyPI only once the owner has set it up — in the one list, after the moving checklist."""
-    added = _unreleased("Added")
-    launcher = _bullet(added, "**Open Ordnung from your app menu.**")
-    for words in (
-        "`ordnung shortcut` adds Ordnung to your app menu on Linux, to the Applications folder in your home "
-        "folder on a Mac (Launchpad and Spotlight find it), or to the Start menu on Windows.",
-        "Opening it signs your browser in.",
-        "When Ordnung isn't running, it starts in a window of its own, and closing that window stops it.",
-        "Ordnung is never started without a window you can see.",
-        "When it already runs (for example from start at login), only the browser opens.",
-        "prints what it writes before writing, needs no admin rights and never replaces or removes a file it "
-        "didn't write",
-        "`--dry-run` only prints, and `ordnung shortcut --remove` takes it out again",
-        "Settings → Reminders shows whether it is there, and for which data folder. It also says when the "
-        "command has to run again (Ordnung was installed somewhere else), and when a launcher Ordnung didn't "
-        "write is in the way.",
-        "The demo isn't added: it opens with `ordnung demo`.",
-    ):
-        assert words in launcher, words
-    releases = _bullet(added, "**Releases.**")
-    for words in (
-        "A version tag builds the wheel and the source package, checks them, and publishes a GitHub Release with "
-        "this changelog's section.",
-        "Publishing to PyPI waits until the owner has set it up ([docs/releasing.md](docs/releasing.md)): until "
-        "then a release goes to GitHub only.",
-        "Trusted Publishing, so no token is stored anywhere",
-        "a pull request never publishes",
-        "On PyPI the README's links and pictures point to GitHub.",
-        "[Updating](README.md#updating) says how to install one release by its tag.",
-    ):
-        assert words in releases, words
-    assert (
-        added.index("**A moving checklist.**")
-        < added.index("**Open Ordnung from your app menu.**")
-        < added.index("**Releases.**")
-        < added.index("**CI checks more.**")
-    )
-
-
 def test_the_sign_in_page_and_the_isn_t_running_screen_send_you_to_your_apps_first() -> None:
-    """CHANGELOG, Unreleased → Changed, and the code it describes: the sign-in page and the web app's "isn't
-    running" / "open from its link" card name the shortcut before the commands that start Ordnung."""
-    assert (
-        "The sign-in page and the *isn't running* screen say to open Ordnung from your apps if you added it "
-        "there with `ordnung shortcut`, before the commands that start it."
-    ) in _unreleased("Changed")
+    """The sign-in page and the web app's "isn't running" / "open from its link" card name the shortcut, in the
+    same words, before the commands that start Ordnung."""
     assert OPEN_FROM_YOUR_APPS in (ROOT / "src" / "ordnung" / "api" / "security.py").read_text(
         encoding="utf-8"
     )
@@ -2912,13 +2788,11 @@ def test_the_sign_in_page_and_the_isn_t_running_screen_send_you_to_your_apps_fir
     )
 
 
-def test_the_changelog_says_serve_and_autostart_point_to_the_shortcut() -> None:
-    """CHANGELOG, Unreleased → Changed, and the CLI lines it describes: `ordnung serve` in a terminal suggests
-    the shortcut while there is none, and `ordnung autostart enable` says the app opens from the app menu too."""
-    assert (
-        "`ordnung serve` in a terminal suggests `ordnung shortcut` for its data folder while Ordnung isn't in your "
-        "app menu, and `ordnung autostart enable` says you can open the app from there too."
-    ) in _unreleased("Changed")
+def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
+    """SPEC's app-menu bullet, and the CLI lines it describes: `ordnung serve` in a terminal suggests the shortcut
+    for its data folder while there is none, and `ordnung autostart enable` says the app opens from the app menu
+    too."""
+    assert "`ordnung serve` in a terminal suggests it, for its data folder, while there is none." in _spec()
     cli = (ROOT / "src" / "ordnung" / "cli.py").read_text(encoding="utf-8")
     assert "Open it without a terminal next time: {escape(shortcut.command(data_dir))}" in cli
     assert (
@@ -3047,8 +2921,8 @@ def test_the_launchers_marks_and_exit_code_in_the_spec_are_the_module_s() -> Non
 
 
 def test_the_spec_lists_the_shortcut_module_its_command_and_the_hidden_serve_flag() -> None:
-    """SPEC: `shortcut.py` among the modules, a bullet beside start at login, and the CLI list with
-    `shortcut [--port N] [--dry-run] [--remove]` and `serve`'s hidden `--from-shortcut`."""
+    """SPEC: `shortcut.py` among the modules, a bullet beside start at login, and the CLI list with a
+    `shortcut` line and `serve`'s hidden `--from-shortcut` (``--help`` lists the other flags)."""
     raw = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
     assert "autostart.py  shortcut.py" in raw.split("notify/desktop.py", 1)[1].split("\n", 1)[0]
     spec = _spec()
@@ -3077,8 +2951,39 @@ def test_the_spec_lists_the_shortcut_module_its_command_and_the_hidden_serve_fla
 
     assert {"current", "foreign"} <= set(ShortcutInfo.model_fields)
     cli = _flat(raw.split("## 15. CLI", 1)[1].split("\n## ", 1)[0])
-    assert "`shortcut [--port N] [--dry-run] [--remove]`" in cli
-    assert "`serve` also takes a hidden `--from-shortcut`" in cli
+    assert "- `shortcut` — Ordnung in the app menu" in cli
+    assert "It also takes a hidden `--from-shortcut`, what the app-menu launcher (§ 12) runs" in cli
+
+
+def test_the_spec_lists_every_command_and_names_the_hidden_flags() -> None:
+    """SPEC § 15 has one line per command of ``ordnung`` and leaves the flags to ``ordnung <cmd> --help``,
+    which lists all of them but the hidden ones: SPEC names each of those."""
+    import typer.main
+
+    from ordnung.cli import app
+
+    cli = (
+        (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8").split("## 15. CLI", 1)[1].split("\n## ", 1)[0]
+    )
+    assert "`ordnung <cmd> --help` lists every flag but the two hidden ones named here" in cli
+    group = typer.main.get_command(app)  # typer's own click: read by attribute
+    commands = sorted(
+        name for name, command in group.commands.items() if not getattr(command, "hidden", False)
+    )
+    assert len(commands) > 10, commands
+    for name in commands:
+        assert re.search(rf"^- `{re.escape(name)}[ `]", cli, re.M), name
+
+    def hidden(command: Any) -> list[str]:
+        found = [opt for param in command.params if getattr(param, "hidden", False) for opt in param.opts]
+        for sub in getattr(command, "commands", {}).values():
+            found += hidden(sub)
+        return found
+
+    flags = hidden(group)
+    assert sorted(flags) == ["--from-shortcut", "--ledger-only"]
+    for flag in flags:
+        assert f"hidden `{flag}`" in _flat(cli), flag
 
 
 def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
@@ -3146,7 +3051,7 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch D1 — weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
+# Weekly repeats, the Windows link's target, mypy on evals/, package updates, Ask's key
 # --------------------------------------------------------------------------------------------------
 
 #: Microsoft's own page on Device encryption (it resolved on 2026-10-11, to the reader's language).
@@ -3154,27 +3059,6 @@ DEVICE_ENCRYPTION_PAGE = (
     "https://support.microsoft.com/windows/device-encryption-in-windows-cf7e2b6f-3e70-4882-9532-18633605b7df"
 )
 
-#: CHANGELOG, Unreleased → Changed: batch D1's lines.
-D1_CHANGED = (
-    "Settings → Calendar says that Google Calendar and Outlook.com take the calendar file, not calendar sync, "
-    "and *Where do I find these?* lists them with that.",
-    "Windows: the Start-menu shortcut names the Python it runs where Windows' shell reads a shortcut's target (an "
-    "ID list, as Windows' own shortcuts have); before, the shell found no target in it, though it opened it. Run "
-    "`ordnung shortcut` again to rewrite one you added before.",
-    "The web app is built with newer packages (motion 14 among them), CI and the release workflow use version 7 of "
-    "GitHub's checkout, setup-node and upload-artifact actions, and Dependabot's weekly pull requests no longer ask "
-    "for labels the repository doesn't have. TypeScript majors wait until the packages that need TypeScript take "
-    "them.",
-    "Ask no longer goes through every letter to work out the key a question is logged and replayed under when "
-    "nothing in your letters, to-dos, contracts, senders or profile changed since the last question: about 0.1 s "
-    "less per question with 500 letters, more with a bigger archive.",
-)
-
-#: CHANGELOG, Unreleased → Fixed: the waiting letter added again (only with d1-test-hygiene's worker fix).
-WAITING_READ_AGAIN = (
-    "A letter waiting for Claude that you delete for good and add again while Ordnung runs is found by the words "
-    "in its PDF again. Before, only its name found it until Claude read it."
-)
 
 #: docs/architecture.md, "Asking a question": how Ask keeps its replay key (d1-ask-memo).
 ASK_KEY_KEPT = (
@@ -3254,23 +3138,6 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_al
     with_idea_after = {ref.id for idea in after for ref in idea.refs if ref.type == "item"}
     for case, expected in early.items():
         assert (ids[case] in with_idea_after) is expected, case
-
-
-def test_the_changelog_adds_weekly_repeats_and_says_what_d1_changed() -> None:
-    """CHANGELOG, Unreleased: the repeating dates of your own (still unreleased) now repeat every week or every 2
-    weeks too, in the order the dialog offers them; Changed has D1's lines after what was there."""
-    repeats = _bullet(_unreleased("Added"), "**Dates you add yourself can repeat.**")
-    for words in (
-        "*Add a date* has a *Repeats* choice: every week or every 2 weeks on its weekday, every month on its day, "
-        "every month on a working day (the 3rd, the last …), every 3 or 6 months, or every year.",
-        "is never overdue because a week or a month went by.",
-    ):
-        assert words in repeats, words
-    changed = _unreleased("Changed")
-    for line in D1_CHANGED:
-        assert f"- {line}" in changed, line
-    assert changed.index("`ordnung serve` in a terminal suggests") < changed.index(D1_CHANGED[0])
-    assert [changed.index(line) for line in D1_CHANGED] == sorted(changed.index(line) for line in D1_CHANGED)
 
 
 def test_the_spec_lists_the_weekly_repeats_and_still_one_entry_at_the_next_day() -> None:
@@ -3415,9 +3282,9 @@ def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outl
 
 
 def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
-    """d1-windows (merged only once CI's Windows job passed) against README, SPEC, architecture and CHANGELOG: a
-    plain drive path gets an ID list right after the header, whose flags say so, and Windows' shell reading the
-    target is tested on Windows; README drops "may show no target" and claims nothing about the Properties window."""
+    """The Windows link against README, SPEC and architecture: a plain drive path gets an ID list right after the
+    header, whose flags say so, and Windows' shell reading the target is tested on Windows; README drops "may show
+    no target" and claims nothing about the Properties window."""
     appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
     windows = shortcut.plan(
         tmp_path / "data", platform="win32", env=appdata, home=tmp_path, python="C:\\Python312\\python.exe"
@@ -3445,24 +3312,10 @@ def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
         "its `.lnk` is written byte by byte in the shell link format, with the target as an ID list Windows reads, "
         "without any Windows API."
     ) in _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    assert D1_CHANGED[1] in _unreleased("Changed")
-
-
-def test_a_waiting_letter_added_again_is_read_again_where_the_changelog_says_so() -> None:
-    """d1-test-hygiene against CHANGELOG's Fixed: the line about a waiting letter added again stands exactly when
-    the worker remembers the letters it read by job (a letter deleted and added again keeps its id)."""
-    listed = WAITING_READ_AGAIN in _unreleased("Fixed")
-    by_job = "job_id" in inspect.signature(worker.IngestWorker._read_text_here).parameters
-    assert listed == by_job
-
-
-def test_the_changelog_keeps_no_note_for_the_d1_integration() -> None:
-    """The D1 integrator keeps or drops each line marked for it, then removes the mark."""
-    assert "TODO(D1 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch D2 — compressed answers, a lighter letter list and Outlook .msg files: README, the CHANGELOG,
+# Compressed answers, a lighter letter list and Outlook .msg files: README, the CHANGELOG,
 # docs/privacy.md, SPEC, docs/architecture.md and ADR 0022
 # --------------------------------------------------------------------------------------------------
 
@@ -3474,36 +3327,6 @@ _OUTLOOK_FIXTURE = ROOT / "web" / "e2e" / "fixtures" / "outlook-bill.msg"
 #: The web app's text files, which go out gzipped (``api/compress.py``'s ``FILE_TYPES``).
 _APP_TEXT_FILES = frozenset({".js", ".css", ".svg", ".txt", ".json"})
 
-#: CHANGELOG, Unreleased → Changed: compressed answers and the lighter letter list (D2).
-D2_FASTER = (
-    "Faster on a big library and on the phone: Ordnung sends its answers and the web app's files compressed "
-    "(gzip), on the demo about 6 times less data for the answers and 3 times less for the app's files. The letter "
-    "list no longer carries each letter's explanation, key facts, references and bank details; the letter's own "
-    "page loads them, and *Download a copy of your records* still has every letter whole. Live updates, downloads, "
-    "signing in and pairing are never compressed "
-    "([ADR 0022](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md))."
-)
-#: CHANGELOG, Unreleased → Upgrading: what a script reading the letter list finds now.
-D2_LIST_SCRIPTS = (
-    "A script that reads the letter list (`GET /api/documents`) no longer finds `explanation`, `key_facts`, "
-    "`references`, `payment` or `sha256` in its rows: read them from the letter (`GET /api/documents/{id}`), or "
-    "every letter whole from `GET /api/documents.json` on the computer."
-)
-#: CHANGELOG, Unreleased → Added: e-mails saved from Outlook (D2-P3), its sentences in order.
-D2_OUTLOOK = (
-    "Ordnung now takes the `.msg` file Outlook saves (an e-mail dragged to the desktop, or saved with *Save as*) "
-    "wherever it takes an `.eml`: *Add letters*, your phone, the watched folder, `ordnung add` and proof of a sent "
-    "letter.",
-    "It opens the file on your computer and keeps the e-mail as an `.eml` copy named like the file, with its "
-    "sender, date, subject and text; every attached PDF or photo becomes a letter of its own.",
-    "The `.msg` itself isn't kept, so what only Outlook has (categories, flags, formatting) is lost: keep the file "
-    "if you need it.",
-    "The same file always makes the same copy, so adding it twice finds it already in Ordnung.",
-    "Signed or encrypted e-mails, calendar entries, contacts and tasks are refused with the reason, and an e-mail "
-    "whose text Outlook kept only as RTF comes in without its text (its attachments still come in).",
-    "Before, an Outlook file was refused (the watched folder left it alone), or taken for a PDF when an attached "
-    "PDF came first in it.",
-)
 #: README's Limitations: how e-mail comes in (it replaced "it can't open Outlook's `.msg` files").
 README_EMAIL_LIMIT = (
     "E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy "
@@ -3534,27 +3357,6 @@ ADR_SECRET_RULE = (
 )
 
 
-def test_the_changelog_says_d2_compresses_answers_and_lightens_the_letter_list() -> None:
-    """CHANGELOG, Unreleased: Changed has D2's line after D1's, naming the fields the list leaves out; Upgrading
-    tells scripts where those fields are now, and they are exactly ``LEFT_OUT_OF_LIST``."""
-    from ordnung.api.routes.documents import LEFT_OUT_OF_LIST
-
-    changed = _unreleased("Changed")
-    assert f"- {D2_FASTER}" in changed
-    assert changed.index(D1_CHANGED[-1]) < changed.index(D2_FASTER)
-    assert f"- {D2_LIST_SCRIPTS}" in _unreleased("Upgrading")
-    named = D2_LIST_SCRIPTS.split("no longer finds", 1)[1].split(" in its rows", 1)[0]
-    assert set(re.findall(r"`(\w+)`", named)) == LEFT_OUT_OF_LIST
-
-
-def test_the_changelog_adds_e_mails_saved_from_outlook() -> None:
-    """CHANGELOG, Unreleased → Added: the Outlook bullet, its sentences in order."""
-    bullet = _bullet(_unreleased("Added"), "**E-mails saved from Outlook.**")
-    for sentence in D2_OUTLOOK:
-        assert sentence in bullet, sentence
-    assert [bullet.index(sentence) for sentence in D2_OUTLOOK] == sorted(bullet.index(s) for s in D2_OUTLOOK)
-
-
 def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     """SPEC § 4, § 12b and § 13: the list's rows are ``DocumentRow`` (``Document`` without ``LEFT_OUT_OF_LIST``,
     plus ``found_in``), made in the route module; ``models.DocumentListEntry``, its unused twin, is gone (ADR 0022's
@@ -3567,7 +3369,7 @@ def test_the_letter_list_and_the_records_copy_are_what_the_docs_say() -> None:
     assert documents.LEFT_OUT_OF_LIST == left_out
     assert set(documents.DocumentRow.model_fields) == (set(Document.model_fields) - left_out) | {
         "found_in",
-        "tax_choice",  # D3: the person's own "For taxes" choice (SPEC § 4, checked in Batch D3 below)
+        "tax_choice",  # the person's own "For taxes" choice (SPEC § 4, checked below)
     }
     assert not hasattr(models, "DocumentListEntry") and not hasattr(models, "SearchFoundIn")
     components = openapi_schema()["components"]["schemas"]
@@ -3832,39 +3634,20 @@ def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
         assert words in concurrency, words
 
 
-def test_the_tests_the_architecture_names_for_d2_exist() -> None:
-    """docs/architecture.md's testing strategy names D2's tests; they come with the other D2 packages."""
-    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    for path in (
-        "tests/test_compress.py",
-        "web/e2e/real-app-compression.spec.ts",
-        "web/e2e/letter-list-rows.spec.ts",
-        "tests/test_outlook.py",
-        "tests/test_outlook_intake.py",
-    ):
-        assert f"`{path}`" in architecture, path
-        assert (ROOT / path).is_file(), path
+def test_every_test_and_script_the_architecture_names_exists() -> None:
+    """Every backticked path under ``tests/``, ``web/e2e/``, ``scripts/`` or ``web/scripts/`` in
+    docs/architecture.md is a file or folder of the repository (``*`` matches as in a shell)."""
+    text = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
+    paths = sorted(set(re.findall(r"`((?:tests|web/e2e|scripts|web/scripts)/[^`\s]+)`", text)))
+    assert len(paths) > 30, paths
+    for name in paths:
+        folder, _, pattern = name.rpartition("/")
+        if "*" in pattern:
+            assert any(fnmatch.fnmatch(entry.name, pattern) for entry in (ROOT / folder).iterdir()), name
+        else:
+            assert (ROOT / name).exists(), name
 
 
-def test_the_changelog_keeps_no_note_for_the_d2_integration() -> None:
-    """No line of the CHANGELOG waits for the D2 integrator's decision any more."""
-    assert "TODO(D2 integration)" not in (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-
-
-#: CHANGELOG, Unreleased → Fixed: stopping the daily check waits for its work (d2-races).
-D2_TICK_FIXED = (
-    "Stopping Ordnung, or handing over to another computer with hand-off sync, while the daily check was at work "
-    "(the day's to-dos and Ideas, calendar sync) didn't wait for that work. It went on after the check had stopped: "
-    "the day's to-dos were no longer kept apart from a letter being read at that moment, and a hand-over could be "
-    "saved before the work ended. Stopping now waits for it, at most 10 seconds."
-)
-#: CHANGELOG, Unreleased → Fixed: hand-off sync's question settles when it is answered once more (d2-races).
-D2_SYNC_FIXED = (
-    "When two computers had answered hand-off sync's question (which computer's Ordnung to keep) apart, each "
-    "keeping its own, the question came back, as it should. But keeping the same Ordnung once more didn't settle "
-    "it: the question came back after every such answer. Now the answer given then stands. A computer whose Ordnung "
-    "another computer had already kept, exactly as it is, is no longer asked again."
-)
 #: SPEC § 9: stopping the daily tick waits for its worker thread.
 SPEC_TICK_STOP = (
     "Its work runs in worker threads, and stopping it (Ordnung stops, or hand-off sync stands this computer by) "
@@ -3880,17 +3663,9 @@ SPEC_ANSWERED_AGAIN = (
 )
 
 
-def test_the_changelog_says_what_d2_fixed_in_the_daily_check_and_hand_off_sync() -> None:
-    """CHANGELOG, Unreleased → Fixed: the daily check's stop and hand-off sync's settled question, after the
-    Windows lines; SPEC § 9 and § 12c say the same."""
-    fixed = _unreleased("Fixed")
-    for line in (D2_TICK_FIXED, D2_SYNC_FIXED):
-        assert f"- {line}" in fixed, line
-    assert (
-        fixed.index("Windows: once Ordnung has stopped")
-        < fixed.index(D2_TICK_FIXED)
-        < fixed.index(D2_SYNC_FIXED)
-    )
+def test_the_docs_say_the_daily_check_stops_after_its_work_and_an_answer_given_again_stands() -> None:
+    """SPEC § 9: stopping the daily check waits for its work; § 12c and docs/architecture.md: hand-off sync's
+    question, answered apart and then once more, settles with that answer."""
     spec = _spec()
     assert SPEC_TICK_STOP in spec.split("## 9. Secretary", 1)[1].split(" ## ", 1)[0]
     assert SPEC_ANSWERED_AGAIN in spec.split("- **Versions** (`sync/lineage.py`, `sync/decide.py`).", 1)[1]
@@ -3932,56 +3707,13 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Batch D3 — For taxes on any letter, an Inbox year filter and your household: README, the CHANGELOG,
+# For taxes on any letter, an Inbox year filter and your household: README, the CHANGELOG,
 # docs/privacy.md, SPEC, docs/architecture.md and ADR 0023
 # --------------------------------------------------------------------------------------------------
 
 _ADR_HOUSEHOLD = ROOT / "docs" / "decisions" / "0023-letters-for-your-household-are-suggested-never-filed.md"
 _ADR_WHOSE = ROOT / "docs" / "decisions" / "0025-ask-and-the-ideas-say-whose-it-is.md"
 
-#: CHANGELOG, Unreleased → Added: *For taxes* on a letter's page (d3-tax-choice), its sentences in order.
-D3_FOR_TAXES = (
-    "A letter's page has a *For taxes* button: press it to add the letter to your letters for taxes, or to take "
-    "one Claude marked off them — private letters too, and on your phone, with Undo.",
-    "Your choice stays when the letter is read again; the Tax year page, *Export letters* with *Only letters for "
-    "taxes*, the tax-season Idea and the weekly review's *Keep it with your tax papers* follow it.",
-    "Ask and *Weekly Ideas* still see Claude's own mark on each letter; the tax-season Idea, whose title *Weekly "
-    "Ideas* and the daily note send like every Idea's, follows your choice.",
-)
-#: CHANGELOG, Unreleased → Added: the Inbox's year (d3-inbox).
-D3_YEAR = (
-    "A *Year* choice next to the kind of letter shows the letters dated in that year (else arrived in it), as "
-    "the Tax year page files them; its *Letters for taxes* link then opens that year."
-)
-#: CHANGELOG, Unreleased → Added: your household (d3-household-core, d3-inbox, d3-household-surfaces), its
-#: sentences in order.
-D3_HOUSEHOLD = (
-    "Add the people whose letters come to you too, such as your partner or your children, in Settings → Profile "
-    "& address (Claude never sees the list).",
-    "A letter addressed to one of them asks *Is this letter for Alex Rivera?* — one press files it, *Change* "
-    "files it for someone else, and nothing is filed by itself "
-    "([ADR 0023](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md)).",
-    "The Inbox shows one person's letters and files the ones addressed to them at once (*File these 3 for Alex "
-    "Rivera*); Inbox and Today rows say whose letter it is; a reply to their letter can go out in their name "
-    "when they sign their own letters (for a child, it goes out in yours).",
-    "A paired phone can file letters but not change the list, and *Download a copy of your records* holds it.",
-    "Their letters' dates, reminders and numbers stay yours, and Ask and Ideas still treat them as yours.",
-)
-#: CHANGELOG, Unreleased → Upgrading: what a computer still on 0.2.0 does with the two new ``meta`` rows. (0.2.0
-#: had no addressee policy, ``secretary/addressee.py``, so its composer never offers another name.)
-D3_UPGRADING = (
-    "A computer still on 0.2.0 keeps the letters you marked or unmarked for taxes but doesn't use your choices: "
-    "its Tax year page, export and tax-season Idea go by Claude's marks alone, and a letter deleted for good "
-    "there leaves its choice behind (its id and yes or no, nothing of the letter) until you next mark or unmark "
-    "a letter on an updated computer: the same file added again on 0.2.0 meanwhile takes that choice back (on an "
-    "updated computer it starts with none). Update both computers.",
-    "A computer still on 0.2.0 keeps your household and the letters you filed for its people when it receives "
-    "them by hand-off sync or from a backup, but doesn't show them: there every letter is yours, as before. "
-    "Update both computers.",
-    "A letter deleted for good on a computer still on 0.2.0 leaves its filing behind (its id, nothing of the "
-    "letter) until an updated computer in use runs its daily check: the same file added again on 0.2.0 meanwhile "
-    "is filed as before (on an updated computer it starts unfiled).",
-)
 #: README Privacy: what of the household and the choices reaches Claude (ADR 0025).
 README_PRIVACY_WHOSE = (
     "the address and IBAN in your profile are never put into a prompt. Your household's names reach Claude only "
@@ -3996,7 +3728,7 @@ README_TAX_LIMIT = (
     "week follow it. A letter still waiting under *From your folder — not read yet* can't be marked"
 )
 #: README "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
-README_D3_ALSO = (
+README_ALSO_TAXES_HOUSEHOLD = (
     "*tax year* — a year's letters for your tax return, by the date on them; mark or unmark any letter "
     "yourself, and the Inbox shows one year at a time",
     "*your household* — file a letter for your partner or your child when Ordnung asks (it never files one by "
@@ -4052,7 +3784,7 @@ _CLAUDE_FACING = (
     ROOT / "src" / "ordnung" / "drafts" / "compose.py",
 )
 #: The names of the household and the tax choices in code.
-_D3_NAMES = frozenset(
+_CHOICE_AND_HOUSEHOLD_NAMES = frozenset(
     {
         "household",
         "tax_choice",
@@ -4063,43 +3795,27 @@ _D3_NAMES = frozenset(
         "TAX_CHOICES_META_KEY",
     }
 )
-_D3_MODULES = ("ordnung.secretary.household", "ordnung.secretary.tax_choice", "ordnung.api.routes.household")
+_CHOICE_AND_HOUSEHOLD_MODULES = (
+    "ordnung.secretary.household",
+    "ordnung.secretary.tax_choice",
+    "ordnung.api.routes.household",
+)
 #: What Ask and the weekly review may import of those modules (ADR 0025).
 _ALLOWED_IN_ASK = {"ordnung.secretary.household": {"ask_view"}, "ordnung.secretary.tax_choice": {"for_taxes"}}
 
 
-def test_the_changelog_adds_for_taxes_the_inbox_year_and_your_household() -> None:
-    """CHANGELOG, Unreleased → Added: *For taxes* on any letter, the Inbox's year and your household, their
-    sentences in order, after the Outlook e-mails and before the releases."""
-    added = _unreleased("Added")
-    for lead, sentences in (
-        ("**Mark any letter for taxes yourself.**", D3_FOR_TAXES),
-        ("**The Inbox shows one year at a time.**", (D3_YEAR,)),
-        ("**Your household.**", D3_HOUSEHOLD),
-    ):
-        bullet = _bullet(added, lead)
-        for sentence in sentences:
-            assert sentence in bullet, sentence
-        assert [bullet.index(s) for s in sentences] == sorted(bullet.index(s) for s in sentences), lead
-    assert (
-        added.index("**E-mails saved from Outlook.**")
-        < added.index("**Mark any letter for taxes yourself.**")
-        < added.index("**The Inbox shows one year at a time.**")
-        < added.index("**Your household.**")
-        < added.index("**Releases.**")
-    )
-
-
-def test_the_changelog_says_what_a_0_2_0_computer_does_with_the_choices_and_the_household() -> None:
-    """CHANGELOG, Unreleased → Upgrading, against the code: both rows are synced ``meta`` rows (0.2.0's scrub
-    deletes only its own local and demo keys, as now, so they travel through it untouched), backups keep them,
-    and no migration came with them (a 0.2.0 computer refuses a newer schema in sync and backups)."""
+def test_the_choices_and_the_household_are_synced_meta_rows_without_a_migration() -> None:
+    """SPEC § 5 against the code: the *For taxes* choices and the household are two synced ``meta`` rows (an older
+    computer's scrub deletes only its own local and demo keys, so they travel through it untouched), backups keep
+    them, and no migration came with them (``user_version`` stays 5)."""
     from ordnung.backup import archive
     from ordnung.db import store as store_module
 
-    upgrading = _unreleased("Upgrading")
-    for sentence in D3_UPGRADING:
-        assert f"- {sentence}" in upgrading, sentence
+    spec = _spec()
+    assert (
+        "The person's own choices about letters are two `meta` rows, synced like the profile (§ 12c)" in spec
+    )
+    assert "so they need no migration (`user_version` stays 5)" in spec
     keys = {store_module.TAX_CHOICES_META_KEY, store_module.HOUSEHOLD_META_KEY}
     assert keys == {"tax_choices", "household"}
     assert keys <= sync.SYNCED_META
@@ -4113,7 +3829,7 @@ def test_readme_names_for_taxes_the_inbox_year_and_your_household() -> None:
     """README: the "Also" line names *For taxes*, the Inbox's year and your household; Privacy says where the
     household and the choices reach Claude (ADR 0025); Documentation lists ADR 0023 after 0022."""
     also = _flat(_tour().split("**Also:**", 1)[1])
-    for words in README_D3_ALSO:
+    for words in README_ALSO_TAXES_HOUSEHOLD:
         assert words in also, words
     privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
     assert README_PRIVACY_WHOSE in privacy
@@ -4202,24 +3918,28 @@ def test_what_claude_is_given_reads_the_household_and_the_choices_only_as_adr_00
             continue
         if any(name == root or name.startswith(f"{root}/") for root in reads_them):
             for node in ast.walk(ast.parse(text)):
-                if isinstance(node, ast.ImportFrom) and node.module in _D3_MODULES:
+                if isinstance(node, ast.ImportFrom) and node.module in _CHOICE_AND_HOUSEHOLD_MODULES:
                     allowed = _ALLOWED_IN_ASK.get(node.module, set())
                     assert {alias.name for alias in node.names} <= allowed, name
                 elif isinstance(node, ast.Import):
-                    assert not any(alias.name.startswith(_D3_MODULES) for alias in node.names), name
+                    assert not any(
+                        alias.name.startswith(_CHOICE_AND_HOUSEHOLD_MODULES) for alias in node.names
+                    ), name
             continue
         for node in ast.walk(ast.parse(text)):
             if isinstance(node, ast.ImportFrom):
-                assert node.module not in _D3_MODULES, name
-                assert _D3_NAMES.isdisjoint(alias.name for alias in node.names), name
+                assert node.module not in _CHOICE_AND_HOUSEHOLD_MODULES, name
+                assert _CHOICE_AND_HOUSEHOLD_NAMES.isdisjoint(alias.name for alias in node.names), name
             elif isinstance(node, ast.Import):
-                assert not any(alias.name.startswith(_D3_MODULES) for alias in node.names), name
+                assert not any(
+                    alias.name.startswith(_CHOICE_AND_HOUSEHOLD_MODULES) for alias in node.names
+                ), name
             elif isinstance(node, ast.Name):
-                assert node.id not in _D3_NAMES, (name, node.id)
+                assert node.id not in _CHOICE_AND_HOUSEHOLD_NAMES, (name, node.id)
             elif isinstance(node, ast.Attribute):
-                assert node.attr not in _D3_NAMES, (name, node.attr)
+                assert node.attr not in _CHOICE_AND_HOUSEHOLD_NAMES, (name, node.attr)
             elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-                assert node.value not in _D3_NAMES, name
+                assert node.value not in _CHOICE_AND_HOUSEHOLD_NAMES, name
 
 
 def test_the_choices_and_the_household_move_ask_s_ledger_as_the_docs_say(store: Store) -> None:
@@ -4299,7 +4019,7 @@ def test_adr_0023_says_suggest_never_file_and_the_policy_cites_it() -> None:
     assert "hhm" in ids.PREFIXES
 
 
-def test_the_spec_names_the_letter_models_and_routes_d3_adds() -> None:
+def test_the_spec_names_the_route_local_letter_models_and_routes() -> None:
     """SPEC § 4, § 5, § 12c and § 13 against the code: the route-local models (``DocumentRow``'s
     ``ROUTE_FIELDS``, ``LetterDetail``, ``LetterRecord``) and what the routes answer; the two ``meta`` rows;
     ``/api/household``."""
@@ -4310,7 +4030,7 @@ def test_the_spec_names_the_letter_models_and_routes_d3_adds() -> None:
     assert set(documents.LetterDetail.model_fields) == set(models.DocumentDetail.model_fields) | {
         "tax_choice",
         "household",
-        "picture_text_pages",  # D4 (ADR 0024)
+        "picture_text_pages",  # ADR 0024
     }
     assert set(documents.LetterRecord.model_fields) == set(Document.model_fields) | {"tax_choice"}
     paths = openapi_schema()["paths"]
@@ -4449,7 +4169,7 @@ async def test_the_household_files_a_letter_only_on_a_press_as_the_docs_say(data
 
 #: The words the docs quote from the pages, and the file each is in (d3-tax-choice, d3-household-core, d3-inbox,
 #: d3-household-surfaces).
-_D3_PAGE_WORDS = (
+_CHOICE_AND_HOUSEHOLD_PAGE_WORDS = (
     ("features/document/TaxToggle.tsx", "You marked this letter for taxes."),
     (
         "features/document/TaxToggle.tsx",
@@ -4474,30 +4194,12 @@ _D3_PAGE_WORDS = (
 def test_the_pages_say_what_the_docs_quote() -> None:
     """The words SPEC, README, the CHANGELOG and docs/privacy.md quote from the pages are the pages' own."""
     web = ROOT / "web" / "src"
-    for path, words in _D3_PAGE_WORDS:
+    for path, words in _CHOICE_AND_HOUSEHOLD_PAGE_WORDS:
         assert words in (web / path).read_text(encoding="utf-8"), (path, words)
 
 
-def test_the_tests_the_architecture_names_for_d3_exist() -> None:
-    """docs/architecture.md's testing strategy names D3's tests; they come with the other D3 packages."""
-    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    for path in (
-        "tests/test_store_choices.py",
-        "tests/test_tax_choice.py",
-        "tests/test_household.py",
-        "tests/test_api_household.py",
-        "tests/test_household_vectors.py",
-        "web/src/mocks/householdVectors.json",
-        "web/e2e/real-app-household.spec.ts",
-        "web/e2e/tax-toggle-layout.spec.ts",
-        "web/e2e/real-app-export.spec.ts",
-    ):
-        assert f"`{path}`" in architecture, path
-        assert (ROOT / path).is_file(), path
-
-
 # --------------------------------------------------------------------------------------------------
-# Batch D4 — words in private photos are searchable, with Tesseract if the person installs it: README,
+# Words in private photos are searchable, with Tesseract if the person installs it: README,
 # the CHANGELOG, CONTRIBUTING.md, docs/privacy.md, SPEC, docs/architecture.md and ADR 0024
 # --------------------------------------------------------------------------------------------------
 
@@ -4516,27 +4218,6 @@ PICTURE_TEXT_NOTE = (
 )
 #: The ADR's link, as README and the CHANGELOG write it.
 _ADR_PICTURES_LINK = f"[ADR 0024](docs/decisions/{_ADR_PICTURES.name})"
-#: CHANGELOG, Unreleased → Added: words in private photos (the whole of D4), its sentences in order.
-D4_ADDED = (
-    "With Tesseract installed, a free program Ordnung doesn't install, Ordnung reads the words in the photos and "
-    "scans Claude isn't reading: kept private, waiting from your watched folder or for Claude, or that couldn't "
-    "be read.",
-    "Tesseract runs on the computer Ordnung runs on, one page at a time at low priority, and nothing is sent "
-    "anywhere to read a picture.",
-    "The words are kept with the letter's page images for search only: a letter found that way says *Found in "
-    "text Ordnung read from the picture — not checked*, and its page says which of its pages Ordnung read.",
-    "They are never shown as the letter's words, never used to check a date or an amount, and never sent to "
-    "Claude; Ask doesn't search them.",
-    "Once Claude reads a page, what Ordnung read there is removed.",
-    "`ordnung doctor` says whether Ordnung found Tesseract (*Text in pictures*) and how to install it, and "
-    f"`ORDNUNG_OCR=off` turns it off ({_ADR_PICTURES_LINK}).",
-)
-#: CHANGELOG, Unreleased → Upgrading: Tesseract is the person's to install; what a 0.2.0 computer does.
-D4_UPGRADING = (
-    "Tesseract is optional and Ordnung doesn't install it; `ordnung doctor` gives the line for your system. A "
-    "computer still on 0.2.0 finds a private photo only by its name, as before, and deletes the words Ordnung "
-    "read in it with the letter."
-)
 #: README Install: the paragraph on text in pictures, before and after its install lines.
 README_PICTURES = (
     "**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or "
@@ -4655,18 +4336,6 @@ ARCHITECTURE_PICTURES = (
     "No database row is written, so Ask's fingerprint, the ledger token and the benchmark's inputs stay as they "
     "were.",
 )
-#: The tests docs/architecture.md names for D4 (they come with the other D4 packages).
-D4_TESTS = (
-    "tests/fake_tesseract.py",
-    "tests/test_ocr.py",
-    "tests/test_picture_text.py",
-    "tests/test_picture_text_ask.py",
-    "tests/test_worker_pictures.py",
-    "tests/test_doctor_pictures.py",
-    "web/e2e/real-app-pictures.spec.ts",
-    "tests/test_photo_fixture.py",
-    "scripts/make_photo_fixture.py",
-)
 #: An import of the engine, in any of its forms.
 _IMPORTS_OCR = re.compile(
     r"^\s*(?:from ordnung\.ingest import .*\bocr\b|from ordnung\.ingest\.ocr |import ordnung\.ingest\.ocr)",
@@ -4685,23 +4354,6 @@ def _readme_pictures() -> str:
     return _flat(
         install.split("**Words in photos (optional).**", 1)[1].split("\n**Without a terminal.**", 1)[0]
     )
-
-
-def test_the_changelog_adds_words_in_private_photos() -> None:
-    """CHANGELOG, Unreleased → Added: words in private photos, its sentences in order, after your household and
-    before the releases; Upgrading: Tesseract is the person's to install, and what a computer on 0.2.0 does."""
-    added = _unreleased("Added")
-    bullet = _bullet(added, "**Words in private photos are searchable (optional).**")
-    for sentence in D4_ADDED:
-        assert sentence in bullet, sentence
-    assert [bullet.index(s) for s in D4_ADDED] == sorted(bullet.index(s) for s in D4_ADDED)
-    assert "computer only" not in bullet and "on your computer" not in bullet
-    assert (
-        added.index("**Your household.**")
-        < added.index("**Words in private photos are searchable (optional).**")
-        < added.index("**Releases.**")
-    )
-    assert f"- {D4_UPGRADING}" in _unreleased("Upgrading")
 
 
 def test_readme_says_what_text_in_pictures_finds_and_misses() -> None:
@@ -4896,7 +4548,7 @@ def test_the_spec_and_architecture_describe_text_in_pictures() -> None:
     assert "picture_text_pages" in documents.LetterDetail.model_fields
     assert "picture_text_pages" not in models.DocumentDetail.model_fields
     spec = _spec()
-    assert spec.count(SPEC_OCR_CUT) == 2
+    assert spec.count(SPEC_OCR_CUT) == 1
     for words in SPEC_PICTURES:
         assert words in spec, words
     architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
@@ -4968,23 +4620,15 @@ def test_the_pages_say_what_the_docs_quote_about_pictures() -> None:
     assert "Ordnung read the words in this photo itself, " + PICTURE_TEXT_NOTE in _adr(_ADR_PICTURES)
 
 
-def test_the_tests_the_architecture_names_for_d4_exist() -> None:
-    """docs/architecture.md's testing strategy names D4's tests; they come with the other D4 packages."""
-    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
-    for path in D4_TESTS:
-        assert f"`{path}`" in architecture, path
-        assert (ROOT / path).is_file(), path
-
-
 # --------------------------------------------------------------------------------------------------
-# Batch E2 — Ask and the Ideas say whose it is, Ask follows For taxes and knows how dates repeat, a Text in
+# Ask and the Ideas say whose it is, Ask follows For taxes and knows how dates repeat, a Text in
 # pictures switch, doctor info rows: README, the CHANGELOG, docs/privacy.md, SPEC, docs/architecture.md,
 # CONTRIBUTING and ADRs 0022 to 0025
 # --------------------------------------------------------------------------------------------------
 
 _ADR_WHOSE_LINK = f"[ADR 0025](docs/decisions/{_ADR_WHOSE.name})"
 #: CHANGELOG, Unreleased → Added: My numbers per person (e2-numbers), its sentences in order.
-E2_WHOSE_NUMBER = (
+UNRELEASED_WHOSE_NUMBER = (
     "A number from a letter you filed for someone in your household is listed under *About Alex Rivera* on My "
     "numbers, whose first tab is then *People*.",
     'A number that letters for two of you show says "Also on letters for Alex Rivera — check whose it is", and a '
@@ -4992,7 +4636,7 @@ E2_WHOSE_NUMBER = (
     "On a paired phone their numbers show only their last 4 characters, like yours.",
 )
 #: CHANGELOG, Unreleased → Added: Ask, the Ideas, reminders and the Timeline (e2-ask, e2-ideas-whose).
-E2_WHOSE_SAID = (
+UNRELEASED_WHOSE_SAID = (
     "Ask is told who is in your household, which letters you filed for whom and whose each number is; letters you "
     "keep private stay out.",
     "An Idea about their letters names them (*Alex Rivera's passport expires …*, *For Alex Rivera: …*), unless "
@@ -5004,14 +4648,14 @@ E2_WHOSE_SAID = (
     f"Ordnung still files a letter only when you say so ({_ADR_WHOSE_LINK}).",
 )
 #: CHANGELOG, Unreleased → Added: repeat fields in Ask's records (e2-ask).
-E2_REPEATS = (
+UNRELEASED_REPEATS = (
     "For a to-do or date that repeats, Ask is told how, in the words the app uses (*every month on the 3rd working "
     "day*), and the date it moves on to once you mark this one done — also for a date you moved by hand, whose "
     "schedule carries on after it.",
     "A rent a later rent replaces says from which month.",
 )
 #: CHANGELOG, Unreleased → Added: the Settings switch (e2-pictures-intake).
-E2_SWITCH = (
+UNRELEASED_PICTURE_SWITCH = (
     "Settings → Data → *Text in pictures* turns off reading the words in photos and scans Claude isn't reading.",
     "It counts at once: a reading under way stops and the words read before are deleted; turned on again, Ordnung "
     "starts reading and looks for Tesseract afresh.",
@@ -5020,14 +4664,14 @@ E2_SWITCH = (
     "With hand-off sync the switch travels with your settings.",
 )
 #: CHANGELOG, Unreleased → Changed: Ask and the weekly Ideas follow *For taxes* (e2-ask).
-E2_FOR_TAXES = (
+UNRELEASED_FOR_TAXES = (
     "A letter you took off your letters for taxes no longer reaches them as one for taxes, and Ask no longer gets "
     "Claude's note on why it could matter for your tax return; a letter you marked yourself reaches them as one "
     "for taxes, and Ask is told you marked it.",
     "Letters you keep private stay private: neither sees anything of them, your choice included.",
 )
 #: CHANGELOG, Unreleased → Changed: the other lines.
-E2_CHANGED = (
+UNRELEASED_CHANGED = (
     "`ordnung doctor` marks a row that is neither fine nor a problem as info (`i`): Tesseract not installed, text "
     "in pictures turned off, and on Windows a new *Disk encryption* row that says where to check BitLocker or "
     "Device encryption, which Ordnung can't read there. An info row never fails the check, and its fix is printed "
@@ -5038,7 +4682,7 @@ E2_CHANGED = (
     "recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.",
 )
 #: CHANGELOG, Unreleased → Fixed (e2-ideas-whose, e2-pictures-intake).
-E2_FIXED = (
+UNRELEASED_FIXED = (
     "*Renew your passport before extending your residence permit* pairs a passport and a residence permit of the "
     "same person, and the student permit card reads only your own residence permit: a letter filed for someone "
     "of your household no longer counts as yours there.",
@@ -5046,7 +4690,7 @@ E2_FIXED = (
     "it reaches the reading without being opened as an e-mail, Ordnung says what it is and how to add it.",
 )
 #: CHANGELOG, Unreleased → Upgrading: what a computer still on 0.3.0 does.
-E2_UPGRADING = (
+UNRELEASED_UPGRADING = (
     "A computer still on 0.3.0 shows every number as yours and the Ideas' titles without names, and Ideas it "
     "refreshes lose the name until an updated computer refreshes them. Update both computers.",
     "A computer still on 0.3.0 doesn't know the *Text in pictures* switch: it reads pictures as its `ORDNUNG_OCR` "
@@ -5072,7 +4716,7 @@ SPEC_NOT_BUILT = (
 )
 
 
-def test_the_changelog_says_what_e2_adds_changes_and_fixes() -> None:
+def test_the_unreleased_changelog_says_what_the_code_does() -> None:
     """CHANGELOG, Unreleased: My numbers per person, whose it is in Ask, the Ideas, reminders and the Timeline,
     repeat fields, the Settings switch (Added); For taxes in Ask and the review, info rows, the `.msg` message,
     the demo (Changed); the passport rule and an unopened Outlook file (Fixed); what 0.3.0 does (Upgrading) —
@@ -5083,10 +4727,10 @@ def test_the_changelog_says_what_e2_adds_changes_and_fixes() -> None:
 
     added = _unreleased("Added")
     for lead, sentences in (
-        ("**Whose number it is.**", E2_WHOSE_NUMBER),
-        ("**Ask, the Ideas, your reminders and the Timeline say whose it is.**", E2_WHOSE_SAID),
-        ("**Ask knows how your dates repeat.**", E2_REPEATS),
-        ("**Text in pictures can be turned off in Settings.**", E2_SWITCH),
+        ("**Whose number it is.**", UNRELEASED_WHOSE_NUMBER),
+        ("**Ask, the Ideas, your reminders and the Timeline say whose it is.**", UNRELEASED_WHOSE_SAID),
+        ("**Ask knows how your dates repeat.**", UNRELEASED_REPEATS),
+        ("**Text in pictures can be turned off in Settings.**", UNRELEASED_PICTURE_SWITCH),
     ):
         bullet = _bullet(added, lead)
         for sentence in sentences:
@@ -5094,15 +4738,15 @@ def test_the_changelog_says_what_e2_adds_changes_and_fixes() -> None:
         assert [bullet.index(s) for s in sentences] == sorted(bullet.index(s) for s in sentences), lead
     changed = _unreleased("Changed")
     bullet = _bullet(changed, "**Ask and *Weekly Ideas* follow your *For taxes* choice.**")
-    for sentence in E2_FOR_TAXES:
+    for sentence in UNRELEASED_FOR_TAXES:
         assert sentence in bullet, sentence
-    for sentence in E2_CHANGED:
+    for sentence in UNRELEASED_CHANGED:
         assert f"- {sentence}" in changed, sentence
     fixed = _unreleased("Fixed")
-    for sentence in E2_FIXED:
+    for sentence in UNRELEASED_FIXED:
         assert f"- {sentence}" in fixed, sentence
     upgrading = _unreleased("Upgrading")
-    for sentence in E2_UPGRADING:
+    for sentence in UNRELEASED_UPGRADING:
         assert f"- {sentence}" in upgrading, sentence
     # the words are the code's
     web = ROOT / "web" / "src"
@@ -5169,16 +4813,18 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
 
 
 def test_the_spec_says_what_was_decided_not_to_build() -> None:
-    """SPEC § 2: after the cut list, a paragraph of what was decided not to build after 0.3.0 (#37's deferred
-    list), one line each; a deferred one says so."""
+    """SPEC § 2: after what was cut from the first version, a paragraph of what was decided not to build after
+    0.3.0 (#37's deferred list), one line each; a deferred one says so."""
     spec = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
-    section = _flat(spec.split("## 2. Release plan", 1)[1].split("\n## 3.", 1)[0])
+    section = _flat(spec.split("## 2. Not built", 1)[1].split("\n## 3.", 1)[0])
     paragraph = section.split("**Decided not to build (after 0.3.0, #37's deferred list):**", 1)[1]
     places = [paragraph.index(f"- {lead}") for lead in SPEC_NOT_BUILT]
     assert places == sorted(places)
     # built after the household group's first recording (ADR 0025): no longer deferred
     assert "Ask tool-description clauses for the household" not in paragraph
-    assert section.index("**Cut (v1.1+):**") < section.index("**Decided not to build")
+    assert section.index("**Cut from the first version, and not built since:**") < section.index(
+        "**Decided not to build"
+    )
 
 
 def test_the_docs_say_whose_a_number_an_idea_and_a_date_is() -> None:
@@ -5337,8 +4983,8 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
 
 
 def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
-    """README's demo line and SPEC §15's synopsis name ``ordnung demo``'s own port (``server.DEMO_PORT``), so
-    the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    """README's demo line and SPEC §15's lines for ``serve`` and ``demo`` name ``ordnung demo``'s own port
+    (``server.DEMO_PORT``), so the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
     from ordnung.server import DEFAULT_PORT, DEMO_PORT
 
     assert DEMO_PORT != DEFAULT_PORT
@@ -5346,10 +4992,10 @@ def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
         f"ordnung demo                                             # opens http://127.0.0.1:{DEMO_PORT} "
         in _readme()
     )
-    synopsis = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
-    serve = synopsis.split("`serve ", 1)[1].split("`", 1)[0]
-    demo = synopsis.split("`demo ", 1)[1].split("`", 1)[0]
-    assert f"[--port {DEFAULT_PORT}]" in serve and f"[--port {DEMO_PORT}]" in demo
+    commands = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
+    serve = commands.split("- `serve` — ", 1)[1].split(" - `", 1)[0]
+    demo = commands.split("- `demo` — ", 1)[1].split(" - `", 1)[0]
+    assert f"`127.0.0.1:{DEFAULT_PORT}`" in serve and f"`127.0.0.1:{DEMO_PORT}`" in demo
 
 
 def test_spec_says_what_a_checked_letter_gets_back() -> None:
