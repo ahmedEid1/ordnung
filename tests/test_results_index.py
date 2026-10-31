@@ -857,3 +857,64 @@ def test_check_fails_on_an_edited_results_file_a_stale_csv_or_a_failed_check(
     )
     assert _main(results, tmp_path, "--check") == 1
     assert f"{SMALL[0]}: sha256" in capsys.readouterr().err
+
+
+def test_a_run_as_recorded_is_pinned_by_its_sha256_and_write_cannot_take_new_bytes_silently(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A recording is never rewritten. A live Ask run as recorded is checked with the answers its own day's check gave
+    (``--check-docs`` reads them from the file), so its bytes are what pins it: one whose bytes moved since INDEX.json
+    pinned them fails --check, and --write does not take them silently but records the move with an empty reason
+    (``sha256_moved``), as a replay's moved metrics are; --check fails until a person gives it."""
+    name = "2026-10-30-claude-sonnet-5-ask.json"
+    results = _copy_results(tmp_path, [SMALL[0], name])
+    _stand_in(tmp_path, monkeypatch, results, fixed=False)
+    assert _main(results, tmp_path, "--write") == 0
+    pinned = reproduce.sha256_file(results / name)
+    # one kept answer edited and its scores made to match: what --check-docs alone accepts
+    path = results / name
+    data = json.loads(path.read_text(encoding="utf-8"))
+    entry = next(item for item in data["questions"] if item["id"] == "deadline-arbeitsvertrag_werkstudent-0")
+    entry["turn"].update(final="I can't find that in your records.", cited=[], claims=[])
+    entry["scores"]["correct_final"] = False
+    data["summary"]["accuracy"]["k"] -= 1
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    capsys.readouterr()
+    assert _main(results, tmp_path, "--check") == 1
+    assert f"{name}: a run as recorded is never rewritten" in capsys.readouterr().err
+    assert _main(results, tmp_path, "--write") == 1
+    err = capsys.readouterr().err
+    assert f"{name}: a run as recorded is never rewritten" in err and "undeclared" in err
+    index = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    row = next(row for row in index["results"] if row["file"] == name)
+    assert row["sha256"] == reproduce.sha256_file(path) != pinned
+    assert row["sha256_moved"] == {"from": pinned, "because": ""}
+    assert _main(results, tmp_path, "--check") == 1  # even after --write
+    assert "undeclared" in capsys.readouterr().err
+    # a person declares it: the check passes, and a second --write keeps the reason
+    row["sha256_moved"]["because"] = "edited by hand (this test)"
+    (results / "INDEX.json").write_text(json.dumps(index, indent=1) + "\n", encoding="utf-8")
+    assert _main(results, tmp_path, "--check") == 0
+    assert _main(results, tmp_path, "--write") == 0
+    kept = json.loads((results / "INDEX.json").read_text(encoding="utf-8"))
+    assert next(row for row in kept["results"] if row["file"] == name)["sha256_moved"] == {
+        "from": pinned,
+        "because": "edited by hand (this test)",
+    }
+
+
+def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) -> None:
+    """The committed index pins every live Ask run as recorded, and declares any move of one with its reason."""
+    recorded = [name for name, row in rows.items() if reproduce.is_as_recorded(row)]
+    assert sorted(recorded) == [
+        "2026-09-29-sonnet-ask.json",
+        "2026-09-30-claude-sonnet-5-ask.json",
+        "2026-10-01-claude-sonnet-5-ask.json",
+        "2026-10-30-claude-sonnet-5-ask.json",
+    ]
+    for name in recorded:
+        moved = rows[name].get("sha256_moved")
+        assert moved is None or re.search(
+            r"\b[0-9a-f]{7,40}\b|ADR \d{4}|\d{4}-\d{2}-\d{2}-[\w.-]+\.json", moved["because"]
+        ), name
+    assert not any("sha256_moved" in row for name, row in rows.items() if name not in recorded)

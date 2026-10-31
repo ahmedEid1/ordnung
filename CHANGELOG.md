@@ -56,8 +56,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   paired test against the same model doing the date arithmetic itself, and add what the checks are worth (each
   turned off in turn), how many real obligations get a reminder from letter to calendar, Ask's strict score
   with its harmful answers, and where Ordnung falls short. `make eval-reproduce` replays every published number
-  with no API key and checks it against `evals/results/INDEX.json`; every recorded request is checked against a
-  lock file, and a new recording takes the day it is made as the benchmark's today.
+  with no API key and checks it against `evals/results/INDEX.json`, where a recorded Ask run's hash moves only
+  with a reason given; every recorded request is checked against a lock file, and a new recording takes the day
+  it is made as the benchmark's today.
 
 ### Fixed
 

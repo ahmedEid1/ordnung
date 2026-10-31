@@ -26,7 +26,10 @@ changed it (``because``: a commit, an ADR or the re-scored results file that sho
 pages and gates read (dates right, late, missed) that moved by more than its dates did. Each condition also pins a
 digest of the replay's metrics (``metrics_at_head``), so a number cannot move under a field that already drifts by
 name: ``--check`` fails when it moves, and ``--write`` records the move with an empty reason (``metrics_moved``). A run of another model can't be replayed (its
-recordings are not in the repository) and an older summary is superseded: both are checked by hash. The index also
+recordings are not in the repository) and an older summary is superseded: both are checked by hash. A live Ask run as
+recorded is never rewritten, and ``--check-docs`` checks it with the answers its own day's check gave, read from the
+file: so its sha256 is pinned like a replay's metrics — ``--check`` fails when it moves, and ``--write`` records the
+move with an empty reason (``sha256_moved``). The index also
 pins the dataset's and the recordings' hashes, the CI gates (read from ``.github/workflows/ci.yml``) and every cell.
 
 ``--check`` exits 1 on any difference INDEX.json doesn't declare, a hash that moved, a failed check, a gate missed or a
@@ -513,8 +516,47 @@ def static_index(results_dir: Path = RESULTS_DIR, *, ci: Path = CI_PATH) -> dict
 DYNAMIC = ("verdict", "conditions")
 
 
+def is_as_recorded(row: Mapping[str, Any]) -> bool:
+    """Whether a row is a live Ask run as recorded (of either schema; a re-scoring is the replay's): a recording is
+    never rewritten, so its sha256 is pinned (:func:`pin_recordings`)."""
+    return row.get("kind") == "ask" and (row.get("recorded") or {}).get("backend") == "live"
+
+
+def _rewritten(row: Mapping[str, Any]) -> str | None:
+    """The problem with a declared move of a run as recorded that has no reason yet."""
+    moved = row.get("sha256_moved")
+    if moved is None or str(moved.get("because", "")).strip():
+        return None
+    return (
+        f"{row['file']}: a run as recorded is never rewritten, but its sha256 moved since {INDEX_NAME} pinned it "
+        f"(was {moved.get('from')}), undeclared: restore its bytes, or say in its sha256_moved.because which commit "
+        "or ADR changed it"
+    )
+
+
+def pin_recordings(fresh: dict[str, Any], committed: Mapping[str, Any] | None) -> list[str]:
+    """``--write``: a run as recorded whose sha256 moved since the committed index pinned it gets the move with an
+    empty reason (``sha256_moved``), which a person gives; a declared move stays while the bytes do. The problems
+    of the moves that have no reason."""
+    old_rows = {row["file"]: row for row in (committed or {}).get("results", [])}
+    problems = []
+    for row in fresh["results"]:
+        old = old_rows.get(row["file"])
+        if old is None or not is_as_recorded(row):
+            continue
+        if old.get("sha256") != row["sha256"]:
+            row["sha256_moved"] = {"from": old.get("sha256"), "because": ""}
+        elif old.get("sha256_moved") is not None:
+            row["sha256_moved"] = dict(old["sha256_moved"])
+        problem = _rewritten(row)
+        if problem:
+            problems.append(problem)
+    return problems
+
+
 def static_problems(committed: Mapping[str, Any], fresh: Mapping[str, Any]) -> list[str]:
-    """Where the committed index's static part differs from the checkout's (empty when it doesn't)."""
+    """Where the committed index's static part differs from the checkout's (empty when it doesn't); and a run as
+    recorded whose bytes moved, or whose declared move has no reason."""
     problems = [
         f"{INDEX_NAME}: {key} is not what the checkout gives: run python -m evals.reproduce --write"
         for key in ("schema", "pinned_model", "dataset", "recordings", "gates", "cells")
@@ -530,7 +572,17 @@ def static_problems(committed: Mapping[str, Any], fresh: Mapping[str, Any]) -> l
     for name in sorted(rows.keys() & fresh_rows.keys()):
         for key, value in fresh_rows[name].items():
             if key not in DYNAMIC and rows[name].get(key) != value:
+                if key == "sha256" and is_as_recorded(fresh_rows[name]):
+                    problems.append(
+                        f"{name}: a run as recorded is never rewritten, but its sha256 is not the one {INDEX_NAME} "
+                        "pinned: restore its bytes, or run --write and say in its sha256_moved.because which commit "
+                        "or ADR changed it"
+                    )
+                    continue
                 problems.append(f"{name}: {key} is not what the file gives (in {INDEX_NAME}: run --write)")
+        rewritten = _rewritten(rows[name])
+        if rewritten:
+            problems.append(rewritten)
     if [row["file"] for row in committed.get("results", [])] != sorted(rows):
         problems.append(f"{INDEX_NAME}: its rows are not in file order")
     return problems
@@ -1312,6 +1364,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"recordings {name}: some were answered by another model than {DEFAULT_MODEL}" for name in served
         ]
         if args.write:
+            problems += pin_recordings(fresh, committed)
             index_path.write_text(dumps_index(fresh), encoding="utf-8")
             export.write(results_dir, items_path)
             say(f"wrote {index_path} and {items_path}")
