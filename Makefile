@@ -3,7 +3,12 @@ UV ?= uv
 SAMPLES_MANIFEST = src/ordnung/demo/samples/manifest.json
 DE_ZIP ?= DE.zip
 
-.PHONY: install dev web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints clean
+.PHONY: help install web-dev serve test lint typecheck check build-web openapi demo eval eval-reproduce browser e2e ui-audit capture samples postcodes constraints clean
+
+.DEFAULT_GOAL := help
+
+help:               ## list the targets and what each does (a bare `make` does this too)
+	@awk 'BEGIN { FS = ":[^#]*## " } /^[a-z][a-z0-9-]*:[^=#]*## / { printf "  %-15s %s\n", $$1, $$2 }' $(firstword $(MAKEFILE_LIST))
 
 install:            ## install backend (editable, dev extras, the versions CI pins) and frontend deps
 	$(UV) venv -q .venv || true
@@ -21,12 +26,12 @@ test:               ## backend tests + frontend unit tests
 	$(PY) -m pytest -m slow
 	cd web && npm test
 
-lint:
+lint:               ## ruff (lint, and the format check) over src, tests, scripts and evals; the web app's ESLint
 	$(PY) -m ruff check src tests scripts evals
 	$(PY) -m ruff format --check src tests scripts evals
 	cd web && npm run lint
 
-typecheck:
+typecheck:          ## mypy (strict, over the files pyproject.toml names); the web app's TypeScript check
 	$(PY) -m mypy
 	cd web && npm run typecheck
 
@@ -39,7 +44,7 @@ openapi:            ## regenerate web/openapi.json and TS types from the FastAPI
 	.venv/bin/ordnung openapi > web/openapi.json
 	cd web && npm run gen:api
 
-samples:            ## regenerate the fictional sample life + eval dataset
+samples:            ## regenerate the demo's fictional sample life (src/ordnung/demo/samples)
 	$(PY) scripts/make_sample_life.py
 
 postcodes:          ## rebuild the postcode table from GeoNames' DE.zip (download it first; DE_ZIP=path, --check: CHECK=1)
@@ -53,7 +58,7 @@ constraints:        ## re-pin what CI and `make install` install (CONSTRAINTS_AR
 demo:               ## explore the sample life (replayed model outputs, zero tokens)
 	.venv/bin/ordnung demo --serve
 
-eval:               ## recompute benchmark metrics from recorded outputs
+eval:               ## replay the test split from its recordings (no model call) into evals/results/<today>-claude-sonnet-5-test.json
 	.venv/bin/ordnung eval
 
 eval-reproduce:     ## replay every published number (no model call, no API key) and compare with evals/results/INDEX.json

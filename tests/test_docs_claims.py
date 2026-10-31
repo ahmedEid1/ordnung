@@ -137,7 +137,7 @@ def test_mypy_is_strict_on_the_rules_engine() -> None:
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert re.search(r"run: \.venv/bin/mypy\n", ci)
     assert re.search(
-        r"^typecheck:\n\t\$\(PY\) -m mypy\n", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M
+        r"^typecheck:[^\n]*\n\t\$\(PY\) -m mypy\n", (ROOT / "Makefile").read_text(encoding="utf-8"), re.M
     )
 
 
