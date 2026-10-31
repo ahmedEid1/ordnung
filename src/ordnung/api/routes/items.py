@@ -17,12 +17,12 @@ from datetime import date, timedelta
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 from ordnung.api.deps import CtxDep, StoreDep, TodayDep
 from ordnung.api.routes.common import IsoDate, ledger_changed, require, set_aside
 from ordnung.api.routes.dates import date_nature, manual_date_fields, refresh_review_status, schedule_spec
-from ordnung.calendar.ics import build_ics
+from ordnung.calendar.ics import TooFarAhead, build_ics
 from ordnung.clock import now_iso
 from ordnung.db.store import Store
 from ordnung.ingest.plan import item_context, item_contexts
@@ -39,6 +39,7 @@ from ordnung.models import (
 from ordnung.payments import is_collected_or_incoming, pays_on_site
 from ordnung.recurrence import (
     SCHEDULE_FIELDS,
+    NoNextDate,
     first_scheduled,
     kept_occurrence,
     mark_done,
@@ -60,6 +61,16 @@ NOT_FOUND = "Unknown to-do."
 DEFAULT_SNOOZE_DAYS = 7
 _CONTENT_FIELDS = ("title", "description", "due_time", "amount", "priority", "area", "location", "recurrence")
 _TIME_PATTERN = r"^([01]\d|2[0-3]):[0-5]\d$"
+#: How often a to-do added or changed by hand may repeat: every 1 to 120 days, weeks, months or years. Checked
+#: here, not in :class:`~ordnung.models.Recurrence`: its JSON schema is part of the extraction prompt's.
+REPEAT_INTERVALS = range(1, 121)
+REPEAT_INTERVAL_MESSAGE = "A date repeats every 1 to 120 days, weeks, months or years."
+
+
+def _repeat_interval(recurrence: Recurrence | None) -> Recurrence | None:
+    if recurrence is not None and recurrence.interval not in REPEAT_INTERVALS:
+        raise ValueError(REPEAT_INTERVAL_MESSAGE)
+    return recurrence
 
 
 class ItemCreate(BaseModel):
@@ -84,6 +95,8 @@ class ItemCreate(BaseModel):
     doc_id: str | None = None
     location: str | None = None
 
+    _repeats = field_validator("recurrence")(_repeat_interval)
+
 
 class ItemPatch(BaseModel):
     """Edits to a to-do; ``notes`` is accepted as another name for ``description``."""
@@ -101,6 +114,8 @@ class ItemPatch(BaseModel):
     area: Area | None = None
     location: str | None = None
     recurrence: Recurrence | None = None
+
+    _repeats = field_validator("recurrence")(_repeat_interval)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -150,6 +165,8 @@ def item_ics(item_id: str, store: StoreDep) -> Response:
     require(store.get_item(item_id), NOT_FOUND)
     try:
         body = build_ics(store, only_item_id=item_id, include_done=True)
+    except TooFarAhead as exc:  # its event would end after 31 Dec 9999
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT, "This to-do has no date to put in a calendar."
@@ -184,6 +201,10 @@ def _check_links(store: Store, fields: dict[str, Any]) -> None:
             require(lookup(fields[name]), message)
 
 
+#: A schedule that can't reach today from its date (:class:`~ordnung.recurrence.NoNextDate`: a misread year, a typo).
+TOO_FAR_BACK = "This date is too far in the past to repeat from: choose a later one."
+
+
 def _create(store: Store, body: ItemCreate, today: date) -> Item:
     fields = body.model_dump()
     _check_links(store, fields)
@@ -201,13 +222,16 @@ def _create(store: Store, body: ItemCreate, today: date) -> Item:
     )
     if due is not None and body.recurrence is not None:
         dates["date_spec"] = schedule_spec(due, nature)
-    with store.tx():
-        item = store.add_item(
-            **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
-        )
-        if body.recurrence is not None:
-            item = _scheduled_start(store, item, today)
-        return _follow_schedule(store, item, today)
+    try:
+        with store.tx():
+            item = store.add_item(
+                **{**fields, **dates, "grounding": "user", "origin": "manual", "filed_on": today.isoformat()}
+            )
+            if body.recurrence is not None:
+                item = _scheduled_start(store, item, today)
+            return _follow_schedule(store, item, today)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
 
 
 @router.post("/items", response_model=Item, status_code=status.HTTP_201_CREATED)
@@ -368,12 +392,15 @@ def _update(store: Store, item_id: str, patch: ItemPatch, today: date) -> Item:
     # a rent at its last occurrence, which stays done until set open again: recurrence.py, point 9)
     reopened = item.status in ("open", "done") and fields.get("status") == "open"
     done = item.status != "done" and fields.get("status") == "done"
-    with store.tx():
-        updated = store.update_item(item_id, **fields)
-        if restart:
-            updated = _scheduled_start(store, updated, today)
-        updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
-        refresh_review_status(store, updated.doc_id)
+    try:
+        with store.tx():
+            updated = store.update_item(item_id, **fields)
+            if restart:
+                updated = _scheduled_start(store, updated, today)
+            updated = _follow_schedule(store, updated, today, done=done, reopened=reopened)
+            refresh_review_status(store, updated.doc_id)
+    except NoNextDate as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, TOO_FAR_BACK) from exc
     return updated
 
 

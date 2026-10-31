@@ -36,7 +36,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-__all__ = ["TIMEOUT_S", "Answer", "Encryption", "disk_encryption"]
+__all__ = ["TIMEOUT_S", "Answer", "Encryption", "disk_encryption", "existing_ancestor"]
 
 TIMEOUT_S = 5.0
 FDESETUP = "/usr/bin/fdesetup"
@@ -65,7 +65,9 @@ class Encryption:
     reason: str = ""
 
 
-def _existing(path: Path) -> Path:
+def existing_ancestor(path: Path) -> Path:
+    """``path`` if it exists, else its nearest parent that does: a data folder not made yet is checked where it
+    will be made (here and in the doctor's data folder and disk space rows)."""
     for candidate in (path, *path.parents):
         if candidate.exists():
             return candidate
@@ -106,7 +108,7 @@ def _linux(path: Path, which: Callable[[str], str | None], run: Runner) -> Encry
         missing = "findmnt" if findmnt is None else "lsblk"
         return Encryption("unknown", "LUKS", f"{missing} isn't installed")
     out = _output(
-        run, [findmnt, "--noheadings", "--output", "SOURCE,FSTYPE", "--target", str(_existing(path))]
+        run, [findmnt, "--noheadings", "--output", "SOURCE,FSTYPE", "--target", str(existing_ancestor(path))]
     )
     line = next((text.strip() for text in (out or "").splitlines() if text.strip()), "")
     source, _, fstype = line.rpartition(" ")

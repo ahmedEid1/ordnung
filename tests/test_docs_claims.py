@@ -5336,6 +5336,56 @@ def test_contributing_says_when_a_recording_is_needed_and_how_to_record() -> Non
     assert '"--serve/--no-serve"' in cli
 
 
+def test_the_demo_port_in_the_docs_is_the_one_ordnung_demo_uses() -> None:
+    """README's demo line and SPEC §15's synopsis name ``ordnung demo``'s own port (``server.DEMO_PORT``), so
+    the demo runs beside Ordnung, which keeps ``server.DEFAULT_PORT``."""
+    from ordnung.server import DEFAULT_PORT, DEMO_PORT
+
+    assert DEMO_PORT != DEFAULT_PORT
+    assert (
+        f"ordnung demo                                             # opens http://127.0.0.1:{DEMO_PORT} "
+        in _readme()
+    )
+    synopsis = _spec().split("## 15. CLI", 1)[1].split(" ## ", 1)[0]
+    serve = synopsis.split("`serve ", 1)[1].split("`", 1)[0]
+    demo = synopsis.split("`demo ", 1)[1].split("`", 1)[0]
+    assert f"[--port {DEFAULT_PORT}]" in serve and f"[--port {DEMO_PORT}]" in demo
+
+
+def test_spec_says_what_a_checked_letter_gets_back() -> None:
+    """SPEC §21 "Scam checks": a flagged letter's dates show on its page and in the warning, and *I checked —
+    it's genuine* brings its reminders back while the letter shows the same signs, never a GiroCode
+    (``Ledger.shows_scam_signs``, ``Ledger.scam_checked``; ADR 0012)."""
+    scam = _spec().split("**Scam checks (code, not model).**", 1)[1].split("**GiroCode (EPC-QR).**", 1)[0]
+    for words in (
+        "A letter with scam signs has its to-dos set aside (`Ledger.is_set_aside`",
+        "its dates still show on its page",
+        'and in the warning ("It asks you to act by …")',
+        "*I checked — it's genuine* dismisses the warning",
+        "(`Ledger.scam_checked`), its to-dos count again",
+        "but never get a GiroCode (ADR 0012)",
+        "A new sign makes a new warning and sets them aside again.",
+    ):
+        assert words in scam, words
+    assert hasattr(Ledger, "shows_scam_signs") and hasattr(Ledger, "scam_checked")
+
+
+def test_the_docs_say_a_checked_letter_is_back_in_the_notification_and_ask() -> None:
+    """docs/privacy.md's morning notification, the architecture's answer check and SPEC's moving checklist leave
+    out a letter with scam signs only until the person checks it (``Ledger.shows_scam_signs``):
+    ``desktop.today_things``, Ask's citations and ``moving.who_to_tell`` read it."""
+    privacy = _flat((ROOT / "docs" / "privacy.md").read_text(encoding="utf-8"))
+    assert (
+        "Letters with scam signs are never in it, until you check one with the sender and press "
+        "*I checked — it's genuine*." in privacy
+    )
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    assert "never a record with scam signs the person hasn't checked" in architecture
+    assert "never from a letter with scam signs the person hasn't checked" in _flat(_spec())
+    sources = [ROOT / "src" / "ordnung" / part for part in ("notify/desktop.py", "secretary/moving.py")]
+    assert all("scam_reasons(" not in path.read_text(encoding="utf-8") for path in sources)
+
+
 #: The pages whose recording commands are instructions to follow now (the history page and the decision records keep
 #: the commands of their day).
 _RECORDING_PAGES = ("README.md", "CONTRIBUTING.md", "docs/evals.md", "docs/evals-ask.md")

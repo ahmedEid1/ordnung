@@ -4,7 +4,7 @@
  * started drafts, the disclaimer where a law was used and inside the action band.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders, makeTestQueryClient } from "@/test/render";
 import { labelInName } from "@/test/labelInName";
@@ -13,6 +13,7 @@ import type { DocumentDetail, Draft, Item } from "@/api/types";
 import * as ToastModule from "@/components/ui/Toast";
 import { formatRelativeDays } from "@/lib/format";
 import { VerdictCard } from "./VerdictCard";
+import { fitsACalendar } from "./actions";
 import { selectPrimaryItem } from "./verdict";
 import { isGermanText } from "./fact-text";
 import { makeDetail, makeDoc, makeItem, makeReceipt } from "./fixtures";
@@ -248,6 +249,26 @@ describe("the action band", () => {
     link.addEventListener("click", (e) => e.preventDefault()); // jsdom can't download
     await userEvent.click(link);
     expect(spy).toHaveBeenCalledWith("Calendar file downloaded", expect.objectContaining({ description: expect.stringMatching(/calendar/) }));
+  });
+});
+
+describe("a date no calendar holds (31 Dec 9999, a misread year)", () => {
+  it("offers no 'Add to calendar', whose download the server refuses", () => {
+    for (const due of [{ due_date: "9999-12-31" }, { due_date: "9999-12-31", due_time: "23:00" }]) {
+      const verdict = renderVerdict(makeDetail({ items: [makeItem(due) as Item] }));
+      expect(within(verdict).queryByRole("link", { name: "Add to calendar" })).toBeNull();
+      cleanup();
+    }
+    const last = renderVerdict(makeDetail({ items: [makeItem({ due_date: "9999-12-31", due_time: "22:59" }) as Item] }));
+    expect(within(last).getByRole("link", { name: "Add to calendar" })).toBeInTheDocument();
+  });
+
+  it("knows which dates fit", () => {
+    expect(fitsACalendar({ due_date: "9999-12-30", due_time: null })).toBe(true);
+    expect(fitsACalendar({ due_date: "9999-12-31", due_time: null })).toBe(false);
+    expect(fitsACalendar({ due_date: "9999-12-31", due_time: "22:59" })).toBe(true);
+    expect(fitsACalendar({ due_date: "9999-12-31", due_time: "23:00" })).toBe(false);
+    expect(fitsACalendar({ due_date: null, due_time: null })).toBe(false);
   });
 });
 

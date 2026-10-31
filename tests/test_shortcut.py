@@ -1624,7 +1624,7 @@ RUNNING = ServerInfo(port=8765, token="the-secret-session-token", pid=4321)
 def launched(monkeypatch: pytest.MonkeyPatch) -> list[ServerInfo]:
     """The browsers opened (none really), with no server running unless a test says so."""
     opened: list[ServerInfo] = []
-    monkeypatch.setattr(cli, "launch_browser", lambda folder, info: opened.append(info))
+    monkeypatch.setattr(cli, "launch_browser", lambda info: opened.append(info))
     monkeypatch.setattr(cli, "reachable_server", lambda folder: None)
     return opened
 
@@ -1666,6 +1666,28 @@ def test_from_shortcut_opens_the_running_ordnung_without_printing_its_link(
     assert launched == [RUNNING, RUNNING]
 
 
+def test_from_shortcut_opens_the_running_ordnung_with_a_one_time_link(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The browser gets a link the running server takes once, within a minute: never the session token, and
+    no page in the data folder (a snap or Flatpak browser can't read ``~/.local/share``)."""
+    from ordnung.api.security import OneTimeCodes
+
+    opened: list[str] = []
+    monkeypatch.setattr(cli.webbrowser, "open", lambda url: opened.append(url))
+    monkeypatch.setattr(cli, "reachable_server", lambda folder: RUNNING)
+    monkeypatch.setattr(cli, "_in_terminal", lambda: False)
+    result = invoke("serve", "--data-dir", str(tmp_path), "--from-shortcut")
+    assert result.exit_code == 0, result.output
+    [url] = opened
+    assert url.startswith(f"{RUNNING.base_url}/?open=") and RUNNING.token not in url
+    assert RUNNING.token is not None
+    server = OneTimeCodes(RUNNING.token)
+    code = url.split("?open=", 1)[1]
+    assert server.redeem(code).outcome == "signed_in" and server.redeem(code).outcome == "used"
+    assert not [path for path in tmp_path.rglob("*") if path.is_file()]  # the data folder's own folders only
+
+
 def test_from_shortcut_waits_for_enter_after_a_failed_start(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, launched: list[ServerInfo]
 ) -> None:
@@ -1678,11 +1700,11 @@ def test_from_shortcut_waits_for_enter_after_a_failed_start(
     # nobody typed a command, so there is no --port to add: what the person can do instead
     text = " ".join(result.output.split())
     assert "maybe another Ordnung such as `ordnung demo`: stop it and open Ordnung again" in text
-    assert "ordnung shortcut --port 8766" in text and "Choose another one" not in text
+    assert "ordnung shortcut --port 8767" in text and "Choose another one" not in text
     # typed by hand, the terminal stays open anyway: no prompt
     plain_run = invoke("serve", "--data-dir", str(tmp_path / "data"), "--no-browser")
     assert plain_run.exit_code == 1 and "Press Enter" not in plain_run.output
-    assert "Choose another one, e.g. --port 8766." in plain_run.output
+    assert "Choose another one, e.g. --port 8767." in plain_run.output
     # Enter never comes (the input ends): it closes all the same
     assert invoke("serve", "--data-dir", str(tmp_path / "data"), "--from-shortcut").exit_code == 1
 
@@ -1709,14 +1731,14 @@ def test_a_start_that_fails_inside_the_server_waits_for_enter(
     folder = tmp_path / "data"
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: broken)
-    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda folder, info: launched.append(info))
+    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: launched.append(info))
     port = str(_free_port())
     result = invoke("serve", "--data-dir", str(folder), "--port", port, "--from-shortcut", input="\n")
     assert result.exit_code == 1, result.output
     assert result.exit_code != shortcut.NO_WINDOW_EXIT
     failed = result.output.index("Ordnung couldn't start.")
     assert result.output.index("Press Enter to close this window.") > failed
-    assert not (folder / "server.json").exists() and not (folder / cli.LOGIN_PAGE_NAME).exists()
+    assert not (folder / "server.json").exists()
     by_hand = invoke("serve", "--data-dir", str(folder), "--port", port, "--no-browser")
     assert by_hand.exit_code == 1 and "Ordnung couldn't start." in by_hand.output
     assert "Press Enter" not in by_hand.output
@@ -1754,16 +1776,22 @@ def test_closing_the_console_on_windows_stops_ordnung_as_ctrl_c_does(monkeypatch
 @pytest.mark.skipif(os.name != "posix", reason="a terminal window that closes hangs up (SIGHUP) on POSIX")
 def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None:
     """Closing the terminal window sends SIGHUP: Ordnung shuts down as after Ctrl+C (the app's shutdown runs,
-    with sync's last save) and takes away server.json and the sign-in page, which holds the session token."""
+    with sync's last save) and takes away server.json, which holds the session token. The browser it opened on
+    the way got a one-time link, which signs in once."""
+    import http.client
     import signal
     import socket
 
     folder = tmp_path / "data"
     port = _free_port()
+    opened = tmp_path / "opened.txt"
+    browser = tmp_path / "browser"  # what webbrowser starts with the link: it writes the link down
+    browser.write_text(f'#!/bin/sh\nprintf "%s" "$1" > "{opened}.part" && mv "{opened}.part" "{opened}"\n')
+    browser.chmod(0o755)
     env = {
         **os.environ,
         "HOME": str(tmp_path / "home"),
-        "BROWSER": "true",
+        "BROWSER": str(browser),
         "ORDNUNG_CLAUDE_BIN": str(tmp_path / "no-claude"),
         "TERM": "dumb",
     }
@@ -1791,14 +1819,31 @@ def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None
     try:
         deadline = time.monotonic() + 60
         answers = False
-        while not (answers and (folder / cli.LOGIN_PAGE_NAME).exists()):  # the page: once the browser opens
+        while not (answers and opened.exists()):  # once the browser opens
             assert process.poll() is None and time.monotonic() < deadline, "Ordnung didn't start"
             with contextlib.suppress(OSError), socket.create_connection(("127.0.0.1", port), timeout=0.5):
                 answers = True
             with contextlib.suppress(OSError):  # keep the terminal's buffer from filling up
                 if select.select([leader], [], [], 0.2)[0]:
                     os.read(leader, 65536)
-        assert (folder / "server.json").exists()
+        token = json.loads((folder / "server.json").read_text(encoding="utf-8"))["token"]
+        link = opened.read_text(encoding="utf-8")
+        assert link.startswith(f"http://127.0.0.1:{port}/?open=") and token not in link
+        assert not [path for path in folder.rglob("*") if path.suffix == ".html"]  # no page for the browser
+
+        def page_load() -> tuple[int, str | None]:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            try:
+                connection.request("GET", link.removeprefix(f"http://127.0.0.1:{port}"))
+                response = connection.getresponse()
+                return response.status, response.getheader("set-cookie")
+            finally:
+                connection.close()
+
+        status, cookie = page_load()
+        assert status == 303 and cookie is not None and cookie.startswith(f"ordnung_token_{port}=")
+        assert token not in cookie  # a session of its own
+        assert page_load() == (401, None)  # once only
         os.close(leader)  # the window closes: the terminal hangs up
         leader = -1
         process.send_signal(signal.SIGHUP)
@@ -1809,7 +1854,7 @@ def test_closing_the_window_stops_ordnung_as_ctrl_c_does(tmp_path: Path) -> None
         if process.poll() is None:
             process.kill()
             process.wait()
-    assert not (folder / "server.json").exists() and not (folder / cli.LOGIN_PAGE_NAME).exists()
+    assert not (folder / "server.json").exists()
     assert not (folder / "ordnung.db-wal").exists()  # the database was closed, its log written back
 
 
@@ -1880,7 +1925,7 @@ def test_from_shortcut_runs_ordnung_in_its_window(
     monkeypatch.setattr(cli, "_in_terminal", lambda: True)
     monkeypatch.setattr(cli.console, "set_window_title", lambda title: titles.append(title) or True)
     monkeypatch.setattr(cli, "_create_app", lambda context, token, demo: object())
-    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda folder, info: launched.append(info))
+    monkeypatch.setattr(cli, "_open_browser_when_ready", lambda info: launched.append(info))
     monkeypatch.setattr(uvicorn.Server, "run", lambda self: None)
     monkeypatch.setattr(cli, "_shortcut_missing", lambda: True)
     with socket.socket() as probe:

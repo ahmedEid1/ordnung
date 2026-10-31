@@ -13,6 +13,8 @@
   events), plus one on the send-by day of a letter that must be posted before its deadline.
 * UIDs are stable (``<id>@ordnung.local``) so re-importing updates events instead of duplicating
   them; DTSTAMP is the record's last change, so the same ledger always gives the same bytes.
+* A date a calendar can't hold (an event that would end after 31 Dec 9999: a misread year, a typo) is left out
+  and logged, never the whole file; a to-do's own file refuses it (:class:`TooFarAhead`).
 
 :func:`mark_exported` stores when the person last exported (meta ``last_calendar_export_at``),
 which drives the "new dates since your last calendar update" Idea.
@@ -20,6 +22,7 @@ which drives the "new dates since your last calendar update" Idea.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterable
 from datetime import UTC, date, datetime, time, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -40,6 +43,8 @@ from ordnung.secretary.triggers import (
     was_history_when_filed,
 )
 from ordnung.tick import local_today
+
+log = logging.getLogger(__name__)
 
 CALENDAR_NAME = "Ordnung"
 PRODID = "-//Ordnung//Ordnung calendar export//EN"
@@ -63,6 +68,12 @@ KIND_SYMBOLS: dict[str, str] = {
 }
 SEND_BY_SYMBOL = "✉"
 _EPOCH = datetime(2000, 1, 1, tzinfo=UTC)
+#: Why one to-do's calendar file can't be made: its event would end after 31 Dec 9999, the last day a calendar holds.
+TOO_FAR_AHEAD = "This to-do's date is too far in the future to put in a calendar."
+
+
+class TooFarAhead(ValueError):
+    """A to-do whose event would end after 31 Dec 9999 (a misread year, a typo): no calendar holds it."""
 
 
 def _zone(profile: Profile) -> ZoneInfo:
@@ -201,8 +212,26 @@ def _item_description(ledger: Ledger, item: Item, due: date, send_by: date | Non
     return "\n".join(line for line in lines if line)
 
 
+def fits_a_calendar(item: Item) -> bool:
+    """Whether a dated to-do's event ends by 31 Dec 9999, the last day a calendar holds (:func:`item_event`):
+    the file leaves the others out, and the calendar Idea doesn't count them."""
+    due = parse_day(item.due_date)
+    if due is None:
+        return False
+    start_time = _parse_time(item.due_time)
+    try:
+        if start_time is None:
+            due + timedelta(days=1)
+        else:
+            datetime.combine(due, start_time) + timedelta(minutes=EVENT_MINUTES)
+    except OverflowError:
+        return False
+    return True
+
+
 def item_event(ledger: Ledger, item: Item, profile: Profile) -> Event:
-    """The calendar event of one dated to-do (with its reminders while it is open)."""
+    """The calendar event of one dated to-do (with its reminders while it is open); :class:`TooFarAhead` when it
+    would end after 31 Dec 9999."""
     due = parse_day(item.due_date)
     if due is None:
         raise ValueError("This to-do has no date to add to a calendar.")
@@ -215,13 +244,16 @@ def item_event(ledger: Ledger, item: Item, profile: Profile) -> Event:
     )
     start_time = _parse_time(item.due_time)
     start: datetime | date
-    if start_time is None:
-        start = due
-        _set_all_day(event, due)
-    else:
-        start = datetime.combine(due, start_time, tzinfo=_zone(profile))
-        event.add("dtstart", start)
-        event.add("dtend", start + timedelta(minutes=EVENT_MINUTES))
+    try:
+        if start_time is None:
+            start = due
+            _set_all_day(event, due)
+        else:
+            start = datetime.combine(due, start_time, tzinfo=_zone(profile))
+            event.add("dtstart", start)
+            event.add("dtend", start + timedelta(minutes=EVENT_MINUTES))
+    except OverflowError as exc:  # it ends the day after, or an hour after, 31 Dec 9999
+        raise TooFarAhead(TOO_FAR_AHEAD) from exc
     if item.location:
         event.add("location", item.location)
     event.add("categories", [item.kind])
@@ -305,6 +337,12 @@ def _exported_items(ledger: Ledger, include_done: bool) -> list[Item]:
     ]
 
 
+def _left_out(record_id: str) -> None:
+    """A to-do or contract whose date doesn't fit a calendar (a misread year, a typo) is left out of the file,
+    logged by its id; the rest of the file is made as usual."""
+    log.warning("calendar file: left out %s, a date of it doesn't fit a calendar", record_id)
+
+
 def _events(
     store: Store, ledger: Ledger, profile: Profile, include_done: bool, only_item_id: str | None
 ) -> list[Event]:
@@ -313,11 +351,19 @@ def _events(
         if item is None:
             raise NotFoundError(f"items: no row with id {only_item_id!r}")
         return [item_event(ledger, item, profile)]
-    events = [item_event(ledger, item, profile) for item in _exported_items(ledger, include_done)]
+    events: list[Event] = []
+    for item in _exported_items(ledger, include_done):
+        try:
+            events.append(item_event(ledger, item, profile))
+        except (OverflowError, ValueError):
+            _left_out(item.id)
     decided = ledger.decided_contracts()  # confirmed, or the person's cancellation was sent
     for contract in ledger.active_contracts():
         if contract.id not in decided:
-            events.extend(contract_events(ledger, contract, profile))
+            try:
+                events.extend(contract_events(ledger, contract, profile))
+            except (OverflowError, ValueError):
+                _left_out(contract.id)
     return events
 
 
@@ -331,7 +377,7 @@ def build_ics(store: Store, *, include_done: bool = False, only_item_id: str | N
 
     ``include_done`` also exports finished, dismissed and missed to-dos (without reminders). Raises
     :class:`~ordnung.db.store.NotFoundError` for an unknown ``only_item_id`` and ``ValueError`` when
-    that to-do has no date.
+    that to-do has no date (:class:`TooFarAhead` when its date doesn't fit a calendar).
     """
     profile = store.get_profile()
     ledger = Ledger(store, local_today(store))

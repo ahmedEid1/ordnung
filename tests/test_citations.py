@@ -52,13 +52,26 @@ def test_parse_groups_aliases_and_spacing() -> None:
 
 
 def test_parse_ignores_plain_brackets_and_unknown_shapes() -> None:
-    assert parse_citations("See [1] and [note] and [doc:] and [doc:123].") == []
+    assert parse_citations("See [1] and [note] and [doc:] and [Note: see below] and [Hinweis:1].") == []
 
 
 def test_unknown_types_are_parsed_so_they_can_be_stripped() -> None:
     (found,) = parse_citations("x [case:cas_abc123def456]")
     assert found.type == "case"
     assert not is_well_formed(found.type, found.id)
+
+
+def test_a_record_type_with_an_id_of_another_shape_is_parsed_so_it_can_be_stripped() -> None:
+    """Ask benchmark (hh-my-health-number): the answer cited the refs of ``get_my_numbers`` (n1 … n5) as
+    to-dos, ``[item:n1][item:n2]``; read as plain text, the markers stayed in the final answer."""
+    text = "Your own numbers are a tax ID and a tax number [item:n1][item:n2] and one more [doc:123]."
+    found = parse_citations(text)
+    assert [(c.type, c.id) for c in found] == [("item", "n1"), ("item", "n2"), ("doc", "123")]
+    assert not any(is_well_formed(c.type, c.id) for c in found)
+    assert strip_invalid(text, set()) == "Your own numbers are a tax ID and a tax number and one more."
+    assert remove_markers(text) == "Your own numbers are a tax ID and a tax number and one more."
+    grouped = f"Due 21 Oct [item:n1, item:{ITEM}]."
+    assert strip_invalid(grouped, {ITEM}) == f"Due 21 Oct [item:{ITEM}]."
 
 
 @pytest.mark.parametrize(

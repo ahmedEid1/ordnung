@@ -1,0 +1,52 @@
+{
+  "about": "A made-up genuine letter from a fictional bank, and the reading the fake Claude gives for it: one deadline, and a caution that names phishing (a scam word, so Ordnung flags the letter until the person checks it). e2e/real-app-scam-check.spec.ts fills in {{LETTER}}/{{LETTER_DE}} (two days ago) and {{DUE}}/{{DUE_DE}} (a weekday about two weeks ahead).",
+  "filename": "Muster_Bank_Kontomodell.txt",
+  "letter": [
+    "Muster Bank AG · Musterallee 5 · 12345 Musterstadt",
+    "",
+    "Sam Rivera",
+    "Beispielweg 3",
+    "12345 Musterstadt",
+    "",
+    "Musterstadt, {{LETTER_DE}}",
+    "",
+    "Ihr Girokonto: neues Kontomodell",
+    "",
+    "Sehr geehrte Damen und Herren,",
+    "",
+    "wir stellen Ihr Girokonto auf unser neues Kontomodell um. Dafür brauchen wir Ihre Unterschrift auf dem beiliegenden Formular.",
+    "Bitte senden Sie das unterschriebene Formular bis zum {{DUE_DE}} an uns zurück.",
+    "",
+    "Wichtiger Hinweis: Wir fragen Sie niemals per E-Mail nach Ihrer PIN oder TAN. Ignorieren Sie Phishing-E-Mails in unserem Namen.",
+    "",
+    "Mit freundlichen Grüßen",
+    "Muster Bank AG"
+  ],
+  "reading": {
+    "kind": "bank_letter",
+    "area": "money",
+    "title": "Your current account moves to a new account model",
+    "language": "de",
+    "sender": { "name": "Muster Bank AG", "kind": "bank", "address": "Musterallee 5, 12345 Musterstadt" },
+    "recipient_name": "Sam Rivera",
+    "document_date": "{{LETTER}}",
+    "references": [],
+    "summary": "Muster Bank moves your current account to a new account model and asks you to sign and return the enclosed form.",
+    "explanation": "The bank needs your signature on the enclosed form for the new account model, by the date the letter gives.",
+    "key_facts": [],
+    "items": [
+      {
+        "kind": "deadline",
+        "title": "Return the signed account form",
+        "action": "Sign the enclosed form and send it back to Muster Bank.",
+        "date": { "type": "fixed", "date": "{{DUE}}", "nature": "declaration", "text": "bis zum {{DUE_DE}}" },
+        "priority": "high",
+        "quote": "Bitte senden Sie das unterschriebene Formular bis zum {{DUE_DE}} an uns zurück."
+      }
+    ],
+    "urgency": "normal",
+    "tax_relevant": false,
+    "case_title": "Muster Bank current account",
+    "warnings": ["The letter says Muster Bank never asks for your PIN or TAN by e-mail, and to ignore phishing e-mails in its name."]
+  }
+}

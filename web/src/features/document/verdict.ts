@@ -109,6 +109,9 @@ export function isConsentRequest(i: Pick<Item, "kind" | "title" | "action">, doc
   return doc.kind === "price_increase" && i.kind !== "payment" && /\bconsent\b|zustimm/i.test(`${i.title} ${i.action ?? ""}`);
 }
 
+/** An Idea still to act on: new, snoozed, or accepted (a draft started from it) — not done, dismissed or expired. */
+export const LIVE_IDEAS: ReadonlySet<Suggestion["status"]> = new Set<Suggestion["status"]>(["new", "accepted", "snoozed"]);
+
 /** Ideas that are a decision about the letter's contract: keep it, or cancel it in time. */
 const DECISION_RULES = new Set(["price_increase_right", "contract_cancel_window"]);
 
@@ -116,11 +119,7 @@ const DECISION_RULES = new Set(["price_increase_right", "contract_cancel_window"
 export function decisionSuggestion(detail: Pick<DocumentDetail, "suggestions">): Suggestion | null {
   return (
     detail.suggestions.find(
-      (s) =>
-        DECISION_RULES.has(s.rule_id ?? "") &&
-        (s.status === "new" || s.status === "snoozed" || s.status === "accepted") &&
-        s.action?.type === "draft" &&
-        s.action.draft_kind === "cancellation",
+      (s) => DECISION_RULES.has(s.rule_id ?? "") && LIVE_IDEAS.has(s.status) && s.action?.type === "draft" && s.action.draft_kind === "cancellation",
     ) ?? null
   );
 }
@@ -142,9 +141,43 @@ export function sortItems(items: Item[]): Item[] {
   return [...items].filter((i) => i.status !== "dismissed").sort(compareItems);
 }
 
-/** The active scam warning (an Idea of kind "scam") for this letter, if any. */
-export function scamSuggestion(detail: Pick<DocumentDetail, "suggestions">): Suggestion | null {
-  return detail.suggestions.find((s) => s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired") ?? null;
+/**
+ * A scam warning that stands: the server sets the letter's to-dos aside until the person dismisses it ("I checked —
+ * it's genuine") or the server expires it, whatever else its status says.
+ */
+function isOpenScam(s: Suggestion): boolean {
+  return s.kind === "scam" && s.status !== "dismissed" && s.status !== "expired";
+}
+
+/**
+ * The letter a scam warning is about: the one it opens, else the first letter it names. The warning may name
+ * another letter too — the genuine one it compares with — which is never the scam.
+ */
+function scamLetterOf(s: Suggestion): string | null {
+  if (s.action?.target_type === "document" && s.action.target_id) return s.action.target_id;
+  return s.refs.find((r) => r.type === "document")?.id ?? null;
+}
+
+/**
+ * The letters an open scam warning is about ({@link scamLetterOf}): the Inbox tags them "Possible scam" with no
+ * countdown to pay, and the composer answers none of them with a template.
+ */
+export function scamLetterIds(suggestions: readonly Suggestion[]): Set<string> {
+  return new Set(suggestions.filter(isOpenScam).flatMap((s) => scamLetterOf(s) ?? []));
+}
+
+/**
+ * The open scam warning about this letter, if any — never one about another letter that names it. A warning that
+ * names no letter of its own counts for the letter whose Ideas list it.
+ */
+export function scamSuggestion(detail: Pick<DocumentDetail, "suggestions"> & { document: Pick<Document, "id"> }): Suggestion | null {
+  return (
+    detail.suggestions.find((s) => {
+      if (!isOpenScam(s)) return false;
+      const own = scamLetterOf(s);
+      return own === null || own === detail.document.id;
+    }) ?? null
+  );
 }
 
 /**

@@ -15,7 +15,7 @@ export const SAM = {
   city: "12345 Musterstadt",
   email: "sam.rivera@example.org",
   phone: "+49 151 2345 6789",
-  iban: "DE31 7601 0085 0234 5678 12",
+  iban: "DE95 1234 0085 0234 5678 12",
 };
 
 export const RECIPIENT = [SAM.name, SAM.street, SAM.city];

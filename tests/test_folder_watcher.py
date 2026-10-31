@@ -26,7 +26,7 @@ from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import held, intake, watcher
 from ordnung.ingest.attachments import email_source
-from ordnung.ingest.pipeline import release_held
+from ordnung.ingest.pipeline import add_file, release_held
 from ordnung.ingest.watcher import (
     MISSING,
     NOT_A_FOLDER,
@@ -41,6 +41,7 @@ from ordnung.ingest.watcher import (
     read_file,
     recent_pickups,
 )
+from ordnung.llm.base import LLMError
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document
 
@@ -562,6 +563,37 @@ async def test_a_copy_of_a_waiting_file_keeps_it_waiting_with_auto_read(ctx: App
     still = ctx.store.get_document(waiting.id)
     assert still is not None and still.status == "held" and backend(ctx).calls == []
     assert logged(ctx, "document.released") == []
+
+
+@pytest.mark.parametrize("auto_read", [False, True], ids=["auto-read-off", "auto-read-on"])
+async def test_a_copy_of_a_letter_whose_reading_failed(ctx: AppContext, inbox: Path, auto_read: bool) -> None:
+    """A letter added by hand whose reading failed arrives again in the watched folder. With *Read new files
+    straight away* off, it is listed as already in Ordnung and nothing is sent to Claude (the Inbox offers *Try
+    again*); with it on, it is read again, as an upload of it would be."""
+    router = backend(ctx).responses
+    assert isinstance(router, Router)
+    router.errors["extract"] = lambda: LLMError("env: node: No such file or directory")
+    letter = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf")
+    await ctx.worker.run_until_idle()
+    failed = ctx.store.get_document(letter.id)
+    assert failed is not None and failed.status == "failed"
+    del router.errors["extract"]
+    calls = len(backend(ctx).calls)
+    use_folder(ctx, inbox, inbox_auto_read=auto_read)
+    async with watching(ctx):
+        (inbox / "bescheid (1).pdf").write_bytes(TAX_LETTER.pdf())
+        await eventually(lambda: logged(ctx, "folder.known"))
+    await ctx.worker.run_until_idle()
+    assert logged(ctx, "folder.known") == ["“bescheid (1).pdf” in your watched folder is already in Ordnung"]
+    after = ctx.store.get_document(letter.id)
+    assert after is not None
+    if auto_read:
+        assert after.status == "processed" and len(backend(ctx).calls) > calls
+    else:
+        assert after.status == "failed" and len(backend(ctx).calls) == calls
+        assert [job for job in ctx.store.list_jobs(active_only=True) if job.doc_id == letter.id] == []
+    (pickup,) = recent_pickups(ctx.store)
+    assert (pickup.filename, pickup.outcome, pickup.status) == ("bescheid (1).pdf", "known", after.status)
 
 
 async def test_a_file_stopped_in_the_middle_is_picked_up_next_time(

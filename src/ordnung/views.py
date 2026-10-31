@@ -1061,7 +1061,7 @@ def numbers_input(store: Store, today: date, *, shareable_only: bool = False) ->
         items=items,
         open_items=[item for item in pending_items(ledger) if item.doc_id not in private],
         extractions={doc.id: ledger.extraction(doc.id) for doc in documents},
-        suspicious=frozenset(doc.id for doc in documents if ledger.scam_reasons(doc)),
+        suspicious=frozenset(doc.id for doc in documents if ledger.shows_scam_signs(doc)),
         expiry_classes={
             item.id: expiry_class(item, ledger.document(item.doc_id))
             for item in items

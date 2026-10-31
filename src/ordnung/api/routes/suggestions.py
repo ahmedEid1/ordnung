@@ -13,12 +13,13 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict
 
 from ordnung.api.deps import StateDep, StoreDep, TodayDep
-from ordnung.api.routes.common import IsoDate, require
+from ordnung.api.routes.common import IsoDate, ledger_changed, require
 from ordnung.app_context import AppContext
 from ordnung.db.store import Store
 from ordnung.llm.base import LLMError
 from ordnung.models import Suggestion, SuggestionStatus
 from ordnung.secretary.review import run_review
+from ordnung.secretary.triggers import SCAM_RULE
 from ordnung.tick import replay_miss_prone
 
 log = logging.getLogger(__name__)
@@ -87,6 +88,10 @@ async def update_suggestion(
     """Accept, dismiss ("Not relevant"), snooze ("Remind me in a week"), mark done — or undo."""
     idea = await asyncio.to_thread(_answer, state.ctx.store, suggestion_id, patch, today)
     state.ctx.bus.publish("suggestions.updated", reason="answered", suggestion_id=suggestion_id)
+    # answering a scam warning (*I checked — it's genuine*, or undoing it) changes which to-dos are to be done
+    # (Ledger.scam_checked): the pages that list them reload and the Ideas are refreshed
+    if idea.rule_id == SCAM_RULE:
+        await ledger_changed(state.ctx)
     return idea
 
 

@@ -9,8 +9,10 @@ import hashlib
 import os
 import stat
 import threading
+import time
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -196,6 +198,183 @@ async def test_the_token_is_accepted_in_no_api_url(data_dir: Path) -> None:
         assert (await api.client.get(f"/api/profile?token={TOKEN}")).status_code == 401
         feed = await api.client.get("/api/calendar.ics", headers={"Authorization": f"Bearer {TOKEN}"})
         assert feed.status_code == 200 and feed.headers["content-type"].startswith("text/calendar")
+
+
+def _path(url: str) -> str:
+    return url.removeprefix(BASE_URL)
+
+
+async def test_a_one_time_link_signs_in_once(data_dir: Path, web_dist: Path) -> None:
+    """What Ordnung opens the browser with: a code made with the token, never the token itself (a browser's
+    command line can be read by other accounts), good for one sign-in within a minute."""
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        link = _path(info.open_url())
+        assert link.startswith("/?open=") and TOKEN not in link
+        assert info.open_url() != info.open_url()  # a new code each time
+
+        login = await api.client.get(link)
+        assert login.status_code == 303 and login.headers["location"] == "/"
+        # a session of the browser's own, never the token (the API's bearer, and the CLI's)
+        session = api.client.cookies["ordnung_token_8765"]
+        assert session and session != TOKEN and TOKEN not in login.headers["set-cookie"]
+        assert (await api.client.get("/api/dashboard")).status_code == 200
+        api.client.cookies.clear()
+        bearer = {"Authorization": f"Bearer {session}"}
+        assert (await api.client.get("/api/dashboard", headers=bearer)).status_code == 401
+        api.client.cookies.set("ordnung_token_8765", session)
+        # the same browser going back to the link (a reload, Back): still signed in, nothing ended
+        again = await api.client.get(link)
+        assert again.status_code == 303 and "set-cookie" not in again.headers
+        assert (await api.client.get("/api/dashboard")).status_code == 200
+
+        api.client.cookies.clear()  # another browser, or the same link once more
+        replay = await api.client.get(link)
+        assert replay.status_code == 401 and "used already" in replay.text
+        assert "set-cookie" not in replay.headers
+        assert (await api.client.get("/api/dashboard")).status_code == 401
+
+        # opened from outside the browser (Sec-Fetch-Site: none): the same sign-in
+        launched = await api.client.get(
+            _path(info.open_url()),
+            headers={"Sec-Fetch-Site": "none", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "document"},
+        )
+        assert launched.status_code == 303 and "set-cookie" in launched.headers
+
+
+async def test_one_time_links_that_are_refused(data_dir: Path, web_dist: Path) -> None:
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    stranger = ServerInfo(port=8765, token="another-token", pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        refused = [
+            info.open_url(now=time.time() - 61),  # expired
+            info.open_url(now=time.time() + 3600),  # good for longer than a minute
+            stranger.open_url(),  # made with another token
+            "/?open=",
+            "/?open=1.2.3",
+            "/?open=" + "².abcdefgh." + "0" * 64,  # a digit Python's int() refuses
+        ]
+        for url in refused:
+            response = await api.client.get(_path(url))
+            assert response.status_code == 401 and "expired" in response.text, url
+            assert "set-cookie" not in response.headers, url
+
+        # never under /api, never in a frame or a fetch: refused there, and still unused
+        link = _path(info.open_url())
+        code = link.removeprefix("/?open=")
+        assert (await api.client.get(f"/api/dashboard?open={code}")).status_code == 401
+        assert (await api.client.get(f"/api/health?open={code}")).json()["authenticated"] is False
+        framed = await api.client.get(
+            link, headers={"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Dest": "iframe"}
+        )
+        fetched = await api.client.get(link, headers={"Sec-Fetch-Mode": "cors", "Sec-Fetch-Dest": "empty"})
+        headed = await api.client.head(link)  # shows no page
+        for response in (framed, fetched, headed):
+            assert response.status_code == 401 and "set-cookie" not in response.headers
+        assert not api.client.cookies
+
+        # from another site: refused unless valid, and then answered with a same-origin forward
+        cross_site = {
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Dest": "document",
+        }
+        assert (await api.client.get(_path(stranger.open_url()), headers=cross_site)).status_code == 403
+        forward = await api.client.get(link, headers=cross_site)
+        assert forward.status_code == 200 and "url=/'" in forward.text and code not in forward.text
+        assert forward.headers["set-cookie"].startswith("ordnung_token_8765=") and TOKEN not in forward.text
+        assert (await api.client.get("/api/dashboard")).status_code == 200
+
+
+async def test_a_link_another_program_used_first_signs_it_out(data_dir: Path, web_dist: Path) -> None:
+    """A one-time code sits on the browser's command line until the browser uses it, where another account
+    can read it. Whoever uses it first gets a browser session of its own, never the token, and the code's
+    second use ends that session: the person's browser, coming second, says the link was used already."""
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        link = _path(info.open_url())
+        assert (await api.client.get(link)).status_code == 303  # another program, first
+        stolen = {"Cookie": f"ordnung_token_8765={api.client.cookies['ordnung_token_8765']}"}
+        api.client.cookies.clear()
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 200
+
+        browser = await api.client.get(link)
+        assert browser.status_code == 401 and "set-cookie" not in browser.headers
+        assert "used already" in browser.text and "another program" in browser.text
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 401
+
+        # the same, when the person's browser is still signed in from before: it opens Ordnung
+        link = _path(info.open_url())
+        assert (await api.client.get(link)).status_code == 303
+        stolen = {"Cookie": f"ordnung_token_8765={api.client.cookies['ordnung_token_8765']}"}
+        api.client.cookies.clear()
+        signed_in = {"Cookie": f"ordnung_token_8765={TOKEN}"}
+        opened = await api.client.get(link, headers=signed_in)
+        assert opened.status_code == 303 and opened.headers["location"] == "/"
+        assert (await api.client.get("/api/dashboard", headers=stolen)).status_code == 401
+        assert (await api.client.get("/api/dashboard", headers=signed_in)).status_code == 200
+
+
+async def test_a_spent_link_in_a_signed_in_browser_opens_the_page(data_dir: Path, web_dist: Path) -> None:
+    """A browser that is signed in already and loads a link that has expired (a slow start) opens Ordnung,
+    instead of "This link has expired"."""
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        expired = _path(info.open_url(now=time.time() - 61))
+        assert (await api.client.get(expired)).status_code == 401
+        opened = await api.client.get(expired, headers={"Cookie": f"ordnung_token_8765={TOKEN}"})
+        assert opened.status_code == 303 and opened.headers["location"] == "/"
+        assert "set-cookie" not in opened.headers
+
+
+async def test_a_one_time_link_keeps_the_rest_of_the_address(data_dir: Path, web_dist: Path) -> None:
+    info = ServerInfo(port=8765, token=TOKEN, pid=os.getpid())
+    async with api_for(data_dir, token=TOKEN) as api:
+        login = await api.client.get(_path(info.open_url()).replace("/?", "/documents/doc_abc?tab=facts&", 1))
+        assert login.status_code == 303 and login.headers["location"] == "/documents/doc_abc?tab=facts"
+
+
+def test_a_server_without_a_token_opens_its_plain_address() -> None:
+    assert ServerInfo(port=8766, pid=os.getpid()).open_url() == "http://127.0.0.1:8766/"
+
+
+async def test_a_chunked_api_request_is_refused_before_its_body_is_read() -> None:
+    """The 200 MB cap is checked on Content-Length before anything is read; a body without one would be read
+    and spooled in full first. Browsers and the CLI always send the length."""
+    from ordnung.api.security import SecurityMiddleware
+
+    async def app(scope: Any, receive: Any, send: Any) -> None:
+        raise AssertionError("the app (and its form parser) must not see the request")
+
+    reads: list[Any] = []
+
+    async def receive() -> dict[str, Any]:
+        reads.append(1)
+        return {"type": "http.request", "body": b"x" * 1024, "more_body": True}
+
+    sent: list[dict[str, Any]] = []
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    for token, auth in ((None, []), (TOKEN, [(b"authorization", f"Bearer {TOKEN}".encode())])):
+        sent.clear()
+        headers = [
+            (b"host", b"127.0.0.1:8765"),
+            (b"x-ordnung-client", b"web"),
+            (b"transfer-encoding", b"chunked"),
+            *auth,
+        ]
+        scope = {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/documents",
+            "query_string": b"",
+            "headers": headers,
+        }
+        await SecurityMiddleware(app, token=token)(scope, receive, send)
+        assert sent[0]["status"] == 411 and b"how long it is" in sent[1]["body"]
+    assert reads == []  # 0 bytes read
 
 
 async def test_health_without_token_is_minimal(data_dir: Path) -> None:

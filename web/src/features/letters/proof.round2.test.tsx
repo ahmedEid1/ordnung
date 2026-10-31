@@ -101,6 +101,16 @@ describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
     expect(name.querySelectorAll("wbr")).toHaveLength(long.split("_").length - 1);
   });
 
+  it("keeps a date in the file name whole, as a reference, like every file name shown as a title", async () => {
+    const { srv } = useMockApi();
+    const dated = "Einlieferungsbeleg_2026-09-29_1430_FN-88213407.jpg";
+    srv.db.state.documents.find((d) => d.id === "doc_gym_receipt")!.filename = dated;
+    renderAt(PROOF_PAGE);
+    const name = await screen.findByTitle(dated);
+    expect(name.textContent).toBe("Einlieferungsbeleg_2026‑09‑29_1430_FN‑88213407.jpg");
+    expect(plainText(name.textContent ?? "")).toBe(dated);
+  });
+
   it("starts under the breadcrumb (no centred column), titled at the detail pages' size, and says 'Claude'", async () => {
     useMockApi();
     renderAt(PROOF_PAGE);

@@ -48,6 +48,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi import Path as PathParam
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -114,6 +115,9 @@ router = APIRouter(tags=["documents"])
 INLINE_TYPES = frozenset({"application/pdf", "image/jpeg", "image/png", "image/webp"})
 MAX_UPLOAD_FILES = 60
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+#: The furthest a letter list is paged (``offset``) and the highest page number asked for: past them is a 422.
+MAX_OFFSET = 1_000_000
+MAX_PAGE = 10_000
 NO_STORE = "no-store"
 CLEAR_CACHE = {"Clear-Site-Data": '"cache"'}
 LIVE_IDEA_STATUSES = ("new", "accepted", "dismissed", "snoozed", "done")
@@ -259,7 +263,7 @@ def list_documents(
     direction: Direction | None = None,
     private: bool | None = None,
     limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
-    offset: Annotated[int, Query(ge=0)] = 0,
+    offset: Annotated[int, Query(ge=0, le=MAX_OFFSET)] = 0,
 ) -> list[DocumentRow]:
     """Letters, newest first (trash excluded); ``q`` searches their text, and each row then says where
     it was found (``found_in``: ``letter``, or ``scanner_text`` — only in the unchecked text a scanner
@@ -859,9 +863,10 @@ def document_file(doc_id: str, store: StoreDep) -> FileResponse:
 
 
 @router.get("/documents/{doc_id}/pages/{page}.jpg", response_class=FileResponse)
-def page_image(doc_id: str, page: int, store: StoreDep) -> FileResponse:
+def page_image(doc_id: str, page: Annotated[int, PathParam(le=MAX_PAGE)], store: StoreDep) -> FileResponse:
     """A rendered page (JPEG, 1-based page number)."""
-    stored = require(store.get_page(doc_id, page), "This page doesn't exist.")
+    # a number below 1 is no page, as one past the letter's last is
+    stored = require(store.get_page(doc_id, page) if page >= 1 else None, "This page doesn't exist.")
     path = _inside(store, store.data_dir / stored.image_path)
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": NO_STORE})
 

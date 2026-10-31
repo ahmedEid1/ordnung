@@ -223,6 +223,99 @@ async def test_the_probe_is_one_live_call_only_when_asked(
     assert bare is not None and bare.fix == doctor.LOGIN_HINT and bare.detail == "No such model (on haiku)"
 
 
+FAKE_CLAUDE = Path(__file__).resolve().parent / "fake_claude.py"
+#: A broken install: every model call exits before reading its request (``tests/fake_claude.py``).
+EXITS_AT_ONCE = {"exit_before_reading": True, "stderr": "env: node: No such file or directory\n", "exit": 127}
+
+
+def broken_claude(bin_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """``claude`` on PATH that answers ``--version`` and ``auth status`` but dies at once on a model call."""
+    script = bin_dir / "claude"
+    script.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{FAKE_CLAUDE}" "$@"\n', encoding="utf-8")
+    script.chmod(script.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    scenario = tmp_path / "scenario.json"
+    scenario.write_text(json.dumps({"log": str(tmp_path / "calls.jsonl"), "calls": [EXITS_AT_ONCE]}))
+    monkeypatch.setenv("FAKE_CLAUDE_SCENARIO", str(scenario))
+    monkeypatch.delenv("ORDNUNG_CLAUDE_MODEL", raising=False)
+    return script
+
+
+async def test_the_probe_of_a_claude_that_dies_at_start_is_a_failed_row(
+    isolated_path: Path,
+    tmp_path: Path,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    claude_exits_first: None,
+) -> None:
+    """The live call fails with the CLI's own words in its row, and every other check is still there. The fix
+    is about the program that stopped, never the sign-in (it passed) or the model's name (it was never asked)."""
+    broken_claude(isolated_path, tmp_path, monkeypatch)
+    report = await run_doctor(data_dir, probe=True)
+    probe = report.check("claude_probe")
+    assert probe is not None and probe.status == "fail" and probe.label == "Live test call"
+    assert (
+        probe.detail == "env: node: No such file or directory (on haiku)" and probe.fix == doctor.EXITED_HINT
+    )
+    assert statuses(report)["claude_version"] == "ok" and statuses(report)["claude_auth"] == "ok"
+    assert {"sqlite_fts", "data_dir", "disk", "fonts"} <= set(statuses(report))
+    assert report.claude.ok is False and report.claude.detail == probe.detail
+    named = (await run_doctor(data_dir, probe=True, model="claude-sonnet-5")).check("claude_probe")
+    assert named is not None and named.fix == doctor.EXITED_HINT
+    assert named.detail == "env: node: No such file or directory (on claude-sonnet-5)"
+
+
+def test_doctor_probe_prints_the_whole_report_when_claude_dies_at_start(
+    isolated_path: Path,
+    tmp_path: Path,
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    claude_exits_first: None,
+) -> None:
+    """``ordnung doctor --probe``: the full table with a failed *Live test call*, not a lone "Connection lost"."""
+    from typer.testing import CliRunner
+
+    from ordnung.cli import app
+
+    broken_claude(isolated_path, tmp_path, monkeypatch)
+    result = CliRunner(env={"COLUMNS": "200", "NO_COLOR": "1"}).invoke(
+        app, ["doctor", "--probe", "--data-dir", str(data_dir)]
+    )
+    assert result.exit_code == 1, result.output
+    assert "Connection lost" not in result.output
+    row = next(line for line in result.output.splitlines() if "Live test call" in line)
+    assert "env: node: No such file or directory" in row
+    for label in ("Claude Code version", "Claude sign-in", "Data folder", "Database"):
+        assert label in result.output
+
+
+def test_a_claude_named_by_the_environment_that_is_not_there(
+    isolated_path: Path, tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``ORDNUNG_CLAUDE_BIN`` picks the ``claude``: when it names nothing, the doctor says that variable and its
+    path, not "not found on PATH", and the fix is about the variable."""
+    fake_claude(isolated_path)  # one on PATH that the variable overrides
+    missing = tmp_path / "nowhere" / "claude"
+    monkeypatch.setenv("ORDNUNG_CLAUDE_BIN", str(missing))
+    report = run_doctor_sync(data_dir)
+    check = report.check("claude_cli")
+    assert check is not None and check.status == "fail"
+    assert check.detail == f"ORDNUNG_CLAUDE_BIN is set to `{missing}`, which was not found."
+    assert (
+        check.fix == "Point ORDNUNG_CLAUDE_BIN at the `claude` program, or unset it to use the one on PATH."
+    )
+    assert report.claude.detail == check.detail and not report.claude.installed
+    monkeypatch.delenv("ORDNUNG_CLAUDE_BIN")
+    found = run_doctor_sync(data_dir).check("claude_cli")
+    assert found is not None and found.status == "ok"
+
+
+def test_a_test_never_gets_the_claude_the_shell_exports() -> None:
+    """The fake Claude that ``make capture``, the e2e config and the replays export as ``ORDNUNG_CLAUDE_BIN``
+    (and a chosen ``ORDNUNG_BACKEND``) are dropped for every test (``conftest.py``): a test that hides
+    ``claude`` from PATH must not find one there."""
+    assert "ORDNUNG_CLAUDE_BIN" not in os.environ and "ORDNUNG_BACKEND" not in os.environ
+
+
 def test_a_data_folder_that_does_not_exist_yet_is_fine(tmp_path: Path) -> None:
     check = doctor.data_dir_check(tmp_path / "new" / "data")
     assert check.status == "ok" and "will be created" in check.detail

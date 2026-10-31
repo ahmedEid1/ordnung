@@ -1,6 +1,6 @@
 /// <reference types="node" />
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createMockServer } from "./server";
 import { letterFor } from "./db";
@@ -30,7 +30,9 @@ import type {
   WeeklySession,
 } from "@/api/types";
 import { findRawEnums } from "@/lib/copy";
+import { ibanLooksValid } from "@/lib/format";
 import { needsArrivalDate } from "@/features/document/verdict";
+import { SUGGESTIONS, TRAY_SUGGESTIONS } from "./data/suggestions";
 import { ADDRESSEES, TRAY_DOCUMENTS } from "./data/documents";
 import { BRIEF_TEXT, PROFILE } from "./data/system";
 import { FALLBACK_ANSWER, RECORDED, SUGGESTED_QUESTIONS } from "./data/ask";
@@ -922,5 +924,57 @@ describe("whose it is (ADR 0023): before anything is filed for someone of the ho
     const own = new Map(s.db.state.suggestions.map((idea) => [idea.id, idea.title]));
     expect(ideas.length).toBeGreaterThan(0);
     for (const idea of ideas) expect(idea.title, idea.id).toBe(own.get(idea.id));
+  });
+});
+
+describe("the scam warning, as the API gives it (`scam_warning` in secretary/triggers.py)", () => {
+  it("names one letter, its own: never the genuine letter it compares with", () => {
+    const scams = [...SUGGESTIONS, ...Object.values(TRAY_SUGGESTIONS).flat()].filter((s) => s.kind === "scam");
+    expect(scams.length).toBeGreaterThan(0);
+    for (const s of scams) {
+      expect(s.action?.target_type, s.id).toBe("document");
+      expect(
+        s.refs.filter((r) => r.type === "document").map((r) => r.id),
+        s.id,
+      ).toEqual([s.action!.target_id]);
+    }
+  });
+
+  it("sets the scam letter's to-dos aside until the person says they checked it, and again after an Undo", async () => {
+    const s = srv();
+    s.openAllMail();
+    const aside = async () => (await get<DocumentDetail>(s, "/documents/doc_scam")).set_aside.filter((a) => a.reason === "suspicious").length;
+    const idea = (await get<DocumentDetail>(s, "/documents/doc_scam")).suggestions.find((x) => x.kind === "scam")!;
+    expect(await aside()).toBeGreaterThan(0);
+    // "I checked — it's genuine"
+    await s.handle("PATCH", `/suggestions/${idea.id}`, new URLSearchParams(), { status: "dismissed" });
+    expect(await aside()).toBe(0);
+    // its Undo
+    await s.handle("PATCH", `/suggestions/${idea.id}`, new URLSearchParams(), { status: "new" });
+    expect(await aside()).toBeGreaterThan(0);
+  });
+});
+
+describe("bank details in the online demo", () => {
+  /** Every data file of the mock world (its tests left out). */
+  function mockFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+      const path = join(dir, e.name);
+      if (e.isDirectory()) return mockFiles(path);
+      return /\.(ts|json)$/.test(e.name) && !/\.test\.ts$/.test(e.name) ? [path] : [];
+    });
+  }
+
+  it("are made up like the Python demo's: every IBAN has a 1234… bank code and a valid check digit", () => {
+    const iban = /\b([A-Z]{2})(\d{2})((?: ?\d{4}){2,7}(?: ?\d{1,3})?)\b/g;
+    const found = new Map<string, string>();
+    for (const file of mockFiles(__dirname)) {
+      for (const m of readFileSync(file, "utf8").matchAll(iban)) found.set(m[0].replace(/ /g, ""), relative(__dirname, file));
+    }
+    expect(found.size).toBeGreaterThan(5);
+    for (const [value, file] of found) {
+      expect(value.slice(4, 8), `${value} in ${file}: a made-up bank code`).toBe("1234");
+      expect(ibanLooksValid(value), `${value} in ${file}: its check digits`).toBe(true);
+    }
   });
 });
