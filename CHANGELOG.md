@@ -135,8 +135,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 - Ask writes the right weekday next to a date, however the answer puts the two together: *2 Oct 2026 (Thu)*
   becomes *2 Oct 2026 (Fri)*, and *Donnerstag, den 2. Oktober 2026* (or *dem*, *der*) becomes *Freitag, …*. It
   drops a citation that names no record, saying so in its note. In the Ask benchmark this changes one recorded
-  answer (five such citations dropped) and no number; the recording stays as recorded and the re-scoring says so
-  ([docs/evals-ask.md](docs/evals-ask.md)).
+  answer (five such citations dropped) and no number: the three recorded answers with a wrong weekday had been
+  corrected by the check as recorded already. The recording stays as recorded and its re-scoring of 2026-10-31
+  says so ([docs/evals-ask.md](docs/evals-ask.md)).
 
 ### Upgrading
 

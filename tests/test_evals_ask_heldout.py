@@ -33,7 +33,15 @@ from evals.ask.report import (  # noqa: E402
     write_docs,
     write_results,
 )
-from evals.ask.run import DEFAULT_MODEL, BenchmarkError, Config, RunResult, as_recorded, run  # noqa: E402
+from evals.ask.run import (  # noqa: E402
+    DEFAULT_MODEL,
+    RESULTS_DIR,
+    BenchmarkError,
+    Config,
+    RunResult,
+    as_recorded,
+    run,
+)
 
 from ordnung.llm.base import LLMRequest, StreamEvent  # noqa: E402
 from test_evals_ask import StandInAgent  # noqa: E402
@@ -506,6 +514,55 @@ def test_a_changed_answer_check_goes_into_a_re_scoring_never_into_the_run_as_rec
     assert stale_docs(new, results_dir, DEFAULT_MODEL, docs, as_recorded=old) == [
         f"{recorded.name} (as recorded, schema 1) is not what this replay writes"
     ]
+
+
+def _e3a_notes(payload: dict[str, Any]) -> list[str]:
+    return [note for note in payload["notes"] if note.startswith("E3a's answer check")]
+
+
+def test_e3as_note_is_in_the_re_scoring_it_describes_and_its_counts_are_the_runs() -> None:
+    """E3a's note describes E3a's re-scoring (made on 2026-10-31) of E2's recording of 2026-10-30, and no other file:
+    a live run's own file (the next recording of the development set), a re-scoring of another recording, a later
+    re-scoring of the same recording (after a later change, which says what it changed) and the run as recorded carry
+    no such note. Its counts are the run's, as the gate note's are, never written in by hand."""
+    recorded = json.loads((RESULTS_DIR / f"2026-10-30-{DEFAULT_MODEL}-ask.json").read_text(encoding="utf-8"))
+    window = json.loads(
+        (RESULTS_DIR / f"2026-10-30-{DEFAULT_MODEL}-ask-rescored.json").read_text(encoding="utf-8")
+    )
+    strict = {key: window["summary"][key] for key in ("strict_accuracy", "harmful")}
+    result = RunResult(
+        Config(), [], [], {}, [], summary=copy.deepcopy(recorded["summary"]), strict_summary=strict
+    )
+    assert _e3a_notes(results_payload(result, run_date="2026-11-05")) == []  # a live run's own file
+    assert _e3a_notes(results_payload(result, run_date="2026-11-05", recorded="2026-11-05")) == []
+    assert _e3a_notes(results_payload(result, run_date="2026-11-05", recorded="2026-10-01")) == []
+    assert _e3a_notes(results_payload(result, run_date="2026-11-05", recorded="2026-10-30")) == []
+    assert _e3a_notes(results_payload(result, run_date="2026-10-30", recorded="2026-10-30")) == []
+    assert _e3a_notes(results_payload(result, run_date="2026-10-31")) == []
+    assert _e3a_notes(results_payload(result, run_date="2026-10-30", schema=1)) == []
+    heldout = RunResult(
+        Config(set_name="heldout"), [], [], {}, [], summary=copy.deepcopy(recorded["summary"])
+    )
+    assert _e3a_notes(results_payload(heldout, run_date="2026-10-31", recorded="2026-10-30")) == []
+    (note,) = _e3a_notes(results_payload(result, run_date="2026-10-31", recorded="2026-10-30"))
+    summary = recorded["summary"]
+    for label, block in (
+        ("answer correct", summary["accuracy"]),
+        ("strict", strict["strict_accuracy"]),
+        ("harmful", strict["harmful"]),
+        ("household", summary["household"]["attribution"]),
+        ("citation precision", summary["citation_support"]),
+        ("abstention", summary["abstention"]),
+        ("attack success", summary["attack_success"]),
+    ):
+        assert f"{label} {int(block['k'])}/{int(block['n'])}" in note, label
+    assert f"2026-10-30-{DEFAULT_MODEL}-ask.json" in note
+    # other numbers give other counts: none is written in by hand
+    moved = copy.deepcopy(result)
+    moved.summary["accuracy"]["k"] = 39.0
+    moved.strict_summary["harmful"]["k"] = 7.0
+    (other,) = _e3a_notes(results_payload(moved, run_date="2026-10-31", recorded="2026-10-30"))
+    assert "answer correct 39/44" in other and "harmful 7/73" in other
 
 
 @pytest.mark.slow  # replays or records a whole run: once, in backend-slow, without coverage
