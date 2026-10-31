@@ -375,6 +375,12 @@ const NOT_CALLED_BY_API: Record<string, string> = {
   "POST /api/suggestions/review": "the weekly review starts by itself (ordnung/tick.py, when Settings allows it); no screen starts one",
 };
 
+/** The mock still serves these operations of NOT_CALLED_BY_API, so they are called directly (the path to call). */
+const UNCALLED_MOCK_ROUTES: Record<string, (srv: MockServer) => string> = {
+  "GET /api/cases/{case_id}": (srv) => `/cases/${srv.db.state.cases[0]!.id}`,
+  "POST /api/suggestions/review": () => "/suggestions/review",
+};
+
 type AppFile = { file: string; names: string[]; apiNames: string[] };
 let appFiles: AppFile[] | null = null;
 
@@ -532,6 +538,27 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
       ([method, pattern]) => `${method} ${pattern}`,
     );
     expect(missing).toEqual([]);
+  });
+
+  it("the mock answers like the API where the app calls no api function (NOT_CALLED_BY_API)", async () => {
+    const served = MOCK_ROUTES.map(([method, pattern]) => operationFor(method, `/api${pattern.replace(/:(\w+)/g, "x_$1")}`)?.key)
+      .filter((key): key is string => key !== undefined && key in NOT_CALLED_BY_API)
+      .sort();
+    expect(served, "a mock route of an operation in NOT_CALLED_BY_API needs a call in UNCALLED_MOCK_ROUTES").toEqual(Object.keys(UNCALLED_MOCK_ROUTES).sort());
+    const problems: string[] = [];
+    for (const [key, path] of Object.entries(UNCALLED_MOCK_ROUTES)) {
+      const method = key.split(" ")[0]!;
+      const url = new URL(`/api${path(srv)}`, "http://localhost");
+      const match = operationFor(method, url.pathname);
+      if (match?.key !== key) {
+        problems.push(`${key}: ${url.pathname} is served by ${match?.key ?? "no operation"}`);
+        continue;
+      }
+      const response = await srv.handle(method, url.pathname.replace(/^\/api/, ""), url.searchParams, undefined);
+      if (!response.ok) problems.push(`${key}: the mock answered ${response.status} (${await response.clone().text()})`);
+      for (const p of await responseProblems(match.op, response)) problems.push(`${key}: ${p}`);
+    }
+    expect(problems).toEqual([]);
   });
 
   it("a sender's and a letter's details carry the state their postcode suggests in the API's shape, none once it is set", async () => {
