@@ -4,8 +4,8 @@
  "pinned_model": "claude-sonnet-5",
  "dataset": {
   "manifest_sha256": "96ee8c82eda675115dccd8b9be5ab8d4213258e6449fe4cc562864236605e8c4",
-  "files": 282,
-  "tree_sha256": "7ccdfb4842069917d56ab42427fc72e10cee139bb9e591c6ea16f467e80e0346"
+  "files": 283,
+  "tree_sha256": "2d822ca5f5721eeb56d07d13b00e6ad7482f22a071695d84970449bd18db7d2f"
  },
  "recordings": {
   "claude-sonnet-5": {
