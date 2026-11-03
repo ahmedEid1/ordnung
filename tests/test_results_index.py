@@ -441,7 +441,9 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
         ]
     waiting = sorted(name for name, cell in cells.items() if cell["status"] == "not recorded yet")
     assert waiting == [
-        "ablation/holdout4",
+        "ablation/holdout4/r1",
+        "ablation/holdout4/r2",
+        "ablation/holdout4/r3",
         "analysis/final",
         "ask/heldout/r1",
         "ask/heldout/r2",
@@ -453,6 +455,9 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
         "e2e/holdout4-newkinds",
         "stress/D1",
         "stress/I1",
+        "without-land/holdout4/r1",
+        "without-land/holdout4/r2",
+        "without-land/holdout4/r3",
     ]
     for name in waiting:
         assert cells[name]["needs"], name
@@ -1072,3 +1077,113 @@ def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) ->
             r"\b[0-9a-f]{7,40}\b|ADR \d{4}|\d{4}-\d{2}-\d{2}-[\w.-]+\.json", moved["because"]
         ), name
     assert not any("sha256_moved" in row for name, row in rows.items() if name not in recorded)
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's readings replayed another way: without the sender's Land, the check ablation, end to end
+# --------------------------------------------------------------------------------------------------
+
+WITHOUT_LAND = "2026-10-08-claude-sonnet-5-without-land.json"
+ABLATION = "2026-10-30-claude-sonnet-5-checks-ablated.json"
+E2E = "2026-10-30-claude-sonnet-5-e2e.json"
+
+
+def _a_read_of_holdout4(results: Path, source: str, name: str, repeat: int) -> None:
+    """A results file of ``source``'s kind for holdout4's read ``repeat``, as the script writes it (holdout3's
+    numbers stand in)."""
+    data = json.loads((results / source).read_text(encoding="utf-8"))
+    data["splits"] = {"holdout4": data["splits"]["holdout3"]}
+    data["meta"].update(date=name[:10], repeat=repeat)
+    (results / name).write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_the_final_run_is_replayed_without_the_land_and_ablated_once_per_read(tmp_path: Path) -> None:
+    """``without-land/holdout4/rN`` and ``ablation/holdout4/rN``: each read of holdout4 its own cell and its own
+    task, never superseded by another read; the published replay of the earlier splits keeps its cell, gate and
+    command."""
+    results = _copy_results(tmp_path, [WITHOUT_LAND, ABLATION])
+    model = DEFAULT_MODEL
+    _a_read_of_holdout4(results, WITHOUT_LAND, f"2027-01-12-{model}-without-land-holdout4.json", 1)
+    _a_read_of_holdout4(results, WITHOUT_LAND, f"2027-01-12-{model}-without-land-holdout4-r2.json", 2)
+    _a_read_of_holdout4(results, ABLATION, f"2027-01-12-{model}-checks-ablated-holdout4-r3.json", 3)
+    static = reproduce.static_index(results)
+    cells = {cell["cell"]: cell for cell in static["cells"]}
+    assert cells["without-land"] == {
+        "cell": "without-land",
+        "status": "replayed",
+        "checks": [WITHOUT_LAND],
+        "gate": "without-land",
+    }
+    assert cells["without-land/holdout4/r1"]["checks"] == [f"2027-01-12-{model}-without-land-holdout4.json"]
+    assert cells["without-land/holdout4/r2"]["checks"] == [
+        f"2027-01-12-{model}-without-land-holdout4-r2.json"
+    ]
+    assert cells["ablation/holdout4/r3"]["checks"] == [f"2027-01-12-{model}-checks-ablated-holdout4-r3.json"]
+    for name in ("without-land/holdout4/r3", "ablation/holdout4/r1", "ablation/holdout4/r2"):
+        assert cells[name]["status"] == "not recorded yet" and cells[name]["needs"], name
+    assert cells["ablation/dev-holdout-holdout2-holdout3-test"]["checks"] == [ABLATION]
+    assert "ablation/holdout4" not in cells
+    rows = {row["file"]: row for row in static["results"]}
+    assert all(row["check"] != "hash" for row in rows.values())  # no read supersedes another
+    assert rows[f"2027-01-12-{model}-without-land-holdout4-r2.json"]["repeat"] == 2
+    assert "repeat" not in rows[WITHOUT_LAND]  # the published files' rows are as they were
+    work = tmp_path / "work"
+    tasks = {task.name: task for task in reproduce.plan(static, results, work)}
+    old = tasks["without-land"].argv
+    assert old[old.index("--splits") + 1 : old.index("--out")] == [
+        "test",
+        "holdout",
+        "holdout2",
+        "holdout3",
+        "dev",
+    ]
+    assert "--repeat" not in old and tasks["without-land"].out == work / "without-land"
+    second = tasks["without-land/holdout4/r2"]
+    assert second.argv[second.argv.index("--splits") + 1] == "holdout4"
+    assert second.argv[second.argv.index("--repeat") + 1] == "2"
+    assert second.argv[second.argv.index("--date") + 1] == "2027-01-12"
+    assert "--repeat" not in tasks["without-land/holdout4/r1"].argv
+    outs = [task.out for name, task in tasks.items() if name.startswith("without-land")]
+    assert len(set(outs)) == 3 and all(out is not None and out.is_relative_to(work) for out in outs)
+    assert tasks["ablation/holdout4/r3"].argv[2:] == [
+        "scripts.eval_ablate_checks",
+        "--check",
+        str(results / f"2027-01-12-{model}-checks-ablated-holdout4-r3.json"),
+    ]
+    published = json.loads((results / f"2027-01-12-{model}-without-land-holdout4-r2.json").read_text())
+    replayed = copy.deepcopy(published)
+    replayed["splits"]["holdout4"]["entries"] += 1
+    assert reproduce.without_land_problems(published, replayed, "without-land/holdout4/r2") == [
+        "without-land/holdout4/r2 holdout4: the replay doesn't give the published numbers"
+    ]
+
+
+def test_the_final_run_end_to_end_is_held_to_what_it_publishes(tmp_path: Path) -> None:
+    """The earlier splits' end-to-end run keeps its gates (exact parity, no late reminder); the final splits' run
+    is compared with its file and held to what it publishes, whatever the final run shows."""
+    results = _copy_results(tmp_path, [E2E])
+    data = json.loads((results / E2E).read_text(encoding="utf-8"))
+    data["meta"]["splits"] = ["holdout4", "newkinds"]
+    every = data["metrics"]["all"]
+    every["late_reminders"] = ["holdout4-tax_assessment-K1#0"]
+    every["parity"]["differ"] = ["holdout4-tax_assessment-K2#0"]
+    final = results / f"2027-01-14-{DEFAULT_MODEL}-e2e-holdout4-newkinds.json"
+    final.write_text(json.dumps(data), encoding="utf-8")
+    static = reproduce.static_index(results)
+    cells = {cell["cell"]: cell for cell in static["cells"]}
+    assert cells["e2e/holdout4-newkinds"]["checks"] == [final.name]
+    assert cells["e2e/dev-holdout-holdout2-holdout3-test"]["checks"] == [E2E]
+    tasks = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}
+    earlier = tasks["e2e/dev-holdout-holdout2-holdout3-test"]
+    assert "--exact-parity" in earlier and earlier[earlier.index("--max-late-reminders") + 1] == "0"
+    held = tasks["e2e/holdout4-newkinds"]
+    assert held[held.index("--splits") + 1 : held.index("--no-write")] == ["holdout4", "newkinds"]
+    assert held[held.index("--compare") + 1] == str(final)
+    assert "--exact-parity" not in held and held[held.index("--max-late-reminders") + 1] == "1"
+    every["late_reminders"], every["parity"]["differ"] = [], []
+    final.write_text(json.dumps(data), encoding="utf-8")
+    static = reproduce.static_index(results)
+    held = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}[
+        "e2e/holdout4-newkinds"
+    ]
+    assert "--exact-parity" in held and held[held.index("--max-late-reminders") + 1] == "0"

@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import conditions, report  # noqa: E402
+from evals import conditions, report, splits  # noqa: E402
 from evals.records import load_manifest, select_entries  # noqa: E402
 from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR  # noqa: E402
 from scripts import eval_without_land  # noqa: E402
@@ -375,7 +375,7 @@ def test_out_writes_the_results_into_that_folder_and_nothing_into_evals_results(
     """CI replays the splits with ``--out`` to a temporary folder and compares them with the published file;
     without ``--out`` the file still goes to ``evals/results``."""
 
-    async def replayed(splits: list[str], model: str, run_date: str) -> dict[str, Any]:
+    async def replayed(chosen: list[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
         return {
             "schema": report.WITHOUT_LAND_SCHEMA,
             "meta": {"date": run_date, "model": model},
@@ -384,10 +384,7 @@ def test_out_writes_the_results_into_that_folder_and_nothing_into_evals_results(
 
     monkeypatch.setattr(eval_without_land, "build", replayed)
     before = sorted(RESULTS_DIR.iterdir())
-    assert (
-        eval_without_land.main(["--date", "2026-10-08", "--splits", "dev", "--out", str(tmp_path / "out")])
-        == 0
-    )
+    assert eval_without_land.main(["--date", "2026-10-08", "--out", str(tmp_path / "out")]) == 0
     name = report.results_filename("2026-10-08", DEFAULT_MODEL, "without-land")
     assert json.loads((tmp_path / "out" / name).read_text(encoding="utf-8"))["meta"]["date"] == "2026-10-08"
     assert sorted(RESULTS_DIR.iterdir()) == before
@@ -400,3 +397,120 @@ def test_replaying_the_dev_split_gives_the_published_numbers() -> None:
     entries = select_entries(load_manifest(MANIFEST_PATH), split="dev")
     numbers = asyncio.run(split_numbers("dev", DEFAULT_MODEL, entries))
     assert numbers == _results(PUBLISHED)["splits"]["dev"]
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's splits, read by read
+# --------------------------------------------------------------------------------------------------
+
+
+class _Stop(Exception):
+    """Raised where the replay's backend is made: the test has what it needs."""
+
+
+def _backend_of_a_replay(tmp_path: Path, repeat: int) -> object:
+    """The backend a replay of the dev split at run ``repeat`` asks its recordings through (no letter replayed)."""
+    from evals import run as run_mod
+
+    made: list[object] = []
+    original = run_mod.make_backend
+
+    def capture(*args: Any, **kwargs: Any) -> Any:
+        made.append(original(*args, **kwargs))
+        raise _Stop
+
+    with pytest.MonkeyPatch.context() as patch, pytest.raises(_Stop):
+        patch.setattr(run_mod, "make_backend", capture)
+        asyncio.run(eval_without_land.replay("dev", DEFAULT_MODEL, tmp_path, repeat=repeat))
+    (backend,) = made
+    return backend
+
+
+def test_a_repeat_is_replayed_under_its_own_keys(tmp_path: Path) -> None:
+    """``--repeat N`` replays run N's recordings, as ``evals.run --repeat`` does (:class:`evals.harness.RepeatKey`):
+    run 1 is replayed as before."""
+    from evals import harness
+
+    second = _backend_of_a_replay(tmp_path, 2)
+    assert isinstance(second, harness.RepeatKey) and second.repeat == 2
+    assert not isinstance(_backend_of_a_replay(tmp_path, 1), harness.RepeatKey)
+
+
+def test_the_splits_are_the_registry_s_and_the_default_is_the_published_file_s() -> None:
+    assert eval_without_land.SPLITS == splits.names()
+    assert eval_without_land.DEFAULT_SPLITS == ("test", "holdout", "holdout2", "holdout3", "dev")
+    assert list(_results(PUBLISHED)["splits"]) == list(eval_without_land.DEFAULT_SPLITS)
+
+
+def test_the_file_is_named_for_its_splits_and_its_read(tmp_path: Path) -> None:
+    """The published file's name for the usual splits; another set's names them, and a repeat says which run, so
+    a read of the final split never overwrites the earlier splits' file or another read."""
+    path = eval_without_land.results_path
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path).name == f"2027-01-12-{DEFAULT_MODEL}-without-land.json"
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path, splits=["holdout4"]).name == (
+        f"2027-01-12-{DEFAULT_MODEL}-without-land-holdout4.json"
+    )
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path, splits=["holdout4"], repeat=3).name == (
+        f"2027-01-12-{DEFAULT_MODEL}-without-land-holdout4-r3.json"
+    )
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path, splits=["dev"]).name == (
+        f"2027-01-12-{DEFAULT_MODEL}-without-land-dev.json"
+    )
+
+
+def _letters_of(monkeypatch: pytest.MonkeyPatch, module: Any, *names: str) -> None:
+    """The manifest ``module`` reads has letters of these splits only."""
+    letters = [type("Letter", (), {"split": name, "id": f"{name}-x"})() for name in names]
+    monkeypatch.setattr(module, "load_manifest", lambda _path: letters)
+
+
+def test_a_read_of_a_final_split_is_written_under_its_own_name_and_says_which_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``python -m scripts.eval_without_land --split holdout4 --repeat N``, once holdout4's letters exist."""
+    asked: list[tuple[list[str], int]] = []
+
+    async def replayed(chosen: list[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
+        asked.append((list(chosen), repeat))
+        meta = {"date": run_date, "model": model, "repeat": repeat}
+        return {"schema": report.WITHOUT_LAND_SCHEMA, "meta": meta, "splits": {}}
+
+    monkeypatch.setattr(eval_without_land, "build", replayed)
+    _letters_of(monkeypatch, eval_without_land, "dev", "holdout4")
+    argv = ["--date", "2027-01-12", "--split", "holdout4", "--repeat", "2", "--out", str(tmp_path)]
+    assert eval_without_land.main(argv) == 0
+    assert asked == [(["holdout4"], 2)]
+    written = tmp_path / f"2027-01-12-{DEFAULT_MODEL}-without-land-holdout4-r2.json"
+    assert json.loads(written.read_text(encoding="utf-8"))["meta"]["repeat"] == 2
+
+
+def test_a_split_without_letters_is_refused_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The final run's splits are declared before their letters exist: asked for before then, the script says so
+    instead of replaying nothing. A repeat counts from 1."""
+
+    async def never(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise AssertionError("nothing is replayed")
+
+    monkeypatch.setattr(eval_without_land, "build", never)
+    _letters_of(monkeypatch, eval_without_land, "dev")
+    with pytest.raises(SystemExit) as refused:
+        eval_without_land.main(["--split", "holdout4", "--out", str(tmp_path)])
+    assert refused.value.code == 2 and "holdout4 has no letters yet" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        eval_without_land.main(["--split", "dev", "--repeat", "0", "--out", str(tmp_path)])
+    assert "--repeat counts runs from 1" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_results_say_which_run_they_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[tuple[str, int]] = []
+
+    async def numbers(split: str, model: str, entries: Any, *, repeat: int = 1) -> dict[str, Any]:
+        asked.append((split, repeat))
+        return {"entries": len(entries)}
+
+    monkeypatch.setattr(eval_without_land, "split_numbers", numbers)
+    results = asyncio.run(eval_without_land.build(["dev"], DEFAULT_MODEL, "2027-01-12", repeat=3))
+    assert asked == [("dev", 3)] and results["meta"]["repeat"] == 3
