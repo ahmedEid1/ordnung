@@ -14,8 +14,8 @@ htmlcov/
 /dist/
 /build/
 
-# Node
-node_modules/
+# Node (a folder, or a link to one, as .venv)
+node_modules
 web/dist/
 web/test-results/
 web/playwright-report/

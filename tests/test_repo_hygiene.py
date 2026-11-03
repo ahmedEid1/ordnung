@@ -505,15 +505,19 @@ def test_make_eval_says_what_it_writes() -> None:
 def test_git_ignores_a_linked_venv_and_claude_code_s_local_files(tmp_path: Path) -> None:
     """In a worktree with the virtual environment linked in (`ln -s …/.venv .venv`), `.venv/` (a folder only)
     let `git add -A` take the link, and nothing kept Claude Code's local settings and nested worktrees out. The
-    shared settings (`.claude/settings.json`) stay committable."""
+    shared settings (`.claude/settings.json`) stay committable. The web packages linked in
+    (`ln -s …/web/node_modules web/node_modules`) are ignored the same way."""
     repo = tmp_path / "repo"
     repo.mkdir()
     env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
     subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
     shutil.copyfile(ROOT / ".gitignore", repo / ".gitignore")
     (tmp_path / "venv").mkdir()
+    (tmp_path / "node_modules").mkdir()
+    (repo / "web").mkdir()
     try:
         (repo / ".venv").symlink_to(tmp_path / "venv", target_is_directory=True)
+        (repo / "web" / "node_modules").symlink_to(tmp_path / "node_modules", target_is_directory=True)
     except OSError:
         pytest.skip("this system makes no symbolic links")
     worktree = repo / ".claude" / "worktrees" / "wf_1"
