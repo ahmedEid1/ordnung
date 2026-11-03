@@ -2,23 +2,33 @@
 
     .venv/bin/python evals/verify_labels.py                  # checks evals/dataset
     .venv/bin/python evals/verify_labels.py --dataset /tmp/x
+    .venv/bin/python -m evals.verify_labels --require-facts  # a final split without its facts.json is a problem
 
 Deliberately shares no code with the generator (``evals/gen``) or the product (``ordnung.rules``):
-dates are recomputed from facts read off each letter by hand (``FACTS`` below) with a small date
-calculator built on ``datetime`` and the ``holidays`` package. Checks:
+dates are recomputed with a small date calculator built on ``datetime`` and the ``holidays`` package, from
+facts read off each letter. For dev, test, holdout, holdout2 and holdout3 those facts were read by hand
+(``FACTS`` below). For the final splits (holdout4, newkinds) they come from the blind audit, in
+``evals/dataset/<split>/facts.json``, written in the grammar of ``evals/dataset/FACTS.md``; each fact names its
+source. Until a final split has that file its dates are not re-derived, and the report says so. Checks:
 
 1. every non-null expected date (items, optional items, contract term end / cancel-by) equals the
    independent recomputation; for letters without a stated Land the date must be identical under all
    16 Land holiday calendars; for letters with a Land, ``region_sensitive`` and
    ``due_if_region_ignored`` must match the nationwide-holidays-only result; no label may change when
    holidays of only some municipalities (Mariä Himmelfahrt in BY, Fronleichnam in SN/TH) are counted;
-2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable;
+2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable; each ambiguous
+   reading is a working day and not before the letter's today (for a final split's letter: after its
+   ``valid_until``);
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
-4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2, holdout3);
+4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2,
+   holdout3, holdout4, newkinds);
 5. photo entries share the truth of a one-page source PDF;
 6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
-   4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that).
+   4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that);
+7. a final split's letter is read on its ``final_day``, and every scored date (with an ambiguous item's
+   candidates), contract date and appointment lies after its ``valid_until``;
+8. the conventions a final split's facts apply exist in the manifest and are the ones its label is tagged with.
 """
 
 from __future__ import annotations
@@ -28,8 +38,9 @@ import calendar
 import json
 import re
 import sys
-from collections import defaultdict
-from collections.abc import Callable
+from collections import Counter, defaultdict
+from collections.abc import Callable, Collection, Mapping, Sequence
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, cast
@@ -73,6 +84,13 @@ def next_working_day(d: date, region: str | None) -> date:
     """§ 193 BGB, § 108 Abs. 3 AO, § 31 Abs. 3 VwVfG, § 64 Abs. 3 SGG, § 222 Abs. 2 ZPO, § 43 Abs. 2 StPO."""
     while not working_day(d, region):
         d += timedelta(days=1)
+    return d
+
+
+def previous_working_day(d: date, region: str | None) -> date:
+    """The end shift of a step back (evals/dataset/FACTS.md): to the working day before."""
+    while not working_day(d, region):
+        d -= timedelta(days=1)
     return d
 
 
@@ -165,14 +183,260 @@ def day_before(d: date, *, region: str | None) -> date:
 
 
 # --------------------------------------------------------------------------------------------------
+# the grammar of a final split's facts (evals/dataset/FACTS.md): arithmetic only, no legal reading
+# --------------------------------------------------------------------------------------------------
+
+OPS = ("forward", "back", "month_end")
+UNITS = ("days", "weeks", "months", "werktage", "arbeitstage")
+SOURCES = ("A1", "A1p", "A1re")
+STEP_KEYS = ("op", "n", "unit", "shift")
+DATED_KEYS = ("source", "land", "from", "event", "steps", "conventions", "conflicting")
+_DERIVATION_KEYS = ("from", "event", "steps")
+_UNDATABLE_KEYS = ("source", "undatable", "conventions")
+_AMBIGUOUS_KEYS = ("source", "land", "ambiguous", "conventions")
+_PRICE_KEYS = ("source", "effective_date", "letter_date", "basis", "old_amount", "new_amount")
+_SLOT_NAME = re.compile(r"[io](?:0|[1-9]\d*)|term_end|cancel_by")
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+#: A dated fact as the checks take it: the function, its arguments, the Land whose holidays count (or None).
+Rule = tuple[Callable[..., date], tuple[Any, ...], str | None]
+AMBIGUOUS = "ambiguous"
+#: A slot's fact: dated, ambiguous with its candidate dates, or None (the letter cannot be dated).
+Fact = Rule | tuple[str, list[str]] | None
+#: A price change as printed: effective date, letter date, legal basis, old and new monthly amount.
+PriceChange = tuple[date, date, str, float, float]
+
+
+class FactsError(ValueError):
+    """A facts.json that the grammar of evals/dataset/FACTS.md does not allow."""
+
+
+@dataclass(frozen=True)
+class Step:
+    """One step of a derivation: ``forward`` or ``back`` n units, or to the end of the n-th calendar month after
+    (``month_end``); with ``shift``, an end on a Saturday, Sunday or holiday moves to the next working day (the
+    working day before, for a step back)."""
+
+    op: str
+    n: int
+    unit: str | None
+    shift: bool
+
+
+def _forward(d: date, n: int, unit: str | None, region: str | None) -> date:
+    if unit == "days":
+        return d + timedelta(days=n)
+    if unit == "weeks":
+        return d + timedelta(weeks=n)
+    if unit == "months":
+        return plus_months(d, n)
+    if unit == "werktage":
+        return werktage(d, n, region=region)
+    return arbeitstage(d, n, region=region)
+
+
+def _apply(d: date, step: Step, region: str | None) -> date:
+    if step.op == "forward":
+        d = _forward(d, step.n, step.unit, region)
+    elif step.op == "back":  # the latest day from which the same step forward ends on or before d
+        back = d
+        while _forward(back, step.n, step.unit, region) > d:
+            back -= timedelta(days=1)
+        d = back
+    else:
+        y, m = divmod(d.month - 1 + step.n, 12)
+        y, m = d.year + y, m + 1
+        d = D(y, m, calendar.monthrange(y, m)[1])
+    if step.shift:
+        d = previous_working_day(d, region) if step.op == "back" else next_working_day(d, region)
+    return d
+
+
+def derive(start: date, steps: Sequence[Step], *, region: str | None) -> date:
+    """The date the steps reach from the event's date ``start``, under the holidays of ``region``."""
+    for step in steps:
+        start = _apply(start, step, region)
+    return start
+
+
+def _keys(raw: Any, allowed: Sequence[str], where: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise FactsError(f"{where}: not an object")
+    unknown = sorted(set(raw) - set(allowed))
+    if unknown:
+        raise FactsError(f"{where}: unknown key {', '.join(unknown)} (allowed: {', '.join(allowed)})")
+    return raw
+
+
+def _day(value: Any, where: str) -> date:
+    if isinstance(value, str) and _ISO_DAY.fullmatch(value):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            pass
+    raise FactsError(f"{where}: {value!r} is not a date (YYYY-MM-DD)")
+
+
+def parse_steps(raw: Any, where: str) -> tuple[Step, ...]:
+    """A derivation's ``steps``, checked against the grammar."""
+    if not isinstance(raw, list):
+        raise FactsError(f"{where}: steps is not a list")
+    steps = []
+    for k, item in enumerate(raw):
+        at = f"{where} step {k}"
+        _keys(item, STEP_KEYS, at)
+        op = item.get("op")
+        if op not in OPS:
+            raise FactsError(f"{at}: op {op!r} is not one of {', '.join(OPS)}")
+        n, least = item.get("n"), 0 if op == "month_end" else 1
+        if not isinstance(n, int) or isinstance(n, bool) or n < least:
+            raise FactsError(f"{at}: n must be a whole number of at least {least}, not {n!r}")
+        unit = item.get("unit")
+        if op == "month_end" and "unit" in item:
+            raise FactsError(f"{at}: month_end takes no unit")
+        if op != "month_end" and unit not in UNITS:
+            raise FactsError(f"{at}: unit {unit!r} is not one of {', '.join(UNITS)}")
+        shift = item.get("shift")
+        if not isinstance(shift, bool):
+            raise FactsError(f"{at}: shift must be true or false (the weekend/holiday end shift)")
+        steps.append(Step(op=op, n=n, unit=unit, shift=shift))
+    return tuple(steps)
+
+
+def _derivation(raw: Any, where: str) -> tuple[date, tuple[Step, ...]]:
+    _keys(raw, _DERIVATION_KEYS, where)
+    if "from" not in raw or "steps" not in raw:
+        raise FactsError(
+            f"{where}: a derivation has 'from' (the event's date) and 'steps' (empty for a stated date)"
+        )
+    if not isinstance(raw.get("event", ""), str):
+        raise FactsError(f"{where}: event names the event in words")
+    return _day(raw["from"], f"{where} from"), parse_steps(raw["steps"], where)
+
+
+def _derivations(raw: Any, where: str, least: int) -> list[tuple[date, tuple[Step, ...]]]:
+    if not isinstance(raw, list) or len(raw) < least:
+        raise FactsError(f"{where}: a list of at least {least} derivations")
+    return [_derivation(item, f"{where} {k}") for k, item in enumerate(raw)]
+
+
+def _source(raw: Mapping[str, Any], where: str) -> str:
+    source = raw.get("source")
+    if source not in SOURCES:
+        raise FactsError(f"{where}: source {source!r} is not one of {', '.join(SOURCES)}")
+    return cast(str, source)
+
+
+def _land(raw: Mapping[str, Any], where: str) -> str | None:
+    if "land" not in raw:
+        raise FactsError(
+            f"{where}: no 'land' (the Land whose holidays count; null when the letter names none)"
+        )
+    land = raw["land"]
+    if land is not None and land not in LAENDER:
+        raise FactsError(f"{where}: {land!r} is not a Land ({', '.join(LAENDER)})")
+    return cast("str | None", land)
+
+
+def _applied(raw: Mapping[str, Any], where: str) -> list[str]:
+    ids = raw.get("conventions", [])
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids) or len(set(ids)) != len(ids):
+        raise FactsError(f"{where}: conventions must be a list of distinct convention ids")
+    return ids
+
+
+@dataclass
+class LetterFacts:
+    """One letter of a facts.json, in the forms the checks below take."""
+
+    slots: dict[str, Fact] = field(default_factory=dict)
+    conflicts: dict[str, list[Rule]] = field(default_factory=dict)
+    conventions: dict[str, list[str]] = field(default_factory=dict)
+    price_change: PriceChange | None = None
+    sources: list[str] = field(default_factory=list)
+
+
+def _letter_facts(cid: str, raw: Any) -> LetterFacts:
+    _keys(raw, ("slots", "price_change"), cid)
+    slots = raw.get("slots")
+    if not isinstance(slots, dict):
+        raise FactsError(f"{cid}: no slots object")
+    out = LetterFacts()
+    for slot, fact in slots.items():
+        if not _SLOT_NAME.fullmatch(slot):
+            raise FactsError(f"{cid}: unknown slot {slot!r} (i0, i1, …, o0, …, term_end or cancel_by)")
+        where = f"{cid} {slot}"
+        if not isinstance(fact, dict):
+            raise FactsError(f"{where}: not an object")
+        out.sources.append(_source(fact, where))
+        if "undatable" in fact:
+            _keys(fact, _UNDATABLE_KEYS, where)
+            if fact["undatable"] is not True:
+                raise FactsError(f"{where}: undatable is true when it is there")
+            out.slots[slot] = None
+        elif "ambiguous" in fact:
+            _keys(fact, _AMBIGUOUS_KEYS, where)
+            land = _land(fact, where)
+            readings = _derivations(fact["ambiguous"], f"{where} ambiguous", 2)
+            out.slots[slot] = (AMBIGUOUS, [derive(*reading, region=land).isoformat() for reading in readings])
+        else:
+            _keys(fact, DATED_KEYS, where)
+            land = _land(fact, where)
+            out.slots[slot] = (
+                derive,
+                _derivation({k: fact[k] for k in _DERIVATION_KEYS if k in fact}, where),
+                land,
+            )
+            if "conflicting" in fact:
+                others = _derivations(fact["conflicting"], f"{where} conflicting", 1)
+                out.conflicts[slot] = [(derive, other, land) for other in others]
+        out.conventions[slot] = _applied(fact, where)
+    if "price_change" in raw:
+        where = f"{cid} price_change"
+        change = _keys(raw["price_change"], _PRICE_KEYS, where)
+        out.sources.append(_source(change, where))
+        missing = [key for key in _PRICE_KEYS if key not in change]
+        if missing:
+            raise FactsError(f"{where}: no {', '.join(missing)}")
+        amounts = [change["old_amount"], change["new_amount"]]
+        if not isinstance(change["basis"], str) or not all(
+            isinstance(a, (int, float)) and not isinstance(a, bool) for a in amounts
+        ):
+            raise FactsError(f"{where}: basis is the legal basis as printed; the amounts are numbers")
+        out.price_change = (
+            _day(change["effective_date"], f"{where} effective_date"),
+            _day(change["letter_date"], f"{where} letter_date"),
+            change["basis"],
+            float(amounts[0]),
+            float(amounts[1]),
+        )
+    return out
+
+
+def load_facts(path: Path) -> dict[str, LetterFacts]:
+    """One final split's ``<split>/facts.json``: every letter's facts, checked against the grammar (``FactsError``
+    names the first thing it does not allow)."""
+    split = path.parent.name
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise FactsError(f"not readable as JSON ({exc})") from None
+    _keys(data, ("split", "letters"), "the file")
+    if data.get("split") != split:
+        raise FactsError(f"names split {data.get('split')!r}, but it lies in {split}/")
+    letters = data.get("letters")
+    if not isinstance(letters, dict):
+        raise FactsError("letters is not an object")
+    return {cid: _letter_facts(cid, raw) for cid, raw in letters.items()}
+
+
+# --------------------------------------------------------------------------------------------------
 # facts read off each letter by hand: slot -> (rule, args, region stated in the letterhead or None)
 # slots: i<n> = items[n], o<n> = optional_items[n], term_end / cancel_by = contract
 # --------------------------------------------------------------------------------------------------
 
-Rule = tuple[Callable[..., date], tuple[Any, ...], str | None]
-AMBIGUOUS = "ambiguous"
-
-FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
+FACTS: dict[str, dict[str, Fact]] = {
     # tax (AO) — posting date = letter date unless the letter names a posting day
     "dev-tax_assessment-A1": {"i0": (remedy, (D(2026, 4, 27), "ao"), "NW")},
     "dev-tax_assessment-B1": {"i0": (remedy, (D(2026, 3, 30), "ao"), None), "i1": (stated, (D(2026, 4, 30),), None)},
@@ -473,7 +737,7 @@ FACTS: dict[str, dict[str, Rule | tuple[str, list[str]] | None]] = {
 }  # fmt: skip
 
 # price changes: effective date, letter date, legal basis, old and new monthly amount (as printed)
-PRICE_CHANGES: dict[str, tuple[date, date, str, float, float]] = {
+PRICE_CHANGES: dict[str, PriceChange] = {
     "dev-price_increase-A1": (D(2026, 1, 1), D(2025, 10, 28), "§ 41 Abs. 5 EnWG", 72.0, 81.0),
     "dev-price_increase-B1": (D(2026, 4, 1), D(2026, 2, 16), "§ 57 Abs. 1 TKG", 39.99, 44.99),
     "test-price_increase-C1": (D(2026, 11, 1), D(2026, 9, 10), "§ 41 Abs. 5 EnWG", 96.0, 109.0),
@@ -513,7 +777,108 @@ def _slots(truth: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return slots
 
 
-def check_dates(entries: list[dict[str, Any]]) -> tuple[int, list[str]]:
+@dataclass
+class Facts:
+    """Every letter's facts: the hand-read ones above and those of the final splits' facts.json files."""
+
+    slots: dict[str, dict[str, Fact]] = field(default_factory=dict)
+    conflicts: dict[str, dict[str, list[Rule]]] = field(default_factory=dict)
+    prices: dict[str, PriceChange] = field(default_factory=dict)
+    #: The conventions each slot's facts apply, for a letter of a facts.json (keyed by letter id).
+    applied: dict[str, dict[str, list[str]]] = field(default_factory=dict)
+    #: The facts of the facts.json files by source (A1, A1p, A1re).
+    sources: Counter[str] = field(default_factory=Counter)
+    #: Final splits with letters but no facts.json yet: their dates are not re-derived.
+    waiting: list[str] = field(default_factory=list)
+    #: Splits whose facts.json the grammar refused (the reason is among ``problems``).
+    unreadable: list[str] = field(default_factory=list)
+    problems: list[str] = field(default_factory=list)
+
+
+def hand_read() -> Facts:
+    """The facts of dev, test, holdout, holdout2 and holdout3, read off each letter by hand."""
+    return Facts(
+        slots=dict(FACTS),
+        conflicts={cid: {"i0": [rule]} for cid, rule in CONFLICT_ALTERNATIVES.items()},
+        prices=dict(PRICE_CHANGES),
+    )
+
+
+def _is_final(entry: Mapping[str, Any]) -> bool:
+    return "valid_until" in entry or "final_day" in entry
+
+
+def gather_facts(root: Path, entries: list[dict[str, Any]]) -> Facts:
+    """The hand-read facts and every ``<split>/facts.json`` under ``root``; a letter's facts come from its own split's
+    file only."""
+    facts = hand_read()
+    split_of = {e["id"]: e["split"] for e in entries}
+    files = {path.parent.name: path for path in sorted(root.glob("*/facts.json"))}
+    for split, path in files.items():
+        name = f"{split}/facts.json"
+        try:
+            letters = load_facts(path)
+        except FactsError as exc:
+            facts.problems.append(f"{name}: {exc}")
+            facts.unreadable.append(split)
+            continue
+        for cid, letter in letters.items():
+            if split_of.get(cid, split) != split:
+                facts.problems.append(f"{cid}: in {name}, but the letter is in {split_of[cid]}")
+                continue
+            if cid in facts.slots:
+                facts.problems.append(f"{cid}: in {name}, and read by hand as well")
+                continue
+            facts.slots[cid] = letter.slots
+            facts.conflicts[cid] = letter.conflicts
+            facts.applied[cid] = letter.conventions
+            if letter.price_change is not None:
+                facts.prices[cid] = letter.price_change
+            facts.sources.update(letter.sources)
+    facts.waiting = sorted({e["split"] for e in entries if _is_final(e)} - set(files))
+    return facts
+
+
+def convention_ids(manifest: Mapping[str, Any]) -> frozenset[str]:
+    """The ids of the manifest's labelling conventions."""
+    return frozenset(c["id"] for c in manifest.get("conventions", []) if isinstance(c, dict) and "id" in c)
+
+
+def _tags(applied: Mapping[str, list[str]], *slots: str) -> list[str]:
+    return sorted({i for slot in slots for i in applied.get(slot, [])})
+
+
+def check_conventions(
+    cid: str, truth: Mapping[str, Any], applied: Mapping[str, list[str]], known: Collection[str]
+) -> list[str]:
+    """The conventions a letter's facts apply exist, and are the ones each label is tagged with (a contract's two
+    dates share the contract's tags)."""
+    problems = [
+        f"{cid} {slot}: unknown convention {i}"
+        for slot in sorted(applied)
+        for i in applied[slot]
+        if i not in known
+    ]
+    parts: list[tuple[str, Mapping[str, Any], tuple[str, ...]]]
+    parts = [(f"i{n}", item, (f"i{n}",)) for n, item in enumerate(truth["items"])]
+    parts += [(f"o{n}", item, (f"o{n}",)) for n, item in enumerate(truth["optional_items"])]
+    if truth["contract"]:
+        parts.append(("contract", truth["contract"], ("term_end", "cancel_by")))
+    for where, part, slots in parts:
+        mine, tagged = _tags(applied, *slots), sorted(set(part.get("conventions") or []))
+        if mine != tagged:
+            problems.append(
+                f"{cid} {where}: the facts apply conventions {mine}, the label is tagged {tagged}"
+            )
+    return problems
+
+
+def check_dates(
+    entries: list[dict[str, Any]], facts: Facts | None = None, conventions: Collection[str] = ()
+) -> tuple[int, list[str]]:
+    """Re-derive every dated label of ``entries`` from ``facts`` (the hand-read ones by default); ``conventions``
+    are the manifest's convention ids."""
+    facts = facts if facts is not None else hand_read()
     problems: list[str] = []
     checked = 0
     seen = set()
@@ -522,33 +887,35 @@ def check_dates(entries: list[dict[str, Any]]) -> tuple[int, list[str]]:
             continue
         cid = e["id"]
         seen.add(cid)
-        facts = FACTS.get(cid)
-        if facts is None:
-            problems.append(f"{cid}: no hand-read facts for this letter")
+        letter = facts.slots.get(cid)
+        if letter is None:
+            problems.append(f"{cid}: no facts for this letter")
             continue
         slots = _slots(e["truth"])
-        for slot in sorted(set(slots) | set(facts)):
-            item, fact = slots.get(slot), facts.get(slot, "absent")
+        # a reading must be a plausible deadline: not before 'today', or after the window of a final split's letter
+        until = e.get("valid_until")
+        earliest = date.fromisoformat(until) + timedelta(days=1) if until else date.fromisoformat(e["today"])
+        too_early = "not after the window" if until else "past"
+        for slot in sorted(set(slots) | set(letter)):
+            item, fact = slots.get(slot), letter.get(slot, "absent")
             if item is None:
                 problems.append(f"{cid} {slot}: expected in truth but missing")
                 continue
             label = item["expected_due"]
             if fact == "absent":
                 if label is not None:
-                    problems.append(f"{cid} {slot}: dated label {label} has no hand-read fact")
+                    problems.append(f"{cid} {slot}: dated label {label} has no fact")
                 continue
             if fact is None:
                 if label is not None:
                     problems.append(f"{cid} {slot}: letter cannot be dated, label says {label}")
                 continue
             if fact[0] == AMBIGUOUS:
-                for cand in fact[
-                    1
-                ]:  # each reading must be a plausible deadline: a working day, not before 'today'
+                for cand in fact[1]:  # each reading must be a working day, not too early
                     day = date.fromisoformat(cand)
-                    if not working_day(day, None) or day < date.fromisoformat(e["today"]):
+                    if not working_day(day, None) or day < earliest:
                         problems.append(
-                            f"{cid} {slot}: candidate {cand} is not a plausible reading (weekday/holiday/past)"
+                            f"{cid} {slot}: candidate {cand} is not a plausible reading (weekday/holiday/{too_early})"
                         )
                 if label != AMBIGUOUS or sorted(item.get("candidates", [])) != sorted(fact[1]):
                     problems.append(
@@ -580,8 +947,10 @@ def check_dates(entries: list[dict[str, Any]]) -> tuple[int, list[str]]:
                     problems.append(
                         f"{cid} {slot}: due_if_region_ignored {item.get('due_if_region_ignored')} != {national}"
                     )
-        if cid in PRICE_CHANGES:
-            effective, letter_date, basis, old, new = PRICE_CHANGES[cid]
+        if cid in facts.applied:
+            problems += check_conventions(cid, e["truth"], facts.applied[cid], conventions)
+        if cid in facts.prices:
+            effective, letter_date, basis, old, new = facts.prices[cid]
             pc = e["truth"]["price_change"] or {}
             sc = pc.get("special_cancellation") or {}
             want = {
@@ -608,19 +977,88 @@ def check_dates(entries: list[dict[str, Any]]) -> tuple[int, list[str]]:
             for key, value in want.items():
                 if got.get(key) != value:
                     problems.append(f"{cid}: price_change {key} = {got.get(key)!r}, independent {value!r}")
-        if cid in CONFLICT_ALTERNATIVES:
-            fn, args, region = CONFLICT_ALTERNATIVES[cid]
-            cands = slots["i0"].get("candidates") or []
-            other = fn(*args, region=region).isoformat()
-            checked += 1
-            if other not in cands or slots["i0"]["expected_due"] != min(cands):
-                problems.append(
-                    f"{cid}: candidates {cands} should hold {other} and the label the earlier date"
-                )
-    for cid in FACTS:
-        if cid not in seen:
-            problems.append(f"{cid}: hand-read facts for a letter that is not in the manifest")
+        for slot, others in sorted(facts.conflicts.get(cid, {}).items()):  # the other dates a letter states
+            target = slots.get(slot)
+            if target is None:
+                problems.append(f"{cid} {slot}: conflicting dates for a slot the truth does not have")
+                continue
+            cands = target.get("candidates") or []
+            for fn, args, region in others:
+                other = fn(*args, region=region).isoformat()
+                checked += 1
+                if other not in cands or target["expected_due"] != min(cands):
+                    problems.append(
+                        f"{cid} {slot}: candidates {cands} should hold {other} and the label the earlier date"
+                    )
+    # a manifest that holds a split holds every letter its facts name (one of a facts.json file always)
+    present = {e["split"] for e in entries}
+    for cid in facts.slots:
+        if cid not in seen and (cid in facts.applied or cid.split("-", 1)[0] in present):
+            problems.append(f"{cid}: facts for a letter that is not in the manifest")
     return checked, problems
+
+
+def check_facts(
+    root: Path, entries: list[dict[str, Any]], conventions: Collection[str], *, require_facts: bool = False
+) -> dict[str, Any]:
+    """The dates of ``entries`` re-derived from the facts under ``root``; a final split without its facts.json is
+    listed (``splits_without_facts``), and with ``require_facts`` it is a problem."""
+    facts = gather_facts(root, entries)
+    problems = list(facts.problems)
+    if require_facts:
+        problems += [
+            f"{split}: no {split}/facts.json, so none of its dates is re-derived" for split in facts.waiting
+        ]
+    skip = {*facts.waiting, *facts.unreadable}
+    checked, date_problems = check_dates([e for e in entries if e["split"] not in skip], facts, conventions)
+    return {
+        "dated_labels_checked": checked,
+        "date_problems": problems + date_problems,
+        "splits_without_facts": facts.waiting,
+        "fact_sources": dict(sorted(facts.sources.items())),
+    }
+
+
+def _dated(value: Any) -> date | None:
+    return date.fromisoformat(value) if isinstance(value, str) and _ISO_DAY.fullmatch(value) else None
+
+
+def check_window(entries: list[dict[str, Any]]) -> list[str]:
+    """A final split's letter is read on its ``final_day`` and stays valid through ``valid_until``: every scored
+    date (an ambiguous or conflicting item's candidates too), contract date and appointment lies after it."""
+    problems = []
+    for e in entries:
+        if e["photo"] or not _is_final(e):
+            continue
+        cid = e["id"]
+        if "final_day" not in e or "valid_until" not in e:
+            problems.append(f"{cid}: final_day and valid_until come together")
+            continue
+        final_day, until = date.fromisoformat(e["final_day"]), date.fromisoformat(e["valid_until"])
+        if date.fromisoformat(e["today"]) != final_day:
+            problems.append(f"{cid}: today {e['today']} is not its final day {e['final_day']}")
+        if until < final_day:
+            problems.append(f"{cid}: valid until {e['valid_until']}, before its final day {e['final_day']}")
+        truth = e["truth"]
+        dates: list[tuple[str, Any]] = []
+        for n, item in enumerate(truth["items"]):
+            dates += [
+                (f"items[{n}]", value)
+                for value in [item.get("expected_due"), *(item.get("candidates") or [])]
+            ]
+        for n, item in enumerate(truth["optional_items"]):
+            if item.get("kind") == "appointment":
+                dates.append((f"optional_items[{n}]", item.get("expected_due")))
+        for key in ("expected_current_term_end", "expected_cancel_by"):
+            if truth["contract"]:
+                dates.append((f"contract.{key}", truth["contract"].get(key)))
+        seen = set()
+        for where, value in dates:
+            day = _dated(value)
+            if day is not None and day <= until and (where, day) not in seen:
+                seen.add((where, day))
+                problems.append(f"{cid} {where}: {day} is not after the window (valid until {until})")
+    return problems
 
 
 _MONTHS_DE = [
@@ -731,7 +1169,7 @@ _CUE = re.compile(
 
 def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, str]) -> list[str]:
     """Sentences (numbers normalised) with a deadline cue that occur in letters of more than one split
-    (dev, test, holdout, holdout2, holdout3), each prefixed with the splits it occurs in."""
+    (dev, test, holdout, holdout2, holdout3, holdout4, newkinds), each prefixed with the splits it occurs in."""
     where: dict[str, set[str]] = defaultdict(set)
     for e in entries:
         if e["photo"]:
@@ -790,10 +1228,21 @@ def check_photos(entries: list[dict[str, Any]]) -> list[str]:
     return problems
 
 
-def run(root: Path) -> dict[str, Any]:
+#: The report's lists of problems (any of them makes ``main`` exit 1).
+PROBLEM_KEYS = (
+    "date_problems",
+    "text_problems",
+    "shared_split_sentences",
+    "photo_problems",
+    "land_window_problems",
+    "window_problems",
+)
+
+
+def run(root: Path, *, require_facts: bool = False) -> dict[str, Any]:
     manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
     entries = manifest["entries"]
-    checked, date_problems = check_dates(entries)
+    dates = check_facts(root, entries, convention_ids(manifest), require_facts=require_facts)
     texts, text_problems = check_text(entries, root)
     leaks = shared_deadline_sentences(entries, texts)
     photo_problems = check_photos(entries)
@@ -801,31 +1250,39 @@ def run(root: Path) -> dict[str, Any]:
     return {
         "letters": sum(1 for e in entries if not e["photo"]),
         "photos": sum(1 for e in entries if e["photo"]),
-        "dated_labels_checked": checked,
-        "date_problems": date_problems,
+        "dated_labels_checked": dates["dated_labels_checked"],
+        "date_problems": dates["date_problems"],
         "text_problems": text_problems,
         "shared_split_sentences": leaks,
         "photo_problems": photo_problems,
         "land_window_problems": land_window_problems,
+        "window_problems": check_window(entries),
+        "splits_without_facts": dates["splits_without_facts"],
+        "fact_sources": dates["fact_sources"],
     }
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--dataset", type=Path, default=Path(__file__).resolve().parent / "dataset")
+    parser.add_argument(
+        "--require-facts",
+        action="store_true",
+        help="a final split without its facts.json is a problem (once the blind audit's facts are in)",
+    )
     args = parser.parse_args(argv)
-    report = run(args.dataset)
+    report = run(args.dataset, require_facts=args.require_facts)
     print(
         f"letters {report['letters']} (+ {report['photos']} photos), dated labels re-derived: {report['dated_labels_checked']}"
     )
+    if report["fact_sources"]:
+        print(
+            "facts.json facts by source: " + ", ".join(f"{k} {v}" for k, v in report["fact_sources"].items())
+        )
+    if report["splits_without_facts"]:
+        print(f"dates not re-derived yet (no facts.json): {', '.join(report['splits_without_facts'])}")
     failed = False
-    for key in (
-        "date_problems",
-        "text_problems",
-        "shared_split_sentences",
-        "photo_problems",
-        "land_window_problems",
-    ):
+    for key in PROBLEM_KEYS:
         print(f"{key}: {len(report[key])}")
         for line in report[key]:
             print(f"  - {line}")
