@@ -1817,7 +1817,7 @@ def test_usage_stats_aggregates(store: Store) -> None:
     stats = store.usage_stats(recent=2)
     assert (stats.calls, stats.cache_hits, stats.input_tokens, stats.output_tokens) == (3, 1, 1010, 200)
     # prompt tokens read from or written to the cache count as "in" too, as a letter's trace counts them
-    # (walkthrough of phase 2: Settings said "2 in" where "How it was read" said "20k in")
+    # (Settings said "2 in" where "How it was read" said "20k in")
     store.log_llm_call(
         "review",
         "sonnet",
@@ -1858,7 +1858,7 @@ async def test_llm_service_uses_the_store_as_cache_and_ledger(store: Store) -> N
 
 
 async def test_a_call_whose_cli_never_started_carried_no_letter(store: Store, tmp_path: Path) -> None:
-    """FEAT G4: Claude not installed — the call's row names no letter and no bytes, so the letter is not
+    """Claude not installed — the call's row names no letter and no bytes, so the letter is not
     "given to the model"; a call that did start (even one that failed) carried it, and so did a reading."""
     store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
     page = tmp_path / "page-1.jpg"
@@ -1894,7 +1894,7 @@ async def test_a_call_whose_cli_never_started_carried_no_letter(store: Store, tm
 
 
 def test_deleting_a_letter_forgets_its_calls_errors(store: Store) -> None:
-    """SEC S10: a usage-log row keeps only the anonymous numbers once its letter is deleted — its error too,
+    """A usage-log row keeps only the anonymous numbers once its letter is deleted — its error too,
     which may quote Claude's answer."""
     store.add_document(id="doc_1", sha256="a" * 64, filename="a.pdf", mime="application/pdf", file_path="a")
     store.log_llm_call(
@@ -1908,7 +1908,7 @@ def test_deleting_a_letter_forgets_its_calls_errors(store: Store) -> None:
 
 
 def test_a_refused_upload_leaves_no_files(store: Store, paths: Paths) -> None:
-    """ROB G2: an upload whose document was never stored leaves neither its original nor its page images —
+    """An upload whose document was never stored leaves neither its original nor its page images —
     unless a document has that file."""
     original = paths.files / "ab" / ("ab" + "c" * 62 + ".pdf")
     original.parent.mkdir(parents=True)

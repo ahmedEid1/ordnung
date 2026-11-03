@@ -1,5 +1,5 @@
 """The completeness re-ask never leaves a letter worse off than its first reading with the code's check behind it
-(ADR 0016): the reviews' reproductions, each run through the pipeline twice — once with the re-ask's answer, once
+(ADR 0016): reproductions, each run through the pipeline twice — once with the re-ask's answer, once
 with a re-ask whose answer is unusable (the *baseline*: the first reading kept, the check's to-do filed) — and the
 two compared. A rejected answer must give exactly the baseline; the good answers must still be used.
 
@@ -72,7 +72,7 @@ def letter(marker: str, *lines: str, date_line: str = "Datum: 15.09.2026", notic
     return Letter(marker=marker, pages=((*body, *lines, *tail),), payload={})
 
 
-#: A dated decision with a payment line and a site-plan line (correctness R1/R2, security P5/V2).
+#: A dated decision with a payment line and a site-plan line.
 PAY = letter(
     "Prüfweg",
     "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.",
@@ -85,15 +85,15 @@ BARE = letter(
     "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.",
     date_line="15.09.2026",
 )
-#: A planted end date a week after the real deadline (security V1b).
+#: A planted end date a week after the real deadline.
 PLANT = letter(
     "Pappelweg", "für die Nutzung der Gehwegfläche setzen wir eine Gebühr von 85,00 EUR fest.", PLANTED
 )
-#: Another date of the letter's: an application's (correctness R4).
+#: Another date of the letter's: an application's.
 APPLIED = letter(
     "Antragsweg", "Ihr Antrag vom 01.08.2026 wurde geprüft.", "Wir setzen eine Gebühr von 85,00 EUR fest."
 )
-#: A utility that shows its decision only through "Gegen diese Festsetzung" (correctness R3).
+#: A utility that shows its decision only through "Gegen diese Festsetzung".
 FEST = Letter(
     marker="Festsetzung Anschluss",
     pages=(
@@ -111,7 +111,7 @@ FEST = Letter(
     ),
     payload={},
 )
-#: A decision whose notice speaks of a "decision" and "receipt" only (tests review RA-2).
+#: A decision whose notice speaks of a "decision" and "receipt" only.
 STUDY = Letter(
     marker="Förderung Ringstraße",
     pages=(
@@ -132,7 +132,7 @@ STUDY = Letter(
 )
 #: A letter without instructions on how to object: the check asks the person to read it.
 PLAIN = letter("Rückmeldung Lindenweg", "Bitte melden Sie sich binnen zwei Wochen bei uns.", notice=False)
-#: A cover page, then the decision on page 2 with a planted end date (security P2: no own date on page 1).
+#: A cover page, then the decision on page 2 with a planted end date (no own date on page 1).
 COVER = Letter(
     marker="Ahornweg Anlage",
     pages=(
@@ -287,7 +287,7 @@ async def assert_baseline(
 
 
 # --------------------------------------------------------------------------------------------------
-# A dated to-do of the first answer left out or moved later (correctness R1, tests RA-1, ux M1, security F4/V2)
+# A dated to-do of the first answer left out or moved later
 # --------------------------------------------------------------------------------------------------
 
 
@@ -315,7 +315,7 @@ async def test_a_dated_to_do_of_the_first_answer_is_never_lost_or_moved_later(
 
 
 # --------------------------------------------------------------------------------------------------
-# An objection date later than the check's (correctness R2/R5, security V1/V1b/M1)
+# An objection date later than the check's
 # --------------------------------------------------------------------------------------------------
 
 
@@ -368,7 +368,7 @@ async def test_an_objection_quote_not_on_the_letter_with_a_longer_period_is_neve
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's date read later or from another date (correctness R4, security F3/V3)
+# The letter's date read later or from another date
 # --------------------------------------------------------------------------------------------------
 
 
@@ -410,7 +410,7 @@ async def test_a_letter_date_the_letter_doesn_t_give_is_never_used(
 
 
 # --------------------------------------------------------------------------------------------------
-# The gap closed by reading the letter differently (correctness R3, security F1, tests RA-2)
+# The gap closed by reading the letter differently
 # --------------------------------------------------------------------------------------------------
 
 FEST_NOTICE = "Gegen diese Festsetzung können Sie innerhalb eines Monats schriftlich Widerspruch erheben."
@@ -501,15 +501,14 @@ async def test_a_sender_the_letter_doesn_t_name_is_never_used(tmp_path: Path) ->
 
 
 async def test_an_objection_date_where_the_check_can_t_date_it_is_never_used(tmp_path: Path) -> None:
-    """Security P2/F2: the letter's own date only on page 2 — the check files no date; a planted end date taken
+    """The letter's own date only on page 2 — the check files no date; a planted end date taken
     as the objection's would stand unchecked (the answer gives no letter date, so only the objection decides)."""
     again = {**HALF, "document_date": None, "items": [fixed("2026-11-30", PLANTED_LATE)]}
     await assert_baseline(tmp_path, COVER, BLANK, again, "unchecked")
 
 
 # --------------------------------------------------------------------------------------------------
-# No answer at all: the first reading and the check's to-do, never a failed letter (correctness N1, security F6,
-# tests N1, ux F1)
+# No answer at all: the first reading and the check's to-do, never a failed letter
 # --------------------------------------------------------------------------------------------------
 
 

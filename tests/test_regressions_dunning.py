@@ -1,4 +1,4 @@
-"""Which payments a payment reminder (Mahnung) takes over (round 2, R2-DUN-1).
+"""Which payments a payment reminder (Mahnung) takes over.
 
 This is worked out on read (``link.reminder_covers`` via ``Ledger.covering_reminders``). A reminder
 used to cover *every* non-reminder letter of its thread that mentions its invoice number, with no date
@@ -141,7 +141,7 @@ def test_a_reminder_about_arrears_does_not_hide_the_bills_recurring_payments(sto
 
 
 def test_a_court_payment_order_about_the_invoice_takes_over_its_payment(store: Store) -> None:
-    """Code files a Mahnbescheid as a court order, not a reminder (review C1): it must still take over
+    """Code files a Mahnbescheid as a court order, not a reminder: it must still take over
     the invoice's payment, or the invoice shows up to pay next to the court order."""
     party = store.add_party(name="Stadtwerke Musterstadt", kind="utility")
     case = store.add_case(title="Invoice RE-4711", party_id=party.id)

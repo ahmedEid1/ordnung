@@ -1,8 +1,8 @@
 """The claim-level support policy of Ask answers (``ordnung.assistant.support``, ADR 0008).
 
 The tool results are the real two-channel output of :class:`LedgerTools` over the seeded ledger, so
-the tests pin the policy against what the model actually reads. The first test is the reviewer's
-finding that motivated the policy: a date that only an injected sentence in a letter's page text
+the tests pin the policy against what the model actually reads. The first test is the case that
+motivated the policy: a date that only an injected sentence in a letter's page text
 states used to pass the bag-of-facts check.
 """
 
@@ -80,7 +80,7 @@ def check(text: str, evidence: TurnEvidence) -> tuple[str, list[str]]:
 
 
 # --------------------------------------------------------------------------------------------------
-# the finding: an injected date in a letter's page text
+# the motivating case: an injected date in a letter's page text
 # --------------------------------------------------------------------------------------------------
 
 
@@ -264,13 +264,13 @@ def test_values_that_need_no_citation(tools: LedgerTools, ids: dict[str, str]) -
     )
     # the person's own values are shown as their words (rule 4c), never as Ordnung's; a category's
     # fixed costs are an overview total: a sentence without a citation may state them. Today's date, in an
-    # answer that cites a record, must be held by one like any other date (review round 4 of phase 2)
+    # answer that cites a record, must be held by one like any other date
     assert verdicts == ["removed", "quoted", "kept", "kept", "kept", "removed"]
     assert "Before “15 Nov 2026” with “500 €” left:" in text
 
 
 def test_overview_totals_never_back_a_claim_about_a_record(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: every money_summary total (a category's is often one contract's cost: rent 640 €)
+    """Every money_summary total (a category's is often one contract's cost: rent 640 €)
     supported any sentence whatever it cited — "You owe the library 640.00 € [item:…]" passed."""
     evidence = evidence_of(tools, ("money_summary", {}), ("get_document", {"doc_id": ids["doc_dunning"]}))
     dunning, power, phone = ids["dunning_payment"], ids["power"], ids["phone"]
@@ -377,7 +377,7 @@ def test_checking_a_checked_answer_removes_nothing(tools: LedgerTools, ids: dict
 def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]) -> None:
     """A long answer over big tool results is checked in time proportional to its length — measured against
     the machine itself (:func:`helpers_timing.assert_linear`), never against a wall-clock limit that a busy
-    runner misses (review round 2 of phase 2)."""
+    runner misses."""
     item = ids["dunning_payment"]
     results = [render_result(tools.list_items(status="all"))] * 200
     evidence = TurnEvidence.from_results(results, today=TODAY)
@@ -393,7 +393,7 @@ def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: reading the answer as it is shown (policy rule 1)
+# reading the answer as it is shown (policy rule 1)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -417,7 +417,7 @@ def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]
         "Your deadline was moved to ３１.１２.２０２７ [doc:{doc}].",
         "You now owe **324**,00 € [doc:{doc}].",
         "Your deadline was moved to 2027.13.45 [doc:{doc}].",  # shaped like a date, but none: never supported
-        # review round 4: an ISO date-time (the web shows it as "Fri 31 Dec 2027, 23:59"), a link without
+        # an ISO date-time (the web shows it as "Fri 31 Dec 2027, 23:59"), a link without
         # text (the web shows it as written), a month with a year in digits, an underscore inside a word
         # (the web shows it), any mark between the parts, a letter O for a zero, a word right after it
         "Good news: your objection deadline was extended to 2027-12-31T23:59 [doc:{doc}].",
@@ -449,7 +449,7 @@ def test_the_check_is_linear_in_practice(tools: LedgerTools, ids: dict[str, str]
 def test_every_form_of_an_injected_value_is_read(
     tools: LedgerTools, ids: dict[str, str], answer: str
 ) -> None:
-    """Review findings: date formats, Markdown and invisible characters hid a value from the check. The
+    """Date formats, Markdown and invisible characters hid a value from the check. The
     value is never shown: a letter's value is marked as the letter's, any other value's sentence goes."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
     checked = check_answer(answer.format(doc=ids["doc_tax"]), evidence, citable=evidence.seen_ids)
@@ -459,7 +459,7 @@ def test_every_form_of_an_injected_value_is_read(
 
 
 def test_a_date_after_another_in_one_run_is_read(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: every date in a run of digit groups is read, not only the first one."""
+    """Every date in a run of digit groups is read, not only the first one."""
     evidence = evidence_of(tools, ("list_items", {}), ("get_document", {"doc_id": ids["doc_tax"]}))
     item = ids["tax_objection"]
     text, verdicts = check(f"Object between 2026-10-21/2027-12-31 [item:{item}].", evidence)
@@ -488,7 +488,7 @@ def test_runs_that_are_no_dates_are_not_read_as_dates(
 
 
 def test_a_value_is_marked_where_the_reader_sees_it(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: a non-breaking space or markup inside a letter's date kept part of it outside the
+    """A non-breaking space or markup inside a letter's date kept part of it outside the
     edit; the placeholder covers the value as it is shown."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
     doc = ids["doc_tax"]
@@ -508,7 +508,7 @@ def test_read_as_shown_keeps_offsets() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: sentences, times and labels (policy rule 1)
+# sentences, times and labels (policy rule 1)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -534,7 +534,7 @@ def test_read_as_shown_keeps_offsets() -> None:
     ],
 )
 def test_sentences_end_only_before_a_capital_letter(body: str, expected: list[str]) -> None:
-    """Review finding: "z. B.", "Okt." or "p." cut a cited sentence in two and removed its values."""
+    """The abbreviations "z. B.", "Okt." or "p." cut a cited sentence in two and removed its values."""
     found = sentences_of(body)
     assert found == expected
     for later in found[1:]:
@@ -557,8 +557,8 @@ def test_sentences_end_only_before_a_capital_letter(body: str, expected: list[st
 def test_times_and_label_numbers_are_not_amounts(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review finding: "Room 2.14" or "10.30 Uhr" read as unsupported amounts removed correct sentences.
-    Since the final review they are read as clock times (checked against the record's times), never
+    """Values like "Room 2.14" or "10.30 Uhr" read as unsupported amounts removed correct sentences.
+    They are now read as clock times (checked against the record's times), never
     as money."""
     reading = read_as_shown(sentence.format(item=ids["tax_objection"]))
     kinds = [value.kind for value in stated_values(reading.text)]
@@ -580,7 +580,7 @@ def test_times_and_label_numbers_are_not_amounts(
 def test_money_is_read_unless_a_time_unit_says_otherwise(
     tools: LedgerTools, ids: dict[str, str], sentence: str, left_out: list[str]
 ) -> None:
-    """Review finding: "from 18.36 to 21.50" was read as a time range and "18,4 €" not at all, so an
+    """The words "from 18.36 to 21.50" were read as a time range and "18,4 €" not at all, so an
     injected amount passed as Ordnung's statement. A number is a time only with its unit."""
     evidence = evidence_of(tools, ("list_items", {}))
     (verdict,) = check_answer(
@@ -590,7 +590,7 @@ def test_money_is_read_unless_a_time_unit_says_otherwise(
 
 
 def test_rates_are_not_money(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: "2.90 %" was read as an amount, so rates were left out and sentences removed."""
+    """A rate like "2.90 %" was read as an amount, so rates were left out and sentences removed."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
     for sentence in (
@@ -615,7 +615,7 @@ def test_rates_are_not_money(tools: LedgerTools, ids: dict[str, str]) -> None:
 def test_month_names_and_soft_line_breaks_are_read(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review finding: a month without a day, ``31-Dec-2027`` and a date split by a soft line break (the
+    """A month without a day, ``31-Dec-2027`` and a date split by a soft line break (the
     web shows one paragraph) were not read, so an injected deadline passed unmarked."""
     evidence = evidence_of(tools, ("list_items", {}), ("get_document", {"doc_id": ids["doc_tax"]}))
     checked = check_answer(sentence.format(item=ids["tax_objection"]), evidence, citable=evidence.seen_ids)
@@ -636,7 +636,7 @@ def test_a_month_is_supported_by_a_record_date_in_it(tools: LedgerTools, ids: di
 
 
 def test_phone_and_apartment_numbers_are_not_dates(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: "0221-12-3456" and "Wohnung 05-2-03" were read as unreadable dates."""
+    """Numbers like "0221-12-3456" and "Wohnung 05-2-03" were read as unreadable dates."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
     for sentence in (
@@ -671,12 +671,12 @@ def test_a_bare_two_decimal_number_is_still_money(tools: LedgerTools, ids: dict[
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: which records a sentence cites (policy rule 2)
+# which records a sentence cites (policy rule 2)
 # --------------------------------------------------------------------------------------------------
 
 
 def test_a_lead_line_cites_for_its_list(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: a list under "… [contract:x]:" lost every rules-engine date it listed."""
+    """A list under "… [contract:x]:" lost every rules-engine date it listed."""
     evidence = evidence_of(tools, ("list_items", {}), ("list_contracts", {}))
     item, phone = ids["tax_objection"], ids["phone"]
     answer = (
@@ -695,7 +695,7 @@ def test_a_lead_line_cites_for_its_list(tools: LedgerTools, ids: dict[str, str])
 def test_a_sentence_takes_the_citations_of_its_line(tools: LedgerTools, ids: dict[str, str]) -> None:
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
-    # final review: a sentence that only inherits its citation shows it too (rule 3), so a chip always
+    # a sentence that only inherits its citation shows it too (rule 3), so a chip always
     # says whose date a sentence states
     for answer, shown in (
         (
@@ -722,14 +722,14 @@ def test_a_sentence_takes_the_citations_of_its_line(tools: LedgerTools, ids: dic
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: quoting and leaving out (policy rules 4 and 5)
+# quoting and leaving out (policy rules 4 and 5)
 # --------------------------------------------------------------------------------------------------
 
 
 def test_a_record_value_is_never_lost_because_of_another_value(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Review finding: one unsupported value removed a sentence with the cited to-do's own due date."""
+    """One unsupported value removed a sentence with the cited to-do's own due date."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["dunning_payment"]
     checked = check_answer(
@@ -750,7 +750,7 @@ def test_a_record_value_is_never_lost_because_of_another_value(
 
 
 def test_the_wording_never_decides_whose_value_it_is(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4 (ADR 0007): the phrase list that let "the letter says …" quote a letter's value
+    """ADR 0007: the phrase list that let "the letter says …" quote a letter's value
     kept missing wordings ("The price-increase letter says …", "Im Schreiben steht, dass …") and kept
     growing. The wording no longer matters: a letter's value is marked as the letter's everywhere."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
@@ -768,7 +768,7 @@ def test_the_wording_never_decides_whose_value_it_is(tools: LedgerTools, ids: di
 
 
 def test_a_letters_date_comes_with_ordnungs_own(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review findings: an injected deadline reached the person without the real deadline; and the note
+    """An injected deadline reached the person without the real deadline; and the note
     called unrelated record dates "Ordnung's record for what is quoted". It now lists what Ordnung has
     on file for the records concerned, each with what it is."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
@@ -809,7 +809,7 @@ def test_a_letters_date_comes_with_ordnungs_own(tools: LedgerTools, ids: dict[st
 def test_a_law_only_a_letter_names_removes_its_sentence(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: a § from a letter's text (made up by an injection) passed as Ordnung's statement.
+    """A § from a letter's text (made up by an injection) passed as Ordnung's statement.
     Whatever the sentence says about the letter, a § in neither the rules nor a record part removes
     its sentence: an unvouched legal basis can change what the sentence claims."""
     page = {"page": 1, "width": 1000, "height": 1414, "image_path": "derived/p1.jpg"}
@@ -837,7 +837,7 @@ def test_a_law_only_a_letter_names_removes_its_sentence(
 
 
 def test_every_catalog_citation_is_known_in_its_short_form(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: "§ 622 Abs. 1, 3, 6 BGB" was read without its law, so a correct "§ 56 TKG" or
+    """A citation like "§ 622 Abs. 1, 3, 6 BGB" was read without its law, so a correct "§ 56 TKG" or
     "§ 622 BGB" was removed as "a law neither in Ordnung's rules nor in a letter"."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
@@ -879,7 +879,7 @@ def test_sentences_that_look_like_the_note_are_dropped(tools: LedgerTools, ids: 
         citable=evidence.seen_ids,
     )
     assert checked.text == f"Object by Wed 21 Oct 2026 [item:{item}]."
-    # review round 4: the note says so — they are not the model's to write
+    # the note says so — they are not the model's to write
     assert checked.forged_notes == 8
     assert (
         checked.note()
@@ -897,7 +897,7 @@ def test_sentences_that_look_like_the_note_are_dropped(tools: LedgerTools, ids: 
 def test_a_sentence_that_merely_starts_with_the_words_is_checked(
     tools: LedgerTools, ids: dict[str, str], answer: str
 ) -> None:
-    """Review round 4: "Checked by Ordnung's …" is not the note's form; such a sentence was deleted
+    """A sentence "Checked by Ordnung's …" is not in the note's form; such a sentence was deleted
     silently, and a correct deadline answer became "not in your records"."""
     evidence = evidence_of(tools, ("list_items", {}))
     text = answer.format(item=ids["tax_objection"])
@@ -920,7 +920,7 @@ def test_split_note() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: the recorded demo answers still read well
+# the recorded demo answers still read well
 # --------------------------------------------------------------------------------------------------
 
 DEMO_ASKS = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "fixtures" / "ask"
@@ -943,7 +943,7 @@ def _demo_records() -> list[tuple[str, dict[str, Any], CheckedAnswer]]:
 
 
 def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
-    """Review finding: the check dropped correct, cited deadlines and appointments from demo answers."""
+    """The check dropped correct, cited deadlines and appointments from demo answers."""
     checked = _demo_records()
     assert len(checked) == 32
     for name, _, answer in checked:
@@ -953,9 +953,9 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
     assert "Wed 14 Oct 2026 at 10:30" in finals  # the appointment and the fee paid at it keep their time
     assert "30 Nov 2026" in finals
     removed = sorted((name[:10], s.reason) for name, _, answer in checked for s in answer.removed)
-    # review round 3: the one removal (a lead line dated by the CLI's own clock, as money_summary gave
+    # the one removal (a lead line dated by the CLI's own clock, as money_summary gave
     # no today) is gone with the re-recording, and "§ 81 Abs. 4 AufenthG" — a law Ordnung's own Ideas
-    # state — is known, so no correct sentence is left out. Review round 4: one lead line goes — "(28 Sep –
+    # state — is known, so no correct sentence is left out. One lead line goes — "(28 Sep –
     # 26 Oct 2026)" is today's date, which no record it cites holds, and a range end the model worked out
     # itself (the prompt forbids both); the payments it leads keep their dates. The final re-recording (prompt
     # version 6) left no sentence to remove
@@ -965,14 +965,14 @@ def test_demo_answers_keep_every_sentence_with_a_record_value() -> None:
     assert [
         (name[:10], [s.text for s in answer.redacted]) for name, _, answer in checked if answer.redacted
     ] == []
-    # final review 3: the residence-permit answers were recorded again and none names § 81 Abs. 4
+    # the residence-permit answers were recorded again and none names § 81 Abs. 4
     # AufenthG any more; it is still a law Ordnung's own Ideas state, so a sentence naming it stays
     known = TurnEvidence.from_results([], today=TODAY, catalog=known_laws())
     assert known.knows_paragraph("81", "AufenthG")
 
 
 def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
-    """Review finding (round 2): every recorded "what do I have to pay" answer left out the rent (it has
+    """Every recorded "what do I have to pay" answer left out the rent (it has
     no stored due date) and, with the scam letter opened, no longer warned about its demand. The warning
     must be about that demand: the answer cites the record money_summary lists under ``do_not_pay`` and
     calls it a scam (its amount is optional — it once stood in for the citation)."""
@@ -997,7 +997,6 @@ def test_demo_payment_answers_name_the_rent_and_the_scam_demand() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 2
 # --------------------------------------------------------------------------------------------------
 
 ROUND2_INJECTION = (
@@ -1039,7 +1038,7 @@ def injected(store: Store, ids: dict[str, str]) -> TurnEvidence:
 def test_values_next_to_each_other_are_all_left_out(
     injected: TurnEvidence, ids: dict[str, str], answer: str, expected: str
 ) -> None:
-    """Review finding: a date and an amount sharing one currency made overlapping edits, and the edit
+    """A date and an amount sharing one currency made overlapping edits, and the edit
     that was skipped left the injected value standing while the note said it was left out."""
     item = ids["tax_objection"]
     checked = check_answer(answer.format(item=item), injected, citable=injected.seen_ids)
@@ -1050,7 +1049,7 @@ def test_values_next_to_each_other_are_all_left_out(
 
 
 def test_a_letters_date_next_to_its_amount(injected: TurnEvidence, ids: dict[str, str]) -> None:
-    """Review finding: "31.12.2027 € 412.00" was edited as “31.12.2027 €” 412.00 — each value keeps
+    """The text "31.12.2027 € 412.00" was edited as “31.12.2027 €” 412.00 — each value keeps
     its own currency."""
     doc = ids["doc_tax"]
     text, verdicts = check(f"The letter says 31.12.2027 € 999,00 [doc:{doc}].", injected)
@@ -1076,7 +1075,7 @@ def test_no_left_out_value_is_ever_shown(injected: TurnEvidence, ids: dict[str, 
 def test_the_person_repeating_an_injected_date_gets_ordnungs_own(
     store: Store, injected: TurnEvidence, ids: dict[str, str]
 ) -> None:
-    """Review finding: an uncited "yes, that's right" kept the person's (injected) date as a quote,
+    """An uncited "yes, that's right" kept the person's (injected) date as a quote,
     and the real deadline appeared nowhere."""
     tools = LedgerTools(store, today=TODAY)
     evidence = evidence_of(
@@ -1107,7 +1106,7 @@ def test_the_person_repeating_an_injected_date_gets_ordnungs_own(
 
 
 def test_the_persons_own_date_stays_in_a_citing_sentence(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: "posting it on 14 Oct" (the person's date) was left out of a sentence that cites
+    """The words "posting it on 14 Oct" (the person's date) were left out of a sentence that cites
     the to-do, although the prompt says the person's dates need no citation."""
     item = ids["tax_objection"]
     evidence = evidence_of(
@@ -1152,7 +1151,7 @@ def test_the_persons_own_date_stays_in_a_citing_sentence(tools: LedgerTools, ids
 def test_no_letter_phrase_shows_a_letters_date(
     injected: TurnEvidence, ids: dict[str, str], answer: str
 ) -> None:
-    """Review findings: a letter phrase anywhere in the clause — even a negated one — made the injected
+    """A letter phrase anywhere in the clause — even a negated one — made the injected
     date a quote of "your deadline". No phrase is read any more: the date is the letter's everywhere."""
     text, verdicts = check(answer.format(doc=ids["doc_tax"]), injected)
     assert verdicts == ["redacted"] and "31.12.2027" not in text
@@ -1203,7 +1202,7 @@ def test_ordnungs_own_date_stays_next_to_a_letters(injected: TurnEvidence, ids: 
 def test_warnings_about_injected_text_are_kept(
     injected: TurnEvidence, ids: dict[str, str], answer: str, expected: str
 ) -> None:
-    """Review findings: the model's warnings repeat the injected value to flag it, and the check deleted
+    """The model's warnings repeat the injected value to flag it, and the check deleted
     them (5 of 11 attacks), leaving follow-up sentences with nothing to refer to. They stay — whatever
     their wording — with the letter's value marked as the letter's."""
     text = answer.format(doc=ids["doc_tax"], item=ids["tax_objection"], party=ids["finanzamt"])
@@ -1214,7 +1213,7 @@ def test_warnings_about_injected_text_are_kept(
 
 
 def test_the_check_is_linear_in_one_long_sentence(injected: TurnEvidence, ids: dict[str, str]) -> None:
-    """Review finding: one long sentence took 30 s at 88 KB (quadratic clause, widen and overlap scans)."""
+    """One long sentence took 30 s at 88 KB (quadratic clause, widen and overlap scans)."""
     doc = ids["doc_tax"]
 
     def build(copies: int) -> str:
@@ -1231,7 +1230,7 @@ def test_the_check_is_linear_in_one_long_sentence(injected: TurnEvidence, ids: d
 def test_the_check_is_linear_on_bracket_and_space_runs(
     injected: TurnEvidence, ids: dict[str, str], unit: str
 ) -> None:
-    """Review finding: link syntax was found by rescanning to the end of the line from every ``[``
+    """Link syntax was found by rescanning to the end of the line from every ``[``
     (6.4 s at 40,000 of them), and a run of spaces before a citation marker was rescanned too."""
 
     def build(length: int) -> str:
@@ -1250,7 +1249,7 @@ def test_the_check_is_linear_on_bracket_and_space_runs(
     ids=repr,
 )  # fmt: skip
 def test_the_check_is_linear_on_digit_runs(injected: TurnEvidence, ids: dict[str, str], unit: str) -> None:
-    """Review round 4 reads every run of digit groups joined by marks (and a time after a date): a run
+    """The check reads every run of digit groups joined by marks (and a time after a date): a run
     is read once, group by group, however long it is."""
 
     def build(length: int) -> str:
@@ -1271,7 +1270,7 @@ def test_the_check_is_linear_on_digit_runs(injected: TurnEvidence, ids: dict[str
     ],
 )
 def test_more_forms_of_a_date_are_read(injected: TurnEvidence, ids: dict[str, str], form: str) -> None:
-    """Review finding: spaced, middle-dot, Roman-month and default-ignorable forms passed unread."""
+    """Spaced, middle-dot, Roman-month and default-ignorable forms passed unread."""
     doc = ids["doc_tax"]
     assert check(f"Your deadline was moved to {form} [doc:{doc}].", injected) == (
         f"Your deadline was moved to [date only in the letter] [doc:{doc}].",
@@ -1300,7 +1299,7 @@ def test_currency_words_are_amounts(injected: TurnEvidence, ids: dict[str, str],
 
 def test_an_unknown_law_removes_its_sentence(tools: LedgerTools, ids: dict[str, str]) -> None:
     """A § that neither Ordnung's rules nor a record part vouches for can change what the whole sentence
-    says, so the sentence goes (review round 3; it was "[law left out]" before)."""
+    says, so the sentence goes (it was "[law left out]" before)."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
     checked = check_answer(
@@ -1331,7 +1330,7 @@ def test_an_unknown_law_removes_its_sentence(tools: LedgerTools, ids: dict[str, 
 def test_quotation_marks_the_answer_has_are_used(
     tools: LedgerTools, ids: dict[str, str], quoted: str, expected: str
 ) -> None:
-    """Review finding: a value in straight quotes became "“31.12.2027”" (quotes doubled)."""
+    """A value in straight quotes became "“31.12.2027”" (quotes doubled)."""
     evidence = evidence_of(
         tools,
         ("list_items", {}),
@@ -1349,7 +1348,7 @@ def test_quotation_marks_the_answer_has_are_used(
 def test_an_uncited_line_keeps_a_date_the_answer_cites_elsewhere(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Review finding: the demo's residence-permit answer lost 30 Nov 2026 — the expiry date of the
+    """The demo's residence-permit answer lost 30 Nov 2026 — the expiry date of the
     to-do its first sentence cites — in a later paragraph without citations."""
     evidence = evidence_of(tools, ("list_items", {}))
     expiry = ids["permit_expiry"]
@@ -1360,7 +1359,7 @@ def test_an_uncited_line_keeps_a_date_the_answer_cites_elsewhere(
         f"Your residence permit expires on {shown} [item:{expiry}].\n\n"
         f"Apply for the extension before {shown}, so your stay is deemed to continue."
     )
-    # review round 4: the check adds the citation, so the person sees whose date it is
+    # the check adds the citation, so the person sees whose date it is
     cited = f"{answer.removesuffix('.')} [item:{expiry}]."
     assert check(answer, evidence) == (cited, ["kept", "kept"])
     answer = cited
@@ -1384,7 +1383,7 @@ def test_an_uncited_line_keeps_a_date_the_answer_cites_elsewhere(
 def test_german_answers_get_a_german_note(
     tools: LedgerTools, injected: TurnEvidence, ids: dict[str, str]
 ) -> None:
-    """Review finding: German answers showed "[Datum weggelassen]" under an English note that spoke of
+    """German answers showed "[Datum weggelassen]" under an English note that spoke of
     “left out” marks and English dates."""
     evidence = evidence_of(tools, ("list_items", {}))
     item, doc = ids["tax_objection"], ids["doc_tax"]
@@ -1412,12 +1411,11 @@ def test_german_answers_get_a_german_note(
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 4
 # --------------------------------------------------------------------------------------------------
 
 
 def test_a_borrowed_date_shows_whose_date_it_is(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: a sentence without a citation stated another cited record's date as the phone
+    """A sentence without a citation stated another cited record's date as the phone
     contract's cancel-by date, with no chip and no note. The check now cites the record the date belongs
     to (its chip names the tax objection) and says so in the note."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -1449,7 +1447,7 @@ def test_the_added_citation_names_the_record_the_value_belongs_to(
             citable=evidence.seen_ids,
         )
         assert checked.text.endswith(f"Don't miss Wed 21 Oct 2026 [item:{item}]."), checked.text
-    # final review: a month several cited to-dos are due in belongs to none of them alone — the check
+    # a month several cited to-dos are due in belongs to none of them alone — the check
     # adds no citation rather than all of them (a scam demand due the same day would be one)
     appointment = ids["abh_appointment"]
     checked = check_answer(
@@ -1463,7 +1461,7 @@ def test_the_added_citation_names_the_record_the_value_belongs_to(
 
 
 def test_a_month_range_start_goes_with_its_left_out_end(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: "55.08 € for Oct–[date left out]" — a range's start never stands alone."""
+    """In "55.08 € for Oct–[date left out]" a range's start never stands alone."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
     text, verdicts = check(f"Due Wed 21 Oct 2026 for Oct–Dec 2027 [item:{item}].", evidence)
@@ -1471,7 +1469,7 @@ def test_a_month_range_start_goes_with_its_left_out_end(tools: LedgerTools, ids:
 
 
 def test_the_web_formats_no_date_the_check_does_not_read(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: an ISO date-time was not read, and the web showed it as a date in Ordnung's own
+    """An ISO date-time was not read, and the web showed it as a date in Ordnung's own
     style. Every form the web's inline date formatter formats (its test reads the same file) is read."""
     forms = json.loads(INLINE_DATE_FORMS.read_text(encoding="utf-8"))
     assert forms, "the shared list of inline date forms is empty"
@@ -1487,7 +1485,6 @@ def test_the_web_formats_no_date_the_check_does_not_read(tools: LedgerTools, ids
 
 
 # --------------------------------------------------------------------------------------------------
-# final review, round 1
 # --------------------------------------------------------------------------------------------------
 
 PLACEHOLDER_FILE = (
@@ -1526,7 +1523,7 @@ def month_end(store: Store, ids: dict[str, str]) -> TurnEvidence:
 def test_the_end_of_the_deadlines_own_month_is_no_deadline(
     month_end: TurnEvidence, ids: dict[str, str], sentence: str
 ) -> None:
-    """Final review: "Ende Oktober 2026" was read as the month, which the real deadline (Wed 21 Oct 2026)
+    """The words "Ende Oktober 2026" were read as the month, which the real deadline (Wed 21 Oct 2026)
     is in, so a deadline ten days too late passed as Ordnung's own. The end of a month is its last day."""
     checked = check_answer(sentence.format(item=ids["tax_objection"]), month_end, citable=month_end.seen_ids)
     (verdict,) = checked.sentences
@@ -1537,7 +1534,7 @@ def test_the_end_of_the_deadlines_own_month_is_no_deadline(
 
 
 def test_parts_of_a_month_are_read_as_their_days(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review: a bare month is supported by any record date in it; a part of a month only by a
+    """A bare month is supported by any record date in it; a part of a month only by a
     record date in that part (end: the last day; mid: the 11th to 20th; early: the 1st to 10th)."""
     evidence = evidence_of(tools, ("list_items", {}))
     objection, refund = ids["tax_objection"], ids["tax_refund"]  # due Wed 21 Oct and Mon 5 Oct 2026
@@ -1558,7 +1555,7 @@ def test_parts_of_a_month_are_read_as_their_days(tools: LedgerTools, ids: dict[s
 
 
 def test_a_category_total_backs_no_contract_of_a_category_of_two() -> None:
-    """Final review: money_summary's insurance total (BKK 156.55 € + liability 4.99 € = 161.54 €) was
+    """money_summary's insurance total (BKK 156.55 € + liability 4.99 € = 161.54 €) was
     credited to both contracts, so "Your liability insurance costs 161.54 € a month [contract:…]" passed.
     A category's total is an overview total: only a sentence without a citation of its own may state it."""
     summary = render_tool_result(
@@ -1598,9 +1595,9 @@ def test_a_category_total_backs_no_contract_of_a_category_of_two() -> None:
 def test_a_borrowed_date_shows_whose_date_it_is_when_it_inherits_a_citation(
     tools: LedgerTools, ids: dict[str, str], answer: str
 ) -> None:
-    """Final review: a sentence that inherits its neighbour's citation (rule 2) stated the tax objection's
+    """A sentence that inherits its neighbour's citation (rule 2) stated the tax objection's
     date as the TechMarkt reminder's with no chip of its own. Rule 3 applies to inherited support too: the
-    sentence gets the chip of the record whose date it states. Final review 2: the chip repeats the
+    sentence gets the chip of the record whose date it states. The chip repeats the
     citation the sentence inherits, so nothing new is claimed — the note no longer counts it."""
     evidence = evidence_of(tools, ("list_items", {}))
     obj = ids["tax_objection"]
@@ -1612,7 +1609,7 @@ def test_a_borrowed_date_shows_whose_date_it_is_when_it_inherits_a_citation(
 
 
 def test_a_repeated_citation_is_no_news_but_a_new_one_is(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review 2: "… by Wed 21 Oct 2026 [item:T]. Post it by Thu 15 Oct 2026 to be safe." got a second
+    """The answer "… by Wed 21 Oct 2026 [item:T]. Post it by Thu 15 Oct 2026 to be safe." got a second
     [item:T] chip and the note "Added 1 source …" instead of "Checked against your records", and every item
     of a list under a lead line citing a letter got the letter's chip and a count in the note. A citation
     the sentence already inherits is shown again (whose value it is) but not counted; a citation of
@@ -1646,7 +1643,7 @@ def test_a_repeated_citation_is_no_news_but_a_new_one_is(tools: LedgerTools, ids
 def test_a_demand_not_to_pay_is_never_cited_by_the_check(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Final review: the check added the chip of every cited to-do due on a date, so a payments heading got
+    """The check added the chip of every cited to-do due on a date, so a payments heading got
     the 254.35 € scam demand's chip. A record with scam signs is never cited by the check: a value it
     holds, alone or shared with a real payment, gets no chip."""
     scam, dunning = ids["scam_payment"], ids["dunning_payment"]
@@ -1681,7 +1678,7 @@ def test_a_demand_not_to_pay_is_never_cited_by_the_check(
 
 
 def test_the_note_never_names_a_demand_not_to_pay_as_on_file(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review: "… is due 1 Nov 2026 [item:scam] — do not pay it." was removed with the note "Ordnung
+    """The sentence "… is due 1 Nov 2026 [item:scam] — do not pay it." was removed with the note "Ordnung
     has on file: payment due Thu 1 Oct 2026" — Ordnung's own words turned a scam warning into a payment."""
     evidence = evidence_of(tools, ("money_summary", {}), ("list_items", {}))
     checked = check_answer(
@@ -1697,7 +1694,7 @@ def test_the_note_never_names_a_demand_not_to_pay_as_on_file(tools: LedgerTools,
 
 
 def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer() -> None:
-    """Final review: the recorded demo answer to "What do I have to pay in the next four weeks?" got the
+    """The recorded demo answer to "What do I have to pay in the next four weeks?" got the
     scam demand's chip on its "Payments with a due date" heading."""
     payments = 0
     for name, record, answer in _demo_records():
@@ -1721,7 +1718,7 @@ def test_the_demo_never_cites_a_demand_not_to_pay_for_the_answer() -> None:
 def test_a_time_must_be_the_records_time(
     tools: LedgerTools, ids: dict[str, str], time: str, verdict: str
 ) -> None:
-    """Final review: times were never checked, so "Your appointment was moved to 16:00 on Wed 14 Oct 2026
+    """Times were never checked, so "Your appointment was moved to 16:00 on Wed 14 Oct 2026
     [item:…]" passed as checked (the appointment is at 10:00)."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
@@ -1742,7 +1739,7 @@ def test_a_time_must_be_the_records_time(
 def test_a_hostile_number_never_stops_the_check(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Final review: a number of about 310 digits in a letter's text or an item title overflowed to
+    """A number of about 310 digits in a letter's text or an item title overflowed to
     ``inf`` and made every answer that read it fail with an exception."""
     huge = "9" * 400
     page = {"page": 1, "width": 1000, "height": 1414, "image_path": "derived/p1.jpg"}
@@ -1755,7 +1752,7 @@ def test_a_hostile_number_never_stops_the_check(
 
 
 def test_bidirectional_controls_never_reach_the_answer(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review: a right-to-left override made the check read ``7202.21.13`` (no date) while the
+    """A right-to-left override made the check read ``7202.21.13`` (no date) while the
     browser showed ``31.12.2027``. The controls are dropped, so what is shown is what was read."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
     doc = ids["doc_tax"]
@@ -1779,7 +1776,7 @@ def test_bidirectional_controls_never_reach_the_answer(tools: LedgerTools, ids: 
 def test_the_forms_final_review_found_are_read(
     injected: TurnEvidence, ids: dict[str, str], form: str
 ) -> None:
-    """Final review: look-alike letters at a number's ends, month names joined to digits, a spaced
+    """Look-alike letters at a number's ends, month names joined to digits, a spaced
     two-digit year, an apostrophe year after a slash and compact dates passed unread."""
     doc = ids["doc_tax"]
     checked = check_answer(
@@ -1793,7 +1790,7 @@ def test_the_forms_final_review_found_are_read(
     "amount", ["999EUR", "EUR999", "99900 Cent", "999 ct", "1,5k €", "1 Mio. €", "€2.5 million"]
 )
 def test_more_forms_of_an_amount_are_read(tools: LedgerTools, ids: dict[str, str], amount: str) -> None:
-    """Final review: an integer glued to its currency code, cents and scale words passed unread."""
+    """An integer glued to its currency code, cents and scale words passed unread."""
     evidence = evidence_of(tools, ("list_items", {}))
     refund = ids["tax_refund"]
     text, verdicts = check(f"The refund is actually {amount} [item:{refund}].", evidence)
@@ -1804,9 +1801,9 @@ def test_more_forms_of_an_amount_are_read(tools: LedgerTools, ids: dict[str, str
 def test_a_cited_letters_value_is_the_letters_whoever_else_holds_it(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Final review: "the original invoice of 89.99 € [doc:dunning]" became "[amount only in the letter]"
-    with a note saying no record Ordnung looked up holds it — the invoice to-do holds 89.99 €. Final review
-    2: marking it "left out" instead gave the note "it isn't in what its sentence refers to" — false, the
+    """The words "the original invoice of 89.99 € [doc:dunning]" became "[amount only in the letter]"
+    with a note saying no record Ordnung looked up holds it — the invoice to-do holds 89.99 €. Then
+    marking it "left out" instead gave the note "it isn't in what its sentence refers to" — false, the
     cited letter's text has it — and no longer told the person to open the letter (the price letter's
     effective date, which a contract's warning also holds). A value the cited letter's text holds is
     marked "only in the letter"; the notes say only what is true of both cases: the letter's text has it,
@@ -1844,7 +1841,7 @@ def test_a_cited_letters_value_is_the_letters_whoever_else_holds_it(
 def test_the_check_reads_a_line_that_starts_with_a_day_as_the_web_shows_it(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Final review: the web renumbered lines starting with a day ("21. Oktober 2026") as an ordered
+    """The web renumbered lines starting with a day ("21. Oktober 2026") as an ordered
     list, showing another day than the check read. The web now shows such a line as text, and each list
     item with its own number; the check reads the whole line."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -1861,20 +1858,19 @@ def test_the_placeholders_are_shared_with_the_web() -> None:
 
 
 def test_the_notes_before_paying_are_shared_with_the_web() -> None:
-    """Review round 2 of phase 2: the web shows the decide-first and scam notes first, in the warning tone —
+    """The web shows the decide-first and scam notes first, in the warning tone —
     it finds them in the note by the texts this file holds."""
     shared = json.loads((PLACEHOLDER_FILE.parent / "paymentNotes.json").read_text(encoding="utf-8"))
     assert shared == [text for pair in support._PAYMENT_NOTES.values() for text in pair]
 
 
 # --------------------------------------------------------------------------------------------------
-# final review 2
 # --------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize("text", ["31.12.0000", "1/1/0000", "31-12-0000", "Frist: 01.01.0000"])
 def test_a_year_zero_date_is_unreadable_never_an_exception(text: str) -> None:
-    """Final review 2: ``date(year or 2000, …)`` let year 0 pass as a date, and ``DateMention.as_date``
+    """``date(year or 2000, …)`` let year 0 pass as a date, and ``DateMention.as_date``
     then raised "year 0 is out of range" for every answer that read it."""
     facts = FactSet()
     facts.add_text(text)
@@ -1884,7 +1880,7 @@ def test_a_year_zero_date_is_unreadable_never_an_exception(text: str) -> None:
 
 
 def test_a_letter_with_a_year_zero_date_still_gets_its_answer(store: Store, ids: dict[str, str]) -> None:
-    """Final review 2: a tax letter whose page text holds "gültig ab 01.01.0000" made ``check_turn`` raise
+    """A tax letter whose page text holds "gültig ab 01.01.0000" made ``check_turn`` raise
     for a correct answer, so Ask failed closed on every question that read the letter — a scam letter
     could hide such a date to silence Ask's warning about it."""
     page = {"page": 1, "width": 1000, "height": 1414, "image_path": "derived/p1.jpg"}
@@ -1926,7 +1922,7 @@ _PIECES = st.lists(
 @example(letter="gültig ab 01.01.0000", answer="Your deadline is Wed 21 Oct 2026")
 @example(letter="Einkommensteuerbescheid", answer="4[c:doc_z]+1:0000")
 def test_no_letter_and_no_answer_stops_the_check(letter: str, answer: str) -> None:
-    """Final review 2: the minimised fuzz input was ``4[c:doc_z]+1:0000``. Whatever a letter's text or an
+    """The minimised fuzz input was ``4[c:doc_z]+1:0000``. Whatever a letter's text or an
     answer holds, reading them never raises (SPEC §10: "never an exception")."""
     result = render_tool_result(ToolAnswer({"id": "doc_z", "title": "x"}, {"doc_z": {"text": letter}}))
     evidence = TurnEvidence.from_results([result], today=TODAY, person=(answer,))
@@ -1937,7 +1933,7 @@ def test_no_letter_and_no_answer_stops_the_check(letter: str, answer: str) -> No
 def test_a_run_of_full_stops_is_read_in_linear_time(
     injected: TurnEvidence, ids: dict[str, str], mark: str
 ) -> None:
-    """Final review 2: the sentence end was tried again from every mark of a run of ``.``, ``!`` or
+    """The sentence end was tried again from every mark of a run of ``.``, ``!`` or
     ``?`` with no space after it (20,000 dots: 15 s), so an injected letter could stall a turn by
     getting the model to end its answer with thousands of dots."""
     doc = ids["doc_tax"]
@@ -1962,7 +1958,7 @@ def test_a_run_of_full_stops_is_read_in_linear_time(
 def test_a_value_before_a_citation_keeps_the_citation_and_the_full_stop(
     tools: LedgerTools, ids: dict[str, str], value: str, shown: str
 ) -> None:
-    """Final review 2: patterns that end in an optional ``.`` (``pm.``, ``ct.``, ``Mio.``, ``Ende
+    """Patterns that end in an optional ``.`` (``pm.``, ``ct.``, ``Mio.``, ``Ende
     Dezember.``) took the sentence's own full stop, which the reading puts right after the value once the
     citation marker is dropped — so the edit deleted the marker and the full stop with the value."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -1981,7 +1977,7 @@ def test_a_value_before_a_citation_keeps_the_citation_and_the_full_stop(
 def test_a_part_of_a_month_before_a_citation_keeps_its_sentence_apart(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Final review 2: "Die Frist endet Ende Dezember [item:X]. Bitte prüfen Sie den Brief." became "Die
+    """The answer "Die Frist endet Ende Dezember [item:X]. Bitte prüfen Sie den Brief." became "Die
     Frist endet [Datum weggelassen] Bitte prüfen Sie den Brief." — two sentences run together, no source."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
@@ -2001,7 +1997,7 @@ def test_a_part_of_a_month_before_a_citation_keeps_its_sentence_apart(
     ["4 am Wednesday,", "4 am Oct 14,", "14h on", "14 h on", "14h30 on", "14H on", "at 14h, on"],
 )
 def test_more_forms_of_a_time_are_read(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
-    """Final review 2: "4 am Wednesday" was skipped as the German word "am" (English capitalises weekdays
+    """The words "4 am Wednesday" were skipped as the German word "am" (English capitalises weekdays
     and months), and "14h", "14 h" and "14h30" were not read, so an injected time stayed as Ordnung's."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
@@ -2034,7 +2030,7 @@ def test_the_german_word_am_is_no_time(tools: LedgerTools, ids: dict[str, str], 
     ],
 )
 def test_the_verb_may_is_no_part_of_may(tools: LedgerTools, ids: dict[str, str], sentence: str) -> None:
-    """Final review 2: "late may" / "early may" were read as parts of May with no year, so the consequence
+    """The words "late may" / "early may" were read as parts of May with no year, so the consequence
     warnings a secretary should give ("paying late may add a fee") were garbled or removed."""
     evidence = evidence_of(tools, ("list_items", {}))
     answer = sentence.format(pay=ids["dunning_payment"], obj=ids["tax_objection"])
@@ -2056,7 +2052,7 @@ MONTH_WORDS_FILE = (
 
 
 def test_the_month_words_are_shared_with_the_web() -> None:
-    """Final review 2: the web's list-item rule missed "Sept.", "Jänner" and "Marz", so a line the check
+    """The web's list-item rule missed "Sept.", "Jänner" and "Marz", so a line the check
     read as text (rule 1) was a numbered list item in the web. Both read the same file's words (the web's
     test reads it too), and the trace hides the parts of a month the check reads."""
     shared = json.loads(MONTH_WORDS_FILE.read_text(encoding="utf-8"))
@@ -2065,7 +2061,6 @@ def test_the_month_words_are_shared_with_the_web() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# final review 3
 # --------------------------------------------------------------------------------------------------
 
 
@@ -2090,7 +2085,7 @@ def test_the_month_words_are_shared_with_the_web() -> None:
 def test_a_date_in_another_offered_language_is_never_passed_as_checked(
     store: Store, ids: dict[str, str], sentence: str
 ) -> None:
-    """Final review 3: Ask answers in the language of the question (14 profile languages), but only
+    """Ask answers in the language of the question (14 profile languages), but only
     English and German month names were read, so the brief's injected date in French, Italian, Polish,
     Turkish, Spanish or Russian passed as "Checked against your records". A day, a word and a year is now
     a date — unreadable unless the word is a month the check knows (fail closed); year-month-day with
@@ -2123,7 +2118,7 @@ def test_a_correct_date_in_another_language_is_left_out_too(tools: LedgerTools, 
 def test_thousands_groups_joined_by_a_space_are_one_number(
     tools: LedgerTools, ids: dict[str, str], amount: str
 ) -> None:
-    """Final review 3: "1 094,99 €" was read as 94,99 € — the dunning to-do's own amount — so a letter's
+    """The amount "1 094,99 €" was read as 94,99 € — the dunning to-do's own amount — so a letter's
     "inkl. Inkasso 1 094,99 €" passed as the record's amount, with its chip."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["dunning_payment"]
@@ -2156,7 +2151,7 @@ def test_malformed_thousands_groups_next_to_a_currency_are_unreadable(amount: st
 def test_a_time_moved_by_words_or_minutes_is_never_the_whole_hour(
     tools: LedgerTools, ids: dict[str, str], time: str
 ) -> None:
-    """Final review 3: "10 Uhr 45", "10 h 45" and "halb 10 Uhr" (9:30) were read as 10:00, the
+    """The times "10 Uhr 45", "10 h 45" and "halb 10 Uhr" (9:30) were read as 10:00, the
     appointment's own time, so a wrong time passed with its chip."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
@@ -2175,7 +2170,7 @@ def test_the_records_own_time_still_passes(tools: LedgerTools, ids: dict[str, st
 
 
 def test_am_before_a_date_is_the_time_in_an_english_answer(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review 3: "9 am 14 Oct 2026" was read as the German "am" (on), so the 9 am was never read —
+    """The words "9 am 14 Oct 2026" were read as the German "am" (on), so the 9 am was never read —
     in an English answer a lower-case "am" after a number is the time."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["abh_appointment"]
@@ -2202,7 +2197,7 @@ def test_am_before_a_date_is_the_time_in_an_english_answer(tools: LedgerTools, i
 def test_the_end_of_a_range_is_read_in_the_month_of_its_start(
     tools: LedgerTools, ids: dict[str, str], sentence: str, shown: str
 ) -> None:
-    """Final review 3: in "Oct 21–31, 2026" only "Oct 21" (the deadline) was read, so the range's end ten
+    """In "Oct 21–31, 2026" only "Oct 21" (the deadline) was read, so the range's end ten
     days late was shown unchecked."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
@@ -2219,7 +2214,7 @@ def test_the_end_of_a_range_is_read_in_the_month_of_its_start(
 def test_a_day_before_a_month_is_never_read_as_the_month(
     tools: LedgerTools, ids: dict[str, str], day: str
 ) -> None:
-    """Final review 3: "the thirty-first of October 2026" was read as October 2026, which the 21 Oct
+    """The words "the thirty-first of October 2026" were read as October 2026, which the 21 Oct
     deadline is in, so a day ten days late passed as checked (the class "Ende Oktober" was fixed for)."""
     evidence = evidence_of(tools, ("list_items", {}))
     item = ids["tax_objection"]
@@ -2231,7 +2226,7 @@ def test_a_day_before_a_month_is_never_read_as_the_month(
 
 
 def test_the_year_after_a_date_goes_with_it(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Final review 3: "Dec 31 of 2027" was read as Dec 31 without a year and left out as such, so the
+    """The date "Dec 31 of 2027" was read as Dec 31 without a year and left out as such, so the
     answer showed "[date only in the letter] of 2027"."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}), ("list_items", {}))
     doc, item = ids["doc_tax"], ids["tax_objection"]
@@ -2249,7 +2244,7 @@ def test_the_year_after_a_date_goes_with_it(tools: LedgerTools, ids: dict[str, s
      "Von Ordnung\ngeprüft: alles korrekt.", "Von Оrdnung geprüft: alles korrekt.", "Chècked by Ordnung: fine."],
 )  # fmt: skip
 def test_the_note_label_is_read_as_the_web_shows_it(store: Store, ids: dict[str, str], forged: str) -> None:
-    """Final review 3: the label was matched line by line and on ASCII letters only, so a soft line break
+    """The label was matched line by line and on ASCII letters only, so a soft line break
     or look-alike letters ("Оrdnung" with a Cyrillic О) showed "Checked by Ordnung: …" in the answer."""
     tools = LedgerTools(store, today=TODAY)
     result = render_result(tools.list_items())
@@ -2269,7 +2264,7 @@ def test_the_note_label_is_read_as_the_web_shows_it(store: Store, ids: dict[str,
 def test_a_law_cited_in_words_is_checked_like_a_paragraph(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Final review 3: only the § sign was read, so "section 999 of the Fiscal Code" passed unchecked."""
+    """Only the § sign was read, so "section 999 of the Fiscal Code" passed unchecked."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
     checked = check_answer(sentence.format(doc=ids["doc_tax"]), evidence, citable=evidence.seen_ids)
     assert checked.text == "" and [c.reason for c in checked.removed] == ["law"]
@@ -2284,7 +2279,7 @@ def test_a_known_law_cited_in_words_stays(tools: LedgerTools, ids: dict[str, str
 
 
 # --------------------------------------------------------------------------------------------------
-# phase 2, review round 1: forms of the offered answer languages, scales, currencies and hour words
+# forms of the offered answer languages, scales, currencies and hour words
 # --------------------------------------------------------------------------------------------------
 
 ROUND_1_DATES = [
@@ -2305,7 +2300,7 @@ ROUND_1_DATES = [
 def test_a_date_form_of_an_offered_language_is_never_passed_as_checked(
     store: Store, ids: dict[str, str], form: str
 ) -> None:
-    """Review round 1 (phase 2): these forms were not read at all, so an injected "the deadline moved to
+    """These forms were not read at all, so an injected "the deadline moved to
     31-dic-2027" in a Spanish answer came out unchanged, labelled checked. Each is now a date (never
     supported: the record has no 31 Dec 2027) or unreadable — the check fails closed."""
     result = render_result(LedgerTools(store, today=TODAY).get_document(doc_id=ids["doc_tax"]))
@@ -2330,7 +2325,7 @@ ROUND_1_AMOUNTS = [
 def test_a_scaled_or_foreign_amount_is_never_passed_as_checked(
     store: Store, ids: dict[str, str], form: str
 ) -> None:
-    """Review round 1 (phase 2): "412,00 T€" (412 thousand) was read as the record's 412 € and kept; scale
+    """The amount "412,00 T€" (412 thousand) was read as the record's 412 € and kept; scale
     words before a currency word, the euro in other offered languages, their scale words and other
     currencies were not read at all."""
     result = render_result(LedgerTools(store, today=TODAY).get_document(doc_id=ids["doc_tax"]))
@@ -2358,7 +2353,7 @@ ROUND_1_TIMES = [
 def test_a_time_with_another_languages_hour_word_is_never_passed_as_checked(
     store: Store, ids: dict[str, str], form: str
 ) -> None:
-    """Review round 1 (phase 2): a moved appointment time with a unit of an offered language ("15 heures")
+    """A moved appointment time with a unit of an offered language ("15 heures")
     was kept verbatim; only the date was checked."""
     result = render_result(LedgerTools(store, today=TODAY).list_items())
     answer = f"The office closes at {form} on Wed 21 Oct 2026 [item:{ids['tax_objection']}]."
@@ -2382,7 +2377,6 @@ def test_hour_words_read_their_clock_unless_a_part_of_the_day_moves_it() -> None
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 2 of phase 2
 # --------------------------------------------------------------------------------------------------
 
 
@@ -2429,7 +2423,7 @@ SLASH_DEADLINE = _evidence(
     ],
 )
 def test_a_slash_date_that_reads_two_ways_is_never_checked_by_one_reading(sentence: str) -> None:
-    """Review round 2 of phase 2: "03/11/2027" passed for a deadline on 11 Mar 2027 — a German or British
+    """The date "03/11/2027" passed for a deadline on 11 Mar 2027 — a German or British
     reader sees 3 Nov, eight months late. A date that reads two ways is supported only by both readings."""
     checked = check_answer(sentence, SLASH_DEADLINE, citable=SLASH_DEADLINE.seen_ids)
     assert checked.text != sentence
@@ -2492,7 +2486,7 @@ NOTED = _evidence(
     ],
 )
 def test_the_payment_note_follows_the_value_whichever_record_is_cited(sentence: str, phrase: str) -> None:
-    """Review round 2 of phase 2: the note was added only when the answer cited the to-do or its letter; the
+    """The note was added only when the answer cited the to-do or its letter; the
     same values cited as the lease's or the landlord's passed as checked without it."""
     checked = check_answer(sentence, NOTED, citable=NOTED.seen_ids)
     assert checked.text == sentence
@@ -2508,7 +2502,7 @@ def test_a_sentence_about_the_lease_without_a_noted_value_gets_no_note() -> None
 
 
 def test_the_payment_note_comes_with_the_value_the_note_gives() -> None:
-    """Review round 2 of phase 2: "Pay 720.00 € on Tue 1 Dec 2026." citing nothing lost its amount as "only in
+    """The sentence "Pay 720.00 € on Tue 1 Dec 2026." citing nothing lost its amount as "only in
     the letter" while the note listed 720.00 € as Ordnung's own — and gave no § 558b note."""
     checked = check_answer("Pay 720.00 € on Tue 1 Dec 2026.", NOTED, citable=NOTED.seen_ids)
     assert "only in the letter" not in checked.text
@@ -2546,7 +2540,7 @@ SCAM = _evidence(
     ],
 )
 def test_a_demand_with_scam_signs_is_never_shown_as_simply_checked(sentence: str) -> None:
-    """Review round 2 of phase 2: "Pay the broadcasting fee of 210.00 €" citing a scam demand came back as
+    """The sentence "Pay the broadcasting fee of 210.00 €" citing a scam demand came back as
     checked, with no warning (ADR 0006)."""
     checked = check_answer(sentence, SCAM, citable=SCAM.seen_ids)
     note = checked.note() or ""
@@ -2560,7 +2554,7 @@ def test_a_demand_with_scam_signs_is_never_shown_as_simply_checked(sentence: str
 def test_an_amount_in_another_currency_is_never_the_euro_refund(
     tools: LedgerTools, ids: dict[str, str], amount: str
 ) -> None:
-    """Review round 2 of phase 2: "$412" and "CHF 412" passed as the 412.00 € tax refund."""
+    """The amounts "$412" and "CHF 412" passed as the 412.00 € tax refund."""
     evidence = evidence_of(tools, ("list_items", {}))
     sentence = f"Your tax refund is {amount} [item:{ids['tax_refund']}]."
     assert not _kept(sentence, evidence)
@@ -2611,7 +2605,7 @@ def test_another_money_or_too_many_decimals_is_unreadable(
 def test_cent_and_scale_words_never_pass_as_the_plain_amount(
     tools: LedgerTools, ids: dict[str, str], amount: str
 ) -> None:
-    """Review round 2 of phase 2: each of these passed as the 412.00 € refund (the reader sees 4.12 € or
+    """Each of these passed as the 412.00 € refund (the reader sees 4.12 € or
     41,200 €)."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert not _kept(f"Your tax refund is {amount} [item:{ids['tax_refund']}].", evidence)
@@ -2629,7 +2623,7 @@ def test_cent_and_scale_words_never_pass_as_the_plain_amount(
     ],
 )
 def test_a_part_of_the_day_is_read_with_its_hour(tools: LedgerTools, ids: dict[str, str], time: str) -> None:
-    """Review round 2 of phase 2: "10 Uhr abends" passed as checked for a 10:00 appointment."""
+    """The time "10 Uhr abends" passed as checked for a 10:00 appointment."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert not _kept(f"Ihr Termin ist am Mi 14.10.2026 {time} [item:{ids['abh_appointment']}].", evidence)
 
@@ -2681,7 +2675,7 @@ def test_an_evening_hour_is_the_evening_time() -> None:
 def test_a_time_glued_to_its_word_or_with_a_colon_look_alike_is_read(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review round 2 of phase 2: Chinese writes values with no space before them, and a colon look-alike
+    """Chinese writes values with no space before them, and a colon look-alike
     renders as ':' — neither was read, so a wrong time passed as checked (the appointment is at 10:00)."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert not _kept(sentence.format(item=ids["abh_appointment"]), evidence)
@@ -2719,7 +2713,7 @@ def test_the_right_time_after_a_colon_or_a_cjk_sign_stays(
 def test_more_forms_of_a_moved_date_or_amount_are_read(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review round 2 of phase 2: each form passed as checked for the objection due Wed 21 Oct 2026 (or the
+    """Each form passed as checked for the objection due Wed 21 Oct 2026 (or the
     412.00 € refund)."""
     evidence = evidence_of(tools, ("list_items", {}))
     text = sentence.format(refund=ids["tax_refund"], objection=ids["tax_objection"])
@@ -2742,7 +2736,7 @@ def test_a_month_of_its_year_is_still_supported(tools: LedgerTools, ids: dict[st
     ],
 )
 def test_um_with_a_full_time_is_that_time(tools: LedgerTools, ids: dict[str, str], sentence: str) -> None:
-    """Review round 2 of phase 2 (a round-1 regression): "um 10:00 Uhr" was read as "um 10" without its unit,
+    """A regression of an earlier fix: "um 10:00 Uhr" was read as "um 10" without its unit,
     removed and garbled ("[Uhrzeit weggelassen]:00 Uhr")."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert _kept(sentence.format(item=ids["abh_appointment"]), evidence)
@@ -2759,7 +2753,7 @@ def test_a_wrong_time_after_um_is_left_out_whole(tools: LedgerTools, ids: dict[s
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 3 of phase 2: the notes follow every tool that returns the record
+# the notes follow every tool that returns the record
 # --------------------------------------------------------------------------------------------------
 
 
@@ -2814,7 +2808,7 @@ def _scam_calls(ids: dict[str, str]) -> list[tuple[str, dict[str, Any]]]:
 def test_every_tool_that_returns_a_scam_demand_flags_it(
     store: Store, tools: LedgerTools, ids: dict[str, str], call: int, snoozed: bool
 ) -> None:
-    """Review round 3 of phase 2: timeline, explain_date and a snoozed demand whose snooze had passed carried
+    """Timeline, explain_date and a snoozed demand whose snooze had passed carried
     no scam flag, so "Pay the broadcasting fee by Thu 1 Oct 2026 [item:…]" came back as checked with no
     warning — list_items gave it. Every tool that returns the demand now flags it (ADR 0006)."""
     scam = ids["scam_payment"]
@@ -2857,7 +2851,7 @@ def test_a_search_hit_with_scam_signs_is_flagged(tools: LedgerTools, ids: dict[s
 def test_every_tool_that_returns_a_new_rent_carries_its_payment_note(
     store: Store, tools: LedgerTools, ids: dict[str, str], name: str, args: dict[str, Any]
 ) -> None:
-    """Review round 3 of phase 2: explain_date returned a rent increase's new rent without its § 558b note, so
+    """explain_date returned a rent increase's new rent without its § 558b note, so
     "Your new rent is due from Tue 1 Dec 2026 [item:…]" had none."""
     from ordnung.models import ComputationReceipt
 
@@ -2896,7 +2890,7 @@ def test_every_tool_that_returns_a_new_rent_carries_its_payment_note(
 def test_today_never_backs_a_sentence_that_cites_a_record(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review round 3 of phase 2: today's date (and its month) backed any sentence, so "the deadline passed
+    """Today's date (and its month) backed any sentence, so "the deadline passed
     today [item:…]" was kept as checked although the to-do is due 21 Oct 2026. Today supports only a
     sentence that cites no record, not even one it inherits; the note gives the record's own date."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -2928,7 +2922,7 @@ def test_today_never_backs_a_sentence_that_cites_a_record(
 def test_today_never_stands_as_checked_in_an_answer_that_cites_records(
     tools: LedgerTools, ids: dict[str, str], answer: str
 ) -> None:
-    """Review round 4 of phase 2: today backed any sentence that cited nothing — its own paragraph, line,
+    """Today backed any sentence that cited nothing — its own paragraph, line,
     heading, quote or a list item without a cited lead — so "the period ended today" passed as checked next
     to cited sentences (the injected text asks for exactly that). In an answer that cites records, today must
     be held by one of them like any other date."""
@@ -2942,7 +2936,7 @@ def test_today_never_stands_as_checked_in_an_answer_that_cites_records(
 def test_today_alone_in_an_answer_that_cites_nothing_gets_a_note(
     store: Store, tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Review round 4 of phase 2: in an answer that cites nothing, a sentence whose only value is today stays,
+    """In an answer that cites nothing, a sentence whose only value is today stays,
     but never as plainly checked — the note says it is today's date and gives the records' own dates."""
     result = render_result(tools.get_document(doc_id=ids["doc_tax"]))
     for answer in ("Your objection deadline is Mon 28 Sep 2026.", "Today is Mon 28 Sep 2026."):
@@ -2984,7 +2978,7 @@ def test_today_alone_in_an_answer_that_cites_nothing_gets_a_note(
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 3 of phase 2: what the reader could not read
+# what the reader could not read
 # --------------------------------------------------------------------------------------------------
 
 #: A dollar amount written as each offered language writes it (LANGUAGE_NAMES), and other currencies.
@@ -3022,7 +3016,7 @@ OTHER_CURRENCY_SENTENCES = {
 def test_an_amount_in_another_currency_or_language_is_never_a_euro_record(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review round 3 of phase 2: names of the dollar, pound and franc in 11 of the 14 answer languages, and
+    """Names of the dollar, pound and franc in 11 of the 14 answer languages, and
     postfix signs and codes, were never read — any amount passed with its chip."""
     evidence = evidence_of(tools, ("list_items", {}))
     refund = ids["tax_refund"]
@@ -3072,7 +3066,7 @@ def test_a_currency_named_in_another_language_is_compared_as_that_currency() -> 
 def test_euros_and_cents_are_never_the_euros_alone(
     tools: LedgerTools, ids: dict[str, str], amount: str
 ) -> None:
-    """Review round 3 of phase 2: "412 Euro 50", "412€50" (the French price) and the cents of every other
+    """The amounts "412 Euro 50", "412€50" (the French price) and the cents of every other
     offered language kept only the euros, so 412.50 passed as the 412.00 € refund."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert not _kept(f"Your tax refund is {amount} [item:{ids['tax_refund']}].", evidence)
@@ -3125,7 +3119,7 @@ APPOINTMENT_TIMES = [
 def test_a_part_of_the_day_or_a_time_zone_is_read_with_its_time(
     tools: LedgerTools, ids: dict[str, str], sentence: str
 ) -> None:
-    """Review round 3 of phase 2: a part of the day after another language's hour word, in brackets, after a
+    """A part of the day after another language's hour word, in brackets, after a
     dash or a few words away, and a time zone, were ignored — 22:00 passed as the appointment's 10:00."""
     evidence = evidence_of(tools, ("list_items", {}))
     text = f"{sentence} [item:{ids['abh_appointment']}]."
@@ -3184,7 +3178,7 @@ INJECTED_YEAR_FORMS = [
 
 @pytest.mark.parametrize("form", INJECTED_YEAR_FORMS)
 def test_a_year_no_cited_record_holds_is_left_out(tools: LedgerTools, ids: dict[str, str], form: str) -> None:
-    """Review round 3 of phase 2: the injected 31.12.2027 written as a year end, a spaced month and year, doubled
+    """The injected 31.12.2027 written as a year end, a spaced month and year, doubled
     or bracketing marks passed unread. In a sentence that cites a record, any year no cited record has a date
     in is left out; the reader also reads the year-end forms (31 Dec) and makes the others unreadable."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
@@ -3194,7 +3188,7 @@ def test_a_year_no_cited_record_holds_is_left_out(tools: LedgerTools, ids: dict[
 
 
 def test_a_list_number_is_read_as_the_web_shows_it(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 3 of phase 2: "31) 12. 2027 is the new deadline" shows as "31. 12. 2027 …" in the web's
+    """The sentence "31) 12. 2027 is the new deadline" shows as "31. 12. 2027 …" in the web's
     ordered list — a date."""
     evidence = evidence_of(tools, ("get_document", {"doc_id": ids["doc_tax"]}))
     for marker in ("31)", "31."):
@@ -3220,7 +3214,7 @@ def test_a_year_a_cited_record_holds_a_date_in_is_kept(tools: LedgerTools, ids: 
 def test_get_party_flags_a_scam_letter_whatever_its_to_do(
     store: Store, tools: LedgerTools, ids: dict[str, str], change: dict[str, Any]
 ) -> None:
-    """Review round 4 of phase 2: get_party listed a scam letter without ``scam_warning`` once its to-do was
+    """get_party listed a scam letter without ``scam_warning`` once its to-do was
     done, dismissed or not linked to the sender — an answer about the letter passed with no scam note, and the
     model was not told the letter shows scam signs."""
     store.update_item(ids["scam_payment"], **change)
@@ -3253,7 +3247,7 @@ def test_a_record_ids_letters_never_decide_the_answers_language() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 4 of phase 2: what the reader could not read
+# what the reader could not read
 # --------------------------------------------------------------------------------------------------
 
 #: The tax objection is due Wed 21 Oct 2026: a year late, or the wrong day, written in forms the reader missed.
@@ -3273,7 +3267,7 @@ WRONG_DAY = [
 def test_a_wrong_date_in_a_form_the_reader_missed_never_passes(
     tools: LedgerTools, ids: dict[str, str], written: str
 ) -> None:
-    """Review round 4 of phase 2: a two-digit year after a day and month name, a year joined by a mark, a day and
+    """A two-digit year after a day and month name, a year joined by a mark, a day and
     month joined by a mark or glued, and a day and month of another answer language were not read — a date a
     year late or a day off passed as checked, and the check even added its citation."""
     evidence = evidence_of(tools, ("list_items", {}))
@@ -3318,7 +3312,7 @@ def test_forms_the_new_readers_leave_alone() -> None:
 def test_a_clock_time_with_spaces_around_its_colon_is_read(
     tools: LedgerTools, ids: dict[str, str], written: str
 ) -> None:
-    """Review round 4 of phase 2: "11 : 00" passed as checked next to an appointment at 10:00."""
+    """The time "11 : 00" passed as checked next to an appointment at 10:00."""
     evidence = evidence_of(tools, ("list_items", {}))
     appointment = next(item for item in tools.list_items().record["items"] if item.get("due_time"))
     sentence = f"Your appointment is on 14 Oct at {written} [item:{appointment['id']}]."
@@ -3327,7 +3321,7 @@ def test_a_clock_time_with_spaces_around_its_colon_is_read(
 
 
 def test_a_morning_hour_after_noon_is_unreadable() -> None:
-    """Review round 4 of phase 2 (a surviving mutation): "18 Uhr morgens" is no time, even next to a record at
+    """A surviving mutation: "18 Uhr morgens" is no time, even next to a record at
     18:00."""
     evidence = _evidence(
         ToolAnswer(
@@ -3357,7 +3351,7 @@ def test_a_morning_hour_after_noon_is_unreadable() -> None:
 def test_a_lines_number_is_read_as_the_web_shows_it(
     tools: LedgerTools, ids: dict[str, str], line: str, kept: bool
 ) -> None:
-    """Review round 4 of phase 2: the web shows "022. 10." as "22. 10." (an ordered list renders the number), and
+    """The web shows "022. 10." as "22. 10." (an ordered list renders the number), and
     "22) Okt. 2026" or "0022. Oktober 2026" as a day before a month — the check read no date in any of them."""
     evidence = evidence_of(tools, ("list_items", {}))
     assert _kept(line.format(item=ids["tax_objection"]), evidence) is kept

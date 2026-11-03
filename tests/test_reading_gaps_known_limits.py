@@ -1,7 +1,6 @@
 """Tightening the known limits of the check for incomplete readings (``ingest/gaps.py``, ADR 0015 "Review and known
-limits"): a letter served with a Postzustellungsurkunde asks for the date on the yellow envelope and counts from it
-(later audit R4L-1, fix F2); a reminder's "Hiergegen …" and a notice's bare "des Bescheides" (security V4-2, false
-positives R4FP-6); a Widerspruchsbescheid's reasoning (R4FP-8); own-date forms read weakly or not at all (R4D-3); a
+limits"): a letter served with a Postzustellungsurkunde asks for the date on the yellow envelope and counts from it;
+a reminder's "Hiergegen …" and a notice's bare "des Bescheides"; a Widerspruchsbescheid's reasoning; own-date forms read weakly or not at all; a
 planted line or an appointment's block while the letter's own date is unread; and a fixed date the letter sets
 (pay by, send by) that the reading left out (``check:deadline``). The rule over all of them: no code path gives a
 date later than the letter allows — when in doubt, no date.
@@ -40,7 +39,7 @@ from ordnung.rules import RuleContext, compute_due
 from ordnung.rules.deadlines import ASSUMED_DELIVERY_WARNING, ASSUMED_RECEIPT_WARNING
 from test_api_support import api_for
 from test_reading_gaps import FROM_LETTER_DUE, NOTIFIED_DUE, ROOT, SENDER, _web_regex, blank, page, payment
-from test_reading_gaps_round2 import check_due
+from test_reading_gaps_dated_notices import check_due
 
 G = "   "  # the gap the text layer leaves between two columns run into one line
 LETTERHEAD = "Landratsamt Beispielkreis · Ausländerbehörde · Rathausplatz 1 · 12345 Beispielhausen"
@@ -112,7 +111,7 @@ def computed(reading: DocumentExtraction, pages: Sequence[PageInput], arrived: s
 
 
 # --------------------------------------------------------------------------------------------------
-# 1. A letter served with a Postzustellungsurkunde (later audit R4L-1, fix F2)
+# 1. A letter served with a Postzustellungsurkunde
 # --------------------------------------------------------------------------------------------------
 
 
@@ -185,7 +184,7 @@ def test_a_period_from_arrival_on_a_formally_served_letter_cites_the_envelope() 
     [
         (None, FROM_LETTER_DUE, False),
         ("2026-11-10", "2026-12-10", False),
-        # the envelope's date 10 days and more after the letter's: R4L-1's false early "Please check" is gone
+        # the envelope's date 10 days and more after the letter's: the false early "Please check" is gone
         ("2026-11-16", "2026-12-16", False),
         ("2026-11-20", "2026-12-21", False),  # Sun 20 Dec → Mon 21 Dec
         # more than two weeks after the letter's date: no envelope of this letter's — the notice's date is kept
@@ -206,7 +205,7 @@ def test_a_formally_served_letter_counts_the_notice_from_the_envelope_s_date(
 def test_without_the_envelope_question_a_late_arrival_still_gets_the_notice_beside_it(
     pages: list[PageInput],
 ) -> None:
-    """R4L-1's F1 guard stays for letters not marked formally served: an arrival entered 14 days after the letter's
+    """The guard against a late arrival stays for letters not marked formally served: an arrival entered 14 days after the letter's
     date may be a pickup or a Today saved later — the notice's own date is set beside it, the earlier."""
     notice = BEKANNTGABE if formally_served(pages) or "Bekanntgabe" in pages[0][1] else NO_START
     [(_verified, result)] = computed(from_receipt(notice), pages, "2026-11-20")
@@ -315,7 +314,7 @@ async def test_a_formally_served_letter_asks_for_the_envelope_and_then_counts_fr
 
 
 # --------------------------------------------------------------------------------------------------
-# 2. A reminder that restates another decision's notice; a notice's bare "des Bescheides" (V4-2, R4FP-6)
+# 2. A reminder that restates another decision's notice; a notice's bare "des Bescheides"
 # --------------------------------------------------------------------------------------------------
 
 REMINDER = (
@@ -347,7 +346,7 @@ REMINDER = (
     ids=["hiergegen", "dagegen"],
 )
 def test_a_reminder_s_hiergegen_is_never_dated_from_the_reminder(decision: str, notice: str) -> None:
-    """Security V4-2: the reminder of 25.09 restates the notice of a decision of 03.09 (allowed: 2026-10-07): it was
+    """The reminder of 25.09 restates the notice of a decision of 03.09 (allowed: 2026-10-07): it was
     2026-10-28, counted from the reminder — now undated."""
     pages = [
         page(*REMINDER, decision, "Bitte zahlen Sie die Gebühr von 85,00 EUR bis zum 09.10.2026.", notice)
@@ -408,7 +407,7 @@ BARE = "Der Widerspruch ist innerhalb eines Monats nach Bekanntgabe des Bescheid
     ids=["replaced-long-ago", "replaced-recently", "based-on-another"],
 )
 def test_a_bare_des_bescheides_beside_gegen_diesen_bescheid_is_this_letter(body: tuple[str, ...]) -> None:
-    """R4FP-6: "Gegen diesen Bescheid ist der Widerspruch gegeben." and "… nach Bekanntgabe des Bescheides …": the
+    """The sentences "Gegen diesen Bescheid ist der Widerspruch gegeben." and "… nach Bekanntgabe des Bescheides …": the
     other decisions' dates are no weak dates of this one — it was undated or 2026-10-14 (12 days early), now the
     letter's own date gives 2026-10-26 (21.09: delivered Thu 24.09, one month Sat 24.10 → Mon 26.10)."""
     pages = [page(*KASSEL, "Datum: 21.09.2026", *body, "Rechtsbehelfsbelehrung", GIVEN, BARE)]
@@ -428,7 +427,7 @@ def test_a_compound_noun_still_names_another_decision() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# 4. A Widerspruchsbescheid's reasoning (R4FP-8)
+# 4. A Widerspruchsbescheid's reasoning
 # --------------------------------------------------------------------------------------------------
 
 COURT = (
@@ -449,7 +448,7 @@ COURT = (
     ids=["einmonatig", "bescheid-vom", "fristgerecht"],
 )
 def test_a_widerspruchsbescheid_s_reasoning_is_no_notice(reason: str) -> None:
-    """R4FP-8: the remedy already lodged, reported in the reasoning, is no notice: it left the check undated (a
+    """The remedy already lodged, reported in the reasoning, is no notice: it left the check undated (a
     period it can't read, a decision of 02.06 as a start) — now the court action's month from 21.09: 2026-10-21."""
     pages = [
         page(
@@ -510,7 +509,7 @@ FEE = (
     ids=["first-line", "ort-datum", "ihr-zeichen", "leistungsabteilung", "town-of-letterhead"],
 )
 def test_the_letter_s_own_date_in_more_forms_starts_the_check(head: tuple[str, ...]) -> None:
-    """R4D-3: forms that were read weakly or not at all now date an empty reading (2026-12-09), never later."""
+    """Forms that were read weakly or not at all now date an empty reading (2026-12-09), never later."""
     pages = [page(*head, *FEE)]
     assert letter_date(blank(), pages) == date(2026, 11, 6)
     assert check_due(pages) == NOTIFIED_DUE
@@ -565,7 +564,7 @@ def test_a_date_alone_under_a_sentence_still_lowers_the_start(offset: int, start
 
 
 def test_the_rival_still_counts_a_place_named_nowhere_else() -> None:
-    """P5 only ever lowers a reading's date: its start keeps a place-date whose place the page names nowhere else."""
+    """The notice set beside a reading only ever lowers its date: its start keeps a place-date whose place the page names nowhere else."""
     pages = [page(TOWN_HEAD, *ADDRESS, "", "Frankfurt am Main, 06.11.2026", *FEE)]
     assert _own_start(pages) == date(2026, 11, 6)
     assert letter_date(blank(), pages) is None

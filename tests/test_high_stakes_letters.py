@@ -350,14 +350,14 @@ HILFSWEISE_NEXT = _notice(
     "hiermit kündigen wir das Mietverhältnis fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin.",
     end="2026-09-30",
 )
-#: Review round 2 of phase 2: an ordinary notice to the next possible date writes no end, and one only
+#: An ordinary notice to the next possible date writes no end, and one only
 #: called "außerordentlich" may have the statutory period (§ 573d BGB) — both keep the objection.
 NEXT_POSSIBLE = _notice(
     "Kuendigung Eigenbedarf naechstmoeglich",
     "Hiermit kündigen wir das Mietverhältnis wegen Eigenbedarfs fristgerecht zum nächstmöglichen Termin.",
     end=None,
 )
-#: Review round 3 of phase 2: the same notice with the hint the law makes every notice carry (§ 568 Abs. 2
+#: The same notice with the hint the law makes every notice carry (§ 568 Abs. 2
 #: BGB), read as a period counted back from an end the notice doesn't give.
 NEXT_POSSIBLE_HINT = Letter(
     marker="Kuendigung Eigenbedarf naechstmoeglich Hinweis",
@@ -464,7 +464,7 @@ REMINDER_QUOTE = (
     "aus unserer Betriebskostenabrechnung 2023 vom 15.11.2024 ist noch eine Nachzahlung von 312,40 EUR offen."
 )
 REMINDER_PAY = "Bitte überweisen Sie den Betrag bis zum 05.10.2026."
-#: Final review 1: a landlord's payment reminder about an old statement that arrived on time.
+#: A landlord's payment reminder about an old statement that arrived on time.
 REMINDER = Letter(
     marker="Zahlungserinnerung Nachzahlung",
     pages=(
@@ -504,7 +504,7 @@ REMINDER = Letter(
 
 MIXED_CREDIT = "Ihr Guthaben aus der Heizkostenabrechnung von 85,00 EUR überweisen wir bis zum 30.09.2026."
 MIXED_PREPAYMENT = "Vorauszahlung ab 01.10.2026 monatlich 210,00 EUR."
-#: Final review 1: a late 2024 statement with a back-payment, a credit and the new monthly prepayment.
+#: A late 2024 statement with a back-payment, a credit and the new monthly prepayment.
 LATE_MIXED = Letter(
     marker="Abrechnung 2024 mit Guthaben",
     pages=(
@@ -549,7 +549,7 @@ LATE_MIXED = Letter(
 
 INCREASE_QUOTE = "Wir bitten Sie um Zustimmung zur Erhöhung der Miete auf die ortsübliche Vergleichsmiete."
 INCREASE_PAY = "Neue monatliche Miete 670,00 EUR ab dem 01.12.2026."
-#: Final review 1: a § 558 request whose reading has the new total as a recurring payment.
+#: A § 558 request whose reading has the new total as a recurring payment.
 RENT_INCREASE = Letter(
     marker="Mieterhoehungsverlangen Musterweg",
     pages=(
@@ -595,7 +595,7 @@ RENT_INCREASE = Letter(
 
 CURRENT_PAY = "Ihre derzeitige Miete von 640,00 EUR ist weiterhin zum 01.10.2026 fällig."
 NEW_RENT_UNDATED = "Die neue Miete beträgt 670,00 EUR."
-#: Review round 2 of phase 2: a § 558 request whose reading has the current rent as a payment next to an
+#: A § 558 request whose reading has the current rent as a payment next to an
 #: undated new rent — only the new rent is "decide before you pay".
 RENT_INCREASE_CURRENT = Letter(
     marker="Mieterhoehung mit laufender Miete",
@@ -636,14 +636,14 @@ RENT_INCREASE_CURRENT = Letter(
     },
 )
 
-#: Final review 1: an ordinary notice ending the tenancy five weeks after its date — the objection date
+#: An ordinary notice ending the tenancy five weeks after its date — the objection date
 #: (31 Aug 2026) had passed when it was written.
 SHORT_NOTICE = _notice(
     "Kuendigung zum Oktober",
     "hiermit kündigen wir das Mietverhältnis fristgerecht zum 31.10.2026.",
     end="2026-10-31",
 )
-#: Review round 4 of phase 2: an ordinary notice dated 25 Aug "zum 31.10.2026" — more than two months away,
+#: An ordinary notice dated 25 Aug "zum 31.10.2026" — more than two months away,
 #: but earlier than a notice arriving after the third working day of August can end the tenancy (30 Nov).
 SHORT_PERIOD_NOTICE = Letter(
     marker="Kuendigung zu kurz",
@@ -658,7 +658,7 @@ SHORT_PERIOD_NOTICE = Letter(
 
 
 OBJECTION_BY = "Ein Widerspruch muss uns bis spätestens 31.01.2027 in Textform zugehen."
-#: Final review 1: a notice whose end the reading missed, but whose own objection date it read.
+#: A notice whose end the reading missed, but whose own objection date it read.
 OBJECTION_DATE_ONLY = Letter(
     marker="Kuendigung mit Widerspruchsfrist",
     pages=(("Hausverwaltung Muster GmbH", "SPECIMEN", "Kuendigung mit Widerspruchsfrist", OBJECTION_BY),),
@@ -680,7 +680,7 @@ OBJECTION_DATE_ONLY = Letter(
     },
 )
 COURT_ASKS = "Sie erhalten Gelegenheit, binnen zwei Wochen nach Zustellung Stellung zu nehmen."
-#: Final review 1: a court's letter that isn't an order: its period still runs from delivery (§ 180 ZPO).
+#: A court's letter that isn't an order: its period still runs from delivery (§ 180 ZPO).
 COURT_REQUEST = Letter(
     marker="Aufforderung zur Stellungnahme",
     pages=(("Amtsgericht Musterstadt", "SPECIMEN", "Aufforderung zur Stellungnahme", COURT_ASKS),),
@@ -715,7 +715,7 @@ PUBLIC_ACTION_QUOTE = "Klage muss innerhalb von drei Wochen nach Zugang der Kün
 
 
 def _public_dismissal(marker: str, date_spec: dict[str, Any]) -> Letter:
-    """A city's dismissal of its employee, read as an authority's letter (review round 1: § 4 KSchG)."""
+    """A city's dismissal of its employee, read as an authority's letter (§ 4 KSchG)."""
     return Letter(
         marker=marker,
         pages=(
@@ -779,7 +779,7 @@ PUBLIC_DISMISSAL_LATER = _public_dismissal(
 )
 
 EARLY_PAY = "Neue monatliche Miete 670,00 EUR ab dem 01.11.2026."
-#: Review round 1: a § 558 request that names an earlier start than the law allows (1 Dec).
+#: A § 558 request that names an earlier start than the law allows (1 Dec).
 RENT_INCREASE_EARLY = Letter(
     marker="Mieterhoehungsverlangen Lindenweg",
     pages=(
@@ -945,7 +945,7 @@ async def test_correcting_the_kind_reroutes_the_dates(data_dir: Path) -> None:
 async def test_a_kind_chosen_while_the_letter_is_read_again_is_kept(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Review round 4: the person files the letter as another kind after a re-read took its snapshot of
+    """The person files the letter as another kind after a re-read took its snapshot of
     the letter and before it commits. The commit reads the letter again (under the ledger lock), sees the
     chosen kind and its "kind chosen" entry, and keeps both."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1032,7 +1032,7 @@ async def test_a_dismissal_gets_the_deadlines_the_law_adds(data_dir: Path) -> No
 
 
 async def test_a_public_employers_dismissal_counts_from_its_arrival(data_dir: Path) -> None:
-    """Review round 1: a dismissal is a private-law declaration that takes effect on receipt (§ 130 BGB, § 4
+    """A dismissal is a private-law declaration that takes effect on receipt (§ 130 BGB, § 4
     S. 1 KSchG), from a city as from a company — never with the VwVfG's delivery fiction (15 Oct, and the
     law's to-do suppressed behind it), but three weeks from the letter's date until it arrived: 12 Oct."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1046,7 +1046,7 @@ async def test_a_public_employers_dismissal_counts_from_its_arrival(data_dir: Pa
 
 
 async def test_the_laws_date_is_filed_when_the_letters_own_date_is_later(data_dir: Path) -> None:
-    """Review round 1: a letter's own date computed under the rule no longer hides the law's to-do when it
+    """A letter's own date computed under the rule no longer hides the law's to-do when it
     is later (here read from a later start): the earlier, law's date is filed next to it."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, PUBLIC_DISMISSAL_LATER)
@@ -1165,7 +1165,7 @@ async def test_a_notice_without_notice_period_gets_no_hardship_objection(
 async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection(
     data_dir: Path, letter: Letter
 ) -> None:
-    """Review round 2 of phase 2: a notice "zum nächstmöglichen Termin" got no objection to-do (its card asked
+    """A notice "zum nächstmöglichen Termin" got no objection to-do (its card asked
     for an end the notice doesn't write), and "außerordentlich" alone lost the to-do and the letter. The
     objection counts back from the earliest end (arrived 24 Sep 2026: 31 Dec 2026, objection by 31 Oct)."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1186,7 +1186,7 @@ async def test_a_notice_without_an_end_or_only_extraordinary_keeps_its_objection
 
 
 async def test_the_statutory_objection_hint_without_an_end_keeps_the_laws_objection(data_dir: Path) -> None:
-    """Review round 3 of phase 2: the hint every notice carries ("spätestens zwei Monate vor der Beendigung"),
+    """The hint every notice carries ("spätestens zwei Monate vor der Beendigung"),
     read as a period from an end the notice doesn't give, counted as the letter's own objection date and
     removed the law's — a notice "zum nächstmöglichen Termin" was left with no dated objection to-do at all."""
     from ordnung.ingest.plan import law_deadlines
@@ -1208,7 +1208,7 @@ async def test_the_statutory_objection_hint_without_an_end_keeps_the_laws_object
 
 
 async def test_a_statement_filed_by_the_person_as_its_stored_kind_loses_its_card(data_dir: Path) -> None:
-    """Review round 2 of phase 2: a statement recognised on read (stored as a utility bill) kept its card and
+    """A statement recognised on read (stored as a utility bill) kept its card and
     its "may not be owed" note when the person chose "Utility bill" — the kind it is stored as, so nothing
     was recorded or worked out again."""
     from ordnung.ingest.plan import KIND_CHOSEN
@@ -1291,7 +1291,7 @@ async def test_an_operating_cost_statement_keeps_its_kind_and_gets_its_card_on_r
 
 
 async def test_a_late_statements_back_payment_says_it_may_not_be_owed(data_dir: Path) -> None:
-    """Review round 4: the card says the statement came too late; its "Pay" to-do says so too (and the
+    """The card says the statement came too late; its "Pay" to-do says so too (and the
     card comes first), but stays open — the landlord may not be responsible for the delay (ADR 0006)."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, LATE_STATEMENT)
@@ -1328,10 +1328,10 @@ def test_only_a_statement_the_card_calls_late_warns_its_payments() -> None:
     )
     assert late_statement_warning(True, None, text, entered) == LATE_STATEMENT_WARNING
     assert late_statement_warning(True, None, text, replace(entered, received_confirmed=False)) is None
-    # final review 2: an earlier date of another year's statement doesn't replace the arrival entered
+    # an earlier date of another year's statement doesn't replace the arrival entered
     last_years = f"{text}\nDas Guthaben aus der Abrechnung 2024 vom 10.11.2025 wurde erstattet."
     assert late_statement_warning(True, None, last_years, entered) == LATE_STATEMENT_WARNING
-    # final review 3: a date without its year may be the statement a later letter is about (a reply that
+    # a date without its year may be the statement a later letter is about (a reply that
     # repeats the period) or an enclosure's: ambiguous, so the back-payment is never warned about when that
     # date would make the statement on time — the card says both readings
     enclosing = f"{text}\nAnlage: Heizkostenabrechnung der Techem vom 20.03.2026"
@@ -1504,11 +1504,11 @@ async def test_a_statement_the_model_names_gets_its_card_unless_the_person_chose
         assert (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"] is None
 
 
-# ------------------------------------------------------------------------------------ final review 1
+# ---------------------------------------------------- statements, rent increases and notices, through the app
 
 
 async def test_a_reminder_about_an_old_statement_is_no_late_statement(data_dir: Path) -> None:
-    """Final review 1: a landlord's payment reminder dated 20 Sep 2026 names its 2023 statement of 15 Nov 2024.
+    """A landlord's payment reminder dated 20 Sep 2026 names its 2023 statement of 15 Nov 2024.
     It stays a reminder: no statement card, and its back-payment is never "may not be owed". Filed as a
     statement by the person, the card counts from the statement's own date — on time."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1530,7 +1530,7 @@ async def test_a_reminder_about_an_old_statement_is_no_late_statement(data_dir: 
 
 
 async def test_only_the_back_payment_of_a_late_statement_may_not_be_owed(data_dir: Path) -> None:
-    """Final review 1: the credit comes back to the person and the new monthly prepayment is owed: neither
+    """The credit comes back to the person and the new monthly prepayment is owed: neither
     carries the late-statement warning; the one-off back-payment does."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, LATE_MIXED)
@@ -1550,7 +1550,7 @@ async def test_only_the_back_payment_of_a_late_statement_may_not_be_owed(data_di
 
 
 async def test_a_rent_increases_new_rent_is_only_owed_once_agreed(data_dir: Path) -> None:
-    """Final review 1: the model reads the new total as a recurring payment; its to-do says the higher rent
+    """The model reads the new total as a recurring payment; its to-do says the higher rent
     is only owed after consent (§ 558b Abs. 1 BGB), next to the law's decision to-do."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, RENT_INCREASE)
@@ -1570,7 +1570,7 @@ async def test_a_rent_increases_new_rent_is_only_owed_once_agreed(data_dir: Path
 
 
 async def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(data_dir: Path) -> None:
-    """Review round 1: "ab dem 01.11.2026" in a request of 24 Sep: by law the higher rent can only be owed from
+    """The words "ab dem 01.11.2026" in a request of 24 Sep: by law the higher rent can only be owed from
     1 Dec (§ 558b Abs. 1 BGB) — and from 1 Jan once the person says it arrived on 2 Oct."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, RENT_INCREASE_EARLY)
@@ -1589,7 +1589,7 @@ async def test_a_rent_increases_new_rent_is_never_due_before_the_law_allows(data
 async def test_a_rent_increases_new_rent_by_its_working_day_starts_when_the_law_allows(
     data_dir: Path,
 ) -> None:
-    """Review of recurrence.py point 8: the new rent of a request of 24 Sep "ab dem 01.11.2026", paid by the
+    """The recurrence policy's point 8 (ordnung.recurrence): the new rent of a request of 24 Sep "ab dem 01.11.2026", paid by the
     3rd working day of each month (set on the stored to-do of a request read without it, and the letter's
     dates are recomputed). Its schedule starts in the month § 558b Abs. 1 BGB allows (Thu 3 Dec,
     not Wed 4 Nov), and dated by its working day it keeps the note that it is only owed once the person
@@ -1612,8 +1612,8 @@ async def test_a_rent_increases_new_rent_by_its_working_day_starts_when_the_law_
 
 
 async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(data_dir: Path) -> None:
-    """Final review 1: "fristgerecht zum 31.10.2026" in a letter of 24 Sep 2026 — the objection date had
-    passed before it was written. Review round 1: a notice this short usually ends the tenancy at the next
+    """The words "fristgerecht zum 31.10.2026" in a letter of 24 Sep 2026 — the objection date had
+    passed before it was written. A notice this short usually ends the tenancy at the next
     permissible date (31 Dec 2026 at the earliest, § 573c Abs. 1 BGB), so the objection may still be open:
     a low-confidence to-do counts back from it (31 Oct), and the card says both readings, urgently."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1641,7 +1641,7 @@ async def test_a_notice_whose_objection_date_had_passed_is_urgent_and_says_why(d
 async def test_a_notice_too_short_for_its_period_keeps_the_objection_that_is_still_open(
     data_dir: Path,
 ) -> None:
-    """Review round 4 of phase 2: only the stated end's objection (Mon 31 Aug, passed) was filed and the card
+    """Only the stated end's objection (Mon 31 Aug, passed) was filed and the card
     said it had passed, though the objection from the end such a notice usually has (30 Nov) is open until
     30 Sep. The to-do counts back from that end, and the card says why, urgently."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1663,7 +1663,7 @@ async def test_a_notice_too_short_for_its_period_keeps_the_objection_that_is_sti
 async def test_a_notice_without_period_given_hilfsweise_without_an_end_gets_an_objection_date(
     data_dir: Path,
 ) -> None:
-    """Review round 1: "fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin" read with the immediate
+    """The words "fristlos, hilfsweise fristgerecht zum nächstmöglichen Termin" read with the immediate
     end (or none): no objection to-do at all, and the card only said "object in time anyway". The objection
     to the notice given in the alternative counts back from the earliest end it can have (31 Dec: 31 Oct)."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1679,7 +1679,7 @@ async def test_a_notice_without_period_given_hilfsweise_without_an_end_gets_an_o
 
 
 async def test_the_letters_own_objection_date_carries_the_notice(data_dir: Path) -> None:
-    """Final review 1: the reading missed the end, but read the letter's own objection date: that to-do
+    """The reading missed the end, but read the letter's own objection date: that to-do
     carries the notice, so the card neither claims there is none nor is urgent."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, OBJECTION_DATE_ONLY)
@@ -1697,7 +1697,7 @@ async def test_the_letters_own_objection_date_carries_the_notice(data_dir: Path)
 
 @pytest.mark.parametrize("letter", [MAHNBESCHEID, DISMISSAL], ids=["mahnbescheid", "dismissal"])
 async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path, letter: Letter) -> None:
-    """Final review 1: after the person objected (or went to court and registered) and marked the to-dos
+    """After the person objected (or went to court and registered) and marked the to-dos
     done, the card is no longer urgent; it comes back when a to-do is reopened."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, letter)
@@ -1708,7 +1708,7 @@ async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path,
             assert response.status_code == 200
         settled = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
         assert not settled["urgent"] and settled["handled"]
-        # final review 2: it doesn't ask for the delivery day any more
+        # it doesn't ask for the delivery day any more
         assert not any(
             step.startswith(("Find the delivery date", "Enter the day")) for step in settled["steps"]
         )
@@ -1718,7 +1718,7 @@ async def test_a_card_settles_once_the_person_closed_every_to_do(data_dir: Path,
 
 
 async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(data_dir: Path) -> None:
-    """Final review 2: the arrears a notice without notice period demands are no to-do that carries the
+    """The arrears a notice without notice period demands are no to-do that carries the
     notice: paying them (§ 569 Abs. 3 Nr. 2 BGB can undo it, but not always) never files the letter away —
     its card stays urgent and the verdict keeps saying "get advice now"."""
     async with api_for(data_dir, router=_router()) as api:
@@ -1732,7 +1732,7 @@ async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(d
         advice = (await api.client.get(f"/api/documents/{doc_id}")).json()["advice"]
         assert advice["urgent"] and not advice["handled"]
         assert advice["facts"][0]["title"].startswith("This reads as a notice without notice period")
-        # final review 3: only the person can close it ("I've dealt with this" on the card: a tag), and undo it
+        # only the person can close it ("I've dealt with this" on the card: a tag), and undo it
         assert advice["closable"]
         response = await api.client.patch(
             f"/api/documents/{doc_id}", json={"tags": [documents.DEALT_WITH_TAG]}
@@ -1745,7 +1745,7 @@ async def test_paying_the_arrears_doesnt_settle_a_notice_without_notice_period(d
 
 
 async def test_another_to_do_of_a_dismissal_doesnt_settle_it(data_dir: Path) -> None:
-    """Final review 2: only the to-dos that carry the letter's legal deadline settle it: closing another one
+    """Only the to-dos that carry the letter's legal deadline settle it: closing another one
     (returning the keys) doesn't, closing those does even while the other stays open."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, DISMISSAL)
@@ -1761,7 +1761,7 @@ async def test_another_to_do_of_a_dismissal_doesnt_settle_it(data_dir: Path) -> 
 
 
 async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> None:
-    """Final review 1: a court's letter that isn't an order runs from delivery too: its receipt cites
+    """A court's letter that isn't an order runs from delivery too: its receipt cites
     § 180 ZPO, so the page asks "when was it delivered?" with no date filled in."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, COURT_REQUEST)
@@ -1774,7 +1774,7 @@ async def test_any_court_letter_asks_for_the_delivery_date(data_dir: Path) -> No
 
 @pytest.mark.parametrize("field", ["doc_date", "received_date"])
 async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path, field: str) -> None:
-    """Review round 1: filing a letter as an operating-cost statement with a date of 31 Dec 9999 made PATCH
+    """Filing a letter as an operating-cost statement with a date of 31 Dec 9999 made PATCH
     answer 500 (the statement's twelve months ran past the calendar)."""
     async with api_for(data_dir, router=_router()) as api:
         doc_id = await _read(api, LATE_STATEMENT)
@@ -1787,7 +1787,7 @@ async def test_a_statement_dated_9999_is_saved_not_an_error(data_dir: Path, fiel
 
 
 async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_payment(data_dir: Path) -> None:
-    """Review round 1: the new rent is only owed once the person agrees (§ 558b Abs. 1 BGB). Ask's
+    """The new rent is only owed once the person agrees (§ 558b Abs. 1 BGB). Ask's
     money_summary listed it under upcoming_payments like any payment, counted it in due_this_month, and the
     check passed "Your next payment is the new rent …" as checked with no word of that. Now its record carries
     the app's note, money_summary lists it apart and leaves it out of the totals, and the check repeats the
@@ -1838,7 +1838,7 @@ async def test_ask_never_presents_a_rent_increases_new_rent_as_just_another_paym
 
 
 async def test_only_the_new_rent_carries_the_note_dated_or_not(data_dir: Path) -> None:
-    """Review round 2 of phase 2: the current rent got the "decide before you pay" note (holding it back
+    """The current rent got the "decide before you pay" note (holding it back
     risks arrears, § 543 Abs. 2 Nr. 3 BGB), and an undated new rent got none, so Ask listed it as an ordinary
     payment without a due date."""
     from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
@@ -1861,7 +1861,7 @@ async def test_only_the_new_rent_carries_the_note_dated_or_not(data_dir: Path) -
 
 
 async def test_a_hand_set_date_keeps_the_new_rents_note(data_dir: Path) -> None:
-    """Review round 2 of phase 2: setting the new rent's due date by hand replaced its receipt, so Ask
+    """Setting the new rent's due date by hand replaced its receipt, so Ask
     counted the not-yet-agreed rent as due this month, without the note."""
     from ordnung.assistant.mcp_server import DECIDE_BEFORE_PAYING, LedgerTools
 

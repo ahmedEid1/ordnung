@@ -121,7 +121,7 @@ async def test_look_alike_collector_with_new_iban_is_flagged(ctx: AppContext) ->
 
 
 async def test_a_sender_first_seen_on_a_scam_letter_is_never_named_to_the_model(ctx: AppContext) -> None:
-    """SEC S4: the known senders a reading's prompt lists leave out a party first seen on a letter with scam
+    """The known senders a reading's prompt lists leave out a party first seen on a letter with scam
     signs (or text addressed to an AI): that letter may have planted its name, line breaks and all."""
     genuine = await read(ctx, BEITRAG_LETTER)
     fake = await read(ctx, SCAM_LETTER)

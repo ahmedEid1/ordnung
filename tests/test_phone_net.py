@@ -170,7 +170,7 @@ WINDOWS_TUNNELS = [
 def test_on_windows_a_tunnel_is_known_by_its_adapter_s_description_or_its_name(
     monkeypatch: pytest.MonkeyPatch, router: str | None
 ) -> None:
-    """Risk review: on Windows ``ifaddr`` names an adapter by its description and gives the name people
+    """On Windows ``ifaddr`` names an adapter by its description and gives the name people
     see to each address, so a filter of the adapter's name alone offered Hyper-V, WSL, VirtualBox, VMware
     and WireGuard, and recommended a VPN that held the default route."""
     _adapters(monkeypatch, *(_windows(*tunnel) for tunnel in WINDOWS_TUNNELS), _windows(*WI_FI))
@@ -298,7 +298,7 @@ def test_sockets_tell_local_addresses_and_free_ports() -> None:
 def test_a_port_probe_on_windows_doesn_t_share_a_port_another_program_listens_on(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Audit: on Windows ``SO_REUSEADDR`` lets a bind share a port another program listens on, so phone
+    """On Windows ``SO_REUSEADDR`` lets a bind share a port another program listens on, so phone
     access and ``ordnung serve`` read a busy port as free. There both probes bind plainly, as
     ``socket.create_server`` does (Windows binds a port with connections in TIME_WAIT anyway)."""
     from ordnung import cli

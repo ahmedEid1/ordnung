@@ -1,4 +1,4 @@
-"""Job crash recovery and the health-insurance special right (round 2, R2-JOB-1/R2-ZB-1).
+"""Job crash recovery and the health-insurance special right.
 
 * ``Store.requeue_running_jobs`` fails a job after ``MAX_JOB_ATTEMPTS`` interruptions — it used to count
   ``attempts``, i.e. every claim, including the ones the worker gave back because Claude's usage limit

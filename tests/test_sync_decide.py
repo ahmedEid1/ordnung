@@ -1,5 +1,4 @@
-"""The decision function, row by row, on hand-built views (design §9; F22; review blockers 2-3, findings
-13, 31)."""
+"""The decision function, row by row, on hand-built views (:mod:`ordnung.sync.decide`)."""
 
 from __future__ import annotations
 
@@ -168,12 +167,12 @@ def test_r6_changes_push_and_r7_idle() -> None:
     assert isinstance(decide(local(BASE), view(ME_HEAD, behind)), Idle)
 
 
-def test_background_only_differences_never_ask() -> None:  # F19, F20
+def test_background_only_differences_never_ask() -> None:
     other_background = head(A, 2, BASE, epoch=1, digest="2" * 64)
     assert isinstance(decide(local(BASE, digest="1" * 64), view(ME_HEAD, other_background)), Push)
 
 
-def test_a_newer_head_blocks_pulling_not_pushing() -> None:  # finding 13
+def test_a_newer_head_blocks_pulling_not_pushing() -> None:
     newer = head(A, 2, AHEAD, epoch=1, newer=True)
     decision = decide(local(BASE, pending=True), view(ME_HEAD, newer, problem=Problem("newer_ordnung")))
     assert isinstance(decision, Push)
@@ -247,7 +246,7 @@ def test_u5_otherwise_a_choice() -> None:
     assert isinstance(decision, Choice) and len(decision.sides) == 2
 
 
-def test_simultaneous_claims_pick_the_higher_epoch_then_id() -> None:  # F22
+def test_simultaneous_claims_pick_the_higher_epoch_then_id() -> None:
     me = head(ME, 1, BASE, epoch=5, state="in_use", this=True)
     a = head(A, 2, BASE, epoch=5, state="in_use")
     assert view(me, a).holder == ME  # "e…" > "a…": the same answer on every computer
@@ -267,14 +266,14 @@ def test_joining() -> None:
     assert isinstance(use(local(None, mode="standing_by", data=False), view()), NotYet)
 
 
-def test_joining_while_the_others_diverge_asks() -> None:  # finding 31
+def test_joining_while_the_others_diverge_asks() -> None:
     one = head(A, 2, OTHER, epoch=2, state="in_use")
     two = head(B, 3, L({B: [(1, 1)]}), epoch=1)
     decision = use(local(None, mode="standing_by", data=False), view(one, two))
     assert isinstance(decision, Choice) and decision.joining and len(decision.sides) == 2
 
 
-def test_a_left_head_counts_for_content_not_for_the_lease() -> None:  # blocker 2
+def test_a_left_head_counts_for_content_not_for_the_lease() -> None:
     me = head(ME, 1, BASE, epoch=1, this=True)
     left = head(A, 2, AHEAD, epoch=9, state="left")
     fv = view(me, left)
@@ -299,7 +298,7 @@ def test_choose_this_other_waiting_or_none() -> None:
 
 
 @pytest.mark.parametrize("has_it", [True, False])
-def test_others_have_the_latest(has_it: bool) -> None:  # blocker 2's second confirmation
+def test_others_have_the_latest(has_it: bool) -> None:  # the second confirmation
     mine = ref(ME, 1, BASE)
     other = head(A, 2, AHEAD if has_it else OTHER, epoch=1)
     assert others_have(view(ME_HEAD, other), mine) is has_it

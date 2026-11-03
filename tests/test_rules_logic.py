@@ -1,9 +1,9 @@
-"""Auditor B — logic & integration review of ``ordnung.rules`` (2026-09-25), with the judge's follow-ups.
+"""Logic and integration of ``ordnung.rules``: regression tests from a line-by-line reading (2026-09-25).
 
 Every test here documents a defect found by reading the engine line by line and checking it against
 SPEC § 21 (earliest plausible date when uncertain; confidence rubric) and the verified legal research.
-They were written as strict xfails; the judge confirmed each finding and fixed the engine, so they are
-now plain regression tests. The last section covers the auditor's observations that were fixed too.
+They were written as strict xfails; each defect was confirmed and the engine fixed, so they are now
+plain regression tests. The last section covers observations that were fixed too.
 """
 
 from __future__ import annotations
@@ -249,11 +249,11 @@ def test_catalog_texts_match_engine() -> None:
     assert "from 2025: after the notification" not in elster
 
 
-# ------------------------------------------------------------------------------------ judge: details of the fixes
+# ------------------------------------------------------------------------------------ details of the fixes
 
 
 def test_backward_period_keeps_its_day_and_gets_a_safe_date() -> None:
-    """B1: "pay one month before Tue 6 Oct" ends Sat 5 Sep; aim for Fri 4 Sep, never Mon 7 Sep."""
+    """The words "pay one month before Tue 6 Oct" ends Sat 5 Sep; aim for Fri 4 Sep, never Mon 7 Sep."""
     spec = DateSpec(
         type="relative",
         anchor="explicit_date",
@@ -294,7 +294,7 @@ def test_backward_period_keeps_its_day_and_gets_a_safe_date() -> None:
     ],
 )
 def test_portal_rules_are_reachable(scope: str | None, provided: str, rule: str, expected: str) -> None:
-    """B2 and auditor A's secondary finding: portal letters cite the portal rule of their scope."""
+    """Portal letters cite the portal rule of their scope."""
     spec = DateSpec(
         type="relative",
         anchor="deemed_delivery",
@@ -312,7 +312,7 @@ def test_portal_rules_are_reachable(scope: str | None, provided: str, rule: str,
 
 
 def test_payment_holidays_follow_the_payer_only_for_private_creditors() -> None:
-    """B3: private payment → payer's Land (unknown → nationwide + warning); tax payment → the office's."""
+    """A private payment → payer's Land (unknown → nationwide + warning); tax payment → the office's."""
     invoice = DateSpec(
         type="relative", anchor="document_date", amount=14, unit="days", nature="payment"
     )  # 22 Feb 2027 + 14 days = Mon 8 Mar 2027 (Frauentag in Berlin)
@@ -339,7 +339,7 @@ def test_payment_holidays_follow_the_payer_only_for_private_creditors() -> None:
 
 
 def test_today_anchor_never_counts_from_a_later_day() -> None:
-    """B5: 'today' is the letter's date; the processing day only when that is earlier or unknown."""
+    """The anchor 'today' is the letter's date; the processing day only when that is earlier or unknown."""
     spec = DateSpec(type="relative", anchor="today", amount=14, unit="days", nature="declaration")
     written = compute_due(spec, ctx(document_date="2026-09-01"))
     assert written.due_date == "2026-09-15"
@@ -350,7 +350,7 @@ def test_today_anchor_never_counts_from_a_later_day() -> None:
 
 
 def test_dates_at_the_end_of_the_calendar_do_not_crash() -> None:
-    """B6: a misread anchor near year 9999 gives a 'no date' receipt instead of an exception."""
+    """A misread anchor near year 9999 gives a 'no date' receipt instead of an exception."""
     spec = DateSpec(
         type="relative",
         anchor="explicit_date",
@@ -381,7 +381,7 @@ def test_dates_at_the_end_of_the_calendar_do_not_crash() -> None:
 
 
 def test_renewal_zero_as_written_and_insurance() -> None:
-    """B7: 0 = indefinite after the first term, for contracts as written and (yearly periods) insurance."""
+    """A renewal of 0 = indefinite after the first term, for contracts as written and (yearly periods) insurance."""
     running = compute_contract(
         ContractTerms(
             category="bank",
@@ -425,7 +425,7 @@ def test_renewal_zero_as_written_and_insurance() -> None:
 
 
 def test_vvg_long_term_known_only_from_its_end_date() -> None:
-    """B8: term and end date without a start: the start is derived, year 3 still comes first."""
+    """Term and end date without a start: the start is derived, year 3 still comes first."""
     result = compute_contract(
         ContractTerms(
             category="insurance",
@@ -442,7 +442,7 @@ def test_vvg_long_term_known_only_from_its_end_date() -> None:
 
 
 def test_contract_send_by_step_says_today_when_late() -> None:
-    """B11: the clamped step says what to do."""
+    """The clamped step says what to do."""
     result = compute_contract(
         ContractTerms(
             category="streaming",
@@ -457,7 +457,7 @@ def test_contract_send_by_step_says_today_when_late() -> None:
     assert result.steps[-1].date == result.send_by == "2026-09-25"
 
 
-# ------------------------------------------------------------------------------------ judge: observations
+# ------------------------------------------------------------------------------------ observations
 
 
 def test_fine_counted_from_the_letter_date_without_the_envelope() -> None:
@@ -520,7 +520,7 @@ def test_health_insurance_exit_is_a_month_end_after_a_mid_month_start() -> None:
 
 
 def test_vvg_short_term_end_date_and_missing_dates() -> None:
-    """B8 helper: an end date within three years is the first insurance-year end (no assumption needed);
+    """The insurance-year helper: an end date within three years is the first insurance-year end (no assumption needed);
     without start and end there is nothing to count from."""
     two_years = compute_contract(
         ContractTerms(

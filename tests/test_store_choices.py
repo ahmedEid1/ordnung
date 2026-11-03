@@ -1,4 +1,4 @@
-"""The person's own choices kept in ``meta`` beside the letters (D3): "For taxes" (``tax_choices``) and the
+"""The person's own choices kept in ``meta`` beside the letters: "For taxes" (``tax_choices``) and the
 household (``household``). No migration: both are one row each, synced like the profile, and Ask's ledger
 token never moves for them (it watches only the profile row of ``meta``)."""
 

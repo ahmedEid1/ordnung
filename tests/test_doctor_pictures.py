@@ -24,7 +24,7 @@ from ordnung.ingest.ocr import Tesseract
 from ordnung.models import AppSettings, DoctorCheck, PictureTextState, PictureTextStatus
 
 SYSTEMS = ("linux", "darwin", "win32")
-#: the install line per system, exactly as the doctor gives it (and the README, which P5 checks against it)
+#: the install line per system, exactly as the doctor gives it (and the README, which the docs tests check against it)
 INSTALL = {
     "linux": "`sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora: `sudo dnf install tesseract "
     "tesseract-langpack-deu`), then restart Ordnung.",

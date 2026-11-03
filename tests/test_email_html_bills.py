@@ -1,4 +1,4 @@
-"""Final round: each test pinned one P0/P1 finding (EMAIL-F1, EMAIL-F2), now fixed."""
+"""HTML e-mails whose bill disappeared or turned into a scam alarm: each test pinned one defect, now fixed."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from fixtures_llm import fake_backend as _email_fake_backend
 from fixtures_llm import iban as _email_iban
 
 # ==================================================================================================
-# HTML e-mails (final round): realistic mails whose bill disappears or turns into a scam alarm
+# HTML e-mails: realistic mails whose bill disappears or turns into a scam alarm
 # ==================================================================================================
 
 _EMAIL_SHOP_IBAN = _email_iban("DE", "500105170648489890")

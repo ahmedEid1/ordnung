@@ -1,4 +1,4 @@
-"""Hidden text in HTML e-mails: regression tests from the review rounds that the policy of
+"""Hidden text in HTML e-mails: regression tests that the policy of
 ``html_to_text`` (its docstring) keeps. Cases the policy deliberately leaves visible were dropped
 with it; ``test_email_html.py`` pins the policy point by point."""
 
@@ -10,7 +10,7 @@ from helpers_timing import read_seconds
 from ordnung.ingest.text import html_to_text
 
 # --------------------------------------------------------------------------------------------------
-# R2-MAIL-1: rules inside an at-rule no longer count at all
+# rules inside an at-rule no longer count at all
 # --------------------------------------------------------------------------------------------------
 
 
@@ -45,7 +45,7 @@ Rechnungsbetrag: 84,20 EUR, fällig am 15.10.2026</td></tr></table>
 
 @pytest.mark.parametrize("at_rule", ["@media all", "@media screen"])
 def test_text_hidden_on_every_screen_by_an_at_rule_stays_hidden(at_rule: str) -> None:
-    """The R2-MAIL-1 fix dropped every rule inside an at-rule block, not only the ones that apply on some
+    """The fix for responsive e-mails (``test_regressions_email.py``) dropped every rule inside an at-rule block, not only the ones that apply on some
     screens. ``@media all``/``@media screen`` hide text in every mail client, yet the hidden line
     reached the model as letter text and was no longer reported as hidden (before the fix it was): a
     scam e-mail could hide its injected instructions this way and lose the hidden-text scam sign as
@@ -62,7 +62,7 @@ def test_text_hidden_on_every_screen_by_an_at_rule_stays_hidden(at_rule: str) ->
 
 
 def test_the_phone_copy_of_a_responsive_e_mail_is_not_hidden_text() -> None:
-    """R2-MAIL-1's evidence names two effects of the standard responsive pattern: the amount never
+    """The standard responsive pattern had two effects: the amount never
     reached the model (fixed) and "the non-empty hidden text sets document.hidden_text, which
     triggers._scam_reasons lists as a scam sign" (not fixed by it). The .mobile-only copy is hidden
     inline but shown on phones by the media query, so it is not text the reader can't see; as hidden
@@ -96,10 +96,10 @@ def test_an_at_sign_in_a_selector_does_not_drop_the_rule() -> None:
 
 def test_a_dark_mode_ready_e_mail_keeps_its_text_visible() -> None:
     """The usual dark-mode e-mail: Outlook.com's ``[data-ogsc]``/``[data-ogsb]`` rules turn text white
-    and the wrapper dark, and a white card sits inside the wrapper. V2-MAIL applies every rule that
+    and the wrapper dark, and a white card sits inside the wrapper. A rewrite of the policy applied every rule that
     *may* match (``[data-ogsc]`` can't be checked) with ``!important`` over the style attribute, so the
     text becomes white on the card's white: the whole letter is hidden text, the model reads an empty
-    e-mail and the hidden-text scam sign fires on an ordinary bill. At HEAD the text was visible (in
+    e-mail and the hidden-text scam sign fires on an ordinary bill. Before that rewrite the text was visible (in
     light mode no ``[data-ogsc]`` exists; in Outlook's dark mode the card is darkened as well)."""
     visible, hidden = html_to_text(DARK_MODE_BILL)
     assert "84,20 EUR" in visible

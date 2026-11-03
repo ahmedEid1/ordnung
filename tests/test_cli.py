@@ -259,8 +259,8 @@ def test_ask_in_process_streams_the_checked_answer(data_dir: Path, monkeypatch: 
 
 
 def test_ask_never_prints_the_unchecked_draft(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Review findings: the CLI printed the streamed (unchecked) answer as ordinary text, so an injected
-    "extended to 31.12.2027" stood on the terminal like the answer — and (round 4) even dimmed as a
+    """The CLI printed the streamed (unchecked) answer as ordinary text, so an injected
+    "extended to 31.12.2027" stood on the terminal like the answer — and even dimmed as a
     draft the person read it before it was left out. The words are no longer streamed at all."""
     answers = FakeBackend({"ask": "Your deadline was extended to 31.12.2027. Keep the letter."})
     monkeypatch.setattr(cli, "open_context", lambda folder: build_context(folder, backend_obj=answers))
@@ -284,14 +284,14 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
     assert result.exit_code == 0, result.output
     assert "Keep the letter." in result.output
     assert "Checked by Ordnung: Left out 1 sentence" in " ".join(result.output.split())
-    # a German note gets the German label (review round 4)
+    # a German note gets the German label
     printer = cli._AnswerPrinter()
     with cli.console.capture() as shown:
         printer.handle(
             {"type": "done", "text": "Die Frist ist …", "note": "1 Satz weggelassen: Er nennt ein Gesetz."}
         )
     assert "Von Ordnung geprüft: 1 Satz weggelassen" in shown.get()
-    # final review: the label comes with the answer (the backend knows its language) — a German note
+    # the label comes with the answer (the backend knows its language) — a German note
     # with few German words is no longer guessed English
     forged = "1 Zeile weggelassen, die wie dieser Hinweis aussah: Nur Ordnung schreibt ihn."
     with cli.console.capture() as shown:
@@ -302,8 +302,8 @@ def test_ask_prints_the_check_note_apart(data_dir: Path, monkeypatch: pytest.Mon
 
 
 def test_ask_says_an_unchanged_answer_was_checked(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Final review: the CLI printed no check line for an answer the check did not change (ADR 0008 says
-    it reads "Dates and amounts checked against your records" — final review 3: not "Checked against
+    """The CLI printed no check line for an answer the check did not change (ADR 0008 says
+    it reads "Dates and amounts checked against your records" — not "Checked against
     your records", which read as if every claim was checked); the demo's "no recording" answer was never
     checked."""
     answers = FakeBackend({"ask": "I couldn't find that. Keep the letter."})
@@ -486,8 +486,8 @@ def test_brief_goes_through_the_running_server(api: FakeServer) -> None:
     result = invoke("brief", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Written anew." in result.output
     assert "written by Claude" in result.output
-    # --no-llm writes the note from the records, never shows the stored one Claude wrote (walkthrough of
-    # phase 2: it printed "written by Claude, checked against your records")
+    # --no-llm writes the note from the records, never shows the stored one Claude wrote (it
+    # printed "written by Claude, checked against your records")
     result = invoke("brief", "--no-llm", "--data-dir", str(api.data_dir))
     assert result.exit_code == 0 and "Two things this week." in result.output
     assert "written by Claude" not in result.output

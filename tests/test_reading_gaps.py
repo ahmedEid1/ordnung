@@ -1014,7 +1014,7 @@ def test_a_court_action_left_out_gets_its_own_warning_and_the_advice_note() -> N
 
 
 def test_a_letter_addressed_to_an_ai_gets_where_to_send_the_objection() -> None:
-    """Detected text addressed to an AI, or an almost blank reading (security review 2, F5: a detector can miss
+    """Detected text addressed to an AI, or an almost blank reading (a detector can miss
     the injection that blanked it): the action says where to send the objection. Not on a reading that only
     left the objection out, unless the injection was detected."""
     for injected in (True, False):
@@ -1084,7 +1084,7 @@ def written(
 def test_the_letter_s_date_is_the_earliest_it_gives_for_itself() -> None:
     assert written("Beispielhausen, 06.11.2026") == date(2026, 11, 6)
     assert written("Beispielhausen, den 06.11.2026") == date(2026, 11, 6)
-    # a date alone in the header is weak: it lowers a start, never sets one (dates review 2, finding 3)
+    # a date alone in the header is weak: it lowers a start, never sets one
     assert written("Frau Mara Probe", "06.11.2026") is None
     assert written("Frau Mara Probe", "06.11.2026", reading=blank(document_date="2026-11-10")) == date(
         2026, 11, 6
@@ -1206,7 +1206,7 @@ def test_the_page_with_the_notice_gives_its_own_date() -> None:
         NOTIFIED,
         number=2,
     )
-    # a continuation page's date is weak (dates review 2, finding 10): it never sets the start alone
+    # a continuation page's date is weak: it never sets the start alone
     assert letter_date(blank(), [first, second]) is None
     assert letter_date(blank(document_date="2026-11-09"), [first, second]) == date(2026, 11, 6)
     # a covering letter dated three weeks after the decision: two dates for itself, so no start at all
@@ -1569,7 +1569,7 @@ def _web_regex(relative: str, name: str) -> re.Pattern[str]:
 
 
 def test_the_web_app_knows_the_slot_the_warnings_and_the_note() -> None:
-    """The web app spells the slot, the warnings and the receipt's note out (review tests 13): a rename here
+    """The web app spells the slot, the warnings and the receipt's note out: a rename here
     must be one there, or the card falls back to "doesn't match the sentence it came from", the warning reads
     as a scam sign and Today's reason as a delivery-day aside."""
     warnings = (ROOT / "web" / "src" / "features" / "document" / "Warnings.tsx").read_text(encoding="utf-8")

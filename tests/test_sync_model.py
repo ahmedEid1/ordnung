@@ -1,4 +1,4 @@
-"""The two-computer model (design §23.2): Hypothesis drives two real data folders, the real engine and a
+"""The two-computer model: Hypothesis drives two real data folders, the real engine and a
 simulated sync tool through random histories — the person's edits and background work on either
 computer, saves, hand-overs, "Use Ordnung here" (plain or with the copy at hand), choices, deliveries in
 any order and shape, restarts in the middle of a save, clock jumps and a full folder — and checks after

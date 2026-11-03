@@ -2,7 +2,7 @@
 notices, the security policy, the issue forms and the pull request template, the Node pin, the dependency
 updates, the Makefile's help, the ignore file and the contributor docs' commands, files and generated files.
 
-Written by a release audit: the build stripped every licence comment and no notices file shipped (the
+Written after a release check: the build stripped every licence comment and no notices file shipped (the
 fonts' SIL Open Font License and the MIT and ISC licences of the bundled code need their notice to
 travel with copies), nothing said how to report a vulnerability privately, nothing warned a bug reporter
 against attaching real letters, contributors had no Node pin, and pins moved only by hand.
@@ -173,7 +173,7 @@ def test_the_wheel_lists_the_notices_among_its_licence_files() -> None:
 
 
 def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
-    """Audit (batch A review): the wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
+    """The wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
     code and fonts, the DejaVu fonts (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)."""
     pyproject = tomllib.loads(_text("pyproject.toml"))
     expression = set(pyproject["project"]["license"].split(" AND "))
@@ -212,7 +212,7 @@ def test_security_problems_are_reported_privately() -> None:
 
 
 def test_without_private_reporting_a_security_contact_issue_asks_for_nothing_about_the_problem() -> None:
-    """Audit (batch A review): SECURITY.md's fallback was an issue "that says nothing else", but blank
+    """SECURITY.md's fallback was an issue "that says nothing else", but blank
     issues are off and the bug form requires what happened and the steps. A form of its own asks for
     nothing but a box ticked to say the issue tells nothing about the problem."""
     form = _form(".github/ISSUE_TEMPLATE/security_contact.yml")
@@ -369,7 +369,7 @@ def test_typescript_majors_wait_until_the_packages_that_need_typescript_take_the
 
 
 def test_every_environment_variable_contributing_names_is_read_somewhere() -> None:
-    """Audit (batch A review): CONTRIBUTING named ``ORDNUNG_LIVE_TESTS=1`` for tests that call Claude,
+    """CONTRIBUTING named ``ORDNUNG_LIVE_TESTS=1`` for tests that call Claude,
     though no such tests were left and nothing read the variable."""
     named = set(re.findall(r"\bORDNUNG_[A-Z_]+\b", _text("CONTRIBUTING.md")))
     code = "\n".join(

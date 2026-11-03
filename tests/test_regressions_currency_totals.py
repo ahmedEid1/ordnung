@@ -1,4 +1,4 @@
-"""Money totals keep currencies apart: regression tests from the review rounds."""
+"""Money totals keep currencies apart: regression tests."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ MONTHLY = Recurrence(interval=1, unit="months")
 
 
 # --------------------------------------------------------------------------------------------------
-# R2-MAIL-1: rules inside an at-rule no longer count at all
+# money totals keep each currency apart
 # --------------------------------------------------------------------------------------------------
 
 
@@ -31,7 +31,7 @@ def pinned_today(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 def test_the_agenda_payment_total_counts_only_euros(store: Store, pinned_today: None) -> None:
-    """R2-WEB-1 fixed the web totals and views.money_summary.due_this_month, but the secretary's agenda
+    """An earlier fix covered the web totals and views.money_summary.due_this_month, but the secretary's agenda
     (brief.build_agenda) still summed "payments this month" over every currency and showed it as
     euros: Today's secretary note read "Payments this month: €169.99" for €119.99 + $50."""
     add_item(
@@ -56,7 +56,7 @@ def test_the_agenda_payment_total_counts_only_euros(store: Store, pinned_today: 
 
 
 def test_the_timeline_keeps_each_payments_currency(store: Store, pinned_today: None) -> None:
-    """R2-WEB-1 fixed "To pay · next 30 days" on Today, which links to the Timeline; there every entry's
+    """An earlier fix covered "To pay · next 30 days" on Today, which links to the Timeline; there every entry's
     amount is shown with formatMoney (euros) and each month's "· To pay" sums all amounts, because the
     API's timeline entries carry no currency. A $50 invoice is "€50.00" and adds €50 to the month."""
     usd = add_item(
@@ -77,7 +77,7 @@ def test_the_timeline_keeps_each_payments_currency(store: Store, pinned_today: N
 def test_fixed_costs_per_month_count_only_euros(store: Store, pinned_today: None) -> None:
     """The Greeting's second stat, "Fixed costs €…/month", is money_summary.fixed_costs_monthly: the
     monthly cost of every active contract added up whatever its cost_currency, so a $20 subscription
-    is €20 of it (and of by_category). R2-WEB-1 made due_this_month euros-only right above it."""
+    is €20 of it (and of by_category). An earlier fix made due_this_month euros-only right above it."""
     store.add_contract(name="Mobile phone", category="mobile", cost_amount=10.0, cost_interval="monthly")
     store.add_contract(name="Cloud storage", cost_amount=20.0, cost_currency="USD", cost_interval="monthly")
     money = dashboard(store, TODAY).money

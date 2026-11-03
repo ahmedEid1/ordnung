@@ -245,7 +245,7 @@ def test_today_s_pictures_show_the_note_claude_wrote_for_the_day() -> None:
         # nothing opens another page between the check and the picture
         assert ".goto(" not in before[checked:] and ".reload(" not in before[checked:], name
     # the tour: on Today, before its first caption, and never on Today again: once it has read the tax assessment,
-    # Today shows the note written from the to-dos (the video ended on it, review of D5)
+    # Today shows the note written from the to-dos (the video ended on it)
     tour = _function(capture, "tour")
     today = tour.index("await page.goto(`${BASE}/`)")
     assert "await claudesNote(page)" in tour[today : tour.index("await caption(page, ", today)]
@@ -322,7 +322,7 @@ def test_the_pictures_of_the_real_app_show_nothing_of_this_computer() -> None:
     """The two pictures from the real app (pairing a phone, Your computers) are checked for what the demo's pictures
     are: no path of the capturing computer or its start, not its name, not the git e-mail, no word of the author's
     name and none of CAPTURE_FORBIDDEN's (``capture-guard.mjs``, shared with ``capture.mjs``; it only checked the
-    home folder and the computer's name, review of D5). The spec checks the text of every part it puts in a picture
+    home folder and the computer's name). The spec checks the text of every part it puts in a picture
     (the pairing dialog before and after the phone pairs, the phone's page, the Your computers page as the picture
     shows it), never repeating what it looks for."""
     spec = PICTURES_SPEC.read_text(encoding="utf-8")
@@ -392,7 +392,7 @@ def _guard_in_node(tmp_path: Path, forbidden: str, texts: list[str]) -> dict[str
 @_needs_node
 def test_a_word_you_name_is_looked_for_however_short(tmp_path: Path) -> None:
     """CAPTURE_FORBIDDEN's words are the owner's own (a short surname, initials): each is looked for, however short
-    (two letters were dropped without a word, review of D5). The author's name in pyproject.toml is split into
+    (two letters were dropped without a word). The author's name in pyproject.toml is split into
     words, and only those keep the three-letter floor ("Jo" would match too much). A word is found on its own,
     never inside a longer one, and the start of a path of this computer wherever it is."""
     found = _guard_in_node(
@@ -419,7 +419,7 @@ def test_a_stopped_tour_leaves_no_recording_with_the_pictures() -> None:
     """The video records into a temporary folder of its own, never into ``<out>`` (``docs/assets``): when the guard
     stops the tour, the recording up to then, with the page it stopped on, is deleted with that folder, and only a
     clean tour's ``demo.webm`` and ``cut`` reach ``<out>/video``. A stopped run left it in ``docs/assets/video``,
-    where ``git add`` would have found it (review of D5). ``capture.sh`` removes ``$OUT/video`` too when the run
+    where ``git add`` would have found it. ``capture.sh`` removes ``$OUT/video`` too when the run
     fails, and git ignores that folder."""
     record = _function(_capture_mjs(), "recordVideo")
     assert "const recording = mkdtempSync(join(tmpdir(), " in record
@@ -442,7 +442,7 @@ def test_a_stopped_tour_leaves_no_recording_with_the_pictures() -> None:
 
 def test_the_review_folder_is_refused_under_docs_also_through_a_symlink(tmp_path: Path) -> None:
     """``CAPTURE_REVIEW`` under ``docs/`` is refused before anything starts, also when the checkout is opened through
-    a symlink: the review folder is a physical path (``realpath``), so the checkout's must be too (review of D5: the
+    a symlink: the review folder is a physical path (``realpath``), so the checkout's must be too (the
     logical one let ``docs/review`` through)."""
     real = tmp_path / "real"
     (real / "scripts").mkdir(parents=True)
@@ -472,7 +472,7 @@ def test_the_review_folder_is_refused_under_docs_also_through_a_symlink(tmp_path
 
 def test_the_frame_check_measures_brightness_from_0_to_255(tmp_path: Path) -> None:
     """ffmpeg measures an H.264 frame's luma on the video range, 16 black to 235 white. The frame check maps it to
-    0–255 before it compares and says it, so its 150 is :data:`LIGHT`, the pictures' measure (review of D5: a white
+    0–255 before it compares and says it, so its 150 is :data:`LIGHT`, the pictures' measure (a white
     frame read 235, a frame of 32 read 43)."""
     script = _capture_sh()
     (program,) = re.findall(r"awk -v min=150 '(.*?)'\)", script, re.S)
@@ -494,7 +494,7 @@ def test_the_tour_cuts_the_letter_as_it_was_while_being_read() -> None:
     """Once the tax assessment is read, the app opens it by itself and draws it first as it was while being read
     (its file name, "Reading your letter", "Not sent to Claude"), under the caption that says Claude reads it. The
     tour cuts that from the video: from a moment before the letter's page opens until its own title, as read, is
-    its heading (review of D5)."""
+    its heading."""
     tour = _function(_capture_mjs(), "tour")
     arrives = tour[tour.index('mark("a letter arrives")') : tour.index('mark("the letter")')]
     clicked = arrives.index('getByRole("button", { name: "Let Ordnung read it" })')

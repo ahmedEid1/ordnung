@@ -1,12 +1,12 @@
-"""The first review of the dropped-date check's looser path (ADR 0015, 2026-10-07): each confirmed finding's repro, as a
-regression test, updated for the path as its re-review narrowed it.
+"""The dropped-date check's looser path (ADR 0015, 2026-10-07): each confirmed false alarm or lost date, as a
+regression test, updated for the path as it was narrowed.
 
 The looser path files its low "Please check" to-do only for a request that asks the person in its own words at its
 sentence's start ("Senden Sie uns …", "Bitte gleichen Sie … aus", "Bitte lassen Sie uns … zukommen", "Wir bitten Sie
 um Zahlung …", "Bitte bis … überweisen", "Kindly pay …", "Please ensure …"), never beside a third party, the sender's
 own act, a condition, something done, an offer, survey, contest, tender or event, a holiday or opening hours; a label
 line or labelled sentence only on a page that asks the person for its kind. A date without its year files nothing
-(re-review: ``test_reading_gaps_looser_rereview.py``). Where a test below once showed a wording the re-review
+(``test_reading_gaps_looser_false_alarms.py``). Where a test below once showed a wording the narrowing
 dropped, it now shows that wording filing nothing. The strict path is the base's (0ff51e3) for every date with its
 year: its results here were read from the base code and are pinned as they were. Invented letters only.
 """
@@ -56,7 +56,7 @@ def due(on: str, quote: str = "Rechnung", nature: str = "payment") -> ExtractedI
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 0: a day-month long before the letter's date is an old line, never next year's date
+# A day-month long before the letter's date is an old line, never next year's date
 # --------------------------------------------------------------------------------------------------
 
 
@@ -87,7 +87,7 @@ def test_a_reminder_s_old_line_files_nothing_beside_the_reading_s_new_date() -> 
 
 
 def test_a_december_letter_s_january_date_without_its_year_files_nothing() -> None:
-    """The re-review dropped dates without their year: a next-year roll-over is never read again."""
+    """The narrowing dropped dates without their year: a next-year roll-over is never read again."""
     assert (
         filed("Bitte überweisen Sie den Betrag bis zum 15.01.", date(2026, 12, 10), today=date(2026, 12, 11))
         == []
@@ -98,7 +98,7 @@ def test_a_december_letter_s_january_date_without_its_year_files_nothing() -> No
 
 
 # --------------------------------------------------------------------------------------------------
-# Findings 1, 20, 21: the strict path files as on base 0ff51e3 (results read from the base code)
+# The strict path files as on base 0ff51e3 (results read from the base code)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -146,7 +146,7 @@ def test_a_december_letter_s_january_date_without_its_year_files_nothing() -> No
             PAYS,
         ),
         ("Ihre Krankenkasse hat uns informiert: Bitte reichen Sie die Belege bis zum 23.10.2026 ein.", "de", SENDS),
-        # finding 21: a condition after "und" / "oder" silences the strict path, as before
+        # a condition after "und" / "oder" silences the strict path, as before
         (
             "Bitte prüfen Sie die Abrechnung und sollten Sie Einwände haben, teilen Sie uns diese bis zum 23.10.2026 "
             "mit.",
@@ -180,7 +180,7 @@ def test_a_looser_condition_after_und_or_oder_is_still_a_condition() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Findings 2 and 17: the kind from the verb, else from the head noun (whole words, a compound by its last word)
+# The kind from the verb, else from the head noun (whole words, a compound by its last word)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -205,7 +205,7 @@ def test_the_kind_is_the_head_noun_s(sentence: str, lang: str, expected: str) ->
 @pytest.mark.parametrize(
     ("sentence", "lang"),
     [
-        # the first review's head-noun repros, in wordings the re-review dropped: nothing
+        # head-noun cases, in wordings the narrowing dropped: nothing
         ("Wir benötigen Ihren Steuerbescheid bis zum 20.11.2026.", "de"),
         ("Den Nachweis über Ihre Zahlung des Beitrags benötigen wir bis zum 20.11.2026.", "de"),
         ("We need your proof of payment by 20 November 2026.", "en"),
@@ -246,12 +246,12 @@ def test_a_fee_named_beside_a_document_goes_through_the_debit_gate() -> None:
 @pytest.mark.parametrize(
     "sentence",
     [
-        # finding 17: a real request, but beside a third party — the looser path stays silent
+        # a real request, but beside a third party — the looser path stays silent
         "Bitte lassen Sie uns die Bescheinigung Ihres Vermieters bis zum 23.10.2026 zukommen.",
         "Wir benötigen die Mietbescheinigung Ihres Vermieters bis zum 23.10.2026.",
         # a label alone, on a page that asks for nothing
         "Abgabe der Nebenkostenabrechnung bis: 31.12.2026",
-        # finding 2's sentences as written name no one: not addressed
+        # the same sentences as written name no one: not addressed
         "Den Nachweis über die Zahlung des Beitrags benötigen wir bis zum 20.11.2026.",
         "Die Nebenkostenabrechnung muss uns bis zum 20.11.2026 vorliegen.",
         "Die Gebühr für den Antrag muss bis zum 20.11.2026 bei uns eingegangen sein.",
@@ -268,14 +268,14 @@ def test_a_label_on_a_page_that_asks_for_its_kind_files() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 3: payment participles and nouns (a wording the re-review dropped: nothing now)
+# Payment participles and nouns (a wording the narrowing dropped: nothing now)
 # --------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     ("sentence", "lang", "expected"),
     [
-        # "… muss bis … bezahlt werden", "must be received by": wordings the re-review dropped
+        # "… muss bis … bezahlt werden", "must be received by": wordings the narrowing dropped
         ("Ihre Rechnung muss bis zum 20.11.2026 bezahlt werden.", "de", []),
         ("Ihre Kaution muss bis zum 20.11.2026 überwiesen werden.", "de", []),
         ("Ihre Rechnung muss bis zum 20.11. beglichen sein.", "de", []),
@@ -295,14 +295,14 @@ def test_a_payment_s_participle_and_nouns_tell_the_kind(
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 4: a deadline's own sentence and a paid letter (the strict path's gate, read once for both paths)
+# A deadline's own sentence and a paid letter (the strict path's gate, read once for both paths)
 # --------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     ("sentence", "lang"),
     [
-        # the re-review dropped these wordings (and with them the looser path's own reading of a paid letter)
+        # the narrowing dropped these wordings (and with them the looser path's own reading of a paid letter)
         ("Bis spätestens 20.11.2026 muss Ihre Zahlung bei uns eingegangen sein.", "de"),
         ("Bis zum 20.11.2026 muss Ihr Betrag bei uns eingegangen sein.", "de"),
         ("Your balance must be paid in full by 20 November 2026.", "en"),
@@ -322,14 +322,14 @@ def test_a_letter_that_says_it_is_paid_still_gates_a_looser_payment() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Findings 5 and 12: the year a sentence names (dates without their year: nothing since the re-review)
+# The year a sentence names (dates without their year: nothing since the narrowing)
 # --------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     ("sentence", "written", "lang"),
     [
-        # the re-review dropped dates without their year: none of these files, whatever year the sentence names
+        # the narrowing dropped dates without their year: none of these files, whatever year the sentence names
         ("Bitte reichen Sie die Unterlagen bis zum 31.03. des Folgejahres ein.", date(2026, 1, 10), "de"),
         ("Bitte reichen Sie die Unterlagen bis zum 31. März des nächsten Jahres ein.", date(2026, 1, 10), "de"),
         ("Please submit your return by 31 March next year.", date(2026, 1, 10), "en"),
@@ -356,7 +356,7 @@ def test_a_date_without_its_year_files_nothing_whatever_year_its_sentence_names(
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 6: a second date of one obligation, without its year or in looser words, is no second to-do
+# A second date of one obligation, without its year or in looser words, is no second to-do
 # --------------------------------------------------------------------------------------------------
 
 
@@ -389,7 +389,7 @@ def test_two_dates_of_one_obligation_file_the_strict_one() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Findings 7, 9, 19: what the sender waits for, the sender's own act, a third party mid-sentence
+# What the sender waits for, the sender's own act, a third party mid-sentence
 # --------------------------------------------------------------------------------------------------
 
 
@@ -440,7 +440,7 @@ def test_what_the_sender_or_another_does_files_nothing(sentence: str, lang: str)
 
 
 def test_a_request_for_the_person_s_papers_in_a_dropped_wording_is_missed() -> None:
-    """Real requests, but in the "benötigen wir" / "we expect" wordings the re-review dropped (they filed what the
+    """Real requests, but in the "benötigen wir" / "we expect" wordings the narrowing dropped (they filed what the
     sender waits for from others): a documented miss, never a false alarm."""
     assert filed("Für die weitere Bearbeitung benötigen wir Ihre Unterschrift bis zum 23.10.2026.", W) == []
     assert (
@@ -455,7 +455,7 @@ def test_a_request_for_the_person_s_papers_in_a_dropped_wording_is_missed() -> N
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 8: money or papers that come to the person
+# Money or papers that come to the person
 # --------------------------------------------------------------------------------------------------
 
 
@@ -475,7 +475,7 @@ def test_money_or_papers_coming_to_the_person_file_nothing(sentence: str) -> Non
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 10: another party's Frist, or the sender's
+# Another party's Frist, or the sender's
 # --------------------------------------------------------------------------------------------------
 
 
@@ -506,7 +506,7 @@ def test_a_table_of_the_other_side_s_fristen_files_nothing() -> None:
 
 
 def test_a_frist_set_for_the_person_is_missed() -> None:
-    """The re-review dropped the Frist wordings (another party's Frist filed through "Ihnen" or "Ihr…"): missed."""
+    """The narrowing dropped the Frist wordings (another party's Frist filed through "Ihnen" or "Ihr…"): missed."""
     assert (
         filed("Zur Zahlung des offenen Betrags setzen wir Ihnen eine letzte Frist bis zum 23.10.2026.", W)
         == []
@@ -515,7 +515,7 @@ def test_a_frist_set_for_the_person_is_missed() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 11: conditions
+# Conditions
 # --------------------------------------------------------------------------------------------------
 
 
@@ -539,7 +539,7 @@ def test_a_condition_files_nothing(sentence: str, lang: str) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 13: done, paid, stated
+# Done, paid, stated
 # --------------------------------------------------------------------------------------------------
 
 
@@ -591,7 +591,7 @@ def test_a_paid_or_stated_table_files_nothing(lines: tuple[str, ...]) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 14: offers, surveys, contests, tenders, events
+# Offers, surveys, contests, tenders, events
 # --------------------------------------------------------------------------------------------------
 
 
@@ -638,7 +638,7 @@ def test_an_offer_s_return_label_files_nothing() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 15: holidays and opening hours
+# Holidays and opening hours
 # --------------------------------------------------------------------------------------------------
 
 
@@ -676,14 +676,14 @@ def test_a_bank_s_year_end_letter_files_nothing() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 16: the review's shapes as positives — the families that stay file, the dropped ones file nothing
+# The reported shapes as positives — the families that stay file, the dropped ones file nothing
 # --------------------------------------------------------------------------------------------------
 
 
 @pytest.mark.parametrize(
     ("sentence", "lang", "expected"),
     [
-        # wordings the re-review dropped: nothing
+        # wordings the narrowing dropped: nothing
         ("Wir erwarten Ihre Zahlung bis zum 23.10.2026.", "de", []),
         ("Ihre Stellungnahme erwarten wir bis 23.10.2026.", "de", []),
         ("Bis zum 23.10.2026 erwarten wir Ihre Rückmeldung.", "de", []),
@@ -715,7 +715,7 @@ def test_each_family_files_when_the_person_is_asked(
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 18: no line is read once per date
+# No line is read once per date
 # --------------------------------------------------------------------------------------------------
 
 
@@ -730,7 +730,7 @@ def test_a_line_of_many_distinct_dates_stays_fast(label: str) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Finding 22: a window's first day is no deadline
+# A window's first day is no deadline
 # --------------------------------------------------------------------------------------------------
 
 

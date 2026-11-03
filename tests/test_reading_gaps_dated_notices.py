@@ -1,6 +1,7 @@
-"""Round 2 of the review of the check for incomplete readings (``ingest/gaps.py``): every probe the reviewers
-and their verifiers wrote, as synthetic regression tests. The rule over all of them: the code's own date, and
-the date it sets beside a reading's (P5), is never later than the letter allows — at worst undated.
+"""The check for incomplete readings (``ingest/gaps.py``) and the dates of a letter's notice: where its period
+starts, which notices count, and the notice set beside a reading's objection, as synthetic regression tests. The
+rule over all of them: the code's own date, and the date it sets beside a reading's, is never later than the
+letter allows — at worst undated.
 
 All letters are invented ("Stadt Beispielhausen", dated Fri 6 Nov 2026 unless said otherwise); no benchmark or
 prompt text."""
@@ -82,7 +83,7 @@ def fires(pages: list[Any], **fields: Any) -> bool:
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's own date: strong and weak (dates 3, security F1, dates 10)
+# The letter's own date: strong and weak
 # --------------------------------------------------------------------------------------------------
 
 
@@ -156,7 +157,7 @@ def test_a_place_and_date_under_a_label_is_weak() -> None:
     "label", ["Rechnungsdatum", "Belegdatum", "Abrechnungsdatum", "Versanddatum", "Ausgabedatum"]
 )
 def test_a_weak_date_still_lowers_the_start_it_never_drops(label: str) -> None:
-    """Security F1's counter-case: the letter dated by another "…datum" and a reading dated later — the earlier
+    """The counter-case: the letter dated by another "…datum" and a reading dated later — the earlier
     weak date still counts (2026-12-09), never the reading's (2026-12-22)."""
     reading = blank(sender=SENDER, document_date="2026-11-19", items=[payment()])
     pages = [page(*TOP, f"{label}: 06.11.2026", *BODY, NOTIFIED)]
@@ -182,7 +183,7 @@ def test_the_letter_s_own_date_labels_are_strong() -> None:
 
 @pytest.mark.parametrize("label", ["Druckdatum", "Ausfertigungsdatum"])
 def test_a_print_or_copy_date_is_weak(label: str) -> None:
-    """Dates review 3, D3-1: a letter is printed or copied after it is dated — such a date only lowers the start,
+    """A letter is printed or copied after it is dated — such a date only lowers the start,
     never sets it (a later one with an unread own date gave 2026-10-26 for 10-19)."""
     assert letter_date(blank(), [page(*TOP, f"{label}: 06.11.2026", *BODY, NOTIFIED)]) is None
     lines = (*TOP, "Datum: 06.11.2026", f"{label}: 13.11.2026", *BODY, NOTIFIED)
@@ -208,7 +209,7 @@ def test_a_continuation_page_s_date_is_weak() -> None:
 
 
 def test_a_single_date_long_before_the_letter_arrived_gives_no_start() -> None:
-    """dates 10: a stray "Hauptveranlagung auf den 01.01.2025" alone would give an overdue to-do."""
+    """A stray "Hauptveranlagung auf den 01.01.2025" alone would give an overdue to-do."""
     lines = (*TOP, "Hauptveranlagung auf den", "01.01.2025", "Bescheiddatum: 06.11.2026", *BODY, NOTIFIED)
     assert letter_date(blank(), [page(*lines)]) is None  # 22 months apart: no start
     only = (*TOP, "Bescheiddatum: 01.01.2025", *BODY, NOTIFIED)
@@ -219,7 +220,7 @@ def test_a_single_date_long_before_the_letter_arrived_gives_no_start() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# The decision a notice names (dates 4, R2UX-1)
+# The decision a notice names
 # --------------------------------------------------------------------------------------------------
 
 REMINDER = (
@@ -274,7 +275,7 @@ def test_a_reminder_repeating_an_older_decision_s_notice_is_never_dated_from_the
     ],
 )
 def test_a_wrapped_notice_keeps_the_decision_it_names_and_its_whole_sentence(first: str, rest: str) -> None:
-    """UX review 2, R2UX-1: wrapped after "innerhalb", the decision's date was lost — never later than the
+    """Wrapped after "innerhalb", the decision's date was lost — never later than the
     decision's own date allows (08.10: 2026-11-11; 01.10: undated, two dates weeks apart)."""
     reading = blank(sender=SENDER, document_date="2026-10-20", items=[payment()])
     pages = [page(*REMINDER, first, rest)]
@@ -313,8 +314,8 @@ def test_a_decision_named_over_three_lines_keeps_its_date(reference: str) -> Non
     ],
 )
 def test_an_application_s_or_a_letter_s_date_is_no_decision_s(line: str) -> None:
-    """dates 4: "Antrag vom", "(Ihr) Schreiben vom", "Anhörung vom" date something else — counted as the
-    decision's they would leave the check undated and switch the letter's notice (P5) off."""
+    """The words "Antrag vom", "(Ihr) Schreiben vom", "Anhörung vom" date something else — counted as the
+    decision's they would leave the check undated and switch the letter's notice off."""
     [found] = remedy_notices([page(*HEAD, line)])
     assert found.issued == ()
     assert check_due([page(*HEAD, line)]) == NOTIFIED_DUE
@@ -324,7 +325,7 @@ def test_an_application_s_or_a_letter_s_date_is_no_decision_s(line: str) -> None
 
 @pytest.mark.parametrize("word", ["Fassung", "Form", "Gestalt"])
 def test_the_decision_a_ruling_reshapes_is_never_its_date(word: str) -> None:
-    """False positives F7: "in der Fassung/Form/Gestalt dieses Widerspruchsbescheides" — the court action runs
+    """The words "in der Fassung/Form/Gestalt dieses Widerspruchsbescheides" — the court action runs
     from this letter."""
     notice = (
         f"Gegen den Bescheid vom 15.08.2026 in der {word} dieses Widerspruchsbescheides kann innerhalb eines Monats "
@@ -336,7 +337,7 @@ def test_the_decision_a_ruling_reshapes_is_never_its_date(word: str) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Counted back from an event (dates 5), service and download (dates 7, R2T-3), arrival (dates 8)
+# Counted back from an event, service and download, arrival
 # --------------------------------------------------------------------------------------------------
 
 
@@ -416,7 +417,7 @@ def test_bundid_is_a_fourth_day_fiction_never_a_download_portal() -> None:
 
 
 def test_a_private_sender_s_early_arrival_is_a_start_too() -> None:
-    """dates 8: a private sender counts from the arrival (§ 130 BGB) — an arrival before the letter's date is a
+    """A private sender counts from the arrival (§ 130 BGB) — an arrival before the letter's date is a
     start whatever delivery rule the spec carries."""
     arrived = RuleContext(
         today=TODAY,
@@ -441,12 +442,12 @@ def test_a_private_sender_s_early_arrival_is_a_start_too() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Readings that date the objection: what counts (M3, R2T-4, F4)
+# Readings that date the objection: what counts
 # --------------------------------------------------------------------------------------------------
 
 
 def test_an_objection_that_can_t_compute_without_the_reading_s_date_never_silences_the_check() -> None:
-    """dates M3: the reading left its own date out and counts the objection from it — the letter's "Datum"
+    """The reading left its own date out and counts the objection from it — the letter's "Datum"
     still dates the check (2026-12-09)."""
     for anchor in ("document_date", "deemed_delivery", "receipt", None):
         spec = {"type": "relative", "amount": 1, "unit": "months", "anchor": anchor}
@@ -483,7 +484,7 @@ def test_a_dated_to_do_without_a_quote_never_counts_as_dating_the_objection() ->
 
 
 def test_a_payment_quoting_the_notice_s_words_never_dates_the_objection() -> None:
-    """False positives F4: a payment item quoting "innerhalb eines Monats nach Bekanntgabe" left the objection
+    """A payment item quoting "innerhalb eines Monats nach Bekanntgabe" left the objection
     out all the same."""
     pages = [page(*HEAD, NOTIFIED)]
     words = "binnen eines Monats nach seiner Bekanntgabe"  # the notice's own words
@@ -506,7 +507,7 @@ def test_a_payment_quoting_the_notice_s_words_never_dates_the_objection() -> Non
     "odd", ["binnen 14-tägiger Frist", "binnen der Zweiwochenfrist", "binnen eines Kalendermonats"]
 )
 def test_a_period_the_parser_can_t_count_beside_a_month_s_court_action_stays_undated(odd: str) -> None:
-    """R2T-4: never one month (2026-12-09) when one notice gives a period that may be two weeks."""
+    """Never one month (2026-12-09) when one notice gives a period that may be two weeks."""
     widerspruch = f"Gegen diesen Bescheid kann {odd} nach Bekanntgabe Widerspruch erhoben werden."
     klage = "Gegen den Widerspruchsbescheid kann innerhalb eines Monats nach Zustellung Klage erhoben werden."
     found = check_item(blank(), [page(*HEAD, widerspruch, klage)])
@@ -514,7 +515,7 @@ def test_a_period_the_parser_can_t_count_beside_a_month_s_court_action_stays_und
 
 
 # --------------------------------------------------------------------------------------------------
-# Which notices are live: false alarms and silent misses (false positives F2, F3, N1, N2; security F4, M1)
+# Which notices are live: false alarms and silent misses
 # --------------------------------------------------------------------------------------------------
 
 ACK = (LETTERHEAD, "Frau Mara Probe", "Datum: 09.11.2026", "Ihr Widerspruch", "Sehr geehrte Frau Probe,")
@@ -553,7 +554,7 @@ def test_a_letter_about_the_person_s_own_objection_or_a_decision_not_made_is_no_
 def test_the_person_s_own_objection_being_handled_is_no_notice_on_a_letter_naming_the_decision(
     line: str,
 ) -> None:
-    """False positives N2: an acknowledgement that names the decision objected to shows an administrative act;
+    """An acknowledgement that names the decision objected to shows an administrative act;
     a period for handling the person's own objection is still no notice."""
     named = (
         LETTERHEAD,
@@ -666,7 +667,7 @@ MUSTFIRE_HEAD = (*TOP, "Datum: 09.11.2026", *BODY)
     ],
 )
 def test_a_real_notice_still_fires_never_later_and_names_its_remedy(line: str, remedy: str) -> None:
-    """Must still fire (false positives M1–M8, security F4, F3 B3/B3b/B4): the letter of 09.11 allows 14.12."""
+    """Must still fire: the letter of 09.11 allows 14.12."""
     pages = [page(*MUSTFIRE_HEAD, line)]
     assert fires(pages)
     reading = blank(sender=SENDER, document_date="2026-11-09", items=[payment()])
@@ -677,8 +678,7 @@ def test_a_real_notice_still_fires_never_later_and_names_its_remedy(line: str, r
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's notice beside a reading's objection (P5): start, choice, reach, kinds (dates 1, 2, 6, 9;
-# security F2, F3; tests V-1, V-2, R2T-1, R2T-2, R2T-10)
+# The letter's notice beside a reading's objection: start, choice, reach, kinds
 # --------------------------------------------------------------------------------------------------
 
 
@@ -688,7 +688,7 @@ def test_a_real_notice_still_fires_never_later_and_names_its_remedy(line: str, r
 def test_a_reading_that_moves_the_start_later_gets_the_notice_from_the_letter_s_own_date(
     reading_date: str,
 ) -> None:
-    """dates 1, security F2: counted from the reading's later date the objection is weeks late — the letter's
+    """Counted from the reading's later date the objection is weeks late — the letter's
     labelled date gives 2026-12-09."""
     spec = {
         "type": "relative",
@@ -711,7 +711,7 @@ def test_a_reading_that_moves_the_start_later_gets_the_notice_from_the_letter_s_
     ],
 )
 def test_a_planted_undatable_or_longer_notice_never_switches_the_notice_off(plant: str) -> None:
-    """dates 2: only datable notices count for the rival — a planted "ein Jahr" no longer leaves the reading's
+    """Only datable notices count for the rival — a planted "ein Jahr" no longer leaves the reading's
     date alone."""
     got, computed = objection_due([page(*HEAD, NOTIFIED, plant)], {"type": "fixed", "date": "2027-03-31"})
     assert got == NOTIFIED_DUE and computed.notice
@@ -731,7 +731,7 @@ def test_a_planted_undatable_or_longer_notice_never_switches_the_notice_off(plan
 def test_a_planted_longer_period_within_two_weeks_is_caught(
     real: str, planted: str, amount: int, allowed: str, anchor: str
 ) -> None:
-    """Tests V-2, dates M1: "vier Wochen" over a two-week notice is exactly 14 days later — no longer within the
+    """A "vier Wochen" over a two-week notice is exactly 14 days later — no longer within the
     reach: a longer period than the notice's is set beside it whatever the gap."""
     spec = {
         "type": "relative",
@@ -755,7 +755,7 @@ def test_a_planted_longer_period_within_two_weeks_is_caught(
     ],
 )
 def test_an_instruction_after_the_notice_never_pulls_a_correct_reading_earlier(line: str) -> None:
-    """Security F3: the notice's own words decide, never an instruction folded in after it."""
+    """The notice's own words decide, never an instruction folded in after it."""
     spec = {
         "type": "relative",
         "amount": 1,
@@ -773,7 +773,7 @@ def test_an_instruction_after_the_notice_never_pulls_a_correct_reading_earlier(l
 )
 @pytest.mark.parametrize("spec", [{"type": "fixed", "date": "2027-03-01"}, THREE_MONTHS])
 def test_a_laundered_kind_never_keeps_a_later_objection_date(kind: str, spec: dict[str, Any]) -> None:
-    """Tests V-1, R2T-1, dates 6: a reading that files the fee decision as another kind (whose words the letter
+    """A reading that files the fee decision as another kind (whose words the letter
     doesn't bear out) never gets the reading's later objection date, nor a letter rule's — the notice's, or the
     check's own to-do."""
     reading = blank(
@@ -828,13 +828,12 @@ def test_a_kind_the_letter_bears_out_keeps_the_law_s_dates() -> None:
 
 
 def test_a_notice_from_service_is_set_beside_without_delivery_days() -> None:
-    """R2T-2: two weeks after Zustellung from Fri 6 Nov is Fri 20 Nov, never the post's 23 Nov."""
+    """Two weeks after Zustellung from Fri 6 Nov is Fri 20 Nov, never the post's 23 Nov."""
     got, computed = objection_due([page(*HEAD, SERVED, WHERE)], THREE_MONTHS, quote=SERVED)
     assert got == "2026-11-20" and computed.notice
 
 
 def test_a_photo_s_notice_keeps_its_ai_read_note_when_kept() -> None:
-    """R2T-10."""
     got, computed = objection_due([page(*HEAD, NOTIFIED, WHERE, source="transcript")], THREE_MONTHS)
     assert got == NOTIFIED_DUE and computed.notice
     assert computed.receipt is not None and MODEL_READ_NOTE in computed.receipt.warnings
@@ -854,7 +853,7 @@ def test_a_photo_s_notice_keeps_its_ai_read_note_when_kept() -> None:
 def test_the_notice_s_start_is_only_the_first_page_s_own_labelled_date(
     lines: tuple[tuple[str, ...], ...],
 ) -> None:
-    """dates 1, security F2 counter-case: never a bare, a continuation page's or the reading's date — no rival
+    """The counter-case: never a bare, a continuation page's or the reading's date — no rival
     rather than a passed date for a correct reading."""
     pages = [page(*part, number=index + 1) for index, part in enumerate(lines)]
     reading = blank(**COMPLETE, items=[objection()])
@@ -869,7 +868,7 @@ def test_a_reading_s_date_weeks_early_never_gives_a_passed_date() -> None:
 
 
 def test_a_person_s_earlier_letter_date_moves_the_notice_earlier() -> None:
-    """dates 9: the notice's due is the earliest over its starts — a letter date the person corrected to two
+    """The notice's due is the earliest over its starts — a letter date the person corrected to two
     weeks earlier counts too."""
     reading = blank(**COMPLETE, items=[objection(THREE_MONTHS)])
     [verified] = verify_extraction("doc_x", reading, [page(*HEAD, NOTIFIED, WHERE)], check_reading=True).items
@@ -879,7 +878,7 @@ def test_a_person_s_earlier_letter_date_moves_the_notice_earlier() -> None:
 
 
 def test_a_served_notice_starts_on_the_arrival_the_person_confirmed() -> None:
-    """False positives F1: the person entered the yellow envelope's date (20.11): a two-week Zustellung notice
+    """The person entered the yellow envelope's date (20.11): a two-week Zustellung notice
     then runs from it (Fri 4 Dec), never from the letter's date into the past — but a planted longer period is
     still pulled to it."""
     reading = blank(
@@ -904,7 +903,7 @@ def test_a_served_notice_starts_on_the_arrival_the_person_confirmed() -> None:
 
 
 def test_the_conflict_says_the_reading_s_date_is_the_reading_s() -> None:
-    """UX review 2, M1: the later date comes from Claude's reading, not from the letter."""
+    """The later date comes from Claude's reading, not from the letter."""
     _, computed = objection_due([page(*HEAD, NOTIFIED, WHERE)], THREE_MONTHS)
     assert computed.receipt is not None
     [warning] = [w for w in computed.receipt.warnings if "two dates" in w]
@@ -914,7 +913,7 @@ def test_the_conflict_says_the_reading_s_date_is_the_reading_s() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Copy (security F5, R2UX-5)
+# Copy
 # --------------------------------------------------------------------------------------------------
 
 
@@ -924,7 +923,7 @@ def test_an_almost_blank_reading_says_where_to_send_the_objection() -> None:
 
 
 def test_the_copy_holds_with_or_without_a_date() -> None:
-    """R2UX-5: an undated check to-do never says "by this date" or "worked this date out"."""
+    """An undated check to-do never says "by this date" or "worked this date out"."""
     found = check_item(
         blank(),
         [
@@ -959,14 +958,14 @@ def test_the_copy_holds_with_or_without_a_date() -> None:
 def test_a_laundered_law_kind_counts_only_with_a_period_no_shorter_than_the_law(
     kind: str, line: str, fires_check: bool
 ) -> None:
-    """R2T-4: the law files a kind's deadline itself only when the notice's period is no shorter than the law's."""
+    """The law files a kind's deadline itself only when the notice's period is no shorter than the law's."""
     pages = [page(*HEAD, line)]
     reading = blank(kind="authority_letter", high_stakes_kind=kind, sender=SENDER, document_date="2026-11-06")
     assert (reading_gap(reading, pages, remedy_notices(pages)) == "remedy_left_out") is fires_check
 
 
 def test_a_receipt_stored_with_the_note_s_earlier_wording_still_grades_the_next_occurrence_low() -> None:
-    """UX review 2, R2UX-5: the incomplete reading's note was reworded; a receipt stored with the earlier words
+    """The incomplete reading's note was reworded; a receipt stored with the earlier words
     still grades the next date of the same reading low, with the note as it reads now."""
     earlier = (
         "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's "

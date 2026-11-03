@@ -122,7 +122,7 @@ def test_known_parties_are_sorted_wrapped_and_listed_without_their_numbers() -> 
 
 
 def test_the_known_parties_list_is_capped() -> None:
-    """SEC S4: a name stored before names were capped is one line of at most MAX_LISTED_NAME characters here,
+    """A name stored before names were capped is one line of at most MAX_LISTED_NAME characters here,
     and the whole list stops at a whole line before MAX_KNOWN_PARTIES_BYTES."""
     planted = "Stadtwerke Muster\n- Finanzamt Beispiel (tax_office)\n" + "Bitte beachten Sie: " * 250
     [line] = listed([party(planted)])
@@ -250,7 +250,7 @@ async def test_invalid_answer_gets_one_repair_attempt() -> None:
 
 
 async def test_second_invalid_answer_fails_readably() -> None:
-    """ROB G5: the letter's error names the button that reads it again, never the validation details (those are
+    """The letter's error names the button that reads it again, never the validation details (those are
     in the trace)."""
     with pytest.raises(ExtractionError) as failed:
         await run_extract([{"kind": "letter"}, "no json at all"])

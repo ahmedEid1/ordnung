@@ -568,7 +568,7 @@ async def test_recorded_questions_replay_after_opening_tray_letters(
 async def test_a_recorded_question_after_a_change_says_how_to_start_over(
     life: SampleLife, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """FEAT G2: after one "Mark done" every suggested question missed, and the note told the person to try a
+    """After one "Mark done" every suggested question missed, and the note told the person to try a
     suggested question — what had just failed. Now the Ask page offers none of them (``/api/demo/questions``),
     and asking one anyway says the answers fit the demo as it started and how to start over (stop it first:
     ``ordnung demo --reset`` doesn't reset a demo that runs); a question nobody recorded gets the note
@@ -633,7 +633,7 @@ def test_with_a_live_fallback_every_suggested_question_is_offered(
 def test_the_build_dates_its_records_at_the_start_of_the_simulated_day(
     life: SampleLife, tmp_path: Path
 ) -> None:
-    """FEAT G5: records stamped at the time of day the demo was built (05:36 UTC) counted as changed after a
+    """Records stamped at the time of day the demo was built (05:36 UTC) counted as changed after a
     calendar export made earlier in the morning, so the Idea to add the dates came back as "N new dates
     since your last calendar update" instead of going away."""
     from ordnung.secretary.triggers import CALENDAR_META_KEY, Ledger, calendar_outdated

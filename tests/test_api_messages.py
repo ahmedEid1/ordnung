@@ -1,4 +1,4 @@
-"""Messages the API sends are plain text the web app shows as they are (UI audit R1-backend-9: onboarding
+"""Messages the API sends are plain text the web app shows as they are (onboarding
 and Settings showed "Run `claude` once …" with the backticks): commands are named in typographic quotes."""
 
 from __future__ import annotations

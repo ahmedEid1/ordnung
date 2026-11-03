@@ -446,8 +446,8 @@ def test_a_guessable_passphrase_is_refused_for_new_backups(passphrase: str) -> N
 
 
 def test_a_random_password_from_a_password_manager_protects_a_new_backup() -> None:
-    """Audit: a 16-character password from a password manager counted less than five words (symbols didn't
-    count, and a run of letters counted as one word at most), so it was refused (0.2.0 review). Its random
+    """A 16-character password from a password manager counted less than five words (symbols didn't
+    count, and a run of letters counted as one word at most), so it was refused. Its random
     characters count now, and the refusal no longer says they count for little; it names both ways."""
     assert backups.passphrase_problem("Xk9#mQ2!vR7@pL4$") is None
     assert "count for little" not in backups.WEAK_PASSPHRASE_MESSAGE
@@ -463,7 +463,7 @@ EARLIER_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
     "passphrase", ["fsumn-hqfzc-jgtck-crjwz", "jnkhc-pnbkc-nevya-ngcmd", "k7qmx-3vxdp-9tawr-2emnb"]
 )
 def test_a_passphrase_ordnung_0_1_0_suggested_still_protects_a_new_backup(passphrase: str) -> None:
-    """Audit: about a third of 0.1.0's suggestions, those with few digits, count as four words (56 bits),
+    """About a third of 0.1.0's suggestions, those with few digits, count as four words (56 bits),
     so a passphrase saved in a password manager was refused after the update."""
     assert backups.passphrase_problem(passphrase) is None
 
@@ -557,7 +557,7 @@ def test_a_failed_backup_leaves_no_file(life: Path, tmp_path: Path, monkeypatch:
 def test_a_backup_reaches_the_disk_with_ordnung_s_own_flush(
     life: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit: the backup was flushed with a plain ``os.fsync``, which on macOS leaves it in the drive's
+    """The backup was flushed with a plain ``os.fsync``, which on macOS leaves it in the drive's
     cache; ``durable.fsync`` asks for ``F_FULLFSYNC`` there."""
     flushed: list[int] = []
     real = durable.fsync
@@ -1095,7 +1095,7 @@ def test_backup_refuses_a_guessable_passphrase_and_suggests_a_strong_one(
 def test_a_scripted_backup_is_made_with_a_warning_when_its_passphrase_falls_short(
     life: Path, tmp_path: Path, pinned_today: None
 ) -> None:
-    """Audit: a scheduled ``ordnung backup`` whose ``ORDNUNG_BACKUP_PASSPHRASE`` met 0.1.0's rule (12
+    """A scheduled ``ordnung backup`` whose ``ORDNUNG_BACKUP_PASSPHRASE`` met 0.1.0's rule (12
     characters) stopped making backups after the update, often where nobody reads its errors. It still
     makes them and says why the passphrase falls short (never the passphrase itself); one typed at the
     prompt is refused (above), and one too short is refused here too (below)."""

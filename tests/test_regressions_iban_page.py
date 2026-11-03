@@ -1,4 +1,4 @@
-"""A misread IBAN taken from the letter's text layer (round 2, R2-IBAN-1).
+"""A misread IBAN taken from the letter's text layer.
 
 ``plan.payment_details`` swaps a model-misread IBAN for the valid one printed on the page, but the scam
 check in ``link.check_payment`` used to run on the raw model reading. So the same letter both showed

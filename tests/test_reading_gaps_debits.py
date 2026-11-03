@@ -1,4 +1,4 @@
-"""The round-5 limits review, RL-T4 / RL-T5 / RL-T1: a recurring to-do's rows and a direct debit's due box file no
+"""The known limits of the check for incomplete readings (ADR 0015), debits: a recurring to-do's rows and a direct debit's due box file no
 dropped date while a transfer the letter asks for still does; an info block's rule for visits is no appointment
 heading. Invented letters only."""
 

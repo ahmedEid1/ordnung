@@ -1,4 +1,6 @@
-"""Tests that pin what the completeness re-ask's first tests left loose (review: test strength).
+"""Tests that pin what the completeness re-ask's first tests left loose: the request the pipeline sends, the
+usage log and the cache, quotes wherever they are found, the benchmark's replay misses, and never worse than without
+the re-ask.
 
 Every letter is synthetic and written in ``tests/test_reading_reask.py`` or here; nothing calls a model.
 """

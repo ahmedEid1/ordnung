@@ -116,7 +116,7 @@ def test_no_placeholders_flags(token: str) -> None:
     ["Amtsgericht Hünfeld\nZentrales Mahngericht\n36088 Hünfeld", "AG Coburg\nMahnabteilung\n96447 Coburg"],
 )
 def test_a_court_addressed_by_its_own_postcode_needs_no_street(block: str) -> None:
-    """Review round 4 of phase 2: a central Mahngericht is addressed by its own postcode, with no street — the
+    """A central Mahngericht is addressed by its own postcode, with no street — the
     objection's check said "Add the recipient's street and house number" on a correct letter."""
     assert recipient_complete(_draft(recipient_block=block), CONTEXT).ok
     court_only = recipient_complete(_draft(recipient_block="Amtsgericht Hünfeld"), CONTEXT)

@@ -1,6 +1,6 @@
-"""F8: a process applying a pull is killed (SIGKILL) at random moments; every restart finds a usable data
+"""A process applying a pull is killed (SIGKILL) at random moments; every restart finds a usable data
 folder (I1) holding either the old data, or the new data with ``sync_mark`` naming it — never a mix —
-and finishing the pull brings the rest (design §23.3; slow: 200 kills)."""
+and finishing the pull brings the rest (slow: 200 kills)."""
 
 from __future__ import annotations
 

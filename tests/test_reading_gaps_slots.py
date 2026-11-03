@@ -1,4 +1,4 @@
-"""The round-5 limits review, RL-T3 / FA-2: code's to-dos for dates a reading left out are slotted by date and kind, so
+"""The known limits of the check for incomplete readings (ADR 0015), slots: code's to-dos for dates a reading left out are slotted by date and kind, so
 a to-do the person dealt with never passes its status to another date when a later reading files another set, and a
 paid one moves onto the new reading's payment for that day. Invented letters only."""
 

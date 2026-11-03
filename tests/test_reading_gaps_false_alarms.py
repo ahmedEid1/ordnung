@@ -1,10 +1,9 @@
-"""The round-5 limits review (ADR 0015, "Review and known limits"): the false alarms and lost deadlines it found in the
-check for incomplete readings, each repro a test — dropped dates that are options, period ends, instalments, debits,
-paid or credited invoices, payouts and the full price beside a discount (FA-1 to FA-12, MISS-1); a decision whose
-"Hiergegen" follows a hearing (FA-5) and a reminder's restated notice (MISS-2); conditional notices (FA-7, security
-F1); opening hours, info blocks and a subject's own date under the date line (FA-8, RL-T1, R5D-6); town forms (R5D-1,
-FA-6); a served Widerspruchsbescheid (R5D-4); a conflicted served letter keeping ``pzu`` (pzu V-1); the to-do's
-wording, its Idea and the benchmark's counters (RL-T7, RL-T9). Invented letters only; no benchmark or prompt text."""
+"""False alarms and lost deadlines of the check for incomplete readings (ADR 0015, "Review and known limits"), each
+reproduction a test — dropped dates that are options, period ends, instalments, debits, paid or credited invoices,
+payouts and the full price beside a discount; a decision whose "Hiergegen" follows a hearing and a reminder's
+restated notice; conditional notices; opening hours, info blocks and a subject's own date under the date line; town
+forms; a served Widerspruchsbescheid; a conflicted served letter keeping ``pzu``; the to-do's wording, its Idea and
+the benchmark's counters. Invented letters only; no benchmark or prompt text."""
 
 from __future__ import annotations
 
@@ -24,8 +23,8 @@ from ordnung.ingest.verify import DEADLINE_LEFT_OUT, REASON_TEXT
 from ordnung.models import ExtractedItem
 from test_api_support import api_for
 from test_reading_gaps import blank, page
-from test_reading_gaps_round2 import check_due
-from test_reading_gaps_round5 import SERVED_LETTER, SERVED_MARKER
+from test_reading_gaps_dated_notices import check_due
+from test_reading_gaps_known_limits import SERVED_LETTER, SERVED_MARKER
 
 
 @pytest.fixture
@@ -90,7 +89,7 @@ def payment_item(quote: str, day: str | None, **extra: Any) -> ExtractedItem:
          "loyalty-bonus"],
 )  # fmt: skip
 def test_an_option_the_person_may_take_is_no_dropped_date(lines: tuple[str, ...]) -> None:
-    """FA-3: a request for an option ("… möchten …? Dann senden Sie …") files nothing — a correct reading left it
+    """A request for an option ("… möchten …? Dann senden Sie …") files nothing — a correct reading left it
     out (a Kündigung the person never asked to send)."""
     assert dropped(*lines) == []
 
@@ -115,7 +114,7 @@ def test_an_option_the_person_may_take_is_no_dropped_date(lines: tuple[str, ...]
          "else-after", "then", "reason-claim", "w-question", "questions"],
 )  # fmt: skip
 def test_a_request_with_a_reason_or_after_a_heading_still_fires(lines: tuple[str, ...], due: str) -> None:
-    """FA-3's counter-probes X1–X10: real requests keep their to-do."""
+    """The counter-probes: real requests keep their to-do."""
     assert dropped(*lines) == [due]
 
 
@@ -130,7 +129,7 @@ def test_a_request_with_a_reason_or_after_a_heading_still_fires(lines: tuple[str
     ],
 )
 def test_a_period_s_end_is_never_a_dropped_date(line: str) -> None:
-    """FA-4: "für den Zeitraum bis zum 31.12." is what the payment is for — never a payment due 77 days after the
+    """The words "für den Zeitraum bis zum 31.12." are what the payment is for — never a payment due 77 days after the
     letter's own 15.10 (code's dates are never later than the letter says)."""
     assert dropped(line) == []
 
@@ -145,7 +144,7 @@ def test_a_period_s_end_is_never_a_dropped_date(line: str) -> None:
     ],
 )
 def test_a_period_s_word_inside_a_compound_is_still_a_payment(noun: str) -> None:
-    """FA-4's counter-probes: the period's noun counts only as a whole word."""
+    """The counter-probes: the period's noun counts only as a whole word."""
     assert dropped(f"Bitte überweisen Sie {noun} bis zum 15.10.2026.") == ["2026-10-15"]
 
 
@@ -153,7 +152,7 @@ SKONTO = "Bei Zahlung bis 10.10.2026 gewähren wir 2 % Skonto."
 
 
 def test_the_full_price_beside_a_payment_dated_by_its_discount_is_the_same_one() -> None:
-    """FA-9: the reading dated the payment by its Skonto day; "Zahlbar bis 31.10.2026 ohne Abzug" is the same
+    """The reading dated the payment by its Skonto day; "Zahlbar bis 31.10.2026 ohne Abzug" is the same
     payment — but a reading without a payment still gets it, and another payment beside it still fires."""
     discounted = payment_item(SKONTO, "2026-10-10")
     assert dropped("Zahlbar bis 31.10.2026 ohne Abzug.", SKONTO, items=(discounted,)) == []
@@ -190,7 +189,7 @@ def test_the_full_price_beside_a_payment_dated_by_its_discount_is_the_same_one()
 def test_a_debit_done_waves_off_a_label_date_one_offered_or_failed_does_not(
     lines: tuple[str, ...], due: list[str]
 ) -> None:
-    """FA-10 / RL-T5: the debit's own day is no transfer to make; a debit that failed or is only offered is."""
+    """The debit's own day is no transfer to make; a debit that failed or is only offered is."""
     assert dropped(*lines) == due
 
 
@@ -207,7 +206,7 @@ def test_a_debit_done_waves_off_a_label_date_one_offered_or_failed_does_not(
     ids=["paid-paypal", "received", "credit-note", "status-paid", "refund", "payout"],
 )
 def test_a_paid_invoice_a_credit_note_or_a_payout_files_no_payment(lines: tuple[str, ...]) -> None:
-    """MISS-1 and the refunds of the tests lens (M1): a "Fällig am:" box on a letter that is settled or pays out is
+    """A lost deadline and refunds: a "Fällig am:" box on a letter that is settled or pays out is
     never "check before you pay"."""
     assert dropped(*lines) == []
 
@@ -236,7 +235,7 @@ ROWS = (
 
 
 def test_the_rows_of_an_undated_recurring_payment_on_its_day_are_its_own() -> None:
-    """FA-1's no-first-date case: a quarterly payment read without a date but with its day (the 15th) covers the
+    """The no-first-date case: a quarterly payment read without a date but with its day (the 15th) covers the
     letter's rows on that day once there are two or more; without a day it covers nothing."""
     every_15th = payment_item("Vierteljährlich zum 15.", None, recurrence={**QUARTERLY, "day_of_month": 15})
     assert dropped(*ROWS, items=(every_15th,)) == []
@@ -254,7 +253,7 @@ def test_a_first_date_an_undated_recurring_payment_left_out_still_fires() -> Non
 
 
 def test_a_back_payment_before_the_first_advance_is_its_own() -> None:
-    """RL-T4's counter-probe: a Nachzahlung on the advance's day of the month but before its first date."""
+    """The counter-probe: a Nachzahlung on the advance's day of the month but before its first date."""
     advance = payment_item(
         "Ihr Abschlag beträgt 85,00 EUR monatlich.",
         "2026-11-15",
@@ -268,7 +267,7 @@ def test_a_back_payment_before_the_first_advance_is_its_own() -> None:
 
 def test_the_to_do_is_a_cross_check_and_quotes_its_own_line() -> None:
     """The to-do asks the person to check the letter, never demands; a date in the header box quotes that line alone,
-    never the letterhead and the address above it (FA-12)."""
+    never the letterhead and the address above it."""
     lines = (*HEAD[:5], "Zahlungsziel: 15.10.2026", "Rechnung Nr. 4711")
     [item] = deadline_items(blank(**SENDER), [page(*lines)], today=date(2026, 10, 3))
     assert item.quote == "Zahlungsziel: 15.10.2026"
@@ -315,7 +314,7 @@ OWN = date(2026, 11, 6)
 def test_a_town_s_spelling_district_or_river_is_its_own_another_word_is_not(
     sender: str, place: str, start: date | None
 ) -> None:
-    """R5D-1 / FA-6 and M4: short forms, rivers, umlauts spelled out are the page's town; "Frankfurt Hauptwache" (a
+    """Short forms, rivers, umlauts spelled out are the page's town; "Frankfurt Hauptwache" (a
     place in it, planted with the letter's date unread) never is."""
     pages = [
         page(
@@ -343,13 +342,13 @@ def test_a_town_s_spelling_district_or_river_is_its_own_another_word_is_not(
     ],
 )
 def test_opening_hours_under_the_date_line_are_no_appointment_s_time(below: str, start: date | None) -> None:
-    """FA-8: hours that say so or run Mo–Fr leave the date line the letter's; a time range alone, or one with a room,
+    """Hours that say so or run Mo–Fr leave the date line the letter's; a time range alone, or one with a room,
     is an appointment's (no start while the letter's date is unread)."""
     assert letter_date(blank(), [page(*STREET, "06.11.2026", below, *FEE)], today=date(2026, 11, 20)) == start
 
 
 def test_a_subject_naming_its_own_date_and_time_leaves_the_date_line_the_letter_s() -> None:
-    """R5D-6: "Meldeaufforderung zum 05.10.2026 um 9:00 Uhr" under the date line is that date's time."""
+    """The line "Meldeaufforderung zum 05.10.2026 um 9:00 Uhr" under the date line is that date's time."""
     lines = (*STREET, "21.09.2026", "Meldeaufforderung zum 05.10.2026 um 9:00 Uhr", *FEE)
     assert letter_date(blank(), [page(*lines)], today=date(2026, 9, 25)) == date(2026, 9, 21)
 
@@ -364,7 +363,7 @@ def test_a_subject_naming_its_own_date_and_time_leaves_the_date_line_the_letter_
     ],
 )
 def test_a_department_s_name_above_datum_is_no_appointment_heading(above: str, start: date | None) -> None:
-    """R5D-6 and RL-T1: "Terminvergabe" over "Datum:" is the sender's department; "Terminbestätigung" over a date and a
+    """A "Terminvergabe" over "Datum:" is the sender's department; "Terminbestätigung" over a date and a
     room is an appointment's block (with the letter's own date unread: no start)."""
     day = "06.11.2026" if start else "20.11.2026"
     lines = (*STREET, "", above, f"Datum: {day}", "Ort: Raum 2.14", *FEE)
@@ -391,7 +390,7 @@ def _rejection(first: str, decision: str) -> list[tuple[int, str, list[Any], str
 
 
 def test_a_hearing_before_a_rejection_never_undates_its_hiergegen() -> None:
-    """FA-5: "Mit Schreiben vom 15.08. haben wir Sie angehört" is the hearing before this decision, which doesn't call
+    """The sentence "Mit Schreiben vom 15.08. haben wir Sie angehört" is the hearing before this decision, which doesn't call
     itself one — dated from the letter as on main; an information letter naming an earlier rejection stays undated
     (its "Hiergegen" may be that one's)."""
     heard = _rejection(
@@ -404,7 +403,7 @@ def test_a_hearing_before_a_rejection_never_undates_its_hiergegen() -> None:
 
 
 def test_a_reminder_s_hiergegen_restating_the_decision_s_notice_is_undated() -> None:
-    """MISS-2: a Zahlungserinnerung of 24.09 whose "Hiergegen" restates the notice of the decision of 03.09 was dated
+    """A Zahlungserinnerung of 24.09 whose "Hiergegen" restates the notice of the decision of 03.09 was dated
     from the reminder, 21 days late (on main too): now undated."""
     pages = [
         page(
@@ -432,7 +431,7 @@ def test_a_reminder_s_hiergegen_restating_the_decision_s_notice_is_undated() -> 
     ],
 )
 def test_a_notice_with_a_condition_in_the_past_stays_a_notice(sentence: str) -> None:
-    """FA-7: "wurde" inside a condition reports nothing — only a decision on a remedy reports one lodged."""
+    """A "wurde" inside a condition reports nothing — only a decision on a remedy reports one lodged."""
     pages = [page(*STREET, "", "Datum: 06.11.2026", *FEE[:4], "Rechtsbehelfsbelehrung", sentence)]
     assert len(remedy_notices(pages)) == 1
 
@@ -469,13 +468,13 @@ def _served_decision(
     ],
 )
 def test_a_served_widerspruchsbescheid_naming_the_first_decision_stays_served(notice: str) -> None:
-    """R5D-4's narrowed rule: a notice naming an earlier decision turns the envelope off only when it names neither
+    """The narrowed rule: a notice naming an earlier decision turns the envelope off only when it names neither
     this letter nor a decision on a remedy — a Widerspruchsbescheid's period runs from its own service (§ 74 VwGO)."""
     assert formally_served(_served_decision(notice))
 
 
 # --------------------------------------------------------------------------------------------------
-# A served letter whose reading conflicts with its notice keeps asking for the envelope (pzu V-1)
+# A served letter whose reading conflicts with its notice keeps asking for the envelope
 # --------------------------------------------------------------------------------------------------
 
 
@@ -483,7 +482,7 @@ def test_a_served_widerspruchsbescheid_naming_the_first_decision_stays_served(no
 async def test_a_conflicted_served_letter_still_cites_the_envelope(
     data_dir: Path, pinned_today: None, months: int
 ) -> None:
-    """V-1: when settling keeps the letter's own notice (the reading says two months, the notice one), the receipt
+    """When settling keeps the letter's own notice (the reading says two months, the notice one), the receipt
     still cites ``pzu`` — so the app asks for the date on the yellow envelope, never "When did it arrive?" with Today."""
     payload = copy.deepcopy(SERVED_LETTER.payload)
     payload["items"][0]["date"]["amount"] = months
@@ -502,15 +501,15 @@ async def test_a_conflicted_served_letter_still_cites_the_envelope(
 
 
 def test_the_benchmark_tells_a_dropped_date_from_the_objection_check() -> None:
-    """RL-T9: the counters tell the two code-made to-dos apart by the receipt's note."""
+    """The counters tell the two code-made to-dos apart by the receipt's note."""
     assert REASON_TEXT[DEADLINE_LEFT_OUT].startswith(DROPPED_DATE_NOTE)
 
 
 async def test_a_dropped_date_s_idea_never_offers_pay(data_dir: Path, pinned_today: None) -> None:
-    """RL-T7 / pzu-5: the please-check Idea says the reading left the date out (it was found), and code's payment
+    """The please-check Idea says the reading left the date out (it was found), and code's payment
     to-do never gets a "Pay" button."""
     from ordnung.secretary.triggers import Ledger, item_action, please_check
-    from test_reading_gaps_round5 import DROPPED_LETTER, DROPPED_MARKER
+    from test_reading_gaps_known_limits import DROPPED_LETTER, DROPPED_MARKER
 
     async with api_for(data_dir, router=Router(letters=(DROPPED_LETTER,))) as api:
         body = await api.upload((f"{DROPPED_MARKER}.pdf", DROPPED_LETTER.pdf()))
@@ -529,6 +528,6 @@ def test_a_stamp_on_the_date_line_is_lowered_to_the_letter_s_own_date_at_its_foo
     stamp: str, start: date | None
 ) -> None:
     """A received stamp alone in the date line's place under the address, the letter dated only above its signature:
-    the foot's date lowers it (more than 14 days apart, no start) — as a date on the first line (security F6)."""
+    the foot's date lowers it (more than 14 days apart, no start) — as a date on the first line."""
     lines = (*STREET, stamp, *FEE, "Mit freundlichen Grüßen", "Beispielhausen, den 06.11.2026")
     assert letter_date(blank(), [page(*lines)], today=date(2026, 12, 20)) == start

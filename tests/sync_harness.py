@@ -1,4 +1,4 @@
-"""Computers for hand-off sync's tests (design §23.2): a data folder each, an in-memory password store,
+"""Computers for hand-off sync's tests: a data folder each, an in-memory password store,
 clocks of their own, and the real engine (the server's tests drive the agent with
 :mod:`sync_fake_engine`, and with the real engine in :mod:`test_sync_real_engine`).
 

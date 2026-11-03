@@ -1,12 +1,13 @@
-"""The re-review of the dropped-date check's looser path (ADR 0015, 2026-10-07), after which the path was narrowed.
+"""False alarms and wrong dates of the dropped-date check's looser path (ADR 0015, 2026-10-07), after which the path
+was narrowed.
 
-Every confirmed false alarm and every wrong date of the re-review is a case here
+Every confirmed false alarm and every wrong date found then is a case here
 (``tests/data/deadline_looser_rereview.json``): its letter files exactly what base 0ff51e3 files for it (nothing, for
 all but the strict path's own dates). Dates without their year are read nowhere again; the looser wordings that
 filed those false alarms are gone; what stays is a request that asks the person in its own words at its sentence's
 start ("Senden Sie uns …", "Bitte gleichen Sie … aus", "Bitte lassen Sie uns … zukommen", "Wir bitten Sie um Zahlung
 …", "Bitte bis … überweisen", "Kindly pay …", "Please ensure …") and a label on a page that asks for its kind. Each
-guard that stays has a test here or in ``test_reading_gaps_looser_review.py`` that fails without it. Invented letters
+guard that stays has a test here or in ``test_reading_gaps_looser_wordings.py`` that fails without it. Invented letters
 only.
 """
 
@@ -164,7 +165,7 @@ def test_a_request_in_the_person_s_own_words_still_files(
 @pytest.mark.parametrize(
     ("sentence", "lang"),
     [
-        # a condition or group no list names, before the request (finding: conditions and groups)
+        # a condition or group no list names, before the request (conditions and groups)
         ("Bei Nichtgefallen senden Sie uns die Ware bis zum 23.10.2026.", "de"),
         ("Sobald Sie umgezogen sind, senden Sie uns Ihre neue Anschrift bis zum 23.10.2026.", "de"),
         ("Bei Inanspruchnahme der Ratenzahlung bitte bis zum 23.10.2026 überweisen.", "de"),

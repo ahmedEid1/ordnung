@@ -311,7 +311,7 @@ async def test_a_leases_working_day_read_from_the_letter_dates_every_month(data_
 
 
 async def test_a_working_day_the_rents_quote_does_not_name_is_graded_lower(data_dir: Path) -> None:
-    """The reviewer's check: the reading gives the rent the third working day, but its sentence says "zum
+    """The reading gives the rent the third working day, but its sentence says "zum
     Monatsende" (a misreading). The working day still dates the rent (Mon 5 Oct, point 8), but it is not
     the letter's own: one confidence level lower (``medium``) with a note to check it, its value is not
     consistent with its quote, so the letter is "Please check" — and so is every later month's rent."""
@@ -543,7 +543,7 @@ async def test_a_month_end_rent_dated_by_hand_keeps_its_day_of_the_month(data_di
     would count). The schedule is (31 Oct, every month): November's rent is due on the 30th, December's on
     the 31st, and the receipt says the rent repeats since 31 Oct, without the warnings. Ordnung counted each
     month from the date before it, so December's rent showed on the 30th, February's on the 28th, then
-    March's on the 28th, "since Sun 28 Feb 2027" (the bug the audit fixed for to-dos added by hand, back
+    March's on the 28th, "since Sun 28 Feb 2027" (the bug fixed for to-dos added by hand, back
     for a letter's undated to-do)."""
     clock.set_today("2026-09-29")
     async with api_for(data_dir, router=_with(MONTH_END_LEASE)) as api:

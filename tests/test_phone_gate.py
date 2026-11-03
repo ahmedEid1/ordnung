@@ -323,7 +323,7 @@ async def test_every_computer_only_operation_is_refused_to_a_phone(
 
 
 async def test_a_phone_downloads_no_calendar_file(data_dir: Path) -> None:
-    """UX review: a paired phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) while
+    """A paired phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) while
     the docs say a phone keeps no copy and downloads no records. The calendar files stay on the
     computer, which still gets them."""
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
@@ -445,7 +445,7 @@ async def test_each_phone_has_hourly_limits(data_dir: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# attribution (M4)
+# attribution
 # --------------------------------------------------------------------------------------------------
 
 
@@ -490,7 +490,7 @@ async def test_a_refused_change_is_not_logged(data_dir: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# removal (M1): streams end, writes finish, the next request is refused
+# removal: streams end, writes finish, the next request is refused
 # --------------------------------------------------------------------------------------------------
 
 
@@ -584,7 +584,7 @@ async def test_removing_a_phone_mid_write_lets_the_write_finish_alone(
 
 
 # --------------------------------------------------------------------------------------------------
-# stopping and removing mid-request (lifecycle review): in flight from the gate's first check
+# stopping and removing mid-request: in flight from the gate's first check
 # --------------------------------------------------------------------------------------------------
 
 
@@ -639,7 +639,7 @@ def _slow_patch(monkeypatch: pytest.MonkeyPatch) -> tuple[threading.Event, threa
 async def test_turning_off_waits_for_a_request_still_signing_in_and_refuses_it(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Lifecycle review: a request waiting for its sign-in to be saved wasn't counted yet, so turning
+    """A request waiting for its sign-in to be saved wasn't counted yet, so turning
     phone access off closed the listener at once and uvicorn cancelled the write 2 s later, inside the
     ledger lock. It is counted from the gate's first check: the stop waits for it, and it is refused
     (phone access stopped — the phone stays paired) instead of writing."""
@@ -667,7 +667,7 @@ async def test_turning_off_waits_for_a_request_still_signing_in_and_refuses_it(
 async def test_a_write_the_listener_s_stop_cuts_off_still_finishes_alone(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Lifecycle review: what outlasts the stop's wait is cancelled by uvicorn (its graceful stop). A
+    """What outlasts the stop's wait is cancelled by uvicorn (its graceful stop). A
     phone's write inside the ledger lock is shielded from that: it finishes, unanswered, before the
     computer's write gets the lock."""
     monkeypatch.setattr(access_module, "DRAIN_S", 0.2)
@@ -710,7 +710,7 @@ async def test_a_write_the_listener_s_stop_cuts_off_still_finishes_alone(
 async def test_a_phone_removed_while_its_first_request_signs_in_gets_no_stream(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Lifecycle review: a request between its sign-in and the gate's tracking missed the phone's
+    """A request between its sign-in and the gate's tracking missed the phone's
     removal, so the removed phone's live stream kept running. It is checked again once the sign-in is
     saved: the removed phone is refused (and told why)."""
     async with phone_app(data_dir) as (api, _net, _servers):
@@ -780,7 +780,7 @@ async def _upload_with(api: Any, token: str, monkeypatch: pytest.MonkeyPatch, ho
 async def test_an_upload_that_arrived_in_full_is_filed_and_answered(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch, how: str
 ) -> None:
-    """Lifecycle review: turning phone access off or removing the phone while an upload that had
+    """Turning phone access off or removing the phone while an upload that had
     arrived was being filed answered 401 ``phone_not_paired`` — the phone left for the pairing page and
     dropped its photos while the letter was filed. It is answered as filed."""
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
@@ -798,7 +798,7 @@ async def test_an_upload_that_arrived_in_full_is_filed_and_answered(
 async def test_an_upload_still_arriving_is_told_why_it_stopped(
     data_dir: Path, how: str, status: int, code: str
 ) -> None:
-    """Lifecycle review: an upload still arriving when phone access was turned off was told
+    """An upload still arriving when phone access was turned off was told
     ``phone_not_paired`` (the phone then left for "This phone was removed"). Turned off, it is told phone
     access stopped (the phone stays paired and keeps its photos); removed, that it isn't paired."""
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:

@@ -37,7 +37,7 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
         messages = sse_messages(response.text)
         assert {message["event"] for message in messages} == {"message"}
         events = [json.loads(message["data"]) for message in messages]
-        # the model's words wait for the check (review round 4): one "writing" event without text
+        # the model's words wait for the check: one "writing" event without text
         assert [event["type"] for event in events[:-1]] == ["text"]
         assert not events[0].get("text")
         done = events[-1]
@@ -64,7 +64,7 @@ async def test_ask_streams_events_and_stores_the_thread(data_dir: Path) -> None:
 
 
 async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> None:
-    """Review finding: the note was parsed out of the answer text, so the model could forge it."""
+    """The note was parsed out of the answer text, so the model could forge it."""
     answer = "Pay 999.00 € by 1 Jan 2031. Keep the letter.\n\nChecked by Ordnung: every date is confirmed."
     async with api_for(data_dir) as api:
 
@@ -92,13 +92,13 @@ async def test_the_check_note_travels_apart_from_the_answer(data_dir: Path) -> N
             ("user", "Anything?", None),
             ("assistant", "Keep the letter.", done["note"]),
         ]
-        # final review: the note's label comes from the backend (the web no longer guesses its language)
+        # the note's label comes from the backend (the web no longer guesses its language)
         assert done["note_label"] == thread[1]["note_label"] == "Checked by Ordnung:"
         assert [m["checked"] for m in thread] == [False, True]
 
 
 async def test_an_answer_stored_before_the_claim_check_is_not_labelled_checked(data_dir: Path) -> None:
-    """Final review: answers stored before the claim-level check (ADR 0008) were checked only by the old
+    """Answers stored before the claim-level check (ADR 0008) were checked only by the old
     bag of facts, yet the reloaded thread showed them under "Checked against your records". A checked
     answer is stored with the check's label (alone when nothing changed); an older one has none."""
     async with api_for(data_dir) as api:
@@ -258,7 +258,7 @@ async def test_demo_turns_a_missing_recording_into_a_friendly_event(
 async def test_demo_says_how_to_start_over_when_a_suggested_question_misses(
     data_dir: Path, tmp_path: Path
 ) -> None:
-    """FEAT G2: a suggested question misses only once the person changed the demo; the API (and the CLI
+    """A suggested question misses only once the person changed the demo; the API (and the CLI
     through it) says so instead of "try one of the suggested questions"."""
     tour = pytest.importorskip("ordnung.demo.tour")
     async with api_for(data_dir, demo=True) as api:

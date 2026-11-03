@@ -1,4 +1,4 @@
-"""An unexpected error in a route: a JSON 500 the web app can word plainly (UX audit U9), never the plain-text
+"""An unexpected error in a route: a JSON 500 the web app can word plainly, never the plain-text
 "Internal Server Error" that became a toast's sentence, and never the error's message, which may quote a letter.
 Input at the edges (a date on the calendar's last day, an offset or page number far out of range, a time zone that is
 none, a repeat interval out of range) gets a clear answer instead of a 500."""

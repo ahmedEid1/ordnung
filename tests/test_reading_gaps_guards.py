@@ -1,7 +1,7 @@
-"""Round 3 of the review of the check for incomplete readings (``ingest/gaps.py``): the tests lens's guards
-(R3T-1..11, V3T-1), the dates, false-positives and security findings as synthetic regression tests, and a bounded
-fuzz of the letter's own date. The rule over all of them: the code's own date, and the date it sets beside a
-reading's (P5), is never later than the letter allows — at worst undated.
+"""The guards of the check for incomplete readings (``ingest/gaps.py``) that no test held before, the letter's
+own date, which notices count and their false alarms, as synthetic regression tests, and a bounded fuzz of the
+letter's own date. The rule over all of them: the code's own date, and the date it sets beside a reading's, is
+never later than the letter allows — at worst undated.
 
 All letters are invented ("Stadt Beispielhausen", dated Fri 6 Nov 2026 unless said otherwise); no benchmark or
 prompt text."""
@@ -43,7 +43,7 @@ from test_reading_gaps import (
     page,
     payment,
 )
-from test_reading_gaps_round2 import BODY, COMPLETE, REMINDER, TOP, check_due, fires, objection_due
+from test_reading_gaps_dated_notices import BODY, COMPLETE, REMINDER, TOP, check_due, fires, objection_due
 
 ONE_MONTH = {
     "type": "relative",
@@ -60,14 +60,14 @@ def reading_with(*items: Any, **fields: Any) -> Any:
 
 
 # --------------------------------------------------------------------------------------------------
-# The tests lens: guards no test held (R3T-1..11, V3T-1)
+# Guards no test held
 # --------------------------------------------------------------------------------------------------
 
 REFERENCE = "Ihr Zeichen   Ihre Nachricht vom   Unser Zeichen   Datum"
 
 
 def test_the_reference_line_s_own_date_is_its_last_never_the_person_s_letter_s() -> None:
-    """R3T-2: DIN 5008's reference line names the person's own letter first ("Ihre Nachricht vom"): the letter's
+    """DIN 5008's reference line names the person's own letter first ("Ihre Nachricht vom"): the letter's
     date is the last — never the person's letter's, ten days earlier (a false "Please check")."""
     lines = (*TOP, REFERENCE, "AB-1   27.10.2026   OA-2026-0815   06.11.2026", *BODY, NOTIFIED)
     rival = notice_rival(blank(**COMPLETE), [page(*lines)])
@@ -77,7 +77,7 @@ def test_the_reference_line_s_own_date_is_its_last_never_the_person_s_letter_s()
 
 
 def test_a_date_column_in_the_letter_s_body_is_no_reference_line() -> None:
-    """R3T-2: a table in the body ("Rate  Betrag  Datum") never sets the notice's start."""
+    """A table in the body ("Rate  Betrag  Datum") never sets the notice's start."""
     table = ("Rate   Betrag   Datum", "1   42,50 EUR   15.12.2026")
     lines = (*TOP, "Datum: 06.11.2026", *BODY[:3], *table, BODY[3], NOTIFIED)
     got, computed = objection_due([page(*lines)], THREE_MONTHS)
@@ -85,7 +85,7 @@ def test_a_date_column_in_the_letter_s_body_is_no_reference_line() -> None:
 
 
 def test_a_place_and_date_in_the_body_is_weak() -> None:
-    """R3T-2: only a place and date among the header's lines is the letter's own."""
+    """Only a place and date among the header's lines is the letter's own."""
     lines = (*TOP, "Datum: 06.11.2026", *BODY[:3], "Beispielhausen, 15.12.2026", BODY[3], NOTIFIED)
     assert letter_date(blank(), [page(*lines)]) == date(2026, 11, 6)
     got, computed = objection_due([page(*lines)], THREE_MONTHS)
@@ -93,20 +93,19 @@ def test_a_place_and_date_in_the_body_is_weak() -> None:
 
 
 def test_a_strong_date_long_before_with_a_weak_one_beside_it_keeps_its_start() -> None:
-    """R3T-8: the stale rule is for one date alone."""
+    """The stale rule is for one date alone."""
     lines = (*TOP, "Bescheiddatum: 01.07.2026", "Buchungsdatum: 30.06.2026", *BODY, NOTIFIED)
     assert letter_date(blank(), [page(*lines)], today=date(2026, 11, 10)) == date(2026, 6, 30)
 
 
 def test_a_single_date_is_stale_only_after_sixty_days() -> None:
-    """R3T-8."""
     only = (*TOP, "Bescheiddatum: 01.09.2026", *BODY, NOTIFIED)
     assert letter_date(blank(), [page(*only)], today=date(2026, 10, 31)) == date(2026, 9, 1)  # 60 days
     assert letter_date(blank(), [page(*only)], today=date(2026, 11, 1)) is None  # 61 days
 
 
 def test_a_letter_the_notice_names_lowers_the_start() -> None:
-    """R3T-6: "Gegen unser Schreiben vom 02.11.2026" in a letter printed 06.11: the earlier date counts."""
+    """The words "Gegen unser Schreiben vom 02.11.2026" in a letter printed 06.11: the earlier date counts."""
     notice = (
         "Gegen unser Schreiben vom 02.11.2026 können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch "
         "einlegen."
@@ -117,7 +116,6 @@ def test_a_letter_the_notice_names_lowers_the_start() -> None:
 
 
 def test_the_decision_a_notice_names_alone_sets_the_start() -> None:
-    """R3T-6."""
     notice = (
         "Gegen den Bescheid vom 06.11.2026 können Sie binnen eines Monats nach seiner Bekanntgabe Widerspruch "
         "einlegen."
@@ -138,7 +136,7 @@ def test_the_decision_a_notice_names_alone_sets_the_start() -> None:
     ],
 )
 def test_an_older_decision_a_reminder_s_notice_names_is_never_dated_from_the_reminder(notice: str) -> None:
-    """R3T-6: never dated from the reminder's 20.10 (2026-11-24), at worst undated."""
+    """Never dated from the reminder's 20.10 (2026-11-24), at worst undated."""
     reading = blank(sender=SENDER, document_date="2026-10-20", items=[payment()])
     found = check_item(reading, [page(*REMINDER, notice)])
     assert found is not None
@@ -146,7 +144,7 @@ def test_an_older_decision_a_reminder_s_notice_names_is_never_dated_from_the_rem
 
 
 def test_a_place_and_date_header_starts_the_notice() -> None:
-    """R3T-1: the commonest German header ("Beispielhausen, 06.11.2026") starts the notice."""
+    """The commonest German header ("Beispielhausen, 06.11.2026") starts the notice."""
     got, computed = objection_due([page(*TOP, "Beispielhausen, 06.11.2026", *BODY, NOTIFIED)], THREE_MONTHS)
     assert got == NOTIFIED_DUE and computed.notice
 
@@ -155,21 +153,18 @@ OWN_BODY = "mit diesem Bescheid vom {} setzen wir eine Gebühr von 85,00 EUR fes
 
 
 def test_this_decision_s_own_date_in_its_body_starts_the_notice() -> None:
-    """R3T-1."""
     body = (BODY[0], BODY[1], OWN_BODY.format("06.11.2026"), BODY[3])
     got, computed = objection_due([page(*TOP, *body, NOTIFIED)], THREE_MONTHS)
     assert got == NOTIFIED_DUE and computed.notice
 
 
 def test_two_own_dates_near_each_other_start_the_notice_at_the_earlier() -> None:
-    """R3T-1."""
     body = (BODY[0], BODY[1], OWN_BODY.format("02.11.2026"), BODY[3])
     rival = notice_rival(blank(**COMPLETE), [page(*TOP, "Datum: 06.11.2026", *body, NOTIFIED)])
     assert rival is not None and rival.spec.anchor_date == "2026-11-02"
 
 
 def test_two_own_dates_weeks_apart_start_the_notice_at_the_later_never_a_passed_one() -> None:
-    """R3T-1."""
     body = (BODY[0], BODY[1], OWN_BODY.format("01.06.2026"), BODY[3])
     pages = [page(*TOP, "Datum: 06.11.2026", *body, NOTIFIED)]
     rival = notice_rival(blank(**COMPLETE), pages)
@@ -179,14 +174,12 @@ def test_two_own_dates_weeks_apart_start_the_notice_at_the_later_never_a_passed_
 
 
 def test_a_formally_served_notice_from_notification_gets_no_delivery_days_beside_a_reading() -> None:
-    """R3T-3."""
     pages = [page(*HEAD[:4], "Per Postzustellungsurkunde", *HEAD[4:], NOTIFIED, WHERE)]
     got, computed = objection_due(pages, THREE_MONTHS)
     assert got == FROM_LETTER_DUE and computed.notice
 
 
 def test_a_portal_notice_is_never_given_the_post_s_days_beside_a_reading() -> None:
-    """R3T-3."""
     portal = [page(*HEAD, NOTIFIED, "Dieser Bescheid wurde Ihnen zum Abruf bereitgestellt.")]
     got, computed = objection_due(portal, THREE_MONTHS)
     assert computed.notice and got is not None and got < NOTIFIED_DUE
@@ -206,7 +199,7 @@ ZWEITWOHNUNG = (
 
 
 def test_a_word_of_a_law_kind_alone_never_bears_it_out() -> None:
-    """R3T-5: a tax decision on a "Wohnung" read as a landlord's notice is no letter of that kind."""
+    """A tax decision on a "Wohnung" read as a landlord's notice is no letter of that kind."""
     pages = [page(*ZWEITWOHNUNG)]
     reading = blank(
         kind="authority_letter",
@@ -222,7 +215,6 @@ def test_a_word_of_a_law_kind_alone_never_bears_it_out() -> None:
 
 
 def test_a_dismissal_needs_both_its_words() -> None:
-    """R3T-5."""
     fee = (
         "Die Kündigung Ihres Stellplatzes nehmen wir zur Kenntnis; die Gebühr setzen wir auf 85,00 EUR fest."
     )
@@ -234,7 +226,7 @@ def test_a_dismissal_needs_both_its_words() -> None:
 
 
 def test_a_reading_with_the_notice_s_period_from_a_later_arrival_stays_unflagged() -> None:
-    """R3T-4: the notice's own period from a later confirmed arrival, five days after the notice's date."""
+    """The notice's own period from a later confirmed arrival, five days after the notice's date."""
     spec = {"type": "relative", "amount": 1, "unit": "months", "anchor": "receipt"}
     reading = reading_with(objection(spec))
     [verified] = verify_extraction("doc_x", reading, [page(*HEAD, NOTIFIED, WHERE)], check_reading=True).items
@@ -244,7 +236,7 @@ def test_a_reading_with_the_notice_s_period_from_a_later_arrival_stays_unflagged
 
 
 def test_a_month_read_for_four_weeks_is_set_beside_it_within_the_reach() -> None:
-    """R3T-4: "vier Wochen" read as a month ends three days later — a longer period, set beside it."""
+    """A "vier Wochen" read as a month ends three days later — a longer period, set beside it."""
     four = "Gegen diesen Bescheid kann innerhalb von vier Wochen nach Zustellung Einspruch eingelegt werden."
     spec = {"type": "relative", "amount": 1, "unit": "months", "anchor": "receipt", "delivery_rule": "none"}
     got, computed = objection_due([page(*HEAD, four, WHERE)], spec, quote=four)
@@ -252,7 +244,7 @@ def test_a_month_read_for_four_weeks_is_set_beside_it_within_the_reach() -> None
 
 
 def test_an_arrival_the_person_did_not_confirm_never_moves_a_served_notice_later() -> None:
-    """R3T-4 (defensive: every context the app builds confirms an arrival it has)."""
+    """Defensive: every context the app builds confirms an arrival it has."""
     spec = {"type": "relative", "amount": 3, "unit": "months", "anchor": "receipt"}
     reading = reading_with(objection(spec, quote=SERVED))
     [verified] = verify_extraction("doc_x", reading, [page(*HEAD, SERVED, WHERE)], check_reading=True).items
@@ -262,7 +254,6 @@ def test_an_arrival_the_person_did_not_confirm_never_moves_a_served_notice_later
 
 
 def test_a_notice_addressed_to_your_objection_with_how_to_lodge_it_is_live() -> None:
-    """R3T-7."""
     line = (
         "Ihren Widerspruch können Sie binnen eines Monats schriftlich bei der Stadt Beispielhausen einlegen."
     )
@@ -280,7 +271,7 @@ def test_a_notice_addressed_to_your_objection_with_how_to_lodge_it_is_live() -> 
     ],
 )
 def test_no_live_notice(line: str) -> None:
-    """R3T-9 (the court action for inaction as the verifier wrote it: "Untätigkeitsklage" alone names no remedy)."""
+    """The court action for inaction in one word: "Untätigkeitsklage" alone names no remedy."""
     assert not fires([page(*HEAD[:-1], line)])
 
 
@@ -292,12 +283,12 @@ def test_no_live_notice(line: str) -> None:
     ],
 )
 def test_a_notice_with_a_forward_start_and_a_backward_period_still_fires(line: str) -> None:
-    """V3T-1: live (counted from this letter), though undated (counted back from a hearing)."""
+    """Live (counted from this letter), though undated (counted back from a hearing)."""
     assert fires([page(*HEAD, line)])
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's own date (dates D3-1, D3-2, D3-7, M1; security R3ADV-1, -2, -3, -7, -8)
+# The letter's own date
 # --------------------------------------------------------------------------------------------------
 
 ADDRESS = ("Frau Mara Probe", "Probeweg 2", "12345 Beispielhausen")
@@ -322,7 +313,7 @@ NOTICE_DUE = "2026-12-09"
     ],
 )
 def test_the_date_line_after_the_address_is_the_letter_s_own(own: tuple[str, ...]) -> None:
-    """Dates review 3, D3-2: DIN 5008's date line under the recipient's address (a date alone, a place and date,
+    """DIN 5008's date line under the recipient's address (a date alone, a place and date,
     the reference line with a blank line between) is the letter's own — so the notice is set beside a reading's
     planted three months (it wasn't for 18 of 95 recorded letters)."""
     pages = [page(LETTERHEAD, *ADDRESS, "", *own, *FEE, NOTICE)]
@@ -332,13 +323,13 @@ def test_the_date_line_after_the_address_is_the_letter_s_own(own: tuple[str, ...
 
 
 def test_a_town_on_a_river_is_no_due_word() -> None:
-    """D3-2: "Frankfurt am Main, den 06.11.2026" is a place and date ("am" is no appointment's)."""
+    """The line "Frankfurt am Main, den 06.11.2026" is a place and date ("am" is no appointment's)."""
     lines = (LETTERHEAD, "Frau Mara Probe", "Probeweg 2", "60311 Frankfurt am Main", "")
     assert _own_start([page(*lines, "Frankfurt am Main, den 06.11.2026", *FEE, NOTICE)]) == date(2026, 11, 6)
 
 
 def test_a_print_date_never_sets_a_later_start_when_the_own_date_is_unread() -> None:
-    """D3-1: the letter's own date joined to the street line (as a two-column PDF reads) is unread; a later
+    """The letter's own date joined to the street line (as a two-column PDF reads) is unread; a later
     "Druckdatum" then gave 2026-12-16 for 12-09 — now it only lowers a start, at worst undated."""
     lines = (
         LETTERHEAD,
@@ -363,7 +354,7 @@ def test_a_print_date_never_sets_a_later_start_when_the_own_date_is_unread() -> 
     ],
 )
 def test_a_period_the_notice_names_is_never_the_decision_s_date(notice: str) -> None:
-    """D3-7, security R3ADV-2: "für die Zeit vom 01.12.2026", "Bewilligungszeitraum vom", "vom 01.12.2026 an"
+    """The words "für die Zeit vom 01.12.2026", "Bewilligungszeitraum vom", "vom 01.12.2026 an"
     start a benefit period, not the decision — never a strong date (2027-01-04 for 12-09)."""
     [found] = remedy_notices([page(*HEAD, notice)])
     assert date(2026, 12, 1) not in found.issued
@@ -380,7 +371,7 @@ def test_a_period_the_notice_names_is_never_the_decision_s_date(notice: str) -> 
     ],
 )
 def test_a_due_day_under_the_reference_labels_is_no_letter_date(lines: tuple[str, ...]) -> None:
-    """Dates M1: the reference line's date counts only without a due word before it on its line."""
+    """The reference line's date counts only without a due word before it on its line."""
     assert letter_date(blank(), [page(LETTERHEAD, *ADDRESS, "", *lines, *FEE, NOTICE)]) is None
 
 
@@ -392,7 +383,7 @@ def test_a_due_day_under_the_reference_labels_is_no_letter_date(lines: tuple[str
     ],
 )
 def test_an_appointment_s_date_is_never_the_letter_s(layout: tuple[str, ...]) -> None:
-    """Security R3ADV-1: an appointment's "Datum:" line — in the header's block ("Ihr Termin:" / "Uhrzeit") or in
+    """An appointment's "Datum:" line — in the header's block ("Ihr Termin:" / "Uhrzeit") or in
     the body — gave a start weeks after the letter's (2027-01-04, 2026-11-16 for 12-09)."""
     body = (
         "Sehr geehrte Frau Probe,",
@@ -418,7 +409,7 @@ def test_an_appointment_s_date_is_never_the_letter_s(layout: tuple[str, ...]) ->
 
 
 def test_the_letter_s_own_datum_beside_an_appointment_block_is_its_date() -> None:
-    """R3ADV-1: the letter's own "Datum:" above an appointment block still dates it."""
+    """The letter's own "Datum:" above an appointment block still dates it."""
     lines = (
         "Jobcenter Beispielhausen · Musterstraße 1 · 12345 Beispielhausen",
         "Frau Erika Probe",
@@ -446,7 +437,7 @@ OLD_DECISION = (
 
 
 def test_the_decision_an_objection_decision_reshapes_never_dates_its_court_action() -> None:
-    """Security R3ADV-3: a Widerspruchsbescheid dated only by a bare date gave a court deadline from the old
+    """A Widerspruchsbescheid dated only by a bare date gave a court deadline from the old
     decision's 20.09 (2026-10-20, already past): now no start."""
     body = (
         "Widerspruchsbescheid",
@@ -458,20 +449,20 @@ def test_the_decision_an_objection_decision_reshapes_never_dates_its_court_actio
 
 
 def test_a_start_after_the_letter_arrived_is_none() -> None:
-    """Security R3ADV-7: a letter dated after the day it arrived (a misprint, a post-dated letter)."""
+    """A letter dated after the day it arrived (a misprint, a post-dated letter)."""
     lines = (*TOP, "Datum: 20.11.2026", *BODY, NOTIFIED)
     assert letter_date(blank(), [page(*lines)], today=date(2026, 11, 10)) is None
     assert letter_date(blank(), [page(*lines)], today=date(2026, 11, 20)) == date(2026, 11, 20)
 
 
 def test_an_english_date_label_counts_only_as_the_whole_label() -> None:
-    """Security R3ADV-8: "Effective date: 01.01.2027" is no letter's date ("Date:" is)."""
+    """The line "Effective date: 01.01.2027" is no letter's date ("Date:" is)."""
     assert letter_date(blank(), [page(*TOP, "Effective date: 01.01.2027", *BODY, NOTIFIED)]) is None
     assert letter_date(blank(), [page(*TOP, "Date: 06.11.2026", *BODY, NOTIFIED)]) == date(2026, 11, 6)
 
 
 # --------------------------------------------------------------------------------------------------
-# Which notices count, and how (dates D3-3..D3-6; security R3ADV-4, -5, -6, -9, M1)
+# Which notices count, and how
 # --------------------------------------------------------------------------------------------------
 
 
@@ -485,12 +476,12 @@ def test_an_english_date_label_counts_only_as_the_whole_label() -> None:
     ],
 )
 def test_before_a_court_named_with_its_adjectives_stays_forward(notice: str) -> None:
-    """D3-3: "vor dem Bayerischen Verwaltungsgericht" is where the action is brought, not a period counted back."""
+    """The words "vor dem Bayerischen Verwaltungsgericht" are where the action is brought, not a period counted back."""
     assert check_due([page(*HEAD, notice)]) == FROM_LETTER_DUE
 
 
 def test_a_week_before_a_hearing_at_a_court_stays_counted_back() -> None:
-    """D3-3: "eine Woche vor dem Termin beim Amtsgericht" counts back from a hearing: never dated forward."""
+    """The words "eine Woche vor dem Termin beim Amtsgericht" count back from a hearing: never dated forward."""
     notice = (
         "Ein Einspruch ist spätestens eine Woche vor dem Termin beim Amtsgericht Beispielhausen einzulegen."
     )
@@ -507,14 +498,14 @@ def test_a_week_before_a_hearing_at_a_court_stays_counted_back() -> None:
 def test_a_tip_counted_back_from_the_deadline_is_never_folded_into_the_notice(
     tip: str, due: str | None
 ) -> None:
-    """D3-4: a tip after a notice with its own period ("einige Tage vor Fristablauf absenden") left the notice
+    """A tip after a notice with its own period ("einige Tage vor Fristablauf absenden") left the notice
     undated; one naming the remedy and a number of its own stays a notice that can't be dated (never a week from
     the letter)."""
     assert check_due([page(*HEAD, NOTICE, tip)]) == due
 
 
 def test_of_two_notices_the_earliest_counts_whatever_their_start() -> None:
-    """D3-6: a month from notification (deemed delivery) and a month from service: the latter ends first."""
+    """A month from notification (deemed delivery) and a month from service: the latter ends first."""
     klage = (
         "Alternativ kann innerhalb eines Monats nach Zustellung Klage beim Verwaltungsgericht erhoben werden."
     )
@@ -534,7 +525,7 @@ def _served(arrived: date) -> Any:
 
 
 def test_a_formally_served_notice_keeps_the_letter_s_date_beside_a_late_arrival() -> None:
-    """Later audit, round 4, R4L-1 (round 3's D3-5 undone): an arrival 10 days after the letter's date may be the
+    """An earlier rule undone: an arrival 10 days after the letter's date may be the
     pickup after a deposit at the post office, or "today" saved weeks later, while the yellow envelope's date is
     earlier — the notice counted from the letter's date is kept, the earlier, and the to-do is "Please check"
     (2026-12-07, never 2026-12-16)."""
@@ -543,7 +534,7 @@ def test_a_formally_served_notice_keeps_the_letter_s_date_beside_a_late_arrival(
 
 
 def test_a_formally_served_notice_within_reach_of_the_letter_s_date_keeps_the_arrival() -> None:
-    """R4L-1: an arrival within the reach of the notice's date stands (2026-12-10, no second date)."""
+    """An arrival within the reach of the notice's date stands (2026-12-10, no second date)."""
     computed = _served(date(2026, 11, 10))
     assert computed.due_date == "2026-12-10" and not computed.conflict
 
@@ -556,7 +547,7 @@ LIST_ABOVE = (
 
 
 def test_list_lines_without_a_full_stop_above_the_notice_heading_never_switch_it_off() -> None:
-    """Security R3ADV-4: list lines above "Rechtsbehelfsbelehrung" ran into the notice's sentence and their words
+    """List lines above "Rechtsbehelfsbelehrung" ran into the notice's sentence and their words
     ("sollten wir", "späteren …bescheid") made it not live — a silent miss."""
     pages = [page(*HEAD[:-1], *LIST_ABOVE, "Rechtsbehelfsbelehrung", NOTICE)]
     assert fires(pages)
@@ -564,7 +555,7 @@ def test_list_lines_without_a_full_stop_above_the_notice_heading_never_switch_it
 
 
 def test_a_list_line_s_period_above_the_heading_never_moves_a_correct_reading_earlier() -> None:
-    """Security R3ADV-5: a list line's "innerhalb von zwei Wochen" above the heading is no period of the notice's
+    """A list line's "innerhalb von zwei Wochen" above the heading is no period of the notice's
     beside a correct reading (a false "Please check" two weeks early)."""
     lines = ("Bitte beachten Sie:", "- Wenn Sie umziehen, teilen Sie uns dies innerhalb von zwei Wochen mit")
     pages = [page(*HEAD[:-1], *lines, "Rechtsbehelfsbelehrung", NOTICE)]
@@ -582,12 +573,11 @@ def test_a_list_line_s_period_above_the_heading_never_moves_a_correct_reading_ea
     ],
 )
 def test_a_way_of_sending_ruled_out_before_the_verb_leaves_the_notice_live(line: str) -> None:
-    """Security R3ADV-6."""
     assert fires([page(*HEAD[:-1], "Rechtsbehelfsbelehrung", line)])
 
 
 def test_a_hearing_sent_by_post_that_rules_the_objection_out_stays_silent() -> None:
-    """R3ADV-6: the way the hearing was sent is no way of lodging an objection."""
+    """The way the hearing was sent is no way of lodging an objection."""
     line = (
         "Gegen diese per Post versandte Anhörung können Sie keinen Widerspruch einlegen, Sie können sich aber "
         "innerhalb von zwei Wochen äußern."
@@ -603,7 +593,7 @@ def test_a_hearing_sent_by_post_that_rules_the_objection_out_stays_silent() -> N
 
 
 def test_an_action_for_annulment_is_a_court_action() -> None:
-    """Security R3ADV-9: "Anfechtungsklage" is a Klage: the to-do says so (never "send your objection")."""
+    """An "Anfechtungsklage" is a Klage: the to-do says so (never "send your objection")."""
     notice = (
         "Gegen diesen Bescheid kann innerhalb eines Monats nach Zustellung Anfechtungsklage beim Verwaltungsgericht "
         "Beispielhausen erhoben werden."
@@ -620,7 +610,7 @@ def test_an_action_for_annulment_is_a_court_action() -> None:
     ],
 )
 def test_the_account_holder_s_right_against_a_direct_debit_is_no_notice(line: str) -> None:
-    """Security M1 (round 3): a cash office's direct-debit letter citing the tax decision, read completely, got a
+    """A cash office's direct-debit letter citing the tax decision, read completely, got a
     false "left out the deadline to object"."""
     lines = (
         LETTERHEAD,
@@ -635,7 +625,7 @@ def test_the_account_holder_s_right_against_a_direct_debit_is_no_notice(line: st
 
 
 # --------------------------------------------------------------------------------------------------
-# False alarms and silent misses (false positives R3FP-1..7, V-1)
+# False alarms and silent misses
 # --------------------------------------------------------------------------------------------------
 
 MUSTER = ("Herrn", "Max Mustermann", "Lindenweg 7", "12345 Musterstadt")
@@ -670,7 +660,7 @@ def _fee_reminder(*body: str) -> list[Any]:
 def test_a_reminder_restating_another_decision_s_notice_is_never_dated_from_the_reminder(
     body: tuple[str, ...],
 ) -> None:
-    """False positives R3FP-1: the decision of 03.09 allows 2026-10-07; counted from the reminder's 25.09 it was
+    """The decision of 03.09 allows 2026-10-07; counted from the reminder's 25.09 it was
     2026-10-28 — now the decision's date the letter gives elsewhere (also wrapped) counts: undated or earlier."""
     for reading in (blank(), blank(sender=SENDER, document_date="2026-09-25", items=[payment()])):
         got = check_due(_fee_reminder(*body), reading)
@@ -678,7 +668,7 @@ def test_a_reminder_restating_another_decision_s_notice_is_never_dated_from_the_
 
 
 def test_this_decision_keeps_its_date_beside_another_decision_it_names() -> None:
-    """R3FP-1: a notice on this letter ("Gegen diesen Bescheid") keeps the letter's date, whatever older decision
+    """A notice on this letter ("Gegen diesen Bescheid") keeps the letter's date, whatever older decision
     its body names."""
     body = "mit diesem Bescheid heben wir den Bewilligungsbescheid vom 12.03.2026 auf."
     pages = [page(*TOP, "Datum: 06.11.2026", BODY[0], BODY[1], body, BODY[3], NOTICE)]
@@ -696,7 +686,7 @@ def test_this_decision_keeps_its_date_beside_another_decision_it_names() -> None
     ],
 )
 def test_a_payment_instruction_naming_a_remedy_is_no_notice(line: str) -> None:
-    """R3FP-2: a sentence that only says when to pay is no notice: no false check, no two dates beside a correct
+    """A sentence that only says when to pay is no notice: no false check, no two dates beside a correct
     reading (10-26 became 10-05, low, flagged)."""
     assert not [notice for notice in remedy_notices([page(*HEAD[:-1], line)]) if notice.live]
     got, computed = objection_due([page(*HEAD, NOTIFIED, line)], ONE_MONTH)
@@ -711,12 +701,12 @@ def test_a_payment_instruction_naming_a_remedy_is_no_notice(line: str) -> None:
     ],
 )
 def test_a_notice_about_paying_still_fires(line: str) -> None:
-    """R3FP-2: notices whose words speak of payment but say how to object ("möglich") still count."""
+    """Notices whose words speak of payment but say how to object ("möglich") still count."""
     assert fires([page(*HEAD[:-1], line)])
 
 
 def test_a_public_body_s_decision_without_the_word_bescheid_still_fires() -> None:
-    """R3FP-3: a health insurer's refusal names "diese Entscheidung" and "nach Erhalt", no "Bescheid" — the check
+    """A health insurer's refusal names "diese Entscheidung" and "nach Erhalt", no "Bescheid" — the check
     fired on no reading that left the objection out."""
     lines = (
         "Beispiel BKK · Kassenweg 1 · 12345 Musterstadt",
@@ -734,7 +724,7 @@ def test_a_public_body_s_decision_without_the_word_bescheid_still_fires() -> Non
 
 
 def test_a_letter_headed_bescheid_alone_still_fires() -> None:
-    """R3FP-3: a bare heading "Bescheid" is an administrative act's."""
+    """A bare heading "Bescheid" is an administrative act's."""
     lines = (
         *TOP,
         "Datum: 06.11.2026",
@@ -754,19 +744,19 @@ def test_a_letter_headed_bescheid_alone_still_fires() -> None:
     ],
 )
 def test_a_notice_phrased_as_a_condition_or_an_instruction_still_fires(notice: str) -> None:
-    """R3FP-4: "Wenn Sie Widerspruch erheben, muss dieser …" refers back to the remedy; "Ihren Widerspruch senden
+    """The words "Wenn Sie Widerspruch erheben, muss dieser …" refer back to the remedy; "Ihren Widerspruch senden
     Sie …" says how to lodge it."""
     assert fires([page(*HEAD, notice)])
 
 
 def test_documents_for_the_person_s_own_objection_are_no_notice() -> None:
-    """R3FP-4: "senden Sie" alone is no way of lodging an objection."""
+    """A "senden Sie" alone is no way of lodging an objection."""
     line = "Zur Begründung Ihres Widerspruchs senden Sie uns bitte innerhalb von vier Wochen die ärztlichen Unterlagen."
     assert not fires([page(*HEAD, line)])
 
 
 def test_a_condition_on_a_lodged_remedy_with_this_letter_s_start_never_moves_a_correct_reading() -> None:
-    """R3FP-4 (security round 2, F3): its period is another's, even counted "nach Erhalt dieses Schreibens"."""
+    """Its period is another's, even counted "nach Erhalt dieses Schreibens"."""
     line = (
         "Wenn Sie Widerspruch einlegen, reichen Sie die Unterlagen bitte innerhalb von drei Wochen nach Erhalt "
         "dieses Schreibens nach."
@@ -783,7 +773,7 @@ def test_a_condition_on_a_lodged_remedy_with_this_letter_s_start_never_moves_a_c
     ],
 )
 def test_a_period_for_the_reasons_never_moves_a_correct_reading_earlier(line: str) -> None:
-    """R3FP-5: a period for giving reasons is no period for lodging (10-26 became 10-22, low, flagged)."""
+    """A period for giving reasons is no period for lodging (10-26 became 10-22, low, flagged)."""
     got, computed = objection_due([page(*HEAD, NOTIFIED, line)], ONE_MONTH)
     assert got == "2026-12-09" and not computed.conflict
 
@@ -796,12 +786,11 @@ def test_a_period_for_the_reasons_never_moves_a_correct_reading_earlier(line: st
     ],
 )
 def test_a_hypothetical_remedy_is_no_notice(line: str) -> None:
-    """R3FP-6."""
     assert not fires([page(*HEAD, line)])
 
 
 def test_an_empty_reading_of_a_letter_without_a_live_notice_says_read_it_yourself() -> None:
-    """R3FP-7: a pension information ruling the objection out got "Deadline to object" with a date."""
+    """A pension information ruling the objection out got "Deadline to object" with a date."""
     lines = (
         "Deutsche Rentenversicherung Musterland · 12300 Musterstadt",
         *MUSTER,
@@ -823,7 +812,7 @@ def test_an_empty_reading_of_a_letter_without_a_live_notice_says_read_it_yoursel
     ],
 )
 def test_after_an_objection_decision_a_court_action_names_the_to_do(reasons: str) -> None:
-    """False positives V-1: the reasons of a Widerspruchsbescheid speak of the objection's period; only a court
+    """The reasons of a Widerspruchsbescheid speak of the objection's period; only a court
     action is left, so it names the to-do on a tie ("send your objection" would stop nothing)."""
     klage = (
         "Gegen den Bescheid vom 02.06.2026 in Gestalt dieses Widerspruchsbescheides kann innerhalb eines Monats "
@@ -846,7 +835,7 @@ def test_after_an_objection_decision_a_court_action_names_the_to_do(reasons: str
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's own date, fuzzed: never a start later than the letter's date (dates review 3)
+# The letter's own date, fuzzed: never a start later than the letter's date
 # --------------------------------------------------------------------------------------------------
 
 
@@ -928,7 +917,7 @@ FUZZ_BODY = [
 
 
 def test_a_fuzzed_header_never_gives_a_start_later_than_the_letter_s_date() -> None:
-    """Dates review 3, D3-1: a letter dated ``d`` (any day of 2026–2027) in one of eleven header layouts, with a
+    """A letter dated ``d`` (any day of 2026–2027) in one of eleven header layouts, with a
     distracting date before or after its own (a due day, a print date, an appointment, an application's …),
     ``offset`` days from it: the check's start (:func:`letter_date`) is never later than ``d``. The notice's start
     (:func:`_own_start`) is later only by its documented rule — two dates the first page names as its own, more
@@ -951,7 +940,7 @@ def test_a_fuzzed_header_never_gives_a_start_later_than_the_letter_s_date() -> N
 
 
 def test_the_notice_s_two_dates_say_which_is_the_reading_s() -> None:
-    """UX review 3, R3UX-5: beside the letter's own notice the other date is Claude's reading's — never "the
+    """Beside the letter's own notice the other date is Claude's reading's — never "the
     letter also gives" or "the date as read from the letter"."""
     got, computed = objection_due([page(*HEAD, NOTIFIED, WHERE)], THREE_MONTHS)
     assert got == "2026-12-09" and computed.notice and computed.receipt is not None

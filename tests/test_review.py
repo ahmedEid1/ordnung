@@ -294,7 +294,7 @@ async def test_run_review_ignores_malformed_output(store: Store, ids: dict[str, 
     ],
 )
 def test_weekday_names_next_to_a_date_are_corrected(text: str, expected: str) -> None:
-    """Demo finding: recorded Ask answers said "Thu 2 Oct 2026" for a Friday. The model adds weekday
+    """In the demo, recorded Ask answers said "Thu 2 Oct 2026" for a Friday. The model adds weekday
     names itself; code knows the calendar."""
     assert correct_weekdays(text, date(2026, 9, 28)) == expected
 

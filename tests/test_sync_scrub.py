@@ -1,5 +1,4 @@
-"""What travels and what stays; what "the same data" means (design §6, §7.4; review findings 5, 15, 16,
-19, 25; F34)."""
+"""What travels and what stays; what "the same data" means (SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -203,11 +202,11 @@ def test_scrub_removes_what_stays_here(store: Store) -> None:
         assert settings.inbox_dir is None and not settings.inbox_auto_read and settings.concurrency == 2
         assert settings.model == "opus"  # travels
         kinds = [row[0] for row in copy.execute("SELECT kind FROM activity")]
-        assert kinds == ["document.added"]  # finding 25: backups, phone and folder rows stay here
+        assert kinds == ["document.added"]  # backups, phone and folder rows stay here
         assert b"/home/anna/Scans" not in copy.serialize() and b"192.168.1.20" not in copy.serialize()
 
 
-def test_the_demo_flag_is_not_reset(store: Store) -> None:  # finding 19
+def test_the_demo_flag_is_not_reset(store: Store) -> None:
     store.save_settings(AppSettings(demo=True))
     with _copy(store) as copy:
         scrub(copy)
@@ -217,7 +216,7 @@ def test_the_demo_flag_is_not_reset(store: Store) -> None:  # finding 19
         assert settings.demo
 
 
-def test_running_jobs_travel_as_queued(store: Store) -> None:  # F34
+def test_running_jobs_travel_as_queued(store: Store) -> None:
     doc = store.add_document(
         sha256="a" * 64, filename="x.pdf", mime="application/pdf", file_path="files/aa/x.pdf"
     )
@@ -262,10 +261,10 @@ def test_the_digest_ignores_noise_and_sees_real_edits(store: Store) -> None:
     store.set_meta("desktop_notified_on", "2026-10-07")
     store.set_meta("inbox_seen", '["a"]')
     store.set_meta(SYNC_MARK_KEY, "abc:1")
-    store.set_meta("own_pdfs", json.dumps(["f" * 64]))  # finding 5b: merged keys aren't digested
+    store.set_meta("own_pdfs", json.dumps(["f" * 64]))  # merged keys aren't digested
     with person_write():
         store.set_meta("profile", store.get_meta("profile") or "{}")  # a write of the same value
-    store.log_activity("backup.created", "Made a backup")  # finding 5c
+    store.log_activity("backup.created", "Made a backup")
     store.log_activity("backup.restored", "Restored from a backup", data={"made_at": "2026-09-27T08:00:00Z"})
     conn = store._conn()
     conn.execute("VACUUM")
@@ -282,7 +281,7 @@ def test_the_digest_covers_files_and_the_calendar(store: Store) -> None:
     assert _digest(store, [("files/aa/x.pdf", "1" * 64)], handover) != base
 
 
-def test_the_counter_moves_only_for_the_persons_writes(store: Store) -> None:  # finding 5a
+def test_the_counter_moves_only_for_the_persons_writes(store: Store) -> None:
     store.add_note("background")
     assert store.get_meta(PERSON_META_KEY) is None
     with person_write():
@@ -343,7 +342,7 @@ def test_merge_keeps_this_computers_own_state(tmp_path: Path) -> None:
         here.close()
 
 
-def test_calendar_hand_over_only_for_the_same_calendar_and_mode(tmp_path: Path) -> None:  # finding 15
+def test_calendar_hand_over_only_for_the_same_calendar_and_mode(tmp_path: Path) -> None:
     state = CalendarSyncState(
         url="https://cal.example/", username="anna", events={"a.ics": "1", "b.ics": "2"}
     )
@@ -358,7 +357,7 @@ def test_calendar_hand_over_only_for_the_same_calendar_and_mode(tmp_path: Path) 
     assert merged_events({"a": "1", "b": "2"}, {"a": "1", "b": "9", "c": "3"}) == {"a": "1", "b": "", "c": ""}
 
 
-def test_merge_gives_up_when_the_person_changed_something(tmp_path: Path) -> None:  # blocker 1
+def test_merge_gives_up_when_the_person_changed_something(tmp_path: Path) -> None:
     from ordnung.sync.scrub import PersonChanged
 
     them = Store.open(Paths(tmp_path / "them").ensure())
@@ -402,7 +401,7 @@ def test_scrub_module_imports_nothing_that_imports_sync() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# the person's own choices beside the letters (D3): For taxes and the household
+# the person's own choices beside the letters: For taxes and the household
 # --------------------------------------------------------------------------------------------------
 
 
@@ -544,7 +543,7 @@ def test_an_updated_0_3_computer_s_push_never_turns_the_switch_back_on(tmp_path:
 
 
 def test_a_meta_row_this_version_does_not_know_travels_untouched(tmp_path: Path) -> None:
-    """What a computer still on 0.2.0 relies on for the D3 rows: a row it has no name for is neither
+    """What a computer still on 0.2.0 relies on for the tax-choice and household rows: a row it has no name for is neither
     scrubbed nor merged, so it travels as it is, and the schema version stays the same (no migration)."""
     them = Store.open(Paths(tmp_path / "them").ensure())
     here = Store.open(Paths(tmp_path / "here").ensure())
