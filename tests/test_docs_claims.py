@@ -125,18 +125,19 @@ def test_rules_branch_coverage_is_a_ci_gate() -> None:
 
 
 def test_mypy_is_strict_on_the_rules_engine() -> None:
-    """README's quality table says the rules engine has "`mypy` strict on it, as on the whole package and the
-    benchmark code", and its CI gates row says so, with the scripts: pyproject.toml gives the whole package, the
-    rules engine with it, ``evals/`` and ``scripts/`` every check of ``mypy --strict``, no module is let off, and
-    CI's type check runs mypy with pyproject.toml's list (no paths of its own)."""
+    """README says the rules engine has "`mypy` strict on it, as on the whole package and the benchmark code", and
+    the CI gates row of docs/architecture.md's testing strategy says so, with the scripts: pyproject.toml gives the
+    whole package, the rules engine with it, ``evals/`` and ``scripts/`` every check of ``mypy --strict``, no module
+    is let off, and CI's type check runs mypy with pyproject.toml's list (no paths of its own)."""
     mypy = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]
     assert mypy["strict"] is True and mypy["files"] == ["src/ordnung", "evals", "scripts"]
     assert "overrides" not in mypy
     readme = _flat(_readme())
     assert "`mypy` strict on it, as on the whole package and the benchmark code" in readme
+    testing = _section((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"), "## Testing strategy")
     assert (
         "| CI gates | ruff, mypy (strict, on the package, the benchmark code and the scripts), ESLint,"
-        in readme
+        in _flat(testing)
     )
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     assert re.search(r"run: \.venv/bin/mypy\n", ci)
@@ -191,6 +192,18 @@ def test_demo_check_runs_in_ci() -> None:
 
 def _readme() -> str:
     return (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def _guide() -> str:
+    """docs/guide.md, which the README links: the tour, installing and updating, the environment variables and
+    every limitation."""
+    return (ROOT / "docs" / "guide.md").read_text(encoding="utf-8")
+
+
+def _section(text: str, heading: str) -> str:
+    """The part of a Markdown ``text`` from the line ``heading`` (``## Limitations``, ``### Updating``) to the next
+    ``## `` heading."""
+    return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
 def _pct(value: float) -> str:
@@ -425,11 +438,10 @@ PUBLISHED_SPLITS = ("test", "holdout", "holdout2", "holdout3")
 
 
 def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> None:
-    """M3: README's Limitations, deadline-rules.md and the history page cite the replay without the sender's Land
+    """M3: the guide's Limitations, deadline-rules.md and the history page cite the replay without the sender's Land
     (scripts/eval_without_land.py, as the app runs until the person sets a sender's Land): its accuracy per split, no
     late date, extra misses 1–3 days early — and the numbers with the Land it sets them against are the published
     replays'. The evaluation report renders the same file (tests/test_present.py)."""
-    readme = _readme()
     results = _results(WITHOUT_LAND)
     assert results["schema"] == "ordnung-eval-without-land/2"
     assert results["meta"]["backend"] == "replay" and results["meta"]["condition"] == "ordnung"
@@ -460,7 +472,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         assert (
             splits[name]["with_land"]["due_date_accuracy"] == run["metrics"]["ordnung"]["due_date_accuracy"]
         )
-    limitation = _flat(readme).split("## Limitations", 1)[1]
+    limitation = _limitations()
     # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider (F-S11): a Baden-Württemberg
     # authority's one-month objection period, letter dated Fri 21 Nov 2025, ends 5 days early without the Land
     objection = DateSpec(
@@ -485,7 +497,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
         f"a date can come out a few days early ({days[0]}–{days[-1]} on the benchmark's letters, up to {christmas} "
         "around Christmas), never late"
     ) in limitation
-    assert "[evaluation report](docs/evals.md#6-results) gives its numbers without it" in limitation
+    assert "[evaluation report](evals.md#6-results) gives its numbers without it" in limitation
     # deadline-rules.md section 5 and the history page, which renders the file itself
     rules = _flat((ROOT / "docs" / "deadline-rules.md").read_text(encoding="utf-8"))
     assert (
@@ -606,10 +618,10 @@ def test_adr_0019_states_the_measured_numbers_and_their_bound() -> None:
     ) in measured
 
 
-def test_the_readme_says_when_ordnung_asks_no_question_about_a_sender_s_state() -> None:
-    """README Limitations: no question for a postcode listed in two states or not at all, for an address that
+def test_the_guide_says_when_ordnung_asks_no_question_about_a_sender_s_state() -> None:
+    """The guide's Limitations: no question for a postcode listed in two states or not at all, for an address that
     names another country, or against the state the person set for their own town — the lookup's own rules."""
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert (
         "There is no question when the postcode is listed in two states or not at all (many P.O. box and "
         "large-customer postcodes), when the address names another country, or when it contradicts the state "
@@ -900,10 +912,10 @@ def test_the_app_s_scam_rule_ignores_a_checksum_note_but_not_hidden_text() -> No
     assert not report.app_scam_sign(None)
 
 
-def test_readme_limitations_say_the_interface_is_english() -> None:
-    """README Limitations: the app's own words are English (the page is ``lang="en"``, receipts are English on
+def test_the_guide_s_limitations_say_the_interface_is_english() -> None:
+    """The guide's Limitations: the app's own words are English (the page is ``lang="en"``, receipts are English on
     purpose and the web app has no translation library); what Claude writes follows the chosen language."""
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert (
         "The app's own text is in English only: buttons, receipts, the Ideas Ordnung's own rules make, and "
         "notifications. Ordnung reads German letters, and what Claude writes for you (explanations, translations, "
@@ -928,11 +940,11 @@ def test_readme_limitations_say_the_interface_is_english() -> None:
     ) in hint
 
 
-def test_readme_limitations_say_google_and_outlook_get_a_snapshot() -> None:
-    """README Limitations: calendar sync logs in to a CalDAV server with a user name and an app password (HTTP
+def test_the_guide_s_limitations_say_google_and_outlook_get_a_snapshot() -> None:
+    """The guide's Limitations: calendar sync logs in to a CalDAV server with a user name and an app password (HTTP
     Basic), which Google Calendar and Outlook.com don't take; they get the calendar file, whose new dates the
     "new dates since your last calendar update" Idea announces."""
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert (
         "Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app "
         "password (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get "
@@ -946,13 +958,14 @@ def test_readme_limitations_say_google_and_outlook_get_a_snapshot() -> None:
 
 
 def _limitations() -> str:
-    return _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    """The guide's Limitations, every one of them, flattened (README keeps a few, and links these)."""
+    return _flat(_section(_guide(), "## Limitations"))
 
 
 def test_a_date_you_add_without_a_letter_counts_nationwide_holidays_only(store: Store) -> None:
-    """README Limitations: a date you add yourself, without a letter, counts its working days with the nationwide
-    public holidays only — not your Land's, even once your profile names it (``ingest.plan.own_context``) — and a
-    repeating date is one entry at its next day."""
+    """The guide's Limitations: a date you add yourself, without a letter, counts its working days with the
+    nationwide public holidays only — not your Land's, even once your profile names it (``ingest.plan.own_context``)
+    — and a repeating date is one entry at its next day; its Install says you can add such dates."""
     store.save_profile(Profile(name="Sam Rivera", language="en", region="BY"))
     item = store.add_item(kind="task", title="VAT return", origin="manual", due_date="2026-10-05")
     rules = own_context(store, item, date(2026, 9, 25))
@@ -964,12 +977,12 @@ def test_a_date_you_add_without_a_letter_counts_nationwide_holidays_only(store: 
     assert "A repeating date is one entry at its next day" in _limitations()
     assert (
         "add your own dates (Timeline → Add a date, or on a letter's page), also ones that repeat"
-        in _flat(_readme())
+        in _flat(_section(_guide(), "## Install and run"))
     )
 
 
-#: README Limitations: whose a letter for someone of your household is (ADR 0023, ADR 0025).
-README_WHOSE_LIMIT = (
+#: The guide's Limitations: whose a letter for someone of your household is (ADR 0023, ADR 0025).
+GUIDE_WHOSE_LIMIT = (
     "One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a "
     "child) says so, you can file it for them once they are in your household, and a reply to it can go out in "
     "their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today "
@@ -978,15 +991,15 @@ README_WHOSE_LIMIT = (
 )
 
 
-def test_readme_says_whose_a_letter_for_someone_else_is() -> None:
-    """README Limitations: a letter addressed to someone else says so, can be filed for them once they are in your
+def test_the_guide_says_whose_a_letter_for_someone_else_is() -> None:
+    """The guide's Limitations: a letter addressed to someone else says so, can be filed for them once they are in your
     household (D3) and can be answered in their name; once filed, My numbers, Ask, the rule Ideas, Today and the
     Timeline say whose it is (E2), but there is one person's Ordnung: its dates stay the person's to act on, the
     weekly review's letters carry no filing, and My numbers takes a number as someone's by the filing, never by
     the addressee."""
     from ordnung.secretary import review
 
-    assert README_WHOSE_LIMIT in _limitations()
+    assert GUIDE_WHOSE_LIMIT in _limitations()
     assert "recipient_name" not in (ROOT / "src/ordnung/numbers.py").read_text(encoding="utf-8")
     assert "household" not in inspect.getsource(review._document_row)
     assert "named(ledger, idea)" in inspect.getsource(triggers.run_triggers)
@@ -1013,8 +1026,8 @@ def _churn() -> dict[str, int]:
     }
 
 
-def test_readme_limitations_say_how_much_one_save_can_upload() -> None:
-    """README Limitations: one save uploads every 1 MiB database slice it changed — measured, one more reading
+def test_the_guide_s_limitations_say_how_much_one_save_can_upload() -> None:
+    """The guide's Limitations: one save uploads every 1 MiB database slice it changed — measured, one more reading
     changed 29 of a 1,500-letter library's 80 slices (``ordnung.sync.push``); replaced slices go after a day,
     and the provider's version history and trash may keep them."""
     churn = _churn()
@@ -1026,7 +1039,7 @@ def test_readme_limitations_say_how_much_one_save_can_upload() -> None:
     collect = (ROOT / "src" / "ordnung" / "sync" / "engine.py").read_text(encoding="utf-8")
     assert "(SUPERSEDED_SLICE_GRACE_S, SUPERSEDED_SLICE_GRACE_S)" in collect
     assert "if not all(past(head, ref) for head in live)" in collect
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert (
         f"Hand-off sync saves the database in {slice_mib} MiB slices and uploads every slice a save changed, which "
         f"adds up on a large library: measured on a generated library of {churn['letters']:,} letters and "
@@ -1061,35 +1074,44 @@ def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
     assert reading["document_date"] == "2026-09-15"
 
 
-async def test_readme_names_exactly_the_rules_tools() -> None:
-    """README: the rules engine as MCP tools — the four it names are the rules-only server's."""
-    paragraph = _readme().split("**The deadline engine in Claude Desktop or Claude Code.**", 1)[1]
+async def test_the_guide_names_exactly_the_rules_tools() -> None:
+    """The guide: the rules engine as MCP tools — the four it names are the rules-only server's."""
+    paragraph = _guide().split("**The deadline engine in Claude Desktop or Claude Code.**", 1)[1]
     paragraph = paragraph.split("```", 1)[0]
     named = set(re.findall(r"`([a-z_]+)`", paragraph))
     listed = {tool.name for tool in await build_rules_server().list_tools()}
     assert named == listed
 
 
-@pytest.mark.parametrize("document", ["README.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"])
+@pytest.mark.parametrize(
+    "document", ["README.md", "docs/guide.md", "docs/decisions/0001-claude-cli-as-the-model-runtime.md"]
+)
 def test_the_claude_code_version_needed_is_the_one_ordnung_checks(document: str) -> None:
-    """README's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the app accept."""
+    """README's and the guide's Install and ADR 0001 name the oldest Claude Code that ``ordnung doctor`` and the
+    app accept."""
     assert f"Claude Code {version_text(MIN_CLAUDE_VERSION)} or newer" in _flat(
         (ROOT / document).read_text(encoding="utf-8")
     )
 
 
-def test_readme_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
-    """README's Install: Anthropic's installer per system (no Node.js), and the plans that include Claude Code."""
-    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+def test_the_guide_installs_claude_code_as_anthropic_s_setup_page_does() -> None:
+    """The guide's Install: Anthropic's installer per system (no Node.js), the one ``ordnung doctor`` gives there,
+    and the plans that include Claude Code."""
+    from ordnung.doctor import native_install
+
+    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
     assert "curl -fsSL https://claude.ai/install.sh | bash" in install
     assert "irm https://claude.ai/install.ps1 | iex" in install
+    assert native_install("darwin") == native_install("linux")
+    assert f"`{native_install('linux')}` on macOS and Linux" in install
+    assert f"`{native_install('win32')}` in Windows PowerShell" in install
     assert "Node.js" not in install and "`claude update`" in install
     assert "the free Claude plan doesn't include Claude Code" in install
 
 
-def test_readme_lists_every_template_letter() -> None:
-    """README's *template letters* list has one entry per template the composer offers."""
-    listed = _readme().split("*template letters* — ", 1)[1].split(" · ", 1)[0]
+def test_the_guide_lists_every_template_letter() -> None:
+    """The guide's *template letters* list has one entry per template the composer offers."""
+    listed = _tour().split("**Also:**", 1)[1].split("*template letters* — ", 1)[1].split(" · ", 1)[0]
     entries = [entry.strip() for entry in listed.replace("\n", " ").split(",")]
     assert len(entries) == len(TEMPLATES) == 8
 
@@ -1103,7 +1125,7 @@ def test_readme_demo_has_25_letters_three_in_new_mail() -> None:
     assert "three unopened letters" in _readme() and sum(1 for d in documents if d.get("tray")) == 3
 
 
-#: README's two pictures that come from the real app, not the demo: the demo never opens itself to a network
+#: The tour's two pictures that come from the real app, not the demo: the demo never opens itself to a network
 #: and never syncs (``web/e2e/readme-pictures.spec.ts``, run by ``make capture``).
 _REAL_APP_PICTURES = ("pair-phone.png", "your-computers.png")
 
@@ -1120,21 +1142,22 @@ def _images(markdown: str) -> list[tuple[str, str | None]]:
 
 
 def _tour() -> str:
-    return _readme().split("\n## A tour\n", 1)[1].split("\n## ", 1)[0]
+    """The guide's tour: its pictures with their captions and footnotes, and the *Also* list."""
+    return _section(_guide(), "## A tour")
 
 
-def test_readme_tour_shows_phone_access_and_hand_off_sync() -> None:
-    """README's tour pictures phone access and hand-off sync, in a row of their own with alt text that names
+def test_the_guide_s_tour_shows_phone_access_and_hand_off_sync() -> None:
+    """The guide's tour pictures phone access and hand-off sync, in a row of their own with alt text that names
     neither the pairing code nor the two words (both change on every capture); a footnote says the pictures
     come from the real app and which spec makes them. The "Also" list no longer repeats the two."""
     tour = _tour()
     images = dict(_images(tour))
     for name in _REAL_APP_PICTURES:
-        alt = images.get(f"docs/assets/{name}")
+        alt = images.get(f"assets/{name}")
         assert alt and alt.strip(), name
-    assert "two check words" in images["docs/assets/pair-phone.png"]
+    assert "two check words" in images["assets/pair-phone.png"]
     footnote = tour.split("\n‡ ", 1)[1].split("\n\n", 1)[0]
-    assert "[`web/e2e/readme-pictures.spec.ts`](web/e2e/readme-pictures.spec.ts)" in footnote
+    assert "[`web/e2e/readme-pictures.spec.ts`](../web/e2e/readme-pictures.spec.ts)" in footnote
     assert "`make capture`" in footnote and "127.0.0.1" in footnote
     assert "Everything else, apart from the two pictures marked ‡, is `ordnung demo`." in _flat(tour)
     assert tour.count("‡") == 4  # two cells, the sentence above and the footnote
@@ -1147,7 +1170,7 @@ def test_readme_tour_shows_phone_access_and_hand_off_sync() -> None:
     ) in spec
 
 
-def test_readme_tour_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
+def test_the_tour_s_pictures_from_the_real_app_are_1440_by_900_pngs() -> None:
     """The two pictures from the real app are PNGs of 1440×900 like the rest of the tour, and small (each about
     120 KB when they were first made)."""
     for name in _REAL_APP_PICTURES:
@@ -1176,30 +1199,39 @@ def test_readme_hero_shows_the_gif_as_made_and_the_video_s_length() -> None:
 
 def test_readme_pictures_exist_and_have_alt_text() -> None:
     """Every picture README shows from ``docs/assets`` is a file in the repo and has alt text (the logo's is empty:
-    it is decorative). The two from the real app are checked by the test above."""
+    it is decorative)."""
     images = [(src, alt) for src, alt in _images(_readme()) if src.startswith("docs/assets/")]
-    assert len(images) >= 15
+    assert len(images) >= 9
     for src, alt in images:
         assert alt is not None, src
         assert alt.strip() or src == "docs/assets/logo.svg", src
-        if Path(src).name not in _REAL_APP_PICTURES:
-            assert (ROOT / src).is_file(), src
+        assert (ROOT / src).is_file(), src
+
+
+def test_the_guide_s_tour_pictures_exist_and_have_alt_text() -> None:
+    """Every picture of the guide's tour is a file in ``docs/assets`` and has alt text."""
+    images = _images(_tour())
+    assert len(images) >= 18
+    for src, alt in images:
+        assert src.startswith("assets/") and (ROOT / "docs" / src).is_file(), src
+        assert alt and alt.strip(), src
 
 
 def test_readme_s_axe_claim_names_its_axe_and_what_is_open() -> None:
-    """README's *Light and dark*: "no serious or critical axe violations" holds for the axe-core the e2e suite runs
-    (its version in the lockfile) and its WCAG 2.2 AA rules. From axe 4.14 these include the Label in Name check
-    (WCAG 2.5.3), which 0.3.0's README still listed as open: the Inbox link, the profile row and the sender chips
-    are now named by what they show (issue #37), so nothing is listed as open."""
+    """README's and the guide's *Light and dark*: "no serious or critical axe violations" holds for the axe-core
+    the e2e suite runs (its version in the lockfile) and its WCAG 2.2 AA rules. From axe 4.14 these include the
+    Label in Name check (WCAG 2.5.3), which 0.3.0's README still listed as open: the Inbox link, the profile row
+    and the sender chips are now named by what they show (issue #37), so nothing is listed as open."""
     lock = json.loads((ROOT / "web" / "package-lock.json").read_text(encoding="utf-8"))
     axe = lock["packages"]["node_modules/axe-core"]["version"]
-    (cell,) = [line for line in _readme().splitlines() if "<b>Light and dark.</b>" in line]
     version = ".".join(axe.split(".")[:2])
-    assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
+    for document in (_readme(), _guide()):
+        (cell,) = [line for line in document.splitlines() if "<b>Light and dark.</b>" in line]
+        assert f"no serious or critical violations of axe {version}'s WCAG 2.2 AA rules" in cell
+        assert "Still open" not in cell
     assert tuple(int(part) for part in axe.split(".")[:2]) >= (4, 14), (
         "the Label in Name check runs from axe 4.14 on"
     )
-    assert "Still open" not in cell
 
 
 def _claimed(pattern: str) -> int:
@@ -1546,7 +1578,6 @@ _PHONE_NUMBERS: dict[str, Callable[[], object]] = {
 #: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_PHONE_NUMBERS`, and the sentence
 #: must be in the document (line breaks and indents read as one space).
 _PHONE_CLAIMS: list[tuple[str, str]] = [
-    ("README.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
     ("docs/privacy.md", "*My numbers* and your profile's IBAN show only their last {shown} characters"),
     ("docs/privacy.md", "The code has {code_length} characters, works once, for {code_minutes} minutes"),
     ("docs/privacy.md", "One device gets {tries_per_device} wrong tries for a code"),
@@ -1661,13 +1692,10 @@ def _example_path(template: str) -> str:
 def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
     """Scope review: README and privacy.md said the profile's IBAN shows only its last characters on a
     phone, while a deposit-return letter written there carries it in full (code writes it into the
-    letter). A letter has to print it, so the docs say so, and ADR 0017 lists it as a known limit with why
+    letter). A letter has to print it, so privacy.md says so, and ADR 0017 lists it as a known limit with why
     it isn't masked there."""
     template = (ROOT / "src" / "ordnung" / "drafts" / "template_letters.py").read_text(encoding="utf-8")
     assert "auf mein Konto mit der IBAN {iban}." in template  # the letter carries it in full
-    assert "a letter shows what is printed on it, also one you write there that carries your IBAN" in (
-        _flat(_readme())
-    )
     privacy = _doc("docs/privacy.md")
     assert "also a letter you write: one that asks for money back on your account" in privacy
     assert "carries your IBAN in full, on the phone too" in privacy
@@ -1677,10 +1705,10 @@ def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
 
 
 def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
-    """README Limitations: a paired phone "can't change settings, back up or delete" — no settings or
+    """The guide's Limitations: a paired phone "can't change settings, back up or delete" — no settings or
     backup operation, ``DELETE /api/data`` or any other ``DELETE`` (except taking back "answered",
     which deletes no data) is a phone's (design § 16.5)."""
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert "it can't change settings, back up or delete" in limitation
     assert "It can't delete anything" in _doc("docs/privacy.md")
     operations = phone_scope.PHONE_ROUTES | phone_scope.COMPUTER_ONLY
@@ -1814,7 +1842,7 @@ _SYNC_NUMBERS: dict[str, Callable[[], object]] = {
 #: ``(document, sentence)``: each ``{name}`` is filled in from :data:`_SYNC_NUMBERS`, and the sentence must be
 #: in the document (line breaks and indents read as one space).
 _SYNC_CLAIMS: list[tuple[str, str]] = [
-    ("README.md", "take the suggested {words_word}-word passphrase"),
+    ("docs/guide.md", "take the suggested {words_word}-word passphrase"),
     (
         "CHANGELOG.md",
         "now wait up to {shutdown_s} seconds for a running sync operation before closing the database",
@@ -2002,7 +2030,8 @@ def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:
     """The design's first draft saved "about ten seconds after a change"; the person's change is saved after
     ``PUSH_PERSON_QUIET_S`` (review finding 33), so no document may promise ten."""
     assert sync.PUSH_PERSON_QUIET_S < sync.PUSH_QUIET_S
-    for document in ("README.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md", _ADR_SYNC.name):
+    documents = ("README.md", "docs/guide.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md")
+    for document in (*documents, _ADR_SYNC.name):
         assert "ten seconds after a change" not in _sync_doc(document), document
 
 
@@ -2127,7 +2156,7 @@ def test_the_backup_docs_say_when_ordnung_reminds_you() -> None:
     for name, text in documents.items():
         assert f"more than {days} days old" in text, name
         assert "Time Machine" in text and "File History" in text, name
-    limitations = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitations = _limitations()
     assert "Time Machine" in limitations and "BitLocker" in limitations
 
 
@@ -2140,12 +2169,12 @@ def test_the_backup_reminder_s_policy_is_the_one_the_docs_describe() -> None:
     assert set(reminder.BACKUP_KINDS) == {"backup.created", "backup.restored"}
 
 
-def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
+def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_guide_says(
     data_dir: Path, store: Store
 ) -> None:
-    """README: ``ordnung doctor`` checks your last backup and disk encryption — after the disk's row, and only
+    """The guide: ``ordnung doctor`` checks your last backup and disk encryption — after the disk's row, and only
     ever as warnings (CI's doctor gate fails only on ``fail``). On Windows Ordnung can't tell: its info row says
-    where to look (BitLocker or Device encryption), as README's Limitations and docs/privacy.md say."""
+    where to look (BitLocker or Device encryption), as the guide's Limitations and docs/privacy.md say."""
     from ordnung import doctor
 
     seed_ledger(store)  # letters, and no backup yet
@@ -2161,7 +2190,7 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
     assert windows is not None
     assert (windows.status, windows.detail, windows.fix) == ("info", doctor.WINDOWS_ENCRYPTION, None)
     assert "BitLocker or Device encryption" in windows.detail
-    (line,) = [line for line in _readme().splitlines() if line.startswith("ordnung doctor ")]
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
     assert "your last backup" in line and "disk encryption" in line
     assert (
         "On Windows it can't check: its row there says where to see that BitLocker or Device encryption is on."
@@ -2181,9 +2210,9 @@ def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
         assert "two physical computers" in text and "still to be done" in text, document
         assert "simulated sync tool" in text, document
     assert "roughly how many letters and pages are added" in _flat(sync.__doc__ or "")
-    readme = _flat(_readme())
-    assert "simulated sync tool" in readme and "two physical computers" in readme
-    assert "two data folders on one machine" in readme
+    guide = _flat(_guide())
+    assert "simulated sync tool" in guide and "two physical computers" in guide
+    assert "two data folders on one machine" in guide
 
 
 def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:
@@ -2193,7 +2222,7 @@ def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:
     assert "set up a new sync folder with a new passphrase" in _sync_doc("docs/privacy.md")
     assert "does not lock it out" in _sync_doc(_ADR_SYNC.name)
     assert "it doesn't lock that computer out" in _sync_doc("docs/SPEC.md")
-    assert "Forgetting a lost computer doesn't lock it out" in _flat(_readme())
+    assert "Forgetting a lost computer doesn't lock it out" in _limitations()
 
 
 def test_kept_copies_are_where_the_docs_and_the_backup_policy_say() -> None:
@@ -2213,10 +2242,10 @@ def test_kept_copies_are_where_the_docs_and_the_backup_policy_say() -> None:
     assert sync.KEPT_RE.match("ordnung-kept-2026-10-07-0912-2.ordnung-backup")
 
 
-def test_readme_limitations_say_how_ordnung_moves_between_computers() -> None:
-    """README Limitations: the "no sync between computers" half became how hand-off sync works and what it
+def test_the_guide_s_limitations_say_how_ordnung_moves_between_computers() -> None:
+    """The guide's Limitations: the "no sync between computers" half became how hand-off sync works and what it
     doesn't do; the phone's half stays (pinned by the phone's own test)."""
-    limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
+    limitation = _limitations()
     assert "no sync between computers" not in limitation
     assert (
         "Ordnung moves between your computers one at a time through a folder you sync yourself; it doesn't "
@@ -2495,20 +2524,31 @@ def _adr(path: Path) -> str:
     return _flat(path.read_text(encoding="utf-8"))
 
 
+def _decisions_index() -> str:
+    """docs/decisions/README.md: every decision, with its title and status, in the order of their numbers."""
+    return (ROOT / "docs" / "decisions" / "README.md").read_text(encoding="utf-8")
+
+
+def _index_row(adr: Path) -> int:
+    """Where the decisions' index lists ``adr``: the row that starts with its number and link (another row may
+    link it too, as the one it amends)."""
+    return _decisions_index().index(f"\n| [{adr.name[:4]}]({adr.name}) |")
+
+
 def _spec() -> str:
     return _flat((ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8"))
 
 
 def _moving_limitation() -> str:
-    """README's Limitations bullet about the moving checklist."""
+    """The guide's Limitations bullet about the moving checklist."""
     (bullet,) = [part for part in _limitations().split(" - ") if "moving checklist" in part]
     return bullet
 
 
-def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
-    """README "Also:" names the three features, and Install says what search finds without Claude: a PDF's own
-    text or the text a scanner added (search only), a photo by its name and, with Tesseract installed, by the
-    words Ordnung reads in it (ADR 0024); a waiting letter by its PDF's words."""
+def test_the_guide_names_the_tax_year_the_export_and_the_moving_checklist() -> None:
+    """The guide's "Also:" names the three features, and its Install says what search finds without Claude: a
+    PDF's own text or the text a scanner added (search only), a photo by its name and, with Tesseract installed, by
+    the words Ordnung reads in it (ADR 0024); a waiting letter by its PDF's words."""
     also = _flat(_tour().split("**Also:**", 1)[1])
     for words in (
         "*tax year* — a year's letters for your tax return, by the date on them",
@@ -2517,7 +2557,7 @@ def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None
         "Bürgeramt's two weeks",
     ):
         assert words in also, words
-    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
     assert (
         "Without Claude you can still store letters privately, find them by name or by the text in the file (a "
         "PDF's own text, or the text a scanner added to a scan — kept for search only, never checked or sent to "
@@ -2527,8 +2567,8 @@ def test_readme_names_the_tax_year_the_export_and_the_moving_checklist() -> None
     assert "meanwhile search finds it by the words in its PDF" in install
 
 
-def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
-    """README Limitations: the tax year files a letter by its printed date (else its arrival,
+def test_the_guide_s_limitations_say_what_the_tax_year_export_scans_and_moving_checklist_can_t_do() -> None:
+    """The guide's Limitations: the tax year files a letter by its printed date (else its arrival,
     ``triggers.letter_day``), so its January–May group is a heuristic; Claude marks a letter for taxes and the
     person's *For taxes* choice changes that (``DocumentPatch.tax_choice``, never Claude's own ``tax_relevant``),
     and Ask and the weekly review follow it (ADR 0025); the ZIP isn't encrypted; a scanner's text is unchecked; the moving checklist knows
@@ -2544,7 +2584,7 @@ def test_readme_limitations_say_what_the_tax_year_export_scans_and_moving_checkl
         "for",
         "which is why a tax year also lists the letters for taxes dated January–May of the next year, for you to "
         "check — a heuristic",
-        README_TAX_LIMIT,
+        GUIDE_TAX_LIMIT,
         "The ZIP *Export letters* saves isn't encrypted",
         'The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn\'t checked',
     ):
@@ -2615,7 +2655,8 @@ def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
         r"scanner's text|scanner text|text a scanner|text your scanner|scan-text\.json|OCR"
         r"|picture text|picture-text\.json|Tesseract|text Ordnung read|words Ordnung read"
     )
-    for name in ("README.md", "CHANGELOG.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md"):
+    documents = ("README.md", "docs/guide.md", "CHANGELOG.md", "docs/privacy.md", "docs/SPEC.md")
+    for name in (*documents, "docs/architecture.md"):
         for chunk in re.split(r"\n\s*\n|\n\s*[-*] |\n\|", (ROOT / name).read_text(encoding="utf-8")):
             if scanner_words.search(chunk):
                 assert "computer only" not in _flat(chunk), (name, _flat(chunk)[:160])
@@ -2625,7 +2666,7 @@ def test_a_scanner_s_text_is_said_to_travel_with_the_page_images() -> None:
 
 def test_the_moving_docs_cite_no_law_but_the_duty_to_register() -> None:
     """The moving checklist states one law, § 17 Abs. 1 BMG (registering within two weeks of moving in): ADR 0021
-    cites no other, and README's Limitations bullet none."""
+    cites no other, and the guide's Limitations bullet none."""
     adr = _adr(_ADR_MOVING)
     cited = _CITATION.findall(adr)
     assert cited and set(cited) == {"§ 17 Abs. 1 BMG"}, cited
@@ -2669,21 +2710,21 @@ def test_a_move_can_be_told_after_the_new_address_was_saved_as_the_docs_say() ->
     assert "tick <em>I moved</em>" not in note and "tell Ordnung you moved" in note
 
 
-def test_adrs_0020_and_0021_exist_and_the_readme_lists_them() -> None:
-    """Two new decisions, numbered after ADR 0019 and listed in README's Documentation: a scanner's text is for
+def test_adrs_0020_and_0021_exist_and_the_index_lists_them() -> None:
+    """Two new decisions, numbered after ADR 0019 and listed in the decisions' index: a scanner's text is for
     finding, not reading (0020); a move is said, never guessed (0021)."""
     titles = {
         _ADR_SCANS: "# ADR 0020 — A scanner's text is for finding, not reading",
         _ADR_MOVING: "# ADR 0021 — A move is said, never guessed",
     }
-    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
+    index = _decisions_index()
     for path, title in titles.items():
         text = path.read_text(encoding="utf-8")
         assert text.startswith(title + "\n"), path.name
         assert "**Status:** accepted" in text, path.name
-        assert f"(docs/decisions/{path.name})" in documentation, path.name
-    assert "[0020 a scanner's text is for finding, not reading]" in documentation
-    assert "[0021 a move is said, never guessed]" in documentation
+        assert f"[{path.name[:4]}]({path.name})" in index, path.name
+    assert "| A scanner's text is for finding, not reading |" in index
+    assert "| A move is said, never guessed |" in index
 
 
 def test_the_scanner_text_s_file_marker_and_note_are_the_ones_the_docs_quote() -> None:
@@ -2786,8 +2827,8 @@ OPEN_FROM_YOUR_APPS = "If you added Ordnung to your apps with “ordnung shortcu
 
 
 def _without_a_terminal() -> str:
-    """README Install's paragraph *Without a terminal*, with its list, flattened."""
-    install = _readme().split("## Install and run", 1)[1]
+    """The guide's paragraph *Without a terminal*, in Install, with its list, flattened."""
+    install = _section(_guide(), "## Install and run")
     return _flat(install.split("**Without a terminal.**", 1)[1].split("\n**On your phone.**", 1)[0])
 
 
@@ -2821,16 +2862,16 @@ def test_serve_points_to_the_shortcut_as_the_spec_says() -> None:
     )
 
 
-def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
-    """README "Also:" names the shortcut, and Install has `ordnung shortcut` in the commands and a paragraph on
-    each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux terminal,
-    the Mac's first launch and Windows' opt-out, and what CI doesn't test."""
+def test_the_guide_says_how_to_open_ordnung_without_a_terminal() -> None:
+    """The guide's "Also:" names the shortcut, and its Install has `ordnung shortcut` in the commands and a
+    paragraph on each system's launcher, what a click does in both states, the recorded PATH, --remove, the Linux
+    terminal, the Mac's first launch and Windows' opt-out, and what CI doesn't test."""
     also = _flat(_tour().split("**Also:**", 1)[1])
     assert (
         "*app-menu shortcut* — open Ordnung from your app menu, Start menu or Applications folder, signed in, "
         "without a terminal"
     ) in also
-    commands = _readme().split("## Install and run", 1)[1].split("```bash", 1)[1].split("```", 1)[0]
+    commands = _section(_guide(), "## Install and run").split("```bash", 1)[1].split("```", 1)[0]
     assert (
         "ordnung serve                   # the web app on http://127.0.0.1:8765\n"
         "ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed\n"
@@ -2864,10 +2905,10 @@ def test_readme_says_how_to_open_ordnung_without_a_terminal() -> None:
         assert words in text, words
 
 
-def test_readme_updating_says_to_close_the_shortcut_s_window_and_add_it_again_once_python_moved() -> None:
-    """README Updating: the shortcut's window is Ordnung (closing it stops Ordnung), and a launcher whose Python
-    moved is made again with `ordnung shortcut` (as start at login is)."""
-    updating = _flat(_readme().split("### Updating", 1)[1].split("\n## ", 1)[0])
+def test_guide_updating_says_to_close_the_shortcut_s_window_and_add_it_again_once_python_moved() -> None:
+    """The guide's Updating: the shortcut's window is Ordnung (closing it stops Ordnung), and a launcher whose
+    Python moved is made again with `ordnung shortcut` (as start at login is)."""
+    updating = _flat(_section(_guide(), "### Updating"))
     assert (
         "Stop Ordnung first (Ctrl+C where `ordnung serve` runs, or close the window the shortcut opened;"
         in updating
@@ -3021,9 +3062,9 @@ def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
 
 
 def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tmp_path: Path) -> None:
-    """README, SPEC and ADR 0013 against ``ordnung.shortcut`` (batch C's launcher package): where each launcher
+    """The guide, SPEC and ADR 0013 against ``ordnung.shortcut`` (batch C's launcher package): where each launcher
     goes, that the Linux entry asks for a terminal, what it runs, the Windows link's mark, the command's
-    options, and that CI's macOS and Windows job runs the shortcut's tests (README)."""
+    options, and that CI's macOS and Windows job runs the shortcut's tests (the guide)."""
     import yaml
     from typer.testing import CliRunner
 
@@ -3048,13 +3089,13 @@ def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tm
     ci = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))
     steps = " ".join(str(step.get("run", "")) for step in ci["jobs"]["other-systems"]["steps"])
     assert "tests/test_shortcut.py" in steps
-    assert "autostart entries, app-menu shortcuts, backups and text in pictures" in _flat(_readme())
+    assert "autostart entries, app-menu shortcuts, backups and text in pictures" in _flat(_guide())
 
 
 def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
-    """The CHANGELOG's *Releases* and README's Documentation list against batch C's release package: a pushed
-    `v*` tag runs `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored
-    token, and docs/releasing.md says how the owner sets it up."""
+    """The CHANGELOG's *Releases* and the doc map against batch C's release package: a pushed `v*` tag runs
+    `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored token, and
+    docs/releasing.md says how the owner sets it up."""
     import yaml
 
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
@@ -3066,9 +3107,8 @@ def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() 
     releasing = (ROOT / "docs" / "releasing.md").read_text(encoding="utf-8")
     for words in ("PYPI_PUBLISH", "release.yml", "pending publisher", "`pypi`"):
         assert words in releasing, words
-    documentation = _flat(_readme().split("## Documentation", 1)[1])
-    link = "[docs/releasing.md](docs/releasing.md): how a release is made, and the one-time setup for PyPI"
-    assert link in documentation
+    doc_map = _flat((ROOT / "docs" / "README.md").read_text(encoding="utf-8"))
+    assert "[releasing.md](releasing.md): how a release is made, and the one-time setup for PyPI" in doc_map
 
 
 # --------------------------------------------------------------------------------------------------
@@ -3092,24 +3132,26 @@ ASK_KEY_KEPT = (
 )
 
 
-async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_always_among_the_ideas(
+async def test_the_guide_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_always_among_the_ideas(
     data_dir: Path,
 ) -> None:
-    """README Limitations: a deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is
+    """The guide's Limitations: a deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is
     an Idea nearly all the time, because its default reminder window (Settings → Reminders: 14 and 7 days) reaches
     the next one wherever the week stands; a payment every 2 weeks isn't, and a reminder, the dialog's first kind,
     is one only on its day. Added through the API as *Add a date* adds them, starting on every day of the cycle.
     Marked done before its day, it moves to the one after the day marked, which can be past the window (D1 review:
     the line said "always"): a weekly payment due Thu 1 Oct moves to Thu 8 Oct (send by Wed 7 Oct, 9 days off) and
     a deadline every 2 weeks due Thu 8 Oct to Thu 22 Oct, neither an Idea then; a weekly deadline stays one."""
+    defaults = Profile().reminder_days
+    deadline, payment = max(defaults["deadline"]), max(defaults["payment"])
     assert (
         "A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's "
-        "Ideas nearly all the time: by default Ordnung reminds you from 14 days before a deadline and 7 days before "
-        "a payment (Settings → Reminders), and the next one is never further off, unless you mark one done before "
-        "its day. Added as a reminder, the dialog's first kind, such a date is an Idea only on its day."
+        f"Ideas nearly all the time: by default Ordnung reminds you from {deadline} days before a deadline and "
+        f"{payment} days before a payment (Settings → Reminders), and the next one is never further off, unless you "
+        "mark one done before its day. Added as a reminder, the dialog's first kind, such a date is an Idea only on "
+        "its day."
     ) in _limitations()
-    defaults = Profile().reminder_days
-    assert (max(defaults["deadline"]), max(defaults["payment"]), max(defaults["reminder"])) == (14, 7, 0)
+    assert (deadline, payment, max(defaults["reminder"])) == (14, 7, 0)
     dialog = (ROOT / "web/src/features/items/AddDateDialog.tsx").read_text(encoding="utf-8")
     assert re.search(r'const EMPTY: DateDraft = \{[^}]*kind: "reminder"', dialog)
     cases = [
@@ -3163,7 +3205,8 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_al
 
 def test_the_spec_lists_the_weekly_repeats_and_still_one_entry_at_the_next_day() -> None:
     """SPEC (Timeline's *Add a date*) lists every week and every 2 weeks first, as the dialog does; the server's
-    rule takes weeks (``Recurrence.unit``), and README still says a repeating date is one entry at its next day."""
+    rule takes weeks (``Recurrence.unit``), and the guide still says a repeating date is one entry at its next
+    day."""
     assert (
         "*Repeats* (every week or every 2 weeks on its weekday, every month on its day or on a working day, every 3 "
         "or 6 months, every year)"
@@ -3211,7 +3254,7 @@ def test_the_changelog_s_package_updates_are_the_repository_s() -> None:
 def test_the_privacy_page_links_microsoft_s_own_page_on_device_encryption(tmp_path: Path) -> None:
     """docs/privacy.md, before a computer is lost: where Ordnung can't check (Windows: the doctor's info row says
     where to look), Microsoft's own page on Device encryption, and what its note says when Settings shows no such
-    page; README's Limitations say Ordnung can't check there, and it doesn't: no answer and no process on
+    page; the guide's Limitations say Ordnung can't check there, and it doesn't: no answer and no process on
     Windows."""
     from ordnung import encryption
 
@@ -3303,9 +3346,9 @@ def test_the_calendar_settings_say_what_the_changelog_says_about_google_and_outl
 
 
 def test_the_docs_say_the_windows_link_names_its_target(tmp_path: Path) -> None:
-    """The Windows link against README, SPEC and architecture: a plain drive path gets an ID list right after the
-    header, whose flags say so, and Windows' shell reading the target is tested on Windows; README drops "may show
-    no target" and claims nothing about the Properties window."""
+    """The Windows link against the guide, SPEC and architecture: a plain drive path gets an ID list right after
+    the header, whose flags say so, and Windows' shell reading the target is tested on Windows; the guide drops
+    "may show no target" and claims nothing about the Properties window."""
     appdata = {"APPDATA": str(tmp_path / "Roaming"), "LOCALAPPDATA": str(tmp_path / "Local")}
     windows = shortcut.plan(
         tmp_path / "data", platform="win32", env=appdata, home=tmp_path, python="C:\\Python312\\python.exe"
@@ -3348,8 +3391,8 @@ _OUTLOOK_FIXTURE = ROOT / "web" / "e2e" / "fixtures" / "outlook-bill.msg"
 #: The web app's text files, which go out gzipped (``api/compress.py``'s ``FILE_TYPES``).
 _APP_TEXT_FILES = frozenset({".js", ".css", ".svg", ".txt", ".json"})
 
-#: README's Limitations: how e-mail comes in (it replaced "it can't open Outlook's `.msg` files").
-README_EMAIL_LIMIT = (
+#: The guide's Limitations: how e-mail comes in (it replaced "it can't open Outlook's `.msg` files").
+GUIDE_EMAIL_LIMIT = (
     "E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy "
     "(the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An Outlook e-mail whose text is "
     "only in RTF comes in without its text (its attachments still come in), and a signed or encrypted one can't be "
@@ -3475,9 +3518,9 @@ async def test_compression_follows_the_rules_the_docs_state(data_dir: Path) -> N
     assert zipped.json() == plain.json() and "Accept-Encoding" in zipped.headers["vary"]
 
 
-def test_adr_0022_states_the_rule_for_a_secret_in_a_get_answer_and_the_readme_lists_it() -> None:
-    """ADR 0022 (numbered after 0021, listed in README's Documentation) says why compression is safe here and
-    the rule a later route with a secret in a GET answer must follow; it keeps ``models.py`` untouched."""
+def test_adr_0022_states_the_rule_for_a_secret_in_a_get_answer_and_the_index_lists_it() -> None:
+    """ADR 0022 (numbered after 0021, listed in the decisions' index) says why compression is safe here and the
+    rule a later route with a secret in a GET answer must follow; it keeps ``models.py`` untouched."""
     text = _ADR_COMPRESSED.read_text(encoding="utf-8")
     assert text.startswith("# ADR 0022 — Compressed answers and a lighter letter list\n")
     assert "**Status:** accepted" in text
@@ -3489,9 +3532,9 @@ def test_adr_0022_states_the_rule_for_a_secret_in_a_get_answer_and_the_readme_li
         "**Starlette's `GZipMiddleware`:**",
     ):
         assert words in adr, words
-    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
-    assert f"(docs/decisions/{_ADR_COMPRESSED.name})" in documentation
-    assert "[0022 compressed answers and a lighter letter list]" in documentation
+    index = _decisions_index()
+    assert f"[0022]({_ADR_COMPRESSED.name})" in index
+    assert "| Compressed answers and a lighter letter list |" in index
 
 
 def _stated_bytes(text: str) -> float:
@@ -3572,15 +3615,14 @@ async def test_the_adr_s_measurements_are_the_demo_s(tmp_path: Path) -> None:
     assert f"about {round(size / gzipped)} times less" in measured
 
 
-def test_readme_says_outlook_files_come_in_as_an_eml_copy() -> None:
-    """README: the "Also" line names Outlook's ``.msg``; Limitations no longer say it can't be opened, still say
-    Ordnung doesn't fetch mail from a mailbox, and say what an Outlook e-mail loses."""
-    readme = _flat(_readme())
-    assert (
-        "and e-mails (`.eml`, or Outlook's `.msg`) whose PDF and photo attachments become letters" in readme
-    )
-    assert README_EMAIL_LIMIT in _limitations()
-    assert "can't open Outlook's `.msg` files" not in readme
+def test_the_guide_says_outlook_files_come_in_as_an_eml_copy() -> None:
+    """The guide's "Also" line names Outlook's ``.msg``; its Limitations no longer say it can't be opened (nor does
+    README), still say Ordnung doesn't fetch mail from a mailbox, and say what an Outlook e-mail loses."""
+    also = _flat(_tour().split("**Also:**", 1)[1])
+    assert "and e-mails (`.eml`, or Outlook's `.msg`) whose PDF and photo attachments become letters" in also
+    assert GUIDE_EMAIL_LIMIT in _limitations()
+    for document in (_readme(), _guide()):
+        assert "can't open Outlook's `.msg` files" not in _flat(document)
 
 
 def test_outlook_files_come_in_where_the_docs_say() -> None:
@@ -3735,21 +3777,15 @@ def test_the_daily_check_and_hand_off_sync_do_what_the_changelog_says() -> None:
 _ADR_HOUSEHOLD = ROOT / "docs" / "decisions" / "0023-letters-for-your-household-are-suggested-never-filed.md"
 _ADR_WHOSE = ROOT / "docs" / "decisions" / "0025-ask-and-the-ideas-say-whose-it-is.md"
 
-#: README Privacy: what of the household and the choices reaches Claude (ADR 0025).
-README_PRIVACY_WHOSE = (
-    "the address and IBAN in your profile are never put into a prompt. Your household's names reach Claude only "
-    "in Ask, with which letters you filed for whom, and in the titles of Ideas about their letters; your *For "
-    "taxes* choices only in Ask and *Weekly Ideas*, for letters you let Claude read."
-)
-#: README's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet"); Ask and the
-#: weekly Ideas follow the choice since ADR 0025.
-README_TAX_LIMIT = (
+#: The guide's Limitations: who marks a letter for taxes (it replaced "you can't mark one yourself yet"); Ask and
+#: the weekly Ideas follow the choice since ADR 0025.
+GUIDE_TAX_LIMIT = (
     "Claude marks a letter for taxes when it reads it; *For taxes* on a letter's page changes that, for private "
     "letters too, and your choice stays when the letter is read again; Ask and the Ideas Claude suggests each "
     "week follow it. A letter still waiting under *From your folder — not read yet* can't be marked"
 )
-#: README "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
-README_ALSO_TAXES_HOUSEHOLD = (
+#: The guide's "Also:": the tax year with *For taxes* and the Inbox's year, and your household.
+GUIDE_ALSO_TAXES_HOUSEHOLD = (
     "*tax year* — a year's letters for your tax return, by the date on them; mark or unmark any letter "
     "yourself, and the Inbox shows one year at a time",
     "*your household* — file a letter for your partner or your child when Ordnung asks (it never files one by "
@@ -3846,20 +3882,17 @@ def test_the_choices_and_the_household_are_synced_meta_rows_without_a_migration(
     assert len(migrations) == 5 and migrations[-1].startswith("0005_"), migrations
 
 
-def test_readme_names_for_taxes_the_inbox_year_and_your_household() -> None:
-    """README: the "Also" line names *For taxes*, the Inbox's year and your household; Privacy says where the
-    household and the choices reach Claude (ADR 0025); Documentation lists ADR 0023 after 0022."""
+def test_the_guide_names_for_taxes_the_inbox_year_and_your_household() -> None:
+    """The guide's "Also" line names *For taxes*, the Inbox's year and your household (where the household and the
+    choices reach Claude is docs/privacy.md's, checked below); the decisions' index lists ADR 0023 after 0022."""
     also = _flat(_tour().split("**Also:**", 1)[1])
-    for words in README_ALSO_TAXES_HOUSEHOLD:
+    for words in GUIDE_ALSO_TAXES_HOUSEHOLD:
         assert words in also, words
-    privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
-    assert README_PRIVACY_WHOSE in privacy
-    assert "never put into a prompt" in privacy and "your household and your *For taxes*" not in privacy
-    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
-    assert f"(docs/decisions/{_ADR_HOUSEHOLD.name})" in documentation
-    assert documentation.index("[0022 compressed answers") < documentation.index(
-        "[0023 letters for your household are suggested, never filed]"
+    index = _decisions_index()
+    assert (
+        f"| [0023]({_ADR_HOUSEHOLD.name}) | Letters for your household are suggested, never filed |" in index
     )
+    assert _index_row(_ADR_COMPRESSED) < _index_row(_ADR_HOUSEHOLD)
 
 
 def test_the_privacy_page_says_where_the_choices_and_the_household_live(store: Store) -> None:
@@ -4284,10 +4317,10 @@ PICTURE_TEXT_NOTE = (
     "only so search can find the letter: they aren't checked, aren't shown as the letter's words and are never "
     "sent to Claude."
 )
-#: The ADR's link, as README and the CHANGELOG write it.
-_ADR_PICTURES_LINK = f"[ADR 0024](docs/decisions/{_ADR_PICTURES.name})"
-#: README Install: the paragraph on text in pictures, before and after its install lines.
-README_PICTURES = (
+#: The ADR's link, as the guide writes it.
+_ADR_PICTURES_LINK = f"[ADR 0024](decisions/{_ADR_PICTURES.name})"
+#: The guide's Install: the paragraph on text in pictures, before and after its install lines.
+GUIDE_PICTURES = (
     "**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or "
     "that couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data.",
     "Ordnung doesn't install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same "
@@ -4297,24 +4330,12 @@ README_PICTURES = (
     "The words are kept for your letter search only, marked *not checked*, and are never shown, checked or sent to "
     f"Claude ({_ADR_PICTURES_LINK}).",
     "Settings → Data → *Text in pictures* turns it off and deletes the words read before; `ORDNUNG_OCR=off` turns "
-    "it off on one computer ([how](docs/privacy.md#words-in-pictures-optional)).",
+    "it off on one computer ([how](privacy.md#words-in-pictures-optional)).",
 )
-#: README Install: the line per system, the doctor's own word for word (``doctor.tesseract_install``).
-README_TESSERACT_LINES = {
-    "Linux": (
-        "linux",
-        "`sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora: `sudo dnf install tesseract "
-        "tesseract-langpack-deu`), then restart Ordnung.",
-    ),
-    "macOS": ("darwin", "`brew install tesseract tesseract-lang`, then restart Ordnung."),
-    "Windows": (
-        "win32",
-        "the installer from https://github.com/UB-Mannheim/tesseract/wiki, with German ticked under “Additional "
-        "language data”, then restart Ordnung.",
-    ),
-}
-#: README Limitations: what Ordnung's own text recognition is for and misses (it replaced "No OCR of its own").
-README_PICTURES_LIMIT = (
+#: The guide's Install gives a line per system, the doctor's own word for word (``doctor.tesseract_install``).
+TESSERACT_SYSTEMS = {"Linux": "linux", "macOS": "darwin", "Windows": "win32"}
+#: The guide's Limitations: what Ordnung's own text recognition is for and misses (it replaced "No OCR of its own").
+GUIDE_PICTURES_LIMIT = (
     "Photos and scans are read by Claude, so reading them needs a model call; Ordnung's own text recognition "
     "(optional, with Tesseract) is for search only.",
     'The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn\'t checked',
@@ -4416,60 +4437,53 @@ def _slug(heading: str) -> str:
     return re.sub(r"[^\w\- ]", "", heading.strip().lower()).replace(" ", "-")
 
 
-def _readme_pictures() -> str:
-    """README Install's paragraph *Words in photos (optional)*, with its list, flattened."""
-    install = _readme().split("## Install and run", 1)[1]
+def _guide_pictures() -> str:
+    """The guide's paragraph *Words in photos (optional)*, in Install, with its list, flattened."""
+    install = _section(_guide(), "## Install and run")
     return _flat(
         install.split("**Words in photos (optional).**", 1)[1].split("\n**Without a terminal.**", 1)[0]
     )
 
 
-def test_readme_says_what_text_in_pictures_finds_and_misses() -> None:
-    """README: Install's paragraph (optional, how to install, what it does, the off switch), the note in Privacy,
-    the doctor's comment, CI on Linux and on other systems; Limitations replace "No OCR of its own";
-    Documentation lists ADR 0024 after 0023."""
-    pictures = _readme_pictures()
-    assert README_PICTURES[0].removeprefix("**Words in photos (optional).** ") in pictures
-    for sentence in README_PICTURES[1:]:
+def test_the_guide_says_what_text_in_pictures_finds_and_misses() -> None:
+    """The guide: Install's paragraph (optional, how to install, what it does, the off switch), the doctor's
+    comment, CI on Linux and on other systems; Limitations replace "No OCR of its own". The decisions' index lists
+    ADR 0024 after 0023."""
+    from ordnung import doctor
+
+    pictures = _guide_pictures()
+    assert GUIDE_PICTURES[0].removeprefix("**Words in photos (optional).** ") in pictures
+    for sentence in GUIDE_PICTURES[1:]:
         assert sentence in pictures, sentence
-    for name, (_, line) in README_TESSERACT_LINES.items():
-        assert f"- {name}: {line}" in pictures, name
-    privacy = _flat(_readme().split("\n## Privacy\n", 1)[1].split("\n## ", 1)[0])
-    assert (
-        "Tesseract, if you install it to find photos by their words, runs on the computer Ordnung runs on: nothing "
-        "is sent anywhere to read a picture."
-    ) in privacy
-    (line,) = [line for line in _readme().splitlines() if line.startswith("ordnung doctor ")]
+    for name, platform in TESSERACT_SYSTEMS.items():
+        assert f"- {name}: {doctor.tesseract_install(platform)}" in pictures, name
+    (line,) = [line for line in _guide().splitlines() if line.startswith("ordnung doctor ")]
     assert "text in pictures" in line
-    install = _flat(_readme().split("## Install and run", 1)[1].split("```", 1)[0])
+    install = _flat(_section(_guide(), "## Install and run").split("```", 1)[0])
     assert "CI tests Ordnung on Linux, with a real Tesseract for text in pictures." in install
     assert (
         "autostart entries, app-menu shortcuts, backups and text in pictures (looking for Tesseract, which isn't "
         "installed there)."
     ) in install
     limitations = _limitations()
-    for sentence in README_PICTURES_LIMIT:
+    for sentence in GUIDE_PICTURES_LIMIT:
         assert sentence in limitations, sentence
-    assert "No OCR of its own" not in _readme()
+    for document in (_readme(), _guide()):
+        assert "No OCR of its own" not in document
     assert "or waiting for Claude, is found only by its name" not in limitations
-    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
-    assert (
-        f"[0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/{_ADR_PICTURES.name})"
-    ) in documentation
-    assert documentation.index("[0023 letters for your household") < documentation.index(
-        "[0024 words Ordnung"
-    )
+    assert _index_row(_ADR_HOUSEHOLD) < _index_row(_ADR_PICTURES)
 
 
 def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None:
-    """README's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the line
-    as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
+    """The guide's install lines are the doctor's, per system (its *Not installed (optional)* row, ok, with the
+    line as its fix); the off switch is the one ``config`` reads, the doctor says *Turned off* with it, and start at
     login and the app-menu launchers record it; docs/privacy.md names ``ORDNUNG_OCR=off`` and
-    ``picture-text.json``; README lists ADR 0024."""
+    ``picture-text.json``; the guide links ADR 0024 and privacy.md's section on it."""
     from ordnung import autostart, config, doctor
 
-    pictures = _readme_pictures()
-    for name, (platform, line) in README_TESSERACT_LINES.items():
+    pictures = _guide_pictures()
+    for name, platform in TESSERACT_SYSTEMS.items():
+        line = doctor.tesseract_install(platform)
         row = doctor.text_in_pictures_check(platform=platform, env={}, find=lambda: None)
         assert (row.id, row.label, row.status, row.detail) == (
             "ocr",
@@ -4481,7 +4495,6 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
             row.fix
             == f"To find photos and scans Claude doesn't read by their words, install Tesseract: {line}"
         )
-        assert doctor.tesseract_install(platform) == line, name
         assert f"- {name}: {line}" in pictures, name
     off = doctor.text_in_pictures_check(env={config.OCR_SWITCH: "off"})
     assert (off.status, off.detail, off.fix) == ("info", "Turned off (ORDNUNG_OCR=off)", None)
@@ -4495,6 +4508,7 @@ def test_text_in_pictures_is_documented_as_optional_and_off_switchable() -> None
     assert "`ORDNUNG_OCR=off`" in privacy and "`setx ORDNUNG_OCR off`" in privacy
     assert "`<data dir>/derived/<letter>/picture-text.json`" in privacy
     assert _ADR_PICTURES_LINK in pictures
+    assert "([how](privacy.md#words-in-pictures-optional))" in pictures
 
 
 def test_the_off_switch_and_the_file_are_the_ones_the_docs_name() -> None:
@@ -4842,7 +4856,7 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
     """ADR 0025: the whose rule, what Ask is given (only through ``ask_view`` and ``Ledger.household_filed``), the
     *For taxes* choice, the two tool descriptions that name the household (the prompts' text unchanged, their
     version moved), empty means as before, the Ideas and reminders, the known limits; ADR 0023's status line and
-    point 9 point to it; README lists it after 0024."""
+    point 9 point to it; the decisions' index lists it after 0024."""
     adr = _adr(_ADR_WHOSE)
     assert adr.startswith("# ADR 0025 — Ask and the Ideas say whose it is")
     for words in (
@@ -4873,9 +4887,9 @@ def test_adr_0025_says_what_reaches_claude_and_amends_adr_0023() -> None:
     assert "9. **What reaches Claude** ([ADR 0025](0025-ask-and-the-ideas-say-whose-it-is.md))." in household
     assert "Never seen by Claude." not in household and "Ask keeps seeing Claude's own mark" not in household
     assert "Left out to keep the step small." not in household
-    documentation = _flat(_readme().split("## Documentation", 1)[1].split("\n## ", 1)[0])
-    assert f"[0025 Ask and the Ideas say whose it is](docs/decisions/{_ADR_WHOSE.name})" in documentation
-    assert documentation.index("[0024 words Ordnung") < documentation.index("[0025 Ask and the Ideas")
+    index = _decisions_index()
+    assert f"| [0025]({_ADR_WHOSE.name}) | Ask and the Ideas say whose it is |" in index
+    assert _index_row(_ADR_PICTURES) < _index_row(_ADR_WHOSE)
     for module in ("secretary/household.py", "secretary/tax_choice.py"):
         assert "ADR 0025" in (ROOT / "src" / "ordnung" / module).read_text(encoding="utf-8"), module
 
@@ -5102,7 +5116,7 @@ def test_the_docs_say_a_checked_letter_is_back_in_the_notification_and_ask() -> 
 
 #: The pages whose recording commands are instructions to follow now (the history page and the decision records keep
 #: the commands of their day).
-_RECORDING_PAGES = ("README.md", "CONTRIBUTING.md", "docs/evals.md", "docs/evals-ask.md")
+_RECORDING_PAGES = ("README.md", "docs/guide.md", "CONTRIBUTING.md", "docs/evals.md", "docs/evals-ask.md")
 
 
 def _live_commands() -> list[tuple[str, str, list[str]]]:
