@@ -429,6 +429,7 @@ W1C_ONLY = ("evals/perturb/templates.py", "evals/perturb/README.md")
 _NAME = "the benchmark's or the product's name, as the PDFs carry it"
 _NOT_FROM = "says the labels do not come from the product's rules"
 _OTHER_SENSE = "the word in another sense"
+_SCHEMA = "the stress templates' schema id, which carries the benchmark's name"
 #: Lines a hit is allowed on, by path and the sha256 of the line (UTF-8, without its line break), with the reason.
 ALLOWED: dict[str, dict[str, str]] = {
     "evals/generate.py": {
@@ -447,47 +448,18 @@ ALLOWED: dict[str, dict[str, str]] = {
     "tests/test_eval_dataset.py": {
         "34ec5947172b561b31b9ee9a7ebbca59719f347fcbcbedf3857ccc4bf10f6e1b": _OTHER_SENSE,
         "a6e6fb5c251d9db4fdce0f76f950f38d543e25b9e76a7f12bc16ba28b58d01c6": _NOT_FROM,
-        "b317f07358e1696268dd10f9927049d88e0e8b6f850f06974d5c537e87a39e38": _NOT_FROM,
+        "37ed061fe8a4eae8aacbb15c5980e381638312e13af4c052161c31c2834a8196": "says the test imports nothing of the "
+        "product",
+        "f7898694cb840d135785011a5f3de2a0ef2936c24a92449a04c5f29ba5987654": _NOT_FROM,
         "95335632b2a0a6262baa7a2d5cba969200180335badaa678333266d3822531aa": _OTHER_SENSE,
     },
-}
-_TEMPLATES = "the stress templates' validator and spec are to say nothing of how letters are read"
-#: Hits other changes remove; each must still be there (delete it here when it is gone).
-PENDING: dict[str, dict[str, str]] = {
-    "tests/test_eval_dataset.py": {
-        "f78ac3617fff53978a2a5ccfa8bd3a870c5529f34e066501c2a6f1ca2474adc2": "the document-kind check moves to its own "
-        "test, so the dataset test imports nothing of the product",
+    "evals/perturb/templates.py": {
+        "a30a8538fd39dcb9d07bedcd684e8b4fecc3935be9b9e711b46a55ae6054443b": _SCHEMA
     },
-    "evals/perturb/templates.py": dict.fromkeys(
-        (
-            "688f8fc98f85d325862cbda5d5c81d6b6a5dbf0c93661b027bb662bb6dce51d5",
-            "8d42dd288ec33ddfd28689b56b2cb909500948dd449e1aa15f6594aaa4c26122",
-            "0dad9f49d42321b4797ebb3d3e6813288420eb57630f7b5ec638996e34d97b34",
-            "d5b85d3ec749638028895826e61b3987c8ae730881d82135af31810cabd89f31",
-            "a30a8538fd39dcb9d07bedcd684e8b4fecc3935be9b9e711b46a55ae6054443b",
-            "66e810c6039fd48028c53b4c0090af5655b5214c8093d3fbefaf14875c41c532",
-            "c722c98a0a7cbce614e53bf601dfe1599567e0e4a68c1733d96bb559953429de",
-            "8f96662708900f2216a6a54da4eafe1f54d38ad5b615dbdca653ee7f72445498",
-            "c1d7ebcbff4e7a118ff350479edc84f47f3141c48ee949c1a0c7d26ebedea66f",
-            "363f867a506cd1105fee11dcd79af1a80e6955897484562e034c121cc37453ac",
-            "ef0a8f688e1b3cf2d61990defe68a4a6f302f5ea75219c58ae3c606eec8c5c2b",
-            "0b84e86c87138087d86b7535c8603579d37cd0a7c2a4ec995529d3f2a98b82f2",
-            "f2bd6af2eef8a3061d2140fef5ba743e90be59f1da59a961f1a09e021e76daf7",
-        ),
-        _TEMPLATES,
-    ),
-    "evals/perturb/README.md": dict.fromkeys(
-        (
-            "7d5a00a9584b9f4f353ad35178794c9af0f14c31c0271260f12d802a64afa603",
-            "0496e96159926025b35cfa08df093872eba9c593e3ea71c4933a3879194752d6",
-            "ad166cb754e325e7235b7c3738fd0b28886cb4b3d6e04c3cd003ebee98752eb0",
-            "64473e8d1e9db273d8ae5943ba7e54af53d401ea1805289ac32dab646a528c1a",
-            "4128cb8840604950800377f39d382573ebb2971e5d920a9ae36f7570ac72f9f1",
-            "b868233bc5b857cf816b77a15d17fa4bc3cf4610bb2352782a485de240432ad5",
-        ),
-        _TEMPLATES,
-    ),
+    "evals/perturb/README.md": {"b868233bc5b857cf816b77a15d17fa4bc3cf4610bb2352782a485de240432ad5": _SCHEMA},
 }
+#: Hits other changes remove; each must still be there (delete it here when it is gone).
+PENDING: dict[str, dict[str, str]] = {}
 
 
 def _profile_files() -> list[str]:
