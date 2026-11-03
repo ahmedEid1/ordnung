@@ -1,0 +1,22 @@
+{
+ "schema": "ask-heldout-household/1",
+ "about": "The household ledger is the base ledger with one person added to the household, the member below, and two letters filed for him: in the sample life they are the person's, and in this ledger they are his. On every page of them, in what was read from them and in their case's title, the person's given name becomes his (they share the surname) and the person's health insurance number and passport number become his own numbers below. The sender, the dates, the amounts and the to-dos stay the letters' own, so his passport expires on the date below. His numbers stand on no letter of the person's, and the person's numbers those two letters showed stand on none: in this ledger the person has no health insurance number and no passport of their own. Every other letter, the person's tax ID among them, stays the person's.",
+ "member": "Alex Rivera",
+ "letters": [
+  "krankenkasse_beitragsbescheid",
+  "reisepass"
+ ],
+ "numbers": [
+  {
+   "letter": "krankenkasse_beitragsbescheid",
+   "label": "Versicherten-Nr.",
+   "value": "M472059139"
+  },
+  {
+   "letter": "reisepass",
+   "label": "Passport No.",
+   "value": "C4703958"
+  }
+ ],
+ "passport_expiry": "2027-02-10"
+}

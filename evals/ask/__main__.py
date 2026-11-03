@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from evals import harness
+from evals.ask.heldout import NAME
 from evals.ask.report import (
     headline,
     recorded_on,
@@ -190,8 +192,16 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         "--set",
         choices=SETS,
         default="dev",
-        help="dev: the development set (default); heldout: the held-out set of evals/ask/heldout/, written after "
-        "the code freeze (recordings in evals/recorded/ask-heldout/, results …-ask-heldout.json, no page)",
+        help=f"dev: the development set (default); heldout: {NAME}, the held-out set of evals/ask/heldout/ written "
+        "after the code freeze (recordings in evals/recorded/ask-heldout/, results …-ask-heldout.json, no page)",
+    )
+    parser.add_argument(
+        "--check",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="replay, then exit 1 unless FILE (a live run's own results file, or a re-scoring) is what this replay "
+        "writes for it, byte for byte; what differs is named by key and id, on stdout only",
     )
     parser.add_argument(
         "--repeat",
@@ -243,10 +253,70 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _checked_file(args: argparse.Namespace) -> dict[str, Any]:
+    """The results file ``--check`` holds the replay to, refused unless it is a run of this set, run and model (and of
+    the day ``--today`` names: without it, a held-out run is replayed on the file's own day)."""
+    path: Path = args.check
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise BenchmarkError(f"--check {path}: not a readable results file ({exc})") from exc
+    if not isinstance(data, dict) or data.get("benchmark") != "ask" or int(data.get("schema", 1)) < 2:
+        raise BenchmarkError(f"--check {path.name}: not an Ask results file of schema 2")
+    for key, wanted in (("set", args.set), ("repeat", args.repeat), ("model", args.model)):
+        if data.get(key) != wanted:
+            raise BenchmarkError(
+                f"--check {path.name}: its {key} is {data.get(key)!r}, this replay's {wanted!r}"
+            )
+    if args.today is not None and data.get("today") != args.today.isoformat():
+        raise BenchmarkError(f"--check {path.name}: it was asked on {data.get('today')}, not on {args.today}")
+    return data
+
+
+def _check(result: RunResult, path: Path, data: Mapping[str, Any]) -> bool:
+    """Whether ``path`` is byte for byte what this replay writes for its run (a live run's own file, or a
+    re-scoring of one); what differs is named by key and id, on stdout (the caller keeps it sealed)."""
+    recorded = None if data.get("backend") == "live" else str(data.get("recorded"))
+    text = json.dumps(
+        results_payload(result, run_date=str(data["date"]), recorded=recorded), ensure_ascii=False, indent=1
+    )
+    if path.read_text(encoding="utf-8") == text + "\n":
+        print(f"{path.name}: matches this replay byte for byte")
+        return True
+    print(f"{path.name}: differs from this replay")
+    replayed = json.loads(text)
+    for key in sorted(set(data) | set(replayed)):
+        old, new = data.get(key), replayed.get(key)
+        if old == new:
+            continue
+        if key in ("questions", "attacks", "household"):
+            before = {str(item.get("id")): item for item in old or [] if isinstance(item, Mapping)}
+            after = {str(item.get("id")): item for item in new or [] if isinstance(item, Mapping)}
+            ids = sorted(item for item in before.keys() | after.keys() if before.get(item) != after.get(item))
+            print(f"  {key}: {', '.join(ids)}")
+        elif isinstance(old, Mapping) and isinstance(new, Mapping):
+            parts = sorted(part for part in old.keys() | new.keys() if old.get(part) != new.get(part))
+            print(f"  {key}: {', '.join(parts)}")
+        else:
+            print(f"  {key}")
+    if data == replayed:
+        print("  the same values in other bytes")
+    return False
+
+
 def main(
     argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR, heldout_dir: Path | None = None
 ) -> int:
     args = parse_args(argv)
+    checked: dict[str, Any] | None = None
+    if args.check is not None:
+        try:
+            checked = _checked_file(args)
+        except BenchmarkError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        if args.today is None and args.set == "heldout" and checked.get("today"):
+            args.today = date.fromisoformat(str(checked["today"]))
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
     config = Config(
         model=args.model,
@@ -321,9 +391,15 @@ def main(
         except BenchmarkError as exc:
             stale = [str(exc)]
         problems += [f"{problem} — regenerate with --write --date <its date>" for problem in stale]
+    matches = True
+    if checked is not None:
+        if only:
+            print("error: --check needs the whole run (no --only)", file=sys.stderr)
+            return 2
+        matches = _check(result, args.check, checked)
     for problem in problems:
         print(f"gate: {problem}", file=sys.stderr)
-    return 1 if problems else 0
+    return 1 if problems or not matches else 0
 
 
 def _payload(

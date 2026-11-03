@@ -82,6 +82,8 @@ ABOUT = (
 #: The final run's reads per split (plan §6.2): each one a cell, *not recorded yet* until its results file exists.
 FINAL_READS = {"holdout4": 3, "newkinds": 1}
 ASK_HELDOUT_READS = 3
+#: The schema of the file of the held-out Ask set's runs (``python -m evals.ask.heldout --final``).
+ASK_FINAL_SCHEMA = "ordnung-eval-ask-final/"
 STRESS_CELLS = ("I1", "D1")
 #: The planned cells that replay the final run's readings another way (plan EV9).
 FINAL_E2E = ("holdout4", "newkinds")
@@ -267,6 +269,8 @@ def _kind(name: str, data: Mapping[str, Any]) -> tuple[str, str]:
     schema = data.get("schema")
     if isinstance(schema, str) and schema.startswith("ordnung-eval-stress/"):
         return "stress", "final"
+    if isinstance(schema, str) and schema.startswith(ASK_FINAL_SCHEMA):
+        return "ask-final", "final"
     try:
         return present_model.kind_of(name, data), present_model.role_of(name, data)
     except PresentError as exc:
@@ -309,7 +313,7 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         recorded = {
             "date": meta.get("date"),
             "commit": meta.get("commit"),
-            "backend": meta.get("backend") or ("analysis" if kind == "analysis" else None),
+            "backend": meta.get("backend") or ("analysis" if kind in ("analysis", "ask-final") else None),
         }
     row["recorded"] = recorded
     return row
@@ -342,6 +346,8 @@ def _group(row: Mapping[str, Any], data: Mapping[str, Any]) -> tuple[Any, ...] |
         return ("e2e", tuple(row["splits"]), bool(meta.get("partial")))
     if kind in ("checks-ablated", "without-land", "stress"):
         return (kind, tuple(row.get("splits", ())))
+    if kind == "ask-final":
+        return ("ask-final",)
     return ("analysis", row.get("analysis"))
 
 
@@ -352,6 +358,7 @@ CHECKS = {
     "checks-ablated": "ablation --check",
     "analysis": "analysis --check",
     "stress": "stress --check",
+    "ask-final": "ask-final --check",
 }
 
 
@@ -448,6 +455,13 @@ def _cells(
             "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their "
             "recording (plan §7, R3 and R6)",
         )
+    add(
+        "ask/heldout/final",
+        "",
+        [row for row in checked if row["kind"] == "ask-final"],
+        "re-rendered",
+        "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)",
+    )
     for kind, prefix, planned, needs in (
         ("e2e", "e2e", FINAL_E2E, "holdout4's and newkinds' recorded readings (plan EV9)"),
         ("checks-ablated", "ablation", FINAL_ABLATION, "holdout4's recorded readings (plan EV9)"),
@@ -989,6 +1003,8 @@ def task_of(row: Mapping[str, Any]) -> str | None:
         return f"analysis/{row['analysis']}"
     if check == "stress --check":
         return "stress"
+    if check == "ask-final --check":
+        return "ask/heldout/final"
     return None
 
 
@@ -1066,6 +1082,14 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
             tasks.append(Task(name, argv))
         elif row["kind"] == "checks-ablated":
             tasks.append(Task(name, _python("scripts.eval_ablate_checks", "--check", str(path))))
+        elif row["kind"] == "ask-final":
+            runs = [
+                str(results_dir / str(item["file"])) for item in (data.get("meta") or {}).get("inputs", [])
+            ]
+            argv = _python("evals.ask.heldout", "--final", *runs, "--check")
+            if not default:
+                argv += ["--results-dir", str(results_dir)]
+            tasks.append(Task(name, argv))
         elif row["kind"] == "stress":
             out = work / "stress"
             argv = _python(
