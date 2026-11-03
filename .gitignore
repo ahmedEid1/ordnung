@@ -2,7 +2,8 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
+# a folder, or a link to one (a worktree with the virtual environment linked in)
+.venv
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -35,6 +36,11 @@ web/.vite/
 
 # make capture's recording, before it becomes demo.mp4 (scripts/capture.sh removes it)
 /docs/assets/video/
+
+# Claude Code's own settings for this computer and its worktrees (nested checkouts); .claude/settings.json
+# is shared and stays committable
+/.claude/settings.local.json
+/.claude/worktrees/
 
 # Scratch scripts from local debugging
 *.tmp.mjs
