@@ -1,4 +1,4 @@
-# ADR 0003 — Three honest grounding levels instead of "verified"
+# ADR 0003 — Four grounding levels instead of "verified"
 
 **Status:** accepted · **Date:** 2026-09-25
 

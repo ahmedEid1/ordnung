@@ -1,4 +1,4 @@
-"""SQLite persistence — the only module that talks SQL (SPEC §5, contract in Appendix A).
+"""SQLite persistence — the only module that talks SQL (SPEC §5).
 
 Connections: one per thread (``threading.local``, closed when the thread ends), autocommit mode (``isolation_level=None``) with
 ``journal_mode=WAL``, ``busy_timeout=5000``, ``synchronous=NORMAL`` and ``foreign_keys=ON``. Reads

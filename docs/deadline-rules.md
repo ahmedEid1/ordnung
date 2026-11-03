@@ -222,7 +222,7 @@ sender's.
 may ask (§ 309 Nr. 9 BGB, `bgb_309_9_new`), keeps that day (never moved later, safe date before a weekend) and
 is `low` with a warning: the contract may ask less, and a flat, an insurance or an older contract up to three
 months. Example: "rechtzeitig zum 31.03.2027" → must arrive by Sun 28 Feb 2027, safe date Fri 26 Feb, post by
-Mon 22 Feb (walkthrough of phase 2: it was filed as "must arrive by Wed 31 Mar", three weeks after the
+Mon 22 Feb (before this rule it was filed as "must arrive by Wed 31 Mar", three weeks after the
 Deutschlandticket's own deadline, the 10th of March).
 
 ---
@@ -274,7 +274,7 @@ letter never sets it. Until then a Land authority's letter gets the 3rd day and 
 lower confidence — early, never late. The benchmark gives Ordnung the Land the letterhead prints; replayed
 without it, Ordnung scores 85.7 % on the test split, 89.3 % on the holdout split and 83.9 % on the holdout2
 split instead of 98.2 %, with no late date; with the state the postcode on their letter suggests confirmed,
-it scores 98.2 % on each ([evals.md](evals.md#without-the-senders-land)).
+it scores 98.2 % on each ([evals.md](evals.md#64-the-app-as-it-ships-without-the-senders-land)).
 
 **Posting day.** The day the letter was handed to the post counts, not the printed date — but the
 printed date is the conservative stand-in, because posting can only be the same day or later. If a
