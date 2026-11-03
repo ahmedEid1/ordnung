@@ -340,6 +340,42 @@ def test_an_incomplete_unit_of_another_day_is_refused_until_it_is_retaken(
     assert calls(log) > 0
 
 
+def test_a_complete_unit_never_reaches_the_model_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A complete unit replays from its recordings; were one of them gone, its call would record a valid answer
+    again (on another day): it is refused, and the run fails instead."""
+    manifest = final_split(tmp_path)
+    record_two_days(tmp_path, monkeypatch, manifest)
+    first = letters(manifest)[0]
+    lock = json.loads((root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8"))
+    key = next(key for key, entry in lock.items() if entry["docs"] == [first])
+    (root(tmp_path) / f"{key}.json").unlink(missing_ok=True)
+    (root(tmp_path) / f"{key}.failure.json").unlink(missing_ok=True)
+    backend = FakeBackend(FinalResponder(manifest))
+    stand_in(monkeypatch, backend)
+    _at(monkeypatch, D2)
+    assert (
+        run(tmp_path, manifest, "--live", "--today", D2.isoformat(), "--results-dir", str(tmp_path / "again"))
+        == 1
+    )
+    assert backend.calls == [] and "its unit is complete" in capsys.readouterr().err
+    assert units(tmp_path)[first]["day"] == D1.isoformat()
+
+
+async def test_the_live_calls_refuse_a_closed_unit_s_letter() -> None:
+    inner = FakeBackend(lambda req: "{}")
+    calls = harness.LiveCalls(inner, closed={"holdout4-x-K1"})
+    request = LLMRequest(purpose="extract", prompt="p", system="s", doc_ids=["holdout4-x-K1"])
+    with pytest.raises(harness.UnitClosed):
+        await calls.complete(request)
+    events = [event async for event in calls.stream(request)]
+    assert [event.type for event in events] == ["error"] and "complete" in (events[0].error or "")
+    assert inner.calls == []
+    await calls.complete(request.model_copy(update={"doc_ids": ["holdout4-y-K2"]}))
+    assert len(inner.calls) == 1
+
+
 def test_retake_refuses_a_complete_unit_and_an_unknown_one(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
