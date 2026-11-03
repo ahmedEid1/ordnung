@@ -1,6 +1,6 @@
 """Holdout split, families 1, 2, 3, 7 and 12: variants E and F of the administrative acts.
 
-Written after extraction prompt version 11 and before any holdout recording, from scratch: new
+Written from scratch before the split's first run: new
 senders, recipients, wording and layout (variant F prints the date in a place line above the subject
 and the Rechtsbehelfsbelehrung inline). No deadline-bearing sentence of variants A–D recurs
 (``evals/verify_labels.py`` checks it). The posting and service days were drawn with a seeded random

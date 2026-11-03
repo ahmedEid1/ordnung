@@ -1,7 +1,7 @@
 """Holdout split, families 4, 5, 6, 8, 9, 10 and 11: variants E and F of the invoices, dunning
 letters, appointments, contracts, price changes, English letters and business-day periods.
 
-Written like ``holdout_admin`` (after extraction prompt version 11, before any holdout recording, new
+Written like ``holdout_admin`` (before the split's first run, new
 senders, wording and layout). The same generation rules as ``families_private`` hold: private-law
 deadlines never depend on a Land's holidays, fixed dates fall on working days and Werktage counts
 never end on a Saturday (all asserted).
