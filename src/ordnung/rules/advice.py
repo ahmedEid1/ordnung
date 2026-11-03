@@ -177,8 +177,8 @@ _RANGE_SEPARATOR = re.compile(r"\s*(?:-|–|—|bis(?:\s+(?:zum|einschließlich|
 #: What names a range as the billing period, right before it: "Abrechnungszeitraum:", "Abrechnung für den
 #: Zeitraum vom", "Abrechnungsjahr 2023/2024 (", "Betriebskostenabrechnung vom", "billing period" (the
 #: comparison below excludes "Vorjahresabrechnung" and the like). A bare "Zeitraum" is no label: a cost item's
-#: service period is written that way ("Gebäudeversicherung, Zeitraum: 01.04.2024 – 31.03.2025"), review
-#: round 2 — only :data:`_STATEMENT_PERIOD` makes one.
+#: service period is written that way ("Gebäudeversicherung, Zeitraum: 01.04.2024 – 31.03.2025") —
+#: only :data:`_STATEMENT_PERIOD` makes one.
 _LABEL_END = rf"(?:[^\S\n]+{_YEAR4}(?:\s*/\s*(?:19|20)?\d{{2}})?)?[^\S\n]*[:(]?\s*(?:(?:vom|von|from)\s+)?$"
 _PERIOD_LABEL = re.compile(
     r"(?:abrechnungs(?:zeitraum|periode|jahr)|billing period"
@@ -284,7 +284,7 @@ _MARKER_GAP = re.compile(r"[^\S\n]*[:=(]?\s*(?:(?:vom|von|from)\s+)?", re.I)
 def _labels_another_range(text: str, marker_end: int, first_start: int) -> bool:
     """Whether the tenant marker ending at ``marker_end`` labels a range of its own that isn't the one
     starting at ``first_start``: the tenant's time written beside the billing period ("Abrechnungszeitraum
-    01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025", the demo's statement, review round 2) says
+    01.01.–31.12.2025 · Ihr Nutzungszeitraum 01.10.–31.12.2025", the demo's statement) says
     the other range is not the tenant's. A marker with no dates after it ("(Auszug)"), with one date
     ("Mietende: 30.04.2025") or with the range itself after it still marks the range."""
     first = _DATE_TOKEN.match(text, next(_MARKER_GAP.finditer(text, marker_end)).end())
@@ -316,7 +316,7 @@ def _ranges(text: str, before: date | None) -> list[_Candidate]:
     """Every date range in ``text`` that ended by ``before``. A range next to the tenant's own time in the
     flat is left out, or — when the letter calls it its billing period — kept but never called its billing
     period for certain: a tenant who moved out is billed for the landlord's period all the same (§ 556
-    Abs. 3 S. 2 BGB), so a statement is at most "probably late" from it (review round 2)."""
+    Abs. 3 S. 2 BGB), so a statement is at most "probably late" from it."""
     found: list[_Candidate] = []
     for first, second in pairwise(_DATE_TOKEN.finditer(text)):
         if not _RANGE_SEPARATOR.fullmatch(text, first.end(), second.start()):
@@ -767,7 +767,7 @@ ALTERNATIVE_END = (
 )
 
 
-#: A notice only called extraordinary (review round 2 of phase 2): it may be one with the statutory period.
+#: A notice only called extraordinary: it may be one with the statutory period.
 PROBABLY_WITHOUT_PERIOD = (
     "The landlord calls it an extraordinary notice (außerordentlich) but doesn't say it is without notice period "
     "(fristlos). An extraordinary notice can also have the statutory period (§ 573d BGB) — then you can object "
@@ -811,7 +811,7 @@ def _notice_without_period(alternative: bool, next_end: bool = False, probable: 
     )
 
 
-#: A notice whose end is less than two months after it was written (review round 1): said conditionally —
+#: A notice whose end is less than two months after it was written: said conditionally —
 #: a notice too short for its period usually ends the tenancy at the next permissible date instead.
 SHORT_NOTICE = (
     "Your tenancy would end less than two months after this letter was written. If that end is right, the day "
@@ -826,7 +826,7 @@ SHORT_NOTICE = (
 
 
 #: A notice whose end is earlier than its notice period allows, though more than two months after the letter
-#: (review round 4 of phase 2: its objection was shown as passed while the one from the end the notice usually
+#: (its objection was shown as passed while the one from the end the notice usually
 #: has instead was still open).
 SHORT_PERIOD = (
     "Your tenancy would end earlier than a landlord's notice that arrived when this one did can end it: at the "
@@ -895,8 +895,8 @@ def settles(card: LetterAdvice, items: Sequence[Item]) -> bool:
     return bool(carrying) and not any(item.status in _OPEN for item in carrying)
 
 
-#: What a card says once the person has dealt with the letter, after what the letter is (review round 2 of
-#: phase 2: a handled card still said "act within two weeks").
+#: What a card says once the person has dealt with the letter, after what the letter is (a handled
+#: card still said "act within two weeks").
 HANDLED_TITLE = "you've dealt with it"
 
 _P = ParamSpec("_P")

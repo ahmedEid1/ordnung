@@ -503,7 +503,7 @@ _NO_EXTENSION: dict[str, str] = {
         "can't extend them. Get advice now (see the card on the letter)."
     ),
 }
-#: An offer to pay in instalments acknowledges the claim (review round 1): the limitation period starts again
+#: An offer to pay in instalments acknowledges the claim: the limitation period starts again
 #: (§ 212 Abs. 1 Nr. 1 BGB), the claim is hard to dispute later, and a payment on a time-barred claim can't be
 #: reclaimed (§ 214 Abs. 2 BGB) — the card of a court order says old claims may be time-barred.
 ACKNOWLEDGES_CLAIM = (
@@ -529,7 +529,7 @@ COURT_OBJECTION_RECIPIENT = (
 
 
 def objection_to_typed_court(kind: str, sources: Sources, details: LetterDetails | None) -> bool:
-    """Whether an objection to a court order goes to a court the person typed in (review round 3 of phase 2):
+    """Whether an objection to a court order goes to a court the person typed in:
     the letter's sender isn't a court — a Mahnbescheid re-filed from what was read as the claimant's reminder —
     and neither is the addressee its instructions name. Such an objection is never addressed to the sender:
     without a typed court (:func:`~ordnung.rules.routing.may_be_court`) it raises :class:`DraftError`."""
@@ -575,11 +575,11 @@ def typed_name(recipient: str | None) -> str:
 
 
 def to_claimant(kind: str, sources: Sources, details: LetterDetails | None) -> bool:
-    """Whether a letter offering instalments on a court order goes to its claimant, typed in (review round 2
-    of phase 2): it stays linked to the order — its reference number (Geschäftsnummer) and date — and the
+    """Whether a letter offering instalments on a court order goes to its claimant, typed in:
+    it stays linked to the order — its reference number (Geschäftsnummer) and date — and the
     typed claimant, never the court, is its recipient. A typed recipient that is or may be a court
     (:func:`~ordnung.rules.routing.may_be_court`: "Amtsgericht Hünfeld", "AG Hagen") is no claimant — the
-    offer is refused as one to the court (review round 3 of phase 2)."""
+    offer is refused as one to the court."""
     document = sources.document
     name = typed_name(details.recipient if details is not None else None)
     return (
@@ -592,8 +592,8 @@ def to_claimant(kind: str, sources: Sources, details: LetterDetails | None) -> b
 
 
 def court_order_note(store: Store, sources: Sources) -> str | None:
-    """What an offer of instalments on a court order must not let the person forget (review round 3 of
-    phase 2): the order's own deadline still runs — an offer doesn't stop it (§§ 692, 694, 699, 700 ZPO) —,
+    """What an offer of instalments on a court order must not let the person forget:
+    the order's own deadline still runs — an offer doesn't stop it (§§ 692, 694, 699, 700 ZPO) —,
     named with the order's earliest open date."""
     document = sources.document
     if document is None or document.kind not in _COURT_ORDERS:

@@ -124,7 +124,7 @@ def _registration(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -
     end = parse_date(spec.anchor_date) if spec.anchor == "explicit_date" else None
     end = end or ctx.end_date
     # a dismissal without notice period ends the job when it arrives: an end the letter gives belongs to the
-    # notice given in the alternative (review round 4 of phase 2: counted from it, the date was days late)
+    # notice given in the alternative (counted from it, the date was days late)
     alternative_end, end = (end, None) if ctx.ends_on_arrival else (None, end)
     learned = _arrival(spec, ctx, trace)
     if learned is None:
@@ -375,7 +375,7 @@ def _stated_period(spec: DateSpec, start: date, legal: date, region: str | None,
 
 def _withdrawal(spec: DateSpec, ctx: RuleContext, trace: Trace, buffer: int) -> ComputationReceipt:
     region = calendar_de.normalize_region(ctx.recipient_region)
-    trace.cite.update(_BGB_COUNTING)  # a consumer's period counts under the BGB alone (review round 4)
+    trace.cite.update(_BGB_COUNTING)  # a consumer's period counts under the BGB alone
     written = _written_date(spec)
     anchor = _resolve_anchor(spec, ctx, trace) if spec.type == "relative" else None
     stated: date | None = None

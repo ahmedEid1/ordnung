@@ -15,7 +15,7 @@ after any other (add, never rewrite). ``PRAGMA user_version`` still holds the hi
 so an older Ordnung refuses a database a newer one wrote.
 
 A ledger row names the migration that ran under its number. Integrating work can renumber a migration
-that never shipped (wave 2 of phase 2 made 0003 and 0004 into 0002 and 0003), so a database whose
+that never shipped (0003 and 0004 once became 0002 and 0003 that way), so a database whose
 ledger records a different migration under one of this code's numbers was written by a development
 build: it is refused with that reason — never migrated on a guess, which would skip one migration and
 run another twice.

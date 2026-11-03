@@ -1,11 +1,11 @@
-"""This computer's own sync state: ``<data>/sync/`` (design §5; never synced, never in a backup).
+"""This computer's own sync state: ``<data>/sync/`` (SPEC §12c; never synced, never in a backup).
 
 ::
 
     <data>/sync/              0700
       state.json              0600  LocalState: written atomically (temp, fsync, replace, fsync folder)
-      heads.json              0600  the last good plaintext of every head (finding 9; F14; GC's references)
-      files.json              0600  hash cache: path → size, mtime_ns, inode, sha256 (finding 11)
+      heads.json              0600  the last good plaintext of every head (for one that can't be read now; GC's references)
+      files.json              0600  hash cache: path → size, mtime_ns, inode, sha256
       pull.json               0600  the pull journal: exists only while a pull is applied
       incoming/               0700  a pull's staging (the data folder's file system)
       kept/                   0700  kept copies (encrypted backups with the sync passphrase)
@@ -15,13 +15,13 @@ under ``DataDirLock``). Every file operation goes through an :class:`~ordnung.sy
 the crash and power-cut tests cover this folder too.
 
 The person-change counter is not here: it is the ``meta`` row :data:`~ordnung.sync.PERSON_META_KEY`,
-moved inside the very transaction of each write the person made (:func:`ordnung.db.store.person_write`,
-review finding 5a), so a snapshot of the database knows exactly which person changes it holds.
+moved inside the very transaction of each write the person made (:func:`ordnung.db.store.person_write`),
+so a snapshot of the database knows exactly which person changes it holds.
 ``state.json`` keeps the counter value the last push or pull accounted for (``pushed``).
 
-The machine id (copied-folder check, F32) is ``/etc/machine-id`` (Linux), ``IOPlatformUUID`` (macOS) or
+The machine id (the copied-folder check) is ``/etc/machine-id`` (Linux), ``IOPlatformUUID`` (macOS) or
 ``MachineGuid`` (Windows); where none can be read, a random id stored once in the user's config folder
-(finding 30 — ``uuid.getnode()`` may change at every start).
+(``uuid.getnode()`` may change at every start).
 """
 
 from __future__ import annotations
@@ -63,7 +63,7 @@ from ordnung.sync import (
 from ordnung.sync.folder import PRIVATE_DIR_MODE, FsOps, RealFs
 from ordnung.sync.model import FilesCacheEntry, Head, Journal, LocalState
 
-#: The password store's "locked" answer for the sync passphrase (F25).
+#: The password store's "locked" answer for the sync passphrase.
 LOCKED_MESSAGE = "This computer's password store is locked. Unlock it, and Ordnung goes on by itself."
 #: The keyring for the sync passphrase (``SecretStore``): service "Ordnung sync", sync's words.
 SyncSecrets = partial(
@@ -102,7 +102,7 @@ def clean_name(name: str) -> str:
 
 
 def unique_name(name: str, taken: set[str]) -> str:
-    """``name``, or ``name (2)``, ``name (3)`` … when another computer of the folder has it (finding 29)."""
+    """``name``, or ``name (2)``, ``name (3)`` … when another computer of the folder has it."""
     if name.casefold() not in {t.casefold() for t in taken}:
         return name
     number = 2
@@ -115,7 +115,7 @@ def unique_name(name: str, taken: set[str]) -> str:
 
 
 # --------------------------------------------------------------------------------------------------
-# the machine id (F32, finding 30)
+# the machine id (the copied-folder check)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -165,7 +165,7 @@ def _stored_machine_id() -> str:
 
 
 def machine_id() -> str:
-    """This computer's id: the operating system's, else a random one stored once (finding 30)."""
+    """This computer's id: the operating system's, else a random one stored once."""
     return _read_machine_id() or _stored_machine_id()
 
 

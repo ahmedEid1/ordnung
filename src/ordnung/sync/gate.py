@@ -1,5 +1,5 @@
 """The standby gate: every write to the API passes it, from the computer's listener and the phone's
-(policy: :mod:`ordnung.sync`; design §15.5).
+(policy: :mod:`ordnung.sync`; SPEC §12c).
 
 ``create_app`` adds :class:`SyncGate` *before* :class:`~ordnung.api.security.SecurityMiddleware`, so it
 sits inside it: the computer's requests reach it after ``SecurityMiddleware``'s own checks, a phone's
@@ -13,7 +13,7 @@ segments: ``/api/syncfoo`` is gated), the gate:
 1. asks the agent whether writes are refused now — another computer is in use (except
    :data:`~ordnung.sync.ALLOWED_IN_STANDBY`), or data is being brought over or saved behind the fence —
    and if so answers 409 ``{"detail", "code": "standby"}`` before the body is read and before any
-   handler runs (a phone's refused write is then not logged as a change, phone design M4);
+   handler runs (a phone's refused write is then not logged as a change);
 2. otherwise counts the write as in flight while it runs (the fence waits until none is), and marks it
    as the person's — :data:`~ordnung.db.store.PERSON_WRITE`, so every transaction it commits bumps the
    person counter — unless it is in :data:`~ordnung.sync.NOT_PERSON_CHANGES` or sync isn't counting

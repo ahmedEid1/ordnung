@@ -603,7 +603,7 @@ def _verification_warnings(verification: Verification) -> list[str]:
     )
     if unchecked:
         dates = "1 date" if unchecked == 1 else f"{unchecked} dates"
-        # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
+        # no "Please check:" before it: the letter's page shows it under that heading
         warnings.append(f"{dates.capitalize()} could not be confirmed against the letter's text.")
     if verification.remedy_evidence and verification.remedy_evidence.grounding == "unverified":
         warnings.append(
@@ -903,7 +903,7 @@ def _served_on_arrival(notice: Rival, ctx: RuleContext) -> Rival:
     Postzustellungsurkunde (``ctx.formal_service``: the app asked for the date on the envelope) a notice from
     notification starts there too, within :data:`~ordnung.ingest.gaps.LETTER_DATE_SPAN` days of the letter's date
     (:func:`~ordnung.ingest.gaps.envelope_start`); on any other letter a notice from notification keeps the
-    letter's date — an arrival entered may be a pickup or a day saved weeks later (later audit, round 4, R4L-1)."""
+    letter's date — an arrival entered may be a pickup or a day saved weeks later."""
     start = parse_date(notice.spec.anchor_date)
     arrived = ctx.received_date if ctx.received_confirmed else None
     envelope = envelope_start(notice.spec, ctx)
@@ -1026,8 +1026,8 @@ def is_statement(kind: str | None, extraction: DocumentExtraction | None, *, cho
     kind — recognised from its reading when it isn't filed as another high-stakes kind or as a reminder
     (:func:`~ordnung.rules.routing.names_statement`: the model names it one, ``operating_costs``, or the
     reading names one; only the statement itself, never a reminder about an old statement's back-payment),
-    and the person didn't choose its kind (``chosen``: a letter they filed as a utility bill is one — review
-    round 2 of phase 2: the recognition overrode their choice)."""
+    and the person didn't choose its kind (``chosen``: a letter they filed as a utility bill is one — the
+    recognition used to override their choice)."""
     if kind == "operating_costs":
         return True
     return (
@@ -1065,7 +1065,7 @@ class PaymentNote:
     ``recurring``: recurring payments carry it too (a rent increase's new rent), not only one-off ones (a
     late statement's back-payment — never the new monthly prepayment). ``current``: the rent before the
     increase and ``starts`` the day it takes effect, as read — a payment of the current rent, or one due
-    before the increase, is owed as ever and never carries the note (review round 2 of phase 2)."""
+    before the increase, is owed as ever and never carries the note."""
 
     warning: str
     rule_id: str
@@ -1121,11 +1121,11 @@ def for_item(
     ctx: RuleContext, item: ExtractedItem | Item, note: PaymentNote | None, contract: Contract | None = None
 ) -> RuleContext:
     """The context a to-do's date is computed in: a rent increase's current rent (:meth:`PaymentNote.
-    is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB,
-    review round 2 of phase 2) — it is computed like a payment on any other letter. A payment made in person
-    (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day (UI audit R1-backend-8), nor
+    is_current`) is owed as ever, so it is never re-dated to the new rent's earliest day (§ 558b Abs. 1 BGB)
+    — it is computed like a payment on any other letter. A payment made in person
+    (:func:`~ordnung.payments.pays_on_site`) gets no bank transfer's send-by day, nor
     does one nobody transfers: a direct debit the sender collects, or money coming in
-    (:func:`~ordnung.payments.is_collected_or_incoming`; walkthrough of phase 2). A to-do linked to a rent
+    (:func:`~ordnung.payments.is_collected_or_incoming`). A to-do linked to a rent
     ``contract`` belongs to a home's tenancy, as one on a lease does (``RuleContext.rent``: its payments are
     rent, :mod:`ordnung.recurrence` point 8)."""
     if _rent_contract(contract):
@@ -1166,8 +1166,7 @@ def with_payment_note(
 ) -> ComputedDate:
     """A payment's receipt with its letter's :class:`PaymentNote` and its rule, when it applies
     (:meth:`PaymentNote.applies`). A payment without a date gets a receipt for the note alone — the page
-    and Ask read the note from the receipt, so an undated new rent is never shown as owed (review round 2
-    of phase 2)."""
+    and Ask read the note from the receipt, so an undated new rent is never shown as owed."""
     if note is None or not note.applies(item):
         return computed
     receipt = computed.receipt or ComputationReceipt(due_date=None, summary=UNDATED_NOTE_SUMMARY)
@@ -1192,7 +1191,7 @@ def kept_payment_note(
     previous: ComputationReceipt | None, receipt: ComputationReceipt | None
 ) -> ComputationReceipt | None:
     """A payment's new receipt (a date the person set, or none) with the payment note its previous one
-    carried: setting the new rent's date by hand never makes it owed (review round 2 of phase 2)."""
+    carried: setting the new rent's date by hand never makes it owed."""
     notes = [warning for warning in (previous.warnings if previous else []) if warning in PAYMENT_NOTES]
     if not notes:
         return receipt
@@ -1266,7 +1265,7 @@ def square_iban_claims(warnings: Sequence[str], payment: PaymentDetails | None) 
     """The model's warnings with its claims about the payment IBAN's check digits squared with Ordnung's
     own check (``payment.iban_valid``, ISO 13616; ADR 0002: code checks digits, the model reads).
 
-    Policy (UI audit R1-backend-7: "does not pass the standard IBAN checksum" was stored for a valid IBAN):
+    Policy ("does not pass the standard IBAN checksum" was stored for a valid IBAN):
     a sentence that speaks of an IBAN's checksum or check digits is dropped when the check contradicts it —
     it says the check fails and the IBAN passes, or the IBAN fails —; a warning left without sentences is
     dropped. When the IBAN fails, Ordnung says so in its own words, once (:func:`invalid_iban_message`, as

@@ -326,7 +326,7 @@ def _exported_items(ledger: Ledger, include_done: bool) -> list[Item]:
     with scam signs, invoice payments a later payment reminder took over, an e-mail's payment its
     attached bill repeats — the other letter is the one to act on, as on the agenda), and no open one-off
     whose date had long passed when its letter was read (:func:`~ordnung.secretary.triggers.
-    was_history_when_filed`: a backfilled archive's 2025 deposit is no date to keep — walkthrough of phase 2)."""
+    was_history_when_filed`: a backfilled archive's 2025 deposit is no date to keep)."""
     return [
         item
         for item in ledger.items
