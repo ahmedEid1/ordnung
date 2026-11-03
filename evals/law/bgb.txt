@@ -1,0 +1,235 @@
+Bürgerliches Gesetzbuch (BGB)
+Neugefasst durch Bek. v. 2.1.2002 I 42, 2909; 2003, 738;
+Stand: zuletzt geändert durch Art. 6 G v. 23.7.2026 I Nr. 226
+
+§ 130 Wirksamwerden der Willenserklärung gegenüber Abwesenden
+
+(1) Eine Willenserklärung, die einem anderen gegenüber abzugeben ist, wird, wenn sie in dessen Abwesenheit abgegeben wird, in dem Zeitpunkt wirksam, in welchem sie ihm zugeht. Sie wird nicht wirksam, wenn dem anderen vorher oder gleichzeitig ein Widerruf zugeht.
+(2) Eine Willenserklärung, die notariell beurkundet oder öffentlich beglaubigt wurde, wird auch wirksam, wenn dem Erklärungsempfänger eine öffentlich beglaubigte Abschrift der Urschrift zugeht.
+(3) Auf die Wirksamkeit der Willenserklärung ist es ohne Einfluss, wenn der Erklärende nach der Abgabe stirbt oder geschäftsunfähig wird.
+(4) Diese Vorschriften finden auch dann Anwendung, wenn die Willenserklärung einer Behörde gegenüber abzugeben ist.
+
+§ 186 Geltungsbereich
+
+Für die in Gesetzen, gerichtlichen Verfügungen und Rechtsgeschäften enthaltenen Frist- und Terminsbestimmungen gelten die Auslegungsvorschriften der §§ 187 bis 193.
+
+§ 187 Fristbeginn
+
+(1) Ist für den Anfang einer Frist ein Ereignis oder ein in den Lauf eines Tages fallender Zeitpunkt maßgebend, so wird bei der Berechnung der Frist der Tag nicht mitgerechnet, in welchen das Ereignis oder der Zeitpunkt fällt.
+(2) Ist der Beginn eines Tages der für den Anfang einer Frist maßgebende Zeitpunkt, so wird dieser Tag bei der Berechnung der Frist mitgerechnet. Das Gleiche gilt von dem Tage der Geburt bei der Berechnung des Lebensalters.
+
+Fußnote
+
+(+++ § 187: Zur Anwendung vgl. § 31 Abs. 5 KVBG +++)
+
+§ 188 Fristende
+
+(1) Eine nach Tagen bestimmte Frist endigt mit dem Ablauf des letzten Tages der Frist.
+(2) Eine Frist, die nach Wochen, nach Monaten oder nach einem mehrere Monate umfassenden Zeitraum - Jahr, halbes Jahr, Vierteljahr - bestimmt ist, endigt im Falle des § 187 Abs. 1 mit dem Ablauf desjenigen Tages der letzten Woche oder des letzten Monats, welcher durch seine Benennung oder seine Zahl dem Tage entspricht, in den das Ereignis oder der Zeitpunkt fällt, im Falle des § 187 Abs. 2 mit dem Ablauf desjenigen Tages der letzten Woche oder des letzten Monats, welcher dem Tage vorhergeht, der durch seine Benennung oder seine Zahl dem Anfangstag der Frist entspricht.
+(3) Fehlt bei einer nach Monaten bestimmten Frist in dem letzten Monat der für ihren Ablauf maßgebende Tag, so endigt die Frist mit dem Ablauf des letzten Tages dieses Monats.
+
+Fußnote
+
+(+++ § 188: Zur Anwendung vgl. § 31 Abs. 5 KVBG +++)
+
+§ 189 Berechnung einzelner Fristen
+
+(1) Unter einem halben Jahr wird eine Frist von sechs Monaten, unter einem Vierteljahr eine Frist von drei Monaten, unter einem halben Monat eine Frist von 15 Tagen verstanden.
+(2) Ist eine Frist auf einen oder mehrere ganze Monate und einen halben Monat gestellt, so sind die 15 Tage zuletzt zu zählen.
+
+§ 190 Fristverlängerung
+
+Im Falle der Verlängerung einer Frist wird die neue Frist von dem Ablauf der vorigen Frist an berechnet.
+
+§ 191 Berechnung von Zeiträumen
+
+Ist ein Zeitraum nach Monaten oder nach Jahren in dem Sinne bestimmt, dass er nicht zusammenhängend zu verlaufen braucht, so wird der Monat zu 30, das Jahr zu 365 Tagen gerechnet.
+
+§ 192 Anfang, Mitte, Ende des Monats
+
+Unter Anfang des Monats wird der erste, unter Mitte des Monats der 15., unter Ende des Monats der letzte Tag des Monats verstanden.
+
+§ 193 Sonn- und Feiertag; Sonnabend
+
+Ist an einem bestimmten Tage oder innerhalb einer Frist eine Willenserklärung abzugeben oder eine Leistung zu bewirken und fällt der bestimmte Tag oder der letzte Tag der Frist auf einen Sonntag, einen am Erklärungs- oder Leistungsort staatlich anerkannten allgemeinen Feiertag oder einen Sonnabend, so tritt an die Stelle eines solchen Tages der nächste Werktag.
+
+§ 309 Klauselverbote ohne Wertungsmöglichkeit
+
+Auch soweit eine Abweichung von den gesetzlichen Vorschriften zulässig ist, ist in Allgemeinen Geschäftsbedingungen unwirksam
+    1. (Kurzfristige Preiserhöhungen)
+       eine Bestimmung, welche die Erhöhung des Entgelts für Waren oder Leistungen vorsieht, die innerhalb von vier Monaten nach Vertragsschluss geliefert oder erbracht werden sollen; dies gilt nicht bei Waren oder Leistungen, die im Rahmen von Dauerschuldverhältnissen geliefert oder erbracht werden;
+    2. (Leistungsverweigerungsrechte)
+       eine Bestimmung, durch die
+           a) das Leistungsverweigerungsrecht, das dem Vertragspartner des Verwenders nach § 320 zusteht, ausgeschlossen oder eingeschränkt wird oder
+           b) ein dem Vertragspartner des Verwenders zustehendes Zurückbehaltungsrecht, soweit es auf demselben Vertragsverhältnis beruht, ausgeschlossen oder eingeschränkt, insbesondere von der Anerkennung von Mängeln durch den Verwender abhängig gemacht wird;
+    3. (Aufrechnungsverbot)
+       eine Bestimmung, durch die dem Vertragspartner des Verwenders die Befugnis genommen wird, mit einer unbestrittenen oder rechtskräftig festgestellten Forderung aufzurechnen;
+    4. (Mahnung, Fristsetzung)
+       eine Bestimmung, durch die der Verwender von der gesetzlichen Obliegenheit freigestellt wird, den anderen Vertragsteil zu mahnen oder ihm eine Frist für die Leistung oder Nacherfüllung zu setzen;
+    5. (Pauschalierung von Schadensersatzansprüchen)
+       die Vereinbarung eines pauschalierten Anspruchs des Verwenders auf Schadensersatz oder Ersatz einer Wertminderung, wenn
+           a) die Pauschale den in den geregelten Fällen nach dem gewöhnlichen Lauf der Dinge zu erwartenden Schaden oder die gewöhnlich eintretende Wertminderung übersteigt oder
+           b) dem anderen Vertragsteil nicht ausdrücklich der Nachweis gestattet wird, ein Schaden oder eine Wertminderung sei überhaupt nicht entstanden oder wesentlich niedriger als die Pauschale;
+    6. (Vertragsstrafe)
+       eine Bestimmung, durch die dem Verwender für den Fall der Nichtabnahme oder verspäteten Abnahme der Leistung, des Zahlungsverzugs oder für den Fall, dass der andere Vertragsteil sich vom Vertrag löst, Zahlung einer Vertragsstrafe versprochen wird;
+    7. (Haftungsausschluss bei Verletzung von Leben, Körper, Gesundheit und bei grobem Verschulden)
+           a) (Verletzung von Leben, Körper, Gesundheit)
+              ein Ausschluss oder eine Begrenzung der Haftung für Schäden aus der Verletzung des Lebens, des Körpers oder der Gesundheit, die auf einer fahrlässigen Pflichtverletzung des Verwenders oder einer vorsätzlichen oder fahrlässigen Pflichtverletzung eines gesetzlichen Vertreters oder Erfüllungsgehilfen des Verwenders beruhen;
+           b) (Grobes Verschulden)
+              ein Ausschluss oder eine Begrenzung der Haftung für sonstige Schäden, die auf einer grob fahrlässigen Pflichtverletzung des Verwenders oder auf einer vorsätzlichen oder grob fahrlässigen Pflichtverletzung eines gesetzlichen Vertreters oder Erfüllungsgehilfen des Verwenders beruhen;
+       die Buchstaben a und b gelten nicht für Haftungsbeschränkungen in den nach Maßgabe des Personenbeförderungsgesetzes genehmigten Beförderungsbedingungen und Tarifvorschriften der Straßenbahnen, Obusse und Kraftfahrzeuge im Linienverkehr, soweit sie nicht zum Nachteil des Fahrgasts von der Verordnung über die Allgemeinen Beförderungsbedingungen für den Straßenbahn- und Obusverkehr sowie den Linienverkehr mit Kraftfahrzeugen vom 27. Februar 1970 abweichen; Buchstabe b gilt nicht für Haftungsbeschränkungen für staatlich genehmigte Lotterie- oder Ausspielverträge;
+    8. (Sonstige Haftungsausschlüsse bei Pflichtverletzung)
+           a) (Ausschluss des Rechts, sich vom Vertrag zu lösen)
+              eine Bestimmung, die bei einer vom Verwender zu vertretenden, nicht in einem Mangel der Kaufsache oder des Werkes bestehenden Pflichtverletzung das Recht des anderen Vertragsteils, sich vom Vertrag zu lösen, ausschließt oder einschränkt; dies gilt nicht für die in der Nummer 7 bezeichneten Beförderungsbedingungen und Tarifvorschriften unter den dort genannten Voraussetzungen;
+           b) (Mängel)
+              eine Bestimmung, durch die bei Verträgen über Lieferungen neu hergestellter Sachen und über Werkleistungen
+                  aa) (Ausschluss und Verweisung auf Dritte)
+                      die Ansprüche gegen den Verwender wegen eines Mangels insgesamt oder bezüglich einzelner Teile ausgeschlossen, auf die Einräumung von Ansprüchen gegen Dritte beschränkt oder von der vorherigen gerichtlichen Inanspruchnahme Dritter abhängig gemacht werden;
+                  bb) (Beschränkung auf Nacherfüllung)
+                      die Ansprüche gegen den Verwender insgesamt oder bezüglich einzelner Teile auf ein Recht auf Nacherfüllung beschränkt werden, sofern dem anderen Vertragsteil nicht ausdrücklich das Recht vorbehalten wird, bei Fehlschlagen der Nacherfüllung zu mindern oder, wenn nicht eine Bauleistung Gegenstand der Mängelhaftung ist, nach seiner Wahl vom Vertrag zurückzutreten;
+                  cc) (Aufwendungen bei Nacherfüllung)
+                      die Verpflichtung des Verwenders ausgeschlossen oder beschränkt wird, die zum Zweck der Nacherfüllung erforderlichen Aufwendungen nach § 439 Absatz 2 und 3 oder § 635 Absatz 2 zu tragen oder zu ersetzen;
+                  dd) (Vorenthalten der Nacherfüllung)
+                      der Verwender die Nacherfüllung von der vorherigen Zahlung des vollständigen Entgelts oder eines unter Berücksichtigung des Mangels unverhältnismäßig hohen Teils des Entgelts abhängig macht;
+                  ee) (Ausschlussfrist für Mängelanzeige)
+                      der Verwender dem anderen Vertragsteil für die Anzeige nicht offensichtlicher Mängel eine Ausschlussfrist setzt, die kürzer ist als die nach dem Doppelbuchstaben ff zulässige Frist;
+                  ff) (Erleichterung der Verjährung)
+                      die Verjährung von Ansprüchen gegen den Verwender wegen eines Mangels in den Fällen des § 438 Abs. 1 Nr. 2 und des § 634a Abs. 1 Nr. 2 erleichtert oder in den sonstigen Fällen eine weniger als ein Jahr betragende Verjährungsfrist ab dem gesetzlichen Verjährungsbeginn erreicht wird;
+    9. bei einem Vertragsverhältnis, das die regelmäßige Lieferung von Waren oder die regelmäßige Erbringung von Dienst- oder Werkleistungen durch den Verwender zum Gegenstand hat,
+           a) eine den anderen Vertragsteil länger als zwei Jahre bindende Laufzeit des Vertrags,
+           b) eine den anderen Vertragsteil bindende stillschweigende Verlängerung des Vertragsverhältnisses, es sei denn das Vertragsverhältnis wird nur auf unbestimmte Zeit verlängert und dem anderen Vertragsteil wird das Recht eingeräumt, das verlängerte Vertragsverhältnis jederzeit mit einer Frist von höchstens einem Monat zu kündigen, oder
+           c) eine zu Lasten des anderen Vertragsteils längere Kündigungsfrist als einen Monat vor Ablauf der zunächst vorgesehenen Vertragsdauer;
+       dies gilt nicht für Verträge über die Lieferung zusammengehörig verkaufter Sachen sowie für Versicherungsverträge;
+    10. (Wechsel des Vertragspartners)
+        eine Bestimmung, wonach bei Kauf-, Darlehens-, Dienst- oder Werkverträgen ein Dritter anstelle des Verwenders in die sich aus dem Vertrag ergebenden Rechte und Pflichten eintritt oder eintreten kann, es sei denn, in der Bestimmung wird
+            a) der Dritte namentlich bezeichnet oder
+            b) dem anderen Vertragsteil das Recht eingeräumt, sich vom Vertrag zu lösen;
+    11. (Haftung des Abschlussvertreters)
+        eine Bestimmung, durch die der Verwender einem Vertreter, der den Vertrag für den anderen Vertragsteil abschließt,
+            a) ohne hierauf gerichtete ausdrückliche und gesonderte Erklärung eine eigene Haftung oder Einstandspflicht oder
+            b) im Falle vollmachtsloser Vertretung eine über § 179 hinausgehende Haftung
+        auferlegt;
+    12. (Beweislast)
+        eine Bestimmung, durch die der Verwender die Beweislast zum Nachteil des anderen Vertragsteils ändert, insbesondere indem er
+            a) diesem die Beweislast für Umstände auferlegt, die im Verantwortungsbereich des Verwenders liegen, oder
+            b) den anderen Vertragsteil bestimmte Tatsachen bestätigen lässt;
+        Buchstabe b gilt nicht für Empfangsbekenntnisse, die gesondert unterschrieben oder mit einer gesonderten qualifizierten elektronischen Signatur versehen sind;
+    13. (Form von Anzeigen und Erklärungen)
+        eine Bestimmung, durch die Anzeigen oder Erklärungen, die dem Verwender oder einem Dritten gegenüber abzugeben sind, gebunden werden
+            a) an eine strengere Form als die schriftliche Form in einem Vertrag, für den durch Gesetz notarielle Beurkundung vorgeschrieben ist oder
+            b) an eine strengere Form als die Textform in anderen als den in Buchstabe a genannten Verträgen oder
+            c) an besondere Zugangserfordernisse;
+    14. (Klageverzicht)
+        eine Bestimmung, wonach der andere Vertragsteil seine Ansprüche gegen den Verwender gerichtlich nur geltend machen darf, nachdem er eine gütliche Einigung in einem Verfahren zur außergerichtlichen Streitbeilegung versucht hat;
+    15. (Abschlagszahlungen und Sicherheitsleistung)
+        eine Bestimmung, nach der der Verwender bei einem Werkvertrag
+            a) für Teilleistungen Abschlagszahlungen vom anderen Vertragsteil verlangen kann, die wesentlich höher sind als die nach § 632a Absatz 1 und § 650m Absatz 1 zu leistenden Abschlagszahlungen, oder
+            b) die Sicherheitsleistung nach § 650m Absatz 2 nicht oder nur in geringerer Höhe leisten muss.
+
+§ 355 Widerrufsrecht bei Verbraucherverträgen
+
+(1) Wird einem Verbraucher durch Gesetz ein Widerrufsrecht nach dieser Vorschrift eingeräumt, so sind der Verbraucher und der Unternehmer an ihre auf den Abschluss des Vertrags gerichteten Willenserklärungen nicht mehr gebunden, wenn der Verbraucher seine Willenserklärung fristgerecht widerrufen hat. Der Widerruf erfolgt durch Erklärung gegenüber dem Unternehmer. Aus der Erklärung muss der Entschluss des Verbrauchers zum Widerruf des Vertrags eindeutig hervorgehen. Der Widerruf muss keine Begründung enthalten. Zur Fristwahrung genügt die rechtzeitige Absendung des Widerrufs.
+(2) Die Widerrufsfrist beträgt 14 Tage. Sie beginnt mit Vertragsschluss, soweit nichts anderes bestimmt ist.
+(3) Im Falle des Widerrufs sind die empfangenen Leistungen unverzüglich zurückzugewähren. Bestimmt das Gesetz eine Höchstfrist für die Rückgewähr, so beginnt diese für den Unternehmer mit dem Zugang und für den Verbraucher mit der Abgabe der Widerrufserklärung. Ein Verbraucher wahrt diese Frist durch die rechtzeitige Absendung der Waren. Der Unternehmer trägt bei Widerruf die Gefahr der Rücksendung der Waren.
+
+§ 356 Widerrufsrecht bei außerhalb von Geschäftsräumen geschlossenen Verträgen und Fernabsatzverträgen
+
+(1) Der Unternehmer kann dem Verbraucher die Möglichkeit einräumen, das Muster-Widerrufsformular nach Anlage 2 zu Artikel 246a § 1 Absatz 2 Satz 1 Nummer 1 des Einführungsgesetzes zum Bürgerlichen Gesetzbuche oder eine andere eindeutige Widerrufserklärung auf der Webseite des Unternehmers auszufüllen und zu übermitteln. Macht der Verbraucher von dieser Möglichkeit Gebrauch, muss der Unternehmer dem Verbraucher den Zugang des Widerrufs unverzüglich auf einem dauerhaften Datenträger bestätigen.
+(2) Die Widerrufsfrist beginnt
+    1. bei einem Verbrauchsgüterkauf,
+           a) der nicht unter die Buchstaben b bis d fällt, sobald der Verbraucher oder ein von ihm benannter Dritter, der nicht Frachtführer ist, die Waren erhalten hat,
+           b) bei dem der Verbraucher mehrere Waren im Rahmen einer einheitlichen Bestellung bestellt hat und die Waren getrennt geliefert werden, sobald der Verbraucher oder ein von ihm benannter Dritter, der nicht Frachtführer ist, die letzte Ware erhalten hat,
+           c) bei dem die Ware in mehreren Teilsendungen oder Stücken geliefert wird, sobald der Verbraucher oder ein vom Verbraucher benannter Dritter, der nicht Frachtführer ist, die letzte Teilsendung oder das letzte Stück erhalten hat,
+           d) der auf die regelmäßige Lieferung von Waren über einen festgelegten Zeitraum gerichtet ist, sobald der Verbraucher oder ein von ihm benannter Dritter, der nicht Frachtführer ist, die erste Ware erhalten hat,
+    2. bei einem Vertrag, der die nicht in einem begrenzten Volumen oder in einer bestimmten Menge angebotene Lieferung von Wasser, Gas oder Strom, die Lieferung von Fernwärme oder die Lieferung von nicht auf einem körperlichen Datenträger befindlichen digitalen Inhalten zum Gegenstand hat, mit Vertragsschluss.
+(3) Die Widerrufsfrist beginnt nicht, bevor der Unternehmer den Verbraucher entsprechend den Anforderungen des Artikels 246a § 1 Absatz 2 Satz 1 Nummer 1 des Einführungsgesetzes zum Bürgerlichen Gesetzbuche unterrichtet hat. Bei Verträgen über Finanzdienstleistungen beginnt die Widerrufsfrist nicht, bevor der Verbraucher die Vertragsbestimmungen einschließlich der Allgemeinen Geschäftsbedingungen erhalten hat und der Unternehmer den Verbraucher entsprechend den Anforderungen des Artikels 246b § 2 Absatz 1 des Einführungsgesetzes zum Bürgerlichen Gesetzbuche unterrichtet hat.
+(4) Das Widerrufsrecht erlischt spätestens zwölf Monate und 14 Tage nach dem in Absatz 2 oder § 355 Absatz 2 Satz 2 genannten Zeitpunkt. Bei Verträgen über Finanzdienstleistungen gilt Satz 1 nicht, wenn der Verbraucher nicht nach Artikel 246b § 1 Absatz 1 Nummer 16 des Einführungsgesetzes zum Bürgerlichen Gesetzbuche über sein Widerrufsrecht belehrt wurde.
+(5) Das Widerrufsrecht erlischt bei Verträgen über die Erbringung von Dienstleistungen auch unter folgenden Voraussetzungen:
+    1. bei einem Vertrag, der den Verbraucher nicht zur Zahlung eines Preises verpflichtet, wenn der Unternehmer die Dienstleistung vollständig erbracht hat,
+    2. bei einem Vertrag, der den Verbraucher zur Zahlung eines Preises verpflichtet, mit der vollständigen Erbringung der Dienstleistung, wenn der Verbraucher vor Beginn der Erbringung
+           a) ausdrücklich zugestimmt hat, dass der Unternehmer mit der Erbringung der Dienstleistung vor Ablauf der Widerrufsfrist beginnt,
+           b) bei einem außerhalb von Geschäftsräumen geschlossenen Vertrag die Zustimmung nach Buchstabe a auf einem dauerhaften Datenträger übermittelt hat und
+           c) seine Kenntnis davon bestätigt hat, dass sein Widerrufsrecht mit vollständiger Vertragserfüllung durch den Unternehmer erlischt,
+    3. bei einem Vertrag, bei dem der Verbraucher den Unternehmer ausdrücklich aufgefordert hat, ihn aufzusuchen, um Reparaturarbeiten auszuführen, mit der vollständigen Erbringung der Dienstleistung, wenn der Verbraucher die in Nummer 2 Buchstabe a und b genannten Voraussetzungen erfüllt hat,
+    4. bei einem Vertrag über die Erbringung von Finanzdienstleistungen, wenn der Vertrag von beiden Seiten auf ausdrücklichen Wunsch des Verbrauchers vollständig erfüllt ist, bevor der Verbraucher sein Widerrufsrecht ausübt.
+(6) Das Widerrufsrecht erlischt bei Verträgen über die Bereitstellung von nicht auf einem körperlichen Datenträger befindlichen digitalen Inhalten auch unter folgenden Voraussetzungen:
+    1. bei einem Vertrag, der den Verbraucher nicht zur Zahlung eines Preises verpflichtet, wenn der Unternehmer mit der Vertragserfüllung begonnen hat,
+    2. bei einem Vertrag, der den Verbraucher zur Zahlung eines Preises verpflichtet, wenn
+           a) der Unternehmer mit der Vertragserfüllung begonnen hat,
+           b) der Verbraucher ausdrücklich zugestimmt hat, dass der Unternehmer mit der Vertragserfüllung vor Ablauf der Widerrufsfrist beginnt,
+           c) der Verbraucher seine Kenntnis davon bestätigt hat, dass durch seine Zustimmung nach Buchstabe b mit Beginn der Vertragserfüllung sein Widerrufsrecht erlischt, und
+           d) der Unternehmer dem Verbraucher eine Bestätigung gemäß § 312f zur Verfügung gestellt hat.
+
+§ 556 Vereinbarungen über Betriebskosten
+
+(1) Die Vertragsparteien können vereinbaren, dass der Mieter Betriebskosten trägt. Betriebskosten sind die Kosten, die dem Eigentümer oder Erbbauberechtigten durch das Eigentum oder das Erbbaurecht am Grundstück oder durch den bestimmungsmäßigen Gebrauch des Gebäudes, der Nebengebäude, Anlagen, Einrichtungen und des Grundstücks laufend entstehen. Für die Aufstellung der Betriebskosten gilt die Betriebskostenverordnung vom 25. November 2003 (BGBl. I S. 2346, 2347) fort. Die Bundesregierung wird ermächtigt, durch Rechtsverordnung ohne Zustimmung des Bundesrates Vorschriften über die Aufstellung der Betriebskosten zu erlassen.
+(2) Die Vertragsparteien können vorbehaltlich anderweitiger Vorschriften vereinbaren, dass Betriebskosten als Pauschale oder als Vorauszahlung ausgewiesen werden. Vorauszahlungen für Betriebskosten dürfen nur in angemessener Höhe vereinbart werden.
+(3) Über die Vorauszahlungen für Betriebskosten ist jährlich abzurechnen; dabei ist der Grundsatz der Wirtschaftlichkeit zu beachten. Die Abrechnung ist dem Mieter spätestens bis zum Ablauf des zwölften Monats nach Ende des Abrechnungszeitraums mitzuteilen. Nach Ablauf dieser Frist ist die Geltendmachung einer Nachforderung durch den Vermieter ausgeschlossen, es sei denn, der Vermieter hat die verspätete Geltendmachung nicht zu vertreten. Der Vermieter ist zu Teilabrechnungen nicht verpflichtet. Einwendungen gegen die Abrechnung hat der Mieter dem Vermieter spätestens bis zum Ablauf des zwölften Monats nach Zugang der Abrechnung mitzuteilen. Nach Ablauf dieser Frist kann der Mieter Einwendungen nicht mehr geltend machen, es sei denn, der Mieter hat die verspätete Geltendmachung nicht zu vertreten.
+(3a) Ein Glasfaserbereitstellungsentgelt nach § 72 Absatz 1 des Telekommunikationsgesetzes hat der Mieter nur bei wirtschaftlicher Umsetzung der Maßnahme zu tragen. Handelt es sich um eine aufwändige Maßnahme im Sinne von § 72 Absatz 2 Satz 4 des Telekommunikationsgesetzes, hat der Mieter die Kosten nur dann zu tragen, wenn der Vermieter vor Vereinbarung der Glasfaserbereitstellung soweit möglich drei Angebote eingeholt und das wirtschaftlichste ausgewählt hat.
+(4) Der Vermieter hat dem Mieter auf Verlangen Einsicht in die der Abrechnung zugrundeliegenden Belege zu gewähren. Der Vermieter ist berechtigt, die Belege elektronisch bereitzustellen.
+(5) Eine zum Nachteil des Mieters von Absatz 1, Absatz 2 Satz 2, Absatz 3 oder Absatz 3a abweichende Vereinbarung ist unwirksam.
+
+§ 558 Mieterhöhung bis zur ortsüblichen Vergleichsmiete
+
+(1) Der Vermieter kann die Zustimmung zu einer Erhöhung der Miete bis zur ortsüblichen Vergleichsmiete verlangen, wenn die Miete in dem Zeitpunkt, zu dem die Erhöhung eintreten soll, seit 15 Monaten unverändert ist. Das Mieterhöhungsverlangen kann frühestens ein Jahr nach der letzten Mieterhöhung geltend gemacht werden. Erhöhungen nach den §§ 559 bis 560 werden nicht berücksichtigt.
+(2) Die ortsübliche Vergleichsmiete wird gebildet aus den üblichen Entgelten, die in der Gemeinde oder einer vergleichbaren Gemeinde für Wohnraum vergleichbarer Art, Größe, Ausstattung, Beschaffenheit und Lage einschließlich der energetischen Ausstattung und Beschaffenheit in den letzten sechs Jahren vereinbart oder, von Erhöhungen nach § 560 abgesehen, geändert worden sind. Ausgenommen ist Wohnraum, bei dem die Miethöhe durch Gesetz oder im Zusammenhang mit einer Förderzusage festgelegt worden ist.
+(3) Bei Erhöhungen nach Absatz 1 darf sich die Miete innerhalb von drei Jahren, von Erhöhungen nach den §§ 559 bis 560 abgesehen, nicht um mehr als 20 vom Hundert erhöhen (Kappungsgrenze). Der Prozentsatz nach Satz 1 beträgt 15 vom Hundert, wenn die ausreichende Versorgung der Bevölkerung mit Mietwohnungen zu angemessenen Bedingungen in einer Gemeinde oder einem Teil einer Gemeinde besonders gefährdet ist und diese Gebiete nach Satz 3 bestimmt sind. Die Landesregierungen werden ermächtigt, diese Gebiete durch Rechtsverordnung für die Dauer von jeweils höchstens fünf Jahren zu bestimmen.
+(4) Die Kappungsgrenze gilt nicht,
+    1. wenn eine Verpflichtung des Mieters zur Ausgleichszahlung nach den Vorschriften über den Abbau der Fehlsubventionierung im Wohnungswesen wegen des Wegfalls der öffentlichen Bindung erloschen ist und
+    2. soweit die Erhöhung den Betrag der zuletzt zu entrichtenden Ausgleichszahlung nicht übersteigt.
+Der Vermieter kann vom Mieter frühestens vier Monate vor dem Wegfall der öffentlichen Bindung verlangen, ihm innerhalb eines Monats über die Verpflichtung zur Ausgleichszahlung und über deren Höhe Auskunft zu erteilen. Satz 1 gilt entsprechend, wenn die Verpflichtung des Mieters zur Leistung einer Ausgleichszahlung nach den §§ 34 bis 37 des Wohnraumförderungsgesetzes und den hierzu ergangenen landesrechtlichen Vorschriften wegen Wegfalls der Mietbindung erloschen ist.
+(5) Von dem Jahresbetrag, der sich bei einer Erhöhung auf die ortsübliche Vergleichsmiete ergäbe, sind Drittmittel im Sinne des § 559a abzuziehen, im Falle des § 559a Absatz 1 mit 8 Prozent des Zuschusses.
+(6) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+Fußnote
+
+(+++ § 558: Zur Anwendung vgl. § 578 Abs. 3 Satz 1 +++)
+
+§ 558a Form und Begründung der Mieterhöhung
+
+(1) Das Mieterhöhungsverlangen nach § 558 ist dem Mieter in Textform zu erklären und zu begründen.
+(2) Zur Begründung kann insbesondere Bezug genommen werden auf
+    1. einen Mietspiegel (§§ 558c, 558d),
+    2. eine Auskunft aus einer Mietdatenbank (§ 558e),
+    3. ein mit Gründen versehenes Gutachten eines öffentlich bestellten und vereidigten Sachverständigen,
+    4. entsprechende Entgelte für einzelne vergleichbare Wohnungen; hierbei genügt die Benennung von drei Wohnungen.
+(3) Enthält ein qualifizierter Mietspiegel (§ 558d Abs. 1), bei dem die Vorschrift des § 558d Abs. 2 eingehalten ist, Angaben für die Wohnung, so hat der Vermieter in seinem Mieterhöhungsverlangen diese Angaben auch dann mitzuteilen, wenn er die Mieterhöhung auf ein anderes Begründungsmittel nach Absatz 2 stützt.
+(4) Bei der Bezugnahme auf einen Mietspiegel, der Spannen enthält, reicht es aus, wenn die verlangte Miete innerhalb der Spanne liegt. Ist in dem Zeitpunkt, in dem der Vermieter seine Erklärung abgibt, kein Mietspiegel vorhanden, bei dem § 558c Abs. 3 oder § 558d Abs. 2 eingehalten ist, so kann auch ein anderer, insbesondere ein veralteter Mietspiegel oder ein Mietspiegel einer vergleichbaren Gemeinde verwendet werden.
+(5) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 558b Zustimmung zur Mieterhöhung
+
+(1) Soweit der Mieter der Mieterhöhung zustimmt, schuldet er die erhöhte Miete mit Beginn des dritten Kalendermonats nach dem Zugang des Erhöhungsverlangens.
+(2) Soweit der Mieter der Mieterhöhung nicht bis zum Ablauf des zweiten Kalendermonats nach dem Zugang des Verlangens zustimmt, kann der Vermieter auf Erteilung der Zustimmung klagen. Die Klage muss innerhalb von drei weiteren Monaten erhoben werden.
+(3) Ist der Klage ein Erhöhungsverlangen vorausgegangen, das den Anforderungen des § 558a nicht entspricht, so kann es der Vermieter im Rechtsstreit nachholen oder die Mängel des Erhöhungsverlangens beheben. Dem Mieter steht auch in diesem Fall die Zustimmungsfrist nach Absatz 2 Satz 1 zu.
+(4) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 573c Fristen der ordentlichen Kündigung
+
+(1) Die Kündigung ist spätestens am dritten Werktag eines Kalendermonats zum Ablauf des übernächsten Monats zulässig. Die Kündigungsfrist für den Vermieter verlängert sich nach fünf und acht Jahren seit der Überlassung des Wohnraums um jeweils drei Monate.
+(2) Bei Wohnraum, der nur zum vorübergehenden Gebrauch vermietet worden ist, kann eine kürzere Kündigungsfrist vereinbart werden.
+(3) Bei Wohnraum nach § 549 Abs. 2 Nr. 2 ist die Kündigung spätestens am 15. eines Monats zum Ablauf dieses Monats zulässig.
+(4) Eine zum Nachteil des Mieters von Absatz 1 oder 3 abweichende Vereinbarung ist unwirksam.
+
+Fußnote
+
+(+++ § 573c: Zur Anwendung vgl. § 578 Abs. 3 Satz 1 +++)
+
+§ 574 Widerspruch des Mieters gegen die Kündigung
+
+(1) Der Mieter kann der Kündigung des Vermieters widersprechen und von ihm die Fortsetzung des Mietverhältnisses verlangen, wenn die Beendigung des Mietverhältnisses für den Mieter, seine Familie oder einen anderen Angehörigen seines Haushalts eine Härte bedeuten würde, die auch unter Würdigung der berechtigten Interessen des Vermieters nicht zu rechtfertigen ist. Dies gilt nicht, wenn ein Grund vorliegt, der den Vermieter zur außerordentlichen fristlosen Kündigung berechtigt.
+(2) Eine Härte liegt auch vor, wenn angemessener Ersatzwohnraum zu zumutbaren Bedingungen nicht beschafft werden kann.
+(3) Bei der Würdigung der berechtigten Interessen des Vermieters werden nur die in dem Kündigungsschreiben nach § 573 Abs. 3 angegebenen Gründe berücksichtigt, außer wenn die Gründe nachträglich entstanden sind.
+(4) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 574a Fortsetzung des Mietverhältnisses nach Widerspruch
+
+(1) Im Falle des § 574 kann der Mieter verlangen, dass das Mietverhältnis so lange fortgesetzt wird, wie dies unter Berücksichtigung aller Umstände angemessen ist. Ist dem Vermieter nicht zuzumuten, das Mietverhältnis zu den bisherigen Vertragsbedingungen fortzusetzen, so kann der Mieter nur verlangen, dass es unter einer angemessenen Änderung der Bedingungen fortgesetzt wird.
+(2) Kommt keine Einigung zustande, so werden die Fortsetzung des Mietverhältnisses, deren Dauer sowie die Bedingungen, zu denen es fortgesetzt wird, durch Urteil bestimmt. Ist ungewiss, wann voraussichtlich die Umstände wegfallen, auf Grund derer die Beendigung des Mietverhältnisses eine Härte bedeutet, so kann bestimmt werden, dass das Mietverhältnis auf unbestimmte Zeit fortgesetzt wird.
+(3) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 574b Form und Frist des Widerspruchs
+
+(1) Der Widerspruch des Mieters gegen die Kündigung ist in Textform zu erklären. Auf Verlangen des Vermieters soll der Mieter über die Gründe des Widerspruchs unverzüglich Auskunft erteilen.
+(2) Der Vermieter kann die Fortsetzung des Mietverhältnisses ablehnen, wenn der Mieter ihm den Widerspruch nicht spätestens zwei Monate vor der Beendigung des Mietverhältnisses erklärt hat. Hat der Vermieter nicht rechtzeitig vor Ablauf der Widerspruchsfrist auf die Möglichkeit des Widerspruchs sowie auf dessen Form und Frist hingewiesen, so kann der Mieter den Widerspruch noch im ersten Termin des Räumungsrechtsstreits erklären.
+(3) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
