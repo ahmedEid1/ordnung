@@ -44,6 +44,11 @@ change to the README also changes what that page links to.
    - the tag in README's *Updating* (`…/ordnung@vX.Y.Z`);
    - the version in the bug report template's placeholder (`.github/ISSUE_TEMPLATE/bug_report.yml`);
    - then `make openapi`, `ordnung demo --rebuild` and `make build-web`.
+
+   If a screen or the tour changed since the last release, capture the README's media on this branch, once,
+   after the last fix round: `make capture` writes them into `docs/assets` and names the contact sheets to
+   look at before you commit them (`scripts/capture.sh --only shots` takes the pictures alone; CONTRIBUTING.md
+   says which to commit).
 2. **Name the changelog's section.** In CHANGELOG.md, rename `## Unreleased` to `## X.Y.Z — YYYY-MM-DD`, with
    the day of the release. `python3 scripts/release_notes.py` prints the notes as the release will show them
    (`python3 scripts/release_notes.py Unreleased` shows them before the rename).
@@ -78,6 +83,26 @@ pull request is merged, with no step of its own. Anyone can open it; it needs no
 GitHub Pages has to be turned on once. Under *Settings → Pages → Build and deployment*, choose
 *Source: GitHub Actions*. Then run *Actions → Online demo → Run workflow* on `main`, or merge a change to
 `web/`. Until then the workflow's deploy job fails, and the link shows GitHub's "404" page.
+
+## Repository settings (once, by the owner)
+
+What only the owner can set on GitHub, written down so that it can be checked or set again:
+
+- *About* (the gear beside it on the repository's page):
+  - *Description*: "Local-first AI paperwork secretary for life in Germany — Claude reads the letters, a tested
+    rules engine computes the deadlines."
+  - *Website*: `https://ahmedeid1.github.io/ordnung/`, the online demo.
+  - *Topics*: `python`, `fastapi`, `react`, `typescript`, `sqlite`, `local-first`, `privacy`, `claude`, `llm`,
+    `mcp`, `llm-evaluation`, `germany`, `paperwork`; no rag topic, since Ordnung has no vector database
+    ([ADR 0005](decisions/0005-sqlite-fts-local-first.md)).
+  - *Include in the home page*: *Releases* on, *Packages* off while there are none.
+- *Social preview* (*Settings → General*): a picture of 1280 × 640 px that shows the app, so a link shared in a
+  chat or a post shows it instead of GitHub's own card.
+- *Pull Requests* (*Settings → General*): merge commits take the default message *Pull request title and
+  description*, so `main`'s history reads as the pull requests' titles; and *Automatically delete head
+  branches* is on (pushing to a deleted branch again creates it anew).
+- *Private vulnerability reporting*, in the repository's security settings: on. SECURITY.md sends reporters to
+  it, and to the *Security contact* issue form only while it is off.
 
 ## Turning on PyPI (once, by the owner)
 

@@ -53,7 +53,8 @@ def test_the_slow_checks_run_in_a_job_of_their_own_and_every_check_still_runs() 
     jobs = _jobs()
     backend, slow = jobs["backend"], jobs["backend-slow"]
     assert _on_pull_requests(slow) and slow["runs-on"] == backend["runs-on"] == "ubuntu-24.04"
-    assert slow["timeout-minutes"] <= 45 and backend["timeout-minutes"] == 45
+    # (the backend legs' own limit: test_the_backend_legs_have_room_for_a_slow_runner)
+    assert slow["timeout-minutes"] <= 45
     assert any(step.get("with", {}).get("python-version") == "3.12" for step in slow["steps"])
     for moved in (
         "pytest -m slow",
@@ -152,10 +153,23 @@ def test_the_type_check_covers_the_scripts_each_under_one_name() -> None:
 def test_the_frontend_job_has_room_for_a_slow_runner() -> None:
     """The web job (npm ci, lint, typecheck, the full vitest run, the build check and the build) took 4.5 to 17
     minutes on hosted runners, and one slow runner was cancelled at 20 with vitest still passing tests: its limit
-    must leave room for that, as the backend jobs' 45 minutes do."""
+    must leave room for that, as the backend jobs' limits do."""
     frontend = _jobs()["frontend"]
     assert frontend["timeout-minutes"] >= 30
     assert "npm test" in _script(frontend)
+
+
+def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
+    """The backend's legs on Python 3.11 to 3.14 (install, lint, the type check and the tests with coverage) took
+    16 to 39 minutes on hosted runners (the runs of 3 November 2026, CONTRIBUTING's Fast loop). At 45 minutes a slow
+    runner had 6 left, and a leg it cancels fails the push run on main, which release.yml needs passed before it
+    tags: the limit leaves half as much again as the slowest leg seen. A hung test is still named after 10 minutes
+    (faulthandler_timeout), long before it."""
+    backend = _jobs()["backend"]
+    slowest_leg_seen = 39
+    assert backend["timeout-minutes"] >= 1.5 * slowest_leg_seen
+    assert backend["strategy"]["matrix"]["python"] == ["3.11", "3.12", "3.13", "3.14"]
+    assert "pytest" in _script(backend)
 
 
 def _gates(script: str) -> dict[str, tuple[float, float]]:

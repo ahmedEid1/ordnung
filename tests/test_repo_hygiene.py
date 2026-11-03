@@ -1,5 +1,6 @@
 """What every copy of Ordnung and every contributor needs besides the code: the web build's licence
-notices, the security policy, the issue forms, the Node pin and the dependency updates.
+notices, the security policy, the issue forms and the pull request template, the Node pin, the dependency
+updates, the Makefile's help, the ignore file and the contributor docs' commands, files and generated files.
 
 Written by a release audit: the build stripped every licence comment and no notices file shipped (the
 fonts' SIL Open Font License and the MIT and ISC licences of the bundled code need their notice to
@@ -14,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -398,3 +400,525 @@ def test_contributing_gives_ci_s_own_checks_and_the_rule_about_real_letters() ->
         assert command in ci, command
     assert re.search(r"\*\*Never (commit|attach|paste|share)[^*]*real letters", contributing)
     assert "SECURITY.md" in contributing
+
+
+# --------------------------------------------------------------------------------------------------
+# the pull request template, the Makefile's help, the ignore file and the contributor docs
+# --------------------------------------------------------------------------------------------------
+
+#: A rule in the Makefile: its name, then what follows the colon (prerequisites and the ``##`` text).
+_RULE = re.compile(r"^([a-z][a-z0-9-]*):(?![:=])(.*)$", re.M)
+_needs_make = pytest.mark.skipif(shutil.which("make") is None, reason="needs make")
+_needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="needs git")
+
+
+def _make_targets() -> dict[str, str]:
+    """Every target the Makefile defines, with its ``##`` text ('' when it has none)."""
+    return {
+        name: rest.split("##", 1)[1].strip() if "##" in rest else ""
+        for name, rest in _RULE.findall(_text("Makefile"))
+    }
+
+
+def _make(*args: str) -> str:
+    """What ``make`` prints in the checkout (silent, as a top-level make, whatever runs this test)."""
+    env = {key: value for key, value in os.environ.items() if key not in {"MAKEFLAGS", "MFLAGS", "MAKELEVEL"}}
+    done = subprocess.run(
+        ["make", "--no-print-directory", "-s", "-C", str(ROOT), *args],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+        timeout=60,
+    )
+    assert done.returncode == 0, done.stderr
+    return done.stdout
+
+
+def _section(text: str, heading: str) -> str:
+    """The body of a ``## heading`` section of a Markdown page."""
+    assert f"\n## {heading}\n" in text, heading
+    return text.split(f"\n## {heading}\n", 1)[1].split("\n## ", 1)[0]
+
+
+def _commands(markdown: str) -> list[str]:
+    """Every command line of a page's ``bash`` blocks, without its comment."""
+    commands = []
+    for block in re.findall(r"```bash\n(.*?)```", markdown, re.S):
+        for line in block.splitlines():
+            command = re.split(r"\s+#", line, maxsplit=1)[0].strip()
+            if command and not command.startswith("#"):
+                commands.append(command)
+    return commands
+
+
+def test_a_pull_request_template_warns_against_real_letters_and_names_what_ci_checks() -> None:
+    """Pull requests are public, as issues are: the template carries the issue forms' warning, and reminds of the
+    steps CI or the reviewer checks (the rebuilt web app, a recording a replay misses, the changelog)."""
+    template = _text(".github/pull_request_template.md")
+    assert re.search(r"\*\*Never attach real letters or personal data\*\*", template)
+    boxes = re.findall(r"^- \[ \] (.+)$", template, re.M)
+    assert len(boxes) >= 3 and any("real letters" in box for box in boxes)
+    named = re.findall(r"`make ([a-z-]+)`", template)
+    assert "build-web" in named and "`src/ordnung/web/dist`" in template
+    assert set(named) <= set(_make_targets()), set(named) - set(_make_targets())
+    assert "CHANGELOG.md" in template and "Unreleased" in template
+    assert "recording" in template
+    assert len(template.strip().splitlines()) <= 10  # a reminder, not a form
+
+
+def test_every_make_target_says_what_it_does_and_help_is_the_default() -> None:
+    """`make` alone installed everything, `.PHONY` named a `dev` target that did nothing, and `lint` and
+    `typecheck` had no text: now a bare `make` prints the targets (`make help`)."""
+    makefile = _text("Makefile")
+    targets = _make_targets()
+    assert "help" in targets
+    assert [name for name, text in targets.items() if not text] == []
+    phony = re.search(r"^\.PHONY:(.*)$", makefile, re.M)
+    assert phony is not None and sorted(phony[1].split()) == sorted(targets)
+    assert re.search(r"^\.DEFAULT_GOAL\s*:=\s*help\s*$", makefile, re.M)
+
+
+@_needs_make
+def test_make_help_prints_every_target_with_its_text() -> None:
+    listed = {}
+    for line in _make("help").splitlines():
+        name, _, text = line.strip().partition(" ")
+        listed[name] = text.strip()
+    assert listed == _make_targets()
+    # a bare `make` is `make help` (dry runs, so nothing is installed whatever the default is)
+    assert _make("-n") == _make("-n", "help")
+
+
+def test_make_eval_says_what_it_writes() -> None:
+    """`make eval` (`ordnung eval`, no gate) writes the test split's results file into evals/results/ with
+    today's date, unlike CI's gate (evals/run.py: a replay with thresholds writes none)."""
+    from evals import run as eval_run
+
+    targets = _make_targets()
+    assert "evals/results/" in targets["eval"]
+    config = eval_run.config_from_args(eval_run.build_parser().parse_args([]))
+    assert config.split == "test" and config.results_dir == eval_run.RESULTS_DIR
+    assert "sample life" in targets["samples"] and "dataset" not in targets["samples"]
+
+
+@_needs_git
+def test_git_ignores_a_linked_venv_and_claude_code_s_local_files(tmp_path: Path) -> None:
+    """In a worktree with the virtual environment linked in (`ln -s …/.venv .venv`), `.venv/` (a folder only)
+    let `git add -A` take the link, and nothing kept Claude Code's local settings and nested worktrees out. The
+    shared settings (`.claude/settings.json`) stay committable. The web packages linked in
+    (`ln -s …/web/node_modules web/node_modules`) are ignored the same way."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+    subprocess.run(["git", "init", "-q", str(repo)], check=True, env=env)
+    shutil.copyfile(ROOT / ".gitignore", repo / ".gitignore")
+    (tmp_path / "venv").mkdir()
+    (tmp_path / "node_modules").mkdir()
+    (repo / "web").mkdir()
+    try:
+        (repo / ".venv").symlink_to(tmp_path / "venv", target_is_directory=True)
+        (repo / "web" / "node_modules").symlink_to(tmp_path / "node_modules", target_is_directory=True)
+    except OSError:
+        pytest.skip("this system makes no symbolic links")
+    worktree = repo / ".claude" / "worktrees" / "wf_1"
+    worktree.mkdir(parents=True)
+    (worktree / "README.md").write_text("a nested checkout\n", encoding="utf-8")
+    (repo / ".claude" / "settings.local.json").write_text("{}\n", encoding="utf-8")
+    (repo / ".claude" / "settings.json").write_text("{}\n", encoding="utf-8")
+    status = subprocess.run(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
+    ).stdout
+    assert sorted(line[3:] for line in status.splitlines()) == [".claude/settings.json", ".gitignore"]
+
+
+def test_every_path_contributing_names_is_in_the_repository() -> None:
+    """A path in backticks (`tests/…`, `web/…`, `scripts/…`) names a file or folder that exists; patterns and
+    placeholders (`*`, `<…>`) aside. What `make install` makes (`web/node_modules`, `.venv`) is not in the
+    repository: CI's backend jobs run this test without it, so naming it as a path would pass only where it is
+    installed."""
+    named = re.findall(r"`((?:\.github|src|tests|web|scripts|evals|docs)/[^`\s]*)`", _text("CONTRIBUTING.md"))
+    assert named
+    installed = {"node_modules", ".venv"}
+    missing = [
+        path
+        for path in named
+        if not re.search(r"[*<>{}$…]", path)
+        and (installed & set(Path(path).parts) or not (ROOT / path.split("::", 1)[0].rstrip("/")).exists())
+    ]
+    assert missing == []
+
+
+def test_the_fast_loop_runs_tests_that_exist() -> None:
+    """CONTRIBUTING's fast loop: one test file by name (pytest `-k`), one web folder (Vitest) and one end-to-end
+    spec (Playwright), each of which exists."""
+    commands = _commands(_section(_text("CONTRIBUTING.md"), "Fast loop"))
+    runs = {
+        tool: [command for command in commands if marker in command]
+        for tool, marker in (
+            ("pytest", ".venv/bin/pytest "),
+            ("vitest", "npx vitest run "),
+            ("playwright", "npx playwright test "),
+        )
+    }
+    assert all(runs.values()), runs
+    for command in runs["pytest"]:
+        words = command.split()
+        path = ROOT / words[1]
+        keyword = words[words.index("-k") + 1]
+        assert re.search(rf"^def test_\w*{keyword}", path.read_text(encoding="utf-8"), re.M), command
+    for command in runs["vitest"]:
+        assert (
+            command.startswith("cd web && ")
+            and (WEB / command.split("npx vitest run ", 1)[1].split()[0]).exists()
+        )
+    for command in runs["playwright"]:
+        spec = command.split("npx playwright test ", 1)[1].split()[0]
+        assert command.startswith("cd web && ") and spec.endswith(".spec.ts") and (WEB / spec).is_file()
+
+
+def test_the_fast_loop_says_which_jobs_the_end_to_end_job_waits_for() -> None:
+    """The fast loop's sentence on when CI's end-to-end job starts names exactly the jobs its ``needs:`` lists
+    (ci.yml's job ids): a workflow that starts it sooner or later fails here until the sentence follows."""
+    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    jobs = yaml.safe_load(_text(".github/workflows/ci.yml"))["jobs"]
+    needs = jobs["e2e"]["needs"]
+    needs = {needs} if isinstance(needs, str) else set(needs)
+    fast_loop = " ".join(_section(_text("CONTRIBUTING.md"), "Fast loop").split())
+    (sentence,) = [part for part in re.split(r"(?<=\.) ", fast_loop) if "end-to-end job" in part]
+    assert "starts once" in sentence, sentence
+    named = {
+        job for job in jobs if job != "e2e" and re.search(rf"(?<![\w-]){re.escape(job)}(?![\w-])", sentence)
+    }
+    assert named == needs, f"{sentence!r} names {sorted(named)}; ci.yml's e2e needs {sorted(needs)}"
+
+
+def test_one_test_file_runs_alone_as_the_fast_loop_runs_it() -> None:
+    """CONTRIBUTING's fast loop runs one file with `.venv/bin/pytest`, which puts its own folder first on sys.path,
+    not the checkout, and `make install` adds only `src`. A test that imports `evals` (the checks of the generated
+    files among them) then found it only when a module collected before it had added the checkout, and failed
+    alone: pytest's `pythonpath` setting adds it to every run. Here without the checkout on the path, as there."""
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    kept = [
+        str(Path(entry).resolve())
+        for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+        if entry and Path(entry).resolve() != ROOT
+    ]
+    if kept:
+        env["PYTHONPATH"] = os.pathsep.join(kept)
+    files = ["test_results_index.py", "test_items_export.py", "test_present.py", "test_repo_hygiene.py"]
+    only = ["-k", "test_make_eval_says_what_it_writes"]
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-P",
+            "-m",
+            "pytest",
+            "-p",
+            "no:cacheprovider",
+            *(f"tests/{name}" for name in files),
+            *only,
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-2000:]
+    assert "1 passed" in done.stdout, done.stdout[-3000:]
+
+
+def _generated_rows() -> list[list[str]]:
+    """The rows of CONTRIBUTING's "Generated files" table: file(s), command, what fails while it is stale."""
+    table = [
+        line
+        for line in _section(_text("CONTRIBUTING.md"), "Generated files").splitlines()
+        if line.startswith("|")
+    ]
+    rows = [[cell.strip() for cell in line.strip().strip("|").split("|")] for line in table[2:]]
+    assert rows and all(len(row) == 3 for row in rows), rows
+    return rows
+
+
+def test_contributing_lists_every_generated_file_with_its_command_and_its_check() -> None:
+    """Every committed file a script, a make target or a runner writes, with the command that writes it and the
+    check that fails while it is stale: each named file, command and test exists, and no generator is left out."""
+    import fnmatch
+    import importlib.util
+
+    import typer
+    from evals import analysis
+    from evals.present import build as present_build
+
+    from ordnung import cli
+
+    rows = _generated_rows()
+    targets = _make_targets()
+    listed: list[str] = []
+    for files, command, check in rows:
+        for pattern in re.findall(r"`([^`]+)`", files):
+            assert pattern.startswith(tuple(f"{top}/" for top in ("src", "web", "evals", "docs"))) or (
+                pattern in {"README.md", "constraints.txt"}
+            ), pattern
+            assert any(ROOT.glob(pattern.rstrip("/"))), pattern
+            listed.append(pattern.rstrip("/"))
+        for cell in (command, check):
+            for target in re.findall(r"`make ([a-z-]+)", cell):
+                assert target in targets, target
+            for script in re.findall(r"\b((?:scripts|evals)/[\w/]+\.py)\b", cell):
+                assert (ROOT / script).is_file(), script
+            for module in re.findall(r"python -m ([\w.]+)", cell):
+                assert importlib.util.find_spec(module) is not None, module
+            for test in re.findall(r"`(tests/test_\w+\.py)(?:::(\w+))?`", cell):
+                source = (ROOT / test[0]).read_text(encoding="utf-8")
+                assert not test[1] or re.search(rf"^def {test[1]}\(", source, re.M), test
+            for args in re.findall(r"`\.venv/bin/ordnung ([^`<]+)`", cell):
+                # the command takes these options (`demo --rebuild` without `--no-serve` would also start the demo)
+                name, *options = args.split()
+                group = typer.main.get_command(cli.app)
+                sub = group.get_command(group.make_context("ordnung", [name], resilient_parsing=True), name)
+                assert sub is not None, args
+                sub.make_context(name, list(options))  # click consumes the list it is given
+                assert "--rebuild" not in options or "--no-serve" in options, args
+        assert command and check, files
+
+    def covered(path: str) -> bool:
+        return any(
+            path == item or path.startswith(f"{item}/") or fnmatch.fnmatch(path, item) for item in listed
+        )
+
+    made_by = " ".join(row[1] for row in rows)
+    # the two scripts a make target runs are named by their target
+    wrapped = {"make_sample_life.py": "samples", "make_postcode_table.py": "postcodes"}
+    for script in sorted([*(ROOT / "scripts").glob("gen_mock_*.py"), *(ROOT / "scripts").glob("make_*.py")]):
+        if script.name in wrapped:
+            assert f"scripts/{script.name}" in _text("Makefile") and f"make {wrapped[script.name]}" in made_by
+        else:
+            assert f"scripts/{script.name}" in made_by, script.name
+    for target in ("build-web", "openapi", "samples", "postcodes", "capture", "constraints"):
+        assert f"make {target}" in made_by, target
+    for path in sorted((WEB / "src" / "mocks" / "data").glob("*.ts")):
+        if path.read_text(encoding="utf-8").startswith("// Generated by "):
+            assert covered(f"web/src/mocks/data/{path.name}"), path.name
+    for path in [*present_build.OUTPUT_PATHS, "evals/results/INDEX.json", "evals/results/items.csv"]:
+        assert covered(path), path
+    # the benchmark analysis (`python -m evals.analysis`), which docs/evals.md takes its numbers from: the held-out
+    # re-analysis and, once it is run, the pre-registered final analysis; `make eval-reproduce` renders each again
+    analyses = [
+        path
+        for kind in (analysis.REANALYSIS_KIND, analysis.FINAL_KIND)
+        for path in sorted((ROOT / "evals" / "results").glob(f"*-{kind}.json"))
+    ]
+    assert analyses and "python -m evals.analysis" in made_by
+    for path in analyses:
+        assert covered(f"evals/results/{path.name}"), path.name
+    for path in (
+        "src/ordnung/web/dist/build-info.json",
+        "web/openapi.json",
+        "web/src/api/schema.d.ts",
+        "src/ordnung/demo/samples/manifest.json",
+        "src/ordnung/demo/demo_db/ordnung.db",
+        "src/ordnung/demo/fixtures/extract",
+        "src/ordnung/rules/data/postcodes_de.tsv",
+        "docs/evals-ask.md",
+        "evals/dataset/manifest.json",
+        "web/e2e/fixtures/outlook-bill.msg",
+        "web/e2e/fixtures/private-photo.jpg",
+        # the benchmarks' recordings and their locks, written by a recording run (evals/README.md)
+        "evals/recorded/claude-sonnet-5/requests.lock.json",
+        "evals/recorded/ask/claude-sonnet-5/prompts.lock.json",
+        "constraints.txt",
+    ):
+        assert covered(path), path
+
+
+def test_a_generated_file_said_to_have_no_check_has_none() -> None:
+    """A row whose last column says nothing checks the file holds only while no test runs its script: once one
+    does (a ``tests/test_mock_<name>.py``, as for the GiroCodes), the row names that test instead."""
+    tests = {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "tests").glob("test_*.py"))
+        if path.name != "test_repo_hygiene.py" and not path.name.startswith("test_docs_")
+    }
+    nothing = [row for row in _generated_rows() if row[2].startswith("nothing")]
+    assert nothing
+    for files, command, _ in nothing:
+        for script in re.findall(r"\bscripts/(\w+)\.py\b", command):
+            running = [name for name, source in tests.items() if re.search(rf"\b{script}\b", source)]
+            assert not running, f"{files}: the table says nothing checks it, but {running} run(s) {script}.py"
+
+
+class _Parsed(Exception):
+    """Raised in place of running a command once its own parser has read its arguments."""
+
+
+def _parse_only(module: str, args: list[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    """``python -m <module> <args>`` read by the module's own parser and nothing run: it fails on a flag or a
+    value the parser refuses."""
+    import argparse
+    import importlib
+
+    parse = argparse.ArgumentParser.parse_args
+
+    def parse_then_stop(self: argparse.ArgumentParser, *a: Any, **k: Any) -> Any:
+        parse(self, *a, **k)
+        raise _Parsed
+
+    monkeypatch.setattr(argparse.ArgumentParser, "parse_args", parse_then_stop)
+    try:
+        entry = importlib.import_module(f"{module}.__main__")
+    except ModuleNotFoundError:
+        entry = importlib.import_module(module)
+    main = getattr(entry, "main", None) or entry.run_cli
+    try:
+        main(args)
+    except _Parsed:
+        return
+    except SystemExit as exc:
+        pytest.fail(f"python -m {module} {' '.join(args)}: refused ({exc.code})")
+    pytest.fail(f"python -m {module} {' '.join(args)}: not parsed by argparse")
+
+
+def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pytest.MonkeyPatch) -> None:
+    """evals/README.md: every command is one its program takes, the recording commands are ones the harness
+    accepts on any day (evals/harness.py: a live run refuses a set pinned to another day without
+    ``--allow-another-today``), every path it names exists, and the numbers are left to docs/evals.md."""
+    import shlex
+    from datetime import UTC, datetime
+
+    import typer
+    from evals import harness
+    from evals import run as eval_run
+    from evals.ask import __main__ as ask_main
+    from evals.ask import run as ask_run
+    from evals.records import load_manifest
+
+    from ordnung import cli
+
+    readme = _text("evals/README.md")
+    assert "../docs/evals.md" in readme
+    assert not re.search(r"\d\s?%", readme), "the numbers are docs/evals.md's"
+    for path in re.findall(r"`((?:\.\./)?[\w.-]+(?:/[\w.-]*)+)`", readme):
+        # a path from this folder (`dataset/`) or from the repository's root (`src/ordnung/…`)
+        assert (ROOT / "evals" / path).exists() or (ROOT / path.removeprefix("../")).exists(), path
+
+    monkeypatch.setattr(harness, "_now", lambda: datetime(2027, 3, 3, 9, tzinfo=UTC))  # no letter's day
+    commands = _commands(readme)
+    live = 0
+    for command in commands:
+        words = shlex.split(command)
+        while words and re.fullmatch(r"[A-Z_]+=\S*", words[0]):
+            words = words[1:]
+        program, args = words[0], words[1:]
+        if program == "make":
+            assert set(args) <= set(_make_targets()), command
+        elif program in {".venv/bin/ordnung", "ordnung"} and args[:1] == ["eval"]:
+            _parse_only("evals.run", args[1:], monkeypatch)
+            module, args = "evals.run", args[1:]
+        elif program in {".venv/bin/ordnung", "ordnung"}:
+            group = typer.main.get_command(cli.app)
+            sub = group.get_command(group.make_context("ordnung", args[:1], resilient_parsing=True), args[0])
+            assert sub is not None, command
+            sub.make_context(args[0], args[1:])  # refuses an option the command doesn't take
+            continue
+        else:
+            assert program in {".venv/bin/python", "python"} and args[0] == "-m", command
+            module, args = args[1], args[2:]
+            _parse_only(module, args, monkeypatch)
+        monkeypatch.undo()
+        monkeypatch.setattr(harness, "_now", lambda: datetime(2027, 3, 3, 9, tzinfo=UTC))
+        if program == "make" or "--live" not in args:
+            continue
+        live += 1
+        if module == "evals.ask":
+            ns = ask_main.parse_args(args)
+            ask_run.recording_day(
+                ask_run.Config(
+                    set_name=ns.set,
+                    live=True,
+                    today=ns.today,
+                    allow_another_today=ns.allow_another_today,
+                    recorded_dir=ns.recorded_dir or ask_run.RECORDED_DIR,
+                )
+            )
+        else:
+            assert module == "evals.run", command
+            config = eval_run.config_from_args(eval_run.build_parser().parse_args(args))
+            entries = [
+                entry for entry in load_manifest(eval_run.MANIFEST_PATH) if entry.split == config.split
+            ]
+            eval_run.recording_day(config, entries)
+    assert live >= 2 and any(command.startswith("make eval-reproduce") for command in commands)
+
+
+class _RunAsked(Exception):
+    """Raised in place of a benchmark run, with the configuration ``run_cli`` built for it."""
+
+
+def test_the_evals_readme_s_replays_write_no_results_file_into_the_checkout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A replay without the gate's thresholds writes a results file, and one in evals/results/ that INDEX.json
+    doesn't list fails `make eval-reproduce` and the results index tests (the commands they print would then write
+    the throwaway replay into INDEX.json and the history page): every replay the README gives writes its file into
+    a folder of its own, or none. `make eval` writes into evals/results/, so its help line says what fails."""
+    import shlex
+
+    from evals import run as eval_run
+
+    async def ask_run(config: Any, **_: Any) -> Any:
+        raise _RunAsked(config)
+
+    monkeypatch.setattr(eval_run, "run_benchmark", ask_run)
+    replays = _commands(_section(_text("evals/README.md"), "Replay (no model call, no tokens)"))
+    benchmark = 0
+    for command in replays:
+        words = shlex.split(command)
+        if words[:2] in ([".venv/bin/ordnung", "eval"], ["ordnung", "eval"]):
+            args = words[2:]
+        elif words[1:3] == ["-m", "evals.run"]:
+            args = words[3:]
+        else:
+            assert "make eval" not in command or command.startswith("make eval-reproduce"), command
+            continue
+        benchmark += 1
+        with pytest.raises(_RunAsked) as asked:
+            eval_run.run_cli(args)
+        config = asked.value.args[0]
+        writes_here = config.write_results and config.results_dir.resolve().is_relative_to(ROOT)
+        assert not writes_here, (
+            f"{command}: writes {config.results_dir / config.results_name(config.models[0])}"
+        )
+    assert benchmark >= 2
+    assert "evals/results/" in _make_targets()["eval"] and "make eval-reproduce" in _make_targets()["eval"]
+
+
+def test_the_repository_settings_are_the_project_s_own() -> None:
+    """docs/releasing.md lists what only the owner sets on GitHub: the website is the online demo, the topics
+    leave out `rag` (ADR 0005: no vector database), and private vulnerability reporting is the step SECURITY.md
+    asks of the owner."""
+    from evals.present import PAGES_URL
+
+    settings = " ".join(
+        _section(_text("docs/releasing.md"), "Repository settings (once, by the owner)").split()
+    )
+    assert PAGES_URL.removesuffix("evals/") in settings
+    topics = re.search(r"\*Topics\*: (.+?) - \*", settings)  # up to the next item
+    assert topics is not None
+    names = re.findall(r"`([^`]+)`", topics[1])
+    assert names and "rag" not in names and all(re.fullmatch(r"[a-z0-9-]+", name) for name in names)
+    for setting in (
+        "Social preview",
+        "Pull request title and description",
+        "Automatically delete head branches",
+    ):
+        assert setting in settings, setting
+    assert "Private vulnerability reporting" in settings
+    assert "private vulnerability reporting" in _text("SECURITY.md").lower()

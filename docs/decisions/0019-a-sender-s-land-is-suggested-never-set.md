@@ -9,8 +9,8 @@ sender's details (*Which state is this sender in?*); until then the engine count
 3 days, so a date comes out early, or, counted backwards from an event, may come out a day late, which its
 receipt says (SPEC § 21). The benchmark shows what that costs: replayed
 without the sender's Land, Ordnung scores 84–91 % on the published splits instead of 98–100 %
-([evals.md](../evals.md#without-the-senders-land)). Most people never open a sender's details, so the
-select alone is rarely answered.
+([evals.md](../evals.md#64-the-app-as-it-ships-without-the-senders-land)). Most people never open a sender's
+details, so the select alone is rarely answered.
 
 Almost every German letter prints its sender's postcode, and almost every postcode lies in one Land. But
 the two kinds of error are not alike: an unknown Land makes a date early, or warns when it may be late,

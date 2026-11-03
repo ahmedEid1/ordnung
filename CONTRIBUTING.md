@@ -18,16 +18,41 @@ picks the one in `.nvmrc`; `web/package.json` says the same). Use 22.12+ for the
 (`make e2e`, `make ui-audit`): their accessibility checker (`@axe-core/playwright`) asks for it.
 
 ```bash
+git clone --filter=blob:none https://github.com/ahmedEid1/ordnung.git && cd ordnung
+make             # lists the targets and what each does
 make install     # .venv with the dev extras at the versions in constraints.txt, and web/node_modules (npm ci)
 make serve       # the API and the built web app on http://127.0.0.1:8765
 make web-dev     # the Vite dev server with hot reload (it sends /api to `make serve`)
 make demo        # the sample life with recorded answers: no Claude needed, zero tokens
 ```
 
+`--filter=blob:none` leaves out the old versions of every file until a command needs one (`git log -p`, an
+old checkout): the history keeps every earlier recording of the README's pictures and video, and every earlier
+web build.
+
 Reading your own letters needs Claude Code, signed in (see the README). The tests never call Claude:
 they use a fake model backend, the end-to-end tests a fake `claude` (`tests/fake_claude.py`), and the
 demo and benchmarks replay recorded answers. Once a week CI checks that a freshly installed Claude Code
 still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without signing in.
+
+## Fast loop
+
+CI runs its jobs side by side, and a whole run takes about 47 minutes (its runs of 3 November 2026). The
+end-to-end job starts once the frontend has passed, about 8 minutes in, and takes 33 to 39 minutes. Beside it the
+backend's legs on Python 3.11 to 3.14 take 16 to 39 minutes (3.14 the fastest), its slow checks about 25, the
+lowest versions (and, weekly, the newest) 21 to 24, and, on `main` and weekly, Windows 15 and macOS 3.5; the wheel
+and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While you work,
+run the tests near your change:
+
+```bash
+.venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
+cd web && npx vitest run src/features/today                   # one folder or file of the web app's tests (-t "<name>")
+cd web && npx playwright test e2e/letter-layout.spec.ts       # one end-to-end spec (-g "<title>" for one test)
+```
+
+An end-to-end spec runs against the built web app in `src/ordnung/web/dist`, so after changing `web/` run
+`make build-web` first, and `make browser` once for Playwright's Chromium. It starts the demo and two real apps
+of its own on ports 8799 to 8802, with throwaway data folders; `web/e2e/env.ts` says how to move both.
 
 ## Checks
 
@@ -55,11 +80,11 @@ ORDNUNG_E2E_OCR=on make e2e
 
 These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more things CI checks:
 
-- **The built web app is committed** (`src/ordnung/web/dist`), so an install from git needs no Node.
-  After changing `web/`, run `make build-web` and commit the rebuilt folder in a commit of its own;
-  CI fails while it is older than the sources (`web/scripts/source-hash.mjs`).
-- **The API and the web app's types match.** After changing a route or a schema, `make openapi`
-  writes `web/openapi.json` and `web/src/api/schema.d.ts` again.
+- **Generated files are committed, and CI fails while most of them are stale**: the built web app (so an
+  install from git needs no Node), the API's types for the web app, the static demo's GiroCodes, My numbers,
+  advice cards and high-stakes dates, the demo, and the evaluation's analysis and pages.
+  [Generated files](#generated-files) says what writes each, and which ones nothing checks yet. The rebuilt web
+  app goes in a commit of its own.
 - **The docs say what the code does.** `tests/test_docs_claims.py` checks the README's and docs'
   numbers and statements against the code; change the docs in the same pull request.
 - **Text in pictures stays off in tests.** Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a
@@ -72,6 +97,48 @@ a status line, a button that is enabled again), not only for focus. Read the API
 `READ` to `page.request.get`: it retries a connection the server dropped, and a change is never retried.
 Run the tests with Playwright's own Chromium (`make browser` installs it): an older build moves focus off a
 disabled button at once and hides this kind of race.
+
+## Generated files
+
+These files are written by a command, never by hand: change what they are made from, run the command and
+commit what it writes. The last column is what fails while one is stale.
+
+| File | Written by | Fails while it is stale |
+|---|---|---|
+| `src/ordnung/web/dist/` (the built web app) | `make build-web` | CI's step "Committed web build is up to date" (`node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json` in `web/`) |
+| `web/openapi.json`, `web/src/api/schema.d.ts` | `make openapi` | `tests/test_openapi_contract.py` |
+| `web/src/mocks/data/girocodes.ts` | `.venv/bin/python scripts/gen_mock_girocodes.py > web/src/mocks/data/girocodes.ts` | `tests/test_mock_girocodes.py` |
+| `web/src/mocks/data/numbers.ts` | `.venv/bin/python scripts/gen_mock_numbers.py > web/src/mocks/data/numbers.ts` | `tests/test_mock_numbers.py` (it skips without Node and the web app's packages from `npm ci`, unless `ORDNUNG_REQUIRE_MOCK_CHECK=1`) |
+| `web/src/mocks/data/advice.ts` | `.venv/bin/python scripts/gen_mock_advice.py > web/src/mocks/data/advice.ts` | `tests/test_mock_advice.py` |
+| `web/src/mocks/data/highStakes.ts` | `.venv/bin/python scripts/gen_mock_high_stakes.py > web/src/mocks/data/highStakes.ts` | `tests/test_mock_high_stakes.py` |
+| `src/ordnung/demo/samples/` (the sample life's letters) | `make samples` | `tests/test_samples.py::test_committed_samples_match_regeneration` (it skips where the libraries differ from the manifest's, unless `ORDNUNG_REQUIRE_SAMPLES=1`) |
+| `src/ordnung/rules/data/postcodes_de.tsv` | `make postcodes DE_ZIP=<GeoNames' DE.zip>` | `make postcodes DE_ZIP=<a DE.zip> CHECK=1` (not in CI: it needs GeoNames' file), which also fails once GeoNames' data has moved on (the table's header names the day and hash of the data it was made from). `tests/test_make_postcode_table.py::test_the_committed_table_is_well_formed` catches only a broken layout or counts that don't add up, not a postcode given another Land by hand |
+| `src/ordnung/demo/demo_db/` (the demo's snapshot) | `.venv/bin/ordnung demo --rebuild --no-serve`, from the samples and the recordings (no model call) | `.venv/bin/ordnung demo --check`: the snapshot's `VERSION` is a hash of what it was built from (the app's and the database's versions, the samples' manifest, the suggested questions, the recordings), so the check fails once one of them changes, but not on a hand edit of the database |
+| `src/ordnung/demo/fixtures/` (the demo's recorded answers) | recorded only: [Benchmarks and recorded answers](#benchmarks-and-recorded-answers) | `.venv/bin/ordnung demo --check` names the answers a replay misses |
+| `evals/recorded/` (the benchmarks' recorded answers, and beside them their prompts lock and requests lock; a live run adds its ledger there) | recorded only: [evals/README.md](evals/README.md#record-costs-tokens) | the benchmark steps in [Checks](#checks) (a replay misses, or a prompts lock refuses a changed text), and `.venv/bin/python -m evals.harness lock-requests --check` (`--ask --check` for Ask) |
+| `evals/results/*-heldout-reanalysis.json` (the held-out splits analysed again from their results files as recorded) | `.venv/bin/python -m evals.analysis --write --date <day>`, with the date in the file's name; without `--date` it writes a new file for today, which `evals/results/INDEX.json` doesn't list, and leaves the old one stale | `python -m evals.analysis --check` and `make eval-reproduce` |
+| `README.md` (its evaluation block), `docs/evals.md`, `docs/evals-history.md`, `docs/assets/eval-*.svg`, `evals/present/presentation.json` | `.venv/bin/python -m evals.present --write` | `tests/test_present.py::test_the_outputs_are_the_committed_files` and `python -m evals.present --check` |
+| `docs/evals-ask.md` | `.venv/bin/python -m evals.ask --write --date <day>`, with the day the page's header says it was re-scored on (the date in the name of the newest `evals/results/*-ask-rescored.json`); without `--date` it writes a new results file for today | the Ask benchmark's step in [Checks](#checks) (`--check-docs`) |
+| `evals/results/INDEX.json`, `evals/results/items.csv` | `.venv/bin/python -m evals.reproduce --write` (a date or count it changes then needs its reason in `INDEX.json`, written by a person); `items.csv` alone: `python -m evals.export --write` | `tests/test_results_index.py`, `tests/test_items_export.py` and `make eval-reproduce` |
+| `evals/dataset/` (the benchmark's letters) | `.venv/bin/python evals/generate.py` (a changed letter needs new recordings) | `tests/test_eval_dataset.py::test_generation_is_byte_identical` |
+| `web/e2e/fixtures/outlook-bill.msg` | `python scripts/make_msg_fixture.py` | `tests/test_outlook.py::test_e2e_fixture_is_rebuilt_byte_for_byte` |
+| `web/e2e/fixtures/private-photo.jpg` | `python scripts/make_photo_fixture.py` | `tests/test_photo_fixture.py::test_the_e2e_photo_is_what_the_script_draws` |
+| `docs/assets/*.png`, `docs/assets/demo.gif`, `docs/assets/demo.mp4` (the README's pictures and video) | `make capture` (it needs ffmpeg) | nothing: look at them, and commit them as said below |
+| `constraints.txt` | `make constraints` | nothing compares it with `pyproject.toml`: run it after changing a dependency ([Dependencies](#dependencies)) |
+
+**The online demo** is the web app built for the browser alone, on the mock world in `web/src/mocks` (no
+server, no model); [.github/workflows/demo.yml](.github/workflows/demo.yml) publishes it from `main`. Build it
+into a folder of its own, never into `src/ordnung/web/dist`:
+
+```bash
+cd web && VITE_STATIC_DEMO=1 npx vite build --base ./ --outDir /tmp/ordnung-static-demo --emptyOutDir
+npx vite preview --outDir /tmp/ordnung-static-demo     # then open the address it prints
+```
+
+**The README's pictures and video** stay in the history, every version of them. To look at a capture, write it
+into a folder of your own (`CAPTURE_OUT=$(mktemp -d) make capture`). Commit media once per release, after the
+last fix round: the pictures only of screens that changed (`scripts/capture.sh --only shots` takes the pictures
+alone, after `make build-web browser`), and the tour's video and GIF only when the tour changed.
 
 ## Benchmarks and recorded answers
 
@@ -130,6 +197,8 @@ check shows in the numbers at once, and costs nothing.
   (`test_a_missing_asset_is_a_404_not_the_app_page`).
 - A test that replays every recording, times pages or builds the web app is marked `slow`
   (`make check` runs those too).
+- A docs test pins a fact the page states (a flag exists, a number is the one its results file holds, a file it
+  names is there), not the sentence that states it: rewording a page should not need a test change.
 
 ## Dependencies
 
