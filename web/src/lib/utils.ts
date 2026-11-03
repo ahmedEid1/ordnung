@@ -23,13 +23,6 @@ export function initials(name: string, max = 2): string {
   return letters.join("") || name.slice(0, 1).toUpperCase();
 }
 
-/** Stable small hash for picking decorative variants. */
-export function hashString(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
 /** Pluralise simply: plural(3, "letter") → "3 letters". */
 export function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : pluralForm}`;

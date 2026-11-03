@@ -4,7 +4,7 @@
  * letter's text). Pure functions; the names of records come from the API's `label`, looked up when
  * the trace is shown.
  */
-import type { DateSpec, SpanKind, TraceChange, TraceRun, TraceSpan } from "@/api/types";
+import type { DateSpec, TraceChange, TraceRun, TraceSpan } from "@/api/types";
 import type { Tone } from "@/lib/copy";
 import { formatCompact, formatDate, formatFileSize, formatUsd } from "@/lib/format";
 import { plural } from "@/lib/utils";
@@ -16,17 +16,6 @@ const num = (a: Attrs, k: string): number | null => (typeof a[k] === "number" ? 
 const str = (a: Attrs, k: string): string | null => (typeof a[k] === "string" && a[k] !== "" ? (a[k] as string) : null);
 const bool = (a: Attrs, k: string): boolean => a[k] === true;
 const list = (a: Attrs, k: string): unknown[] => (Array.isArray(a[k]) ? (a[k] as unknown[]) : []);
-
-/** What a kind of step is, for its icon and colour. */
-export const KIND_LABEL: Record<SpanKind, string> = {
-  run: "Reading",
-  ocr: "Reading the pages",
-  model: "Claude",
-  verify: "Checking a quote",
-  rules: "Rules engine",
-  link: "Linking",
-  plan: "Filing",
-};
 
 /**
  * The completeness re-ask (`src/ordnung/ingest/extract.py`): Claude asked once more for what its reading

@@ -10,7 +10,7 @@ import pytest
 from ordnung.api.routes.contracts import notice_evidence
 from ordnung.db.store import Store
 from ordnung.ids import content_id
-from ordnung.ingest.extract import known_parties_text, unwrap_untrusted
+from ordnung.ingest.extract import known_parties_text
 from ordnung.ingest.link import (
     MAX_PARTY_NAME,
     case_references,
@@ -176,7 +176,7 @@ def test_a_sender_name_cannot_plant_text_in_later_readings(store: Store) -> None
     assert [len(name) <= MAX_PARTY_NAME and "\n" not in name for name in alias.aliases] == [True]
     assert alias.aliases[0].startswith("Muster Telecom - Mobilfunk")
 
-    listed = unwrap_untrusted(known_parties_text(store.list_parties())).splitlines()
+    listed = known_parties_text(store.list_parties()).splitlines()
     assert [line for line in listed if line.startswith("- ")] == [
         "- Muster Telecom GmbH (other)",
         f"- {party.name} (utility)",

@@ -7,8 +7,9 @@
   sentence recurs in two splits;
 * every dated label matches an independent re-derivation (``evals/verify_labels.py``);
 * every text PDF contains its key date phrases; invisible text exists only where it is expected;
-* regenerating into a temporary directory is byte-identical (and matches the committed dataset
-  when the rendering libraries are the versions recorded in the manifest);
+* regenerating into a temporary directory reproduces the committed dataset byte for byte; only where a
+  file differs and the rendering libraries are not the versions the manifest records must two fresh runs
+  agree instead;
 * the generator's own date arithmetic (``evals/gen/law.py``) reproduces the worked examples of the
   verified legal research — the labels do not come from ``ordnung.rules``.
 """
@@ -20,9 +21,10 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import pdfplumber
 import pytest
@@ -246,21 +248,6 @@ def test_photos_share_truth_with_their_pdf(manifest: dict[str, Any]) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_text_pdfs_contain_their_key_date_phrases(manifest: dict[str, Any]) -> None:
-    for entry in _entries(manifest):
-        if entry["photo"]:
-            continue
-        assert entry["key_phrases"], entry["id"]
-        with pdfplumber.open(DATASET / entry["file"]) as pdf:
-            assert len(pdf.pages) == entry["pages"]
-            text = _norm(" ".join(page.extract_text() or "" for page in pdf.pages))
-        for phrase in [*entry["key_phrases"], *entry["hidden_phrases"]]:
-            assert _norm(phrase) in text, f"{entry['id']}: {phrase!r} not found in the PDF text"
-        if entry["truth"]["document_date"] and entry["language"] == "de" and entry["family"] != "adversarial":
-            d = date.fromisoformat(entry["truth"]["document_date"])
-            assert f"{d.day:02d}.{d.month:02d}.{d.year}" in text, entry["id"]
-
-
 def _dark_fills(page: Any) -> list[tuple[float, float, float, float]]:
     out = []
     for shape in [*page.rects, *page.curves]:
@@ -271,27 +258,66 @@ def _dark_fills(page: Any) -> list[tuple[float, float, float, float]]:
     return out
 
 
-def test_invisible_text_only_where_expected(manifest: dict[str, Any]) -> None:
+def _invisible_chars(page: Any) -> int:
+    """SPEC §21 criteria: < 3 pt, off-page, or white text not on a dark fill counts as hidden."""
+    fills = _dark_fills(page)
+    hidden = 0
+    for ch in page.chars:
+        if not ch["text"].strip():
+            continue
+        color = ch.get("non_stroking_color")
+        white = isinstance(color, tuple | list) and len(color) in (1, 3) and min(color) >= 0.95
+        cx, cy = (ch["x0"] + ch["x1"]) / 2, (ch["top"] + ch["bottom"]) / 2
+        on_dark = any(x0 <= cx <= x1 and t <= cy <= b for x0, t, x1, b in fills)
+        off_page = ch["x0"] < 0 or ch["x1"] > page.width or ch["top"] < 0 or ch["bottom"] > page.height
+        if ch["size"] < 3 or off_page or (white and not on_dark):
+            hidden += 1
+    return hidden
+
+
+class PdfRead(NamedTuple):
+    pages: int
+    text: str  # every page's text, whitespace folded
+    invisible_chars: int
+
+
+@pytest.fixture(scope="module")
+def pdf_reads(manifest: dict[str, Any]) -> dict[str, PdfRead]:
+    """Every text PDF of the dataset, opened once for the tests below that read them."""
+    reads = {}
+    for entry in _entries(manifest):
+        if entry["photo"]:
+            continue
+        with pdfplumber.open(DATASET / entry["file"]) as pdf:
+            text = _norm(" ".join(page.extract_text() or "" for page in pdf.pages))
+            invisible = sum(_invisible_chars(page) for page in pdf.pages)
+            reads[entry["id"]] = PdfRead(pages=len(pdf.pages), text=text, invisible_chars=invisible)
+    return reads
+
+
+def test_text_pdfs_contain_their_key_date_phrases(
+    manifest: dict[str, Any], pdf_reads: dict[str, PdfRead]
+) -> None:
+    for entry in _entries(manifest):
+        if entry["photo"]:
+            continue
+        assert entry["key_phrases"], entry["id"]
+        read = pdf_reads[entry["id"]]
+        assert read.pages == entry["pages"]
+        text = read.text
+        for phrase in [*entry["key_phrases"], *entry["hidden_phrases"]]:
+            assert _norm(phrase) in text, f"{entry['id']}: {phrase!r} not found in the PDF text"
+        if entry["truth"]["document_date"] and entry["language"] == "de" and entry["family"] != "adversarial":
+            d = date.fromisoformat(entry["truth"]["document_date"])
+            assert f"{d.day:02d}.{d.month:02d}.{d.year}" in text, entry["id"]
+
+
+def test_invisible_text_only_where_expected(manifest: dict[str, Any], pdf_reads: dict[str, PdfRead]) -> None:
     """SPEC §21 criteria: < 3 pt, off-page, or white text not on a dark fill counts as hidden."""
     for entry in _entries(manifest):
         if entry["photo"]:
             continue
-        hidden_chars = 0
-        with pdfplumber.open(DATASET / entry["file"]) as pdf:
-            for page in pdf.pages:
-                fills = _dark_fills(page)
-                for ch in page.chars:
-                    if not ch["text"].strip():
-                        continue
-                    color = ch.get("non_stroking_color")
-                    white = isinstance(color, tuple | list) and len(color) in (1, 3) and min(color) >= 0.95
-                    cx, cy = (ch["x0"] + ch["x1"]) / 2, (ch["top"] + ch["bottom"]) / 2
-                    on_dark = any(x0 <= cx <= x1 and t <= cy <= b for x0, t, x1, b in fills)
-                    off_page = (
-                        ch["x0"] < 0 or ch["x1"] > page.width or ch["top"] < 0 or ch["bottom"] > page.height
-                    )
-                    if ch["size"] < 3 or off_page or (white and not on_dark):
-                        hidden_chars += 1
+        hidden_chars = pdf_reads[entry["id"]].invisible_chars
         expected = "hidden_text" in entry["truth"]["expected_warnings"]
         assert (hidden_chars > 0) == expected, f"{entry['id']}: {hidden_chars} invisible characters"
 
@@ -373,29 +399,119 @@ def _without_bytes(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     return [{k: v for k, v in e.items() if k not in ("sha256", "bytes")} for e in manifest["entries"]]
 
 
-def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
-    first = _generate(tmp_path / "a")
-    assert {e["split"] for e in first["entries"]} == set(SPLITS) == set(first["counts"])
-    # The labels never depend on the environment.
-    assert _without_bytes(first) == _without_bytes(manifest), (
-        "dataset is stale — run `.venv/bin/python evals/generate.py`"
+def _differing(manifest: dict[str, Any], here: Path, there: Path) -> list[str]:
+    """The files ``manifest`` lists whose bytes in ``here`` and in ``there`` differ (or that one of them lacks)."""
+
+    def read(path: Path) -> bytes | None:
+        return path.read_bytes() if path.is_file() else None
+
+    return [e["file"] for e in manifest["entries"] if read(here / e["file"]) != read(there / e["file"])]
+
+
+def _check_generation(
+    generate: Callable[[Path], dict[str, Any]], out: Path, committed: dict[str, Any], dataset: Path
+) -> int:
+    """Generate the dataset once into ``out`` and compare it with the committed one (``dataset``, whose manifest
+    is ``committed``): every file byte for byte, and the manifest apart from the rendering libraries it records.
+    Only when a file differs and those libraries differ too (a newer Pillow may draw the same letter in other
+    bytes) is it generated a second time, and the two runs must agree bit for bit. Returns how many runs it made."""
+    first = generate(out / "a")
+    differ = _differing(first, out / "a", dataset)
+    if not differ:
+        assert {k: v for k, v in first.items() if k != "environment"} == {
+            k: v for k, v in committed.items() if k != "environment"
+        }, "the committed manifest is not what the generator writes"
+        if first["environment"] == committed["environment"]:
+            assert (out / "a" / "manifest.json").read_bytes() == (dataset / "manifest.json").read_bytes()
+        return 1
+    assert first["environment"] != committed["environment"], (
+        f"{len(differ)} files differ from the committed dataset under the libraries it was made with: {differ[:5]}"
     )
-    if first["environment"] == manifest["environment"]:
-        # Same rendering libraries: the committed dataset must be reproduced bit for bit.
-        assert (tmp_path / "a" / "manifest.json").read_bytes() == MANIFEST.read_bytes()
-        for entry in first["entries"]:
-            assert (tmp_path / "a" / entry["file"]).read_bytes() == (DATASET / entry["file"]).read_bytes(), (
-                entry["file"]
-            )
-    else:  # different library versions: still require two runs to agree bit for bit
-        second = _generate(tmp_path / "b")
-        assert (tmp_path / "a" / "manifest.json").read_bytes() == (
-            tmp_path / "b" / "manifest.json"
-        ).read_bytes()
-        for entry in second["entries"]:
-            assert (tmp_path / "a" / entry["file"]).read_bytes() == (
-                tmp_path / "b" / entry["file"]
-            ).read_bytes(), entry["file"]
+    second = generate(out / "b")
+    again = _differing(second, out / "a", out / "b")
+    assert not again, f"two runs differ: {again[:5]}"
+    assert (out / "a" / "manifest.json").read_bytes() == (out / "b" / "manifest.json").read_bytes()
+    return 2
+
+
+def _stand_in(
+    runs: list[dict[str, bytes]], environment: dict[str, str]
+) -> tuple[Callable[[Path], dict[str, Any]], list[Path]]:
+    """A stand-in for ``evals/generate.py``: its n-th run writes ``runs[n]`` (file -> bytes) and their manifest."""
+    made: list[Path] = []
+
+    def generate(out: Path) -> dict[str, Any]:
+        files = runs[len(made)]
+        made.append(out)
+        entries = []
+        for name, data in files.items():
+            (out / name).parent.mkdir(parents=True, exist_ok=True)
+            (out / name).write_bytes(data)
+            entries.append({"file": name, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
+        manifest = {"environment": environment, "entries": entries}
+        (out / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        return manifest
+
+    return generate, made
+
+
+LETTERS = {"dev/dev-a.pdf": b"%PDF one", "test/test-b.jpg": b"\xff\xd8\xff two"}
+OLD_LIBRARIES = {"pillow": "12.3.0"}
+NEW_LIBRARIES = {"pillow": "13.0.0"}
+
+
+def _committed(tmp_path: Path, environment: dict[str, str]) -> tuple[Path, dict[str, Any]]:
+    generate, _ = _stand_in([LETTERS], environment)
+    return tmp_path / "committed", generate(tmp_path / "committed")
+
+
+def test_a_generation_equal_to_the_committed_files_is_made_once(tmp_path: Path) -> None:
+    """With newer rendering libraries than the manifest records, the files are still compared with the committed
+    ones first, and when they are equal, nothing is generated a second time."""
+    dataset, committed = _committed(tmp_path, OLD_LIBRARIES)
+    generate, made = _stand_in([LETTERS, LETTERS], NEW_LIBRARIES)
+    assert _check_generation(generate, tmp_path / "out", committed, dataset) == 1
+    assert len(made) == 1
+
+
+def test_a_file_that_differs_under_the_recorded_libraries_fails(tmp_path: Path) -> None:
+    dataset, committed = _committed(tmp_path, OLD_LIBRARIES)
+    generate, made = _stand_in([{**LETTERS, "dev/dev-a.pdf": b"%PDF other"}], OLD_LIBRARIES)
+    with pytest.raises(AssertionError, match=r"dev/dev-a\.pdf"):
+        _check_generation(generate, tmp_path / "out", committed, dataset)
+    assert len(made) == 1
+
+
+def test_a_manifest_that_differs_beyond_its_libraries_fails(tmp_path: Path) -> None:
+    dataset, committed = _committed(tmp_path, OLD_LIBRARIES)
+    generate, _ = _stand_in([LETTERS], NEW_LIBRARIES)
+    with pytest.raises(AssertionError, match="manifest"):
+        _check_generation(generate, tmp_path / "out", {**committed, "version": 2}, dataset)
+
+
+def test_under_other_libraries_a_changed_file_needs_two_runs_that_agree(tmp_path: Path) -> None:
+    """A newer library may draw the same letter in other bytes: then two runs must agree bit for bit."""
+    dataset, committed = _committed(tmp_path, OLD_LIBRARIES)
+    redrawn = {**LETTERS, "test/test-b.jpg": b"\xff\xd8\xff redrawn"}
+    generate, made = _stand_in([redrawn, redrawn], NEW_LIBRARIES)
+    assert _check_generation(generate, tmp_path / "out", committed, dataset) == 2
+    assert len(made) == 2
+    generate, _ = _stand_in([redrawn, {**redrawn, "test/test-b.jpg": b"\xff\xd8\xff again"}], NEW_LIBRARIES)
+    with pytest.raises(AssertionError, match=r"test/test-b\.jpg"):
+        _check_generation(generate, tmp_path / "again", committed, dataset)
+
+
+def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
+    def generate(out: Path) -> dict[str, Any]:
+        made = _generate(out)
+        assert {e["split"] for e in made["entries"]} == set(SPLITS) == set(made["counts"])
+        # The labels never depend on the environment.
+        assert _without_bytes(made) == _without_bytes(manifest), (
+            "dataset is stale — run `.venv/bin/python evals/generate.py`"
+        )
+        return made
+
+    _check_generation(generate, tmp_path, manifest, DATASET)
 
 
 # --------------------------------------------------------------------------------------------------

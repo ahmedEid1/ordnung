@@ -44,7 +44,7 @@ describe("Keep private — no AI (audit)", () => {
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Add my passport" }));
 
-    expect(await screen.findByText("Keep private — no AI", {}, { timeout: 500 })).toBeInTheDocument();
+    expect(await screen.findByText("Keep private — no AI")).toBeInTheDocument();
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 

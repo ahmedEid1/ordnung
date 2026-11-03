@@ -963,4 +963,4 @@ function prio(p: string): number {
   return { low: 0, normal: 1, high: 2, critical: 3 }[p as "low"] ?? 1;
 }
 
-export { daysFrom, iso as isoDate, nowTs, pick };
+export { daysFrom, nowTs, pick };

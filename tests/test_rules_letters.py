@@ -29,7 +29,7 @@ from ordnung.models import (
     Recurrence,
     Remedy,
 )
-from ordnung.rules import catalog, routing, send_guidance
+from ordnung.rules import advice, catalog, routing, send_guidance
 from ordnung.rules.advice import (
     HARDSHIP_EXCLUDED,
     BillingPeriod,
@@ -38,10 +38,9 @@ from ordnung.rules.advice import (
     letter_advice,
     settles,
     statement_arrival,
-    statement_date,
     statement_late,
 )
-from ordnung.rules.consumer import latest_barred_year, limitation_end, long_withdrawal_end, withdrawal_end
+from ordnung.rules.consumer import latest_barred_year, long_withdrawal_end, withdrawal_end
 from ordnung.rules.deadlines import (
     ASSUMED_DELIVERY_WARNING,
     ASSUMED_RECEIPT_WARNING,
@@ -2299,7 +2298,6 @@ def test_withdrawal_period_helpers() -> None:
     assert withdrawal_end(D("2026-09-12")) == D("2026-09-26")
     assert long_withdrawal_end(D("2025-03-01")) == (D("2026-03-15"), False)
     assert long_withdrawal_end(D("2024-02-16")) == (D("2025-03-01"), True)
-    assert limitation_end(D("2022-06-15")) == D("2025-12-31")
     assert latest_barred_year(D("2026-09-26")) == 2022
 
 
@@ -3512,6 +3510,11 @@ def test_a_reminder_about_an_old_statement_is_not_the_statement() -> None:
     assert routing.names_statement(reading(title="Operating and heating costs statement 2025"))
 
 
+def _statement_date(text: str) -> date | None:
+    """The earliest date ``text`` gives a statement, as :func:`statement_arrival` reads them."""
+    return min((day for day, _ in advice._dated_statements(text)), default=None)
+
+
 @pytest.mark.parametrize(
     ("text", "dated"),
     [
@@ -3532,7 +3535,7 @@ def test_a_reminder_about_an_old_statement_is_not_the_statement() -> None:
     ],
 )
 def test_the_date_a_letter_gives_the_statement(text: str, dated: date | None) -> None:
-    assert statement_date(text) == dated
+    assert _statement_date(text) == dated
 
 
 def test_a_later_letter_counts_from_the_statements_own_date() -> None:
@@ -3725,7 +3728,7 @@ def test_a_later_letter_that_arrived_in_time_is_on_time_either_way() -> None:
 )
 def test_which_statement_date_a_later_letter_counts_from(text: str, counts: str) -> None:
     letter, arrived = D("2026-09-20"), D("2026-09-22")
-    dated = statement_date(text)
+    dated = _statement_date(text)
     assert dated is not None
     expected = {
         "counts": (dated, False, None),

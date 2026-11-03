@@ -130,7 +130,7 @@ async function openCard() {
     { route: "/settings?section=calendar" },
   );
   // loaded (the preview's heading is there in every state): the card that replaced the skeleton
-  await screen.findByText("What your calendar gets", {}, { timeout: 3000 });
+  await screen.findByText("What your calendar gets");
   return screen.getByRole("region", { name: "Sync with your own calendar" });
 }
 
@@ -311,7 +311,7 @@ describe("calendar sync card", () => {
   it("keeps the calendar file next to its guide, calendar sync after them", async () => {
     useMockApi();
     renderWithProviders(<SettingsPage />, { route: "/settings?section=calendar" });
-    await screen.findByText("What your calendar gets", {}, { timeout: 3000 });
+    await screen.findByText("What your calendar gets");
     const file = screen.getByText("Add your dates to your calendar");
     const guide = screen.getByRole("region", { name: "How to import it" });
     const sync = screen.getByRole("region", { name: "Sync with your own calendar" });
@@ -327,7 +327,7 @@ describe("calendar sync card", () => {
     // connecting took the "import the calendar file" Idea away, as the API's triggers do
     expect(srv.db.state.suggestions.filter((x) => x.rule_id === "calendar_outdated" && x.status === "new")).toHaveLength(0);
     renderWithProviders(<SettingsPage />, { route: "/settings?section=calendar" });
-    expect(await screen.findByText(/Your dates already go to “Ordnung” by calendar sync/, {}, { timeout: 3000 })).toHaveTextContent("every date would be there twice");
+    expect(await screen.findByText(/Your dates already go to “Ordnung” by calendar sync/)).toHaveTextContent("every date would be there twice");
     expect(screen.queryByText(/It's a snapshot/)).not.toBeInTheDocument();
   });
 

@@ -314,7 +314,6 @@ def test_labels_and_waiting_words() -> None:
     assert proof.waits_for("address_change") is None
     assert proof.waits_for("some_new_kind") == proof.WAITING_FOR["general_reply"]
     assert proof.kind_info("nonsense") == proof.PROOF_KINDS["other"]
-    assert proof.day_words("2026-09-01") == "Tue 1 Sep 2026" and proof.day_words("soon") == "soon"
 
 
 # --------------------------------------------------------------------------------------------------
@@ -410,7 +409,6 @@ async def test_a_proof_from_the_folder_can_never_wait_again_nor_be_read(ctx: App
     ``document.kept_private`` entry like any answered wait — yet "Undo Keep private" must not make it wait
     again, and "Read these" must never send it to Claude (privacy.md: a proof is never sent to Claude)."""
     from ordnung.api.routes.documents import document_detail
-    from ordnung.ingest.pipeline import release_held
 
     letter = await _sent_letter(ctx, gym)
     receipt = photo("JPEG", size=(300, 400))
@@ -424,7 +422,7 @@ async def test_a_proof_from_the_folder_can_never_wait_again_nor_be_read(ctx: App
     assert (undo.documents, undo.skipped) == ([], [waiting.id])
     # even held (an older Ordnung left it so), "Read these" skips it
     ctx.store.update_document(waiting.id, status="held")
-    read = release_held(ctx, [waiting.id])
+    read = held.release(ctx.store, [waiting.id])
     assert (read.documents, read.jobs, read.skipped) == ([], [], [waiting.id])
     document = ctx.store.get_document(waiting.id)
     assert document is not None and document.ai_private
@@ -440,7 +438,7 @@ async def test_a_proof_attached_to_a_kept_private_email_stays_private_when_the_e
     """Adversarial: a held e-mail kept private with its attachments; one attachment later becomes proof.
     "Undo Keep private" on the e-mail brings back the e-mail and its other attachments — not the proof —
     and "Read these" on the e-mail never releases the proof."""
-    from ordnung.ingest.pipeline import keep_held_private, release_held
+    from ordnung.ingest.pipeline import keep_held_private
     from test_email_attachments import attach, email
 
     letter = await _sent_letter(ctx, gym)
@@ -457,7 +455,7 @@ async def test_a_proof_attached_to_a_kept_private_email_stays_private_when_the_e
     assert proof_doc != mail.id and proof_doc in {doc.id for doc in kept.documents}
     undo = held.back_to_waiting(ctx.store, [mail.id])
     assert proof_doc not in {doc.id for doc in undo.documents} and len(undo.documents) == 2
-    read = release_held(ctx, [mail.id])
+    read = held.release(ctx.store, [mail.id])
     assert proof_doc not in {doc.id for doc in read.documents} and len(read.documents) == 2
     document = ctx.store.get_document(proof_doc)
     assert document is not None and (document.status, document.ai_private) == ("processed", True)

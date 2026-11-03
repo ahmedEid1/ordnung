@@ -62,7 +62,7 @@ describe("client", () => {
     expect((err as ApiError).message).toBe("field required; bad date");
 
     mockFetch(403, { detail: "Install Ordnung to try this", code: "static_demo" });
-    const demo = (await api.runReview().catch((e: unknown) => e)) as ApiError;
+    const demo = (await api.regenerateBrief().catch((e: unknown) => e)) as ApiError;
     expect(demo.isStaticDemo).toBe(true);
     expect(demo.message).toBe("Install Ordnung to try this");
   });

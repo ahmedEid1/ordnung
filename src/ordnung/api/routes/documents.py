@@ -53,7 +53,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from ordnung.api.deps import CtxDep, StateDep, StoreDep, TodayDep, is_phone, phone_device, require_computer
-from ordnung.api.routes.common import IsoDate, contracts_with_computations, ledger_changed, require, set_aside
+from ordnung.api.routes.common import (
+    IsoDate,
+    contracts_with_computations,
+    ledger_changed,
+    replay_only,
+    require,
+    set_aside,
+)
 from ordnung.api.routes.dates import recompute_document_items, refresh_review_status
 from ordnung.app_context import AppContext
 from ordnung.config import picture_text_off
@@ -77,7 +84,6 @@ from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, DUNNING_ITEM_NOTE, rewarn_
 from ordnung.ingest.outlook import as_email
 from ordnung.ingest.pipeline import add_file, ledger_lock, reprocess
 from ordnung.ingest.plan import KIND_CHOSEN, is_statement, kind_chosen
-from ordnung.llm.replay import ReplayBackend
 from ordnung.models import (
     HIGH_STAKES_KINDS,
     Area,
@@ -599,12 +605,6 @@ def demo_replay_refusal() -> JSONResponse:
     )
 
 
-def _replay_only(ctx: AppContext) -> bool:
-    """The model backend only replays recordings (the zero-token demo): new letters can't be read."""
-    backend = ctx.llm.backend
-    return isinstance(backend, ReplayBackend) and backend.fallback is None
-
-
 @router.post("/documents", response_model=UploadResult, status_code=status.HTTP_201_CREATED)
 async def upload_documents(
     request: Request,
@@ -621,7 +621,7 @@ async def upload_documents(
     uploads = [*(files or []), *(files_array or [])]
     if not uploads:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "No files were uploaded.")
-    if state.demo and not private and _replay_only(ctx):
+    if state.demo and not private and replay_only(ctx):
         return demo_replay_refusal()
     if len(uploads) > MAX_UPLOAD_FILES:
         raise HTTPException(

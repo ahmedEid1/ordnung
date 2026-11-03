@@ -62,11 +62,6 @@ export function modulePixelsFor(modules: number, side: number): number {
   return Math.max(3, Math.floor(side / modules));
 }
 
-/** A module's side in CSS pixels: whole, at least 3, about {@link QR_SIDE} px for the whole code. */
-export function modulePixels(modules: number): number {
-  return modulePixelsFor(modules, QR_SIDE);
-}
-
 /** "They don't match" may offer to read the letter again: not a private letter, not one being read,
  * and not in the online demo (it reads no letters; the button would only fail). */
 export function canReadLetterAgain(letter: Pick<Document, "ai_private" | "status"> | undefined): boolean {

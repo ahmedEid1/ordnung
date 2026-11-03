@@ -131,14 +131,6 @@ def wrap_untrusted(text: str) -> str:
     return f"{UNTRUSTED_OPEN}\n{defused}\n{UNTRUSTED_CLOSE}"
 
 
-def unwrap_untrusted(text: str) -> str:
-    """The content of one :func:`wrap_untrusted` block (``text`` itself when it isn't one)."""
-    stripped = text.strip()
-    if stripped.startswith(UNTRUSTED_OPEN) and stripped.endswith(UNTRUSTED_CLOSE):
-        return stripped[len(UNTRUSTED_OPEN) : -len(UNTRUSTED_CLOSE)].strip("\n")
-    return text
-
-
 def language_name(code: str) -> str:
     """English name of an ISO 639-1 language code (the code itself if unknown)."""
     return LANGUAGE_NAMES.get(code.lower(), code)

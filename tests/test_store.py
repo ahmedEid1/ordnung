@@ -21,7 +21,7 @@ from ordnung.config import Paths
 from ordnung.db import store as store_module
 from ordnung.db.migrate import latest_version
 from ordnung.db.store import NotFoundError, Store, normalize_identifier, search_tokens
-from ordnung.ids import PREFIXES, content_id, doc_id_for_sha, new_id, prefix_of
+from ordnung.ids import PREFIXES, content_id, doc_id_for_sha, new_id
 from ordnung.llm.base import (
     DEFAULT_MODEL,
     Attachment,
@@ -191,7 +191,7 @@ def test_id_prefixes_are_checked() -> None:
     with pytest.raises(ValueError):
         new_id("xyz")
     assert all(new_id(prefix).startswith(prefix + "_") for prefix in PREFIXES)
-    assert prefix_of(content_id("ctr", "x")) == "ctr"
+    assert content_id("ctr", "x").startswith("ctr_")
 
 
 # --------------------------------------------------------------------------------------------------

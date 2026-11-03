@@ -170,10 +170,11 @@ def test_f4_f5_many_send_by_lines_are_capped_and_fast() -> None:
         document_date="2026-10-01",
         sender={"name": "Stadtwerke Beispielhausen GmbH", "kind": "utility"},
     )
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     found = deadline_items(reading, [page(*lines)], today=date(2026, 10, 3))
     assert len(found) <= 3
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
 
 
 @pytest.mark.parametrize("top", ["20.11.2026", "13.11.2026", "06.12.2026", "20.11.26"])

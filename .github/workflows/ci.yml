@@ -14,7 +14,10 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: true
+  # a newer push to a pull request cancels its older run. A push to main never cuts off the run going on, but GitHub
+  # keeps one run waiting behind it: a third merge replaces the second one's waiting run. release.yml releases a tag
+  # only when CI's push run on its commit passed, so re-run a replaced run before tagging (docs/releasing.md)
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
@@ -51,7 +54,7 @@ jobs:
           ORDNUNG_REQUIRE_SAMPLES: ${{ matrix.python == '3.12' && '1' || '' }}
           # and the tests of the real Tesseract must run (elsewhere they skip when it isn't installed)
           ORDNUNG_REQUIRE_TESSERACT: ${{ matrix.python == '3.12' && '1' || '' }}
-        run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered --cov-report=xml
+        run: .venv/bin/pytest -m "not slow" --cov=ordnung --cov-report=term-missing:skip-covered
       - name: Coverage floors of hand-off sync and phone access (read from the run above)
         if: matrix.python == '3.12'
         run: |
@@ -242,7 +245,7 @@ jobs:
       - name: Build sdist and wheel
         run: uv build
       - name: The description renders on PyPI
-        run: uvx twine check --strict dist/*
+        run: uvx --from 'twine==7.0.0' twine check --strict dist/*
       - name: The wheel carries the built web app
         run: unzip -l dist/ordnung-*.whl | grep -q " ordnung/web/dist/index.html$"
       - name: Install the wheel into a clean venv and run it (outside the checkout)
@@ -260,11 +263,9 @@ jobs:
     # the lock, durable writes, sync's computer id, phone access's network lookups, autostart, the
     # app-menu shortcut (the Mac bundle opened, the Windows link read back and opened), the
     # disk-encryption probe and text in pictures with Tesseract missing differ on macOS and Windows: on
-    # main, by hand and weekly (not on pull requests); while the job is new a failure shows here without
-    # failing the run
+    # main, by hand and weekly (not on pull requests), and a failure there fails the run
     if: github.event_name != 'pull_request'
     runs-on: ${{ matrix.os }}
-    continue-on-error: true
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -370,7 +371,9 @@ jobs:
     if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [backend, frontend]
+    # the web build only: this job installs its own Python, Node and Tesseract and builds the UI itself, so it runs
+    # beside the backend's legs instead of after the slowest of them
+    needs: [frontend]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7

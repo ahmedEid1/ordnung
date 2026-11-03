@@ -51,7 +51,7 @@ from ordnung.ingest.attachments import (
 )
 from ordnung.ingest.intake import TOO_DEEP, IntakeError, normalise_upload
 from ordnung.ingest.link import ATTACHMENT_ITEM_NOTE, attachment_repeats
-from ordnung.ingest.pipeline import add_file, ingest_document, release_held
+from ordnung.ingest.pipeline import add_file, ingest_document
 from ordnung.llm.fake import FakeBackend
 from ordnung.models import Document, Identifier, Item
 from ordnung.secretary.triggers import Ledger, dunning_escalation
@@ -594,7 +594,7 @@ async def test_attachments_of_a_waiting_email_wait_and_are_answered_with_it(ctx:
     assert backend(ctx).calls == []
     assert [doc.id for doc in held.waiting(ctx.store)] == [parent.id, child.id]
 
-    answer = release_held(ctx, [parent.id])  # "Read" for the e-mail reads what it brought as well
+    answer = held.release(ctx.store, [parent.id])  # "Read" for the e-mail reads what it brought as well
     assert [doc.id for doc in answer.documents] == [parent.id, child.id] and len(answer.jobs) == 2
     await ctx.worker.run_until_idle()
     parent, child = ctx.store.get_document(parent.id), ctx.store.get_document(child.id)
@@ -618,7 +618,7 @@ async def test_keeping_a_waiting_email_private_keeps_its_attachments_private(ctx
     undone = held.back_to_waiting(ctx.store, [parent.id])
     assert [doc.id for doc in undone.documents] == [parent.id, child.id] and undone.skipped == []
     assert [doc.id for doc in held.waiting(ctx.store)] == [parent.id, child.id]
-    release_held(ctx, [parent.id])  # so "Read it" reads the bill it brought as well
+    held.release(ctx.store, [parent.id])  # so "Read it" reads the bill it brought as well
     await ctx.worker.run_until_idle()
     child = ctx.store.get_document(child.id)  # type: ignore[assignment]
     assert child is not None and child.status == "processed" and not child.ai_private
@@ -629,7 +629,7 @@ async def test_undo_brings_back_only_what_was_kept_private_with_the_email(ctx: A
     parent = await add_file(ctx, emailed_bill(), "rechnung.eml", hold=True, source="folder")
     (child,) = attachments_of(ctx, parent)
     await ctx.worker.run_until_idle()
-    release_held(ctx, [child.id])  # the bill was read on its own first
+    held.release(ctx.store, [child.id])  # the bill was read on its own first
     await ctx.worker.run_until_idle()
     held.keep_private(ctx.store, [parent.id])
     undone = held.back_to_waiting(ctx.store, [parent.id, child.id])
@@ -889,7 +889,7 @@ async def test_an_email_listing_says_what_each_attachment_is_now(ctx: AppContext
     (child,) = attachments_of(ctx, bill_mail)
     (listed,) = document_detail(ctx.store, bill_mail.id, clock.today()).attachments
     assert (listed.doc_id, listed.status) == (child.id, "held")
-    release_held(ctx, [child.id])  # read on its own page
+    held.release(ctx.store, [child.id])  # read on its own page
     (listed,) = document_detail(ctx.store, bill_mail.id, clock.today()).attachments
     assert listed.status == "queued"
 

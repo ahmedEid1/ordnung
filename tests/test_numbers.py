@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from ordnung import clock
@@ -111,6 +111,9 @@ def _valid_tax_ids(draw: st.DrawFn) -> str:
     return _tax_id(first_ten)
 
 
+# Hypothesis's own wall-clock checks (too_slow, the deadline) failed this test on a busy machine with coverage:
+# one draw took 1.5 s
+@settings(deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(_valid_tax_ids(), st.integers(0, 10), st.integers(1, 9))
 def test_every_single_misread_digit_of_a_steuer_id_fails(valid: str, position: int, shift: int) -> None:
     assert tax_id_problem(valid) is None

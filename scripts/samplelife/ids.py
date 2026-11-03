@@ -30,14 +30,6 @@ def de_iban(blz: str, account: str) -> str:
     return make_iban("DE", blz + account)
 
 
-def is_valid_iban(iban: str) -> bool:
-    """Validate an IBAN's mod-97 checksum (spaces are ignored)."""
-    compact = iban.replace(" ", "").upper()
-    if len(compact) < 15 or not compact.isalnum() or not compact[:2].isalpha():
-        return False
-    return int(_alnum_to_digits(compact[4:] + compact[:4])) % 97 == 1
-
-
 def format_iban(iban: str) -> str:
     """Group an IBAN in blocks of four characters, as printed on letters."""
     compact = iban.replace(" ", "")

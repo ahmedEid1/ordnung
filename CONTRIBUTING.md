@@ -53,9 +53,10 @@ of its own on ports 8799 to 8802, with throwaway data folders; `web/e2e/env.ts` 
 
 ## Checks
 
-`make check` runs what most changes need: ruff (lint and format) and mypy (strict, over the package and
-`evals/`), the backend tests (the fast ones with coverage, then the slow ones), and the web app's ESLint,
-type check and Vitest tests. CI runs more; run the ones near your change before you open a pull request:
+`make check` runs what most changes need: ruff (lint and format) and mypy (strict, over the package,
+`evals/` and `scripts/`), the backend tests (the fast ones with coverage, then the slow ones), and the
+web app's ESLint, type check and Vitest tests. CI runs more; run the ones near your change before you open
+a pull request:
 
 ```bash
 make check

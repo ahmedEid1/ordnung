@@ -373,11 +373,6 @@ export function toPayTotals(actions: readonly TodayAction[], days = 30): Totals 
     .reduce<Totals>((totals, a) => addToTotals(totals, a.amount ?? 0, a.currency), {});
 }
 
-/** The euro part of {@link toPayTotals} (a $50 invoice is not €50 of it). */
-export function toPayWithin(actions: readonly TodayAction[], days = 30): number {
-  return toPayTotals(actions, days).EUR ?? 0;
-}
-
 // ------------------------------------------------------------------------------------------------
 // Coming up
 // ------------------------------------------------------------------------------------------------

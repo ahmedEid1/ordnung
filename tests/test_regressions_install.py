@@ -291,12 +291,12 @@ def _ci_jobs() -> dict[str, Any]:
 def test_ci_runs_the_platform_code_on_macos_and_windows() -> None:
     """The release audit: every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
     computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
-    outside pull requests and without failing the run while it is new; every test it names exists."""
+    outside pull requests, and a failure there fails the run; every test it names exists."""
     job = _ci_jobs()["other-systems"]
     assert job["strategy"]["matrix"]["os"] == ["macos-latest", "windows-latest"]
     assert job["runs-on"] == "${{ matrix.os }}"
     assert job["if"] == "github.event_name != 'pull_request'"
-    assert job["continue-on-error"] is True
+    assert "continue-on-error" not in job and all("continue-on-error" not in step for step in job["steps"])
     tests = "\n".join(step.get("run", "") for step in job["steps"] if "pytest" in step.get("run", ""))
     named = re.findall(r"tests/[\w*]+\.py(?:::\w+)?", tests)
     assert "tests/test_platform_smoke.py" in named

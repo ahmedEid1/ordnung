@@ -384,10 +384,7 @@ describe("Profile", () => {
         await screen.findByRole("dialog", { name: "Save your changes?" }),
       ).getByRole("button", { name: "Save and go" }),
     );
-    await waitFor(
-      () => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
-      { timeout: 3000 },
-    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(router.state.location.search).toBe("?section=profile");
     expect(calls.some((c) => c.method === "PUT")).toBe(false);
     expect(email).toHaveAttribute("aria-invalid", "true");

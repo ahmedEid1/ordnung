@@ -62,7 +62,7 @@ describe("unsaved edits", () => {
     const dialog = await screen.findByRole("dialog", { name: "Save your changes?" });
     expect(dialog).toHaveTextContent("You changed something in Profile & address and haven't saved it — going to Reminders without saving throws it away.");
     await user.click(within(dialog).getByRole("button", { name: "Keep editing" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(router.state.location.search).toBe("?section=profile");
     expect(screen.getByLabelText("Full name")).toHaveValue("Sam R.");
 
@@ -72,7 +72,7 @@ describe("unsaved edits", () => {
     expect(router.state.location.search).toBe("?section=reminders");
 
     // nothing unsaved any more: no question asked
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await user.click(within(nav).getByRole("link", { name: "Data" }));
     expect(await screen.findByRole("heading", { level: 2, name: "Data" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

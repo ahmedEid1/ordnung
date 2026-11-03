@@ -230,13 +230,6 @@ def _occurrences(first: date, rule: Recurrence, since: date, anchor_day: int | N
             yield day
 
 
-def next_occurrence(first: date, rule: Recurrence, on_or_after: date) -> date:
-    """The first occurrence of the schedule that is on or after ``on_or_after`` (as scheduled)."""
-    for day in _occurrences(first, rule, on_or_after):
-        return day
-    raise NoNextDate("recurrence schedule does not reach the requested date")
-
-
 def describe(rule: Recurrence) -> str:
     """``every month`` / ``every 3 months`` / ``every year`` / ``every month on the 3rd working day`` /
     ``every month on the last working day`` / ``every month on the 1st`` / ``every month on the last day``."""

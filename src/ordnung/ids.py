@@ -73,7 +73,3 @@ def doc_id_for_sha(sha256_hex: str) -> str:
     if len(raw) != hashlib.sha256().digest_size:
         raise ValueError(f"not a SHA-256 digest (expected 64 hex chars): {sha256_hex!r}")
     return "doc_" + _base32(raw)
-
-
-def prefix_of(identifier: str) -> str:
-    return identifier.split("_", 1)[0]
