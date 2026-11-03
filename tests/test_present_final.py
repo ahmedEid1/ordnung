@@ -301,7 +301,7 @@ def sources(
     ask = None
     if ask_runs is not None:
         ask = {
-            "strict_r1": {
+            "r1": {
                 "strict_accuracy": {"value": 90 / 104, "ci": [0.8, 0.92], "k": 90.0, "n": 104.0, "docs": 30},
                 "harmful": {"value": 3 / 164, "ci": [0.0, 0.04], "k": 3.0, "n": 164.0, "docs": 40},
             },
@@ -682,6 +682,20 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
     assert "141 of 150 real deadlines" in text["e2e"]
     assert "hash 0123456789ab" in text["provenance"]
     assert "no deviation was recorded" in text["provenance"]
+
+
+def test_the_ask_sentence_reads_the_file_of_runs_the_held_out_set_writes(tmp_path: Path) -> None:
+    """The Ask sentence takes its numbers from the file ``python -m evals.ask.heldout --final`` writes
+    (``evals.ask.heldout.final_payload``), run 1's strict scores and what the runs show together, not from a shape
+    of its own."""
+    from evals.ask import heldout
+
+    from test_evals_ask_heldout import _three_runs
+
+    payload = json.loads(json.dumps(heldout.final_payload(_three_runs(tmp_path / "runs"), day="2026-12-20")))
+    text = _slots(final.coded(good(), prereg(), sources={**no_set_aside(sources()), "ask": payload}))
+    strict = payload["r1"]["strict_accuracy"]
+    assert f"{int(strict['k'])} of {int(strict['n'])} answers strictly right" in text["ask"]
 
 
 def test_the_sentences_are_deterministic_and_hold_no_model_id() -> None:

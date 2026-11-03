@@ -21,8 +21,8 @@ Placeholders are filled only from the final analysis (``evals.analysis --prereg`
 results files it names, passed as ``sources``:
 
 * ``power``: ``evals/preregistration/power-0.4.0.json``, ``comparisons.<family>.<pair>.power`` per comparison;
-* ``ask``: the held-out Ask final file, ``strict_r1`` (``evals.ask.metrics.summarise_strict`` of the first run) and
-  ``consistency`` (``evals.ask.metrics.consistency`` of every run); ``None`` when it was not recorded;
+* ``ask``: the held-out Ask final file (``evals.ask.heldout.final_payload``), ``r1`` (``summarise_strict`` of the first
+  run) and ``consistency`` (``evals.ask.metrics.consistency`` of every run); ``None`` when it was not recorded;
 * ``stress``: the stress results file (``evals.perturb.score.stress_results``); ``None`` when it was not recorded;
 * ``e2e``: the end-to-end replay of the final letters (``evals.e2e``);
 * ``owner_labels`` (``status``, ``checked``, ``agree``, ``source``) and ``owner_kappa`` (``status``, ``answers``,
