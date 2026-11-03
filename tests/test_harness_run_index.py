@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -382,19 +382,63 @@ def test_the_registry_declares_every_split_and_the_final_ones_before_their_lette
     assert not splits.is_held_out("dev") and not splits.is_held_out("test") and not splits.is_held_out("nope")
 
 
+def variants_problems(split_variants: Mapping[str, tuple[str, ...]]) -> list[str]:
+    """Where the generator's template variants (``evals/gen/common.py``) and the registry disagree: a split the
+    generator writes variants for that the registry lacks or gives other variants, or a recorded split whose
+    letters are variants (newkinds' are not) with none in the generator."""
+    problems = []
+    for name, variants in split_variants.items():
+        if name not in splits.names():
+            problems.append(f"{name}: not in the registry")
+        elif splits.get(name).variants != variants:
+            problems.append(
+                f"{name}: the generator writes variants {', '.join(variants)}, the registry says "
+                f"{', '.join(splits.get(name).variants)}"
+            )
+    for name in splits.recorded():
+        if splits.get(name).variants and name not in split_variants:
+            problems.append(f"{name}: recorded, but the generator writes no variants for it")
+    return problems
+
+
 def test_the_registry_agrees_with_the_page_and_the_generator() -> None:
     assert report.HELD_OUT_SPLITS == tuple(s.name for s in splits.REGISTRY if s.role == "held-out")
-    for name, variants in SPLIT_VARIANTS.items():
-        assert splits.get(name).variants == variants
-    assert set(SPLIT_VARIANTS) == set(splits.recorded())
+    assert variants_problems(SPLIT_VARIANTS) == []
+
+
+def test_a_final_split_s_variants_join_the_generator_before_its_recording() -> None:
+    """holdout4's letters are written after the code freeze and recorded later: the generator gets its variants
+    (``SPLIT_VARIANTS``) with its letters, while the split is not recorded yet. The generator names only splits of
+    the registry, with the registry's variants, and every recorded split whose letters are variants."""
+    assert variants_problems(SPLIT_VARIANTS) == []
+    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L", "M", "N")}) == []
+    assert variants_problems({**SPLIT_VARIANTS, "holdout4": ("K", "L")}) == [
+        "holdout4: the generator writes variants K, L, the registry says K, L, M, N"
+    ]
+    assert variants_problems({**SPLIT_VARIANTS, "holdout5": ("O", "P")}) == ["holdout5: not in the registry"]
+    without = {name: variants for name, variants in SPLIT_VARIANTS.items() if name != "holdout3"}
+    assert variants_problems(without) == ["holdout3: recorded, but the generator writes no variants for it"]
 
 
 def test_a_final_split_follows_the_held_out_rules_before_its_letters_exist(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    # a manifest of its own, with the development letters only: the run never reads a letter of a final split, and
+    # the test holds once the final splits' letters are in the dataset's manifest
+    manifest = json.loads(eval_run.MANIFEST_PATH.read_text(encoding="utf-8"))
+    manifest["entries"] = [entry for entry in manifest["entries"] if entry["split"] == "dev"]
+    own = tmp_path / "manifest.json"
+    own.write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(SystemExit):  # its replay must not land beside its recording
-        eval_run.run_cli(["--split", "holdout4", "--quiet"])
+        eval_run.run_cli(["--split", "holdout4", "--manifest", str(own), "--quiet"])
     with pytest.raises(SystemExit):  # it never rewrites docs/evals.md
-        eval_run.run_cli(["--split", "newkinds", "--docs", "--results-dir", str(tmp_path)])
-    assert eval_run.run_cli(["--split", "holdout4", "--results-dir", str(tmp_path), "--quiet"]) == 1
+        eval_run.run_cli(
+            ["--split", "newkinds", "--docs", "--manifest", str(own), "--results-dir", str(tmp_path)]
+        )
+    assert (
+        eval_run.run_cli(
+            ["--split", "holdout4", "--manifest", str(own), "--results-dir", str(tmp_path), "--quiet"]
+        )
+        == 1
+    )
     assert "holdout4 has no letters yet" in capsys.readouterr().err
