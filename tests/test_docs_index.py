@@ -24,12 +24,15 @@ INDEX = DECISIONS / "README.md"
 SPEC = ROOT / "docs" / "SPEC.md"
 ARCHITECTURE = ROOT / "docs" / "architecture.md"
 
-#: An ADR's file name: four digits, then the title in words.
+#: An ADR's file name: four digits, then the title in lower-case words joined by hyphens.
 _ADR_FILE = re.compile(r"^(\d{4})-[a-z0-9-]+\.md$")
+#: A file that is a record whatever its name (``0026-New-Thing.md``, ``0026_new.md``): each is listed, and a name
+#: that isn't ``_ADR_FILE``'s fails on its own.
+_ADR_LIKE = re.compile(r"^\d{4}.*\.md$", re.I)
 
 
 def _adrs() -> list[Path]:
-    return sorted(path for path in DECISIONS.iterdir() if _ADR_FILE.match(path.name))
+    return sorted(path for path in DECISIONS.iterdir() if _ADR_LIKE.match(path.name))
 
 
 def _index_rows() -> dict[str, str]:
@@ -39,7 +42,7 @@ def _index_rows() -> dict[str, str]:
     for line in INDEX.read_text(encoding="utf-8").splitlines():
         # the row's own ADR, in its first column (a row may link others too)
         first = re.match(r"^\| \[\d{4}\]\(([^)#\s]+)\) \|", line)
-        if first and _ADR_FILE.match(first[1]):
+        if first and _ADR_LIKE.match(first[1]):
             assert first[1] not in rows, f"{first[1]} is listed twice"
             rows[first[1]] = line
     return rows
@@ -61,6 +64,11 @@ def test_the_decisions_index_lists_every_adr() -> None:
     assert not missing, f"not in docs/decisions/README.md: {missing}"
 
 
+def test_every_adr_is_named_by_its_number_and_its_title_in_lower_case_words() -> None:
+    badly_named = [adr.name for adr in _adrs() if not _ADR_FILE.match(adr.name)]
+    assert not badly_named, f"name each record NNNN-the-title-in-lower-case-words.md: {badly_named}"
+
+
 def test_every_file_the_decisions_index_links_exists() -> None:
     assert INDEX.is_file(), "docs/decisions/README.md, the index of the decisions, is missing"
     for target in re.findall(r"\]\(([^)#\s]+)(?:#[^)\s]*)?\)", INDEX.read_text(encoding="utf-8")):
@@ -79,12 +87,44 @@ def test_the_decisions_index_gives_each_adr_its_own_title_and_status() -> None:
         assert re.search(rf"\| {status}\b", row), f"{adr.name}: the index doesn't give its status '{status}'"
 
 
+def test_the_decisions_index_gives_every_later_change_a_record_states() -> None:
+    """A later change is dated in the record it changes (its status lines, or a section headed by the day) or made
+    by another record (*Superseded in part* … See ADR N; **Amended by:** ADR N): the record's row says so, so a
+    reader of the index alone doesn't take it as unchanged."""
+    rows = _index_rows()
+    for adr in _adrs():
+        text = adr.read_text(encoding="utf-8")
+        head = "\n".join(text.splitlines()[:4])
+        row = rows[adr.name]
+        created = re.search(r"\*\*Date:\*\* (\d{4}-\d\d-\d\d)", head)
+        dated = set(re.findall(r"\d{4}-\d\d-\d\d", head)) | set(
+            re.findall(r"^## (\d{4}-\d\d-\d\d)\b", text, re.M)
+        )
+        dated -= {created[1]} if created else set()
+        missing = sorted(day for day in dated if day not in row)
+        assert not missing, f"{adr.name}: the index row doesn't give its later change(s) of {missing}"
+        for later in re.findall(r"\*Superseded in part:\*.*?See\s+\[ADR (\d{4})\]", text, re.S):
+            assert re.search(rf"superseded in part by \[{later}\]\({later}-", row), (
+                f"{adr.name}: by ADR {later}"
+            )
+        for later in re.findall(r"\*\*Amended by:\*\* \[ADR (\d{4})\]", head):
+            assert re.search(rf"amended by \[{later}\]\({later}-", row), f"{adr.name}: amended by ADR {later}"
+
+
 # --------------------------------------------------------------------------------------------------
 # SPEC's sections, as the repository cites them
 # --------------------------------------------------------------------------------------------------
 
-#: The folders whose files cite SPEC.
-_CITING = ("src", "tests", "scripts", "web", "evals", "docs")
+#: The folders whose files cite SPEC, and the files at the repository's root that may.
+_CITING = ("src", "tests", "scripts", "web", "evals", "docs", ".github")
+_CITING_AT_ROOT = (
+    "README.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "Makefile",
+    "pyproject.toml",
+)
 #: Never searched: generated or third-party files, the benchmark's letters, its recordings and results.
 _NOT_SEARCHED = (
     "src/ordnung/web/dist",
@@ -99,10 +139,10 @@ _NOT_SEARCHED = (
 _TEXT = frozenset(".py .ts .tsx .mjs .js .md .json .yml .yaml .toml .sh .css .html".split())
 #: A section number: ``21``, ``12b``, ``8.1``, ``14.10``.
 _NUMBER = r"\d+[a-z]?(?:\.\d+)?"
-#: ``SPEC``, ``SPEC.md`` or ``docs/SPEC.md``, a few separators (comment marks and line breaks too), the first
+#: ``SPEC``, ``SPEC.md``, ``docs/SPEC.md`` or ``SPEC's``, a few separators (comment marks and line breaks too), the first
 #: ``§ N`` and more joined to it (``SPEC §9, §21``, ``SPEC §6/§21``); or a paragraph by name (``SPEC §GiroCode``).
 _SPEC_CITATION = re.compile(
-    r"SPEC(?:\.md)?[\s#/*'\"(`:,\-–—]{0,12}§\s?(?:(?P<numbers>"
+    r"SPEC(?:\.md)?(?:['’]s)?[\s#/*'\"(`:,\-–—]{0,12}§\s?(?:(?P<numbers>"
     + _NUMBER
     + r"(?:\s*(?:,|/|and|&|;|or)\s*(?:SPEC\s*)?§\s?"
     + _NUMBER
@@ -118,6 +158,7 @@ _OTHER_DOC_BEFORE = re.compile(r"(?:deadline-rules|evals|privacy|architecture)\.
 
 
 def _citing_files() -> Iterator[Path]:
+    yield from (ROOT / name for name in _CITING_AT_ROOT)
     for top in _CITING:
         for folder, subfolders, files in os.walk(ROOT / top):
             here = Path(folder)
@@ -271,6 +312,47 @@ def test_every_path_and_name_the_web_app_section_gives_exists() -> None:
         else:
             word = re.split(r"[=?(]", name.lstrip("?"))[0] or name
             assert word in _web_sources(), name
+
+
+def _bullet(lead: str) -> str:
+    """The section's bullet that starts with ``- **<lead>.**``, flattened."""
+    return " ".join(_web_section().split(f"- **{lead}.**", 1)[1].split("\n- **", 1)[0].split())
+
+
+def test_the_web_app_section_says_the_mocks_are_a_sample_life_of_their_own() -> None:
+    """The mocks are written by hand in ``web/src/mocks/data/``, with letters of their own, and the app's banner
+    says they are not the recorded demo (``MockBanner.tsx``): the section says so too, and never that they copy
+    ``ordnung demo``'s sample life."""
+    documents = (ROOT / "web" / "src" / "mocks" / "data" / "documents.ts").read_text(encoding="utf-8")
+    mock_letters = set(re.findall(r'filename: "([^"]+)"', documents))
+    samples = {path.name for path in (ROOT / "src" / "ordnung" / "demo" / "samples").iterdir()}
+    assert mock_letters and mock_letters - samples
+    banner = (ROOT / "web" / "src" / "components" / "shell" / "MockBanner.tsx").read_text(encoding="utf-8")
+    assert "not the recorded demo" in banner
+    mocks = _bullet("Mocks")
+    assert "`web/src/mocks/data/`" in mocks and "not the recorded demo" in mocks, mocks
+    assert not re.search(r"\bcopy of (the|its) demo", mocks), mocks
+
+
+def test_the_web_app_section_says_how_much_of_the_shared_ui_dev_ui_shows() -> None:
+    """``/dev/ui`` (``web/src/app/UiGallery.tsx``) shows most of ``web/src/components/ui/``, not all of it: the
+    section says "all" only while every piece is in the gallery."""
+    ui = sorted(
+        path.stem
+        for path in (ROOT / "web" / "src" / "components" / "ui").glob("*.tsx")
+        if ".test" not in path.name
+    )
+    gallery = "\n".join(
+        (ROOT / "web" / "src" / "app" / name).read_text(encoding="utf-8")
+        for name in ("UiGallery.tsx", "DevUiPage.tsx")
+    )
+    exports = (ROOT / "web" / "src" / "components" / "ui" / "index.ts").read_text(encoding="utf-8")
+    shown = [name for name in ui if re.search(rf"\b{name}\b", gallery) or re.search(rf"\b{name}\b", exports)]
+    layout = _bullet("Layout")
+    assert "`/dev/ui`" in layout
+    if len(shown) < len(ui):
+        assert re.search(r"\ball\b[^.;]*`/dev/ui`", layout) is None, sorted(set(ui) - set(shown))
+    assert len(shown) > len(ui) / 2, shown
 
 
 # --------------------------------------------------------------------------------------------------

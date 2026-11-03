@@ -42,17 +42,20 @@ What is measured:
 ## Replay (no model call, no tokens)
 
 ```bash
-.venv/bin/ordnung eval                                                      # the test split, all four conditions
-.venv/bin/ordnung eval --split holdout3 --results-dir /tmp/ordnung-replay   # any other split, into a folder of its own
+.venv/bin/ordnung eval --results-dir /tmp/ordnung-replay                    # the test split, all four conditions
+.venv/bin/ordnung eval --split holdout3 --results-dir /tmp/ordnung-replay   # any other split
 .venv/bin/python -m evals.ask                                               # the Ask benchmark
 make eval-reproduce                                                         # every published number, against results/INDEX.json
 ```
 
-The first writes `results/<today>-claude-sonnet-5-test.json` into the checkout (keep it out of your commits) and a
-prediction cache under results/cache, which git ignores. A held-out split's replay is never written beside its
-recording, so it needs `--results-dir`. CI's gates are these commands with thresholds (CONTRIBUTING.md, *Checks*).
-`make eval-reproduce` writes nothing into the checkout; [docs/evals.md](../docs/evals.md#15-reproduce) lists its
-parts, one command each.
+The two benchmark replays write their results file into a folder of their own, and a prediction cache into
+cache/ there; the Ask replay writes nothing. Without `--results-dir`, `ordnung eval` (and `make eval`) writes
+`results/<today>-claude-sonnet-5-test.json` into the checkout: INDEX.json doesn't list it, so `make eval-reproduce`
+and `make check` fail until you delete it. Delete it, and never run the `--write` commands their errors suggest
+for it: they would publish the throwaway replay. A held-out split's replay is never written beside its
+recording, so it needs `--results-dir`. CI's gates are these commands with thresholds, which write no results
+file (CONTRIBUTING.md, *Checks*). `make eval-reproduce` writes nothing into the checkout;
+[docs/evals.md](../docs/evals.md#15-reproduce) lists its parts, one command each.
 
 Whether a change needs new recordings (each says which request changed, if one did):
 
@@ -73,10 +76,12 @@ for then:
 .venv/bin/python -m evals.ask --prune-stale                                       # delete the Ask answers whose tool results changed
 .venv/bin/python -m evals.ask --live --allow-another-today                        # record the Ask answers that are missing
 ORDNUNG_RECORD=1 .venv/bin/ordnung demo --live --rebuild --no-serve               # the demo's answers
-.venv/bin/python -m evals.harness ledger                                          # what the recordings cost
+.venv/bin/python -m evals.harness ledger                                          # what the live runs it logged cost
 ```
 
-Right after, replay what you recorded and check that nothing is stale or missing.
+Right after, replay what you recorded and check that nothing is stale or missing. The committed recordings were
+made with code from before the ledger, so it lists none of them; what the reading benchmark's recordings cost
+is on [docs/evals-history.md](../docs/evals-history.md).
 
 ## Where results go
 

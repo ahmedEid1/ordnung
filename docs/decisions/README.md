@@ -12,7 +12,7 @@ status.
 | [0003](0003-grounding-levels.md) | Four grounding levels instead of "verified" | accepted · 2026-09-25 |
 | [0004](0004-replay-fixtures-and-deterministic-ids.md) | Replay fixtures and content-derived IDs for a zero-token demo and CI | accepted · 2026-09-25 |
 | [0005](0005-sqlite-fts-local-first.md) | SQLite (WAL + FTS5 + trigram), no vector database | accepted · 2026-09-25 |
-| [0006](0006-read-only-agent-and-humble-automation.md) | A read-only agent and "humble automation" | accepted · 2026-09-25 |
+| [0006](0006-read-only-agent-and-humble-automation.md) | A read-only agent and "humble automation" | accepted · 2026-09-25, superseded in part by [0014](0014-proof-files-are-deleted-for-good.md) |
 | [0007](0007-short-written-policies-over-growing-heuristics.md) | Short written policies instead of growing heuristics | accepted · 2026-09-26, updated 2026-10-07 |
 | [0008](0008-two-channels-and-claim-level-citations.md) | Two channels for Ask and claim-level citations | accepted · 2026-09-26 |
 | [0009](0009-rules-engine-as-mcp-tools.md) | The rules engine as MCP tools, rules-only by default | accepted · 2026-09-26 |
@@ -21,7 +21,7 @@ status.
 | [0012](0012-girocode-only-for-grounded-transfers.md) | A GiroCode only for grounded transfers, decided by a written policy | accepted · 2026-09-27 |
 | [0013](0013-backups-and-reminders-outside-the-browser.md) | Backups and reminders that work while Ordnung is closed | accepted · 2026-09-27, updated 2026-10-08, 2026-10-09 and 2026-10-10 |
 | [0014](0014-proof-files-are-deleted-for-good.md) | Proof files are deleted for good, after a confirmation that names them | accepted · 2026-09-27 |
-| [0015](0015-incomplete-readings-get-a-check-written-by-code.md) | Incomplete readings get a check written by code | accepted · 2026-10-01 |
+| [0015](0015-incomplete-readings-get-a-check-written-by-code.md) | Incomplete readings get a check written by code | accepted · 2026-10-01, updated 2026-10-07 |
 | [0016](0016-an-incomplete-reading-is-asked-for-once-more.md) | An incomplete reading is asked for once more | accepted · 2026-10-02 |
 | [0017](0017-phone-access-over-the-home-network.md) | Phone access over the home network | accepted · 2026-10-07 |
 | [0018](0018-hand-off-sync-through-a-folder-you-already-sync.md) | Hand-off sync through a folder you already sync | accepted · 2026-10-07 |

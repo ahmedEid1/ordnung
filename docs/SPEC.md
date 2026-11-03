@@ -156,7 +156,8 @@ Playwright + @axe-core/playwright, GitHub Actions.
 
 ## 4. Domain model — `ordnung/models.py` (implemented; the file is authoritative)
 
-Key fields (`models.py` has them all):
+Key fields (most in `models.py`; the route's own types are in `api/routes/documents.py`, the model request's in
+`llm/base.py`, and `LetterFor` in `secretary/household.py`):
 - `Evidence.grounding: Literal["verified","model_read","unverified","user"]` (replaces the boolean
   semantics; keep `verified: bool` = grounding in {verified,user}), `value_consistent: bool`.
 - `DateSpec.nature: Literal["objection","payment","declaration","notice","appointment","other"] = "other"`
@@ -252,8 +253,12 @@ the letter from both in its transaction (`json_remove`, the id quoted in the pat
 `Store.recipient_names()` reads the addressee of every letter outside the trash but proof files (incoming,
 with a reading) in one query.
 
-The Store API is the public methods of `Store` in `db/store.py`, the only module that talks SQL; their docstrings
-say what each one keeps or refuses.
+The Store API is the public methods of `Store` in `db/store.py`, which the app reads and writes the ledger
+through; their docstrings say what each one keeps or refuses. Some modules run SQL of their own on the database
+or a copy of it, so a change to the schema or to a `meta` row checks them too: `db/migrate.py` (the
+migrations), `secretary/household.py` (the household's `meta` row), `sync/` and `backup/` (copies of the
+database, and the rows they read, scrub or log), `demo/loader.py` (the demo's snapshot), and `doctor.py` and
+`cli.py` (their checks).
 
 ## 6. Rules engine — `rules/` (pure, 100 % branch-covered, Hypothesis property tests)
 

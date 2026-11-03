@@ -2950,9 +2950,10 @@ def test_the_spec_lists_the_shortcut_module_its_command_and_the_hidden_serve_fla
     from ordnung.api.routes.reminders import ShortcutInfo
 
     assert {"current", "foreign"} <= set(ShortcutInfo.model_fields)
-    cli = _flat(raw.split("## 15. CLI", 1)[1].split("\n## ", 1)[0])
-    assert "- `shortcut` — Ordnung in the app menu" in cli
-    assert "It also takes a hidden `--from-shortcut`, what the app-menu launcher (§ 12) runs" in cli
+    cli = raw.split("## 15. CLI", 1)[1].split("\n## ", 1)[0]
+    assert re.search(r"^- `shortcut`", cli, re.M)  # its line; every command's is checked below
+    serve = cli.split("- `serve`", 1)[1].split("\n- `", 1)[0]
+    assert "hidden `--from-shortcut`" in _flat(serve)
 
 
 def test_the_spec_lists_every_command_and_names_the_hidden_flags() -> None:
@@ -2965,7 +2966,7 @@ def test_the_spec_lists_every_command_and_names_the_hidden_flags() -> None:
     cli = (
         (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8").split("## 15. CLI", 1)[1].split("\n## ", 1)[0]
     )
-    assert "`ordnung <cmd> --help` lists every flag but the two hidden ones named here" in cli
+    assert "`ordnung <cmd> --help`" in cli
     group = typer.main.get_command(app)  # typer's own click: read by attribute
     commands = sorted(
         name for name, command in group.commands.items() if not getattr(command, "hidden", False)
@@ -3635,10 +3636,10 @@ def test_the_spec_and_architecture_say_how_answers_are_compressed() -> None:
 
 
 def test_every_test_and_script_the_architecture_names_exists() -> None:
-    """Every backticked path under ``tests/``, ``web/e2e/``, ``scripts/`` or ``web/scripts/`` in
+    """Every backticked path under ``tests/``, ``web/e2e/``, ``web/src/``, ``scripts/`` or ``web/scripts/`` in
     docs/architecture.md is a file or folder of the repository (``*`` matches as in a shell)."""
     text = (ROOT / "docs" / "architecture.md").read_text(encoding="utf-8")
-    paths = sorted(set(re.findall(r"`((?:tests|web/e2e|scripts|web/scripts)/[^`\s]+)`", text)))
+    paths = sorted(set(re.findall(r"`((?:tests|web/e2e|web/src|scripts|web/scripts)/[^`\s]+)`", text)))
     assert len(paths) > 30, paths
     for name in paths:
         folder, _, pattern = name.rpartition("/")
@@ -4057,6 +4058,53 @@ def test_the_spec_names_the_route_local_letter_models_and_routes() -> None:
         "as `LetterRecord`s, each with its `tax_choice`",
     ):
         assert words in spec, words
+
+
+def _spec_numbered(number: str) -> str:
+    """SPEC's ``## <number>. …`` section, its heading included, with its whitespace flattened."""
+    text = (ROOT / "docs" / "SPEC.md").read_text(encoding="utf-8")
+    return _flat(re.split(r"\n## (?!" + re.escape(number) + r"\. )", text.split(f"\n## {number}. ", 1)[1])[0])
+
+
+def test_the_spec_names_the_module_of_every_type_its_domain_model_names() -> None:
+    """SPEC § 4 lists key fields of types that live in `models.py` and in other modules (the route's own in
+    `api/routes/documents.py`, the model request's in `llm/base.py`): each module a named type is defined in is
+    named there, so a reader looks in the right file."""
+    package = ROOT / "src" / "ordnung"
+    section = _spec_numbered("4")
+    named = set(re.findall(r"\b([A-Z][a-z]+(?:[A-Z][a-z]+)+|LLM[A-Z][a-z]+)\b", section))
+    homes: dict[str, set[str]] = {}
+    for path in sorted(package.rglob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        for name in named:
+            if re.search(rf"^(?:class {name}\b|{name}(?:: \w+)? = )", source, re.M):
+                homes.setdefault(path.relative_to(package).as_posix(), set()).add(name)
+    assert "models.py" in homes and len(homes) > 1, homes
+    unnamed = {module: sorted(names) for module, names in homes.items() if f"`{module}`" not in section}
+    assert unnamed == {}, f"SPEC § 4 names these types but not the module they live in: {unnamed}"
+
+
+def test_the_spec_names_every_module_that_runs_sql_of_its_own() -> None:
+    """SPEC § 5: the Store API is what the app reads and writes the ledger through, and every other module that runs
+    SQL on the database itself is named there, so a change to the schema or to a ``meta`` row checks them too.
+    (store.py and SPEC once called store.py the only module that talks SQL.)"""
+    package = ROOT / "src" / "ordnung"
+    section = _spec_numbered("5")
+    runs_sql = sorted(
+        path.relative_to(package).as_posix()
+        for path in package.rglob("*.py")
+        if re.search(r"\.execute(?:script|many)?\(", path.read_text(encoding="utf-8"))
+    )
+    assert "db/store.py" in runs_sql and len(runs_sql) > 5, runs_sql
+    unnamed = [
+        module
+        for module in runs_sql
+        if f"`{module}`" not in section and not ("/" in module and f"`{module.split('/')[0]}/`" in section)
+    ]
+    assert unnamed == [], f"SPEC § 5 doesn't name these modules, which run SQL of their own: {unnamed}"
+    store_doc = ast.get_docstring(ast.parse((package / "db" / "store.py").read_text(encoding="utf-8"))) or ""
+    for text in (section, _flat(store_doc)):
+        assert "only module" not in text
 
 
 def test_the_spec_and_architecture_say_how_for_taxes_and_the_household_work() -> None:

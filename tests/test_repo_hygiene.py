@@ -15,6 +15,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -581,6 +582,59 @@ def test_the_fast_loop_runs_tests_that_exist() -> None:
         assert command.startswith("cd web && ") and spec.endswith(".spec.ts") and (WEB / spec).is_file()
 
 
+def test_the_fast_loop_says_which_jobs_the_end_to_end_job_waits_for() -> None:
+    """The fast loop's sentence on when CI's end-to-end job starts names exactly the jobs its ``needs:`` lists
+    (ci.yml's job ids): a workflow that starts it sooner or later fails here until the sentence follows."""
+    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    jobs = yaml.safe_load(_text(".github/workflows/ci.yml"))["jobs"]
+    needs = jobs["e2e"]["needs"]
+    needs = {needs} if isinstance(needs, str) else set(needs)
+    fast_loop = " ".join(_section(_text("CONTRIBUTING.md"), "Fast loop").split())
+    (sentence,) = [part for part in re.split(r"(?<=\.) ", fast_loop) if "end-to-end job" in part]
+    assert "starts once" in sentence, sentence
+    named = {
+        job for job in jobs if job != "e2e" and re.search(rf"(?<![\w-]){re.escape(job)}(?![\w-])", sentence)
+    }
+    assert named == needs, f"{sentence!r} names {sorted(named)}; ci.yml's e2e needs {sorted(needs)}"
+
+
+def test_one_test_file_runs_alone_as_the_fast_loop_runs_it() -> None:
+    """CONTRIBUTING's fast loop runs one file with `.venv/bin/pytest`, which puts its own folder first on sys.path,
+    not the checkout, and `make install` adds only `src`. A test that imports `evals` (the checks of the generated
+    files among them) then found it only when a module collected before it had added the checkout, and failed
+    alone: pytest's `pythonpath` setting adds it to every run. Here without the checkout on the path, as there."""
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    kept = [
+        str(Path(entry).resolve())
+        for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+        if entry and Path(entry).resolve() != ROOT
+    ]
+    if kept:
+        env["PYTHONPATH"] = os.pathsep.join(kept)
+    files = ["test_results_index.py", "test_items_export.py", "test_present.py", "test_repo_hygiene.py"]
+    only = ["-k", "test_make_eval_says_what_it_writes"]
+    done = subprocess.run(
+        [
+            sys.executable,
+            "-P",
+            "-m",
+            "pytest",
+            "-p",
+            "no:cacheprovider",
+            *(f"tests/{name}" for name in files),
+            *only,
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
+        timeout=300,
+    )
+    assert done.returncode == 0, done.stdout[-3000:] + done.stderr[-2000:]
+    assert "1 passed" in done.stdout, done.stdout[-3000:]
+
+
 def _generated_rows() -> list[list[str]]:
     """The rows of CONTRIBUTING's "Generated files" table: file(s), command, what fails while it is stale."""
     table = [
@@ -672,6 +726,22 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
         "constraints.txt",
     ):
         assert covered(path), path
+
+
+def test_a_generated_file_said_to_have_no_check_has_none() -> None:
+    """A row whose last column says nothing checks the file holds only while no test runs its script: once one
+    does (a ``tests/test_mock_<name>.py``, as for the GiroCodes), the row names that test instead."""
+    tests = {
+        path.name: path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "tests").glob("test_*.py"))
+        if path.name != "test_repo_hygiene.py" and not path.name.startswith("test_docs_")
+    }
+    nothing = [row for row in _generated_rows() if row[2].startswith("nothing")]
+    assert nothing
+    for files, command, _ in nothing:
+        for script in re.findall(r"\bscripts/(\w+)\.py\b", command):
+            running = [name for name, source in tests.items() if re.search(rf"\b{script}\b", source)]
+            assert not running, f"{files}: the table says nothing checks it, but {running} run(s) {script}.py"
 
 
 class _Parsed(Exception):
@@ -775,6 +845,48 @@ def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pyt
             ]
             eval_run.recording_day(config, entries)
     assert live >= 2 and any(command.startswith("make eval-reproduce") for command in commands)
+
+
+class _RunAsked(Exception):
+    """Raised in place of a benchmark run, with the configuration ``run_cli`` built for it."""
+
+
+def test_the_evals_readme_s_replays_write_no_results_file_into_the_checkout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A replay without the gate's thresholds writes a results file, and one in evals/results/ that INDEX.json
+    doesn't list fails `make eval-reproduce` and the results index tests (the commands they print would then write
+    the throwaway replay into INDEX.json and the history page): every replay the README gives writes its file into
+    a folder of its own, or none. `make eval` writes into evals/results/, so its help line says what fails."""
+    import shlex
+
+    from evals import run as eval_run
+
+    async def ask_run(config: Any, **_: Any) -> Any:
+        raise _RunAsked(config)
+
+    monkeypatch.setattr(eval_run, "run_benchmark", ask_run)
+    replays = _commands(_section(_text("evals/README.md"), "Replay (no model call, no tokens)"))
+    benchmark = 0
+    for command in replays:
+        words = shlex.split(command)
+        if words[:2] in ([".venv/bin/ordnung", "eval"], ["ordnung", "eval"]):
+            args = words[2:]
+        elif words[1:3] == ["-m", "evals.run"]:
+            args = words[3:]
+        else:
+            assert "make eval" not in command or command.startswith("make eval-reproduce"), command
+            continue
+        benchmark += 1
+        with pytest.raises(_RunAsked) as asked:
+            eval_run.run_cli(args)
+        config = asked.value.args[0]
+        writes_here = config.write_results and config.results_dir.resolve().is_relative_to(ROOT)
+        assert not writes_here, (
+            f"{command}: writes {config.results_dir / config.results_name(config.models[0])}"
+        )
+    assert benchmark >= 2
+    assert "evals/results/" in _make_targets()["eval"] and "make eval-reproduce" in _make_targets()["eval"]
 
 
 def test_the_repository_settings_are_the_project_s_own() -> None:

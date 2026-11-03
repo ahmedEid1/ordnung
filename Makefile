@@ -58,7 +58,7 @@ constraints:        ## re-pin what CI and `make install` install (CONSTRAINTS_AR
 demo:               ## explore the sample life (replayed model outputs, zero tokens)
 	.venv/bin/ordnung demo --serve
 
-eval:               ## replay the test split from its recordings (no model call) into evals/results/<today>-claude-sonnet-5-test.json
+eval:               ## replay the test split (no model call) into evals/results/<today>-claude-sonnet-5-test.json; delete it before `make check` or `make eval-reproduce`, which fail on it
 	.venv/bin/ordnung eval
 
 eval-reproduce:     ## replay every published number (no model call, no API key) and compare with evals/results/INDEX.json
