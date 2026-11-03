@@ -1,5 +1,5 @@
 /**
- * TanStack Query hooks for every endpoint.
+ * TanStack Query hooks for the endpoints the app calls.
  *
  * - `qk` is the query-key factory; invalidate by prefix (e.g. `qk.documents.all`).
  * - Mutations invalidate what they affect. Anything that changes the ledger (documents, to-dos &
@@ -8,7 +8,6 @@
  * - Errors of mutations surface as a toast through the global MutationCache handler
  *   (`app/queryClient.ts`); pass `meta: { silent: true }` to opt out.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -36,7 +35,6 @@ import type {
   Health,
   HeldResult,
   Household,
-  HouseholdChange,
   HouseholdFiling,
   ItemCreate,
   ItemListParams,
@@ -53,17 +51,14 @@ import type {
   ProofOverview,
   ProofPatch,
   SettingsPatch,
-  StreamEvent,
   SuggestionListParams,
   SuggestionPatch,
-  SuggestionRef,
   SyncChange,
   SyncConnect,
   SyncDisconnect,
   SyncSave,
   SyncStatus,
   SyncUseHere,
-  TourPatch,
   TransferValues,
 } from "./types";
 
@@ -97,10 +92,6 @@ export const qk = {
     all: ["parties"] as const,
     list: () => ["parties", "list"] as const,
     detail: (id: string) => ["parties", "detail", id] as const,
-  },
-  cases: {
-    all: ["cases"] as const,
-    detail: (id: string) => ["cases", "detail", id] as const,
   },
   timeline: (from?: string, to?: string) => ["timeline", from ?? null, to ?? null] as const,
   lanes: (from?: string, to?: string) => ["lanes", from ?? null, to ?? null] as const,
@@ -144,7 +135,6 @@ const LEDGER_PREFIXES = [
   qk.items.all,
   qk.contracts.all,
   qk.parties.all,
-  qk.cases.all,
   ["timeline"],
   ["lanes"],
   qk.dashboard,
@@ -253,16 +243,6 @@ export function useHousehold(opts: { enabled?: boolean } = {}) {
 function householdSaved(qc: QueryClient, household: Household): Promise<void> {
   qc.setQueryData(qk.household, household);
   return Promise.all([qc.invalidateQueries({ queryKey: ["documents", "detail"] }), qc.invalidateQueries({ queryKey: qk.numbers })]).then(() => undefined);
-}
-
-/** Replace the list of people (computer only; 409 when `base` is not the household's `version` any more). */
-export function useSaveHousehold() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: HouseholdChange) => api.saveHousehold(body),
-    meta: { errorTitle: "Couldn't save your household" },
-    onSuccess: (household) => householdSaved(qc, household),
-  });
 }
 
 /** The most letters one `PATCH /api/household` takes (the body's cap). */
@@ -633,15 +613,6 @@ export function useParty(id: string | null | undefined) {
   });
 }
 
-export function useCase(id: string | null | undefined) {
-  return useQuery({
-    queryKey: qk.cases.detail(id ?? ""),
-    queryFn: () => api.case(id!),
-    enabled: Boolean(id),
-    staleTime: MINUTE,
-  });
-}
-
 // ------------------------------------------------------------------------------------------------
 // Views
 // ------------------------------------------------------------------------------------------------
@@ -723,11 +694,6 @@ export function useUpdateSuggestion() {
   });
 }
 
-/** Start a review (202); its Ideas arrive later with the `suggestions.updated` event. */
-export function useRunReview() {
-  return useMutation({ mutationFn: () => api.runReview(), meta: { errorTitle: "Couldn't start the review" } });
-}
-
 export function useBrief() {
   return useQuery({ queryKey: qk.brief, queryFn: api.brief, staleTime: 5 * MINUTE });
 }
@@ -752,127 +718,6 @@ export function useChat(threadId: string | null | undefined) {
     enabled: Boolean(threadId),
     staleTime: Infinity,
   });
-}
-
-export type AskStatus = "idle" | "streaming" | "done" | "error";
-
-export interface AskToolCall {
-  name: string;
-  input?: Record<string, unknown>;
-  /** summary text from the matching tool_result, once it arrived */
-  result?: string;
-}
-
-export interface AskState {
-  status: AskStatus;
-  question: string | null;
-  /** the answer text so far (may contain `[doc:ID]` citation markers) */
-  text: string;
-  toolCalls: AskToolCall[];
-  citations: SuggestionRef[];
-  messageId: string | null;
-  threadId: string | null;
-  error: string | null;
-  events: StreamEvent[];
-}
-
-const IDLE_ASK: AskState = {
-  status: "idle",
-  question: null,
-  text: "",
-  toolCalls: [],
-  citations: [],
-  messageId: null,
-  threadId: null,
-  error: null,
-  events: [],
-};
-
-/** Pure reducer used by {@link useAsk} (exported for tests). */
-export function reduceAsk(state: AskState, ev: StreamEvent): AskState {
-  const events = [...state.events, ev];
-  switch (ev.type) {
-    case "tool_use":
-      return { ...state, events, toolCalls: [...state.toolCalls, { name: ev.name ?? "tool", input: ev.input ?? undefined }] };
-    case "tool_result": {
-      const calls = [...state.toolCalls];
-      for (let i = calls.length - 1; i >= 0; i--) {
-        if (calls[i].result === undefined && (!ev.name || calls[i].name === ev.name)) {
-          calls[i] = { ...calls[i], result: ev.text ?? "" };
-          break;
-        }
-      }
-      return { ...state, events, toolCalls: calls };
-    }
-    case "text":
-      return { ...state, events, text: state.text + (ev.text ?? "") };
-    case "done":
-      return {
-        ...state,
-        events,
-        status: "done",
-        citations: ev.citations ?? state.citations,
-        messageId: ev.message_id ?? state.messageId,
-        threadId: ev.thread_id ?? state.threadId,
-      };
-    case "error":
-      return { ...state, events, status: "error", error: ev.error ?? "Something went wrong." };
-    default:
-      return state;
-  }
-}
-
-/**
- * Streamed Ask. `ask(question)` starts a new answer (cancelling a running one); the state updates
- * as tool calls and text arrive. Pass the `threadId` from a previous answer to continue a chat.
- */
-export function useAsk() {
-  const qc = useQueryClient();
-  const [state, setState] = useState<AskState>(IDLE_ASK);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
-
-  const cancel = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setState((s) => (s.status === "streaming" ? { ...s, status: "done" } : s));
-  }, []);
-
-  const reset = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
-    setState(IDLE_ASK);
-  }, []);
-
-  const ask = useCallback(
-    async (question: string, threadId?: string | null) => {
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      setState({ ...IDLE_ASK, status: "streaming", question, threadId: threadId ?? null });
-      let finalThread: string | null = threadId ?? null;
-      try {
-        for await (const ev of api.ask({ question, thread_id: threadId ?? null }, ctrl.signal)) {
-          if (ctrl.signal.aborted) return;
-          if (ev.thread_id) finalThread = ev.thread_id;
-          setState((s) => reduceAsk(s, ev));
-        }
-        setState((s) => (s.status === "streaming" ? { ...s, status: "done" } : s));
-        if (finalThread) void qc.invalidateQueries({ queryKey: qk.chat(finalThread) });
-      } catch (err) {
-        if (ctrl.signal.aborted) return;
-        const message =
-          err instanceof ApiError ? err.message : "The answer was interrupted. Please try again.";
-        setState((s) => ({ ...s, status: "error", error: message }));
-      } finally {
-        if (abortRef.current === ctrl) abortRef.current = null;
-      }
-    },
-    [qc],
-  );
-
-  return { ...state, ask, cancel, reset };
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -1457,15 +1302,6 @@ export function useDeleteKept() {
 
 export function useTour(enabled = true) {
   return useQuery({ queryKey: qk.tour, queryFn: api.tour, staleTime: Infinity, enabled });
-}
-
-export function useUpdateTour() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (patch: TourPatch) => api.updateTour(patch),
-    meta: { errorTitle: "Couldn't update the tour" },
-    onSuccess: (tour) => qc.setQueryData(qk.tour, tour),
-  });
 }
 
 /**

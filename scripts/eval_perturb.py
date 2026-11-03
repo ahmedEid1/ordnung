@@ -33,19 +33,20 @@ import importlib
 import json
 import sys
 import tempfile
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from evals import conditions, report
 from evals.perturb import build, score
 from evals.perturb import templates as tpl
-from evals.records import Entry, Prediction, load_manifest
+from evals.records import ConditionName, Entry, Prediction, load_manifest
 from evals.run import DEFAULT_MODEL, RECORDED_DIR, RESULTS_DIR, RunConfig, _commit, live_setup, run_benchmark
 
 STRESS_RECORDED_DIR = RECORDED_DIR / "stress"
-CONDITIONS = score.CONDITIONS
+#: the two conditions the stress run compares (evals/perturb/score.py), as the runner names them
+CONDITIONS = cast("tuple[ConditionName, ...]", score.CONDITIONS)
 SCRIPT = "scripts/eval_perturb.py"
 
 
@@ -196,7 +197,7 @@ def score_all(
 ) -> tuple[dict[str, list[score.LetterScore]], dict[str, dict[str, list[score.LetterScore]]]]:
     """Every letter scored: the clean reference, then each cell against it."""
     by_id = {e.id: e for e in base}
-    clean_scores = {
+    clean_scores: dict[str, list[score.LetterScore]] = {
         condition: [score.score_letter(by_id[i], clean[condition][i]) for i in sorted(by_id)]
         for condition in CONDITIONS
     }
@@ -338,7 +339,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 async def _run(args: argparse.Namespace) -> int:
-    say = (
+    say: Callable[[str], None] = (
         (lambda _message: None)
         if args.quiet
         else (lambda message: print(message, file=sys.stderr, flush=True))

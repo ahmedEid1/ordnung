@@ -27,7 +27,7 @@ import {
   stageToStep,
   uncheckedMatch,
 } from "./copy";
-import { GLOSSARY_TERMS, lookupTerm, termWithTranslation } from "./glossary";
+import { GLOSSARY_TERMS, lookupTerm } from "./glossary";
 
 describe("enum copy", () => {
   it.each(ENUM_COVERAGE)("$name: every value has a human label, icon and tone", ({ values, map }) => {
@@ -199,9 +199,9 @@ describe("glossary", () => {
     expect(lookupTerm("Rundfunkbeitrag")!.explanation).toContain("€18.36 per month");
   });
 
-  it("formats 'Einspruch (objection)' and is case-insensitive", () => {
-    expect(termWithTranslation("einspruch")).toBe("Einspruch (objection)");
-    expect(termWithTranslation("Unbekannt")).toBe("Unbekannt");
+  it("finds 'Einspruch (objection)' whatever its case, and nothing for an unknown term", () => {
+    expect(lookupTerm("einspruch")).toMatchObject({ term: "Einspruch", translation: "objection" });
+    expect(lookupTerm("Unbekannt")).toBeUndefined();
     expect(GLOSSARY_TERMS.length).toBeGreaterThanOrEqual(required.length);
   });
 });

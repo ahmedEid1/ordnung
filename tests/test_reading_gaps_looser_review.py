@@ -722,10 +722,11 @@ def test_each_family_files_when_the_person_is_asked(
 @pytest.mark.parametrize("label", ["Zahlung bis:", "Zahlungsfrist:", "Zahlbar bis:"])
 def test_a_line_of_many_distinct_dates_stays_fast(label: str) -> None:
     line = " · ".join(f"{label} {date(2026, 10, 10) + timedelta(days=i):%d.%m.%Y}" for i in range(1600))
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     found = deadline_items(reading(W), [letter("Bitte überweisen Sie den Betrag.\n" + line, W)], today=TODAY)
     assert len(found) <= 3
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
 
 
 # --------------------------------------------------------------------------------------------------

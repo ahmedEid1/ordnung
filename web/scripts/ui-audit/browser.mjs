@@ -12,7 +12,6 @@ export const VIEWPORTS = {
   "1920x1080": { width: 1920, height: 1080, phone: false },
 };
 export const THEMES = ["light", "dark"];
-export const CLIENT_HEADER = { "X-Ordnung-Client": "web" };
 
 /** Requests the audit failed, held or answered itself — not reported as the app's failures. */
 export const intentional = new WeakSet();

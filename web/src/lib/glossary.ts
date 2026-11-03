@@ -120,9 +120,3 @@ export const GLOSSARY_TERMS: readonly GlossaryEntry[] = entries;
 export function lookupTerm(term: string): GlossaryEntry | undefined {
   return GLOSSARY[term.trim().toLowerCase()];
 }
-
-/** "Einspruch (objection)" — or the term unchanged when unknown. */
-export function termWithTranslation(term: string): string {
-  const e = lookupTerm(term);
-  return e ? `${e.term} (${e.translation})` : term;
-}

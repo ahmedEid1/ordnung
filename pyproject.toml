@@ -98,8 +98,9 @@ Issues = "https://github.com/ahmedEid1/ordnung/issues"
 Changelog = "https://github.com/ahmedEid1/ordnung/blob/main/CHANGELOG.md"
 
 [build-system]
-# the plugin writes the description PyPI shows, so every build uses this one version of it
-requires = ["hatchling>=1.26", "hatch-fancy-pypi-readme==25.1.0"]
+# one version of each: the backend builds the files PyPI gets (.github/workflows/release.yml), and the plugin
+# writes the description PyPI shows
+requires = ["hatchling==1.32.4", "hatch-fancy-pypi-readme==25.1.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.version]
@@ -163,11 +164,14 @@ ignore = ["RUF001", "RUF002", "RUF003", "E501", "B008", "RUF012"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B", "SIM", "PTH"]
 
-# The whole package and the benchmark code (evals/) get every check of `mypy --strict` (the tests aren't
-# type-checked). CI installs only the dev extras, so evals/ has to pass without matplotlib too.
+# The whole package, the benchmark code (evals/) and the scripts get every check of `mypy --strict` (the tests
+# aren't type-checked). CI installs only the dev extras, so evals/ has to pass without matplotlib too.
+# scripts/eval_without_land.py is checked as scripts.eval_without_land, the name evals/e2e imports it by: listed
+# as a file as well, mypy would find it under two names.
 [tool.mypy]
 python_version = "3.11"
-files = ["src/ordnung", "evals"]
+files = ["src/ordnung", "evals", "scripts"]
+exclude = ['^scripts/eval_without_land\.py$']
 strict = true
 ignore_missing_imports = true
 plugins = ["pydantic.mypy"]
@@ -177,6 +181,9 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 addopts = "-q"
+# a test still running after 10 minutes gets every thread's stack printed, so a hang names its test before the
+# CI job's time limit ends the run
+faulthandler_timeout = 600
 markers = [
   "slow: replays every recorded reading, times pages against a wall-clock budget, counts the lines a page runs (sys.settrace, which coverage uses too), or builds the web app; CI runs these once, without coverage (-m slow)",
 ]

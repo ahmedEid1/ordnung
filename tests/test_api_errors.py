@@ -10,12 +10,13 @@ from pathlib import Path
 import httpx
 import pytest
 
+from ordnung import clock
 from ordnung.api.app import UNEXPECTED_MESSAGE
 from ordnung.api.routes.items import REPEAT_INTERVAL_MESSAGE
 from ordnung.calendar.ics import TOO_FAR_AHEAD
 from ordnung.ingest.worker import DEFAULT_PAUSE
 from ordnung.llm.base import ClaudeRateLimited
-from test_api_support import BASE_URL, CLIENT_HEADERS, api_for
+from test_api_support import BASE_URL, CLIENT_HEADERS, TODAY, api_for
 
 
 async def test_an_unexpected_error_is_a_json_500_with_a_plain_sentence(
@@ -61,6 +62,9 @@ async def test_a_date_on_the_calendars_last_day_leaves_the_calendar_working(
     """A to-do on 31 Dec 9999 (a misread year, a typo): all day it ends the day after, at 23:50 an hour later, past
     the last day a calendar holds. It is left out of the calendar file and of calendar sync's preview, which answer
     as before, and its own calendar file is refused with a plain sentence."""
+    # "Kept" lies ahead of the day the to-dos are added: on the real clock, from 2 Nov 2026 on, a to-do added
+    # dated 19 Oct 2026 was already history when filed (more than 14 days past) and left out of the file
+    clock.set_today(TODAY)
     async with api_for(data_dir) as api:
         body = {"kind": "deadline", "title": "Kept", "due_date": "2026-10-19"}
         kept = await api.client.post("/api/items", json=body)

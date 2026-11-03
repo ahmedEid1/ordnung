@@ -36,7 +36,6 @@ from ordnung.cli import launch_browser, summary_table
 from ordnung.config import REPO_DIR, Paths
 from ordnung.db.store import MAX_JOB_ATTEMPTS, Store
 from ordnung.ingest import expansion, intake, text
-from ordnung.ingest.extract import unwrap_untrusted
 from ordnung.ingest.intake import IntakeError, normalise_upload, render_pages, safe_filename, store_original
 from ordnung.ingest.text import html_to_text, layout_text
 from ordnung.llm import claude_cli
@@ -183,10 +182,11 @@ def _pdf_with_stream(raw: bytes, filters: bytes, extra: bytes = b"") -> bytes:
 def test_pdf_decompression_bomb_is_rejected_at_upload() -> None:
     bomb = zlib.compress(b"\0" * (300 * 1024 * 1024), 9)  # ~300 KB that expand to 300 MB
     assert len(bomb) < 400_000
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     with pytest.raises(IntakeError, match="expands to far more data"):
         normalise_upload(_pdf_with_stream(bomb, b"/FlateDecode"), "bomb.pdf")
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
 
     nested = zlib.compress(zlib.compress(b"\0" * (300 * 1024 * 1024), 9), 9)
     with pytest.raises(IntakeError, match="expands to far more data"):
@@ -247,10 +247,11 @@ def _rc4_decrypted(monkeypatch: pytest.MonkeyPatch) -> list[int]:
 @pytest.mark.parametrize("method", ENCRYPTIONS)
 def test_encrypted_pdf_decompression_bomb_is_rejected(method: EncryptionMethod) -> None:
     bomb = _with_encrypted_stream(_protected_pdf(method), _nested_bomb(), b"[/FlateDecode /FlateDecode]")
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     with pytest.raises(IntakeError, match="expands to far more data"):
         normalise_upload(bomb, "kontoauszug.pdf")
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
 
 
 def test_encrypted_bomb_behind_a_planted_endstream_is_measured_to_its_end() -> None:
@@ -424,10 +425,11 @@ LOOSE_STREAM = b"stream\n" + zlib.compress(bytes(64)) + b"\nendstream\n"
 def test_thousands_of_stream_keywords_without_an_object_are_refused_quickly() -> None:
     """Each ``stream`` keyword with no ``N G obj`` in front had the 64 KB in front of it scanned for one:
     20,000 of them in 0.6 MB took 33 s, and the PDF was accepted."""
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
         expansion.check_pdf_expansion(b"%PDF-1.4\n" + LOOSE_STREAM * 20_000)
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
     # a damaged file's few loose streams are still measured
     bomb = b"<< /Filter " + TWO_FLATES + b" >>\nstream\n" + _nested_bomb()
     with pytest.raises(expansion.ExpansionError, match="expands to far more data"):
@@ -437,10 +439,11 @@ def test_thousands_of_stream_keywords_without_an_object_are_refused_quickly() ->
 def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() -> None:
     """Each keyword's dictionary runs back to the ``N G obj`` in front of it: 8,000 keywords behind each of
     50 objects (2.8 MB) had 11 GB scanned, for 40 s, and the PDF was accepted."""
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     with pytest.raises(expansion.ExpansionError, match="built in a way that can't be checked"):
         expansion.check_pdf_expansion(b"%PDF-1.4\n" + (b"1 0 obj\n<< >>\n" + b"stream\n" * 8000) * 50)
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
 
 
 @pytest.mark.parametrize("filters", [b"/A85/Fl", b"/AHx/Fl"])
@@ -451,9 +454,11 @@ def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly(
     are decoded as the filter behind them reads, and what they read counts against the budget."""
     unit = b"%d 0 obj<</Filter[" + filters + b"]>>stream\n"
     data = b"%PDF-1.4\n" + b"".join(unit % number for number in range(1, 3000)) + b"~>\nendstream endobj\n"
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler pauses the test, which took this
+    # check (about 2 s of CPU with coverage) past 5 s
+    started = time.process_time()
     expansion.check_pdf_expansion(data)  # nothing in it expands
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
 
 
 def test_unusual_but_valid_syntax_is_accepted() -> None:
@@ -477,9 +482,10 @@ def test_an_encrypt_entry_that_refers_to_itself_does_not_hang_the_upload() -> No
     entries = b"".join(b"%010d 00000 n \n" % body.index(b"%d 0 obj" % number) for number in (1, 2, 3))
     xref = b"xref\n0 4\n0000000000 65535 f \n" + entries + b"5 1\n%010d 00000 n \n" % body.index(b"5 0 obj")
     trailer = b"trailer\n<< /Root 1 0 R /Size 6 /Encrypt 5 0 R >>\nstartxref\n%d\n%%%%EOF\n" % len(body)
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     normalise_upload(body + xref + trailer, "brief.pdf")  # PDFium doesn't see it as encrypted either
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
 
 
 def test_a_job_that_keeps_crashing_the_process_is_not_requeued_forever(store: Store) -> None:
@@ -506,17 +512,19 @@ def test_a_job_that_keeps_crashing_the_process_is_not_requeued_forever(store: St
 
 def test_text_upload_over_the_page_limit_is_rejected_at_upload() -> None:
     long_text = ("Zeile mit ein paar Wörtern\n" * 5000).encode()
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     with pytest.raises(IntakeError, match="longer than 60 pages"):
         normalise_upload(long_text, "brief.txt")
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
     normalise_upload(b"Sehr geehrte Damen und Herren,\nbitte zahlen Sie bis zum 15.10.2026.", "kurz.txt")
 
 
 def test_wrapping_a_long_line_is_not_quadratic() -> None:
-    started = time.monotonic()
+    # CPU seconds, not the wall clock: on a busy machine the scheduler's pauses would count
+    started = time.process_time()
     pages = layout_text("x" * 400_000, max_pages=60)
-    assert time.monotonic() - started < 10
+    assert time.process_time() - started < 10
     assert len(pages) == 61  # stopped one page past the limit
     rows = [line.text for page in layout_text("wort " * 20_000) for line in page.lines]
     assert "".join(rows).replace(" ", "") == "wort" * 20_000
@@ -695,6 +703,7 @@ def test_html_email_hidden_text_variants_are_excluded() -> None:
 
 
 async def test_mcp_search_snippets_are_wrapped_as_untrusted(store: Store) -> None:
+    from ordnung.assistant.channels import parse_tool_result
     from ordnung.assistant.mcp_server import build_server
 
     document = store.add_document(
@@ -710,7 +719,7 @@ async def test_mcp_search_snippets_are_wrapped_as_untrusted(store: Store) -> Non
     record, _, letters = text.partition("</ordnung_record>\n")
     assert "ignore your rules" not in record  # Ordnung's record never carries a letter's words
     assert letters.startswith("<untrusted_document>") and letters.endswith("</untrusted_document>")
-    assert "ignore your rules" in json.loads(unwrap_untrusted(letters))[document.id]["snippet"]
+    assert "ignore your rules" in parse_tool_result(text).letters[document.id]["snippet"]
 
 
 # --------------------------------------------------------------------------------------------------

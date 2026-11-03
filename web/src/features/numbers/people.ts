@@ -45,12 +45,6 @@ export function alsoForNames(ids: readonly string[] | undefined, page: NumbersPa
   return (ids ?? []).flatMap((id) => (names.has(id) ? [names.get(id)!] : []));
 }
 
-/** {@link alsoForLine} for `also_for`'s ids, or `null` when no one else's letters show the number. */
-export function alsoForText(ids: readonly string[], page: NumbersPage): string | null {
-  const names = alsoForNames(ids, page);
-  return names.length ? alsoForLine(names) : null;
-}
-
 /** The name of the person of the household a call sheet's number, a case's reference or an open case is only for. */
 export function filedForName(key: string, page: NumbersPage): string | undefined {
   const id = page.filed_for[key];

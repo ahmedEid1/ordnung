@@ -26,7 +26,7 @@ from ordnung import clock
 from ordnung.app_context import AppContext, build_context
 from ordnung.ingest import held, intake, watcher
 from ordnung.ingest.attachments import email_source
-from ordnung.ingest.pipeline import add_file, release_held
+from ordnung.ingest.pipeline import add_file
 from ordnung.ingest.watcher import (
     MISSING,
     NOT_A_FOLDER,
@@ -312,7 +312,7 @@ async def test_files_wait_for_the_person_and_are_never_sent(ctx: AppContext, inb
     assert ("folder.updated", {"state": "watching", "doc_id": document.id, "held": True}) in events
     assert logged(ctx, "document.added") == ["Added “bescheid.pdf” from your watched folder · not read yet"]
 
-    release_held(ctx, [document.id])
+    held.release(ctx.store, [document.id])
     await ctx.worker.run_until_idle()
     read = ctx.store.get_document(document.id)
     assert read is not None and read.status == "processed" and not read.ai_private

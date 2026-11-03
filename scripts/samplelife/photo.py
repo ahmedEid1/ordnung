@@ -26,7 +26,8 @@ def render_page(pdf_bytes: bytes, index: int = 0, dpi: float = 150.0) -> Image.I
     document = pdfium.PdfDocument(pdf_bytes)
     try:
         bitmap = document[index].render(scale=dpi / 72.0)
-        return bitmap.to_pil().convert("RGB")
+        page: Image.Image = bitmap.to_pil().convert("RGB")
+        return page
     finally:
         document.close()
 

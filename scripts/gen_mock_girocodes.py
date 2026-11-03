@@ -18,7 +18,7 @@ import json
 from dataclasses import replace
 from typing import Any
 
-from ordnung.models import GiroCodeReady
+from ordnung.models import GiroCodeReady, Grounding
 from ordnung.secretary.girocode_gate import (
     DETAILS_CHANGED,
     NOT_A_PAYMENT,
@@ -116,7 +116,7 @@ def amount_changed(item_id: str) -> TransferFacts:
     """The payment with an amount its letter doesn't state (changed by hand): only a photo's stays
     ``model_read``. The amount itself is the mock's to fill in (``web/src/mocks/girocode.ts``)."""
     base = facts(item_id)
-    grounding = "model_read" if base.amount_grounding == "model_read" else "unverified"
+    grounding: Grounding = "model_read" if base.amount_grounding == "model_read" else "unverified"
     return replace(base, amount=1.0, amount_grounding=grounding)
 
 

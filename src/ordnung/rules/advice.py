@@ -423,12 +423,6 @@ def _dated_statements(text: str) -> list[tuple[date, int | None]]:
     return found
 
 
-def statement_date(text: str) -> date | None:
-    """The earliest full date ``text`` gives an operating-cost statement ("… Betriebskostenabrechnung 2023
-    vom 15.11.2024"), or ``None`` — never the start of a billing period ("Abrechnung vom 01.01.2024 bis …")."""
-    return min((dated for dated, _ in _dated_statements(text)), default=None)
-
-
 class StatementArrival(NamedTuple):
     """The arrival an operating-cost statement's check counts from (:func:`statement_arrival`): the day,
     whether the person entered it, and ``named`` — a date the letter also gives a statement without

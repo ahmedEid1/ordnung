@@ -19,7 +19,7 @@ import {
   selectIdeas,
   stripGreeting,
   urgencyScore,
-  toPayWithin,
+  toPayTotals,
 } from "./selection";
 
 const TODAY = "2026-09-28"; // Monday
@@ -481,7 +481,7 @@ describe("money to pay", () => {
       pay("ancient", "2025-10-01", 1560),
       pay("refund", "2026-10-10", 312.45, { direction: "in" }),
     ];
-    expect(toPayWithin(actions)).toBe(157.99);
+    expect(toPayTotals(actions)).toEqual({ EUR: 157.99 });
     // a direct debit is "collected", not "sent"
     expect(actions[1]!.dateRole).toBe("collected");
     expect(actions[0]!.dateRole).toBe("pay_by");

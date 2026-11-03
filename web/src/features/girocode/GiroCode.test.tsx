@@ -32,8 +32,9 @@ import {
   GIROCODE_READING_AGAIN,
   GiroCodeSection,
   canReadLetterAgain,
+  QR_SIDE,
   giroCodeLabel,
-  modulePixels,
+  modulePixelsFor,
 } from "./GiroCode";
 import { plainText } from "@/lib/glue";
 import { qrMatrix, qrPath } from "./qr";
@@ -135,7 +136,7 @@ describe("a ready code", () => {
     expect(Number(code.getAttribute("width"))).toBe(modules * 3);
     expect(code.getAttribute("width")).toBe(code.getAttribute("height"));
     // version 1 up to version 13 (the standard's largest): from 5 px down to 3 px, never less
-    expect([29, 49, 73, 77].map(modulePixels)).toEqual([5, 3, 3, 3]);
+    expect([29, 49, 73, 77].map((modules) => modulePixelsFor(modules, QR_SIDE))).toEqual([5, 3, 3, 3]);
     const long = `BCD\n002\n1\nSCT\n\n${"Stadtwerke Musterstadt Versorgungs- und Verkehrsgesellschaft mbH".slice(0, 70)}\nDE05123456000004455660\nEUR1234.56\n\n\n${"Kassenzeichen 5126 0184 5122 ".repeat(5).slice(0, 140)}`;
     const { container } = renderSection({ ...ready, payload: long });
     const svg = container.querySelector("svg[data-qr-modules]")!;

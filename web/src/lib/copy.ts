@@ -623,7 +623,6 @@ export const PIPELINE_STEPS = [
   { id: "computing", label: "Computing dates", short: "Dates" },
   { id: "filing", label: "Filing" },
 ] as const;
-export type PipelineStepId = (typeof PIPELINE_STEPS)[number]["id"];
 
 export const JOB_STAGE_COPY: Record<JobStage, EnumCopy & { step: number }> = {
   intake: { label: "Opening the file", icon: CloudUpload, tone: "accent", step: 0 },
@@ -676,10 +675,8 @@ export function enumLabel(map: Readonly<Record<string, EnumCopy>>, value: string
 }
 
 export const documentKindLabel = (k: DocumentKind | string | null | undefined) => enumLabel(DOCUMENT_KIND_COPY, k);
-export const itemKindLabel = (k: ItemKind | string | null | undefined) => enumLabel(ITEM_KIND_COPY, k);
 export const areaLabel = (k: Area | string | null | undefined) => enumLabel(AREA_COPY, k);
 export const partyKindLabel = (k: PartyKind | string | null | undefined) => enumLabel(PARTY_KIND_COPY, k);
-export const regimeLabel = (k: ContractRegime | string | null | undefined) => enumLabel(CONTRACT_REGIME_COPY, k);
 
 /** All copy maps with the enum arrays they must cover (used by tests). */
 export const ENUM_COVERAGE: { name: string; values: readonly string[]; map: Record<string, EnumCopy> }[] = [

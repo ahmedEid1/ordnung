@@ -11,7 +11,7 @@
  *
  * A partial run (`--only`) merges into the files of earlier runs.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { PROBES } from "./probes.mjs";
 
@@ -314,8 +314,4 @@ export function writeGroupFindings({ outDir, targets, groups }) {
     const list = [...merged.values()].sort((a, b) => rank(a.probe) - rank(b.probe) || a.state.localeCompare(b.state) || b.where.length - a.where.length);
     writeFileSync(join(dir, `${g.name}.json`), JSON.stringify({ group: g.name, states: g.states, findings: list }, null, 1));
   }
-}
-
-export function loadExisting(outDir, target) {
-  return existsSync(join(outDir, target, "states.json")) ? readJson(join(outDir, target, "states.json"), []) : [];
 }

@@ -15,7 +15,6 @@ import pytest
 from ordnung import clock
 from ordnung.config import Paths
 from ordnung.db.store import HOUSEHOLD_META_KEY, PERSON_META_KEY, Store
-from ordnung.ids import prefix_of
 from ordnung.models import PROOF_SOURCE, Direction, DocumentExtraction, Profile
 from ordnung.secretary import household
 from ordnung.secretary.household import (
@@ -24,7 +23,6 @@ from ordnung.secretary.household import (
     HouseholdMember,
     LetterFor,
     StoredHousehold,
-    member_for,
 )
 from ordnung.tick import LAST_TICK_KEY, DailyTick
 
@@ -82,6 +80,11 @@ def _letter(
 
 def _members(*names: str) -> list[HouseholdMember]:
     return [HouseholdMember(id=f"hhm_{n:012d}", name=name) for n, name in enumerate(names)]
+
+
+def _suggested(addressee: str, members: list[HouseholdMember]) -> HouseholdMember | None:
+    """The person a letter to ``addressee`` is suggested for on its page (Sam's own household)."""
+    return household.answer("doc_x", addressee, SAM, StoredHousehold(members=members)).suggested
 
 
 def _save(store: Store, *people: Person, also_file: list[str] | None = None) -> household.HouseholdView:
@@ -143,9 +146,9 @@ def test_a_member_is_suggested_only_when_the_addressee_names_them_alone(sam: Sto
 
 def test_two_members_the_addressee_could_name_get_no_suggestion() -> None:
     members = _members("Alex Rivera", "Alexandra Rivera", "A. Rivera")
-    assert member_for("Alex Rivera", members) is None  # Alex Rivera and A. Rivera both could be
-    assert member_for("Alexandra Rivera", members) is None
-    assert member_for("Alex Rivera", _members("Alex Rivera", "Alexandra Rivera")) == members[0]
+    assert _suggested("Alex Rivera", members) is None  # Alex Rivera and A. Rivera both could be
+    assert _suggested("Alexandra Rivera", members) is None
+    assert _suggested("Alex Rivera", _members("Alex Rivera", "Alexandra Rivera")) == members[0]
 
 
 @pytest.mark.parametrize(
@@ -153,11 +156,11 @@ def test_two_members_the_addressee_could_name_get_no_suggestion() -> None:
     ["ALEX RIVERA", "alex rivera", "Rivera, Alex", "Dr. Alex Rivera", "A. Rivera", "Herrn Prof. Alex Rivera"],
 )
 def test_umlauts_case_accents_titles_and_initials_do_not_count(addressee: str) -> None:
-    assert member_for(addressee, _members(ALEX, "Jürgen Müller")) == _members(ALEX)[0]
+    assert _suggested(addressee, _members(ALEX, "Jürgen Müller")) == _members(ALEX)[0]
     juergen = _members(ALEX, "Jürgen Müller")[1]
     for spelled in ("Juergen Mueller", "Jurgen Muller", "J. Müller", "Müller, Jürgen", "JÜRGEN MÜLLER"):
-        assert member_for(spelled, _members(ALEX, "Jürgen Müller")) == juergen, spelled
-    assert member_for("José Núñez", _members("Jose Nunez")) is not None
+        assert _suggested(spelled, _members(ALEX, "Jürgen Müller")) == juergen, spelled
+    assert _suggested("José Núñez", _members("Jose Nunez")) is not None
 
 
 @pytest.mark.parametrize(
@@ -165,7 +168,7 @@ def test_umlauts_case_accents_titles_and_initials_do_not_count(addressee: str) -
     ["Alex und Mia Rivera", "Alex & Mia Rivera", "Familie Rivera", "Eheleute Rivera", "Alex u. Mia Rivera"],
 )
 def test_an_addressee_naming_several_people_names_no_member(addressee: str) -> None:
-    assert member_for(addressee, _members(ALEX)) is None
+    assert _suggested(addressee, _members(ALEX)) is None
     stored = StoredHousehold(members=_members(ALEX))
     assert household.answer("doc_x", addressee, SAM, stored) == LetterFor()  # and offers no one to add
 
@@ -312,7 +315,7 @@ def test_ids_must_be_household_ids_and_each_one_once(sam: Store) -> None:
 
 def test_new_people_get_hhm_ids(sam: Store) -> None:
     ids = _add(sam, ALEX, MIA)
-    assert [prefix_of(i) for i in ids] == ["hhm", "hhm"] and len(set(ids)) == 2
+    assert len(ids) == len(set(ids)) == 2
     assert all(re.fullmatch(r"hhm_[0-9a-z]{12}", i) for i in ids)
 
 

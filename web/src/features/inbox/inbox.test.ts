@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeDetail, makeDoc, makeItem, makeSuggestion } from "@/features/document/fixtures";
 import type { Contract, Item, ItemAside, ListedItem } from "@/api/types";
 import { filterCounts, filterDocuments, groupLetters, inboxDateInfo, kindOptions, openItemsByDoc, otherYearDated, parseFilter, pinJustRead, yearOptions } from "./filters";
-import { dueSoon, recapSentence, recapTitle, summarizeBatch } from "./recap";
+import { dueSoon, recapFindings, recapTitle, summarizeBatch } from "./recap";
 
 const TODAY = "2026-09-28";
 
@@ -227,7 +227,7 @@ describe("batch recap", () => {
     // the earliest open date (send-by before due) — shown on the letter in the recap
     expect(dueSoon(soon, TODAY)).toBe("2026-10-05");
     expect(dueSoon(later, TODAY)).toBeNull();
-    expect(recapSentence(r)).toBe("I read 4 letters: 3 deadlines, 2 need you now, 1 due within 2 weeks.");
+    expect(recapFindings(r)).toEqual(["3 deadlines", "2 need you now", "1 due within 2 weeks"]);
   });
 
   it("titles the recap with the letters that couldn't be read", () => {
@@ -236,10 +236,14 @@ describe("batch recap", () => {
     expect(recapTitle(2, 2)).toBe("I couldn't read 2 letters");
   });
 
-  it("writes the recap sentence", () => {
-    expect(recapSentence(summarizeBatch(details, TODAY)).replace(/\u00a0/g, " ")).toBe(
-      "I read 4 letters: 2 deadlines, 1 contract, €94.99/month fixed costs, 1 needs you now, 1 possible scam.",
-    );
-    expect(recapSentence(summarizeBatch([makeDetail()], TODAY))).toBe("I read 1 letter. Nothing needs you right now.");
+  it("lists what the recap found, as its dialog says it", () => {
+    expect(recapFindings(summarizeBatch(details, TODAY)).map((part) => part.replace(/\u00a0/g, " "))).toEqual([
+      "2 deadlines",
+      "1 contract",
+      "€94.99/month fixed costs",
+      "1 needs you now",
+      "1 possible scam",
+    ]);
+    expect(recapFindings(summarizeBatch([makeDetail()], TODAY))).toEqual([]);
   });
 });

@@ -62,7 +62,7 @@ describe("the pairing dialog over time", () => {
     expect(help).not.toHaveAttribute("open");
 
     vi.setSystemTime(Date.now() + 61_000);
-    expect(await within(dialog).findByText("8:59", undefined, { timeout: 2_000 })).toBeInTheDocument();
+    expect(await within(dialog).findByText("8:59")).toBeInTheDocument();
     await waitFor(() => expect(help).toHaveAttribute("open"));
     expect(within(help).getByText(/guest networks and “client isolation” keep devices apart/)).toBeInTheDocument();
     expect(within(help).getByText(/turn it off while you pair/)).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("the pairing dialog over time", () => {
     expect(help).not.toHaveAttribute("open");
 
     vi.setSystemTime(Date.now() + 9 * 60_000);
-    expect(await within(dialog).findByText("This code expired", undefined, { timeout: 2_000 })).toBeInTheDocument();
+    expect(await within(dialog).findByText("This code expired")).toBeInTheDocument();
     expect(within(dialog).queryByRole("img", { name: /QR code/ })).toBeNull();
     // an expired code needs no cancelling
     await user.click(within(dialog).getByRole("button", { name: "Done" }));

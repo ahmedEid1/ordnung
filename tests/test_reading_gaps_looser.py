@@ -298,7 +298,9 @@ def test_looser_wordings_in_a_letter_s_flow(
     ids=["long-gap", "sollten", "frist", "many-fields", "many-yearless", "kann"],
 )
 def test_the_looser_patterns_stay_fast_on_long_untrusted_text(line: str) -> None:
-    started = time.monotonic()
+    """Timed in CPU seconds, not on the wall clock: on a busy machine the scheduler pauses the test, which took
+    "many-fields" (about 1 s of CPU with coverage) past 5 s."""
+    started = time.process_time()
     found = deadline_items(reading(date(2026, 10, 5)), [letter(line, date(2026, 10, 5))], today=TODAY)
     assert len(found) <= 3
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5

@@ -6,7 +6,7 @@ deterministic: running it twice produces byte-identical PDFs, JPEGs and ``manife
 Modules:
 
 * :mod:`samplelife.ids` – check digits for IBANs, SEPA creditor IDs, VAT IDs and passport MRZ lines.
-* :mod:`samplelife.fmt` – German/English number and date formatting.
+* :mod:`samplelife.fmt` – amounts as German letters print them, and ISO dates.
 * :mod:`samplelife.datecheck` – hand-checked calendar facts used to *assert* the expected dates.
 * :mod:`samplelife.persona` – Sam Rivera and his bank account.
 * :mod:`samplelife.orgs` – the fictional senders (letterhead, colours, footer, bank details).

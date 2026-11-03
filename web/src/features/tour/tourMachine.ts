@@ -20,8 +20,6 @@ export type TourEvent =
   | { type: "goto"; step: number }
   | { type: "idea-arrived" };
 
-export const INITIAL_TOUR: TourState = { active: true, step: 0, completed: false };
-
 const clamp = (n: number, total: number) => Math.max(0, Math.min(total - 1, Math.floor(Number.isFinite(n) ? n : 0)));
 
 /** Repair a state from the server (step out of range, active and completed at once). */
@@ -56,8 +54,4 @@ export function isTourVisible(state: TourState | undefined, opts: { demo: boolea
   if (!opts.demo || !state) return false;
   const s = normalizeTour(state);
   return s.active && !s.completed;
-}
-
-export function isLastStep(state: TourState, total = TOUR_STEPS.length): boolean {
-  return normalizeTour(state, total).step === total - 1;
 }

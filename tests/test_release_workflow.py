@@ -17,6 +17,19 @@ RELEASE = ROOT / ".github" / "workflows" / "release.yml"
 REPOSITORY = "ahmedEid1/ordnung"
 
 
+#: the description check, with twine pinned (``uvx twine`` alone fetches the newest twine on every run)
+PINNED_TWINE = re.compile(r"uvx --from 'twine==(\d+\.\d+\.\d+)' twine check --strict dist/\*")
+#: the build backend, pinned in pyproject.toml's build-system as the readme plugin is
+PINNED_HATCHLING = re.compile(r"hatchling==1\.(\d+)\.\d+")
+
+
+def _twine_check() -> str:
+    """The twine command release.yml runs (``uvx --from 'twine==X.Y.Z' twine check``)."""
+    versions = set(PINNED_TWINE.findall(RELEASE.read_text(encoding="utf-8")))
+    assert len(versions) == 1, f"release.yml runs one pinned twine, not {sorted(versions)}"
+    return f"uvx --from 'twine=={versions.pop()}' twine check"
+
+
 def _workflow(path: Path = RELEASE) -> dict[Any, Any]:
     yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -140,7 +153,7 @@ def test_the_build_checks_the_tag_the_branch_and_the_files_before_anything_is_pu
         "actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&event=push&status=success",
         "node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json",
         "uv build",
-        "uvx twine check --strict dist/*",
+        f"{_twine_check()} --strict dist/*",
         '"$RUNNER_TEMP/wheel/bin/ordnung" demo --check',
     ]
     indices = [_step_index(build, needle) for needle in order]
@@ -235,7 +248,27 @@ def test_a_full_version_in_ci_yml_and_a_major_tag_name_the_same_major() -> None:
 
 def test_ci_s_wheel_job_checks_that_the_description_renders_on_pypi() -> None:
     wheel = _jobs(ROOT / ".github/workflows/ci.yml")["wheel"]
-    assert _step_index(wheel, "uvx twine check --strict dist/*") == _step_index(wheel, "uv build") + 1
+    assert _step_index(wheel, f"{_twine_check()} --strict dist/*") == _step_index(wheel, "uv build") + 1
+
+
+def test_the_tools_that_build_and_check_the_release_are_pinned() -> None:
+    """The build job's dist/ is what the PyPI job uploads, so the tools that write and check it run one known
+    version, as its actions do: twine at one version, the same in CI's wheel job, and hatchling, the build backend,
+    at one version in pyproject.toml's build-system, beside the readme plugin (CI's wheel job builds with the same).
+    What they need themselves is not pinned (uv resolves it on each run), and release.yml's comment says so."""
+    for path in (RELEASE, ROOT / ".github" / "workflows" / "ci.yml"):
+        lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()]
+        runs = [line for line in lines if "twine" in line and not line.startswith("#")]
+        assert runs == [f"run: {_twine_check()} --strict dist/*"], (path.name, runs)
+    requires = _pyproject()["build-system"]["requires"]
+    (backend,) = [requirement for requirement in requires if requirement.startswith("hatchling")]
+    pinned = PINNED_HATCHLING.fullmatch(backend)
+    assert pinned, backend
+    assert int(pinned.group(1)) >= 26  # pyproject's licence expression and licence files (PEP 639)
+    header = " ".join(RELEASE.read_text(encoding="utf-8").split("\non:", 1)[0].replace("#", " ").split())
+    assert "the tools that build and check dist/ run fixed versions" not in header
+    assert "twine (here) and hatchling (in pyproject.toml) run fixed versions" in header
+    assert "are the newest on each run" in header
 
 
 def test_releasing_md_says_how_to_release_and_how_the_owner_turns_pypi_on() -> None:
@@ -318,7 +351,7 @@ def test_the_readme_plugin_is_pinned_and_the_sdist_leaves_out_the_readme_s_pictu
     stay on GitHub, where the PyPI page loads them from."""
     pyproject = _pyproject()
     requires = pyproject["build-system"]["requires"]
-    assert "hatchling>=1.26" in requires
+    assert [requirement for requirement in requires if PINNED_HATCHLING.fullmatch(requirement)]
     (plugin,) = [requirement for requirement in requires if requirement.startswith("hatch-fancy-pypi-readme")]
     assert re.fullmatch(r"hatch-fancy-pypi-readme==\d+\.\d+\.\d+", plugin), plugin
     sdist = pyproject["tool"]["hatch"]["build"]["targets"]["sdist"]

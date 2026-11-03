@@ -725,7 +725,7 @@ describe("encrypted backup card", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "Download backup" }));
     await waitFor(() => expect(within(card).getByRole("status")).toHaveTextContent(/^Downloaded ordnung-backup-\d{4}-\d{2}-\d{2}\.ordnung-backup \([\d.]+ KB\)\. Keep the passphrase safe/));
-    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     const post = calls.find((c) => c.path === "/backup" && c.method === "POST");
     expect(post?.body).toEqual({ passphrase: suggested });
     // the passphrase never travels in a URL

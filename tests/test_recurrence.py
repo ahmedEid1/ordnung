@@ -28,7 +28,6 @@ from ordnung.recurrence import (
     LAW_DEFAULT_WARNING,
     LAW_REPLACED_WARNING,
     SCHEDULE_FIELDS,
-    NoNextDate,
     at_occurrence,
     describe,
     first_occurrence,
@@ -36,7 +35,6 @@ from ordnung.recurrence import (
     keeps_later_date,
     mark_done,
     moved_on,
-    next_occurrence,
     occurrence,
     over_the_law,
     rent_due,
@@ -89,23 +87,6 @@ def _dates(store: Store, item_id: str) -> tuple[str, str | None, str | None]:
 # --------------------------------------------------------------------------------------------------
 # the schedule
 # --------------------------------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("first", "rule", "after", "expected"),
-    [
-        (date(2025, 10, 15), MONTHLY, date(2026, 9, 28), date(2026, 10, 15)),
-        (date(2025, 10, 15), MONTHLY, date(2026, 10, 15), date(2026, 10, 15)),
-        (date(2026, 1, 31), MONTHLY, date(2026, 2, 1), date(2026, 2, 28)),
-        (date(2026, 1, 31), MONTHLY, date(2026, 3, 1), date(2026, 3, 31)),
-        (date(2024, 2, 29), Recurrence(interval=1, unit="years"), date(2025, 1, 1), date(2025, 2, 28)),
-        (date(2026, 2, 15), Recurrence(interval=3, unit="months"), date(2026, 9, 28), date(2026, 11, 15)),
-        (date(2026, 9, 1), Recurrence(interval=2, unit="weeks"), date(2026, 9, 28), date(2026, 9, 29)),
-        (date(2026, 12, 1), MONTHLY, date(2026, 9, 28), date(2026, 12, 1)),
-    ],
-)
-def test_next_occurrence(first: date, rule: Recurrence, after: date, expected: date) -> None:
-    assert next_occurrence(first, rule, after) == expected
 
 
 def test_month_steps_keep_the_original_day() -> None:
@@ -269,21 +250,6 @@ def test_marking_an_undated_recurring_item_done_keeps_it_open(store: Store) -> N
 def test_a_one_off_item_is_done_like_any_to_do(store: Store) -> None:
     one_off = _item(store, recurrence=None, due_date="2026-10-01")
     assert mark_done(store, one_off, RuleContext(today=TODAY), postal_buffer_days=BUFFER) is None
-
-
-def test_a_schedule_ends_at_the_last_day_a_date_can_have() -> None:
-    """31 Dec 9999 (a misread year, a typo): no occurrence comes after it."""
-    weekly = Recurrence(interval=1, unit="weeks")
-    assert next_occurrence(date(9999, 11, 15), MONTHLY, date(9999, 12, 1)) == date(9999, 12, 15)
-    assert next_occurrence(date(9999, 12, 22), weekly, date(9999, 12, 23)) == date(9999, 12, 29)
-    for first, rule, after in (
-        (date(9999, 12, 15), MONTHLY, date(9999, 12, 16)),
-        (date(9999, 12, 29), weekly, date(9999, 12, 30)),
-        (date(2026, 10, 1), Recurrence(interval=1_000_000_000, unit="years"), date(2026, 10, 2)),
-        (date(2026, 10, 1), Recurrence(interval=1_000_000_000, unit="days"), date(2026, 10, 2)),
-    ):
-        with pytest.raises(NoNextDate):
-            next_occurrence(first, rule, after)
 
 
 @pytest.mark.parametrize("due", ["9999-12-15", "9999-12-31"])

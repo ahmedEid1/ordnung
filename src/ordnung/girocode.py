@@ -142,14 +142,6 @@ def creditor_reference_valid(reference: str) -> bool:
     return _RF_SHAPE.fullmatch(value) is not None and _mod97(value) == 1
 
 
-def creditor_reference(body: str) -> str:
-    """The RF creditor reference for ``body`` (1–21 letters or digits): ``RF``, check digits, body."""
-    value = compact(body)
-    if not re.fullmatch(r"[A-Z0-9]{1,21}", value):
-        raise ValueError("an RF reference holds 1 to 21 letters or digits")
-    return f"RF{98 - _mod97(f'RF00{value}'):02d}{value}"
-
-
 def amount_text(amount: Decimal | float | str) -> str:
     """``EUR`` and the amount as the standard's examples write it: ``12.30`` → ``EUR12.3``."""
     value = _amount(amount)

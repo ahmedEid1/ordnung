@@ -89,8 +89,8 @@ describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
     srv.db.state.documents.find((d) => d.id === "doc_gym_receipt")!.filename = long;
     renderAt(PROOF_PAGE);
     await screen.findByRole("heading", { level: 1, name: "Posting receipt (Einlieferungsbeleg)" });
-    // "Back to Letter" on phones, like "Back to Inbox"
-    expect(screen.getByTestId("meta")).toHaveTextContent("Proof: Posting receipt | Letter → /letters/drf_gym");
+    // "Back to Letter" on phones, like "Back to Inbox" (the page sets its title in an effect, after its heading shows)
+    await waitFor(() => expect(screen.getByTestId("meta")).toHaveTextContent("Proof: Posting receipt | Letter → /letters/drf_gym"));
     expect(proofPageTitle("other")).toBe("Proof: Other proof");
     // the one place the name can be read whole: it wraps (no tooltip-only name on touch screens)
     const name = screen.getByTitle(long);
@@ -151,7 +151,7 @@ describe("a proof that can't be loaded (R2-proof-3)", () => {
     );
     const user = userEvent.setup();
     renderAt(PROOF_PAGE);
-    const alert = await screen.findByRole("alert", {}, { timeout: 5000 });
+    const alert = await screen.findByRole("alert");
     expect(within(alert).getByRole("heading", { level: 1, name: "Couldn't open this proof" })).toBeInTheDocument();
     expect(alert).toHaveTextContent("Your letters are safe — Ordnung ran into a problem while loading this page.");
     // the server's words only under "Technical details", never as the sentence

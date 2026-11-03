@@ -292,14 +292,6 @@ def _matching(addressee: str, members: Sequence[HouseholdMember]) -> list[Househ
     return [member for member in members if names_alone(addressee, member.name)]
 
 
-def member_for(addressee: str, members: Sequence[HouseholdMember]) -> HouseholdMember | None:
-    """The one person of the household ``addressee`` (as read) names alone, by the rule the letter's page uses
-    for the person themselves (:func:`ordnung.secretary.addressee.names_alone`): ``None`` when no one or
-    several could be meant, or the addressee names several people ("Familie Rivera")."""
-    matching = _matching(addressee, members)
-    return matching[0] if len(matching) == 1 else None
-
-
 def answer(doc_id: str, addressee: str | None, profile_name: str, stored: StoredHousehold) -> LetterFor:
     """Who one letter is for (points 2–4), from the household, the reading's addressee (``None``: none, or the
     letter isn't one received with a reading) and the profile's name. Pure: the letter's page, the household's

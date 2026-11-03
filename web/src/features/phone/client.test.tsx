@@ -54,7 +54,7 @@ describe("which device this tab is", () => {
     const { result } = renderHook(() => useHealth(), { wrapper: wrapper(freshClient()) });
     await waitFor(() => expect(clientKind()).toBe("phone"));
     // health asks once more before it gives up (useHealth's `retry: 1`)
-    await waitFor(() => expect(result.current.isError).toBe(true), { timeout: 3_000 });
+    await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toMatchObject({ status: 401, code: "phone_not_paired" });
   });
 

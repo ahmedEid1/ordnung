@@ -2,7 +2,7 @@
  * Changing the list of people (`PUT /api/household`) from Settings and from a letter's *Add … to your household*:
  * a refusal of a name is said under its field, not in a toast — so this save is quiet, and {@link refusal} says
  * what the app's error toast would otherwise say. The household it answers is kept, the letters' pages say again
- * who each is for, and My numbers whose each number is (as `useSaveHousehold` does).
+ * who each is for, and My numbers whose each number is.
  */
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/api/client";

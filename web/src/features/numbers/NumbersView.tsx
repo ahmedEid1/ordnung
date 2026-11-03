@@ -66,11 +66,6 @@ export function sheetMatch(sheet: Sheet, query: string): "sheet" | "theirs" | nu
   return sheet.their_numbers.some(hit) ? "theirs" : null;
 }
 
-/** Search the call sheets: the organisation's name or any number on its sheet. */
-export function matchesSheet(sheet: Sheet, query: string): boolean {
-  return sheetMatch(sheet, query) !== null;
-}
-
 function NumbersSkeleton() {
   return (
     <div aria-busy="true">

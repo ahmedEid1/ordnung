@@ -344,9 +344,6 @@ export const JOB_STAGES = [
 export type JobStage = (typeof JOB_STAGES)[number];
 
 export type ItemOrigin = Schemas["Item"]["origin"];
-export type DueDateSource = Schemas["Item"]["due_date_source"];
-export type TextSource = Schemas["PageInfo"]["text_source"];
-export type RefType = Schemas["SuggestionRef"]["type"];
 
 /** Who is asking (`Health.client`): the browser on the computer Ordnung runs on, or a phone paired over the home network. */
 export const CLIENT_KINDS = ["computer", "phone"] as const;
@@ -447,7 +444,6 @@ export const SYNC_ERROR_CODES = [
   "not_needed",
   "not_found",
 ] as const;
-export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number];
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Same<A, B> = Equal<A, B> extends true ? true : ["enum differs from the API", A, B];
@@ -523,7 +519,6 @@ export type Recurrence = Schemas["Recurrence-Output"];
 // Core entities
 // ------------------------------------------------------------------------------------------------
 
-export type Identifier = Schemas["Identifier"];
 /** A person or organisation ("People & organisations" in the UI). */
 export type Party = Schemas["Party"];
 /** A thread of related letters ("Threads" in the UI). */
@@ -593,7 +588,6 @@ export type HouseholdPerson = Schemas["HouseholdPerson"];
 export type Household = Schemas["Household"];
 /** Who one letter is for (`DocumentDetail.household`): filed for someone, the person's own, a suggestion. */
 export type LetterFor = Schemas["LetterFor"];
-export type ModelSettings = Schemas["ModelSettings"];
 export type AppSettings = Schemas["AppSettings"];
 
 // ------------------------------------------------------------------------------------------------
@@ -604,7 +598,6 @@ export type RefLink = Schemas["RefLink"];
 export type TimelineEntry = Schemas["TimelineEntry"];
 export type AreaStatus = Schemas["AreaStatus"];
 export type MoneySummary = Schemas["MoneySummary"];
-export type DashboardStats = Schemas["DashboardStats"];
 export type Dashboard = Schemas["Dashboard"];
 export type PageInfo = Schemas["PageInfo"];
 /**
@@ -622,17 +615,12 @@ export type TransferValues = Schemas["TransferValues"];
 /** The "get advice" card of a high-stakes letter (court order, dismissal, tenancy …), worked out on read. */
 export type LetterAdvice = Schemas["LetterAdvice"];
 export type AdviceFact = Schemas["AdviceFact"];
-export type HelpLink = Schemas["HelpLink"];
 export type PartyDetail = Schemas["PartyDetail"];
 /** An open to-do of a party that is not one to act on (replaced by a reminder, history, scam signs). */
 export type ItemAside = Schemas["ItemAside"];
 /** The Land the postcode on a sender's letter suggests: a question for the person, never set by itself. */
 export type RegionSuggestion = Schemas["RegionSuggestion"];
 export type CaseDetail = Schemas["CaseDetail"];
-/** Model use for one purpose (calls, cache hits, errors, tokens, cost). */
-export type PurposeUsage = Schemas["PurposeUsage"];
-/** @deprecated use {@link PurposeUsage} */
-export type UsagePurposeStats = PurposeUsage;
 export type UsageStats = Schemas["UsageStats"];
 /** "How it was read": a letter's reading shown (`run`), its steps (`spans`) and every kept reading (`runs`). */
 export type DocumentTrace = Schemas["DocumentTrace"];
@@ -653,7 +641,6 @@ export type ClaudeStatus = Schemas["ClaudeStatus"];
 export type DoctorCheck = Schemas["DoctorCheck"];
 /** *Text in pictures* on this computer (`Health.picture_text`, ADR 0024), in the words of the doctor's row. */
 export type PictureTextStatus = Schemas["PictureTextStatus"];
-export type PictureTextState = PictureTextStatus["state"];
 /**
  * `GET /api/health` for the signed-in app. `today` is the app's "today" (ISO date) — always use
  * it, never the browser clock; `rules_last_checked` is the "Based on the law as of" date. `client` says who asked:
@@ -686,7 +673,6 @@ export type LaneBar = Omit<Schemas["LaneBar"], "area" | "open_end" | "markers"> 
 };
 /** A "life lane" (Residence permit, Contracts, Tax, Study, …) on the year-ahead timeline. */
 export type Lane = Omit<Schemas["Lane"], "bars" | "markers"> & { bars: LaneBar[]; markers: TimelineMarker[] };
-export type SearchHit = Schemas["SearchHit"];
 export type TourState = Schemas["TourState"];
 /** A letter waiting in the demo's "New mail" tray; `received_date` is the day it arrived (the postmark). */
 export type MailTrayItem = Schemas["MailTrayItem"];
@@ -716,7 +702,6 @@ export type EmailAttachment = Schemas["EmailAttachment"];
 export type AttachmentOutcome = EmailAttachment["outcome"];
 /** `GET /api/folder`: the watched folder, its state, the letters waiting and the last files it brought in. */
 export type FolderStatus = Schemas["FolderStatus"];
-export type FolderState = FolderStatus["state"];
 export type FolderPickup = Schemas["FolderPickup"];
 /** A letter's tracking number as the server read it (S10 check digit, or twelve digits unchecked). */
 export type TrackingInfo = Schemas["TrackingInfo"];
@@ -725,8 +710,6 @@ export type ProofEntry = Schemas["ProofEntry"];
 export type ProofEvent = Schemas["ProofEvent"];
 /** `GET /api/drafts/{id}/proof`: tracking number, proofs, timeline, what's missing, what it waits for. */
 export type ProofOverview = Schemas["ProofOverview"];
-/** A sent letter a document is proof of (`DocumentDetail.proof_of`). */
-export type ProofLink = Schemas["ProofLink"];
 /** Something the person is owed — a reply, money or a callback ("Waiting for"). */
 export type WaitingEntry = Schemas["WaitingEntry"];
 
@@ -736,15 +719,12 @@ export type WaitingEntry = Schemas["WaitingEntry"];
 
 /** `POST /api/documents` (201): queued letters with their jobs, duplicates (ids) and rejected files. */
 export type UploadResult = Schemas["UploadResult"];
-export type UploadError = Schemas["UploadError"];
 /** `DELETE /api/documents/{id}`. */
 export type DeleteResult = Schemas["DeleteResult"];
 /** `POST /api/demo/mail`. */
 export type MailOpenResult = Schemas["MailOpenResult"];
 /** `GET /api/brief` / `POST /api/brief`. */
 export type Brief = Schemas["Brief"];
-/** `POST /api/calendar/exported`. */
-export type CalendarExportResult = Schemas["CalendarExportResult"];
 /** `POST /api/suggestions/review` (202): the review runs in the background. */
 export type ReviewStarted = Schemas["ReviewStarted"];
 /** `DELETE /api/data` ("Delete everything"): what was removed, and entries Ordnung left alone. */
@@ -771,7 +751,6 @@ export type CalendarSyncStatus = Schemas["CalendarSyncStatus"];
 export type CalendarSyncReport = Schemas["CalendarSyncReport"];
 /** One event exactly as calendar sync would send it. */
 export type CalendarEventPreview = Schemas["CalendarEventPreview"];
-export type CalendarSyncPreview = Schemas["CalendarSyncPreview"];
 /** What the calendar gets: dates and alarms only (`discreet`), or the calendar file's events (`full`). */
 export type CalendarSyncMode = CalendarSyncStatus["mode"];
 /** `PUT /api/calendar/sync` (`password: null` keeps the saved app password). */
@@ -799,8 +778,6 @@ export type PhoneNotice = Schemas["PhoneNotice"];
 export type AddressChoice = Schemas["AddressChoice"];
 /** A paired phone (never its sign-in): name, platform, its two check words, when and where it was last used. */
 export type PhoneDevice = Schemas["PhoneDevice"];
-/** The open pairing code's progress: when it ends, whether a phone opened the page, wrong codes and from where. */
-export type PhonePairingState = Schemas["PhonePairingState"];
 /** `POST /api/phone/pairing`: the QR code's `url` (`https://<address>:<port>/pair#<code>`), the code, its end. */
 export type PhonePairing = Schemas["PhonePairing"];
 /** `POST /api/phone/pair` on the phone: the name it got and the two words both screens show. */
@@ -816,15 +793,8 @@ export type PairResult = Schemas["PairResult"];
  * computers, what is arriving, a choice to make, a problem, notices and kept copies.
  */
 export type SyncStatus = Schemas["SyncStatus"];
-/** `off`, `starting`, `in_use` (this computer is the one in use) or `standing_by` (another is: writes are refused). */
-export type SyncMode = SyncStatus["mode"];
-/** `idle`, `saving`, `waiting` (for the sync tool), `bringing_over` (writes refused for a moment) or `keeping`. */
-export type SyncActivity = SyncStatus["activity"];
 /** A computer of this sync as this one sees it (`key` is a small number for the UI, never its id). */
 export type SyncComputer = Schemas["SyncComputer"];
-export type SyncComputerState = SyncComputer["state"];
-/** Calendar sync on another computer compared with this one's. */
-export type SyncCalendarMatch = SyncComputer["calendar"];
 /** A version still arriving from the sync tool (files and bytes; online-only placeholders counted apart). */
 export type SyncArriving = Schemas["SyncArriving"];
 /** Why sync is paused or needs the person: a title and a message for people, and what can be done. */
@@ -833,7 +803,6 @@ export type SyncProblem = Schemas["SyncProblem"];
 export type SyncSide = Schemas["SyncSide"];
 /** Both computers changed something: which computer's Ordnung to keep (`joining`: this one is joining with letters). */
 export type SyncChoice = Schemas["SyncChoice"];
-export type SyncLetter = Schemas["SyncLetter"];
 /** A kept copy: this computer's data saved (an encrypted backup) before it was replaced. */
 export type SyncKept = Schemas["SyncKept"];
 /** Something the person should know about once (dismissed with `PATCH /api/sync`). */
@@ -874,7 +843,6 @@ export type CallNoteCreate = Schemas["CallNoteCreate"];
 export type CallNotePatch = Schemas["CallNotePatch"];
 export type AskRequest = Schemas["AskRequest"];
 export type TourPatch = Schemas["TourPatch"];
-export type HeldRequest = Schemas["HeldRequest"];
 /** `PUT /api/phone`: on or off, the address or port (none: the saved or recommended one), "This is my home network". */
 export type PhoneAccessChange = Schemas["PhoneAccessChange"];
 /** `POST /api/phone/pair`: the code as shown or typed (spaces, dashes and case don't matter) and this phone's name. */

@@ -153,12 +153,6 @@ def _named(pattern: re.Pattern[str], *names: str) -> bool:
     return any(pattern.search(name.strip()) for name in names if name)
 
 
-def is_tunnel(*names: str) -> bool:
-    """A tunnel, VPN, container, virtual machine or peer-to-peer interface by any of its names (never
-    offered, but for a container's or virtual machine's network the router is on)."""
-    return _named(TUNNEL_INTERFACES, *names) or _named(VIRTUAL_INTERFACES, *names)
-
-
 def _holds(subnet: str, router: str | None) -> bool:
     """Whether the router's address is in ``subnet``."""
     if router is None:

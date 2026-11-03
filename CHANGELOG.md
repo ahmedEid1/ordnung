@@ -59,6 +59,8 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   with no API key and checks it against `evals/results/INDEX.json`, where a recorded Ask run's hash moves only
   with a reason given; every recorded request is checked against a lock file, and a new recording takes the day
   it is made as the benchmark's today.
+- macOS and Windows are now required in CI: the job that installs Ordnung there and runs the tests of the code
+  that differs per system (weekly and on main) fails the run when it fails, as the Linux jobs do.
 
 ### Fixed
 

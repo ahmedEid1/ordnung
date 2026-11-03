@@ -6,10 +6,12 @@
  * OpenAPI operation it targets (path, method, query parameters and their bounds, JSON body or
  * multipart field names) and each mock response against that operation (status code, response
  * schema — strictly, so a mock that adds or drops a field fails). Every mock route must exist in
- * the API, and every API operation must be used by the web app (or be listed as not needed).
+ * the API, and every API operation must be used by the web app (or be listed as not needed): the app's
+ * own code calls each `api.*` function and each hook of `hooks.ts`, not only a test.
  */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, resolve } from "node:path";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import openapiText from "../../openapi.json?raw";
 import { createMockServer, MOCK_ROUTES, type MockServer } from "@/mocks/server";
@@ -144,7 +146,6 @@ interface Ids {
   otherItem: string;
   contract: string;
   party: string;
-  case: string;
   draft: string;
   suggestion: string;
   mail: string;
@@ -227,7 +228,6 @@ const CASES = {
   parties: { run: () => api.parties() },
   party: { run: (ids) => api.party(ids.party) },
   updateParty: { run: (ids) => api.updateParty(ids.party, { region: "NW" }) },
-  case: { run: (ids) => api.case(ids.case) },
 
   timeline: { run: () => api.timeline("2026-09-01", "2026-12-31") },
   lanes: { run: () => api.lanes() },
@@ -239,7 +239,6 @@ const CASES = {
 
   suggestions: { run: () => api.suggestions({ limit: 20 }) },
   updateSuggestion: { run: (ids) => api.updateSuggestion(ids.suggestion, { status: "snoozed", snoozed_until: "2026-10-05" }) },
-  runReview: { run: () => api.runReview() },
   brief: { run: () => api.brief() },
   regenerateBrief: { run: () => api.regenerateBrief() },
 
@@ -372,7 +371,53 @@ const ORDER: (keyof Api)[] = [
 const NOT_CALLED_BY_API: Record<string, string> = {
   "GET /api/events": "consumed with EventSource in api/sse.ts",
   "GET /api/items/{item_id}": "to-dos come with their letter, list or dashboard",
+  "GET /api/cases/{case_id}": "no screen opens a thread by itself: a sender's page lists their threads (GET /api/parties/{party_id})",
+  "POST /api/suggestions/review": "the weekly review starts by itself (ordnung/tick.py, when Settings allows it); no screen starts one",
 };
+
+/** The mock still serves these operations of NOT_CALLED_BY_API, so they are called directly (the path to call). */
+const UNCALLED_MOCK_ROUTES: Record<string, (srv: MockServer) => string> = {
+  "GET /api/cases/{case_id}": (srv) => `/cases/${srv.db.state.cases[0]!.id}`,
+  "POST /api/suggestions/review": () => "/suggestions/review",
+};
+
+type AppFile = { file: string; names: string[]; apiNames: string[] };
+let appFiles: AppFile[] | null = null;
+
+/**
+ * The web app's own code, file by file (`src` without tests, test helpers and the mock backend), as names: every
+ * identifier it uses, and every `api.<name>` it calls or passes on. Comments and strings are not code.
+ */
+function appCode(): AppFile[] {
+  appFiles ??= readAppCode();
+  return appFiles;
+}
+
+function readAppCode(): AppFile[] {
+  const root = resolve(__dirname, "..");
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (path !== join(root, "test") && path !== join(root, "mocks")) walk(path);
+      } else if (/\.tsx?$/.test(entry.name) && !/\.(test|d)\.tsx?$/.test(entry.name)) files.push(path);
+    }
+  };
+  walk(root);
+  return files.map((path) => {
+    const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest, false, path.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const names: string[] = [];
+    const apiNames: string[] = [];
+    const visit = (node: ts.Node) => {
+      if (ts.isIdentifier(node)) names.push(node.text);
+      if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "api") apiNames.push(node.name.text);
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return { file: relative(root, path), names, apiNames };
+  });
+}
 
 let srv: MockServer;
 let exchanges: Exchange[];
@@ -407,7 +452,6 @@ function ids(): Ids {
     otherItem: openItems[openItems.length - 1]!.id,
     contract: s.contracts[0]!.id,
     party: s.parties[0]!.id,
-    case: s.cases[0]!.id,
     draft: s.drafts[0]!.id,
     suggestion: s.suggestions[0]!.id,
     mail: s.tray.find((t) => !t.opened)!.id,
@@ -470,6 +514,23 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
       .flatMap(([template, ops]) => Object.keys(ops).map((m) => `${m.toUpperCase()} ${template}`))
       .filter((key) => !called.has(key) && !(key in NOT_CALLED_BY_API));
     expect(unused, "API operations the web app never calls — add an api function or list them in NOT_CALLED_BY_API").toEqual([]);
+    const listed = Object.keys(NOT_CALLED_BY_API).filter((key) => called.has(key));
+    expect(listed, "listed in NOT_CALLED_BY_API, yet an api function calls them").toEqual([]);
+  });
+
+  it("the app's own code calls every api function, not only a test", () => {
+    const calls = new Set(appCode().flatMap(({ file, apiNames }) => (file === "api/endpoints.ts" ? [] : apiNames)));
+    expect(Object.keys(api).filter((name) => !calls.has(name))).toEqual([]);
+  });
+
+  it("the app's own code uses every hook of hooks.ts, not only a test", () => {
+    const code = appCode();
+    const hooks = /^export function (use\w+)/gm;
+    const declared = [...readFileSync(resolve(__dirname, "hooks.ts"), "utf8").matchAll(hooks)].map((m) => m[1]!);
+    expect(declared.length).toBeGreaterThan(50);
+    // its own declaration names each hook once
+    const uses = (hook: string) => code.flatMap(({ names }) => names).filter((name) => name === hook).length - 1;
+    expect(declared.filter((hook) => uses(hook) === 0)).toEqual([]);
   });
 
   it("every mock route is a route of the API", () => {
@@ -477,6 +538,27 @@ describe("API contract (web ↔ mock ↔ openapi.json)", () => {
       ([method, pattern]) => `${method} ${pattern}`,
     );
     expect(missing).toEqual([]);
+  });
+
+  it("the mock answers like the API where the app calls no api function (NOT_CALLED_BY_API)", async () => {
+    const served = MOCK_ROUTES.map(([method, pattern]) => operationFor(method, `/api${pattern.replace(/:(\w+)/g, "x_$1")}`)?.key)
+      .filter((key): key is string => key !== undefined && key in NOT_CALLED_BY_API)
+      .sort();
+    expect(served, "a mock route of an operation in NOT_CALLED_BY_API needs a call in UNCALLED_MOCK_ROUTES").toEqual(Object.keys(UNCALLED_MOCK_ROUTES).sort());
+    const problems: string[] = [];
+    for (const [key, path] of Object.entries(UNCALLED_MOCK_ROUTES)) {
+      const method = key.split(" ")[0]!;
+      const url = new URL(`/api${path(srv)}`, "http://localhost");
+      const match = operationFor(method, url.pathname);
+      if (match?.key !== key) {
+        problems.push(`${key}: ${url.pathname} is served by ${match?.key ?? "no operation"}`);
+        continue;
+      }
+      const response = await srv.handle(method, url.pathname.replace(/^\/api/, ""), url.searchParams, undefined);
+      if (!response.ok) problems.push(`${key}: the mock answered ${response.status} (${await response.clone().text()})`);
+      for (const p of await responseProblems(match.op, response)) problems.push(`${key}: ${p}`);
+    }
+    expect(problems).toEqual([]);
   });
 
   it("a sender's and a letter's details carry the state their postcode suggests in the API's shape, none once it is set", async () => {

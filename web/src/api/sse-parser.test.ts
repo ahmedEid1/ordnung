@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { accumulateAll } from "@/features/ask/stream";
 import { SseParser, readStreamEvents, toStreamEvent } from "./sse-parser";
-import { reduceAsk, type AskState } from "./hooks";
 import type { StreamEvent } from "./types";
 
 function streamOf(chunks: (string | Uint8Array)[]): ReadableStream<Uint8Array> {
@@ -79,33 +79,22 @@ describe("readStreamEvents", () => {
     expect(events).toEqual([{ type: "text", text: "Kündigung €" }]);
   });
 
-  it("replays a recorded Ask answer into state with tool trace and citations", async () => {
+  it("replays a recorded Ask answer into the Ask page's state: tool trace, checked answer and citations", async () => {
     const body = streamOf([
       ": connected\n\n",
       'event: tool_use\ndata: {"name":"list_items","input":{"from":"2026-09-28"}}\n\n',
       'event: tool_result\ndata: {"name":"list_items","text":"Found 4 to-dos & dates"}\n\n',
       'event: text\ndata: {"text":"Pay the parking fine "}\n\n',
       'event: text\ndata: {"text":"[item:itm_parking]."}\n\n',
-      'event: done\ndata: {"message_id":"msg_2","thread_id":"thr_1","citations":[{"type":"item","id":"itm_parking"}]}\n\n',
+      'event: done\ndata: {"text":"Pay the parking fine [item:itm_parking].","message_id":"msg_2","thread_id":"thr_1","citations":[{"type":"item","id":"itm_parking"}]}\n\n',
     ]);
     const events = await collect(readStreamEvents(body));
     expect(events.map((e) => e.type)).toEqual(["tool_use", "tool_result", "text", "text", "done"]);
 
-    const initial: AskState = {
-      status: "streaming",
-      question: "What now?",
-      text: "",
-      toolCalls: [],
-      citations: [],
-      messageId: null,
-      threadId: null,
-      error: null,
-      events: [],
-    };
-    const final = events.reduce(reduceAsk, initial);
+    const final = accumulateAll(events);
     expect(final.status).toBe("done");
     expect(final.text).toBe("Pay the parking fine [item:itm_parking].");
-    expect(final.toolCalls).toEqual([{ name: "list_items", input: { from: "2026-09-28" }, result: "Found 4 to-dos & dates" }]);
+    expect(final.tools).toEqual([{ name: "list_items", input: { from: "2026-09-28" }, label: null, result: "Found 4 to-dos & dates", done: true }]);
     expect(final.citations).toEqual([{ type: "item", id: "itm_parking" }]);
     expect(final.threadId).toBe("thr_1");
     expect(final.messageId).toBe("msg_2");

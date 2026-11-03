@@ -48,7 +48,7 @@ describe("Ask page", () => {
     await user.click(screen.getByRole("button", { name: phone }));
 
     const turn = await screen.findByRole("article", { name: `Question: ${phone}` });
-    await within(turn).findByRole("heading", { name: "Sources" }, { timeout: 3000 });
+    await within(turn).findByRole("heading", { name: "Sources" });
     expect(calls.find((c) => c.path === "/ask")?.body).toMatchObject({ question: phone, thread_id: null });
 
     // the trace, folded once done
@@ -183,7 +183,7 @@ describe("Ask page", () => {
       const user = userEvent.setup();
       renderWithProviders(<AskPage />, { route: "/ask" });
       await user.type(screen.getByLabelText("Your question"), "Who won the football?{Enter}");
-      await screen.findByText("No recorded answer for this question", {}, { timeout: 3000 });
+      await screen.findByText("No recorded answer for this question");
       expect(screen.getAllByText(/To ask about your own letters, install Ordnung/)).toHaveLength(1);
       expect(screen.queryByText(/there is none for this question/)).toBeNull();
       expect(screen.queryByRole("button", { name: /Copy answer/ })).toBeNull();
@@ -218,7 +218,7 @@ describe("Ask page", () => {
     await user.click(screen.getByRole("button", { name: phone }));
     const turn = await screen.findByRole("article", { name: `Question: ${phone}` });
     expect(within(turn).getByRole("heading", { level: 2 })).toHaveTextContent(`You asked: ${phone}`);
-    expect(await within(turn).findByRole("heading", { level: 3, name: "Sources" }, { timeout: 3000 })).toBeInTheDocument();
+    expect(await within(turn).findByRole("heading", { level: 3, name: "Sources" })).toBeInTheDocument();
   });
 
   it("starts a new chat that can be undone, with focus where the next question goes", async () => {
