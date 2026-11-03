@@ -50,6 +50,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   by one general rule ([docs/evals-ask.md](docs/evals-ask.md)).
 - In the demo, adding someone to your household or marking a letter for taxes makes the suggested questions'
   recorded answers stop fitting, as changing a letter does; Ask says how to start the demo over.
+- **Docs for people working on Ordnung.** [docs/decisions/README.md](docs/decisions/README.md) lists every
+  decision record with its status, and [docs/architecture.md](docs/architecture.md#the-web-app) explains the web
+  app. [CONTRIBUTING.md](CONTRIBUTING.md) shows how to run only the tests near a change, and lists each generated
+  file with the command that writes it and the check that fails while it is stale. A bare `make` lists the
+  targets, [evals/README.md](evals/README.md) says how the benchmarks are laid out, replayed and recorded, and a
+  new pull request starts from a short checklist.
 - **The evaluation is one generated report.** The README's evaluation section, [docs/evals.md](docs/evals.md)
   and the [report page](https://ahmedeid1.github.io/ordnung/evals/) are written from the results files by
   `python -m evals.present`, never by hand. They pool the held-out splits with exact confidence intervals and a
