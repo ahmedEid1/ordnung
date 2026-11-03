@@ -258,7 +258,7 @@ through; their docstrings say what each one keeps or refuses. Some modules run S
 or a copy of it, so a change to the schema or to a `meta` row checks them too: `db/migrate.py` (the
 migrations), `secretary/household.py` (the household's `meta` row), `sync/` and `backup/` (copies of the
 database, and the rows they read, scrub or log), `demo/loader.py` (the demo's snapshot), and `doctor.py` and
-`cli.py` (their checks).
+`cli.py` (read-only: the database check and the saved settings).
 
 ## 6. Rules engine — `rules/` (pure, 100 % branch-covered, Hypothesis property tests)
 
