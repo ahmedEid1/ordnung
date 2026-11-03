@@ -128,7 +128,7 @@ def number(text: object) -> Fraction | None:
     """A threshold as written (``"0.973"``, ``0.973``, ``"2"``), exactly; ``None`` if it is not a number."""
     try:
         return Fraction(Decimal(str(text)))
-    except (InvalidOperation, ValueError):
+    except (InvalidOperation, ValueError, OverflowError):  # not a number, NaN, an infinity
         return None
 
 
@@ -267,6 +267,7 @@ def test_the_thresholds_are_the_replay_floored_or_rounded_up() -> None:
         number("0.0179") == Fraction(179, 10000) and number(0.973) == Fraction(973, 1000) and number("2") == 2
     )
     assert number(None) is None and number("") is None and number("x") is None
+    assert number("nan") is None and number("inf") is None and number("-Infinity") is None
 
 
 def _run(split: str, repeat: int, right: tuple[int, int], late: tuple[int, int]) -> dict[str, Any]:
@@ -467,6 +468,31 @@ def test_the_index_holds_the_same_gate_for_the_file_as_it_is(tmp_path: Path) -> 
         "holdout4 r2 (2026-12-09-claude-sonnet-5-holdout4-r2.json): INDEX.json does not hold Ordnung's replay at "
         "HEAD to the file"
     ]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="evals/reproduce.py (ci_gates) keys a benchmark gate by its split alone and every Ask step as ask/dev, so "
+    "INDEX.json cannot hold one gate per read; reproduce.py is frozen from the freeze, so it must key them by read "
+    "before then (and this mark go)",
+)
+def test_the_index_reproduce_writes_from_ci_yml_holds_a_gate_per_read(tmp_path: Path) -> None:
+    """INDEX.json's gates are what ``python -m evals.reproduce --write`` reads from ci.yml (``reproduce.ci_gates``).
+    From a workflow with one gate per read (two holdout4 reads at their own thresholds, newkinds, a held-out Ask
+    run), it must give the index one gate per read, and keep the Ask benchmark's own gate the development set's."""
+    yaml = pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    from evals import reproduce
+
+    results, index = _published(tmp_path)
+    one_line = WORKFLOW.replace(" \\\n            --max-dangerous-late", " --max-dangerous-late")
+    workflow = tmp_path / "ci.yml"
+    workflow.write_text(one_line, encoding="utf-8")  # reproduce reads a gate command on one line
+    written = reproduce.ci_gates(workflow)
+    reads, gates = final_reads(results), workflow_gates(yaml.safe_load(one_line))
+    assert gate_problems(reads, gates, index, results) == []  # the workflow holds a gate per read
+    assert gate_problems(reads, gates, {**index, "gates": written}, results) == []
+    assert "heldout" not in written["ask/dev"]["args"]
 
 
 def test_the_final_run_s_gates_are_its_replays() -> None:
