@@ -1,5 +1,4 @@
-"""What leaves this computer, what it keeps, and what "the same data" means (design §6, §7.4; review
-findings 5, 15, 19, 25).
+"""What leaves this computer, what it keeps, and what "the same data" means (SPEC §12c).
 
 * :func:`scrub` turns an in-memory copy of the database into what a push carries: this computer's own
   meta keys (:data:`~ordnung.sync.LOCAL_META`), the demo's and the local privacy-log rows go — deleted
@@ -7,14 +6,14 @@ findings 5, 15, 19, 25).
   to their defaults (all but ``demo``, which stays so a receiver can refuse a demo database), and a
   field of :data:`~ordnung.sync.KEPT_WHEN_ABSENT` the row doesn't name stays out (a computer updated from
   0.3.x reads the default until its next pull, and its push doesn't turn the switch back on elsewhere); a
-  reading in progress is queued again (``running`` → ``queued``, F34); stored paths use ``/``.
+  reading in progress is queued again (``running`` → ``queued``); stored paths use ``/``.
 * :func:`state_digest` is a SHA-256 over the scrubbed copy's rows (every ordinary table in name order,
   every row by its ``rowid``, canonical JSON, blobs as hex — the full-text tables left out, being
   derived; the merged keys of :data:`~ordnung.sync.MERGED_META` left out, being unions), the data
   files' ``(path, sha256)`` and the calendar hand-over. Page layout, a checkpoint, ``VACUUM``, a write
   of the same value and every local key leave it unchanged: equal digests mean equal synced data, so a
   computer can say "unchanged since its base" without trusting any clock.
-  Measured (P1): a generated 157 MiB database digests in 1.27 s, and its in-memory copy and
+  Measured: a generated 157 MiB database digests in 1.27 s, and its in-memory copy and
   serialization take 0.41 s — so the digest is taken only after ``data_version`` moved and the
   debounce passed, never on a timer.
 * :func:`merge_local` runs inside the pull's apply: the live database's local keys, local settings
@@ -22,7 +21,7 @@ findings 5, 15, 19, 25).
   :data:`~ordnung.sync.KEPT_WHEN_ABSENT` the incoming row doesn't name, as Ordnung 0.3.x writes it: the
   *Text in pictures* switch), the merged keys are united, and
   the calendar's "already sent" record is merged when this computer's own connection is to the same
-  calendar in the same mode (finding 15); ``sync_mark`` names the version the database now holds.
+  calendar in the same mode; ``sync_mark`` names the version the database now holds.
 """
 
 from __future__ import annotations
@@ -69,7 +68,7 @@ PERSON_TABLES = (
     "parties",
     "cases",
 )
-#: Settings fields scrubbed from a push: the local ones but ``demo`` (finding 19).
+#: Settings fields scrubbed from a push: the local ones but ``demo``.
 SCRUBBED_SETTINGS = tuple(name for name in LOCAL_SETTINGS if name != "demo")
 
 
@@ -316,7 +315,7 @@ def document_ids(conn: sqlite3.Connection) -> set[str]:
 
 
 # --------------------------------------------------------------------------------------------------
-# calendar sync's hand-over (§6.4, finding 15)
+# calendar sync's hand-over
 # --------------------------------------------------------------------------------------------------
 
 
@@ -349,7 +348,7 @@ def calendar_handover(conn: sqlite3.Connection) -> CalendarHandover | None:
 
 def merged_events(mine: dict[str, str], theirs: dict[str, str]) -> dict[str, str]:
     """Both computers' "already sent" records of one calendar: an event both sent alike keeps its
-    hash; any other is marked unknown (``""``), so the next calendar run checks it (finding 15)."""
+    hash; any other is marked unknown (``""``), so the next calendar run checks it."""
     return {
         href: mine[href] if mine.get(href) == theirs.get(href) else "" for href in sorted({*mine, *theirs})
     }
@@ -361,7 +360,7 @@ def merged_events(mine: dict[str, str], theirs: dict[str, str]) -> dict[str, str
 
 
 class PersonChanged(RuntimeError):
-    """The person changed something here after the pull was decided: it is given up (blocker 1)."""
+    """The person changed something here after the pull was decided: it is given up."""
 
 
 def _union(theirs: Sequence[str], mine: Sequence[str], cap: int) -> list[str]:
@@ -461,7 +460,7 @@ def _merge_calendar(
 
 
 def _carry_local_activity(staged: sqlite3.Connection, live: sqlite3.Connection) -> None:
-    """This computer's local privacy-log rows stay (finding 25): the same ids where they are free."""
+    """This computer's local privacy-log rows stay: the same ids where they are free."""
     if not (_has_table(staged, "activity") and _has_table(live, "activity")):
         return
     where, params = _local_activity_where()

@@ -25,7 +25,7 @@ next save (:data:`~ordnung.sync.PUSH_PERSON_QUIET_S` after the person's write,
 :data:`~ordnung.sync.PUSH_QUIET_S` after background work's, :data:`~ordnung.sync.PUSH_MAX_WAIT_S` at
 the latest); what a save counts as the person's comes from the counter in its own snapshot.
 
-**Replacing the data: two phases** (critique finding 1). A take-over, a quiet bring-in, a choice:
+**Replacing the data: two phases**. A take-over, a quiet bring-in, a choice:
 
 1. the version is staged with writes still allowed;
 2. the fence goes up — the gate refuses every write (``bringing_over``) — and the agent waits until the
@@ -40,7 +40,7 @@ the latest); what a save counts as the person's comes from the counter in its ow
    ``ledger_lock`` and ``caldav.exclusive``), the claim, and the fence comes down.
 
 The same two phases put this computer's own last saved state back when its data went back in time (a
-power cut, a data folder put back from an OS backup: the decision ``repair``, review finding F10/4) —
+power cut, a data folder put back from an OS backup: the decision ``repair``) —
 a write made while that version is staged is in the kept copy, never in neither.
 
 After a replace the settings are read again, the worker recovers the replaced database's jobs
@@ -49,7 +49,7 @@ in use, and the app hears ``sync.updated {replaced: true}`` with the events that
 
 **Leaving.** Disconnect and Delete everything first save what isn't saved (behind the fence), then
 write this computer's head as ``left`` with its version kept, so the other computers still bring that
-version over (critique finding 2); both need a second confirmation (``not_received``) while no other
+version over; both need a second confirmation (``not_received``) while no other
 computer has this one's latest changes. Shutting down saves before background work gets its grace
 period, then once more at the end (head ``closed``), each at most
 :data:`~ordnung.sync.SHUTDOWN_PUSH_S`; within the last one's bound it also waits for an engine call that
@@ -194,11 +194,11 @@ _SAVE_PROBLEMS: tuple[SyncProblemCode, ...] = ("save_failing", "folder_full", "l
 
 
 # --------------------------------------------------------------------------------------------------
-# the engine façade (sync/engine.py; design §24.3 I2): what the agent reads and calls
+# the engine façade (sync/engine.py): what the agent reads and calls
 # --------------------------------------------------------------------------------------------------
 
-#: What :func:`Engine.decide` answers (design §9): in use — ``paused`` (R1/R2; ``may_push`` while saving
-#: goes on, finding 13), ``become_standby`` (R3), ``choice`` (R4), ``bring_in`` / ``arriving`` (R5),
+#: What :func:`Engine.decide` answers (:mod:`ordnung.sync.decide`): in use — ``paused`` (R1/R2; ``may_push``
+#: while saving goes on), ``become_standby`` (R3), ``choice`` (R4), ``bring_in`` / ``arriving`` (R5),
 #: ``push`` (R6), ``idle`` (R7); standing by — ``up_to_date``, ``arriving``, ``choice``, ``paused``;
 #: for "Use Ordnung here" — ``nothing`` (U0), ``late_push`` (U1), ``pull`` (U2-U4, ``keep`` for Rule K),
 #: ``claim`` (U2 at the local base, or the older copy), ``wait`` (the target hasn't arrived), ``choice``
@@ -785,7 +785,7 @@ class SyncAgent:
 
     def calendar_shared_with(self) -> str | None:
         """Another computer that sends to the same calendar (Delete everything then leaves Ordnung's
-        events there, critique finding 27)."""
+        events there)."""
         if not self.connected or self.view is None:
             return None
         for computer in self.view.computers:
@@ -912,8 +912,8 @@ class SyncAgent:
         self._task = asyncio.create_task(self._loop(), name="ordnung-sync", context=background_context())
 
     async def save_before_stop(self) -> None:
-        """Ordnung stops: save the person's changes now, before readings get their grace period
-        (critique finding 33). At most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`; never raises."""
+        """Ordnung stops: save the person's changes now, before readings get their grace period.
+        At most :data:`~ordnung.sync.SHUTDOWN_PUSH_S`; never raises."""
         await self._shutdown_push("change")
 
     async def close(self) -> None:
@@ -1078,7 +1078,7 @@ class SyncAgent:
         return self._session
 
     async def _claim_if_asked(self, session: Session) -> None:
-        """ "Use Ordnung here anyway" while the password store was locked (critique finding 31): the claim
+        """ "Use Ordnung here anyway" while the password store was locked: the claim
         is made once the key is there — after the session's start (its counters known); tried again at
         the next look when the folder can't take it yet."""
         if not self._claim_when_unlocked:
@@ -1154,7 +1154,7 @@ class SyncAgent:
         await self._follow_standby()
         if self.mode != "in_use":
             if kind == "late_push" and self.mode == "standing_by" and self._waiting is None:
-                # the person's change that finished after this computer stood by (F21): it goes out as
+                # the person's change that finished after this computer stood by: it goes out as
                 # a late push; the computer in use brings it in quietly, or asks
                 await self._push("late")
             return  # standing by: otherwise report only (up to date, arriving, a choice)
@@ -1275,7 +1275,7 @@ class SyncAgent:
             if strict:
                 self._raise_problem()
             return
-        if self.is_demo:  # checked on the live data before any snapshot (critique finding 19)
+        if self.is_demo:  # checked on the live data before any snapshot
             raise SyncRefused()
         started = time.monotonic()
         self.activity = "saving"
@@ -1352,7 +1352,7 @@ class SyncAgent:
 
     async def _become_standby(self, *, late_push: bool) -> None:
         """Another computer took over (R3): stop background work, wait for the writes already admitted
-        (a phone upload, a request whose body is still arriving — the person's late changes too, F21:
+        (a phone upload, a request whose body is still arriving — the person's late changes too:
         at most :data:`~ordnung.sync.FENCE_WAIT_S`), save the person's late changes, say so in this
         computer's head, stand by. A write that finishes even later goes out as a late push from
         standing by (:meth:`_execute`)."""
@@ -1471,7 +1471,7 @@ class SyncAgent:
             self._publish(replaced=replaced)
 
     async def _repair(self, session: Session, decision: Decision) -> bool:
-        """F10 / review finding 4: this computer's data went back in time (a power cut, a data folder put
+        """This computer's data went back in time (a power cut, a data folder put
         back from an OS backup); its own last saved version is put back with the two phases of any
         replacement — what is here, a write made while the version was staged included, goes into the
         kept copy (``True`` once it is back; otherwise the next look tries again)."""
@@ -1792,7 +1792,7 @@ class SyncAgent:
                         "passphrase_needed",
                     )
                 ):
-                    # in use locally; the claim is made once the key is there (critique finding 31)
+                    # in use locally; the claim is made once the key is there
                     self._claim_when_unlocked = True
                     if self.mode != "in_use":
                         self.mode = "in_use"

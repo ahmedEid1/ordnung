@@ -1,4 +1,4 @@
-"""The sync engine: everything hand-off sync does, as blocking calls (design §24.3, interface I2).
+"""The sync engine: everything hand-off sync does, as blocking calls (SPEC §12c).
 
 The agent (server) calls these in threads, the CLI calls them directly under ``DataDirLock``; both only
 carry out what :func:`ordnung.sync.decide.decide` returns. A :class:`Session` is one unlocked folder:
@@ -6,8 +6,8 @@ the vault key (scrypt ran once, at :meth:`Session.open`), the folder, this compu
 scanner's caches.
 
 * :func:`connect` sets up a new folder or joins one; :func:`disconnect` leaves it.
-* :meth:`Session.start` runs at every start, once the Store is open: the copied-folder check (F32), the
-  counters raised to what the folder shows, and the local-rollback check (review finding 4, F10). It
+* :meth:`Session.start` runs at every start, once the Store is open: the copied-folder check, the
+  counters raised to what the folder shows, and the local-rollback check. It
   completes only once the folder showed this computer's own head; until then nothing is saved and no head
   is written (a data folder put back from an OS backup, started while the folder isn't there, would
   otherwise go on from the old counters and the old ``sync/heads.json``).
@@ -20,7 +20,7 @@ scanner's caches.
 The engine's own database writes (``sync_mark``, the privacy-log rows of :data:`~ordnung.sync.SyncActivityKind`)
 are never person changes. The privacy-log rows are written here, so the agent and the CLI log alike.
 
-The agent adds the two-phase apply of review blocker 1 around :meth:`Session.stage` and
+The agent adds the two-phase apply around :meth:`Session.stage` and
 :meth:`Session.apply`: writes are fenced and background work drained, then the counter is read again and
 the decision made again before the kept copy and the journal; :meth:`Session.apply` itself gives the
 pull up (``PullAborted``) when the counter moved after ``expect_person`` was read, inside the very
@@ -323,7 +323,7 @@ class Session:
         self.files = self.local.load_files() or self.files
 
     def tick(self) -> None:
-        """Add the running time since the last call (GC's grace counts it, finding 20)."""
+        """Add the running time since the last call (GC's grace counts it)."""
         now = self.clock.monotonic()
         elapsed = max(0.0, now - self._ticked)
         self._ticked = now
@@ -473,7 +473,7 @@ class Session:
     def scan(self) -> FolderView:
         """Read the folder (:mod:`ordnung.sync.scan`), with the completeness of every other version,
         and keep this computer's own head right: rewritten when it is missing, rolled back or not the
-        last one written (finding 7); ``has`` and ``wants`` updated."""
+        last one written; ``has`` and ``wants`` updated."""
         self.tick()
         view, heads = self.scanner.scan(self.state, self.heads)
         if heads != self.heads:
@@ -527,7 +527,7 @@ class Session:
         self._serve_wants(view)
 
     def _serve_wants(self, view: FolderView) -> None:
-        """Write again, forced, what another computer can't read and this one has (finding 7)."""
+        """Write again, forced, what another computer can't read and this one has."""
         if not view.wants:
             return
         by_object = {self.vault.object_name("f", c.sha256): (path, c) for path, c in self.files.items()}
@@ -594,7 +594,8 @@ class Session:
     # ---- start ------------------------------------------------------------------------------------
 
     def start(self, store: Store) -> Problem | None:
-        """At every start, with the Store open: F32, the counters, F3 and the local-rollback check.
+        """At every start, with the Store open: the copied-folder check, the counters, a save
+        that died after its head, and the local-rollback check.
 
         The counters and the rollback check need this computer's own head as the folder has it now: a data
         folder put back from an OS backup holds an old ``sync/heads.json`` and old counters, which look
@@ -663,7 +664,7 @@ class Session:
         own = self._own_version()
         assert own is not None
         if mark != own.id.key() and own.id.computer == state.computer:
-            # F3 again: the head was written and the process died before ``sync_mark`` — the database
+            # the head was written and the process died before ``sync_mark`` — the database
             # then holds exactly that version (a database put back from an OS backup doesn't)
             with contextlib.suppress(Exception):
                 if take_snapshot(self).digest == own.digest:
@@ -671,7 +672,7 @@ class Session:
                     state.pushed = _counter(store) or 0
                     mark = own.id.key()
         if mark == own.id.key():
-            if own.id != state.base.ref.id:  # F3: the head was written, state.json wasn't
+            if own.id != state.base.ref.id:  # the head was written, state.json wasn't
                 summary = state.base.summary
                 with contextlib.suppress(Exception):
                     manifest = self.scanner.manifest(own)
@@ -689,7 +690,7 @@ class Session:
         return Problem("local_rollback")
 
     def rollback_target(self) -> HeadView | None:
-        """This computer's own last saved version, to put back after a local rollback (F10, finding 4)
+        """This computer's own last saved version, to put back after a local rollback
         — ``None`` when there is none, or it isn't whole in the folder (the person is asked then)."""
         if self.problem is None or self.problem.code != "local_rollback":
             return None
@@ -711,7 +712,7 @@ class Session:
         return self.notice("rolled_back", ROLLBACK_NOTICE, kept)
 
     def repair_rollback(self, store: Store) -> Outcome:
-        """F10 / finding 4: the local database went back in time. Keep a copy of what is here, then
+        """The local database went back in time. Keep a copy of what is here, then
         bring this computer's own last saved version back (it is still its head). The person-change
         counter is read before the copy is taken: a person's write after it gives the pull up
         (``PullAborted``) instead of being in neither. The server does this in the agent's two phases
@@ -761,7 +762,7 @@ class Session:
     def push(self, store: Store | None, **options: object) -> PushResult:
         """:func:`ordnung.sync.push.push` (the folder must be usable) — never before :meth:`start` knows
         the counters, nor while the local data went back in time or was copied (its old data would go
-        out under the new lineage: review blocker 4)."""
+        out under the new lineage)."""
         if not self.started:
             raise SyncError("folder_problem", NOT_STARTED_MESSAGE)
         if self.problem is not None and self.problem.code in ("copied_folder", "local_rollback"):
@@ -798,7 +799,7 @@ class Session:
         digest: str | None,
         expect_person: int | None,
     ) -> tuple[Applied, KeptInfo | None]:
-        """Stage ``head``'s version, keep a copy when needed (Rule K, extended by finding 18: a quiet pull
+        """Stage ``head``'s version, keep a copy when needed (Rule K; a quiet pull
         that would remove letters keeps one too), then apply it."""
         staged = self.stage(head, keep=keep)
         try:
@@ -1092,7 +1093,7 @@ class Session:
             self.save()
 
     def forget(self, key: int) -> KeptInfo | None:
-        """Forget a lost computer (§13.5): its changes found nowhere else are kept here first."""
+        """Forget a lost computer: its changes found nowhere else are kept here first."""
         view = self.scan()
         target = view.by_key(key)
         if target is None or target.this:
@@ -1119,7 +1120,7 @@ class Session:
         return kept
 
     def refill(self, store: Store) -> PushResult:
-        """Fill an emptied folder again from this computer (§13.4): the same key file, then everything."""
+        """Fill an emptied folder again from this computer: the same key file, then everything."""
         view = self.scan()
         if view.problem is None or view.problem.code != "folder_empty" or self.state.mode != "in_use":
             raise SyncError("not_needed", "The sync folder isn't empty, or another computer is in use.")
@@ -1146,8 +1147,8 @@ class Session:
         return missing
 
     def gc(self) -> int:
-        """Delete objects unreferenced for 7 days of wall clock and 7 × 24 h of running time (§10.7,
-        finding 20) — superseded database slices after a day (finding 21, :meth:`_superseded`); at most
+        """Delete objects unreferenced for 7 days of wall clock and 7 × 24 h of running time —
+        superseded database slices after a day (:meth:`_superseded`); at most
         once a day, only in use, never while a head is unreadable or replayed."""
         state = self.state
         now = self.clock.wall()
@@ -1289,7 +1290,7 @@ class Session:
     def leave(
         self, store: Store, *, forget_passphrase: bool = True, unreceived_ok: bool = False, demo: bool = False
     ) -> None:
-        """Stop syncing here (blocker 2): push what isn't saved, then write ``left`` with the version
+        """Stop syncing here: push what isn't saved, then write ``left`` with the version
         kept — it still counts for the others' content decisions. Refused (``not_received``) while no
         other computer has this one's latest, unless ``unreceived_ok``. Its start runs first (the
         command line opens a fresh session): nothing is saved or written from counters it doesn't know,
@@ -1414,7 +1415,7 @@ def connect(
     demo: bool = False,
     settings: AppSettings | None = None,
 ) -> ConnectResult:
-    """Set up a new sync folder here, or join an existing one (design §17.2 ``PUT /api/sync``)."""
+    """Set up a new sync folder here, or join an existing one (``PUT /api/sync``)."""
     if demo or is_demo_dir(paths.data_dir) or store.get_settings().demo:
         raise SyncError("unavailable", DEMO_MESSAGE)
     local = Local(paths, data_fs)
@@ -1510,7 +1511,7 @@ def _create(
     made = new_key_file(passphrase)
     state = _base_state(paths, root, name, made.name, made.data, made.vault, machine)
     local = Local(paths, data_fs)
-    local.save(state)  # finding 34: state.json (with the key file's bytes) first
+    local.save(state)  # state.json (with the key file's bytes) first: a retry recognises its own key file
     if not root.exists():
         (folder_fs or RealFs()).mkdir(root)
     session = Session(

@@ -1,12 +1,12 @@
-"""The decision function (design §9, with the review's blockers 2-4 and findings 13, 31): pure — what this
+"""The decision function (SPEC §12c): pure — what this
 computer should do, from what it knows of itself (:class:`LocalView`) and what the folder shows
 (:class:`~ordnung.sync.scan.FolderView`). The engine and the CLI only execute what it returns.
 
 ``L`` is this computer's lineage: its base's, plus an unknown own person change when changes are
 pending (so only ``behind`` and ``diverged`` are possible then). ``others`` are the other computers'
-heads with a version — those that *left* too (blocker 2: their last version still counts, they only
+heads with a version — those that *left* too (their last version still counts, they only
 leave the election of the computer in use), never forgotten ones. A head of a newer Ordnung is never
-pulled from or claimed toward; pushing goes on (finding 13).
+pulled from or claimed toward; pushing goes on.
 
 **In use, periodically:** R1 a folder problem pauses (work goes on here); R3 another computer is in
 use → stand by (pushing late when changes are pending); R4 a head diverged or decided against this
@@ -21,8 +21,7 @@ behind or the same → pull a same-content version whose background work differs
 local base; U3 one head ahead of this one and of every other → pull it; U4 one head decided against
 this one and covers every other → keep a copy, pull it; U5 otherwise → a choice. Joining (no base):
 with letters of its own, a choice — unless a version in the folder holds exactly this computer's data (it
-joins again after leaving): then, as without letters, pull the newest (a choice when the others diverge,
-finding 31).
+joins again after leaving): then, as without letters, pull the newest (a choice when the others diverge).
 """
 
 from __future__ import annotations
@@ -459,8 +458,8 @@ def _choose(local: LocalView, view: FolderView, key: int | None) -> Decision:
 
 
 def others_have(view: FolderView, version: VersionRef | None) -> bool:
-    """Another computer that is still syncing has this version (or everything of it) — blocker 2's
-    second confirmation is not needed."""
+    """Another computer that is still syncing has this version (or everything of it) — leaving
+    needs no second confirmation."""
     if version is None:
         return True
     for head in view.others:
