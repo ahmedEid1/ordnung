@@ -1,5 +1,5 @@
 /**
- * "Try again" on the card of letters that couldn't be read (UX audit U4): the card leaves once they are read
+ * "Try again" on the card of letters that couldn't be read: the card leaves once they are read
  * again, and focus goes to the card now in its place among Today's cards, or to Top 3's heading — never to <body>.
  */
 import { useEffect, useState } from "react";

@@ -154,7 +154,7 @@ describe("chooseMainAction", () => {
     const rent = makeItem({ kind: "payment", amount: 670, due_date: "2026-12-01", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null }, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) });
     expect(notOwedReason(rent, null)).toBe("consent");
     const card = { kind: "rent_increase", urgent: false } as NonNullable<Parameters<typeof mayNotBeOwed>[1]>;
-    // review round 2: the note is the server's, on the new rent alone (dated or not) — never the current rent
+    // the note is the server's, on the new rent alone (dated or not) — never the current rent
     expect(notOwedReason(makeItem({ kind: "payment", amount: 670, computation: makeReceipt({ rule_ids: ["bgb_558b"] }) }), card)).toBe("consent");
     expect(notOwedReason(makeItem({ kind: "payment", amount: 640, recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } }), card)).toBeNull();
     expect(notOwedReason(makeItem({ kind: "payment", amount: 30, direction: "in" }), card)).toBeNull();
@@ -169,7 +169,7 @@ describe("chooseMainAction", () => {
     expect(notOwedReason(rent, null, [rent, decision])).toBe("consent");
     const done = { ...decision, status: "done" as const };
     expect(consentDecided([rent, done])).toBe(true);
-    // final review 3: decided — but which way isn't known, so the new rent is owed only if they agreed, and
+    // decided — but which way isn't known, so the new rent is owed only if they agreed, and
     // "Pay" never leads (paying it can count as agreeing, § 558b Abs. 1 BGB)
     expect(notOwedReason(rent, null, [rent, done])).toBe("if_agreed");
     const dismissed = { ...decision, status: "dismissed" as const };
@@ -255,7 +255,7 @@ describe("what needs the person's eyes", () => {
   });
 
   it("says what saving the arrival day did, from the recomputed to-dos", () => {
-    // reviewer repro: a company's letter dated Fri 18 Sep arrived Tue 22 Sep; the engine still counts
+    // a company's letter dated Fri 18 Sep arrived Tue 22 Sep; the engine still counts
     // from Mon 21 Sep, when it would usually count as delivered — "Counting from 22 Sep" was false
     const late = { label: "It arrived on Tue 22 Sep 2026, later than …", date: "2026-09-21", rule_id: "private_sender_late_arrival", citation: null };
     const capped = makeItem({ id: "itm_a", title: "Pay the invoice", computation: makeReceipt({ rule_ids: ["private_sender_late_arrival", "bgb_187_1"], steps: [late], confidence: "medium" }) });

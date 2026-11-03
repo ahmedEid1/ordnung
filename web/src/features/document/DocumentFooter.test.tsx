@@ -1,5 +1,5 @@
 /**
- * Audit (regression): "Delete this letter?" promises that the file, its page images and everything read
+ * "Delete this letter?" promises that the file, its page images and everything read
  * from it are removed from this computer (and docs/privacy.md: "Delete means delete"). The button used to
  * only move the letter to the trash (`DELETE /api/documents/{id}` without `purge`), and nothing in the
  * app lists or empties the trash, so the original and its derived data stayed on disk for good.

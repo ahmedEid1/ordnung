@@ -102,8 +102,8 @@ export function isOptionalObjection(i: Pick<Item, "date_spec">): boolean {
 
 /**
  * A price increase that asks for the person's consent (a bank's new account fee, § 675g BGB): agreeing is a
- * choice, not a to-do to get done by a date (walkthrough of phase 2: "Give consent to the fee increase — by
- * Mon 30 Nov" nudged the person to accept, where the Stadtwerke's increase was put as a decision).
+ * choice, not a to-do to get done by a date ("Give consent to the fee increase — by
+ * Mon 30 Nov" once nudged the person to accept, where the Stadtwerke's increase was put as a decision).
  */
 export function isConsentRequest(i: Pick<Item, "kind" | "title" | "action">, doc: Pick<Document, "kind">): boolean {
   return doc.kind === "price_increase" && i.kind !== "payment" && /\bconsent\b|zustimm/i.test(`${i.title} ${i.action ?? ""}`);
@@ -336,7 +336,7 @@ export function notOwedReason(i: Item, advice: DocumentDetail["advice"], items: 
   if (i.kind !== "payment" || i.direction === "in") return null;
   const cites = (rule: string) => Boolean(i.computation?.rule_ids.includes(rule));
   // only the new rent cites § 558b for its note — never the current rent, which is owed as ever (holding it back
-  // risks arrears, § 543 Abs. 2 Nr. 3 BGB): the server marks the new rent, dated or not (review round 2)
+  // risks arrears, § 543 Abs. 2 Nr. 3 BGB): the server marks the new rent, dated or not
   if (cites("bgb_558b")) return consentDecided(items) ? "if_agreed" : "consent";
   if (i.recurrence) return null;
   return cites("bgb_556_3") || (advice?.kind === "operating_costs" && advice.urgent) ? "late_statement" : null;
@@ -349,8 +349,7 @@ export function mayNotBeOwed(i: Item, advice: DocumentDetail["advice"], items: I
 /**
  * The other open deadlines the law sets for this letter (a dismissal's registration), earliest first —
  * never one the server set aside (`setAside`, as {@link selectPrimaryItem}): a date already past when the
- * letter was added is listed quietly under "Probably dealt with", not also as "Also: … 189 days overdue"
- * (UI audit round 2).
+ * letter was added is listed quietly under "Probably dealt with", not also as "Also: … 189 days overdue".
  */
 export function otherLawDeadlines(items: Item[], primary: Item | null, setAside: readonly Pick<ItemAside, "item_id">[] = []): Item[] {
   const aside = new Set(setAside.map((a) => a.item_id));
@@ -376,7 +375,7 @@ const COURT_ONLY = /^This decision can only be challenged in court \(Klage\)/;
 /**
  * The letter's instructions name only a court action (Klage): the to-do Ordnung added for it
  * (`check:reading`, titled "… (Klage)") is the one in view, or the letter carries the "can only be challenged
- * in court" warning — an objection letter to the authority would not stop that deadline (UX review 2, R2UX-7),
+ * in court" warning — an objection letter to the authority would not stop that deadline,
  * whatever remedy the reading named.
  */
 export function courtActionOnly(detail: Pick<DocumentDetail, "document">, primary: Item | null): boolean {
@@ -524,7 +523,7 @@ export function plainLead(item: Item, party?: string | null): string {
 /**
  * What the verdict says to do, always led by English: the reading's action when it is English, else
  * the to-do's English title, else {@link plainLead} — with the letter's German below it as a quote, never
- * as the headline (UI audit round 1: "WHAT YOU NEED TO DO — Semesterbeitrag … überweisen"). An
+ * as the headline (not "WHAT YOU NEED TO DO — Semesterbeitrag … überweisen"). An
  * appointment without an action says where to go ("Go to: Autumn Meeting in Berlin").
  */
 export function verdictWords(item: Item, party?: string | null): VerdictWords {
@@ -585,7 +584,7 @@ export function consequenceWords(text: string): { lead: string; quote: string | 
 
 /**
  * An action that starts with its own "If you disagree (with this decision), …" under the verdict's "Only if
- * you disagree:" (UI review: "Only if you disagree: If you disagree with this decision, send …"). Only here:
+ * you disagree:" (not "Only if you disagree: If you disagree with this decision, send …"). Only here:
  * notifications and calendar entries show the action without that prefix, so it keeps its condition there.
  */
 export function withoutIfYouDisagree(text: string): string {

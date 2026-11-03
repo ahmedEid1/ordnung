@@ -7,7 +7,7 @@ import { usePageMeta } from "./page-meta";
 
 /**
  * `?mock=1` / `?mock=full` on a served app switch this tab to the browser-only sample data (remembered for
- * the tab): a different sample life from the recorded demo, with no sign of it before (walkthrough of phase 2:
+ * the tab): a different sample life from the recorded demo, with no sign of it before (once
  * "To pay €1,237.65" instead of the recorded demo's €681.34). Says so, with the way back (`?mock=0`, a full
  * reload: mock mode is chosen when the app starts). Never in the hosted static demo, which is only that.
  */

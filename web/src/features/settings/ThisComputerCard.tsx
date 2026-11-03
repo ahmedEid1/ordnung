@@ -1,9 +1,9 @@
 /**
- * Settings → Your computers → This computer (design §19.1, card 2): its name and what it is now (in use, standing
+ * Settings → Your computers → This computer (SPEC §12c): its name and what it is now (in use, standing
  * by, needs a choice, paused), the sync folder, the last save — or what is arriving — the problem with what can be
  * done about it, and **Save now** (in use) or **Use Ordnung here** (standing by), **Rename…** and **Disconnect…**.
  *
- * Disconnecting asks a second time while no other computer has this one's latest changes (finding 2): those would
+ * Disconnecting asks a second time while no other computer has this one's latest changes: those would
  * reach no other computer.
  */
 import { useRef, useState, type FormEvent } from "react";

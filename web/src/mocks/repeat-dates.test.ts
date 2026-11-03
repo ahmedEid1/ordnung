@@ -1,6 +1,6 @@
 /**
- * Dates you add yourself that repeat, in the mock database as `POST`/`PATCH /api/items` file them (audit item 26;
- * tests/test_api_items_repeat.py is the API's side): placed by their rule at once, moved on when marked done (Undo
+ * Dates you add yourself that repeat, in the mock database as `POST`/`PATCH /api/items` file them
+ * (tests/test_api_items_repeat.py is the API's side): placed by their rule at once, moved on when marked done (Undo
  * brings the date back), and started again at their date only when the person says so. The mock's today is Mon
  * 28 Sep 2026; Sat 3 Oct is a public holiday, and a working day is Monday to Saturday.
  */

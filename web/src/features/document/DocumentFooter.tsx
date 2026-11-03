@@ -50,13 +50,13 @@ export function provenanceText(doc: DocumentDetail["document"]): string {
 
 /**
  * Documents nobody writes back to (a passport, a certificate, a payslip, a receipt, an appointment card): no
- * "Draft a reply" under them (UI audit round 1). The key facts call their numbers "Numbers on this document".
+ * "Draft a reply" under them. The key facts call their numbers "Numbers on this document".
  */
 export const NO_REPLY_KINDS: ReadonlySet<DocumentKind> = new Set<DocumentKind>(["identity_document", "certificate", "receipt", "payslip", "appointment"]);
 
 /**
  * The provenance line as it wraps on a phone: never inside the date, between "1" and "page", or before its dot
- * ("Read by Claude on 28 Sep 2026 ·" / "from a photo, 1 page" — UI audit round 1: "1" / "page").
+ * ("Read by Claude on 28 Sep 2026 ·" / "from a photo, 1 page", not "1" / "page").
  */
 export function keepTogether(text: string): string {
   const [first = "", ...rest] = text.split(" · ");
@@ -128,7 +128,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
 
   return (
     <footer className="border-t border-line pt-5">
-      {/* a chip on one line; wrapped on a phone, it keeps a card's corners, not a stretched pill's (UI audit round 1) */}
+      {/* a chip on one line; wrapped on a phone, it keeps a card's corners, not a stretched pill's */}
       <p className="inline-flex max-w-full items-start gap-1.5 rounded-xl border border-line bg-surface px-3 py-1 text-[12.5px] leading-5 text-muted">
         <Icon className="mt-[3px] size-3.5 shrink-0" aria-hidden />
         <span className="min-w-0 [overflow-wrap:anywhere]">{keepTogether(provenanceText(doc))}</span>
@@ -173,7 +173,7 @@ export function DocumentFooter({ detail }: { detail: DocumentDetail }) {
             <Download aria-hidden />
             Download original
           </a>
-          {/* apart from the others at the end of its row — also when it wraps onto a row of its own (UI audit round 1) */}
+          {/* apart from the others at the end of its row — also when it wraps onto a row of its own */}
           <Button
             size="sm"
             variant="ghost"

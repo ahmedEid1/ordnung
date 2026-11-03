@@ -16,7 +16,7 @@ const control =
   "focus-within:border-accent focus-within:outline-none focus-within:ring-3 focus-within:ring-accent/20 " +
   "disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-danger " +
   // an invalid field keeps a visible focus indicator: its red border alone looks the same focused or not (WCAG
-  // 2.4.7; review round 3 of phase 2 — the old 15 % ring vanished on a warning background)
+  // 2.4.7; the old 15 % ring vanished on a warning background)
   "aria-invalid:focus-within:ring-danger/25 aria-invalid:focus-within:outline-2 aria-invalid:focus-within:outline-offset-1 " +
   "aria-invalid:focus-within:outline-solid aria-invalid:focus-within:outline-danger";
 

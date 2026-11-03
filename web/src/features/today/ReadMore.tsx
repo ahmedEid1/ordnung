@@ -9,7 +9,7 @@ const CLAMP = { 3: "line-clamp-3", 4: "line-clamp-4" } as const;
  *
  * A link below the cut still takes keyboard focus: focusing it opens the text, so the link shows where
  * it is. (Left clamped, the browser scrolled the cut box to the link and nothing scrolled it back — the
- * card read from its third line on while "Read more" still said it was cut; UI audit round 2.)
+ * card read from its third line on while "Read more" still said it was cut.)
  *
  * @example <ReadMore className="mt-2 text-sm text-muted"><LetterText text={reason} /></ReadMore>
  */

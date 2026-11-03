@@ -1,5 +1,5 @@
 /**
- * The design-system gallery (`/dev/ui`, audit round 1, bucket "shell-b"): its samples work with any
+ * The design-system gallery (`/dev/ui`): its samples work with any
  * data (the receipt examples are fixtures, not demo-only items), sample cards use the real money
  * and reference components, pill tabs have their panels, and the shortcut hint names the right key.
  */

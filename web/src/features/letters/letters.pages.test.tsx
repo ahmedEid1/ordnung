@@ -1,5 +1,5 @@
 /**
- * Audit (UI audit round 2, letters): the Letters page, the New-letter composer and the letter page.
+ * The Letters page, the New-letter composer and the letter page, and what they used to get wrong:
  *
  * - The composer on a phone left under half its sheet for the choices: a pinned three-line
  *   description and a footer with the reason line over two stacked buttons.

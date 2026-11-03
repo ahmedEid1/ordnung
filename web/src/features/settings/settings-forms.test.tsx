@@ -1,5 +1,5 @@
 /**
- * Settings forms (UI audit round 1, settings-b): the save bar that stays in view, profile
+ * Settings forms: the save bar that stays in view, profile
  * validation, the Reminders chips and their focus, "Save and go", the AI jobs that are switched
  * off, the Region and Calendar copy and the Claude connection's states.
  */
@@ -105,7 +105,7 @@ describe("settings helpers", () => {
     expect(bareVersion(null)).toBeNull();
     expect(calendarFileSummary(0)).toMatch(/^No dates yet — add letters first/);
     // the file's events, never "dates": Today's Idea counts the dates to act on, and a contract's
-    // decision is two events (post by, arrive by) — two counts of "dates" for one file (round 2)
+    // decision is two events (post by, arrive by) — two counts of "dates" for one file
     expect(calendarFileSummary(1)).toBe(
       "1 calendar event in one file: every open date and send-by day.",
     );

@@ -1,5 +1,5 @@
 /**
- * UI audit round 2, the letter page's verdict, its to-do list and the sections around them: a to-do the
+ * The letter page's verdict, its to-do list and the sections around them: a to-do the
  * server set aside is said once and quietly, a rolling contract has no "decide by … today", references and
  * amounts stay whole, "Why this date?" has no twin tiles, and the loading page has the tabs' row.
  */

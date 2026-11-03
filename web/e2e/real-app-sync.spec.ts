@@ -1,5 +1,5 @@
 /**
- * Hand-off sync between two real computers (design §23.5, ADR 0018): one `ordnung serve` set up as usual (the
+ * Hand-off sync between two real computers (SPEC §12c, ADR 0018): one `ordnung serve` set up as usual (the
  * project's real app, "laptop") and a second one on its own data folder, new ("desktop"); each keeps its secrets
  * in a password store of its own (`tests/e2e_support/e2e_keyring.py`) and sees its own copy of "the" synced
  * folder, which e2e/sync-tool.ts keeps in step only when a test says so — late, out of order, in pieces and with
@@ -21,7 +21,7 @@
  *    standing-by screen, while what it would bring over is still arriving, fits a 320 px phone.
  *
  * Afterwards both computers leave sync and the laptop's letter goes, so the real-app specs after this one find the
- * laptop as they expect it. What the pages offer (P3's copy, design §19) is named once below; the server's
+ * laptop as they expect it. What the pages offer is named once below; the server's
  * sentences are `ordnung.sync`'s constants (tests/test_e2e_support.py keeps the copies here equal to them).
  *
  * Limits: both computers run on one machine with a simulated sync tool. A pass with a real Nextcloud, Syncthing or
@@ -40,7 +40,7 @@ type Household = components["schemas"]["Household"];
 test.describe.configure({ mode: "serial" });
 
 // ------------------------------------------------------------------------------------------------
-// What the pages offer (design §19: Settings → Your computers, /join, the standing-by screen, the choice)
+// What the pages offer (Settings → Your computers, /join, the standing-by screen, the choice)
 // ------------------------------------------------------------------------------------------------
 
 const COMPUTERS = "/settings?section=computers";

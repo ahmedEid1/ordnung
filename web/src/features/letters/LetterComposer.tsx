@@ -221,7 +221,7 @@ function AnyMonthPill({ className }: { className?: string }) {
 
 function ContractOption({ c, party }: { c: Contract; party?: Party }) {
   // a contract you can cancel any month has no window that closes: its "send by" only says when it
-  // would end, so it never counts down in red (UI audit round 2)
+  // would end, so it never counts down in red
   const rolling = isRollingContract(c);
   const sendBy = rolling ? null : c.computed?.send_by;
   return (
@@ -283,7 +283,7 @@ const LIST_CAP = 30;
  * The choices of step 2, in the dialog's own scroll (no second scrolling box inside it, where a chosen
  * contract sat out of view): the one the composer was opened with first — right under the step's heading,
  * where the composer scrolls to — then the first few, the chosen one always among them, and "Show all"
- * for the rest (UI audit round 1).
+ * for the rest.
  */
 function ChoiceList<T extends { id: string }>({
   items,
@@ -563,7 +563,7 @@ function TemplateRecipient({
   const [filter, setFilter] = useState("");
   const byId = useMemo(() => new Map(parties.map((p) => [p.id, p])), [parties]);
   // the letters whose kind fits the template come first (a withdrawal's orders and contracts, a statement's
-  // statements), the rest after them: any letter can still be chosen (review round 3 of phase 2); the letter
+  // statements), the rest after them: any letter can still be chosen; the letter
   // the composer was opened for is always shown (ChoiceList)
   const incoming = useMemo(
     () =>
@@ -590,7 +590,7 @@ function TemplateRecipient({
   const chosen = letters && docId ? (docs.find((d) => d.id === docId) ?? null) : null;
   const unknownSender = Boolean(chosen && !chosen.party_id);
 
-  // no search box and no list for an install without letters, no picker without people (UI audit round 1)
+  // no search box and no list for an install without letters, no picker without people
   const hasLetters = letters && incoming.length > 0;
   return (
     <div className="space-y-3">
@@ -637,7 +637,7 @@ function TemplateRecipient({
             <Field
               label="The claimant (Antragsteller)"
               hint="The court order names who claims the money — type their name and address as the order shows them. The letter goes to them, not to the court."
-              // the court is no claimant: the server refuses an offer to it (review round 3 of phase 2)
+              // the court is no claimant: the server refuses an offer to it
               error={mayBeCourt(typed) ? "That's a court — type the claimant the order names as the Antragsteller." : undefined}
             >
               <Textarea
@@ -651,7 +651,7 @@ function TemplateRecipient({
             </Field>
           ) : null}
           {/* only when the letter can be answered this way, and never next to the claimant's box (both would
-              write the same text: review round 3 of phase 2) */}
+              write the same text) */}
           {unknownSender && !claimant && !notice ? (
             <Field label="Who is it for?" hint="This letter's sender isn't in Ordnung — type their name and address as the letter shows them.">
               <Textarea
@@ -859,7 +859,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     return () => window.clearTimeout(t);
   }, [open, startAtWhich]);
   // a kind picked by hand: when step 2 starts below the fold (a phone, under the template tiles), bring it
-  // up — before, nothing visible changed at 320 px (UI audit round 1)
+  // up — before, nothing visible changed at 320 px
   const picked = useRef(false);
   useEffect(() => {
     if (!picked.current || !kind) return;
@@ -902,7 +902,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   // an offer to a court order's claimant stays linked to the order, but goes to the claimant typed in
   const claimantMode = toClaimant && Boolean(doc) && template?.kind === "payment_plan";
   // an objection to a court order whose sender (as filed) is no court goes to the court, typed in — never to
-  // the claimant, where it wouldn't stop the order (§ 694, § 700 ZPO; review round 3 of phase 2)
+  // the claimant, where it wouldn't stop the order (§ 694, § 700 ZPO)
   const letterParty = doc?.party_id ? parties.get(doc.party_id) ?? null : null;
   const courtTyped = kind === "objection" && check.ok && needsTypedCourt(doc, letterParty);
   const courtOk = !courtTyped || mayBeCourt(typedRecipient);
@@ -922,7 +922,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
   const resignation = kind === "cancellation" && contract?.category === "employment";
 
   // an empty install: kinds with nothing to act on say so (step 1), and step 2 offers "Add letters" instead of an
-  // empty list, an empty search and a picker without people (UI audit round 1)
+  // empty list, an empty search and a picker without people
   const loaded = !docsQ.isPending && !partiesQ.isPending;
   const noContracts = !contractsQ.isPending && contracts.length === 0;
   const noReply = loaded && incomingDocs.length === 0 && partyList.length === 0 && !doc;
@@ -1002,7 +1002,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     ? typedTo && !mayBeCourt(typedRecipient)
     : Boolean((doc && (doc.party_id || typedTo)) || partyId || (template?.target === "party-or-typed" && typedTo));
   const refusal = template && doc ? templateRefusal(template.kind, doc.kind, claimantMode) : null;
-  // the claimant's box takes focus once the person chose to write to them (review round 2: focus fell to <body>)
+  // the claimant's box takes focus once the person chose to write to them (focus once fell to <body>)
   useEffect(() => {
     if (!claimantMode) return;
     // after the dialog's focus guard has handled the removed button (it would move focus to the dialog)
@@ -1010,7 +1010,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
     return () => window.clearTimeout(t);
   }, [claimantMode]);
   // the court's box takes focus when the objection needs it typed and it is empty — the footer already asks for
-  // it, and the field sat below the fold (review round 4 of phase 2); once per box, never while typing
+  // it, and the field sat below the fold; once per box, never while typing
   const courtFocused = useRef(false);
   useEffect(() => {
     if (!courtTyped || courtFocused.current || typedRecipient.trim()) return;
@@ -1074,7 +1074,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       },
       {
         onSuccess: (draft) => {
-          // not "next to it": on a phone the translation is behind a switch (UI audit round 1)
+          // not "next to it": on a phone the translation is behind a switch
           toast.success("Your letter is ready to check", { description: "Check the English translation before you send anything." });
           onClose();
           navigate(`/letters/${draft.id}`);
@@ -1130,7 +1130,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
       size="lg"
       title="New letter"
       // on a phone the pinned header keeps only the title and the sentence scrolls with the form (below), so the
-      // choices keep the sheet (UI audit round 2: 302 of 589 px were left for them at 320×640)
+      // choices keep the sheet (once 302 of 589 px were left for them at 320×640)
       description={<span className="max-sm:sr-only">{ABOUT}</span>}
       footer={
         <>
@@ -1218,7 +1218,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                 />
               ) : null
             ) : null}
-            {/* about the chosen contract: under the choice, where the eye is (UI audit round 1) */}
+            {/* about the chosen contract: under the choice, where the eye is */}
             {resignation && contract?.cancel_hint && !contractBlocked ? (
               <Callout tone="info" className="mt-3" title="This drafts your resignation">
                 {contract.cancel_hint}
@@ -1354,7 +1354,7 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
 
             {kind === "general_reply" && !nothing ? (
               <>
-                {/* a search only where there is a list to search (UI audit round 1: an empty install had one) */}
+                {/* a search only where there is a list to search (an empty install once had one) */}
                 {incomingDocs.length > LIST_PREVIEW + 1 || filter ? (
                   <div className="relative mb-2.5">
                     <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden />
@@ -1447,11 +1447,11 @@ function ComposerDialog({ open, prefill, onClose }: { open: boolean; prefill: Co
                             }}
                           >
                             {/* an element, not a string: the Button truncates a string label, and this is the only way on
-                                from the refusal — it wraps at 320 px instead (review round 4 of phase 2) */}
+                                from the refusal — it wraps at 320 px instead */}
                             <span className="min-w-0 whitespace-normal break-words">Write to the claimant instead</span>
                           </Button>
                         ) : refusal.seeCard && doc ? (
-                          // the letter's advice card, scrolled to and its title focused (review round 3 of phase 2)
+                          // the letter's advice card, scrolled to and its title focused
                           <Link to={`/documents/${doc.id}`} state={{ focus: "advice" }} className={buttonVariants({ size: "sm" })}>
                             Open the letter's card
                           </Link>

@@ -70,7 +70,7 @@ describe("LoadError", () => {
     renderWithProviders(<LoadError what="your letters" error={new ApiError(500, "Internal error")} onRetry={retry} />);
     const alert = screen.getByRole("alert");
     expect(within(alert).getByRole("heading", { level: 2, name: "Couldn't load your letters" })).toBeInTheDocument();
-    // a server error is no "didn't answer": Ordnung did answer (UX audit U9)
+    // a server error is no "didn't answer": Ordnung did answer
     expect(alert).toHaveTextContent("Your letters are safe — Ordnung ran into a problem while loading your letters. Try again, and restart Ordnung if it keeps happening.");
     // the raw server message is not the sentence: it waits behind "Technical details"
     const details = within(alert).getByText("Technical details").closest("details")!;
@@ -329,7 +329,7 @@ describe("Receipt", () => {
   });
 
   it("shows a deadline the law adds in the law's words, never as what the letter says", () => {
-    // review round 1: the dismissal's court-action to-do quoted Ordnung's wording of § 4 KSchG as the letter's
+    // the dismissal's court-action to-do once quoted Ordnung's wording of § 4 KSchG as the letter's
     renderWithProviders(
       <Receipt
         summary="Three weeks after the day you received it: Thu 15 Oct 2026."
@@ -338,7 +338,7 @@ describe("Receipt", () => {
       />,
     );
     const caption = screen.getByText(/What the law says/);
-    // review round 2: one parenthesis at most, and the law's words without the letter's yellow marker
+    // one parenthesis at most, and the law's words without the letter's yellow marker
     expect(caption).toHaveTextContent("What the law says, in short — § 4 S. 1 KSchG");
     expect(screen.queryByText(/What the letter says/)).toBeNull();
     expect(screen.getByText(/innerhalb von drei Wochen/).className).not.toMatch(/\bmarker\b/);

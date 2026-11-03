@@ -22,7 +22,7 @@ export interface MarkdownProps {
   language?: string;
   /**
    * The app's today (`useTodayISO`): this year's dates leave the year out ("Thu 15 Oct"), as on every
-   * other page (UI audit round 2). Without it a date written out keeps its year, and an ISO date gets one.
+   * other page. Without it a date written out keeps its year, and an ISO date gets one.
    */
   today?: string;
   className?: string;
@@ -41,7 +41,7 @@ const LEFT_OUT = new RegExp(
   `\\[(${(PLACEHOLDERS as string[]).map((p) => p.slice(1, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[ \u00a0]")).join("|")})\\]`,
   "g",
 );
-/** A whole placeholder (its spaces already no-break): it always joins the chips after it (review round 1). */
+/** A whole placeholder (its spaces already no-break): it always joins the chips after it. */
 const LEFT_OUT_WHOLE = new RegExp(`^${LEFT_OUT.source}$`);
 /** Punctuation that must not wrap onto a line of its own after a citation chip. */
 const TRAILING_PUNCT = /^[.,;:!?)\]»”“"'…]+/;
@@ -60,7 +60,7 @@ const KEEP_TOGETHER: [RegExp, string][] = [
 
 /** `text` with no-break spaces inside amounts, dates, law references (the section sign and its number,
  * "Abs. 3", "Art. 6") and the check's placeholders, and no-break hyphens inside reference numbers
- * ("TM-2026-0048213"), so none of them is split across two lines (UI audit round 1: a line broke between
+ * ("TM-2026-0048213"), so none of them is split across two lines (a line once broke between
  * the section sign and "56" at 320 px). Display only: a copied answer is the stored text, selected text
  * loses the glue (`copyWithoutGlue`). */
 export function keepTogether(text: string): string {
@@ -84,7 +84,7 @@ function prepare(nodes: Inline[], dates: Render["dates"]): Inline[] {
 
 function renderText(v: string, key: string, dates: Render["dates"]): ReactNode {
   // answers quote dates from the ledger as ISO ("due 2026-10-01"): show them like the rest of the app — in
-  // the answer's language (review round 3 of phase 2: a German answer read "bis Thu 15 Oct 2026 fällig")
+  // the answer's language (a German answer once read "bis Thu 15 Oct 2026 fällig")
   const parts = v.split(LEFT_OUT);
   if (parts.length === 1) return <Fragment key={key}>{keepTogether(dates(v))}</Fragment>;
   return (
@@ -310,7 +310,7 @@ export function Markdown({ text, citations, renderCitation, language = "en", tod
   };
   return (
     // a long compound ("Wohnungsgeberbestätigung") or reference wraps anywhere rather than widen the page,
-    // inside any flex or grid parent too (UI audit round 1: 344 px wide at 320)
+    // inside any flex or grid parent too (it was 344 px wide at 320)
     <div {...langProps(language, text)} className={cn("space-y-3 text-[15px] leading-[1.65] text-ink/90 [overflow-wrap:anywhere]", className)}>
       {blocks.map((b, i) => renderBlock(b, i, r))}
     </div>

@@ -1,5 +1,5 @@
 /**
- * Letters being read (audit round 1, bucket "shell-b"): a filed letter's card waits while it is
+ * Letters being read: a filed letter's card waits while it is
  * pointed at or focused, a card that goes hands focus on, a failed letter says why in full and
  * offers "Try again" and "Open letter" until dismissed, and several letters share one compact
  * card that opens into a list capped for phones.

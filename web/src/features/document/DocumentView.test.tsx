@@ -41,12 +41,12 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
     expect(within(verdict).getByText("Tax assessment")).toBeInTheDocument();
     expect(within(verdict).getByText(/Decide whether to object/)).toBeInTheDocument();
     expect(within(verdict).getByText("Wed 21 Oct")).toBeInTheDocument();
-    // the app's one countdown formatter, as in the to-do list and on Today (UI audit round 1: "in 23 days" here,
+    // the app's one countdown formatter, as in the to-do list and on Today (not "in 23 days" here,
     // "in 3 weeks" everywhere else)
     expect(within(verdict).getByText("in 3 weeks")).toBeInTheDocument();
     expect(within(verdict).getByRole("button", { name: /Why this date\?/ })).toBeInTheDocument();
     expect(within(verdict).getByText(/can hardly be changed/)).toBeInTheDocument();
-    // an objection that may ask to suspend payment opens the composer, which asks (review round 1)
+    // an objection that may ask to suspend payment opens the composer, which asks
     expect(within(verdict).getByRole("link", { name: "Draft objection" })).toHaveAttribute("href", "/letters?kind=objection&doc=doc_tax");
     expect(within(verdict).queryByRole("button", { name: /^Pay/ })).toBeNull();
     expect(within(verdict).getByText(/Not legal advice/)).toBeInTheDocument();
@@ -208,7 +208,7 @@ describe("warnings & Please check", () => {
   });
 
   it("says a late arrival may not move a company's date, and what saving the day did", async () => {
-    // reviewer repro: the engine still counted from the day the letter usually counts as delivered,
+    // the engine still counted from the day the letter usually counts as delivered,
     // but the toast said "Counting from <arrival>, when the letter arrived"
     const gym = await detailFromMock("doc_gym_price");
     const company = { ...gym, party: { ...gym.party!, kind: "company" as const } };

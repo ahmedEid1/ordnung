@@ -1,6 +1,6 @@
 /**
- * UI audit round 1 (Ask): the tool trace, the source list, the question bubble and linked text; round 2:
- * this year's dates without their year.
+ * An Ask turn's parts: the tool trace, the source list, the question bubble and linked text, and this year's
+ * dates without their year.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
@@ -75,7 +75,7 @@ describe("sources and markers", () => {
     const text = within(chip).getByText(title);
     expect(text.className).toContain("line-clamp-3");
     expect(text.className).not.toContain("truncate");
-    // the number keeps its width next to a long title (UI audit round 1: "11" squeezed to 12 px)
+    // the number keeps its width next to a long title ("11" was squeezed to 12 px)
     expect(chip.querySelector("[aria-hidden]")?.className).toContain("shrink-0");
   });
 
@@ -152,7 +152,7 @@ describe("sources and markers", () => {
       expect(px(marker, /^-mr-\[(.+)\]$/)).toBe(reach);
       // raised like a footnote, target and drawn marker together
       expect(marker).toHaveClass("relative", "-top-[0.35em]", "align-baseline");
-      // no ::after reaching past the box (UI audit round 1's 4 px): the sweep and axe measure only the box
+      // no ::after reaching past the box (it reached 4 px past): the sweep and axe measure only the box
       expect(marker.className).not.toMatch(/(^|\s)after:/);
       // keyboard focus rings the marker that is seen, not the invisible target round it; hover fills it
       expect(marker).toHaveClass("outline-none", "focus-visible:before:outline-2", "focus-visible:before:outline-offset-1", "focus-visible:before:outline-accent");
@@ -240,7 +240,7 @@ describe("linked text (Ideas)", () => {
   });
 });
 
-// UI audit round 2 (R2-today-ask-6): Ask wrote "Thu 15 Oct 2026" where every other page writes "Thu 15 Oct"
+// Ask wrote "Thu 15 Oct 2026" where every other page writes "Thu 15 Oct"
 describe("this year's dates", () => {
   const TODAY = "2026-09-28";
 

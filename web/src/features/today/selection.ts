@@ -40,7 +40,7 @@ export type DateRole = "send_by" | "arrive_by" | "pay_by" | "transfer_by" | "col
 
 /** How a to-do's receipt says the usual time to post has passed (`SENDING_TIME_PASSED` in
  * `ordnung.rules.deadlines`; a backend test reads this file): its send-by is only "today", and a letter
- * posted today may arrive too late — the date that counts is when it must arrive (review round 4 of phase 2). */
+ * posted today may arrive too late — the date that counts is when it must arrive. */
 export const SENDING_TIME_PASSED = "The usual sending time has passed";
 
 /** Whether the usual time to post an item's letter has passed (its receipt says so). */
@@ -272,7 +272,7 @@ export function actionFromItem(item: Item, ctx: CandidateContext): TodayAction |
 export function actionFromContract(contract: Contract, ctx: CandidateContext): TodayAction | null {
   const c = contract.computed;
   if (!offersEndingLetter(contract) || !c) return null; // e.g. the broadcasting fee: nothing to decide
-  if (cancellationSent(contract)) return null; // its cancellation was sent: decided (walkthrough of phase 2)
+  if (cancellationSent(contract)) return null; // its cancellation was sent: decided
   const actionDate = c.send_by ?? c.cancel_by;
   if (!actionDate) return null;
   const daysLeft = daysBetween(actionDate, ctx.today);

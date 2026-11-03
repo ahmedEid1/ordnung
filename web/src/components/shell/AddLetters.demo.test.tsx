@@ -1,5 +1,5 @@
 /**
- * The online demo keeps no files (audit round 1, bucket "shell-b"): "Add letters" and a drop
+ * The online demo keeps no files: "Add letters" and a drop
  * explain that straight away — no file picker, no confirmation, then a refusal toast.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

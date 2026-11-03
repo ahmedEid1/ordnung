@@ -14,7 +14,7 @@ describe("suggested questions", () => {
   });
 
   it("outside the demo fit the person: the month ahead, the residence permit only with a student visa", () => {
-    // UI audit round 1: a fresh install offered the demo's "October" and a residence permit to everyone
+    // a fresh install once offered the demo's "October" and a residence permit to everyone
     const q = (today: string, studentVisa: boolean) => suggestedQuestions({ today: new Date(`${today}T12:00:00`), studentVisa }).map((s) => s.question);
     expect(q("2027-03-04", false)).toEqual([
       "When does my phone contract end, and by when do I have to cancel it?",

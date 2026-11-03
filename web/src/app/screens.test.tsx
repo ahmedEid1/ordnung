@@ -1,5 +1,5 @@
 /**
- * The full-screen states (audit round 1, bucket "shell-b"): a boot splash that says what it is
+ * The full-screen states: a boot splash that says what it is
  * waiting for and gives up waiting silently, the "isn't running" / "open from its link" card with
  * named commands to copy, a 404 with an h1 and a way to the Inbox, and a route error in the same
  * card as a failed load with technical details that are a real target and can be copied.

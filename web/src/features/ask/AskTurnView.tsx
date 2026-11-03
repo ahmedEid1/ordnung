@@ -23,8 +23,8 @@ import type { TitleLookup } from "./tools";
 
 /**
  * The question, as a heading of its turn: screen readers can jump from question to question, and each
- * answer's "Sources" (h3) sits under its question instead of straight under the page's h1 (UI audit
- * round 1). A long word or an IBAN wraps inside the bubble instead of widening the page.
+ * answer's "Sources" (h3) sits under its question instead of straight under the page's h1. A long
+ * word or an IBAN wraps inside the bubble instead of widening the page.
  */
 export function QuestionBubble({ text }: { text: string }) {
   return (
@@ -42,7 +42,7 @@ export function QuestionBubble({ text }: { text: string }) {
 function Thinking({ writing }: { writing: boolean }) {
   return (
     // the dots sit on the first line of a wrapped line (phones), as the trace's icons do — centred on the
-    // whole paragraph they sat beside its middle line (UI audit round 2)
+    // whole paragraph they sat beside its middle line
     <p className="flex items-start gap-2 text-[14px] leading-5 text-muted">
       <span className="mt-[7px] flex shrink-0 gap-1" aria-hidden>
         {[0, 1, 2].map((i) => (
@@ -103,12 +103,12 @@ export function splitCheckNote(text: string): { warnings: string[]; rest: string
 export function CheckNote({ text, label }: { text: string | null; label?: string | null }) {
   const { warnings, rest } = text ? splitCheckNote(text) : { warnings: [], rest: "" };
   const shownLabel = text ? checkNoteLabel(text, label) : label;
-  // a German note is read in a German voice (WCAG 3.1.2; review round 4 of phase 2: only the answer had lang="de")
+  // a German note is read in a German voice (WCAG 3.1.2; once only the answer had lang="de")
   const lang = shownLabel === CHECK_NOTE_LABEL_DE ? "de" : undefined;
   return (
     <div className="mt-3 space-y-2">
       {/* what to decide before paying comes first, in the warning tone — under an answer that says the new rent
-          "is due" it was the last sentence of the grey note (review round 2) */}
+          "is due" it was the last sentence of the grey note */}
       {warnings.length ? (
         <p role="note" lang={lang} className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-[13.5px] leading-5 text-ink">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-warn" aria-hidden />
@@ -144,7 +144,7 @@ export interface AnswerViewProps {
   onRetry?: () => void;
   /**
    * The app's today (`useTodayISO`, the demo's simulated day): the steps' and the answer's dates leave
-   * this year out ("Thu 15 Oct"), as on every other page (UI audit round 2). Display only.
+   * this year out ("Thu 15 Oct"), as on every other page. Display only.
    */
   today?: string;
   /** The demo's letters or to-dos changed since it started: its recorded answers no longer fit. */
@@ -153,7 +153,7 @@ export interface AnswerViewProps {
 
 /**
  * What the demo shows for a question it has no recorded answer for (`error_code: "demo_miss"`): a note,
- * not a failure — "Try again" could never work (UI audit round 1). The same words in the local demo and
+ * not a failure — "Try again" could never work. The same words in the local demo and
  * the online one, which also says how to ask about your own letters. Once the demo's letters or to-dos
  * changed (`changed`), the suggested questions would miss too, so it doesn't point to them.
  */
@@ -176,7 +176,7 @@ const CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[12.5px
 /**
  * What the demo shows once the person changed its letters, to-dos or household (`error_code: "demo_changed"`, and on
  * the Ask page instead of the suggested questions): its answers were recorded on Sam's letters as the demo
- * started, so every suggested question misses until it starts over (FEAT G2: the note said to try a
+ * started, so every suggested question misses until it starts over (the note once said to try a
  * suggested question — what had just failed). The words of the backend's `DEMO_CHANGED`: the reset doesn't touch
  * a demo that runs, so it says to stop it first.
  */
@@ -227,7 +227,7 @@ export function AnswerView({ answer, language, resolve, titleOf, onRetry, today,
   const isCopied = copied === copyId;
 
   return (
-    // on phones a smaller mark and gap leave the answer 12 px more of its narrow column (UI audit round 1)
+    // on phones a smaller mark and gap leave the answer 12 px more of its narrow column
     <div className="flex gap-2 sm:gap-3">
       <LogoMark className="mt-1 size-5 rounded-md sm:mt-0.5 sm:size-7 sm:rounded-lg" />
       <div className="min-w-0 flex-1" aria-busy={live || undefined}>

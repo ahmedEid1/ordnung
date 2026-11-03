@@ -1,5 +1,5 @@
 /**
- * The verdict card and the page viewer on real pages (UI audit round 1): the verdict leads in English
+ * The verdict card and the page viewer on real pages: the verdict leads in English
  * and with the right to-do, its headline breaks German compounds only at their joints, and the page
  * viewer has no scroll box of its own on phones and tablets (a swipe scrolled only the box).
  */
@@ -120,7 +120,7 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     await expect(verdict.getByRole("button", { name: /^Pay/ })).toHaveCount(0);
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
     await expect(verdict.getByRole("link", { name: /Open the payment reminder/ })).toBeVisible();
-    // the list below says so too, uncounted (UI audit round 2: "25 days overdue" in red under this verdict)
+    // the list below says so too, uncounted (it said "25 days overdue" in red under this verdict)
     const todos = page.getByRole("region", { name: /To-dos & dates/ });
     await expect(todos).not.toContainText("overdue");
     await expect(todos).toContainText("Replaced by the payment reminder of");
@@ -137,14 +137,14 @@ test.describe("phone 390 px: what the verdict leads with, and the viewer", () =>
     const verdict = page.getByRole("article").first();
     await expect(verdict.getByText(/overdue/)).toHaveCount(0);
     await expect(verdict.getByRole("list", { name: "Probably dealt with" })).toContainText(shownAs(`Still open? ${history.title}`));
-    // … and so does the list below (UI audit round 2)
+    // … and so does the list below
     const todos = page.getByRole("region", { name: /To-dos & dates/ });
     await expect(todos).not.toContainText("overdue");
     await expect(todos).toContainText("Already past when the letter was added");
   });
 
   test("the lease you can cancel any month has no 'decide by'", async ({ page }) => {
-    // (UI audit round 2: "decide by … tomorrow" on a lease)
+    // (it said "decide by … tomorrow" on a lease)
     await openLetter(page, "03_mietvertrag.pdf");
     const contract = page.getByRole("region", { name: "Contract" });
     await expect(contract).toContainText("Cancel any time");

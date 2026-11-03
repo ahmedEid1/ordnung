@@ -1,8 +1,8 @@
 /**
- * Settings → Your computers → Your other computers (design §19.1, card 3): each with what it is now, when its last
+ * Settings → Your computers → Your other computers (SPEC §12c): each with what it is now, when its last
  * change arrived here (this computer's clock), whether it has this computer's latest changes, what its calendar
  * sync means here, and **Forget…** for a lost, stolen or broken one. Forgetting doesn't lock a computer out: it
- * still knows the passphrase (finding 18).
+ * still knows the passphrase.
  */
 import { useRef, useState } from "react";
 import { CalendarDays, CircleCheck, Clock, Laptop, TriangleAlert, UserX } from "lucide-react";

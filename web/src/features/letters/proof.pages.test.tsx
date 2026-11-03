@@ -1,16 +1,16 @@
 /**
- * Audit (UI audit round 2, proof of sending):
+ * Proof of sending: its file page, the Add proof dialog and the proof card, and what they used to get wrong:
  *
  * - The proof file page was titled by the raw file name, its breadcrumb read "Your letter" ("Back to
- *   Your letter" on phones), and the file's full name was cut short with only a tooltip (R2-proof-2).
- * - A failed load showed the server's raw message instead of the app's one failed-load card (R2-proof-3).
- * - The proof's note was a one-line field: a 200-character note was edited through a slit (R2-proof-4).
- * - The page sat in a centred column while its breadcrumb started at the page's edge (R2-proof-5).
- * - An "other" proof with a note still said "Shows: What it shows — describe it in the note" (R2-proof-6).
- * - Removing a proof from its page asked more vaguely than on the letter (R2-proof-7).
- * - A missing file wasn't marked on its field, and Escape didn't leave a tracking-number change (R2-proof-8).
+ *   Your letter" on phones), and the file's full name was cut short with only a tooltip.
+ * - A failed load showed the server's raw message instead of the app's one failed-load card.
+ * - The proof's note was a one-line field: a 200-character note was edited through a slit.
+ * - The page sat in a centred column while its breadcrumb started at the page's edge.
+ * - An "other" proof with a note still said "Shows: What it shows — describe it in the note".
+ * - Removing a proof from its page asked more vaguely than on the letter.
+ * - A missing file wasn't marked on its field, and Escape didn't leave a tracking-number change.
  * - Privacy statements said "AI" (the app says "Claude"), "Waiting for" used the Deadline hourglass,
- *   and the page's title had its own size instead of the detail pages' one (R2-proof-9).
+ *   and the page's title had its own size instead of the detail pages' one.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";

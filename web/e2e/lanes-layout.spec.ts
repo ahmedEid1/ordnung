@@ -1,5 +1,5 @@
 /**
- * The life-lanes chart on the real demo, where jsdom can't measure (UI audit round 1, lanes):
+ * The life-lanes chart on the real demo, where jsdom can't measure:
  * "Fit all" really fits every month (nothing scrolls, captions stay inside), a bar that runs past
  * the chart keeps its whole keyboard focus ring (no mask clips it), markers never overlap and keep
  * 24 px targets, the lane labels on phones keep the next date inside the card, and the year label

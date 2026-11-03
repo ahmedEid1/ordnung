@@ -1,5 +1,5 @@
 /**
- * UI audit round 1, the letter page's panel: key facts, to-dos, thread / contract / drafts, Ideas
+ * The letter page's panel: key facts, to-dos, thread / contract / drafts, Ideas
  * and "Explained simply" — what was cut, overflowed, misleading or repeated.
  */
 import { useState } from "react";

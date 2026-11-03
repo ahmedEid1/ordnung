@@ -1,10 +1,10 @@
 /**
- * The Contracts page on the real demo, where jsdom can't look (UI audit round 1, contracts): the
+ * The Contracts page on the real demo, where jsdom can't look: the
  * cost summary never cuts a figure off ("€982.3…", "Thu 8 …") and goes four across only when its
  * column has room; the cards stay inside their column at every width; the electricity contract,
  * whose end date is only the end of its minimum term, is drawn running on (not "Ends in 2 days");
  * and a contract picked in the chart takes the keyboard focus along to its card. A contract whose
- * notice period the letter didn't give gets it on its card (UI audit round 1, leftovers): the form
+ * notice period the letter didn't give gets it on its card: the form
  * fits a phone, and the rules engine works the dates out from it.
  */
 import type { Locator, Page } from "@playwright/test";
@@ -109,7 +109,7 @@ function asLedgerRow({ created_at: _created, updated_at: _updated, ...row }: Con
 // The contract is the current account: § 675h BGB gives a current account's dates once its notice is known to
 // run "any time", and the toast and the card say so ("cancel any time with one month's notice", "Current
 // account: …"). What its reading gives changes with every re-recording of the demo — no notice terms at all
-// (UI audit round 1), or "any time" and no period from its letter's "jederzeit kostenfrei kündigen" (prompt 11)
+// at first, or "any time" and no period from its letter's "jederzeit kostenfrei kündigen" (prompt 11)
 // — and the law fills in the period of the other contracts read without one (the lease, the job), so the
 // precondition is set up through the API the card's form uses: with the account's terms cleared, nothing is
 // left for a rule to work with (no start date, no term: "as written", low confidence, no dates), and the card
@@ -168,7 +168,7 @@ test("at 320 px: the notice period entered on the card of a contract whose lette
     await expect(
       page.getByText("You can cancel any time with one month's notice: if your cancellation arrives by Fri 2 Oct 2026, the contract ends on Mon 2 Nov 2026."),
     ).toBeVisible();
-    // the period is the person's now (R2-inbox-timeline-contracts-1): no "Please check" for what they just
+    // the period is the person's now: no "Please check" for what they just
     // checked, and a way left to correct it, which keeps the focus — after a reload too
     await expect(card).toContainText("Current account: cancellable any time with 1 month's notice");
     await expect(card.getByText("Please check")).toHaveCount(0);

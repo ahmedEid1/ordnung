@@ -279,7 +279,7 @@ test("“Note a call” on an overdue promise opens the drawer with the form, on
 });
 
 test("adding a proof file says so once — never as a letter being read in the upload corner", async ({ page }) => {
-  // UI audit R2-proof-1: the toast came with the corner's “Filed — everything is on your timeline” card
+  // the toast came with the corner's “Filed — everything is on your timeline” card
   await page.setViewportSize({ width: 390, height: 844 });
   const { draftId } = setup!;
   await open(page, `/letters/${draftId}`);

@@ -170,7 +170,7 @@ describe("mock dataset", () => {
   });
 
   it("says on the letter that a re-filed letter keeps the dates of the kind it was read as (no rules engine)", async () => {
-    // review round 1: a Mahnbescheid re-filed as an enforcement order still said "object (Widerspruch)"
+    // a Mahnbescheid re-filed as an enforcement order once still said "object (Widerspruch)"
     const s = srv();
     await s.handle("PATCH", "/documents/doc_lease", new URLSearchParams(), { kind: "landlord_notice" });
     let doc = (await get<DocumentDetail>(s, "/documents/doc_lease")).document;
@@ -423,7 +423,7 @@ describe("mock dataset", () => {
       );
     const streamed = events.filter((e) => e.type === "text").map((e) => e.text ?? "").join("");
     const done = events.find((e) => e.type === "done")!;
-    // like the real API, no word of the answer is sent before the check (review round 4): one "writing"
+    // like the real API, no word of the answer is sent before the check: one "writing"
     // event, then the checked answer — the model's own date arithmetic never shows, not even briefly
     expect(events.filter((e) => e.type === "text")).toHaveLength(1);
     expect(streamed).toBe("");

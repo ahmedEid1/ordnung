@@ -120,7 +120,7 @@ describe("the answer check's note", () => {
     const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent("Dates and amounts checked against your records.");
     unmount();
-    // final review 3: the line says what was checked, in the answer's language
+    // the line says what was checked, in the answer's language
     const german = inRouter(<AnswerView answer={{ ...answer, noteLabel: "Von Ordnung geprüft:" }} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent("Daten und Beträge mit Ihren Unterlagen abgeglichen.");
     german.unmount();
@@ -128,7 +128,7 @@ describe("the answer check's note", () => {
     const again = inRouter(<AnswerView answer={{ ...answer, messageId: null, checked: false }} resolve={resolve} />);
     expect(screen.queryByRole("note")).toBeNull();
     again.unmount();
-    // final review: an answer stored before the claim-level check is not labelled as checked
+    // an answer stored before the claim-level check is not labelled as checked
     const [old] = turnsFromHistory([
       { id: "u", thread_id: "t", role: "user", content: "When?", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
       { id: "o", thread_id: "t", role: "assistant", content: "Moved to 31.12.2027.", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
@@ -166,12 +166,12 @@ describe("the answer check's note", () => {
     const { container } = inRouter(<AnswerView answer={writing} resolve={resolve} />);
     expect(container.textContent).not.toContain("31.12.2027");
     const line = screen.getByText(/appears once Ordnung has checked it against your records/);
-    // the dots sit on the first line when it wraps on a phone, not beside the middle one (UI audit round 2;
-    // e2e/layout.spec.ts measures it at 320 px)
+    // the dots sit on the first line when it wraps on a phone, not beside the middle one
+    // (e2e/layout.spec.ts measures it at 320 px)
     expect(line).toHaveClass("items-start", "leading-5");
     expect(line.querySelector(":scope > span[aria-hidden]")).toHaveClass("mt-[7px]", "shrink-0");
     expect(screen.queryByRole("note")).toBeNull();
-    // final review: not a second live region — the page's announcer says it (and e2e finds one status)
+    // not a second live region — the page's announcer says it (and e2e finds one status)
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
@@ -225,7 +225,7 @@ describe("citation chips stay with their fact", () => {
 
   it("the word before a chip wraps with it, so the chip never starts a line (review round 2)", () => {
     // a no-break space alone did not do it: a line may break between text and an inline-grid chip.
-    // The chip follows the word like a footnote, without a space (UI audit round 1: "GmbH [1] .")
+    // The chip follows the word like a footnote, without a space (not "GmbH [1] .")
     const valid = citationIndex([{ type: "item", id: "itm_a" }]);
     const { container } = inRouter(<Markdown text="Due by **Wed 21 Oct** [item:itm_a]." citations={valid} renderCitation={renderCite} />);
     expect(groups(container)).toEqual(["Wed\u00a021\u00a0Oct1."]);

@@ -268,7 +268,7 @@ export function templateRefusal(
         letterKind === "enforcement_order"
           ? "The period to object to an enforcement order is a Notfrist (two weeks, § 339 ZPO; one week at a labour court, § 59 ArbGG) — no one can extend it. Object in time instead, or get advice at once."
           : "The period to pay or object to a court payment order is set by law (two weeks, § 692 ZPO; one week at a labour court, § 46a ArbGG) — no one can extend it by being asked. Object in time instead, or get advice at the court's Rechtsantragstelle.",
-      // the letter's card names the Rechtsantragstelle and how to object (review round 3 of phase 2)
+      // the letter's card names the Rechtsantragstelle and how to object
       seeCard: true,
     };
   }

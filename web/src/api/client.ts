@@ -5,7 +5,7 @@
  * - Every non-GET request carries `X-Ordnung-Client: web` (required by the API's CSRF defence).
  * - Errors become {@link ApiError} with the HTTP status and the message from FastAPI's `{detail}` — or, when
  *   the answer has no words for a person (a server error that says no more than its status, a body that isn't
- *   Ordnung's JSON), a plain sentence, the server's own words kept as `technical` (UX audit U9: a toast said
+ *   Ordnung's JSON), a plain sentence, the server's own words kept as `technical` (a toast once said
  *   "Internal Server Error").
  */
 

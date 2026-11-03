@@ -181,7 +181,7 @@ describe("values copied from letters", () => {
   });
 
   it("keeps one weekday when the text writes one before an ISO date", () => {
-    // review finding: a recorded answer's "due Wed 2026-09-30" showed as "due Wed Wed 30 Sep 2026"
+    // a recorded answer's "due Wed 2026-09-30" once showed as "due Wed Wed 30 Sep 2026"
     expect(formatInlineDates("due Wed 2026-09-30", "2026-09-28")).toBe("due Wed 30 Sep");
     expect(formatInlineDates("fällig Mi. 2026-09-30 und Thursday, 2026-10-01", "2026-09-28")).toBe(
       "fällig Wed 30 Sep und Thu 1 Oct",

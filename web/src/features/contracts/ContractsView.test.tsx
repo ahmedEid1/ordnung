@@ -107,7 +107,7 @@ describe("Contracts page", () => {
   });
 });
 
-/** UI audit round 1 (contracts): layout, states and wording. */
+/** Layout, states and wording. */
 describe("Contracts page — fits every width, honest states", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -338,7 +338,7 @@ describe("Contracts page — fits every width, honest states", () => {
   });
 });
 
-/** UI audit round 1 (leftovers): terms we couldn't work out — the notice period entered on the card. */
+/** Terms we couldn't work out — the notice period entered on the card. */
 describe("Contracts page — adding a notice period by hand", () => {
   afterEach(() => {
     act(() => __clearToasts());
@@ -415,7 +415,7 @@ describe("Contracts page — adding a notice period by hand", () => {
       path: "/contracts/ctr_bank",
       body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month", notice_day: null },
     });
-    // the card shows the dates the engine worked out; the period is the person's now (R2-inbox-timeline-contracts-1):
+    // the card shows the dates the engine worked out; the period is the person's now:
     // no "Please check" for what they just checked, and a quiet way left to correct it, which keeps the focus
     const change = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Change notice period/ });
     const saved = card("Musterbank Girokonto");

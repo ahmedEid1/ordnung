@@ -1,9 +1,9 @@
 /**
- * "Add a date" on the real demo (feature audit G1: the wizard, Settings and the upload dialog promised "add your own
- * dates" with nowhere to do it): a reminder of your own on Timeline, and a deadline on a letter kept private, which
+ * "Add a date" on the real demo (the wizard, Settings and the upload dialog promised "add your own dates" with
+ * nowhere to do it): a reminder of your own on Timeline, and a deadline on a letter kept private, which
  * Claude never read and so has no dates of its own — from the keyboard, with the dialog and both pages free of
- * serious axe findings. On the private letter, ticking the date off keeps focus on its button (UX audit U4). A date
- * that repeats on a working day (audit item 26) is dated by its rule, shows it on Timeline, and is changed in its
+ * serious axe findings. On the private letter, ticking the date off keeps focus on its button. A date that
+ * repeats on a working day is dated by its rule, shows it on Timeline, and is changed in its
  * own "Edit your date" dialog; so is one that repeats every week, whose calendar file is one event at its next date.
  *
  * It adds to-dos and a letter to the shared demo, so it runs last (its own project) and takes them away again.

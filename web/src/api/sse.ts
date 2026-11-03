@@ -143,8 +143,8 @@ function applyJobProgress(ev: JobProgressEvent) {
 
 /**
  * On connecting, what the queue says (`GET /jobs`): the letters that wait, with why — the server says it only
- * when a letter starts waiting, so a reload or a new tab showed "Opening the file…" for good (final check,
- * F-M2). A letter heard of since the connection opened (`openedAt`) keeps what it heard. A letter waiting for
+ * when a letter starts waiting, so a reload or a new tab showed "Opening the file…" for
+ * good. A letter heard of since the connection opened (`openedAt`) keeps what it heard. A letter waiting for
  * Claude shows the banner too when the server sent no pause first (it sends one under way): right after a
  * restart, before the worker tried the letter again — `llm.paused` or `llm.resumed` follows that try.
  * Exported for tests.

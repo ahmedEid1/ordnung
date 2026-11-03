@@ -332,7 +332,7 @@ const ASKS_FOR_DELIVERY = /^(Find the delivery date|Enter the day the dismissal 
 function adviceFor(db: MockDb, d: Document): LetterAdvice | null {
   const own = ADVICE_BY_DOC[d.id];
   // a card recognised on read (an operating-cost statement filed as a utility bill) goes once the person chose
-  // another kind for the letter — also the kind it is stored as (review round 2: "Utility bill" kept the card)
+  // another kind for the letter — also the kind it is stored as ("Utility bill" once kept the card)
   const chosen = db.state.activity.some((a) => a.kind === "document.kind" && a.ref_id === d.id);
   const ownStands = own && d.kind === db.seedKind(d.id) && !(chosen && own.kind !== d.kind);
   const card = ownStands ? own : isHighStakes(d.kind) ? (d.received_date ? ADVICE_ARRIVED_BY_KIND : ADVICE_BY_KIND)[d.kind] : null;
@@ -592,7 +592,7 @@ function composeTemplateDraft(db: MockDb, body: DraftCreate & { kind: TemplateDr
   const details = body.details ?? {};
   // instalments on a court order offered to its claimant, typed in: linked to the order, never to the court
   const orderName = doc?.kind === "court_payment_order" ? "Mahnbescheid" : doc?.kind === "enforcement_order" ? "Vollstreckungsbescheid" : null;
-  // a typed court is no claimant (compose.to_claimant, review round 3 of phase 2)
+  // a typed court is no claimant (compose.to_claimant)
   const toClaimant =
     body.kind === "payment_plan" && orderName !== null && Boolean(details.recipient?.trim()) && !mayBeCourt(details.recipient);
   const partyId = toClaimant ? null : body.party_id ?? contract?.party_id ?? doc?.party_id ?? null;
@@ -1585,7 +1585,7 @@ const routes: [string, string, Handler][] = [
       if (kindChanged) {
         db.refileRuleItems(d);
         // the page keeps the dates and to-dos of the kind the letter was read as: say so where they are, not
-        // only in the toast (review round 1: the verdict of a re-filed court order still said "Widerspruch")
+        // only in the toast (the verdict of a re-filed court order once still said "Widerspruch")
         const seed = db.seedKind(d.id);
         d.warnings = d.warnings.filter((w) => !w.startsWith(DEMO_NOTE));
         if (seed && d.kind !== seed) d.warnings.push(refiledNote(seed, d.kind));
@@ -1867,7 +1867,7 @@ const routes: [string, string, Handler][] = [
         if (!statutory && (!d?.remedy || !["einspruch", "widerspruch"].includes(d.remedy.type)))
           throw new HttpError(422, "An objection letter needs a decision with instructions on how to object (Rechtsbehelfsbelehrung).");
         // an objection to a court order goes to the court, typed in when its sender isn't one
-        // (compose.objection_to_typed_court, review round 3 of phase 2)
+        // (compose.objection_to_typed_court)
         if (d && needsTypedCourt(d, db.party(d.party_id)) && !mayBeCourt(b.details?.recipient)) throw new HttpError(422, COURT_OBJECTION_RECIPIENT);
       }
       const draft = composeDraft(db, b);

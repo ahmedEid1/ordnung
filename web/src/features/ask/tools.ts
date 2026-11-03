@@ -145,7 +145,7 @@ const DATE_WITH_YEAR =
 
 /**
  * "Thu 15 Oct 2026" → "Thu 15 Oct" when 2026 is the year of the app's `today`, as every other page writes
- * this year's dates (UI audit round 2: the backend's labels and the answers write dates out in full). A date
+ * this year's dates (the backend's labels and the answers write dates out in full). A date
  * in another year keeps it; without `today` nothing changes. Display only: a copied answer is as stored.
  */
 export function withoutThisYear(text: string, today?: DateInput): string {
@@ -156,7 +156,7 @@ export function withoutThisYear(text: string, today?: DateInput): string {
 
 /**
  * The result next to a finished step, dates in the app's style. With the app's `today` this year's dates
- * leave the year out, as on every other page ("Due 2026-10-15" → "Due Thu 15 Oct"; UI audit round 2);
+ * leave the year out, as on every other page ("Due 2026-10-15" → "Due Thu 15 Oct");
  * without it an ISO date gets its year ("Due Thu 15 Oct 2026").
  */
 export function toolResultText(result: string, today?: DateInput): string {
@@ -186,7 +186,7 @@ export function toolLabel(step: Pick<ToolStep, "name" | "input" | "label">, titl
 
 /**
  * What a folded trace says: how many steps looked at the person's records — "Checked today's date"
- * is not one of them (UI audit round 1: "Looked at 2 things" when one of them was today's date).
+ * is not one of them (it said "Looked at 2 things" when one of them was today's date).
  */
 export function traceSummary(steps: readonly Pick<ToolStep, "name">[]): string {
   const n = steps.filter((s) => s.name !== "today").length;

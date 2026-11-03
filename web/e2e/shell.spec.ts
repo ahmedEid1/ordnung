@@ -101,7 +101,7 @@ test.describe("phone: a letter page", () => {
     const bar = page.getByRole("banner");
     const title = bar.getByRole("navigation", { name: "Breadcrumb" }).locator('[aria-current="page"]');
     const width = (await title.boundingBox())!.width;
-    // round 1 had about 140 px here; wave 2's My numbers icon had squeezed it to 102 px ("1st Payment…")
+    // it once had about 140 px here; the My numbers icon then squeezed it to 102 px ("1st Payment…")
     expect(width, "breadcrumb title width at 390 px").toBeGreaterThanOrEqual(140);
     await expect(bar.getByRole("link", { name: "My numbers" })).toBeHidden();
     await expect(bar.getByRole("link", { name: /^Settings/ })).toBeVisible();
@@ -202,7 +202,7 @@ test.describe("Ordnung isn't reachable", () => {
 });
 
 // ------------------------------------------------------------------------------------------------
-// Search, letters being read and the drop overlay (audit round 1, bucket "shell-b")
+// Search, letters being read and the drop overlay
 // ------------------------------------------------------------------------------------------------
 
 const searchField = (page: Page) => page.getByRole("combobox", { name: "Search your letters" });

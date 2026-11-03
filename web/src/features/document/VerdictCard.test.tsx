@@ -1,5 +1,5 @@
 /**
- * UI audit round 1, the verdict card: English first (the letter's German as a quote), headlines that
+ * The verdict card: English first (the letter's German as a quote), headlines that
  * break German compounds at their joints, the right to-do in front, the date that matters first,
  * started drafts, the disclaimer where a law was used and inside the action band.
  */

@@ -1,5 +1,5 @@
 /**
- * Audit (regression): the document viewer lists the letters drafted about it (`DocumentDetail.drafts`),
+ * The document viewer lists the letters drafted about it (`DocumentDetail.drafts`),
  * but creating or deleting a draft used to invalidate only `["drafts"]` — and the backend publishes no
  * event for a deleted draft. Going back to the letter within the 30 s stale time still showed the
  * deleted draft (clicking it opened "Unknown letter"), and a new draft was missing from the list.

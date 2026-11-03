@@ -1,5 +1,5 @@
 /**
- * UI audit round 1 (R1-document-c-7): a letter link that finds nothing, a letter that doesn't load, and the
+ * A letter link that finds nothing, a letter that doesn't load, and the
  * page while it loads — each with its h1 and a way back; the server's words only under "Technical details".
  */
 import { afterEach, describe, expect, it, vi } from "vitest";

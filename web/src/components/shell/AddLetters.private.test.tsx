@@ -1,5 +1,5 @@
 /**
- * Audit (regression): "Keep private — no AI" (docs/privacy.md: "upload a document without ever sending
+ * "Keep private — no AI" (docs/privacy.md: "upload a document without ever sending
  * it to Claude") used to be offered only in the "Are these pages of one letter?" dialog, which appears
  * for two or more photos. A single PDF or photo — the usual case — was uploaded at once with
  * `private=false` and sent to Claude; the web app had no way to keep it private.

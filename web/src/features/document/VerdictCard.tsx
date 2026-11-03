@@ -263,7 +263,7 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
   // checked (or decided) before it is paid
   const notOwed = open ? notOwedReason(open, detail.advice, detail.items) : null;
   const refundText = refund?.amount != null ? `${formatMoney(refund.amount, { currency: refund.currency })} comes back to you` : null;
-  // English first, the letter's German below it (UI audit round 1: "Semesterbeitrag … überweisen" as the headline)
+  // English first, the letter's German below it (not "Semesterbeitrag … überweisen" as the headline)
   const words = open ? verdictWords(open, detail.party?.name) : null;
   // open to-dos that are not one to act on: replaced by a payment reminder, or long past when the letter came
   const allAsides = scam ? [] : asideItems(detail);
@@ -403,12 +403,12 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
         ) : open && words ? (
           <>
             <p className="text-[16px] font-medium leading-snug text-ink wrap-break-word">
-              {/* a citation stays whole ("§ 549 Abs. 2 BGB" broke after "Abs." at 320 px — review round 4 of phase 2) */}
+              {/* a citation stays whole ("§ 549 Abs. 2 BGB" broke after "Abs." at 320 px) */}
               <GlossaryText text={keepCitations(words.lead)} inline markGerman />
             </p>
             {words.body ? (
               // a paragraph of law is no headline: the title leads and the action follows as body text
-              // (review round 3 of phase 2: 12 lines of 16 px above the date)
+              // (not 12 lines of 16 px above the date)
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-ink/80 wrap-break-word">
                 <GlossaryText text={keepCitations(words.body)} inline markGerman />
               </p>
@@ -479,7 +479,7 @@ export function VerdictCard({ detail, primary, onAskArrival, onAnswered }: Verdi
             </span>
           </p>
         ) : replaced ? (
-          // an invoice its payment reminder took over: never "Pay" here as well (UI audit round 1)
+          // an invoice its payment reminder took over: never "Pay" here as well
           <div className="flex items-start gap-2">
             <CircleCheckBig className="mt-0.5 size-[18px] shrink-0 text-ok" aria-hidden />
             <div className="min-w-0">
@@ -757,7 +757,7 @@ function KeepButton({ suggestion }: { suggestion: Suggestion }) {
       loading={update.isPending}
       onClick={() =>
         // the promise, not mutate's callbacks: this button leaves with its Idea once the lists are refreshed, and a
-        // button that has gone gets no callbacks (review round 4 of phase 2)
+        // button that has gone gets no callbacks
         update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
           () =>
             toast({
@@ -854,12 +854,12 @@ function Actions({
         );
       }
       case "draft":
-        // started already: continue that letter, never a second one (UI audit round 1)
+        // started already: continue that letter, never a second one
         if (existingDraft(detail.drafts, main.draftKind)) return <StartedDraft kind={main.draftKind} detail={detail} quiet={optional} />;
         // an objection that may ask to suspend enforcement: the composer asks (an explicit choice, §§ 719,
         // 707 ZPO / Aussetzung der Vollziehung) — never drafted without the question
         // … and one to a court order filed from a sender that is no court: the composer asks for the court
-        // (the objection never goes to the claimant — review round 3 of phase 2)
+        // (the objection never goes to the claimant)
         if (main.draftKind === "objection" && (canSuspend(doc) || needsTypedCourt(doc, detail.party))) {
           return (
             <Link to={composerHref("objection", { docId: doc.id })} className={buttonVariants({ variant: optional ? "secondary" : "primary" })}>

@@ -124,7 +124,7 @@ describe("the passphrase estimator (the server's `passphrase_bits`, counted the 
     ["", [], 0],
     ["ΣΊΣΥΦΟΣ σίσυφος", ["ΣΊΣΥΦΟΣ", "σίσυφος"], 14],
     ["x\u0301yz abc", ["x", "yz", "abc"], 19.801759],
-    // the review's patterns: a character again and again, runs in order, keyboard walks, common words
+    // weak patterns: a character again and again, runs in order, keyboard walks, common words
     ["aaa bbb ccc ddd eee", ["aaa", "bbb", "ccc", "ddd", "eee"], 28.502199],
     ["abc def ghi jkl mno", ["abc", "def", "ghi", "jkl", "mno"], 5.70044],
     ["12345 23456 34567 45678 56789", ["12345", "23456", "34567", "45678", "56789"], 21.60964],
@@ -269,7 +269,7 @@ describe("hand-off sync helpers", () => {
     expect(arrivingLine(arriving)).toBe("Waiting for 12 of 340 files from your sync tool (3.2 MB).");
     expect(arrivalAdvice(arriving)).toBeNull();
     expect(arrivalAdvice({ ...arriving, stalled: true })).toMatch(/^Nothing more has arrived for 30 minutes/);
-    // dataless / online-only files never arrive by themselves (finding 6)
+    // dataless / online-only files never arrive by themselves
     expect(arrivalAdvice({ ...arriving, online_only: 3 })).toMatch(/^3 files are online only on this computer.*available offline/);
   });
 

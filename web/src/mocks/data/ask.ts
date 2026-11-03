@@ -41,7 +41,7 @@ export const RECORDED: RecordedAnswer[] = [
       { name: "today", input: {}, result: "Today is Mon 28 Sep 2026 (demo date)" },
       { name: "list_items", input: { kind: "payment", status: "open", to: "2026-10-26" }, result: "Found 8 to-dos & dates" },
     ],
-    // review round 4: the headline said 6 payments over a list of 8, and the tool call stopped at 15 Oct
+    // the headline once said 6 payments over a list of 8, and the tool call stopped at 15 Oct
     text:
       "In the next four weeks you have **8 payments**, soonest first:\n\n" +
       "- **Parking fine, €30.00** — by **Tue 29 Sep** to be safe [item:itm_parking]\n" +
@@ -165,7 +165,7 @@ export const RECORDED: RecordedAnswer[] = [
     text:
       "Your FunkNetz contract's 24-month minimum term ends on **Sat 14 Nov 2026** [contract:ctr_phone]. With one month's notice, FunkNetz must **receive** your cancellation by **Wed 14 Oct** — if you post it, send it by **Thu 8 Oct** [item:itm_phone_cancel].\n\n" +
       "The quickest way is the cancel button in „Mein FunkNetz“ (they must offer one, § 312k BGB). If you miss the date, nothing bad happens: the contract continues month to month and you can cancel any time with one month's notice [doc:doc_phone].\n\n" +
-      // an offer the page can keep: a link to the composer, filled in for this contract (UI audit round 1:
+      // an offer the page can keep: a link to the composer, filled in for this contract (once
       // "Want me to draft the cancellation letter?" had no way to say yes)
       "[Draft the cancellation letter](/letters?kind=cancellation&contract=ctr_phone) — Ordnung fills in the contract and its dates.",
     citations: [

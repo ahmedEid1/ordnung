@@ -66,7 +66,7 @@ function IdeaCard({
 
   // Focus is watched from the click, while the card is in its place, and the toast follows the call's promise,
   // not mutate's callbacks: the card leaves with the refreshed list, often before every list is refreshed, and a
-  // card that has gone gets no callbacks (review round 4 of phase 2: no toast, no Undo, focus lost).
+  // card that has gone gets no callbacks (no toast, no Undo, focus lost).
   const snooze = () => {
     const until = format(addDays(parseISO(today), 7), "yyyy-MM-dd");
     focus.leaving(idea.id);

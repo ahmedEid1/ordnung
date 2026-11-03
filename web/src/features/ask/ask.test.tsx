@@ -258,7 +258,7 @@ describe("stream accumulation", () => {
   });
 
   it("a stream that closes before the checked answer is an error to retry, never an empty 'ready' answer", () => {
-    // review round 1: a server restart mid-answer showed only the tool trace, announced as "Answer ready."
+    // a server restart mid-answer once showed only the tool trace, announced as "Answer ready."
     const cut = streamEnded(accumulateAll([{ type: "tool_use", name: "today" }, { type: "text", text: "Your deadline is 31.12.2027" }]));
     expect(cut.status).toBe("error");
     expect(cut.error).toBe(STREAM_CUT);
@@ -288,13 +288,13 @@ describe("tool trace labels", () => {
     expect(fallbackToolLabel("list_items", { status: "open" })).toBe("Listed your open to-dos & dates");
     expect(fallbackToolLabel("list_items", { from: "2026-09-28", to: "2026-10-04" })).toBe("Listed your open to-dos & dates from 28 Sep to 4 Oct");
     expect(fallbackToolLabel("mystery_tool")).toBe("Looked something up");
-    // final review: the model's own words never show a value the check has not read
+    // the model's own words never show a value the check has not read
     expect(fallbackToolLabel("search", { query: "Frist verlängert 31.12.2027" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("timeline", { from_date: "31.12.2027", to_date: "2027-12-31" })).toMatch(/^Checked your timeline from … to /);
-    // final review 2: a part of a month is a date the check reads ("Ende Januar": 31 January)
+    // a part of a month is a date the check reads ("Ende Januar": 31 January)
     expect(fallbackToolLabel("search", { query: "Frist verlängert Ende Januar" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("search", { query: "mid-October payment" })).toBe("Searched your letters for “… payment”");
-    // final review 3: read as the check reads the words (a Unicode hyphen, emphasis markup)
+    // read as the check reads the words (a Unicode hyphen, emphasis markup)
     expect(fallbackToolLabel("search", { query: "mid\u2010January fee" })).toBe("Searched your letters for “… fee”");
     expect(fallbackToolLabel("search", { query: "Frist Ende **Januar**" })).toBe("Searched your letters for “Frist …”");
     expect(fallbackToolLabel("search", { query: "bis Ende Dezember 2027 zahlen" })).toBe("Searched your letters for “bis … zahlen”");
@@ -323,8 +323,8 @@ describe("tool trace labels", () => {
     ];
     render(<ToolTrace steps={steps} live />);
     const label = screen.getByTestId("tool-step-label");
-    // wraps at every width (a cut-off "until 1…" hid the date: review round 1 below lg, review round 3 of
-    // phase 2 from lg up, where only a hover-only title held the rest)
+    // wraps at every width (a cut-off "until 1…" hid the date below lg, and from lg up only a
+    // hover-only title held the rest)
     expect(label.className.split(" ")).toContain("break-words");
     expect(label.className).not.toMatch(/truncate|line-clamp/);
     expect(label.getAttribute("title")).toBeNull();
