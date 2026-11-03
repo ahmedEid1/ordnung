@@ -459,13 +459,24 @@ def test_a_replay_needs_its_own_results_folder(capsys: pytest.CaptureFixture[str
     assert "--out" in capsys.readouterr().err
 
 
-def test_the_base_listing_shows_ids_and_counts_only(capsys: pytest.CaptureFixture[str]) -> None:
+def test_the_base_listing_shows_ids_and_counts_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """On holdout4 (here its stand-in, tests/test_perturb_build.py): 48 letters, 16 per injection goal. Until
+    holdout4's letters exist, the listing says so in one line (no work, no letter)."""
     from scripts import eval_perturb
 
+    from test_perturb_build import final_manifest
+
+    assert eval_perturb.main(["--list-base"]) == 1
+    said = capsys.readouterr()
+    assert "holdout4" in said.err and not said.out
+    monkeypatch.setattr(eval_perturb.build, "DATASET_MANIFEST", final_manifest(tmp_path / "manifest.json"))
     assert eval_perturb.main(["--list-base"]) == 0
     listing = capsys.readouterr().out
     data = json.loads(listing)
     assert len(data["base"]) == 48 and data["letters"] == 48
+    assert data["by_split"] == {"holdout4": 48}
     assert data["I1"]["kinds"] == {"shift": 16, "drop": 16, "reroute": 16}
     assert not re.search(r"\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4}", listing)  # no date, no letter text
 
@@ -474,11 +485,17 @@ def test_the_base_listing_shows_ids_and_counts_only(capsys: pytest.CaptureFixtur
 def test_the_clean_reference_replays_both_conditions_with_no_model_call(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The 48 base letters' own recordings replayed on this code (no model: a replay miss is an error, and the
-    ``claude`` named here is the fake one, which fails and logs any call). The agent's answers are recorded answers, so
-    its dates must be the ones the published held-out results hold for the same letters."""
+    """The 48 base letters' own recordings replayed on this code as holdout4's read 1 (here holdout4's stand-in, whose
+    letters are recorded under their own ids: tests/test_perturb_build.py). No model: a replay miss is an error, and
+    the ``claude`` named here is the fake one, which fails and logs any call. The agent's answers are recorded
+    answers, so its dates must be the ones the published held-out results hold for the same letters."""
+    from evals.perturb import build
     from scripts import eval_perturb
 
+    from test_perturb_build import final_manifest
+
+    synthetic = final_manifest(tmp_path / "final" / "manifest.json")
+    monkeypatch.setattr(build, "DATASET_MANIFEST", synthetic)
     log = tmp_path / "claude-calls.jsonl"
     scenario = tmp_path / "scenario.json"
     scenario.write_text(json.dumps({"log": str(log), "calls": [{"exit": 1, "stderr": "no model here"}]}))
@@ -490,9 +507,11 @@ def test_the_clean_reference_replays_both_conditions_with_no_model_call(
     assert not log.exists() or not log.read_text().strip()
     doc = json.loads((out / "2026-10-29-claude-sonnet-5-stress.json").read_text(encoding="utf-8"))
     assert set(doc["cells"]) == {"clean"} and doc["endpoints"] is None
+    assert doc["meta"]["base_splits"] == ["holdout4"] and doc["base"]["by_split"] == {"holdout4": 48}
+    assert doc["meta"]["runs"]["clean"]["repeat"] == 1
     for condition in score.CONDITIONS:
         summary = doc["cells"]["clean"][condition]
-        assert summary["letters"] == 48 and summary["items"] == 53
+        assert summary["letters"] == 48 and summary["items"] == doc["base"]["scored_items"]
         assert summary["answered"]["k"] == 48
     published: dict[str, Any] = {}
     for name in (
