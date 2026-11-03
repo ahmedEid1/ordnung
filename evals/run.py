@@ -41,6 +41,16 @@ joins the published page with ``python -m evals.report <published run>.json --ho
 The splits and their roles live in :mod:`evals.splits` (``holdout4`` and ``newkinds``, the final run's, are
 declared there before their letters exist; the held-out rules apply to them).
 
+A final split's letters were written for a planned day and are valid through the last day of their window
+(``final_day`` and ``valid_until`` in the manifest). Its unit is one letter in one read with all its conditions: a live
+run records each new unit on ``--today``, which must be the UTC day and inside the window, and that day is the unit's
+today. When a unit completes, its day and the ``claude`` version are written to the day index beside the recordings
+(``final-days.json``), so a read may span several days of the window: a resume, a replay, ``--check FILE`` and the
+request lock's capture give each letter its unit's day again, and the results say ``recording_days`` and
+``cli_versions`` (each prediction its unit's ``recorded_on`` and ``cli_version``). An incomplete unit begun on another
+day is refused until ``python -m evals.harness retake`` moved its recordings aside; a complete one never makes a call.
+``--stop-file`` and ``--stop-at`` start no new unit once asked (the units under way finish; exit 4).
+
 The harness (:mod:`evals.harness`) wraps every model call:
 
 * ``--repeat N`` records or replays run N (≥ 2) of the same letters under keys of its own (the model gets the same
@@ -63,6 +73,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import contextlib
+import dataclasses
 import hashlib
 import json
 import re
@@ -70,7 +81,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -179,6 +190,11 @@ class RunConfig:
     #: Record letters pinned to another day (``--allow-another-today``): the development splits re-recorded in the
     #: open, or a held-out or final split as a smoke into a scratch folder (:func:`evals.harness.check_another_today`).
     allow_another_today: bool = False
+    #: ``--today``: the day a live run of a final split records its new units on, which is their today (the UTC day,
+    #: inside the letters' window); ``None`` — the planned day the manifest names.
+    today: date | None = None
+    #: ``--stop-file`` / ``--stop-at``: once either asks, no new unit starts (the units under way finish).
+    stop: harness.Stop | None = None
     #: Tests: stands in for the ``claude`` CLI on a live run (the rest of the stack is the real one).
     live_backend: LLMBackend | None = None
     concurrency: int = DEFAULT_CONCURRENCY
@@ -249,6 +265,12 @@ class ModelRun:
     fatal: str | None = None
     #: Conditions left out of a gated replay because their recorded answers are missing.
     left_out: list[str] = field(default_factory=list)
+    #: Why the run stopped at a unit boundary (a stop file, ``--stop-at``): units were left unstarted.
+    stopped: str | None = None
+
+
+#: The error of a prediction whose unit never started because the run stopped at a unit boundary.
+NOT_STARTED = "not run: stopped at a unit boundary"
 
 
 @dataclass
@@ -260,6 +282,17 @@ class RunOutcome:
     @property
     def ok(self) -> bool:
         return all(run.results is not None and run.fatal is None for run in self.runs)
+
+    @property
+    def stopped(self) -> str | None:
+        """Why the run stopped at a unit boundary, when that is all that kept it from finishing (no unit is half
+        done, nothing else failed)."""
+        reasons = [run.stopped for run in self.runs if run.stopped]
+        if not reasons or any(run.fatal for run in self.runs):
+            return None
+        if any(not (p.error or "").startswith(NOT_STARTED) for run in self.runs for p in run.errors):
+            return None
+        return reasons[0]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -343,7 +376,9 @@ def make_backend(
         ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
-        calls = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
+        calls = harness.LiveCalls(
+            cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day, closed=setup.closed
+        )
         recorder = RecordingBackend(calls, root, allowed_doc_ids=allowed_doc_ids, provenance=setup.provenance)
         if config.refresh:
             stack = RecordedFailures(recorder, root, record=True, replay=False)
@@ -386,11 +421,21 @@ def recording_day(config: RunConfig, entries: Sequence[Entry]) -> date | None:
     return day
 
 
-def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) -> harness.LiveSetup:
+def live_setup(
+    config: RunConfig,
+    say: Progress,
+    entries: Sequence[Entry] = (),
+    *,
+    recording: Sequence[Entry] | None = None,
+    closed: Collection[str] = (),
+) -> harness.LiveSetup:
     """What a live run's stacks share: its budget, its waiting, its provenance.
 
     The budget starts from what the ledgers already say this step spent: the calls on these ``entries`` at this
-    repeat, in every earlier run and resume of the same command (said once, when there is any)."""
+    repeat, in every earlier run and resume of the same command (said once, when there is any). ``recording``: the
+    letters it records, whose today the day is checked against and the cassettes say (default: ``entries``; a final
+    split's new units); ``closed``: the letters whose unit is complete, for which no call reaches the model."""
+    recorded = entries if recording is None else recording
     budget = None
     if config.max_cost_usd is not None:
         ledgers = [config.recorded_dir / safe_name(model) / harness.LEDGER_FILE for model in config.models]
@@ -401,7 +446,7 @@ def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) 
                 f"{config.repeat} (from the ledger): the cap counts it"
             )
         budget = harness.Budget(config.max_cost_usd, spent=spent)
-    day = recording_day(config, entries)
+    day = recording_day(config, recorded)
     return harness.LiveSetup(
         repeat=config.repeat,
         budget=budget,
@@ -409,12 +454,120 @@ def live_setup(config: RunConfig, say: Progress, entries: Sequence[Entry] = ()) 
         if config.wait_on_limit_hours
         else None,
         day=day,
+        closed=frozenset(closed),
         provenance={
             "repeat": config.repeat,
             "commit": _commit(),
-            **harness.recording_provenance(day, [entry.today for entry in entries]),
+            **harness.recording_provenance(day, [entry.today for entry in recorded]),
         },
     )
+
+
+# --------------------------------------------------------------------------------------------------
+# A final split's units and their days
+# --------------------------------------------------------------------------------------------------
+
+
+def day_index_path(config: RunConfig, model: str) -> Path:
+    """The day index of ``model``'s recordings (``final-days.json``)."""
+    return config.recorded_dir / safe_name(model) / harness.DAY_INDEX_FILE
+
+
+@dataclass
+class FinalRead:
+    """One read of a final split for one model: its letters each on their unit's day, the units complete before
+    this run (from the day index) and the index itself."""
+
+    index: harness.DayIndex
+    complete: dict[str, dict[str, Any]]
+    entries: list[Entry]
+
+    @property
+    def new(self) -> list[Entry]:
+        """The letters whose unit is not complete yet: a live run records them."""
+        return [entry for entry in self.entries if entry.id not in self.complete]
+
+
+def final_read(config: RunConfig, model: str, entries: Sequence[Entry]) -> FinalRead | None:
+    """A final split's read (``None`` for every other split): a complete unit's letter takes the day it was recorded
+    on from the day index; a new one ``--today`` on a live run, else the planned day the manifest names."""
+    if not splits.is_final(config.split):
+        return None
+    index = harness.DayIndex(day_index_path(config, model))
+    complete = index.units(config.split, config.repeat)
+    days = {entry_id: str(unit["day"]) for entry_id, unit in complete.items()}
+    if config.live and config.today is not None:
+        today = config.today.isoformat()
+        days |= {entry.id: today for entry in entries if entry.id not in complete}
+    on_their_days = [
+        entry.model_copy(update={"today": days[entry.id]}) if entry.id in days else entry for entry in entries
+    ]
+    return FinalRead(index=index, complete=complete, entries=on_their_days)
+
+
+def check_final_live(config: RunConfig, read: FinalRead) -> None:
+    """Refuse a live run of a final split that would record a unit on a day it is not valid for, or go on with a
+    unit begun on another day; nothing is called and no lock is taken (``ValueError`` / ``HarnessError``)."""
+    if config.refresh:
+        raise ValueError(
+            "a final split's recordings are never refreshed: an invalid unit is moved aside with `python -m "
+            "evals.harness retake` and recorded again whole"
+        )
+    if not config.every_condition:
+        raise ValueError(
+            "a final split is recorded with every condition: a unit is a letter with all its conditions"
+        )
+    if len(config.models) != 1:
+        raise ValueError("a final split is recorded for one model at a time (its day index is the model's)")
+    new = read.new
+    if not new:
+        return
+    planned = sorted({entry.today for entry in new})
+    if not config.allow_another_today:
+        for day in planned:
+            harness.check_window(
+                [(e.id, e.final_day, e.valid_until) for e in new if e.today == day], date.fromisoformat(day)
+            )
+        checked = config.live_backend is None or config.recording_day is not None
+        utc = config.recording_day or harness.utc_today()
+        if config.today is None and checked and planned != [utc.isoformat()]:
+            raise harness.HarnessError(
+                f"the letters' planned day ({', '.join(planned)}) is not the day this is recorded ({utc.isoformat()}, "
+                f"UTC): record a final split with --today {utc.isoformat()}, a day inside its window"
+            )
+    elsewhere = harness.units_of_another_day(
+        config.recorded_dir / safe_name(config.models[0]),
+        [entry.id for entry in new],
+        repeat=config.repeat,
+        day=date.fromisoformat(planned[0]),
+    )
+    if elsewhere:
+        listed = "; ".join(
+            f"{entry_id}: {', '.join(map(str, paths))}" for entry_id, paths in elsewhere.items()
+        )
+        raise harness.HarnessError(
+            f"{len(elsewhere)} unit(s) of run {config.repeat} were begun on another day and are not complete — "
+            f"{listed}. A unit cannot go on on a new day (its recorded calls told the model another today): move "
+            f"its recordings aside with `python -m evals.harness retake --split {config.split} --repeat "
+            f"{config.repeat} --ids {' '.join(elsewhere)} --to <folder>`, then record it again whole"
+        )
+
+
+def with_units(
+    predictions: dict[str, dict[str, Prediction]], units: Mapping[str, Mapping[str, Any]]
+) -> dict[str, dict[str, Prediction]]:
+    """Each prediction with its unit's day and ``claude`` version (a letter without a complete unit keeps none)."""
+    return {
+        condition: {
+            entry_id: prediction.model_copy(
+                update={"recorded_on": units[entry_id].get("day"), "cli_version": units[entry_id].get("cli")}
+            )
+            if entry_id in units
+            else prediction
+            for entry_id, prediction in by_entry.items()
+        }
+        for condition, by_entry in predictions.items()
+    }
 
 
 def entry_inputs(entry: Entry) -> str:
@@ -511,6 +664,10 @@ def _stderr(message: str) -> None:
     print(message, file=sys.stderr, flush=True)
 
 
+def _stdout(message: str) -> None:
+    print(message, flush=True)
+
+
 class _Documents:
     """Prepares each letter once (in a worker thread) and shares it between conditions."""
 
@@ -534,16 +691,42 @@ async def predict_model(
     backend: LLMBackend,
     *,
     progress: Progress | None = None,
+    on_unit: Callable[[Entry, dict[str, Prediction]], None] | None = None,
+    begun: Collection[str] = (),
 ) -> ModelRun:
-    """Every selected condition on every selected letter for one model (bounded concurrency)."""
+    """Every selected condition on every selected letter for one model (bounded concurrency).
+
+    The work is grouped in units, a letter with all its conditions, queued together: before a unit starts, the run's
+    stop (:class:`evals.harness.Stop`) is asked, and once it asks, no new unit starts while the units under way finish
+    (``ModelRun.stopped``). A unit that has a cached prediction, or is one of ``begun`` (complete before this run),
+    has started already. ``on_unit`` hears each unit the moment all its conditions are done."""
     say = progress or (lambda _message: None)
     fingerprints = {condition: fingerprint(condition, model) for condition in config.conditions}
     semaphore = asyncio.Semaphore(max(1, config.concurrency))
     stop = asyncio.Event()
     fatal: list[str] = []
+    stopped: list[str] = []
     total = len(entries) * len(config.conditions)
     done = 0
     predictions: dict[str, dict[str, Prediction]] = {condition: {} for condition in config.conditions}
+    cached_ones: dict[tuple[str, str], Prediction] = {}
+    if config.effective_resume and not config.refresh:
+        for entry in entries:
+            for condition in config.conditions:
+                found = load_cached(cache_path(config, model, condition, entry), fingerprints[condition])
+                if found is not None:
+                    cached_ones[(condition, entry.id)] = found
+    #: Whether each unit started (``False``: it never will, the run stopped first); undecided units are absent.
+    started: dict[str, bool] = dict.fromkeys(begun, True) | {entry_id: True for _, entry_id in cached_ones}
+    finished: dict[str, int] = {}
+
+    def may_start(entry: Entry) -> bool:
+        if entry.id not in started:
+            reason = config.stop.requested() if config.stop is not None else None
+            if reason is not None and not stopped:
+                stopped.append(reason)
+            started[entry.id] = reason is None
+        return started[entry.id]
 
     with tempfile.TemporaryDirectory(prefix="ordnung-eval-") as work:
         documents = _Documents(config, Path(work))
@@ -551,11 +734,7 @@ async def predict_model(
         async def one(condition: ConditionName, entry: Entry) -> None:
             nonlocal done
             path = cache_path(config, model, condition, entry)
-            cached = (
-                load_cached(path, fingerprints[condition])
-                if config.effective_resume and not config.refresh
-                else None
-            )
+            cached = cached_ones.get((condition, entry.id))
             status = "cached"
             if cached is not None:
                 prediction = cached
@@ -575,12 +754,22 @@ async def predict_model(
                 f"[{done:>3}/{total}] {model} {condition:<15} {entry.id:<44} {status:<6} "
                 f"{prediction.latency_ms / 1000:6.1f}s ${prediction.cost_usd:.4f}{detail[:160]}"
             )
+            finished[entry.id] = finished.get(entry.id, 0) + 1
+            if on_unit is not None and finished[entry.id] == len(config.conditions):
+                on_unit(entry, {name: predictions[name][entry.id] for name in config.conditions})
 
         async def _predict(condition: ConditionName, entry: Entry) -> Prediction:
             async with semaphore:
                 if stop.is_set():
                     return Prediction(
                         entry_id=entry.id, condition=condition, model=model, error=f"not run: {fatal[0]}"
+                    )
+                if not may_start(entry):
+                    return Prediction(
+                        entry_id=entry.id,
+                        condition=condition,
+                        model=model,
+                        error=f"{NOT_STARTED} ({stopped[0]})",
                     )
                 log = CallLog()
                 llm = LLMService(MeteredBackend(backend, log, timeout_s=config.timeout_s))
@@ -608,7 +797,13 @@ async def predict_model(
         await asyncio.gather(*(one(condition, entry) for entry in entries for condition in config.conditions))
 
     errors = [p for by_entry in predictions.values() for p in by_entry.values() if p.error]
-    return ModelRun(model=model, predictions=predictions, errors=errors, fatal=fatal[0] if fatal else None)
+    return ModelRun(
+        model=model,
+        predictions=predictions,
+        errors=errors,
+        fatal=fatal[0] if fatal else None,
+        stopped=stopped[0] if stopped else None,
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -651,7 +846,10 @@ def run_meta(
     left_out: Sequence[str] = (),
     cli_version: str | None = None,
     recorded_on: date | None = None,
+    units: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """The results' ``meta``; ``units`` (a final split's read): each letter's unit from the day index, whose days and
+    ``claude`` versions the read was recorded on and with."""
     conditions = [condition for condition in config.conditions if condition not in left_out]
     meta: dict[str, Any] = {
         "date": config.date,
@@ -684,6 +882,10 @@ def run_meta(
         "simulated_today": sorted({entry.today for entry in entries}),
         "recording_day": recorded_on.isoformat() if recorded_on is not None else None,
     }
+    if units is not None:
+        # a final read may span several days of its window: each unit's today is the day it was recorded on
+        meta["recording_days"] = sorted({str(unit["day"]) for unit in units.values()})
+        meta["cli_versions"] = sorted({str(unit["cli"]) for unit in units.values() if unit.get("cli")})
     if left_out:
         meta["left_out"] = {condition: "recorded answers missing on replay" for condition in left_out}
     return meta
@@ -712,25 +914,36 @@ async def run_benchmark(
         manifest, split=config.split, families=config.families, ids=config.ids, limit=config.limit
     )
     if not entries:
-        if config.split in splits.names() and not splits.get(config.split).recorded:
+        if splits.is_final(config.split):
             raise ValueError(
                 f"split {config.split} has no letters yet: it is declared in evals/splits.py for the final run, and "
                 "its letters are written after the code freeze"
             )
         raise ValueError("no benchmark entries match the selection")
+    if config.today is not None and not splits.is_final(config.split):
+        raise ValueError(f"--today records a final split, not {config.split}")
+    finals = {
+        model: read for model in config.models if (read := final_read(config, model, entries)) is not None
+    }
     with contextlib.ExitStack() as held:
         live: harness.LiveSetup | None = None
+        read = finals.get(config.models[0])
+        recording = read.new if read is not None else entries
+        if config.live and backend is None and read is not None:
+            check_final_live(config, read)  # refused before the lock is taken or any call made
         if config.live and backend is None and config.live_setup is not None:
             recording_day(
-                config, entries
+                config, recording
             )  # the shared setup's day was checked for its first run; this one too
             live = config.live_setup  # shared with other runs: their caller holds the recorder lock
         elif config.live and backend is None:
-            recording_day(config, entries)  # refused before the lock is taken or any call made
+            recording_day(config, recording)  # refused before the lock is taken or any call made
             lock = config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME
             held.enter_context(harness.RecorderLock(lock, command=" ".join(["evals.run", *sys.argv[1:]])))
-            live = live_setup(config, tell, entries)
-        return await _run_models(config, entries, manifest, backend, live, say, tell)
+            live = live_setup(
+                config, tell, entries, recording=recording, closed=read.complete if read is not None else ()
+            )
+        return await _run_models(config, entries, manifest, backend, live, say, tell, finals)
 
 
 async def _run_models(
@@ -741,6 +954,7 @@ async def _run_models(
     live: harness.LiveSetup | None,
     say: Progress,
     tell: Progress,
+    finals: Mapping[str, FinalRead] | None = None,
 ) -> RunOutcome:
     allowed = {entry.id for entry in manifest}
     outcome = RunOutcome(runs=[])
@@ -768,10 +982,21 @@ async def _run_models(
             _refuse_to_replace_a_recording(
                 config.results_dir / config.results_name(model), "live" if config.live else label
             )
+        read = (finals or {}).get(model)
+        letters = read.entries if read is not None else entries
+        on_unit = _unit_writer(config, read, live) if read is not None and live is not None else None
         repeat = f", run {config.repeat}" if config.repeat > 1 else ""
-        say(f"{model}: {len(entries)} letters × {len(config.conditions)} conditions ({label}{repeat})")
+        say(f"{model}: {len(letters)} letters × {len(config.conditions)} conditions ({label}{repeat})")
         started = time.perf_counter()
-        run = await predict_model(config, model, entries, model_backend, progress=say)
+        run = await predict_model(
+            config,
+            model,
+            letters,
+            model_backend,
+            progress=say,
+            on_unit=on_unit,
+            begun=read.complete if read is not None else (),
+        )
         say(f"{model}: predictions done in {time.perf_counter() - started:.1f}s")
         if backend is None and config.live and current_prompts:
             write_prompts_lock(recorded_root, current_prompts)
@@ -783,20 +1008,32 @@ async def _run_models(
         if run.fatal:
             tell(f"{model}: stopped — {run.fatal}")
             continue
+        if run.stopped:
+            unfinished = [p for p in run.errors if not (p.error or "").startswith(NOT_STARTED)]
+            if unfinished:
+                _report_errors(dataclasses.replace(run, errors=unfinished), config, tell)
+            tell(f"{model}: {harness.stopped_message(run.stopped)}")
+            continue
         if config.gate_ordnung_only and not config.live:
             _leave_out_unrecorded(run, say)
         if run.errors and not config.allow_errors:
             _report_errors(run, config, tell)
             continue
-        evaluation = evaluate(entries, run.predictions, seed=config.seed, resamples=config.resamples)
+        units = None
+        if read is not None:
+            known = read.index.units(config.split, config.repeat)
+            units = {entry.id: known[entry.id] for entry in letters if entry.id in known}
+            run.predictions = with_units(run.predictions, units)
+        evaluation = evaluate(letters, run.predictions, seed=config.seed, resamples=config.resamples)
         meta = run_meta(
             config,
             model,
-            entries,
+            letters,
             label,
             left_out=run.left_out,
             cli_version=live.cli_version if live is not None else None,
             recorded_on=(live.day or harness.utc_today()) if live is not None else None,
+            units=units,
         )
         unrecorded = reask_unrecorded(run)
         if unrecorded:
@@ -805,7 +1042,7 @@ async def _run_models(
             meta["reading_reask_missing"] = unrecorded
         run.results = report.build_results(
             meta=meta,
-            entries=entries,
+            entries=letters,
             predictions=run.predictions,
             evaluation=evaluation,
         )
@@ -840,6 +1077,53 @@ async def _run_models(
         )
         say(f"docs → {outcome.docs_path}" + (f", chart → {outcome.chart_path}" if outcome.chart_path else ""))
     return outcome
+
+
+def _unit_writer(
+    config: RunConfig, read: FinalRead, live: harness.LiveSetup
+) -> Callable[[Entry, dict[str, Prediction]], None]:
+    """Writes each unit of a live final run into the day index the moment it completes (every condition answered or
+    failed as a model failure, none with an infrastructure error): its today and the ``claude`` that recorded it."""
+
+    def write(entry: Entry, unit: dict[str, Prediction]) -> None:
+        if entry.id in read.complete or any(prediction.error for prediction in unit.values()):
+            return
+        read.index.put(config.split, config.repeat, entry.id, day=entry.today, cli=live.cli_version)
+
+    return write
+
+
+def check_against(outcome: RunOutcome, path: Path) -> list[str]:
+    """How a replay differs from the results file at ``path`` in its predictions and metrics (``[]``: equal), as
+    ``make eval-reproduce`` compares them (what a replay measures itself, wall time and the backend's name, aside)."""
+    from evals.reproduce import compare_run
+
+    try:
+        published = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return [f"{path} is not a readable results file: {exc}"]
+    problems: list[str] = []
+    for run in outcome.runs:
+        if run.results is None:
+            problems.append(f"{run.model}: the replay gave no results to compare")
+            continue
+        mine, theirs = published.get("meta") or {}, run.results["meta"]
+        for key in ("model", "split", "repeat", "conditions"):
+            if mine.get(key) != theirs.get(key):
+                problems.append(
+                    f"{run.model}: meta.{key} is {mine.get(key)!r} there, {theirs.get(key)!r} here"
+                )
+        if problems:
+            continue
+        replayed = json.loads(json.dumps(run.results, ensure_ascii=False))  # as a results file holds it
+        for condition, verdict in compare_run(published, replayed).items():
+            if verdict["verdict"] != "exact":
+                drift = ", ".join(f"{kind} {', '.join(paths)}" for kind, paths in verdict["drift"].items())
+                changed = len(verdict["changes"])
+                problems.append(
+                    f"{run.model} {condition}: {verdict['verdict']} ({changed} changed date(s); {drift or 'no drift'})"
+                )
+    return problems
 
 
 def _refuse_to_replace_a_recording(path: Path, backend: str) -> None:
@@ -990,6 +1274,22 @@ def build_parser() -> argparse.ArgumentParser:
         "declared before their letters exist: evals/splits.py)",
     )
     parser.add_argument(
+        "--today",
+        type=date.fromisoformat,
+        metavar="YYYY-MM-DD",
+        help="with --live, a final split (holdout4, newkinds): record its new units on this day, the UTC day and "
+        "inside the letters' window; each unit keeps the day it was recorded on (the day index beside the "
+        "recordings), so a read may span several days",
+    )
+    harness.add_stop_arguments(parser)
+    parser.add_argument(
+        "--check",
+        type=Path,
+        metavar="FILE",
+        help="replay, then fail unless the predictions and metrics equal FILE's (a live results file); writes no "
+        "results file and says everything on stdout",
+    )
+    parser.add_argument(
         "--repeat",
         type=int,
         default=1,
@@ -1107,6 +1407,8 @@ def config_from_args(ns: argparse.Namespace) -> RunConfig:
         max_cost_usd=ns.max_cost_usd,
         wait_on_limit_hours=ns.wait_on_limit,
         allow_another_today=ns.allow_another_today,
+        today=ns.today,
+        stop=harness.Stop.from_args(ns),
         recorder_lock=ns.recorder_lock,
         concurrency=ns.concurrency,
         timeout_s=ns.timeout,
@@ -1149,6 +1451,19 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
         parser.error("--max-cost-usd is a number of dollars, 0 or more")
     if config.wait_on_limit_hours is not None and config.wait_on_limit_hours <= 0:
         parser.error("--wait-on-limit is a number of hours above 0")
+    if config.stop is not None and not config.live:
+        parser.error("--stop-file and --stop-at need --live (a replay starts no unit that could be cut)")
+    if config.today is not None and not splits.is_final(config.split):
+        parser.error(
+            f"--today records a final split (holdout4, newkinds) on the day it is recorded, not {config.split}; the "
+            "development splits are recorded again on another day with --allow-another-today"
+        )
+    if config.today is not None and not config.live:
+        parser.error(
+            "--today is a live run's: a replay takes each letter's day from the day index beside the recordings"
+        )
+    if ns.check is not None and config.live:
+        parser.error("--check replays and compares: not with --live")
     held_out = splits.is_held_out(config.split)
     if held_out and config.write_docs:
         option = "--holdout-run" if config.split == report.HOLDOUT_SPLIT else f"--{config.split}-run"
@@ -1159,21 +1474,36 @@ def run_cli(args: Sequence[str] | None = None, *, backend: LLMBackend | None = N
     # With thresholds this is the CI gate, which checks Ordnung: the tool condition may lack recordings.
     config.gate_ordnung_only = ns.min_accuracy is not None or ns.max_dangerous_late is not None
     config.write_results = config.live or not config.gate_ordnung_only or ns.results_dir is not None
+    if ns.check is not None:
+        config.write_results = False  # the replay is compared, not kept
     # the gate writes no results file: it may replay a held-out split where it is
     if held_out and not config.live and config.write_results and ns.results_dir is None:
         parser.error(
             f"a replay of the {config.split} split scores its recordings with the checked-out code, not the "
             "held-out number: pass --results-dir <dir> so it never lands beside the held-out run"
         )
-    progress: Progress = (lambda _message: None) if ns.quiet else _stderr
+    # --check says everything on stdout, which its callers keep sealed
+    out: Progress = _stdout if ns.check is not None else _stderr
+    progress: Progress = (lambda _message: None) if ns.quiet else out
     try:
         # what went wrong is said even under --quiet (CI's gates): why predictions failed, why the run stopped
-        outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress, alert=_stderr))
+        outcome = asyncio.run(run_benchmark(config, backend=backend, progress=progress, alert=out))
     except (ValueError, harness.RecorderBusy, harness.HarnessError) as exc:
-        _stderr(f"error: {exc}")
+        out(f"error: {exc}")
         return 1
+    if outcome.stopped:
+        return harness.STOPPED
     for line in summary_lines(outcome):
-        _stderr(line)
+        out(line)
+    if ns.check is not None:
+        differences = check_against(outcome, ns.check)
+        for line in differences:
+            out(f"differs: {line}")
+        if differences:
+            out(f"the replay differs from {ns.check} in {len(differences)} place(s)")
+            return 1
+        out(f"the replay equals {ns.check}: every prediction and metric")
+        return 0
     failures = gate_failures(outcome, min_accuracy=ns.min_accuracy, max_dangerous_late=ns.max_dangerous_late)
     for run in outcome.runs:
         for condition in run.left_out:

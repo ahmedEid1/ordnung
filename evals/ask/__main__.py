@@ -181,6 +181,7 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         help="gate: minimum share of household questions whose answer says whose each number is",
     )
     add_heldout_arguments(parser)
+    harness.add_stop_arguments(parser)
     return parser.parse_args(argv)
 
 
@@ -248,6 +249,11 @@ def main(
 ) -> int:
     args = parse_args(argv)
     only = [part.strip() for part in args.only.split(",") if part.strip()] or None
+    try:
+        stop = harness.Stop.from_args(args)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     config = Config(
         model=args.model,
         live=args.live or args.refresh,
@@ -263,12 +269,21 @@ def main(
         today=args.today,
         allow_another_today=args.allow_another_today,
         recorder_lock=args.recorder_lock or harness.RECORDER_LOCK,  # one recorder for every benchmark
+        stop=stop,
     )
     try:
         result = run(config)
     except BenchmarkError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
+    if result.stopped:  # a run is one unit: nothing is scored or written, it is recorded again whole
+        print(
+            f"{result.stopped} — no new turn started, the turns under way finished; the run is one unit, so nothing "
+            "was written: move its recordings aside with `python -m evals.harness retake --whole-run` and record it "
+            f"again whole (exit {harness.STOPPED})",
+            file=sys.stderr,
+        )
+        return harness.STOPPED
     for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:

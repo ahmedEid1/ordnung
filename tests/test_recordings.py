@@ -17,8 +17,9 @@ from ordnung.llm.base import DEFAULT_MODEL
 ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "evals" / "recorded"
 DEMO = ROOT / "src" / "ordnung" / "demo" / "fixtures"
-#: Files beside the recordings that are no recording: the prompts lock and the harness's request lock.
-LOCKS = ("prompts.lock.json", "requests.lock.json")
+#: Files beside the recordings that are no recording: the prompts lock, the harness's request lock and the final
+#: splits' day index.
+LOCKS = ("prompts.lock.json", "requests.lock.json", "final-days.json")
 
 
 def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
