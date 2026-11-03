@@ -2331,8 +2331,8 @@ moves.
 `--recorded-dir` replays or records into another folder (a smoke run).
 
 ## 18. Quality bar
-ruff + `mypy --strict` clean (the package and `evals/`); pytest incl. Hypothesis properties for rules
-(month-end invariants, business-day idempotence, never landing on a holiday, deemed delivery ≥ posted + 4
+ruff + `mypy --strict` clean (the package, `evals/` and `scripts/`); pytest incl. Hypothesis properties for
+rules (month-end invariants, business-day idempotence, never landing on a holiday, deemed delivery ≥ posted + 4
 from 2025, send_by ≤ cancel_by);
 fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo --check`; frontend
 tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.

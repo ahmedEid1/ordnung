@@ -145,6 +145,16 @@ def test_mypy_is_strict_on_the_rules_engine() -> None:
     )
 
 
+def test_the_spec_s_quality_bar_names_what_mypy_checks() -> None:
+    """SPEC § 18's "`mypy --strict` clean (…)" names what pyproject.toml gives mypy: the package and each other
+    folder, so a folder added to the list (or taken off it) fails here until the SPEC follows."""
+    files = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["tool"]["mypy"]["files"]
+    found = re.search(r"`mypy --strict` clean \(([^)]*)\)", _spec_numbered("18"))
+    assert found, "SPEC § 18 no longer says what mypy checks"
+    assert files[0] == "src/ordnung" and found.group(1).startswith("the package"), found.group(1)
+    assert set(re.findall(r"`([\w./-]+)/`", found.group(1))) == set(files[1:]), (found.group(1), files)
+
+
 def test_mypy_finds_the_generators_the_benchmark_code_imports() -> None:
     """README's "strict on the benchmark code" holds only where mypy finds what evals/ imports
     (``ignore_missing_imports`` makes a module it can't find Any, silently). evals/generate.py runs with evals/ on
