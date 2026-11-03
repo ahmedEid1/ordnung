@@ -506,7 +506,8 @@ The app in `web/` is React and TypeScript, built with Vite; `ordnung serve` serv
   `scripts/gen_mock_numbers.py`).
 - **Contract.** `web/src/api/contract.test.ts` calls every function of `web/src/api/endpoints.ts` against the mocks and
   checks each request and each mock answer against `web/openapi.json`, strictly: a mock that adds or drops a field
-  fails, and so does an API operation the web app doesn't use, unless it is listed as not needed.
+  fails, and so do an API operation the web app doesn't use (unless it is listed as not needed) and a function of
+  `web/src/api/endpoints.ts` or a hook of `web/src/api/hooks.ts` that only a test calls.
 - **End to end.** `web/playwright.config.ts` runs its projects in order, in one worker: first those against
   `ordnung demo` (the tour, every page, the layout sweep, the layout guards and a few more), one on the evaluation
   report's page, then `real-app` (`web/e2e/real-app-*.spec.ts`) against `ordnung serve` with the fake `claude` of

@@ -334,6 +334,19 @@ def test_the_web_app_section_says_the_mocks_are_a_sample_life_of_their_own() -> 
     assert not re.search(r"\bcopy of (the|its) demo", mocks), mocks
 
 
+def test_the_web_app_section_names_what_the_contract_test_fails_on() -> None:
+    """``web/src/api/contract.test.ts`` also fails on an ``endpoints.ts`` function or a ``hooks.ts`` hook that
+    only a test calls (the app's own code has to use each one): the section's *Contract* bullet says so, beside
+    the mocks checked against ``web/openapi.json`` and the operations no screen uses."""
+    contract = (ROOT / "web" / "src" / "api" / "contract.test.ts").read_text(encoding="utf-8")
+    assert re.search(r'it\("the app\'s own code calls every api function, not only a test"', contract)
+    assert re.search(r'it\("the app\'s own code uses every hook of hooks\.ts, not only a test"', contract)
+    bullet = _bullet("Contract")
+    for named in ("`web/src/api/endpoints.ts`", "`web/src/api/hooks.ts`", "`web/openapi.json`"):
+        assert named in bullet, named
+    assert re.search(r"only a test", bullet), bullet
+
+
 def test_the_web_app_section_says_how_much_of_the_shared_ui_dev_ui_shows() -> None:
     """``/dev/ui`` (``web/src/app/UiGallery.tsx``) shows most of ``web/src/components/ui/``, not all of it: the
     section says "all" only while every piece is in the gallery."""
