@@ -1,0 +1,323 @@
+{
+  "schema": "ordnung-final-sentences/1",
+  "about": "The sentences the README says about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
+  "readme_block": [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "f2.llm_only",
+    "f2.llm_rules_text",
+    "f2.llm_rules_tool",
+    "stability",
+    "flags",
+    "newkinds",
+    "ask",
+    "stress",
+    "e2e",
+    "limitations",
+    "owner",
+    "provenance"
+  ],
+  "conditions": {
+    "ordnung": "Ordnung",
+    "llm_only": "the model alone",
+    "llm_rules_text": "the model with the rules pasted in",
+    "llm_rules_tool": "the agent"
+  },
+  "rules": {
+    "stability_min_discordant": 10
+  },
+  "files": {
+    "prereg": "evals/preregistration/final-0.4.0.json",
+    "final": "evals/results/*-claude-sonnet-5-final.json",
+    "power": "evals/preregistration/power-0.4.0.json",
+    "ask": "evals/results/*-claude-sonnet-5-ask-heldout-final.json",
+    "stress": "evals/results/*-claude-sonnet-5-stress.json",
+    "e2e": "evals/results/*-claude-sonnet-5-e2e*.json",
+    "owner_labels": "evals/preregistration/owner-labels-0.4.0.json",
+    "owner_kappa": "evals/preregistration/owner-kappa-0.4.0.json",
+    "deviations": "evals/preregistration/deviations-0.4.0.json"
+  },
+  "templates": {
+    "head.intro": {
+      "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, each read {k} times by the version that ships, Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.intro.k2": {
+      "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, each read twice by the version that ships (a registered read was not recorded), Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.intro.k1": {
+      "text": "**Final run, pre-registered.** On {n} deadlines in {m} synthetic letters written after the code freeze, read once by the version that ships (the other registered reads were not recorded), Ordnung dates **{a_o}** exactly right ({level} % CI {ci_o}); the same model doing the date arithmetic itself, the model alone, gets **{a_l}**.",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.clear": {
+      "text": "Ordnung is ahead of the model alone ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.baseline_ahead": {
+      "text": "The model alone is ahead of Ordnung ({d} points for Ordnung, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.no_clear_difference": {
+      "text": "Ordnung against the model alone: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "head.not_confirmed": {
+      "text": "Ordnung against the model alone: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+      "compares": ["ordnung", "llm_only"]
+    },
+    "rules_text.clear": {
+      "text": "Ordnung is ahead of the model with the rules pasted in, which gets {a_b} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "llm_rules_text"]
+    },
+    "rules_text.baseline_ahead": {
+      "text": "The model with the rules pasted in gets {a_b} and is ahead of Ordnung ({d} points for Ordnung, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "llm_rules_text"]
+    },
+    "rules_text.no_clear_difference": {
+      "text": "Ordnung against the model with the rules pasted in, which gets {a_b}: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+      "compares": ["ordnung", "llm_rules_text"]
+    },
+    "rules_text.not_confirmed": {
+      "text": "Ordnung against the model with the rules pasted in, which gets {a_b}: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+      "compares": ["ordnung", "llm_rules_text"]
+    },
+    "agent.non_inferior": {
+      "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b}: Ordnung is not behind it by more than {margin} points ({d} points, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+      "compares": ["ordnung", "llm_rules_tool"]
+    },
+    "agent.agent_higher": {
+      "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b} and is ahead of Ordnung ({d} points for Ordnung, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+      "compares": ["ordnung", "llm_rules_tool"]
+    },
+    "agent.cannot_tell": {
+      "text": "An agent given Ordnung's engine as a tool, the agent, gets {a_b}: whether Ordnung is within {margin} points of it cannot be told ({d} points, {level} % CI {ni_lo} to {ni_hi}; answers not exactly right over every read: Ordnung {err_o}, the agent {err_b}).",
+      "compares": ["ordnung", "llm_rules_tool"]
+    },
+    "harm.none": {
+      "text": "Late or missed dates in {item_reads} answers per condition: none from Ordnung, {h_l} from the model alone, {h_r} from the model with the rules pasted in and {h_t} from the agent.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "harm.some": {
+      "text": "Late or missed dates in {item_reads} answers per condition: {h_o} from Ordnung, {h_l} from the model alone, {h_r} from the model with the rules pasted in and {h_t} from the agent.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "f2.fewer": {
+      "text": "Fewer late or missed dates with Ordnung than with {baseline} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "baseline"]
+    },
+    "f2.more": {
+      "text": "More late or missed dates with Ordnung than with {baseline} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
+      "compares": ["ordnung", "baseline"]
+    },
+    "f2.no_clear_difference": {
+      "text": "Late or missed dates, Ordnung against {baseline}: no clear difference ({d} points, {level} % CI {lo} to {hi}; power about {power}).",
+      "compares": ["ordnung", "baseline"]
+    },
+    "f2.not_confirmed": {
+      "text": "Late or missed dates, Ordnung against {baseline}: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
+      "compares": ["ordnung", "baseline"]
+    },
+    "stability.more_stable": {
+      "text": "Over the {k} reads, a date changed between reads on fewer deadlines for Ordnung than for the model alone ({u_o} against {u_l} of {n}; Holm mid-p {p_f3}); {u_r} for the model with the rules pasted in and {u_t} for the agent.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "stability.not_shown": {
+      "text": "Over the {k} reads, a date changed between reads on {u_o} of {n} deadlines for Ordnung, {u_l} for the model alone, {u_r} for the model with the rules pasted in and {u_t} for the agent; Ordnung was not shown to be steadier than the model alone (Holm mid-p {p_f3}).",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "stability.too_few": {
+      "text": "Over the {k} reads, a date changed between reads on {u_o} of {n} deadlines for Ordnung, {u_l} for the model alone, {u_r} for the model with the rules pasted in and {u_t} for the agent; deadlines that changed for only one of Ordnung and the model alone: {discordant}, fewer than {min_discordant}, so their steadiness is not compared.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "stability.not_run": {
+      "text": "How steady the dates are over reads was not measured: only one read was recorded.",
+      "compares": []
+    },
+    "flags.some": {
+      "text": "Wrong dates from Ordnung over every read: {wrong}; its “please check” flag caught {caught} of them.",
+      "compares": ["ordnung"]
+    },
+    "flags.none_wrong": {
+      "text": "Ordnung gave no wrong date for its “please check” flag to catch.",
+      "compares": ["ordnung"]
+    },
+    "newkinds.done": {
+      "text": "On {nk_m} letters of {nk_kinds} kinds the benchmark never had, read once and described without a test, exactly right: Ordnung {nk_o} ({level} % CI {nk_ci_o}), the model alone {nk_l}, the model with the rules pasted in {nk_r}, the agent {nk_t}; late or missed of their {nk_n} deadlines: Ordnung {nkh_o}, the model alone {nkh_l}, the model with the rules pasted in {nkh_r}, the agent {nkh_t}.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "newkinds.not_recorded": {
+      "text": "The letters of new kinds were not recorded; the deviations file says why.",
+      "compares": []
+    },
+    "ask.runs": {
+      "text": "“Ask: new questions on the demo household”, first run: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_harm_any} harmful in any of the {ask_runs} runs; {ask_hit} of {ask_attacks} injected claims reached an answer in the worst of the {ask_runs} runs.",
+      "compares": []
+    },
+    "ask.one_run": {
+      "text": "“Ask: new questions on the demo household”, run once: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_hit} of {ask_attacks} injected claims reached an answer.",
+      "compares": []
+    },
+    "ask.not_recorded": {
+      "text": "“Ask: new questions on the demo household” was not recorded; the deviations file says why.",
+      "compares": []
+    },
+    "stress.done": {
+      "text": "Stress test, Ordnung against the agent: a targeted injection succeeded in {inj_o} of {inj_n} letters for Ordnung and {inj_t} for the agent (Holm p {inj_p}); a distractor date was taken as the deadline in {dis_o} of {dis_n} letters for Ordnung and {dis_t} for the agent (Holm p {dis_p}); a late or missed date came without a warning on {hu_o} of {hu_n} deadlines for Ordnung and {hu_t} for the agent (Holm p {hu_p}).",
+      "compares": ["ordnung", "llm_rules_tool"]
+    },
+    "stress.incomplete": {
+      "text": "The stress test, Ordnung against the agent on injected and distractor dates, was not completed; the deviations file says why.",
+      "compares": ["ordnung", "llm_rules_tool"]
+    },
+    "e2e.set_aside": {
+      "text": "From the letter file to the reminder, on the final letters read once: {e2e_in_time} of {e2e_obligations} real deadlines got a reminder in time; {e2e_set_aside} got none because their letter was set aside as a scam, until the person confirms it is genuine.",
+      "compares": []
+    },
+    "e2e.none_set_aside": {
+      "text": "From the letter file to the reminder, on the final letters read once: {e2e_in_time} of {e2e_obligations} real deadlines got a reminder in time, and none was lost to a letter set aside as a scam.",
+      "compares": []
+    },
+    "limitations.s_conv": {
+      "text": "On {sc_n} of {n} deadlines the label rests on a disputed reading of the law that the engine's documentation shares; with any defensible reading accepted, exactly right: Ordnung {sc_o}, the model alone {sc_l}, the model with the rules pasted in {sc_r}, the agent {sc_t}.",
+      "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
+    },
+    "limitations.s_conv_same": {
+      "text": "On {sc_n} of {n} deadlines the label rests on a disputed reading of the law that the engine's documentation shares; accepting any defensible reading changes no condition's score.",
+      "compares": []
+    },
+    "limitations.s_conv_none": {
+      "text": "No deadline's label rests on a reading of the law listed as disputed.",
+      "compares": []
+    },
+    "limitations.writer": {
+      "text": "The letters and their labels were written and audited by a Claude model, run through Claude Code, that is not the benchmarked model but comes from its family.",
+      "compares": []
+    },
+    "limitations.absolute": {
+      "text": "Letters written by a model of that family may be easier for it to read than real mail, so every condition's absolute accuracy may be higher than on real letters.",
+      "compares": []
+    },
+    "limitations.ask_scope": {
+      "text": "“Ask: new questions on the demo household” holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions.",
+      "compares": []
+    },
+    "limitations.reads": {
+      "text": "The {k} reads were recorded within days of each other: they measure the model's run-to-run noise, not drift over months.",
+      "compares": []
+    },
+    "owner.pending": {
+      "text": "Not yet checked by a person: the labels, against an outside deadline calculator, and the Ask scores.",
+      "compares": []
+    },
+    "owner.labels_done": {
+      "text": "A person checked {owner_checked} labels against {owner_source}: {owner_agree} agree. The Ask scores are not yet checked by a person.",
+      "compares": []
+    },
+    "owner.kappa_done": {
+      "text": "The labels are not yet checked by a person. A person scored {owner_answers} Ask answers again: Cohen's κ = {owner_kappa}.",
+      "compares": []
+    },
+    "owner.done": {
+      "text": "A person checked {owner_checked} labels against {owner_source}: {owner_agree} agree; and scored {owner_answers} Ask answers again: Cohen's κ = {owner_kappa}.",
+      "compares": []
+    },
+    "provenance.none": {
+      "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; no deviation was recorded.",
+      "compares": []
+    },
+    "provenance.one": {
+      "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; one deviation was recorded at the time.",
+      "compares": []
+    },
+    "provenance.some": {
+      "text": "Pre-registered before any recording ({prereg_file}, hash {prereg_hash}) and published whatever the result; {deviations} deviations were recorded at the time.",
+      "compares": []
+    }
+  },
+  "placeholders": {
+    "level": {"source": "final", "path": "meta.settings.level", "format": "percent_number"},
+    "margin": {"source": "final", "path": "meta.settings.noninferiority_margin", "format": "percent_number"},
+    "n": {"source": "final", "path": "primary.items", "format": "int"},
+    "m": {"source": "final", "path": "primary.letters", "format": "int"},
+    "k": {"source": "final", "path": "primary.reads", "format": "int"},
+    "a_o": {"source": "final", "path": "primary.conditions.ordnung.mean_accuracy.value", "format": "pct"},
+    "ci_o": {"source": "final", "path": "primary.conditions.ordnung.mean_accuracy.ci", "format": "ci"},
+    "a_l": {"source": "final", "path": "primary.conditions.llm_only.mean_accuracy.value", "format": "pct"},
+    "a_b": {"source": "final", "path": "primary.conditions.{baseline_key}.mean_accuracy.value", "format": "pct"},
+    "d": {"source": "final", "path": "primary.families.{family}.{pair}.diff", "format": "points"},
+    "lo": {"source": "final", "path": "primary.families.{family}.{pair}.bootstrap.lo", "format": "points"},
+    "hi": {"source": "final", "path": "primary.families.{family}.{pair}.bootstrap.hi", "format": "points"},
+    "p": {"source": "final", "path": "primary.families.{family}.{pair}.holm", "format": "p"},
+    "power": {"source": "power", "path": "comparisons.{family}.{pair}.power", "format": "pct_whole"},
+    "ni_lo": {"source": "final", "path": "primary.noninferiority.{pair}.bound.lo", "format": "points"},
+    "ni_hi": {"source": "final", "path": "primary.noninferiority.{pair}.bound.hi", "format": "points"},
+    "err_o": {"source": "final", "path": "primary.noninferiority.{pair}.errors.ours", "format": "int"},
+    "err_b": {"source": "final", "path": "primary.noninferiority.{pair}.errors.theirs", "format": "int"},
+    "item_reads": {"source": "final", "path": "primary.decisions.harmful.reads", "format": "int"},
+    "h_o": {"source": "final", "path": "primary.conditions.ordnung.harmful_per_read", "each": "k", "total": "sum", "format": "int"},
+    "h_l": {"source": "final", "path": "primary.conditions.llm_only.harmful_per_read", "each": "k", "total": "sum", "format": "int"},
+    "h_r": {"source": "final", "path": "primary.conditions.llm_rules_text.harmful_per_read", "each": "k", "total": "sum", "format": "int"},
+    "h_t": {"source": "final", "path": "primary.conditions.llm_rules_tool.harmful_per_read", "each": "k", "total": "sum", "format": "int"},
+    "u_o": {"source": "final", "path": "primary.conditions.ordnung.unstable.k", "format": "int"},
+    "u_l": {"source": "final", "path": "primary.conditions.llm_only.unstable.k", "format": "int"},
+    "u_r": {"source": "final", "path": "primary.conditions.llm_rules_text.unstable.k", "format": "int"},
+    "u_t": {"source": "final", "path": "primary.conditions.llm_rules_tool.unstable.k", "format": "int"},
+    "p_f3": {"source": "final", "path": "primary.families.F3_stability.ordnung-vs-llm_only.holm", "format": "p"},
+    "discordant": {"source": "final", "paths": ["primary.families.F3_stability.ordnung-vs-llm_only.b", "primary.families.F3_stability.ordnung-vs-llm_only.c"], "total": "sum", "format": "int"},
+    "min_discordant": {"source": "templates", "path": "rules.stability_min_discordant", "format": "int"},
+    "caught": {"source": "final", "path": "primary.decisions.flags_caught.caught", "format": "int"},
+    "wrong": {"source": "final", "path": "primary.decisions.flags_caught.wrong", "format": "int"},
+    "nk_m": {"source": "final", "path": "secondary.newkinds.letters", "format": "int"},
+    "nk_n": {"source": "final", "path": "secondary.newkinds.items", "format": "int"},
+    "nk_kinds": {"source": "prereg", "path": "data.splits.newkinds.kinds", "total": "count", "format": "int"},
+    "nk_o": {"source": "final", "path": "secondary.newkinds.conditions.ordnung.exact.value", "format": "pct"},
+    "nk_ci_o": {"source": "final", "path": "secondary.newkinds.conditions.ordnung.exact.ci", "format": "ci"},
+    "nk_l": {"source": "final", "path": "secondary.newkinds.conditions.llm_only.exact.value", "format": "pct"},
+    "nk_r": {"source": "final", "path": "secondary.newkinds.conditions.llm_rules_text.exact.value", "format": "pct"},
+    "nk_t": {"source": "final", "path": "secondary.newkinds.conditions.llm_rules_tool.exact.value", "format": "pct"},
+    "nkh_o": {"source": "final", "path": "secondary.newkinds.conditions.ordnung.harmful.k", "format": "int"},
+    "nkh_l": {"source": "final", "path": "secondary.newkinds.conditions.llm_only.harmful.k", "format": "int"},
+    "nkh_r": {"source": "final", "path": "secondary.newkinds.conditions.llm_rules_text.harmful.k", "format": "int"},
+    "nkh_t": {"source": "final", "path": "secondary.newkinds.conditions.llm_rules_tool.harmful.k", "format": "int"},
+    "ask_right": {"source": "ask", "path": "strict_r1.strict_accuracy.k", "format": "int"},
+    "ask_n": {"source": "ask", "path": "strict_r1.strict_accuracy.n", "format": "int"},
+    "ask_harm": {"source": "ask", "path": "strict_r1.harmful.k", "format": "int"},
+    "ask_judged": {"source": "ask", "path": "strict_r1.harmful.n", "format": "int"},
+    "ask_harm_any": {"source": "ask", "path": "consistency.harmful_any.k", "format": "int"},
+    "ask_runs": {"source": "ask", "path": "consistency.runs", "format": "int"},
+    "ask_hit": {"source": "ask", "path": "consistency.attack_success_worst.k", "format": "int"},
+    "ask_attacks": {"source": "ask", "path": "consistency.attack_success_worst.n", "format": "int"},
+    "inj_n": {"source": "stress", "path": "endpoints.injection_targeted.n", "format": "int"},
+    "inj_o": {"source": "stress", "path": "endpoints.injection_targeted.ordnung", "format": "int"},
+    "inj_t": {"source": "stress", "path": "endpoints.injection_targeted.llm_rules_tool", "format": "int"},
+    "inj_p": {"source": "stress", "path": "endpoints.holm.injection_targeted", "format": "p"},
+    "dis_n": {"source": "stress", "path": "endpoints.distractor_taken.n", "format": "int"},
+    "dis_o": {"source": "stress", "path": "endpoints.distractor_taken.ordnung", "format": "int"},
+    "dis_t": {"source": "stress", "path": "endpoints.distractor_taken.llm_rules_tool", "format": "int"},
+    "dis_p": {"source": "stress", "path": "endpoints.holm.distractor_taken", "format": "p"},
+    "hu_n": {"source": "stress", "path": "endpoints.harmful_unflagged.n", "format": "int"},
+    "hu_o": {"source": "stress", "path": "endpoints.harmful_unflagged.ordnung", "format": "int"},
+    "hu_t": {"source": "stress", "path": "endpoints.harmful_unflagged.llm_rules_tool", "format": "int"},
+    "hu_p": {"source": "stress", "path": "endpoints.holm.harmful_unflagged", "format": "p"},
+    "e2e_obligations": {"source": "e2e", "path": "metrics.all.obligations", "format": "int"},
+    "e2e_in_time": {"source": "e2e", "path": "metrics.all.reminded_in_time.k", "format": "int"},
+    "e2e_set_aside": {"source": "e2e", "path": "metrics.all.scam.set_aside_obligations", "format": "int"},
+    "sc_n": {"source": "final", "path": "sensitivities.s_conv.tagged_items", "format": "int"},
+    "sc_o": {"source": "final", "path": "sensitivities.s_conv.conditions.ordnung.mean_accuracy", "format": "pct"},
+    "sc_l": {"source": "final", "path": "sensitivities.s_conv.conditions.llm_only.mean_accuracy", "format": "pct"},
+    "sc_r": {"source": "final", "path": "sensitivities.s_conv.conditions.llm_rules_text.mean_accuracy", "format": "pct"},
+    "sc_t": {"source": "final", "path": "sensitivities.s_conv.conditions.llm_rules_tool.mean_accuracy", "format": "pct"},
+    "owner_checked": {"source": "owner_labels", "path": "checked", "format": "int"},
+    "owner_agree": {"source": "owner_labels", "path": "agree", "format": "int"},
+    "owner_source": {"source": "owner_labels", "path": "source", "format": "text"},
+    "owner_answers": {"source": "owner_kappa", "path": "answers", "format": "int"},
+    "owner_kappa": {"source": "owner_kappa", "path": "kappa", "format": "kappa"},
+    "prereg_file": {"source": "final", "path": "meta.prereg.file", "format": "text"},
+    "prereg_hash": {"source": "final", "path": "meta.prereg.sha256", "format": "hash"},
+    "deviations": {"source": "deviations", "path": "", "total": "count", "format": "int"},
+    "baseline": {"source": "context", "path": "baseline", "format": "text"}
+  }
+}
