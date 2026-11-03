@@ -230,8 +230,10 @@ def _options(args: Sequence[str]) -> dict[str, list[str]]:
 
 
 def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
-    """The gates the ``backend-slow`` job of ``ci.yml`` runs: each split's replay (``benchmark/<split>``), the Ask
-    benchmark's arguments (``ask/dev``) and the published file the replay without the Land must equal."""
+    """The gates the ``backend-slow`` job of ``ci.yml`` runs, one per read: each split's replay
+    (``benchmark/<split>`` for its first read, ``benchmark/<split>/r<N>`` for read N of the final run), the Ask
+    benchmark's arguments (``ask/dev`` for the development set, ``ask/<set>/r<N>`` for each run of the held-out set)
+    and the published file the replay without the Land must equal. A gate command stands on one line."""
     try:
         import yaml  # PyYAML comes with uvicorn[standard]
     except ImportError as exc:  # pragma: no cover - a dependency of the app
@@ -241,17 +243,21 @@ def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
     for step in workflow["jobs"]["backend-slow"]["steps"]:
         run = str(step.get("run", ""))
         for line in run.splitlines():
-            if "ordnung eval" not in line:
-                continue
-            options = _options(shlex.split(line.split("ordnung eval", 1)[1]))
-            split = (options.get("--split") or ["test"])[0]
-            gates[f"benchmark/{split}"] = {
-                "conditions": options.get("--conditions") or "all",
-                "min_accuracy": float(options["--min-accuracy"][0]),
-                "max_dangerous_late": float(options["--max-dangerous-late"][0]),
-            }
-        if "-m evals.ask" in run:
-            gates["ask/dev"] = {"args": shlex.split(run.split("-m evals.ask", 1)[1])}
+            if "ordnung eval" in line:
+                options = _options(shlex.split(line.split("ordnung eval", 1)[1]))
+                split = (options.get("--split") or ["test"])[0]
+                repeat = int((options.get("--repeat") or ["1"])[0])
+                gates[f"benchmark/{split}" if repeat == 1 else f"benchmark/{split}/r{repeat}"] = {
+                    "conditions": options.get("--conditions") or "all",
+                    "min_accuracy": float(options["--min-accuracy"][0]),
+                    "max_dangerous_late": float(options["--max-dangerous-late"][0]),
+                }
+            elif "-m evals.ask" in line:
+                args = shlex.split(line.split("-m evals.ask", 1)[1])
+                options = _options(args)
+                ask_set = (options.get("--set") or ["dev"])[0]
+                repeat = int((options.get("--repeat") or ["1"])[0])
+                gates["ask/dev" if ask_set == "dev" else f"ask/{ask_set}/r{repeat}"] = {"args": args}
         if "eval_without_land" in run:
             gates["without-land"] = {"published": Path(step["env"]["PUBLISHED"]).name}
     return dict(sorted(gates.items()))

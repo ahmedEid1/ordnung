@@ -470,13 +470,6 @@ def test_the_index_holds_the_same_gate_for_the_file_as_it_is(tmp_path: Path) -> 
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="evals/reproduce.py (ci_gates) keys a benchmark gate by its split alone and every Ask step as ask/dev, so "
-    "INDEX.json cannot hold one gate per read; reproduce.py is frozen from the freeze, so it must key them by read "
-    "before then (and this mark go)",
-)
 def test_the_index_reproduce_writes_from_ci_yml_holds_a_gate_per_read(tmp_path: Path) -> None:
     """INDEX.json's gates are what ``python -m evals.reproduce --write`` reads from ci.yml (``reproduce.ci_gates``).
     From a workflow with one gate per read (two holdout4 reads at their own thresholds, newkinds, a held-out Ask
