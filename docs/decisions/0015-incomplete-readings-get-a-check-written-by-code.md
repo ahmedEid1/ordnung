@@ -89,7 +89,8 @@ Since added on top of this check, which stays the last line of defence: the comp
   know the sender's Land, the same letter gets Wed 9 Dec 2026 — one day early, "Please check".
   Since [ADR 0016](0016-an-incomplete-reading-is-asked-for-once-more.md), that letter's reading is asked
   for once more and the recorded second answer is complete, so this check files nothing for it: its date
-  (2026-12-10, or Wed 9 Dec 2026 until the sender's Land is set) comes from that answer (README row ⁸).
+  (2026-12-10, or Wed 9 Dec 2026 until the sender's Land is set) comes from that answer (the row
+  *Ordnung, re-scored* in [the evaluation history](../evals-history.md#held-out-run-the-holdout2-split)).
 
 ## Consequences
 A reading that drops a deadline other than the objection, but keeps its sender, is caught only for a fixed date

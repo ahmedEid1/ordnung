@@ -41,7 +41,6 @@ change to the README also changes what that page links to.
    - `__version__` in `src/ordnung/__init__.py`;
    - `npm version X.Y.Z --no-git-tag-version` in `web/` (`package.json` and `package-lock.json`);
    - `version` in the static demo's health answer, `HEALTH` in `web/src/mocks/data/system.ts`;
-   - the tag in README's *Updating* (`…/ordnung@vX.Y.Z`);
    - the version in the bug report template's placeholder (`.github/ISSUE_TEMPLATE/bug_report.yml`);
    - then `make openapi`, `ordnung demo --rebuild` and `make build-web`.
 
@@ -138,10 +137,10 @@ above: the workflow's file name and the environment's name must match exactly.
 
 ### After the first upload
 
-Then the README can install from PyPI, in a commit of its own:
+Then the README and the guide (`docs/guide.md`) can install from PyPI, in a commit of its own:
 
-- the install lines become `pipx install ordnung   # or: uv tool install ordnung`;
-- *Updating* says that `pipx upgrade ordnung` (or `uv tool upgrade ordnung`) installs the newest release from
-  PyPI, and going back becomes `pipx install --force "ordnung==X.Y.Z"`;
-- `test_the_readme_says_how_to_update` in `tests/test_regressions_install.py` then expects
-  `pipx upgrade ordnung`.
+- the install lines become `uv tool install ordnung   # or: pipx install ordnung`: the first of the README's
+  three lines, and those of the guide's *Install and run*;
+- the guide's *Updating* says that `pipx upgrade ordnung` (or `uv tool upgrade ordnung`) installs the newest
+  release from PyPI, and going back becomes `pipx install --force "ordnung==X.Y.Z"`;
+- the test of *Updating* in `tests/test_regressions_install.py` then expects `pipx upgrade ordnung`.

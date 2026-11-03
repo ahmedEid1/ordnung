@@ -96,7 +96,7 @@ is for on …"), `PUT /api/household` is computer-only ("household edits").
 ## Consequences and known limits
 - A letter filed for someone is still the person's to act on: its dates and reminders count as theirs, though
   Today, the Timeline and reminders *With details* say whose it is, and since ADR 0025 its numbers are listed under that
-  person and Ask and the Ideas say whose it is (README, Limitations).
+  person and Ask and the Ideas say whose it is (the guide's Limitations).
 - A suggestion can be wrong; it is only a question. Similar names ("Kim" and "Kim Rivera") are allowed, but a
   letter addressed to either then gets no suggestion.
 - The household has at most 12 people, each name at most 120 characters; one `PATCH` files at most 1,000
