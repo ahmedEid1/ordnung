@@ -654,6 +654,7 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
     import importlib.util
 
     import typer
+    from evals import analysis
     from evals.present import build as present_build
 
     from ordnung import cli
@@ -708,6 +709,16 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
             assert covered(f"web/src/mocks/data/{path.name}"), path.name
     for path in [*present_build.OUTPUT_PATHS, "evals/results/INDEX.json", "evals/results/items.csv"]:
         assert covered(path), path
+    # the benchmark analysis (`python -m evals.analysis`), which docs/evals.md takes its numbers from: the held-out
+    # re-analysis and, once it is run, the pre-registered final analysis; `make eval-reproduce` renders each again
+    analyses = [
+        path
+        for kind in (analysis.REANALYSIS_KIND, analysis.FINAL_KIND)
+        for path in sorted((ROOT / "evals" / "results").glob(f"*-{kind}.json"))
+    ]
+    assert analyses and "python -m evals.analysis" in made_by
+    for path in analyses:
+        assert covered(f"evals/results/{path.name}"), path.name
     for path in (
         "src/ordnung/web/dist/build-info.json",
         "web/openapi.json",

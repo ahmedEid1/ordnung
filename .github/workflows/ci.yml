@@ -25,7 +25,7 @@ jobs:
     if: github.event_name != 'schedule'
     # pinned: the samples' byte-for-byte check needs Ubuntu 24.04's Python 3.12 (its zlib is the manifest's)
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60  # 16 to 39 minutes seen; a hung test is named at 10 (faulthandler_timeout)
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +64,7 @@ jobs:
   backend-slow:
     name: Backend, slow checks (Python 3.12)
     # the slow tests, the replayed benchmarks and demo --check: in the 3.12 leg of "backend" they took the job
-    # to 36 of its 45 minutes, so a slow runner could time it out
+    # to 36 of its then 45 minutes, so a slow runner could time it out
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 45

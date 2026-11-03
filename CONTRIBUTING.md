@@ -82,8 +82,9 @@ These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more 
 
 - **Generated files are committed, and CI fails while most of them are stale**: the built web app (so an
   install from git needs no Node), the API's types for the web app, the static demo's GiroCodes, My numbers,
-  advice cards and high-stakes dates, the demo and the evaluation's pages. [Generated files](#generated-files)
-  says what writes each, and which ones nothing checks yet. The rebuilt web app goes in a commit of its own.
+  advice cards and high-stakes dates, the demo, and the evaluation's analysis and pages.
+  [Generated files](#generated-files) says what writes each, and which ones nothing checks yet. The rebuilt web
+  app goes in a commit of its own.
 - **The docs say what the code does.** `tests/test_docs_claims.py` checks the README's and docs'
   numbers and statements against the code; change the docs in the same pull request.
 - **Text in pictures stays off in tests.** Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a
@@ -115,6 +116,7 @@ commit what it writes. The last column is what fails while one is stale.
 | `src/ordnung/demo/demo_db/` (the demo's snapshot) | `.venv/bin/ordnung demo --rebuild --no-serve`, from the samples and the recordings (no model call) | `.venv/bin/ordnung demo --check`: the snapshot's `VERSION` is a hash of what it was built from (the app's and the database's versions, the samples' manifest, the suggested questions, the recordings), so the check fails once one of them changes, but not on a hand edit of the database |
 | `src/ordnung/demo/fixtures/` (the demo's recorded answers) | recorded only: [Benchmarks and recorded answers](#benchmarks-and-recorded-answers) | `.venv/bin/ordnung demo --check` names the answers a replay misses |
 | `evals/recorded/` (the benchmarks' recorded answers, and beside them their prompts lock and requests lock; a live run adds its ledger there) | recorded only: [evals/README.md](evals/README.md#record-costs-tokens) | the benchmark steps in [Checks](#checks) (a replay misses, or a prompts lock refuses a changed text), and `.venv/bin/python -m evals.harness lock-requests --check` (`--ask --check` for Ask) |
+| `evals/results/*-heldout-reanalysis.json` (the held-out splits analysed again from their results files as recorded) | `.venv/bin/python -m evals.analysis --write --date <day>`, with the date in the file's name; without `--date` it writes a new file for today, which `evals/results/INDEX.json` doesn't list, and leaves the old one stale | `python -m evals.analysis --check` and `make eval-reproduce` |
 | `README.md` (its evaluation block), `docs/evals.md`, `docs/evals-history.md`, `docs/assets/eval-*.svg`, `evals/present/presentation.json` | `.venv/bin/python -m evals.present --write` | `tests/test_present.py::test_the_outputs_are_the_committed_files` and `python -m evals.present --check` |
 | `docs/evals-ask.md` | `.venv/bin/python -m evals.ask --write --date <day>`, with the day the page's header says it was re-scored on (the date in the name of the newest `evals/results/*-ask-rescored.json`); without `--date` it writes a new results file for today | the Ask benchmark's step in [Checks](#checks) (`--check-docs`) |
 | `evals/results/INDEX.json`, `evals/results/items.csv` | `.venv/bin/python -m evals.reproduce --write` (a date or count it changes then needs its reason in `INDEX.json`, written by a person); `items.csv` alone: `python -m evals.export --write` | `tests/test_results_index.py`, `tests/test_items_export.py` and `make eval-reproduce` |
