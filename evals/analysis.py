@@ -1,6 +1,7 @@
 """The benchmark's analysis: exact statistics, harm and selective prediction, from results files alone.
 
-It reads ``evals/results/*.json`` and nothing else: no model call, no replay, no change to the scorer
+It reads ``evals/results/*.json`` (and, for the final run, its pre-registration, the deviations file, the recordings'
+day index and ledger, and the dataset's manifest) and nothing else: no model call, no replay, no change to the scorer
 (``evals/metrics.py``) or to the records (``evals/records.py``, part of every recording's code digest).
 
 * ``python -m evals.analysis`` — **the held-out splits re-analysed**: holdout, holdout2 and holdout3 as recorded
@@ -11,8 +12,23 @@ It reads ``evals/results/*.json`` and nothing else: no model call, no replay, no
 * ``python -m evals.analysis --prereg FILE RESULTS…`` — **the pre-registered final run**: the reads the
   pre-registration names (its ``analysis`` section, :func:`default_prereg_analysis`), its primary families F1–F3 with
   Holm, the one-read sensitivity analysis, the descriptive secondary numbers and the decisions its rules take.
-  ``--write`` / ``--check`` as above, for ``evals/results/<date>-claude-sonnet-5-final.json`` (the date of the last
-  primary read).
+  ``--write`` / ``--check`` as above, for ``evals/results/<date>-claude-sonnet-5-final.json`` (``--date``, else the
+  date of the last primary read).
+
+The final run is analysed only as it was registered. Before any number, :func:`check_frozen` compares every read with
+the pre-registration's frozen inputs: the fingerprints of the code and prompts, the model that answered (the ledger),
+the dataset's manifest, a clean tree, each unit's day inside [``planned_day``, ``valid_until``] and its ``claude``
+version (the day index, ``evals/recorded/<model>/final-days.json``), and a letter left without an answer. A unit is one
+letter in one read, with all its conditions. A mismatch is refused unless a deviation recorded at the time names it
+(the deviations file: posted on the pre-registration issue, with its time and the checkpoint commit that pushed it);
+then it has its kind's fixed consequence (:data:`DEVIATION_CONSEQUENCES`), never one chosen after the results.
+
+The pre-registration's fields read besides ``analysis``: ``registered.planned_day`` and ``valid_until``;
+``frozen.fingerprints`` (per condition), ``frozen.cli_versions`` and ``frozen.served_models``;
+``data.manifest_sha256``; ``deviation_kinds`` (it must be :data:`DEVIATION_CONSEQUENCES`); ``deviations_file``. A
+deviation names what it applies to in ``applies_to``: ``split`` and ``repeat`` (a read), ``entries`` (its units),
+``items`` (``label_error``: entry id, item index and the corrected date) or ``first_attempt`` (``retake``: entry id,
+condition and the first attempt's outcome).
 
 Definitions, in one place:
 
@@ -31,8 +47,8 @@ Definitions, in one place:
 * a **cluster** is a letter together with the photo rendered from it, named with its split;
 * an item is **unstable** over repeated reads when its date (or "no date") is not the same in every read.
 
-Every output holds ids, counts, hashes and metric values only: never a letter's text, a title, a quote, a warning or
-a date. Floats are rounded to :data:`SIGNIFICANT_DIGITS` significant digits, so a render is byte-identical on every
+Every output holds ids, counts, hashes and metric values only (and the days units were recorded on): never a letter's
+text, a title, a quote, a warning or a date it names. Floats are rounded to :data:`SIGNIFICANT_DIGITS` significant digits, so a render is byte-identical on every
 platform.
 """
 
@@ -42,12 +58,15 @@ import argparse
 import hashlib
 import json
 import math
+import random
 import re
 import sys
-from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import asdict, dataclass
+from collections import Counter, defaultdict
+from collections.abc import Callable, Collection, Iterator, Mapping, Sequence
+from dataclasses import asdict, dataclass, field, replace
 from datetime import date as calendar_date
+from datetime import datetime
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +76,13 @@ from evals.records import CONDITIONS
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = ROOT / "evals" / "results"
+#: The final run's recordings (its day index and ledger, below ``<model>/``) and the dataset whose manifest the
+#: pre-registration pins.
+RECORDED_DIR = ROOT / "evals" / "recorded"
+DATASET_DIR = ROOT / "evals" / "dataset"
+DAY_INDEX_FILE = "final-days.json"
+LEDGER_FILE = "ledger.jsonl"
+MANIFEST_FILE = "manifest.json"
 #: The pinned benchmark model: the re-analysis reads its held-out runs.
 MODEL = "claude-sonnet-5"
 ANALYSIS_SCHEMA = "ordnung-eval-analysis/1"
@@ -98,6 +124,95 @@ VERDICTS = {
     "suggestive": "suggestive, not settled",
     "none": "no clear difference",
 }
+#: How the final run is analysed, as the pre-registration's ``analysis.rules`` names it: the code implements exactly
+#: these, and :func:`parse_prereg` refuses any other value.
+RULES = {
+    "harmful": "late_or_missed",
+    "instability": "date_or_no_date_differs_between_reads",
+    "f1_f2_test": "cluster_signflip_two_sided_item_weighted",
+    "interval": "paired_cluster_bootstrap_percentile",
+    "f3_test": "mcnemar_midp_bonett_price",
+    "multiplicity": "holm_within_each_family",
+    "noninferiority": "signflip_test_inversion",
+    "sensitivity_r1": "exact_mcnemar_midp_bonett_price",
+}
+#: The final run's one confirmatory decision: F1, Ordnung against the model alone. Every other is secondary.
+CONFIRMATORY = {"family": "F1_accuracy", "baseline": "llm_only"}
+#: The sensitivity analyses and exploratory blocks the code can give; the pre-registration names which it gives.
+SENSITIVITIES = ("s_conv", "label_corrected", "first_attempt", "same_day_f3", "same_cli_f3")
+EXPLORATORY = ("by_family", "by_modality", "by_adversarial_class", "by_recording_day", "pooled_held_out")
+#: The fewest reads F3 (stability) is run on; with fewer, read 1's cluster tests are the primary analysis.
+MIN_READS = 2
+#: What a deviation of each kind does to the final run's analysis.
+INVALID, EXCLUDE_READ, EXCLUDE_UNIT, INCLUDE, NOT_RUN, RETIRED, SENSITIVITY = (
+    "invalid",
+    "exclude_read",
+    "exclude_unit",
+    "include",
+    "not_run",
+    "retired",
+    "sensitivity",
+)
+DEVIATION_EFFECTS = {
+    "fingerprint": INVALID,
+    "code_digest": INVALID,
+    "prompt_hash": INVALID,
+    "model": INVALID,
+    "manifest_mismatch": EXCLUDE_READ,
+    "dirty_tree": EXCLUDE_READ,
+    "day_outside_window": EXCLUDE_UNIT,
+    "cli_version": INCLUDE,
+    "retake": INCLUDE,
+    "unanswered": INCLUDE,
+    "infrastructure": INCLUDE,
+    "budget_cut": NOT_RUN,
+    "window_closed": NOT_RUN,
+    "retired_set": RETIRED,
+    "label_error": SENSITIVITY,
+    "scorer_bug": INCLUDE,
+    "code_hash_changed": INCLUDE,
+}
+_NEVER_WAIVABLE = (
+    "never waivable: the read is invalid; a mandatory read is recorded again inside the window if possible, "
+    'otherwise "not recorded"'
+)
+_NOT_RUN = "the step is not run or not completed, and is published as such"
+#: Each deviation kind's consequence, fixed before any recording: the pre-registration's ``deviation_kinds`` must be
+#: this table, so the analysis applies what was registered.
+DEVIATION_CONSEQUENCES = {
+    "fingerprint": _NEVER_WAIVABLE,
+    "code_digest": _NEVER_WAIVABLE,
+    "prompt_hash": _NEVER_WAIVABLE,
+    "model": _NEVER_WAIVABLE,
+    "manifest_mismatch": "exclude the read",
+    "dirty_tree": "exclude the read",
+    "day_outside_window": "exclude the unit (listed; scored as not recorded)",
+    "cli_version": "include; per-unit versions; same-CLI F3 sensitivity",
+    "retake": "include the retaken unit; the first attempt is published; first-attempt sensitivity",
+    "unanswered": "include, scored empty",
+    "infrastructure": "include (calls lost, cost unknown)",
+    "budget_cut": _NOT_RUN,
+    "window_closed": _NOT_RUN,
+    "retired_set": "the set is not analysed; every recorded unit is published",
+    "label_error": "only from the blind review of the items any condition got wrong (an owner's finding goes "
+    "through it too): the primary stays; label-corrected sensitivity",
+    "scorer_bug": "the primary stays; re-scored files after publication",
+    "code_hash_changed": "the runner-defect rule, or a presentation-only change listed per path",
+}
+#: A mismatch with the frozen inputs, and the deviation kinds that may name it.
+_EXCUSED_BY = {
+    "fingerprint": ("fingerprint", "code_digest", "prompt_hash"),
+    "model": ("model",),
+    "manifest_mismatch": ("manifest_mismatch",),
+    "dirty_tree": ("dirty_tree",),
+    "day_outside_window": ("day_outside_window",),
+    "cli_version": ("cli_version",),
+    "unanswered": ("unanswered",),
+}
+#: The outcomes a retake records for each first attempt.
+FIRST_ATTEMPT_OUTCOMES = ("ok", "failed", "timeout", "infra")
+_COMMENT_URL = re.compile(r"https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/issues/\d+#issuecomment-\d+")
+_COMMIT = re.compile(r"[0-9a-f]{40}")
 
 
 class AnalysisError(ValueError):
@@ -148,6 +263,8 @@ class Item:
     cause: str | None
     #: What the rules engine took from the reading (``READING_FIELDS``), as canonical JSON; ``None`` without one.
     reading: str | None
+    #: The letter's today in this read: the day its unit was recorded (``None`` when the file does not say).
+    day: str | None = None
 
     @property
     def key(self) -> tuple[str, str, int]:
@@ -203,6 +320,11 @@ class Letter:
     kind_ok: bool
     #: Calls of the date tools (``None``: the condition had no tools).
     date_tool_calls: int | None
+    #: A model failure (scored, never retried) and an infrastructure error (no answer at all).
+    failed: bool = False
+    error: bool = False
+    #: The scorer's adversarial checks that apply to the letter, and whether each passed.
+    adversarial: tuple[tuple[str, bool], ...] = ()
 
     @property
     def fully_right(self) -> bool:
@@ -273,6 +395,7 @@ def load_run(results: Mapping[str, Any], *, name: str = "", sha256: str = "") ->
     items: dict[str, list[Item]] = {c: [] for c in conditions}
     letters: dict[str, list[Letter]] = {c: [] for c in conditions}
     for entry in entries:
+        told = entry.get("simulated_today") or entry.get("today")
         for condition in conditions:
             value = (entry.get("conditions") or {}).get(condition) or {}
             score = value.get("score")
@@ -298,6 +421,7 @@ def load_run(results: Mapping[str, Any], *, name: str = "", sha256: str = "") ->
                         confidence=item.get("confidence"),
                         cause=item.get("cause"),
                         reading=_reading(prediction, item.get("pred_index")),
+                        day=str(told) if told else None,
                     )
                 )
             tool_calls = score.get("tool_calls")
@@ -317,6 +441,15 @@ def load_run(results: Mapping[str, Any], *, name: str = "", sha256: str = "") ->
                     date_tool_calls=None
                     if tool_calls is None
                     else sum(int(tool_calls.get(name) or 0) for name in DATE_TOOLS),
+                    failed=bool(score.get("failed")),
+                    error=bool(score.get("error")),
+                    adversarial=tuple(
+                        sorted(
+                            (str(name), bool(passed))
+                            for name, passed in (score.get("adversarial") or {}).items()
+                            if passed is not None
+                        )
+                    ),
                 )
             )
     return Run(
@@ -950,6 +1083,11 @@ def default_prereg_analysis() -> dict[str, Any]:
         "noninferiority_margin": 0.05,
         "loss_ratios": list(LOSS_RATIOS),
         "pool_with": list(HELD_OUT_AS_RECORDED),
+        "rules": dict(RULES),
+        "min_reads": MIN_READS,
+        "confirmatory": dict(CONFIRMATORY),
+        "sensitivities": list(SENSITIVITIES),
+        "exploratory": list(EXPLORATORY),
     }
 
 
@@ -966,11 +1104,15 @@ class Prereg:
     noninferior_to: tuple[str, ...]
     pool_with: tuple[str, ...]
     settings: Settings
+    min_reads: int = MIN_READS
+    sensitivities: tuple[str, ...] = SENSITIVITIES
+    exploratory: tuple[str, ...] = EXPLORATORY
 
 
 def parse_prereg(data: Mapping[str, Any]) -> Prereg:
-    """The ``analysis`` section of a pre-registration; ``AnalysisError`` when a field is missing or malformed (no
-    field has a default: what the analysis does is what the pre-registration says)."""
+    """The ``analysis`` section of a pre-registration; ``AnalysisError`` when a field is missing or malformed, or names
+    a rule the code does not implement (no field has a default: what the analysis does is what the pre-registration
+    says)."""
     section = data.get("analysis")
     if not isinstance(section, Mapping):
         raise AnalysisError("the pre-registration has no analysis section")
@@ -1005,7 +1147,12 @@ def parse_prereg(data: Mapping[str, Any]) -> Prereg:
                 noninferiority_margin=float(section["noninferiority_margin"]),
                 loss_ratios=tuple(float(r) for r in section["loss_ratios"]),
             ),
+            min_reads=int(section["min_reads"]),
+            sensitivities=tuple(str(name) for name in section["sensitivities"]),
+            exploratory=tuple(str(name) for name in section["exploratory"]),
         )
+        rules = dict(section["rules"])
+        confirmatory = dict(section["confirmatory"])
     except (KeyError, TypeError, ValueError) as exc:
         raise AnalysisError(f"the pre-registration's analysis section is malformed: {exc}") from exc
     if prereg.reference != REFERENCE:
@@ -1014,24 +1161,530 @@ def parse_prereg(data: Mapping[str, Any]) -> Prereg:
         raise AnalysisError("the primary split is read at least once and each secondary split once")
     if not set(prereg.noninferior_to) <= set(prereg.baselines):
         raise AnalysisError("a non-inferiority comparison names a condition that is not a baseline")
+    differing = sorted(key for key in rules.keys() | RULES.keys() if rules.get(key) != RULES.get(key))
+    if differing:
+        raise AnalysisError(
+            f"the pre-registration's rules differ from the ones the analysis implements in {', '.join(differing)}"
+        )
+    if not 1 <= prereg.min_reads <= prereg.primary_reads:
+        raise AnalysisError(
+            f"min_reads {prereg.min_reads} is not between 1 and the {prereg.primary_reads} reads"
+        )
+    if confirmatory != CONFIRMATORY or CONFIRMATORY["baseline"] not in prereg.baselines:
+        raise AnalysisError(f"the confirmatory decision the analysis implements is {CONFIRMATORY}")
+    for name, known in (("sensitivities", SENSITIVITIES), ("exploratory", EXPLORATORY)):
+        unknown = [value for value in getattr(prereg, name) if value not in known]
+        if unknown:
+            raise AnalysisError(
+                f"the analysis has no {name} {', '.join(unknown)} (it knows {', '.join(known)})"
+            )
     return prereg
 
 
-def _assign_reads(prereg: Prereg, runs: Sequence[Run]) -> tuple[list[Run], dict[str, Run]]:
-    """The primary reads in order and the secondary runs by split; ``AnalysisError`` for anything that does not fit."""
+# --------------------------------------------------------------------------------------------------
+# The frozen inputs and the deviations recorded at the time
+# --------------------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Frozen:
+    """What the pre-registration pins besides its ``analysis`` section: the reads are checked against it."""
+
+    planned_day: str
+    valid_until: str
+    fingerprints: Mapping[str, str]
+    cli_versions: tuple[str, ...]
+    served_models: tuple[str, ...]
+    manifest_sha256: str
+    deviations_file: str
+
+
+def _iso_day(value: Any) -> str:
+    """``value`` when it is a day ``YYYY-MM-DD``; ``ValueError`` otherwise."""
+    text = str(value)
+    if calendar_date.fromisoformat(text).isoformat() != text:
+        raise ValueError(f"{text!r} is not a day YYYY-MM-DD")
+    return text
+
+
+def _kinds_table(raw: Any) -> dict[str, str]:
+    """The pre-registration's table of deviation kinds: ``{kind: consequence}``, ``{kind: {"consequence": …}}`` or a
+    list of ``{"kind", "consequence"}``."""
+    rows = raw.items() if isinstance(raw, Mapping) else ((row["kind"], row) for row in raw)
+    table = {}
+    for kind, value in rows:
+        consequence = value.get("consequence") if isinstance(value, Mapping) else value
+        if not isinstance(consequence, str):
+            raise TypeError(f"the consequence of {kind!r} is not a text")
+        table[str(kind)] = consequence
+    return table
+
+
+def parse_frozen(data: Mapping[str, Any]) -> Frozen:
+    """The frozen inputs of a pre-registration; ``AnalysisError`` when one is missing or malformed, or when its table
+    of deviation kinds is not the one the analysis applies (:data:`DEVIATION_CONSEQUENCES`)."""
+    try:
+        registered, frozen, dataset = data["registered"], data["frozen"], data["data"]
+        found = Frozen(
+            planned_day=_iso_day(registered["planned_day"]),
+            valid_until=_iso_day(registered["valid_until"]),
+            fingerprints={str(c): str(value) for c, value in frozen["fingerprints"].items()},
+            cli_versions=tuple(str(value) for value in frozen["cli_versions"]),
+            served_models=tuple(str(value) for value in frozen["served_models"]),
+            manifest_sha256=str(dataset["manifest_sha256"]),
+            deviations_file=str(data["deviations_file"]),
+        )
+        table = _kinds_table(data["deviation_kinds"])
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        raise AnalysisError(
+            f"the pre-registration lacks a frozen input the reads are checked against: {exc}"
+        ) from exc
+    if found.valid_until < found.planned_day:
+        raise AnalysisError("the pre-registration's window ends before it starts")
+    differing = sorted(
+        kind
+        for kind in table.keys() | DEVIATION_CONSEQUENCES.keys()
+        if table.get(kind) != DEVIATION_CONSEQUENCES.get(kind)
+    )
+    if differing:
+        raise AnalysisError(
+            "the pre-registration's table of deviation kinds is not the one the analysis applies "
+            f"(it differs in {', '.join(differing)})"
+        )
+    return found
+
+
+@dataclass(frozen=True)
+class Deviation:
+    """One entry of the deviations file, recorded at the time it happened."""
+
+    id: str
+    kind: str
+    step: str
+    #: What it applies to (its ``applies_to``): a read (``split``, ``repeat``) and its units (``entries``).
+    split: str | None
+    repeat: int | None
+    entries: frozenset[str]
+    #: ``label_error``: (entry id, item index, the corrected date).
+    items: tuple[tuple[str, int, str], ...]
+    #: ``retake``: (entry id, condition, the first attempt's outcome).
+    first_attempt: tuple[tuple[str, str, str], ...]
+    #: Its id, kind, step, times, issue comment and checkpoint, for the output (never its text).
+    record: Mapping[str, Any]
+
+    @property
+    def effect(self) -> str:
+        return DEVIATION_EFFECTS[self.kind]
+
+    def names(self, split: str, repeat: int) -> bool:
+        """Whether it applies to this read."""
+        return self.split == split and self.repeat == repeat
+
+
+def _deviation_problems(entry: Mapping[str, Any]) -> list[str]:
+    """Why an entry does not count as a deviation recorded at the time (none: it counts)."""
+    problems = []
+    kind = entry.get("kind")
+    if kind not in DEVIATION_CONSEQUENCES:
+        problems.append(f"kind {kind!r} is not in the registered table")
+    elif entry.get("consequence") != DEVIATION_CONSEQUENCES[str(kind)]:
+        problems.append(f"its consequence is not the one registered for {kind}")
+    if not isinstance(entry.get("step"), str) or not entry["step"]:
+        problems.append("no step")
+    if not _COMMENT_URL.fullmatch(str(entry.get("issue_comment_url") or "")):
+        problems.append("no comment on the pre-registration issue (issue_comment_url)")
+    try:
+        datetime.fromisoformat(str(entry.get("created_at")).replace("Z", "+00:00"))
+    except ValueError:
+        problems.append("no time it was recorded (created_at)")
+    if not _COMMIT.fullmatch(str(entry.get("checkpoint_sha") or "")):
+        problems.append("no checkpoint commit that pushed it (checkpoint_sha)")
+    applies = entry.get("applies_to", {})
+    try:
+        _applies_to(applies)
+    except (KeyError, TypeError, ValueError, AttributeError) as exc:
+        problems.append(f"applies_to is malformed ({exc})")
+    return problems
+
+
+def _applies_to(applies: Any) -> tuple[Any, ...]:
+    """``applies_to`` read: (split, repeat, entries, items, first_attempt); ``ValueError`` for anything malformed."""
+    if not isinstance(applies, Mapping):
+        raise TypeError("not an object")
+    split = applies.get("split")
+    if split is not None and not isinstance(split, str):
+        raise TypeError("split is not a text")
+    repeat = applies.get("repeat")
+    if repeat is not None and (isinstance(repeat, bool) or not isinstance(repeat, int) or repeat < 1):
+        raise ValueError("repeat is not a read number")
+    entries = applies.get("entries") or []
+    if not all(isinstance(entry, str) for entry in entries):
+        raise TypeError("entries are not ids")
+    items = tuple(
+        (str(item["entry_id"]), int(item["item"]), _iso_day(item["date"]))
+        for item in applies.get("items") or []
+    )
+    first = tuple(
+        (str(row["entry_id"]), str(row["condition"]), str(row["outcome"]))
+        for row in applies.get("first_attempt") or []
+    )
+    for _, condition, outcome in first:
+        if condition not in CONDITIONS or outcome not in FIRST_ATTEMPT_OUTCOMES:
+            raise ValueError(f"a first attempt of {condition!r} with outcome {outcome!r}")
+    return split, repeat, frozenset(entries), items, first
+
+
+def load_deviations(path: Path) -> list[Deviation]:
+    """The deviations file; ``AnalysisError`` naming an entry that was not recorded at the time (no issue comment, no
+    time, no checkpoint commit), is not of a registered kind or has another consequence than its kind's."""
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AnalysisError(f"the deviations file cannot be read: {exc}") from exc
+    if not isinstance(raw, list):
+        raise AnalysisError(f"{path.name} is not a list of deviations")
+    found: list[Deviation] = []
+    for position, entry in enumerate(raw, start=1):
+        ident = entry.get("id") if isinstance(entry, Mapping) else None
+        label = f"deviation {ident or f'#{position}'}"
+        if not isinstance(entry, Mapping) or not isinstance(ident, str) or not ident:
+            raise AnalysisError(f"{label} is not an entry with an id")
+        problems = _deviation_problems(entry)
+        if problems:
+            raise AnalysisError(
+                f"{label}: {'; '.join(problems)}. A deviation counts only as recorded at the time"
+            )
+        if any(known.id == ident for known in found):
+            raise AnalysisError(f"{label} is in the file twice")
+        split, repeat, entries, items, first = _applies_to(entry.get("applies_to", {}))
+        record = {
+            key: entry.get(key)
+            for key in (
+                "id",
+                "kind",
+                "step",
+                "consequence",
+                "at",
+                "created_at",
+                "issue_comment_url",
+                "checkpoint_sha",
+            )
+        }
+        found.append(
+            Deviation(
+                ident, str(entry["kind"]), str(entry["step"]), split, repeat, entries, items, first, record
+            )
+        )
+    return found
+
+
+@dataclass
+class Checked:
+    """What :func:`check_frozen` found: the reads the analysis uses, and what it left out and why."""
+
+    runs: list[Run]
+    #: (split, read, entry id) → (the unit's day, its claude version).
+    units: dict[tuple[str, int, str], tuple[str | None, str | None]]
+    #: (split, read) → the deviations that say why that read is not analysed.
+    missing: dict[tuple[str, int], dict[str, Any]]
+    left_out: list[tuple[Run, dict[str, Any]]] = field(default_factory=list)
+    units_excluded: list[dict[str, Any]] = field(default_factory=list)
+    unanswered: list[dict[str, Any]] = field(default_factory=list)
+    cli_versions: dict[str, list[str]] = field(default_factory=dict)
+    deviations: list[Deviation] = field(default_factory=list)
+    evidence: dict[str, Any] = field(default_factory=dict)
+
+
+def _run_label(run: Run) -> str:
+    return run.name or f"{run.split} read {run.repeat}"
+
+
+def _entries_of(run: Run) -> list[Mapping[str, Any]]:
+    return [entry for entry in run.results.get("entries") or [] if isinstance(entry, Mapping)]
+
+
+def _without(run: Run, entries: Collection[str]) -> Run:
+    """The run without these letters (every condition)."""
+    if not entries:
+        return run
+    return replace(
+        run,
+        items={c: tuple(i for i in items if i.entry_id not in entries) for c, items in run.items.items()},
+        letters={
+            c: tuple(x for x in letters if x.entry_id not in entries) for c, letters in run.letters.items()
+        },
+    )
+
+
+def _fingerprint_mismatch(run: Run, frozen: Frozen, conditions: Sequence[str]) -> list[str]:
+    """The conditions whose fingerprint (the run's, or any prediction's) is not the registered one."""
+    registered = frozen.fingerprints
+    found = run.meta.get("fingerprints")
+    if not isinstance(found, Mapping):
+        found = {}
+    bad = {c for c in conditions if found.get(c) != registered.get(c)}
+    for entry in _entries_of(run):
+        for condition in conditions:
+            prediction = ((entry.get("conditions") or {}).get(condition) or {}).get("prediction") or {}
+            made_with = prediction.get("fingerprint")
+            if made_with and made_with != registered.get(condition):
+                bad.add(condition)
+    return sorted(bad)
+
+
+def check_frozen(
+    prereg: Prereg,
+    frozen: Frozen,
+    runs: Sequence[Run],
+    deviations: Sequence[Deviation],
+    *,
+    day_index: Mapping[str, Any],
+    ledger: Sequence[Mapping[str, Any]],
+) -> Checked:
+    """Every read against the pre-registration's frozen inputs; each mismatch must be named by a deviation recorded at
+    the time, and then has its kind's consequence. ``AnalysisError`` lists every mismatch no deviation names."""
+    retired = [d.id for d in deviations if d.effect == RETIRED]
+    if retired:
+        raise AnalysisError(
+            f"the final set was retired ({', '.join(retired)}): its recorded units are published as they are, and "
+            "it is not analysed as the final run"
+        )
+    wanted = (prereg.reference, *prereg.baselines)
+    analysed = {prereg.primary_split, *(split for split, _ in prereg.secondary)}
+    checked = Checked(runs=[], units={}, missing={}, deviations=list(deviations))
+    unnamed: list[str] = []
+    excluded: list[dict[str, Any]] = []
+    lines_checked = 0
+    for run in runs:
+        label = _run_label(run)
+        if run.model != prereg.model:
+            raise AnalysisError(f"{label}: model {run.model!r}, the pre-registration names {prereg.model!r}")
+        if run.split not in analysed:
+            raise AnalysisError(f"{label}: the pre-registration names no {run.split!r} split")
+        if run.meta.get("backend") != "live":
+            raise AnalysisError(
+                f"{label}: not a live recording (backend {run.meta.get('backend')!r}); the final run is analysed as "
+                "recorded"
+            )
+        # (mismatch, entry id or None, the condition or None, what differs)
+        found: list[tuple[str, str | None, str | None, str]] = []
+        bad = _fingerprint_mismatch(run, frozen, wanted)
+        if bad:
+            found.append(
+                (
+                    "fingerprint",
+                    None,
+                    None,
+                    f"the code or prompts of {', '.join(bad)} are not the registered ones",
+                )
+            )
+        ids = {str(entry.get("id")) for entry in _entries_of(run)}
+        lines = [
+            line
+            for line in ledger
+            if int(line.get("repeat") or 1) == run.repeat and ids.intersection(line.get("docs") or ())
+        ]
+        served = {str(line["served_model"]) for line in lines if line.get("served_model")}
+        if not served:
+            raise AnalysisError(f"{label}: no ledger line names the model that answered its calls")
+        lines_checked += len(lines)
+        if not served <= set(frozen.served_models):
+            found.append(
+                ("model", None, None, "a call was answered by a model the pre-registration does not name")
+            )
+        if (run.meta.get("dataset") or {}).get("manifest_sha256") != frozen.manifest_sha256:
+            found.append(("manifest_mismatch", None, None, "its letters are not the registered build"))
+        if run.meta.get("dirty") != []:
+            found.append(("dirty_tree", None, None, "recorded from a tree with changes"))
+        index = (day_index.get(run.split) or {}).get(f"r{run.repeat}") or {}
+        versions = set()
+        for entry in sorted(_entries_of(run), key=lambda e: str(e.get("id"))):
+            entry_id = str(entry.get("id"))
+            unit = index.get(entry_id)
+            if not isinstance(unit, Mapping) or not unit.get("day") or not unit.get("cli"):
+                raise AnalysisError(f"{label}: {entry_id} has no day and claude version in the day index")
+            day, cli = str(unit["day"]), str(unit["cli"])
+            told = entry.get("simulated_today") or entry.get("today")
+            if told and str(told) != day:
+                raise AnalysisError(
+                    f"{label}: {entry_id} was told {told}, the day index records {day}: one unit has one day"
+                )
+            checked.units[(run.split, run.repeat, entry_id)] = (day, cli)
+            versions.add(cli)
+            if not frozen.planned_day <= day <= frozen.valid_until:
+                found.append(
+                    (
+                        "day_outside_window",
+                        entry_id,
+                        None,
+                        f"recorded on {day}, outside {frozen.planned_day} to {frozen.valid_until}",
+                    )
+                )
+            if cli not in frozen.cli_versions:
+                found.append(("cli_version", entry_id, None, f"recorded with claude {cli}"))
+            for condition in wanted:
+                if any(
+                    letter.entry_id == entry_id and letter.error for letter in run.letters.get(condition, ())
+                ):
+                    found.append(("unanswered", entry_id, condition, f"{condition} has no answer"))
+        checked.cli_versions[f"{run.split}/r{run.repeat}"] = sorted(versions)
+        leave: dict[str, tuple[str, list[str]]] = {}  # mismatch → (its effect, the deviations naming it)
+        # what a read that stays brings: its excluded units and its letters left without an answer
+        units_out: dict[str, dict[str, Any]] = {}
+        unanswered: list[dict[str, Any]] = []
+        for mismatch, unit_id, which, detail in found:
+            names = [
+                d
+                for d in deviations
+                if d.kind in _EXCUSED_BY[mismatch]
+                and d.names(run.split, run.repeat)
+                and (unit_id is None or unit_id in d.entries or (mismatch == "cli_version" and not d.entries))
+            ]
+            if not names:
+                unit = f" {unit_id}" if unit_id else ""
+                unnamed.append(
+                    f"{label}: {mismatch}{unit} ({detail}): no deviation recorded at the time names it"
+                )
+                continue
+            ids_named = sorted(d.id for d in names)
+            effect = DEVIATION_EFFECTS[names[0].kind]
+            if effect in (INVALID, EXCLUDE_READ):
+                leave[mismatch] = (effect, sorted({*leave.get(mismatch, (effect, []))[1], *ids_named}))
+            elif effect == EXCLUDE_UNIT and unit_id is not None:
+                row = units_out.setdefault(
+                    unit_id,
+                    {
+                        "split": run.split,
+                        "repeat": run.repeat,
+                        "entry_id": unit_id,
+                        "day": checked.units[(run.split, run.repeat, unit_id)][0],
+                        "deviations": [],
+                    },
+                )
+                row["deviations"] = sorted({*row["deviations"], *ids_named})
+            elif mismatch == "unanswered":
+                unanswered.append(
+                    {
+                        "split": run.split,
+                        "read": run.repeat,
+                        "entry_id": unit_id,
+                        "condition": which,
+                        "deviations": ids_named,
+                    }
+                )
+        if leave:
+            effects = {effect for effect, _ in leave.values()}
+            checked.left_out.append(
+                (
+                    run,
+                    {
+                        "split": run.split,
+                        "repeat": run.repeat,
+                        "file": run.name,
+                        "sha256": run.sha256,
+                        "mismatches": sorted(leave),
+                        "deviations": sorted({ident for _, ids in leave.values() for ident in ids}),
+                        "effect": INVALID if INVALID in effects else EXCLUDE_READ,
+                    },
+                )
+            )
+        else:
+            checked.runs.append(run)
+            excluded.extend(units_out.values())
+            checked.unanswered.extend(unanswered)
+    if unnamed:
+        raise AnalysisError("; ".join(unnamed))
+    checked.units_excluded = sorted(excluded, key=lambda row: (row["split"], row["repeat"], row["entry_id"]))
+    gone: dict[str, set[str]] = defaultdict(set)
+    for row in checked.units_excluded:
+        gone[row["split"]].add(row["entry_id"])
+    checked.runs = [_without(run, gone[run.split]) for run in checked.runs]
+    checked.unanswered = [row for row in checked.unanswered if row["entry_id"] not in gone[row["split"]]]
+    present = {(run.split, run.repeat) for run in checked.runs}
+    for split, reads in ((prereg.primary_split, prereg.primary_reads), *prereg.secondary):
+        for read in range(1, reads + 1):
+            if (split, read) in present:
+                continue
+            names = [
+                d for d in deviations if d.effect in (INVALID, EXCLUDE_READ, NOT_RUN) and d.names(split, read)
+            ]
+            if names:
+                checked.missing[(split, read)] = {
+                    "read": read,
+                    "kinds": sorted({d.kind for d in names}),
+                    "deviations": sorted(d.id for d in names),
+                }
+    checked.evidence["ledger"] = {"lines": lines_checked}
+    checked.evidence["day_index"] = {"units": len(checked.units)}
+    return checked
+
+
+def _read_day_index(path: Path) -> Mapping[str, Any]:
+    if not path.is_file():
+        raise AnalysisError(f"no day index {path.name}: the final run's units have no recorded day")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise AnalysisError(f"the day index {path.name} is not JSON: {exc}") from exc
+    if not isinstance(data, Mapping):
+        raise AnalysisError(f"the day index {path.name} is not an object")
+    return data
+
+
+def _read_ledger(path: Path) -> list[Mapping[str, Any]]:
+    if not path.is_file():
+        return []
+    lines = []
+    for text in path.read_text(encoding="utf-8").splitlines():
+        if text.strip():
+            line = json.loads(text)
+            if isinstance(line, Mapping):
+                lines.append(line)
+    return lines
+
+
+def _conventions(path: Path, registered: str) -> dict[tuple[str, int], frozenset[str]]:
+    """Per (entry id, item index): the dates the other reading of a disputed convention gives (the manifest's
+    ``convention_alternatives``); ``AnalysisError`` unless the manifest is the registered one."""
+    try:
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise AnalysisError(f"the dataset's manifest cannot be read: {exc}") from exc
+    if hashlib.sha256(raw).hexdigest() != registered:
+        raise AnalysisError("the dataset's manifest is not the one the pre-registration pins")
+    found = {}
+    for entry in json.loads(raw).get("entries") or []:
+        for index, item in enumerate((entry.get("truth") or {}).get("items") or []):
+            dates = item.get("convention_alternatives") or []
+            if dates:
+                found[(str(entry["id"]), index)] = frozenset(str(day) for day in dates)
+    return found
+
+
+# --------------------------------------------------------------------------------------------------
+# The pre-registered final run
+# --------------------------------------------------------------------------------------------------
+
+
+def _assign_reads(
+    prereg: Prereg, runs: Sequence[Run], missing: Mapping[tuple[str, int], Any] | None = None
+) -> tuple[list[Run], dict[str, Run]]:
+    """The primary reads in order and the secondary runs by split; ``AnalysisError`` for anything that does not fit.
+    A read may be missing only when a deviation recorded at the time says why (``missing``), and never read 1."""
+    missing = missing or {}
     wanted = (prereg.reference, *prereg.baselines)
     primary: dict[int, Run] = {}
     secondary: dict[str, Run] = {}
     secondary_splits = {split for split, _ in prereg.secondary}
     for run in runs:
-        label = run.name or f"{run.split} read {run.repeat}"
+        label = _run_label(run)
         if run.model != prereg.model:
             raise AnalysisError(f"{label}: model {run.model!r}, the pre-registration names {prereg.model!r}")
         if run.meta.get("partial"):
             raise AnalysisError(f"{label}: a filtered run does not cover its split")
-        missing = [c for c in wanted if c not in run.conditions]
-        if missing:
-            raise AnalysisError(f"{label}: no answers of {', '.join(missing)}")
+        absent = [c for c in wanted if c not in run.conditions]
+        if absent:
+            raise AnalysisError(f"{label}: no answers of {', '.join(absent)}")
         if run.split == prereg.primary_split:
             if run.repeat in primary:
                 raise AnalysisError(f"read {run.repeat} of {run.split} was given twice")
@@ -1044,13 +1697,19 @@ def _assign_reads(prereg: Prereg, runs: Sequence[Run]) -> tuple[list[Run], dict[
             secondary[run.split] = run
         else:
             raise AnalysisError(f"{label}: the pre-registration names no {run.split!r} split")
-    for read in range(1, prereg.primary_reads + 1):
-        if read not in primary:
-            raise AnalysisError(f"{prereg.primary_split} read {read} is missing")
+    if 1 not in primary:
+        raise AnalysisError(
+            f"{prereg.primary_split} read 1 is missing: the final run's analysis starts from it"
+        )
+    for read in range(2, prereg.primary_reads + 1):
+        if read not in primary and (prereg.primary_split, read) not in missing:
+            raise AnalysisError(
+                f"{prereg.primary_split} read {read} is missing and no deviation recorded at the time says why"
+            )
     for split, _ in prereg.secondary:
-        if split not in secondary:
-            raise AnalysisError(f"the {split} run is missing")
-    reads = [primary[read] for read in range(1, prereg.primary_reads + 1)]
+        if split not in secondary and (split, 1) not in missing:
+            raise AnalysisError(f"the {split} run is missing and no deviation recorded at the time says why")
+    reads = [primary[read] for read in sorted(primary)]
     first = {c: sorted(item.key for item in reads[0].items[c]) for c in wanted}
     if any(first[c] != first[prereg.reference] for c in wanted):
         raise AnalysisError(f"the conditions of {prereg.primary_split} read 1 do not hold the same items")
@@ -1064,9 +1723,10 @@ def _assign_reads(prereg: Prereg, runs: Sequence[Run]) -> tuple[list[Run], dict[
     return reads, secondary
 
 
-def _mean_clusters(
-    rows: Mapping[tuple[str, str, int], Sequence[Item]], test: Callable[[Item], bool]
-) -> list[tuple[float, float]]:
+Rows = Mapping[tuple[str, str, int], Sequence[Item]]
+
+
+def _mean_clusters(rows: Rows, test: Callable[[Item], bool]) -> list[tuple[float, float]]:
     """Per cluster: (hits over every read, items × reads). With the same reads for every item, the ratio is the mean
     over items of the per-item mean over reads; counted in integers, so the sums are exact on every Python."""
     sums: dict[str, list[int]] = defaultdict(lambda: [0, 0])
@@ -1077,23 +1737,25 @@ def _mean_clusters(
     return [(float(row[0]), float(row[1])) for _, row in sorted(sums.items())]
 
 
-def _family_pair(
-    ours: Mapping[tuple[str, str, int], Sequence[Item]],
-    theirs: Mapping[tuple[str, str, int], Sequence[Item]],
-    test: Callable[[Item], bool],
-    settings: Settings,
-) -> dict[str, Any]:
-    """F1 / F2: the per-item mean over reads, ours minus theirs; sign-flip test over clusters, paired bootstrap.
-
-    Each cluster is counted in hits over every read (the per-item means times the number of reads), which changes
-    neither the test (a common scale) nor the rates, and keeps every sum an exact integer."""
+def _cluster_sums(ours: Rows, theirs: Rows, test: Callable[[Item], bool]) -> list[list[int]]:
+    """Per cluster, in cluster order: [our hits, their hits, item-reads], over every read."""
     sums: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
     for key, reads in ours.items():
         row = sums[reads[0].cluster]
         row[0] += sum(1 for item in reads if test(item))
         row[1] += sum(1 for item in theirs[key] if test(item))
         row[2] += len(reads)
-    clusters = [row for _, row in sorted(sums.items())]
+    return [row for _, row in sorted(sums.items())]
+
+
+def _family_pair(
+    ours: Rows, theirs: Rows, test: Callable[[Item], bool], settings: Settings
+) -> dict[str, Any]:
+    """F1 / F2: the per-item mean over reads, ours minus theirs; sign-flip test over clusters, paired bootstrap.
+
+    Each cluster is counted in hits over every read (the per-item means times the number of reads), which changes
+    neither the test (a common scale) nor the rates, and keeps every sum an exact integer."""
+    clusters = _cluster_sums(ours, theirs, test)
     item_reads = sum(row[2] for row in clusters)
     flip = stats.cluster_signflip(
         [row[0] - row[1] for row in clusters],
@@ -1117,15 +1779,115 @@ def _family_pair(
     }
 
 
+def _drawn_flips(pairs: Sequence[tuple[int, int]], draws: int, seed: int) -> Iterator[tuple[int, int]]:
+    """For ``draws`` random sign patterns (``random.Random(seed).getrandbits``, bit b for cluster b): the summed
+    differences and item-reads of the flipped clusters, by 8-bit tables."""
+    chunks = []
+    for start in range(0, len(pairs), 8):
+        part = pairs[start : start + 8]
+        masks = range(1 << len(part))
+        chunks.append(
+            (
+                start,
+                [sum(d for bit, (d, _) in enumerate(part) if mask >> bit & 1) for mask in masks],
+                [sum(n for bit, (_, n) in enumerate(part) if mask >> bit & 1) for mask in masks],
+            )
+        )
+    rng = random.Random(seed)
+    width = len(pairs)
+    for _ in range(draws):
+        mask = rng.getrandbits(width)
+        flipped_d = flipped_n = 0
+        for start, d_table, n_table in chunks:
+            byte = (mask >> start) & 0xFF
+            flipped_d += d_table[byte]
+            flipped_n += n_table[byte]
+        yield flipped_d, flipped_n
+
+
+def _order_statistic(ordered: Sequence[tuple[Fraction, int]], rank: int) -> Fraction:
+    """The ``rank``-th value (1-based) of values given with their counts, in order."""
+    seen = 0
+    for value, count in ordered:
+        seen += count
+        if seen >= rank:
+            return value
+    raise ValueError("rank beyond the values")
+
+
+def signflip_interval(
+    clusters: Sequence[tuple[int, int]], *, level: float, exact_max: int, draws: int, seed: int
+) -> dict[str, Any]:
+    """The interval of a paired difference δ (per item-read) by inverting the two-sided cluster sign-flip test.
+
+    ``clusters`` gives per cluster the difference of hits (first minus second, over every read) and its item-reads.
+    δ is kept when the sign-flip test of the cluster totals centred on δ (``d − δ·n``) does not reject at
+    ``1 − level``. A sign pattern that flips the clusters F counts against δ unless δ lies between F's own
+    difference per item-read and the rest's; both sides hold the estimate, so the p-value falls away from it on each
+    side and the kept set is an interval whose ends are order statistics of those differences (exact fractions).
+    Every pattern is counted up to ``exact_max`` clusters; beyond, ``draws`` patterns are drawn with ``seed`` and
+    ``p = (hits + 1) / (draws + 1)``, as :func:`evals.stats.cluster_signflip` does. Clipped to [−1, 1]: a test that
+    cannot reject keeps all of it."""
+    pairs = [(int(d), int(n)) for d, n in clusters if n > 0]
+    exact = len(pairs) <= exact_max
+    result: dict[str, Any] = {
+        "lo": None,
+        "hi": None,
+        "estimate": None,
+        "clusters": len(pairs),
+        "method": "exact" if exact else "monte-carlo",
+        "draws": None if exact else draws,
+        "seed": None if exact else seed,
+        "level": level,
+    }
+    if not pairs:
+        return result
+    total_d, total_n = sum(d for d, _ in pairs), sum(n for _, n in pairs)
+    alpha = 1 - Fraction(level).limit_denominator(stats.MAX_DENOMINATOR)
+    counts: Counter[tuple[int, int]]
+    if exact:
+        counts = Counter({(0, 0): 1})
+        for d, n in pairs:
+            step: Counter[tuple[int, int]] = Counter()
+            for (a, b), count in counts.items():
+                step[(a, b)] += count
+                step[(a + d, b + n)] += count
+            counts = step
+        need = math.ceil(alpha * 2 ** len(pairs))
+    else:
+        counts = Counter(_drawn_flips(pairs, draws, seed))
+        need = math.ceil(alpha * (draws + 1) - 1)
+    # flipping nothing or everything never counts against any δ
+    rank = need - counts.pop((0, 0), 0) - counts.pop((total_d, total_n), 0)
+    lo, hi = Fraction(-1), Fraction(1)
+    if rank > 0:
+        lows, highs = [], []
+        for (a, b), count in counts.items():
+            flipped, rest = Fraction(a, b), Fraction(total_d - a, total_n - b)
+            lows.append((min(flipped, rest), count))
+            highs.append((max(flipped, rest), count))
+        lo = max(lo, _order_statistic(sorted(lows), rank))
+        hi = min(hi, _order_statistic(sorted(highs, reverse=True), rank))
+    result.update(lo=float(lo), hi=float(hi), estimate=total_d / total_n)
+    return result
+
+
+def noninferiority_decision(lo: float | None, hi: float | None, margin: float, baseline: str) -> str:
+    """The pre-registered rule against a baseline Ordnung must not trail by more than ``margin``: the baseline is
+    higher only when the whole interval is below 0 (an upper end of exactly 0 is not); else not worse by more than
+    the margin when the lower end is above −margin; else we cannot tell."""
+    if hi is not None and hi < 0:
+        return "agent_higher" if baseline == TOOL_CONDITION else "baseline_higher"
+    if lo is not None and lo > -margin:
+        return "non_inferior"
+    return "cannot_tell"
+
+
 def _unstable(reads: Sequence[Item]) -> bool:
     return any(item.predicted != reads[0].predicted for item in reads[1:])
 
 
-def _stability_pair(
-    ours: Mapping[tuple[str, str, int], Sequence[Item]],
-    theirs: Mapping[tuple[str, str, int], Sequence[Item]],
-    settings: Settings,
-) -> dict[str, Any]:
+def _stability_pair(ours: Rows, theirs: Rows, settings: Settings) -> dict[str, Any]:
     """F3: unstable items, ours minus theirs: mid-p McNemar (exact beside it) and Bonett–Price."""
     keys = sorted(ours)
     b = sum(1 for key in keys if _unstable(ours[key]) and not _unstable(theirs[key]))
@@ -1142,7 +1904,7 @@ def _stability_pair(
     }
 
 
-def _reading_agreement(rows: Mapping[tuple[str, str, int], Sequence[Item]]) -> dict[str, int]:
+def _reading_agreement(rows: Rows) -> dict[str, int]:
     """Over the items read in every read: the same reading each time; a changed reading the engine absorbed (same
     date); and the same reading with another date (which only something besides the reading can cause)."""
     read = [reads for reads in rows.values() if all(item.reading is not None for item in reads)]
@@ -1173,14 +1935,21 @@ def _tool_use(letters: Sequence[Sequence[Letter]]) -> dict[str, int] | None:
     }
 
 
-def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
-    """The primary split over its reads: per condition the per-read rates, the mean over reads, stability and the
-    descriptive numbers; the families F1 (accuracy), F2 (harm) and F3 (stability) with Holm; the sensitivity
-    analysis on read 1; and the decisions the pre-registered rules take."""
-    settings = prereg.settings
-    level = settings.level
-    conditions = (prereg.reference, *prereg.baselines)
-    k = len(reads)
+@dataclass(frozen=True)
+class _Context:
+    """What the final run's analysis knows besides the reads: each unit's day and claude version, the deviations and
+    the disputed conventions' other dates."""
+
+    units: Mapping[tuple[str, int, str], tuple[str | None, str | None]] = field(default_factory=dict)
+    deviations: Sequence[Deviation] = ()
+    conventions: Mapping[tuple[str, int], frozenset[str]] = field(default_factory=dict)
+    unanswered: Sequence[Mapping[str, Any]] = ()
+
+
+def _rows(
+    reads: Sequence[Run], conditions: Sequence[str]
+) -> dict[str, dict[tuple[str, str, int], list[Item]]]:
+    """Per condition and item: its outcome in each read, in read order."""
     rows: dict[str, dict[tuple[str, str, int], list[Item]]] = {}
     for condition in conditions:
         table: dict[tuple[str, str, int], list[Item]] = defaultdict(list)
@@ -1188,6 +1957,166 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
             for item in run.items[condition]:
                 table[item.key].append(item)
         rows[condition] = dict(sorted(table.items()))
+    return rows
+
+
+def _f3_runs(prereg: Prereg, reads: int) -> bool:
+    return reads >= max(2, prereg.min_reads)
+
+
+def _families(rows: Mapping[str, Rows], prereg: Prereg, reads: int) -> dict[str, Any]:
+    """F1 (accuracy) and F2 (harm) with Holm on the sign-flip p, and F3 (stability) with Holm on the mid-p when there
+    are enough reads (``None`` otherwise)."""
+    settings = prereg.settings
+    ours = rows[prereg.reference]
+    families: dict[str, Any] = {
+        "F1_accuracy": {
+            _pair_key(prereg.reference, b): _family_pair(ours, rows[b], lambda i: i.right, settings)
+            for b in prereg.baselines
+        },
+        "F2_harm": {
+            _pair_key(prereg.reference, b): _family_pair(ours, rows[b], lambda i: i.harmful, settings)
+            for b in prereg.baselines
+        },
+        "F3_stability": {
+            _pair_key(prereg.reference, b): _stability_pair(ours, rows[b], settings) for b in prereg.baselines
+        }
+        if _f3_runs(prereg, reads)
+        else None,
+    }
+    for name in ("F1_accuracy", "F2_harm"):
+        family = families[name]
+        for key, adjusted in zip(
+            family, stats.holm([row["signflip"]["p"] for row in family.values()]), strict=True
+        ):
+            family[key]["holm"] = adjusted
+    if families["F3_stability"] is not None:
+        _holm_midp(families["F3_stability"])
+    return families
+
+
+def _holm_midp(family: dict[str, dict[str, Any]]) -> None:
+    for key, adjusted in zip(family, stats.holm([row["midp"] for row in family.values()]), strict=True):
+        family[key]["holm"] = adjusted
+
+
+def _noninferiority(rows: Mapping[str, Rows], prereg: Prereg, accuracy: Mapping[str, Any]) -> dict[str, Any]:
+    """Against each baseline Ordnung must not trail by more than the margin: the inverted cluster sign-flip gives the
+    interval the rule reads; the bootstrap interval and the error counts are beside it, descriptive."""
+    settings = prereg.settings
+    blocks = {}
+    for baseline in prereg.noninferior_to:
+        pair = _pair_key(prereg.reference, baseline)
+        sums = _cluster_sums(rows[prereg.reference], rows[baseline], lambda i: i.right)
+        bound = signflip_interval(
+            [(a - b, n) for a, b, n in sums],
+            level=settings.level,
+            exact_max=settings.signflip_exact_max,
+            draws=settings.signflip_draws,
+            seed=settings.seed,
+        )
+        ours, theirs = sum(n - a for a, _, n in sums), sum(n - b for _, b, n in sums)
+        blocks[pair] = {
+            "margin": settings.noninferiority_margin,
+            "bound": bound,
+            "bootstrap": accuracy[pair]["bootstrap"],
+            "errors": {"ours": ours, "theirs": theirs, "ratio": ours / theirs if theirs else None},
+            "decision": noninferiority_decision(
+                bound["lo"], bound["hi"], settings.noninferiority_margin, baseline
+            ),
+        }
+    return blocks
+
+
+def _decision_key(baseline: str) -> str:
+    return "beats_llm_only" if baseline == "llm_only" else f"vs_{baseline}"
+
+
+def _comparisons(families: Mapping[str, Any], prereg: Prereg, ni: Mapping[str, Any]) -> dict[str, Any]:
+    """The pre-registered rules for each comparison, as codes: F1 against the model alone and the rules
+    text, non-inferiority against the agent, and F2 against every baseline."""
+    alpha = prereg.settings.alpha
+
+    def judged(row: Mapping[str, Any], ahead: str, behind: str, otherwise: str) -> str:
+        """``ahead`` (Ordnung's rate higher), ``behind`` (lower), each by Holm and an interval on one side of 0."""
+        lo, hi = row["bootstrap"]["lo"], row["bootstrap"]["hi"]
+        if row["holm"] < alpha and lo is not None and lo > 0:
+            return ahead
+        if row["holm"] < alpha and hi is not None and hi < 0:
+            return behind
+        return otherwise
+
+    accuracy, harm = families["F1_accuracy"], families["F2_harm"]
+    decisions: dict[str, Any] = {}
+    if "llm_only" in prereg.baselines:
+        row = accuracy[_pair_key(prereg.reference, "llm_only")]
+        decisions["beats_llm_only"] = judged(row, "clear", "baseline_ahead", "no_clear_difference")
+    if "llm_rules_text" in prereg.baselines:
+        row = accuracy[_pair_key(prereg.reference, "llm_rules_text")]
+        decisions["vs_llm_rules_text"] = judged(row, "clear", "baseline_ahead", "level_within_noise")
+    for baseline in prereg.noninferior_to:
+        decisions[f"vs_{baseline}"] = ni[_pair_key(prereg.reference, baseline)]["decision"]
+    for baseline in prereg.baselines:
+        row = harm[_pair_key(prereg.reference, baseline)]
+        decisions[f"f2_vs_{baseline}"] = judged(row, "more", "fewer", "no_clear_difference")
+    return decisions
+
+
+def _decisions(
+    families: Mapping[str, Any],
+    summaries: Mapping[str, Mapping[str, Any]],
+    prereg: Prereg,
+    item_reads: int,
+    ni: Mapping[str, Any],
+) -> dict[str, Any]:
+    """The pre-registered decision rules (§6.11), as codes the presenter turns into its sentences."""
+    decisions = _comparisons(families, prereg, ni)
+    ours = summaries[prereg.reference]
+    harmful = sum(row["k"] for row in ours["harmful_per_read"])
+    decisions["harmful"] = {"dates": harmful, "reads": item_reads, "none": harmful == 0}
+    if "llm_only" in prereg.baselines:
+        stability = families["F3_stability"]
+        if stability is None:
+            decisions["more_stable_than_llm_only"] = None
+        else:
+            row = stability[_pair_key(prereg.reference, "llm_only")]
+            decisions["more_stable_than_llm_only"] = bool(
+                row["holm"] < prereg.settings.alpha and (row["diff"] or 0) < 0
+            )
+    flags = ours["flags_over_reads"]
+    decisions["flags_caught"] = {
+        "caught": flags["caught_dates"],
+        "wrong": flags["wrong_dates"],
+        "caught_reads": flags["caught_reads"],
+        "wrong_reads": flags["wrong_reads"],
+    }
+    return decisions
+
+
+def _decision_roles(decisions: Mapping[str, Any]) -> dict[str, str]:
+    """One confirmatory decision (F1 against the model alone); harm and the flags are counts; the rest secondary."""
+    confirmatory = _decision_key(CONFIRMATORY["baseline"])
+    return {
+        key: "confirmatory"
+        if key == confirmatory
+        else "descriptive"
+        if key in ("harmful", "flags_caught")
+        else "secondary"
+        for key in decisions
+    }
+
+
+def multi_read(reads: Sequence[Run], prereg: Prereg, *, context: _Context | None = None) -> dict[str, Any]:
+    """The primary split over its reads: per condition the per-read rates, the mean over reads, stability and the
+    descriptive numbers; the families F1 (accuracy), F2 (harm) and F3 (stability, with at least ``min_reads``
+    reads) with Holm; non-inferiority by the inverted sign-flip test; the sensitivity analysis on read 1; and the
+    decisions the pre-registered rules take, one of them confirmatory."""
+    context = context or _Context()
+    settings = prereg.settings
+    level = settings.level
+    conditions = (prereg.reference, *prereg.baselines)
+    k = len(reads)
+    rows = _rows(reads, conditions)
     letter_rows = {
         c: [
             [letter for run in reads for letter in run.letters[c] if letter.entry_id == entry_id]
@@ -1252,6 +2181,8 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
             },
             "cost": _cost(letters, sum(1 for item in flat if item.right)),
             "latency_ms": _latency(letters),
+            "model_failed_per_read": [sum(1 for x in run.letters[condition] if x.failed) for run in reads],
+            "unanswered_per_read": [sum(1 for x in run.letters[condition] if x.error) for run in reads],
         }
         if condition == prereg.reference:
             summary["reading_agreement"] = _reading_agreement(table)
@@ -1259,29 +2190,8 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
         if tool_use is not None:
             summary["tool_use_consistency"] = tool_use
         summaries[condition] = summary
-    ours = rows[prereg.reference]
-    families: dict[str, dict[str, dict[str, Any]]] = {
-        "F1_accuracy": {
-            _pair_key(prereg.reference, b): _family_pair(ours, rows[b], lambda i: i.right, settings)
-            for b in prereg.baselines
-        },
-        "F2_harm": {
-            _pair_key(prereg.reference, b): _family_pair(ours, rows[b], lambda i: i.harmful, settings)
-            for b in prereg.baselines
-        },
-        "F3_stability": {
-            _pair_key(prereg.reference, b): _stability_pair(ours, rows[b], settings) for b in prereg.baselines
-        },
-    }
-    for name in ("F1_accuracy", "F2_harm"):
-        family = families[name]
-        for key, adjusted in zip(
-            family, stats.holm([row["signflip"]["p"] for row in family.values()]), strict=True
-        ):
-            family[key]["holm"] = adjusted
-    stability = families["F3_stability"]
-    for key, adjusted in zip(stability, stats.holm([row["midp"] for row in stability.values()]), strict=True):
-        stability[key]["holm"] = adjusted
+    families = _families(rows, prereg, k)
+    ni = _noninferiority(rows, prereg, families["F1_accuracy"])
     first = reads[0]
     sensitivity = {}
     for name, indicator in (("accuracy", lambda i: i.right), ("harmful", lambda i: i.harmful)):
@@ -1295,25 +2205,45 @@ def multi_read(reads: Sequence[Run], prereg: Prereg) -> dict[str, Any]:
             settings.alpha,
         )
     clusters = {item.cluster for item in first.items[prereg.reference]}
+    decisions = _decisions(families, summaries, prereg, n * k, ni)
+    confirmatory = _decision_key(CONFIRMATORY["baseline"])
     return {
         "split": prereg.primary_split,
         "reads": k,
+        "reads_registered": prereg.primary_reads,
+        "reads_used": [run.repeat for run in reads],
         "items": n,
         "letters": len(first.letters[prereg.reference]),
         "clusters": len(clusters),
         "conditions": summaries,
         "families": families,
+        "not_run": {}
+        if families["F3_stability"] is not None
+        else {"F3_stability": f"fewer reads than min_reads ({max(2, prereg.min_reads)})"},
+        "noninferiority": ni,
         "sensitivity_r1": sensitivity,
-        "decisions": _decisions(families, summaries, prereg, n * k),
+        "decisions": decisions,
+        "decision_roles": _decision_roles(decisions),
+        "confirmatory": {
+            "decision": confirmatory,
+            "family": CONFIRMATORY["family"],
+            "pair": _pair_key(prereg.reference, CONFIRMATORY["baseline"]),
+            "code": decisions.get(confirmatory),
+        },
         "errors": [
             row
-            for read, run in enumerate(reads, start=1)
-            for row in _error_rows({c: run.items[c] for c in conditions}, read=read)
+            for run in reads
+            for row in _error_rows({c: run.items[c] for c in conditions}, read=run.repeat)
+        ],
+        "unanswered": [
+            {key: row[key] for key in ("read", "entry_id", "condition", "deviations")}
+            for row in context.unanswered
+            if row["split"] == prereg.primary_split
         ],
     }
 
 
-def _flags_over_reads(rows: Mapping[tuple[str, str, int], Sequence[Item]], level: float) -> dict[str, Any]:
+def _flags_over_reads(rows: Rows, level: float) -> dict[str, Any]:
     """ "Please check" over repeated reads, each date once: the dates wrong in at least one read, and of those the
     ones flagged Please check in every read in which they were wrong (caught); the item × read counts beside them."""
     wrong = [reads for reads in rows.values() if any(not item.right for item in reads)]
@@ -1343,58 +2273,309 @@ DECISION_SENTENCES = {
     "agent_higher": "The agent scored higher ({d} points, 95 % CI {ci}).",
     "baseline_higher": "{baseline} scored higher ({d} points, 95 % CI {ci}).",
     "cannot_tell": "Against {baseline}, we cannot tell whether Ordnung is within 5 points ({d} points, 95 % CI {ci}).",
+    "fewer": "Fewer late or missed dates than {baseline} ({d} points, 95 % CI {ci}).",
+    "more": "More late or missed dates than {baseline} ({d} points, 95 % CI {ci}).",
 }
 
 
-def _decisions(
-    families: Mapping[str, Mapping[str, Mapping[str, Any]]],
-    summaries: Mapping[str, Mapping[str, Any]],
-    prereg: Prereg,
-    item_reads: int,
-) -> dict[str, Any]:
-    """The pre-registered decision rules (§6.11), as codes the presenter turns into its sentences."""
+# --------------------------------------------------------------------------------------------------
+# Sensitivity analyses: beside the primary, never instead of it
+# --------------------------------------------------------------------------------------------------
+
+
+def _rescored(
+    rows: Mapping[str, Rows], reads: Sequence[Run], change: Callable[[str, int, Item], Item]
+) -> tuple[dict[str, Rows], int]:
+    """The rows with ``change(condition, read, item)`` applied to every item, and how many it changed."""
+    changed = 0
+    new: dict[str, Rows] = {}
+    for condition, table in rows.items():
+        new_table = {}
+        for key, items in table.items():
+            row = []
+            for run, item in zip(reads, items, strict=True):
+                after = change(condition, run.repeat, item)
+                changed += after != item
+                row.append(after)
+            new_table[key] = row
+        new[condition] = new_table
+    return new, changed
+
+
+def _against(item: Item, label: str) -> Item:
+    """The item scored against another label date (a date not given stays missed or declined)."""
+    try:
+        predicted, truth = (
+            calendar_date.fromisoformat(str(item.predicted)),
+            calendar_date.fromisoformat(label),
+        )
+    except ValueError:
+        return item
+    if predicted == truth:
+        return replace(item, outcome="correct", direction=None, days_off=None)
+    direction = "late" if predicted > truth else "early"
+    return replace(item, outcome="wrong", direction=direction, days_off=(predicted - truth).days)
+
+
+def _sensitivity_numbers(rows: Mapping[str, Rows], prereg: Prereg, reads: int) -> dict[str, Any]:
+    """What a sensitivity analysis gives beside the primary: per condition the dates right per read, the mean and
+    the harmful item-reads; F1 and F2 with Holm; non-inferiority; and the comparisons' codes."""
     settings = prereg.settings
-    alpha, margin = settings.alpha, settings.noninferiority_margin
-    accuracy = families["F1_accuracy"]
-
-    def judged(baseline: str, otherwise: str) -> str:
-        """``clear`` (Ordnung ahead), ``baseline_ahead`` (the baseline ahead, by the same rule) or ``otherwise``."""
-        row = accuracy[_pair_key(prereg.reference, baseline)]
-        lo, hi = row["bootstrap"]["lo"], row["bootstrap"]["hi"]
-        if row["holm"] < alpha and lo is not None and lo > 0:
-            return "clear"
-        if row["holm"] < alpha and hi is not None and hi < 0:
-            return "baseline_ahead"
-        return otherwise
-
-    decisions: dict[str, Any] = {}
-    if "llm_only" in prereg.baselines:
-        decisions["beats_llm_only"] = judged("llm_only", "no_clear_difference")
-    if "llm_rules_text" in prereg.baselines:
-        decisions["vs_llm_rules_text"] = judged("llm_rules_text", "level_within_noise")
-    for baseline in prereg.noninferior_to:
-        boot = accuracy[_pair_key(prereg.reference, baseline)]["bootstrap"]
-        if boot["lo"] is not None and boot["lo"] > -margin:
-            verdict = "non_inferior"
-        elif boot["hi"] is not None and boot["hi"] < 0:
-            verdict = "agent_higher" if baseline == TOOL_CONDITION else "baseline_higher"
-        else:
-            verdict = "cannot_tell"
-        decisions[f"vs_{baseline}"] = verdict
-    ours = summaries[prereg.reference]
-    harmful = sum(row["k"] for row in ours["harmful_per_read"])
-    decisions["harmful"] = {"dates": harmful, "reads": item_reads, "none": harmful == 0}
-    if "llm_only" in prereg.baselines:
-        row = families["F3_stability"][_pair_key(prereg.reference, "llm_only")]
-        decisions["more_stable_than_llm_only"] = bool(row["holm"] < alpha and (row["diff"] or 0) < 0)
-    flags = ours["flags_over_reads"]
-    decisions["flags_caught"] = {
-        "caught": flags["caught_dates"],
-        "wrong": flags["wrong_dates"],
-        "caught_reads": flags["caught_reads"],
-        "wrong_reads": flags["wrong_reads"],
+    conditions = {
+        condition: {
+            "exact_per_read": [sum(1 for items in table.values() if items[i].right) for i in range(reads)],
+            "mean_accuracy": sum(1 for items in table.values() for item in items if item.right)
+            / max(1, sum(len(items) for items in table.values())),
+            "harmful_item_reads": sum(1 for items in table.values() for item in items if item.harmful),
+        }
+        for condition, table in rows.items()
     }
-    return decisions
+    ours = rows[prereg.reference]
+    families: dict[str, Any] = {
+        name: {
+            _pair_key(prereg.reference, b): _family_pair(ours, rows[b], test, settings)
+            for b in prereg.baselines
+        }
+        for name, test in (("F1_accuracy", lambda i: i.right), ("F2_harm", lambda i: i.harmful))
+    }
+    for family in families.values():
+        for key, adjusted in zip(
+            family, stats.holm([row["signflip"]["p"] for row in family.values()]), strict=True
+        ):
+            family[key]["holm"] = adjusted
+    ni = _noninferiority(rows, prereg, families["F1_accuracy"])
+    return {
+        "conditions": conditions,
+        **families,
+        "noninferiority": ni,
+        "decisions": _comparisons(families, prereg, ni),
+    }
+
+
+def _same_rows_f3(
+    rows: Mapping[str, Rows], prereg: Prereg, keys: Sequence[tuple[str, str, int]]
+) -> dict[str, Any]:
+    ours = rows[prereg.reference]
+    subset = {key: ours[key] for key in keys}
+    family = {
+        _pair_key(prereg.reference, b): _stability_pair(
+            subset, {key: rows[b][key] for key in keys}, prereg.settings
+        )
+        for b in prereg.baselines
+    }
+    _holm_midp(family)
+    return family
+
+
+def _rescoring(
+    name: str, rows: Mapping[str, Rows], prereg: Prereg, context: _Context
+) -> tuple[dict[str, Any], Callable[[str, int, Item], Item]]:
+    """A sensitivity analysis that scores some items again: what it applies, and the change it makes to an item of a
+    condition in a read."""
+    split = prereg.primary_split
+    if name == "s_conv":
+        alternatives = context.conventions
+        tagged = sum(1 for key in rows[prereg.reference] if (key[1], key[2]) in alternatives)
+
+        def other_reading(condition: str, read: int, item: Item) -> Item:
+            dates = alternatives.get((item.entry_id, item.index))
+            if dates and not item.right and item.predicted in dates:
+                return replace(item, outcome="correct", direction=None, days_off=None)
+            return item
+
+        return {"tagged_items": tagged}, other_reading
+    if name == "label_corrected":
+        errors = [d for d in context.deviations if d.kind == "label_error" and d.split == split]
+        corrected = {(entry, index): day for d in errors for entry, index, day in d.items}
+
+        def corrected_label(condition: str, read: int, item: Item) -> Item:
+            label = corrected.get((item.entry_id, item.index))
+            return item if label is None else _against(item, label)
+
+        return {"deviations": sorted(d.id for d in errors)}, corrected_label
+    retakes = [d for d in context.deviations if d.kind == "retake" and d.split == split]
+    timed_out = {
+        (d.repeat, entry, condition)
+        for d in retakes
+        for entry, condition, outcome in d.first_attempt
+        if outcome == "timeout"
+    }
+
+    def first_attempt(condition: str, read: int, item: Item) -> Item:
+        if (read, item.entry_id, condition) not in timed_out:
+            return item
+        return replace(item, outcome="missed", direction=None, days_off=None, predicted=None, flagged=False)
+
+    return {"deviations": sorted(d.id for d in retakes)}, first_attempt
+
+
+def _sensitivities(
+    rows: Mapping[str, Rows], reads: Sequence[Run], prereg: Prereg, context: _Context
+) -> dict[str, Any]:
+    """The pre-registered sensitivity analyses, each beside the primary and never instead of it."""
+    found: dict[str, Any] = {}
+    for name in prereg.sensitivities:
+        if name in ("same_day_f3", "same_cli_f3"):
+            found[name] = _same_unit_f3(name, rows, reads, prereg, context)
+            continue
+        block, change = _rescoring(name, rows, prereg, context)
+        new, changed = _rescored(rows, reads, change)
+        block["items_changed"] = changed
+        if changed:
+            block.update(_sensitivity_numbers(new, prereg, len(reads)))
+        else:
+            block["same_as_primary"] = True
+        found[name] = block
+    return found
+
+
+def _same_unit_f3(
+    name: str, rows: Mapping[str, Rows], reads: Sequence[Run], prereg: Prereg, context: _Context
+) -> dict[str, Any]:
+    """F3 on the items whose reads share one recording day (``same_day_f3``) or one claude version
+    (``same_cli_f3``, given only when the versions differ)."""
+    ours = rows[prereg.reference]
+    which = 0 if name == "same_day_f3" else 1
+
+    def values(key: tuple[str, str, int]) -> set[str | None]:
+        return {
+            context.units.get((prereg.primary_split, run.repeat, key[1]), (None, None))[which]
+            for run in reads
+        }
+
+    block: dict[str, Any] = {}
+    if which == 1:
+        versions = sorted({value for key in ours for value in values(key) if value is not None})
+        block["versions"] = versions
+        if len(versions) <= 1:
+            return {**block, "same_as_primary": True}
+    if not _f3_runs(prereg, len(reads)):
+        return {**block, "not_run": f"fewer reads than min_reads ({max(2, prereg.min_reads)})"}
+    keys = [key for key in ours if len(values(key)) == 1 and None not in values(key)]
+    block["items"] = len(keys)
+    if len(keys) == len(ours):
+        block["same_as_primary"] = True
+    else:
+        block["F3_stability"] = _same_rows_f3(rows, prereg, keys) if keys else None
+    return block
+
+
+# --------------------------------------------------------------------------------------------------
+# Exploratory blocks: rates only, no test and no p-value
+# --------------------------------------------------------------------------------------------------
+
+
+def _grouped(
+    rows: Mapping[str, Rows],
+    reads: Sequence[Run],
+    prereg: Prereg,
+    group_of: Callable[[Run, Item], str],
+) -> dict[str, Any]:
+    level = prereg.settings.level
+    groups: dict[str, dict[str, list[Item]]] = defaultdict(lambda: defaultdict(list))
+    for condition, table in rows.items():
+        for items in table.values():
+            for run, item in zip(reads, items, strict=True):
+                groups[group_of(run, item)][condition].append(item)
+    return {
+        group: {
+            "item_reads": len(by[prereg.reference]),
+            "conditions": {
+                condition: {
+                    "exact": rate(sum(1 for i in found if i.right), len(found), level),
+                    "harmful": rate(sum(1 for i in found if i.harmful), len(found), level),
+                }
+                for condition, found in ((c, by[c]) for c in rows)
+            },
+        }
+        for group, by in sorted(groups.items())
+    }
+
+
+def _exploratory(
+    rows: Mapping[str, Rows],
+    reads: Sequence[Run],
+    prereg: Prereg,
+    context: _Context,
+    pooled: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """The pre-registered exploratory blocks: rates with Clopper–Pearson intervals, never a test or a p-value."""
+    level = prereg.settings.level
+    split = prereg.primary_split
+    label = "exploratory: rates over item-reads, with no test"
+    blocks: dict[str, Any] = {}
+    for name in prereg.exploratory:
+        if name == "by_family":
+            blocks[name] = {"label": label, "groups": _grouped(rows, reads, prereg, lambda run, i: i.family)}
+        elif name == "by_modality":
+            blocks[name] = {
+                "label": label,
+                "groups": _grouped(rows, reads, prereg, lambda run, i: i.modality),
+            }
+        elif name == "by_recording_day":
+
+            def day_of(run: Run, item: Item) -> str:
+                day = context.units.get((split, run.repeat, item.entry_id), (item.day, None))[0]
+                return day or "unknown"
+
+            blocks[name] = {"label": label, "groups": _grouped(rows, reads, prereg, day_of)}
+        elif name == "by_adversarial_class":
+            counts: dict[str, dict[str, list[int]]] = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+            for condition in rows:
+                for run in reads:
+                    for letter in run.letters[condition]:
+                        for check, passed in letter.adversarial:
+                            counts[check][condition][0] += int(passed)
+                            counts[check][condition][1] += 1
+            blocks[name] = {
+                "label": "exploratory: the scorer's adversarial checks over letter-reads, with no test",
+                "groups": {
+                    check: {"conditions": {c: rate(by[c][0], by[c][1], level) for c in rows}}
+                    for check, by in sorted(counts.items())
+                },
+            }
+        elif name == "pooled_held_out" and pooled is not None:
+            blocks[name] = pooled
+    return blocks
+
+
+def _units_of(runs: Sequence[Run]) -> dict[tuple[str, int, str], tuple[str | None, str | None]]:
+    """Each unit's day (its letters' today) and the run's claude version, from the results files alone."""
+    units: dict[tuple[str, int, str], tuple[str | None, str | None]] = {}
+    for run in runs:
+        cli = run.meta.get("cli_version")
+        for entry in _entries_of(run):
+            day = entry.get("simulated_today") or entry.get("today")
+            units[(run.split, run.repeat, str(entry.get("id")))] = (
+                str(day) if day else None,
+                str(cli) if cli else None,
+            )
+    return units
+
+
+def _final_methods(prereg: Prereg) -> dict[str, str]:
+    settings = prereg.settings
+    return {
+        "confirmatory": "one confirmatory decision: F1, Ordnung against the model alone (the Holm-adjusted "
+        "sign-flip p below alpha and the bootstrap interval on one side of 0); every other comparison is secondary, "
+        "with Holm within its family",
+        "noninferiority": f"the {settings.level:g} interval of the difference by inverting the cluster sign-flip "
+        "test: a difference d is kept when the two-sided test of the cluster totals centred on d (hits minus d times "
+        f"item-reads) does not reject (exact up to {settings.signflip_exact_max} clusters, else "
+        f"{settings.signflip_draws} seeded draws); the baseline is higher only when the whole interval is below 0, "
+        f"Ordnung not worse by more than {settings.noninferiority_margin:g} when its lower end is above minus that; "
+        "the bootstrap interval and the error counts are descriptive",
+        "reads": f"F3 on at least {max(2, prereg.min_reads)} reads; with fewer, the cluster tests on read 1 are the "
+        "primary, McNemar beside them, and F3 is not run",
+        "deviations": "a read or unit that differs from the frozen inputs is analysed only as a deviation recorded "
+        "at the time says: never waivable (left out), excluded, or included and listed",
+        "sensitivities": "s_conv: a date a disputed convention's other reading gives counts as right; "
+        "label_corrected: the labels the blind review corrected; first_attempt: a timed-out first attempt of a "
+        "retaken unit counts as missed; same_day_f3 and same_cli_f3: F3 on the items whose reads share one day, or "
+        "one claude version",
+        "exploratory": "rates with Clopper-Pearson intervals over item-reads (letter-reads for the adversarial "
+        "checks); no test, no p-value",
+    }
 
 
 def final_analysis(
@@ -1403,47 +2584,141 @@ def final_analysis(
     *,
     pooled_with: Sequence[Run] = (),
     prereg_record: Mapping[str, Any] | None = None,
+    checked: Checked | None = None,
+    conventions: Mapping[tuple[str, int], frozenset[str]] | None = None,
+    date: str | None = None,
 ) -> dict[str, Any]:
-    """The pre-registered final run: the primary split over its reads, each secondary split, and (exploratory) the
-    earlier held-out splits pooled with the primary split's first read."""
-    reads, secondary = _assign_reads(prereg, runs)
-    settings = prereg.settings
-    document: dict[str, Any] = {
-        "schema": ANALYSIS_SCHEMA,
-        "meta": {
-            "kind": FINAL_KIND,
-            "date": max(str(run.meta.get("date") or "") for run in reads),
-            "model": prereg.model,
-            "pre_registered": True,
-            "label": "pre-registered",
-            "prereg": dict(prereg_record or {}),
-            "inputs": [
-                run.input_record() for run in (*reads, *_sorted_runs(list(secondary.values())), *pooled_with)
-            ],
-            "settings": settings.to_dict(),
-            "methods": _methods(settings),
-        },
-        "primary": multi_read(reads, prereg),
-        "secondary": {
-            split: single_read([run], settings, paired=False) for split, run in sorted(secondary.items())
-        },
-    }
-    if pooled_with:
-        pooled = single_read([*pooled_with, reads[0]], settings, paired=False)
-        document["exploratory"] = {
-            "pooled_held_out": {
-                "label": "exploratory: splits recorded with different code, pooled after the results were known",
-                "splits": [run.split for run in _sorted_runs([*pooled_with, reads[0]])],
-                **pooled,
+    """The pre-registered final run: the primary split over its reads, each secondary split, the sensitivity analyses
+    and the exploratory blocks (the earlier held-out splits pooled with the primary split's first read among them).
+
+    ``checked`` is what :func:`check_frozen` found (:func:`final_from_files` gives it); without it every registered
+    read must be there and no letter may be left without an answer."""
+    missing = checked.missing if checked is not None else {}
+    reads, secondary = _assign_reads(prereg, runs, missing)
+    if checked is None:
+        unanswered = sorted(
+            {
+                f"{_run_label(run)}: {letter.entry_id}"
+                for run in (*reads, *secondary.values())
+                for letters in run.letters.values()
+                for letter in letters
+                if letter.error
             }
+        )
+        if unanswered:
+            raise AnalysisError(
+                f"letters without an answer ({', '.join(unanswered)}): only an unanswered deviation recorded at "
+                "the time lets one be scored empty"
+            )
+    context = _Context(
+        units=checked.units if checked is not None else _units_of([*reads, *secondary.values()]),
+        deviations=checked.deviations if checked is not None else (),
+        conventions=conventions or {},
+        unanswered=checked.unanswered if checked is not None else (),
+    )
+    settings = prereg.settings
+    conditions = (prereg.reference, *prereg.baselines)
+    primary = multi_read(reads, prereg, context=context)
+    primary["reads_missing"] = [
+        info for (split, _), info in sorted(missing.items()) if split == prereg.primary_split
+    ]
+    secondary_blocks: dict[str, Any] = {}
+    for split, _ in sorted(prereg.secondary):
+        if split not in secondary:
+            secondary_blocks[split] = {"not_recorded": missing[(split, 1)]}
+            continue
+        run = secondary[split]
+        body = single_read([run], settings, paired=False)
+        for condition in conditions:
+            letters = run.letters[condition]
+            body["conditions"][condition]["model_failed"] = sum(1 for x in letters if x.failed)
+            body["conditions"][condition]["unanswered"] = sum(1 for x in letters if x.error)
+        body["unanswered"] = [
+            {key: row[key] for key in ("read", "entry_id", "condition", "deviations")}
+            for row in context.unanswered
+            if row["split"] == split
+        ]
+        secondary_blocks[split] = body
+    rows = _rows(reads, conditions)
+    pooled = None
+    if pooled_with:
+        pooled = {
+            "label": "exploratory: splits recorded with different code, pooled after the results were known",
+            "splits": [run.split for run in _sorted_runs([*pooled_with, reads[0]])],
+            **single_read([*pooled_with, reads[0]], settings, paired=False),
         }
-    return document
+    left_out = [run for run, _ in checked.left_out] if checked is not None else []
+    inputs = (
+        [run.input_record() | {"role": "primary"} for run in reads]
+        + [run.input_record() | {"role": "secondary"} for run in _sorted_runs(list(secondary.values()))]
+        + [run.input_record() | {"role": "left_out"} for run in _sorted_runs(left_out)]
+        + [run.input_record() | {"role": "pooled"} for run in pooled_with]
+    )
+    meta: dict[str, Any] = {
+        "kind": FINAL_KIND,
+        "date": date or max(str(run.meta.get("date") or "") for run in reads),
+        "model": prereg.model,
+        "pre_registered": True,
+        "label": "pre-registered",
+        "prereg": dict(prereg_record or {}),
+        "inputs": inputs,
+        "settings": settings.to_dict(),
+        "analysis": {
+            "rules": dict(RULES),
+            "min_reads": prereg.min_reads,
+            "confirmatory": dict(CONFIRMATORY),
+            "sensitivities": list(prereg.sensitivities),
+            "exploratory": list(prereg.exploratory),
+        },
+        "methods": _methods(settings) | _final_methods(prereg),
+    }
+    if checked is not None:
+        meta["frozen_check"] = {
+            "reads_left_out": [row for _, row in checked.left_out],
+            "units_excluded": checked.units_excluded,
+            "cli_versions": checked.cli_versions,
+            **checked.evidence,
+        }
+        meta["deviations"] = [dict(d.record) for d in checked.deviations]
+    return {
+        "schema": ANALYSIS_SCHEMA,
+        "meta": meta,
+        "primary": primary,
+        "secondary": secondary_blocks,
+        "sensitivities": _sensitivities(rows, reads, prereg, context),
+        "exploratory": _exploratory(rows, reads, prereg, context, pooled),
+    }
+
+
+def _repo_path(path: Path) -> str:
+    """The path from the repository's root (where ``evals/reproduce.py`` runs its checks), else the absolute one."""
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(resolved)
+
+
+def _from_root(name: str) -> Path:
+    path = Path(name)
+    return path if path.is_absolute() else ROOT / path
 
 
 def final_from_files(
-    prereg_path: Path, paths: Sequence[Path], *, results_dir: Path = RESULTS_DIR
+    prereg_path: Path,
+    paths: Sequence[Path],
+    *,
+    results_dir: Path | None = None,
+    recorded_dir: Path | None = None,
+    dataset_dir: Path | None = None,
+    date: str | None = None,
 ) -> dict[str, Any]:
-    """:func:`final_analysis` from a pre-registration file and results files (``pool_with`` read in ``results_dir``)."""
+    """:func:`final_analysis` from a pre-registration file and results files, after :func:`check_frozen`: the
+    deviations file it names, the day index and the ledger (in ``recorded_dir``), the dataset's manifest (in
+    ``dataset_dir``, for S-conv) and ``pool_with`` (read in ``results_dir``)."""
+    results_dir = results_dir or RESULTS_DIR
+    recorded_dir = recorded_dir or RECORDED_DIR
+    dataset_dir = dataset_dir or DATASET_DIR
     raw = prereg_path.read_bytes()
     try:
         data = json.loads(raw)
@@ -1452,10 +2727,43 @@ def final_from_files(
     if not isinstance(data, Mapping):
         raise AnalysisError("the pre-registration is not a JSON object")
     prereg = parse_prereg(data)
+    frozen = parse_frozen(data)
+    deviations_path = _from_root(frozen.deviations_file)
+    deviations = load_deviations(deviations_path)
     runs = [read_run(path) for path in paths]
+    folder = recorded_dir / _safe(prereg.model)
+    day_index_path, ledger_path = folder / DAY_INDEX_FILE, folder / LEDGER_FILE
+    checked = check_frozen(
+        prereg,
+        frozen,
+        runs,
+        deviations,
+        day_index=_read_day_index(day_index_path),
+        ledger=_read_ledger(ledger_path),
+    )
+    checked.evidence["deviations_file"] = {
+        "file": _repo_path(deviations_path),
+        "sha256": hashlib.sha256(deviations_path.read_bytes()).hexdigest(),
+        "entries": len(deviations),
+    }
+    checked.evidence["day_index"]["file"] = _repo_path(day_index_path)
+    checked.evidence["ledger"]["file"] = _repo_path(ledger_path)
+    conventions = {}
+    if "s_conv" in prereg.sensitivities:
+        manifest = dataset_dir / MANIFEST_FILE
+        conventions = _conventions(manifest, frozen.manifest_sha256)
+        checked.evidence["manifest"] = {"file": _repo_path(manifest), "sha256": frozen.manifest_sha256}
     pooled = [read_run(results_dir / name) for name in prereg.pool_with]
-    record = {"file": prereg_path.name, "sha256": hashlib.sha256(raw).hexdigest()}
-    return final_analysis(prereg, runs, pooled_with=pooled, prereg_record=record)
+    record = {"file": _repo_path(prereg_path), "sha256": hashlib.sha256(raw).hexdigest()}
+    return final_analysis(
+        prereg,
+        checked.runs,
+        pooled_with=pooled,
+        prereg_record=record,
+        checked=checked,
+        conventions=conventions,
+        date=date,
+    )
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1533,7 +2841,7 @@ def _summary_lines(document: Mapping[str, Any]) -> list[str]:
                 f"{summary['exact_per_read'][0]['n']}, unstable {summary['unstable']['k']}"
             )
     for family, pairs in (body.get("paired") or body.get("families") or {}).items():
-        for key, row in pairs.items():
+        for key, row in (pairs or {}).items():
             if "b" in row:
                 lines.append(f"  {family} {key}: {row['b']} vs {row['c']}, exact p {p_text(row['exact_p'])}")
             else:
@@ -1560,7 +2868,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode.add_argument(
         "--check", action="store_true", help="fail when the written analysis is not a fresh render"
     )
-    parser.add_argument("--date", help="the re-analysis's date for --write (default: today)")
+    parser.add_argument(
+        "--date",
+        help="the analysis's date, in its file name (default: today for the re-analysis written; the last primary "
+        "read's for the final run)",
+    )
     parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR, help="where results files are read")
     parser.add_argument(
         "--out-dir", type=Path, help="where the analysis is written or checked (default: --results-dir)"
@@ -1571,7 +2883,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.prereg is not None:
             if not args.results:
                 parser.error("--prereg needs the results files of the final run")
-            document = final_from_files(args.prereg, args.results, results_dir=args.results_dir)
+            document = final_from_files(
+                args.prereg, args.results, results_dir=args.results_dir, date=args.date
+            )
             path = out_dir / output_name(document["meta"]["date"], document["meta"]["model"], FINAL_KIND)
         else:
             paths = args.results or [args.results_dir / name for name in HELD_OUT_AS_RECORDED]
@@ -1606,32 +2920,47 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 __all__ = [
     "ANALYSIS_SCHEMA",
+    "CONFIRMATORY",
     "DECISION_SENTENCES",
+    "DEVIATION_CONSEQUENCES",
+    "DEVIATION_EFFECTS",
+    "EXPLORATORY",
     "FINAL_KIND",
     "HELD_OUT_AS_RECORDED",
+    "MIN_READS",
     "PREREG_SCHEMA",
     "REANALYSIS_KIND",
+    "RULES",
+    "SENSITIVITIES",
     "AnalysisError",
+    "Checked",
+    "Deviation",
+    "Frozen",
     "Item",
     "Letter",
     "Prereg",
     "Run",
     "Settings",
+    "check_frozen",
     "condition_summary",
     "default_prereg_analysis",
     "final_analysis",
     "final_from_files",
+    "load_deviations",
     "load_run",
     "main",
     "multi_read",
+    "noninferiority_decision",
     "output_name",
     "paired_one_read",
+    "parse_frozen",
     "parse_prereg",
     "rate",
     "read_run",
     "reanalyse",
     "render",
     "selective",
+    "signflip_interval",
     "single_read",
 ]
 

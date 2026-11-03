@@ -1119,12 +1119,20 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
         elif row["kind"] == "analysis":
             if row.get("analysis") == "final":
                 meta = data.get("meta") or {}
-                inputs = [str(results_dir / str(item["file"])) for item in meta.get("inputs", [])]
+                # the pre-registration by the path the file recorded (from the repository's root, where the task
+                # runs) and the reads it was given, never the earlier splits it pools: its pool_with names those
+                inputs = [
+                    str(results_dir / str(item["file"]))
+                    for item in meta.get("inputs", [])
+                    if item.get("role") != "pooled"
+                ]
                 argv = _python(
                     "evals.analysis",
                     "--prereg",
                     str((meta.get("prereg") or {}).get("file")),
                     *inputs,
+                    "--date",
+                    str(meta.get("date")),
                     "--check",
                 )
             else:

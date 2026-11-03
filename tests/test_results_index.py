@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from evals import reproduce, splits
+from evals import analysis, reproduce, splits
 from evals.present import model as present_model
 from evals.run import DEFAULT_MODEL, RESULTS_DIR
 
@@ -844,6 +844,44 @@ def test_a_final_read_recorded_on_two_days_is_indexed_when_each_letter_keeps_its
     target.write_text(json.dumps(data), encoding="utf-8")
     with pytest.raises(reproduce.ReproduceError, match="two todays"):
         reproduce.static_index(results)
+
+
+def test_the_final_analysis_is_checked_with_the_preregistration_and_the_reads_it_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The final analysis's row runs ``evals.analysis --prereg <the path it recorded> <its reads> --date <its date>
+    --check`` from the repository's root: the earlier held-out splits it pools come from its ``pool_with`` again,
+    never as reads (given as reads, the analysis refuses them), and the check passes on the file as written."""
+    from test_analysis import World  # the synthetic final run of tests/test_analysis.py
+
+    results = _copy_results(tmp_path, list(analysis.HELD_OUT_AS_RECORDED))
+    world = World(tmp_path / "world", pool_with=analysis.HELD_OUT_AS_RECORDED, results=results)
+    monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+    monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+    folders = ["--results-dir", str(results), "--out-dir", str(results)]
+    assert analysis.main([*world.cli_args(), *folders, "--write"]) == 0
+    static = reproduce.static_index(results)
+    (row,) = [row for row in static["results"] if row["kind"] == "analysis"]
+    assert (row["file"], row["role"], row["check"]) == (
+        "2027-01-03-claude-sonnet-5-final.json",
+        "final",
+        "analysis --check",
+    )
+    tasks = {task.name: task for task in reproduce.plan(static, results, tmp_path / "work")}
+    argv = tasks["analysis/final"].argv
+    names = ["holdout4-r1.json", "holdout4-r2.json", "holdout4-r3.json", "newkinds-r1.json"]
+    reads = [str(results / name) for name in names]
+    assert argv[2:] == [
+        "evals.analysis",
+        "--prereg",
+        str(world.prereg_path.resolve()),
+        *reads,
+        "--date",
+        "2027-01-03",
+        "--check",
+        *folders,
+    ]
+    assert analysis.main(argv[3:]) == 0
 
 
 def test_every_task_is_a_strict_replay_into_the_work_folder(index: dict[str, Any], tmp_path: Path) -> None:
