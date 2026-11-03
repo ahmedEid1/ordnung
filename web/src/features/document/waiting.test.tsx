@@ -1,8 +1,8 @@
 /**
  * A letter that waits in the queue for Claude (not installed, not signed in, its usage limit): its page says
  * why and where to connect Claude, instead of a stepper stuck on "Opening the file…" with placeholders that
- * never fill — and the person can add the dates that matter, as on a letter Claude couldn't read (final check
- * F-M2). After a reload, the reason comes from the queue (`seedFromQueue`), as it does from a live event.
+ * never fill — and the person can add the dates that matter, as on a letter Claude couldn't read. After
+ * a reload, the reason comes from the queue (`seedFromQueue`), as it does from a live event.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, within } from "@testing-library/react";

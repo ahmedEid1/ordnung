@@ -1,5 +1,5 @@
 /**
- * The standing-by screen (design §19.3): another computer is the one in use, so this one changes nothing — the app
+ * The standing-by screen (SPEC §12c): another computer is the one in use, so this one changes nothing — the app
  * shows this instead of its pages (Settings → Your computers and the privacy log stay open, under a banner).
  *
  * It says whose Ordnung is in use (or that none is: the one in use left sync) and whether everything from there has

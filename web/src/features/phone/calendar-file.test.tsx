@@ -1,5 +1,5 @@
 /**
- * The calendar file stays on the computer (UX review: a paired phone downloaded `ordnung.ics` — to-do titles, amounts,
+ * The calendar file stays on the computer (a paired phone once downloaded `ordnung.ics` — to-do titles, amounts,
  * what to do — although a phone keeps no copy, and the export dialog then sent it to a computer's Downloads and to a
  * Settings page the phone doesn't have). A phone offers no calendar download anywhere — Timeline, Today's calendar
  * card, a letter's "Add to calendar" — and asks the API for none; the computer keeps all of them.

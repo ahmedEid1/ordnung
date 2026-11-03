@@ -294,7 +294,7 @@ describe("composer — template letters", () => {
     expect(within(dialog).getByText("This letter can't answer the one you chose — see why under the letters.")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("radio", { name: /Pay in instalments/ }));
     expect(await within(dialog).findByText("Offer instalments to the claimant, not the court")).toBeInTheDocument();
-    // review round 1: the offer acknowledges the claim (§ 212 BGB), and "§" never parts from its number
+    // the offer acknowledges the claim (§ 212 BGB), and "§" never parts from its number
     expect(within(dialog).getByText(/limitation period starts again/).textContent).toContain("(§\u00a0212 Abs.\u00a01 Nr.\u00a01 BGB)");
     expect(within(dialog).getByRole("button", { name: /Write the letter/ })).toBeDisabled();
     expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(false);
@@ -309,7 +309,7 @@ describe("composer — template letters", () => {
     await user.click(await within(dialog).findByRole("button", { name: "Write to the claimant instead" }));
     const claimant = within(dialog).getByLabelText(/The claimant \(Antragsteller\)/);
     expect(within(dialog).queryByText("Offer instalments to the claimant, not the court")).toBeNull();
-    // review round 2: focus goes to the claimant's box, the order stays chosen, and the court's deadline and
+    // focus goes to the claimant's box, the order stays chosen, and the court's deadline and
     // the acknowledgement are still said; no "To <court>" card
     await waitFor(() => expect(claimant).toHaveFocus());
     expect(within(dialog).getByRole("radio", { name: /Mahnbescheid|payment order/i, checked: true })).toBeInTheDocument();
@@ -334,7 +334,7 @@ describe("composer — template letters", () => {
     for (const other of ["TechMarkt Online GmbH", "LG Electronics Deutschland GmbH", "Gerichtskasse Hagen", "Gerichtsvollzieher Müller", "", null]) {
       expect(mayBeCourt(other), String(other)).toBe(false);
     }
-    // review round 4 of phase 2: "AG" alone enabled "Write the letter", and the server refused it — a local court's
+    // "AG" alone once enabled "Write the letter", and the server refused it — a local court's
     // abbreviation needs its place; a federal court's may stand alone
     for (const bare of ["AG", "AG ", "LG", "OLG"]) expect(mayBeCourt(bare), bare).toBe(false);
     for (const federal of ["BGH", "BSG, 1. Senat", "AG Hünfeld\n36088 Hünfeld"]) expect(mayBeCourt(federal), federal).toBe(true);
@@ -348,13 +348,13 @@ describe("composer — template letters", () => {
 
   it("sends an objection to a court order filed from the claimant's letter to the court, typed in", async () => {
     const { srv, calls } = useMockApi({ full: true });
-    // the reminder re-filed as a Mahnbescheid: its sender is still TechMarkt (review round 3 of phase 2)
+    // the reminder re-filed as a Mahnbescheid: its sender is still TechMarkt
     await srv.handle("PATCH", "/documents/doc_tm_dunning", new URLSearchParams(), { kind: "court_payment_order" }, null);
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1&kind=objection&doc=doc_tm_dunning" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
     const court = await within(dialog).findByLabelText(/The court that sent the order/);
-    // the one field left to fill takes the focus (review round 4: it opened below the fold, unfocused)
+    // the one field left to fill takes the focus (it once opened below the fold, unfocused)
     await waitFor(() => expect(court).toHaveFocus());
     // never "To TechMarkt": the objection doesn't go to the claimant
     expect(within(dialog).queryByText(/^To$/)).toBeNull();

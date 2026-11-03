@@ -220,7 +220,7 @@ function CallCost({ c }: { c: LLMCallRecord }) {
 
 /**
  * Every prompt token counts as "in", those read from or written to the prompt cache too — as the letter's
- * "How it was read" and the totals above count them (walkthrough of phase 2: "2 in" beside the trace's "20k in").
+ * "How it was read" and the totals above count them (not "2 in" beside the trace's "20k in").
  */
 const tokensIn = (c: Pick<LLMCallRecord, "input_tokens" | "cache_read_tokens" | "cache_creation_tokens">) =>
   c.input_tokens + (c.cache_read_tokens ?? 0) + (c.cache_creation_tokens ?? 0);

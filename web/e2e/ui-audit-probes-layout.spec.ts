@@ -7,7 +7,7 @@
  * report the page behind what the person opened (a search box's message panel), a control a person can still
  * click on 24 px of it (a chart bar under the notice window drawn on it), a bar under a lane-label column pinned
  * sideways, a control the end of the page scrolls clear of a card fixed at the bottom, or a target axe finds
- * too small only because a sticky bar lies over it where the page happens to be scrolled (UI audit E1).
+ * too small only because a sticky bar lies over it where the page happens to be scrolled.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";

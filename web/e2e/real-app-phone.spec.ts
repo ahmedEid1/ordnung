@@ -1,5 +1,5 @@
 /**
- * The real app's phone access (design §18.5, with the security review's binding amendments): a phone pairs with a
+ * The real app's phone access (SPEC §12b, ADR 0017): a phone pairs with a
  * code the computer shows and both screens show the same two check words; it uses Ordnung over HTTPS — every
  * everyday page, two photos that become one letter, a to-do ticked off — with no refusal on the way; what stays on
  * the computer is refused, and the computer's session never signs a phone in; wrong codes lock one phone out with
@@ -13,7 +13,7 @@
  * phones and the server's state, so they run in order; the last one turns phone access off, and `afterAll` always
  * does, and removes the letter the phone added (with the to-do on it).
  *
- * What the phone's pages must offer (web/src/pages/PairPage.tsx and phone mode, design §13.2-13.4 and amendment B2)
+ * What the phone's pages must offer (web/src/pages/PairPage.tsx and phone mode, SPEC §12b)
  * is named once below ({@link PAIR_HEADING} …), the computer's Settings → Phone by its cards' titles.
  */
 import { readFileSync } from "node:fs";
@@ -55,7 +55,7 @@ const REMOVED = /This phone was removed on your computer/;
 const CODE_REUSED = /signed out because another device used the same pairing code/;
 /** Settings on a paired phone (they live on the computer). */
 const PHONE_SETTINGS_HEADING = "Settings are on your computer";
-/** Where a paired phone downloads the certificate authority to trust (design §6.4, served by the listener's gate). */
+/** Where a paired phone downloads the certificate authority to trust (served by the listener's gate, SPEC §12b). */
 const CERTIFICATE_PATH = "/ordnung-certificate.crt";
 
 /** The phone's name in these tests, and the second phone's. */

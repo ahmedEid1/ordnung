@@ -168,7 +168,7 @@ function PayPanel({ action, close }: { action: TodayAction; close: () => void })
     if (!item) return;
     // watched from now, while the card is in its place; the promise, not mutate's callbacks: the card leaves
     // with the refreshed Top 3, often before every list is refreshed, and a card that has gone gets no callbacks
-    // (review round 4 of phase 2: no "Marked as paid", no Undo, focus lost — on a busy machine)
+    // (no "Marked as paid", no Undo, focus lost — on a busy machine)
     focus?.leaving(action.key);
     update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
       (moved) => {
@@ -279,7 +279,7 @@ function VerbButton({ action, variant }: { action: TodayAction; variant: ButtonV
         update.mutateAsync({ id: item.id, patch: { status: "done" } }).then(
           (moved) => {
             // a to-do of your own every week or every 2 weeks moves on and can stay in Top 3: the busy button
-            // dropped focus, so its own heading takes it (D1 review)
+            // dropped focus, so its own heading takes it
             settled?.();
             toast({
               tone: "success",

@@ -1,5 +1,5 @@
 /**
- * UI audit round 1, the page viewer: no scroll box of its own on phones and tablets (one page at a time
+ * The page viewer: no scroll box of its own on phones and tablets (one page at a time
  * with a pager), a toolbar that never wraps, the photo quote under the page and closing with Escape,
  * highlights with a visible focus outline and one target per line.
  */

@@ -23,7 +23,7 @@ const MAX_ROWS_PX = 180;
  * (Shift+Enter for a new line), and its button turns into Stop while an answer streams.
  *
  * Send and Stop are one button that changes its role, so keyboard focus stays on it when an answer
- * starts or ends (UI audit round 1: two buttons swapped places and focus fell back to the page). It is
+ * starts or ends (two buttons once swapped places and focus fell back to the page). It is
  * never `disabled` for the same reason: with nothing typed it only says so (`aria-disabled`).
  */
 export function AskComposer({ value, onChange, onSubmit, onStop, streaming, onBusy, textareaRef, className }: AskComposerProps) {
@@ -77,7 +77,7 @@ export function AskComposer({ value, onChange, onSubmit, onStop, streaming, onBu
         onKeyDown={onKeyDown}
         placeholder={wide ? "Ask about your letters, dates, money or contracts…" : "Ask about your letters…"}
         aria-describedby="ask-hint"
-        // a long question leaves a short phone screen room for the answer above it (UI audit round 1)
+        // a long question leaves a short phone screen room for the answer above it
         className="max-h-[min(180px,25dvh)] min-h-[40px] flex-1 resize-none bg-transparent py-2 text-[15px] leading-6 text-ink outline-none placeholder:text-muted scrollbar-thin"
       />
       <button

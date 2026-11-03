@@ -1,5 +1,5 @@
 /**
- * UI audit round 1 (document-c): the letter page's warnings, "Why this date?", the Pay panel, the footer and
+ * The letter page's warnings, "Why this date?", the Pay panel, the footer and
  * the panel's section headings.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

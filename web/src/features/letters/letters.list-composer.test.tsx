@@ -1,5 +1,5 @@
 /**
- * Audit (UI audit round 1, letters-b): the Letters list and the New-letter composer.
+ * The Letters list and the New-letter composer, and what they used to get wrong:
  *
  * - Beside the "How letters work" card (from 1024 px) the list's rows lost their titles to a fixed
  *   status column; on phones they lost the sent date; letters in progress kept the API's order.

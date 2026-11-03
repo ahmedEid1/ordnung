@@ -1,5 +1,5 @@
 /**
- * UI audit round 2, bucket "document-pay-reading": the letter's Pay panel says a copy on its button (no toast
+ * The letter's Pay panel says a copy on its button (no toast
  * over its footer or behind a phone's sheet) and names, orders and checks the details as Today's does; after
  * "Mark as paid" focus goes on to the verdict; "Read the letter again" in the GiroCode block follows the
  * reading to its end; reading a letter again says so above the verdict (no second title) and a failed re-read

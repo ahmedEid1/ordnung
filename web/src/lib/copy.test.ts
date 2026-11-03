@@ -65,7 +65,7 @@ describe("enum copy", () => {
       expect(hint, kind).toBeTruthy();
       // "Mahnbescheid: …" / "Kündigung by your employer: …" — the lead word is German (KindHint marks it)
       expect(hint, kind).toMatch(/^[A-ZÄÖÜ]\p{Ll}*(?:ung|bescheid|verlangen|abrechnung)\b/u);
-      // more than the bare term (review round 2: the statement's hint was only "Betriebskostenabrechnung.")
+      // more than the bare term (the statement's hint was once only "Betriebskostenabrechnung.")
       expect(hint!.split(/\s+/).length, kind).toBeGreaterThan(6);
     }
     // what the rules engine does for it: twelve months to object, a late back-payment usually not owed (§ 556 Abs. 3 BGB)

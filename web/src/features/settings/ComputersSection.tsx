@@ -1,5 +1,5 @@
 /**
- * Settings → Your computers (design §19.1): hand-off sync between the person's computers. Not connected: the setup
+ * Settings → Your computers (SPEC §12c): hand-off sync between the person's computers. Not connected: the setup
  * card (or why it can't be used here: no password store, the demo). Connected: the notices, this computer, the
  * others, and the kept copies. The status comes from the server's memory — asking never reads the folder or the
  * password store.

@@ -1,5 +1,5 @@
 /**
- * The first-run wizard as a person walks it (UI audit round 1, onboarding): focus follows the
+ * The first-run wizard as a person walks it: focus follows the
  * steps, the tab title names them, "Continue" stays reachable and explains itself, typed answers
  * survive, a failed finish shows next to its button, the online demo's finish screen points to
  * Sam's letters, and someone who is set up already has a way back into the app.

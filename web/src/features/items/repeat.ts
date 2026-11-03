@@ -1,5 +1,5 @@
 /**
- * How a date of the person's own repeats (audit item 26): the choices "Add a date" offers, the rule each one sends
+ * How a date of the person's own repeats: the choices "Add a date" offers, the rule each one sends
  * (`Recurrence`), the choice a stored rule is, and the words for a rule everywhere in the app. A repeating date is one
  * entry at its next date (`ordnung.recurrence`, point 1): it moves on when marked done or once its day has passed.
  *

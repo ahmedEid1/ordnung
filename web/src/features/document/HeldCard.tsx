@@ -46,7 +46,7 @@ export function NotReadYet() {
 /**
  * A letter's title as its page shows it: the letter's words kept whole where the line wraps (a reference,
  * "30 €", a German compound at its joints), or its file name, broken after underscores — never at the
- * hyphens inside a date or a reference (UI audit round 2: "Rechnung_2026-" / "09_FunkNetz.pdf").
+ * hyphens inside a date or a reference (not "Rechnung_2026-" / "09_FunkNetz.pdf").
  */
 export function LetterTitle({ title, filename }: { title: string | null; filename: string }) {
   return title && title !== filename ? <GermanTerms text={glueText(title)} /> : <FileNameText name={filename} />;

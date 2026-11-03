@@ -1,5 +1,5 @@
 /**
- * Hand-off sync in the shell (design §19.4): the top bar's indicator on the computer in use ("Saved · sam-desktop
+ * Hand-off sync in the shell (SPEC §12c): the top bar's indicator on the computer in use ("Saved · sam-desktop
  * has it", "Saving…", "Not saved: …"), and the banner under the top bar — a choice to make, standing by on the pages
  * that stay open, a late change being brought over. Neither shows when sync is off, nor ever on a phone.
  */

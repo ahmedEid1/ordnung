@@ -1,5 +1,5 @@
 /**
- * Round-2 regression review: "To pay · next 30 days" (Greeting) is summed in the browser by
+ * "To pay · next 30 days" (Greeting) is summed in the browser by
  * `toPayTotals`. It was once one euro sum shown with `formatMoney(total)`, which added up the raw amounts
  * of every outgoing payment whatever its currency, so a $50 invoice became €50 of the total.
  */

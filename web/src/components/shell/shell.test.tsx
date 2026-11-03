@@ -1,5 +1,5 @@
 /**
- * The app shell (audit round 1, bucket "shell-a"): the skip link keeps its padding, one content
+ * The app shell: the skip link keeps its padding, one content
  * column that the top bar and banner line up with, letter pages with a back button and an active
  * nav item, a top bar that doesn't repeat a visible h1, a labelled rail, one sidebar toggle that
  * keeps focus, the profile link, 12 px tab labels with a ring inside the bar, room under the page

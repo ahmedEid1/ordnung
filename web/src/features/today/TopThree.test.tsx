@@ -1,5 +1,5 @@
 /**
- * Top 3 this week (UI audit round 1, today-a): the Pay panel's transfer details and its always
+ * Top 3 this week: the Pay panel's transfer details and its always
  * visible actions, one urgency scale for the pill and the card edge, verbs that say where they go,
  * the reason's "Read more", and where focus goes when a card leaves (paid) or comes back (Undo).
  * jsdom has no layout; e2e/today-layout.spec.ts checks the real one.

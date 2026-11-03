@@ -2,7 +2,7 @@
  * A tab left open across an upgrade asks for page chunks the new build no longer has (404): load the new build
  * instead of showing an error — once a minute at most, so a real outage can't loop. Only while Ordnung answers: a
  * chunk that failed because Ordnung stopped keeps the app on screen, with the page's error and its "Try again" and
- * the "Can't reach Ordnung" notice, instead of the browser's "This site can't be reached" (UX audit U7).
+ * the "Can't reach Ordnung" notice, instead of the browser's "This site can't be reached".
  */
 const LAST_RELOAD = "ordnung:stale-reload";
 const RELOAD_GAP_MS = 60_000;

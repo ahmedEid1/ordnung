@@ -2,7 +2,7 @@
  * The Tax year page and the Export letters dialog on real pages (what jsdom can't measure), from 320 to 1280 px: no
  * sideways scroll, each letter's tax note wraps inside its row, the Year field fits, the dialog fits the screen with
  * its download in reach — and the Inbox's toolbar still fits every filter tab with the "Letters for taxes" link in
- * its header — and a letter marked for taxes on its own page (D3) is listed with "You marked this for taxes.". Runs
+ * its header — and a letter marked for taxes on its own page is listed with "You marked this for taxes.". Runs
  * against the demo (its letters for taxes are dated 2026) in the "layout" project; it downloads nothing, and the
  * letter it marks is left without a choice again.
  */

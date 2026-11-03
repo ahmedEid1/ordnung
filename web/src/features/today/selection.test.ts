@@ -285,7 +285,7 @@ describe("contract decisions", () => {
   it("ignores inactive contracts and passed decision dates", () => {
     expect(actionFromContract({ ...phone, status: "cancelled" }, ctx)).toBeNull();
     expect(actionFromContract({ ...phone, cancellable: false, cancel_hint: "Required by law." }, ctx)).toBeNull();
-    // its cancellation was marked as sent: nothing left to decide (walkthrough of phase 2)
+    // its cancellation was marked as sent: nothing left to decide
     expect(actionFromContract({ ...phone, cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } }, ctx)).toBeNull();
     expect(actionFromContract(phone, { today: "2026-10-20" })).toBeNull();
   });

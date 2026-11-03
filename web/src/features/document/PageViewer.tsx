@@ -6,7 +6,7 @@
  * callout instead. Zoom: fit width / 150%; thumbnails for multi-page letters; highlights are
  * keyboard-focusable buttons.
  *
- * Two layouts (UI audit round 1):
+ * Two layouts:
  * - `paged` (phones and tablets, where the viewer sits in the page's own column): one page at a time
  *   with a pager, and no scroll box of its own — a swipe scrolls the page, never a box inside it. The
  *   quote callout sits under the page instead of over the photo, and after jumping to a fact a

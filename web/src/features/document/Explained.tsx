@@ -91,7 +91,7 @@ export function ExplainedSimply({ doc, taxChoice = null }: { doc: Document; taxC
           <p className="mt-4 flex items-start gap-2 rounded-lg bg-k-expiry-soft px-3 py-2.5 text-[13px] leading-5 text-k-expiry-ink">
             <Landmark className="mt-0.5 size-4 shrink-0" aria-hidden />
             {/* a long German term ("Werbungskosten/Entfernungspauschale") breaks — hyphenated by German rules where
-                the browser can — instead of widening the page (UI audit round 1: it stuck out of the box at 320 px) */}
+                the browser can — instead of widening the page (it stuck out of the box at 320 px) */}
             <span className="min-w-0 [overflow-wrap:anywhere] hyphens-auto">
               <span className="font-semibold">For your tax return: </span>
               <ModelText text={taxNote}>

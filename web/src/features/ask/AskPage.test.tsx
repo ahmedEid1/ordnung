@@ -97,7 +97,7 @@ describe("Ask page", () => {
   }, 20_000); // two recorded answers stream word by word: slow on a busy machine
 
   it("a question the demo has no recording for gets a note, not a failure with a Try again that can't work", async () => {
-    // UI audit round 1: an amber "Couldn't answer this one" and a "Try again" that failed again
+    // not an amber "Couldn't answer this one" and a "Try again" that failed again
     useMockApi();
     const user = userEvent.setup();
     renderWithProviders(<AskPage />, { route: "/ask" });
@@ -113,7 +113,7 @@ describe("Ask page", () => {
   });
 
   it("a suggested question asked after the demo changed says how to start over — not to try a suggested question", async () => {
-    // FEAT G2: after one "Mark done" every suggested question missed, and the note said to try one of them
+    // after one "Mark done" every suggested question missed, and the note said to try one of them
     useMockApi();
     const base = globalThis.fetch;
     const changed = { type: "error", error: "The demo's answers…", text: "The demo's answers…", error_code: "demo_changed" };
@@ -317,7 +317,7 @@ describe("the question box", () => {
     button.focus();
     await user.keyboard("{Enter}");
     await screen.findByText(/Stopped before Ordnung checked an answer/);
-    // the same button, now "Ask", still has focus (UI audit round 1: focus fell back to the page)
+    // the same button, now "Ask", still has focus (it once fell back to the page)
     expect(document.activeElement).toBe(button);
     expect(button).toHaveAccessibleName("Ask");
     expect(screen.queryByText("Wait for this answer, or press Stop to ask something else.")).toBeNull();
@@ -329,7 +329,7 @@ describe("the question box", () => {
     const button = screen.getByRole("button", { name: "Ask" });
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).not.toBeDisabled();
-    // the placeholder is the muted text colour, at full strength (UI audit round 1: 3.72:1 at 80 %)
+    // the placeholder is the muted text colour, at full strength (3.72:1 at 80 %)
     expect(screen.getByLabelText("Your question").className).toContain("placeholder:text-muted ");
   });
 });

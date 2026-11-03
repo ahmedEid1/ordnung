@@ -18,7 +18,7 @@ export function waitingTitle(count: number): string {
   return `Not read yet: ${plural(count, "letter")} from your folder`;
 }
 
-/** The Inbox's mark for these letters — not the hourglass, which is a deadline's (UI audit round 2). */
+/** The Inbox's mark for these letters — not the hourglass, which is a deadline's. */
 const Icon = MEANING_ICONS.notReadYet;
 
 export function WaitingCard({ count }: { count: number }) {
@@ -37,7 +37,7 @@ export function WaitingCard({ count }: { count: number }) {
         <h2 id="waiting-card-title" className="text-[15px] font-semibold leading-snug text-ink">
           {waitingTitle(count)}
         </h2>
-        {/* what the heading doesn't say already (UI audit round 2: "not read yet" three times in a row) */}
+        {/* what the heading doesn't say already (not "not read yet" three times in a row) */}
         <p className="mt-0.5 text-[13.5px] leading-snug text-ink/80">
           Ordnung can't tell you what {one ? "it asks" : "they ask"} or by when until {one ? "it's" : "they're"} read. Nothing has been sent
           to Claude.

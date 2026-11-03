@@ -1,5 +1,5 @@
 /**
- * Adding a letter on a paired phone (design §13.4): "Add letters" asks how — Photograph a letter (the rear camera,
+ * Adding a letter on a paired phone (SPEC §12b): "Add letters" asks how — Photograph a letter (the rear camera,
  * through a file input with `capture`) or Choose files. Each photo becomes a page of "Pages of one letter", named
  * `photo-<day>-<time>-p<n>` by its place; pages can be reordered, removed and seen larger; "Add letter" sends them
  * as one letter in that order. Sending says how far it got and can be stopped, the dialog stays until the photos

@@ -24,7 +24,7 @@ export function bannerKind(status: SyncStatus | undefined): "standby" | "choice"
 const LINK = "font-medium text-accent underline underline-offset-2 hover:no-underline";
 
 /**
- * Hand-off sync's line under the top bar, next to the "Claude paused" one (design §19.4):
+ * Hand-off sync's line under the top bar, next to the "Claude paused" one (SPEC §12c):
  * - **both computers changed**: "Your two computers both have changes. Nothing is lost: choose which to keep." —
  *   Choose… opens the choice; the person can keep working meanwhile;
  * - **standing by**, on the pages that stay open then (Settings → Your computers, the privacy log): whose Ordnung is

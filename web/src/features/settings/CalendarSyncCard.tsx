@@ -109,8 +109,7 @@ function EventPreview({ mode, onModeChange, headingId }: { mode: CalendarSyncMod
         <>
           <ul id={listId} aria-label={`Events, ${modeLabel(mode).toLowerCase()}`} className="mt-3 divide-y divide-line rounded-2xl border border-line bg-surface">
             {shown.map((e) => {
-              // a date that has passed — "Overdue" said too much of money that came in or a date already
-              // dealt with (walkthrough of phase 2)
+              // a date that has passed — "Overdue" said too much of money that came in or a date already dealt with
               const passed = isPastEvent(e, today);
               return (
                 <li key={e.uid} className="min-w-0 px-3.5 py-3">
@@ -235,7 +234,7 @@ function Unavailable({ status }: { status: CalendarSyncStatus }) {
 function Connect({ status }: { status: CalendarSyncStatus }) {
   const discover = useDiscoverCalendars();
   const connect = useConnectCalendarSync();
-  // hand-off sync: the computer in use has no calendar connection while another computer has one (design §6.4)
+  // hand-off sync: the computer in use has no calendar connection while another computer has one (SPEC §12c)
   const elsewhere = calendarElsewhereNote(useSync().data, false);
   const [url, setUrl] = useState("");
   const [username, setUsername] = useState("");

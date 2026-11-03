@@ -1,5 +1,5 @@
 /**
- * Setting hand-off sync up (design §19.1, card 1), in Settings → Your computers and on `/join`:
+ * Setting hand-off sync up (SPEC §12c), in Settings → Your computers and on `/join`:
  *
  * 1. **The folder** your sync tool keeps in step. Looked at when the field is left (or on Next): a new sync starts
  *    there, or it holds one to join, or it can't be used (the reason under the field). A warning when Ordnung's data

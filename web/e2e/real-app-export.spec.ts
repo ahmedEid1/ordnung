@@ -2,7 +2,7 @@
  * Export letters on the real app (`ordnung serve` with the fake Claude): Settings → Data → Export letters downloads a
  * real ZIP — the letter's original file, byte for byte, in its year and sender folders, and `index.csv` for a
  * spreadsheet — only when the person clicks Download, and nothing in Ordnung changes. A letter marked *For taxes* on
- * its page (D3) goes into the ZIP of "Only letters for taxes", and its toast's Undo takes it out again. The letter
+ * its page goes into the ZIP of "Only letters for taxes", and its toast's Undo takes it out again. The letter
  * each test adds is deleted for good afterwards (the other real-app specs add the same file).
  */
 import { readFileSync } from "node:fs";

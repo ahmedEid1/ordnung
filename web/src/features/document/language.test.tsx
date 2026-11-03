@@ -1,5 +1,5 @@
 /**
- * Whose words are in which language (UX audit U5, U6, A1, A2): a letter's quotes in the letter's own language,
+ * Whose words are in which language: a letter's quotes in the letter's own language,
  * Claude's words in the person's (right to left for Arabic) — not words read before the person changed it — and the
  * letter's language named as it is.
  */

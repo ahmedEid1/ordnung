@@ -210,7 +210,7 @@ export function calendarLine(computer: Pick<SyncComputer, "calendar" | "name">):
   }
 }
 
-/** The Calendar card's note on the computer in use without calendar sync while another has it (design §6.4). */
+/** The Calendar card's note on the computer in use without calendar sync while another has it (SPEC §12c). */
 export function calendarElsewhereNote(status: Pick<SyncStatus, "connected" | "mode" | "computers"> | undefined, connectedHere: boolean): string | null {
   if (!status?.connected || status.mode !== "in_use" || connectedHere) return null;
   const elsewhere = otherComputers(status).filter((c) => c.state !== "left" && c.calendar !== "none");
@@ -244,7 +244,7 @@ export function arrivalAdvice(arriving: Pick<SyncArriving, "stalled" | "online_o
   return null;
 }
 
-/** "Ordnung takes over as soon as everything is here …" — and when it stops waiting (finding 23). */
+/** "Ordnung takes over as soon as everything is here …" — and when it stops waiting. */
 export function waitingLine(from: string): string {
   return `Ordnung takes over as soon as everything is here. It stops waiting after ${TAKE_OVER_WAIT_MINUTES} minutes, or if ${from} saves a new change meanwhile — then just ask again.`;
 }
@@ -396,7 +396,7 @@ export function sideName(side: Pick<SyncSide, "this" | "computer">): string {
   return side.this ? `This computer (${side.computer})` : side.computer;
 }
 
-/** What the toast says once a side was kept (the loser's copy is made by its own computer — finding 28). */
+/** What the toast says once a side was kept (the loser's copy is made by its own computer). */
 export function chosenMessage(kept: Pick<SyncSide, "this" | "computer">, sides: Pick<SyncSide, "this" | "computer">[]): { title: string; description: string } {
   const others = sides.filter((s) => s !== kept && !s.this).map((s) => s.computer);
   const named = others.length ? (others.length === 1 ? others[0]! : `${others.slice(0, -1).join(", ")} and ${others.at(-1)}`) : "the other computer";
@@ -409,7 +409,7 @@ export function chosenMessage(kept: Pick<SyncSide, "this" | "computer">, sides: 
 }
 
 // ------------------------------------------------------------------------------------------------
-// Disconnect and Delete everything: the second confirmation (finding 2)
+// Disconnect and Delete everything: the second confirmation
 // ------------------------------------------------------------------------------------------------
 
 /**

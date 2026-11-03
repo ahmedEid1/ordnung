@@ -34,12 +34,12 @@ export type ReceiptItem = Pick<Item, "kind" | "direction" | "title" | "action" |
 /**
  * The receipt's key dates, named by the deadline's nature as the Today page and the verdict name them
  * (`dateLabels.ts`): an appointment's day is "On", a payment's "Pay by", an objection's "Must arrive by";
- * a bank transfer is made by its send-by day ("Transfer by", UI audit round 1: not "Send by" / "Post it
+ * a bank transfer is made by its send-by day ("Transfer by", not "Send by" / "Post it
  * by" beside the verdict's "Transfer it by"), anything else is sent by it, and next to a send-by day the
  * due date is the day it must arrive. `transfer` says whether the to-do is a transfer (default: from
  * `item`, else from the spec's nature). A send-by day that is the due date itself (the usual posting time
- * has passed: "send it today") is no second tile — the verdict's date box leaves it out too (UI audit
- * round 2: "Send by Mon 28 Sep" beside "Must arrive by Mon 28 Sep").
+ * has passed: "send it today") is no second tile — the verdict's date box leaves it out too (not
+ * "Send by Mon 28 Sep" beside "Must arrive by Mon 28 Sep").
  */
 export function receiptDates(
   receipt: ComputationReceipt,
@@ -80,7 +80,7 @@ export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">,
  * What that means follows the receipt's `warnings`: counted forward the date may be a few days early; counted
  * backwards over a holiday of some Länder (`LAND_UNKNOWN.earlier`) it may be a day late, so act a working day before.
  * The receipt closes first (`close`): on a phone it is a modal sheet, which would keep the keyboard from the drawer
- * opened over it (final check of the fix wave: Tab went round the sheet's three buttons, never to the State picker).
+ * opened over it (Tab went round the sheet's three buttons, never to the State picker).
  */
 export function SenderLandNote({ party, warnings, close }: { party: Party; warnings: readonly string[]; close?: () => void }) {
   const drawer = usePartyDrawer();

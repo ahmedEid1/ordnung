@@ -47,7 +47,7 @@ const REQUIRED: Record<TemplateDraftKind, [keyof LetterDetails, string][]> = {
   address_change: [["new_address", "your new address"]],
 };
 
-/** Mirrors ACKNOWLEDGES_CLAIM in ordnung.drafts.compose (review round 1: § 212 BGB). */
+/** Mirrors ACKNOWLEDGES_CLAIM in ordnung.drafts.compose (§ 212 BGB). */
 export const ACKNOWLEDGES_CLAIM =
   "Offering instalments acknowledges the claim: the limitation period starts again (§ 212 Abs. 1 Nr. 1 BGB) and it is hard to dispute later — and money paid on a time-barred claim can't be reclaimed (§ 214 Abs. 2 BGB). If you think the claim is wrong or time-barred, object or get debt advice first.";
 
@@ -125,7 +125,7 @@ export function courtChannels(): SendChannel[] {
 
 /** A court's name (`routing.is_court`): a word ending in "gericht", and no bailiff or court cashier. */
 export function isCourtName(name: string | null | undefined): boolean {
-  // a cashier ("Gerichtskasse") is no court — a court in Kassel is (review round 2)
+  // a cashier ("Gerichtskasse") is no court — a court in Kassel is
   return /gericht\b/i.test(name ?? "") && !/vollzieh|kasse(?:n(?:stelle)?)?\b|zahlstelle/i.test(name ?? "");
 }
 
@@ -248,7 +248,7 @@ export function templateLetter(kind: TemplateDraftKind, ctx: TemplateContext): T
           "Please confirm the instalment plan in writing.",
         ],
         notes: [
-          // an offer doesn't stop the order: its own deadline still runs (compose.court_order_note, review round 3)
+          // an offer doesn't stop the order: its own deadline still runs (compose.court_order_note)
           ...(ctx.courtOrder === "Mahnbescheid"
             ? ["This offer doesn't stop the Mahnbescheid: pay or object by the court's deadline all the same — otherwise the claimant can apply for an enforcement order (Vollstreckungsbescheid) and enforce it (§ 699 ZPO)."]
             : ctx.courtOrder

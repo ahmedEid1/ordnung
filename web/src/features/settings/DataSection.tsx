@@ -89,7 +89,7 @@ const UNRECEIVED_ID = "delete-everything-unreceived";
 /** After "Delete everything" on a computer that synced: what became of hand-off sync. */
 export const SYNC_STOPPED = "This computer stopped syncing: the sync folder and your other computers keep everything.";
 
-/** What "Delete everything" does to hand-off sync (design §15.8): this computer leaves; the folder and the others stay. */
+/** What "Delete everything" does to hand-off sync (SPEC §12c): this computer leaves; the folder and the others stay. */
 export function deleteSyncNote(folder: string | null): string {
   const copy = folder ? `the encrypted copy in ${folder}` : "the encrypted copy in the sync folder";
   return `This computer also stops syncing. Your other computers and ${copy} keep everything. Delete it there too if you want it gone everywhere.`;
@@ -138,7 +138,7 @@ function DeleteEverythingDialog({
   // hand-off sync: this computer stops syncing; the folder and the other computers keep everything
   const handOff = useSync(open);
   const syncing = handOff.data?.connected ? handOff.data : null;
-  // another computer sends to the same calendar: Ordnung's events stay there (finding 27)
+  // another computer sends to the same calendar: Ordnung's events stay there
   const sharedCalendar = syncing ? otherComputers(syncing).find((c) => c.state !== "left" && c.calendar === "same")?.name : undefined;
   const calendar = sync.data?.connected ? (sync.data.calendar_name ?? hostOf(sync.data.url)) : null;
   // phone access goes too: its phones are signed out and its certificate deleted (phones that trusted it keep it)
@@ -150,7 +150,7 @@ function DeleteEverythingDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   // the word in any case: "delete" typed on a keyboard means the same (the API gets "DELETE")
   const typedWord = typed.trim().toUpperCase() === DELETE_WORD;
-  // no other computer has this one's latest changes: a second confirmation (finding 2)
+  // no other computer has this one's latest changes: a second confirmation
   const unreceived = (syncing?.mode === "in_use" ? unreceivedLine(syncing) : null) ?? unreceivedRefusal;
   const confirmed = typedWord && (!unreceived || anyway);
 

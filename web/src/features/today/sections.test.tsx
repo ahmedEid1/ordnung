@@ -1,5 +1,5 @@
 /**
- * Today's lower sections (UI audit round 1, today-b): Coming-up rows that say what is due without
+ * Today's lower sections: Coming-up rows that say what is due without
  * repeating the date and never cut it to one line, week headings that read right, Ideas that keep
  * their "Show fewer" button and hand focus on (not to <body>), announce once, name what each
  * button is about and use the Top-3 Pay panel for "Pay", Recent letters in the order of the dates

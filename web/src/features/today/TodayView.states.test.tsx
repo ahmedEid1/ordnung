@@ -1,5 +1,5 @@
 /**
- * The Today page's layout and states (UI audit round 1, today-a): Coming up beside only the small
+ * The Today page's layout and states: Coming up beside only the small
  * side cards (Ideas below at full width), no Idea that repeats the "Please check" card, a first
  * run that asks for letters instead of showing zeros, a loading page shaped like the real one, a
  * load error worded by cause that stays put while retrying, status in words on Life at a glance,
@@ -139,7 +139,7 @@ describe("first run", () => {
     expect(screen.getByRole("button", { name: "Add letters" })).toBeInTheDocument();
     expect(screen.getByText("Your files stay on this computer.")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(3);
-    // "e‑mail" never splits at its hyphen, and a dash never starts a line (UI audit round 2)
+    // "e‑mail" never splits at its hyphen, and a dash never starts a line
     expect(screen.getByText((_, el) => el?.textContent === "A PDF, a phone photo or a saved e\u2011mail of any letter\u00a0— a bill, a contract, a notice from an office.")).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")[1]!.textContent).toMatch(/Every date and amount lands here\u00a0— what to do this week/);
     // the restore command reads as a command (not the IBAN face), and the sentence says where to type it

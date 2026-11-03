@@ -1,5 +1,5 @@
 /**
- * What a to-do row on the letter page says about its date (UI audit round 1: the scam letter's
+ * What a to-do row on the letter page says about its date (once the scam letter's
  * demand read as an urgent to-do with "transfer by", a €100 fee paid by card at the appointment said
  * "transfer by 13 Oct", a direct debit counted down in red, a salary said "No date"):
  *

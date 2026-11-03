@@ -32,7 +32,7 @@ describe("onboarding options", () => {
   it("uses the honest privacy wording from the spec", () => {
     expect(PRIVACY_STATEMENT).toMatch(/^Your files and your database stay on this computer\./);
     expect(PRIVACY_STATEMENT).toContain("no server, no telemetry and never sees your credentials");
-    // one name for the program, in words a non-developer knows (UI audit R1-onboarding-6)
+    // one name for the program, in words a non-developer knows
     expect(PRIVACY_STATEMENT).toContain("(Claude Code, the Claude program you installed and signed in to)");
     expect(PRIVACY_STATEMENT).not.toMatch(/CLI|Claude app/);
   });
