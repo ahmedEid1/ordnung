@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMockServer } from "./server";
 import { letterFor } from "./db";
 import type {
@@ -141,9 +141,12 @@ describe("mock dataset", () => {
     const s = createMockServer({ staticDemo: false, latency: 0.001 });
     const res = await s.handle("POST", "/demo/mail", new URLSearchParams(), { id: "mail_finanzamt" });
     expect(res.status).toBe(200);
-    await new Promise((r) => setTimeout(r, 60));
+    // wait for the letter to be read, not a fixed 60 ms: a busy machine can hold the stages' timers back longer
+    await vi.waitFor(
+      async () => expect((await get<DocumentDetail>(s, "/documents/doc_tax")).document.status).toBe("processed"),
+      { timeout: 5_000 },
+    );
     const detail = await get<DocumentDetail>(s, "/documents/doc_tax");
-    expect(detail.document.status).toBe("processed");
     expect(detail.document.remedy?.type).toBe("einspruch");
     const objection = detail.items.find((i) => i.id === "itm_tax_objection") as Item;
     expect(objection.due_date).toBe("2026-10-21");
