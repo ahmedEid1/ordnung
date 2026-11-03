@@ -246,6 +246,11 @@
    "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
   },
   {
+   "cell": "ask/heldout/final",
+   "status": "not recorded yet",
+   "needs": "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)"
+  },
+  {
    "cell": "e2e/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [

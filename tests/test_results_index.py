@@ -443,6 +443,7 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
     assert waiting == [
         "ablation/holdout4",
         "analysis/final",
+        "ask/heldout/final",
         "ask/heldout/r1",
         "ask/heldout/r2",
         "ask/heldout/r3",

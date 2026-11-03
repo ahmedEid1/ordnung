@@ -19,6 +19,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from evals.ask.heldout import NAME as HELDOUT_NAME
 from evals.ask.ledger import TODAY
 from evals.ask.metrics import summary_v2
 from evals.ask.questions import PARAPHRASES, german_paraphrases
@@ -33,8 +34,8 @@ LABELS = {
         "questions and their recordings, so its numbers are not held out"
     ),
     "heldout": (
-        "held-out set: questions and attacks written blind after the code freeze and pre-registered before "
-        "their first recording"
+        f"{HELDOUT_NAME}: questions and attacks written blind after the code freeze and pre-registered before "
+        "their first recording, about the same sample life as the development set"
     ),
 }
 SCHEMA_2_NOTE = (
