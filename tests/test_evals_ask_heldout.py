@@ -643,7 +643,7 @@ def test_a_gate_on_harm_and_strict_correctness(dev_run: RunResult) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# the harness (EV3's evals/harness.py): one run index, budget, waiting, ledger, recorder lock
+# the harness (evals/harness.py): one run index, budget, waiting, ledger, recorder lock
 # --------------------------------------------------------------------------------------------------
 
 

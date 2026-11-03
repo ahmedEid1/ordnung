@@ -1,4 +1,4 @@
-"""The dropped-date check (``check:deadline``) in looser words (ADR 0015, 2026-10-07, narrowed by its re-review).
+"""The dropped-date check (``check:deadline``) in looser words (ADR 0015, 2026-10-07, since narrowed).
 
 The corpus (``tests/data/deadline_looser_corpus.json``) was written from general knowledge of German and English
 letters, never from the benchmark's: each positive is a sentence (or a request line and a label below it) that sets a
@@ -7,8 +7,8 @@ date the person must pay or send something by, in words the strict check did not
 pay …"); each negative is a sentence built to look like one but whose date is no deadline of the person's (a
 condition, the past, the sender's or another's act, money coming to her, a debit, an appointment, a discount, a
 validity, an option, an offer or event, a holiday, a period's end, a remedy, a statement's cut-off, an old line, a
-date without its year). The first review of 2026-10-07 moved 118 positives to the negatives, each with its reason
-(``"moved"``); its re-review narrowed the path and moved 115 more (``"rereview"``: a date without its year, a dropped
+date without its year). A first check of 2026-10-07 moved 118 positives to the negatives, each with its reason
+(``"moved"``); narrowing the path moved 115 more (``"rereview"``: a date without its year, a dropped
 wording, words before the request in its sentence, a possessive alone, a labelled sentence on a page that asks for
 nothing). The two negatives the strict path files as on base 0ff51e3 stay pinned (``"strict_as_base"``: documented
 limits, never silenced there). Every sentence stands in a minimal letter whose reading has its sender and date but no
@@ -84,9 +84,9 @@ def _id(entry: dict[str, Any]) -> str:
 def test_the_corpus_is_large_enough_and_every_move_has_its_reason() -> None:
     assert len(POSITIVES) == 42 and len(NEGATIVES) == 556
     assert {entry["kind"] for entry in POSITIVES} == {"payment", "declaration"}
-    # since the re-review a date without its year files nothing: every positive has its year
+    # since the path was narrowed a date without its year files nothing: every positive has its year
     assert all(entry["has_year"] for entry in POSITIVES) and any(not entry["has_year"] for entry in NEGATIVES)
-    # a sentence moved by a review keeps its reason, never dropped silently
+    # a sentence moved to the negatives keeps its reason, never dropped silently
     moved = [entry for entry in NEGATIVES if "moved" in entry]
     rereview = [entry for entry in moved if entry.get("rereview")]
     assert len(moved) == 118 + 115 and len(rereview) == 115
@@ -123,7 +123,7 @@ def test_the_strict_path_s_false_alarms_stay_as_on_base(entry: dict[str, Any]) -
 
 
 # --------------------------------------------------------------------------------------------------
-# Dates without their year: read nowhere since the re-review (``test_reading_gaps_looser_rereview.py``)
+# Dates without their year: read nowhere since the path was narrowed (``test_reading_gaps_looser_false_alarms.py``)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -188,7 +188,7 @@ def test_the_reading_s_own_to_do_and_quote_cover_a_looser_date() -> None:
     assert (
         filed(sentence, written, today=today, items=[due("2027-01-13")]) == []
     )  # within 3 days of the reading's
-    # a dated payment of the reading: a second payment date in looser words is likelier its own (2026-10-07 review)
+    # a dated payment of the reading: a second payment date in looser words is likelier its own (2026-10-07)
     assert filed(sentence, written, today=today, items=[due("2027-02-15")]) == []
     # a dated declaration of the reading covers no payment
     declaration = due("2027-02-15").model_copy(
@@ -241,9 +241,9 @@ SENDS = [("2026-10-23", "declaration")]
              "zum 23.10.2026."),
             PAYS,
         ),
-        # (no one named as the one to pay: the looser path stays silent, 2026-10-07 review)
+        # (no one named as the one to pay: the looser path stays silent, 2026-10-07)
         (SPARKASSE, ("Wir bitten um Zahlung des offenen Betrags bis zum 23.10.2026.",), []),
-        # wordings dropped by the re-review of 2026-10-07 (each filed confirmed false alarms): missed now
+        # wordings dropped when the path was narrowed on 2026-10-07 (each filed confirmed false alarms): missed now
         (
             SPARKASSE,
             ("vielen Dank für Ihr Schreiben.",

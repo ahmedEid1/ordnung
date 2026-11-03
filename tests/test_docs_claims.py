@@ -1,6 +1,6 @@
 """The factual claims of README.md and docs/, checked against the code.
 
-Written by a documentation audit: each test states a documented claim as an assertion, so a change
+Each test states a documented claim as an assertion, so a change
 that makes the docs untrue fails here.
 """
 
@@ -159,7 +159,7 @@ def test_mypy_finds_the_generators_the_benchmark_code_imports() -> None:
     """README's "strict on the benchmark code" holds only where mypy finds what evals/ imports
     (``ignore_missing_imports`` makes a module it can't find Any, silently). evals/generate.py runs with evals/ on
     sys.path and imports its generators as ``gen``, which mypy, reading evals/ as a package, can't find: for mypy
-    it imports the same names from ``evals.gen`` (D1 review: 17 imports were Any). No other benchmark module
+    it imports the same names from ``evals.gen`` (17 imports were Any). No other benchmark module
     imports ``gen``."""
     tree = ast.parse((ROOT / "evals" / "generate.py").read_text(encoding="utf-8"))
 
@@ -425,7 +425,7 @@ PUBLISHED_SPLITS = ("test", "holdout", "holdout2", "holdout3")
 
 
 def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> None:
-    """M3: README's Limitations, deadline-rules.md and the history page cite the replay without the sender's Land
+    """README's Limitations, deadline-rules.md and the history page cite the replay without the sender's Land
     (scripts/eval_without_land.py, as the app runs until the person sets a sender's Land): its accuracy per split, no
     late date, extra misses 1–3 days early — and the numbers with the Land it sets them against are the published
     replays'. The evaluation report renders the same file (tests/test_present.py)."""
@@ -461,7 +461,7 @@ def test_the_numbers_without_the_sender_s_land_match_their_results_file() -> Non
             splits[name]["with_land"]["due_date_accuracy"] == run["metrics"]["ordnung"]["due_date_accuracy"]
         )
     limitation = _flat(readme).split("## Limitations", 1)[1]
-    # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider (F-S11): a Baden-Württemberg
+    # the benchmark's letters miss by 1–3 days; around Christmas the gap is wider: a Baden-Württemberg
     # authority's one-month objection period, letter dated Fri 21 Nov 2025, ends 5 days early without the Land
     objection = DateSpec(
         type="relative",
@@ -980,8 +980,8 @@ README_WHOSE_LIMIT = (
 
 def test_readme_says_whose_a_letter_for_someone_else_is() -> None:
     """README Limitations: a letter addressed to someone else says so, can be filed for them once they are in your
-    household (D3) and can be answered in their name; once filed, My numbers, Ask, the rule Ideas, Today and the
-    Timeline say whose it is (E2), but there is one person's Ordnung: its dates stay the person's to act on, the
+    household and can be answered in their name; once filed, My numbers, Ask, the rule Ideas, Today and the
+    Timeline say whose it is, but there is one person's Ordnung: its dates stay the person's to act on, the
     weekly review's letters carry no filing, and My numbers takes a number as someone's by the filing, never by
     the addressee."""
     from ordnung.secretary import review
@@ -993,7 +993,7 @@ def test_readme_says_whose_a_letter_for_someone_else_is() -> None:
 
 
 def _churn() -> dict[str, int]:
-    """Finding 21's measurement, as ``ordnung.sync.push`` records it: the generated library's letters, its
+    """The measurement, as ``ordnung.sync.push`` records it: the generated library's letters, its
     database's MiB and slices, and the slices one more reading changed."""
     from ordnung.sync import push
 
@@ -1019,7 +1019,7 @@ def test_readme_limitations_say_how_much_one_save_can_upload() -> None:
     and the provider's version history and trash may keep them."""
     churn = _churn()
     slice_mib = _whole(sync.DB_SLICE, _MIB)
-    # audit (batch A review): it said "after a day", but that is only for slices every computer has moved
+    # it said "after a day", but that is only for slices every computer has moved
     # past, and the grace counts Ordnung's running time too (the engine collects garbage so)
     assert sync.GC_GRACE_S == sync.GC_GRACE_RUNTIME_S
     week = {7: "a week"}[_whole(sync.GC_GRACE_RUNTIME_S, _DAY_S)]
@@ -1504,7 +1504,7 @@ def _shown_characters() -> int:
 
 
 #: Every number the phone-access docs state, by the name the claims below use, from the constant it
-#: names (P1's modules ``ordnung.phone.{access,pairing,tls,record,mask}``; the rest from the contract).
+#: names (the modules ``ordnung.phone.{access,pairing,tls,record,mask}``; the rest from the contract).
 _PHONE_NUMBERS: dict[str, Callable[[], object]] = {
     "port": lambda: _code("ordnung.phone.record.DEFAULT_PORT"),
     "last_port": lambda: _code("ordnung.phone.access.PORTS")[-1],
@@ -1648,7 +1648,7 @@ def _doc(name: str) -> str:
 def test_the_phone_access_docs_state_the_code_s_numbers(document: str, sentence: str) -> None:
     """Every number the phone-access docs state is the constant it names, as the code has it: the
     pairing code's length, life and tries, the phones, idle and sign-in times, the hourly limits, the
-    certificates' lives, the port and the listener's limits (design § 18.6, with the amendments)."""
+    certificates' lives, the port and the listener's limits (SPEC §12b)."""
     stated = sentence.format(**{name: _PHONE_NUMBERS[name]() for name in _FIELD.findall(sentence)})
     assert stated in _doc(document)
 
@@ -1659,7 +1659,7 @@ def _example_path(template: str) -> str:
 
 
 def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
-    """Scope review: README and privacy.md said the profile's IBAN shows only its last characters on a
+    """README and privacy.md said the profile's IBAN shows only its last characters on a
     phone, while a deposit-return letter written there carries it in full (code writes it into the
     letter). A letter has to print it, so the docs say so, and ADR 0017 lists it as a known limit with why
     it isn't masked there."""
@@ -1679,7 +1679,7 @@ def test_the_iban_mask_on_a_phone_names_the_letters_that_carry_it() -> None:
 def test_a_paired_phone_cannot_change_settings_back_up_or_delete() -> None:
     """README Limitations: a paired phone "can't change settings, back up or delete" — no settings or
     backup operation, ``DELETE /api/data`` or any other ``DELETE`` (except taking back "answered",
-    which deletes no data) is a phone's (design § 16.5)."""
+    which deletes no data) is a phone's (SPEC §12b)."""
     limitation = _flat(_readme().split("## Limitations", 1)[1].split("\n## ", 1)[0])
     assert "it can't change settings, back up or delete" in limitation
     assert "It can't delete anything" in _doc("docs/privacy.md")
@@ -1703,7 +1703,7 @@ def test_phone_access_answers_only_on_the_home_network() -> None:
     devices on that network — never through a VPN or a tunnel, nor through a container's or a virtual
     machine's network unless your router is on it". The address must be a home-network one (no public,
     shared-carrier, link-local or loopback address), a client must be in its subnet, and a tunnel's
-    interface is never offered, a virtual one only on the router's network (design § 16.5, amendment M2)."""
+    interface is never offered, a virtual one only on the router's network (SPEC §12b, ADR 0017)."""
     net = importlib.import_module("ordnung.phone.net")
     assert "over your home Wi-Fi" in _flat(_readme())
     assert (
@@ -1763,7 +1763,7 @@ def _superscript(number: int) -> str:
 
 
 #: Every number the hand-off sync docs state, by the name the claims below use, from the constant it names
-#: (``ordnung.sync``, design §27 with the binding amendments).
+#: (``ordnung.sync``, SPEC §12c).
 _SYNC_NUMBERS: dict[str, Callable[[], object]] = {
     "log2_n": lambda: sync.SYNC_KDF.log2_n,
     "log2_n_sup": lambda: _superscript(sync.SYNC_KDF.log2_n),
@@ -1999,8 +1999,8 @@ def test_a_new_backup_takes_the_key_costs_of_a_new_sync_folder() -> None:
 
 
 def test_the_first_save_is_not_ten_seconds_after_a_change_any_more() -> None:
-    """The design's first draft saved "about ten seconds after a change"; the person's change is saved after
-    ``PUSH_PERSON_QUIET_S`` (review finding 33), so no document may promise ten."""
+    """An earlier draft saved "about ten seconds after a change"; the person's change is saved after
+    ``PUSH_PERSON_QUIET_S``, so no document may promise ten."""
     assert sync.PUSH_PERSON_QUIET_S < sync.PUSH_QUIET_S
     for document in ("README.md", "docs/privacy.md", "docs/SPEC.md", "docs/architecture.md", _ADR_SYNC.name):
         assert "ten seconds after a change" not in _sync_doc(document), document
@@ -2042,7 +2042,7 @@ def test_what_stays_on_each_computer_is_what_the_privacy_page_lists() -> None:
     """docs/privacy.md, "What stays on each computer": only the ledger and the letters' files travel; never
     phone access, the calendar connection, the watched folder and what it remembers (but the fingerprints
     of what it brought in), Claude's pause, the morning notification's bookkeeping, nor the privacy-log
-    entries of a backup made there, its phone access and its watched folder (review finding 25)."""
+    entries of a backup made there, its phone access and its watched folder."""
     text = _sync_doc("docs/privacy.md")
     assert "Only your ledger and your letters' files travel." in text
     assert sync.SYNCED_DIRS == ("files", "derived", "drafts")
@@ -2172,8 +2172,8 @@ def test_doctor_checks_the_last_backup_and_disk_encryption_as_the_readme_says(
 
 
 def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
-    """Review finding 25: the folder reveals bursts of new objects — roughly how many letters and pages are
-    added — never their content; and the amendments' testing limits: a simulated sync tool and two data
+    """The folder reveals bursts of new objects — roughly how many letters and pages are
+    added — never their content; and the testing limits: a simulated sync tool and two data
     folders on one machine, no pass yet on two physical computers."""
     for document in ("docs/privacy.md", _ADR_SYNC.name):
         text = _sync_doc(document)
@@ -2187,7 +2187,7 @@ def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
 
 
 def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:
-    """Review finding 18: "Forget" removes a lost computer from the folder's list, but it still knows the
+    """The button "Forget" removes a lost computer from the folder's list, but it still knows the
     passphrase — the docs say so, and what does shut it out (a new folder with a new passphrase)."""
     assert "doesn't lock that computer out" in _sync_doc("docs/privacy.md")
     assert "set up a new sync folder with a new passphrase" in _sync_doc("docs/privacy.md")
@@ -2197,7 +2197,7 @@ def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:
 
 
 def test_kept_copies_are_where_the_docs_and_the_backup_policy_say() -> None:
-    """Review finding 35: kept copies are backup files inside the data folder (``<data>/sync/kept/``), which the
+    """Kept copies are backup files inside the data folder (``<data>/sync/kept/``), which the
     backup policy's "never inside the data folder" now leaves to backups you make; they are lost with the disk
     and with Delete everything."""
     from ordnung import backup
@@ -2338,7 +2338,7 @@ def test_sync_folder_holds_no_plaintext(synced: Any) -> None:
 
 
 def test_sync_names_reveal_nothing(synced: Any) -> None:
-    """Every name in the folder is one of Ordnung's meaningless names (design §4.1): no ``doc_`` id, date, file
+    """Every name in the folder is one of Ordnung's meaningless names (SPEC §12c): no ``doc_`` id, date, file
     extension, or the SHA-256 that names an original in the data folder."""
     names = list(_all_files(synced.folder))
     assert names and all(_ordnung_name(name) for name in names), names
@@ -3021,7 +3021,7 @@ def test_the_architecture_shows_the_shortcut_beside_start_at_login() -> None:
 
 
 def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tmp_path: Path) -> None:
-    """README, SPEC and ADR 0013 against ``ordnung.shortcut`` (batch C's launcher package): where each launcher
+    """README, SPEC and ADR 0013 against ``ordnung.shortcut`` (the launcher package): where each launcher
     goes, that the Linux entry asks for a terminal, what it runs, the Windows link's mark, the command's
     options, and that CI's macOS and Windows job runs the shortcut's tests (README)."""
     import yaml
@@ -3052,7 +3052,7 @@ def test_the_launchers_the_docs_describe_are_the_ones_ordnung_shortcut_writes(tm
 
 
 def test_the_release_the_changelog_describes_waits_for_the_owner_s_pypi_setup() -> None:
-    """The CHANGELOG's *Releases* and README's Documentation list against batch C's release package: a pushed
+    """The CHANGELOG's *Releases* and README's Documentation list against the release package: a pushed
     `v*` tag runs `release.yml`, PyPI only with the repository variable and the `pypi` environment, no stored
     token, and docs/releasing.md says how the owner sets it up."""
     import yaml
@@ -3099,8 +3099,8 @@ async def test_readme_says_a_weekly_deadline_or_payment_of_your_own_is_nearly_al
     an Idea nearly all the time, because its default reminder window (Settings → Reminders: 14 and 7 days) reaches
     the next one wherever the week stands; a payment every 2 weeks isn't, and a reminder, the dialog's first kind,
     is one only on its day. Added through the API as *Add a date* adds them, starting on every day of the cycle.
-    Marked done before its day, it moves to the one after the day marked, which can be past the window (D1 review:
-    the line said "always"): a weekly payment due Thu 1 Oct moves to Thu 8 Oct (send by Wed 7 Oct, 9 days off) and
+    Marked done before its day, it moves to the one after the day marked, which can be past the window (the
+    line once said "always"): a weekly payment due Thu 1 Oct moves to Thu 8 Oct (send by Wed 7 Oct, 9 days off) and
     a deadline every 2 weeks due Thu 8 Oct to Thu 22 Oct, neither an Idea then; a weekly deadline stays one."""
     assert (
         "A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's "
@@ -4604,7 +4604,7 @@ def test_the_spec_and_architecture_describe_text_in_pictures() -> None:
     """SPEC (the cut list, the layout, the route-local models, the doctor, the text stage, the API and the web
     app) and docs/architecture.md against d4-contract's routes: ``found_in`` may say ``picture_text``
     (``LetterFoundIn``; ``models.SearchFoundIn`` is gone) and the letter's page names ``picture_text_pages``; the
-    Settings switch and the variable (E2); no module but the worker and the doctor imports the engine."""
+    Settings switch and the variable; no module but the worker and the doctor imports the engine."""
     from typing import get_args
 
     from ordnung import models

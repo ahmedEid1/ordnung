@@ -1,4 +1,4 @@
-"""The round-5 limits review, dates lens (R5D-1 to R5D-4): town forms, an as-of date in the body, a stamp on the first
+"""The known limits of the check for incomplete readings (ADR 0015), dates: town forms, an as-of date in the body, a stamp on the first
 line, and the envelope never starting another decision's notice. Invented letters only."""
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ import pytest
 
 from ordnung.ingest.gaps import formally_served, letter_date
 from test_reading_gaps import blank, page
-from test_reading_gaps_round5 import computed
+from test_reading_gaps_known_limits import computed
 
 NOTICE = "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden."
 LETTER_DAY = date(2026, 11, 6)

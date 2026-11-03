@@ -1,4 +1,4 @@
-"""Audit: regression tests for user-visible bugs found by reading and probing the core flows.
+"""Regression tests for user-visible bugs found by reading and probing the core flows.
 
 Every test here reproduced a bug (it failed before the fix) and describes the correct behaviour.
 """

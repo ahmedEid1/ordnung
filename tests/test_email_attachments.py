@@ -916,7 +916,7 @@ async def test_an_email_stopped_before_its_attachments_gets_them_when_added_agai
 
 
 # --------------------------------------------------------------------------------------------------
-# Review of wave 2: Ordnung's own letters and proof e-mails
+# Ordnung's own letters and proof e-mails
 # --------------------------------------------------------------------------------------------------
 
 

@@ -1,4 +1,4 @@
-"""Audit: regression tests for the security review's findings (each failed before its fix).
+"""Security regression tests (each failed before its fix).
 
 Shared machines (other accounts reading the data folder or ``ps``), hostile uploads (decompression
 bombs, huge images and texts, hidden e-mail text), "Delete means delete", prompt-injection surfaces,
@@ -448,7 +448,7 @@ def test_thousands_of_stream_keywords_behind_one_object_are_refused_quickly() ->
 
 @pytest.mark.parametrize("filters", [b"/A85/Fl", b"/AHx/Fl"])
 def test_thousands_of_ascii_streams_running_into_each_other_are_checked_quickly(filters: bytes) -> None:
-    """Audit (batch A review): each stream's ASCII85 data was decoded up front, to the first character
+    """Each stream's ASCII85 data was decoded up front, to the first character
     that can't be part of it, and ``N 0 obj<</Filter[/A85/Fl]>>stream`` is ASCII85 itself, so thousands of
     such objects made one run, decoded again for each stream: 100 KB took 45 s. Now ASCII85 and ASCIIHex
     are decoded as the filter behind them reads, and what they read counts against the budget."""

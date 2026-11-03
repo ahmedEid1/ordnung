@@ -1,5 +1,4 @@
-"""Crashes and power cuts in the middle of a push, a pull and a claim (design §3, §10.4, §11.5; F1-F10,
-F29, F30; acceptance checks 2-3).
+"""Crashes and power cuts in the middle of a push, a pull and a claim (SPEC §12c).
 
 Each case starts from the same template (two computers, a letter, A in use with unsaved changes), copied
 back into place, so the data folders keep their paths. A crash is a :class:`sync_faults.SimulatedCrash`
@@ -152,7 +151,7 @@ def count(operation: Any) -> CrashingFs:
 
 
 # --------------------------------------------------------------------------------------------------
-# push (F1-F4, F30)
+# push
 # --------------------------------------------------------------------------------------------------
 
 
@@ -167,7 +166,7 @@ def _push(scene: Scene, crash: CrashingFs) -> tuple[Computer, Computer, SyncTool
     return a, b, sim, done
 
 
-def test_push_crash_at_every_operation(scene: Scene) -> None:  # F1, F2, F3
+def test_push_crash_at_every_operation(scene: Scene) -> None:
     def dry(fs: CrashingFs) -> None:
         a, b, _sim = scene.fresh()
         use(a, fs)
@@ -189,13 +188,13 @@ def test_push_crash_at_every_operation(scene: Scene) -> None:  # F1, F2, F3
             else:
                 finish_push(scene, a)
             leftovers = [p for p in a.folder.rglob(f".{a.s.folder.tag}*.tmp")]
-            assert not leftovers, leftovers  # its own temp files go at the next push (I7)
+            assert not leftovers, leftovers  # its own temp files go at the next push
         finally:
             a.close()
             b.close()
 
 
-def test_push_crash_at_sampled_bytes(scene: Scene) -> None:  # F1
+def test_push_crash_at_sampled_bytes(scene: Scene) -> None:
     def dry(fs: CrashingFs) -> None:
         a, b, _sim = scene.fresh()
         use(a, fs)
@@ -217,7 +216,7 @@ def test_push_crash_at_sampled_bytes(scene: Scene) -> None:  # F1
             b.close()
 
 
-def test_push_power_cut(scene: Scene) -> None:  # F4: a head is never durable without its objects
+def test_push_power_cut(scene: Scene) -> None:  # a head is never durable without its objects
     def dry(fs: CrashingFs) -> None:
         a, b, _sim = scene.fresh()
         use(a, fs)
@@ -247,7 +246,7 @@ def test_push_power_cut(scene: Scene) -> None:  # F4: a head is never durable wi
             b.close()
 
 
-def test_push_folder_full(scene: Scene) -> None:  # F30
+def test_push_folder_full(scene: Scene) -> None:
     a, b, sim = scene.fresh()
     try:
         use(a, FullFs(after_bytes=2000))
@@ -264,7 +263,7 @@ def test_push_folder_full(scene: Scene) -> None:  # F30
 
 
 # --------------------------------------------------------------------------------------------------
-# pull and claim (F5-F9, F29)
+# pull and claim
 # --------------------------------------------------------------------------------------------------
 
 
@@ -282,7 +281,7 @@ def _pull_scene(scene: Scene, **fs: FsOps) -> tuple[Computer, Computer, SyncTool
     return scene.fresh(template, **fs)
 
 
-def test_pull_crash_at_every_operation(scene: Scene) -> None:  # F5, F7, F9
+def test_pull_crash_at_every_operation(scene: Scene) -> None:
     def dry(fs: CrashingFs) -> None:
         a, b, _sim = _pull_scene(scene)
         use(b, fs)
@@ -347,7 +346,7 @@ def test_pull_power_cut(scene: Scene) -> None:
 
 def test_kill_during_the_database_apply_keeps_one_database(
     scene: Scene, monkeypatch: pytest.MonkeyPatch
-) -> None:  # F8 (in process)
+) -> None:  # in process
     a, b, _sim = _pull_scene(scene)
     try:
         real = Store.replace_with
@@ -376,7 +375,7 @@ def test_kill_during_the_database_apply_keeps_one_database(
         b.close()
 
 
-def test_a_crash_while_keeping_a_copy(scene: Scene, monkeypatch: pytest.MonkeyPatch) -> None:  # F6
+def test_a_crash_while_keeping_a_copy(scene: Scene, monkeypatch: pytest.MonkeyPatch) -> None:
     a, b, sim = scene.fresh()
     try:
         a.delete_letter(next(x for x in a.letters() if x != scene.pending_letter))
@@ -406,7 +405,7 @@ def test_a_crash_while_keeping_a_copy(scene: Scene, monkeypatch: pytest.MonkeyPa
         b.close()
 
 
-def test_pull_disk_full_leaves_everything_as_it_was(scene: Scene) -> None:  # F29
+def test_pull_disk_full_leaves_everything_as_it_was(scene: Scene) -> None:
     a, b, _sim = _pull_scene(scene)
     try:
         before = b.letters()
@@ -455,11 +454,11 @@ def test_claim_crash_at_every_operation(scene: Scene) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# the local database went back in time (F10)
+# the local database went back in time
 # --------------------------------------------------------------------------------------------------
 
 
-def test_local_rollback_restored(scene: Scene) -> None:  # F10
+def test_local_rollback_restored(scene: Scene) -> None:
     a, b, _sim = scene.fresh()
     try:
         a.close()
@@ -486,7 +485,7 @@ def test_local_rollback_restored(scene: Scene) -> None:  # F10
         b.close()
 
 
-def test_a_database_that_holds_the_heads_version_is_adopted(scene: Scene) -> None:  # F3
+def test_a_database_that_holds_the_heads_version_is_adopted(scene: Scene) -> None:
     """Put back from a copy taken before the push, but holding exactly what the head names (the process
     died between the head and ``sync_mark``): nothing to repair, the head is adopted."""
     a, b, _sim = scene.fresh()

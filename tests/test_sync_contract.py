@@ -1,4 +1,4 @@
-"""Hand-off sync's contract (wave 0): the refusal codes, what travels and what stays, the key file's
+"""Hand-off sync's contract: the refusal codes, what travels and what stays, the key file's
 scrypt, the new folder's passphrase rule, kept-copy names, the gate's lists and a status that reads no
 secret. The packages that build sync on it keep these true."""
 
@@ -96,7 +96,7 @@ def test_the_key_file_takes_256_mib_of_scrypt() -> None:
         ("password password password password password", 7.0, False),  # once, and a common word
         ("xkqmzvtpwbrnyhdflcga", 14.0, False),  # one run of letters is at best one word
         ("Sommer 2025 Urlaub Sommer", 7 + 14 + 4 * math.log2(10), False),  # four digits: about 13 bits
-        # the review's patterns: a character again and again, runs in order, keyboard walks, common words
+        # weak patterns: a character again and again, runs in order, keyboard walks, common words
         ("aaa bbb ccc ddd eee", 5 * (math.log2(26) + 1), False),
         ("abc def ghi jkl mno", math.log2(26) + 1, False),  # together one run of the alphabet
         ("12345 23456 34567 45678 56789", 5 * (math.log2(10) + 1), False),

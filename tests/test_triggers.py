@@ -180,7 +180,7 @@ def test_deadline_soon_offers_an_objection_draft_when_the_window_opens(
 def test_an_objection_whose_posting_time_passed_says_when_it_must_arrive(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 4 of phase 2: on an objection's last days the Idea said "send by … today" although a letter
+    """On an objection's last days the Idea said "send by … today" although a letter
     posted then may arrive after the deadline. The receipt's warning (the usual sending time has passed) makes it
     "must arrive by" the due date, with the note to use the fastest channel allowed."""
     from ordnung.models import ComputationReceipt
@@ -349,7 +349,7 @@ def test_confirm_cancellation_asks_before_closing_the_contract(store: Store, ids
 
 
 def test_a_cancellation_marked_as_sent_is_no_decision_any_more(store: Store, ids: dict[str, str]) -> None:
-    """Walkthrough of phase 2: after the person marked their FunkNetz cancellation as sent, Contracts, Today
+    """After the person marked their FunkNetz cancellation as sent, Contracts, Today
     and the Ideas still said "Decide on FunkNetz Smart M — send by Thu 8 Oct" with "Draft cancellation".
     The decision is taken (the person clicked, ADR 0006): no decision, no Idea, no calendar send-by date."""
     assert ids["phone"] in {idea.refs[0].id for idea in ideas(store, "contract_cancel_window")}
@@ -497,7 +497,7 @@ def test_scam_warning_quotes_both_accounts(store: Store, ids: dict[str, str]) ->
 
 
 def test_scam_warning_title_says_it_once_in_the_apps_words(store: Store, ids: dict[str, str]) -> None:
-    """UI audit R1-backend-7: "This may be a scam: Suspicious "Last Warning …" … (Likely Scam)" said it
+    """The Idea title "This may be a scam: Suspicious "Last Warning …" … (Likely Scam)" said it
     three times, with straight quotes. The Idea says "Possible scam:" and the reading's verdict goes."""
     title = 'Suspicious "Last Warning Before Seizure" Letter Demanding Broadcasting Fee Payment (Likely Scam)'
     store.update_document(ids["doc_scam"], title=title)
@@ -510,7 +510,7 @@ def test_scam_warning_title_says_it_once_in_the_apps_words(store: Store, ids: di
 def test_a_public_bodys_reminder_never_threatens_a_court_payment_order(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """UI audit R1-backend-7: a €4.50 library fee warned of a Mahnbescheid. A public body collects its own
+    """A €4.50 library fee warned of a Mahnbescheid. A public body collects its own
     fees (administrative enforcement); only a company's claim goes to a debt collector or a court."""
     (company,) = ideas(store, "dunning_escalation")
     assert "Mahnbescheid" in company.body and "administrative enforcement" not in company.body
@@ -525,7 +525,7 @@ def test_a_public_bodys_reminder_never_threatens_a_court_payment_order(
 def test_scam_warning_counts_the_signs_its_letter_shows_and_says_hidden_text_once(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """Walkthrough of phase 2: the Idea said "5 warning signs" where the letter said "the 3 strongest of 7",
+    """The Idea said "5 warning signs" where the letter said "the 3 strongest of 7",
     and said the hidden text twice (Ordnung's line and the reading's warning). One list, one count: every
     warning the letter carries is a sign once it shows scam signs, except notes that are no sign."""
     hidden = (

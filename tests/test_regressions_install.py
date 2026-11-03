@@ -1,8 +1,8 @@
 """The README's "Try it in 60 seconds" path: an install from git (no Node) must bring the web app,
 and a first run must say plainly when something is missing.
 
-Written by a first-run audit that installed a clean clone the way the README says (pip, pipx and
-uv tool install from git) and started ``ordnung demo``.
+Written by installing a clean clone the way the README says (pip, pipx and uv tool install from
+git) and starting ``ordnung demo``.
 """
 
 from __future__ import annotations
@@ -162,7 +162,7 @@ def test_dependency_floors_install_a_working_app() -> None:
 
 
 def test_the_server_floors_are_ones_the_lowest_job_can_install() -> None:
-    """Lifecycle review: pyproject said uvicorn>=0.30 and sse-starlette>=2.1, but mcp needs uvicorn
+    """The pyproject said uvicorn>=0.30 and sse-starlette>=2.1, but mcp needs uvicorn
     0.31.1 and sse-starlette 3.0, so CI's lowest-direct job installed those and the phone listener's test
     that claimed to run on uvicorn 0.30 never did. The floors are at least what mcp requires, and the
     test names the floor it runs on."""
@@ -204,7 +204,7 @@ def test_ci_installs_the_samples_library_versions() -> None:
 
 
 def test_the_package_takes_its_version_from_init_py() -> None:
-    """The release audit: pyproject and ``ordnung/__init__.py`` each said 0.1.0 for 691 commits. The
+    """The pyproject and ``ordnung/__init__.py`` each said 0.1.0 for 691 commits. The
     Python package reads its version from ``__init__.py``. A release also changes its copies, which tests
     compare with it: ``web/package.json`` (``npm version`` in ``web/``), the mocks' health answer,
     ``web/openapi.json`` (``make openapi``), the demo snapshot (``ordnung demo --rebuild``) and the built
@@ -263,7 +263,7 @@ def test_the_readme_says_how_to_update() -> None:
     flat = " ".join(updating.split())
     assert f'`pipx install --force "{tagged}"`' in flat
     assert f'`uv tool install "{tagged}"`' in flat
-    # 0.2.0 was released without a tag: tags start with 0.3.0 (review of D5)
+    # 0.2.0 was released without a tag: tags start with 0.3.0
     assert "From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`." in flat
     assert "and a tag on GitHub" not in flat
     going_back = flat.split("To go back,", 1)[1]
@@ -289,7 +289,7 @@ def _ci_jobs() -> dict[str, Any]:
 
 
 def test_ci_runs_the_platform_code_on_macos_and_windows() -> None:
-    """The release audit: every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
+    """Every job ran on Ubuntu, so the data-folder lock's, the durable writes', sync's
     computer id and phone access's macOS and Windows code never ran. One job runs their tests there,
     outside pull requests, and a failure there fails the run; every test it names exists."""
     job = _ci_jobs()["other-systems"]

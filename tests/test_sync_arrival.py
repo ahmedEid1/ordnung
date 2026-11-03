@@ -1,5 +1,5 @@
 """Waiting for the sync tool: late, partial, out of order, placeholders, damage, replays, conflict copies
-(design §13; F11-F17; review findings 6, 7, 9)."""
+(SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def b_objects(pair: Pair) -> list[Path]:
     return [p for p in (pair.b.folder / "o").rglob("*") if p.is_file() and OBJECT_RE.match(p.name)]
 
 
-def test_a_head_before_its_objects_waits(pair: Pair) -> None:  # F11
+def test_a_head_before_its_objects_waits(pair: Pair) -> None:
     letter = pair.a_changes()
     pair.sim.poll()
     heads = [i for i, c in enumerate(pair.sim.pending) if c.path.startswith("h/") and c.source == "a"]
@@ -81,11 +81,11 @@ def test_a_head_before_its_objects_waits(pair: Pair) -> None:  # F11
 
 
 @pytest.mark.parametrize("mode", ["pieces", "placeholder", "dataless"])
-def test_partial_or_placeholder_objects_wait_never_damage(pair: Pair, mode: str) -> None:  # F12, finding 6
+def test_partial_or_placeholder_objects_wait_never_damage(pair: Pair, mode: str) -> None:
     letter = pair.a_changes()
     pair.sim.poll()
     head = next(i for i, c in enumerate(pair.sim.pending) if c.path.startswith("h/") and c.source == "a")
-    pair.sim.step("whole", pick=head)  # the head whole (a head cut short is F14), the objects not
+    pair.sim.step("whole", pick=head)  # the head whole (a head cut short is another test's), the objects not
     for change in list(pair.sim.pending):
         if change.source == "a":
             pair.sim.step(mode, pick=pair.sim.pending.index(change))
@@ -105,7 +105,7 @@ def object_of(pair: Pair, kind: str, sha: str) -> Path:
 
 
 @pytest.mark.parametrize("kind", ["f", "d"])
-def test_a_damaged_object_is_asked_for_and_written_again(pair: Pair, kind: str) -> None:  # F13, finding 7
+def test_a_damaged_object_is_asked_for_and_written_again(pair: Pair, kind: str) -> None:
     letter = pair.a_changes()
     pair.sim.settle()
     if kind == "f":
@@ -131,7 +131,7 @@ def test_a_damaged_object_is_asked_for_and_written_again(pair: Pair, kind: str) 
     assert outcome.replaced
 
 
-def test_an_unreadable_head_uses_its_last_good_copy(pair: Pair) -> None:  # F14
+def test_an_unreadable_head_uses_its_last_good_copy(pair: Pair) -> None:
     head = next(p for p in (pair.b.folder / "h").iterdir() if p.name != pair.b.s.head_file)
     head.write_bytes(head.read_bytes()[:100])  # cut short (written in place)
     view = pair.b.s.scan()
@@ -142,7 +142,7 @@ def test_an_unreadable_head_uses_its_last_good_copy(pair: Pair) -> None:  # F14
     assert pair.b.s.scan().problem.code == "damaged"  # type: ignore[union-attr]
 
 
-def test_a_replayed_head_is_ignored(pair: Pair) -> None:  # F15
+def test_a_replayed_head_is_ignored(pair: Pair) -> None:
     head = next(p for p in (pair.b.folder / "h").iterdir() if p.name != pair.b.s.head_file)
     old = head.read_bytes()
     letter = pair.a_changes()
@@ -157,7 +157,7 @@ def test_a_replayed_head_is_ignored(pair: Pair) -> None:  # F15
     assert isinstance(outcome.decision, Pull) and letter in pair.b.letters()
 
 
-def test_conflict_copies_and_foreign_files_are_ignored_and_kept(pair: Pair) -> None:  # F16
+def test_conflict_copies_and_foreign_files_are_ignored_and_kept(pair: Pair) -> None:
     pair.a_changes()
     pair.sim.settle()
     copies = []

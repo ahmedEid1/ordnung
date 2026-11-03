@@ -1,7 +1,7 @@
-"""Round 4 of the review of the check for incomplete readings (``ingest/gaps.py``): the letter's own date in a
-header whose columns the text layer ran together (dates R4D-1, R4D-2, V4-1), periods that belong to a payment or
-to something else than lodging (false positives R4FP-1, -2, -3, -4, -5, -7), and a restated notice, the court
-action's tie, a heading word inside a sentence and an appointment's time line (security R4ADV-1..7, V4-1). The rule
+"""How a letter is laid out and worded, for the check for incomplete readings (``ingest/gaps.py``): the letter's
+own date in a header whose columns the text layer ran together, periods that belong to a payment or to something
+else than lodging, and a restated notice, the court action's tie, a heading word inside a sentence and an
+appointment's time line. The rule
 over all of them: the code's own date, and the date it sets beside a reading's, is never later than the letter
 allows — at worst undated.
 
@@ -25,8 +25,8 @@ from ordnung.ingest.gaps import CHECK_SLOT, _own_start, check_item, letter_date,
 from ordnung.ingest.pipeline import add_file
 from ordnung.ingest.plan import needs_check
 from test_reading_gaps import FROM_LETTER_DUE, NOTIFIED_DUE, SENDER, blank, page, payment
-from test_reading_gaps_round2 import BODY, COMPLETE, TOP, check_due, fires, objection_due
-from test_reading_gaps_round3 import NOTICE, ONE_MONTH
+from test_reading_gaps_dated_notices import BODY, COMPLETE, TOP, check_due, fires, objection_due
+from test_reading_gaps_guards import NOTICE, ONE_MONTH
 
 G = "   "  # the gap the text layer leaves between two columns run into one line
 LETTERHEAD_LINE = "Stadt Beispielhausen · Rathausplatz 1 · 12345 Beispielhausen"
@@ -52,7 +52,7 @@ INFO = ("Steuernummer: 123/456/78901", "Datum: 06.11.2026")
 
 
 # --------------------------------------------------------------------------------------------------
-# The letter's own date in a header the text layer ran together (dates R4D-1, R4D-2, V4-1)
+# The letter's own date in a header the text layer ran together
 # --------------------------------------------------------------------------------------------------
 
 RUN_TOGETHER = {
@@ -94,7 +94,7 @@ RUN_TOGETHER = {
 def test_the_letter_s_own_date_in_a_header_run_together_starts_the_notice(
     head: tuple[str, ...], body: tuple[str, ...]
 ) -> None:
-    """R4D-1, R4D-2, V4-1: a "Datum" or a place and date beside an address line ("Am Lindenhof 2", a postcode
+    """A "Datum" or a place and date beside an address line ("Am Lindenhof 2", a postcode
     line), an info block whose label and value the text layer set apart, and an abbreviation's period before it
     ("Dr.", "Abt.", "St.") — the letter's own date all the same: an empty reading gets the notice's date
     (2026-12-09), never undated, and nothing later."""
@@ -114,7 +114,7 @@ def pinned_today() -> Iterator[None]:
 async def test_a_two_column_pdf_header_with_a_doctor_s_title_dates_the_check(
     data_dir: Path, pinned_today: None
 ) -> None:
-    """R4D-2 and V4-1 through the real text layer: the address in the left column ("Dr. Max Probe"), the info
+    """Through the real text layer: the address in the left column ("Dr. Max Probe"), the info
     block in the right, no salutation. Posted Tue 15 Sep 2026, delivered on the 3rd day (Fri 18 Sep): one month
     is Sun 18 Oct → Mon 19 Oct."""
     marker = "Abfallgebührenbescheid"
@@ -149,7 +149,7 @@ async def test_a_two_column_pdf_header_with_a_doctor_s_title_dates_the_check(
 
 
 # --------------------------------------------------------------------------------------------------
-# Periods that are no period for lodging, and notices that are none (false positives R4FP-1..5, 7)
+# Periods that are no period for lodging, and notices that are none
 # --------------------------------------------------------------------------------------------------
 
 FEE_DECISION = (*TOP, "Datum: 06.11.2026", *BODY, NOTICE)
@@ -171,7 +171,7 @@ FEE_DECISION = (*TOP, "Datum: 06.11.2026", *BODY, NOTICE)
     ],
 )
 def test_a_payment_s_period_beside_a_remedy_word_is_never_the_notice_s(hint: str) -> None:
-    """R4FP-1, R4ADV-4: the period a payment verb governs ("… innerhalb von zwei Wochen … zu zahlen, auch wenn Sie
+    """The period a payment verb governs ("… innerhalb von zwei Wochen … zu zahlen, auch wenn Sie
     Widerspruch einlegen") is the payment's: a correct reading stays unflagged (it was 2026-11-20 or -23, low,
     "Please check") and an empty one gets the notice's month (2026-12-09), never the two weeks."""
     pages = [page(*FEE_DECISION, "Hinweis", hint)]
@@ -192,14 +192,14 @@ def test_a_payment_s_period_beside_a_remedy_word_is_never_the_notice_s(hint: str
     ],
 )
 def test_a_notice_followed_by_a_payment_clause_keeps_its_period(notice: str) -> None:
-    """R4FP-1's counter-cases: a lodging period with a payment clause after it is still the notice's."""
+    """The counter-cases: a lodging period with a payment clause after it is still the notice's."""
     pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
     assert fires(pages)
     assert check_due(pages) == NOTIFIED_DUE
 
 
 def test_a_plain_language_notice_whose_period_follows_in_the_next_sentence_is_dated() -> None:
-    """R4FP-5: "Sie können … Widerspruch einlegen. Das müssen Sie innerhalb eines Monats nach Erhalt dieses
+    """The words "Sie können … Widerspruch einlegen. Das müssen Sie innerhalb eines Monats nach Erhalt dieses
     Briefes tun." — one notice, counted from the letter's date (receipt, no delivery days): 2026-12-07."""
     lines = (
         "Sie können gegen diesen Bescheid Widerspruch einlegen.",
@@ -235,7 +235,7 @@ ACKNOWLEDGEMENT = (
     ],
 )
 def test_a_decision_still_to_come_a_data_right_or_a_debit_s_refund_is_no_notice(line: str) -> None:
-    """R4FP-2, -3, -4, -7: a remedy against a decision not yet made ("einen ablehnenden Bescheid", "den dann
+    """A remedy against a decision not yet made ("einen ablehnenden Bescheid", "den dann
     ergehenden"), the data-protection right to object, and a debit's refund are no notice."""
     pages = [page(*ACKNOWLEDGEMENT, line, "Mit freundlichen Grüßen")]
     assert not any(found.live for found in remedy_notices(pages))
@@ -243,7 +243,7 @@ def test_a_decision_still_to_come_a_data_right_or_a_debit_s_refund_is_no_notice(
 
 
 # --------------------------------------------------------------------------------------------------
-# A restated notice, the court action's tie, a heading word inside a sentence (security R4ADV-1..7, V4-1)
+# A restated notice, the court action's tie, a heading word inside a sentence
 # --------------------------------------------------------------------------------------------------
 
 MUSTER = (
@@ -270,7 +270,7 @@ MUSTER = (
     ],
 )
 def test_a_closing_line_after_a_restated_notice_never_dates_it_from_the_reminder(closing: str) -> None:
-    """R4ADV-1: a closing sentence folded into another decision's restated notice ("Dieses Schreiben …") never
+    """A closing sentence folded into another decision's restated notice ("Dieses Schreiben …") never
     makes it this letter's: the decision of 03.09 allows 2026-10-07; counted from the reminder's 25.09 it was
     2026-10-28 — now undated or earlier."""
     pages = [page(*MUSTER, closing)]
@@ -300,7 +300,7 @@ def _cover(body: str) -> list[Any]:
 
 
 def test_a_cover_letter_dates_the_enclosed_decision_s_notice_from_that_decision_or_not_at_all() -> None:
-    """R4ADV-1: the decision of 21.09 allows 2026-10-26 (it was 2026-11-03, from the cover letter's own date);
+    """The decision of 21.09 allows 2026-10-26 (it was 2026-11-03, from the cover letter's own date);
     when the letter names no date for it, undated."""
     named = _cover(
         "anbei erhalten Sie Ihren Einkommensteuerbescheid 2025 vom 21.09.2026, den wir geprüft haben."
@@ -349,7 +349,7 @@ FIRST_INSTANCE = (
 def test_a_first_decision_explaining_the_later_court_action_names_the_objection(
     tail: tuple[str, ...], remedy: str
 ) -> None:
-    """R4ADV-2: a first decision whose notice also explains the court action against the later decision on the
+    """A first decision whose notice also explains the court action against the later decision on the
     objection is no decision on an objection: the to-do is the objection's, dated no later than 2026-12-09."""
     pages = [page(*FIRST_INSTANCE, *tail, "Mit freundlichen Grüßen")]
     reading = blank(**COMPLETE, items=[payment(quote="setzen wir eine Gebühr von 120,00 EUR fest")])
@@ -391,7 +391,7 @@ HEARING = (
     ],
 )
 def test_a_heading_word_wrapped_inside_a_hearing_s_sentence_is_no_notice(lines: tuple[str, ...]) -> None:
-    """R4ADV-3: "Rechtsbehelfsbelehrung" at the start of a wrapped line inside a sentence is no heading that
+    """The word "Rechtsbehelfsbelehrung" at the start of a wrapped line inside a sentence is no heading that
     cuts off the sentence's condition ("Sollten wir …", "Gegen einen späteren Bescheid …")."""
     pages = [page(*HEARING, *lines, "Mit freundlichen Grüßen")]
     assert not any(found.live for found in remedy_notices(pages))
@@ -408,14 +408,14 @@ def test_a_heading_word_wrapped_inside_a_hearing_s_sentence_is_no_notice(lines: 
     ],
 )
 def test_a_notice_naming_the_direct_debit_still_fires(notice: str) -> None:
-    """R4ADV-6's must-fire side: a real notice that also names the direct debit is no debit's refund."""
+    """The must-fire side: a real notice that also names the direct debit is no debit's refund."""
     pages = [page(*TOP, "Datum: 06.11.2026", *BODY, notice)]
     assert fires(pages)
     assert check_due(pages) == NOTIFIED_DUE
 
 
 def test_the_own_date_line_with_a_print_time_under_it_starts_the_notice() -> None:
-    """Security V4-1: "Uhrzeit: 10:15 Uhr" under the info block's "Datum:" is no appointment's block: the letter of
+    """The line "Uhrzeit: 10:15 Uhr" under the info block's "Datum:" is no appointment's block: the letter of
     15.09 allows 2026-10-19, and a reading that dates it 25.09 (2026-10-28) gets that date beside it."""
     pages = [
         page(

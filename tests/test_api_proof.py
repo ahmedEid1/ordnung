@@ -69,7 +69,7 @@ async def test_a_sent_e_mail_kept_as_proof_adds_no_letters_from_its_attachments(
 async def test_a_proof_file_is_never_shown_as_a_letter_being_read(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """UI audit R2-proof-1: adding a proof also put the upload corner's letter card on screen ("Filed —
+    """Adding a proof also put the upload corner's letter card on screen ("Filed —
     everything is on your timeline", "Open letter"), as every ``job.progress`` becomes a card there. A
     proof file is no letter and nothing of it is read: none of its job is published — queued, its
     stages, done, reading it again, a failure — while a letter's still is."""
@@ -361,7 +361,7 @@ async def test_waiting_for_and_call_notes(data_dir: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# review round 1: what the Nachweis states, privacy of known files, answers, sent letters stay as sent
+# what the Nachweis states, privacy of known files, answers, sent letters stay as sent
 # --------------------------------------------------------------------------------------------------
 
 

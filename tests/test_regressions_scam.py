@@ -1,4 +1,4 @@
-"""Scam signs after "an invalid IBAN alone is a misprint" (round 2, R2-SCAM-1).
+"""Scam signs after "an invalid IBAN alone is a misprint".
 
 ``_scam_reasons`` drops the ``invalid_iban`` finding and only lists the checksum "next to other signs".
 ``scam.payment_mismatch`` used to return ``invalid_iban`` *first* and never ran the look-alike /

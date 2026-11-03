@@ -404,7 +404,7 @@ def test_recording_needs_a_budget_and_the_recording_harness() -> None:
 def test_the_stress_cells_share_one_budget_and_one_recorder_lock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """One --max-cost-usd for the whole stress recording (plan §7, R7: $17 for I1 and D1 together), never one per
+    """One --max-cost-usd for the whole stress recording ($17 for I1 and D1 together), never one per
     cell; and the recorder lock held from the first cell to the last, so no other recorder starts in between."""
     import asyncio
 

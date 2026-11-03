@@ -1,4 +1,4 @@
-"""The sending advice names each channel as the web app does (UI audit R1-backend-10: "e-mail" and
+"""The sending advice names each channel as the web app does ("e-mail" and
 "E-mail" next to the app's "Email", "Online cancellation button" next to "Cancel button on their website",
 "Letter by normal post" next to "Letter by post")."""
 

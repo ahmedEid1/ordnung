@@ -1,4 +1,4 @@
-"""The final verification of the round-5 limits fix pass: residual false alarms and lost dates it left — a paid invoice
+"""False alarms and lost dates of the check for incomplete readings (``ingest/gaps.py``) — a paid invoice
 or a payout in other common words, a negated "erhalten"/"beglichen", a decision that decides itself while naming an
 open amount, a received stamp on page 1 of a letter dated at the foot of a later page. Invented letters only."""
 
@@ -11,7 +11,7 @@ import pytest
 from ordnung.ingest.gaps import deadline_items, letter_date
 from ordnung.models import DocumentExtraction
 from test_reading_gaps import blank, page
-from test_reading_gaps_round2 import check_due
+from test_reading_gaps_dated_notices import check_due
 
 SHOP = (
     "Versandhaus Beispiel GmbH · Lagerstraße 3 · 33330 Gütersloh",
@@ -118,7 +118,7 @@ DECIDED = blank(document_date="2026-10-01", sender={"name": "Stadt Beispielhause
 def test_a_letter_that_decides_itself_is_no_reminder_whatever_amount_it_names_open(
     heading: str, body: str
 ) -> None:
-    """MISS-2's reminder rule undated these (main and eff43fa dated them from the letter, its own decision)."""
+    """The rule for a reminder's restated notice undated these (before, they were dated from the letter, its own decision)."""
     pages = [page(*STREET, heading, "Sehr geehrte Frau Probe,", body, "Rechtsbehelfsbelehrung", HIER)]
     assert check_due(pages, DECIDED) is not None
 
@@ -132,7 +132,7 @@ def test_a_reminder_restating_its_decision_s_notice_stays_undated() -> None:
 
 
 def test_a_stamp_on_page_one_is_lowered_to_the_closing_date_of_a_later_page() -> None:
-    """R5D-3 / F6 on a two-page letter: "12.10.2026" over "EINGANG" on page 1, the letter dated only on page 2."""
+    """On a two-page letter: "12.10.2026" over "EINGANG" on page 1, the letter dated only on page 2."""
     first = page(
         "12.10.2026",
         "EINGANG",

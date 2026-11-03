@@ -1,4 +1,4 @@
-"""Hand-off sync: regression tests for the review of the merged phone companion and sync (each test fails
+"""Hand-off sync: regression tests for the phone companion and sync working together (each test fails
 without its fix). Two data folders and a simulated sync tool (:mod:`sync_harness`), or running servers
 with the real engine (:mod:`sync_support`)."""
 
@@ -86,7 +86,7 @@ def _kept_notes(computer: Computer, name: str, target: Path) -> set[str]:
 
 
 def test_a_restored_data_folder_started_while_the_sync_folder_is_away(pair: Pair, tmp_path: Path) -> None:
-    """Blocker 4 again: the start waits until the folder shows this computer's own head — never the
+    """The start waits until the folder shows this computer's own head — never the
     counters and the rollback check from the restored ``sync/heads.json`` alone."""
     a, b = pair.a, pair.b
     pair.joined()
@@ -126,7 +126,7 @@ def test_a_restored_data_folder_started_while_the_sync_folder_is_away(pair: Pair
 def test_a_command_line_write_after_an_os_backup_is_not_saved_over_the_newer_version(
     pair: Pair, tmp_path: Path
 ) -> None:
-    """Blocker 4 through the command line: ``ordnung add`` saves (``push_once``) only after the start —
+    """``ordnung add`` saves (``push_once``) only after the start —
     the restored data never goes out under the folder's newer lineage."""
     a, b = pair.a, pair.b
     a.machine = machine_id()  # push_once opens its session as the command line does (this machine)
@@ -244,7 +244,7 @@ async def test_a_write_admitted_when_another_computer_takes_over_goes_out_as_a_l
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, finishes: str
 ) -> None:
     """R3 waits for the writes already admitted (a phone upload, a body still arriving), and one that
-    finishes even later is pushed from standing by: the computer in use brings it in (F21)."""
+    finishes even later is pushed from standing by: the computer in use brings it in."""
     import asyncio
 
     from sync_support import (
@@ -380,7 +380,7 @@ async def test_a_settings_save_of_this_computer_s_own_settings_is_not_a_person_c
 
 
 def test_the_calendar_preview_only_reads(tmp_path: Path) -> None:
-    """Finding 5's rule: a standing-by computer's digest never changes — the preview of the calendar
+    """The rule: a standing-by computer's digest never changes — the preview of the calendar
     events used to make the synced ``calendar_uid_key`` (pending changes, a false second confirmation)."""
     from helpers_secretary import TODAY, seed_ledger
     from ordnung import clock

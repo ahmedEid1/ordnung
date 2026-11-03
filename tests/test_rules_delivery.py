@@ -216,7 +216,7 @@ def test_baden_wuerttemberg_switch_date(posted: str, expected: str) -> None:
 @pytest.mark.parametrize(
     ("posted", "expected"),
     [
-        ("2025-03-03", "2025-03-06"),  # label audit: Hamburg's 4th day came with the law of 5 May 2025
+        ("2025-03-03", "2025-03-06"),  # Hamburg's 4th day came with the law of 5 May 2025
         ("2025-05-13", "2025-05-16"),  # the gazette's day: still the 3rd day
         ("2025-05-14", "2025-05-18"),  # in force the day after it (Art. 54 HV)
     ],
@@ -344,7 +344,7 @@ def test_private_senders_have_no_deemed_delivery(
     ],
 )
 def test_statutory_health_insurers_by_their_brand_are_social_law(name: str) -> None:
-    """Reviewer repro: statutory health insurers go by names without "Krankenkasse"; filed as an
+    """Statutory health insurers go by names without "Krankenkasse"; filed as an
     ``insurer`` they were private, and a late arrival moved their Bescheid's deadline later."""
     scope = scope_for_party_kind("insurer", name=name)
     assert scope == "sgbx" and is_private_sender("insurer", scope=scope) is False

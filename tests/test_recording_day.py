@@ -160,8 +160,8 @@ COMMITTED = ROOT / "evals" / "recorded"
 
 
 def test_another_today_records_into_the_checkout_only_a_development_set() -> None:
-    """A development set is pinned to its own today and can only be recorded again on another day (E3 may change
-    what Ask's tools return before the freeze): --allow-another-today is that re-recording, disclosed. A held-out
+    """A development set is pinned to its own today and can only be recorded again on another day (a change before
+    the freeze may move what Ask's tools return): --allow-another-today is that re-recording, disclosed. A held-out
     or final set takes it only for a smoke into a scratch folder outside the checkout."""
     harness.check_another_today(COMMITTED, development=True)
     harness.check_another_today(Path("/tmp/scratch-smoke"), development=False)

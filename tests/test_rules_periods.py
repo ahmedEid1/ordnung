@@ -275,7 +275,7 @@ def test_days_in_month() -> None:
 
 
 def test_a_joint_calendar_counts_only_the_holidays_both_lander_have() -> None:
-    """Review round 4 of phase 2: a Kündigungsschutzklage may be filed in either of two Länder (§ 48 Abs. 1a
+    """A Kündigungsschutzklage may be filed in either of two Länder (§ 48 Abs. 1a
     ArbGG) — only a holiday both have counts, and the calendar says so (it said "nationwide only")."""
     assert calendar_de.joint_region("nw", "RP") == "NW+RP"
     assert calendar_de.joint_region("RP", "NW") == "NW+RP"

@@ -1,6 +1,6 @@
-"""One test (at least) for every finding of the sync review (``critique.md``) that the sync core carries:
-blockers 1-4, highs 6-8, findings 9-12, 14-18, 20-21, 25-26, 30 and 34. Several are also covered in depth
-elsewhere (named in each docstring); these pin the finding itself."""
+"""The sync core's guarantees, at least one test each; the test names keep the numbers the problems were
+first listed under (blockers 1-4, highs 6-8, findings 9-12, 14-18, 20-21, 25-26, 30 and 34). Several are also
+covered in depth elsewhere (named in each docstring); these pin the guarantee itself."""
 
 from __future__ import annotations
 
@@ -250,7 +250,7 @@ def test_finding_9_every_head_is_read_on_every_scan(shared: Shared) -> None:
     other = view.by_computer(b.s.state.computer)
     assert other is not None and other.head.version == b.s.state.base.ref  # type: ignore[union-attr]
     cached = json.loads((a.paths.data_dir / "sync" / "heads.json").read_text())
-    assert b.s.head_file in cached  # the last good copy (F14, GC)
+    assert b.s.head_file in cached  # the last good copy (GC)
 
 
 def test_finding_10_both_sides_check_the_files_the_database_names(shared: Shared) -> None:
@@ -413,7 +413,7 @@ def _gc_after(computer: Computer, hours: float) -> int:
 def test_finding_21_superseded_database_slices_go_after_a_day_once_every_live_head_is_newer(
     shared: Shared,
 ) -> None:
-    """Measured (P1, a generated 1,500-letter library, 80 MiB database): one reading rewrites 29 of the
+    """Measured (a generated 1,500-letter library, 80 MiB database): one reading rewrites 29 of the
     80 one-MiB slices (the search index merges), a note 1, a search-index optimize 44 — well above
     :data:`SLICE_CHURN_LIMIT_BYTES`. So the slices of a version every live head has moved past go after
     a day; the rest of the garbage keeps its 7 days."""

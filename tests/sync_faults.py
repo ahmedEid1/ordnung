@@ -1,4 +1,4 @@
-"""File systems that fail on purpose, for hand-off sync's crash, power-cut and hang tests (design §23.2).
+"""File systems that fail on purpose, for hand-off sync's crash, power-cut and hang tests.
 
 * :class:`CrashingFs` writes exactly ``after_bytes`` bytes in all, or performs ``after_ops`` metadata
   operations, then raises :class:`SimulatedCrash` — and keeps raising: a crashed process cleans

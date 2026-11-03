@@ -1,4 +1,4 @@
-"""Recurring obligations: regression tests from the review rounds, restated for the schedule policy
+"""Recurring obligations: regression tests restated for the schedule policy
 (ordnung.recurrence): whatever was ticked off, a series moves on and is never held back as unpaid."""
 
 from __future__ import annotations

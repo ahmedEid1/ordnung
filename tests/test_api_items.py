@@ -57,7 +57,7 @@ async def test_manual_due_date_is_marked_and_survives_reprocess(data_dir: Path) 
 
 
 async def test_a_date_set_by_hand_for_a_payment_made_in_person_has_no_send_by(data_dir: Path) -> None:
-    """UI audit R1-backend-8: a fee paid at the desk (or by card at the appointment) is paid on the day, so a
+    """A fee paid at the desk (or by card at the appointment) is paid on the day, so a
     date the person sets for it gets no bank transfer's send-by day — nor when they say so in the same edit."""
     async with api_for(data_dir) as api:
         payment = _by_kind(await _items_of(api, TAX_LETTER.pdf()), "payment")
@@ -179,7 +179,7 @@ async def test_add_list_and_delete_by_hand(data_dir: Path) -> None:
 
 
 async def test_the_list_says_which_to_dos_are_set_aside(data_dir: Path) -> None:
-    """UI audit R2-inbox-timeline-contracts-2: the Inbox counted an invoice payment its payment reminder took
+    """The Inbox counted an invoice payment its payment reminder took
     over as "1 to-do" and showed it as the letter's next step, "25 days overdue" — the list said nothing of
     what Today, the verdict and the party drawer set aside. Each listed to-do now says so (``aside``)."""
     async with api_for(data_dir) as api:

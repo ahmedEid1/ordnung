@@ -1,4 +1,4 @@
-"""Mutation killers of the round-5 limits review (tests and docs lens, RL-T6): each test fails on a mutant of the
+"""Mutation killers for the known limits of the check (ADR 0015): each test fails on a mutant of the
 check for incomplete readings that the earlier tests let survive. Invented letters only; one benchmark id, none of its
 text."""
 
@@ -15,7 +15,7 @@ from ordnung.models import DateSpec
 from ordnung.rules import RuleContext
 from test_api_support import api_for
 from test_reading_gaps import blank, page
-from test_reading_gaps_round5 import (
+from test_reading_gaps_known_limits import (
     ADDRESS,
     BEKANNTGABE,
     DECISION,
@@ -507,13 +507,13 @@ def test_a_date_without_its_year_gets_no_to_do() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# check:deadline filters and remedy notices (reviewer's first pass)
+# check:deadline filters and remedy notices
 # --------------------------------------------------------------------------------------------------
 
 from ordnung.ingest.gaps import remedy_notices  # noqa: E402
 from ordnung.models import ExtractedItem  # noqa: E402
-from test_reading_gaps_round2 import check_due  # noqa: E402
-from test_reading_gaps_round5 import KASSEL, dropped  # noqa: E402
+from test_reading_gaps_dated_notices import check_due  # noqa: E402
+from test_reading_gaps_known_limits import KASSEL, dropped  # noqa: E402
 
 LINE = "Bitte überweisen Sie den Betrag bis zum 15.10.2026."
 
@@ -569,7 +569,7 @@ def test_each_exclusion_on_its_own_with_the_strict_wording_met(line: str) -> Non
     assert dropped(line) == []
 
 
-def test_a_self_naming_decision_s_hiergegen_ignores_an_older_decision_s_date() -> None:  # N4
+def test_a_self_naming_decision_s_hiergegen_ignores_an_older_decision_s_date() -> None:
     pages = [
         page(
             *KASSEL,
@@ -584,7 +584,7 @@ def test_a_self_naming_decision_s_hiergegen_ignores_an_older_decision_s_date() -
     assert check_due(pages) == "2026-10-26"
 
 
-def test_a_sentence_that_reports_and_offers_a_remedy_is_a_notice() -> None:  # N2
+def test_a_sentence_that_reports_and_offers_a_remedy_is_a_notice() -> None:
     line = (
         "Da der Widerspruch fristgerecht erhoben wurde, kann gegen diesen Widerspruchsbescheid innerhalb eines "
         "Monats nach Zustellung Klage erhoben werden."

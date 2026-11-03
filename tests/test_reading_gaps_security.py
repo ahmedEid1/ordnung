@@ -1,4 +1,4 @@
-"""The round-5 limits review, security lens (F1–F9, M1): conditional notices, instalments, a payment the reading
+"""The known limits of the check for incomplete readings (ADR 0015), security: conditional notices, instalments, a payment the reading
 doubts, many send-by lines, a stamp on the first line, a letter not served so, a direct debit's box, the warning's
 wording. Invented letters only."""
 
