@@ -410,6 +410,9 @@ LINT = re.compile(
     r"|please check|two dates|recorded|results file|prompt|\bordnung\b",
     re.IGNORECASE,
 )
+#: The lint's two-word phrases, found also when a line break splits them (the sandbox's own lint joins the lines).
+SPLIT_ENDS = {"by": "design", "please": "check", "two": "dates", "results": "file"}
+SPLIT = re.compile(rf"\b({'|'.join(SPLIT_ENDS)})\s*$", re.IGNORECASE)
 #: Phrases that may hit it anywhere: the German word in an authority's name, and the attack class.
 PHRASES = re.compile(r"öffentlichen? (?:Sicherheit und )?Ordnung|prompt[ -]injections?", re.IGNORECASE)
 #: The data writer's sandbox (the stress-template writer's adds W1C_ONLY); the redacted VERIFICATION.md and the
@@ -484,8 +487,13 @@ def lint_hits(text: str) -> list[tuple[int, str, str]]:
                 r"prompt\s*$", " ", rest, flags=re.IGNORECASE
             )  # "prompt" / "injection" across a line break
         found = LINT.search(rest)
-        if found:
-            hits.append((number, found.group(0).lower(), hashlib.sha256(line.encode("utf-8")).hexdigest()))
+        word = found.group(0).lower() if found else None
+        split = SPLIT.search(rest) if word is None else None
+        end = SPLIT_ENDS[split.group(1).lower()] if split else ""
+        if split and re.match(rf"{end}\b", following, re.IGNORECASE):
+            word = f"{split.group(1).lower()} {end}"  # a phrase across a line break
+        if word is not None:
+            hits.append((number, word, hashlib.sha256(line.encode("utf-8")).hexdigest()))
     return hits
 
 
@@ -508,6 +516,10 @@ def test_the_lint_allows_only_the_listed_phrases() -> None:
         "prompt"
     ]
     assert hit("Ordnungswidrigkeit; Abgabenordnung") == []
+    # a phrase the lint names is found across a line break too, as the sandbox's own lint finds it
+    assert hit("a contract's two\n    dates") == ["two dates"]
+    assert hit("the results\nfile") == ["results file"]
+    assert hit("two\ndays") == [] and hit("by\nthe design") == []
 
 
 def test_a_writer_s_sandbox_holds_no_hint_of_the_software() -> None:

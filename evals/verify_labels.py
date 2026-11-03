@@ -851,8 +851,8 @@ def _tags(applied: Mapping[str, list[str]], *slots: str) -> list[str]:
 def check_conventions(
     cid: str, truth: Mapping[str, Any], applied: Mapping[str, list[str]], known: Collection[str]
 ) -> list[str]:
-    """The conventions a letter's facts apply exist, and are the ones each label is tagged with (a contract's two
-    dates share the contract's tags)."""
+    """The conventions a letter's facts apply exist, and are the ones each label is tagged with (a contract's
+    term-end and cancel-by dates share the contract's tags)."""
     problems = [
         f"{cid} {slot}: unknown convention {i}"
         for slot in sorted(applied)
