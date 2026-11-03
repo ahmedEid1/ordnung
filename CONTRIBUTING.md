@@ -105,7 +105,7 @@ commit what it writes. The last column is what fails while one is stale.
 | `src/ordnung/web/dist/` (the built web app) | `make build-web` | CI's step "Committed web build is up to date" (`node scripts/source-hash.mjs --check ../src/ordnung/web/dist/build-info.json` in `web/`) |
 | `web/openapi.json`, `web/src/api/schema.d.ts` | `make openapi` | `tests/test_openapi_contract.py` |
 | `web/src/mocks/data/girocodes.ts` | `.venv/bin/python scripts/gen_mock_girocodes.py > web/src/mocks/data/girocodes.ts` | `tests/test_mock_girocodes.py` |
-| `web/src/mocks/data/numbers.ts` | `.venv/bin/python scripts/gen_mock_numbers.py > web/src/mocks/data/numbers.ts` | `tests/test_mock_numbers.py` (it skips without Node and `web/node_modules`, unless `ORDNUNG_REQUIRE_MOCK_CHECK=1`) |
+| `web/src/mocks/data/numbers.ts` | `.venv/bin/python scripts/gen_mock_numbers.py > web/src/mocks/data/numbers.ts` | `tests/test_mock_numbers.py` (it skips without Node and the web app's packages from `npm ci`, unless `ORDNUNG_REQUIRE_MOCK_CHECK=1`) |
 | `web/src/mocks/data/advice.ts` | `.venv/bin/python scripts/gen_mock_advice.py > web/src/mocks/data/advice.ts` | nothing yet: run it after changing `ordnung.rules.advice` |
 | `web/src/mocks/data/highStakes.ts` | `.venv/bin/python scripts/gen_mock_high_stakes.py > web/src/mocks/data/highStakes.ts` | nothing yet: run it after changing `ordnung.rules` |
 | `src/ordnung/demo/samples/` (the sample life's letters) | `make samples` | `tests/test_samples.py::test_committed_samples_match_regeneration` (it skips where the libraries differ from the manifest's, unless `ORDNUNG_REQUIRE_SAMPLES=1`) |

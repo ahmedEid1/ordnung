@@ -538,13 +538,17 @@ def test_git_ignores_a_linked_venv_and_claude_code_s_local_files(tmp_path: Path)
 
 def test_every_path_contributing_names_is_in_the_repository() -> None:
     """A path in backticks (`tests/…`, `web/…`, `scripts/…`) names a file or folder that exists; patterns and
-    placeholders (`*`, `<…>`) aside."""
+    placeholders (`*`, `<…>`) aside. What `make install` makes (`web/node_modules`, `.venv`) is not in the
+    repository: CI's backend jobs run this test without it, so naming it as a path would pass only where it is
+    installed."""
     named = re.findall(r"`((?:\.github|src|tests|web|scripts|evals|docs)/[^`\s]*)`", _text("CONTRIBUTING.md"))
     assert named
+    installed = {"node_modules", ".venv"}
     missing = [
         path
         for path in named
-        if not re.search(r"[*<>{}$…]", path) and not (ROOT / path.split("::", 1)[0].rstrip("/")).exists()
+        if not re.search(r"[*<>{}$…]", path)
+        and (installed & set(Path(path).parts) or not (ROOT / path.split("::", 1)[0].rstrip("/")).exists())
     ]
     assert missing == []
 
