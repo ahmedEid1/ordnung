@@ -5,6 +5,11 @@ A replay only (no model is called; a reading without its recording is an error, 
 split. The gates (``--exact-parity``, ``--max-late-reminders``, ``--known-set-aside``, ``--min-reminded``) and
 ``--compare FILE`` (a published file must equal the fresh run, its date, commit and fingerprint aside) exit 1 on a
 failure; a letter the harness could not run always does.
+
+``--splits`` takes any split ``evals/splits.py`` declares whose letters exist (the final run's are written after the
+code freeze). The run replays read 1's recordings, so a final split's letter is read on the day its unit of read 1
+was recorded on, as the runner's day index beside the recordings says (``final-days.json``; a letter it doesn't name
+keeps the manifest's day).
 """
 
 from __future__ import annotations
@@ -22,6 +27,7 @@ from typing import Any
 from evals import __version__ as evals_version
 from evals import conditions
 from evals import report as benchmark_report
+from evals import splits as registry
 from evals.e2e import check, harness, metrics, report
 from evals.metrics import DEFAULT_RESAMPLES, DEFAULT_SEED
 from evals.records import PERSONA_LANGUAGE, PERSONA_REGION, Entry, load_manifest, select_entries
@@ -31,18 +37,25 @@ from evals.run import (
     MANIFEST_PATH,
     RECORDED_DIR,
     RESULTS_DIR,
-    SPLITS,
     _commit,
     _manifest_info,
+    safe_name,
 )
 
 CHECKER = Path(check.__file__)
+#: The runner's day index beside a model's recordings: the day each unit of a final split's read was recorded on,
+#: which its letters were told (``{split: {"r<N>": {entry_id: {"day": "YYYY-MM-DD", "cli": …}}}}``).
+DAY_INDEX = "final-days.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m evals.e2e", description=__doc__)
     parser.add_argument(
-        "--splits", nargs="+", choices=SPLITS, default=list(report.DEFAULT_SPLITS), help="splits to run"
+        "--splits",
+        nargs="+",
+        choices=registry.names(),
+        default=list(report.DEFAULT_SPLITS),
+        help="splits to run (a split without letters is refused)",
     )
     parser.add_argument("--ids", nargs="+", metavar="ENTRY_ID", help="only these letters (a partial run)")
     parser.add_argument(
@@ -80,8 +93,32 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _entries(splits: Sequence[str], ids: Sequence[str] | None) -> list[Entry]:
+def _final(name: str) -> bool:
+    return name in registry.names() and registry.get(name).role == "final"
+
+
+def on_their_days(entries: Sequence[Entry], index: Path) -> list[Entry]:
+    """``entries``, each letter of a final split on the day its unit of read 1 was recorded on (the day index
+    ``index``); a letter it doesn't name, and every other split's, keeps the manifest's day."""
+    try:
+        days = json.loads(index.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return list(entries)
+    placed = []
+    for entry in entries:
+        unit = (days.get(entry.split) or {}).get("r1", {}).get(entry.id) if _final(entry.split) else None
+        placed.append(entry.model_copy(update={"today": str(unit["day"])}) if unit else entry)
+    return placed
+
+
+def _entries(splits: Sequence[str], ids: Sequence[str] | None, model: str) -> list[Entry]:
     manifest = load_manifest(MANIFEST_PATH)
+    found = {entry.split for entry in manifest}
+    for split in splits:
+        if split not in found:
+            raise SystemExit(
+                f"{split} has no letters yet: the final run's letters are written after the code freeze"
+            )
     chosen: list[Entry] = []
     for split in splits:
         chosen += select_entries(manifest, split=split, ids=ids)
@@ -89,7 +126,7 @@ def _entries(splits: Sequence[str], ids: Sequence[str] | None) -> list[Entry]:
         missing = sorted(set(ids) - {entry.id for entry in chosen})
         if missing:
             raise SystemExit(f"not in the splits {', '.join(splits)}: {', '.join(missing)}")
-    return chosen
+    return on_their_days(chosen, RECORDED_DIR / safe_name(model) / DAY_INDEX)
 
 
 def _meta(
@@ -158,7 +195,7 @@ async def run(args: argparse.Namespace, entries: Sequence[Entry]) -> dict[str, A
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    entries = _entries(args.splits, args.ids)
+    entries = _entries(args.splits, args.ids, args.model)
     results = asyncio.run(run(args, entries))
     for line in report.summary_lines(results):
         print(line, file=sys.stderr)

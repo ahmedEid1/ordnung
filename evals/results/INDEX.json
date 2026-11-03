@@ -263,6 +263,21 @@
    "needs": "holdout4's and newkinds' recorded readings (plan EV9)"
   },
   {
+   "cell": "without-land/holdout4/r1",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+  },
+  {
+   "cell": "without-land/holdout4/r2",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+  },
+  {
+   "cell": "without-land/holdout4/r3",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 3 (the final run)"
+  },
+  {
    "cell": "ablation/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
@@ -270,9 +285,19 @@
    ]
   },
   {
-   "cell": "ablation/holdout4",
+   "cell": "ablation/holdout4/r1",
    "status": "not recorded yet",
-   "needs": "holdout4's recorded readings (plan EV9)"
+   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+  },
+  {
+   "cell": "ablation/holdout4/r2",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+  },
+  {
+   "cell": "ablation/holdout4/r3",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 3 (the final run)"
   },
   {
    "cell": "stress/I1",
