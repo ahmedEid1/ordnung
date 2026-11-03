@@ -659,8 +659,8 @@ def _outside(tmp_path: Path) -> Path:
 
 
 def test_objects_are_never_written_through_a_linked_o(tmp_path: Path) -> None:
-    """Design §4.1 ("symlinks are ignored"), for folders too: someone who can write the sync folder turns
-    ``o/`` into a link to the person's Documents — the next save writes nothing there."""
+    """Links are ignored (:mod:`ordnung.sync.folder`, ADR 0018), folders too: someone who can write the sync folder
+    turns ``o/`` into a link to the person's Documents — the next save writes nothing there."""
     import shutil
 
     from sync_harness import computers
