@@ -39,6 +39,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from evals import conditions, report
+from evals.harness import STOPPED, Stop, add_stop_arguments, stopped_message
 from evals.perturb import build, score
 from evals.perturb import templates as tpl
 from evals.records import ConditionName, Entry, Prediction, load_manifest
@@ -54,6 +55,11 @@ class StressError(RuntimeError):
     """The stress run cannot go on (said in one line, never with a letter's text)."""
 
 
+class StressStopped(StressError):
+    """The run's stop file or ``--stop-at`` asked, and no new letter started (exit 4). An invocation is one unit: it
+    is recorded again whole."""
+
+
 def parse_cells(text: str) -> list[str]:
     cells = [cell.strip() for cell in text.split(",") if cell.strip()]
     unknown = [cell for cell in cells if cell not in build.CELLS]
@@ -63,12 +69,21 @@ def parse_cells(text: str) -> list[str]:
 
 
 def harness_options(
-    *, live: bool, max_cost_usd: float | None, wait_on_limit: float | None, config_type: Any = RunConfig
+    *,
+    live: bool,
+    max_cost_usd: float | None,
+    wait_on_limit: float | None,
+    config_type: Any = RunConfig,
+    stop: Stop | None = None,
 ) -> dict[str, Any]:
-    """The recording harness's options for :class:`evals.run.RunConfig` (budget, waiting, the shared recorder lock),
-    refused when this checkout has no harness: a live stress run never records without its budget stop."""
+    """The recording harness's options for :class:`evals.run.RunConfig` (budget, waiting, the stop, the shared recorder
+    lock), refused when this checkout has no harness: a live stress run never records without its budget stop."""
     fields = {field.name for field in dataclasses.fields(config_type)}
-    wanted: dict[str, Any] = {"max_cost_usd": max_cost_usd, "wait_on_limit_hours": wait_on_limit}
+    wanted: dict[str, Any] = {
+        "max_cost_usd": max_cost_usd,
+        "wait_on_limit_hours": wait_on_limit,
+        "stop": stop,
+    }
     missing = sorted(name for name, value in wanted.items() if value is not None and name not in fields)
     if missing:
         raise StressError(
@@ -89,6 +104,11 @@ async def _predictions(
     progress = None if quiet else (lambda message: print(message, file=sys.stderr, flush=True))
     outcome = await run_benchmark(config, progress=progress)
     (run,) = outcome.runs
+    if outcome.stopped:
+        raise StressStopped(
+            f"{config.split}: {stopped_message(outcome.stopped)} — a stress invocation is one unit: move its recordings "
+            "aside with `python -m evals.harness retake --whole-run` and record it again whole"
+        )
     if run.results is None:
         problems = "; ".join(f"{p.condition} {p.entry_id}: {(p.error or '')[:120]}" for p in run.errors[:5])
         raise StressError(f"the {config.split} run failed: {problems or run.fatal or 'no results'}")
@@ -335,6 +355,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--check", type=Path, metavar="PUBLISHED", help="fail unless the run equals this file"
     )
     parser.add_argument("--quiet", action="store_true", help="no per-letter progress lines")
+    add_stop_arguments(parser)
     return parser
 
 
@@ -352,7 +373,10 @@ async def _run(args: argparse.Namespace) -> int:
         return 0
     # every refusal before any work: no build, no replay, no call
     options = harness_options(
-        live=args.live, max_cost_usd=args.max_cost_usd, wait_on_limit=args.wait_on_limit
+        live=args.live,
+        max_cost_usd=args.max_cost_usd,
+        wait_on_limit=args.wait_on_limit,
+        stop=Stop.from_args(args),
     )
     if args.out is None and not args.live and not args.build_only:
         raise StressError("a replay needs --out <folder>, so it never lands beside the published file")
@@ -471,7 +495,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.live and (args.clean_only or args.build_only or args.check is not None):
         parser.error("--live records the cells: not with --clean-only, --build-only or --check")
     try:
+        Stop.from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
         return asyncio.run(_run(args))
+    except StressStopped as exc:
+        print(f"{exc}", file=sys.stderr)
+        return STOPPED
     except (StressError, tpl.TemplateError, build.BuildError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

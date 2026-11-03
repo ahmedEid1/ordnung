@@ -812,6 +812,40 @@ def test_a_final_recording_with_two_todays_is_refused(tmp_path: Path) -> None:
         reproduce.static_index(results)
 
 
+def test_a_final_read_recorded_on_two_days_is_indexed_when_each_letter_keeps_its_unit_s_day(
+    tmp_path: Path,
+) -> None:
+    """A final read may span several days of its window: each unit — a letter with all its conditions — keeps the day
+    it was recorded on as its today. The index takes such a read when every letter's today is the day its predictions
+    were recorded on, and refuses one letter told another day."""
+    results = _copy_results(tmp_path, ["2026-10-06-claude-sonnet-5-holdout3.json"])
+    data = json.loads((results / "2026-10-06-claude-sonnet-5-holdout3.json").read_text(encoding="utf-8"))
+    days = ["2027-01-10", "2027-01-11"]
+    for number, entry in enumerate(data["entries"]):
+        entry["today"] = days[number % 2]
+        for outcome in entry["conditions"].values():
+            outcome["prediction"].update(recorded_on=entry["today"], cli_version="2.1.5 (Claude Code)")
+    data["meta"].update(
+        split="holdout4",
+        simulated_today=days,
+        recording_days=days,
+        cli_versions=["2.1.5 (Claude Code)"],
+        recording_day=days[1],
+    )
+    target = results / "2027-01-10-claude-sonnet-5-holdout4.json"
+    target.write_text(json.dumps(data), encoding="utf-8")
+    reproduce.static_index(results)  # each letter on its unit's day: indexed
+    data["entries"][0]["today"] = "2027-01-12"  # one letter told another day than its unit's
+    target.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(reproduce.ReproduceError, match="two todays"):
+        reproduce.static_index(results)
+    data["entries"][0]["today"] = days[0]
+    data["meta"]["recording_days"] = days[:1]  # the read's days and its letters' days disagree
+    target.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(reproduce.ReproduceError, match="two todays"):
+        reproduce.static_index(results)
+
+
 def test_every_task_is_a_strict_replay_into_the_work_folder(index: dict[str, Any], tmp_path: Path) -> None:
     """No task records, refreshes or writes into the checkout: replays go to the work folder, the checks only read."""
     work = tmp_path / "work"

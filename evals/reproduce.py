@@ -279,7 +279,9 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
     if kind == "run":
         row.update(split=meta["split"], repeat=int(meta.get("repeat", 1)))
         day = meta.get("recording_day")
-        if role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
+        if role in ("final", "held-out") and meta.get("recording_days") is not None:
+            _check_unit_days(path, data, meta)
+        elif role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
             raise ReproduceError(
                 f"{path.name}: a {role} recording made on {day} for letters of {', '.join(meta['simulated_today'])} "
                 "— two todays: its letters are built for the day they are recorded (the plan's addendum, item 8)"
@@ -313,6 +315,38 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         }
     row["recorded"] = recorded
     return row
+
+
+def _check_unit_days(path: Path, data: Mapping[str, Any], meta: Mapping[str, Any]) -> None:
+    """A final read recorded on several days of its window (``meta.recording_days``): each letter's today must be the
+    day its unit was recorded on (every prediction's ``recorded_on``), and the read's days its letters' days."""
+    days = sorted(meta.get("recording_days") or [])
+    told = sorted(meta.get("simulated_today") or [])
+    day = meta.get("recording_day")
+    problems = []
+    if days != told:
+        listed = ", ".join(days) or "no day"
+        problems.append(
+            f"its letters are told {', '.join(told) or 'no day'}, its units were recorded on {listed}"
+        )
+    if day and day not in days:
+        problems.append(f"its last run was on {day}, a day none of its units was recorded on")
+    for entry in data.get("entries") or []:
+        recorded = {
+            str(outcome["prediction"].get("recorded_on"))
+            for outcome in (entry.get("conditions") or {}).values()
+            if isinstance(outcome, Mapping) and isinstance(outcome.get("prediction"), Mapping)
+        }
+        if recorded != {str(entry.get("today"))}:
+            listed = ", ".join(sorted(recorded)) or "no day"
+            problems.append(
+                f"{entry.get('id')} is told {entry.get('today')}, its unit was recorded on {listed}"
+            )
+    if problems:
+        raise ReproduceError(
+            f"{path.name}: two todays — {'; '.join(problems[:3])}: each unit's letters are told the day the unit is "
+            "recorded on"
+        )
 
 
 def _ask_rescoring(data: Mapping[str, Any]) -> bool:
@@ -411,7 +445,7 @@ def _cells(
                     needs="its letters, written blind after the code freeze (plan EV8), and their recording "
                     "(plan §7)",
                 )
-            elif not splits.get(split).recorded and not files:  # pragma: no cover - a declared split
+            elif not files:  # pragma: no cover - a declared split
                 cell.update(status="not recorded yet", needs="its letters and their recording")
             else:
                 cell.update(status="replayed", checks=sorted(files))

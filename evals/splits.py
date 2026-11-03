@@ -1,4 +1,5 @@
-"""The benchmark's splits in one place: their role, their letter variants and whether they are recorded yet.
+"""The benchmark's splits in one place: their role and their letter variants; whether their letters exist and whether
+they are recorded is read from the data.
 
 ``evals/run.py`` reads this registry for ``--split`` and for the held-out rules (a held-out or final split is
 recorded once, its run never rewrites ``docs/evals.md``, and a replay of it needs ``--results-dir``, so it never
@@ -14,16 +15,30 @@ Roles, in the order the splits were written:
 * ``final`` — ``holdout4`` and ``newkinds``: written blind after the 0.4.0 freeze for the pre-registered final run.
   They are declared before their letters exist, so the run that adds them adds data only.
 
+A split's state comes from the data, never from a constant here (each top-level ``evals/*.py`` file is in every
+condition's fingerprint, so adding letters or a recording edits none of them):
+
+* its letters exist when the manifest has entries of it (:func:`has_letters`);
+* it is recorded once a live results file of it is published in ``evals/results/`` (:func:`recorded`); a file in a
+  folder below it, as ``evals/results/pending/``, is not published.
+
 ``evals/report.py`` keeps its own ``HELD_OUT_SPLITS`` for the published page (``tests/test_harness_run_index.py``
 checks that it names this registry's held-out splits, in order).
 """
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 Role = Literal["development", "iterated", "held-out", "final"]
+
+EVALS_DIR = Path(__file__).resolve().parent
+MANIFEST_PATH = EVALS_DIR / "dataset" / "manifest.json"
+RESULTS_DIR = EVALS_DIR / "results"
 
 
 @dataclass(frozen=True)
@@ -35,8 +50,6 @@ class Split:
     #: The letter variants written for it (``evals/gen/common.py``'s ``SPLIT_VARIANTS``); empty when its letters
     #: are not variants of the twelve families.
     variants: tuple[str, ...]
-    #: Whether its letters and recordings exist yet.
-    recorded: bool = True
 
     @property
     def held_out(self) -> bool:
@@ -50,11 +63,15 @@ REGISTRY: tuple[Split, ...] = (
     Split("holdout", "held-out", ("E", "F")),
     Split("holdout2", "held-out", ("G", "H")),
     Split("holdout3", "held-out", ("I", "J")),
-    Split("holdout4", "final", ("K", "L", "M", "N"), recorded=False),
-    Split("newkinds", "final", (), recorded=False),
+    Split("holdout4", "final", ("K", "L", "M", "N")),
+    Split("newkinds", "final", ()),
 )
 
 _BY_NAME = {split.name: split for split in REGISTRY}
+#: A run's results file, ``<date>-<model>-<split>[-r<N>].json`` (not a re-scoring, a partial run or another kind).
+_RUN_FILE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}-.+-(?:" + "|".join(map(re.escape, _BY_NAME)) + r")(?:-r\d+)?\.json$"
+)
 
 
 def names() -> tuple[str, ...]:
@@ -73,6 +90,36 @@ def is_held_out(name: str) -> bool:
     return split is not None and split.held_out
 
 
-def recorded() -> tuple[str, ...]:
-    """The splits whose letters and recordings exist, in order."""
-    return tuple(split.name for split in REGISTRY if split.recorded)
+def is_final(name: str) -> bool:
+    """Whether ``name`` is one of the final run's splits (an unknown name is not)."""
+    split = _BY_NAME.get(name)
+    return split is not None and split.role == "final"
+
+
+def has_letters(name: str, manifest: Path = MANIFEST_PATH) -> bool:
+    """Whether the manifest has entries of the split ``name``."""
+    entries = json.loads(manifest.read_text(encoding="utf-8")).get("entries") or []
+    return any(isinstance(entry, dict) and entry.get("split") == name for entry in entries)
+
+
+def _live_split(path: Path) -> str | None:
+    """The split a published live run's results file holds (``None``: a replay, a partial run, not a run)."""
+    try:
+        meta = json.loads(path.read_text(encoding="utf-8")).get("meta")
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(meta, dict) or meta.get("backend") != "live" or meta.get("partial"):
+        return None
+    split = meta.get("split")
+    return split if isinstance(split, str) else None
+
+
+def recorded(results_dir: Path = RESULTS_DIR) -> tuple[str, ...]:
+    """The splits with a published live results file in ``results_dir`` (not in a folder below it), in order."""
+    found = {_live_split(path) for path in sorted(results_dir.glob("*.json")) if _RUN_FILE.match(path.name)}
+    return tuple(name for name in names() if name in found)
+
+
+def is_recorded(name: str, results_dir: Path = RESULTS_DIR) -> bool:
+    """Whether a live results file of the split ``name`` is published in ``results_dir``."""
+    return name in recorded(results_dir)

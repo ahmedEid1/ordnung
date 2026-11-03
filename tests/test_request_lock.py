@@ -328,6 +328,33 @@ async def test_diff_requests_against_a_ref(
     )
 
 
+def test_the_lock_check_replays_a_final_read_recorded_on_two_days(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A final read whose units were recorded on two days: the capture gives each letter its unit's day from the day
+    index, so every request it makes is one the lock holds, unchanged."""
+    from test_harness_final_run import SPLIT, final_split, record_two_days
+
+    manifest = final_split(tmp_path)
+    record_two_days(tmp_path, monkeypatch, manifest)
+    capsys.readouterr()
+    recorded = tmp_path / "recorded"
+    args = [
+        "lock-requests",
+        "--check",
+        "--recorded-dir",
+        str(recorded),
+        "--split",
+        SPLIT,
+        "--manifest",
+        str(manifest),
+    ]
+    assert harness.main(args) == 0
+    assert "no request changed" in capsys.readouterr().out
+    captured = harness.capture_requests(recorded, splits=[SPLIT], manifest=manifest)
+    assert captured.keys() == harness.RequestLock(_root(tmp_path) / harness.LOCK_FILE).entries.keys()
+
+
 async def _main(args: list[str]) -> int:
     """``python -m evals.harness`` from an async test (it runs its own event loop)."""
     return await asyncio.to_thread(harness.main, args)
