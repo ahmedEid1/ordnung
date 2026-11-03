@@ -6,6 +6,7 @@
   paragraph it cites by name (``SPEC § 21 "Holidays"``, ``SPEC §GiroCode``), is in ``docs/SPEC.md``; so are the
   sections SPEC cites in itself.
 - Every path and name in ``docs/architecture.md``'s section *The web app* exists.
+- Every relative link in ``docs/`` leads to a file, and its ``#anchor`` to a heading of that page.
 """
 
 from __future__ import annotations
@@ -270,3 +271,68 @@ def test_every_path_and_name_the_web_app_section_gives_exists() -> None:
         else:
             word = re.split(r"[=?(]", name.lstrip("?"))[0] or name
             assert word in _web_sources(), name
+
+
+# --------------------------------------------------------------------------------------------------
+# Links between the docs
+# --------------------------------------------------------------------------------------------------
+
+#: A Markdown link's target (``[text](target)``, ``[text](target "title")``) or an HTML one (``href``, ``src``).
+_LINK = re.compile(r"\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)|href=\"([^\"]+)\"|src=\"([^\"]+)\"")
+
+
+def _outside_code(text: str) -> Iterator[tuple[int, str]]:
+    """A Markdown file's lines outside fenced code blocks, with their numbers."""
+    fenced = False
+    for number, line in enumerate(text.splitlines(), 1):
+        if line.lstrip().startswith("```"):
+            fenced = not fenced
+        elif not fenced:
+            yield number, line
+
+
+def _slug(heading: str) -> str:
+    """The anchor GitHub gives a heading: its text lower-cased, without punctuation, spaces as hyphens."""
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading)  # a link in a heading anchors as its text
+    text = re.sub(r"<[^>]+>", "", text).strip().lower()
+    return re.sub(r"[^\w\- ]", "", text).replace(" ", "-")
+
+
+@cache
+def _anchors(path: Path) -> frozenset[str]:
+    """The anchors of a Markdown file: its headings' (a repeated one gets ``-1``, ``-2`` …) and its named ones."""
+    text = path.read_text(encoding="utf-8")
+    seen: dict[str, int] = {}
+    anchors = set(re.findall(r"<a\s+(?:name|id)=\"([^\"]+)\"", text))
+    for _, line in _outside_code(text):
+        heading = re.match(r"^#{1,6}\s+(.*?)\s*#*\s*$", line)
+        if heading:
+            slug = _slug(heading[1])
+            anchors.add(f"{slug}-{seen[slug]}" if slug in seen else slug)
+            seen[slug] = seen.get(slug, 0) + 1
+    return frozenset(anchors)
+
+
+def test_every_link_between_the_docs_resolves() -> None:
+    """A relative link in ``docs/`` (the generated evaluation pages too) names a file of the repository, and its
+    ``#anchor`` a heading of that page: renaming or renumbering a heading fails here with the links to it."""
+    pages = sorted((ROOT / "docs").rglob("*.md"))
+    assert len(pages) > 30, pages
+    assert _slug("6.4 The app as it ships: without the sender's Land") == (
+        "64-the-app-as-it-ships-without-the-senders-land"
+    )
+    broken = []
+    for page in pages:
+        for number, line in _outside_code(page.read_text(encoding="utf-8")):
+            for match in _LINK.finditer(line):
+                target = match[1] or match[2] or match[3]
+                if re.match(r"^[a-z][a-z+.-]*:", target) or target.startswith("//"):
+                    continue
+                path, _, anchor = target.partition("#")
+                destination = (page.parent / path).resolve() if path else page
+                where = f"{page.relative_to(ROOT).as_posix()}:{number} {target}"
+                if not destination.exists():
+                    broken.append(f"{where} (no such file)")
+                elif anchor and destination.suffix == ".md" and anchor not in _anchors(destination):
+                    broken.append(f"{where} (no such heading)")
+    assert not broken, "links that lead nowhere:\n" + "\n".join(broken)
