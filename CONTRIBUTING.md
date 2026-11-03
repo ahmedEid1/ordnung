@@ -37,9 +37,12 @@ still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without
 
 ## Fast loop
 
-CI runs its jobs side by side, and a whole run takes about an hour: its three complete runs on 31 October 2026
-took 63 to 74 minutes. The end-to-end job starts once every backend leg and the frontend have passed. While you
-work, run the tests near your change:
+CI runs its jobs side by side, and a whole run takes about 47 minutes (its runs of 3 November 2026). The
+end-to-end job starts once the frontend has passed, about 8 minutes in, and takes 33 to 39 minutes. Beside it the
+backend's legs on Python 3.11 to 3.14 take 16 to 39 minutes (3.14 the fastest), its slow checks about 25, the
+lowest versions (and, weekly, the newest) 21 to 24, and, on `main` and weekly, Windows 15 and macOS 3.5; the wheel
+and the dependency audit take under a minute. macOS and Windows have to pass too, as Linux does. While you work,
+run the tests near your change:
 
 ```bash
 .venv/bin/pytest tests/test_rules_deadlines.py -k weekend     # one file, only the tests whose names match
@@ -78,9 +81,9 @@ ORDNUNG_E2E_OCR=on make e2e
 These are CI's commands and thresholds (`.github/workflows/ci.yml`). A few more things CI checks:
 
 - **Generated files are committed, and CI fails while most of them are stale**: the built web app (so an
-  install from git needs no Node), the API's types for the web app, the static demo's GiroCodes and My numbers,
-  the demo and the evaluation's pages. [Generated files](#generated-files) says what writes each, and which
-  ones nothing checks yet. The rebuilt web app goes in a commit of its own.
+  install from git needs no Node), the API's types for the web app, the static demo's GiroCodes, My numbers,
+  advice cards and high-stakes dates, the demo and the evaluation's pages. [Generated files](#generated-files)
+  says what writes each, and which ones nothing checks yet. The rebuilt web app goes in a commit of its own.
 - **The docs say what the code does.** `tests/test_docs_claims.py` checks the README's and docs'
   numbers and statements against the code; change the docs in the same pull request.
 - **Text in pictures stays off in tests.** Every test runs with `ORDNUNG_OCR=off` (`tests/conftest.py`), so a
@@ -105,8 +108,8 @@ commit what it writes. The last column is what fails while one is stale.
 | `web/openapi.json`, `web/src/api/schema.d.ts` | `make openapi` | `tests/test_openapi_contract.py` |
 | `web/src/mocks/data/girocodes.ts` | `.venv/bin/python scripts/gen_mock_girocodes.py > web/src/mocks/data/girocodes.ts` | `tests/test_mock_girocodes.py` |
 | `web/src/mocks/data/numbers.ts` | `.venv/bin/python scripts/gen_mock_numbers.py > web/src/mocks/data/numbers.ts` | `tests/test_mock_numbers.py` (it skips without Node and the web app's packages from `npm ci`, unless `ORDNUNG_REQUIRE_MOCK_CHECK=1`) |
-| `web/src/mocks/data/advice.ts` | `.venv/bin/python scripts/gen_mock_advice.py > web/src/mocks/data/advice.ts` | nothing yet: run it after changing `ordnung.rules.advice` |
-| `web/src/mocks/data/highStakes.ts` | `.venv/bin/python scripts/gen_mock_high_stakes.py > web/src/mocks/data/highStakes.ts` | nothing yet: run it after changing `ordnung.rules` |
+| `web/src/mocks/data/advice.ts` | `.venv/bin/python scripts/gen_mock_advice.py > web/src/mocks/data/advice.ts` | `tests/test_mock_advice.py` |
+| `web/src/mocks/data/highStakes.ts` | `.venv/bin/python scripts/gen_mock_high_stakes.py > web/src/mocks/data/highStakes.ts` | `tests/test_mock_high_stakes.py` |
 | `src/ordnung/demo/samples/` (the sample life's letters) | `make samples` | `tests/test_samples.py::test_committed_samples_match_regeneration` (it skips where the libraries differ from the manifest's, unless `ORDNUNG_REQUIRE_SAMPLES=1`) |
 | `src/ordnung/rules/data/postcodes_de.tsv` | `make postcodes DE_ZIP=<GeoNames' DE.zip>` | `make postcodes DE_ZIP=<a DE.zip> CHECK=1` (not in CI: it needs GeoNames' file), which also fails once GeoNames' data has moved on (the table's header names the day and hash of the data it was made from). `tests/test_make_postcode_table.py::test_the_committed_table_is_well_formed` catches only a broken layout or counts that don't add up, not a postcode given another Land by hand |
 | `src/ordnung/demo/demo_db/` (the demo's snapshot) | `.venv/bin/ordnung demo --rebuild --no-serve`, from the samples and the recordings (no model call) | `.venv/bin/ordnung demo --check`: the snapshot's `VERSION` is a hash of what it was built from (the app's and the database's versions, the samples' manifest, the suggested questions, the recordings), so the check fails once one of them changes, but not on a hand edit of the database |
