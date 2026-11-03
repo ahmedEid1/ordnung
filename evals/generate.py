@@ -1,7 +1,8 @@
 """Generate the Ordnung benchmark documents and their ground truth (SPEC §17, §21).
 
-    .venv/bin/python evals/generate.py                 # writes evals/dataset/{dev,test,holdout,holdout2,holdout3}/ + manifest.json
+    .venv/bin/python evals/generate.py                 # writes evals/dataset/<split>/ + manifest.json
     .venv/bin/python evals/generate.py --out /tmp/x    # same, elsewhere (used by the determinism test)
+    .venv/bin/python -m evals.generate --final-day D   # same, naming the final splits' day (refused unless theirs)
 
 Everything is deterministic: fixed seeds, fixed PDF metadata and creation dates, no clock reads.
 Labels come from the small, commented date arithmetic in ``evals/gen/law.py`` — never from
@@ -9,39 +10,51 @@ Labels come from the small, commented date arithmetic in ``evals/gen/law.py`` �
 (``check(..., hand)`` in the family modules).
 
 Template families have ten wording/layout variants each: A and B go to ``dev`` (the only split
-prompts may be tuned on), C and D to ``test`` (the published run), E and F to ``holdout``, G and H to
+anything may be tuned on), C and D to ``test`` (the published run), E and F to ``holdout``, G and H to
 ``holdout2``, I and J to ``holdout3``. Adversarial letters are one-offs in ``test``, ``holdout``, ``holdout2``
 and ``holdout3``; dev has none.
 
-The test split was meant to be held out, but extraction prompts 9, 10 and 11 were each recorded on
-it, so it no longer is. The ``holdout`` split is a fresh sample of the same families, written from
-scratch (``gen/holdout_*.py``: new senders, recipients, wording, layout, dates and amounts) after
-extraction prompt version 11 and before any holdout recording. It is recorded once, with the prompts
-frozen, and never tuned on. No deadline-bearing sentence of one split recurs in another
-(``evals/verify_labels.py``).
+The test split was meant to be held out, but it was tuned on, so it no longer is. The ``holdout``
+split is a fresh sample of the same families, written from scratch (``gen/holdout_*.py``: new senders,
+recipients, wording, layout, dates and amounts) before its first run. It is run once and never tuned
+on. No deadline-bearing sentence of one split recurs in another (``evals/verify_labels.py``).
 
 The ``holdout2`` split is another fresh sample of the same families and attack classes
 (``gen/holdout2_*.py``), written after the release's last code change from the law and from how such
 letters read (new senders, recipients, wording, layout, dates, amounts and regions), so that the
-benchmark has letters that no code change and no prompt was informed by. It is recorded once, and
-nothing is tuned on it.
+benchmark has letters that no code change was informed by. It is run once, and nothing is tuned on it.
 
 The ``holdout3`` split is a third fresh sample of the same families and attack classes
 (``gen/holdout3_*.py``), written after the code freeze for this release, when the holdout2 split had been
-recorded and later code had been informed by that recording. It was written from the law and from how such
+run and later code had been informed by that run. It was written from the law and from how such
 letters read (new senders, recipients, wording, layout, dates, amounts and regions, among them Länder the
-earlier splits used little), is audited blind before its one recording, and nothing is tuned on it.
+earlier splits used little), is audited blind before its one run, and nothing is tuned on it.
+
+The final splits (``holdout4`` and ``newkinds``) come from a plug-in, ``gen/final.py``, written after the
+code freeze for one planned day, ``FINAL_DAY``, and a window of valid days that ends on ``VALID_UNTIL``.
+When that module exists it adds its splits (``FAMILIES``), its labelling conventions
+(``CONVENTIONS_FINAL``) and its letters with a second fitting document kind (``KIND_ALSO_ACCEPTED_FINAL``);
+``--final-day``, when given, must be its ``FINAL_DAY``. Every final letter is read on ``FINAL_DAY``,
+every final entry records ``final_day`` and ``valid_until``, every scored date, contract date and
+appointment lies after ``VALID_UNTIL``, and every scored item names the conventions its label rests on
+(:func:`check_final_case`). Without the module the output is the five splits above, byte for byte.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
+import importlib.util
 import json
+import re
 import sys
 from collections import Counter
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import date, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 HERE = Path(__file__).resolve().parent
 if str(HERE) not in sys.path:  # allow `python evals/generate.py` from the repo root
@@ -175,8 +188,13 @@ else:
     from gen.text import seed_for
 
 DEFAULT_OUT = HERE / "dataset"
-MAX_TOTAL_BYTES = 25 * 1024 * 1024
-SPLITS = tuple(SPLIT_VARIANTS)  # dev, test, holdout, holdout2, holdout3
+#: The whole dataset's cap: the five splits below take about 20 MB, the final splits about 11 MB more.
+MAX_TOTAL_BYTES = 40 * 1024 * 1024
+#: The splits this module's own builders write (a final split comes from the plug-in, ``gen/final.py``).
+SPLITS: tuple[str, ...] = ("dev", "test", "holdout", "holdout2", "holdout3")
+assert set(SPLITS) <= set(SPLIT_VARIANTS), SPLITS
+#: The years whose holidays ``law``'s tables are checked for against the ``holidays`` package (contracts reach 2028).
+HOLIDAY_YEARS = range(2024, 2030)
 
 FAMILIES = (
     ("tax_assessment", tax_assessment),
@@ -242,43 +260,61 @@ HOLDOUT3_FAMILIES = (
     ("adversarial", holdout3_adversarial),
 )
 
-CONVENTIONS = [
-    "Labels are computed by evals/gen/law.py (independent of ordnung.rules) and asserted against dates worked out by hand.",
-    "Posting date for the deemed-delivery fiction = the letter date, unless the letter states a separate posting date (spec.posted_on).",
-    "Deemed delivery: 3rd day after posting for items posted up to 2024-12-31, 4th day from 2025-01-01; AO moves a Sat/Sun/holiday "
-    "fiction day to the next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), "
-    "end moved off Sat/Sun/holidays; Bußgeld: two weeks after the Zustellung date on the envelope.",
-    "authority_region is set only when the letterhead names the Land; then expected_due uses that Land's holidays. When it is null, "
-    "every dated item was verified to have the same date under all 16 Land calendars (so nationwide-only == legally correct).",
-    "No label depends on municipal-only holidays (Mariä Himmelfahrt in parts of BY, Fronleichnam in parts of SN/TH, Augsburg) — asserted.",
-    "Private-law payment/declaration deadlines are generated region-independent (place of performance is debatable); fixed dates in "
-    "dunning and English letters fall on working days; Werktage periods never end on a Saturday — so no § 193 BGB edge case is labelled.",
-    "Municipal (Land VwVfG) letters come only from Länder whose 4-day fiction was verified (BY, BW, NW, HH, SH, MV).",
-    "region_sensitive=true marks items whose date differs if the Land's holidays are ignored (due_if_region_ignored).",
-    "Remedy 'klage': the legal date is still the label, although Ordnung by design shows a 'get advice' card instead (SPEC §21).",
-    "optional_items are neither required nor penalised (e.g. special-cancellation windows, payments after Rechtskraft, scam demands).",
-    "expected_due 'ambiguous' (with candidates) and null (no confident date) expect low confidence rather than a date.",
-    "Photo entries are phone-photo renderings of page 1 of a one-page PDF entry (source_id) and share its truth.",
-    "today = the day the person reads the letter (posting/letter date + 2..6 days); it is not a receipt date.",
-    "Template wording: the test variants (C, D) and the adversarial letters repeat no deadline-bearing sentence of the dev "
-    "variants (A, B); only short statutory phrases (e.g. 'vierten Tag nach Aufgabe zur Post') recur.",
-    "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, "
-    "wording, layout, dates and amounts) after extraction prompt version 11 and before any holdout recording; they repeat no "
-    "deadline-bearing sentence of the dev or test letters. The split is recorded once with frozen prompts and never tuned on.",
-    "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, "
-    "wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing "
-    "sentence of the dev, test or holdout letters. The split is recorded once and nothing is tuned on it.",
-    "Holdout3 split: variants I, J and the holdout3 adversarial letters were written from scratch (new senders, recipients, "
-    "wording, layout, dates, amounts and regions) after the code freeze; they repeat no deadline-bearing sentence of the dev, "
-    "test, holdout or holdout2 letters. The split is audited blind before its one recording, and nothing is tuned on it.",
-    "references list identifiers only; info-block lines holding a dash, a date or a billing month are printed but not labelled.",
-    "amounts = the sums the reader must pay, will receive, or that the decision sets (old/new price for price changes, fees to "
-    "bring to an appointment); line items, sums insured and merely threatened penalties are not listed.",
-    "remedy_type follows the letter's own Rechtsbehelfsbelehrung; kind_also_accepted names a second document kind that fits "
-    "the letter equally well (score kind as correct if it is kind or in kind_also_accepted).",
-    "Consumer contracts under § 309 Nr. 9 BGB / § 56 TKG are generated so that the written minimum term also fits into 24 months "
-    "from conclusion — the open question whether the cap counts from conclusion or from the start of service never matters.",
-]
+
+class Convention(TypedDict):
+    """One labelling convention: a stable id (``c01``…; a final split's own are ``f01``…), whether another defensible
+    reading contests it (``disputed``: here, exactly the conventions that the "Judgement calls kept on purpose"
+    sections of evals/dataset/VERIFICATION.md name), and its text."""
+
+    id: str
+    disputed: bool
+    text: str
+
+
+def _conventions(*entries: tuple[str, bool, str]) -> list[Convention]:
+    return [Convention(id=id_, disputed=disputed, text=text) for id_, disputed, text in entries]
+
+
+CONVENTIONS = _conventions(
+    ("c01", False, "Labels are computed from the statutes by evals/gen/law.py and asserted against dates worked out by hand."),
+    ("c02", True, "Posting date for the deemed-delivery fiction = the letter date, unless the letter states a separate posting date (spec.posted_on)."),
+    ("c03", True, "Deemed delivery: 3rd day after posting for items posted up to 2024-12-31, 4th day from 2025-01-01; AO moves a Sat/Sun/holiday "
+     "fiction day to the next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), "
+     "end moved off Sat/Sun/holidays; Bußgeld: two weeks after the Zustellung date on the envelope."),
+    ("c04", False, "authority_region is set only when the letterhead names the Land; then expected_due uses that Land's holidays. When it is null, "
+     "every dated item was verified to have the same date under all 16 Land calendars (so nationwide-only == legally correct)."),
+    ("c05", False, "No label depends on municipal-only holidays (Mariä Himmelfahrt in parts of BY, Fronleichnam in parts of SN/TH, Augsburg) — asserted."),
+    ("c06", False, "Private-law payment/declaration deadlines are generated region-independent (place of performance is debatable); fixed dates in "
+     "dunning and English letters fall on working days; Werktage periods never end on a Saturday — so no § 193 BGB edge case is labelled."),
+    ("c07", True, "Municipal (Land VwVfG) letters come only from Länder whose 4-day fiction was verified (BY, BW, NW, HH, SH, MV)."),
+    ("c08", False, "region_sensitive=true marks items whose date differs if the Land's holidays are ignored (due_if_region_ignored)."),
+    ("c09", True, "Remedy 'klage' (no Vorverfahren): the label is the end of the one-month Klage period (§ 74 Abs. 1 S. 2 VwGO), counted like "
+     "the other remedy periods."),
+    ("c10", True, "optional_items are neither required nor penalised (e.g. special-cancellation windows, payments after Rechtskraft, scam demands)."),
+    ("c11", False, "expected_due 'ambiguous' (with candidates) and null (no confident date) expect low confidence rather than a date."),
+    ("c12", False, "Photo entries are phone-photo renderings of page 1 of a one-page PDF entry (source_id) and share its truth."),
+    ("c13", False, "today = the day the person reads the letter (posting/letter date + 2..6 days); it is not a receipt date."),
+    ("c14", False, "Template wording: the test variants (C, D) and the adversarial letters repeat no deadline-bearing sentence of the dev "
+     "variants (A, B); only short statutory phrases (e.g. 'vierten Tag nach Aufgabe zur Post') recur."),
+    ("c15", False, "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, "
+     "wording, layout, dates and amounts) before the split's first run; they repeat no deadline-bearing sentence of the dev or test "
+     "letters. The split is run once and never tuned on."),
+    ("c16", False, "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, "
+     "wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing "
+     "sentence of the dev, test or holdout letters. The split is run once and nothing is tuned on it."),
+    ("c17", False, "Holdout3 split: variants I, J and the holdout3 adversarial letters were written from scratch (new senders, recipients, "
+     "wording, layout, dates, amounts and regions) after the code freeze; they repeat no deadline-bearing sentence of the dev, "
+     "test, holdout or holdout2 letters. The split is audited blind before its one run, and nothing is tuned on it."),
+    ("c18", False, "references list identifiers only; info-block lines holding a dash, a date or a billing month are printed but not labelled."),
+    ("c19", False, "amounts = the sums the reader must pay, will receive, or that the decision sets (old/new price for price changes, fees to "
+     "bring to an appointment); line items, sums insured and merely threatened penalties are not listed."),
+    ("c20", True, "remedy_type follows the letter's own Rechtsbehelfsbelehrung; kind_also_accepted names a second document kind that fits "
+     "the letter equally well (score kind as correct if it is kind or in kind_also_accepted)."),
+    ("c21", False, "Consumer contracts under § 309 Nr. 9 BGB / § 56 TKG are generated so that the written minimum term also fits into 24 months "
+     "from conclusion — the open question whether the cap counts from conclusion or from the start of service never matters."),
+    ("c22", True, "A notice deadline (cancel-by) stays on a Saturday, Sunday or holiday: § 193 BGB does not apply to notice periods "
+     "(BGH III ZR 172/04)."),
+)  # fmt: skip
 
 # Letters that honestly fit two DocumentKinds (checked by hand in evals/dataset/VERIFICATION.md).
 KIND_ALSO_ACCEPTED: dict[str, list[str]] = {
@@ -322,7 +358,206 @@ KIND_ALSO_ACCEPTED: dict[str, list[str]] = {
 }
 
 
-def build_cases() -> list[Case]:
+#: The twelve template families (adversarial letters are one-offs, not a template family).
+TEMPLATE_FAMILIES = frozenset(name for name, _ in FAMILIES if name != "adversarial")
+_FINAL_CONVENTION_ID = re.compile(r"f\d{2}")
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+#: A contract's scored dates.
+CONTRACT_SLOTS = ("expected_current_term_end", "expected_cancel_by")
+
+Builder = Callable[[], "list[Case]"]
+
+
+class FinalSplitError(ValueError):
+    """A final split, or the plug-in that builds it, breaks a rule of the final run (the message names ids, slots
+    and dates only)."""
+
+
+@dataclass(frozen=True)
+class FinalPlugin:
+    """The final splits' plug-in, ``gen/final.py``, with its tables checked (:func:`final_plugin`)."""
+
+    final_day: date
+    valid_until: date
+    families: dict[str, tuple[tuple[str, Builder], ...]]
+    conventions: list[Convention]
+    kind_also_accepted: dict[str, list[str]]
+
+    @property
+    def splits(self) -> tuple[str, ...]:
+        return tuple(self.families)
+
+
+def final_plugin(module: Any) -> FinalPlugin:
+    """The plug-in's tables from ``module`` (``gen/final.py``), checked: ``FINAL_DAY`` and ``VALID_UNTIL`` (dates,
+    in that order), ``FAMILIES`` (each new split's ``(family, builder)`` pairs; a split without template variants
+    names no template family), ``CONVENTIONS_FINAL`` (ids ``f01``…) and ``KIND_ALSO_ACCEPTED_FINAL``."""
+
+    def need(name: str) -> Any:
+        if not hasattr(module, name):
+            raise FinalSplitError(f"the final plug-in defines no {name}")
+        return getattr(module, name)
+
+    final_day, valid_until = need("FINAL_DAY"), need("VALID_UNTIL")
+    for name, value in (("FINAL_DAY", final_day), ("VALID_UNTIL", valid_until)):
+        if type(value) is not date:
+            raise FinalSplitError(f"{name} must be a date, not {type(value).__name__}")
+    if valid_until < final_day:
+        raise FinalSplitError(f"VALID_UNTIL {valid_until} is before FINAL_DAY {final_day}")
+    listed = need("FAMILIES")
+    if not isinstance(listed, Mapping) or not listed:
+        raise FinalSplitError("FAMILIES must map each final split to its (family, builder) pairs")
+    families: dict[str, tuple[tuple[str, Builder], ...]] = {}
+    for split, pairs in listed.items():
+        if split in SPLITS:
+            raise FinalSplitError(f"FAMILIES: {split} is a split this module builds itself")
+        built = tuple((str(family), builder) for family, builder in pairs)
+        names = [family for family, _ in built]
+        if not built or len(names) != len(set(names)) or not all(callable(b) for _, b in built):
+            raise FinalSplitError(f"FAMILIES[{split!r}]: each family once, each with its builder")
+        reused = sorted(set(names) & TEMPLATE_FAMILIES)
+        if split not in SPLIT_VARIANTS and reused:
+            raise FinalSplitError(
+                f"FAMILIES[{split!r}]: {', '.join(reused)} is a template family, and {split} has no template variants"
+            )
+        families[str(split)] = built
+    conventions: list[Convention] = []
+    for entry in need("CONVENTIONS_FINAL"):
+        if not isinstance(entry, Mapping) or list(entry) != ["id", "disputed", "text"]:
+            raise FinalSplitError("CONVENTIONS_FINAL: each entry has an id, disputed and text, in that order")
+        id_, disputed, text = entry["id"], entry["disputed"], entry["text"]
+        if not isinstance(id_, str) or not _FINAL_CONVENTION_ID.fullmatch(id_):
+            raise FinalSplitError(f"CONVENTIONS_FINAL: {id_!r} is not an id like f01")
+        if not isinstance(disputed, bool):
+            raise FinalSplitError(f"CONVENTIONS_FINAL {id_}: disputed must be true or false")
+        if not isinstance(text, str) or not text.strip():
+            raise FinalSplitError(f"CONVENTIONS_FINAL {id_}: no text")
+        if any(c["id"] == id_ for c in conventions):
+            raise FinalSplitError(f"CONVENTIONS_FINAL: {id_} twice")
+        conventions.append(Convention(id=id_, disputed=disputed, text=text))
+    also = need("KIND_ALSO_ACCEPTED_FINAL")
+    if not isinstance(also, Mapping) or not all(
+        isinstance(kinds, list) and all(isinstance(kind, str) for kind in kinds) for kinds in also.values()
+    ):
+        raise FinalSplitError("KIND_ALSO_ACCEPTED_FINAL must map case ids to lists of document kinds")
+    return FinalPlugin(
+        final_day=final_day,
+        valid_until=valid_until,
+        families=families,
+        conventions=conventions,
+        kind_also_accepted={str(case_id): list(kinds) for case_id, kinds in also.items()},
+    )
+
+
+def load_final() -> FinalPlugin | None:
+    """The plug-in ``gen/final.py`` when that module exists (it is written after the code freeze), checked; else
+    None. It is imported, not named in an import statement, so this file reads the same before and after."""
+    name = f"{law.__name__.rpartition('.')[0]}.final"
+    if importlib.util.find_spec(name) is None:
+        return None
+    return final_plugin(importlib.import_module(name))
+
+
+def all_conventions(final: FinalPlugin | None) -> list[Convention]:
+    """The manifest's conventions: :data:`CONVENTIONS`, then the plug-in's own."""
+    return [*CONVENTIONS, *(final.conventions if final else [])]
+
+
+def _day(value: Any) -> date | None:
+    """A date the truth states (``YYYY-MM-DD``); None for a missing, null or 'ambiguous' one."""
+    return date.fromisoformat(value) if isinstance(value, str) and _ISO_DAY.fullmatch(value) else None
+
+
+def check_final_case(case: Case, final: FinalPlugin, conventions: Mapping[str, Convention]) -> None:
+    """Refuse a final letter that breaks the window: it is read on ``FINAL_DAY``; every scored date (``items``),
+    contract term end and cancel-by date, and appointment lies after ``VALID_UNTIL``; every scored item and every
+    dated contract names the conventions (``conventions``, ids of ``conventions``) its label rests on, and for a
+    disputed one the dates under its other reading (``convention_alternatives``: after the window, never the label
+    itself; empty when the other reading gives no other date)."""
+    if case.today != final.final_day:
+        raise FinalSplitError(f"{case.id}: today is {case.today}, not the final day {final.final_day}")
+    first = final.valid_until + timedelta(days=1)
+
+    def after(where: str, day: date) -> None:
+        if day < first:
+            raise FinalSplitError(
+                f"{case.id} {where}: {day} is not after the window (valid until {final.valid_until})"
+            )
+
+    truth = case.truth
+    for n, item in enumerate(truth["items"]):
+        due = _day(item.get("expected_due"))
+        if due is not None:
+            after(f"items[{n}]", due)
+            _check_tags(case.id, f"items[{n}]", item, {"": due}, conventions, after)
+    for n, item in enumerate(truth.get("optional_items") or []):
+        due = _day(item.get("expected_due"))
+        if due is not None and item.get("kind") == "appointment":
+            after(f"optional_items[{n}]", due)
+    contract = truth.get("contract")
+    if contract:
+        dates = {slot: day for slot in CONTRACT_SLOTS if (day := _day(contract.get(slot))) is not None}
+        for slot, day in dates.items():
+            after(f"contract.{slot}", day)
+        if dates:
+            _check_tags(case.id, "contract", contract, dates, conventions, after)
+
+
+def _check_tags(
+    case_id: str,
+    where: str,
+    part: Mapping[str, Any],
+    labels: Mapping[str, date],
+    conventions: Mapping[str, Convention],
+    after: Callable[[str, date], None],
+) -> None:
+    """The convention tags of one scored item (``labels`` keyed "") or one contract (keyed by its slots)."""
+    ids = part.get("conventions")
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids) or len(set(ids)) != len(ids):
+        raise FinalSplitError(
+            f"{case_id} {where}: no list of the conventions its label rests on ('conventions')"
+        )
+    unknown = [i for i in ids if i not in conventions]
+    if unknown:
+        raise FinalSplitError(f"{case_id} {where}: unknown conventions {', '.join(unknown)}")
+    disputed = [i for i in ids if conventions[i]["disputed"]]
+    alternatives = part.get("convention_alternatives")
+    if not disputed:
+        if alternatives is not None:
+            raise FinalSplitError(f"{case_id} {where}: convention_alternatives, but no disputed convention")
+        return
+    need = f"{case_id} {where}: {', '.join(disputed)} disputed, so convention_alternatives gives the dates under the other reading"
+    if "" in labels:
+        if not isinstance(alternatives, list):
+            raise FinalSplitError(f"{need} (a list)")
+        per_slot: Mapping[str, Any] = {"": alternatives}
+    else:
+        if not isinstance(alternatives, Mapping) or not set(alternatives) <= set(labels):
+            raise FinalSplitError(f"{need} (a list per dated slot: {', '.join(labels)})")
+        per_slot = alternatives
+    for slot, days in per_slot.items():
+        if not isinstance(days, list):
+            raise FinalSplitError(f"{need} (a list for {slot})")
+        seen: set[date] = set()
+        for value in days:
+            day = _day(value)
+            if day is None or day in seen:
+                raise FinalSplitError(
+                    f"{case_id} {where}: convention_alternatives holds {value!r} (no date, or twice)"
+                )
+            if day == labels[slot]:
+                raise FinalSplitError(
+                    f"{case_id} {where}: convention_alternatives holds the label itself ({day})"
+                )
+            seen.add(day)
+            after(f"{where} alternative", day)
+
+
+def build_cases(final: FinalPlugin | Literal["installed"] | None = "installed") -> list[Case]:
+    """Every case: the five splits this module builds and a final plug-in's splits (the installed ``gen/final.py``
+    by default, the given one, or none). The twelve template families are complete in every split with template
+    variants, and no variant is in two splits; a final split without variants has its own families."""
+    plugin = load_final() if isinstance(final, str) else final
     cases: list[Case] = []
     for family, builder in (*FAMILIES, *HOLDOUT_FAMILIES, *HOLDOUT2_FAMILIES, *HOLDOUT3_FAMILIES):
         built = builder()
@@ -330,34 +565,69 @@ def build_cases() -> list[Case]:
         for case in built:
             assert case.family == family, (case.id, family)
         cases.extend(built)
+    final_splits = plugin.splits if plugin else ()
+    final_ids: set[str] = set()
+    for split, pairs in (plugin.families if plugin else {}).items():
+        for family, builder in pairs:
+            built = builder()
+            if not built:
+                raise FinalSplitError(f"{split}: the {family} builder made no letter")
+            for case in built:
+                if (case.split, case.family) != (split, family):
+                    raise FinalSplitError(
+                        f"{case.id}: built as {split}/{family}, not {case.split}/{case.family}"
+                    )
+            cases.extend(built)
+            final_ids |= {case.id for case in built}
     ids = [c.id for c in cases]
     assert len(ids) == len(set(ids)), "duplicate case ids"
+    kinds = dict(KIND_ALSO_ACCEPTED)
+    if plugin:
+        stray = sorted(set(plugin.kind_also_accepted) - final_ids)
+        if stray:
+            raise FinalSplitError(
+                f"KIND_ALSO_ACCEPTED_FINAL names no letter of a final split: {', '.join(stray)}"
+            )
+        kinds |= plugin.kind_also_accepted
     assert set(KIND_ALSO_ACCEPTED) <= set(ids), set(KIND_ALSO_ACCEPTED) - set(ids)
     for case in cases:
-        also = KIND_ALSO_ACCEPTED.get(case.id, [])
+        also = kinds.get(case.id, [])
         assert case.truth["kind"] not in also and set(also) <= DOCUMENT_KINDS, case.id
         case.truth["kind_also_accepted"] = also
-    assert {c.split for c in cases} == set(SPLITS)
+    assert {c.split for c in cases} == {*SPLITS, *final_splits}
     assert all(c.split != "dev" for c in cases if c.family == "adversarial")
+    with_variants = [split for split in (*SPLITS, *final_splits) if split in SPLIT_VARIANTS]
     variants = {
         split: {(c.family, c.variant) for c in cases if c.split == split and c.family != "adversarial"}
-        for split in SPLITS
+        for split in with_variants
     }
-    families = {c.family for c in cases if c.family != "adversarial"}
-    for i, split in enumerate(SPLITS):
-        assert {f for f, _ in variants[split]} == families, f"{split}: a template family is missing"
+    assert {c.family for c in cases if c.family != "adversarial" and c.split in SPLITS} == TEMPLATE_FAMILIES
+    for i, split in enumerate(with_variants):
+        assert {f for f, _ in variants[split]} == TEMPLATE_FAMILIES, f"{split}: a template family is missing"
         assert {v for _, v in variants[split]} == set(SPLIT_VARIANTS[split]), split
-        for other in SPLITS[i + 1 :]:
+        for other in with_variants[i + 1 :]:
             assert not variants[split] & variants[other], (
                 f"a template variant appears in both {split} and {other}"
             )
+    if plugin:
+        known = {c["id"]: c for c in all_conventions(plugin)}
+        for case in cases:
+            if case.split in final_splits:
+                check_final_case(case, plugin, known)
     return cases
 
 
 def _entry(
-    case: Case, file: str, data: bytes, *, pages: int, photo: bool, source_id: str | None
+    case: Case,
+    file: str,
+    data: bytes,
+    *,
+    pages: int,
+    photo: bool,
+    source_id: str | None,
+    window: tuple[date, date] | None,
 ) -> dict[str, Any]:
-    return {
+    head = {
         "id": f"{case.id}-photo" if photo else case.id,
         "split": case.split,
         "family": case.family,
@@ -371,6 +641,10 @@ def _entry(
         "pages": pages,
         "language": case.truth["language"],
         "today": case.today.isoformat(),
+    }
+    if window is not None:  # a final split's letter: its planned day and the last day of its window
+        head |= {"final_day": window[0].isoformat(), "valid_until": window[1].isoformat()}
+    return head | {
         "authority_region": case.authority_region,
         "recipient_region": case.recipient_region,
         "key_phrases": [] if photo else case.key_phrases,
@@ -384,6 +658,7 @@ def environment() -> dict[str, str]:
     """Library versions that determine the output bytes (PDF streams, rasterised photos)."""
     import zlib
 
+    import fontTools
     import fpdf
     import PIL
     import pypdfium2.version as pdfium_version
@@ -396,35 +671,47 @@ def environment() -> dict[str, str]:
         "pillow": PIL.__version__,
         "zlib": zlib.ZLIB_RUNTIME_VERSION,
         "holidays": holidays_version,
+        "fonttools": str(fontTools.version),  # fpdf2 subsets the embedded fonts with it
     }
 
 
-def generate(out: Path) -> dict[str, Any]:
-    law.cross_check_with_holidays_package(range(2024, 2028))
-    cases = build_cases()
-    for split in SPLITS:
+def write_case(case: Case, out: Path, final: FinalPlugin | None = None) -> list[dict[str, Any]]:
+    """Render one case (and its phone photo) into ``out/<split>/`` and return its manifest entries; a letter of
+    ``final``'s splits records the planned day and the end of its window."""
+    window = (final.final_day, final.valid_until) if final and case.split in final.families else None
+    (out / case.split).mkdir(parents=True, exist_ok=True)
+    pdf, pages = render_letter(case.letter)
+    stem = case.id.removeprefix(f"{case.split}-")
+    rel = f"{case.split}/{stem}.pdf"
+    (out / rel).write_bytes(pdf)
+    entries = [_entry(case, rel, pdf, pages=pages, photo=False, source_id=None, window=window)]
+    if case.photo:
+        assert pages == 1, f"{case.id}: photos are only taken of one-page letters"
+        jpg = phone_photo(pdf, seed_for("photo", case.id))
+        rel_photo = f"{case.split}/{stem}-photo.jpg"
+        (out / rel_photo).write_bytes(jpg)
+        entries.append(_entry(case, rel_photo, jpg, pages=1, photo=True, source_id=case.id, window=window))
+    return entries
+
+
+def generate(out: Path, final: FinalPlugin | Literal["installed"] | None = "installed") -> dict[str, Any]:
+    """Write every split's letters and the manifest into ``out``: the five splits above and a final plug-in's (the
+    installed ``gen/final.py`` by default, the given one, or none)."""
+    plugin = load_final() if isinstance(final, str) else final
+    law.cross_check_with_holidays_package(HOLIDAY_YEARS)
+    cases = build_cases(plugin)
+    splits = (*SPLITS, *(plugin.splits if plugin else ()))
+    for split in splits:
         folder = out / split
         folder.mkdir(parents=True, exist_ok=True)
         for stale in [*folder.glob("*.pdf"), *folder.glob("*.jpg")]:
             stale.unlink()
-    entries: list[dict[str, Any]] = []
-    for case in cases:
-        pdf, pages = render_letter(case.letter)
-        stem = case.id.removeprefix(f"{case.split}-")
-        rel = f"{case.split}/{stem}.pdf"
-        (out / rel).write_bytes(pdf)
-        entries.append(_entry(case, rel, pdf, pages=pages, photo=False, source_id=None))
-        if case.photo:
-            assert pages == 1, f"{case.id}: photos are only taken of one-page letters"
-            jpg = phone_photo(pdf, seed_for("photo", case.id))
-            rel_photo = f"{case.split}/{stem}-photo.jpg"
-            (out / rel_photo).write_bytes(jpg)
-            entries.append(_entry(case, rel_photo, jpg, pages=1, photo=True, source_id=case.id))
+    entries = [entry for case in cases for entry in write_case(case, out, plugin)]
     entries.sort(key=lambda e: (e["split"], e["family"], e["id"]))
     total = sum(e["bytes"] for e in entries)
     assert total < MAX_TOTAL_BYTES, f"dataset too large: {total} bytes"
     counts: dict[str, dict[str, int]] = {}
-    for split in SPLITS:
+    for split in splits:
         per_family = Counter(e["family"] for e in entries if e["split"] == split)
         counts[split] = {
             "entries": sum(per_family.values()),
@@ -436,7 +723,7 @@ def generate(out: Path) -> dict[str, Any]:
         "version": 1,
         "generator": "evals/generate.py",
         "environment": environment(),
-        "conventions": CONVENTIONS,
+        "conventions": all_conventions(plugin),
         "counts": counts,
         "total_bytes": total,
         "entries": entries,
@@ -446,30 +733,52 @@ def generate(out: Path) -> dict[str, Any]:
     return manifest
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
         "--out", type=Path, default=DEFAULT_OUT, help="output directory (default: evals/dataset)"
     )
+    parser.add_argument(
+        "--final-day",
+        type=date.fromisoformat,
+        metavar="YYYY-MM-DD",
+        help="the final splits' planned day: refused unless it is the plug-in's FINAL_DAY (default: that day)",
+    )
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args(argv)
-    manifest = generate(args.out)
+    try:
+        final = load_final()
+    except FinalSplitError as exc:
+        parser.exit(1, f"{parser.prog}: the final-split plug-in (gen/final.py): {exc}\n")
+    if args.final_day is not None and final is None:
+        parser.error("--final-day: there is no final-split plug-in (gen/final.py) to build for that day")
+    if final is not None and args.final_day not in (None, final.final_day):
+        parser.error(f"--final-day {args.final_day} is not the plug-in's FINAL_DAY {final.final_day}")
+    try:
+        manifest = generate(args.out, final)
+    except FinalSplitError as exc:
+        parser.exit(1, f"{parser.prog}: {exc}\n")
     if not args.quiet:
+        splits = list(manifest["counts"])
         families = sorted({e["family"] for e in manifest["entries"]})
-        print(f"{'family':<24}" + "".join(f" {split:>8}" for split in SPLITS) + "   (photos included)")
+        print(f"{'family':<24}" + "".join(f" {split:>8}" for split in splits) + "   (photos included)")
         for family in families:
             row = [
                 sum(1 for e in manifest["entries"] if e["family"] == family and e["split"] == split)
-                for split in SPLITS
+                for split in splits
             ]
             print(f"{family:<24}" + "".join(f" {n:>8}" for n in row))
         c = manifest["counts"]
         print(
             f"{'total':<24}"
-            + "".join(f" {c[split]['entries']:>8}" for split in SPLITS)
+            + "".join(f" {c[split]['entries']:>8}" for split in splits)
             + "   photos: "
-            + ", ".join(f"{split} {c[split]['photos']}" for split in SPLITS)
+            + ", ".join(f"{split} {c[split]['photos']}" for split in splits)
         )
+        if final is not None:
+            print(
+                f"final splits {', '.join(final.splits)}: read on {final.final_day}, valid until {final.valid_until}"
+            )
         print(f"size: {manifest['total_bytes'] / 1e6:.1f} MB → {args.out}")
     return 0
 

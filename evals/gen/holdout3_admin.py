@@ -1,8 +1,7 @@
 """Holdout3 split, families 1, 2, 3, 7 and 12: variants I and J of the administrative acts.
 
-Written after the code freeze for this release, from the law and from how such letters read, without opening the app's
-ingestion code, its prompts, the recordings or the results files: new senders, recipients, wording, layout, dates,
-amounts and regions (Länder the earlier splits used little: MV, SL, HB, BB, RP, NI). Variant I prints the date as the
+Written after the code freeze for this release, from the law and from how such letters read: new senders,
+recipients, wording, layout, dates, amounts and regions (Länder the earlier splits used little: MV, SL, HB, BB, RP, NI). Variant I prints the date as the
 last line of the information block and the Rechtsbehelfsbelehrung as a run-in paragraph; variant J names the date in
 the information block under its own label and, where the letter runs to a second page, prints the Belehrung there under
 a heading. No deadline-bearing sentence of variants A–H recurs (``evals/verify_labels.py`` checks it).
