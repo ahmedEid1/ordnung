@@ -13,12 +13,12 @@ Run it from the repository root::
     .venv/bin/python -m scripts.eval_perturb --build-only [--write-manifest]   # the files (needs the templates)
     .venv/bin/python -m scripts.eval_perturb --out DIR [--check PUBLISHED]     # replay both cells and score them
     ORDNUNG_CLAUDE_BIN=<wrapper> .venv/bin/python -m scripts.eval_perturb --cells I1,D1 --live \\
-        --recorded-dir evals/recorded/stress --max-cost-usd 17 --concurrency 2   # record (plan §7, step R7)
+        --recorded-dir evals/recorded/stress --max-cost-usd 17 --concurrency 2   # record
 
 A replay calls no model (a missing recording is an error) and needs ``--out``, so it never lands beside the published
 file; ``--check`` compares it with the published file and fails on any difference. Recording needs the templates and
-the committed stress manifest (both written blind in EV8's commit A, before the pre-registration), a budget
-(``--max-cost-usd``) and the recording harness that enforces it (``evals/harness.py``, plan EV3). The builder never
+the committed stress manifest (both written blind, before the pre-registration), a budget
+(``--max-cost-usd``) and the recording harness that enforces it (``evals/harness.py``). The builder never
 writes into ``evals/dataset``; the files go to ``--build-dir`` (git-ignored ``evals/perturb/build`` by default).
 """
 

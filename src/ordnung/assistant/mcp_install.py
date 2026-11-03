@@ -228,8 +228,7 @@ def _cmd_arg(arg: str) -> str:
 class JsonNumber(str):
     """A number of a config file as it is written there (``1e400``, ``1E5``, ``123456789012345678901234567890.5``):
     read as text and written back verbatim (:func:`render_json`), so a merge never changes another key's number
-    (review round 3 of phase 2: ``1e400`` became ``Infinity``, which the apps can't read, and long numbers lost
-    digits)."""
+    (``1e400`` became ``Infinity``, which the apps can't read, and long numbers lost digits)."""
 
 
 def _refuse_constant(name: str) -> Any:
@@ -304,8 +303,8 @@ def merge_server(text: str | None, name: str, entry: dict[str, Any]) -> tuple[di
 
 
 def _unique_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    """A JSON object whose keys are all different: rewriting one with a key twice would keep only the last
-    (review round 2 of phase 2), against "every other key and server stays as it was"."""
+    """A JSON object whose keys are all different: rewriting one with a key twice would keep only the
+    last, against "every other key and server stays as it was"."""
     found: dict[str, Any] = {}
     for key, value in pairs:
         if key in found:
@@ -329,7 +328,7 @@ def _follow_links(path: Path) -> Path:
         return path
     try:
         resolved = path.resolve()
-    except RuntimeError as exc:  # a link that leads back to itself (review round 4 of phase 2: a traceback)
+    except RuntimeError as exc:  # a link that leads back to itself (it used to end in a traceback)
         raise _link_loop(path, str(exc)) from exc
     if resolved.is_symlink():
         raise _link_loop(path, f"Symlink loop from {str(path)!r}")
@@ -373,7 +372,7 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
         raise ValueError("remove_ledger goes with the rules tools")
     path = _follow_links(plan.path)
     if not plan.rules_only and is_project_file(plan, path):
-        # the command itself: with --write nothing else was printed (review round 4 of phase 2)
+        # the command itself: with --write nothing else was printed
         command = claude_code_command(plan)
         raise InstallError(
             f"Nothing was changed: {path} is a project's shared server list, usually committed with the "
@@ -405,7 +404,7 @@ def write_config(plan: Plan, *, now: datetime | None = None, remove_ledger: bool
         raise InstallError(
             f"Nothing was changed: {path} — {exc}. Fix or move that file, then run this again."
         ) from exc
-    except RecursionError as exc:  # review round 4 of phase 2: a traceback
+    except RecursionError as exc:  # it used to end in a traceback
         raise InstallError(
             f"Nothing was changed: {path} — it is nested too deeply to read and write back. Fix or move that "
             "file, then run this again."

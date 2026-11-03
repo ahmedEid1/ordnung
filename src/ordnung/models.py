@@ -481,7 +481,7 @@ class Contract(_Model):
     cancellable: bool = True
     cancel_hint: str | None = None
     # Worked out on read by the API: the person's cancellation of it, marked as sent (the decision is
-    # taken — no "decide by", no "Draft cancellation"; walkthrough of phase 2).
+    # taken — no "decide by", no "Draft cancellation").
     cancellation_sent: CancellationSent | None = None
 
     def terms(self, party_kind: str | None = None) -> ContractTerms:

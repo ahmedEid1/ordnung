@@ -475,8 +475,8 @@ class LedgerTools:
     def _party_detail(self, ledger: Ledger, party: Party, letters: LetterText) -> dict[str, Any]:
         """Kind and region are the record; name, contact details and identifiers come from letters. A letter
         with scam signs is flagged (``scam_warning``, its ``scam_signs`` in the letter text) as ``search`` and
-        ``get_document`` flag it — also once its to-do is done or dismissed, or not linked to the sender (review
-        round 4 of phase 2: only an open to-do brought the flag in, so the scam note was missing)."""
+        ``get_document`` flag it — also once its to-do is done or dismissed, or not linked to the sender (only
+        an open to-do brought the flag in before, so the scam note was missing)."""
         documents = sorted(
             (d for d in ledger.documents.values() if d.party_id == party.id and _shareable(d)),
             key=lambda d: (d.doc_date or "", d.id),
@@ -550,7 +550,7 @@ class LedgerTools:
         ``list_items`` and ``get_document`` flag it — the timeline's code-written "Possible scam" line is
         that flag, not letter text — and a to-do keeps its ``payment_note`` and its ``set_aside``
         (:func:`_aside_fields`), so the answer check's notes and the pay-once relations follow "what's due
-        this week?" too (review round 3 of phase 2).
+        this week?" too.
         """
         item = self.store.get_item(entry.ref.id) if entry.ref.type == "item" else None
         doc = ledger.document(entry.ref.id) if entry.ref.type == "document" else None
@@ -607,7 +607,7 @@ class LedgerTools:
         paying — a rent increase's new rent (only owed once the person agrees, and paying it can count as
         agreeing, § 558b Abs. 1 BGB) or a late statement's back-payment (may not be owed, § 556 Abs. 3 S. 3
         BGB) — is listed apart too (``decide_before_paying``, with its ``payment_note``), never among the
-        upcoming payments and never in the totals (review round 1). A rent contract's fixed-cost row gives its
+        upcoming payments and never in the totals. A rent contract's fixed-cost row gives its
         rent in force and the next rent that replaces it (``rent``, :func:`_rents`), which may start after the
         upcoming payments' 30 days; neither changes the totals.
         """
@@ -1122,7 +1122,7 @@ def _aside_fields(ledger: Ledger, item: Item) -> dict[str, Any]:
 def _scam_signs(ledger: Ledger, item: Item) -> list[str]:
     """The scam signs of a to-do's letter while the to-do is still to be acted on — open, or snoozed (a
     woken-up one is listed under ``do_not_pay`` too): every tool that returns the to-do flags it, so the
-    answer check's scam note follows it (review round 3 of phase 2: a snoozed demand whose snooze had passed
+    answer check's scam note follows it (a snoozed demand whose snooze had passed
     was unflagged). None once the person checked the letter (:func:`_letter_scam`)."""
     doc = ledger.document(item.doc_id)
     return _letter_scam(ledger, doc) if doc is not None and item.status in ("open", "snoozed") else []
@@ -1141,8 +1141,7 @@ def paid_at_appointment(ledger: Ledger, item: Item) -> bool:
     views and the web read it: card or cash at the appointment, the desk, a machine), or it has a clock time
     and its letter sets an appointment that day (:func:`ordnung.secretary.triggers.paid_at_appointment`).
     Its send-by date is a bank transfer's, so Ask's record leaves it out — the model gave it as the day to
-    cancel the appointment by. Letters read since UI audit R1-backend-8 store none for it; this covers those
-    read before."""
+    cancel the appointment by. Letters read now store none for it; this covers those read before."""
     from ordnung.payments import pays_on_site
     from ordnung.secretary.triggers import paid_at_appointment as in_person
 
@@ -1254,7 +1253,7 @@ def _contract_deadlines(
     ledger: Ledger, start: date | None, end: date | None, letters: LetterText
 ) -> list[dict[str, Any]]:
     """The cancellation deadlines of active contracts in a range — a contract's is no to-do, so a question
-    about the deadlines in October listed the to-dos alone (walkthrough of phase 2: the phone contract's,
+    about the deadlines in October listed the to-dos alone (the phone contract's,
     which Today and the weekly review flag, was missing). A deadline counts when its send-by or must-arrive
     day is in the range: the ordinary one (``cancel_by``, ``send_by``) and the special one a price increase
     opened (``special_cancellation``; of several letters' windows in the range, the one that closes first,
@@ -1592,9 +1591,9 @@ def _explain_item(
     """The receipt, how the date was made and the rules are code; the wording and quotes are letter text.
     ``in_person``: a payment made at an appointment (:func:`paid_at_appointment`) gets no send-by date.
     ``withheld``: the to-do's letter is private (or in the trash) — its wording and quotes are left out, as
-    ``get_document`` leaves out its text (review round 2 of phase 2). ``scam``: the scam signs of its letter
+    ``get_document`` leaves out its text. ``scam``: the scam signs of its letter
     (:func:`_scam_signs`) — flagged like ``list_items`` flags it, with its ``payment_note``, so the answer
-    check's notes follow a "why that date?" too (review round 3 of phase 2). ``repeat``: how it repeats
+    check's notes follow a "why that date?" too. ``repeat``: how it repeats
     (:func:`_repeat_fields`), as its row says — the receipt of a date the person set says nothing of it."""
     receipt = item.computation
     spec = item.date_spec
@@ -1648,7 +1647,7 @@ def _explain_contract(
     The steps repeat the terms they start from ("The first term runs from … to …"): for a contract whose
     terms were read by AI or not found on the page (``terms_unverified``) they go to the letter text with
     the terms (ADR 0008 point 1) — the dates the engine derives from them stay in the record, as in
-    ``list_contracts`` (review round 1)."""
+    ``list_contracts``."""
     from ordnung.views import continuation, fixed_term_summary
 
     comp, today = ledger.computation(contract), ledger.today
@@ -1797,7 +1796,7 @@ def stale_tool_results(tools: LedgerTools, events: Iterable[Any]) -> list[str]:
     for each recorded result no call claims. Results are paired with their calls as Ask pairs them
     (:func:`pair_results`): by ``tool_use_id``, and a result without
     one with the oldest call without one still waiting — so a result recorded out of order, or an extra
-    one before the real one, is stale (review round 4 of phase 2: leftover results were never reported,
+    one before the real one, is stale (leftover results were never reported,
     and Ask kept a forged extra result as the call's)."""
     calls: list[tuple[str, Mapping[str, Any]]] = []
     stream: list[tuple[str, str | None, str]] = []
