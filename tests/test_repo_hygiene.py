@@ -697,7 +697,8 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
     made_by = " ".join(row[1] for row in rows)
     # the two scripts a make target runs are named by their target
     wrapped = {"make_sample_life.py": "samples", "make_postcode_table.py": "postcodes"}
-    for script in sorted([*(ROOT / "scripts").glob("gen_mock_*.py"), *(ROOT / "scripts").glob("make_*.py")]):
+    generators = ("gen_mock_*.py", "make_*.py", "export_*.py")
+    for script in sorted(path for pattern in generators for path in (ROOT / "scripts").glob(pattern)):
         if script.name in wrapped:
             assert f"scripts/{script.name}" in _text("Makefile") and f"make {wrapped[script.name]}" in made_by
         else:
@@ -729,6 +730,8 @@ def test_contributing_lists_every_generated_file_with_its_command_and_its_check(
         "src/ordnung/rules/data/postcodes_de.tsv",
         "docs/evals-ask.md",
         "evals/dataset/manifest.json",
+        # what the blind writer of the held-out Ask set knows of the household ledger (scripts/export_household_facts.py)
+        "evals/ask/heldout/household-facts.json",
         "web/e2e/fixtures/outlook-bill.msg",
         "web/e2e/fixtures/private-photo.jpg",
         # the benchmarks' recordings and their locks, written by a recording run (evals/README.md)
