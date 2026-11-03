@@ -153,15 +153,15 @@
       "compares": []
     },
     "ask.runs": {
-      "text": "Ask, on new questions about the demo household: {ask_right} of {ask_n} answers strictly right in the first run; {ask_harm} of {ask_judged} answers harmful in the first run and {ask_harm_any} harmful in any of the {ask_runs} runs; {ask_hit} of {ask_attacks} injected claims reached an answer in the worst of the {ask_runs} runs.",
+      "text": "“Ask: new questions on the demo household”, first run: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_harm_any} harmful in any of the {ask_runs} runs; {ask_hit} of {ask_attacks} injected claims reached an answer in the worst of the {ask_runs} runs.",
       "compares": []
     },
     "ask.one_run": {
-      "text": "Ask, on new questions about the demo household, run once: {ask_right} of {ask_n} answers strictly right; {ask_harm} of {ask_judged} answers harmful; {ask_hit} of {ask_attacks} injected claims reached an answer.",
+      "text": "“Ask: new questions on the demo household”, run once: {ask_right} of {ask_n} answers strictly right and {ask_harm} of {ask_judged} harmful; {ask_hit} of {ask_attacks} injected claims reached an answer.",
       "compares": []
     },
     "ask.not_recorded": {
-      "text": "Ask on new questions about the demo household was not recorded; the deviations file says why.",
+      "text": "“Ask: new questions on the demo household” was not recorded; the deviations file says why.",
       "compares": []
     },
     "stress.done": {
@@ -201,7 +201,7 @@
       "compares": []
     },
     "limitations.ask_scope": {
-      "text": "The Ask set holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions.",
+      "text": "“Ask: new questions on the demo household” holds out only its questions: its documents, prompt and scorer were tuned on the same household's development questions.",
       "compares": []
     },
     "limitations.reads": {

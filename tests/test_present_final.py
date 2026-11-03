@@ -673,6 +673,11 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
     )
     assert "On 32 letters of 8 kinds" in text["newkinds"]
     assert "90 of 104 answers strictly right" in text["ask"]
+    # the held-out Ask set has one name everywhere, and its scope line names it too
+    name = "“Ask: new questions on the demo household”"
+    assert text["ask"].startswith(name) and name in text["limitations"]
+    for code in ("ask.runs", "ask.one_run", "ask.not_recorded", "limitations.ask_scope"):
+        assert final.load_templates()["templates"][code]["text"].startswith(name), code
     assert "1 of 16 letters for Ordnung and 5 for the agent" in text["stress"]
     assert "141 of 150 real deadlines" in text["e2e"]
     assert "hash 0123456789ab" in text["provenance"]
