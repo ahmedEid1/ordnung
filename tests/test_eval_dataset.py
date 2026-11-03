@@ -1,7 +1,8 @@
 """Checks for the benchmark dataset produced by ``evals/generate.py`` (SPEC §17).
 
 * the manifest loads and every entry's file exists with the recorded SHA-256;
-* the truth uses the product's vocabularies (DocumentKind, item kinds, natures, remedies);
+* the truth uses the product's vocabularies (DocumentKind as the generator copies it, which
+  ``tests/test_eval_kinds.py`` holds to the product's; item kinds, natures, remedies);
 * template variants never leak across splits (A/B = dev, C/D = test, E/F = holdout, G/H = holdout2,
   I/J = holdout3; adversarial letters in test, holdout, holdout2 and holdout3 only), and no deadline-bearing
   sentence recurs in two splits;
@@ -12,6 +13,9 @@
   agree instead;
 * the generator's own date arithmetic (``evals/gen/law.py``) reproduces the worked examples of the
   verified legal research — the labels do not come from ``ordnung.rules``.
+
+It imports nothing of ``ordnung`` (``tests/test_gen_imports.py``): it runs where the product is not installed, as
+the letters' writers run it.
 """
 
 from __future__ import annotations
@@ -29,8 +33,6 @@ from typing import Any, NamedTuple
 import pdfplumber
 import pytest
 
-from ordnung.models import DOCUMENT_KINDS
-
 ROOT = Path(__file__).resolve().parents[1]
 EVALS = ROOT / "evals"
 DATASET = EVALS / "dataset"
@@ -40,6 +42,7 @@ if str(EVALS) not in sys.path:
     sys.path.insert(0, str(EVALS))
 
 from gen import law  # noqa: E402
+from gen.common import DOCUMENT_KINDS  # noqa: E402
 
 SPLITS = ("dev", "test", "holdout", "holdout2", "holdout3")
 # fresh samples of the test split's families and attack classes
@@ -60,6 +63,13 @@ SPEC_KEYS = {
     "time",
     "shift",
 }
+#: The dataset's size cap: every split's letters, the final run's included.
+MAX_TOTAL_BYTES = 40 * 1024 * 1024
+
+
+def fits(total_bytes: int) -> bool:
+    """Whether a dataset of ``total_bytes`` is under the cap."""
+    return total_bytes < MAX_TOTAL_BYTES
 
 
 @pytest.fixture(scope="module")
@@ -101,11 +111,18 @@ def test_manifest_loads(manifest: dict[str, Any]) -> None:
     assert 0.12 <= len(photos) / len(entries) <= 0.3
     for name in HELD_OUT:
         assert 0.12 <= sum(e["photo"] for e in split[name]) / len(split[name]) <= 0.25, name
-    assert manifest["total_bytes"] < 25 * 1024 * 1024
+    assert fits(manifest["total_bytes"])
     for name in SPLITS:
         assert manifest["counts"][name]["entries"] == len(split[name]), name
     families = {e["family"] for e in entries}
     assert len(families) == 13  # 12 template families + adversarial
+
+
+def test_the_dataset_has_room_for_the_final_run_s_letters() -> None:
+    """holdout4 at twice holdout3's size and the newkinds letters take the dataset to about 31.5 MB: the cap these
+    checks hold it to is 40 MiB."""
+    assert fits(31_500_000) and fits(40 * 1024 * 1024 - 1)
+    assert not fits(40 * 1024 * 1024)
 
 
 def test_files_exist_with_matching_sha(manifest: dict[str, Any]) -> None:
@@ -323,10 +340,13 @@ def test_invisible_text_only_where_expected(manifest: dict[str, Any], pdf_reads:
 
 
 def test_labels_survive_the_independent_recheck() -> None:
-    """``evals/verify_labels.py`` re-derives every dated label from facts read off each letter by hand, with its
-    own calculator (datetime + holidays package; no code shared with evals/gen or ordnung.rules), checks that
-    the letters state what the truth claims, and that no deadline sentence recurs in letters of two splits
-    (dev, test, holdout, holdout2, holdout3). See evals/dataset/VERIFICATION.md."""
+    """``evals/verify_labels.py`` re-derives every dated label from facts read off each letter, with its own
+    calculator (datetime + holidays package; no code shared with evals/gen or ordnung.rules), checks that the
+    letters state what the truth claims, and that no deadline sentence recurs in letters of two splits. The facts
+    of dev, test, holdout, holdout2 and holdout3 were read off each letter by hand. A final split's (holdout4,
+    newkinds) are not a person's: they come from the blind audit, an auditor's reading of each letter sealed before
+    any comparison with the labels (and, where it disagreed with a label, the adjudication's), each fact with its
+    source. See evals/dataset/VERIFICATION.md."""
     import verify_labels
 
     report = verify_labels.run(DATASET)
