@@ -625,7 +625,7 @@ class Session:
         return self.problem
 
     def _raise_counters(self, view: FolderView) -> None:
-        """Finding 4: never reuse a number the folder already shows (a data folder put back from an OS
+        """Never reuse a number the folder already shows (a data folder put back from an OS
         backup has older counters)."""
         state, me = self.state, self.state.computer
         heads = [*self.heads.values(), *(h.head for h in view.heads)]
@@ -911,7 +911,7 @@ class Session:
         return Outcome(decision)
 
     def _waiting_round(self, store: Store, view: FolderView, waiting: Waiting, *, demo: bool) -> Outcome:
-        """Finding 23: a waiting take-over ends when its target saved a new person change, or after
+        """A waiting take-over ends when its target saved a new person change, or after
         :data:`~ordnung.sync.TAKE_OVER_WAIT_MAX_S`; otherwise it finishes once everything arrived."""
         target = view.by_computer(waiting.head)
         expired = self.state.runtime - waiting.runtime >= TAKE_OVER_WAIT_MAX_S
@@ -1131,7 +1131,7 @@ class Session:
         return self.push(store, force=True, head_state="in_use")
 
     def self_heal(self, store: Store) -> int:
-        """Finding 7: this computer's own version must be whole in the folder — one listing per shard;
+        """This computer's own version must be whole in the folder — one listing per shard;
         missing or short objects are written again (a new version when a slice can't be made again)."""
         base = self.state.base.ref if self.state.base is not None else None
         if base is None or base.id.computer != self.state.computer:
@@ -1245,7 +1245,7 @@ class Session:
         return names
 
     def _superseded(self, referenced: set[str]) -> set[str]:
-        """Finding 21: the database slices of the versions this computer held lately (``recent``) that
+        """The database slices of the versions this computer held lately (``recent``) that
         no head names any more and that every live head has moved past: the version it names or holds
         came later here, or (a version this computer never held) knows strictly more. They go after
         :data:`SUPERSEDED_SLICE_GRACE_S` instead of 7 days."""
@@ -1470,7 +1470,7 @@ def connect(
 
 
 def _withdraw_unfinished(sync_folder: SyncFolder, previous: LocalState) -> None:
-    """Finding 34: an interrupted setup left its key file (named in ``state.json``) and nothing else of
+    """An interrupted setup left its key file (named in ``state.json``) and nothing else of
     another computer: take it back, so a retry with another passphrase isn't stranded."""
     keys = sync_folder.key_files()
     if previous.key_file not in keys:

@@ -220,7 +220,7 @@ SELF_HEAL_EVERY_S = 600.0
 GC_EVERY_S = float(_DAY_S)
 GC_GRACE_S = float(7 * _DAY_S)
 GC_GRACE_RUNTIME_S = float(7 * _DAY_S)
-#: Finding 21: the measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save (one
+#: The measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save (one
 #: reading rewrote 29 of 80 slices of a 1,500-letter library, :mod:`ordnung.sync.push`), so superseded
 #: database slices go after this long of wall clock *and* running time, once every live head is newer.
 SLICE_CHURN_LIMIT_BYTES = 5 * _MIB

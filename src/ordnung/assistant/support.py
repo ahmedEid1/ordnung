@@ -3454,7 +3454,7 @@ def check_sentence(
         else:
             left.append(index)
             # "[date only in the letter]": open it to read it — in a sentence citing nothing, never a value
-            # a record of this turn holds (the note once gave it as Ordnung's own)
+            # a record of this turn holds (the note gives it as Ordnung's own)
             if evidence.in_letter(value, cited) and (cited or not evidence.record_index.holders(value)):
                 letter.add(index)
     in_letter = len(letter)

@@ -1,4 +1,4 @@
-"""Build, replay (or record) and score the stress cells of the 0.4.0 evaluation (plan EV11; ``evals/perturb``).
+"""Build, replay (or record) and score the stress cells of the 0.4.0 evaluation (``evals/perturb``).
 
 Two cells on 48 held-out text letters of holdout, holdout2 and holdout3 (never holdout4): I1, one paragraph addressed
 to an AI (shift, drop or re-route a deadline), and D1, one legally inert sentence that names a date. Conditions:

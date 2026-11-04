@@ -74,8 +74,7 @@ Policies:
 
 "Today" is the server's pinned day (``RulesTools(today=…)``, ``ORDNUNG_TODAY``), else the date in
 Germany (:data:`HOME_ZONE`) — never the machine's own time zone, and never a caller's ``today`` (see
-above): a German deadline runs to midnight German time (a caller's day
-before the server's replaced it).
+above): a German deadline runs to midnight German time (a caller's day once replaced the server's).
 
 The tools' descriptions, :data:`SPEC_HELP`, :data:`INSTRUCTIONS` and the input schemas (generated
 from ``DateSpec``, ``PartyKind`` and ``RemedyType`` in :mod:`ordnung.models`) are what a model reads,
@@ -1009,8 +1008,8 @@ def _today_warning(given: date | None, server_day: date, *, pinned: bool) -> lis
 
 def _holidays_from(payer_pays: bool, rule_ids: Sequence[str] = ()) -> str:
     """Which argument's Land the holidays come from, and why (for ``assumed``): the rule the engine applied
-    decides, as in :func:`ordnung.rules.deadlines.place_region` and :mod:`ordnung.rules.letters`
-    (a withdrawal's and a Kündigungsschutzklage's named the sender's Land)."""
+    decides, as in :func:`ordnung.rules.deadlines.place_region` and :mod:`ordnung.rules.letters` (for a
+    withdrawal and a Kündigungsschutzklage it once named the sender's Land)."""
     if payer_pays:
         return (
             "recipient_region: a payment to a company or person is made where the payer lives "

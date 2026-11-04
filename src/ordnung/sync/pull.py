@@ -189,7 +189,7 @@ def _live_page_size(db: Path) -> int | None:
 
 
 def check_space(paths: Paths, manifest: Manifest, needed_files: int, *, keep: bool) -> None:
-    """Finding 12: room for the staged database, the database written into the live WAL, the files and
+    """Room for the staged database, the database written into the live WAL, the files and
     a kept copy, with a margin."""
     live = paths.db.stat().st_size if paths.db.is_file() else 0
     kept = estimate(paths.data_dir)[1] if keep else 0
