@@ -59,7 +59,7 @@ LAENDER = (
     "Schleswig-Holstein",
     "Thüringen",
 )
-#: Each Land's official legal portal: every address a Land's row names is on its host.
+#: Each Land's official legal portal, tried first for every Land.
 PORTALS = {
     "Baden-Württemberg": "www.landesrecht-bw.de",
     "Bayern": "www.gesetze-bayern.de",
@@ -78,19 +78,62 @@ PORTALS = {
     "Schleswig-Holstein": "www.gesetze-rechtsprechung.sh.juris.de",
     "Thüringen": "landesrecht.thueringen.de",
 }
-#: The gap: Länder whose portal could not be fetched. Their block holds only NOT_RETRIEVED_LINE, and SOURCES.md says
-#: so; nothing fills it from memory or from another source.
+#: The other official hosts a Land's row may name, where its portal could not be fetched: the Land's law gazette as
+#: the Land's government, its parliament or the gazette's own publisher puts it online, and the parliament or
+#: government sites tried for it. Each host with the reason it is official. Every address a Land's row names is on
+#: its portal or on one of these.
+GAZETTE_HOSTS: dict[str, dict[str, str]] = {
+    "Berlin": {
+        "pardok.parlament-berlin.de": "the Abgeordnetenhaus's document server, which holds the Gesetz- und "
+        "Verordnungsblatt für Berlin",
+    },
+    "Bremen": {
+        "www.gesetzblatt.bremen.de": "the Senate's site of the Gesetzblatt der Freien Hansestadt Bremen",
+    },
+    "Hamburg": {
+        "www.luewu.de": "Lütcke & Wulff, whom the Hamburgisches Gesetz- und Verordnungsblatt's imprint names as its "
+        "printer, publisher and issuing office (Druck, Verlag und Ausgabestelle) for the Behörde für Justiz und "
+        "Verbraucherschutz, which issues it",
+        "www.hamburgische-buergerschaft.de": "the Bürgerschaft, Hamburg's parliament, whose handbook prints the "
+        "constitution",
+    },
+    "Hessen": {
+        "starweb.hessen.de": "the Hessischer Landtag's document server, which holds the Gesetz- und Verordnungsblatt "
+        "für das Land Hessen",
+        "verkuendung.hessen.de": "the Land's promulgation platform, which publishes the Gesetz- und Verordnungsblatt",
+    },
+    "Mecklenburg-Vorpommern": {
+        "www.dokumentation.landtag-mv.de": "the Landtag's document server (ParlDok), which holds the Gesetz- und "
+        "Verordnungsblatt für Mecklenburg-Vorpommern",
+    },
+    "Rheinland-Pfalz": {
+        "gvbl.rlp.de": "the Staatskanzlei's site of the Gesetz- und Verordnungsblatt für das Land Rheinland-Pfalz",
+    },
+    "Saarland": {
+        "www.amtsblatt.saarland.de": "the Land's site of the Amtsblatt des Saarlandes, its law gazette",
+        "www.landtag-saar.de": "the Landtag des Saarlandes",
+        "www.saarland.de": "the Land government's site",
+    },
+    "Sachsen-Anhalt": {
+        "www.landtag.sachsen-anhalt.de": "the Landtag von Sachsen-Anhalt",
+        "padoka.landtag.sachsen-anhalt.de": "the Landtag's document server (PADOKA)",
+    },
+    "Schleswig-Holstein": {
+        "verkuendungsportal.schleswig-holstein.de": "the Land's promulgation portal, which publishes the Gesetz- und "
+        "Verordnungsblatt für Schleswig-Holstein",
+    },
+    "Thüringen": {
+        "parldok.thueringer-landtag.de": "the Landtag's document server; the Landtag publishes the Gesetz- und "
+        "Verordnungsblatt für den Freistaat Thüringen (its imprint: Herausgeber und Verleger: Thüringer Landtag)",
+    },
+}
+#: The gap: Länder for which no official source could be fetched, or none that gives the rule. Their block holds only
+#: NOT_RETRIEVED_LINE, and SOURCES.md says so; nothing fills it from memory or from another source.
 NOT_RETRIEVED = {
-    "Berlin",
     "Bremen",
-    "Hamburg",
-    "Hessen",
-    "Mecklenburg-Vorpommern",
     "Rheinland-Pfalz",
     "Saarland",
     "Sachsen-Anhalt",
-    "Schleswig-Holstein",
-    "Thüringen",
 }
 NOT_RETRIEVED_LINE = "Not retrieved (see SOURCES.md)."
 #: Sections the labels' derivations and conventions cite for a period (evals/gen, evals/generate.py): the readers who
@@ -113,9 +156,19 @@ SECTIONS = re.compile(r"^(?P<article>Art \d+[a-z]* )?§§? (?P<numbers>.+)$")
 NUMBER = re.compile(r"^\d+[a-z]*$")
 ANNEX = re.compile(r"^Anlage \d+[a-z]*$")
 HEADING = re.compile(r"^(?:(?:Art \d+[a-z]* )?§ \d+[a-z]*|Anlage \d+[a-z]*)(?= |$)")
-#: A Land's provision: "§ 41 Bekanntgabe des Verwaltungsaktes", Bavaria's "Art. 41 ...", or a number alone.
-LAND_HEADING = re.compile(r"^(?:§|Art\.) \d+[a-z]*(?= |$)")
+#: A Land's provision: "§ 41 Bekanntgabe des Verwaltungsaktes", Bavaria's "Art. 41 ...", or a number alone; from a
+#: gazette also an article, "Artikel 1 Änderung des ...", or the title of an amending act that has no articles.
+LAND_HEADING = re.compile(
+    r"^(?:(?:§|Art\.|Artikel) \d+[a-z]*(?= |$)|[A-ZÄÖÜ][a-zäöüß]+es Gesetz zur Änderung des [^ ]+ [^ ]+$)"
+)
 LAND_PROVISIONS = re.compile(r"^(?P<kind>§§?|Art\.) (?P<numbers>\d+[a-z]*(?:, \d+[a-z]*)*)$")
+#: A note after a provision in SOURCES.md, which items of an article were taken or whose article it is:
+#: "Artikel 1 (Nr. 14, 34)", "Artikel 54 (Verfassung)".
+LAND_NOTE = re.compile(r" \([^()]+\)$")
+#: A gazette block's status line naming the issue, its pages and the act: "Fundstelle: Gesetz- und Verordnungsblatt
+#: für Berlin, ..., S. 218".
+FUNDSTELLE = "Fundstelle: "
+PAGE = re.compile(r"\bS\. \d+")
 LAND_ROW = re.compile(
     r"^\| (?P<land>[^|`]+?) \| (?P<statute>[^|]+?) \| (?P<provisions>[^|]+?) \| (?P<urls>[^|]+?) "
     r"\| (?P<day>[^|\s]+) \| `(?P<sha256>[^`]+)` \|$"
@@ -208,12 +261,28 @@ def land_blocks(text: str) -> list[tuple[str, str]]:
 
 
 def listed_provisions(cell: str) -> list[str] | None:
-    """'§§ 41, 102b' -> ['§ 41', '§ 102b']; 'Art. 41' -> ['Art. 41']; None if unreadable."""
-    match = LAND_PROVISIONS.match(cell)
-    if not match:
-        return None
-    kind = "Art." if match["kind"] == "Art." else "§"
-    return [f"{kind} {number}" for number in match["numbers"].split(", ")]
+    """'§§ 41, 102b' -> ['§ 41', '§ 102b']; 'Art. 41' -> ['Art. 41']; groups apart by '; ', each with an optional
+    note in brackets: '§§ 1, 8; Artikel 90' -> ['§ 1', '§ 8', 'Artikel 90'], 'Artikel 1 (Nr. 2); Artikel 2' ->
+    ['Artikel 1', 'Artikel 2']; None if unreadable."""
+    out: list[str] = []
+    for group in cell.split("; "):
+        group = LAND_NOTE.sub("", group)
+        match = LAND_PROVISIONS.match(group)
+        if match:
+            kind = "Art." if match["kind"] == "Art." else "§"
+            out += [f"{kind} {number}" for number in match["numbers"].split(", ")]
+            continue
+        heading = LAND_HEADING.match(group)
+        if not heading or heading[0] != group:
+            return None
+        out.append(group)
+    return out
+
+
+def allowed_hosts(land: str) -> set[str]:
+    """The hosts a Land's row may name: its portal and, where that could not be fetched, the official hosts of its
+    gazette, parliament or government."""
+    return {PORTALS[land], *GAZETTE_HOSTS.get(land, {})}
 
 
 def laender_problems(folder: Path) -> list[str]:
@@ -244,8 +313,9 @@ def laender_problems(folder: Path) -> list[str]:
         if hashlib.sha256(block.encode("utf-8")).hexdigest() != row.sha256:
             out.append(f"{name}: {land}: sha256 is not the one in SOURCES.md")
         hosts = {urllib.parse.urlsplit(url).netloc for url in row.urls.split(", ")}
-        if hosts != {PORTALS[land]} or not all(url.startswith("https://") for url in row.urls.split(", ")):
-            out.append(f"{name}: {land}: source is not on {PORTALS[land]}")
+        allowed = allowed_hosts(land)
+        if not hosts <= allowed or not all(url.startswith("https://") for url in row.urls.split(", ")):
+            out.append(f"{name}: {land}: source is not on {' or '.join(sorted(allowed))}")
         try:
             day = dt.date.fromisoformat(row.day)
         except ValueError:
@@ -263,6 +333,16 @@ def laender_problems(folder: Path) -> list[str]:
             continue
         if len(lines) < 2 or lines[1] != row.statute:
             out.append(f"{name}: {land}: the line after the Land is not the statute named in SOURCES.md")
+        status = lines[2 : lines.index("")] if "" in lines else lines[2:]
+        found_in = [line for line in status if line.startswith(FUNDSTELLE)]
+        from_gazette = hosts != {PORTALS[land]}
+        names_issue = bool(found_in) and all(PAGE.search(line) for line in found_in)
+        if from_gazette and not (
+            names_issue and any("Gesetz- und Verordnungsblatt" in line for line in found_in)
+        ):
+            out.append(f"{name}: {land}: a block from a gazette does not name the gazette and its pages")
+        if found_in and not from_gazette:
+            out.append(f"{name}: {land}: a block from the portal names a gazette issue")
         wanted = listed_provisions(row.provisions)
         got = headings(block, LAND_HEADING)
         if wanted is None:
@@ -333,16 +413,46 @@ def test_the_laender_not_retrieved_are_the_known_gap() -> None:
 
 
 def test_each_retrieved_land_states_when_its_authorities_letters_count_as_delivered() -> None:
-    """A retrieved block holds either the Land's own text of the federal § 41 (a provision titled 'Bekanntgabe des
-    Verwaltungsakt(e)s' with a paragraph (2)) or a provision that applies the federal Verwaltungsverfahrensgesetz."""
+    """A retrieved block holds the Land's own text of the federal § 41 (a provision titled 'Bekanntgabe des
+    Verwaltungsakt(e)s' with a paragraph (2)), a provision that applies the federal Verwaltungsverfahrensgesetz, or
+    the amendment that sets the day a letter sent by post counts as notified (from a gazette)."""
     for land, block in land_blocks((LAW / LAENDER_FILE).read_text(encoding="utf-8")):
         if land in NOT_RETRIEVED:
             continue
         own = re.search(
             r"^(?:§|Art\.) \d+[a-z]* Bekanntgabe des Verwaltungsakte?s\n\n(?:.*\n)*?\(2\) ", block, re.M
         )
-        applies = re.search(r"Verwaltungsverfahrensgesetz(?:es)?\b", block.split("\n\n", 1)[1])
-        assert own or applies, land
+        body = block.split("\n\n", 1)[1]
+        applies = re.search(r"Verwaltungsverfahrensgesetz(?:es)?\b", body)
+        sets_day = re.search(
+            r"am vierten Tag nach der Aufgabe zur Post|das Wort „dritten“ durch das Wort „vierten“", body
+        )
+        assert own or applies or sets_day, land
+
+
+def test_each_gazette_block_names_its_gazette_and_pages() -> None:
+    """A block taken from a gazette rather than the Land's portal says so in its status lines: one 'Fundstelle:' line
+    per issue used, naming the gazette and the pages."""
+    table = {row.land: row for row in land_rows(LAW)}
+    blocks = dict(land_blocks((LAW / LAENDER_FILE).read_text(encoding="utf-8")))
+    from_gazette = {
+        land
+        for land, row in table.items()
+        if land not in NOT_RETRIEVED
+        and {urllib.parse.urlsplit(url).netloc for url in row.urls.split(", ")} != {PORTALS[land]}
+    }
+    assert from_gazette == {
+        "Berlin",
+        "Hamburg",
+        "Hessen",
+        "Mecklenburg-Vorpommern",
+        "Schleswig-Holstein",
+        "Thüringen",
+    }
+    for land in from_gazette:
+        found_in = [line for line in blocks[land].split("\n") if line.startswith(FUNDSTELLE)]
+        assert found_in and any("Gesetz- und Verordnungsblatt" in line for line in found_in), land
+        assert all(PAGE.search(line) for line in found_in), land
 
 
 def _flip_a_byte(folder: Path) -> None:
@@ -408,6 +518,34 @@ def _move_a_land_source(folder: Path) -> None:
     sources.write_text(sources.read_text(encoding="utf-8").replace(line, moved), encoding="utf-8")
 
 
+def _move_a_gazette_source(folder: Path) -> None:
+    sources = folder / "SOURCES.md"
+    line = _land_row(folder, "Thüringen")
+    moved = line.replace("https://parldok.thueringer-landtag.de/", "https://example.org/")
+    sources.write_text(sources.read_text(encoding="utf-8").replace(line, moved), encoding="utf-8")
+
+
+def _drop_a_fundstelle(folder: Path) -> None:
+    """Berlin's block without its 'Fundstelle:' line, with the block's and the file's sha256 updated: only the status
+    line check catches it."""
+    path = folder / "laender.txt"
+    old = path.read_bytes()
+    text = old.decode("utf-8")
+    (block,) = [b for land, b in land_blocks(text) if land == "Berlin"]
+    changed = "".join(line + "\n" for line in block.split("\n")[:-1] if not line.startswith(FUNDSTELLE))
+    new = text.replace(block, changed, 1).encode("utf-8")
+    path.write_bytes(new)
+    _resync_file_sha(folder, old, new)
+    sources = folder / "SOURCES.md"
+    sha = hashlib.sha256
+    sources.write_text(
+        sources.read_text(encoding="utf-8").replace(
+            sha(block.encode("utf-8")).hexdigest(), sha(changed.encode("utf-8")).hexdigest()
+        ),
+        encoding="utf-8",
+    )
+
+
 def _claim_a_land_not_retrieved(folder: Path) -> None:
     sources = folder / "SOURCES.md"
     row = next(r for r in land_rows(folder) if r.land == "Bayern")
@@ -446,6 +584,11 @@ def _edit_sources(old: str, new: str):
         (_flip_a_land_byte, "laender.txt: Bayern: sha256 is not the one in SOURCES.md"),
         (_drop_a_land, "laender.txt: the Länder are not the sixteen, each once, in order"),
         (_move_a_land_source, "laender.txt: Bayern: source is not on www.gesetze-bayern.de"),
+        (_move_a_gazette_source, "laender.txt: Thüringen: source is not on"),
+        (
+            _drop_a_fundstelle,
+            "laender.txt: Berlin: a block from a gazette does not name the gazette and its pages",
+        ),
         (_claim_a_land_not_retrieved, "laender.txt: Bayern: SOURCES.md and the file disagree"),
         (lambda folder: (folder / "laender.txt").unlink(), "laender.txt: missing"),
     ],
@@ -461,6 +604,8 @@ def _edit_sources(old: str, new: str):
         "land-changed-byte",
         "land-dropped",
         "land-other-site",
+        "gazette-other-site",
+        "gazette-without-fundstelle",
         "land-not-retrieved",
         "laender-missing",
     ],
@@ -506,6 +651,12 @@ def test_the_section_lists_read_ranges_letters_and_articles() -> None:
         "Art. 41"
     ]
     assert listed_provisions("§ 1") == ["§ 1"] and listed_provisions("41") is None
+    assert listed_provisions("§§ 1, 8; Artikel 90") == ["§ 1", "§ 8", "Artikel 90"]
+    assert listed_provisions("Artikel 1 (Nr. 14, 34); Artikel 4") == ["Artikel 1", "Artikel 4"]
+    assert listed_provisions(
+        "Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes"
+    ) == ["Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes"]
+    assert listed_provisions("Artikel 2 Inkrafttreten") is None and listed_provisions("§ 41; ") is None
     assert listed_sections("§§ 558–558b") is None  # a range with letters is ambiguous: list them one by one
     assert listed_sections("BGB 187") is None
 

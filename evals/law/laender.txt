@@ -34,7 +34,14 @@ Art. 41 Bekanntgabe des Verwaltungsakts
 (5) Vorschriften über die Bekanntgabe eines Verwaltungsakts mittels Zustellung bleiben unberührt.
 
 Berlin
-Not retrieved (see SOURCES.md).
+Gesetz über das Verfahren der Berliner Verwaltung
+Vom 21. April 2016
+Fundstelle: Gesetz- und Verordnungsblatt für Berlin, 72. Jahrgang, Nr. 11, 30. April 2016, S. 218
+
+§ 1 Anwendungsbereich
+
+(1) Für die öffentlich-rechtliche Verwaltungstätigkeit der Behörden Berlins gilt das Verwaltungsverfahrensgesetz in der Fassung der Bekanntmachung vom 23. Januar 2003 (BGBl. I S. 102), das zuletzt durch Artikel 1 des Gesetzes vom 20. November 2015 (BGBl. I S. 2010) geändert worden ist, in der jeweils geltenden Fassung, soweit nicht in den §§ 2 bis 6 dieses Gesetzes etwas anderes bestimmt ist.
+(2) Das Landesamt für Bürger- und Ordnungsangelegenheiten, die Bezirksämter und die landesunmittelbaren Träger der gesetzlichen Krankenversicherung und deren Landesverbände nehmen amtliche Beglaubigungen nach § 33 Absatz 1 Satz 2 und Absatz 4, § 34 Absatz 1 und 4 des Verwaltungsverfahrensgesetzes sowie § 29 Absatz 1 Satz 2 und Absatz 4, § 30 Absatz 1 und 4 des Zehnten Buches Sozialgesetzbuch vor.
 
 Brandenburg
 Verwaltungsverfahrensgesetz für das Land Brandenburg (VwVfGBbg)
@@ -56,13 +63,80 @@ Bremen
 Not retrieved (see SOURCES.md).
 
 Hamburg
-Not retrieved (see SOURCES.md).
+Hamburgisches Verwaltungsverfahrensgesetz
+Fundstelle: Hamburgisches Gesetz- und Verordnungsblatt Teil I, HmbGVBl. Nr. 17, Dienstag, den 13. Mai 2025, S. 338: Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes
+Fundstelle: Verfassung der Freien und Hansestadt Hamburg, Artikel 54, in: Die Bürgerschaft der Freien und Hansestadt Hamburg, Handbuch, 23. Wahlperiode (2025–2030), Band 2, Rechtliche Grundlagen, 1. Auflage, S. 31
+
+Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes
+
+Vom 5. Mai 2025
+Der Senat verkündet das nachstehende von der Bürgerschaft beschlossene Gesetz:
+Das Hamburgische Verwaltungsverfahrensgesetz vom 9. November 1977 (HmbGVBl. S. 333, 402), zuletzt geändert am 19. November 2024 (HmbGVBl. S. 575, 578), wird wie folgt geändert:
+    1. In § 15 Satz 2 werden die Wörter „am dritten Tage“ durch die Wörter „am vierten Tage“ ersetzt.
+    2. In § 41 Absatz 2 Sätze 1 und 2 werden jeweils die Wörter „am dritten Tag“ durch die Wörter „am vierten Tag“ ersetzt.
+
+Artikel 54
+
+Gesetze und Verordnungen treten, soweit in ihnen nichts anderes bestimmt ist, mit dem auf die Ausgabe des Hamburgischen Gesetz- und Verordnungsblattes folgenden Tag in Kraft. Das gilt auch in den Fällen des Artikels 52 Satz 2, wenn der Plan, die Karte oder die Zeichnung spätestens mit der Ausgabe des Hamburgischen Gesetz- und Verordnungsblattes beim Staatsarchiv niedergelegt wird.
 
 Hessen
-Not retrieved (see SOURCES.md).
+Hessisches Verwaltungsverfahrensgesetz (HVwVfG)
+in der Fassung vom 15. Januar 2010
+Fundstelle: Gesetz- und Verordnungsblatt für das Land Hessen, Teil I, 2010, Nr. 3, ausgegeben zu Wiesbaden am 12. Februar 2010, S. 18 und 32: Bekanntmachung der Neufassung des Hessischen Verwaltungsverfahrensgesetzes vom 15. Januar 2010, § 41
+Fundstelle: Gesetz- und Verordnungsblatt für das Land Hessen 2018, Nr. 21, ausgegeben zu Wiesbaden am 24. September 2018, S. 570 und 575: Gesetz zur Förderung der elektronischen Verwaltung und zur Änderung verwaltungsverfahrens- und verwaltungsvollstreckungsrechtlicher sowie datenschutzrechtlicher Vorschriften und glücksspielrechtlicher Zuständigkeiten vom 12. September 2018, Artikel 2 Nr. 5
+
+§ 41 Bekanntgabe des Verwaltungsaktes
+
+(1) Ein Verwaltungsakt ist demjenigen Beteiligten bekannt zu geben, für den er bestimmt ist oder der von ihm betroffen wird. Ist ein Bevollmächtigter bestellt, so kann die Bekanntgabe ihm gegenüber vorgenommen werden.
+(2) Ein schriftlicher Verwaltungsakt, der im Inland durch die Post übermittelt wird, gilt am dritten Tag nach der Aufgabe zur Post als bekannt gegeben. Ein Verwaltungsakt, der im Inland oder in das Ausland elektronisch übermittelt wird, gilt am dritten Tag nach der Absendung als bekannt gegeben. Dies gilt nicht, wenn der Verwaltungsakt nicht oder zu einem späteren Zeitpunkt zugegangen ist; im Zweifel hat die Behörde den Zugang des Verwaltungsaktes und den Zeitpunkt des Zugangs nachzuweisen.
+(3) Ein Verwaltungsakt darf öffentlich bekannt gegeben werden, wenn dies durch Rechtsvorschrift zugelassen ist. Eine Allgemeinverfügung darf auch dann öffentlich bekannt gegeben werden, wenn eine Bekanntgabe an die Beteiligten untunlich ist.
+(4) Die öffentliche Bekanntgabe eines schriftlichen oder elektronischen Verwaltungsaktes wird dadurch bewirkt, dass sein verfügender Teil ortsüblich bekannt gemacht wird. In der ortsüblichen Bekanntmachung ist anzugeben, wo der Verwaltungsakt und seine Begründung eingesehen werden können. Der Verwaltungsakt gilt zwei Wochen nach der ortsüblichen Bekanntmachung als bekannt gegeben. In einer Allgemeinverfügung kann ein hiervon abweichender Tag, jedoch frühestens der auf die Bekanntmachung folgende Tag bestimmt werden.
+(5) Vorschriften über die Bekanntgabe eines Verwaltungsaktes mittels Zustellung bleiben unberührt.
+
+Artikel 2 Änderung des Hessischen Verwaltungsverfahrensgesetzes
+
+Das Hessische Verwaltungsverfahrensgesetz in der Fassung der Bekanntmachung vom 15. Januar 2010 (GVBl. I S. 18), zuletzt geändert durch Gesetz vom 26. Juni 2015 (GVBl. S. 254), wird wie folgt geändert:
+    5. Nach § 41 Abs. 2 wird als Abs. 2a eingefügt:
+       „(2a) Mit Einwilligung des Beteiligten kann ein elektronischer Verwaltungsakt dadurch bekannt gegeben werden, dass er vom Beteiligten oder von seinem Bevollmächtigten über öffentlich zugängliche Netze abgerufen wird. Die Behörde hat zu gewährleisten, dass der Abruf nur nach Authentifizierung der berechtigten Person möglich ist und der elektronische Verwaltungsakt von ihr gespeichert werden kann. Der Verwaltungsakt gilt am Tag nach dem Abruf als bekannt gegeben. Wird der Verwaltungsakt nicht innerhalb von zehn Tagen nach Absendung einer Benachrichtigung über die Bereitstellung abgerufen, wird diese beendet. In diesem Fall ist die Bekanntgabe nicht bewirkt; die Möglichkeit einer erneuten Bereitstellung zum Abruf oder der Bekanntgabe auf andere Weise bleibt unberührt.“
 
 Mecklenburg-Vorpommern
-Not retrieved (see SOURCES.md).
+Landesverwaltungsverfahrensgesetz
+Fundstelle: Gesetz- und Verordnungsblatt für Mecklenburg-Vorpommern 2024, Nr. 27, ausgegeben in Schwerin am 30. Dezember 2024, S. 617, 619, 621 und 622: Gesetz zur Änderung des Landesverwaltungsverfahrensgesetzes, des Landesverwaltungskostengesetzes und der Vollstreckungszuständigkeits- und -kostenlandesverordnung vom 11. Dezember 2024, Artikel 1 Nummer 14 und 34, Artikel 4
+Fundstelle: Gesetz- und Verordnungsblatt für Mecklenburg-Vorpommern 2026, Nr. 21, ausgegeben in Schwerin am 21. Juli 2026, S. 719, 721, 722 und 754: Erstes Gesetz zur Bürokratieentlastung in Mecklenburg-Vorpommern vom 8. Juli 2026, Artikel 1 Nummer 14, Artikel 95
+
+Artikel 1 Änderung des Landesverwaltungsverfahrensgesetzes
+
+Das Landesverwaltungsverfahrensgesetz in der Fassung der Bekanntmachung vom 6. Mai 2020 (GVOBl. M-V S. 410, 465) wird wie folgt geändert:
+    14. § 41 wird wie folgt geändert:
+            a) Absatz 2 wird wie folgt gefasst:
+               „(2) Ein schriftlicher Verwaltungsakt, der im Inland durch die Post übermittelt wird, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben. Ein Verwaltungsakt, der im Inland oder in das Ausland elektronisch übermittelt wird, gilt am vierten Tag nach der Absendung als bekannt gegeben. Dies gilt nicht, wenn der Verwaltungsakt nicht oder zu einem späteren Zeitpunkt zugegangen ist; im Zweifel hat die Behörde den Zugang des Verwaltungsaktes und den Zeitpunkt des Zugangs nachzuweisen.“
+            b) In Absatz 5 wird das Wort „Bekanntmachung“ durch das Wort „Bekanntgabe“ ersetzt.
+    34. Nach § 120 wird folgender § 120a eingefügt:
+        „§ 120a Übergangsregelung für die Durchführung von Verwaltungsverfahren
+        Auf alle vor dem 1. Januar 2025 begonnenen, aber nicht abgeschlossenen Verwaltungsverfahren sind dieses Gesetz in der bis zum 31. Dezember 2024 geltenden Fassung und das Planungssicherstellungsgesetz weiter anzuwenden. Dies gilt nicht für § 3a.
+
+Artikel 4 Inkrafttreten
+
+(1) Dieses Gesetz tritt vorbehaltlich des Absatzes 2 am 1. Januar 2025 in Kraft.
+(2) Artikel 1 Nummer 1 Buchstabe a, Nummer 7, 8 und 25 treten an dem Tag in Kraft, an dem das Gesetz zur Stärkung der frühen Öffentlichkeitsbeteiligung in Planungs- und Genehmigungsverfahren in Kraft tritt.
+
+Artikel 1 Änderung des Landesverwaltungsverfahrensgesetzes
+
+Das Landesverwaltungsverfahrensgesetz in der Fassung der Bekanntmachung vom 6. Mai 2020 (GVOBl. M-V S. 410, 465), das durch Artikel 1 des Gesetzes vom 11. Dezember 2024 (GVOBl. M-V S. 617) geändert worden ist, wird wie folgt geändert:
+    14. § 41 Absatz 2 und 2a wird durch den folgenden Absatz 2 ersetzt:
+        „(2) Ein schriftlicher Verwaltungsakt, der im Inland durch die Post übermittelt wird, gilt am vierten Tag nach der Aufgabe zur Post als bekannt gegeben. Ein Verwaltungsakt, der im Inland oder in das Ausland elektronisch übermittelt wird, gilt am vierten Tag nach der Absendung als bekannt gegeben. Ein elektronischer Verwaltungsakt, der in öffentlich zugänglichen Netzen zum Abruf bereitgestellt wird, gilt mit dem tatsächlichen Abruf oder spätestens am vierten Tag nach der Bereitstellung zum Abruf als bekannt gegeben; erfolgt die Bereitstellung über ein Nutzerkonto im Sinne des § 2 Absatz 5 des Onlinezugangsgesetzes, ist der Nutzer elektronisch über die Möglichkeit des Abrufs zu benachrichtigen. Dies gilt nicht, wenn der Verwaltungsakt nicht oder zu einem späteren Zeitpunkt zugegangen ist; im Zweifel hat die Behörde den Zugang des Verwaltungsaktes und den Zeitpunkt des Zugangs nachzuweisen.“
+
+Artikel 95 Inkrafttreten
+
+(1) Dieses Gesetz tritt vorbehaltlich der Absätze 2 bis 9 am 1. September 2026 in Kraft.
+(2) Artikel 17 tritt am 1. Oktober 2026 in Kraft.
+(3) Artikel 74 tritt am 2. Januar 2027 in Kraft.
+(4) Artikel 1 Nummer 1 Buchstabe d, f bis j, 10 bis 12 und 20 bis 25 tritt an dem Tag, an dem das Infrastruktur-Zukunftsgesetz in Kraft tritt, in Kraft, gleichzeitig tritt in Artikel 1 Nummer 19 § 72 Absatz 2 des Landesverwaltungsverfahrensgesetzes in Kraft.
+(5) Artikel 1 Nummer 5 bis 6, 14 bis 16 tritt an dem Tag in Kraft, an dem das [Gesetz zur Fortentwicklung des Verwaltungsverfahrensgesetzes] in Kraft tritt, gleichzeitig tritt in Artikel 1 Nummer 19 § 72 Absatz 1 des Landesverwaltungsverfahrensgesetzes in Kraft, Artikel 1 Nummer 1 Buchstabe e und Artikel 15 bis 16 jedoch nicht vor dem 1. Juli 2027.
+(6) Artikel 1 Nummer 1 Buchstabe a bis c, Nummer 2 bis 4, 7 bis 9, 13 und 18 tritt an dem Tag in Kraft, an dem das Gesetz für den Bürokratierückbau im Bereich des Bundesministeriums des Innern in Kraft tritt, Artikel 1 Nummer 1 Buchstabe a bis b, Nummer 2 bis 4 und 13 jedoch nicht vor dem 1. Juli 2027.
+(7) Artikel 3 Nummer 2, Artikel 7 Nummer 25, 28 und 30, Artikel 9 Nummer 1 Buchstabe b, Artikel 10 Nummer 1 Buchstabe b, Artikel 15 Nummer 1, Artikel 18, Artikel 19 Nummer 2 Buchstabe b, Artikel 24, Artikel 25 Nummer 1, Artikel 26, Artikel 29 Nummer 1 Buchstabe a und 2, Artikel 31 Nummer 1 und 6, Artikel 32 Nummer 1 und 3, Artikel 33, Artikel 34, Artikel 35 Nummer 2 bis 7, Artikel 56 Artikel 73, Artikel 75 Nummer 1, Artikel 78, Artikel 79, Artikel 81, Artikel 82, Artikel 83, Artikel 84 Nummer 1, Artikel 85 bis 89 und Artikel 92 treten an dem Tag in Kraft, an dem das [Gesetz zur Fortentwicklung des Verwaltungsverfahrensgesetzes] in Kraft tritt, jedoch nicht vor dem 1. Juli 2027.
+(8) Artikel 4 Nummer 1 Buchstabe a, 4 und 5, Artikel 7 Nummer 3, 18, 27 und 29, Artikel 13, Artikel 14, Artikel 15 Nummer 2, Artikel 16 Nummer 2, Artikel 19 Nummer 1 und 2 Buchstabe a, Artikel 55 Nummer 1 und 6 treten an dem Tag in Kraft, an dem das Gesetz für den Bürokratierückbau im Bereich des Bundesministeriums des Innern in Kraft tritt, jedoch nicht vor dem 1. Juli 2027.
+(9) Artikel 12 Nummer 7 tritt am 1. Januar 2029 in Kraft.
 
 Niedersachsen
 Niedersächsisches Verwaltungsverfahrensgesetz (NVwVfG)
@@ -124,7 +198,42 @@ Sachsen-Anhalt
 Not retrieved (see SOURCES.md).
 
 Schleswig-Holstein
-Not retrieved (see SOURCES.md).
+Landesverwaltungsgesetz
+Fundstelle: Gesetz- und Verordnungsblatt für Schleswig-Holstein 2024, Nr. 15, Ausgabe 30. Dezember 2024, S. 934 und 936: Gesetz zur Änderung des Landesverwaltungsgesetzes vom 13. Dezember 2024, Artikel 1 Nummer 2, Artikel 2
+
+Artikel 1 Änderung des Landesverwaltungsgesetzes
+
+Das Landesverwaltungsgesetz in der Fassung der Bekanntmachung vom 2. Juni 1992 (GVOBl. Schl.-H. S. 243, ber. S. 534), zuletzt geändert durch Artikel 2 des Gesetzes vom 30. September 2024 (GVOBl. Schl.-H. S. 734), wird wie folgt geändert:
+    2. In § 79a Satz 2, § 110 Absatz 2 Satz 1 und 2, Absatz 2b Satz 3, § 149 Absatz 2 Satz 2, § 150 Absatz 7 Satz 2 und § 150a Absatz 4 Satz 1 wird jeweils das Wort „dritten“ durch das Wort „vierten“ ersetzt.
+
+Artikel 2 Inkrafttreten
+
+(1) Dieses Gesetz tritt vorbehaltlich des Absatzes 2 am Tage nach seiner Verkündung in Kraft.
+(2) Artikel 1 Nummer 2 tritt am 1. Januar 2025 in Kraft.
 
 Thüringen
-Not retrieved (see SOURCES.md).
+Thüringer Verwaltungsverfahrensgesetz (ThürVwVfG)
+Fundstelle: Gesetz- und Verordnungsblatt für den Freistaat Thüringen 2024, Nr. 9, ausgegeben zu Erfurt, den 18. Juli 2024, S. 277, 278 und 297: Thüringer Gesetz zur Änderung verwaltungsrechtlicher Vorschriften im Jahr 2024 vom 2. Juli 2024, Artikel 1 §§ 1 und 8, Artikel 90
+
+§ 1 Anwendungsbereich
+
+(1) Für die öffentlich-rechtliche Verwaltungstätigkeit der Behörden
+    1. des Landes,
+    2. der Gemeinden und Gemeindeverbände,
+    3. der sonstigen der Aufsicht des Landes unterstehenden Körperschaften, Anstalten und Stiftungen des öffentlichen Rechts,
+gelten dieses Gesetz und das Verwaltungsverfahrensgesetz (VwVfG) mit Ausnahme der §§ 1, 2, 33 Abs. 1 Satz 2 Halbsatz 2, § 34 Abs. 5, § 61 Abs. 2 Satz 1 und 3, § 78 Abs. 1 und 2 Satz 2 sowie der §§ 94, 96 und 100, 101, 102, 102a und 103 VwVfG. Die nach Satz 1 geltenden Bestimmungen des Verwaltungsverfahrensgesetzes und dieses Gesetz finden nur Anwendung, soweit nicht Rechtsvorschriften des Landes inhaltsgleiche oder entgegenstehende Bestimmungen enthalten. Verfahrensregelungen in Rechtsvorschriften des Bundes bleiben unberührt.
+(2) Behörde im Sinne dieses Gesetzes ist jede Stelle, die Aufgaben der öffentlichen Verwaltung wahrnimmt.
+
+§ 8 Überleitungs- und Übergangsbestimmungen
+
+(1) Bereits begonnene Verfahren sind nach den Bestimmungen dieses Gesetzes zu Ende zu führen. Für Verwaltungsverfahren nach Satz 1, bei denen das Planungssicherstellungsgesetz in der bis zum Ablauf des 31. Dezember 2023 oder der bis zum Ablauf des 31. Dezember 2024 geltenden Fassung zur Anwendung kam oder kommt, gilt § 102a VwVfG entsprechend.
+(2) Die Zulässigkeit eines Rechtsbehelfs gegen die vor Inkrafttreten dieses Gesetzes ergangenen Entscheidungen richtet sich nach den bisher geltenden Vorschriften.
+(3) Fristen, deren Lauf vor Inkrafttreten dieses Gesetzes begonnen hat, werden nach den bisher geltenden Rechtsvorschriften berechnet.
+(4) Für die Erstattung von Kosten im Vorverfahren gelten die Vorschriften dieses Gesetzes, wenn das Vorverfahren vor Inkrafttreten dieses Gesetzes noch nicht abgeschlossen ist.
+(5) § 53 in der am 3. Dezember 2004 geltenden Fassung findet auf die an diesem Tag bestehenden und noch nicht verjährten Ansprüche Anwendung. Eine vor Ablauf des 3. Dezember 2004 eingetretene und zu diesem Zeitpunkt noch nicht beendete Unterbrechung der Verjährung gilt mit Ablauf des Tages vor dem 3. Dezember 2004 als beendet; die neue Verjährung ist mit Beginn des 3. Dezember 2004 gehemmt. Ist ein Verwaltungsakt, der zur Unterbrechung der Verjährung geführt hat, vor Ablauf des 3. Dezember 2004 aufgehoben worden und wurde innerhalb von sechs Monaten nach der Aufhebung ein entsprechender zweiter Verwaltungsakt erlassen, gilt die Verjährung des Anspruchs mit Erlass des ersten Verwaltungsakts als gehemmt.
+
+Artikel 90 Inkrafttreten, Außerkrafttreten
+
+(1) Dieses Gesetz tritt am 1. Januar 2025 in Kraft.
+(2) Abweichend von Absatz 1 treten Artikel 3 Nr. 3 bis 5, Artikel 4 Nr. 1, 2 und 7 bis 9, die Artikel 22 und 28 Nr. 2 und 3, die Artikel 32 und 36 Nr. 1 sowie Artikel 43 Nr. 3 und 4 am Tage nach der Verkündung in Kraft.
+(3) Gleichzeitig mit dem Inkrafttreten nach Absatz 1 tritt das Thüringer Verwaltungsverfahrensgesetz in der Fassung vom 1. Dezember 2014 (GVBl. S. 685), zuletzt geändert durch Artikel 3 des Gesetzes vom 10. Mai 2018 (GVBl. S. 212), außer Kraft.
