@@ -520,13 +520,26 @@ def test_a_pre_registration_without_a_required_field_is_named() -> None:
     complete["registered"] = {key: "x" for key in prereg_hashes.REQUIRED_IN["registered"]}
     complete["frozen"] = {key: "x" for key in prereg_hashes.REQUIRED_IN["frozen"]}
     complete["data"] = {key: "x" for key in prereg_hashes.REQUIRED_IN["data"]}
+    complete["sentences"] = {key: ["head"] for key in prereg_hashes.REQUIRED_IN["sentences"]}
     assert prereg_hashes.required_problems(complete) == []
     del complete["pledge"]
     del complete["frozen"]["served_models"]
+    del complete["sentences"]["page_block"]
     assert prereg_hashes.required_problems(complete) == [
         "pledge: missing",
         "frozen.served_models: missing",
+        "sentences.page_block: missing",
     ]
+
+
+def test_the_registered_sentences_hold_both_slot_lists_of_the_templates() -> None:
+    """The pre-registration copies final_templates.json as its ``sentences``: the README's slots and the page's
+    are registered with the templates, and a pre-registration without either is incomplete."""
+    from evals.present import final
+
+    assert prereg_hashes.REQUIRED_IN["sentences"] == tuple(final.BLOCKS.values())
+    assert set(final.BLOCKS.values()) <= set(final.load_templates())
+    assert "evals/present/final_templates.json" in prereg_hashes.CODE_PATHS
 
 
 def test_the_pledge_and_rule_texts_must_be_word_for_word_in_the_md() -> None:

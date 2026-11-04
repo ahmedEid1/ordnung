@@ -1,7 +1,15 @@
 {
   "schema": "ordnung-final-sentences/1",
-  "about": "The sentences the README says about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
+  "about": "The sentences the README and docs/evals.md say about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block or in the final section of docs/evals.md. page_block lists every slot, for docs/evals.md. readme_block lists the slots the README says, in the same order, each word for word as on the page; a slot is there for what it reports, whatever its result: the accuracy family of the one confirmatory decision (the headline against the model alone, the model with the rules pasted in, the agent's non-inferiority), every condition's late or missed dates, the held-out Ask set, and the one limitation that bears on every number (who wrote the letters, so absolute accuracy may be higher than on real mail: the README's line on where it falls short). The rest is on the page only, so that the README's block stays within twelve lines. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
   "readme_block": [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "ask",
+    "limitations.absolute"
+  ],
+  "page_block": [
     "head",
     "rules_text",
     "agent",
@@ -15,7 +23,11 @@
     "ask",
     "stress",
     "e2e",
-    "limitations",
+    "limitations.s_conv",
+    "limitations.ambiguous",
+    "limitations.absolute",
+    "limitations.ask_scope",
+    "limitations.reads",
     "owner",
     "provenance"
   ],

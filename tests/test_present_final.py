@@ -1,10 +1,12 @@
 """The final run's pre-registered sentences (``evals/present/final.py``, ``evals/present/final_templates.json``).
 
 The templates are written before any final result exists and are frozen with the code: every sentence the README
-says about the final run comes from them, filled from the final analysis and the results files it names. These
-tests render every code on synthetic finals (results in Ordnung's favour and against it), check that no template
-holds a number of its own, that each sentence names every condition it compares and that no sentence contradicts
-the interval it prints. The last test holds the README to the sentences once the final analysis is published.
+and docs/evals.md say about the final run comes from them, filled from the final analysis and the results files it
+names. These tests render every code on synthetic finals (results in Ordnung's favour and against it), check that no
+template holds a number of its own, that each sentence names every condition it compares and that no sentence
+contradicts the interval it prints. The README says a few slots of the page's (``readme_block`` of
+``page_block``), word for word and in the same order, whatever the result, and they fit its block's 12 lines. The
+last tests hold the README and docs/evals.md to their sentences once the final analysis is published.
 """
 
 from __future__ import annotations
@@ -20,8 +22,10 @@ from typing import Any
 
 import pytest
 from evals import analysis
-from evals.present import BEGIN, END, final
+from evals.present import BEGIN, END, final, text
 from evals.records import CONDITIONS
+
+from test_readme import MAX_LINES
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINES = ("llm_only", "llm_rules_text", "llm_rules_tool")
@@ -401,7 +405,7 @@ SCENARIOS: tuple[tuple[str, Callable[[], dict[str, Any]], Callable[[], dict[str,
 
 def _rendered() -> Iterator[tuple[str, final.Sentence]]:
     for name, make_final, make_sources in SCENARIOS:
-        for sentence in final.coded(make_final(), prereg(), sources=make_sources()):
+        for sentence in final.coded(make_final(), prereg(), block="page", sources=make_sources()):
             yield name, sentence
 
 
@@ -429,29 +433,94 @@ def _codes(coded: list[final.Sentence]) -> dict[str, list[str]]:
 # --------------------------------------------------------------------------------------------------
 
 
+#: The README's slots: the accuracy family of the one confirmatory decision (the headline against the model alone,
+#: the rules pasted in, the agent's non-inferiority), every condition's late or missed dates, the held-out Ask set
+#: and the one limitation that bears on every number (who wrote the letters, so accuracy may be higher than on real
+#: mail).
+README_SLOTS = ["head", "rules_text", "agent", "harm", "ask", "limitations.absolute"]
+PAGE_SLOTS = [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "f2.llm_only",
+    "f2.llm_rules_text",
+    "f2.llm_rules_tool",
+    "stability",
+    "flags",
+    "newkinds",
+    "ask",
+    "stress",
+    "e2e",
+    "limitations.s_conv",
+    "limitations.ambiguous",
+    "limitations.absolute",
+    "limitations.ask_scope",
+    "limitations.reads",
+    "owner",
+    "provenance",
+]
+
+
 def test_the_templates_file_is_well_formed_and_matches_the_code() -> None:
     templates = final.load_templates()
     assert final.check_templates(templates) == []
     assert set(templates["templates"]) == set(final.CODES)
-    assert templates["readme_block"] == [
-        "head",
-        "rules_text",
-        "agent",
-        "harm",
-        "f2.llm_only",
-        "f2.llm_rules_text",
-        "f2.llm_rules_tool",
-        "stability",
-        "flags",
-        "newkinds",
-        "ask",
-        "stress",
-        "e2e",
-        "limitations",
-        "owner",
-        "provenance",
-    ]
+    assert templates["page_block"] == PAGE_SLOTS
+    assert templates["readme_block"] == README_SLOTS
+    assert sorted(PAGE_SLOTS) == sorted(final.ALL_SLOTS)
     assert list(templates["conditions"]) == list(CONDITIONS)
+
+
+def test_the_readme_keeps_the_confirmatory_family_harm_ask_and_the_caveat_on_the_writer() -> None:
+    """The README's slots are chosen for what they report, before any result: the family of the one confirmatory
+    decision (``F1_accuracy``, against each baseline), the safety endpoint, the held-out Ask set and the caveat that
+    the letters' writer comes from the benchmarked model's family. The caveat's slot opens with the sentence on who
+    wrote the letters, which it refers back to."""
+    from evals import analysis
+
+    assert analysis.CONFIRMATORY == {"family": "F1_accuracy", "baseline": "llm_only"}
+    codes = final.load_templates()["templates"]
+    accuracy_family = {"head": "llm_only", "rules_text": "llm_rules_text", "agent": "llm_rules_tool"}
+    for slot, baseline in accuracy_family.items():
+        decided = [code for code in final.CODES if code.startswith(f"{slot}.") and code != "head.intro"]
+        assert decided and all(baseline in codes[code]["compares"] for code in decided), slot
+    assert set(codes["harm.some"]["compares"]) == set(CONDITIONS)
+    said = [s.code for s in final.coded(good(), prereg(), block="readme", sources=no_set_aside(sources()))]
+    assert said[-2:] == ["limitations.writer", "limitations.absolute"]
+    assert "that family" in codes["limitations.absolute"]["text"]
+
+
+def test_the_two_slot_lists_are_checked() -> None:
+    """Each list names known slots once; the page names every slot; the README names page slots in the page's
+    order; a slot without a rule is refused."""
+    templates = final.load_templates()
+    broken = copy.deepcopy(templates)
+    broken["page_block"].remove("stress")
+    assert any("page_block leaves out stress" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    broken["page_block"].append("head")
+    assert any("page_block names a slot twice" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    broken["readme_block"] = ["agent", "head"]
+    assert any("another order" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    broken["page_block"].remove("limitations.reads")
+    broken["readme_block"] = ["head", "limitations.reads"]
+    problems = final.check_templates(broken)
+    assert any("limitations.reads, which page_block does not" in problem for problem in problems)
+    for unknown in ("limitations", "f2", "f2.weather", "limitations.weather", "head.intro"):
+        broken = copy.deepcopy(templates)
+        broken["readme_block"].append(unknown)
+        assert any(f"unknown slot {unknown!r}" in problem for problem in final.check_templates(broken)), (
+            unknown
+        )
+    broken = copy.deepcopy(templates)
+    del broken["page_block"]
+    assert "page_block must list the slots in order" in final.check_templates(broken)
+    assert all(final._rule(slot) is not None for slot in final.ALL_SLOTS)
+    with pytest.raises(final.FinalSentenceError, match="no block"):
+        final.coded(good(), prereg(), block="appendix", sources=sources())
 
 
 def test_a_malformed_template_set_is_refused() -> None:
@@ -471,7 +540,7 @@ def test_a_malformed_template_set_is_refused() -> None:
     with pytest.raises(final.FinalSentenceError, match=r"head\.clear"):
         doc = prereg()
         del doc["sentences"]["templates"]["head.clear"]
-        final.sentences(good(), doc, sources=sources())
+        final.sentences(good(), doc, block="page", sources=sources())
 
 
 def test_no_template_holds_a_digit_outside_a_placeholder() -> None:
@@ -509,11 +578,16 @@ def test_every_code_renders_for_good_and_bad_synthetic_finals() -> None:
         assert "n/a" not in sentence.text and "None" not in sentence.text, (name, sentence.code)
     assert set(seen) == set(final.CODES), sorted(set(final.CODES) - set(seen))
     # the good result and the bad one each render a whole block, through different codes
-    good_codes = {s.code for s in final.coded(good(), prereg(), sources=no_set_aside(sources()))}
+    good_codes = {
+        s.code for s in final.coded(good(), prereg(), block="page", sources=no_set_aside(sources()))
+    }
     bad_codes = {
         s.code
         for s in final.coded(
-            bad(), prereg(), sources=sources(owner="pending", deviations=4, ask_runs=1, stress=False)
+            bad(),
+            prereg(),
+            block="page",
+            sources=sources(owner="pending", deviations=4, ask_runs=1, stress=False),
         )
     }
     assert {"head.clear", "rules_text.clear", "agent.non_inferior", "harm.none", "f2.fewer"} <= good_codes
@@ -537,13 +611,53 @@ def test_every_placeholder_resolves_and_every_declared_one_is_used() -> None:
     assert rendered == set(final.CODES)
 
 
-def test_sentences_come_in_the_registered_readme_order() -> None:
+def test_sentences_come_in_each_block_s_registered_order() -> None:
+    """Every slot of a block says something, in the block's order; only the limitation on reads recorded within
+    days says nothing, with one read."""
     templates = final.load_templates()
     for name, make_final, make_sources in SCENARIOS:
-        coded = final.coded(make_final(), prereg(), sources=make_sources())
-        slots = [sentence.slot for sentence in coded]
-        assert list(dict.fromkeys(slots)) == templates["readme_block"], name
-        assert final.sentences(make_final(), prereg(), sources=make_sources()) == [s.text for s in coded]
+        for block in ("page", "readme"):
+            coded = final.coded(make_final(), prereg(), block=block, sources=make_sources())
+            slots = list(dict.fromkeys(sentence.slot for sentence in coded))
+            registered = templates[f"{block}_block"]
+            if make_final()["primary"]["reads"] == 1:
+                registered = [slot for slot in registered if slot != "limitations.reads"]
+            assert slots == registered, (name, block)
+            texts = final.sentences(make_final(), prereg(), block=block, sources=make_sources())
+            assert texts == [s.text for s in coded]
+
+
+def test_the_readme_says_page_sentences_word_for_word_whatever_the_result() -> None:
+    """The README's sentences are the page's sentences of its slots, the same text in the same order; across the
+    synthetic finals every code of a README slot reaches the README."""
+    readme_slots = final.load_templates()["readme_block"]
+    reached = set()
+    for name, make_final, make_sources in SCENARIOS:
+        page = final.coded(make_final(), prereg(), block="page", sources=make_sources())
+        readme = final.coded(make_final(), prereg(), block="readme", sources=make_sources())
+        assert readme == [sentence for sentence in page if sentence.slot in readme_slots], name
+        assert {s.text for s in readme} <= {s.text for s in page}, name
+        reached |= {sentence.code for sentence in readme}
+    slots_of = {code: code.split(".")[0] for code in final.CODES}
+    expected = {
+        code
+        for code in final.CODES
+        if slots_of[code] in readme_slots or code in ("limitations.writer", "limitations.absolute")
+    }
+    assert reached == expected, sorted(expected - reached)
+
+
+def test_the_readme_refuses_what_the_page_refuses() -> None:
+    """The README is rendered from the page: a result the page cannot say (a missing file of a page-only slot, a
+    contradicted harm decision) is refused for the README too."""
+    src = sources()
+    src["e2e"] = None
+    with pytest.raises(final.FinalSentenceError, match="e2e"):
+        final.coded(good(), prereg(), block="readme", sources=src)
+    doc = good()
+    doc["primary"]["decisions"]["f2_vs_llm_only"] = "more"
+    with pytest.raises(final.FinalSentenceError):
+        final.coded(doc, prereg(), block="readme", sources=no_set_aside(sources()))
 
 
 def test_every_rendered_sentence_names_every_condition_it_compares() -> None:
@@ -578,7 +692,7 @@ def test_no_clear_difference_never_prints_with_an_interval_that_excludes_zero() 
             lo, hi = _interval(sentence.text)
             assert lo <= 0 <= hi, (name, sentence.code, sentence.text)
     # the calibration run: level within noise by the rule, with an interval of +0.6 to +10.4 points
-    coded = final.coded(not_confirmed(), prereg(), sources=sources())
+    coded = final.coded(not_confirmed(), prereg(), block="page", sources=sources())
     text, codes = _slots(coded), _codes(coded)
     assert codes["rules_text"] == ["rules_text.not_confirmed"]
     assert "not confirmed by the pre-registered test" in text["rules_text"]
@@ -596,7 +710,7 @@ def test_no_clear_difference_holds_on_random_intervals() -> None:
         diff = (lo + hi) / 2
         _set(doc, "F1_accuracy", "llm_only", "beats_llm_only", "no_clear_difference", _row(diff, lo, hi, 0.3))
         _set(doc, "F2_harm", "llm_only", "f2_vs_llm_only", "no_clear_difference", _row(diff, lo, hi, 0.3))
-        for sentence in final.coded(doc, prereg(), sources=sources()):
+        for sentence in final.coded(doc, prereg(), block="page", sources=sources()):
             if sentence.slot in ("head", "f2.llm_only") and not sentence.code.startswith("head.intro"):
                 text = sentence.text
                 shown_lo, shown_hi = _interval(text)
@@ -637,38 +751,38 @@ def _contradictions() -> Iterator[tuple[str, dict[str, Any]]]:
 @pytest.mark.parametrize("label,doc", list(_contradictions()), ids=[label for label, _ in _contradictions()])
 def test_a_decision_its_interval_contradicts_is_refused(label: str, doc: dict[str, Any]) -> None:
     with pytest.raises(final.FinalSentenceError):
-        final.sentences(doc, prereg(), sources=no_set_aside(sources()))
+        final.sentences(doc, prereg(), block="page", sources=no_set_aside(sources()))
 
 
 def test_a_missing_named_result_is_refused_not_left_out() -> None:
     src = sources()
     src["e2e"] = None
     with pytest.raises(final.FinalSentenceError, match="e2e"):
-        final.sentences(good(), prereg(), sources=src)
+        final.sentences(good(), prereg(), block="page", sources=src)
     src = sources()
     src["power"] = None
     with pytest.raises(final.FinalSentenceError, match="power"):
-        final.sentences(undecided(), prereg(), sources=src)
+        final.sentences(undecided(), prereg(), block="page", sources=src)
     src = sources()
     src["deviations"] = None
     with pytest.raises(final.FinalSentenceError, match="deviations"):
-        final.sentences(good(), prereg(), sources=src)
+        final.sentences(good(), prereg(), block="page", sources=src)
     doc = good()
     del doc["sensitivities"]
     with pytest.raises(final.FinalSentenceError, match="s_conv"):
-        final.sentences(doc, prereg(), sources=sources())
+        final.sentences(doc, prereg(), block="page", sources=sources())
     doc = good()
     del doc["labels"]
     with pytest.raises(final.FinalSentenceError, match="left open"):
-        final.sentences(doc, prereg(), sources=sources())
+        final.sentences(doc, prereg(), block="page", sources=sources())
     with pytest.raises(final.FinalSentenceError, match="weather"):
-        final.sentences(good(), prereg(), sources={**sources(), "weather": {}})
+        final.sentences(good(), prereg(), block="page", sources={**sources(), "weather": {}})
 
 
 def test_the_reads_change_the_head_and_the_stability_sentence() -> None:
     codes, text = {}, {}
     for make in (good, two_reads, one_read):
-        coded = final.coded(make(), prereg(), sources=sources())
+        coded = final.coded(make(), prereg(), block="page", sources=sources())
         reads = make()["primary"]["reads"]
         codes[reads], text[reads] = _codes(coded), _slots(coded)
     assert codes[3]["head"][0] == "head.intro" and "each read 3 times" in text[3]["head"]
@@ -676,12 +790,12 @@ def test_the_reads_change_the_head_and_the_stability_sentence() -> None:
     assert codes[1]["head"][0] == "head.intro.k1" and "read once" in text[1]["head"]
     assert codes[2]["stability"] == ["stability.too_few"]
     assert codes[1]["stability"] == ["stability.not_run"]
-    assert "limitations.reads" in codes[2]["limitations"]
-    assert "limitations.reads" not in codes[1]["limitations"]
+    assert codes[2]["limitations.reads"] == ["limitations.reads"]
+    assert "limitations.reads" not in codes[1]
 
 
 def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
-    text = _slots(final.coded(good(), prereg(), sources=no_set_aside(sources())))
+    text = _slots(final.coded(good(), prereg(), block="page", sources=no_set_aside(sources())))
     assert "On 112 deadlines in 126 synthetic letters" in text["head"]
     assert "Ordnung dates **99.4 %** exactly right (95 % CI 96.4–100.0)" in text["head"]
     assert "(+18.0 points, 95 % CI +11.0 to +25.0; Holm p < 0.001)" in text["head"]
@@ -700,13 +814,13 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
     )
     assert (
         "deadlines that changed for only one of Ordnung and the model alone: 5, fewer than 10"
-        in _slots(final.coded(two_reads(), prereg(), sources=sources()))["stability"]
+        in _slots(final.coded(two_reads(), prereg(), block="page", sources=sources()))["stability"]
     )
     assert "On 32 letters of 8 kinds" in text["newkinds"]
     assert "90 of 104 answers strictly right" in text["ask"]
     # the held-out Ask set has one name everywhere, and its scope line names it too
     name = "“Ask: new questions on the demo household”"
-    assert text["ask"].startswith(name) and name in text["limitations"]
+    assert text["ask"].startswith(name) and name in text["limitations.ask_scope"]
     for code in ("ask.runs", "ask.one_run", "ask.not_recorded", "limitations.ask_scope"):
         assert final.load_templates()["templates"][code]["text"].startswith(name), code
     assert "1 of 16 letters for Ordnung and 5 for the agent" in text["stress"]
@@ -716,15 +830,17 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
         "above (counted once for a letter and its photo): deadlines 3, offered dates 2, contract dates 1. Such a "
         "deadline counts as handled when the answer lists it and either gives it no date, flags it, or warns that "
         "the letter's dates are uncertain; such an offered date or contract date is not scored."
-        in text["limitations"]
+        in text["limitations.ambiguous"]
     )
     assert (
         "No deadline, offered date or contract date of the final letters is left open between two or more dates "
-        "by the letter or the law." in _slots(final.coded(bad(), prereg(), sources=sources()))["limitations"]
+        "by the letter or the law."
+        in _slots(final.coded(bad(), prereg(), block="page", sources=sources()))["limitations.ambiguous"]
     )
     only_offered = bad()
     only_offered["labels"]["ambiguous_slots"]["offered"] = 1
-    assert "offered dates 1" in _slots(final.coded(only_offered, prereg(), sources=sources()))["limitations"]
+    left_open = _slots(final.coded(only_offered, prereg(), block="page", sources=sources()))
+    assert "offered dates 1" in left_open["limitations.ambiguous"]
     assert "hash 0123456789ab" in text["provenance"]
     assert "no deviation was recorded" in text["provenance"]
 
@@ -738,14 +854,18 @@ def test_the_ask_sentence_reads_the_file_of_runs_the_held_out_set_writes(tmp_pat
     from test_evals_ask_heldout import _three_runs
 
     payload = json.loads(json.dumps(heldout.final_payload(_three_runs(tmp_path / "runs"), day="2026-12-20")))
-    text = _slots(final.coded(good(), prereg(), sources={**no_set_aside(sources()), "ask": payload}))
+    text = _slots(
+        final.coded(good(), prereg(), block="page", sources={**no_set_aside(sources()), "ask": payload})
+    )
     strict = payload["r1"]["strict_accuracy"]
     assert f"{int(strict['k'])} of {int(strict['n'])} answers strictly right" in text["ask"]
 
 
 def test_the_sentences_are_deterministic_and_hold_no_model_id() -> None:
-    first = final.sentences(bad(), prereg(), sources=sources(owner="pending", deviations=4))
-    assert first == final.sentences(bad(), prereg(), sources=sources(owner="pending", deviations=4))
+    first = final.sentences(bad(), prereg(), block="page", sources=sources(owner="pending", deviations=4))
+    assert first == final.sentences(
+        bad(), prereg(), block="page", sources=sources(owner="pending", deviations=4)
+    )
     # the pinned benchmark model is the only model id; the templates name no model at all
     text = (" ".join(first) + json.dumps(final.load_templates())).replace("claude-sonnet-5", "")
     assert not re.search(r"claude-[a-z]+-\d|sonnet-\d", text, re.IGNORECASE)
@@ -829,7 +949,7 @@ def test_the_final_analysis_itself_renders() -> None:
     )
     if "noninferiority" not in doc["primary"]:
         pytest.skip("this final analysis gives no non-inferiority bound against the agent yet")
-    coded = final.coded(doc, prereg(), sources=sources())
+    coded = final.coded(doc, prereg(), block="page", sources=sources())
     assert [s.slot for s in coded if not s.slot.startswith("f2.")] == [
         "head",
         "head",
@@ -842,7 +962,12 @@ def test_the_final_analysis_itself_renders() -> None:
         "ask",
         "stress",
         "e2e",
-        *["limitations"] * 6,
+        "limitations.s_conv",
+        "limitations.ambiguous",
+        "limitations.absolute",
+        "limitations.absolute",
+        "limitations.ask_scope",
+        "limitations.reads",
         "owner",
         "provenance",
     ]
@@ -859,7 +984,7 @@ def _readme(block: str) -> str:
 
 
 def test_the_readme_check_finds_a_missing_reordered_or_added_sentence() -> None:
-    said = final.sentences(good(), prereg(), sources=no_set_aside(sources()))
+    said = final.sentences(good(), prereg(), block="readme", sources=no_set_aside(sources()))
     wrapped = "\n\n".join(said).replace(". ", ".\n")  # the presenter may wrap the lines
     assert final.readme_problems(_readme(wrapped), said) == []
     assert final.readme_problems(_readme("\n\n".join(said[1:])), said)
@@ -893,23 +1018,103 @@ def test_published_finds_the_final_analysis_and_the_files_it_names(tmp_path: Pat
     assert found is not None
     final_doc, registration, files = found
     assert final_doc == good() and registration == prereg() and files == named
-    said = final.sentences(final_doc, registration, sources=files)
-    assert said == final.sentences(good(), prereg(), sources=named)
+    said = final.sentences(final_doc, registration, block="readme", sources=files)
+    assert said == final.sentences(good(), prereg(), block="readme", sources=named)
     assert final.readme_problems(_readme("\n".join(said)), said) == []
+    page = final.sentences(final_doc, registration, block="page", sources=files)
+    assert page == final.sentences(good(), prereg(), block="page", sources=named)
+    assert final.page_problems(_page("\n".join(page)), page) == []
     _write(results / "2026-12-12-claude-sonnet-5-final.json", good())
     with pytest.raises(final.FinalSentenceError, match="more than one"):
         final.published(tmp_path)
 
 
 def test_the_readme_block_is_the_final_sentences_in_their_registered_order() -> None:
-    """Once the final analysis is published, the README's generated block is exactly the registered sentences."""
+    """Once the final analysis is published, the README's generated block is exactly the registered README
+    sentences."""
     found = final.published(ROOT)
     if found is None:
         pytest.skip("the final analysis is not published yet")
     final_doc, registration, named = found
-    said = final.sentences(final_doc, registration, sources=named)
+    said = final.sentences(final_doc, registration, block="readme", sources=named)
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert final.readme_problems(readme, said) == []
+
+
+def test_the_final_section_of_docs_evals_is_every_final_sentence_in_its_registered_order() -> None:
+    """Once the final analysis is published, the final section of docs/evals.md, between its own markers, is
+    exactly the registered page sentences."""
+    found = final.published(ROOT)
+    if found is None:
+        pytest.skip("the final analysis is not published yet")
+    final_doc, registration, named = found
+    said = final.sentences(final_doc, registration, block="page", sources=named)
+    page = (ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+    assert final.page_problems(page, said) == []
+
+
+def _page(block: str) -> str:
+    return (
+        f"# Evaluation\n\n### 6.1 The final run\n\n{final.PAGE_BEGIN}\n{block}\n{final.PAGE_END}\n\nMore.\n"
+    )
+
+
+def test_the_page_check_finds_a_missing_reordered_or_added_sentence() -> None:
+    said = final.sentences(good(), prereg(), block="page", sources=no_set_aside(sources()))
+    wrapped = "\n\n".join(said).replace(". ", ".\n")
+    assert final.page_problems(_page(wrapped), said) == []
+    assert final.page_problems(_page("\n\n".join(said[1:])), said)
+    assert final.page_problems(_page("\n\n".join([said[1], said[0], *said[2:]])), said)
+    assert final.page_problems(_page("\n\n".join([*said, "Hand-written praise."])), said)
+    assert final.page_problems("# Evaluation\n\nNo block.\n", said)
+    # the README's markers are not the page's, and the README's sentences are not the page's
+    assert final.page_problems(_readme("\n".join(said)), said)
+    readme = final.sentences(good(), prereg(), block="readme", sources=no_set_aside(sources()))
+    assert final.page_problems(_page("\n".join(readme)), said)
+    assert {final.PAGE_BEGIN, final.PAGE_END}.isdisjoint({BEGIN, END})
+
+
+# --------------------------------------------------------------------------------------------------
+# The README's budget
+# --------------------------------------------------------------------------------------------------
+
+#: The 12 lines the README's generated block may take (tests/test_present.py holds today's block to them).
+README_BLOCK_LINES = 12
+
+
+def _readme_block_lines(said: list[final.Sentence]) -> int:
+    """The lines the README's block takes when it is laid out as evals/present/text.py lays out today's: the head's
+    sentences as one paragraph wrapped at ``text.WIDTH`` (today's headline), every other slot on one line of its own
+    (today's "Where it falls short" and "Ask" lines), then the chart and the link to the report; no blank line."""
+    head = " ".join(sentence.text for sentence in said if sentence.slot == "head")
+    others = list(dict.fromkeys(sentence.slot for sentence in said if sentence.slot != "head"))
+    return len(text.fill(head).splitlines()) + len(others) + 2
+
+
+def test_the_readme_s_sentences_fit_its_block_and_the_readme_its_length() -> None:
+    """For every synthetic final, and for the longest head the rules can give with every other README slot, the
+    README's sentences take at most 12 lines with the chart and the link; and the README with its longest final
+    block stays under its line limit (today's README without today's block, plus that block)."""
+    templates = final.load_templates()
+    heads: dict[str, str] = {}
+    largest = 0
+    for name, make_final, make_sources in SCENARIOS:
+        said = final.coded(make_final(), prereg(), block="readme", sources=make_sources())
+        lines = _readme_block_lines(said)
+        assert lines <= README_BLOCK_LINES, (name, lines)
+        largest = max(largest, lines)
+        for sentence in said:
+            if sentence.slot == "head":
+                kind = "intro" if sentence.code.startswith("head.intro") else "decision"
+                heads[kind] = max(heads.get(kind, ""), sentence.text, key=len)
+    longest = [final.Sentence("head", "", heads["intro"]), final.Sentence("head", "", heads["decision"])]
+    others = [final.Sentence(slot, "", "") for slot in templates["readme_block"] if slot != "head"]
+    worst = _readme_block_lines(longest + others)
+    assert worst <= README_BLOCK_LINES, worst
+    largest = max(largest, worst)
+    lines = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+    begin, end = lines.index(BEGIN), lines.index(END)
+    assert len(lines) - (end - begin - 1) + largest < MAX_LINES
 
 
 @pytest.mark.parametrize(
@@ -923,17 +1128,17 @@ def test_an_ask_run_or_the_stress_test_not_recorded_needs_its_deviation(
     stress test not completed is said only when a ``budget_cut`` or ``window_closed`` deviation recorded at the time
     names it; otherwise there is no sentence."""
     src = sources(ask_runs=ask_runs, stress=stress)
-    assert final.coded(good(), prereg(), sources=src)  # with the deviations
+    assert final.coded(good(), prereg(), block="page", sources=src)  # with the deviations
     src["deviations"] = [d for d in src["deviations"] if d["kind"] == "retake"]
     with pytest.raises(final.FinalSentenceError, match=what):
-        final.coded(good(), prereg(), sources=src)
+        final.coded(good(), prereg(), block="page", sources=src)
     # a deviation of another kind, or naming another run, does not say why
     src["deviations"] = [
         {"id": "D001", "kind": "retake", "applies_to": {"split": final.ASK_SPLIT, "repeat": 3}},
         {"id": "D002", "kind": "budget_cut", "applies_to": {"split": "holdout4", "repeat": 3}},
     ]
     with pytest.raises(final.FinalSentenceError, match=what):
-        final.coded(good(), prereg(), sources=src)
+        final.coded(good(), prereg(), block="page", sources=src)
 
 
 def test_the_ask_runs_planned_are_the_held_out_set_s() -> None:
@@ -945,11 +1150,11 @@ def test_the_ask_runs_planned_are_the_held_out_set_s() -> None:
 def test_harm_against_the_agent_is_described_never_decided() -> None:
     """The pre-registration describes harm against the agent (no margin for harm could be set before the data): its
     sentence gives the difference and its interval, never fewer, more or a p; a decision taken on it is refused."""
-    text = _slots(final.coded(good(), prereg(), sources=no_set_aside(sources())))
+    text = _slots(final.coded(good(), prereg(), block="page", sources=no_set_aside(sources())))
     agent = text["f2.llm_rules_tool"]
     assert "described, not tested" in agent and "Holm" not in agent and "power" not in agent
     assert not agent.startswith(("Fewer", "More"))
     doc = good()
     doc["primary"]["decisions"]["f2_vs_llm_rules_tool"] = "no_clear_difference"
     with pytest.raises(final.FinalSentenceError, match="described"):
-        final.coded(doc, prereg(), sources=no_set_aside(sources()))
+        final.coded(doc, prereg(), block="page", sources=no_set_aside(sources()))

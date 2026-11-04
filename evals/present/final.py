@@ -1,9 +1,31 @@
-"""The pre-registered sentences about the final run (``sentences(final_doc, prereg)``), standard library only.
+"""The pre-registered sentences about the final run, for the README and docs/evals.md; standard library only.
 
-Every sentence the README's generated block says about the final run is a template of
-``evals/present/final_templates.json`` (the pre-registration copies it as its ``sentences`` section). This module
-picks one template code per decision by the fixed rules below and fills its placeholders; it computes no statistic
-and writes no word of its own, so what the README can say was settled before any final result existed.
+Every sentence the README's generated block and the final-run section of ``docs/evals.md`` say about the final run
+is a template of ``evals/present/final_templates.json`` (the pre-registration copies it as its ``sentences``
+section). This module picks one template code per decision by the fixed rules below and fills its placeholders; it
+computes no statistic and writes no word of its own, so what either page can say was settled before any final result
+existed.
+
+The templates file orders the slots twice (:func:`sentences` takes ``block``, ``"page"`` or ``"readme"``).
+``page_block`` lists every slot: the final section of ``docs/evals.md``, between :data:`PAGE_BEGIN` and
+:data:`PAGE_END`, says all of them. ``readme_block`` lists the few the README says, in the same order: a subsequence
+of ``page_block``, so each README sentence is a page sentence, word for word. The README holds a slot for what it
+reports, never for what it says on a given result, so each of its slots is there whatever its code:
+
+* the accuracy family of the one confirmatory decision (``evals.analysis.CONFIRMATORY``): the headline with Ordnung
+  against the model alone (``head``), and the family's two other comparisons, against the model with the rules
+  pasted in (``rules_text``) and the agent's non-inferiority (``agent``);
+* the safety endpoint, every condition's late or missed dates (``harm``);
+* the held-out Ask set (``ask``), with its sentence for runs not recorded;
+* the one limitation that bears on every number above (``limitations.absolute``): the letters were written by a
+  model of the benchmarked model's family, so every condition's absolute accuracy may be higher than on real mail.
+  It is the README's "where it falls short" line, which the pledge keeps there.
+
+Everything else is on the page only: the tested harm comparisons (``f2.<baseline>``), stability, the flags, the new
+kinds, the stress test, the end-to-end run, the other limitations, the owner's checks and the provenance. They do
+not fit in the README's block, which stays within 12 lines (``tests/test_present_final.py`` checks it on every
+synthetic final): the head's sentences wrapped as one paragraph, as the headline is today, each other slot on a line
+of its own, the chart and the link to the report.
 
 The rules:
 
@@ -16,6 +38,7 @@ The rules:
   Ordnung and the model alone, and is not measured with one read;
 * the label slots the letter or the law leaves open between two or more dates are counted, deadlines, offered dates
   and contract dates apart, with what counts for them (``labels.ambiguous_slots`` of the final analysis);
+* a slot that has nothing to say says nothing: the limitation on reads recorded within days needs two reads or more;
 * a decision its interval or its counts contradict, a decision code without a template and a named result that is
   missing are refused (:class:`FinalSentenceError`), never written around. A result that was not recorded (the new
   kinds, Ask, the stress test) has its own sentence, which points to the deviations file; a held-out Ask run left
@@ -34,7 +57,8 @@ results files it names, passed as ``sources``:
   ``kappa``): the owner's checks, ``pending`` until done;
 * ``deviations``: ``evals/preregistration/deviations-0.4.0.json``, the list of deviations recorded at the time.
 
-:func:`published` finds them in a checkout; :func:`readme_problems` holds the README's block to the sentences.
+:func:`published` finds them in a checkout; :func:`readme_problems` holds the README's block to the README's
+sentences, and :func:`page_problems` the final section of ``docs/evals.md`` to the page's.
 """
 
 from __future__ import annotations
@@ -44,7 +68,7 @@ import json
 import math
 import re
 import string
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -54,6 +78,7 @@ TEMPLATES_PATH = Path(__file__).resolve().parent / "final_templates.json"
 SCHEMA = "ordnung-final-sentences/1"
 CONDITIONS = ("ordnung", "llm_only", "llm_rules_text", "llm_rules_tool")
 REFERENCE = "ordnung"
+BASELINES = tuple(condition for condition in CONDITIONS if condition != REFERENCE)
 #: The baseline the non-inferiority rule is about: the model with Ordnung's engine as a tool.
 AGENT = "llm_rules_tool"
 #: The results files the sentences name besides the final analysis and the pre-registration.
@@ -66,7 +91,13 @@ NOT_RUN_KINDS = ("budget_cut", "window_closed")
 ASK_REGISTERED_RUNS = 3
 #: Where a placeholder's value comes from (``context``: the slot's comparison).
 SOURCES = ("final", "prereg", "templates", "context", *NAMED)
-#: The slots ``readme_block`` may list; ``f2`` once per baseline, as ``f2.<baseline>``.
+#: The two ordered slot lists of the templates file, by the block each one fills.
+BLOCKS = {"readme": "readme_block", "page": "page_block"}
+#: docs/evals.md's final section lies between these two lines (the README's block between ``BEGIN`` and ``END``).
+PAGE_BEGIN = "<!-- evals:final:begin: the pre-registered sentences, in page_block order; do not edit -->"
+PAGE_END = "<!-- evals:final:end -->"
+#: The slots a block may list: ``f2`` once per baseline, as ``f2.<baseline>``, and ``limitations`` once per part, as
+#: ``limitations.<part>``.
 SLOTS = (
     "head",
     "rules_text",
@@ -82,6 +113,21 @@ SLOTS = (
     "limitations",
     "owner",
     "provenance",
+)
+#: The parts of the limitations: the disputed readings, the slots left open, who wrote the letters with what that
+#: does to absolute accuracy, the Ask set's scope, and reads recorded within days.
+LIMITATIONS = ("s_conv", "ambiguous", "absolute", "ask_scope", "reads")
+#: Every slot, as ``page_block`` must list it (in any order of its own).
+ALL_SLOTS = tuple(
+    name
+    for slot in SLOTS
+    for name in (
+        [f"f2.{b}" for b in BASELINES]
+        if slot == "f2"
+        else [f"limitations.{part}" for part in LIMITATIONS]
+        if slot == "limitations"
+        else [slot]
+    )
 )
 #: Every template code the rules can pick; the templates file holds exactly these.
 CODES = (
@@ -149,7 +195,7 @@ class FinalSentenceError(PresentError):
 
 
 class Sentence(NamedTuple):
-    """One rendered sentence: the ``readme_block`` slot it fills, its template code and its text (Markdown)."""
+    """One rendered sentence: the slot it fills, its template code and its text (Markdown)."""
 
     slot: str
     code: str
@@ -176,14 +222,6 @@ def _fields(text: str) -> list[str]:
         raise FinalSentenceError(f"a template's braces do not pair up: {exc}") from exc
 
 
-def _slot_ok(slot: object, baselines: Sequence[str]) -> bool:
-    if not isinstance(slot, str):
-        return False
-    if slot.startswith("f2."):
-        return slot[3:] in baselines
-    return slot in SLOTS and slot != "f2"
-
-
 def check_templates(templates: Mapping[str, Any]) -> list[str]:
     """What is wrong with a template set (empty when nothing is): its slots, codes, placeholders and rules."""
     problems: list[str] = []
@@ -195,16 +233,7 @@ def check_templates(templates: Mapping[str, Any]) -> list[str]:
         conditions = {c: c for c in CONDITIONS}
     elif not all(isinstance(name, str) and name for name in conditions.values()):
         problems.append("every condition needs a name")
-    baselines = [c for c in CONDITIONS if c != REFERENCE]
-    block = templates.get("readme_block")
-    if not isinstance(block, list) or not block:
-        problems.append("readme_block must list the slots in order")
-        block = []
-    for slot in block:
-        if not _slot_ok(slot, baselines):
-            problems.append(f"readme_block names an unknown slot {slot!r}")
-    if len(set(map(str, block))) != len(block):
-        problems.append("readme_block names a slot twice")
+    problems += _block_problems(templates)
     rules = templates.get("rules")
     minimum = rules.get("stability_min_discordant") if isinstance(rules, Mapping) else None
     if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 1:
@@ -256,6 +285,36 @@ def check_templates(templates: Mapping[str, Any]) -> list[str]:
             problems.append(f"{name}: total is sum or count")
         if "each" in spec and spec.get("total") != "sum":
             problems.append(f"{name}: each needs total sum")
+    return problems
+
+
+def _block_problems(templates: Mapping[str, Any]) -> list[str]:
+    """What is wrong with the two slot lists: a slot no rule fills, a slot named twice, a page that leaves a slot
+    out, a README slot the page does not say or says in another order."""
+    problems: list[str] = []
+    blocks: dict[str, list[str]] = {}
+    for name in BLOCKS.values():
+        block = templates.get(name)
+        if not isinstance(block, list) or not block:
+            problems.append(f"{name} must list the slots in order")
+            block = []
+        for slot in block:
+            if _rule(slot) is None:
+                problems.append(f"{name} names an unknown slot {slot!r}, which no rule fills")
+        if len(set(map(str, block))) != len(block):
+            problems.append(f"{name} names a slot twice")
+        blocks[name] = [str(slot) for slot in block]
+    page, readme = blocks[BLOCKS["page"]], blocks[BLOCKS["readme"]]
+    left_out = [slot for slot in ALL_SLOTS if slot not in page]
+    if left_out:
+        problems.append(f"page_block leaves out {', '.join(left_out)}: every slot is said on the page")
+    not_on_page = [slot for slot in readme if slot not in page]
+    if not_on_page:
+        problems.append(f"readme_block names {', '.join(not_on_page)}, which page_block does not")
+    else:
+        rest = iter(page)
+        if not all(slot in rest for slot in readme):
+            problems.append("readme_block lists its slots in another order than page_block")
     return problems
 
 
@@ -591,7 +650,7 @@ def _e2e(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield ("e2e.set_aside" if set_aside else "e2e.none_set_aside"), {}
 
 
-def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
+def _s_conv(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     if inputs.optional("final", "sensitivities.s_conv") is None:
         raise FinalSentenceError("the final analysis has no s_conv sensitivity analysis")
     tagged = inputs.whole("sensitivities.s_conv.tagged_items")
@@ -600,6 +659,9 @@ def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         yield "limitations.s_conv_none", {}
     else:
         yield ("limitations.s_conv" if changed else "limitations.s_conv_same"), {}
+
+
+def _left_open(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     if inputs.optional("final", "labels.ambiguous_slots") is None:
         raise FinalSentenceError(
             "the final analysis does not count the label slots left open (labels.ambiguous_slots)"
@@ -608,9 +670,19 @@ def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         inputs.whole(f"labels.ambiguous_slots.{kind}") for kind in ("deadline", "offered", "contract")
     )
     yield ("limitations.ambiguous" if left_open else "limitations.ambiguous_none"), {}
+
+
+def _absolute(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
+    # the caveat refers back to the writer ("a model of that family"), so the two are said together
     yield "limitations.writer", {}
     yield "limitations.absolute", {}
+
+
+def _ask_scope(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield "limitations.ask_scope", {}
+
+
+def _reads(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     if inputs.whole("primary.reads") > 1:
         yield "limitations.reads", {}
 
@@ -642,7 +714,8 @@ def _provenance(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield {0: "provenance.none", 1: "provenance.one"}.get(len(deviations), "provenance.some"), {}
 
 
-_RULES = {
+_Rule = Callable[[_Inputs], Iterator[tuple[str, dict[str, str]]]]
+_RULES: dict[str, _Rule] = {
     "head": _head,
     "rules_text": _rules_text,
     "agent": _agent,
@@ -653,10 +726,28 @@ _RULES = {
     "ask": _ask,
     "stress": _stress,
     "e2e": _e2e,
-    "limitations": _limitations,
     "owner": _owner,
     "provenance": _provenance,
 }
+_LIMITATION_RULES: dict[str, _Rule] = {
+    "s_conv": _s_conv,
+    "ambiguous": _left_open,
+    "absolute": _absolute,
+    "ask_scope": _ask_scope,
+    "reads": _reads,
+}
+
+
+def _rule(slot: object) -> _Rule | None:
+    """The rule that picks a slot's codes, or ``None`` for a name that is no slot."""
+    if not isinstance(slot, str):
+        return None
+    family, dot, part = slot.partition(".")
+    if family == "f2" and dot:
+        return (lambda inputs: _f2(inputs, part)) if part in BASELINES else None
+    if family == "limitations" and dot:
+        return _LIMITATION_RULES.get(part)
+    return None if dot else _RULES.get(slot)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -668,11 +759,16 @@ def coded(
     final_doc: Mapping[str, Any],
     prereg: Mapping[str, Any],
     *,
+    block: str,
     sources: Mapping[str, Any] | None = None,
 ) -> list[Sentence]:
-    """Every sentence about the final run, in the pre-registration's ``readme_block`` order, with its slot and code:
-    ``final_doc`` is the final analysis, ``prereg`` the pre-registration (its ``sentences`` are the templates) and
-    ``sources`` the results files it names (:data:`NAMED`)."""
+    """The sentences one block says about the final run, in its order, with their slot and code: ``block`` is
+    ``"page"`` (every slot, ``page_block``) or ``"readme"`` (``readme_block``); ``final_doc`` is the final analysis,
+    ``prereg`` the pre-registration (its ``sentences`` are the templates) and ``sources`` the results files it names
+    (:data:`NAMED`). The page is rendered either way, so the README refuses what the page refuses, and the README's
+    sentences are the page's, word for word."""
+    if block not in BLOCKS:
+        raise FinalSentenceError(f"no block {block!r}: {' or '.join(BLOCKS)}")
     templates = prereg.get("sentences")
     if not isinstance(templates, Mapping):
         raise FinalSentenceError("the pre-registration holds no sentences")
@@ -691,22 +787,29 @@ def coded(
             )
     docs = {"final": final_doc, "prereg": prereg, **{name: named.get(name) for name in NAMED}}
     inputs = _Inputs(templates, docs)
-    out: list[Sentence] = []
-    for slot in templates["readme_block"]:
-        chosen = _f2(inputs, slot[3:]) if slot.startswith("f2.") else _RULES[slot](inputs)
-        for code, context in chosen:
-            out.append(Sentence(slot, code, inputs.render(code, context)))
-    return out
+    page: list[Sentence] = []
+    for slot in templates[BLOCKS["page"]]:
+        rule = _rule(slot)
+        if rule is None:  # check_templates refused it above; never reached
+            raise FinalSentenceError(f"no rule fills the slot {slot!r}")
+        for code, context in rule(inputs):
+            page.append(Sentence(slot, code, inputs.render(code, context)))
+    if block == "page":
+        return page
+    said = set(templates[BLOCKS[block]])
+    return [sentence for sentence in page if sentence.slot in said]
 
 
 def sentences(
     final_doc: Mapping[str, Any],
     prereg: Mapping[str, Any],
     *,
+    block: str,
     sources: Mapping[str, Any] | None = None,
 ) -> list[str]:
-    """The README's sentences about the final run, in ``readme_block`` order (see :func:`coded`)."""
-    return [sentence.text for sentence in coded(final_doc, prereg, sources=sources)]
+    """The sentences one block says about the final run, ``"readme"`` or ``"page"``, in its order (see
+    :func:`coded`)."""
+    return [sentence.text for sentence in coded(final_doc, prereg, block=block, sources=sources)]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -772,11 +875,22 @@ def normalised(text: str) -> str:
 
 
 def readme_problems(readme: str, said: Sequence[str]) -> list[str]:
-    """What keeps the README's generated block from being exactly ``said``, in order (empty when nothing does)."""
-    start, end = readme.find(BEGIN), readme.find(END)
+    """What keeps the README's generated block from being exactly ``said`` (the README's sentences,
+    ``block="readme"``), in order (empty when nothing does)."""
+    return _between_problems(readme, said, BEGIN, END, "the README has no generated evaluation block")
+
+
+def page_problems(page: str, said: Sequence[str]) -> list[str]:
+    """What keeps the final section of ``docs/evals.md`` from being exactly ``said`` (the page's sentences,
+    ``block="page"``), in order (empty when nothing does)."""
+    return _between_problems(page, said, PAGE_BEGIN, PAGE_END, "docs/evals.md has no final-run block")
+
+
+def _between_problems(text: str, said: Sequence[str], begin: str, end_marker: str, missing: str) -> list[str]:
+    start, end = text.find(begin), text.find(end_marker)
     if start < 0 or end < start:
-        return ["the README has no generated evaluation block"]
-    block = normalised(readme[start + len(BEGIN) : end])
+        return [missing]
+    block = normalised(text[start + len(begin) : end])
     if block == normalised(" ".join(said)):
         return []
     problems = [

@@ -164,6 +164,8 @@ REQUIRED_IN = {
         "index_sha256",
     ),
     "data": ("build_command", "manifest_sha256", "tree_sha256", "splits", "conventions"),
+    # final_templates.json as registered: the README's slots and the page's (evals.present.final.BLOCKS)
+    "sentences": ("readme_block", "page_block"),
 }
 #: Files the pre-registration names by path and sha256 besides its ``files`` map.
 NAMED_FILES = ("power", "calibration")
