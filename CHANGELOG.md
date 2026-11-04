@@ -11,9 +11,10 @@ The third numbered release. [Updating](docs/guide.md#updating) says how to insta
 what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
 
 In short: whose it is, on My numbers and in Ask, the Ideas, your reminders and the Timeline; a switch for
-*Text in pictures*; each state's own day an authority's letter counts as delivered; an evaluation report
-anyone can reproduce, and the tooling for a pre-registered final run; macOS and Windows required in CI; and a
-short README with a guide for the rest.
+*Text in pictures*; each state's own day an authority's letter counts as delivered, checked against its law, and
+why an e-mailed decision's date waits until you say which state its sender is in; an evaluation report anyone
+can reproduce, and the tooling for a pre-registered final run; macOS and Windows required in CI; and a short
+README with a guide for the rest.
 
 The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until then,
 install this version by its commit, as *Updating* says for a release without a tag.
@@ -108,7 +109,9 @@ install this version by its commit, as *Updating* says for a release without a t
 - **A short README, and a guide for the rest.** The README says what Ordnung is, how to try it and how it is
   measured. Installing, updating, a tour of the app, the environment variables Ordnung reads and every
   limitation are in [docs/guide.md](docs/guide.md), and [docs/README.md](docs/README.md) lists every document
-  by reader.
+  by reader. The guide's *Install and run* has a part for each way to use Ordnung (*Without a terminal*, *On your
+  phone*, *On your other computer*, *Claude Desktop or Claude Code*, *From a source checkout*), each a link of its
+  own, and says what `make check` runs.
 - The web app is built with newer minor and patch versions of its packages (React Query 5.105, lucide-react
   1.64, motion 14.8, React Router 8.5.1), and a test checks that the committed build bundles exactly the
   versions `web/package-lock.json` pins.
@@ -206,6 +209,9 @@ install this version by its commit, as *Updating* says for a release without a t
   project you gave your data).
 - In the demo, *Write a new note* keeps Claude's note while nothing on the agenda changed; it used to replace
   it with the note Ordnung writes without Claude.
+- The end-to-end tests of the real app start each spec from the state they share (the person's name, no
+  household, no letter from the bank's file; for hand-off sync, both computers off sync and empty folders), so a
+  spec that times out no longer fails the ones after it, and `--repeat-each` runs them again.
 - A copy of a letter whose reading failed, dropped into the watched folder while *Read new files with Claude
   straight away* is off, waits for *Try again* instead of being read again.
 - Ask writes the right weekday next to a date, however the answer puts the two together: *2 Oct 2026 (Thu)*
