@@ -19,7 +19,7 @@
   <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card"><br>
   <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) ·
   <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a><br>
-  <sub>The court order in both comes from the browser-only demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub>
+  <sub>The court order in the GIF and the video comes from the online demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub>
 </p>
 
 <p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a></p>
@@ -47,6 +47,7 @@ for you. Whether that beats asking the model is [measured](#evaluation), and eve
   scam signs flag a letter; text hidden in a PDF or written to steer an AI is shown, never followed.
 - **Goes where you are**, once you turn it on: your phone over your home Wi-Fi, and your other computer through a
   folder your own sync tool keeps in step, with only encrypted files in it.
+- **And more** in [the guide's tour](docs/guide.md#a-tour): Timeline, Contracts, My numbers, your household and backups.
 
 <table>
 <tr>
@@ -59,12 +60,12 @@ for you. Whether that beats asking the model is [measured](#evaluation), and eve
 </table>
 
 <p align="center"><img src="docs/assets/mobile.png" width="30%" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode"></p>
-<p align="center"><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one documented exemption, and every page works from 320 px wide up; CI checks both.</p>
+<p align="center"><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up; CI checks both.</p>
 
 ## Install and run
 
-**Nothing to install:** the [online demo](https://ahmedeid1.github.io/ordnung/) is the same interface in your browser,
-on the browser-only demo's version of the sample letters, with no server behind it; it keeps nothing once you reload.
+**Nothing to install:** the [online demo](https://ahmedeid1.github.io/ordnung/) runs the same interface in your browser
+on hand-written sample letters, with no server behind it; it keeps nothing once you reload.
 
 **On your computer, with zero tokens:** `ordnung demo` opens the sample life of *Sam Rivera*, an international
 student in the fictional town of Musterstadt: 25 letters, contracts, a residence permit, a scam, and
@@ -113,24 +114,23 @@ Why these numbers can be checked:
 - **Held out.** The headline counts only synthetic German letters (PDFs and phone photos) written before anything was
   recorded on them, by agents that saw neither the reading code, the prompts nor any result; nothing was tuned on them.
 - **Generated, never typed.** `python -m evals.present` writes the block above from the results files. CI fails when
-  one character of it differs, and a test fails when this README types one of the results' rates or counts outside it.
+  one character of it differs, and a test fails when this README types a results file's rate or "k of n" outside it.
 - **Replayable at zero tokens.** `make eval-reproduce` replays every published number from the recorded answers, with
-  no API key, and checks each against a hashed index ([`INDEX.json`](evals/results/INDEX.json)) where a date that
-  moved must name the change that moved it. CI runs it on every pull request.
+  no API key, and checks each against a hashed index ([`INDEX.json`](evals/results/INDEX.json)); where today's code
+  gives another value, the index pins it and names the change. CI runs it on every pull request.
 - **Baselines, stated plainly.** One gives the model Ordnung's own engine as a tool: an agent that decides when to
   call it and whether to trust it. The tuning effort was unequal, in Ordnung's favour
   ([§ 4](docs/evals.md#4-conditions-and-baselines)), and the report switches each of Ordnung's code checks, and Ask's
   answer check, off in turn ([§ 8](docs/evals.md#8-ablations)).
-- **Pre-registered next.** These statistics were chosen after the results were known, so they are not pre-registered.
-  The final run, on letters written after the code freeze, will be pre-registered before it is recorded, and its
-  result takes this headline by its rule, whatever it shows.
+- **Pre-registered next.** The tests and intervals above were chosen after these results were known, so this analysis
+  is not pre-registered. The final run, on letters written after the code freeze, will be pre-registered before it is
+  recorded; its numbers then take this headline by the rule the pre-registration sets, whatever they show.
 
 ## Engineering
 
 ### The model reads, code computes
 
-For the photographed tax assessment above, Claude returns only what the letter says. This is part of its recorded
-answer:
+For the photographed tax assessment above, Claude returns only what the letter says. Part of its recorded answer:
 
 ```json
 { "kind": "deadline",
@@ -164,9 +164,10 @@ that are costly to miss, such as a court payment order or a dismissal; in doubt 
 | Letter → Claude | The letter is wrapped as untrusted data, the reading runs with no tools, and its answer must fit a JSON schema. Text hidden in a PDF is detected and shown, never followed. |
 | Claude → your records | A fact is `verified` only when its sentence is on the page with the same digits, and a date whose sentence isn't there is marked *Please check* ([ADR 0003](docs/decisions/0003-grounding-levels.md)). The model never computes a date. |
 | Your records → Ask | Ask reads only through read-only MCP tools on a read-only connection, and has no date calculator. Every date, time or amount in an answer must cite a record that holds it, and that check runs before you see the answer ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md), [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). |
-| Ordnung → the world | It never pays, sends or cancels anything. A GiroCode only pre-fills a transfer you confirm in your banking app, and the legally operative sentences in letters come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). |
+| Ordnung → the world | It never pays, sends or cancels anything. A GiroCode only pre-fills a transfer you confirm in your banking app, and the legally operative sentences in letters come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Calendar sync, once you connect a calendar, sends your provider dates, times and alarms, with no letter's title, name or amount unless you choose *With details*; hand-off sync writes only encrypted files to your sync folder. |
 | Your computer → Anthropic | Through your own Claude Code: a letter's text or page images when it is read, and what Ask, *Weekly Ideas*, the secretary's note and *Letters* each need ([what each sends](docs/privacy.md#what-is-sent-to-claude-per-feature)). |
-| Browser → server | `127.0.0.1` only, a one-time sign-in link and a session cookie, Fetch-Metadata and Origin checks, a strict CSP. |
+| Browser → Ordnung on your computer | `127.0.0.1` only, a one-time sign-in link and a session cookie, Fetch-Metadata and Origin checks, a strict CSP. |
+| Phone → Ordnung (opt-in) | Phone access adds a second listener: HTTPS on one home-network address, answering only phones you paired with a one-time code (anything else gets only the pairing page), and never their requests for settings, backups or deletion ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)). |
 
 ### Architecture
 
@@ -220,12 +221,12 @@ computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) sa
 
 ## How it was built
 
-Ordnung was built in Claude Code sessions, with Claude Code as a pair programmer that ran parallel agents for research,
-implementation and review. Correctness came from outside the model: the law was researched against statutes, court
-decisions and administrative guidance; the engine is unit- and property-tested with full branch coverage; the reading
-was measured on a held-out benchmark against baselines; and every model answer the demo shows is a recording of a real
-run. Where reviewer agents kept finding new cases in a heuristic, it was replaced by a short written policy
-([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)).
+Ahmed Hobeishy built Ordnung in Claude Code sessions, with Claude Code as a pair programmer that ran parallel agents
+for research, implementation and review. Correctness came from outside the model: the law was researched against
+statutes, court decisions and administrative guidance; the engine is unit- and property-tested with full branch
+coverage; the reading was measured on a held-out benchmark against baselines; and every model answer the demo shows is
+a recording of a real run. Where reviewer agents kept finding new cases in a heuristic, it was replaced by a short
+written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)).
 
 ## Documentation
 

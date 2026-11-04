@@ -1,14 +1,16 @@
-"""README.md, which is also the PyPI page: short, no Mermaid, a CI badge that shows ``main``, an install that says
-what it needs and names no tag, a scam caption that says what SPEC §21 says, a pre-registration bullet that says
-what the evaluation card says, the privacy statement SPEC §1 asks for, and no source comments left in it.
+"""README.md, which is also the PyPI page: short, no Mermaid, a CI badge that shows ``main``, the Python versions
+CI tests and pyproject.toml allows, an install that says what it needs and names no tag, a scam caption that says
+what SPEC §21 says, a trust table that names the phone's listener, a pre-registration bullet that says what the
+evaluation card says, the privacy statement SPEC §1 asks for, and no source comments left in it.
 
-The rest of what README states is pinned where the fact lives (``tests/test_docs_claims.py``, ``test_present.py``,
-``test_release_workflow.py`` and the others that read it).
+Most of the rest of what README states is pinned where the fact lives (``tests/test_docs_claims.py``,
+``test_present.py``, ``test_release_workflow.py`` and the others that read it).
 """
 
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 
 from ordnung.secretary.triggers import Ledger
@@ -74,6 +76,21 @@ def test_the_readme_s_ci_badge_counts_pushes_to_main_only() -> None:
     assert "pull_request" in triggers and "schedule" in triggers
 
 
+def test_the_readme_s_python_versions_are_the_ones_ci_tests_and_pyproject_allows() -> None:
+    """The badge and the CI bullet name the backend job's Python versions, and the install names the oldest that
+    pyproject.toml's ``requires-python`` allows, which is the oldest CI tests."""
+    readme = _readme()
+    versions = _workflow()["jobs"]["backend"]["strategy"]["matrix"]["python"]
+    oldest, newest = versions[0], versions[-1]
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert project["requires-python"] == f">={oldest}"
+    badge = f'<img alt="Python {oldest}–{newest}" src="https://img.shields.io/badge/python-{oldest}%E2%80%93{newest}-'
+    assert badge in readme
+    assert f"You need Git, Python {oldest} or newer," in _plain(readme)
+    tested = ", ".join(versions[:-1]) + f" and {newest}"
+    assert f"the backend tests on Python {tested};" in _flat(readme)
+
+
 def test_the_readme_names_git_and_uv_or_pipx_before_its_first_install_line() -> None:
     """Ordnung installs from its Git repository with uv or pipx, so a reader learns what to have first."""
     lines = _readme().splitlines()
@@ -114,6 +131,34 @@ def test_the_readme_s_scam_caption_says_where_the_dates_show_and_what_brings_the
     ):
         assert words in scam, words
     assert hasattr(Ledger, "scam_checked")
+
+
+def test_the_readme_s_trust_boundaries_name_the_phone_s_listener() -> None:
+    """The browser talks to Ordnung on ``127.0.0.1``; phone access, once it is turned on, adds a second listener
+    on one home-network address that answers only paired phones (docs/architecture.md's *Phone → Ordnung* row,
+    ADR 0017). The README's short table says both, and what calendar sync and the sync folder get."""
+    table = _readme().split("\n### Trust boundaries\n", 1)[1].split("\n### ", 1)[0]
+    rows = [_flat(line) for line in table.splitlines() if line.startswith("| ")]
+    (computer,) = [row for row in rows if "`127.0.0.1` only" in row]
+    assert computer.startswith("| Browser → Ordnung on your computer |")
+    (phone,) = [row for row in rows if row.startswith("| Phone → Ordnung (opt-in) |")]
+    for words in (
+        "a second listener",
+        "HTTPS on one home-network address",
+        "answering only phones you paired with a one-time code",
+        "never their requests for settings, backups or deletion",
+        "(docs/decisions/0017-phone-access-over-the-home-network.md)",
+    ):
+        assert words in phone, words
+    (world,) = [row for row in rows if row.startswith("| Ordnung → the world |")]
+    for words in ("Calendar sync", "*With details*", "hand-off sync writes only encrypted files"):
+        assert words in world, words
+    architecture = _flat((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"))
+    phone_row = "| Phone → Ordnung (home network, opt-in) | A second uvicorn server in the same process"
+    assert phone_row in architecture
+    assert "bound to one home-network IPv4 address of the computer, never `0.0.0.0`" in architecture
+    assert "discreet by default (dates, times and alarms — no titles, names or amounts)" in architecture
+    assert "| Ordnung → sync folder (opt-in) | Only ciphertext is written" in architecture
 
 
 def test_the_readme_says_pre_registered_as_the_card_does() -> None:
