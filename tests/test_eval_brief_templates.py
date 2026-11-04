@@ -98,6 +98,7 @@ COMPOSITION = {
         "22 photos",
         "24 of them adversarial",
         "112 scored",
+        "at least four of its template PDFs have a scored dated item",
     ),
     "w1b": ("32 entries", "4 photos", "about 28 scored"),
     "w2": ("104 questions", "60 attacks", "at least 15 letters", "at most 4"),

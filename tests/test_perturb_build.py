@@ -53,6 +53,31 @@ def final_manifest(path: Path) -> Path:
     return path
 
 
+def test_holdout4_gives_the_stress_base_four_letters_of_every_template_family() -> None:
+    """Once holdout4 has letters, the base set takes four standard text letters with a dated deadline from each of the
+    twelve template families (48 in all): no family falls short, so none gives its places to the others (it holds
+    while holdout4 has no letters)."""
+    from evals.generate import TEMPLATE_FAMILIES
+
+    entries = load_manifest(MANIFEST)
+    if not any(entry.split == "holdout4" for entry in entries):
+        return
+    assert Counter(entry.family for entry in build.base_set(entries)) == dict.fromkeys(TEMPLATE_FAMILIES, 4)
+
+
+def test_the_dataset_tests_count_the_letters_the_stress_base_draws_from() -> None:
+    """The dataset's per-family rule for holdout4 (``tests/test_eval_dataset.py``, which the letters' writer runs)
+    counts exactly the letters :func:`build.eligible` lets into the base set, on every letter of the dataset."""
+    from test_eval_dataset import DATED_TEXT_LETTERS_PER_FAMILY, dated_text_letter
+
+    raw = {entry["id"]: entry for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"]}
+    entries = load_manifest(MANIFEST)
+    assert DATED_TEXT_LETTERS_PER_FAMILY * 12 == build.BASE_LETTERS
+    differ = [entry.id for entry in entries if dated_text_letter(raw[entry.id]) != build.eligible(entry)]
+    assert not differ, differ[:5]
+    assert sum(map(build.eligible, entries)) > 100
+
+
 #: Neutral sentences for the tests only (the real ones are written blind, plan EV8).
 FIXTURE: dict[str, Any] = {
     "schema": templates.SCHEMA,

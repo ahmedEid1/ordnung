@@ -57,6 +57,8 @@ The composition:
 - 126 entries: 84 template letters as PDFs (the twelve families in variants K, L, M and N), 20 adversarial PDFs (two
   of each of the five kinds of adversarial letter that `holdout3_adversarial.py` writes) and 22 photos of letters;
   24 of them adversarial; 112 scored dated items.
+- In each of the twelve families, at least four of its template PDFs have a scored dated item;
+  `tests/test_eval_dataset.py` checks it.
 - The same share of two-page letters and the same mix of Länder as holdout3. Measure both from holdout3's generator,
   and state them in your notes.
 

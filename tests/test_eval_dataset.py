@@ -25,6 +25,7 @@ import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -242,6 +243,77 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
     case("holdout3", "adversarial", "scam")
     with pytest.raises(AssertionError):
         case("dev", "adversarial", "scam")
+
+
+#: The final split, and how many standard text letters with a dated scored item each of its twelve template families
+#: holds at least.
+FINAL_SPLIT = "holdout4"
+DATED_TEXT_LETTERS_PER_FAMILY = 4
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def dated_text_letter(entry: dict[str, Any]) -> bool:
+    """A standard text letter (a PDF, not a photo, not adversarial) with at least one scored item that has a date."""
+    return (
+        not entry["photo"]
+        and entry["family"] != "adversarial"
+        and entry.get("media_type", "application/pdf") == "application/pdf"
+        and any(_ISO_DAY.fullmatch(str(item.get("expected_due"))) for item in entry["truth"]["items"])
+    )
+
+
+def families_short_of_dated_text_letters(
+    entries: list[dict[str, Any]], split: str = FINAL_SPLIT
+) -> dict[str, int]:
+    """The template families (those of the earlier splits) with fewer than :data:`DATED_TEXT_LETTERS_PER_FAMILY`
+    dated text letters in ``split``, with how many each has; none while ``split`` has no letters."""
+    letters = [e for e in entries if e["split"] == split]
+    if not letters:
+        return {}
+    families = sorted({e["family"] for e in entries if e["split"] in SPLITS and e["family"] != "adversarial"})
+    counts = Counter(e["family"] for e in letters if dated_text_letter(e))
+    return {family: counts[family] for family in families if counts[family] < DATED_TEXT_LETTERS_PER_FAMILY}
+
+
+def test_holdout4_has_four_dated_text_letters_in_every_template_family(manifest: dict[str, Any]) -> None:
+    """Each of the twelve template families has at least four standard text letters with a dated scored item in
+    holdout4 (it holds while holdout4 has no letters, and binds once it has)."""
+    assert families_short_of_dated_text_letters(_entries(manifest)) == {}
+
+
+def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
+    """A photo, an adversarial letter and a letter whose only scored item has no single date do not count."""
+
+    def letter(
+        cid: str, split: str, family: str, due: str | None = "2027-03-15", **more: Any
+    ) -> dict[str, Any]:
+        items = [{"expected_due": due}]
+        return {
+            "id": cid,
+            "split": split,
+            "family": family,
+            "photo": False,
+            "truth": {"items": items},
+            **more,
+        }
+
+    earlier = [letter(f"test-{f}-C1", "test", f) for f in ("fine", "invoice", "tax")]
+    final = [letter(f"holdout4-fine-K{n}", FINAL_SPLIT, "fine") for n in range(1, 5)]
+    final += [letter(f"holdout4-tax-K{n}", FINAL_SPLIT, "tax") for n in range(1, 4)]
+    final += [
+        letter("holdout4-tax-K4-photo", FINAL_SPLIT, "tax", photo=True),
+        letter("holdout4-tax-M1", FINAL_SPLIT, "tax", media_type="image/jpeg"),
+        letter("holdout4-tax-N1", FINAL_SPLIT, "tax", due="ambiguous"),
+        letter("holdout4-tax-N2", FINAL_SPLIT, "tax", due=None),
+        letter("holdout4-adversarial-x", FINAL_SPLIT, "adversarial"),
+    ]
+    assert families_short_of_dated_text_letters(earlier) == {}
+    assert families_short_of_dated_text_letters([*earlier, *final]) == {"invoice": 0, "tax": 3}
+    final += [
+        letter("holdout4-tax-K5", FINAL_SPLIT, "tax"),
+        *(letter(f"holdout4-invoice-K{n}", FINAL_SPLIT, "invoice") for n in range(4)),
+    ]
+    assert families_short_of_dated_text_letters([*earlier, *final]) == {}
 
 
 def test_photos_share_truth_with_their_pdf(manifest: dict[str, Any]) -> None:
