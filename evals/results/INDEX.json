@@ -2334,7 +2334,7 @@
   },
   {
    "file": "2026-11-04-claude-sonnet-5-checks-ablated.json",
-   "sha256": "552189b343ec47056821be15a7c7ee2b11c4d55c5c9ac1853cc42b6dc9285ea9",
+   "sha256": "1e3263c3c2e3f0a7c1f7c8918c9b4b6249fa39f27cc0ea6de3b216a4aa05bcc9",
    "kind": "checks-ablated",
    "role": "replay",
    "splits": [
@@ -2344,9 +2344,10 @@
     "holdout3",
     "test"
    ],
+   "repeat": 1,
    "recorded": {
     "date": "2026-11-04",
-    "commit": "90b15ee5",
+    "commit": "0d26b041",
     "backend": "replay"
    },
    "gates": [],
