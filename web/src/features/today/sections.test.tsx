@@ -1,11 +1,11 @@
 /**
- * Today's lower sections (UI audit round 1, today-b): Coming-up rows that say what is due without
+ * Today's lower sections: Coming-up rows that say what is due without
  * repeating the date and never cut it to one line, week headings that read right, Ideas that keep
  * their "Show fewer" button and hand focus on (not to <body>), announce once, name what each
  * button is about and use the Top-3 Pay panel for "Pay", Recent letters in the order of the dates
  * they show with a way to all letters, a secretary's note in the app's date and money style, and whose letter a row
  * is when it is filed for someone of the household (a tag, never a filter).
- * jsdom has no layout; e2e/today-sections.spec.ts checks the real one.
+ * jsdom has no layout; e2e/today-lists-layout.spec.ts checks the real one.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -279,7 +279,7 @@ describe("Ideas", () => {
     await waitFor(() => expect(document.activeElement).toBe(within(ideas).getByRole("heading", { level: 3, name: next })));
   });
 
-  it("hides the Idea, says so and moves focus on even when the Idea leaves before every list is refreshed (review round 4)", async () => {
+  it("hides the Idea, says so and moves focus on even when the Idea leaves before every list is refreshed", async () => {
     useMockApi();
     // the note is refreshed last: the Idea leaves with the refreshed list before the call is done — its own
     // callbacks never ran in a card that had gone, so there was no "Idea hidden", no Undo and focus was lost

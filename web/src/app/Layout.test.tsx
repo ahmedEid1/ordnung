@@ -1,5 +1,5 @@
 /**
- * A new page is said (UX audit U10): focus that went with the old page moves to the new page's heading (never to the
+ * A new page is said: focus that went with the old page moves to the new page's heading (never to the
  * stand-in heading it shows while it loads); focus still on a control outside the page stays there, and the new page's
  * title is said in a polite live region.
  */
@@ -93,7 +93,7 @@ describe("a new page", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Inbox" })).not.toHaveFocus();
     row.focus();
     await user.keyboard("{Enter}");
-    // the stand-in, removed when the letter comes, would leave focus on <body> (final check of the fix wave)
+    // the stand-in, removed when the letter comes, would leave focus on <body>
     expect(await screen.findByRole("heading", { level: 1, name: "Letter" })).not.toHaveFocus();
     const h1 = await screen.findByRole("heading", { level: 1, name: "Parking fine" });
     await waitFor(() => expect(h1).toHaveFocus());

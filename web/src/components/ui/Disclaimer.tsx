@@ -94,7 +94,7 @@ export function objectionAdvice(
  * new tab; their padding makes them taller targets without spreading the lines of the text around
  * them. They wrap like the sentence they are in: an inline box, the icon and the full stop joined to
  * the last word (as a block of their own they jumped to a new line on a phone, the icon at the far
- * edge and the full stop alone under it — UI audit round 1).
+ * edge and the full stop alone under it).
  */
 export function AdviceLinks({ advice, className }: { advice: AdviceLink[]; className?: string }) {
   if (!advice.length) return null;

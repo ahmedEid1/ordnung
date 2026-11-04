@@ -66,7 +66,7 @@ DRAW_LOGO = shortcut.draw_logo
 PY = "/opt/ordnung/venv/bin/python3"
 PATH_ENV = "/home/sam/.local/bin:/usr/local/bin:/usr/bin:/bin"
 FOLDER = Path("/home/sam/.local/share/ordnung")
-#: the folders the design's prototype read back through GLib's own parser
+#: the folders a prototype read back through GLib's own parser
 AWKWARD = [
     "/home/sam/My Documents/ordnung",
     "/home/sam/100%/ordnung",
@@ -866,7 +866,7 @@ NOT_DRIVE_PATHS = [
     "py.exe",
     "",
 ]
-#: the SHA-256 of what batch C's code wrote for each of them (before there was an ID list), see the test
+#: the SHA-256 of what the first launcher code wrote for each of them (before there was an ID list), see the test
 NOT_DRIVE_PATHS_BYTES = "0a73cd903163d2f3a19fb4d27da9bac6492fa9df18b3ad0228de804d0e84482f"
 
 

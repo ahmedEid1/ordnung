@@ -1,4 +1,4 @@
-"""*For taxes* on any letter (D3, ``secretary.tax_choice``): the person's own choice counts over Claude's
+"""*For taxes* on any letter (``secretary.tax_choice``): the person's own choice counts over Claude's
 mark, both ways, and survives *Read again*, which asks Claude exactly what it asked without the choice. Ask's
 get_document and the weekly review follow the choice for the letters they may read (point 4, ADR 0025), so a
 choice moves Ask's fingerprint and ledger token; without a choice, both read exactly as before.
@@ -326,10 +326,10 @@ def test_without_a_choice_get_document_is_as_before(
 
 
 def test_the_weekly_review_snapshot_follows_the_persons_tax_choice(store: Store) -> None:
-    """The review's row of each letter says whether it counts for taxes as the Tax year page does (point 1):
+    """The review's row of each letter says whether it counts for taxes as the Tax year page does:
     the person's choice, else Claude's mark. Without a choice the snapshot and its cache key are what they
     were; a choice flips that letter's ``tax_relevant`` alone; a private letter's choice changes nothing (it is
-    never in the snapshot). In tax season the tax-season Idea follows the choice too (point 3), and its title is
+    never in the snapshot). In tax season the tax-season Idea follows the choice too, and its title is
     among the open Ideas the review is given, like every Idea's."""
     ids = seed_ledger(store)
     season = date(2027, 2, 15)

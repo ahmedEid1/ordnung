@@ -1,5 +1,5 @@
 /**
- * "Which Ordnung do you want to keep?" (design §12.2): both computers changed something while they couldn't see
+ * "Which Ordnung do you want to keep?" (SPEC §12c): both computers changed something while they couldn't see
  * each other, and the two can't be combined. One radio per side — none chosen at first — with its letters, how many
  * were added since the two last agreed and the newest titles; its open and done dates and to-dos, its notes, its
  * latest changes and when it was saved (sides that differ only in to-dos or edits are told apart by these). The side not kept is saved as an encrypted copy on

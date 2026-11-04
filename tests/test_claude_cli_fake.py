@@ -241,7 +241,7 @@ async def test_claude_installed_after_the_backend_was_made_is_found(
 async def test_a_claude_that_cant_be_started_is_not_installed(
     fake: FakeClaude, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, letter: LLMRequest, broken: str
 ) -> None:
-    """ROB G3: an operating-system error starting ``claude`` (not executable, moved or uninstalled since it
+    """An operating-system error starting ``claude`` (not executable, moved or uninstalled since it
     was found) is :class:`ClaudeNotInstalled` with a readable message — for a reading, Ask's stream and the
     probe behind "Run check" and ``doctor --probe`` — never a crash."""
     found = str(fake.path)

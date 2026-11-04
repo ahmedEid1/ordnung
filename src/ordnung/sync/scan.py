@@ -1,25 +1,25 @@
-"""What the sync folder shows, as this computer sees it now (design §8, §13; review findings 6, 7, 9, 18, 20).
+"""What the sync folder shows, as this computer sees it now (SPEC §12c).
 
-**Heads.** Every scan lists ``h/`` and decrypts every head (finding 9: at most 8 × a few KiB; a size or
+**Heads.** Every scan lists ``h/`` and decrypts every head (at most 8 × a few KiB; a size or
 mtime that didn't change says nothing on a cloud folder that keeps mtimes to the second). A head is
 valid when it authenticates under this folder's vault, names the computer its file name is derived
-from, and is not older than one already seen (``written``: a replayed or rolled-back head is ignored,
-F15). The last good plaintext of each head is kept in ``sync/heads.json``: a head that can't be read
-now (cut short, written in place, damaged) is taken from there (F14) and called ``damaged`` only after
+from, and is not older than one already seen (``written``: a replayed or rolled-back head is ignored).
+The last good plaintext of each head is kept in ``sync/heads.json``: a head that can't be read
+now (cut short, written in place, damaged) is taken from there and called ``damaged`` only after
 :data:`~ordnung.sync.DAMAGED_AFTER_S` with an unchanged stat. A head of a newer format or schema is
-``newer`` (nothing is pulled from it, F31). A lineage that claims a computer's person numbers beyond
-the highest that computer published is refused (finding 18).
+``newer`` (nothing is pulled from it). A lineage that claims a computer's person numbers beyond
+the highest that computer published is refused.
 
 **The computer in use** is the valid head with the highest ``(epoch, computer)``, among heads that
 didn't leave and weren't forgotten (the union of every head's ``forgotten``).
 
 **Completeness** (:meth:`Scanner.completeness`): a version has arrived when its manifest, every bucket,
 every database slice and every data file it needs (one this computer doesn't already have) are in the
-folder with the expected sealed size *and* have authenticated with the expected SHA-256 (finding 6).
+folder with the expected sealed size *and* have authenticated with the expected SHA-256.
 Verified objects are remembered by their stat (size, mtime_ns, inode, ctime_ns). A missing, short or
 online-only object, a read error or a read that times out is "not arrived yet", never damage; a
 right-size object that keeps failing is damaged after :data:`~ordnung.sync.DAMAGED_AFTER_S`, and one
-missing past :data:`~ordnung.sync.ARRIVAL_PATIENCE_S` is asked for again (``Head.wants``, finding 7).
+missing past :data:`~ordnung.sync.ARRIVAL_PATIENCE_S` is asked for again (``Head.wants``).
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ class FolderView:
     uncertain: bool = False
     #: the other computers' wants (objects to write again)
     wants: frozenset[str] = frozenset()
-    #: another key file sits next to this folder's (F28)
+    #: another key file sits next to this folder's
     other_key_file: str | None = None
     #: ``h/`` was listed now, and this computer's own head in it was read now (or isn't there, or is an
     #: older copy than one already seen): what the folder says of this computer is known — the start
@@ -131,7 +131,7 @@ class FolderView:
     @property
     def others(self) -> tuple[HeadView, ...]:
         """Every other computer's head with a version, but forgotten ones (left heads included:
-        blocker 2 — their last version still counts for content decisions)."""
+        their last version still counts for content decisions)."""
         return tuple(h for h in self.heads if not h.this and not h.forgotten)
 
     def own(self) -> HeadView | None:
@@ -260,7 +260,7 @@ class Scanner:
                         self.head_failing[file] = _Tracked(info.signature, now)
             seen = state.seen.get(file)
             if head is not None and seen is not None and head.written < seen.written:
-                head, readable = None, False  # a replayed or rolled-back copy (F15)
+                head, readable = None, False  # a replayed or rolled-back copy
                 uncertain = replayed = True
             if file == own_file and info is not None and not (readable or replayed or newer):
                 failing = self.head_failing.get(file)
@@ -275,7 +275,7 @@ class Scanner:
                     uncertain = True
             if file == own_file:
                 # a head newer than state.json says is not stale: a crash after its rename, or a data
-                # folder put back from a backup — start() decides (finding 4); never written over here
+                # folder put back from a backup — start() decides; never written over here
                 if readable and head.written >= state.written and head.computer == state.computer:
                     own_stale = False
                 if head.computer != state.computer:
@@ -309,7 +309,7 @@ class Scanner:
         for view in views:
             is_forgotten = view.computer in forgotten and not view.this
             if view.head.version is not None and not lin.claims_within(view.head.version.lineage, published):
-                view = HeadView(**{**view.__dict__, "readable": False})  # finding 18: refused
+                view = HeadView(**{**view.__dict__, "readable": False})  # it claims too much: refused
                 uncertain = True
                 is_forgotten = is_forgotten or not view.this
                 if not view.this:

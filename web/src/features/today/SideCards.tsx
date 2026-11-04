@@ -34,7 +34,7 @@ export function checkReason(warning: string): string {
 
 /**
  * What the card says for a letter in review whose warnings name no reason (an undone "Not a real to-do", a
- * to-do with two dates): its to-do says what to check (UX review 3, R3UX-3).
+ * to-do with two dates): its to-do says what to check.
  */
 export const NO_REASON = "Open the letter to check its to-do.";
 

@@ -1,4 +1,4 @@
-"""Keys, names and sealing for the sync folder, format 1 (design §4.1-4.3, review findings 8, 17, 26).
+"""Keys, names and sealing for the sync folder, format 1 (SPEC §12c).
 
 **The key file** ``<K>`` (``K`` = 32 lowercase hex = its own scrypt salt) holds exactly
 :data:`~ordnung.sync.KEY_FILE_BYTES` bytes: ``nonce (12) ‖ AES-256-GCM(KEK, body, aad = b"ordnung-sync/1
@@ -20,12 +20,12 @@ computer of a folder and another name in any other folder, and a name tells noth
     aad       = b"ordnung-sync/1" ‖ vault_id ‖ kind ‖ name ‖ salt ‖ prefix
     plaintext = length (8) ‖ content ‖ zero bytes, P = padme(max(8 + length, MIN_PADDED)) bytes in all
 
-* ``sealed_size(P) = 23 + P + 16 · max(1, ⌈P / CHUNK⌉)`` (finding 8: a full last chunk is one chunk),
+* ``sealed_size(P) = 23 + P + 16 · max(1, ⌈P / CHUNK⌉)`` (a full last chunk is one chunk),
   so "has it fully arrived?" is a ``stat``.
 * Padmé: with ``E = ⌊log2 L⌋`` and ``S = ⌊log2 E⌋ + 1``, the low ``E − S`` bits are cleared, rounding
   up (``padme(1,000,000) = 1,015,808``); at most 12 % more, and at least 4 KiB hides small files.
 * For a head (rewritten in place) salt and prefix are random. For the content-named kinds they come
-  from ``HMAC(objects_key, "seal" ‖ name)`` (finding 26): two computers writing the same object write
+  from ``HMAC(objects_key, "seal" ‖ name)``: two computers writing the same object write
   the very same bytes, so a sync tool never makes a conflict copy of it. That reveals nothing new — the
   name already says that the content is equal — and a nonce is never reused for other plaintext,
   because the name is bound to the content's SHA-256.
@@ -123,7 +123,7 @@ def padded_size(length: int) -> int:
 
 
 def sealed_size(padded: int) -> int:
-    """The size of a sealed file whose plaintext is ``padded`` bytes (finding 8)."""
+    """The size of a sealed file whose plaintext is ``padded`` bytes."""
     return SEAL_HEADER_BYTES + padded + SEAL_TAG_BYTES * max(1, math.ceil(padded / CHUNK))
 
 

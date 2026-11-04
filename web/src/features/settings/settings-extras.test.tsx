@@ -174,11 +174,11 @@ describe("Data → delete everything", () => {
     expect(within(reset).getByRole("button", { name: /Copy command to reset the demo/ })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Delete everything" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Delete everything…" })).not.toBeInTheDocument();
-    // …and the guided tour again (UI audit round 1: R1-tour-5, the Settings entry)
+    // …and the guided tour again (its Settings entry)
     const tour = await screen.findByRole("region", { name: "Guided tour" });
     expect(within(tour).getByRole("button", { name: "Restart the demo tour" })).toBeInTheDocument();
     // one rule for the stacked cards' lone footer action: the whole row on phones, its own width from `sm`
-    // (round 2: only the backup's spanned the footer, the others sat small at the right)
+    // (once only the backup's spanned the footer, the others sat small at the right)
     for (const name of ["Download encrypted backup…", "Download JSON", "Restart the demo tour"]) {
       const button = screen.getByRole("button", { name });
       expect(button.className).toMatch(/(^|\s)w-full(\s|$)/);

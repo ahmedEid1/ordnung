@@ -20,7 +20,7 @@ import { waitingSummary } from "@/features/waiting/model";
 
 const HOW = [
   { icon: PenLine, title: "Pick what you want to do", body: "Cancel a contract, object to a decision or reply to a letter." },
-  // no "right next to it": a phone shows the translation behind a switch (UI audit round 1)
+  // no "right next to it": a phone shows the translation behind a switch
   { icon: Languages, title: "Ordnung drafts it in German", body: "Legal sentences come from fixed templates, with an English translation to check it against." },
   { icon: FileCheck2, title: "Checks before you send", body: "Reference, dates, addresses and placeholders are checked for you." },
   { icon: Send, title: "How and by when to send it", body: "The safest way to send it, the send-by date — and a reminder to check for a reply." },
@@ -29,8 +29,8 @@ const HOW = [
 /**
  * The way to "Waiting for": how many are open, in neutral ink (not all of them are late), a dot on the count
  * when one asks something of the person — red when some are overdue (chase them), green when a letter may
- * have answered one (check it) — and, where there is room, how many in words of the same colour (UI audit
- * round 2: a fully red "4" read as four overdue). The dot takes no room: at 320 px the two buttons still
+ * have answered one (check it) — and, where there is room, how many in words of the same colour (a
+ * fully red "4" read as four overdue). The dot takes no room: at 320 px the two buttons still
  * share a row. The words show where the buttons have a row of their own (400–639 px) and beside the title
  * from 1024 px (both kinds together from 1280 px) — not in between, where they would squeeze the page's
  * description. Screen readers always hear them.
@@ -79,7 +79,7 @@ export default function LettersPage() {
   const waitingQ = useWaiting();
   const waiting = waitingSummary(waitingQ.data ?? []);
   // only a way to a page that shows something (open or closed): an empty "Waiting for" only sends the
-  // person back here (UI audit round 2)
+  // person back here
   const waitingShown = (waitingQ.data?.length ?? 0) > 0;
 
   // Older links used `party=` for the recipient (it would also open the People drawer): read it as `to=`.
@@ -127,7 +127,7 @@ export default function LettersPage() {
         title="Letters"
         description="Cancellations, objections and replies — drafted in German with an English translation, checked, and ready to send."
         actions={
-          // an empty page has no actions: its "Write your first letter" is the one way on (UI audit rounds 1 and 2)
+          // an empty page has no actions: its "Write your first letter" is the one way on
           waitingShown || !empty ? (
             <>
               {waitingShown ? <WaitingLink {...waiting} /> : null}
@@ -142,7 +142,7 @@ export default function LettersPage() {
       />
 
       {/* the "How letters work" card sits beside the list only where both have room (from 1280 px): beside a
-          narrow list the rows lost their titles (UI audit round 1) */}
+          narrow list the rows lost their titles */}
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0">
           {drafts.isPending ? (

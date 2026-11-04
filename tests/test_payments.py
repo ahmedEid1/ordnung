@@ -341,7 +341,7 @@ def payment(**fields: Any) -> Item:
     ],
 )
 def test_pays_on_site(action: str | None, on_site: bool) -> None:
-    """UI audit R1-backend-8: a fee paid by card at the appointment has no bank "send by"."""
+    """A fee paid by card at the appointment has no bank "send by"."""
     assert pays_on_site(payment(action=action)) is on_site
 
 

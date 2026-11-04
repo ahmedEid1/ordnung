@@ -20,8 +20,8 @@ export const SUGGESTED_QUESTIONS: readonly SuggestedQuestion[] = [
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /**
- * The questions offered outside the demo, from the person's own situation (UI audit round 1: a fresh
- * install offered the demo's "October" and a residence permit to everyone): the month ahead — this one
+ * The questions offered outside the demo, from the person's own situation (a fresh
+ * install once offered the demo's "October" and a residence permit to everyone): the month ahead — this one
  * until mid-month, then the next — and the residence permit only with a student visa (Settings → Region).
  */
 export function suggestedQuestions({ today, studentVisa }: { today: Date; studentVisa: boolean }): SuggestedQuestion[] {

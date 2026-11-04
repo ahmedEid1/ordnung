@@ -52,7 +52,7 @@ function download(href: string, name: string) {
 /**
  * The list keeps the order it opened with while you're on the page: a to-do you tick off stays in
  * its place, struck through, instead of jumping to the end — so the next row doesn't slide under the
- * pointer (UI audit round 1: a double click ticked off two). New to-dos go after the others.
+ * pointer (a double click once ticked off two). New to-dos go after the others.
  */
 function useSteadyOrder(items: Item[], docId: string, aside: ReadonlyMap<string, ItemAside>): Item[] {
   // the to-dos set aside after the ones to act on, before the closed ones
@@ -102,7 +102,7 @@ export function ItemsList({
   const aside = new Map(setAside.map((a) => [a.item_id, a]));
   const list = useSteadyOrder(items, docId, aside);
   if (!list.length && !letter) return null;
-  // what is left to act on: never a to-do set aside (UI audit round 2: "· 1" over an invoice its reminder replaced)
+  // what is left to act on: never a to-do set aside (not "· 1" over an invoice its reminder replaced)
   const open = list.filter((i) => isOpenItem(i) && !aside.has(i.id)).length;
   return (
     // a scam letter's demands are no to-dos of yours: no count
@@ -162,7 +162,7 @@ function AsideNote({ aside, documents }: { aside: ItemAside; documents: NoteDocs
 
 /**
  * The to-do Ordnung adds when Claude's reading came back almost blank ("Read this letter yourself"): it quotes
- * no sentence, so no "couldn't find this" chip — it says who added it (UX review 2, R2UX-9).
+ * no sentence, so no "couldn't find this" chip — it says who added it.
  */
 function quotesNothing(item: Item): boolean {
   return item.slot_key === READING_CHECK_SLOT && !item.evidence.some((e) => e.quote.trim());
@@ -205,7 +205,7 @@ function QuietDate({ date }: { date: string }) {
 
 /**
  * A demand in a letter with signs of a scam: said for what it is, muted — its date, but no countdown, no "transfer
- * by", nothing to tick off (UI audit round 1: it read as an urgent to-do with "Mark done"). The date stays in view:
+ * by", nothing to tick off (it read as an urgent to-do with "Mark done"). The date stays in view:
  * once the person has checked the letter with the sender, it is a to-do again.
  */
 function ScamRow({ item, docId, pages }: { item: Item; docId: string; pages?: number | null }) {
@@ -299,8 +299,8 @@ function ItemRow({
       onMouseLeave={() => anchorId && hover(null)}
     >
       {/* a 24 px target around the 20 px circle; the name says what a press does (no aria-pressed on top of it).
-          While a change is saved it is `aria-disabled`, not `disabled`: a disabled button loses focus to the page
-          (UX audit U4), and its new name ("Reopen …") is said where the keyboard still is */}
+          While a change is saved it is `aria-disabled`, not `disabled`: a disabled button loses focus to the page,
+          and its new name ("Reopen …") is said where the keyboard still is */}
       <button
         type="button"
         onClick={() => {
@@ -323,9 +323,9 @@ function ItemRow({
       </button>
       <div className="min-w-0 flex-1">
         {/* a long German word breaks where it must, and on a phone the amount goes under the title rather than
-            past its column (review round 2: "…Betriebskostenabrechnung)" and "€670.00" overflowed at 320 px).
+            past its column ("…Betriebskostenabrechnung)" and "€670.00" overflowed at 320 px).
             The "More actions" button sits in the corner, 10 px clear of the title and the amount; the lines below
-            use the full width (UI audit round 1: the grounding chip was cut to "Read by AI from the ph…" at 320 px) */}
+            use the full width (the grounding chip was cut to "Read by AI from the ph…" at 320 px) */}
         <div className="flex flex-col items-start gap-0.5 pr-9 sm:flex-row sm:justify-between sm:gap-3">
           <p className={cn("min-w-0 text-[14.5px] font-medium leading-snug [overflow-wrap:anywhere] hyphens-auto", open ? "text-ink" : "text-muted line-through decoration-muted/50")}>
             <ItemTitle title={item.title} />
@@ -337,7 +337,7 @@ function ItemRow({
           {!open ? (
             <StatusPill of="item" status={item.status} />
           ) : aside ? (
-            // nothing to count down to: its date, quietly (UI audit round 2: "362 days overdue" in red)
+            // nothing to count down to: its date, quietly (not "362 days overdue" in red)
             item.due_date ? <QuietDate date={item.due_date} /> : null
           ) : role === "debit" ? (
             // the bank collects it: nothing to send, never louder than amber (as on Today)

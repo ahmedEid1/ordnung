@@ -42,7 +42,7 @@ DEMO_DB = ROOT / "src" / "ordnung" / "demo" / "demo_db"
 STAMP = "2026-01-01T08:00:00Z"
 #: What :class:`~ordnung.models.MyNumbers` holds (the page before the household parts).
 MY_NUMBERS_FIELDS = ("today", "about_you", "documents", "organisations", "open_cases", "masked")
-#: The demo's *My numbers* page (its MyNumbers fields, as sorted JSON) at the E2 base commit 3d99de42, before
+#: The demo's *My numbers* page (its MyNumbers fields, as sorted JSON) at commit 3d99de42, before
 #: the household parts: a demo without a household must keep it byte for byte.
 DEMO_PAGE_SHA256 = "8dbf8cbcbdcfc1c66c38591fab788862486351f896d0a77ddbae1877b27ef9c1"
 

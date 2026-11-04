@@ -150,7 +150,7 @@ describe("safe markdown renderer", () => {
     expect(container.textContent).not.toMatch(/\[doc:|\[item:/);
   });
 
-  it("keeps a citation chip with the placeholder before it, however long (review round 1)", () => {
+  it("keeps a citation chip with the placeholder before it, however long", () => {
     const { container } = renderMd("The fee is [amount only in the letter] [item:itm_phone_cancel].");
     const chip = container.querySelector("[data-cite]")!;
     const group = chip.closest(".whitespace-nowrap")!;
@@ -164,7 +164,7 @@ describe("safe markdown renderer", () => {
     expect(container.textContent).toBe("Send by Thu\u00a08\u00a0Oct and more"); // a date never breaks across lines
   });
 
-  it("shows a line that starts with a day as the date it is, and list items with their own numbers (final review)", () => {
+  it("shows a line that starts with a day as the date it is, and list items with their own numbers", () => {
     // the check reads "21. Oktober 2026"; the browser must not renumber it to "2."
     const dates = parseMarkdown("Ihre Termine:\n5. Oktober 2026: Steuererstattung\n21. Oktober 2026: Einspruchsfrist", { citations: null });
     expect(dates.map((b) => b.t)).toEqual(["p"]);
@@ -176,7 +176,7 @@ describe("safe markdown renderer", () => {
     expect([...list.container.querySelectorAll("li")].map((li) => li.getAttribute("value"))).toEqual(["1", "3", "7"]);
   });
 
-  it("knows every month name the check knows, from the shared list (final review 2)", () => {
+  it("knows every month name the check knows, from the shared list", () => {
     // "Sept.", "Jänner" and "Marz" were list items here but text lines for the check
     for (const line of ["5. Sept. 2026: Miete", "3. Jänner 2027: Termin", "1. Marz 2027: Frist", "2) Okt: Termin"]) {
       expect(parseMarkdown(`Termine:\n${line}`, { citations: null }).map((b) => b.t), line).toEqual(["p"]);
@@ -207,7 +207,7 @@ describe("stream accumulation", () => {
     { type: "text", text: "**Thu 8 Oct** [item:itm_phone_cancel] [doc:doc_x]." },
   ];
 
-  it("builds the tool trace as events arrive, and never keeps unchecked words (review round 4)", () => {
+  it("builds the tool trace as events arrive, and never keeps unchecked words", () => {
     const s = accumulateAll(events);
     expect(s.status).toBe("streaming");
     expect(s.tools.map((t) => [t.name, t.done, t.result])).toEqual([
@@ -258,7 +258,7 @@ describe("stream accumulation", () => {
   });
 
   it("a stream that closes before the checked answer is an error to retry, never an empty 'ready' answer", () => {
-    // review round 1: a server restart mid-answer showed only the tool trace, announced as "Answer ready."
+    // a server restart mid-answer once showed only the tool trace, announced as "Answer ready."
     const cut = streamEnded(accumulateAll([{ type: "tool_use", name: "today" }, { type: "text", text: "Your deadline is 31.12.2027" }]));
     expect(cut.status).toBe("error");
     expect(cut.error).toBe(STREAM_CUT);
@@ -288,13 +288,13 @@ describe("tool trace labels", () => {
     expect(fallbackToolLabel("list_items", { status: "open" })).toBe("Listed your open to-dos & dates");
     expect(fallbackToolLabel("list_items", { from: "2026-09-28", to: "2026-10-04" })).toBe("Listed your open to-dos & dates from 28 Sep to 4 Oct");
     expect(fallbackToolLabel("mystery_tool")).toBe("Looked something up");
-    // final review: the model's own words never show a value the check has not read
+    // the model's own words never show a value the check has not read
     expect(fallbackToolLabel("search", { query: "Frist verlängert 31.12.2027" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("timeline", { from_date: "31.12.2027", to_date: "2027-12-31" })).toMatch(/^Checked your timeline from … to /);
-    // final review 2: a part of a month is a date the check reads ("Ende Januar": 31 January)
+    // a part of a month is a date the check reads ("Ende Januar": 31 January)
     expect(fallbackToolLabel("search", { query: "Frist verlängert Ende Januar" })).toBe("Searched your letters for “Frist verlängert …”");
     expect(fallbackToolLabel("search", { query: "mid-October payment" })).toBe("Searched your letters for “… payment”");
-    // final review 3: read as the check reads the words (a Unicode hyphen, emphasis markup)
+    // read as the check reads the words (a Unicode hyphen, emphasis markup)
     expect(fallbackToolLabel("search", { query: "mid\u2010January fee" })).toBe("Searched your letters for “… fee”");
     expect(fallbackToolLabel("search", { query: "Frist Ende **Januar**" })).toBe("Searched your letters for “Frist …”");
     expect(fallbackToolLabel("search", { query: "bis Ende Dezember 2027 zahlen" })).toBe("Searched your letters for “bis … zahlen”");
@@ -323,8 +323,8 @@ describe("tool trace labels", () => {
     ];
     render(<ToolTrace steps={steps} live />);
     const label = screen.getByTestId("tool-step-label");
-    // wraps at every width (a cut-off "until 1…" hid the date: review round 1 below lg, review round 3 of
-    // phase 2 from lg up, where only a hover-only title held the rest)
+    // wraps at every width (a cut-off "until 1…" hid the date below lg, and from lg up only a
+    // hover-only title held the rest)
     expect(label.className.split(" ")).toContain("break-words");
     expect(label.className).not.toMatch(/truncate|line-clamp/);
     expect(label.getAttribute("title")).toBeNull();

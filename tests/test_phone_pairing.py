@@ -187,7 +187,7 @@ def test_a_sliding_limit_counts_per_key_and_recovers() -> None:
 
 
 def test_a_sliding_limit_takes_several_at_once_or_none() -> None:
-    """An upload's letters count together: all of them fit, or none counts (scope review)."""
+    """An upload's letters count together: all of them fit, or none counts."""
     limit = SlidingLimit(3, 60.0)
     assert limit.take("a", 0) == 0
     assert limit.take("a", 10, count=3) == 51  # 1 + 3 > 3: until the first one leaves the window

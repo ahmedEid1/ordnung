@@ -43,12 +43,12 @@ export interface TourStep {
   showLabel: string;
   /**
    * The step's point is made (a letter from the tray was read): "Next" leads, "take me there" steps back
-   * (walkthrough of phase 2: after reading a letter the card said "go on" but its button went back to the Inbox).
+   * (after reading a letter the card once said "go on" but its button went back to the Inbox).
    */
   onward?: boolean;
 }
 
-/** What the tour's last step points to besides its own (walkthrough of phase 2: the tour never visited them). */
+/** What the tour's last step points to besides its own (the tour never visited them before). */
 export const MORE_TO_TRY: readonly { label: string; hint: string; to: string }[] = [
   { label: "Pay by GiroCode", hint: "open a bill and press Pay — scan the code with your banking app", to: "/inbox" },
   { label: "My numbers", hint: "your tax ID, insurance and customer numbers, checked", to: "/numbers" },

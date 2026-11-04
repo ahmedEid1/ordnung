@@ -1,6 +1,6 @@
 /**
- * A "Please check" card leaves once it is answered — "Correct", a date of the person's own, "Not a real to-do"
- * (UX audit U4): focus goes to the card now in its place, or to the to-dos' heading when none is left, never to
+ * A "Please check" card leaves once it is answered — "Correct", a date of the person's own, "Not a real to-do":
+ * focus goes to the card now in its place, or to the to-dos' heading when none is left, never to
  * <body>.
  */
 import { useEffect, useState } from "react";

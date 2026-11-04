@@ -2,13 +2,13 @@
  * Words Claude wrote for the person — a letter's title, summary and explanation, its key-fact labels, its to-dos'
  * titles, Ask's answers — come in the language chosen in Settings (`Profile.language`: Arabic, Turkish, Ukrainian …),
  * inside a page that is `lang="en"`, left to right. Marked with that language's `lang`, a screen reader reads them
- * with its voice and the browser hyphenates them by its rules; Arabic runs right to left (UX audit U6). English
+ * with its voice and the browser hyphenates them by its rules; Arabic runs right to left. English
  * needs nothing: it is the page's own language.
  *
  * Words read before the language was changed stay in the old one (Settings: "New explanations are written in …"), and
  * which language a letter was read in isn't stored. So the text itself is asked: words with none of the letters of
  * the language's own script (Arabic, Cyrillic) weren't written in it and get no mark — English read before a change
- * to Arabic stays left to right, its full stop at its end (final check of the fix wave). Right-to-left words take
+ * to Arabic stays left to right, its full stop at its end. Right-to-left words take
  * `dir="auto"`: the browser sets their direction from their own first letters.
  */
 import type { ReactNode } from "react";

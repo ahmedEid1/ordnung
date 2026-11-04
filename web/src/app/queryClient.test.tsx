@@ -1,5 +1,5 @@
 /**
- * Offline and error feedback (audit round 1, bucket "shell-b"): a lost connection is one warning
+ * Offline and error feedback: a lost connection is one warning
  * that stays (with "Try again") until Ordnung answers again, then "Back online"; a live connection
  * that stays lost asks `/health` so the warning shows even when nothing else refetches; `/health`
  * can't hang the splash forever; and a failed change says what failed ("Couldn't save your
@@ -217,7 +217,7 @@ describe("on a paired phone", () => {
     expect(screen.queryByText("Couldn't save")).toBeNull();
   });
 
-  it("told the reason the phone listener gave: a copied sign-in, a code two devices used, 30 days unused (review)", () => {
+  it("told the reason the phone listener gave: a copied sign-in, a code two devices used, 30 days unused", () => {
     const signedOut = (removed: string | null) => new ApiError(401, "This phone isn't paired with Ordnung any more.", null, "phone_not_paired", null, removed);
     expect(removedPhonePath("token_reuse")).toBe("/pair?removed=token_reuse");
     expect(removedPhonePath("code_reused")).toBe("/pair?removed=code_reused");

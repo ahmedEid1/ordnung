@@ -2,7 +2,7 @@
  * Plain text that may mention ledger records by id ("doc_0b2t88kqsf2n describes the fee increase…",
  * written by Weekly Ideas, the model job that suggests Ideas) and web addresses: every id becomes the record's title, linked to it;
  * ids never show (SPEC §14 copy rule; `findRawEnums` flags them in tests). A record's whole title is
- * shown — it wraps with the text instead of being cut after 48 characters mid-word (UI audit round 1).
+ * shown — it wraps with the text instead of being cut after 48 characters mid-word.
  *
  * An address of a site Ordnung itself cites — the law, courts, public and advice services
  * (`secretary/triggers.py`, `rules/catalog.py`) — becomes a short link to its site
@@ -91,7 +91,7 @@ export function RefText({ text }: { text: string }) {
             <ExternalLink className="ml-0.5 inline size-3 align-[-0.1em]" aria-hidden />
           </a>
         ) : part.kind === "address" ? (
-          // a long address breaks anywhere rather than widen the card (UI audit round 1: past the edge at 320 px)
+          // a long address breaks anywhere rather than widen the card (it ran past the edge at 320 px)
           <span key={i} className="[overflow-wrap:anywhere]">
             {part.text}
           </span>

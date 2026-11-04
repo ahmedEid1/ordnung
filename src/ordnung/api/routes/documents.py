@@ -277,7 +277,7 @@ def list_documents(
     references, bank details and file hash (``LEFT_OUT_OF_LIST``): the letter's own page has them. A
     letter's proof files (``source="proof"``) are listed with their letter, never here. The scanner's
     text counts only on pages without text of their own and is never returned (ADR 0020)."""
-    # the published description stays as it was (D4's contract changes only found_in's values): found_in
+    # the published description stays as it was (ADR 0024 changed only found_in's values): found_in
     # is also ``picture_text`` — only in the unchecked text Ordnung read from the picture itself (ADR 0024),
     # which counts only on pages without text of their own, is never returned, and doesn't count while text in
     # pictures is off (in Settings, or ORDNUNG_OCR=off)
@@ -719,7 +719,7 @@ def _patch(
         before = require(store.get_document(doc_id), NOT_FOUND)
         document = _apply_patch(store, doc_id, changes)
         # any kind the person sends is their choice, also the one it is filed as (a statement recognised on
-        # read and filed as a utility bill stays one only until the person says so — review round 2)
+        # read and filed as a utility bill stays one only until the person says so)
         kind_changed = "kind" in changes and (before.kind != document.kind or not kind_chosen(store, before))
         dates_changed = bool({"received_date", "doc_date"} & changes.keys()) or confirmed is True
         if kind_changed:

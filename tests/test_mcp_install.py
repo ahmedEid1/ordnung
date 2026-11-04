@@ -269,7 +269,7 @@ def _c_runtime_argv(line: str) -> list[str]:
     ],
 )
 def test_printed_windows_commands_survive_cmd_exe(path: str) -> None:
-    """Reviewer repro: a folder like ``Tom&Jerry`` is legal on Windows, and cmd.exe runs whatever follows
+    """A folder like ``Tom&Jerry`` is legal on Windows, and cmd.exe runs whatever follows
     an unquoted ``&`` as a second command. Every argument must reach the program whole."""
     argv = [
         "claude",
@@ -325,7 +325,7 @@ def test_merge_into_an_empty_config(text: str | None) -> None:
         ("[1, 2]", "its top level is not a JSON object"),
         ('"text"', "its top level is not a JSON object"),
         ('{"mcpServers": []}', 'its "mcpServers" is not a JSON object'),
-        # review round 2 of phase 2: a key twice would be rewritten as the last one alone
+        # a key twice would be rewritten as the last one alone
         ('{"mcpServers": {"a": {"command": "x"}, "a": {"command": "y"}}}', 'the key "a" appears twice'),
         ('{"theme": "dark", "theme": "light"}', 'the key "theme" appears twice'),
     ],
@@ -348,7 +348,7 @@ def test_render_json_writes_like_json_dumps() -> None:
 
 
 def test_write_keeps_every_other_number_as_written(tmp_path: Path) -> None:
-    """Review round 3 of phase 2: re-rendering the file turned 1e400 into Infinity (which Claude Desktop can't
+    """Re-rendering the file turned 1e400 into Infinity (which Claude Desktop can't
     read) and 1E5 into 100000.0, and cut long numbers."""
     config = settings_folder(tmp_path) / "claude_desktop_config.json"
     numbers = '{"big": 1e400, "x": 1E5, "huge": 123456789012345678901234567890.5, "n": -0, "i": 12345678901234567890123}'
@@ -420,7 +420,7 @@ def test_write_creates_a_new_file_privately(tmp_path: Path) -> None:
 def test_writing_a_projects_mcp_json_says_the_entry_names_this_computers_python(
     home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Reviewer repro: the dry run warned that .mcp.json (meant to be committed) gets this computer's
+    """The dry run warned that .mcp.json (meant to be committed) gets this computer's
     Python path — user name included — but a direct --write said only "Added …"."""
     monkeypatch.chdir(tmp_path)
     result = runner.invoke(app, ["mcp", "install", "--client", "claude-code", "--write"])
@@ -456,7 +456,7 @@ def test_write_refuses_invalid_json_and_changes_nothing(tmp_path: Path) -> None:
     ids=["duplicate key", "lone surrogate"],
 )
 def test_write_refuses_a_config_it_cannot_keep_whole_and_changes_nothing(tmp_path: Path, text: str) -> None:
-    """Review round 2 of phase 2: duplicate keys were dropped, and a lone surrogate escape raised a traceback
+    """Duplicate keys were dropped, and a lone surrogate escape raised a traceback
     after the backup was written."""
     config = settings_folder(tmp_path) / "claude_desktop_config.json"
     config.write_text(text, encoding="utf-8")
@@ -515,7 +515,7 @@ def test_the_ledger_is_never_written_into_a_projects_shared_mcp_json(tmp_path: P
 
 
 def test_a_symlinked_mcp_json_is_still_a_projects_shared_file(tmp_path: Path) -> None:
-    """Reviewer repro: a monorepo's project .mcp.json links to ../shared/mcp-servers.json. The name
+    """A monorepo's project .mcp.json links to ../shared/mcp-servers.json. The name
     checked was the target's, so the full server — with the data folder's path — went into the shared
     file. Either name makes it a project's file: the ledger stays out, the rules tools go in with the note."""
     shared = tmp_path / "shared"
@@ -705,7 +705,7 @@ def test_cli_refuses_the_ledger_in_a_projects_mcp_json(
     result = runner.invoke(app, args)
     assert result.exit_code == 1 and "usually committed with the project" in result.stderr
     assert not (tmp_path / ".mcp.json").exists()
-    # review round 4 of phase 2: with --write nothing else is printed, so the refusal gives the command itself
+    # with --write nothing else is printed, so the refusal gives the command itself
     printed = runner.invoke(app, args[:-1])
     [command] = [
         line.strip() for line in printed.stdout.splitlines() if line.strip().startswith("claude mcp add")
@@ -716,7 +716,7 @@ def test_cli_refuses_the_ledger_in_a_projects_mcp_json(
 def test_a_config_that_links_to_itself_or_nests_too_deep_is_refused_without_a_traceback(
     tmp_path: Path, home: Path
 ) -> None:
-    """Review round 4 of phase 2: a symlink loop raised RuntimeError (even without --write) and ~500 nested
+    """A symlink loop raised RuntimeError (even without --write) and ~500 nested
     arrays RecursionError: both left the file alone, but as a traceback."""
     folder = tmp_path / "configs"
     folder.mkdir()
@@ -789,7 +789,7 @@ def test_cli_serving_the_rules_tools_refuses_a_data_folder(
 ) -> None:
     result = runner.invoke(app, [arg.format(data=tmp_path) for arg in args])
     assert result.exit_code == 1 and "The rules tools read no data folder" in result.stderr
-    # both ways out are "leave out": adding --rules-only would not serve the ledger (reviewer: garbled hint)
+    # both ways out are "leave out": adding --rules-only would not serve the ledger (garbled hint)
     assert "Leave out --data-dir, or leave out --rules-only to serve your ledger too." in " ".join(
         result.stderr.split()
     )

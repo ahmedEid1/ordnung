@@ -1,8 +1,8 @@
-"""Kept copies — Rule K (design §11.4, §12.4; review findings 18, 35).
+"""Kept copies — Rule K (SPEC §12c; ADR 0018).
 
 Before anything of the person's would be replaced — the other computer's Ordnung was chosen, this
 computer's data went back in time, a joining computer had letters of its own, or bringing a version in
-would remove letters this computer has (finding 18) — the live data is written as an ordinary encrypted
+would remove letters this computer has — the live data is written as an ordinary encrypted
 backup (format v1, :func:`ordnung.backup.write_backup_file`), encrypted with the **sync passphrase** read
 from the password store at that moment: ``.part``, ``fsync``, rename, ``0600``, the folder ``fsync``-ed —
 before the first local byte changes. It goes to ``<data>/sync/kept/ordnung-kept-<local

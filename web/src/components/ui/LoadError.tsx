@@ -41,7 +41,7 @@ export function technicalDetails(error: unknown): string | null {
 }
 
 /**
- * The sentence under "Couldn't load …", worded by what happened (UX audit U9, as Today's own): Ordnung didn't
+ * The sentence under "Couldn't load …", worded by what happened (as Today's own): Ordnung didn't
  * answer at all (or nothing says why), it answered with a failure of its own, or it refused. `what` is the
  * heading's ("your letters").
  */

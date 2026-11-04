@@ -1,5 +1,5 @@
 /**
- * Today on the real demo, where jsdom can't look (UI audit round 1, today-a): the Pay panel keeps
+ * Today on the real demo, where jsdom can't look: the Pay panel keeps
  * "Mark as paid" in view on short screens and shows the whole IBAN on small phones, the Top-3 rank
  * sits in the card's corner, Coming up gets the page's width until there is room for the side
  * cards (then both start level, Ideas below in two columns), and focus has somewhere to go when a
@@ -134,7 +134,7 @@ test("Mark as paid moves focus to the card now in its place; Undo brings the car
   try {
     await panel.getByRole("button", { name: "Mark as paid" }).click();
     await expect(paid).toHaveCount(0);
-    // the card leaves once the lists are refreshed: on a loaded machine that takes a while (review round 4; the
+    // the card leaves once the lists are refreshed: on a loaded machine that takes a while (the
     // card used to leave before the call's callbacks ran, and focus was lost — TopThree.test.tsx pins that)
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.matches("[data-top-heading]") ?? false), { timeout: 25_000 })

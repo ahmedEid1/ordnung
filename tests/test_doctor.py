@@ -113,7 +113,7 @@ def test_the_install_hint_names_the_installer_for_this_system() -> None:
 
 
 def test_the_windows_install_hint_says_where_to_run_it() -> None:
-    """Audit: ``irm … | iex`` is PowerShell's; pasted into cmd.exe it fails with "'irm' is not recognized"."""
+    """``irm … | iex`` is PowerShell's; pasted into cmd.exe it fails with "'irm' is not recognized"."""
     assert "`irm https://claude.ai/install.ps1 | iex` in PowerShell" in doctor.install_hint("win32")
     assert "PowerShell" not in doctor.install_hint("linux") + doctor.install_hint("darwin")
     assert doctor.install_hint() == doctor.INSTALL_HINT

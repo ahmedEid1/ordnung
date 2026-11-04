@@ -253,7 +253,7 @@ def _objection(api: Api, doc_id: str) -> Item:
 async def test_the_land_the_person_sets_for_a_sender_dates_its_letters(
     data_dir: Path, mid_october: None
 ) -> None:
-    """M3: reading never sets a sender's Land, so the objection counts nationwide holidays and the 3-day rule:
+    """Reading never sets a sender's Land, so the objection counts nationwide holidays and the 3-day rule:
     Tue 17 Nov 2026, at lower confidence. In Saxony (4-day rule) delivery is Sun 18 Oct and one month later is
     Wed 18 Nov, Buß- und Bettag there: Thu 19 Nov. In Hamburg, where it is no holiday: Wed 18 Nov. The date
     without the Land is never later than the law's in any Land, and "Don't know" brings it back."""

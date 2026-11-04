@@ -1,5 +1,5 @@
 /**
- * Ask on the real demo, where jsdom can't measure (UI audit round 1, ask): long words, an IBAN and a
+ * Ask on the real demo, where jsdom can't measure: long words, an IBAN and a
  * law's web address never widen a 320 px phone, markers follow their word, sources and follow-up
  * chips wrap instead of cutting their text, two suggested questions in a row both replay, a question
  * without a recording gets a note (no Try again), the question box leaves a phone room, every marker is a
@@ -73,7 +73,7 @@ test.describe("phone", () => {
     await expect(turn.getByRole("button", { name: /^Looked at/ })).toHaveCount(0);
     await expect(turn.getByText("Checked your open deadlines")).toBeVisible();
 
-    // the marker follows its word like a footnote (UI audit round 1: "GmbH ¹ ."), in a group that never wraps
+    // the marker follows its word like a footnote (it read "GmbH ¹ ."), in a group that never wraps
     const groups = await turn.locator("p [aria-label^='Source']").evaluateAll((markers) => markers.map((m) => m.closest("span.whitespace-nowrap")?.textContent ?? ""));
     expect(groups).toEqual(["⁠1.", "GmbH1."]);
 
@@ -185,7 +185,7 @@ test.describe("phone", () => {
   // like Ask's were. It exempts a marker after its words (WCAG 2.5.8's inline exception): a person's or
   // organisation's marker, a button, counts the same as a letter's link when it follows words, also right after
   // another marker ("…94.99 €¹ ²"), in the app's own markup too; a marker alone in a list item does not. The
-  // exemption is a marker's, in the line of the words it backs (review of the rule): a small text button on its
+  // exemption is a marker's, in the line of the words it backs: a small text button on its
   // own line under other text in the same box is still a standalone target, and so is a marker that starts its
   // own line under a paragraph or after a line break.
   test("the target-size probe exempts small markers after their words, but reports small buttons and markers on a line of their own", async ({ page }) => {
@@ -269,7 +269,7 @@ test.describe("laptop", () => {
   });
 
   test("an Idea's web addresses become links named by their site, on Today and on the letter it names", async ({ page }) => {
-    // the student-permit rule names the law and the advice service by their addresses (UI audit round 1: plain
+    // the student-permit rule names the law and the advice service by their addresses (once plain
     // text that ran past the card at 320 px). Its Idea is about the person (a student visa), so Today always
     // shows it; it names the permit's letter only when the demo read a letter as a residence permit — the
     // model's reading, which changes with a re-recording — so the letter page is checked when there is one

@@ -132,7 +132,7 @@ test("laptops: every step docks in the sidebar at 1280×800, and all but the lon
       await setTour(page, step);
       await open(page, "/inbox", "Inbox");
       await expect(tourCard(page)).toBeVisible();
-      // docked: clear of the page (wave 2's seventh section took the room and step 2 floated over it)
+      // docked: clear of the page (a seventh section once took the room and step 2 floated over it)
       await expect(page.locator("#tour-dock section"), `${size.width}×${size.height}: step ${step + 1} docks`).toHaveCount(1);
       expect(await page.locator("#tour-dock").evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
     }

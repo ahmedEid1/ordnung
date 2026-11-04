@@ -1,5 +1,5 @@
-"""A fake of hand-off sync's engine — the I2 façade of the design (§24.3), as
-:class:`ordnung.sync.agent.Engine` names it — for the server, API and command-line tests (no tests here).
+"""A fake of hand-off sync's engine — the façade
+:class:`ordnung.sync.agent.Engine` names (SPEC §12c) — for the server, API and command-line tests (no tests here).
 
 It keeps the *protocol* the agent depends on, not the real format: the sync folder holds one JSON file
 (:data:`FOLDER_FILE`: the vault, a hash of the passphrase, one head per computer, the versions) and
@@ -16,7 +16,7 @@ makes saves fail; :attr:`FakeEngine.calls` records each call's name, and :meth:`
 one computer's calls (two computers share one engine); :attr:`FakeEngine.on_apply` runs inside
 :meth:`FakeSession.apply` (to prove writes are fenced).
 
-The real engine (``ordnung/sync/engine.py``, package P1) replaces it at integration.
+The real engine (``ordnung/sync/engine.py``) replaces it at integration.
 """
 
 from __future__ import annotations
@@ -655,7 +655,7 @@ def _holder(heads: dict[str, dict[str, Any]]) -> str | None:
 
 
 # --------------------------------------------------------------------------------------------------
-# the decision (design §9, simplified)
+# the decision (:mod:`ordnung.sync.decide`, simplified)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -742,7 +742,7 @@ def _decide(local: Local, view: View, action: UseHere | None) -> Decision:
     if diverged and not (local.keep == "folder"):
         return choice()
     candidates = ahead + (diverged if local.keep == "folder" else [])
-    if not candidates:  # U2: the other computer's background results come along
+    if not candidates:  # the other computer's background results come along
         candidates = [(cid, head) for cid, head in same if cid == holder]
     if not candidates:
         return Decision("claim", from_name=heads[holder]["name"] if holder and holder != me else None)

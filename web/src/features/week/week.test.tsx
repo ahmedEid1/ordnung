@@ -674,7 +674,7 @@ describe("the static demo's session follows the visitor", () => {
     expect(mockWeek(srv.db).overdue).toBe(0);
   });
 
-  it("never ends “All clear” while letters aren't read — as Today says (UX U2)", async () => {
+  it("never ends “All clear” while letters aren't read — as Today says", async () => {
     const { srv } = useMockApi();
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // nothing overdue
     noLettersWaiting(srv);
@@ -696,7 +696,7 @@ describe("the static demo's session follows the visitor", () => {
     await waitFor(() => expect(screen.getByRole("heading", { level: 2, name: /^New/ })).toHaveFocus());
   });
 
-  it("never ends “All clear” while a letter waits in the queue — for Claude, say (final check F-M1)", async () => {
+  it("never ends “All clear” while a letter waits in the queue — for Claude, say", async () => {
     const { srv } = useMockApi();
     srv.db.state.calls[0]!.promise_kept_on = MOCK_WEEK.today; // nothing overdue
     noLettersWaiting(srv);

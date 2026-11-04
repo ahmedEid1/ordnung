@@ -41,7 +41,7 @@ export const SAFE_NOTE = "No warning does not mean it is safe.";
 const HIGH_STAKES = new Set<string>(HIGH_STAKES_KINDS);
 
 /**
- * A reading's warning about text meant for software — the hidden-text banner says it (UI audit round 1: "text
+ * A reading's warning about text meant for software — the hidden-text banner says it ("text
  * addressed to an AI (“Hinweis an KI-Assistenten”) … Ordnung treated it as ordinary content" repeated the
  * banner as a scam sign, and contradicted it).
  */
@@ -53,9 +53,9 @@ export const REPEATS_ARRIVAL_QUESTION = /arriv|received|zugang|deliver|zustell/i
 
 /**
  * The reading's own count of dates it couldn't confirm ("1 date could not be confirmed against the letter's
- * text."; letters read before UI audit R1-backend-7 say "Please check: 1 date …"): each of those to-dos has its
- * own "Please check" card, which says it — and once they are confirmed, the count is out of date (UI audit
- * round 1: "Please check" three times on one letter).
+ * text."; letters read by older versions say "Please check: 1 date …"): each of those to-dos has its
+ * own "Please check" card, which says it — and once they are confirmed, the count is out of date (it was
+ * "Please check" three times on one letter).
  */
 const UNCONFIRMED_DATES = /^(?:please check:\s*)?\d+\s+dates?\s+could not be confirmed/i;
 
@@ -72,10 +72,10 @@ const sentences = (w: string) => w.split(/(?<=[.!?])\s+(?=[A-ZÄÖÜ„“"(])/)
 
 /**
  * The reading's claims about the IBAN's checksum, squared with Ordnung's own check (`payment.iban_valid`): a
- * failure the check doesn't confirm is dropped (UI audit round 1: "IBAN … does not pass the standard IBAN
- * checksum" on a valid IBAN), a confirmed one is said in Ordnung's words, once. Without a check, as read. Since
- * R1-backend-7 the backend squares them when it reads a letter (`square_iban_claims` in
- * `src/ordnung/ingest/plan.py`); this keeps letters read before that right.
+ * failure the check doesn't confirm is dropped ("IBAN … does not pass the standard IBAN
+ * checksum" was said of a valid IBAN), a confirmed one is said in Ordnung's words, once. Without a check, as read. The
+ * backend also squares them when it reads a letter (`square_iban_claims` in
+ * `src/ordnung/ingest/plan.py`); this keeps letters read by older versions right.
  */
 export function squareIbanClaims(warnings: string[], ibanValid: boolean | null | undefined): string[] {
   if (ibanValid == null) return warnings;
@@ -151,8 +151,7 @@ const LAND_HEADING_ID = "check-land";
 
 /**
  * A "Please check" card is about to leave (confirmed, dated, done or dismissed): once it has, focus goes to the card
- * now in its place, or to the to-dos' heading — where the to-do is listed — when no card is left, never to <body>
- * (UX audit U4).
+ * now in its place, or to the to-dos' heading — where the to-do is listed — when no card is left, never to <body>.
  */
 function focusAfterChecked(itemId: string) {
   focusAfterLeaving(() => Array.from(document.querySelectorAll<HTMLElement>(`#${WARNINGS_ID} h2`)), checkHeadingId(itemId), "todos-title");
@@ -243,7 +242,7 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           </p>
           {shown.length ? (
             <>
-              {/* the full ink: at 80 % the 12 px caps fell under 4.5:1 on the pink (UI audit round 1) */}
+              {/* the full ink: at 80 % the 12 px caps fell under 4.5:1 on the pink */}
               <h3 className="eyebrow mt-3 text-danger-ink">
                 {signs.length === 1 ? "The warning sign" : all || signs.length <= TOP_SIGNS ? `${signs.length} warning signs` : `The ${TOP_SIGNS} strongest of ${signs.length} warning signs`}
               </h3>
@@ -260,7 +259,7 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
                   type="button"
                   onClick={() => setAll(!all)}
                   aria-expanded={all}
-                  // a 24 px tall target (WCAG 2.5.8; UI audit round 1)
+                  // a 24 px tall target (WCAG 2.5.8)
                   className="mt-1.5 inline-flex min-h-6 items-center rounded-md text-[13px] font-semibold text-danger-ink underline-offset-2 hover:underline"
                 >
                   {all ? "Show fewer" : `Show all ${signs.length} signs`}
@@ -288,7 +287,6 @@ function ScamBanner({ suggestion, doc, reasons }: { suggestion: Suggestion; doc:
           loading={update.isPending}
           onClick={() =>
             // the promise, not mutate's callbacks: this button leaves with the warning once the lists are refreshed
-            // (review round 4 of phase 2)
             update.mutateAsync({ id: suggestion.id, patch: { status: "dismissed" } }).then(
               () =>
                 toast({
@@ -371,7 +369,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   // A court's letter, or an authority's served with a Postzustellungsurkunde, counts from the date the postman
   // wrote on the yellow envelope, often days before it was opened or picked up — and a dismissal, a landlord's notice or a rent increase from the day it was put in the letterbox,
   // even if the person was away: nothing is filled in for these, so one Save can never move a deadline the law
-  // sets later by mistake (review round 2 of phase 2: a dismissal uploaded after a holiday saved "today").
+  // sets later by mistake (a dismissal uploaded after a holiday once saved "today").
   const highStakes = HIGH_STAKES.has(doc.kind ?? "");
   const [date, setDate] = useState(doc.received_date ?? (served || highStakes ? "" : todayISO));
   const min = doc.doc_date ?? undefined;
@@ -401,7 +399,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
   const subject = items.length === 1 ? `“${items[0]!.title}” counts` : "These dates count";
   // a letter that may be an authority's never counts from later than it would usually count as delivered —
   // but a high-stakes letter is a declaration under private law (a dismissal from a city too): the law's dates
-  // count from the day it really arrived (§ 130 BGB, § 4 KSchG), whoever sent it (review round 2 of phase 2)
+  // count from the day it really arrived (§ 130 BGB, § 4 KSchG), whoever sent it
   const unlessLate = mayBePublic && !served && !highStakes
     ? " — unless it took longer than letters usually do: this sender may be an authority, so we then still count from the day it would usually have arrived"
     : "";
@@ -411,7 +409,7 @@ function ArrivalQuestion({ doc, items, mayBePublic }: { doc: Document; items: It
     if (!valid) return;
     // Awaited here, not in mutate()'s own onSuccess: the hook refetches the letter first, which answers the
     // question and unmounts this form — TanStack Query then drops a per-call callback, so the toast and the
-    // focus never came (review round 3 of phase 2). This closure outlives the form.
+    // focus never came. This closure outlives the form.
     try {
       await update.mutateAsync({ id: doc.id, patch: { received_date: date } });
     } catch {
@@ -627,8 +625,8 @@ function WithGermanTerms({ text }: { text: string }) {
 
 /**
  * A to-do whose date or amount Ordnung couldn't confirm against the letter. On a letter with scam signs it
- * is the demand not to pay: no date to correct — only "not a real to-do" or "it's a real to-do" (walkthrough of
- * phase 2: "Correct / Change date" invited the person to confirm the date of a scam payment). The to-do Ordnung
+ * is the demand not to pay: no date to correct — only "not a real to-do" or "it's a real to-do"
+ * ("Correct / Change date" once invited the person to confirm the date of a scam payment). The to-do Ordnung
  * filed for an incomplete reading says so instead ({@link READING_CHECK_SLOT}).
  */
 function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean }) {
@@ -644,7 +642,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
   // the letter's words, in the letter's language
   const quoteLang = useLetterLanguage(ev?.doc_id);
   // while an answer is saved the buttons are `aria-disabled`, not `disabled`: a disabled button drops focus to the
-  // page (UX audit U4), and after a failed save the keyboard is still where it was; once saved, the card leaves
+  // page, and after a failed save the keyboard is still where it was; once saved, the card leaves
   const unlessBusy = (run: () => void) => () => {
     if (pending) return;
     focusAfterChecked(item.id);
@@ -728,7 +726,7 @@ function PleaseCheckItem({ item, scam = false }: { item: Item; scam?: boolean })
 
 /**
  * The one "Please check" card — a to-do to confirm and the reading's other warnings look alike: the same
- * box, icon and heading (UI audit round 1: an eyebrow h2 on one, a callout's bold title on the other).
+ * box, icon and heading (not an eyebrow h2 on one, a callout's bold title on the other).
  */
 function CheckCard({ headingId, children }: { headingId?: string; children: ReactNode }) {
   return (

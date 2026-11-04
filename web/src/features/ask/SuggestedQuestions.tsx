@@ -44,7 +44,7 @@ export function SuggestedQuestions({
             type="button"
             disabled={disabled}
             onClick={() => onPick(question)}
-            // a row chip wraps rather than cut the question off (UI audit round 1: "…and by whe…"); the
+            // a row chip wraps rather than cut the question off ("…and by whe…"); the
             // title holds the whole of a question that is longer still
             title={variant === "row" ? question : undefined}
             className={cn(

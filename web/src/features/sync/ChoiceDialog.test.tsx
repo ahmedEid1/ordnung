@@ -1,7 +1,7 @@
 /**
- * "Which Ordnung do you want to keep?" (design §12.2): one radio per side with its letters and newest titles, none
- * chosen at first; keeping one makes this computer the one in use and says where the other side's copy is (finding
- * 28: on that computer, once it next starts); a side still arriving can be chosen and is waited for, with Cancel;
+ * "Which Ordnung do you want to keep?" (SPEC §12c): one radio per side with its letters and newest titles, none
+ * chosen at first; keeping one makes this computer the one in use and says where the other side's copy is (on
+ * that computer, once it next starts); a side still arriving can be chosen and is waited for, with Cancel;
  * a refusal shows in place, focused.
  */
 import { useState } from "react";
@@ -88,7 +88,7 @@ describe("the choice dialog", () => {
     expect(srv.sync.choice).not.toBeNull();
   });
 
-  it("keeping this computer's says the other's copy is made there, once it next starts (finding 28)", async () => {
+  it("keeping this computer's says the other's copy is made there, once it next starts", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().bothChanged();
     const user = userEvent.setup();

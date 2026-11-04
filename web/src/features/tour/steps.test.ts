@@ -9,7 +9,7 @@ describe("step copy follows the demo", () => {
     expect(stepCopy(newMail, { tray: { unread: 3, total: 3 } }).body).toMatch(/^Three letters just arrived for Sam\. Open one and watch/);
     expect(stepCopy(newMail, { tray: { unread: 2, total: 3 } }).body).toMatch(/^Two letters are still waiting for Sam\. Open another .* or go on and see what your secretary suggests\.$/);
     expect(stepCopy(newMail, { tray: { unread: 1, total: 3 } }).body).toMatch(/^One letter is still waiting for Sam\. Open it /);
-    // once a letter was read the step's point is made: "Next" leads (walkthrough of phase 2)
+    // once a letter was read the step's point is made: "Next" leads
     expect(stepCopy(newMail, { tray: { unread: 3, total: 3 } }).onward).toBeUndefined();
     expect(stepCopy(newMail, { tray: { unread: 2, total: 3 } }).onward).toBe(true);
     expect(stepCopy(newMail, { tray: { unread: 0, total: 3 } }).onward).toBe(true);
@@ -54,7 +54,7 @@ describe("the spotlight ring", () => {
   });
 });
 
-// UI audit round 1 (R1-tour-6): on phones the ring went around the whole New-mail tray, whose swipe
+// on phones the ring went around the whole New-mail tray, whose swipe
 // row runs past it, and on short screens a ring kept on screen cut through the Ideas below the fold
 describe("the ring goes around a part of the element when the whole won't do", () => {
   const area = { top: 72, bottom: 144 };

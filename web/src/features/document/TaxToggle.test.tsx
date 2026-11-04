@@ -1,5 +1,5 @@
 /**
- * "For taxes" on a letter's page (D3): one press marks a letter for taxes or takes it off, over Claude's mark;
+ * "For taxes" on a letter's page: one press marks a letter for taxes or takes it off, over Claude's mark;
  * the line under the footer says who decided; the toast's Undo puts back exactly the choice before the press
  * (`null` when there was none, which brings Claude's mark back). Hidden where a choice can't be made.
  */

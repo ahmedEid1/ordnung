@@ -1,5 +1,5 @@
 /**
- * `/join` (design §19.2): "I already use Ordnung on another computer" — the setup card in its joining form (a
+ * `/join` (SPEC §12c): "I already use Ordnung on another computer" — the setup card in its joining form (a
  * folder that holds a sync, the passphrase once), then what is arriving; once Ordnung is in use here, the app opens
  * with a full page load. The wizard's first step links here.
  */

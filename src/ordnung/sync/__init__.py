@@ -45,7 +45,7 @@ Written policy (ADR 0007 style)
 * **Ordnung deletes only what it named.** In the folder it removes its own temp files, and objects that
   stayed unreferenced for :data:`GC_GRACE_S` of its own clock *and* :data:`GC_GRACE_RUNTIME_S` of its
   own running time (the database slices of a version every live head has moved past: after
-  :data:`SUPERSEDED_SLICE_GRACE_S`, finding 21). It never touches a name that doesn't match :data:`KEY_FILE_RE`, :data:`HEAD_RE`,
+  :data:`SUPERSEDED_SLICE_GRACE_S`). It never touches a name that doesn't match :data:`KEY_FILE_RE`, :data:`HEAD_RE`,
   :data:`SHARD_RE`, :data:`OBJECT_RE` or :data:`TEMP_RE`.
 * **Kept copies** are ordinary encrypted backups (format v1, the sync passphrase) in
   ``<data>/sync/kept/`` (:data:`KEPT_RE`): never synced, never pruned by themselves, and lost with this
@@ -56,8 +56,8 @@ Refusals answer ``{"detail": <words for the person>, "code": <SyncErrorKind>}`` 
 :data:`ERROR_STATUS` gives that code; :class:`SyncError` (a :class:`~ordnung.backup.BackupError`)
 carries the same ``kind``.
 
-Every name here is part of the contract the sync packages share (design §27, with the binding
-amendments): changing a value changes what the docs promise.
+Every name here is part of the contract the sync packages share (SPEC §12c): changing a value changes
+what the docs promise.
 """
 
 from __future__ import annotations
@@ -154,7 +154,7 @@ HeadState = Literal["in_use", "standing_by", "closed", "left"]
 LOCAL_DIR = "sync"
 STATE_FILE = "state.json"
 FILES_CACHE_FILE = "files.json"
-#: The last good plaintext of every head (each scan decrypts every head; F14's last good copy, GC's refs).
+#: The last good plaintext of every head (each scan decrypts every head; the last good copy, GC's refs).
 HEADS_FILE = "heads.json"
 #: The pull journal: exists only while a pull is applied.
 JOURNAL_FILE = "pull.json"
@@ -220,7 +220,7 @@ SELF_HEAL_EVERY_S = 600.0
 GC_EVERY_S = float(_DAY_S)
 GC_GRACE_S = float(7 * _DAY_S)
 GC_GRACE_RUNTIME_S = float(7 * _DAY_S)
-#: Finding 21: the measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save (one
+#: The measured database-slice churn exceeds :data:`SLICE_CHURN_LIMIT_BYTES` per save (one
 #: reading rewrote 29 of 80 slices of a 1,500-letter library, :mod:`ordnung.sync.push`), so superseded
 #: database slices go after this long of wall clock *and* running time, once every live head is newer.
 SLICE_CHURN_LIMIT_BYTES = 5 * _MIB
@@ -459,7 +459,7 @@ STANDBY_MESSAGE = "Ordnung is in use on {name}. Use it here first (Settings → 
 #: The same while no computer is in use (the one in use left sync): this one still stands by.
 NOBODY_IN_USE_MESSAGE = "No computer is using Ordnung now. Use it here first (Settings → Your computers)."
 BRINGING_OVER_MESSAGE = "Bringing over changes from {name} — one moment."
-#: The gate's refusal while this computer's own last saved state is put back (F10, finding 4).
+#: The gate's refusal while this computer's own last saved state is put back.
 PUTTING_BACK_MESSAGE = "Putting this computer's last saved state back — one moment."
 #: The kept copy's reason, and the notice, when this computer's own last saved state is put back.
 ROLLBACK_WHY = "before this computer's last saved state was put back"

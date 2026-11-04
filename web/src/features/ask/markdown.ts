@@ -210,7 +210,7 @@ export function parseInline(src: string, citations: ReadonlyMap<string, Citation
           return ok;
         });
         if (kept.length) {
-          // the marker follows its word like a footnote, without a space (UI audit round 1: a space before
+          // the marker follows its word like a footnote, without a space (a space before
           // it read "GmbH [1] ."); <Markdown> keeps it with that word
           const last = out[out.length - 1];
           if (last?.t === "text") {

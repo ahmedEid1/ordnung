@@ -70,7 +70,7 @@ function DocumentTitleSync() {
 const HEADING_WAIT_MS = 10_000;
 
 /**
- * A new page is said (UX audit U10: opening a letter with Enter, or the app opening one by itself, left focus on
+ * A new page is said (opening a letter with Enter, or the app opening one by itself, left focus on
  * the page and said nothing). On each change of path, once the new page has drawn its h1:
  * - focus went with the page that held it (an Inbox row): it moves to the h1, which is read out;
  * - the new page moved it itself (the weekly review's step, a letter's card): it stays there;
@@ -78,7 +78,7 @@ const HEADING_WAIT_MS = 10_000;
  *   said in a polite live region.
  *
  * A page's stand-in heading while its data loads (`data-loading`) is not its h1: focus moved there would fall to
- * <body> when the page's own replaces it (final check of the fix wave: Enter on an Inbox row).
+ * <body> when the page's own replaces it (as after Enter on an Inbox row).
  */
 function PageAnnouncer() {
   const { pathname } = useLocation();

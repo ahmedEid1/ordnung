@@ -1,7 +1,7 @@
-"""The completeness re-ask against its baseline, the final review (ADR 0016): the first reading with the code's check
+"""The completeness re-ask against its baseline (ADR 0016): the first reading with the code's check
 behind it is what an answer must never fall below — dated in the first reading's own context, a remedy named under
 another nature held to it, a "Read this letter yourself" kept beside an answer it can't be held against, and an
-earlier letter date only the one the letter gives. The final verifier's adversarial probes, each run through the
+earlier letter date only the one the letter gives. Adversarial probes, each run through the
 pipeline twice (``tests/test_reading_reask_floor.py``), and the checks that pin each rule of the judge.
 
 Every letter here is synthetic and written in this file or the floor tests; nothing calls a model.
@@ -160,7 +160,7 @@ def tax_letter(day: str, *lines: str) -> Letter:
 
 
 #: A tax office's decision dated Tuesday 15.09.2026: its fourth day is a Saturday, which a tax office's deemed
-#: delivery moves to the Monday (§ 122 AO) and the check, reading no sender, doesn't (final review NEW-1).
+#: delivery moves to the Monday (§ 122 AO) and the check, reading no sender, doesn't.
 TAX = tax_letter("15.09.2026")
 TAX_SENDER = {"name": "Finanzamt Musterhausen", "kind": "tax_office"}
 TAX_OBJECTION = {**objection({}, quote=TAX_NOTICE), "title": "Objection (Einspruch)"}
@@ -177,7 +177,7 @@ PAY_FIXED = {
     "quote": PAY_BY,
 }
 #: A court's cost order whose remedy (sofortige Beschwerde) the check can't read: an almost blank first reading
-#: gets "Read this letter yourself" (final review NEW-2).
+#: gets "Read this letter yourself".
 COURT = Letter(
     marker="Kostenfestsetzung Ulmenhof",
     pages=(
@@ -196,7 +196,7 @@ COURT = Letter(
 )
 
 PLANTED = "Die Widerspruchsfrist endet am 26.10.2026."
-#: A planted end date a week after the real deadline (final review NEW-3).
+#: A planted end date a week after the real deadline.
 PLANT = letter("Pflanzweg", FEE, PLANTED)
 #: The planted date filed as a to-do of another nature, outside the notice's words.
 PLANTED_OTHER = {
@@ -206,7 +206,7 @@ PLANTED_OTHER = {
     "date": {"type": "fixed", "date": "2026-10-26", "nature": "other", "text": "endet am 26.10.2026"},
 }
 
-#: A fee decision with a fixed payment day (final review NEW-4: an earlier letter date it never gives).
+#: A fee decision with a fixed payment day (an earlier letter date it never gives).
 EARLY = letter("Frühweg", FEE, PAY_BY)
 INJECTED = letter(
     "Sondernutzung Probeweg",
@@ -216,7 +216,7 @@ INJECTED = letter(
 
 
 # --------------------------------------------------------------------------------------------------
-# NEW-1: dated in the first reading's context — a sender read anew never moves a date later
+# dated in the first reading's context — a sender read anew never moves a date later
 # --------------------------------------------------------------------------------------------------
 
 
@@ -278,7 +278,7 @@ async def test_a_sender_read_as_a_firm_that_moves_nothing_later_is_used(
 async def test_a_tax_office_s_correct_answer_is_not_used_when_it_ends_after_the_check_s_date(
     tmp_path: Path,
 ) -> None:
-    """NEW-1's reproduction: the answer is right in law (21.10), but later than the check's 19.10 the baseline
+    """The reproduction: the answer is right in law (21.10), but later than the check's 19.10 the baseline
     gives — never later than the baseline, even when the later date is legally right. The shape of its date
     passes; only the date computed in every Land shows it."""
     again = {**TAX_HALF, "items": [TAX_OBJECTION]}
@@ -288,7 +288,7 @@ async def test_a_tax_office_s_correct_answer_is_not_used_when_it_ends_after_the_
 
 
 def test_the_shape_alone_passes_that_tax_answer() -> None:
-    """The computed comparison is what rejects NEW-1's answer: by its shape alone it would pass."""
+    """The computed comparison is what rejects that answer: by its shape alone it would pass."""
     pages = pages_of(TAX)
     floor = check_item(reading(BLANK), pages, today=date(2026, 9, 25))
     second = reading({**TAX_HALF, "items": [TAX_OBJECTION]})
@@ -365,7 +365,7 @@ async def test_the_first_answer_s_sender_named_again_needs_no_looking_up(tmp_pat
 
 
 # --------------------------------------------------------------------------------------------------
-# NEW-3: a remedy named under another nature is held to the floor
+# a remedy named under another nature is held to the floor
 # --------------------------------------------------------------------------------------------------
 
 
@@ -391,7 +391,7 @@ async def test_a_remedy_filed_under_another_nature_is_never_used_where_the_check
 
 
 # --------------------------------------------------------------------------------------------------
-# NEW-2: "Read this letter yourself" stays beside an answer it can't be held against
+# "Read this letter yourself" stays beside an answer it can't be held against
 # --------------------------------------------------------------------------------------------------
 
 
@@ -475,7 +475,7 @@ def test_verify_files_the_cross_check_only_where_the_check_files_nothing() -> No
 
 
 # --------------------------------------------------------------------------------------------------
-# NEW-4: an earlier letter date only the one the letter gives
+# an earlier letter date only the one the letter gives
 # --------------------------------------------------------------------------------------------------
 
 
@@ -497,7 +497,7 @@ async def test_an_earlier_letter_date_the_letter_gives_is_used(tmp_path: Path) -
 
 
 # --------------------------------------------------------------------------------------------------
-# The motivating letter, as the final verifier ran it
+# The motivating letter, as it was first run
 # --------------------------------------------------------------------------------------------------
 
 
@@ -506,7 +506,7 @@ async def test_the_motivating_letter_s_complete_answer_is_used(tmp_path: Path) -
 
 
 # --------------------------------------------------------------------------------------------------
-# Each rule of the judge, pinned (final review NEW-5)
+# Each rule of the judge, pinned
 # --------------------------------------------------------------------------------------------------
 
 
@@ -610,7 +610,7 @@ def test_a_second_reading_s_own_check_less_dated_than_the_floor_never_covers_it(
 
 
 # --------------------------------------------------------------------------------------------------
-# An allowed letter keeps the first reading for a replay miss only (tests RA-5: O6, O10); none is allowed now
+# An allowed letter keeps the first reading for a replay miss only; none is allowed now
 # --------------------------------------------------------------------------------------------------
 
 
@@ -655,7 +655,7 @@ async def test_on_an_allowed_letter_only_a_replay_miss_is_missing(
 
 def test_the_check_s_floor_ignores_the_injection_flag_for_its_date() -> None:
     """The injection flag changes the check's to-do's wording only (where to send the objection), never its date
-    or kind: the judge's floor is the same either way (an equivalent mutant of the review, pinned as such)."""
+    or kind: the judge's floor is the same either way (an equivalent mutant, pinned as such)."""
     for case in (PAY, COURT, INJECTED):
         for first in (BLANK, HALF):
             plain = check_item(reading(first), pages_of(case), today=date(2026, 9, 25))

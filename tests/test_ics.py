@@ -244,7 +244,7 @@ def test_mark_exported(store: Store) -> None:
 
 
 def test_an_open_one_off_that_was_history_when_filed_is_left_out(store: Store) -> None:
-    """Walkthrough of phase 2: the export carried a 2025 security deposit and a 2025 meter reading as open
+    """The export carried a 2025 security deposit and a 2025 meter reading as open
     dates — both long past when their letters were read (a backfilled archive), so no dates to keep."""
     deposit = _item(
         store,

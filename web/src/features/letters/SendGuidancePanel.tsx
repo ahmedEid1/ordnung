@@ -42,7 +42,7 @@ function ChannelRow({ c, n }: { c: SendChannel; n: number }) {
   const Icon = copy.icon;
   const t = TONES[c.allowed ? copy.tone : "neutral"];
   return (
-    // a channel that isn't allowed is said in full-contrast text (review round 2: the faded row failed WCAG
+    // a channel that isn't allowed is said in full-contrast text (a faded row fails WCAG
     // 1.4.3 — and a court's letter depends on this row to say that e-mail is invalid): only its name is struck.
     // The rank is a plain "1." before the name (a number on the icon's corner read as a notification count).
     <li className="flex gap-3 py-3 first:pt-0 last:pb-0">
@@ -96,7 +96,7 @@ export function SendGuidancePanel({ guidance, sent }: { guidance: SendGuidance |
   const sameDay = sameDayPhrase(allowed);
   const notEnough = notEnoughPhrase(ranked);
   const form = copyFor(SEND_FORM_COPY, guidance.form);
-  // the usual time to post has passed (review round 4 of phase 2): the date that counts is when it must arrive
+  // the usual time to post has passed: the date that counts is when it must arrive
   const late = Boolean(guidance.post_too_late && guidance.must_arrive_by);
   const due = late ? guidance.must_arrive_by : (guidance.send_by ?? guidance.must_arrive_by);
   const u = due ? urgencyOf(due, today) : null;

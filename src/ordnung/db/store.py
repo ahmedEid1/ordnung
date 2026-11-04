@@ -836,7 +836,7 @@ class Store:
         database with the live database's page size and schema (sync stages it so). ``pages`` and
         ``progress`` are passed to the backup (tests interrupt it there).
 
-        Probed with SQLite 3.45.1 (hand-off sync P1): the backup into the live WAL database succeeds
+        Probed with SQLite 3.45.1: the backup into the live WAL database succeeds
         while another *process* holds a read transaction (0.002 s for 5,000 rows); that reader keeps
         seeing its old snapshot until its transaction ends, then sees the new data; ``journal_mode``
         stays ``wal``; ``wal_checkpoint(TRUNCATE)`` answers busy (not an error) while the reader is open.
@@ -2942,7 +2942,7 @@ _USAGE_AGGREGATES = (
     "COUNT(*) AS calls, COALESCE(SUM(cache_hit), 0) AS cache_hits, "
     "COALESCE(SUM(1 - ok), 0) AS errors, "
     # every prompt token counts as "in", those read from or written to the prompt cache too — as a letter's
-    # "How it was read" counts them (walkthrough of phase 2: "2 in" beside the trace's "20k in")
+    # "How it was read" counts them ("2 in" beside the trace's "20k in")
     "COALESCE(SUM(input_tokens + cache_read_tokens + cache_creation_tokens), 0) AS input_tokens, "
     "COALESCE(SUM(output_tokens), 0) AS output_tokens, COALESCE(SUM(cost_usd), 0.0) AS cost_usd"
 )

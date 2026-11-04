@@ -60,8 +60,8 @@ const placeholder = makeItem({
 
 const scam = makeSuggestion({ id: "sug_scam", kind: "scam", title: "Possible scam", refs: [{ type: "document", id: "doc_1" }] });
 
-describe("the to-do Ordnung adds, round 3 (UX review 3)", () => {
-  it("offers no “Correct” on an undated deadline of its own: there is no date to call correct (R3UX-2)", () => {
+describe("the to-do Ordnung adds: what it asks the person to check", () => {
+  it("offers no “Correct” on an undated deadline of its own: there is no date to call correct", () => {
     renderWithProviders(<DocumentWarnings detail={makeDetail({ document: makeDoc({ status: "needs_review" }), items: [undatedDeadline] })} />, {
       client: client(),
     });
@@ -69,25 +69,25 @@ describe("the to-do Ordnung adds, round 3 (UX review 3)", () => {
     expect(screen.getByRole("button", { name: "Set a date" })).toBeInTheDocument();
   });
 
-  it("keeps the evidence chip on a dated to-do of its own, which quotes the notice (V3T-2)", () => {
+  it("keeps the evidence chip on a dated to-do of its own, which quotes the notice", () => {
     renderWithProviders(<ItemsList items={[dated]} docId="doc_1" />, { client: client() });
     expect(screen.queryByText("Added by Ordnung")).toBeNull();
   });
 
-  it("still says what to do on Today for a letter in review whose warnings name no reason (R3UX-3)", () => {
+  it("still says what to do on Today for a letter in review whose warnings name no reason", () => {
     renderWithProviders(<PleaseCheckCard docs={[makeDoc({ status: "needs_review", warnings: [] })]} />, { client: client() });
     expect(screen.getByText(NO_REASON)).toBeInTheDocument();
   });
 });
 
-describe("the to-do Ordnung adds, round 2 (UX review 2)", () => {
-  it("marks the remedy in parentheses German (R2UX-8)", () => {
+describe("the to-do Ordnung adds: its German remedy, and no quote", () => {
+  it("marks the remedy in parentheses German", () => {
     const runs = germanRuns("Deadline for a court action (Klage)");
     expect(runs.filter((r) => r.german).map((r) => r.text)).toEqual(["Klage"]);
     expect(germanRuns("Deadline to object (Widerspruch)").some((r) => r.german && r.text === "Widerspruch")).toBe(true);
   });
 
-  it("shows no “couldn't find” chip on “Read this letter yourself”: it quotes nothing (R2UX-9)", () => {
+  it("shows no “couldn't find” chip on “Read this letter yourself”: it quotes nothing", () => {
     const done = { ...placeholder, status: "done" as const };
     renderWithProviders(<ItemsList items={[done]} docId="doc_1" />, { client: client() });
     expect(screen.getByText("Added by Ordnung")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 """The held-out Ask set's plumbing (``evals/ask/heldout.py``, ``--set heldout``, ``--repeat``, ``--max-cost-usd``,
 ``--wait-on-limit``) and the results files of schema 2 beside the as-recorded ones of schema 1.
 
-The held-out questions and attacks themselves are written blind after the code freeze (EV10); these tests use small
+The held-out questions and attacks themselves are written blind after the code freeze; these tests use small
 hand-made files in a temporary folder, a stand-in for the agent (no model), and the sample life's truth."""
 
 from __future__ import annotations
@@ -643,7 +643,7 @@ def test_a_gate_on_harm_and_strict_correctness(dev_run: RunResult) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# the harness (EV3's evals/harness.py): one run index, budget, waiting, ledger, recorder lock
+# the harness (evals/harness.py): one run index, budget, waiting, ledger, recorder lock
 # --------------------------------------------------------------------------------------------------
 
 

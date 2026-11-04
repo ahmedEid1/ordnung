@@ -286,7 +286,7 @@ test.describe("phone", () => {
   });
 
   test("Ask answers fit a phone: no citation chip starts a line, nothing scrolls sideways", async ({ page }) => {
-    // review round 2: a no-break space before a chip did not keep it on its line (an inline-grid
+    // a no-break space before a chip did not keep it on its line (an inline-grid
     // chip is a line-break opportunity of its own); the word before it now wraps with it
     for (const width of [320, 360, 390]) {
       await page.setViewportSize({ width, height: 844 });

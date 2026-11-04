@@ -958,7 +958,7 @@ async def test_get_numbers(data_dir: Path) -> None:
 
 
 def test_a_scam_letters_phone_never_shows_on_the_real_organisations_call_sheet(store: Store) -> None:
-    """Adversarial (review of wave 2): a letter imitating a known sender is linked to it and, read before
+    """Adversarial: a letter imitating a known sender is linked to it and, read before
     its scam checks, fills the organisation's empty phone and e-mail. The call sheet — next to the
     person's own customer numbers, also in Ask — never shows them; a clean letter's contact wins."""
     party = _party(store, "pty_bank", "Musterbank", "bank")

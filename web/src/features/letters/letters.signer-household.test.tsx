@@ -1,7 +1,7 @@
 /**
  * The composer's From field and your household (ADR 0023). A letter not filed for someone of the household — no
  * household, not answered, or the person's own — keeps the From field it had before the household existed, byte for
- * byte: the HTML below was recorded on the D3 base, before any composer change, and a later composer edit that
+ * byte: the HTML below was recorded before the household changed the composer, and a later composer edit that
  * changes it must record it again on purpose.
  *
  * A letter filed for someone who signs their own letters offers their name as typed in Settings; one filed for

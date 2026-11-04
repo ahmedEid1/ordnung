@@ -185,7 +185,7 @@ export const isUnreadRow = (entry: WeekEntry): boolean =>
 
 /**
  * How many letters wait from the watched folder, wait in the queue (for Claude, say) or are being read, or
- * couldn't be read — what Today counts as not read (final check F-M1: a letter waiting for Claude is queued).
+ * couldn't be read — what Today counts as not read (a letter waiting for Claude is queued).
  */
 function useUnreadCount(): number {
   const held = useDocuments({ status: "held" });
@@ -239,7 +239,7 @@ function AllClear({ week, unread, onShow }: { week: WeeklySession; unread: numbe
   // the backend counts every day to act that is today (`due_today`); the next one is always among them
   const todayCount = today ? Math.max(1, week.due_today) : 0;
   // letters from the watched folder and letters that couldn't be read (`unread`) ask for who knows what: never
-  // "All clear" while there are any — as on Today (UX U2), which counts them the same way
+  // "All clear" while there are any — as on Today, which counts them the same way
   const title = overdue
     ? `${overdue} ${overdue === 1 ? "thing is" : "things are"} overdue`
     : today

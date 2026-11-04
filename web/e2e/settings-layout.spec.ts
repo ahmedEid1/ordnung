@@ -1,5 +1,5 @@
 /**
- * Settings on the real demo, where jsdom can't look (UI audit round 1, settings-b): an edit keeps
+ * Settings on the real demo, where jsdom can't look: an edit keeps
  * the save bar in view (above the phone tab bar), the section list moves beside the pane only when
  * the page column has room for both (not at 1024 px next to the app's sidebar), a pill that gets
  * keyboard focus on a phone scrolls fully into view, and the forms (Reminders chips, a profile
@@ -84,7 +84,7 @@ for (const [width, height] of [
     expect(await status.evaluate((el) => el.matches(":focus-visible"))).toBe(true);
     await settle(page);
     expect(await reachable(status)).toBe(true);
-    // Tab goes on from the card (round 2: focus fell to <body>, the next Tab to "Skip to content")
+    // Tab goes on from the card (focus once fell to <body>, the next Tab to "Skip to content")
     await page.keyboard.press("Shift+Tab");
     await expect(iban).toBeFocused();
 

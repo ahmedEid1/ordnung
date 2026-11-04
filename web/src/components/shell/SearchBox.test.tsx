@@ -1,5 +1,5 @@
 /**
- * The letter search (audit round 1, bucket "shell-b"): results that show whole titles (two lines,
+ * The letter search: results that show whole titles (two lines,
  * the query highlighted, the full title on hover), a visible and scrolled-to active option, a clear
  * focus ring, every state said (hint, searching, nothing found, no letters yet, error with "Try
  * again", how many were found), "See all" when there are more, recent letters in the empty phone

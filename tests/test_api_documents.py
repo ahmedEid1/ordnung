@@ -87,7 +87,7 @@ async def test_the_running_worker_reads_uploads_by_itself(data_dir: Path) -> Non
 
 
 async def test_a_letter_says_whether_it_was_given_to_claude(data_dir: Path) -> None:
-    """FEAT G4: with Claude not installed the letter waits and was never sent (``given_to_model`` false: the
+    """With Claude not installed the letter waits and was never sent (``given_to_model`` false: the
     page says "Not sent to Claude"); once read it was."""
     router = ApiRouter()
     router.errors["extract"] = lambda: ClaudeNotInstalled("The “claude” command was not found.")
@@ -571,7 +571,7 @@ async def test_a_paired_phone_can_mark_a_letter_for_taxes(data_dir: Path) -> Non
 
 
 async def test_a_reminders_pay_once_warning_follows_the_kind_it_is_filed_as(data_dir: Path) -> None:
-    """Review round 4 of phase 2: a reminder re-filed as a court order still said "This is a payment reminder
+    """A reminder re-filed as a court order still said "This is a payment reminder
     about …" in its Please-check card: the warning is said of the kind the letter is filed as, or dropped."""
     from ordnung.ingest.link import reminder_warning
 
@@ -842,7 +842,7 @@ def test_the_letter_detail_sets_aside_what_is_not_to_act_on(store: Store) -> Non
 
 
 def test_a_letters_page_lists_the_scam_signs_its_idea_counts(store: Store) -> None:
-    """Walkthrough of phase 2: the letter said "the 3 strongest of 7 warning signs", its Idea "5 warning
+    """The letter said "the 3 strongest of 7 warning signs", its Idea "5 warning
     signs". The page gets the Idea's list (``scam_signs``); an ordinary letter's is empty."""
     fake = store.add_party(name="Beitrags Zahlungszentrale", kind="public_broadcaster").id
     scam = add_doc(

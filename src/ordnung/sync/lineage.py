@@ -1,4 +1,4 @@
-"""Versions by what the *person* changed (design §7; pure: no I/O, no clocks).
+"""Versions by what the *person* changed (SPEC §12c; pure: no I/O, no clocks).
 
 Every push that carries a change the person made gets a **person number** of its computer. A version's
 :class:`~ordnung.sync.model.Lineage` holds, per computer, the ranges of person numbers whose changes it
@@ -10,8 +10,8 @@ Between this computer's lineage ``L`` and another version's ``H`` (:func:`relati
 
 * ``same`` — the same content;
 * ``ahead`` — ``H`` contains everything of ``L`` and more (bringing it in loses nothing);
-* ``behind`` — ``L`` accounts for everything in ``H``, keeping or dropping it (blocker 3 of the review:
-  ``covers``, not ``contains`` — the winner of "keep this one" is not asked again);
+* ``behind`` — ``L`` accounts for everything in ``H``, keeping or dropping it
+  (``covers``, not ``contains`` — the winner of "keep this one" is not asked again);
 * ``decided`` — ``H`` saw all of ``L`` and a person chose against some of it (bring ``H`` in, but keep
   a copy of this computer's data first);
 * ``diverged`` — anything else: both have changes the other lacks, or two answers to one choice
@@ -222,8 +222,8 @@ def relation(local: Lineage, other: Lineage) -> Relation:
 
 
 def claims_within(lineage: Lineage, published: Mapping[str, int]) -> bool:
-    """No computer's person numbers are claimed beyond the highest that computer published (review
-    finding 18: a lineage bug, or a forgotten computer, must not claim everything). Computers not in
+    """No computer's person numbers are claimed beyond the highest that computer published (a
+    lineage bug, or a forgotten computer, must not claim everything). Computers not in
     ``published`` aren't checked (nothing is known of them)."""
     for computer, limit in published.items():
         if max(highest(lineage.content, computer), highest(lineage.dropped, computer)) > limit:

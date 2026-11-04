@@ -1,5 +1,5 @@
 /**
- * The setup wizard on the real demo, where jsdom can't look (UI audit round 1, onboarding). The
+ * The setup wizard on the real demo, where jsdom can't look. The
  * demo's Sam is set up already, so `/welcome` is the "Change your setup" variant. Checked: the
  * phone footer (main button full width on top, Back under it), focus on each new step's heading,
  * one column of states on the smallest phones, the install command shown whole, the welcome cards'

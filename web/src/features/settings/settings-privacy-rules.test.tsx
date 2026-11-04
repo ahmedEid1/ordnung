@@ -340,7 +340,7 @@ describe("Privacy & AI usage", () => {
 
   it("activity: Ask's checks of several answers are one row that links to Ask, what they did behind a disclosure", async () => {
     const { srv } = useMockApi();
-    // what the Ask trust merge logs: up to three different checks per answer, alternating (round 2: ten rows of them)
+    // what the Ask trust merge logs: up to three different checks per answer, alternating (not ten rows of them)
     const SENTENCES = "Checked an answer in Ask: took out sentences or values with dates, amounts or laws not in the records they cite";
     const QUOTES = "Checked an answer in Ask: showed values only a letter or the person states as quotes";
     const checks = Array.from({ length: 6 }, (_, i) => [

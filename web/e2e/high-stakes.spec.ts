@@ -1,6 +1,6 @@
 /**
  * Layout guards for the screens of the high-stakes letters, the template letters and Ask's answer
- * check, on the real demo at 320, 390 and 1280 px (review round 1 of phase 2, wave 1 — the UI audit
+ * check, on the real demo at 320, 390 and 1280 px (the UI audit
  * catalog has the same states, `hs-*`, `composer-templates-*`, `ask-check*`):
  *
  * - Ask: the check's note and its placeholders fit a phone, and a citation chip never starts a line
@@ -221,7 +221,7 @@ test.describe.serial("high-stakes letters", () => {
     await expectNoSideways(page, "landlord's notice 320px");
   });
 
-  // Review round 3 of phase 2: after saving the day, the question unmounted before its toast and focus ran —
+  // After saving the day, the question once unmounted before its toast and focus ran —
   // no feedback, focus on <body>, and the page left where the form had been.
   for (const [file, kind, width] of [
     [/^07_arbeitsvertrag/, "dismissal", 390],
@@ -245,7 +245,7 @@ test.describe.serial("high-stakes letters", () => {
   }
 
   test("an arrival day before the letter keeps a visible focus outline at each of the field's Tab stops", async ({ page }) => {
-    // review round 3 of phase 2: the invalid field's red border looked the same focused or not, and while the
+    // the invalid field's red border once looked the same focused or not, and while the
     // date field's own calendar button had focus the field matched neither :focus nor :focus-visible
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, "/");
@@ -272,7 +272,7 @@ test.describe.serial("high-stakes letters", () => {
   });
 
   test("'Open the letter's card' from a refused request lands on the card, its title focused", async ({ page }) => {
-    // review round 3 of phase 2: it opened the letter at its top, focus on <main>, the card 1250 px below
+    // it once opened the letter at its top, focus on <main>, the card 1250 px below
     await page.setViewportSize({ width: 390, height: 844 });
     await open(page, "/");
     const id = await refile(page, /^07_arbeitsvertrag/, "dismissal");
@@ -286,7 +286,7 @@ test.describe.serial("high-stakes letters", () => {
   });
 
   for (const width of WIDTHS) {
-    // UI audit round 2: the demo's dismissal (a March letter) has law deadlines that were long past when it was
+    // the demo's dismissal (a March letter) has law deadlines that were long past when it was
     // added — they were listed twice, as "Also: … 171 days overdue" in red and as "Still open? … probably dealt
     // with". Said once now, quietly, each row whole inside the card (the countdown of a current one: unit tests)
     test(`a dismissal at ${width}px: a law deadline past when it was added is said once, as probably dealt with`, async ({ page }) => {

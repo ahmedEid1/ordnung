@@ -107,7 +107,7 @@ describe("Contracts page", () => {
   });
 });
 
-/** UI audit round 1 (contracts): layout, states and wording. */
+/** Layout, states and wording. */
 describe("Contracts page — fits every width, honest states", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -258,7 +258,7 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(within(bank).queryByRole("link", { name: /Open letter/ })).toBeNull();
   });
 
-  it("a notice period the rules assumed: 'Please check' and 'Add notice period' (walkthrough of phase 2)", async () => {
+  it("a notice period the rules assumed: 'Please check' and 'Add notice period'", async () => {
     // the Deutschlandticket as the rules had it before its day of the month was read (migration 0004): the letter's
     // "by the 10th of a month, to its end" gave no notice period, so they assumed the longest the law allows
     const assumed = "The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date.";
@@ -338,7 +338,7 @@ describe("Contracts page — fits every width, honest states", () => {
   });
 });
 
-/** UI audit round 1 (leftovers): terms we couldn't work out — the notice period entered on the card. */
+/** Terms we couldn't work out — the notice period entered on the card. */
 describe("Contracts page — adding a notice period by hand", () => {
   afterEach(() => {
     act(() => __clearToasts());
@@ -415,7 +415,7 @@ describe("Contracts page — adding a notice period by hand", () => {
       path: "/contracts/ctr_bank",
       body: { notice_value: 1, notice_unit: "months", notice_basis: "end_of_month", notice_day: null },
     });
-    // the card shows the dates the engine worked out; the period is the person's now (R2-inbox-timeline-contracts-1):
+    // the card shows the dates the engine worked out; the period is the person's now:
     // no "Please check" for what they just checked, and a quiet way left to correct it, which keeps the focus
     const change = await within(card("Musterbank Girokonto")).findByRole("button", { name: /^Change notice period/ });
     const saved = card("Musterbank Girokonto");

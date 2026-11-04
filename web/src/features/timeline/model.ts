@@ -411,7 +411,7 @@ export function entryStatus(
 ): EnumCopy | null {
   const s = e.status;
   if (!s) return null;
-  // not one to act on (walkthrough of phase 2: a replaced invoice and a salary that came in showed "Overdue")
+  // not one to act on (a replaced invoice and a salary that came in once showed "Overdue")
   if (s === "open" || s === "overdue" || s === "missed") {
     if (e.aside === "replaced") return REPLACED;
     if (e.aside === "attached") return ON_THE_BILL;

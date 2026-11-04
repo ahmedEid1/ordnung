@@ -173,7 +173,7 @@ describe("values copied from letters", () => {
     expect(formatInlineDates("from 2026-09-28 to 2026-10-26", "2026-09-28")).toBe("from Mon 28 Sep to Mon 26 Oct");
   });
 
-  it("formats a German answer's dates the German way (review round 3 of phase 2)", () => {
+  it("formats a German answer's dates the German way", () => {
     expect(formatInlineDates("Die Nachzahlung ist bis 2026-10-15 fällig", undefined, "de")).toBe(
       "Die Nachzahlung ist bis Do. 15.10.2026 fällig",
     );
@@ -181,7 +181,7 @@ describe("values copied from letters", () => {
   });
 
   it("keeps one weekday when the text writes one before an ISO date", () => {
-    // review finding: a recorded answer's "due Wed 2026-09-30" showed as "due Wed Wed 30 Sep 2026"
+    // a recorded answer's "due Wed 2026-09-30" once showed as "due Wed Wed 30 Sep 2026"
     expect(formatInlineDates("due Wed 2026-09-30", "2026-09-28")).toBe("due Wed 30 Sep");
     expect(formatInlineDates("fällig Mi. 2026-09-30 und Thursday, 2026-10-01", "2026-09-28")).toBe(
       "fällig Wed 30 Sep und Thu 1 Oct",
@@ -191,7 +191,7 @@ describe("values copied from letters", () => {
     expect(formatInlineDates("So 2026-09-30 it is", "2026-09-28")).toBe("So Wed 30 Sep it is");
   });
 
-  it("formats exactly the inline date forms the Ask check reads (review round 4)", () => {
+  it("formats exactly the inline date forms the Ask check reads", () => {
     // an ISO date-time the check did not read reached the person as "Fri 31 Dec 2027, 23:59" — in
     // Ordnung's own style. The check's test (tests/test_ask_support.py) reads the same list.
     for (const form of inlineDateForms) {

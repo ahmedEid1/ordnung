@@ -202,7 +202,7 @@ test("a letter read from New mail sits on top as 'Just read', New until its page
   await expect(row.getByText("New", { exact: true }).first()).toBeVisible();
 });
 
-// UX audit U10, final check of the fix wave: Enter on a row focused the letter page's stand-in heading while the
+// Enter on a row once focused the letter page's stand-in heading while the
 // letter loaded; it was replaced when the letter came, and focus fell to <body>. The letter is made to come a
 // moment later, as on a busy machine, so the stand-in is always shown first.
 for (const width of [390, 1280]) {

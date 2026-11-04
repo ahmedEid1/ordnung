@@ -1,5 +1,5 @@
-"""The records of hand-off sync: what the folder holds (heads, manifests, buckets — design §4.4-4.5, every
-one sealed by :mod:`ordnung.sync.crypto`) and what stays in ``<data>/sync/`` (design §5).
+"""The records of hand-off sync: what the folder holds (heads, manifests, buckets, every
+one sealed by :mod:`ordnung.sync.crypto`) and what stays in ``<data>/sync/`` (SPEC §12c).
 
 Every record is strict (``extra="forbid"``): a field Ordnung never writes makes the record unreadable,
 so a crafted manifest or head can't smuggle anything in. Counts, sizes and names are bounded before
@@ -74,20 +74,20 @@ class Head(_Strict):
     vault: Hex32
     computer: Hex32
     name: str = Field(min_length=1, max_length=NAME_MAX_CHARS)
-    #: +1 on every rewrite: a head older than one already seen is a replay (F15)
+    #: +1 on every rewrite: a head older than one already seen is a replay
     written: int = Field(ge=1)
     state: HeadState
-    #: the lease epoch this computer last claimed (§8)
+    #: the lease epoch this computer last claimed
     epoch: int = Field(ge=0)
     #: the version this computer's data equals (its own, or one it pulled); kept when it left
     version: VersionRef | None
-    #: the newest other version whose objects have all arrived *and verified* here (finding 6)
+    #: the newest other version whose objects have all arrived *and verified* here
     has: VersionId | None
-    #: the highest person number this computer ever published (finding 18)
+    #: the highest person number this computer ever published
     pnum: Count = 0
     #: objects this computer found damaged or long missing: whoever has the content writes them again
     wants: list[ObjectName] = Field(default_factory=list, max_length=WANTS_MAX)
-    #: computers the person removed from this folder (§13.5)
+    #: computers the person removed from this folder
     forgotten: list[Hex32] = Field(default_factory=list, max_length=4096)
     app_version: str = Field(max_length=64)
     schema_version: Count
@@ -153,7 +153,7 @@ class SummaryChange(_Strict):
 class Summary(_Strict):
     """What a version holds, for a choice between versions: its letters, the open and done dates and
     to-dos, the notes, and the latest changes (a choice whose sides differ in to-dos, done marks or
-    edits is told apart by them — review)."""
+    edits is told apart by them)."""
 
     letters: Count = 0
     newest: list[SummaryLetter] = Field(default_factory=list, max_length=3)
@@ -164,7 +164,7 @@ class Summary(_Strict):
 
 
 class CalendarHandover(_Strict):
-    """What a computer sent to its calendar: travels with the data, under a hashed target (§6.4)."""
+    """What a computer sent to its calendar: travels with the data, under a hashed target."""
 
     target: Sha256Hex
     mode: str = Field(max_length=32)
@@ -210,7 +210,7 @@ class BaseInfo(_Strict):
 
 
 class SeenHead(_Local):
-    """What this computer last saw of a head (F15 replay guard; "arrived here" times)."""
+    """What this computer last saw of a head (the replay guard; "arrived here" times)."""
 
     written: int
     computer: Hex32
@@ -245,7 +245,7 @@ class Garbage(_Local):
 
 
 class Waiting(_Strict):
-    """A take-over (or a chosen side) waiting until its version has arrived (finding 23)."""
+    """A take-over (or a chosen side) waiting until its version has arrived."""
 
     target: VersionId
     head: Hex32
@@ -256,10 +256,10 @@ class Waiting(_Strict):
 
 
 class LocalState(_Local):
-    """``<data>/sync/state.json``: this computer's sync state (design §5, with the review's findings)."""
+    """``<data>/sync/state.json``: this computer's sync state (SPEC §12c)."""
 
     format: Literal[1] = 1
-    #: False while ``connect`` runs: a retry recognises its own key file (finding 34)
+    #: False while ``connect`` runs: a retry recognises its own key file
     complete: bool = True
     folder: str
     key_file: Hex32
@@ -320,7 +320,7 @@ class FilesCacheEntry(_Local):
 
 
 class Journal(_Local):
-    """``<data>/sync/pull.json``: a pull past its commit point (design §11.5)."""
+    """``<data>/sync/pull.json``: a pull past its commit point (SPEC §12c)."""
 
     format: Literal[1] = 1
     target: VersionRef
@@ -335,5 +335,5 @@ class Journal(_Local):
     entries: list[FileEntry] = Field(default_factory=list)
     calendar: CalendarHandover | None = None
     stage: Literal["staged", "database"] = "staged"
-    #: the database step failed (the person may abandon the pull: finding 12)
+    #: the database step failed (the person may abandon the pull)
     failed: str | None = None

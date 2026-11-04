@@ -98,7 +98,7 @@ const iso = (d: Date) => format(d, "yyyy-MM-dd");
 /**
  * The mock's clock day: records are stamped on the demo's today with the real time of day, as the demo
  * server stamps them (`ordnung.clock.stamp_simulated_day`) — never the real date, which drifts further into
- * the demo's future every day (walkthrough of phase 2: "Read by Claude on 29 Sep 2026" in a demo of 28 Sep).
+ * the demo's future every day (not "Read by Claude on 29 Sep 2026" in a demo of 28 Sep).
  * The newest mock world sets it.
  */
 let clockDay: () => string | null = () => null;

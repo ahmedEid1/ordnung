@@ -1,4 +1,4 @@
-"""External golden cases (auditor A): 45 hand-derived German deadline cases run through the engine.
+"""External golden cases: 45 hand-derived German deadline cases run through the engine.
 
 The cases in ``tests/golden/external_cases.json`` were written from the verified legal research
 without looking at ``src/ordnung/rules``; each carries its reasoning and citations. This module only
@@ -22,7 +22,7 @@ comes from counting from an earlier, conservative event day (e.g. a fine counted
 date when the DateSpec cannot say it was an Übergabe-Einschreiben).
 
 Payment cases carry the payer's Land as ``recipient_region``: money owed to a private creditor is due
-at the debtor's home, so § 193 BGB uses the payer's holidays (judge's note on audit B3).
+at the debtor's home, so § 193 BGB uses the payer's holidays.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ from ordnung.rules.deadlines import RuleContext
 GOLDEN = Path(__file__).parent / "golden" / "external_cases.json"
 CASES: list[dict[str, Any]] = json.loads(GOLDEN.read_text(encoding="utf-8"))["cases"]
 
-#: Cases where the engine and the auditor disagree after re-derivation; see the reason for who is right.
+#: Cases where the engine and the hand-derived case disagree after re-derivation; see the reason for who is right.
 KNOWN_DISAGREEMENTS: dict[str, str] = {}
 
 _CONTRACT_FIELDS = ("regime", "cancel_by", "safe_date", "earliest_exit")

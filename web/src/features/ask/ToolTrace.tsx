@@ -15,7 +15,7 @@ import { TOOL_ICONS, toolLabel, toolResultText, traceSummary, unbreakDates, type
  */
 function StepChip({ step, titleOf, today }: { step: ToolStep; titleOf?: TitleLookup; today?: string }) {
   const Icon = TOOL_ICONS[step.name] ?? Wrench;
-  // a date or a law ("§ 556 Abs. 3 BGB") never splits across two lines (UI audit round 1)
+  // a date or a law ("§ 556 Abs. 3 BGB") never splits across two lines
   const result = step.done && step.result ? keepCitations(unbreakDates(toolResultText(step.result, today))) : null;
   const label = toolLabel(step, titleOf, today);
   return (
@@ -30,7 +30,7 @@ function StepChip({ step, titleOf, today }: { step: ToolStep; titleOf?: TitleLoo
         <Icon className="size-3.5" />
       </span>
       {/* the label wraps at every width — a date range's end or a letter's title is never cut off, and no
-          hover-only title holds what keyboard and touch can't reach (review round 3 of phase 2); from lg up
+          hover-only title holds what keyboard and touch can't reach; from lg up
           the result follows on the same line when there is room */}
       <span className="flex min-w-0 flex-col pt-0.5 lg:flex-row lg:flex-wrap lg:items-baseline lg:gap-x-2">
         <span
@@ -86,7 +86,7 @@ export function ToolTrace({ steps, live, titleOf, today }: { steps: ToolStep[]; 
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          // at least 28 px tall: a target of its own, not a line of small print (UI audit round 1: 22.8 px)
+          // at least 28 px tall: a target of its own, not a line of small print (it was 22.8 px)
           className="-ml-1 inline-flex min-h-7 items-center gap-1 rounded-md px-1 text-left text-[12.5px] font-medium text-muted transition-colors hover:text-ink"
         >
           <ChevronRight className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")} aria-hidden />
@@ -111,7 +111,6 @@ export function ToolTrace({ steps, live, titleOf, today }: { steps: ToolStep[]; 
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.2 }}
                 // the icon at the label's first line at every width: centred beside a wrapped label it sat mid-block
-                // (review round 4 of phase 2)
                 className="flex min-w-0 items-start gap-2 text-[13px] leading-5"
               >
                 <StepChip step={s} titleOf={titleOf} today={today} />

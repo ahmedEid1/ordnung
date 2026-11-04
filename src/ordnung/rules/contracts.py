@@ -258,7 +258,7 @@ def regime_for(terms: ContractTerms) -> ContractRegime:
         return "sgbv175" if terms.party_kind == "health_insurer" else "vvg11"
     if terms.category == "bank" and terms.is_consumer and terms.notice_basis == "any_time":
         # a current account ("jederzeit kündigen"): a payment services framework contract (§ 675h BGB) —
-        # other bank contracts (savings, loans, deposits) follow their terms (walkthrough of phase 2)
+        # other bank contracts (savings, loans, deposits) follow their terms
         return "bgb675h"
     if not terms.is_consumer or terms.category == "bank":
         return "as_written"
@@ -1168,7 +1168,7 @@ def price_increase_window(
             day_before,
             "enwg_41_5",
         )
-        if is_basic_supply:  # the StromGVV/GasGVV apply to basic supply only (walkthrough of phase 2)
+        if is_basic_supply:  # the StromGVV/GasGVV apply to basic supply only
             trace.use("stromgvv_5_3")
             if effective_date.day != 1:
                 trace.soft(

@@ -80,7 +80,7 @@ describe("seedFromQueue (on connecting: a reload, a new tab)", () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it("says which letters wait and why, and shows the banner while one waits for Claude (final check F-M2)", async () => {
+  it("says which letters wait and why, and shows the banner while one waits for Claude", async () => {
     vi.spyOn(api, "jobs").mockResolvedValue([job("job_a", "doc_a", NOT_INSTALLED), job("job_b", "doc_b", STOPPED), job("job_c", "doc_c", null, "running")]);
     const { result, rerender } = renderHook(() => useEvents());
     await seedFromQueue(Date.now());

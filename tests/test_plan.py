@@ -145,7 +145,7 @@ def test_unfound_or_inconsistent_dated_items_need_review() -> None:
     result = verify_extraction("doc_x", extraction([missing]), [TEXT_PAGE])
     assert result.items[0].evidence.grounding == "unverified"
     assert result.needs_review
-    # no "Please check:" before it: the letter's page shows it under that heading (UI audit R1-backend-7)
+    # no "Please check:" before it: the letter's page shows it under that heading
     assert result.warnings == ["1 date could not be confirmed against the letter's text."]
 
 
@@ -166,7 +166,7 @@ def rent(quote: str, working_day: int | None) -> ExtractedItem:
 
 
 def test_a_working_day_its_quote_names_is_consistent() -> None:
-    """The reviewer's check: "spätestens am dritten Werktag" names the working day the reading gives (3)."""
+    """The words "spätestens am dritten Werktag" name the working day the reading gives (3)."""
     [verified] = verify_extraction("doc_x", extraction([rent(RENT_BY_WORKING_DAY, 3)]), [LEASE_PAGE]).items
     assert verified.reasons == () and verified.evidence.value_consistent
     assert verified.dated and not verified.needs_check  # dated by its working day, and it checks out
@@ -324,7 +324,7 @@ def test_a_working_day_the_letter_states_elsewhere_is_grounded_on_that_sentence(
             ticket(31),
             DAY_OF_MONTH_NOT_IN_QUOTE,
         ),
-        # the reading's day in a sentence that names a sum but pays nothing (reviewer repro), or after a word
+        # the reading's day in a sentence that names a sum but pays nothing, or after a word
         # that makes it a bound ("nach der Monatsmitte")
         (
             (TICKET_PRICE, "Den neuen Rechnungsbetrag teilen wir Ihnen jeweils zur Monatsmitte mit."),
@@ -497,7 +497,7 @@ FEE_TABLE = "10.2026 – 12.2026   18,36 €   55,08 €   15.11.2026"
 @pytest.mark.parametrize("quote", [FEE_DUE, FEE_TERMS])
 @pytest.mark.parametrize("first", ["2026-10-15", "2026-12-15", "2027-01-15"])
 def test_the_middle_of_a_period_is_anchored_on_the_letters_own_due_date(quote: str, first: str) -> None:
-    """Reviewer repro: a reading a month or two off the letter's due date (15.11.2026) is a 15th too, but no
+    """A reading a month or two off the letter's due date (15.11.2026) is a 15th too, but no
     middle the letter states — the phrase says nothing of which months make the periods, so only a first
     date the letter writes anchors them (``first_date_written``). "Please check", whichever sentence it
     quotes."""
@@ -519,7 +519,7 @@ QUARTER_MIDDLE = "Der Abschlag von 55,08 € ist jeweils zur Quartalsmitte fäll
 def test_the_middle_of_each_quarter_is_anchored_on_the_date_the_letter_writes(
     first: str, confirmed: bool
 ) -> None:
-    """Reviewer repro: "zur Quartalsmitte …, erstmals am 15.02.2027" vouches for a quarterly 15th from
+    """The words "zur Quartalsmitte …, erstmals am 15.02.2027" vouch for a quarterly 15th from
     15.02.2027 only, not for one read from 15.05.2027 or 15.08.2027 (each a quarter's middle, too)."""
     reading = fee(quote=QUARTER_MIDDLE, type="fixed", date=first, nature="payment")
     [verified] = verify_extraction("doc_x", extraction([reading]), [ticket_page(QUARTER_MIDDLE)]).items
@@ -544,7 +544,7 @@ def test_a_recurring_date_counts_as_stated_only_on_its_quotes_schedule() -> None
 
 
 def test_quarter_ends_one_may_cancel_by_are_no_due_days() -> None:
-    """Reviewer repro: notice dates on the quarter ends are no schedule of the 31st (no due wording)."""
+    """Notice dates on the quarter ends are no schedule of the 31st (no due wording)."""
     quote = "Der Vertrag ist zum 31.03., 30.06., 30.09. oder 31.12. kündbar; der Abschlag beträgt 300,00 €."
     reading = item(quote, money=300.0, type="fixed", date="2026-12-31", nature="payment").model_copy(
         update={"recurrence": Recurrence(interval=3, unit="months", day_of_month=31)}
@@ -646,7 +646,7 @@ def test_compute_item_sources() -> None:
 
 
 def test_a_payment_made_in_person_is_stored_without_a_send_by_day() -> None:
-    """UI audit R1-backend-8: the residence permit's 100 € fee, paid by girocard at the appointment, was
+    """The residence permit's 100 € fee, paid by girocard at the appointment, was
     stored with a bank transfer's send-by day ("transfer by 13 Oct"). Its words say it is paid on site
     (``pays_on_site``), so its date is computed without one; a transfer keeps its day."""
     ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
@@ -662,7 +662,7 @@ def test_a_payment_made_in_person_is_stored_without_a_send_by_day() -> None:
 
 
 def test_a_collected_or_incoming_payment_is_stored_without_a_send_by_day() -> None:
-    """Walkthrough of phase 2: the Deutschlandticket's direct debit (due Thu 1 Oct) was stored with a bank
+    """The Deutschlandticket's direct debit (due Thu 1 Oct) was stored with a bank
     transfer's send-by day, Wed 30 Sep, which the daily note then called its date. Nobody transfers money the
     sender collects or money that comes in (``is_collected_or_incoming``): the due day is the day."""
     ctx = RuleContext(today=date(2026, 9, 25), document_date=date(2026, 9, 15))
@@ -772,7 +772,7 @@ def test_rule_context_marks_a_private_sender_but_not_an_unknown_one(store: Store
 def test_a_quote_naming_a_bescheid_never_brings_deemed_delivery_back(
     store: Store, kind: str, quote: str
 ) -> None:
-    """Reviewer repro: a gym's "nach Bekanntgabe der Preiserhöhung", a bank asking for "Ihren
+    """A gym's "nach Bekanntgabe der Preiserhöhung", a bank asking for "Ihren
     Rentenbescheid". The item's quote may name an administrative act, but a private sender's period still
     runs from the day it arrived (Fri 16 Oct) — deemed delivery would give Sun 18 Oct — and the app keeps
     asking for that day while it is missing (``private_sender_arrival``)."""
@@ -854,7 +854,7 @@ def test_a_late_arrival_of_a_letter_naming_a_bescheid_keeps_the_earlier_date(
 
 
 def test_rule_context_recognises_social_law_senders_filed_as_authority(store: Store) -> None:
-    """Benchmark finding: job centres and pension insurers are read as a plain ``authority``, which
+    """In the benchmark, job centres and pension insurers are read as a plain ``authority``, which
     applied the VwVfG (and a Land's 3-day rule) instead of § 37 SGB X."""
     document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
     jobcenter = store.add_party(name="Jobcenter Beispielkreis", kind="authority")
@@ -918,7 +918,7 @@ def _notice(quote: str, end: str) -> DocumentExtraction:
 
 
 def test_a_dismissal_without_notice_period_ends_the_job_on_arrival() -> None:
-    """Review round 4 of phase 2: "außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026" counted the
+    """The words "außerordentlich fristlos, hilfsweise fristgerecht zum 31.12.2026" counted the
     § 38 SGB III registration from the end given in the alternative (Wed 30 Sep, high) — the job ends when a
     notice without notice period arrives, so the three days count from then (Mon 28 Sep)."""
     from ordnung.ingest.plan import law_deadlines
@@ -955,7 +955,7 @@ def test_a_dismissal_without_notice_period_ends_the_job_on_arrival() -> None:
 
 
 def test_a_notice_too_short_for_its_period_counts_its_objection_from_the_earliest_end() -> None:
-    """Review round 4 of phase 2: a notice dated 25 Aug "zum 31.10.2026" that arrived on 28 Aug can end the
+    """A notice dated 25 Aug "zum 31.10.2026" that arrived on 28 Aug can end the
     tenancy on 30 Nov at the earliest (§ 573c Abs. 1 BGB): the law's objection counts back from that end."""
     from ordnung.ingest.plan import law_deadlines
 
@@ -1050,7 +1050,7 @@ def test_remedy_warnings_and_payment_details() -> None:
 
 
 def test_a_misread_iban_is_taken_from_the_page() -> None:
-    """Demo finding: the model read "DE05 1234 5600 0004 4556 60" as DE05123456000044556660 (one zero
+    """In the demo, the model read "DE05 1234 5600 0004 4556 60" as DE05123456000044556660 (one zero
     too many), which failed the checksum and raised a false "misprinted IBAN" warning."""
     page = "Bankverbindung: Musterbank, IBAN DE05 1234 5600 0004 4556 60 · BIC MUSKDEM1XXX"
     fixed = payment_details(PaymentDetails(iban="DE05123456000044556660"), page)
@@ -1065,7 +1065,7 @@ def test_a_misread_iban_is_taken_from_the_page() -> None:
     assert other is not None and other.iban == "DE05123456000044556660" and not other.iban_valid
 
 
-#: The demo fitness contract's reading (UI audit R1-backend-7): a false checksum claim about a valid IBAN.
+#: The demo fitness contract's reading: a false checksum claim about a valid IBAN.
 FALSE_CLAIM = (
     "The studio's stated bank account IBAN (DE05 1234 6700 0029 9001 50) does not pass the standard IBAN "
     "checksum, and several details in this document (names, addresses) look like generic placeholder/sample "
@@ -1076,7 +1076,7 @@ BROKEN = PaymentDetails(iban="DE89370400440532013001", iban_valid=False)
 
 
 def test_a_checksum_claim_the_check_contradicts_is_not_stored() -> None:
-    """R1-backend-7: code checks the IBAN's digits (ADR 0002); the model's claim about them is squared with
+    """Code checks the IBAN's digits (ADR 0002); the model's claim about them is squared with
     that check when the letter is read, sentence by sentence."""
     assert square_iban_claims([FALSE_CLAIM, "Payment is due monthly."], VALID) == ["Payment is due monthly."]
     mixed = "The IBAN fails its checksum. The contract renews automatically."
@@ -1268,7 +1268,7 @@ def test_activity_message() -> None:
 
 
 def test_rule_context_carries_the_person_s_country_and_only_a_chosen_region(store: Store) -> None:
-    """Audit B integration: letters honour ``Profile.country`` like contracts do, and the default region
+    """Letters honour ``Profile.country`` like contracts do, and the default region
     of a profile that never chose one is not "known" (it would move payments on the wrong holidays)."""
     document = store.add_document(sha256="e" * 64, filename="x", mime="application/pdf", file_path="x")
     ctx = rule_context(None, document, extraction([]), date(2026, 9, 25), country="AT")
