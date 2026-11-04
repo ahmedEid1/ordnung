@@ -41,7 +41,9 @@ one paragraph of the head, the accuracy family, harm, the tested harm comparison
 of the templates' ``readme_layout`` (where Ordnung falls short, under its lead; Ask with its scope; each caveat),
 each ending in ``<br>`` as today's; and the link. Its budget is fixed with it: at most :data:`README_BLOCK_MAX_LINES`
 lines, and every line but the chart's at most :data:`README_LINE_MAX` characters, both taken from the longest block
-the templates can give (``tests/test_present_final.py``).
+the templates can give (``tests/test_present_final.py``). The chart's line is a registered frame too
+(:func:`_is_picture`): ``<source>`` tags and one ``<img>`` with its alt text, no text outside the tags, at most
+:data:`README_PICTURE_MAX` characters.
 
 The rules:
 
@@ -113,10 +115,21 @@ BLOCKS = {"readme": "readme_block", "page": "page_block"}
 #: The README block's budget, registered with the templates before any result: its paragraph is wrapped at
 #: ``README_WIDTH`` characters (the width of today's headline), the block takes at most ``README_BLOCK_MAX_LINES``
 #: lines between the markers, and every line but the chart's at most ``README_LINE_MAX`` characters. Both limits are
-#: the longest block the templates can give (``tests/test_present_final.py`` builds it).
+#: the longest block the templates can give (``tests/test_present_final.py`` builds it). The chart's line, whose alt
+#: text describes the chart, takes at most ``README_PICTURE_MAX``: today's chart line for the same four conditions is
+#: 730 characters, and 803 with every number at four digits (``tests/test_present.py``).
 README_WIDTH = 116
 README_BLOCK_MAX_LINES = 26
 README_LINE_MAX = 412
+README_PICTURE_MAX = 1000
+#: The chart's line: a ``<picture>`` that holds ``<source>`` tags, then one ``<img>`` with its alt text, and nothing
+#: but those tags (an attribute's value holds no quote, angle bracket or line break), as today's block writes it.
+_ATTRIBUTE = r' [a-z][a-z-]*="[^"<>\n]*"'
+_PICTURE_LINE = re.compile(
+    rf'<picture>(?:<source(?:{_ATTRIBUTE})+>)*<img(?:{_ATTRIBUTE})* alt="[^"<>\n]+"(?:{_ATTRIBUTE})*></picture>'
+)
+#: Where the README's chart goes when the check lays the block out: any chart line in the frame matches it.
+_ANY_CHART = '<picture><img alt="the chart"></picture>'
 #: docs/evals.md's final section lies between these two lines (the README's block between ``BEGIN`` and ``END``).
 PAGE_BEGIN = "<!-- evals:final:begin: the pre-registered sentences, in page_block order; do not edit -->"
 PAGE_END = "<!-- evals:final:end -->"
@@ -966,7 +979,9 @@ def _fill(value: str, width: int) -> list[str]:
 
 
 def _is_picture(line: str) -> bool:
-    return "\n" not in line and line.startswith("<picture>") and line.endswith("</picture>")
+    """The chart's line in its registered frame (:data:`_PICTURE_LINE`), at most :data:`README_PICTURE_MAX`
+    characters: no hand-written text beside, between or around its tags."""
+    return len(line) <= README_PICTURE_MAX and _PICTURE_LINE.fullmatch(line) is not None
 
 
 def readme_block(said: Sequence[Sentence], templates: Mapping[str, Any], picture: str) -> list[str]:
@@ -976,7 +991,10 @@ def readme_block(said: Sequence[Sentence], templates: Mapping[str, Any], picture
     line. The paragraph's sentences wrapped at :data:`README_WIDTH`; a blank line, the chart, a blank line; one line
     per item of the layout, its lead and its slots' sentences, ending in ``<br>``; the link."""
     if not _is_picture(picture):
-        raise FinalSentenceError("the README's chart is one <picture> line")
+        raise FinalSentenceError(
+            "the README's chart is one <picture> line of <source> tags and one <img> with its alt text, nothing else, "
+            f"at most {README_PICTURE_MAX} characters"
+        )
     layout = templates["readme_layout"]
     slots = [sentence.slot for sentence in said]
     runs = [slot for i, slot in enumerate(slots) if i == 0 or slots[i - 1] != slot]
@@ -1001,7 +1019,7 @@ def readme_problems(readme: str, said: Sequence[Sentence], templates: Mapping[st
     if BEGIN not in lines or END not in lines or lines.index(END) < lines.index(BEGIN):
         return ["the README has no generated evaluation block"]
     block = lines[lines.index(BEGIN) + 1 : lines.index(END)]
-    expected = readme_block(said, templates, "<picture></picture>")
+    expected = readme_block(said, templates, _ANY_CHART)
     flat = normalised(" ".join(block))
     missing = [
         f"sentence {i} is not in the block"
@@ -1011,7 +1029,12 @@ def readme_problems(readme: str, said: Sequence[Sentence], templates: Mapping[st
     if missing:
         return missing
     for number, (got, want) in enumerate(zip(block, expected, strict=False), 1):
-        if got != want and not (_is_picture(want) and _is_picture(got)):
+        if want == _ANY_CHART and not _is_picture(got):
+            return [
+                f"line {number} of the block is not the chart's registered line: <source> tags and one <img> with "
+                f"its alt text, nothing else, at most {README_PICTURE_MAX} characters"
+            ]
+        if got != want and want != _ANY_CHART:
             return [
                 f"line {number} of the block is not laid out as readme_block lays out the registered sentences"
             ]

@@ -1135,6 +1135,54 @@ def said_texts(said: list[final.Sentence]) -> list[str]:
     return [sentence.text for sentence in said]
 
 
+#: Today's chart line in the README's form (a dark-mode ``<source>``, then the ``<img>`` with its width and alt text).
+TODAYS_FORM = (
+    '<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-final-dark.svg">'
+    '<img src="docs/assets/eval-final-light.svg" width="740" alt="Dot plot of the final run\'s deadlines."></picture>'
+)
+
+
+@pytest.mark.parametrize(
+    "chart",
+    [
+        '<picture><img src="x.svg" alt="chart"></picture> **Ordnung is the clear winner on every measure.** '
+        "<picture></picture>",
+        '<picture>Ordnung beats every baseline.<img src="x.svg" alt="chart"></picture>',
+        '<picture><img src="x.svg" alt="chart">Ordnung beats every baseline.</picture>',
+        '<picture><source srcset="x.svg">Ordnung wins.<img src="x.svg" alt="chart"></picture>',
+        '<picture><img src="x.svg"></picture>',
+        '<picture><img src="x.svg" alt="chart"><img src="y.svg" alt="chart"></picture>',
+        "<picture></picture>",
+        '<picture><img src="x.svg" alt="' + "a" * final.README_PICTURE_MAX + '"></picture>',
+    ],
+    ids=[
+        "prose-after-the-picture",
+        "prose-inside-before-the-image",
+        "prose-inside-after-the-image",
+        "prose-between-tags",
+        "no-alt-text",
+        "two-images",
+        "no-image",
+        "longer-than-its-maximum",
+    ],
+)
+def test_the_readme_check_refuses_text_around_or_inside_the_chart(chart: str) -> None:
+    """The chart's line is registered as a frame: one ``<picture>`` holding ``<source>`` tags and then one ``<img>``
+    with its alt text, nothing outside the tags, at most ``final.README_PICTURE_MAX`` characters. Hand-written prose
+    beside the image, between the tags or after the picture is refused, so nothing is said in the README's block but
+    the registered sentences, the leads and the link; a chart in today's form passes."""
+    templates = final.load_templates()
+    said = final.coded(good(), prereg(), block="readme", sources=no_set_aside(sources()))
+    lines = final.readme_block(said, templates, PICTURE)
+    for good_chart in (PICTURE, TODAYS_FORM):
+        swapped = [good_chart if line == PICTURE else line for line in lines]
+        assert final.readme_problems(_readme(swapped), said, templates) == []
+    bad_chart = [chart if line == PICTURE else line for line in lines]
+    assert final.readme_problems(_readme(bad_chart), said, templates)
+    with pytest.raises(final.FinalSentenceError, match="picture"):
+        final.readme_block(said, templates, chart)
+
+
 def test_the_readme_block_is_laid_out_as_registered() -> None:
     """One bold paragraph of the head, the accuracy family, harm, the tested harm comparisons and stability, wrapped
     at ``final.README_WIDTH``; a blank line, the chart, a blank line, as today's block; then one line per item, each
@@ -1298,9 +1346,10 @@ def _worst_case(templates: dict[str, Any]) -> list[final.Sentence]:
 
 def test_the_readme_s_block_fits_its_registered_budget() -> None:
     """Laid out by ``final.readme_block``, blank lines included, the README's block of every synthetic final and of
-    the worst case takes at most ``final.README_BLOCK_MAX_LINES`` lines, and every line but the chart's (whose alt text
-    describes the chart) at most ``final.README_LINE_MAX`` characters. The two limits are the worst case's own: they
-    were chosen from it, before any result."""
+    the worst case takes at most ``final.README_BLOCK_MAX_LINES`` lines, every line but the chart's at most
+    ``final.README_LINE_MAX`` characters, and the chart's (whose alt text describes the chart) at most
+    ``final.README_PICTURE_MAX``. The first two limits are the worst case's own: they were chosen from it, before any
+    result; the chart's is today's chart line with every number at four digits, and room to spare."""
     templates = final.load_templates()
     for name, make_final, make_sources in SCENARIOS:
         lines = final.readme_block(
@@ -1308,6 +1357,7 @@ def test_the_readme_s_block_fits_its_registered_budget() -> None:
         )
         assert len(lines) <= final.README_BLOCK_MAX_LINES, (name, len(lines))
         assert max(len(line) for line in lines if line != PICTURE) <= final.README_LINE_MAX, name
+        assert max(len(line) for line in lines) <= final.README_PICTURE_MAX, name
     worst = final.readme_block(_worst_case(templates), templates, PICTURE)
     assert len(worst) == final.README_BLOCK_MAX_LINES
     assert max(len(line) for line in worst if line != PICTURE) == final.README_LINE_MAX

@@ -232,6 +232,20 @@ def test_the_readme_block_is_short(doc: dict[str, Any]) -> None:
     assert len(lines) - 2 <= 12
 
 
+def test_today_s_chart_line_fits_the_final_block_s_frame_and_maximum(doc: dict[str, Any]) -> None:
+    """The final block registers its chart's line as a frame (``evals.present.final._is_picture``: ``<source>`` tags,
+    one ``<img>`` with its alt text, nothing outside the tags) of at most ``final.README_PICTURE_MAX`` characters,
+    before the final chart exists. Today's chart line, in the form the presenter writes, fits it, and so does the same
+    line with every number at four digits and the final run's name for its deadlines."""
+    from evals.present import final
+
+    (picture,) = [line for line in text.readme_block(doc).splitlines() if line.startswith("<picture>")]
+    assert final._is_picture(picture)
+    worst = re.sub(r"\d+\.\d", "100.0", picture.replace("held-out", "final-run"))
+    worst = re.sub(r"(?<![\d.])\d+(?![\d.])", "9999", worst)
+    assert final._is_picture(worst) and len(worst) <= final.README_PICTURE_MAX - 150, len(worst)
+
+
 def _variant(doc: dict[str, Any], **changes: Any) -> dict[str, Any]:
     """``doc`` with its headline changed: ``harmful_ordnung``, ``verdict_<pair>``, ``diff_<pair>``."""
     new = copy.deepcopy(doc)
