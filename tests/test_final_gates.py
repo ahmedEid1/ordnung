@@ -68,6 +68,9 @@ class Gate:
     repeat: int
     options: Mapping[str, str]
     line: str
+    #: Why the gate cannot fail (a shell operator or a redirection after its command, ``continue-on-error``), or
+    #: ``None``.
+    defeated: str | None = None
 
 
 def final_reads(results_dir: Path) -> list[Read]:
@@ -154,18 +157,31 @@ def workflow_gates(workflow: Mapping[str, Any]) -> list[Gate]:
     gates = []
     for job in (workflow.get("jobs") or {}).values():
         for step in job.get("steps") or []:
+            allowed = job.get("continue-on-error") or step.get("continue-on-error")
             for line in str(step.get("run") or "").replace("\\\n", " ").splitlines():
                 marker = next((m for m in (*BENCHMARK_COMMANDS, ASK_COMMAND) if m in line), None)
                 if marker is None:
                     continue
-                found = options(shlex.split(line.split(marker, 1)[1]))
+                tail = line.split(marker, 1)[1]
+                found = options(shlex.split(tail))
+                defeated = _defeated(tail) or ("continue-on-error" if allowed else None)
                 repeat = int(found.get("--repeat") or 1)
                 if marker == ASK_COMMAND:
                     if found.get("--set") == ASK_SET:
-                        gates.append(Gate("ask", ASK_SET, repeat, found, line.strip()))
+                        gates.append(Gate("ask", ASK_SET, repeat, found, line.strip(), defeated))
                 elif found.get("--split") in FINAL:
-                    gates.append(Gate("benchmark", found["--split"], repeat, found, line.strip()))
+                    gates.append(Gate("benchmark", found["--split"], repeat, found, line.strip(), defeated))
     return gates
+
+
+def _defeated(command: str) -> str | None:
+    """The shell operator or redirection after a gate's command (its failure would not fail the step), or ``None``."""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+    lexer.whitespace_split = True
+    for token in lexer:
+        if token and all(char in "();<>|&" for char in token):
+            return f"{token!r} after the command"
+    return None
 
 
 def _index_gate(read: Read, gates: Mapping[str, Any]) -> list[Mapping[str, str]]:
@@ -212,6 +228,8 @@ def gate_problems(
         elif len(mine) > 1:
             problems.append(f"{label}: {len(mine)} gates in ci.yml replay it, not one")
         for gate in mine:
+            if gate.defeated is not None:
+                problems.append(f"{label}: its gate in ci.yml cannot fail ({gate.defeated})")
             for option, value in want.items():
                 if number(gate.options.get(option)) != value:
                     problems.append(
@@ -445,6 +463,30 @@ def test_a_missing_doubled_or_early_gate_fails(tmp_path: Path) -> None:
     )
     (problem,) = _problems(results, index, early)
     assert problem.startswith("a gate for holdout4 r3, a read not published:")
+
+
+def test_a_gate_that_cannot_fail_fails(tmp_path: Path) -> None:
+    """A gate at the replay's thresholds whose failure the shell or the step throws away (``|| true``, a pipe, a
+    redirection, ``continue-on-error``) holds nothing: it is refused like a threshold moved by hand."""
+    results, index = _published(tmp_path)
+    for tail in (" || true", " || echo ignored", "; true", " | cat", " > /dev/null", " &"):
+        defeated = WORKFLOW.replace(
+            "--min-accuracy 0.964 --max-dangerous-late 0 --quiet",
+            f"--min-accuracy 0.964 --max-dangerous-late 0 --quiet{tail}",
+        )
+        assert defeated != WORKFLOW
+        (problem,) = _problems(results, index, defeated)
+        assert problem.startswith("holdout4 r2 (") and "cannot fail" in problem, (tail, problem)
+    ask = WORKFLOW.replace("--max-harmful 2\n", "--max-harmful 2 || echo ignored\n")
+    assert ask != WORKFLOW
+    (problem,) = _problems(results, index, ask)
+    assert problem.startswith("heldout r1 (") and "cannot fail" in problem
+    allowed = WORKFLOW.replace(
+        "      - name: Final run replayed\n",
+        "      - name: Final run replayed\n        continue-on-error: true\n",
+    )
+    assert allowed != WORKFLOW
+    assert any("cannot fail" in problem for problem in _problems(results, index, allowed))
 
 
 def test_the_index_holds_the_same_gate_for_the_file_as_it_is(tmp_path: Path) -> None:

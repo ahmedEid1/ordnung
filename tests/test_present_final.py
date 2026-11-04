@@ -124,7 +124,6 @@ def good() -> dict[str, Any]:
                 "vs_llm_rules_tool": "non_inferior",
                 "f2_vs_llm_only": "fewer",
                 "f2_vs_llm_rules_text": "fewer",
-                "f2_vs_llm_rules_tool": "no_clear_difference",
                 "harmful": {"dates": 0, "reads": N * k, "none": True},
                 "more_stable_than_llm_only": True,
                 "flags_caught": {"caught": 2, "wrong": 3, "caught_reads": 2, "wrong_reads": 4},
@@ -180,7 +179,6 @@ def bad() -> dict[str, Any]:
         vs_llm_rules_tool="agent_higher",
         f2_vs_llm_only="more",
         f2_vs_llm_rules_text="more",
-        f2_vs_llm_rules_tool="more",
         harmful={"dates": 21, "reads": N * 3, "none": False},
         more_stable_than_llm_only=False,
         flags_caught={"caught": 0, "wrong": 0, "caught_reads": 0, "wrong_reads": 0},
@@ -347,8 +345,21 @@ def sources(
         },
         "owner_labels": labels,
         "owner_kappa": kappa,
-        "deviations": [{"id": f"D{i + 1:03d}", "kind": "retake"} for i in range(deviations)],
+        "deviations": _deviations(deviations, ask_runs=ask_runs, stress=stress),
     }
+
+
+def _deviations(count: int, *, ask_runs: int | None, stress: bool) -> list[dict[str, Any]]:
+    """``count`` deviations (more when needed): one recorded at the time for each held-out Ask run not recorded and
+    for a stress test not completed, then retakes."""
+    found = [
+        {"kind": "budget_cut", "applies_to": {"split": final.ASK_SPLIT, "repeat": run}}
+        for run in range((ask_runs or 0) + 1, 4)
+    ]
+    if not stress:
+        found.append({"kind": "window_closed", "applies_to": {"split": final.STRESS_SPLIT}})
+    found += [{"kind": "retake"} for _ in range(max(0, count - len(found)))]
+    return [{"id": f"D{i + 1:03d}", **entry} for i, entry in enumerate(found)]
 
 
 def prereg() -> dict[str, Any]:
@@ -370,7 +381,7 @@ SCENARIOS: tuple[tuple[str, Callable[[], dict[str, Any]], Callable[[], dict[str,
     ("bad", bad, lambda: sources(owner="pending", deviations=4, ask_runs=1, stress=False)),
     ("undecided", undecided, lambda: sources(owner="labels", deviations=1, ask_runs=None)),
     ("not confirmed", not_confirmed, lambda: sources(owner="kappa")),
-    ("two reads", two_reads, sources),
+    ("two reads", two_reads, lambda: sources(deviations=1)),
     ("one read", one_read, lambda: sources(owner="pending")),
 )
 
@@ -662,7 +673,10 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
     assert "Holm p = 0.004" in text["rules_text"]
     assert "not behind it by more than 5 points" in text["agent"]
     assert "−1.2 to +4.8" in text["agent"]
-    assert "power about 41 %" in text["f2.llm_rules_tool"]
+    assert (
+        "described, not tested: a difference of −0.6 points (95 % CI −2.0 to +0.0)"
+        in text["f2.llm_rules_tool"]
+    )
     assert (
         "Wrong dates from Ordnung over every read: 3; its “please check” flag caught 2 of them."
         == text["flags"]
@@ -860,3 +874,46 @@ def test_the_readme_block_is_the_final_sentences_in_their_registered_order() -> 
     said = final.sentences(final_doc, registration, sources=named)
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert final.readme_problems(readme, said) == []
+
+
+@pytest.mark.parametrize(
+    ("ask_runs", "stress", "what"),
+    [(1, True, "ask"), (2, True, "ask"), (None, True, "ask"), (3, False, "stress")],
+)
+def test_an_ask_run_or_the_stress_test_not_recorded_needs_its_deviation(
+    ask_runs: int | None, stress: bool, what: str
+) -> None:
+    """Every pre-registered endpoint is published: an Ask run left out of the file of runs, a missing file, or a
+    stress test not completed is said only when a ``budget_cut`` or ``window_closed`` deviation recorded at the time
+    names it; otherwise there is no sentence."""
+    src = sources(ask_runs=ask_runs, stress=stress)
+    assert final.coded(good(), prereg(), sources=src)  # with the deviations
+    src["deviations"] = [d for d in src["deviations"] if d["kind"] == "retake"]
+    with pytest.raises(final.FinalSentenceError, match=what):
+        final.coded(good(), prereg(), sources=src)
+    # a deviation of another kind, or naming another run, does not say why
+    src["deviations"] = [
+        {"id": "D001", "kind": "retake", "applies_to": {"split": final.ASK_SPLIT, "repeat": 3}},
+        {"id": "D002", "kind": "budget_cut", "applies_to": {"split": "holdout4", "repeat": 3}},
+    ]
+    with pytest.raises(final.FinalSentenceError, match=what):
+        final.coded(good(), prereg(), sources=src)
+
+
+def test_the_ask_runs_planned_are_the_held_out_set_s() -> None:
+    from evals.ask import heldout
+
+    assert final.ASK_REGISTERED_RUNS == heldout.REGISTERED_READS
+
+
+def test_harm_against_the_agent_is_described_never_decided() -> None:
+    """The pre-registration describes harm against the agent (no margin for harm could be set before the data): its
+    sentence gives the difference and its interval, never fewer, more or a p; a decision taken on it is refused."""
+    text = _slots(final.coded(good(), prereg(), sources=no_set_aside(sources())))
+    agent = text["f2.llm_rules_tool"]
+    assert "described, not tested" in agent and "Holm" not in agent and "power" not in agent
+    assert not agent.startswith(("Fewer", "More"))
+    doc = good()
+    doc["primary"]["decisions"]["f2_vs_llm_rules_tool"] = "no_clear_difference"
+    with pytest.raises(final.FinalSentenceError, match="described"):
+        final.coded(doc, prereg(), sources=no_set_aside(sources()))

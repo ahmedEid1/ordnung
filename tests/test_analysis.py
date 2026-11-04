@@ -785,6 +785,25 @@ def test_the_final_render_is_deterministic_and_checked(world: World, tmp_path: P
     assert analysis.main([*args, "--check", "--date", "2027-02-01"]) == 0
 
 
+def test_the_published_final_analysis_reads_the_registered_pre_registration_only(
+    world: World, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """What lands in the repository's results reads ``evals/preregistration/final-0.4.0.json``: another
+    pre-registration file (an edited copy, a second version) is refused before anything is read or written."""
+    published = tmp_path / "repo-results"
+    published.mkdir()
+    monkeypatch.setattr(analysis, "RESULTS_DIR", published)
+    for mode in ("--write", "--check"):
+        assert analysis.main([*world.cli_args(), mode]) == 2
+        assert "final-0.4.0.json" in capsys.readouterr().err
+        assert analysis.main([*world.cli_args(), mode, "--out-dir", str(published)]) == 2
+        capsys.readouterr()
+    assert not list(published.iterdir())
+    monkeypatch.setattr(analysis, "PREREG_FILE", world.write()[0])  # the registered file itself is read
+    assert analysis.main([*world.cli_args(), "--write"]) == 0
+    assert [path.name for path in published.iterdir()] == ["2027-01-03-claude-sonnet-5-final.json"]
+
+
 # --------------------------------------------------------------------------------------------------
 # The final run's inputs: their roles, and the pre-registration by its path in the repository
 # --------------------------------------------------------------------------------------------------
@@ -922,6 +941,36 @@ def test_a_deviation_recorded_while_a_read_is_under_way_leaves_its_tree_clean(wo
     meta["dirty"] = ["evals/preregistration/deviations-0.4.0.json", "evals/run.py"]
     with pytest.raises(analysis.AnalysisError, match="dirty_tree"):
         world.final()
+
+
+def test_a_read_recorded_again_after_a_runner_fix_is_analysed_with_the_fixed_code_s_fingerprints(
+    world: World,
+) -> None:
+    """The runner-defect rule: the defect is fixed in its own change with a ``code_hash_changed`` deviation, and a
+    read that does not replay identically is recorded again. That read carries the fixed code's fingerprints: the
+    deviation that names it and holds exactly those fingerprints lets it in (listed); any other fingerprint is still
+    a mismatch."""
+    doc = world.doc("holdout4", 3)
+    fixed = {condition: "f" * 16 for condition in doc["meta"]["fingerprints"]}
+    doc["meta"]["fingerprints"] = dict(fixed)
+    for entry in doc["entries"]:
+        for condition, outcome in entry["conditions"].items():
+            outcome["prediction"]["fingerprint"] = fixed[condition]
+    world.deviate("code_hash_changed", {"split": "holdout4", "repeat": 3})
+    with pytest.raises(analysis.AnalysisError, match="fingerprint"):
+        world.final()
+    world.deviations[0]["applies_to"]["fingerprints"] = {**fixed, "ordnung": "e" * 16}
+    with pytest.raises(analysis.AnalysisError, match="fingerprint"):
+        world.final()
+    world.deviations[0]["applies_to"]["fingerprints"] = fixed
+    result = world.final()
+    assert result["primary"]["reads_used"] == [1, 2, 3]
+    assert result["meta"]["frozen_check"]["reads_after_runner_fix"] == [
+        {"split": "holdout4", "repeat": 3, "deviations": ["D001"]}
+    ]
+    # a never-waivable deviation naming the read still makes it invalid
+    world.deviate("code_digest", {"split": "holdout4", "repeat": 3})
+    assert world.final()["primary"]["reads_used"] == [1, 2]
 
 
 def test_a_unit_recorded_outside_the_window_needs_a_deviation_and_is_then_excluded(world: World) -> None:
@@ -1067,6 +1116,7 @@ def test_a_missing_read_needs_a_deviation_and_the_analysis_runs_on_two_reads_or_
     only read 1, the cluster sign-flip and bootstrap on read 1 stay primary, McNemar beside them, and F3 is not
     run."""
     two = ["holdout4-r1.json", "holdout4-r2.json", "newkinds-r1.json"]
+    del world.docs[("holdout4", 3)]  # read 3 was never recorded: no results file, no unit in the day index
     with pytest.raises(analysis.AnalysisError, match="read 3"):
         world.final(two)
     world.deviate("window_closed", {"split": "holdout4", "repeat": 3})
@@ -1076,6 +1126,8 @@ def test_a_missing_read_needs_a_deviation_and_the_analysis_runs_on_two_reads_or_
     assert primary["families"]["F3_stability"]["ordnung-vs-llm_only"]["n"] == 7
     assert isinstance(primary["decisions"]["more_stable_than_llm_only"], bool)
     world.deviate("window_closed", {"split": "holdout4", "repeat": 2})
+    del world.docs[("holdout4", 2)]
+    (world.results / "holdout4-r2.json").unlink()  # written for the analysis on two reads
     one = world.final(["holdout4-r1.json", "newkinds-r1.json"])["primary"]
     assert (one["reads"], one["reads_used"]) == (1, [1])
     assert one["families"]["F3_stability"] is None and one["decisions"]["more_stable_than_llm_only"] is None
@@ -1085,6 +1137,36 @@ def test_a_missing_read_needs_a_deviation_and_the_analysis_runs_on_two_reads_or_
     assert f1["signflip"]["p"] == beside["signflip"]["p"]  # the cluster test on read 1 is the primary
     assert (beside["b"], beside["c"], beside["exact_p"]) == (3, 0, 0.25)  # McNemar beside it
     assert one["decisions"]["beats_llm_only"] in ("clear", "baseline_ahead", "no_clear_difference")
+
+
+def test_a_recorded_read_is_never_missing_by_omission(world: World) -> None:
+    """A read whose results file exists, or whose units the day index holds complete, is analysed: a deviation that
+    says it was not run (or any other) cannot leave it out by leaving its file off the command line."""
+    world.deviate("budget_cut", {"split": "holdout4", "repeat": 3})
+    two = ["holdout4-r1.json", "holdout4-r2.json", "newkinds-r1.json"]
+    with pytest.raises(analysis.AnalysisError, match=r"holdout4 read 3.*recorded"):
+        world.final(two)
+    # its results file set aside, the day index still holds its units complete
+    prereg, _ = world.write()
+    aside = world.root / "aside"
+    aside.mkdir()
+    (world.results / "holdout4-r3.json").rename(aside / "holdout4-r3.json")
+    files = {
+        "results_dir": world.results,
+        "recorded_dir": world.recorded,
+        "dataset_dir": world.dataset,
+    }
+    with pytest.raises(analysis.AnalysisError, match=r"holdout4 read 3.*day index"):
+        analysis.final_from_files(prereg, [world.results / name for name in two], **files)
+    # its results file in pending/, one of its units not in the day index
+    (world.results / "pending").mkdir()
+    (aside / "holdout4-r3.json").rename(world.results / "pending" / "holdout4-r3.json")
+    index_path = world.recorded / "claude-sonnet-5" / "final-days.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["holdout4"]["r3"].pop("holdout4-L1")
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    with pytest.raises(analysis.AnalysisError, match=r"holdout4 read 3.*pending"):
+        analysis.final_from_files(prereg, [world.results / name for name in two], **files)
 
 
 def test_read_1_cannot_be_missing(world: World) -> None:
@@ -1211,9 +1293,14 @@ def _baselines_late(condition: str, read: int, letter: str, index: int) -> str:
 def test_f2_has_its_codes_and_one_decision_is_confirmatory(tmp_path: Path) -> None:
     worse = World(tmp_path / "worse", letters=EIGHT, outcome=_ordnung_late).final()["primary"]
     better = World(tmp_path / "better", letters=EIGHT, outcome=_baselines_late).final()["primary"]
-    for baseline in BASELINES:
+    for baseline in ("llm_only", "llm_rules_text"):
         assert worse["decisions"][f"f2_vs_{baseline}"] == "more"
         assert better["decisions"][f"f2_vs_{baseline}"] == "fewer"
+    # harm against the agent is described, not tested: its row is there, no decision is taken on it
+    assert (
+        "f2_vs_llm_rules_tool" not in worse["decisions"] and "f2_vs_llm_rules_tool" not in better["decisions"]
+    )
+    assert worse["families"]["F2_harm"]["ordnung-vs-llm_rules_tool"]["diff"] > 0
     assert better["decisions"]["beats_llm_only"] == "clear"
     roles = better["decision_roles"]
     assert roles["beats_llm_only"] == "confirmatory"

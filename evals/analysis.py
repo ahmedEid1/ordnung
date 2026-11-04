@@ -76,6 +76,8 @@ from evals.records import CONDITIONS
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS_DIR = ROOT / "evals" / "results"
+#: The registered pre-registration: the only one a final analysis written into the repository's results reads.
+PREREG_FILE = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
 #: The final run's recordings (its day index and ledger, below ``<model>/``) and the dataset whose manifest the
 #: pre-registration pins.
 RECORDED_DIR = ROOT / "evals" / "recorded"
@@ -1272,6 +1274,9 @@ class Deviation:
     first_attempt: tuple[tuple[str, str, str], ...]
     #: Its id, kind, step, times, issue comment and checkpoint, for the output (never its text).
     record: Mapping[str, Any]
+    #: ``code_hash_changed`` under the runner-defect rule: the fixed code's fingerprints, per condition, that the
+    #: reads it names were recorded again with.
+    fingerprints: Mapping[str, str] = field(default_factory=dict)
 
     @property
     def effect(self) -> str:
@@ -1309,7 +1314,8 @@ def _deviation_problems(entry: Mapping[str, Any]) -> list[str]:
 
 
 def _applies_to(applies: Any) -> tuple[Any, ...]:
-    """``applies_to`` read: (split, repeat, entries, items, first_attempt); ``ValueError`` for anything malformed."""
+    """``applies_to`` read: (split, repeat, entries, items, first_attempt, fingerprints); ``ValueError`` for anything
+    malformed."""
     if not isinstance(applies, Mapping):
         raise TypeError("not an object")
     split = applies.get("split")
@@ -1332,7 +1338,13 @@ def _applies_to(applies: Any) -> tuple[Any, ...]:
     for _, condition, outcome in first:
         if condition not in CONDITIONS or outcome not in FIRST_ATTEMPT_OUTCOMES:
             raise ValueError(f"a first attempt of {condition!r} with outcome {outcome!r}")
-    return split, repeat, frozenset(entries), items, first
+    fingerprints = applies.get("fingerprints") or {}
+    if not isinstance(fingerprints, Mapping) or not all(
+        condition in CONDITIONS and isinstance(value, str) and value
+        for condition, value in fingerprints.items()
+    ):
+        raise ValueError("fingerprints are not one per condition")
+    return split, repeat, frozenset(entries), items, first, dict(fingerprints)
 
 
 def load_deviations(path: Path) -> list[Deviation]:
@@ -1357,7 +1369,7 @@ def load_deviations(path: Path) -> list[Deviation]:
             )
         if any(known.id == ident for known in found):
             raise AnalysisError(f"{label} is in the file twice")
-        split, repeat, entries, items, first = _applies_to(entry.get("applies_to", {}))
+        split, repeat, entries, items, first, fingerprints = _applies_to(entry.get("applies_to", {}))
         record = {
             key: entry.get(key)
             for key in (
@@ -1373,7 +1385,16 @@ def load_deviations(path: Path) -> list[Deviation]:
         }
         found.append(
             Deviation(
-                ident, str(entry["kind"]), str(entry["step"]), split, repeat, entries, items, first, record
+                ident,
+                str(entry["kind"]),
+                str(entry["step"]),
+                split,
+                repeat,
+                entries,
+                items,
+                first,
+                record,
+                fingerprints,
             )
         )
     return found
@@ -1392,6 +1413,8 @@ class Checked:
     units_excluded: list[dict[str, Any]] = field(default_factory=list)
     unanswered: list[dict[str, Any]] = field(default_factory=list)
     cli_versions: dict[str, list[str]] = field(default_factory=dict)
+    #: The reads recorded again after a runner fix (the runner-defect rule), with the deviation that names them.
+    after_runner_fix: list[dict[str, Any]] = field(default_factory=list)
     deviations: list[Deviation] = field(default_factory=list)
     evidence: dict[str, Any] = field(default_factory=dict)
 
@@ -1535,6 +1558,7 @@ def check_frozen(
         # what a read that stays brings: its excluded units and its letters left without an answer
         units_out: dict[str, dict[str, Any]] = {}
         unanswered: list[dict[str, Any]] = []
+        after_fix: dict[str, Any] | None = None
         for mismatch, unit_id, which, detail in found:
             names = [
                 d
@@ -1543,6 +1567,24 @@ def check_frozen(
                 and d.names(run.split, run.repeat)
                 and (unit_id is None or unit_id in d.entries or (mismatch == "cli_version" and not d.entries))
             ]
+            if mismatch == "fingerprint" and not names:
+                # the runner-defect rule: a read recorded again with the fixed code, whose fingerprints the
+                # code_hash_changed deviation that names it holds, is analysed (listed)
+                fixed = [
+                    d
+                    for d in deviations
+                    if d.kind == "code_hash_changed"
+                    and d.names(run.split, run.repeat)
+                    and d.fingerprints
+                    and not _fingerprint_mismatch(run, replace(frozen, fingerprints=d.fingerprints), wanted)
+                ]
+                if fixed:
+                    after_fix = {
+                        "split": run.split,
+                        "repeat": run.repeat,
+                        "deviations": sorted(d.id for d in fixed),
+                    }
+                    continue
             if not names:
                 unit = f" {unit_id}" if unit_id else ""
                 unnamed.append(
@@ -1595,6 +1637,8 @@ def check_frozen(
             checked.runs.append(run)
             excluded.extend(units_out.values())
             checked.unanswered.extend(unanswered)
+            if after_fix is not None:
+                checked.after_runner_fix.append(after_fix)
     if unnamed:
         raise AnalysisError("; ".join(unnamed))
     checked.units_excluded = sorted(excluded, key=lambda row: (row["split"], row["repeat"], row["entry_id"]))
@@ -1604,10 +1648,26 @@ def check_frozen(
     checked.runs = [_without(run, gone[run.split]) for run in checked.runs]
     checked.unanswered = [row for row in checked.unanswered if row["entry_id"] not in gone[row["split"]]]
     present = {(run.split, run.repeat) for run in checked.runs}
+    given = {(run.split, run.repeat) for run in runs}
     for split, reads in ((prereg.primary_split, prereg.primary_reads), *prereg.secondary):
         for read in range(1, reads + 1):
             if (split, read) in present:
                 continue
+            letters = {
+                str(entry.get("id")) for run in runs if run.split == split for entry in _entries_of(run)
+            }
+            units = (day_index.get(split) or {}).get(f"r{read}") or {}
+            complete = {
+                entry_id
+                for entry_id, unit in units.items()
+                if isinstance(unit, Mapping) and unit.get("complete", True)
+            }
+            if (split, read) not in given and letters and letters <= complete:
+                raise AnalysisError(
+                    f"{split} read {read} is recorded (the day index holds every one of its units complete) but its "
+                    "results file was not given: a recorded read is analysed, and only a mismatch a deviation names "
+                    "leaves it out"
+                )
             names = [
                 d for d in deviations if d.effect in (INVALID, EXCLUDE_READ, NOT_RUN) and d.names(split, read)
             ]
@@ -2037,7 +2097,7 @@ def _decision_key(baseline: str) -> str:
 
 def _comparisons(families: Mapping[str, Any], prereg: Prereg, ni: Mapping[str, Any]) -> dict[str, Any]:
     """The pre-registered rules for each comparison, as codes: F1 against the model alone and the rules
-    text, non-inferiority against the agent, and F2 against every baseline."""
+    text, non-inferiority against the agent, and F2 against every baseline but the agent (described, not tested)."""
     alpha = prereg.settings.alpha
 
     def judged(row: Mapping[str, Any], ahead: str, behind: str, otherwise: str) -> str:
@@ -2060,6 +2120,10 @@ def _comparisons(families: Mapping[str, Any], prereg: Prereg, ni: Mapping[str, A
     for baseline in prereg.noninferior_to:
         decisions[f"vs_{baseline}"] = ni[_pair_key(prereg.reference, baseline)]["decision"]
     for baseline in prereg.baselines:
+        if baseline in prereg.noninferior_to:
+            # harm against the agent is described, not tested: no margin for harm could be set before the data. Its
+            # row stays in F2's Holm family, so the two comparisons decided are adjusted as for three (conservative)
+            continue
         row = harm[_pair_key(prereg.reference, baseline)]
         decisions[f"f2_vs_{baseline}"] = judged(row, "more", "fewer", "no_clear_difference")
     return decisions
@@ -2680,6 +2744,7 @@ def final_analysis(
             "reads_left_out": [row for _, row in checked.left_out],
             "units_excluded": checked.units_excluded,
             "cli_versions": checked.cli_versions,
+            "reads_after_runner_fix": checked.after_runner_fix,
             **checked.evidence,
         }
         meta["deviations"] = [dict(d.record) for d in checked.deviations]
@@ -2705,6 +2770,36 @@ def _repo_path(path: Path) -> str:
 def _from_root(name: str) -> Path:
     path = Path(name)
     return path if path.is_absolute() else ROOT / path
+
+
+def _no_recorded_read_left_out(
+    checked: Checked, paths: Sequence[Path], results_dir: Path, model: str
+) -> None:
+    """``AnalysisError`` when a read the analysis calls missing has a live, complete results file in ``results_dir``
+    or its ``pending/`` folder that was not given: a recorded read is analysed, never left out by omission."""
+    given = {path.resolve() for path in paths}
+    for split, read in sorted(checked.missing):
+        for folder in (results_dir, results_dir / "pending"):
+            for path in sorted(folder.glob(f"*{split}*.json")) if folder.is_dir() else []:
+                try:
+                    meta = json.loads(path.read_text(encoding="utf-8")).get("meta") or {}
+                except (OSError, ValueError, AttributeError):
+                    continue
+                recorded = (
+                    meta.get("split"),
+                    meta.get("repeat"),
+                    meta.get("backend"),
+                    bool(meta.get("partial")),
+                )
+                if (
+                    recorded == (split, read, "live", False)
+                    and meta.get("model") == model
+                    and path.resolve() not in given
+                ):
+                    raise AnalysisError(
+                        f"{split} read {read} is recorded ({_repo_path(path)}) but its results file was not given: a "
+                        "recorded read is analysed, and only a mismatch a deviation names leaves it out"
+                    )
 
 
 def final_from_files(
@@ -2744,6 +2839,7 @@ def final_from_files(
         day_index=_read_day_index(day_index_path),
         ledger=_read_ledger(ledger_path),
     )
+    _no_recorded_read_left_out(checked, paths, results_dir, prereg.model)
     checked.evidence["deviations_file"] = {
         "file": _repo_path(deviations_path),
         "sha256": hashlib.sha256(deviations_path.read_bytes()).hexdigest(),
@@ -2886,6 +2982,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.prereg is not None:
             if not args.results:
                 parser.error("--prereg needs the results files of the final run")
+            published = out_dir.resolve() == RESULTS_DIR.resolve()
+            if (args.write or args.check) and published and args.prereg.resolve() != PREREG_FILE.resolve():
+                # the README's provenance names the file it read: only the registered one is published
+                print(
+                    f"error: the final analysis in {_repo_path(RESULTS_DIR)} reads the registered pre-registration, "
+                    f"{_repo_path(PREREG_FILE)}, not {args.prereg}",
+                    file=sys.stderr,
+                )
+                return 2
             document = final_from_files(
                 args.prereg, args.results, results_dir=args.results_dir, date=args.date
             )

@@ -19,9 +19,11 @@ It prints hashes, versions, counts and paths, never a prompt's, a letter's or a 
     dataset's manifest and tree hashes (``evals.reproduce.dataset_info``), the generator's tree hash
     (:data:`GENERATOR_PATTERNS`), each final split's composition and the conventions' ids and ``disputed`` flags.
 
-* ``--deviations FILE [--prereg FILE]`` checks the deviations file against the pre-registration's table of deviation kinds: every entry
+* ``--deviations FILE [--prereg FILE] [--history]`` checks the deviations file against the pre-registration's table of deviation kinds: every entry
   well formed (:data:`DEVIATION_KEYS`), with its issue comment's URL, ``created_at`` and checkpoint commit, and its
-  kind's consequence the registered one; that table must also be the one the analysis applies. It prints ids and reasons only.
+  kind's consequence the registered one; that table must also be the one the analysis applies. With ``--history``
+  it also checks by the git history that each was recorded at the time (:func:`history_problems`). It prints ids
+  and reasons only.
 * ``--phase2 FILE [--head REV] [--path PATTERN]… --write`` writes the presenter's phase-2 record: the commit and
   the sha256 of every file of :data:`PHASE2_PATTERNS` at it, and their tree hash (the presenter's output
   ``presentation.json`` left out). Without ``--write`` it checks the checkout against FILE: a file that differs
@@ -58,16 +60,34 @@ CODE_PATHS = (
     "evals/stats.py",
     "evals/metrics.py",
     "evals/records.py",
+    # every module of the packages that score Ask, the end-to-end replay and the stress test
+    "evals/e2e/__init__.py",
+    "evals/e2e/__main__.py",
     "evals/e2e/check.py",
+    "evals/e2e/harness.py",
     "evals/e2e/metrics.py",
+    "evals/e2e/observe.py",
+    "evals/e2e/report.py",
+    "evals/ask/__init__.py",
+    "evals/ask/__main__.py",
+    "evals/ask/attacks.py",
+    "evals/ask/heldout.py",
+    "evals/ask/heldout_check.py",
+    "evals/ask/household.py",
+    "evals/ask/ledger.py",
+    "evals/ask/metrics.py",
+    "evals/ask/owner.py",
+    "evals/ask/parse.py",
+    "evals/ask/questions.py",
+    "evals/ask/recurrence.py",
+    "evals/ask/report.py",
+    "evals/ask/run.py",
     "evals/ask/score.py",
     "evals/ask/strict.py",
-    "evals/ask/metrics.py",
-    "evals/ask/heldout.py",
-    "evals/ask/recurrence.py",
-    "evals/ask/owner.py",
+    "evals/perturb/__init__.py",
     "evals/perturb/build.py",
     "evals/perturb/score.py",
+    "evals/perturb/templates.py",
     "evals/present/final.py",
     "evals/present/final_templates.json",
     "scripts/eval_without_land.py",
@@ -90,7 +110,6 @@ FILES_PATTERNS = (
     "evals/dataset/provenance/**",
     "evals/gen/**",
     "evals/ask/heldout/**",
-    "evals/perturb/templates.json",
     "evals/perturb/manifest.json",
 )
 GENERATOR_PATTERNS = ("evals/gen/**", "evals/generate.py", "evals/verify_labels.py")
@@ -474,6 +493,139 @@ def deviation_problems(entries: Any, kinds: Mapping[str, str]) -> list[str]:
     return out
 
 
+#: Where the deviations are recorded at the time (``deviate.py`` appends, the next checkpoint commits and pushes).
+DEVIATIONS_PATH = "evals/preregistration/deviations-0.4.0.json"
+#: Written once after the freeze, never edited: the pre-registration and the posted phase-2 record.
+WRITE_ONCE = (
+    "evals/preregistration/final-0.4.0.json",
+    "evals/preregistration/final-0.4.0.md",
+    "evals/preregistration/phase2-0.4.0.json",
+)
+#: The kinds that may be recorded after the results are published: a label error found by the blind review of
+#: discordant items (or an owner's finding sent through it), and a scorer bug fixed after the publish PR.
+AFTER_PUBLICATION = ("label_error", "scorer_bug")
+#: What publishes the final run's results: a final read's results file out of ``pending/``, or a final analysis.
+PUBLISHED = (
+    ":(glob)evals/results/*holdout4*.json",
+    ":(glob)evals/results/*newkinds*.json",
+    ":(glob)evals/results/*-final.json",
+)
+
+
+def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=False)
+
+
+def _commits(root: Path, since: str | None, *paths: str, added: bool = False) -> list[str]:
+    """The commits (oldest first) of HEAD's history since ``since`` that changed (``added``: added) these paths."""
+    span = f"{since}..HEAD" if since else "HEAD"
+    filters = ["--diff-filter=A"] if added else []
+    done = _run_git(root, "log", "--format=%H", "--reverse", *filters, span, "--", *paths)
+    return done.stdout.decode().split() if done.returncode == 0 else []
+
+
+def _at_commit(root: Path, sha: str, path: str) -> Any:
+    done = _run_git(root, "show", f"{sha}:{path}")
+    if done.returncode != 0:
+        return None
+    try:
+        return json.loads(done.stdout.decode("utf-8"))
+    except ValueError:
+        return None
+
+
+def _without_sha(entry: Any) -> Any:
+    return (
+        {key: value for key, value in entry.items() if key != "checkpoint_sha"}
+        if isinstance(entry, Mapping)
+        else entry
+    )
+
+
+def history_problems(
+    root: Path,
+    entries: Any,
+    *,
+    freeze: str | None = None,
+    path: str = DEVIATIONS_PATH,
+    issue: str | None = None,
+) -> list[str]:
+    """Why the deviations file's entries were not recorded at the time, by the repository's history (empty: they
+    were). For each entry: its checkpoint is a commit of HEAD's history, that commit holds the entry as it is now
+    (its own sha aside, filled in by the next commit), the entry was written no later than that commit, and that
+    commit comes before the results were published (a label error or a scorer bug excepted); each entry is a comment
+    on one issue, ``issue`` when the pre-registration names it. Over its history the file only grew: no entry was
+    changed or removed."""
+    if not isinstance(entries, list):
+        return ["the deviations file is not a JSON list"]
+    out: list[str] = []
+    published = _commits(root, freeze, *PUBLISHED, added=True)
+    first_published = published[0] if published else None
+    issues: set[str] = set()
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            continue
+        ident = str(entry.get("id"))
+        url = str(entry.get("issue_comment_url") or "")
+        issues.add(url.split("#", 1)[0])
+        sha = str(entry.get("checkpoint_sha") or "")
+        if not COMMIT.fullmatch(sha) or _run_git(root, "cat-file", "-e", f"{sha}^{{commit}}").returncode != 0:
+            out.append(f"{ident}: its checkpoint {sha or '(none)'} is not a commit of this repository")
+            continue
+        if _run_git(root, "merge-base", "--is-ancestor", sha, "HEAD").returncode != 0:
+            out.append(f"{ident}: its checkpoint {sha} is not in HEAD's history")
+            continue
+        held = _at_commit(root, sha, path)
+        there = [e for e in held or [] if isinstance(e, Mapping) and e.get("id") == entry.get("id")]
+        if not there or _without_sha(there[0]) != _without_sha(entry):
+            out.append(f"{ident}: not what its checkpoint holds")
+        when = _run_git(root, "show", "-s", "--format=%cI", sha).stdout.decode().strip()
+        try:
+            written = datetime.fromisoformat(str(entry.get("created_at")).replace("Z", "+00:00"))
+            if written > datetime.fromisoformat(when):
+                out.append(f"{ident}: written after its checkpoint commit")
+        except ValueError:
+            out.append(f"{ident}: no time it was recorded (created_at)")
+        if (
+            first_published is not None
+            and entry.get("kind") not in AFTER_PUBLICATION
+            and _run_git(root, "merge-base", "--is-ancestor", first_published, sha).returncode == 0
+        ):
+            out.append(f"{ident}: its checkpoint comes after the results were published")
+    if len(issues) > 1:
+        out.append("the deviations are comments on more than one issue")
+    if issue is not None and issues and issues != {issue.rstrip("/")}:
+        out.append("a deviation is not a comment on the registered issue")
+    versions = [_at_commit(root, sha, path) for sha in _commits(root, freeze, path)]
+    for before, after in zip(versions, [*versions[1:], entries], strict=True):
+        if not isinstance(before, list) or not isinstance(after, list):
+            continue
+        kept = len(after) >= len(before) and all(
+            _without_sha(old) == _without_sha(new)
+            and (
+                not isinstance(old, Mapping)
+                or not old.get("checkpoint_sha")
+                or old.get("checkpoint_sha") == new.get("checkpoint_sha")
+            )
+            for old, new in zip(before, after, strict=False)
+        )
+        if not kept:
+            out.append(f"{path} is append-only: an entry was changed or removed")
+            break
+    return out
+
+
+def write_once_problems(root: Path, freeze: str, paths: Sequence[str] = WRITE_ONCE) -> list[str]:
+    """Each of ``paths`` that more than one commit changed since the freeze: the pre-registration and the posted
+    phase-2 record are written once and never edited."""
+    out = []
+    for path in paths:
+        count = len(_commits(root, freeze, path))
+        if count > 1:
+            out.append(f"{path}: changed by {count} commits since the freeze; it is written once")
+    return out
+
+
 def analysis_table_problems(kinds: Mapping[str, str]) -> list[str]:
     """The pre-registration's table against the one the analysis applies (``evals.analysis.DEVIATION_CONSEQUENCES``, where it has one)."""
     from evals import analysis
@@ -651,6 +803,13 @@ def _load(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _relative(path: Path, root: Path) -> str:
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return DEVIATIONS_PATH
+
+
 def _report(problems: Sequence[str], ok: str) -> int:
     for line in problems:
         print(line)
@@ -676,6 +835,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=PREREG,
         help="with --deviations: the pre-registration (its deviation_kinds)",
     )
+    parser.add_argument(
+        "--history",
+        action="store_true",
+        help="with --deviations: also check by --root's git history that each was recorded at the time",
+    )
     parser.add_argument("--head", default="HEAD", help="with --phase2 --write: the posted phase-2 commit")
     parser.add_argument(
         "--path", action="append", help="with --phase2 --write: patterns instead of the default"
@@ -695,9 +859,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             return _report(mismatches(computed, _load(args.check)), "0 mismatches")
         if args.deviations is not None:
-            kinds = kinds_table(_load(args.prereg).get("deviation_kinds"))
+            prereg = _load(args.prereg)
+            kinds = kinds_table(prereg.get("deviation_kinds"))
             entries = _load(args.deviations)
             problems = deviation_problems(entries, kinds) + analysis_table_problems(kinds)
+            if args.history:
+                registered = prereg.get("registered") or {}
+                problems += history_problems(
+                    args.root,
+                    entries,
+                    freeze=registered.get("freeze_sha"),
+                    path=_relative(args.deviations, args.root),
+                    issue=registered.get("issue_url"),
+                )
             count = len(entries) if isinstance(entries, list) else 0
             return _report(problems, f"{count} deviation(s), well formed")
         if args.write:

@@ -849,10 +849,39 @@ def _newest_final(results_dir: Path, model: str) -> Path | None:
     return found[-1] if found else None
 
 
+def recorded_runs(results_dir: Path, model: str) -> list[Path]:
+    """The live runs of the set that ``results_dir`` and its ``pending/`` folder hold (its re-scorings aside)."""
+    found = []
+    for folder in (results_dir, results_dir / "pending"):
+        for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+            if path.name.endswith(f"-{FINAL_KIND}.json"):
+                continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if not isinstance(data, dict):
+                continue
+            wanted = {"benchmark": "ask", "set": "heldout", "model": model, "backend": "live"}
+            if all(data.get(key) == value for key, value in wanted.items()):
+                found.append(path)
+    return found
+
+
 def _final(args: argparse.Namespace) -> int:
     from evals.ask.run import DEFAULT_MODEL, RESULTS_DIR
 
     results_dir: Path = args.results_dir or RESULTS_DIR
+    given = {Path(path).resolve() for path in args.final}
+    left_out = [path for path in recorded_runs(results_dir, DEFAULT_MODEL) if path.resolve() not in given]
+    if left_out:
+        # every pre-registered endpoint is published: a recorded run is never left out of the file of runs
+        names = ", ".join(path.name for path in left_out)
+        print(
+            f"error: {names} recorded but not given: every recorded run is in the file of runs",
+            file=sys.stderr,
+        )
+        return 2
     if args.check:
         newest = _newest_final(results_dir, DEFAULT_MODEL)
         if newest is None:

@@ -120,6 +120,10 @@
       "text": "Late or missed dates, Ordnung against {baseline}: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
       "compares": ["ordnung", "baseline"]
     },
+    "f2.descriptive": {
+      "text": "Late or missed dates, Ordnung against {baseline}, described, not tested: a difference of {d} points ({level} % CI {lo} to {hi}).",
+      "compares": ["ordnung", "baseline"]
+    },
     "stability.more_stable": {
       "text": "Over the {k} reads, a date changed between reads on fewer deadlines for Ordnung than for the model alone ({u_o} against {u_l} of {n}; Holm mid-p {p_f3}); {u_r} for the model with the rules pasted in and {u_t} for the agent.",
       "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]

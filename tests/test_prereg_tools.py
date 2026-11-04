@@ -55,6 +55,11 @@ def test_the_code_map_holds_the_scoring_code_the_frozen_tests_and_the_prereg_too
         "evals/metrics.py",
         "evals/records.py",
         "evals/ask/owner.py",
+        "evals/ask/parse.py",
+        "evals/ask/questions.py",
+        "evals/e2e/harness.py",
+        "evals/e2e/observe.py",
+        "evals/perturb/templates.py",
         "scripts/prereg_hashes.py",
         "scripts/eval_power.py",
         "scripts/prereg_calibration.py",
@@ -64,6 +69,10 @@ def test_the_code_map_holds_the_scoring_code_the_frozen_tests_and_the_prereg_too
     for path, digest in code.items():
         file = ROOT / path
         assert digest == (_sha(file.read_bytes()) if file.is_file() else None), path
+    # every module of the packages that score Ask, the end-to-end replay and the stress test
+    for package in ("ask", "e2e", "perturb"):
+        for module in sorted((ROOT / "evals" / package).glob("*.py")):
+            assert module.relative_to(ROOT).as_posix() in code, module
 
 
 def test_the_files_map_hashes_every_final_data_file_and_nothing_else(tmp_path: Path) -> None:
@@ -76,7 +85,6 @@ def test_the_files_map_hashes_every_final_data_file_and_nothing_else(tmp_path: P
         "evals/dataset/provenance/w1a/writer-log.sha256": "0",
         "evals/gen/final.py": "X = 1\n",
         "evals/ask/heldout/questions.json": "{}",
-        "evals/perturb/templates.json": "{}",
         "evals/perturb/manifest.json": "{}",
     }
     for path, data in wanted.items():
@@ -86,6 +94,7 @@ def test_the_files_map_hashes_every_final_data_file_and_nothing_else(tmp_path: P
         "evals/gen/__pycache__/final.cpython-311.pyc",
         "evals/dataset/holdout4/.hidden",
         "evals/results/INDEX.json",
+        "evals/perturb/templates.json",  # the stress templates are code (templates.py), on the code map
     ):
         _put(tmp_path, path, b"x")
     files = prereg_hashes.files_section(tmp_path)
@@ -1109,3 +1118,123 @@ def test_the_calibration_command_writes_and_checks(
     assert prereg_calibration.main(["--check", str(tmp_path / "none.json")]) == 1
     out.write_text(out.read_text(encoding="utf-8").replace("163", "164", 1), encoding="utf-8")
     assert prereg_calibration.main(["--check", str(out)]) == 1
+
+
+# --------------------------------------------------------------------------------------------------
+# prereg_hashes: a deviation recorded at the time, by the history; the files written once
+# --------------------------------------------------------------------------------------------------
+
+DEVIATIONS_PATH = "evals/preregistration/deviations-0.4.0.json"
+
+
+def _commit_deviations(repo: Path, entries: list[dict[str, Any]], message: str) -> str:
+    _put(repo, DEVIATIONS_PATH, json.dumps(entries, indent=1) + "\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", message)
+    return _git(repo, "rev-parse", "HEAD")
+
+
+def _recorded(repo: Path, **changes: Any) -> tuple[str, list[dict[str, Any]]]:
+    """The freeze, then D001 as deviate.py writes it (no checkpoint yet), its checkpoint, and the commit that fills
+    the checkpoint's sha in: (the freeze sha, the file as it ends)."""
+    freeze = _git(repo, "rev-parse", "HEAD")
+    entry = _deviation(**{"created_at": "2020-01-01T00:00:00Z", "checkpoint_sha": None, **changes})
+    checkpoint = _commit_deviations(repo, [entry], "checkpoint R2")
+    filled = [dict(entry, checkpoint_sha=checkpoint)]
+    _commit_deviations(repo, filled, "checkpoint R2: its sha")
+    return freeze, filled
+
+
+def test_a_deviation_is_recorded_at_the_time_by_its_checkpoint_commit(repo: Path) -> None:
+    freeze, entries = _recorded(repo)
+    assert prereg_hashes.history_problems(repo, entries, freeze=freeze) == []
+
+
+def test_a_deviation_whose_checkpoint_is_no_commit_of_this_history_is_refused(repo: Path) -> None:
+    freeze, entries = _recorded(repo)
+    late = [dict(entries[0], checkpoint_sha="f" * 40)]
+    assert any("not a commit" in p for p in prereg_hashes.history_problems(repo, late, freeze=freeze))
+
+
+def test_a_deviation_written_after_its_checkpoint_is_refused(repo: Path) -> None:
+    freeze, entries = _recorded(repo, created_at="2099-01-01T00:00:00Z")
+    found = prereg_hashes.history_problems(repo, entries, freeze=freeze)
+    assert any("after its checkpoint" in p for p in found), found
+
+
+def test_a_deviation_changed_after_its_checkpoint_or_removed_is_refused(repo: Path) -> None:
+    freeze, entries = _recorded(repo)
+    changed = [dict(entries[0], what="something else")]
+    _commit_deviations(repo, changed, "edited")
+    found = prereg_hashes.history_problems(repo, changed, freeze=freeze)
+    assert any("not what its checkpoint holds" in p for p in found), found
+    assert any("append-only" in p for p in found), found
+    _commit_deviations(repo, [], "removed")
+    assert any("append-only" in p for p in prereg_hashes.history_problems(repo, [], freeze=freeze))
+
+
+def test_a_deviation_checkpointed_after_the_results_were_published_is_refused(repo: Path) -> None:
+    freeze = _git(repo, "rev-parse", "HEAD")
+    _put(repo, "evals/results/2026-12-08-claude-sonnet-5-holdout4.json", "{}\n")  # out of pending/: unsealed
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "publish")
+    entry = _deviation(created_at="2020-01-01T00:00:00Z", checkpoint_sha=None)
+    label = _deviation(
+        id="D002",
+        kind="label_error",
+        consequence=TABLE.get("label_error", "x"),
+        created_at="2020-01-01T00:00:00Z",
+    )
+    label["checkpoint_sha"] = None
+    checkpoint = _commit_deviations(repo, [entry, label], "a late checkpoint")
+    filled = [dict(entry, checkpoint_sha=checkpoint), dict(label, checkpoint_sha=checkpoint)]
+    _commit_deviations(repo, filled, "its sha")
+    found = prereg_hashes.history_problems(repo, filled, freeze=freeze)
+    assert [p.split(":")[0] for p in found if "published" in p] == [
+        "D001"
+    ]  # a label error comes from the review
+
+
+def test_every_deviation_is_a_comment_on_the_one_registered_issue(repo: Path) -> None:
+    freeze, entries = _recorded(repo)
+    issue = "https://github.com/owner/repo/issues/7"
+    assert prereg_hashes.history_problems(repo, entries, freeze=freeze, issue=issue) == []
+    found = prereg_hashes.history_problems(
+        repo, entries, freeze=freeze, issue="https://github.com/owner/repo/issues/8"
+    )
+    assert any("registered issue" in p for p in found), found
+
+
+def test_the_pre_registration_and_the_phase2_record_are_written_once_after_the_freeze(repo: Path) -> None:
+    freeze = _git(repo, "rev-parse", "HEAD")
+    paths = ("evals/preregistration/final-0.4.0.json", "evals/preregistration/phase2-0.4.0.json")
+    assert prereg_hashes.write_once_problems(repo, freeze, paths) == []
+    _put(repo, paths[0], "{}\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "B")
+    assert prereg_hashes.write_once_problems(repo, freeze, paths) == []
+    _put(repo, paths[0], '{"edited": true}\n')
+    _git(repo, "commit", "-q", "-am", "B edited after the results")
+    assert prereg_hashes.write_once_problems(repo, freeze, paths) == [
+        f"{paths[0]}: changed by 2 commits since the freeze; it is written once"
+    ]
+
+
+def test_the_command_checks_the_deviations_by_the_history_on_request(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(analysis, "DEVIATION_CONSEQUENCES", dict(TABLE), raising=False)
+    freeze, entries = _recorded(repo)
+    prereg = repo / "final.json"
+    prereg.write_text(
+        json.dumps({"deviation_kinds": TABLE, "registered": {"freeze_sha": freeze}}), encoding="utf-8"
+    )
+    args = ["--deviations", str(repo / DEVIATIONS_PATH), "--prereg", str(prereg), "--root", str(repo)]
+    assert prereg_hashes.main([*args, "--history"]) == 0
+    capsys.readouterr()
+    (repo / DEVIATIONS_PATH).write_text(
+        json.dumps([dict(entries[0], checkpoint_sha="f" * 40)]), encoding="utf-8"
+    )
+    assert prereg_hashes.main(args) == 0  # the format alone holds
+    assert prereg_hashes.main([*args, "--history"]) == 1
+    assert "not a commit" in capsys.readouterr().out

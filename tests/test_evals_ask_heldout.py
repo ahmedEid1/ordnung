@@ -1427,6 +1427,13 @@ def test_the_three_run_file_holds_run_1_strict_and_the_consistency_of_all_three(
     assert paths["no_parsable_value"] == {"k": 1, "n": 5, "ids": ["ho-fee-en"]}
     assert paths["called_passed_fallback"] == {"final": ["ho-fee-en"], "raw": ["ho-fee-en"]}
     assert final["scorer_paths"]["r2"]["no_parsable_value"]["ids"] == []
+    # every run recorded is in the file: leaving one out is refused, wherever it waits (pending/ too)
+    assert heldout.main(["--final", str(runs[0]), "--results-dir", str(results), "--write"]) == 2
+    pending = tmp_path / "elsewhere" / "pending"
+    pending.mkdir(parents=True)
+    runs[2].rename(pending / runs[2].name)
+    argv = ["--final", str(runs[0]), str(runs[1]), "--results-dir", str(tmp_path / "elsewhere"), "--write"]
+    assert heldout.main(argv) == 2
     # fewer reads than registered (a read cut by the window or the budget) still give a file, which says so
     assert heldout.main(["--final", str(runs[0]), "--results-dir", str(tmp_path / "one"), "--write"]) == 0
     (one,) = (tmp_path / "one").glob("*-ask-heldout-final.json")

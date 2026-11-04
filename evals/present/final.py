@@ -10,12 +10,15 @@ The rules:
 * a comparison the analysis decided (``clear``, ``baseline_ahead``; for harm ``fewer``, ``more``) prints its
   interval and its Holm p; one it did not decide says "no clear difference", with the comparison's pre-registered
   power, only when its interval includes 0, and otherwise "a difference … not confirmed by the pre-registered test";
-* the agent comparison prints the non-inferiority bound (the inverted sign-flip test) and the error counts;
+* the agent comparison prints the non-inferiority bound (the inverted sign-flip test) and the error counts; harm
+  against the agent is described (its difference and interval), never decided;
 * stability is not compared when fewer than ``rules.stability_min_discordant`` deadlines changed for only one of
   Ordnung and the model alone, and is not measured with one read;
 * a decision its interval or its counts contradict, a decision code without a template and a named result that is
   missing are refused (:class:`FinalSentenceError`), never written around. A result that was not recorded (the new
-  kinds, Ask, the stress test) has its own sentence, which points to the deviations file.
+  kinds, Ask, the stress test) has its own sentence, which points to the deviations file; a held-out Ask run left
+  out, or a stress test not completed, only when a ``budget_cut`` or ``window_closed`` deviation names it
+  (``applies_to.split`` :data:`ASK_SPLIT` with the run's ``repeat``, or :data:`STRESS_SPLIT`).
 
 Placeholders are filled only from the final analysis (``evals.analysis --prereg``), the pre-registration and the
 results files it names, passed as ``sources``:
@@ -53,6 +56,12 @@ REFERENCE = "ordnung"
 AGENT = "llm_rules_tool"
 #: The results files the sentences name besides the final analysis and the pre-registration.
 NAMED = ("power", "ask", "stress", "e2e", "owner_labels", "owner_kappa", "deviations")
+#: What a deviation names (its ``applies_to.split``) for a held-out Ask run (with its ``repeat``) and for the stress
+#: test; the kinds that say a step was not run or not completed; the held-out Ask runs the pre-registration plans
+#: (``evals.ask.heldout.REGISTERED_READS``).
+ASK_SPLIT, STRESS_SPLIT = "ask-heldout", "stress"
+NOT_RUN_KINDS = ("budget_cut", "window_closed")
+ASK_REGISTERED_RUNS = 3
 #: Where a placeholder's value comes from (``context``: the slot's comparison).
 SOURCES = ("final", "prereg", "templates", "context", *NAMED)
 #: The slots ``readme_block`` may list; ``f2`` once per baseline, as ``f2.<baseline>``.
@@ -94,6 +103,7 @@ CODES = (
     "f2.more",
     "f2.no_clear_difference",
     "f2.not_confirmed",
+    "f2.descriptive",
     "stability.more_stable",
     "stability.not_shown",
     "stability.too_few",
@@ -473,6 +483,14 @@ def _harm(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
 
 
 def _f2(inputs: _Inputs, baseline: str) -> Iterator[tuple[str, dict[str, str]]]:
+    if baseline == AGENT:
+        # harm against the agent is described, not tested (the pre-registration sets no margin for harm)
+        if inputs.optional("final", f"primary.decisions.f2_vs_{baseline}") is not None:
+            raise FinalSentenceError(
+                "harm against the agent is described, not tested: the analysis decided it"
+            )
+        yield "f2.descriptive", _context(inputs, "F2_harm", baseline)
+        return
     decision = str(inputs.final(f"primary.decisions.f2_vs_{baseline}"))
     # harm: Ordnung's rate above the baseline's is more late or missed dates
     code = _decided(inputs, "f2", "F2_harm", baseline, decision, "more", "fewer")
@@ -514,18 +532,51 @@ def _newkinds(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield ("newkinds.done" if recorded else "newkinds.not_recorded"), {}
 
 
+def _not_run(inputs: _Inputs, split: str, repeat: int | None = None) -> bool:
+    """Whether a deviation recorded at the time says this step was not run or not completed (``budget_cut``,
+    ``window_closed``, naming it in ``applies_to``)."""
+    deviations = inputs.docs.get("deviations")
+    if not isinstance(deviations, list):
+        raise FinalSentenceError("the deviations file is missing or is not a list")
+    for deviation in deviations:
+        applies = deviation.get("applies_to") if isinstance(deviation, Mapping) else None
+        if (
+            isinstance(applies, Mapping)
+            and deviation.get("kind") in NOT_RUN_KINDS
+            and applies.get("split") == split
+            and (repeat is None or applies.get("repeat") == repeat)
+        ):
+            return True
+    return False
+
+
 def _ask(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
-    if inputs.docs.get("ask") is None:
+    runs = 0
+    if inputs.docs.get("ask") is not None:
+        runs = _whole(inputs.get("ask", "consistency.runs"), "ask consistency.runs")
+        if runs < 1:
+            raise FinalSentenceError("ask: no run")
+    missing = [
+        run for run in range(runs + 1, ASK_REGISTERED_RUNS + 1) if not _not_run(inputs, ASK_SPLIT, run)
+    ]
+    if missing:
+        # every pre-registered endpoint is published: a run is left out only when a deviation says why
+        raise FinalSentenceError(
+            f"ask: run(s) {', '.join(map(str, missing))} of {ASK_REGISTERED_RUNS} are not in the file of runs and no "
+            "budget_cut or window_closed deviation names them"
+        )
+    if runs == 0:
         yield "ask.not_recorded", {}
         return
-    runs = _whole(inputs.get("ask", "consistency.runs"), "ask consistency.runs")
-    if runs < 1:
-        raise FinalSentenceError("ask: no run")
     yield ("ask.runs" if runs > 1 else "ask.one_run"), {}
 
 
 def _stress(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     done = inputs.optional("stress", "endpoints") is not None
+    if not done and not _not_run(inputs, STRESS_SPLIT):
+        raise FinalSentenceError(
+            "stress: the test is not completed and no budget_cut or window_closed deviation names it"
+        )
     yield ("stress.done" if done else "stress.incomplete"), {}
 
 
