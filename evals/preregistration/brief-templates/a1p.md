@@ -53,6 +53,9 @@ It has this shape:
 - `citations`: the norms and convention ids your verdict rests on; `why`: the reason, in a few sentences.
 - `fact`: the slot's facts in the grammar of `FACTS.md`, with `"source": "A1p"`, for the derivation you uphold: X's
   or Y's, your own date for `both_wrong`, or both readings for `ambiguous`.
+- `procedure_began`, in the `fact` of an authority's decision: the day the procedure the decision closes began, only
+  when the letter states that day (the day of an application, a hearing or an objection, for example), whatever X or
+  Y assume. When the letter states no such day, leave the key out: never work it out from other dates or guess it.
 
 ## What each verdict does
 

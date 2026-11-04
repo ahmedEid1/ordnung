@@ -50,6 +50,10 @@ It has this shape:
 - `date`, for `both_wrong` only: the date that follows from the statutes and the conventions.
 - `candidates`, for `ambiguous` only: X's date and Y's date.
 - `citations`: the norms and convention ids your verdict rests on; `why`: the reason, in a few sentences.
+- Where a derivation rests on the day the procedure an authority's decision closes began, say in `why` whether the
+  letter states that day, and which day it states (the day of an application, a hearing or an objection, for
+  example). A day the letter does not state is no fact of the letter: never work it out from other dates or guess
+  it.
 
 ## What each verdict does
 

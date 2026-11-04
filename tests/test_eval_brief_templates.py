@@ -321,6 +321,32 @@ def test_the_readings_under_the_conventions_get_them(session: str) -> None:
     assert "conventions.md" in _text(session)
 
 
+#: The readers who write a slot's facts from a letter in the grammar of ``evals/dataset/FACTS.md``.
+FACT_WRITERS = ("a1", "a1re", "a1p")
+
+
+@pytest.mark.parametrize("session", FACT_WRITERS)
+def test_a_reader_gives_the_day_a_procedure_began_only_when_the_letter_states_it(session: str) -> None:
+    """FACTS.md's optional ``procedure_began``: a reader who writes a slot's facts from a letter gives the day the
+    procedure an authority's decision closes began only when the letter states that day, and otherwise leaves the
+    key out, never working the day out from other dates."""
+    flat = _flat(_text(session))
+    assert "`procedure_began`, in " in flat
+    assert "the day the procedure the decision closes began, only when the letter states that day" in flat
+    assert "When the letter states no such day, leave the key out: never work it out from other dates" in flat
+    assert "procedure_began" in (ROOT / "evals" / "dataset" / "FACTS.md").read_text(encoding="utf-8")
+
+
+def test_the_second_adjudication_says_in_words_whether_the_letter_states_when_a_procedure_began() -> None:
+    """A2′ writes no facts: where a derivation rests on when a procedure began, its reason says whether the letter
+    states that day, and which."""
+    flat = _flat(_text("a2p"))
+    assert "say in `why` whether the letter states that day, and which day it states" in flat
+    assert (
+        "A day the letter does not state is no fact of the letter: never work it out from other dates" in flat
+    )
+
+
 @pytest.mark.parametrize("session", ADJUDICATORS)
 def test_an_adjudication_hides_which_side_is_which(session: str) -> None:
     """X and Y in an order drawn at random for each case, neither marked; the brief never calls either side the

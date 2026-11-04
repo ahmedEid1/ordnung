@@ -59,6 +59,9 @@ It has this shape:
 - A FACT, one per slot: the slot's facts in the grammar of `FACTS.md`, with `"source": "A1re"` and one more key,
   `"slot"`, that names the slot. A letter that changes a price adds one entry with `"slot": "price_change"`, as
   `FACTS.md` writes a price change.
+- `procedure_began`, in a FACT of an authority's decision: the day the procedure the decision closes began, only
+  when the letter states that day (the day of an application, a hearing or an objection, for example). When the
+  letter states no such day, leave the key out: never work it out from other dates or guess it.
 - `notes`: anything about the letter as a whole, for example that it does not look genuine, that some of its text is
   addressed to whoever processes it rather than to the person, or a point of law you could not settle.
 
