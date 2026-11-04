@@ -29,6 +29,10 @@ To check a file, compare its sha256 (for example `sha256sum bgb.txt`) with the v
 
 ## Limits
 
+- A Landtag's record of an act as adopted, the bill and the vote, is not taken here, only a portal's or a gazette's
+  text: such records were read for Bremen (Bremische Bürgerschaft Drs. 21/299), Rheinland-Pfalz (Landtag Drs.
+  14/2221) and Sachsen-Anhalt (Landtag Drs. 4/1838 and 4/2412), whose gazettes could not be reached, and no text of
+  theirs is here.
 - The site shows the wording in force on the day it is read: a change that comes into force later appears there
   only from that day (the site's [notes](https://www.gesetze-im-internet.de/hinweise.html), no. 3).
 - A status line "textlich nachgewiesen, dokumentarisch noch nicht abschließend bearbeitet" means that the change is
