@@ -1,17 +1,18 @@
 /**
  * A letter addressed to someone else, on the real app (`ordnung serve` with the fake Claude). The fake answers with
  * the demo's recorded reading of the bank's fee increase, addressed to the demo persona, Sam Rivera. Renamed Alex
- * Rivera for this spec (`PUT /api/profile`, set back in `finally`; the real-app specs run one at a time), the person
- * is no longer the addressee: the letter says "Addressed to Sam Rivera", and the composer's From field starts with
- * Alex Rivera, says who the letter was addressed to and offers "Reply in Sam Rivera's name" — never filled in by
- * itself. Both at 320 and 1280 px, light and dark, with axe and the layout sweep's probes. Nothing is drafted, and
- * the letter it adds is deleted for good afterwards (the other real-app specs add the same file).
+ * Rivera for this spec (`PUT /api/profile`; the real-app specs run one at a time), the person is no longer the
+ * addressee: the letter says "Addressed to Sam Rivera", and the composer's From field starts with Alex Rivera, says
+ * who the letter was addressed to and offers "Reply in Sam Rivera's name" — never filled in by itself. Both at 320
+ * and 1280 px, light and dark, with axe and the layout sweep's probes. Nothing is drafted. Before the test and after
+ * it, also when it timed out, `resetRealApp` puts the person's own name back and deletes the letter it adds for good
+ * (the other real-app specs add the same file and expect the persona).
  */
 import { readFileSync } from "node:fs";
 import type { Page, TestInfo } from "@playwright/test";
 import { layoutFindings, type Finding } from "../scripts/ui-audit/probes.mjs";
 import { REAL_LETTER } from "./env";
-import { apiGet, apiSend, expect, expectAccessible, open, settle, test, type Letter } from "./helpers";
+import { apiGet, apiSend, expect, expectAccessible, open, resetRealApp, settle, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 const RENAMED = "Alex Rivera";
@@ -20,6 +21,10 @@ const WIDTHS = [320, 1280] as const;
 const THEMES = ["light", "dark"] as const;
 
 test.describe.configure({ mode: "serial" });
+// the real app as the specs share it: before the test, and after it, also when it timed out (an `afterEach` hook
+// still runs then; the test's own page is closed by that time)
+test.beforeAll(() => resetRealApp());
+test.afterEach(() => resetRealApp());
 
 /** The letter once the API lists it as read (it is read in the background). */
 async function readLetter(page: Page): Promise<Letter> {
@@ -78,56 +83,48 @@ async function checkView(page: Page, testInfo: TestInfo, name: string): Promise<
 }
 
 test("a letter addressed to someone else says so, and a reply offers their name without choosing it", async ({ page }, testInfo) => {
+  // two widths, three views, two themes of layout probes and axe: up to 39 s in full runs, too close to 60 s under load
+  test.setTimeout(120_000);
   const before = await apiGet<{ name: string }>(page, "/api/profile");
   expect(before.name, "the real app's person is the demo persona").toBe(ADDRESSEE);
   const drafts = (await apiGet<unknown[]>(page, "/api/drafts")).length;
-  try {
-    const upload = await page.request.post("/api/documents", {
-      headers: { "X-Ordnung-Client": "web" },
-      multipart: { files: { name: FILE, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
-    });
-    expect(upload.status(), await upload.text()).toBe(201);
-    const letter = await readLetter(page);
-    await apiSend(page, "PUT", "/api/profile", { name: RENAMED });
-    for (const width of WIDTHS) {
-      await page.setViewportSize({ width, height: width === 320 ? 640 : 800 });
+  const upload = await page.request.post("/api/documents", {
+    headers: { "X-Ordnung-Client": "web" },
+    multipart: { files: { name: FILE, mimeType: "application/pdf", buffer: readFileSync(REAL_LETTER) }, combine: "false" },
+  });
+  expect(upload.status(), await upload.text()).toBe(201);
+  const letter = await readLetter(page);
+  await apiSend(page, "PUT", "/api/profile", { name: RENAMED });
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: width === 320 ? 640 : 800 });
 
-      // the letter's page: who it is addressed to, under the title
-      await open(page, `/documents/${letter.id}`);
-      const header = page.getByRole("main").getByRole("article").first().locator("header");
-      await expect(header.getByText(`Addressed to ${ADDRESSEE}`)).toBeVisible();
-      await checkView(page, testInfo, `letter-${width}`);
+    // the letter's page: who it is addressed to, under the title
+    await open(page, `/documents/${letter.id}`);
+    const header = page.getByRole("main").getByRole("article").first().locator("header");
+    await expect(header.getByText(`Addressed to ${ADDRESSEE}`)).toBeVisible();
+    await checkView(page, testInfo, `letter-${width}`);
 
-      // a reply: From starts with the person's own name; the addressee's is one press away
-      await open(page, `/letters?kind=general_reply&doc=${letter.id}`);
-      const dialog = page.getByRole("dialog", { name: "New letter" });
-      const from = dialog.getByRole("textbox", { name: "From" });
-      await expect(from).toHaveValue(RENAMED);
-      await expect(from).toHaveAccessibleDescription(`This letter was addressed to ${ADDRESSEE}.`);
-      await expect(dialog.getByRole("button", { name: "Use my name" })).toHaveCount(0);
-      await from.scrollIntoViewIfNeeded();
-      await checkView(page, testInfo, `composer-${width}`);
+    // a reply: From starts with the person's own name; the addressee's is one press away
+    await open(page, `/letters?kind=general_reply&doc=${letter.id}`);
+    const dialog = page.getByRole("dialog", { name: "New letter" });
+    const from = dialog.getByRole("textbox", { name: "From" });
+    await expect(from).toHaveValue(RENAMED);
+    await expect(from).toHaveAccessibleDescription(`This letter was addressed to ${ADDRESSEE}.`);
+    await expect(dialog.getByRole("button", { name: "Use my name" })).toHaveCount(0);
+    await from.scrollIntoViewIfNeeded();
+    await checkView(page, testInfo, `composer-${width}`);
 
-      await dialog.getByRole("button", { name: `Reply in ${ADDRESSEE}'s name` }).click();
-      await expect(from).toHaveValue(ADDRESSEE);
-      await expect(from).toHaveAccessibleDescription(new RegExp(`goes out in the name of ${ADDRESSEE}, who signs it`));
-      await expect(dialog.getByRole("button", { name: `Reply in ${ADDRESSEE}'s name` })).toHaveCount(0);
-      await checkView(page, testInfo, `composer-theirs-${width}`);
+    await dialog.getByRole("button", { name: `Reply in ${ADDRESSEE}'s name` }).click();
+    await expect(from).toHaveValue(ADDRESSEE);
+    await expect(from).toHaveAccessibleDescription(new RegExp(`goes out in the name of ${ADDRESSEE}, who signs it`));
+    await expect(dialog.getByRole("button", { name: `Reply in ${ADDRESSEE}'s name` })).toHaveCount(0);
+    await checkView(page, testInfo, `composer-theirs-${width}`);
 
-      await dialog.getByRole("button", { name: "Use my name" }).click();
-      await expect(from).toHaveValue(RENAMED);
-      // closed without drafting anything
-      await dialog.getByRole("button", { name: "Cancel" }).click();
-      await expect(dialog).toBeHidden();
-    }
-    expect(await apiGet<unknown[]>(page, "/api/drafts"), "nothing was drafted").toHaveLength(drafts);
-  } finally {
-    // as the other real-app specs expect it: the person's own name, and no such letter
-    await apiSend(page, "PUT", "/api/profile", { name: before.name });
-    for (const added of (await apiGet<Letter[]>(page, "/api/documents")).filter((d) => d.filename === FILE)) {
-      await apiSend(page, "DELETE", `/api/documents/${added.id}?purge=true`);
-    }
+    await dialog.getByRole("button", { name: "Use my name" }).click();
+    await expect(from).toHaveValue(RENAMED);
+    // closed without drafting anything
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(dialog).toBeHidden();
   }
-  expect((await apiGet<{ name: string }>(page, "/api/profile")).name).toBe(ADDRESSEE);
-  expect((await apiGet<Letter[]>(page, "/api/documents")).map((d) => d.filename)).not.toContain(FILE);
+  expect(await apiGet<unknown[]>(page, "/api/drafts"), "nothing was drafted").toHaveLength(drafts);
 });

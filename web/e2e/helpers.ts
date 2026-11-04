@@ -1,13 +1,14 @@
 /**
  * Shared steps for the e2e suite: talking to the demo API with the page's session, finding demo letters
  * by their sample's file name and demo contracts by their category, the New-mail tray, waiting for a page to
- * settle, the raw-enum guard, the axe scan, and a phone's browser for the real app's phone access.
+ * settle, the raw-enum guard, the axe scan, the real app put back as the specs share it, and a phone's browser
+ * for the real app's phone access.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { test as base, devices, expect, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from "@playwright/test";
-import type { Contract, ContractCategory } from "@/api/types";
+import { test as base, devices, expect, request, type Browser, type BrowserContext, type BrowserContextOptions, type Locator, type Page, type TestInfo } from "@playwright/test";
+import type { Contract, ContractCategory, Household } from "@/api/types";
 import { assertNoRawEnums } from "@/lib/copy";
-import { PHONE_BASE_URL } from "./env";
+import { PHONE_BASE_URL, REAL_BASE_URL, REAL_STORAGE_STATE } from "./env";
 
 /** `test` that also fails when the app throws an uncaught error in the browser. */
 export const test = base.extend<{ pageErrors: void }>({
@@ -292,6 +293,59 @@ export async function expectAccessible(page: Page, testInfo: TestInfo, name: str
     (v) => `${v.id} (${v.impact}): ${v.help}\n${v.nodes.map((n) => `    ${n.target.join(" ")} — ${n.failureSummary?.split("\n").slice(1).join(" ").trim()}`).join("\n")}`,
   );
   expect(summary, `${name}: serious/critical axe violations`).toEqual([]);
+}
+
+// ------------------------------------------------------------------------------------------------
+// The real app as the specs share it (project "real-app")
+// ------------------------------------------------------------------------------------------------
+
+/** The real app's person: the demo persona, as the global setup sets it up (e2e/global-setup.ts). */
+const REAL_PERSON = "Sam Rivera";
+/** The name of the file the real-app specs upload (`REAL_LETTER` in e2e/env.ts: the bank's letter, addressed to {@link REAL_PERSON}). */
+const REAL_LETTER_FILE = "19_bank_preisaenderung.pdf";
+
+/**
+ * Put the real app back as its specs share it: the person named {@link REAL_PERSON}, no one in the household, and
+ * no letter from {@link REAL_LETTER_FILE} (each deleted for good once its reading is over, so none is cut off). A
+ * spec that renames the person or adds that letter puts things back itself, but a test that times out never gets
+ * there: Playwright closes its page, and the next spec found "Alex Rivera", or the letter already in. So every
+ * real-app spec that uses the persona or that file calls this first, and one failure stays one failure. It uses a
+ * request context of its own (the real app's address and session), so it works in any hook, after a timeout too.
+ */
+export async function resetRealApp(): Promise<void> {
+  const api = await request.newContext({ baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE, extraHTTPHeaders: CLIENT });
+  const read = async <T>(path: string): Promise<T> => {
+    const res = await api.get(path, READ);
+    expect(res.ok(), `GET ${path} → ${res.status()}`).toBe(true);
+    return (await res.json()) as T;
+  };
+  const send = async (method: "PUT" | "PATCH" | "DELETE", path: string, data?: unknown): Promise<void> => {
+    const res = await api.fetch(path, { method, data });
+    expect(res.ok(), `${method} ${path} → ${res.status()} ${res.ok() ? "" : await res.text()}`).toBe(true);
+  };
+  const letters = async () => (await read<(Letter & { status: string })[]>("/api/documents")).filter((d) => d.filename === REAL_LETTER_FILE);
+  try {
+    if ((await read<{ name: string }>("/api/profile")).name !== REAL_PERSON) await send("PUT", "/api/profile", { name: REAL_PERSON });
+    const household = await read<Household>("/api/household");
+    const answered = [...Object.keys(household.filed), ...household.mine];
+    if (answered.length) await send("PATCH", "/api/household", { letters: Object.fromEntries(answered.map((id) => [id, null])) });
+    if (household.members.length) {
+      // twice: the people removed by the first change keep their letters' links one change longer (for Undo)
+      for (let n = 0; n < 2; n++) await send("PUT", "/api/household", { base: (await read<Household>("/api/household")).version, members: [] });
+    }
+    await expect
+      .poll(async () => (await letters()).map((d) => d.status).filter((s) => s === "queued" || s === "processing"), {
+        message: `every ${REAL_LETTER_FILE} is read before it goes`,
+        timeout: 30_000,
+      })
+      .toEqual([]);
+    for (const letter of await letters()) await send("DELETE", `/api/documents/${letter.id}?purge=true`);
+    expect((await read<{ name: string }>("/api/profile")).name, "the real app's person").toBe(REAL_PERSON);
+    expect((await read<Household>("/api/household")).members, "the real app's household").toEqual([]);
+    expect(await letters(), `letters from ${REAL_LETTER_FILE}`).toEqual([]);
+  } finally {
+    await api.dispose();
+  }
 }
 
 // ------------------------------------------------------------------------------------------------
