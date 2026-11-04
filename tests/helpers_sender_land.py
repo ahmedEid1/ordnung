@@ -45,6 +45,17 @@ DELIVERY = DateSpec(
     nature="objection",
     legal_basis="§ 70 VwGO",
 )
+#: An authority's objection period from its decision e-mailed on Tue 29 Sep 2026: from the day it arrived (Brandenburg)
+#: or the 3rd or 4th day after it was sent, by its Land.
+EMAILED = DateSpec(
+    type="relative",
+    anchor="deemed_delivery",
+    amount=1,
+    unit="months",
+    delivery_rule="de_admin_electronic",
+    nature="objection",
+    legal_basis="§ 70 VwGO",
+)
 #: Five working days from Mon 5 Oct 2026: no holiday anywhere.
 QUIET = DateSpec(
     type="relative",
@@ -58,7 +69,7 @@ QUIET = DateSpec(
 
 def without_land(spec: DateSpec) -> RuleContext:
     """The context the app counts ``spec`` in until the sender's Land is set."""
-    if spec is DELIVERY:
+    if spec is DELIVERY or spec is EMAILED:
         return RuleContext(today=TODAY, region=None, document_date=date(2026, 9, 29), delivery_scope="vwvfg")
     return RuleContext(today=TODAY, region=None)
 

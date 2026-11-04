@@ -38,7 +38,7 @@ from ordnung.models import (
     SuggestionRef,
 )
 from ordnung.rules.calendar_de import REGION_NAMES
-from ordnung.rules.deadlines import place_region, waits_for_sender_land
+from ordnung.rules.deadlines import LAND_WAIT_REASONS, LandWaitReason, place_region, waits_for_sender_land
 from ordnung.rules.postcodes import Home, PostcodeLand, suggest_land
 from ordnung.secretary.triggers import (
     IdeaText,
@@ -60,6 +60,31 @@ LETTERS_LOOKED_AT: Final = 12
 SOON_DAYS: Final = 14
 #: The statuses in which a sender's Idea still stands, so the question names it (an expired one doesn't).
 _IDEA_STANDS: Final = ("new", "snoozed", "dismissed")
+
+#: The Idea's text by why its dates wait (the strongest reason among them): what the Land decides, and what Ordnung
+#: counts until the person answers, in the words of the letter's own question (``LAND_WAIT_REASON`` in
+#: ``web/src/features/party/sender-land.ts``). ``{them}`` is "it" or "them", ``{may}`` "it may" or "they may".
+IDEA_REASONS: Final[dict[LandWaitReason, str]] = {
+    "earlier": (
+        "{postcode} is on their letter. Their state's public holidays may change {count} of your dates with them; "
+        "until you answer, act a working day before {them}."
+    ),
+    "email": (
+        "{postcode} is on their letter. Their state decides whether an e-mailed decision counts from the day it "
+        "arrived or the 3rd or 4th day after it was sent, which may change {count} of your dates with them; until "
+        "you answer, Ordnung counts from the day it was sent, so {may} be several days early, more around weekends "
+        "and holidays."
+    ),
+    "days": (
+        "{postcode} is on their letter. Their state decides whether their letters count as delivered after 3 or 4 "
+        "days, which may change {count} of your dates with them; until you answer, Ordnung counts 3, so {may} be a "
+        "day early."
+    ),
+    "holiday": (
+        "{postcode} is on their letter. Their state's public holidays may change {count} of your dates with them; "
+        "until you answer, Ordnung counts only nationwide holidays, so {may} be a day or two early."
+    ),
+}
 
 #: English names of the Länder where they differ from the German ones (as the web app's ``BUNDESLAENDER``).
 _ENGLISH: Final = {
@@ -212,15 +237,17 @@ def _open_dates(ledger: Ledger, party: Party, doc_id: str | None) -> list[_Dated
     return found
 
 
-def _waiting(ledger: Ledger, dates: list[_Dated], region: str) -> tuple[list[_Dated], bool]:
-    """The dates confirming ``region`` may change, and whether one of them may be late until it is confirmed."""
+def _waiting(ledger: Ledger, dates: list[_Dated], region: str) -> tuple[list[_Dated], LandWaitReason | None]:
+    """The dates confirming ``region`` may change, and the strongest reason among them (:data:`LAND_WAIT_REASONS`;
+    ``"earlier"``: one of them may be late until it is confirmed)."""
     waiting = [
         (dated, wait)
         for dated in dates
         if (wait := waits_for_sender_land(dated.warnings, region)).waits
         and _met_in(ledger, dated.item, region)
     ]
-    return [dated for dated, _ in waiting], any(wait.may_be_late for _, wait in waiting)
+    reasons = {wait.reason for _, wait in waiting}
+    return [dated for dated, _ in waiting], next((r for r in LAND_WAIT_REASONS if r in reasons), None)
 
 
 def region_suggestion(ledger: Ledger, party: Party, *, doc_id: str | None = None) -> RegionSuggestion | None:
@@ -237,7 +264,7 @@ def region_suggestion(ledger: Ledger, party: Party, *, doc_id: str | None = None
     if source is None:
         return None
     region = source.land.region
-    waiting, late = _waiting(ledger, _open_dates(ledger, party, doc_id), region)
+    waiting, reason = _waiting(ledger, _open_dates(ledger, party, doc_id), region)
     idea = ledger.store.get_suggestion(idea_id(party.id, region))
     if idea is not None and idea.status not in _IDEA_STANDS:
         idea = None
@@ -246,23 +273,23 @@ def region_suggestion(ledger: Ledger, party: Party, *, doc_id: str | None = None
         postcode=source.land.postcode,
         doc_id=source.doc_id,
         waiting=len(waiting),
-        may_be_late=late,
+        may_be_late=reason == "earlier",
+        reason=reason,
         idea_id=idea.id if idea is not None else None,
         declined=idea is not None and idea.status == "dismissed",
     )
 
 
-def _idea(ledger: Ledger, party: Party, source: _Source, waiting: list[_Dated], late: bool) -> Suggestion:
+def _idea(
+    ledger: Ledger, party: Party, source: _Source, waiting: list[_Dated], reason: LandWaitReason
+) -> Suggestion:
     region, postcode = source.land.region, source.land.postcode
     count = len(waiting)
-    if late:
-        until = f"act a working day before {'it' if count == 1 else 'them'}."
-    else:
-        may = "it may" if count == 1 else "they may"
-        until = f"Ordnung counts only nationwide holidays, so {may} be a day or two early."
-    body = (
-        f"{postcode} is on their letter. Their state's public holidays may change {count} of your dates with "
-        f"them; until you answer, {until}"
+    body = IDEA_REASONS[reason].format(
+        postcode=postcode,
+        count=count,
+        them="it" if count == 1 else "them",
+        may="it may" if count == 1 else "they may",
     )
     days = [dated.day for dated in waiting if dated.day is not None]
     first = min(days) if days else None
@@ -296,7 +323,7 @@ def sender_land_ideas(ledger: Ledger) -> list[Suggestion]:
         source = _source(ledger, party) if dates else None
         if source is None:
             continue
-        waiting, late = _waiting(ledger, dates, source.land.region)
-        if waiting:
-            ideas.append(_idea(ledger, party, source, waiting, late))
+        waiting, reason = _waiting(ledger, dates, source.land.region)
+        if reason is not None:  # some date waits
+            ideas.append(_idea(ledger, party, source, waiting, reason))
     return ideas

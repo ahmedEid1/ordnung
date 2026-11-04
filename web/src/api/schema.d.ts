@@ -6012,6 +6012,8 @@ export interface components {
              * @default false
              */
             may_be_late: boolean;
+            /** Reason */
+            reason: ("earlier" | "email" | "days" | "holiday") | null;
             /** Idea Id */
             idea_id: string | null;
             /**

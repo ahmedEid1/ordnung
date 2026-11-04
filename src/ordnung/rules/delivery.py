@@ -71,11 +71,15 @@ _ORDINAL = {3: "3rd", 4: "4th"}
 #: § 97 keeps the old law only for a step begun before, and posting is the step), MV, BE (§ 1 VwVfG Bln, dynamic),
 #: BB (§ 1 VwVfGBbg), NI (§ 1 NVwVfG), SN (§ 1 SächsVwVfZG, dynamic), SH (§ 110 Abs. 2 LVwG; Art. 2 Abs. 2 of the act
 #: of 13 Dec 2024) and TH (§ 1 ThürVwVfG, dynamic, in force 1 Jan 2025) from 1 January 2025. HH from 14 May 2025
-#: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 of its constitution). BW from 7 Feb 2025 (GBl. 2025 Nr. 8). RP and ST
-#: are taken to refer to the federal VwVfG (research of 2026-09-25; their gazettes could not be reached). Before a
-#: Land's day its old law counts the 3rd day.
+#: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 of its constitution). BW from 7 Feb 2025 (GBl. 2025 Nr. 8). HB, RP
+#: and ST refer to the federal VwVfG "in der jeweils geltenden Fassung", checked against the Landtag record of the act
+#: as adopted, as their gazettes could not be reached: HB (§ 1 Abs. 1 BremVwVfG since 6 Apr 2024; Bürgerschaft
+#: Drs. 21/299), RP (§ 1 Abs. 1 LVwVfG; Landtag Drs. 14/2221, GVBl. 2003 S. 155) and ST (§ 1 Abs. 1 VwVfG LSA of
+#: 18 Nov 2005; Landtag Drs. 4/1838, 4/2412), from 1 January 2025. Before a Land's day its old law counts the 3rd day.
 VWVFG_FOUR_DAY_FROM: dict[str, date] = {
-    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST", "SH", "TH"), FOUR_DAY_RULE_FROM),
+    **dict.fromkeys(
+        ("BY", "NW", "MV", "BE", "BB", "HB", "NI", "RP", "SN", "ST", "SH", "TH"), FOUR_DAY_RULE_FROM
+    ),
     "HH": date(2025, 5, 14),
     "BW": date(2025, 2, 7),
 }
@@ -93,9 +97,9 @@ VWVFG_OLD_PROCEDURES: Final[dict[str, tuple[str, str]]] = {
 }
 
 
-#: Why a general authority's letter counts as delivered on the 3rd day although its Land may count the 4th: Bremen's
-#: and the Saarland's rule could not be checked, or the Land isn't known. Receipts carry it as a warning, and
-#: :func:`ordnung.rules.deadlines.waits_for_sender_land` reads it back.
+#: Why a general authority's letter counts as delivered on the 3rd day although its Land may count the 4th: the
+#: Saarland's rule could not be read (its act of 27 Aug 2025, Amtsbl. 2025 Nr. 38 S. 854), or the Land isn't known.
+#: Receipts carry it as a warning, and :func:`ordnung.rules.deadlines.waits_for_sender_land` reads it back.
 LAND_DAYS_UNCONFIRMED: Final = (
     "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, "
     "so we counted 3 days (the earlier date)."
@@ -316,8 +320,8 @@ def resolve_delivery(
 
     For an unknown scope the conservative variant is used: the day is not moved off weekends. For
     general authorities (and unknown senders) the Land's own day counts: the 4th from its switch
-    (:data:`VWVFG_FOUR_DAY_FROM`), the 3rd before it and in Hessen (:data:`VWVFG_THREE_DAYS`); for Bremen, the
-    Saarland or an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). In
+    (:data:`VWVFG_FOUR_DAY_FROM`), the 3rd before it and in Hessen (:data:`VWVFG_THREE_DAYS`); for the Saarland or
+    an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). In
     Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern after their switch the 4th day counts, and
     ``older_matter`` gives the 3rd, which a matter begun before the switch keeps (:data:`VWVFG_OLD_PROCEDURES`). Portal
     provision (``channel="portal"``) by a general authority or an unknown sender counts from the day
@@ -349,7 +353,7 @@ def resolve_delivery(
             if land in VWVFG_THREE_DAYS or (land_from is not None and posted < land_from):
                 days, rule_id = 3, "vwvfg_land_days"  # the Land's own law: HE; HH and BW before their day
             elif land_from is None:
-                days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED  # HB, SL, unknown
+                days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED  # SL, unknown
             elif land in VWVFG_OLD_PROCEDURES:
                 older = (land, posted + timedelta(days=3))  # the old law's day, for a matter begun before
         raw = posted + timedelta(days=days)

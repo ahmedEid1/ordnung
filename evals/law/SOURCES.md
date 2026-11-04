@@ -240,6 +240,11 @@ place.
 - Sachsen-Anhalt: the portal closed the connection before any answer. The Landtag's site and its document server
   (padoka.landtag.sachsen-anhalt.de) answered, but no copy of the gazette was found on them.
 
+A Landtag's record of an act as adopted, the bill and the vote, is not taken here, only a portal's or a gazette's
+text: such records were read for Bremen (Bremische Bürgerschaft Drs. 21/299), Rheinland-Pfalz (Landtag Drs.
+14/2221) and Sachsen-Anhalt (Landtag Drs. 4/1838 and 4/2412), whose gazettes could not be reached, and no text of
+theirs is here.
+
 ### Limits
 
 - Earlier wordings of the law, which are not here, are named in Baden-Württemberg's § 102b ("in der bis zum

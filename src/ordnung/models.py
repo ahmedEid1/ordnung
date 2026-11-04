@@ -1403,6 +1403,10 @@ class RegionSuggestion(_Model):
     waiting: int = 0
     #: one of them is counted backwards: without the Land it may be a day late
     may_be_late: bool = False
+    #: why they wait, the strongest of their reasons: counted backwards (``earlier``, as ``may_be_late``), an
+    #: e-mailed decision counted from the day it was sent (``email``), a Land authority's letter counted with 3 days
+    #: (``days``), or a regional holiday (``holiday``); null while none waits
+    reason: Literal["earlier", "email", "days", "holiday"] | None = None
     #: the sender's ``sender_land`` Idea (new, snoozed or dismissed), if there is one
     idea_id: str | None = None
     #: that Idea is dismissed ("Don't know" or "Not relevant")

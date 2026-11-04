@@ -2430,9 +2430,9 @@ Receipts state which calendar was used.
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
 2025-01-01; Land authorities (Land VwVfG) use each Land's count (`rules.delivery`: the 4th day from the Land's
-switch date, Hessen the 3rd), checked against the Länder gazettes except for Rhineland-Palatinate and
-Saxony-Anhalt, whose 4th day is taken without that check; for Bremen, the Saarland or an unknown Land the
-conservative earlier count (3 days) with `medium` confidence. In Baden-Württemberg, Bavaria and
+switch date, Hessen the 3rd), checked against the Länder gazettes, or for Bremen, Rhineland-Palatinate and
+Saxony-Anhalt, whose gazettes could not be reached, against the Landtag record of the act as adopted; for the
+Saarland or an unknown Land the conservative earlier count (3 days) with `medium` confidence. In Baden-Württemberg, Bavaria and
 Mecklenburg-Vorpommern a procedure under the Land's own procedure law begun before the switch keeps 3 days
 (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day is counted and a warning names the deadline from
 the 3rd, with its own send-by date, when it is earlier. A Brandenburg authority's e-mailed decision counts from
