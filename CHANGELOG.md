@@ -51,10 +51,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   between letters (`--stop-file`, `--stop-at`) and sets a cut letter's recordings, or those of a read made
   invalid, aside to be recorded again (`python -m evals.harness retake`). The analysis checks every read against
   the pre-registration and applies its fixed rules for anything that went wrong; the sentences about the final run
-  are fixed templates now, all of them for docs/evals.md and, for the README's short block, those on accuracy, the
-  late or missed dates, Ask and who wrote the letters; the held-out Ask set, the stress cells and the replays without
-  the Land or the checks have their final-run tools; and scripts hash the pre-registration and check it, and the
-  file of deviations from it, against the git history. A final split's facts are built from its sealed blind audit
+  are fixed templates now, all of them for docs/evals.md and, for the README's block, those chosen by role whatever
+  they show (accuracy with the number of deviations, the late or missed dates and their tested comparisons,
+  stability, where Ordnung falls short, Ask with its scope and the caveats on every number), in a layout and a
+  length fixed with them; the held-out Ask set, the stress cells and the replays without the Land or the checks have
+  their final-run tools; and scripts hash the pre-registration and check it, and the file of deviations from it,
+  against the git history. A final split's facts are built from its sealed blind audit
   (`python -m scripts.build_final_facts`); a contract date the letter or the law leaves open between two dates is
   labelled as such, like a deadline, and not scored, and the final run counts these slots by kind.
 

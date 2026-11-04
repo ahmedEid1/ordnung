@@ -8,24 +8,40 @@ existed.
 
 The templates file orders the slots twice (:func:`sentences` takes ``block``, ``"page"`` or ``"readme"``).
 ``page_block`` lists every slot: the final section of ``docs/evals.md``, between :data:`PAGE_BEGIN` and
-:data:`PAGE_END`, says all of them. ``readme_block`` lists the few the README says, in the same order: a subsequence
-of ``page_block``, so each README sentence is a page sentence, word for word. The README holds a slot for what it
-reports, never for what it says on a given result, so each of its slots is there whatever its code:
+:data:`PAGE_END`, says all of them. ``readme_block`` lists the slots the README says, in the same order: a
+subsequence of ``page_block``, so each README sentence is a page sentence, word for word. The README holds a slot for
+its role, fixed before any result, never for what it says on a given result, so each of its slots is there whatever
+its code:
 
 * the accuracy family of the one confirmatory decision (``evals.analysis.CONFIRMATORY``): the headline with Ordnung
-  against the model alone (``head``), and the family's two other comparisons, against the model with the rules
-  pasted in (``rules_text``) and the agent's non-inferiority (``agent``);
-* the safety endpoint, every condition's late or missed dates (``harm``);
-* the held-out Ask set (``ask``), with its sentence for runs not recorded;
-* the one limitation that bears on every number above (``limitations.absolute``): the letters were written by a
-  model of the benchmarked model's family, so every condition's absolute accuracy may be higher than on real mail.
-  It is the README's "where it falls short" line, which the pledge keeps there.
+  against the model alone (``head``, which ends with the number of deviations recorded at the time and the file that
+  lists them), and the family's two other comparisons, against the model with the rules pasted in (``rules_text``)
+  and the agent's non-inferiority (``agent``);
+* the safety endpoint, every condition's late or missed dates (``harm``), and the harm comparisons the analysis
+  decides, against the model alone and against the model with the rules pasted in (``f2.llm_only``,
+  ``f2.llm_rules_text``; harm against the agent is described, not tested, and stays on the page);
+* the stability decision (``stability``);
+* where Ordnung falls short: what its "please check" flag caught of its wrong dates (``flags``), the real
+  obligations the end-to-end run set aside as scams and the scam letters whose demands still reached the calendar
+  (``e2e``);
+* "Ask: new questions on the demo household" (``ask``), with its sentence for runs not recorded, and its scope: it
+  holds out only its questions (``limitations.ask_scope``);
+* the caveats that bear on every number: the deadlines whose label rests on a disputed reading the engine's
+  documentation shares (``limitations.s_conv``), the slots the letter or the law leaves open, which the deadlines
+  counted leave out (``limitations.ambiguous``), and who wrote the letters, so that every condition's absolute
+  accuracy may be higher than on real mail (``limitations.absolute``).
 
-Everything else is on the page only: the tested harm comparisons (``f2.<baseline>``), stability, the flags, the new
-kinds, the stress test, the end-to-end run, the other limitations, the owner's checks and the provenance. They do
-not fit in the README's block, which stays within 12 lines (``tests/test_present_final.py`` checks it on every
-synthetic final): the head's sentences wrapped as one paragraph, as the headline is today, each other slot on a line
-of its own, the chart and the link to the report.
+Everything else is on the page only: harm against the agent, the new kinds, the stress test, the limitation on reads
+recorded within days, the owner's checks and the provenance. The page holds every sentence, decided or not, and the
+README's link says so.
+
+:func:`readme_block` lays the README's sentences out, the one layout phase 2 writes between the README's markers:
+one paragraph of the head, the accuracy family, harm, the tested harm comparisons and stability, wrapped at
+:data:`README_WIDTH` as today's headline; a blank line, the chart, a blank line, as today's block; one line per item
+of the templates' ``readme_layout`` (where Ordnung falls short, under its lead; Ask with its scope; each caveat),
+each ending in ``<br>`` as today's; and the link. Its budget is fixed with it: at most :data:`README_BLOCK_MAX_LINES`
+lines, and every line but the chart's at most :data:`README_LINE_MAX` characters, both taken from the longest block
+the templates can give (``tests/test_present_final.py``).
 
 The rules:
 
@@ -41,7 +57,7 @@ The rules:
 * a slot that has nothing to say says nothing: the limitation on reads recorded within days needs two reads or more;
 * a decision its interval or its counts contradict, a decision code without a template and a named result that is
   missing are refused (:class:`FinalSentenceError`), never written around. A result that was not recorded (the new
-  kinds, Ask, the stress test) has its own sentence, which points to the deviations file; a held-out Ask run left
+  kinds, Ask, the stress test) has its own sentence, which points to the deviations file; an Ask run left
   out, or a stress test not completed, only when a ``budget_cut`` or ``window_closed`` deviation names it
   (``applies_to.split`` :data:`ASK_SPLIT` with the run's ``repeat``, or :data:`STRESS_SPLIT`).
 
@@ -49,7 +65,7 @@ Placeholders are filled only from the final analysis (``evals.analysis --prereg`
 results files it names, passed as ``sources``:
 
 * ``power``: ``evals/preregistration/power-0.4.0.json``, ``comparisons.<family>.<pair>.power`` per comparison;
-* ``ask``: the held-out Ask final file (``evals.ask.heldout.final_payload``), ``r1`` (``summarise_strict`` of the first
+* ``ask``: the Ask set's final file (``evals.ask.heldout.final_payload``), ``r1`` (``summarise_strict`` of the first
   run) and ``consistency`` (``evals.ask.metrics.consistency`` of every run); ``None`` when it was not recorded;
 * ``stress``: the stress results file (``evals.perturb.score.stress_results``); ``None`` when it was not recorded;
 * ``e2e``: the end-to-end replay of the final letters (``evals.e2e``);
@@ -58,7 +74,8 @@ results files it names, passed as ``sources``:
 * ``deviations``: ``evals/preregistration/deviations-0.4.0.json``, the list of deviations recorded at the time.
 
 :func:`published` finds them in a checkout; :func:`readme_problems` holds the README's block to the README's
-sentences, and :func:`page_problems` the final section of ``docs/evals.md`` to the page's.
+sentences as :func:`readme_block` lays them out, and :func:`page_problems` the final section of ``docs/evals.md`` to
+the page's.
 """
 
 from __future__ import annotations
@@ -83,8 +100,8 @@ BASELINES = tuple(condition for condition in CONDITIONS if condition != REFERENC
 AGENT = "llm_rules_tool"
 #: The results files the sentences name besides the final analysis and the pre-registration.
 NAMED = ("power", "ask", "stress", "e2e", "owner_labels", "owner_kappa", "deviations")
-#: What a deviation names (its ``applies_to.split``) for a held-out Ask run (with its ``repeat``) and for the stress
-#: test; the kinds that say a step was not run or not completed; the held-out Ask runs the pre-registration plans
+#: What a deviation names (its ``applies_to.split``) for a run of the Ask set (with its ``repeat``) and for the stress
+#: test; the kinds that say a step was not run or not completed; the Ask runs the pre-registration plans
 #: (``evals.ask.heldout.REGISTERED_READS``).
 ASK_SPLIT, STRESS_SPLIT = "ask-heldout", "stress"
 NOT_RUN_KINDS = ("budget_cut", "window_closed")
@@ -93,6 +110,13 @@ ASK_REGISTERED_RUNS = 3
 SOURCES = ("final", "prereg", "templates", "context", *NAMED)
 #: The two ordered slot lists of the templates file, by the block each one fills.
 BLOCKS = {"readme": "readme_block", "page": "page_block"}
+#: The README block's budget, registered with the templates before any result: its paragraph is wrapped at
+#: ``README_WIDTH`` characters (the width of today's headline), the block takes at most ``README_BLOCK_MAX_LINES``
+#: lines between the markers, and every line but the chart's at most ``README_LINE_MAX`` characters. Both limits are
+#: the longest block the templates can give (``tests/test_present_final.py`` builds it).
+README_WIDTH = 116
+README_BLOCK_MAX_LINES = 26
+README_LINE_MAX = 412
 #: docs/evals.md's final section lies between these two lines (the README's block between ``BEGIN`` and ``END``).
 PAGE_BEGIN = "<!-- evals:final:begin: the pre-registered sentences, in page_block order; do not edit -->"
 PAGE_END = "<!-- evals:final:end -->"
@@ -138,6 +162,7 @@ CODES = (
     "head.baseline_ahead",
     "head.no_clear_difference",
     "head.not_confirmed",
+    "head.deviations",
     "rules_text.clear",
     "rules_text.baseline_ahead",
     "rules_text.no_clear_difference",
@@ -167,6 +192,8 @@ CODES = (
     "stress.incomplete",
     "e2e.set_aside",
     "e2e.none_set_aside",
+    "e2e.scam_in_calendar",
+    "e2e.no_scam_in_calendar",
     "limitations.s_conv",
     "limitations.s_conv_same",
     "limitations.s_conv_none",
@@ -234,6 +261,7 @@ def check_templates(templates: Mapping[str, Any]) -> list[str]:
     elif not all(isinstance(name, str) and name for name in conditions.values()):
         problems.append("every condition needs a name")
     problems += _block_problems(templates)
+    problems += _layout_problems(templates)
     rules = templates.get("rules")
     minimum = rules.get("stability_min_discordant") if isinstance(rules, Mapping) else None
     if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 1:
@@ -315,6 +343,38 @@ def _block_problems(templates: Mapping[str, Any]) -> list[str]:
         rest = iter(page)
         if not all(slot in rest for slot in readme):
             problems.append("readme_block lists its slots in another order than page_block")
+    return problems
+
+
+def _layout_problems(templates: Mapping[str, Any]) -> list[str]:
+    """What is wrong with the README block's layout: its paragraph and its lines must lay out ``readme_block``'s
+    slots, each once and in its order; a line has a lead (empty or words, no number) and slots; the link is a line."""
+    layout = templates.get("readme_layout")
+    if not isinstance(layout, Mapping) or set(layout) != {"paragraph", "lines", "link"}:
+        return ["readme_layout must give the paragraph, the lines and the link"]
+    problems: list[str] = []
+    paragraph, lines = layout.get("paragraph"), layout.get("lines")
+    if not isinstance(paragraph, list) or not isinstance(lines, list) or not lines:
+        return ["readme_layout's paragraph and lines must be lists"]
+    laid: list[Any] = list(paragraph)
+    for line in lines:
+        if (
+            not isinstance(line, Mapping)
+            or set(line) != {"lead", "slots"}
+            or not isinstance(line["lead"], str)
+            or not isinstance(line["slots"], list)
+            or not line["slots"]
+        ):
+            problems.append("readme_layout: a line is an object with a lead and its slots")
+            continue
+        if re.search(r"\d", line["lead"]):
+            problems.append("readme_layout: a lead holds a number outside a placeholder")
+        laid += line["slots"]
+    if laid != templates.get(BLOCKS["readme"]):
+        problems.append("readme_layout lays out other slots than readme_block, or in another order")
+    link = layout.get("link")
+    if not isinstance(link, str) or not link.strip() or "\n" in link:
+        problems.append("readme_layout must give the link to the page, on one line")
     return problems
 
 
@@ -499,6 +559,10 @@ def _head(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     decision = str(inputs.final("primary.decisions.beats_llm_only"))
     code = _decided(inputs, "head", "F1_accuracy", "llm_only", decision, "clear", "baseline_ahead")
     yield code, _context(inputs, "F1_accuracy", "llm_only")
+    # "pre-registered" comes with the deviations recorded at the time, whatever their number, and where they are
+    if not isinstance(inputs.docs.get("deviations"), list):
+        raise FinalSentenceError("the deviations file is missing or is not a list")
+    yield "head.deviations", {}
 
 
 def _rules_text(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
@@ -648,6 +712,13 @@ def _e2e(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         inputs.get("e2e", "metrics.all.scam.set_aside_obligations"), "e2e set_aside_obligations"
     )
     yield ("e2e.set_aside" if set_aside else "e2e.none_set_aside"), {}
+    scams = _whole(inputs.get("e2e", "metrics.all.scam.scam_letters"), "e2e scam_letters")
+    in_calendar = inputs.get("e2e", "metrics.all.scam.in_the_calendar")
+    if not isinstance(in_calendar, list) or len(in_calendar) > scams:
+        raise FinalSentenceError(
+            f"e2e: the scam letters in the calendar are not a list of at most {scams} scam letters"
+        )
+    yield ("e2e.scam_in_calendar" if in_calendar else "e2e.no_scam_in_calendar"), {}
 
 
 def _s_conv(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
@@ -874,10 +945,79 @@ def normalised(text: str) -> str:
     return " ".join(text.split())
 
 
-def readme_problems(readme: str, said: Sequence[str]) -> list[str]:
-    """What keeps the README's generated block from being exactly ``said`` (the README's sentences,
-    ``block="readme"``), in order (empty when nothing does)."""
-    return _between_problems(readme, said, BEGIN, END, "the README has no generated evaluation block")
+def _fill(value: str, width: int) -> list[str]:
+    """``value`` in lines of at most ``width`` characters, broken at spaces only and never before a ``%`` (the
+    presenter's rule for today's headline, kept here so that the registered layout does not move with it)."""
+    words: list[str] = []
+    for word in value.split():
+        if word.startswith("%") and words:
+            words[-1] += " " + word
+        else:
+            words.append(word)
+    lines: list[str] = []
+    line = ""
+    for word in words:
+        if line and len(line) + 1 + len(word) > width:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}" if line else word
+    return [*lines, line]
+
+
+def _is_picture(line: str) -> bool:
+    return "\n" not in line and line.startswith("<picture>") and line.endswith("</picture>")
+
+
+def readme_block(said: Sequence[Sentence], templates: Mapping[str, Any], picture: str) -> list[str]:
+    """The README's generated block, between :data:`~evals.present.BEGIN` and :data:`~evals.present.END`, line by
+    line, as phase 2 writes it: ``said`` is the README's sentences (:func:`coded` with ``block="readme"``),
+    ``templates`` the registered templates (their ``readme_layout``) and ``picture`` the chart, one ``<picture>``
+    line. The paragraph's sentences wrapped at :data:`README_WIDTH`; a blank line, the chart, a blank line; one line
+    per item of the layout, its lead and its slots' sentences, ending in ``<br>``; the link."""
+    if not _is_picture(picture):
+        raise FinalSentenceError("the README's chart is one <picture> line")
+    layout = templates["readme_layout"]
+    slots = [sentence.slot for sentence in said]
+    runs = [slot for i, slot in enumerate(slots) if i == 0 or slots[i - 1] != slot]
+    if runs != list(templates[BLOCKS["readme"]]):
+        raise FinalSentenceError("these are not the README's sentences, slot by slot in readme_block order")
+    texts: dict[str, list[str]] = {}
+    for sentence in said:
+        texts.setdefault(sentence.slot, []).append(sentence.text)
+    paragraph = " ".join(text for slot in layout["paragraph"] for text in texts[slot])
+    lines = [*_fill(paragraph, README_WIDTH), "", picture, ""]
+    for item in layout["lines"]:
+        said_here = [text for slot in item["slots"] for text in texts[slot]]
+        lines.append(" ".join([item["lead"], *said_here] if item["lead"] else said_here) + "<br>")
+    return [*lines, layout["link"]]
+
+
+def readme_problems(readme: str, said: Sequence[Sentence], templates: Mapping[str, Any]) -> list[str]:
+    """What keeps the README's generated block from being exactly :func:`readme_block` of ``said`` (the README's
+    sentences, ``block="readme"``) under ``templates`` (the registered ones), blank lines included, whatever chart its
+    picture line holds (empty when nothing does)."""
+    lines = readme.splitlines()
+    if BEGIN not in lines or END not in lines or lines.index(END) < lines.index(BEGIN):
+        return ["the README has no generated evaluation block"]
+    block = lines[lines.index(BEGIN) + 1 : lines.index(END)]
+    expected = readme_block(said, templates, "<picture></picture>")
+    flat = normalised(" ".join(block))
+    missing = [
+        f"sentence {i} is not in the block"
+        for i, sentence in enumerate(said, 1)
+        if normalised(sentence.text) not in flat
+    ]
+    if missing:
+        return missing
+    for number, (got, want) in enumerate(zip(block, expected, strict=False), 1):
+        if got != want and not (_is_picture(want) and _is_picture(got)):
+            return [
+                f"line {number} of the block is not laid out as readme_block lays out the registered sentences"
+            ]
+    if len(block) != len(expected):
+        return [f"the block has {len(block)} lines, not the {len(expected)} readme_block lays out"]
+    return []
 
 
 def page_problems(page: str, said: Sequence[str]) -> list[str]:

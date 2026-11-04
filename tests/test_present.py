@@ -225,6 +225,8 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
 
 
 def test_the_readme_block_is_short(doc: dict[str, Any]) -> None:
+    """Today's block stays within 12 lines; the final run's block has its own budget, registered with its templates
+    (``evals.present.final.README_BLOCK_MAX_LINES``, held by tests/test_present_final.py)."""
     lines = text.readme_block(doc).strip("\n").splitlines()
     assert lines[0] == BEGIN and lines[-1] == END
     assert len(lines) - 2 <= 12

@@ -533,12 +533,13 @@ def test_a_pre_registration_without_a_required_field_is_named() -> None:
 
 
 def test_the_registered_sentences_hold_both_slot_lists_of_the_templates() -> None:
-    """The pre-registration copies final_templates.json as its ``sentences``: the README's slots and the page's
-    are registered with the templates, and a pre-registration without either is incomplete."""
+    """The pre-registration copies final_templates.json as its ``sentences``: the README's slots, the page's and the
+    README block's layout are registered with the templates, and a pre-registration without any of them is
+    incomplete."""
     from evals.present import final
 
-    assert prereg_hashes.REQUIRED_IN["sentences"] == tuple(final.BLOCKS.values())
-    assert set(final.BLOCKS.values()) <= set(final.load_templates())
+    assert prereg_hashes.REQUIRED_IN["sentences"] == (*final.BLOCKS.values(), "readme_layout")
+    assert set(prereg_hashes.REQUIRED_IN["sentences"]) <= set(final.load_templates())
     assert "evals/present/final_templates.json" in prereg_hashes.CODE_PATHS
 
 

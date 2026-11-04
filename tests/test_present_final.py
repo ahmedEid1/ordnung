@@ -4,9 +4,10 @@ The templates are written before any final result exists and are frozen with the
 and docs/evals.md say about the final run comes from them, filled from the final analysis and the results files it
 names. These tests render every code on synthetic finals (results in Ordnung's favour and against it), check that no
 template holds a number of its own, that each sentence names every condition it compares and that no sentence
-contradicts the interval it prints. The README says a few slots of the page's (``readme_block`` of
-``page_block``), word for word and in the same order, whatever the result, and they fit its block's 12 lines. The
-last tests hold the README and docs/evals.md to their sentences once the final analysis is published.
+contradicts the interval it prints. The README says the slots its role list names (``readme_block`` of
+``page_block``), word for word and in the same order, whatever the result, laid out as ``final.readme_block`` lays
+them out within the block's registered budget. The last tests hold the README and docs/evals.md to their sentences
+once the final analysis is published.
 """
 
 from __future__ import annotations
@@ -22,10 +23,8 @@ from typing import Any
 
 import pytest
 from evals import analysis
-from evals.present import BEGIN, END, final, text
+from evals.present import BEGIN, END, final
 from evals.records import CONDITIONS
-
-from test_readme import MAX_LINES
 
 ROOT = Path(__file__).resolve().parents[1]
 BASELINES = ("llm_only", "llm_rules_text", "llm_rules_tool")
@@ -356,7 +355,11 @@ def sources(
                         "n": 150.0,
                         "docs": 140,
                     },
-                    "scam": {"set_aside_obligations": 4},
+                    "scam": {
+                        "set_aside_obligations": 4,
+                        "scam_letters": 12,
+                        "in_the_calendar": [{"entry_id": "holdout4-x-K1", "events": 1}],
+                    },
                 }
             },
         },
@@ -387,8 +390,9 @@ def prereg() -> dict[str, Any]:
 
 
 def no_set_aside(src: dict[str, Any]) -> dict[str, Any]:
+    """No real obligation set aside as a scam, and no scam letter's demand in the calendar."""
     src = copy.deepcopy(src)
-    src["e2e"]["metrics"]["all"]["scam"]["set_aside_obligations"] = 0
+    src["e2e"]["metrics"]["all"]["scam"].update(set_aside_obligations=0, in_the_calendar=[])
     return src
 
 
@@ -433,11 +437,37 @@ def _codes(coded: list[final.Sentence]) -> dict[str, list[str]]:
 # --------------------------------------------------------------------------------------------------
 
 
-#: The README's slots: the accuracy family of the one confirmatory decision (the headline against the model alone,
-#: the rules pasted in, the agent's non-inferiority), every condition's late or missed dates, the held-out Ask set
-#: and the one limitation that bears on every number (who wrote the letters, so accuracy may be higher than on real
-#: mail).
-README_SLOTS = ["head", "rules_text", "agent", "harm", "ask", "limitations.absolute"]
+#: The README's slots, by role, whatever they say: the head (with the deviations recorded and where they are
+#: listed) and the rest of the accuracy family of the one confirmatory decision, every condition's late or missed
+#: dates with the two tested harm comparisons, the stability decision, where Ordnung falls short (its flags, and the
+#: end-to-end run's scam facts), "Ask: new questions on the demo household" with its scope, and the caveats that bear
+#: on every number (the disputed readings, the slots left open, who wrote the letters).
+README_SLOTS = [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "f2.llm_only",
+    "f2.llm_rules_text",
+    "stability",
+    "flags",
+    "e2e",
+    "ask",
+    "limitations.ask_scope",
+    "limitations.s_conv",
+    "limitations.ambiguous",
+    "limitations.absolute",
+]
+#: The README's role list leaves these to the page: the harm against the agent (described, not tested), the new
+#: kinds, the stress test, the reads' limitation, the owner's checks and the provenance.
+PAGE_ONLY = [
+    "f2.llm_rules_tool",
+    "newkinds",
+    "stress",
+    "limitations.reads",
+    "owner",
+    "provenance",
+]
 PAGE_SLOTS = [
     "head",
     "rules_text",
@@ -448,18 +478,46 @@ PAGE_SLOTS = [
     "f2.llm_rules_tool",
     "stability",
     "flags",
+    "e2e",
     "newkinds",
     "ask",
+    "limitations.ask_scope",
     "stress",
-    "e2e",
     "limitations.s_conv",
     "limitations.ambiguous",
     "limitations.absolute",
-    "limitations.ask_scope",
     "limitations.reads",
     "owner",
     "provenance",
 ]
+#: What each README slot says, part by part in the order its rule says them, each part with every code it may be.
+README_PARTS: dict[str, list[tuple[str, ...]]] = {
+    "head": [
+        ("head.intro", "head.intro.k2", "head.intro.k1"),
+        ("head.clear", "head.baseline_ahead", "head.no_clear_difference", "head.not_confirmed"),
+        ("head.deviations",),
+    ],
+    "rules_text": [
+        (
+            "rules_text.clear",
+            "rules_text.baseline_ahead",
+            "rules_text.no_clear_difference",
+            "rules_text.not_confirmed",
+        )
+    ],
+    "agent": [("agent.non_inferior", "agent.agent_higher", "agent.cannot_tell")],
+    "harm": [("harm.none", "harm.some")],
+    "f2.llm_only": [("f2.fewer", "f2.more", "f2.no_clear_difference", "f2.not_confirmed")],
+    "f2.llm_rules_text": [("f2.fewer", "f2.more", "f2.no_clear_difference", "f2.not_confirmed")],
+    "stability": [("stability.more_stable", "stability.not_shown", "stability.too_few", "stability.not_run")],
+    "flags": [("flags.some", "flags.none_wrong")],
+    "e2e": [("e2e.set_aside", "e2e.none_set_aside"), ("e2e.scam_in_calendar", "e2e.no_scam_in_calendar")],
+    "ask": [("ask.runs", "ask.one_run", "ask.not_recorded")],
+    "limitations.ask_scope": [("limitations.ask_scope",)],
+    "limitations.s_conv": [("limitations.s_conv", "limitations.s_conv_same", "limitations.s_conv_none")],
+    "limitations.ambiguous": [("limitations.ambiguous", "limitations.ambiguous_none")],
+    "limitations.absolute": [("limitations.writer",), ("limitations.absolute",)],
+}
 
 
 def test_the_templates_file_is_well_formed_and_matches_the_code() -> None:
@@ -469,26 +527,75 @@ def test_the_templates_file_is_well_formed_and_matches_the_code() -> None:
     assert templates["page_block"] == PAGE_SLOTS
     assert templates["readme_block"] == README_SLOTS
     assert sorted(PAGE_SLOTS) == sorted(final.ALL_SLOTS)
+    assert sorted(README_SLOTS + PAGE_ONLY) == sorted(PAGE_SLOTS)
     assert list(templates["conditions"]) == list(CONDITIONS)
 
 
 def test_the_readme_keeps_the_confirmatory_family_harm_ask_and_the_caveat_on_the_writer() -> None:
-    """The README's slots are chosen for what they report, before any result: the family of the one confirmatory
-    decision (``F1_accuracy``, against each baseline), the safety endpoint, the held-out Ask set and the caveat that
-    the letters' writer comes from the benchmarked model's family. The caveat's slot opens with the sentence on who
-    wrote the letters, which it refers back to."""
+    """The README's slots are chosen by role before any result, and each is there whatever it says: the accuracy
+    family of the one confirmatory decision (``F1_accuracy``, against each baseline), with the head's count of the
+    deviations recorded and where they are listed; every condition's late or missed dates and the harm comparisons
+    the analysis decides (``F2_harm`` against the model alone and the rules pasted in; the agent's is described, not
+    tested, and stays on the page); the stability decision (``F3``); where Ordnung falls short: what its flag caught of
+    its wrong dates, the real obligations set aside as scams and the scam letters whose demands still reached the
+    calendar; the Ask set with its scope (it holds out only its questions); and the caveats that bear on every number,
+    the disputed readings, the slots left open (outside the deadlines counted) and who wrote the letters."""
     from evals import analysis
 
     assert analysis.CONFIRMATORY == {"family": "F1_accuracy", "baseline": "llm_only"}
-    codes = final.load_templates()["templates"]
+    templates = final.load_templates()
+    codes = templates["templates"]
     accuracy_family = {"head": "llm_only", "rules_text": "llm_rules_text", "agent": "llm_rules_tool"}
     for slot, baseline in accuracy_family.items():
-        decided = [code for code in final.CODES if code.startswith(f"{slot}.") and code != "head.intro"]
+        decided = [
+            code
+            for code in final.CODES
+            if code.startswith(f"{slot}.") and not code.startswith(("head.intro", "head.deviations"))
+        ]
         assert decided and all(baseline in codes[code]["compares"] for code in decided), slot
     assert set(codes["harm.some"]["compares"]) == set(CONDITIONS)
-    said = [s.code for s in final.coded(good(), prereg(), block="readme", sources=no_set_aside(sources()))]
-    assert said[-2:] == ["limitations.writer", "limitations.absolute"]
+    # the harm comparisons the analysis decides are said in the README; the one it only describes is not
+    decided = {
+        key.removeprefix("f2_vs_") for key in good()["primary"]["decisions"] if key.startswith("f2_vs_")
+    }
+    assert {f"f2.{b}" for b in decided} <= set(templates["readme_block"])
+    assert "f2.llm_rules_tool" not in templates["readme_block"]
+    assert {"stability", "flags", "e2e", "limitations.s_conv", "limitations.ambiguous"} <= set(
+        templates["readme_block"]
+    )
+    for name, make_final, make_sources in SCENARIOS:
+        said = final.coded(make_final(), prereg(), block="readme", sources=make_sources())
+        by_slot = _codes(said)
+        assert by_slot["head"][-1] == "head.deviations", name
+        assert by_slot["e2e"][-1] in ("e2e.scam_in_calendar", "e2e.no_scam_in_calendar"), name
+        assert by_slot["limitations.absolute"] == ["limitations.writer", "limitations.absolute"], name
+        order = [s.slot for s in said]
+        assert order.index("limitations.ask_scope") == order.index("ask") + 1, name
     assert "that family" in codes["limitations.absolute"]["text"]
+    # the README's line on where Ordnung falls short holds its flags and the end-to-end run's scam facts
+    (falls_short,) = [line for line in templates["readme_layout"]["lines"] if line["slots"][0] == "flags"]
+    assert falls_short == {"lead": "**Where it falls short:**", "slots": ["flags", "e2e"]}
+    # the Ask set is never called held out where it holds out only its questions
+    assert "held-out ask" not in json.dumps(templates).lower()
+    assert "held-out Ask" not in (ROOT / "evals" / "present" / "final.py").read_text(encoding="utf-8")
+
+
+def test_the_head_says_how_many_deviations_were_recorded_and_where_they_are_listed() -> None:
+    """The head's "pre-registered" comes with the count of deviations recorded at the time, whatever it is, and the
+    file that lists them; the scam letters whose demands reached the calendar are said beside the set-aside ones."""
+    path = final.load_templates()["files"]["deviations"]
+    for count in (0, 1, 4):
+        said = _slots(final.coded(good(), prereg(), block="readme", sources=sources(deviations=count)))
+        assert said["head"].startswith("**Final run, pre-registered.**")
+        assert said["head"].endswith(f"recorded at the time and listed in `{path}`: {count}.")
+    page = _slots(final.coded(bad(), prereg(), block="page", sources=sources()))
+    assert "1 of 12 scam letters still put their demands in the calendar." in page["e2e"]
+    kept = _slots(final.coded(bad(), prereg(), block="page", sources=no_set_aside(sources())))
+    assert "Not one of the 12 scam letters put its demands in the calendar." in kept["e2e"]
+    src = sources()
+    src["e2e"]["metrics"]["all"]["scam"]["in_the_calendar"] *= 13
+    with pytest.raises(final.FinalSentenceError, match="scam letters"):
+        final.coded(good(), prereg(), block="page", sources=src)
 
 
 def test_the_two_slot_lists_are_checked() -> None:
@@ -518,6 +625,19 @@ def test_the_two_slot_lists_are_checked() -> None:
     broken = copy.deepcopy(templates)
     del broken["page_block"]
     assert "page_block must list the slots in order" in final.check_templates(broken)
+    # the README's layout lays out readme_block's slots, each once and in its order, with leads and a link of words
+    broken = copy.deepcopy(templates)
+    broken["readme_layout"]["paragraph"].remove("stability")
+    assert any("readme_layout" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    broken["readme_layout"]["lines"].reverse()
+    assert any("readme_layout" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    broken["readme_layout"]["lines"][0]["lead"] = "**Where it falls short (3 ways):**"
+    assert any("a number" in problem for problem in final.check_templates(broken))
+    broken = copy.deepcopy(templates)
+    del broken["readme_layout"]["link"]
+    assert any("readme_layout" in problem for problem in final.check_templates(broken))
     assert all(final._rule(slot) is not None for slot in final.ALL_SLOTS)
     with pytest.raises(final.FinalSentenceError, match="no block"):
         final.coded(good(), prereg(), block="appendix", sources=sources())
@@ -638,13 +758,9 @@ def test_the_readme_says_page_sentences_word_for_word_whatever_the_result() -> N
         assert readme == [sentence for sentence in page if sentence.slot in readme_slots], name
         assert {s.text for s in readme} <= {s.text for s in page}, name
         reached |= {sentence.code for sentence in readme}
-    slots_of = {code: code.split(".")[0] for code in final.CODES}
-    expected = {
-        code
-        for code in final.CODES
-        if slots_of[code] in readme_slots or code in ("limitations.writer", "limitations.absolute")
-    }
-    assert reached == expected, sorted(expected - reached)
+    assert list(README_PARTS) == readme_slots
+    expected = {code for parts in README_PARTS.values() for codes in parts for code in codes}
+    assert reached == expected, sorted(expected ^ reached)
 
 
 def test_the_readme_refuses_what_the_page_refuses() -> None:
@@ -711,7 +827,9 @@ def test_no_clear_difference_holds_on_random_intervals() -> None:
         _set(doc, "F1_accuracy", "llm_only", "beats_llm_only", "no_clear_difference", _row(diff, lo, hi, 0.3))
         _set(doc, "F2_harm", "llm_only", "f2_vs_llm_only", "no_clear_difference", _row(diff, lo, hi, 0.3))
         for sentence in final.coded(doc, prereg(), block="page", sources=sources()):
-            if sentence.slot in ("head", "f2.llm_only") and not sentence.code.startswith("head.intro"):
+            if sentence.slot in ("head", "f2.llm_only") and not sentence.code.startswith(
+                ("head.intro", "head.deviations")
+            ):
                 text = sentence.text
                 shown_lo, shown_hi = _interval(text)
                 if "no clear difference" in text:
@@ -953,20 +1071,22 @@ def test_the_final_analysis_itself_renders() -> None:
     assert [s.slot for s in coded if not s.slot.startswith("f2.")] == [
         "head",
         "head",
+        "head",
         "rules_text",
         "agent",
         "harm",
         "stability",
         "flags",
+        "e2e",
+        "e2e",
         "newkinds",
         "ask",
+        "limitations.ask_scope",
         "stress",
-        "e2e",
         "limitations.s_conv",
         "limitations.ambiguous",
         "limitations.absolute",
         "limitations.absolute",
-        "limitations.ask_scope",
         "limitations.reads",
         "owner",
         "provenance",
@@ -979,18 +1099,70 @@ def test_the_final_analysis_itself_renders() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def _readme(block: str) -> str:
-    return f"# Ordnung\n\nIntro.\n\n{BEGIN}\n{block}\n{END}\n\nMore.\n"
+#: A chart's line as the README's block holds it (its alt text describes the chart).
+PICTURE = '<picture><img src="docs/assets/eval-final-light.svg" alt="A chart of the final run."></picture>'
 
 
-def test_the_readme_check_finds_a_missing_reordered_or_added_sentence() -> None:
-    said = final.sentences(good(), prereg(), block="readme", sources=no_set_aside(sources()))
-    wrapped = "\n\n".join(said).replace(". ", ".\n")  # the presenter may wrap the lines
-    assert final.readme_problems(_readme(wrapped), said) == []
-    assert final.readme_problems(_readme("\n\n".join(said[1:])), said)
-    assert final.readme_problems(_readme("\n\n".join([said[1], said[0], *said[2:]])), said)
-    assert final.readme_problems(_readme("\n\n".join([*said, "Hand-written praise."])), said)
-    assert final.readme_problems("# Ordnung\n\nNo block.\n", said)
+def _readme(lines: list[str]) -> str:
+    return "# Ordnung\n\nIntro.\n\n" + "\n".join([BEGIN, *lines, END]) + "\n\nMore.\n"
+
+
+def test_the_readme_check_holds_the_block_to_its_registered_layout() -> None:
+    """The README's block is exactly what ``final.readme_block`` lays out: the paragraph, its blank lines, the chart,
+    one line per item and the link; a missing, reordered or added sentence, a line run into another, a lost blank
+    line or another link is refused, whatever chart the line holds."""
+    templates = final.load_templates()
+    said = final.coded(good(), prereg(), block="readme", sources=no_set_aside(sources()))
+    lines = final.readme_block(said, templates, PICTURE)
+    assert final.readme_problems(_readme(lines), said, templates) == []
+    other_chart = [PICTURE.replace("A chart", "Another chart") if line == PICTURE else line for line in lines]
+    assert final.readme_problems(_readme(other_chart), said, templates) == []
+    assert final.readme_problems(_readme(lines[1:]), said, templates)
+    assert final.readme_problems(_readme([lines[1], lines[0], *lines[2:]]), said, templates)
+    assert final.readme_problems(_readme([*lines[:-1], "Hand-written praise.", lines[-1]]), said, templates)
+    assert final.readme_problems(_readme([line for line in lines if line]), said, templates)
+    assert final.readme_problems(
+        _readme([*lines[:-3], lines[-3] + " " + lines[-2], lines[-1]]), said, templates
+    )
+    assert final.readme_problems(
+        _readme([*lines[:-1], lines[-1].replace("decided or not", "")]), said, templates
+    )
+    assert final.readme_problems(_readme([*said_texts(said), PICTURE]), said, templates)
+    assert final.readme_problems("# Ordnung\n\nNo block.\n", said, templates)
+
+
+def said_texts(said: list[final.Sentence]) -> list[str]:
+    return [sentence.text for sentence in said]
+
+
+def test_the_readme_block_is_laid_out_as_registered() -> None:
+    """One bold paragraph of the head, the accuracy family, harm, the tested harm comparisons and stability, wrapped
+    at ``final.README_WIDTH``; a blank line, the chart, a blank line, as today's block; then one line per item, each
+    ending in ``<br>``: where Ordnung falls short (its lead, the flags and the end-to-end run), Ask with its scope, and
+    each caveat; then the link, which says that the page holds every pre-registered sentence, decided or not."""
+    templates = final.load_templates()
+    layout = templates["readme_layout"]
+    said = final.coded(bad(), prereg(), block="readme", sources=sources(deviations=2))
+    lines = final.readme_block(said, templates, PICTURE)
+    paragraph = [s.text for s in said if s.slot in layout["paragraph"]]
+    end = lines.index("")
+    assert " ".join(lines[:end]) == " ".join(paragraph) and lines[0].startswith(
+        "**Final run, pre-registered.**"
+    )
+    assert all(len(line) <= final.README_WIDTH for line in lines[:end])
+    assert lines[end : end + 3] == ["", PICTURE, ""]
+    items = lines[end + 3 : -1]
+    assert len(items) == len(layout["lines"]) and all(line.endswith("<br>") for line in items)
+    for line, item in zip(items, layout["lines"], strict=True):
+        texts = [s.text for s in said if s.slot in item["slots"]]
+        assert line == " ".join([item["lead"], *texts] if item["lead"] else texts) + "<br>"
+    (flags,) = [s.text for s in said if s.slot == "flags"]
+    assert items[0].startswith(f"**Where it falls short:** {flags} From the letter file to the reminder")
+    assert lines[-1] == layout["link"] and "every pre-registered sentence, decided or not" in lines[-1]
+    with pytest.raises(final.FinalSentenceError, match="picture"):
+        final.readme_block(said, templates, "a chart\non two lines")
+    with pytest.raises(final.FinalSentenceError, match="README"):
+        final.readme_block(final.coded(bad(), prereg(), block="page", sources=sources()), templates, PICTURE)
 
 
 def _write(path: Path, data: Any) -> None:
@@ -1018,9 +1190,10 @@ def test_published_finds_the_final_analysis_and_the_files_it_names(tmp_path: Pat
     assert found is not None
     final_doc, registration, files = found
     assert final_doc == good() and registration == prereg() and files == named
-    said = final.sentences(final_doc, registration, block="readme", sources=files)
-    assert said == final.sentences(good(), prereg(), block="readme", sources=named)
-    assert final.readme_problems(_readme("\n".join(said)), said) == []
+    said = final.coded(final_doc, registration, block="readme", sources=files)
+    assert said == final.coded(good(), prereg(), block="readme", sources=named)
+    lines = final.readme_block(said, registration["sentences"], PICTURE)
+    assert final.readme_problems(_readme(lines), said, registration["sentences"]) == []
     page = final.sentences(final_doc, registration, block="page", sources=files)
     assert page == final.sentences(good(), prereg(), block="page", sources=named)
     assert final.page_problems(_page("\n".join(page)), page) == []
@@ -1036,9 +1209,9 @@ def test_the_readme_block_is_the_final_sentences_in_their_registered_order() -> 
     if found is None:
         pytest.skip("the final analysis is not published yet")
     final_doc, registration, named = found
-    said = final.sentences(final_doc, registration, block="readme", sources=named)
+    said = final.coded(final_doc, registration, block="readme", sources=named)
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert final.readme_problems(readme, said) == []
+    assert final.readme_problems(readme, said, registration["sentences"]) == []
 
 
 def test_the_final_section_of_docs_evals_is_every_final_sentence_in_its_registered_order() -> None:
@@ -1068,7 +1241,7 @@ def test_the_page_check_finds_a_missing_reordered_or_added_sentence() -> None:
     assert final.page_problems(_page("\n\n".join([*said, "Hand-written praise."])), said)
     assert final.page_problems("# Evaluation\n\nNo block.\n", said)
     # the README's markers are not the page's, and the README's sentences are not the page's
-    assert final.page_problems(_readme("\n".join(said)), said)
+    assert final.page_problems(_readme(said), said)
     readme = final.sentences(good(), prereg(), block="readme", sources=no_set_aside(sources()))
     assert final.page_problems(_page("\n".join(readme)), said)
     assert {final.PAGE_BEGIN, final.PAGE_END}.isdisjoint({BEGIN, END})
@@ -1078,43 +1251,81 @@ def test_the_page_check_finds_a_missing_reordered_or_added_sentence() -> None:
 # The README's budget
 # --------------------------------------------------------------------------------------------------
 
-#: The 12 lines the README's generated block may take (tests/test_present.py holds today's block to them).
-README_BLOCK_LINES = 12
+#: The longest text each placeholder format can give (a number of four digits, a rate of 100 %, a signed difference
+#: of 100 points, a p of three decimals).
+LONGEST = {
+    "int": "9999",
+    "pct": "100.0 %",
+    "pct_whole": "100 %",
+    "percent_number": "99.9",
+    "ci": "100.0–100.0",
+    "points": "−100.0",
+    "p": "= 0.999",
+    "kappa": "−1.00",
+    "hash": "f" * 12,
+}
 
 
-def _readme_block_lines(said: list[final.Sentence]) -> int:
-    """The lines the README's block takes when it is laid out as evals/present/text.py lays out today's: the head's
-    sentences as one paragraph wrapped at ``text.WIDTH`` (today's headline), every other slot on one line of its own
-    (today's "Where it falls short" and "Ask" lines), then the chart and the link to the report; no blank line."""
-    head = " ".join(sentence.text for sentence in said if sentence.slot == "head")
-    others = list(dict.fromkeys(sentence.slot for sentence in said if sentence.slot != "head"))
-    return len(text.fill(head).splitlines()) + len(others) + 2
+def _longest_fill(templates: dict[str, Any], code: str) -> str:
+    """A template with every placeholder at its longest: numbers by :data:`LONGEST`, a baseline by the longest
+    condition name, a path of the templates file as it is."""
+
+    def value(match: re.Match[str]) -> str:
+        spec = templates["placeholders"][match.group(1)]
+        if spec["format"] != "text":
+            return LONGEST[spec["format"]]
+        if spec["source"] == "context":
+            return max(templates["conditions"].values(), key=len)
+        # no README sentence holds a text from the results
+        assert spec["source"] == "templates", match.group(1)
+        return str(final._walk(templates, spec["path"], match.group(1)))
+
+    return re.sub(r"\{([^{}]*)\}", value, templates["templates"][code]["text"])
 
 
-def test_the_readme_s_sentences_fit_its_block_and_the_readme_its_length() -> None:
-    """For every synthetic final, and for the longest head the rules can give with every other README slot, the
-    README's sentences take at most 12 lines with the chart and the link; and the README with its longest final
-    block stays under its line limit (today's README without today's block, plus that block)."""
+def _worst_case(templates: dict[str, Any]) -> list[final.Sentence]:
+    """The README's sentences at their longest: each part of each slot as its longest code, every placeholder at its
+    longest (every not-recorded and deviation variant is among the codes)."""
+    return [
+        max(
+            (final.Sentence(slot, code, _longest_fill(templates, code)) for code in codes),
+            key=lambda s: len(s.text),
+        )
+        for slot in templates["readme_block"]
+        for codes in README_PARTS[slot]
+    ]
+
+
+def test_the_readme_s_block_fits_its_registered_budget() -> None:
+    """Laid out by ``final.readme_block``, blank lines included, the README's block of every synthetic final and of
+    the worst case takes at most ``final.README_BLOCK_MAX_LINES`` lines, and every line but the chart's (whose alt text
+    describes the chart) at most ``final.README_LINE_MAX`` characters. The two limits are the worst case's own: they
+    were chosen from it, before any result."""
     templates = final.load_templates()
-    heads: dict[str, str] = {}
-    largest = 0
     for name, make_final, make_sources in SCENARIOS:
-        said = final.coded(make_final(), prereg(), block="readme", sources=make_sources())
-        lines = _readme_block_lines(said)
-        assert lines <= README_BLOCK_LINES, (name, lines)
-        largest = max(largest, lines)
-        for sentence in said:
-            if sentence.slot == "head":
-                kind = "intro" if sentence.code.startswith("head.intro") else "decision"
-                heads[kind] = max(heads.get(kind, ""), sentence.text, key=len)
-    longest = [final.Sentence("head", "", heads["intro"]), final.Sentence("head", "", heads["decision"])]
-    others = [final.Sentence(slot, "", "") for slot in templates["readme_block"] if slot != "head"]
-    worst = _readme_block_lines(longest + others)
-    assert worst <= README_BLOCK_LINES, worst
-    largest = max(largest, worst)
-    lines = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
-    begin, end = lines.index(BEGIN), lines.index(END)
-    assert len(lines) - (end - begin - 1) + largest < MAX_LINES
+        lines = final.readme_block(
+            final.coded(make_final(), prereg(), block="readme", sources=make_sources()), templates, PICTURE
+        )
+        assert len(lines) <= final.README_BLOCK_MAX_LINES, (name, len(lines))
+        assert max(len(line) for line in lines if line != PICTURE) <= final.README_LINE_MAX, name
+    worst = final.readme_block(_worst_case(templates), templates, PICTURE)
+    assert len(worst) == final.README_BLOCK_MAX_LINES
+    assert max(len(line) for line in worst if line != PICTURE) == final.README_LINE_MAX
+    assert final.README_WIDTH == 116 and max(len(line) for line in worst[: worst.index("")]) <= 116
+
+
+def test_the_budget_grows_with_any_readme_sentence() -> None:
+    """Every README slot counts: a sentence made longer makes the worst case longer, in lines or in characters, so
+    the budget test above fails with it."""
+    templates = final.load_templates()
+    base = final.readme_block(_worst_case(templates), templates, PICTURE)
+    for slot in templates["readme_block"]:
+        longer = copy.deepcopy(templates)
+        for codes in README_PARTS[slot]:
+            for code in codes:
+                longer["templates"][code]["text"] += " And more words" * 12
+        grown = final.readme_block(_worst_case(longer), longer, PICTURE)
+        assert len(grown) > len(base) or max(map(len, grown)) > final.README_LINE_MAX, slot
 
 
 @pytest.mark.parametrize(

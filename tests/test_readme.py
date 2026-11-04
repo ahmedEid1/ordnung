@@ -58,6 +58,22 @@ def test_the_readme_is_under_250_lines() -> None:
     assert len(lines) < MAX_LINES, f"README.md has {len(lines)} lines; move the detail to docs/guide.md"
 
 
+def test_the_readme_has_room_for_the_largest_final_block() -> None:
+    """When the final run is published, its block (``evals.present.final.readme_block``) takes the place of today's
+    and may take up to ``README_BLOCK_MAX_LINES`` lines, a budget registered before any result: the README's own text
+    outside the block leaves room for it, so README.md stays under its limit whatever the final run shows. A line
+    added to the README later has to make room too."""
+    from evals.present import BEGIN, END, final
+
+    lines = _readme().splitlines()
+    begin, end = lines.index(BEGIN), lines.index(END)
+    outside = len(lines) - (end - begin - 1)
+    assert outside + final.README_BLOCK_MAX_LINES < MAX_LINES, (
+        f"README.md has {outside} lines outside its block; with the final block's {final.README_BLOCK_MAX_LINES} "
+        f"it would reach {outside + final.README_BLOCK_MAX_LINES}"
+    )
+
+
 def test_the_readme_draws_no_mermaid() -> None:
     """PyPI shows README.md as its project page and draws no Mermaid; the architecture's diagram is in
     docs/architecture.md, and README draws its own in plain text."""
