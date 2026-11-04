@@ -596,6 +596,31 @@ def test_the_writer_s_verification_md_keeps_no_paragraph_that_cites_the_spec_or_
     assert kept == []
 
 
+def test_the_writer_s_verification_md_says_each_land_s_delivery_day() -> None:
+    """The deemed-delivery bullet of "Legal rules applied" reaches the writer (the redaction keeps it) and says what
+    each Land's text gives, as ``evals/gen/law.py`` counts it; the check of 2026-11-04 is a finding of its own."""
+    text = VERIFICATION.read_text(encoding="utf-8")
+    rules = text.split("### Legal rules applied", 1)[1].split("\n## ", 1)[0]
+    delivery = next(p for _, p in _paragraphs(rules) if p.startswith("- **Deemed delivery**"))
+    assert not REDACTED_BY.search(delivery) and not KEPT_CLEAN.search(delivery)
+    flat = re.sub(r"\s+", " ", delivery)
+    for words in (
+        "A Land authority's decision counts its own Land's day",
+        "evals/law/laender.txt",
+        "HE keeps the 3rd day",
+        "HH from 14 May 2025",
+        "BW from 7 Feb 2025",
+        "SH from 1 Jan 2025",
+        "Art. 98 BayVwVfG",
+        "§ 120a VwVfG M-V",
+        "§ 102b LVwVfG",
+        "§ 7 VwVfGBbg",
+        "HB, RP, SL and ST",
+    ):
+        assert words in flat, words
+    assert "\n## Länder delivery rules, checked 2026-11-04\n" in text
+
+
 # --------------------------------------------------------------------------------------------------
 # end to end, as a writer's sandbox runs it
 # --------------------------------------------------------------------------------------------------

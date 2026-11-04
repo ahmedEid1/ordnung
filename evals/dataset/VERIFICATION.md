@@ -4,6 +4,7 @@ Checked on 2026-09-25 against `evals/dataset/manifest.json` (generator `evals/ge
 The holdout split was added and checked on 2026-09-30 ([Holdout split](#holdout-split-variants-e-f-checked-2026-09-30)).
 The holdout2 split was added and checked on 2026-10-01 ([Holdout2 split](#holdout2-split-variants-g-h-checked-2026-10-01)).
 The holdout3 split was added and checked on 2026-10-06 ([Holdout3 split](#holdout3-split-variants-i-j-checked-2026-10-06)).
+The Länder delivery rules were read again on 2026-11-04 ([Länder delivery rules](#länder-delivery-rules-checked-2026-11-04)).
 Re-run at any time:
 
 ```
@@ -57,28 +58,39 @@ Re-run at any time:
 
 - **Deemed delivery** of a posted administrative act: the 3rd day after posting for items posted up
   to 2024-12-31, the 4th day from 2025-01-01. Sources: § 122 Abs. 2 Nr. 1 AO with Art. 97 § 1 Abs. 15
-  EGAO; § 41 Abs. 2 VwVfG and the Land VwVfGs at 4 days; § 37 Abs. 2 SGB X. The posting date is the
-  letter date unless the letter names a posting day. The Land VwVfGs took the 4th day at different
-  times, as the gazettes show:
-  - BY, NW and MV from 1 Jan 2025 (NW: GV. NRW. 2024 S. 1184, Art. 8 Abs. 3). Like BW's § 102b, BY and
-    MV keep the 3rd day for procedures begun before that day (Art. 98 BayVwVfG, GVBl. 2024 S. 599;
-    § 120a VwVfG M-V, GVOBl. M-V 2024 Nr. 27 S. 617). NW's § 97 VwVfG NRW applies the law in force
-    to each procedural step, so a posting from 1 Jan 2025 gets the 4th day there. Every BY or MV
-    letter of any split states a procedure begun in 2025 or later (dev municipal_decision B1,
-    holdout3 municipal_decision I1 and J1) or gives the same date under both rules (test
-    hidden_text-1: 03.08.2026), so no label depends on these transitional rules.
+  EGAO; § 41 Abs. 2 VwVfG; § 37 Abs. 2 SGB X. The posting date is the letter date unless the letter
+  names a posting day. A Land authority's decision counts its own Land's day, as the Land's text in
+  `evals/law/laender.txt` gives it (read again on 2026-11-04; `evals/gen/law.py` and
+  `evals/verify_labels.py` each keep this table in their own code):
+  - BY, NW and MV from 1 Jan 2025: Art. 41 Abs. 2 BayVwVfG; § 41 Abs. 2 VwVfG NRW, in force on that day;
+    § 41 Abs. 2 VwVfG M-V as amended by the act of 11 Dec 2024 (GVOBl. M-V 2024 Nr. 27 S. 617), in
+    force on that day. BY and MV keep the 3rd day for a procedure begun before that day and not
+    finished (Art. 98 BayVwVfG, § 120a VwVfG M-V). NW's § 97 VwVfG NRW applies the law in force to each
+    procedural step, so a posting from 1 Jan 2025 gets the 4th day there. Every BY or MV letter of the
+    earlier splits states a procedure begun in 2025 or later (dev municipal_decision B1, holdout3
+    municipal_decision I1 and J1) or gives the same date under both rules (test hidden_text-1:
+    03.08.2026).
+  - BE, BB, NI, SN and TH from 1 Jan 2025: their acts apply the federal VwVfG (§ 1 of each). TH's act of
+    2 July 2024 took effect on 1 Jan 2025 (Art. 90), and its § 8 Abs. 3 counts a period begun before
+    that under the old law. In Brandenburg a decision sent electronically counts from the day it
+    arrived when that can be shown (§ 7 VwVfGBbg); the generator writes no decision sent that way.
+  - SH from 1 Jan 2025: § 110 Abs. 2 LVwG as amended by the act of 13 Dec 2024 (GVOBl. Schl.-H. 2024
+    Nr. 15 S. 934, Art. 2 Abs. 2), with no transitional rule. The earlier splits drew SH letters from
+    10 Jun 2025 only, a bound kept from before the text was read; no SH letter is posted between those
+    days.
   - HH from 14 May 2025: Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of
     13 May 2025 S. 338. It has no in-force clause, so it took effect the day after promulgation
-    (Art. 54 of Hamburg's constitution).
-  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day.
-  - SH: the law of 13 Dec 2024 (GVOBl. Schl.-H. 2024 Nr. 15 S. 934) amended § 110 Abs. 2 LVwG; the
-    bill (Drs. 20/2649 Art. 2 Abs. 2) and the consolidated text both give 1 Jan 2025, with no
-    transitional rule. The dataset still counts SH from 10 Jun 2025, the day its text was first
-    confirmed here, as a conservative bound for drawing letters: no SH letter is posted between
-    the two dates, so no label depends on which one is right.
+    (Art. 54 of Hamburg's constitution). A decision posted before counts the 3rd day.
+  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day. A
+    decision posted before counts the 3rd day.
+  - HE keeps the 3rd day (§ 41 Abs. 2 HVwVfG).
+  - HB, RP, SL and ST: no text could be read (`evals/law/SOURCES.md`), so no Land VwVfG letter comes
+    from them (c07; `evals/gen/law.py` refuses one).
 
-  `evals/verify_labels.py` fails if a Land VwVfG label of any split counts from a posting day on or
-  after 1 Jan 2025 and before HH's, BW's or SH's start (`land_window_problems`).
+  `evals/verify_labels.py` fails if a hand-read Land VwVfG label counts from a posting day on or after
+  1 Jan 2025 and before HH's or BW's start, or comes from HE, a Land without a text or no Land
+  (`land_window_problems`), and if any Land VwVfG label is not the period from its Land's own day
+  (`land_rule_problems`; a final split's fact may state when the procedure began).
 - **Only the AO moves the deemed-delivery day** off a Saturday, Sunday or holiday (§ 108 Abs. 3 AO,
   BFH IX R 68/98), using holidays at the tax office's seat. Under VwVfG and SGB X that day does not
   move (OVG NRW 19 A 4216/99, BSG B 14 AS 12/09 R).
@@ -1003,3 +1015,32 @@ reconciler confirmed that no label is wrong. Corrected after it, with no label c
 - 1 ambiguous item (English J2).
 - 2 missing-date items (adversarial missing_date-1, -2).
 - 4 optional undated items: the payments due two weeks after Rechtskraft on the four Bußgeld letters.
+
+## Länder delivery rules, checked 2026-11-04
+
+Each Land's rule on when its authorities' posted decisions count as delivered was read again from the
+Land's own law portal or gazette (`evals/law/laender.txt`, sources in `evals/law/SOURCES.md`): twelve
+Länder have a text, four (HB, RP, SL, ST) none. Legal rules applied above now says what each text gives:
+Hessen keeps the 3rd day, Hamburg counts the 4th from 14 May 2025 and Baden-Württemberg from 7 Feb 2025,
+Schleswig-Holstein from 1 Jan 2025 in law, and Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern keep
+the 3rd day for a procedure begun before their switch.
+
+**No label changes.** Under each Land's own rule none of the 26 dated Land VwVfG labels changes (22
+letters and 4 photos of them: BW 4, BY 3, HH 5, MV 1, NW 5, SH 8); one more NW letter, adversarial
+missing_date-2, has no date. None comes from TH, HE or BB, or from a Land without a text. Each is posted
+after its Land's switch, and the BY and MV letters state procedures begun in 2025 or later. The 6 dated
+labels from Land or municipal senders and Jobcenters that decide under SGB X follow § 37 SGB X, not a
+Land's act. `evals/verify_labels.py` now re-derives every Land VwVfG label from its Land's day with a
+table of its own (`land_rule_problems`: 0).
+
+**What changed.** `evals/gen/law.py` counts a Land authority's decision by its Land's own day (the 3rd in
+HE; in HH and BW the 4th only from their switch; in BW, BY and MV the 3rd for a procedure begun before
+it, which the letter must state) and refuses a letter from HB, RP, SL or ST, one that names no Land and
+any decision not sent by post. Conventions c03 and c07 say so in plain words; their ids and disputed
+flags are unchanged. The dataset was generated again: no letter or photo changed, and the manifest
+differs only in those two texts. The label check counts SH from 1 Jan 2025 too, where it used the
+drawing bound of 10 Jun 2025.
+
+The rules-text baseline's prompt still gives SH's start as 10 Jun 2025, which is wrong in law. No letter
+of any split is posted between 1 Jan and 9 Jun 2025, so no recorded answer depends on it; changing it
+would change that condition's request lock and need a re-recording, so it is left as it is.
