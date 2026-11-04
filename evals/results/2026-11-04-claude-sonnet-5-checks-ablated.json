@@ -5,8 +5,10 @@
   "model": "claude-sonnet-5",
   "condition": "ordnung",
   "backend": "replay",
-  "commit": "90b15ee5",
-  "fingerprint": "1eada9d9ff14fc46",
+  "repeat": 1,
+  "commit": "0d26b041",
+  "dirty": [],
+  "fingerprint": "2c7544bb56054166",
   "script": "scripts/eval_ablate_checks.py",
   "note": "The Ordnung condition's recorded outputs replayed with the checked-out code, once as it ships (all_on) and once per ablation, each switching one function off for the length of the replay (scripts/eval_ablate_checks.py). Counts are of the scored items (a required to-do with a due date); 'flagged' is a date the person is told to check (low confidence or 'Please check'). 'changed' lists every scored item whose date, outcome, flag or confidence differs from all_on. Not every split is out of sample for every check: the two-dates check was written after two holdout letters were read late, so on holdout it acts on the letters that motivated it, while holdout2 and holdout3 were written after it; the reading check and the re-ask were written after a holdout2 letter's empty reading (ADR 0015, 0016), so only holdout3 was written after them; the test and dev splits were seen while the checks were made. No model was called.",
   "ablations": {
