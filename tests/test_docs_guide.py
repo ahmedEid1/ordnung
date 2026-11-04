@@ -77,6 +77,32 @@ def test_the_guide_has_the_sections_the_readme_links() -> None:
     assert "\n### Updating\n" in install  # under Install and run, as the README had it
 
 
+def test_the_guide_s_install_has_a_heading_for_each_way_to_run_ordnung() -> None:
+    """Install and run's parts are ``###`` headings, not bold words at the start of a paragraph, so GitHub's
+    outline lists them and each has an anchor; Updating stays last, under Install and run."""
+    install = _section("Install and run")
+    assert re.findall(r"^### (.+)$", install, re.M) == [
+        "Words in photos (optional)",
+        "Without a terminal",
+        "On your phone",
+        "On your other computer",
+        "Claude Desktop or Claude Code",
+        "From a source checkout",
+        "Updating",
+    ]
+    assert not re.findall(r"^\*\*.+?\*\*", install, re.M)  # no paragraph left that a bold label starts
+    anchors = {
+        "words-in-photos-optional",
+        "without-a-terminal",
+        "on-your-phone",
+        "on-your-other-computer",
+        "claude-desktop-or-claude-code",
+        "from-a-source-checkout",
+        "updating",
+    }
+    assert anchors <= _anchors(GUIDE), anchors - _anchors(GUIDE)
+
+
 def test_every_environment_variable_ordnung_reads_is_in_the_guide() -> None:
     """Every variable name the package holds as a string is in the guide's *Environment variables*, in a table or
     the sentence on the rest, with Claude Code's two; every name the section gives is one the package holds, and a

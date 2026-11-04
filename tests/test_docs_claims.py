@@ -224,6 +224,12 @@ def _section(text: str, heading: str) -> str:
     return text.split(f"\n{heading}\n", 1)[1].split("\n## ", 1)[0]
 
 
+def _install_part(heading: str) -> str:
+    """The guide's Install and run, its ``### heading`` (``Without a terminal``) up to the next ``###`` heading."""
+    install = _section(_guide(), "## Install and run")
+    return install.split(f"\n### {heading}\n", 1)[1].split("\n### ", 1)[0]
+
+
 def _pct(value: float) -> str:
     """A rate as the README prints it: one decimal, "100" and "0" without one."""
     text = f"{value * 100:.1f}"
@@ -1109,8 +1115,7 @@ def test_readme_json_is_part_of_the_demo_s_recorded_answer() -> None:
 
 async def test_the_guide_names_exactly_the_rules_tools() -> None:
     """The guide: the rules engine as MCP tools — the four it names are the rules-only server's."""
-    paragraph = _guide().split("**The deadline engine in Claude Desktop or Claude Code.**", 1)[1]
-    paragraph = paragraph.split("```", 1)[0]
+    paragraph = _install_part("Claude Desktop or Claude Code").split("```", 1)[0]
     named = set(re.findall(r"`([a-z_]+)`", paragraph))
     listed = {tool.name for tool in await build_rules_server().list_tools()}
     assert named == listed
@@ -2860,9 +2865,8 @@ OPEN_FROM_YOUR_APPS = "If you added Ordnung to your apps with “ordnung shortcu
 
 
 def _without_a_terminal() -> str:
-    """The guide's paragraph *Without a terminal*, in Install, with its list, flattened."""
-    install = _section(_guide(), "## Install and run")
-    return _flat(install.split("**Without a terminal.**", 1)[1].split("\n**On your phone.**", 1)[0])
+    """The guide's *Without a terminal*, in Install, with its list, flattened."""
+    return _flat(_install_part("Without a terminal"))
 
 
 def _privacy() -> str:
@@ -4352,10 +4356,10 @@ PICTURE_TEXT_NOTE = (
 )
 #: The ADR's link, as the guide writes it.
 _ADR_PICTURES_LINK = f"[ADR 0024](decisions/{_ADR_PICTURES.name})"
-#: The guide's Install: the paragraph on text in pictures, before and after its install lines.
+#: The guide's Install, *Words in photos (optional)*: its text, before and after its install lines.
 GUIDE_PICTURES = (
-    "**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or "
-    "that couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data.",
+    "To find photos and scans Claude isn't reading (kept private, waiting, or that couldn't be read) by their "
+    "words, install Tesseract 4.1 or newer with its German language data.",
     "Ordnung doesn't install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same "
     "line for your system:",
     "Tesseract runs on the computer Ordnung runs on, one page at a time at low priority: nothing is sent anywhere "
@@ -4471,11 +4475,8 @@ def _slug(heading: str) -> str:
 
 
 def _guide_pictures() -> str:
-    """The guide's paragraph *Words in photos (optional)*, in Install, with its list, flattened."""
-    install = _section(_guide(), "## Install and run")
-    return _flat(
-        install.split("**Words in photos (optional).**", 1)[1].split("\n**Without a terminal.**", 1)[0]
-    )
+    """The guide's *Words in photos (optional)*, in Install, with its list, flattened."""
+    return _flat(_install_part("Words in photos (optional)"))
 
 
 def test_the_guide_says_what_text_in_pictures_finds_and_misses() -> None:
@@ -4485,8 +4486,7 @@ def test_the_guide_says_what_text_in_pictures_finds_and_misses() -> None:
     from ordnung import doctor
 
     pictures = _guide_pictures()
-    assert GUIDE_PICTURES[0].removeprefix("**Words in photos (optional).** ") in pictures
-    for sentence in GUIDE_PICTURES[1:]:
+    for sentence in GUIDE_PICTURES:
         assert sentence in pictures, sentence
     for name, platform in TESSERACT_SYSTEMS.items():
         assert f"- {name}: {doctor.tesseract_install(platform)}" in pictures, name

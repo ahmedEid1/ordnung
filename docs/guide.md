@@ -126,7 +126,9 @@ Ask's recorded answers fit the demo as it starts. After you mark things paid or 
 offers *Start the demo over*, so you can ask again: stop the demo (Ctrl+C where it runs), then run
 `ordnung demo --reset`.
 
-**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or that
+### Words in photos (optional)
+
+To find photos and scans Claude isn't reading (kept private, waiting, or that
 couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data. Ordnung doesn't
 install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same line for your
 system:
@@ -144,7 +146,9 @@ checked or sent to Claude
 Settings → Data → *Text in pictures* turns it off and deletes the words read before; `ORDNUNG_OCR=off` turns it
 off on one computer ([how](privacy.md#words-in-pictures-optional)).
 
-**Without a terminal.** `ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
+### Without a terminal
+
+`ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
 your app menu on Linux, `Ordnung.app` in the Applications folder of your home folder on a Mac (Launchpad,
 Spotlight and the Dock take it), or a shortcut in your Start menu on Windows. It prints what it writes, and
 where, before writing anything, and needs no admin rights; `--dry-run` only prints. Opening it signs your
@@ -170,7 +174,9 @@ didn't write, and it doesn't add the demo, which opens with `ordnung demo`.
 CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
 reads its target and opens it; opening it from the desktop's own menu isn't tested on any system.
 
-**On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
+### On your phone
+
+With Ordnung running on your computer, open Settings → Phone, turn on phone access and
 choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
 phone warns once that the connection isn't private, because Ordnung made its own certificate; the
 pairing dialog shows its fingerprint, so you can check that it is your computer answering. Your
@@ -183,7 +189,9 @@ runs; reserve the computer's address in your router, because a new address means
 Details: [docs/privacy.md](privacy.md#phone-access-optional) and
 [ADR 0017](decisions/0017-phone-access-over-the-home-network.md).
 
-**On your other computer.** Ordnung can move between your laptop and your desktop through a folder your
+### On your other computer
+
+Ordnung can move between your laptop and your desktop through a folder your
 own sync tool already keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a network drive). In
 Settings → Your computers, choose a new folder inside it, name this computer and take the suggested
 five-word passphrase (save it in your password manager). On the other computer, choose *I already use
@@ -206,7 +214,9 @@ ordnung sync save --hand-over                    # save now and stand by, before
 ordnung sync passphrase | kept | forget NAME | disconnect
 ```
 
-**The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
+### Claude Desktop or Claude Code
+
+The deadline engine also runs in Claude Desktop or Claude Code, as MCP tools with
 no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
 steps and citations), `german_holidays`, `add_working_days` and `check_iban`.
 
@@ -220,7 +230,9 @@ Then ask Claude about a letter; it reads, Ordnung's engine computes. `--with-led
 client your read-only ledger ([what that means](privacy.md#using-ordnung-from-claude-desktop-or-claude-code)),
 and `--remove-ledger` takes that entry out again.
 
-**From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
+### From a source checkout
+
+You also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
 (Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`; the accessibility checker that `make e2e`
 and `make ui-audit` use asks for 22.12+). [CONTRIBUTING.md](../CONTRIBUTING.md) has the checks CI runs and
 how to send a change:
@@ -232,6 +244,10 @@ make serve       # backend; `make web-dev` for the Vite dev server
 make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
 make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
 ```
+
+`make check` runs one check after another: lint and types, the backend's tests as a backend leg of CI runs them,
+the slow tests, then the web app's tests. CONTRIBUTING's [Fast loop](../CONTRIBUTING.md#fast-loop) says how long
+these take in CI, and how to run only the tests near your change.
 
 ### Updating
 

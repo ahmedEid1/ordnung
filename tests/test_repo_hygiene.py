@@ -272,7 +272,8 @@ def test_contributors_get_the_node_versions_the_guide_requires() -> None:
     lock = json.loads(_text("web/package-lock.json"))
     lines = re.fullmatch(r"\^(\d+\.\d+)\.0 \|\| >=(\d+\.\d+)\.0", package["engines"]["node"])
     assert lines, package["engines"]
-    source_checkout = " ".join(_text("docs/guide.md").split("**From a source checkout**", 1)[1].split())
+    part = _text("docs/guide.md").split("\n### From a source checkout\n", 1)[1].split("\n### ", 1)[0]
+    source_checkout = " ".join(part.split())
     assert f"Node.js {lines[1]}+ or {lines[2]}+" in source_checkout
     assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
     assert lock["packages"][""]["engines"] == package["engines"]
