@@ -742,6 +742,7 @@ def test_the_suggested_sync_folder_name_doesn_t_say_which_app_wrote_it(tmp_path:
         "web/src/features/settings/SyncSetupCard.tsx",
         "web/src/features/settings/sync.ts",
         "README.md",
+        "docs/guide.md",
     ):
         text = (root / shown).read_text(encoding="utf-8")
         assert "Nextcloud/Ordnung" not in text and "/ 'Ordnung'" not in text, shown

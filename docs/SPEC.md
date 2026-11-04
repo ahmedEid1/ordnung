@@ -2337,21 +2337,31 @@ from 2025, send_by ≤ cancel_by);
 fake `claude` executable tests for argv/stdin/error paths/timeouts/kill; `demo --check`; frontend
 tsc/eslint/vitest; Playwright tour e2e with axe; commit history in small, meaningful commits.
 
-## 19. Docs & README contract
-README, for a first-time user and a hiring manager: what Ordnung is in one problem-first paragraph, the
-GIF of the golden path (the first part of the tour video), "Try in 60 s — zero tokens" (`pipx install` +
-`ordnung demo`), a feature tour in screenshots, "the model reads, code computes" (a recorded `DateSpec`
-and its receipt), the trust design (grounding levels, two channels and claim-level citations, letters as
-data, humble automation, reproducibility), both benchmarks with their numbers stated as held-out or not,
-privacy, install and run (incl. `ordnung mcp install` and autostart), architecture (Mermaid diagram with
-trust boundaries), quality (tests, coverage, UI audit and layout sweep, CI gates, review), limitations,
-links to the docs, how it was built (Claude Code as pair programmer; correctness via tests, legal worked
-examples, evals), disclaimer. Its numeric claims are checked by `tests/test_docs_claims.py`. Screenshots,
-the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`),
+## 19. Docs contract: README, guide and doc map
+Three documents, each for its reader; their numeric claims are checked by `tests/test_docs_claims.py`.
+
+**README**, for a first-time user and a hiring manager. It is also the project page on PyPI (`pyproject.toml`,
+`[tool.hatch.metadata.hooks.fancy-pypi-readme]`), so it stays under 250 lines and draws no Mermaid. In this order:
+the pitch (Claude reads, tested code computes); the GIF of the golden path (the first part of the tour video), with
+links to the online demo and the tour video; the problem in one paragraph; what Ordnung does, in a few bullets
+and screenshots; install and run (the online demo, `ordnung demo` with zero tokens, the three commands) and
+*Updating*, each pointing to the guide; the evaluation: the question it answers, the block `python -m evals.present`
+writes (never edited by hand) and why its numbers can be checked; engineering: "the model reads, code computes" (a
+recorded `DateSpec` and its receipt), the trust boundaries, the architecture as a text diagram, and how it is
+tested; privacy; the main limitations; how it was built (Claude Code as pair programmer; correctness via tests,
+legal worked examples, evals); links to the docs; disclaimer.
+
+**The guide** (`docs/guide.md`), for someone using Ordnung: a tour in screenshots, install and run (incl.
+`ordnung mcp install` and autostart), updating, the environment variables Ordnung reads, and every limitation.
+
+**The doc map** (`docs/README.md`): every document, by its reader (using Ordnung, checking the AI, how it is
+built, working on it). PyPI's *Documentation* link opens it.
+
+Screenshots, the tour video and the GIF come from `make capture` (`scripts/capture.sh`, `web/scripts/capture.mjs`),
 small by design (GIF 720 px, 6 fps, 64 colours; MP4 CRF 32; `tests/test_media_budget.py` keeps them in
 budget), from replay only, on a fresh demo; the court order comes from the mock data (`?mock=full`), since
 the recorded demo has none, and the phone pairing and Your computers pictures from the real app
-(`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the README says so. `docs/`:
+(`web/e2e/readme-pictures.spec.ts`), since the demo has neither, and the guide says so. `docs/`:
 architecture, deadline-rules (with citations), privacy (data-flow table), evals, evals-ask, decisions/ADRs.
 
 ## 21. Trust and legal safety
