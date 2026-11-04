@@ -12,7 +12,8 @@ Which law applies depends on the sender (``scope``):
   the deemed day (BSG B 14 AS 12/09 R).
 
 Since the PostModG, items posted from 1 January 2025 count as delivered on the 4th day after posting
-(3rd day before). Earlier actual receipt never makes the date earlier; later actual receipt is
+(3rd day before). Earlier actual receipt never makes the date earlier — except an e-mailed decision of a
+Brandenburg authority, which counts from the day it arrived (§ 7 VwVfGBbg); later actual receipt is
 handled by the caller (:mod:`ordnung.rules.deadlines`), which keeps the earlier, safe date.
 A Postzustellungsurkunde (yellow envelope) has no fiction at all: the date written on the envelope is
 the delivery day, which callers pass as an explicit anchor date.
@@ -258,6 +259,25 @@ class Delivery:
     older_matter: tuple[str, date] | None = None
 
 
+def _brandenburg_email(posted: date, fiction: date, arrived: date | None) -> tuple[str, str | None]:
+    """The step label, and the note when the arrival day isn't known, for an e-mailed decision of a Brandenburg
+    authority, which counts from the day it arrived (§ 7 VwVfGBbg): at the earliest the day it was sent."""
+    if arrived is not None and arrived >= posted:
+        return f"Counts as delivered on the day it arrived (§ 7 VwVfGBbg): {fmt_date(arrived)}", None
+    label = (
+        "Counts as delivered on the day it arrived (§ 7 VwVfGBbg) — at the earliest the day it was sent: "
+        f"{fmt_date(posted)}"
+    )
+    if arrived is not None:
+        return label, None
+    return label, (
+        "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg), "
+        f"so we counted from the day it was sent, {fmt_date(posted)}, the earliest it can have arrived. If the "
+        f"authority can't show when it arrived, it counts as delivered on {fmt_date(fiction)}, and the deadline may "
+        f"be up to {(fiction - posted).days} days later."
+    )
+
+
 def _step(label: str, d: date, rule_id: str) -> ComputationStep:
     return ComputationStep(
         label=label, date=d.isoformat(), rule_id=rule_id, citation=catalog.citation(rule_id)
@@ -271,6 +291,7 @@ def resolve_delivery(
     channel: DeliveryChannel = "post",
     region: str | None = None,
     abroad: bool = False,
+    arrived: date | None = None,
 ) -> Delivery:
     """Deemed delivery day with explanation steps; ``scope=None`` means the sender type is unknown.
 
@@ -284,7 +305,9 @@ def resolve_delivery(
     after download (§ 41 Abs. 2a VwVfG), taking ``posted`` — the day it was made available — as the
     earliest download; tax (§ 122a Abs. 4 AO) and social-law portals (§ 37 Abs. 2a SGB X) use the 4th day.
     ``region`` is the sender's Land for general authorities; for tax letters it decides which
-    holidays move the deemed day (pass it only when it applies at the recipient's place too).
+    holidays move the deemed day (pass it only when it applies at the recipient's place too). An e-mailed
+    decision of a Brandenburg authority counts from the day it arrived (§ 7 VwVfGBbg): ``arrived``, the day the
+    person confirmed, when it is before the 4th day, else the day it was sent, with a note that says so.
     """
     uncertainty: str | None = None
     older: tuple[str, date] | None = None
@@ -312,6 +335,11 @@ def resolve_delivery(
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"
+        # § 7 VwVfGBbg: an e-mailed decision that arrived before the 4th day counts from the day it arrived
+        earliest = posted if arrived is None else max(arrived, posted)
+        if scope in (None, "vwvfg") and channel == "electronic" and land == "BB" and earliest < raw:
+            label, uncertainty = _brandenburg_email(posted, raw, arrived)
+            raw, rule_id = earliest, "vwvfg_bb_7"
     steps = [_step(label, raw, rule_id)]
     if scope == "ao":
         day = calendar_de.next_business_day(raw, region)

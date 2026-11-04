@@ -988,7 +988,10 @@ def _apply_delivery(
     delivery_region = region
     if scope == "ao" and calendar_de.normalize_region(ctx.recipient_region) != region:
         delivery_region = None  # regional holidays only count when they apply at both places
-    delivery = resolve_delivery(anchor.day, scope=scope, channel=channel, region=delivery_region)
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    delivery = resolve_delivery(
+        anchor.day, scope=scope, channel=channel, region=delivery_region, arrived=arrived
+    )
     trace.older_matter = delivery.older_matter
     trace.extend(delivery.steps)
     if delivery.uncertainty:
@@ -1237,7 +1240,7 @@ def _private_late_arrival(
     if posted is None:
         return None
     channel = _CHANNEL_BY_RULE.get(read.delivery_rule, "post")
-    deemed = resolve_delivery(posted.day, scope=None, channel=channel, region=region).day
+    deemed = resolve_delivery(posted.day, scope=None, channel=channel, region=region, arrived=arrived).day
     if arrived <= deemed:
         return None
     if period[0] < 0:

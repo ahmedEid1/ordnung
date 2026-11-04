@@ -209,8 +209,9 @@ def test_fiction_days_and_scope_mapping() -> None:
 
 
 #: Each Land's own delivery day for its authorities' letters (checked against the Länder gazettes on 4 Nov 2026,
-#: docs/deadline-rules.md § 5): (Land, posted, channel, day, rule id of the delivery step, warning).
-_LAND_DAYS: list[tuple[str | None, str, str, str, str, str | None]] = [
+#: docs/deadline-rules.md § 5): (Land, posted, channel, day, rule id of the delivery step, warning — or words it
+#: holds).
+_LAND_DAYS: list[tuple[str | None, str, str, str, str, str | tuple[str, ...] | None]] = [
     # Thüringen: the federal VwVfG by reference (§ 1 ThürVwVfG), the 4th day from 1 January 2025
     ("TH", "2024-12-31", "post", "2025-01-03", "vwvfg_41_2", None),
     ("TH", "2025-01-01", "post", "2025-01-05", "vwvfg_41_2", None),
@@ -242,6 +243,11 @@ _LAND_DAYS: list[tuple[str | None, str, str, str, str, str | None]] = [
     ("SL", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
     (None, "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
     ("BE", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+    # Brandenburg: an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg) — at the earliest the day sent
+    ("BB", "2026-10-30", "electronic", "2026-10-30", "vwvfg_bb_7", ("§ 7 VwVfGBbg", "up to 4 days")),
+    ("BB", "2024-12-20", "electronic", "2024-12-20", "vwvfg_bb_7", ("§ 7 VwVfGBbg", "up to 3 days")),
+    ("BB", "2026-10-30", "post", "2026-11-03", "vwvfg_41_2", None),
+    ("BB", "2026-10-30", "portal", "2026-10-31", "vwvfg_41_2a", None),
 ]
 
 
@@ -251,12 +257,44 @@ _LAND_DAYS: list[tuple[str | None, str, str, str, str, str | None]] = [
     ids=[f"{row[0]}-{row[1]}-{row[2]}" for row in _LAND_DAYS],
 )
 def test_the_lands_own_delivery_day(
-    region: str | None, posted: str, channel: str, expected: str, rule_id: str, warning: str | None
+    region: str | None,
+    posted: str,
+    channel: str,
+    expected: str,
+    rule_id: str,
+    warning: str | tuple[str, ...] | None,
 ) -> None:
     result = resolve_delivery(D(posted), scope="vwvfg", channel=channel, region=region)  # type: ignore[arg-type]
     assert result.day == D(expected)
     assert result.steps[0].rule_id == rule_id
-    assert result.uncertainty == warning
+    if isinstance(warning, tuple):
+        assert result.uncertainty is not None and all(words in result.uncertainty for words in warning)
+    else:
+        assert result.uncertainty == warning
+
+
+def test_brandenburg_email_counts_from_a_confirmed_arrival_before_the_4th_day() -> None:
+    """§ 7 VwVfGBbg: the 4th day does not hold when the decision provably arrived earlier — a later arrival is the
+    late-arrival note's (§ 41 Abs. 2 S. 3 VwVfG)."""
+    sent = D("2026-10-30")
+    arrived = resolve_delivery(
+        sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-11-02")
+    )
+    assert (arrived.day, arrived.steps[0].rule_id, arrived.uncertainty) == (
+        D("2026-11-02"),
+        "vwvfg_bb_7",
+        None,
+    )
+    assert (
+        arrived.steps[0].label == "Counts as delivered on the day it arrived (§ 7 VwVfGBbg): Mon 2 Nov 2026"
+    )
+    late = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-11-05"))
+    assert (late.day, late.steps[0].rule_id, late.uncertainty) == (D("2026-11-03"), "vwvfg_41_2", None)
+    # an arrival day before the day it was sent is no arrival: from the day it was sent
+    early = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-10-29"))
+    assert early.day == sent and early.steps[0].label.endswith(
+        "— at the earliest the day it was sent: Fri 30 Oct 2026"
+    )
 
 
 def test_the_land_tables() -> None:
@@ -346,7 +384,11 @@ def test_delivery_notes_are_not_read_as_doubts_scams_or_injections() -> None:
         ]
         assert len(found) == 1, land
         notes += found
+    notes.append(
+        resolve_delivery(D("2026-10-30"), scope="vwvfg", channel="electronic", region="BB").uncertainty or ""
+    )
     for note in notes:
+        assert note
         for pattern in (UNCERTAINTY_RE, INJECTION_RE, SCAM_RE):
             assert not pattern.search(note), (pattern.pattern[:30], note)
 

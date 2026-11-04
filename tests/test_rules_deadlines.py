@@ -148,32 +148,57 @@ def test_hessen_three_day_rule_is_its_law() -> None:
     assert "vwvfg_land_days" in receipt.rule_ids
 
 
-#: A Land authority's one-month objection period (§ 70 VwGO) from a letter posted on its date: (Land, posted, due,
-#: confidence).
+#: A Land authority's one-month objection period (§ 70 VwGO) from a letter posted (or e-mailed) on its date: (Land,
+#: posted, how it was sent, due, confidence).
 _LAND_DEADLINES = [
-    ("TH", "2026-09-29", "2026-11-03", "high"),
-    ("TH", "2025-01-02", "2025-02-06", "high"),
-    ("SH", "2025-01-02", "2025-02-06", "high"),
-    ("SH", "2025-03-03", "2025-04-07", "high"),
-    ("HH", "2025-05-13", "2025-06-16", "high"),
-    ("HE", "2026-09-29", "2026-11-02", "high"),
-    ("HB", "2026-09-29", "2026-11-02", "medium"),
+    ("TH", "2026-09-29", "de_admin_post", "2026-11-03", "high"),
+    ("TH", "2025-01-02", "de_admin_post", "2025-02-06", "high"),
+    ("SH", "2025-01-02", "de_admin_post", "2025-02-06", "high"),
+    ("SH", "2025-03-03", "de_admin_post", "2025-04-07", "high"),
+    ("HH", "2025-05-13", "de_admin_post", "2025-06-16", "high"),
+    ("HE", "2026-09-29", "de_admin_post", "2026-11-02", "high"),
+    ("HB", "2026-09-29", "de_admin_post", "2026-11-02", "medium"),
+    ("BB", "2026-10-30", "de_admin_electronic", "2026-11-30", "medium"),
+    ("BB", "2026-10-30", "de_admin_post", "2026-12-03", "high"),
 ]
 
 
 @pytest.mark.parametrize(
-    ("region", "posted", "expected", "confidence"),
+    ("region", "posted", "rule", "expected", "confidence"),
     _LAND_DEADLINES,
-    ids=[f"{row[0]}-{row[1]}" for row in _LAND_DEADLINES],
+    ids=[f"{row[0]}-{row[1]}-{row[2].removeprefix('de_admin_')}" for row in _LAND_DEADLINES],
 )
 def test_a_lands_delivery_day_in_the_deadline(
-    region: str, posted: str, expected: str, confidence: str
+    region: str, posted: str, rule: str, expected: str, confidence: str
 ) -> None:
     receipt = compute_due(
-        notice_spec(legal_basis="§ 70 VwGO"),
+        notice_spec(legal_basis="§ 70 VwGO", delivery_rule=rule),
         ctx(region=region, document_date=posted, delivery_scope="vwvfg"),
     )
     assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+
+
+@pytest.mark.parametrize(
+    ("arrived", "expected", "late"),
+    [("2026-11-02", "2026-12-02", False), ("2026-11-05", "2026-12-03", True)],
+)
+def test_brandenburg_email_with_its_arrival_day(arrived: str, expected: str, late: bool) -> None:
+    """An e-mailed decision of a Brandenburg authority counts from the day it arrived, before the 4th day
+    (§ 7 VwVfGBbg); after it, the 4th day and the late-arrival note (§ 41 Abs. 2 S. 3 VwVfG)."""
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO", delivery_rule="de_admin_electronic"),
+        ctx(
+            today="2026-11-06",
+            region="BB",
+            document_date="2026-10-30",
+            received_date=arrived,
+            received_confirmed=True,
+            delivery_scope="vwvfg",
+        ),
+    )
+    assert (receipt.due_date, receipt.confidence) == (expected, "high"), receipt.warnings
+    assert ("late_receipt" in receipt.rule_ids) is late
+    assert ("vwvfg_bb_7" in receipt.rule_ids) is not late
 
 
 #: The note on a date where a matter begun before the Land's switch keeps the 3rd day: how it starts.

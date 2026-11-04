@@ -335,6 +335,16 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "2025-01-01",
     ),
     (
+        "vwvfg_bb_7",
+        "Brandenburg: e-mailed decisions count from the day they arrived",
+        "§ 7 VwVfGBbg; § 41 Abs. 2 S. 2 VwVfG",
+        "In Brandenburg a decision sent by e-mail counts as delivered on the day it arrived when that can be shown, "
+        "not on the 4th day after sending. Ordnung counts from the day it was sent, the earliest it can have "
+        "arrived, or from the day you say it arrived.",
+        "https://bravors.brandenburg.de/gesetze/vwvfgbbg",
+        None,
+    ),
+    (
         "vwvfg_41_2a",
         "Authority portals: day after download",
         "§ 41 Abs. 2a VwVfG",
@@ -421,7 +431,8 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "early_receipt",
         "Arriving early changes nothing",
         "BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22",
-        "If a letter arrives before its deemed delivery day, the deemed day still counts.",
+        "If a letter arrives before its deemed delivery day, the deemed day still counts — except an e-mailed "
+        "decision of a Brandenburg authority (§ 7 VwVfGBbg).",
         _court("BFH", "13.12.2000", "X R 96/98"),
         None,
     ),

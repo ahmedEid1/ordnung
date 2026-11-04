@@ -86,6 +86,8 @@ def test_deemed_delivery_is_at_least_four_days_after_posting_since_2025(
     day, steps = deemed_delivery(posted, scope=scope, channel=channel, region=region)  # type: ignore[arg-type]
     if scope == "vwvfg" and channel == "portal":
         assert day == posted + timedelta(days=1)  # day after download (§ 41 Abs. 2a VwVfG)
+    elif scope == "vwvfg" and channel == "electronic" and region == "BB":
+        assert day == posted  # the day it arrived, at the earliest the day it was sent (§ 7 VwVfGBbg)
     elif scope == "vwvfg" and (region not in VWVFG_FOUR_DAY_FROM or posted < VWVFG_FOUR_DAY_FROM[region]):
         assert day == posted + timedelta(days=3)  # conservative 3rd day for unconfirmed Länder
     else:
