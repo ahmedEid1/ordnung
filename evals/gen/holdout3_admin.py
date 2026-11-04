@@ -1,8 +1,7 @@
 """Holdout3 split, families 1, 2, 3, 7 and 12: variants I and J of the administrative acts.
 
-Written after the code freeze for this release, from the law and from how such letters read, without opening the app's
-ingestion code, its prompts, the recordings or the results files: new senders, recipients, wording, layout, dates,
-amounts and regions (Länder the earlier splits used little: MV, SL, HB, BB, RP, NI). Variant I prints the date as the
+Written after the code freeze for this release, from the law and from how such letters read: new senders,
+recipients, wording, layout, dates, amounts and regions (Länder the earlier splits used little: MV, SL, HB, BB, RP, NI). Variant I prints the date as the
 last line of the information block and the Rechtsbehelfsbelehrung as a run-in paragraph; variant J names the date in
 the information block under its own label and, where the letter runs to a second page, prints the Belehrung there under
 a heading. No deadline-bearing sentence of variants A–H recurs (``evals/verify_labels.py`` checks it).
@@ -277,8 +276,7 @@ def municipal_decision() -> list[Case]:
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
                            title="Klagefrist" if remedy == "klage" else "Widerspruchsfrist",
-                           note=("Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is "
-                                 "still the label.") if remedy == "klage" else None),
+                           note=("Remedy is Klage (§ 74 VwGO): the Klage period's end is the label.") if remedy == "klage" else None),
             hand,
         )  # fmt: skip
         if variant == "I":

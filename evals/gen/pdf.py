@@ -5,10 +5,9 @@ Geometry (A4, mm): letterhead 0–42; return line ≈ 59 and recipient from 64 i
 footer from 272; fold marks at 105/210 and the hole mark at 148.5. Each organisation picks one of
 four letterhead styles and each variant its own margins/sizes so the families do not look alike.
 
-All visible text is dark and at least 6.5 pt; white text only appears on dark filled rectangles
-(Ordnung's hidden-text detector treats white-on-white and < 3 pt text as hidden, SPEC §21) — except
-in the deliberately adversarial ``Hidden`` block. Output is byte-deterministic: fixed creation date
-and metadata, no randomness here.
+All visible text is dark and at least 6.5 pt; white text only appears on dark filled rectangles —
+except in the deliberately adversarial ``Hidden`` block. Output is byte-deterministic: fixed creation
+date and metadata, no randomness here.
 """
 
 from __future__ import annotations

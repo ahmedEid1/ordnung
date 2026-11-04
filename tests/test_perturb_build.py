@@ -1,9 +1,11 @@
-"""The stress builder (``evals/perturb``): 48 held-out text letters from holdout, holdout2 and holdout3
+"""The stress builder (``evals/perturb``): 48 standard text letters of holdout4, the final run's split,
 re-rendered through the benchmark's own generator, once with an AI-addressed paragraph (cell I1) and once with a
-legally inert sentence that names a date (cell D1). Truth never changes; holdout4 is never perturbed.
+legally inert sentence that names a date (cell D1). Truth never changes, and the stress manifest names no day.
 
-The real templates are written blind; these tests use their own neutral ones. Nothing here
-prints letter text, a template or a prompt: ids, counts and hashes only.
+holdout4's letters are written after the code freeze, so these tests build from a stand-in: the letters of holdout,
+holdout2 and holdout3 relabelled as holdout4 (:func:`final_manifest`; ids, files and truth unchanged). The real
+templates are written blind; these tests use their own neutral ones. Nothing here prints letter text, a template or a
+prompt: ids, counts and hashes only.
 """
 
 from __future__ import annotations
@@ -11,11 +13,15 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import os
 import re
+import shlex
+import subprocess
 import sys
 from collections import Counter
 from datetime import date, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pdfplumber
@@ -30,6 +36,22 @@ from evals.records import Entry, load_manifest  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
 MANIFEST = DATASET / "manifest.json"
+#: The splits whose letters stand in for holdout4's here.
+STAND_IN = ("holdout", "holdout2", "holdout3")
+
+
+def final_manifest(path: Path) -> Path:
+    """The dataset's manifest with every letter of :data:`STAND_IN` relabelled as holdout4, written to ``path``. Ids,
+    truth and days stay; each file is named by its absolute path, so the letters are read where they are."""
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    for entry in data["entries"]:
+        if entry["split"] in STAND_IN:
+            entry["split"] = "holdout4"
+        entry["file"] = str((DATASET / entry["file"]).resolve())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
 
 #: Neutral sentences for the tests only (the real ones are written blind).
 FIXTURE: dict[str, Any] = {
@@ -93,8 +115,13 @@ _MONTHS_EN = "January|February|March|April|May|June|July|August|September|Octobe
 
 
 @pytest.fixture(scope="module")
-def entries() -> list[Entry]:
-    return load_manifest(MANIFEST)
+def synthetic(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return final_manifest(tmp_path_factory.mktemp("final") / "manifest.json")
+
+
+@pytest.fixture(scope="module")
+def entries(synthetic: Path) -> list[Entry]:
+    return load_manifest(synthetic)
 
 
 @pytest.fixture(scope="module")
@@ -112,16 +139,27 @@ def plan(base: list[Entry]) -> dict[str, list[build.Assignment]]:
     return build.assign_cells(base, dataset_dir=DATASET)
 
 
+def _one_per_family(base: list[Entry], n: int) -> list[str]:
+    """The first base letter of each of ``n`` families (in id order)."""
+    firsts: dict[str, str] = {}
+    for entry in sorted(base, key=lambda e: e.id):
+        firsts.setdefault(entry.family, entry.id)
+    return sorted(firsts.values())[:n]
+
+
 @pytest.fixture(scope="module")
 def small_build(
-    tmp_path_factory: pytest.TempPathFactory, base: list[Entry], fixture_templates: templates.Templates
+    tmp_path_factory: pytest.TempPathFactory,
+    synthetic: Path,
+    base: list[Entry],
+    fixture_templates: templates.Templates,
 ):
-    """Both cells for one letter of each held-out split, built twice into separate folders."""
-    only = [next(e.id for e in base if e.split == split) for split in build.BASE_SPLITS]
+    """Both cells for one letter of three families, built twice into separate folders."""
+    only = _one_per_family(base, 3)
     first = tmp_path_factory.mktemp("first")
     second = tmp_path_factory.mktemp("second")
-    doc_a = build.build(templates=fixture_templates, out=first, only=only)
-    doc_b = build.build(templates=fixture_templates, out=second, only=only)
+    doc_a = build.build(templates=fixture_templates, out=first, only=only, manifest_path=synthetic)
+    doc_b = build.build(templates=fixture_templates, out=second, only=only, manifest_path=synthetic)
     return only, first, second, doc_a, doc_b
 
 
@@ -130,46 +168,77 @@ def small_build(
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_base_set_is_48_text_letters_16_per_held_out_split_stratified_by_family(
+def test_the_base_set_is_48_standard_text_letters_of_holdout4_spread_evenly_over_its_families(
     entries: list[Entry], base: list[Entry]
 ) -> None:
-    assert len(base) == 48
-    assert Counter(e.split for e in base) == {"holdout": 16, "holdout2": 16, "holdout3": 16}
+    assert build.BASE_SPLITS == ("holdout4",) and build.BASE_LETTERS == 48 and build.SEED == 20261029
+    assert len(base) == 48 and len({e.id for e in base}) == 48
+    assert Counter(e.split for e in base) == {"holdout4": 48}
     assert all(build.eligible(e) for e in base)
     assert all(not e.photo and not e.adversarial and e.media_type == "application/pdf" for e in base)
     assert all(any(item.scored for item in e.truth.items) for e in base)
-    for split in build.BASE_SPLITS:
-        pool = Counter(e.family for e in entries if e.split == split and build.eligible(e))
-        chosen = Counter(e.family for e in base if e.split == split)
-        assert set(chosen) == set(pool)  # every family with a dated deadline is in, none twice its share
-        for family, n in chosen.items():
-            share = build.PER_SPLIT * pool[family] / sum(pool.values())
-            assert abs(n - share) < 1, (split, family)
+    pool = Counter(e.family for e in entries if e.split == "holdout4" and build.eligible(e))
+    chosen = Counter(e.family for e in base)
+    assert set(chosen) == set(pool)  # every family with a dated deadline is in
+    assert max(chosen.values()) - min(chosen.values()) <= 1  # as even as 48 over these families allows
+    assert all(chosen[family] <= pool[family] for family in chosen)
     assert [e.id for e in build.base_set(entries)] == [e.id for e in base]  # the seed fixes it
+    # nor does the manifest's order
+    assert [e.id for e in build.base_set(entries[::-1])] == [e.id for e in base]
 
 
-def test_holdout4_and_every_other_split_are_never_perturbed(entries: list[Entry]) -> None:
-    template = next(e for e in entries if e.split == "holdout3" and build.eligible(e))
-    future = [
-        template.model_copy(update={"id": f"holdout4-{template.family}-K{i}", "split": "holdout4"})
-        for i in range(40)
+def _family_pool(entries: list[Entry], families: dict[str, int]) -> list[Entry]:
+    """Made-up holdout4 letters: ``n`` copies of one standard letter per family name."""
+    template = next(e for e in entries if build.eligible(e))
+    return [
+        template.model_copy(update={"id": f"holdout4-{family}-K{i}", "family": family, "split": "holdout4"})
+        for family, n in families.items()
+        for i in range(n)
     ]
-    chosen = build.base_set([*entries, *future])
-    assert {e.split for e in chosen} == set(build.BASE_SPLITS)
-    assert not any(e.id.startswith("holdout4") for e in chosen)
-    for split in ("holdout4", "newkinds", "dev", "test"):
+
+
+def test_with_twelve_families_each_gives_four_letters(entries: list[Entry]) -> None:
+    pool = _family_pool(entries, {f"family{i:02}": 7 for i in range(12)})
+    chosen = build.base_set(pool)
+    assert Counter(e.family for e in chosen) == {f"family{i:02}": 4 for i in range(12)}
+
+
+def test_a_family_short_of_letters_gives_them_all_and_the_others_fill_its_places(
+    entries: list[Entry],
+) -> None:
+    pool = _family_pool(entries, {"few": 2, **{f"family{i:02}": 7 for i in range(11)}})
+    chosen = Counter(e.family for e in build.base_set(pool))
+    assert chosen["few"] == 2 and sum(chosen.values()) == 48
+    others = [n for family, n in chosen.items() if family != "few"]
+    assert max(others) - min(others) <= 1
+    with pytest.raises(build.BuildError) as refused:  # too few letters in all
+        build.base_set(_family_pool(entries, {"a": 20, "b": 20}))
+    assert "40" in str(refused.value) and "48" in str(refused.value)
+
+
+def test_only_holdout4_is_perturbed(entries: list[Entry]) -> None:
+    """The earlier splits were written for their own days and recorded once; holdout4 is written for the recording
+    window, so its letters can be read on any day of it. Until holdout4 exists, the builder says so."""
+    real = load_manifest(MANIFEST)
+    with pytest.raises(build.BuildError) as refused:
+        build.base_set(real)
+    assert "holdout4" in str(refused.value) and "48" in str(refused.value)
+    others = [e.model_copy(update={"split": "holdout3"}) for e in entries if e.split == "holdout4"]
+    assert not any(e.split == "holdout3" for e in build.base_set([*entries, *others]))
+    for split in ("holdout", "holdout2", "holdout3", "newkinds", "dev", "test"):
         with pytest.raises(build.BuildError):
             build.base_set(entries, splits=(split,))
+    with pytest.raises(build.BuildError):
+        build.assign_cells(others[:3], dataset_dir=DATASET)
 
 
-def test_an_unperturbed_re_render_is_byte_identical_one_letter_per_split(base: list[Entry]) -> None:
+def test_an_unperturbed_re_render_is_byte_identical_one_letter_per_family(base: list[Entry]) -> None:
     by_id = {e.id: e for e in base}
-    for split in build.BASE_SPLITS:
-        entry = next(e for e in base if e.split == split)
-        data, pages = build.render_base(entry.id)
+    for base_id in _one_per_family(base, 3):
+        data, pages = build.render_base(base_id)
         if build.pdf_environment_matches(MANIFEST):
-            assert hashlib.sha256(data).hexdigest() == by_id[entry.id].sha256, entry.id
-        assert pages == by_id[entry.id].pages
+            assert hashlib.sha256(data).hexdigest() == by_id[base_id].sha256, base_id
+        assert pages == by_id[base_id].pages
 
 
 @pytest.mark.slow
@@ -185,16 +254,12 @@ def test_every_unperturbed_re_render_is_byte_identical(base: list[Entry]) -> Non
 # --------------------------------------------------------------------------------------------------
 
 
-def test_injection_goals_are_balanced_16_each_and_spread_over_the_splits(
+def test_injection_goals_are_balanced_16_each(
     base: list[Entry], plan: dict[str, list[build.Assignment]]
 ) -> None:
     injections = plan["I1"]
     assert sorted(a.base_id for a in injections) == sorted(e.id for e in base)
     assert Counter(a.kind for a in injections) == {"shift": 16, "drop": 16, "reroute": 16}
-    split_of = {e.id: e.split for e in base}
-    for split in build.BASE_SPLITS:
-        per_split = Counter(a.kind for a in injections if split_of[a.base_id] == split)
-        assert sorted(per_split.values()) == [5, 5, 6], split
     claims = Counter(a.claim for a in injections if a.kind == "reroute")
     assert set(claims) == set(build.REROUTE_CLAIMS)
     assert max(claims.values()) - min(claims.values()) <= 1
@@ -204,16 +269,10 @@ def test_injection_goals_are_balanced_16_each_and_spread_over_the_splits(
     assert all(a.claim is None for a in injections if a.kind != "reroute")
 
 
-def test_distractor_roles_are_12_each_and_4_per_split(
-    base: list[Entry], plan: dict[str, list[build.Assignment]]
-) -> None:
+def test_distractor_roles_are_12_each(base: list[Entry], plan: dict[str, list[build.Assignment]]) -> None:
     distractors = plan["D1"]
     assert sorted(a.base_id for a in distractors) == sorted(e.id for e in base)
     assert Counter(a.kind for a in distractors) == dict.fromkeys(build.DISTRACTOR_ROLES, 12)
-    split_of = {e.id: e.split for e in base}
-    for split in build.BASE_SPLITS:
-        per_split = Counter(a.kind for a in distractors if split_of[a.base_id] == split)
-        assert per_split == dict.fromkeys(build.DISTRACTOR_ROLES, 4), split
 
 
 def test_targets_and_inserted_dates_follow_the_rules(
@@ -422,10 +481,11 @@ def test_no_obligation_word_in_a_filled_distractor(
 def test_template_strings_appear_in_no_prompt_file(
     fixture_templates: templates.Templates, tmp_path: Path
 ) -> None:
-    """Checked for these templates and, once committed, for the real ones. Prints nothing."""
-    assert templates.prompt_hits(fixture_templates) == 0
+    """Checked for these templates and, once committed, for the real ones. Prints nothing. The check lives with the
+    builder, outside what the template writer is given."""
+    assert build.prompt_hits(fixture_templates) == 0
     if templates.TEMPLATES_PATH.exists():
-        assert templates.prompt_hits(templates.load_templates(templates.TEMPLATES_PATH)) == 0, (
+        assert build.prompt_hits(templates.load_templates(templates.TEMPLATES_PATH)) == 0, (
             "a template repeats the wording of a prompt file"
         )
     # the check finds a hit: a prompt folder that holds one template's wording (case and spacing aside)
@@ -433,7 +493,95 @@ def test_template_strings_appear_in_no_prompt_file(
     fake.mkdir()
     one = fixture_templates.strings()[0].split("{")[0]
     (fake / "x.md").write_text("intro\n" + one.upper().replace(" ", "  ") + "\nmore", encoding="utf-8")
-    assert templates.prompt_hits(fixture_templates, prompt_dirs=[fake]) >= 1
+    assert build.prompt_hits(fixture_templates, prompt_dirs=[fake]) >= 1
+
+
+# --------------------------------------------------------------------------------------------------
+# what the template writer is given: evals/perturb/README.md and templates.py
+# --------------------------------------------------------------------------------------------------
+
+README = ROOT / "evals" / "perturb" / "README.md"
+TEMPLATES_PY = ROOT / "evals" / "perturb" / "templates.py"
+#: Words that would tell the writer how the letters are read or checked, or name the software or a model (the
+#: sandbox lint's terms, and the app's ways of noticing an injection or a second date).
+WRITER_UNSEEN = re.compile(
+    r"please check|two[ -]dates|detect|\bflag|warn|scor(?:e|er|ing)\b|pipeline|prompt|recorded|results file|"
+    r"src/|deadline-rules|by design|test_evals_run|\brules\b|engine|claude|"
+    r"condition|baseline|accuracy|\bordnung\b",
+    re.IGNORECASE,
+)
+#: The one name the writer must copy: the templates file's schema id.
+SCHEMA_LINE = re.compile(r"ordnung-stress-templates/1")
+
+
+def test_the_writer_facing_files_say_nothing_about_how_the_letters_are_read() -> None:
+    """The template writer works from these two files only (and the letters' generator). They say what to write and
+    how to check it — nothing about how the software that reads the letters notices an injection or a second date,
+    its documentation, its checks, its conditions or its prompts. Paths and line numbers only."""
+    hits = [
+        f"{path.name}:{number}"
+        for path in (README, TEMPLATES_PY)
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if WRITER_UNSEEN.search(SCHEMA_LINE.sub("", line))
+    ]
+    assert not hits, f"lines the template writer must not see: {', '.join(hits)}"
+    assert (
+        len([line for line in README.read_text(encoding="utf-8").splitlines() if SCHEMA_LINE.search(line)])
+        == 1
+    )
+    assert (
+        len(
+            [
+                line
+                for line in TEMPLATES_PY.read_text(encoding="utf-8").splitlines()
+                if SCHEMA_LINE.search(line)
+            ]
+        )
+        == 1
+    )
+
+
+def _validator_command() -> list[str]:
+    """The README's check of the templates file: the one command line that loads them."""
+    lines = [
+        line.strip()
+        for line in README.read_text(encoding="utf-8").splitlines()
+        if line.strip().startswith("python -c") and "load_templates" in line
+    ]
+    assert len(lines) == 1, "the README documents one command that checks the templates file"
+    argv = shlex.split(lines[0].split("  #")[0])
+    return [sys.executable, *argv[1:]]
+
+
+def _sandbox_copy(folder: Path, data: Any) -> Path:
+    """A folder holding what the writer is given here: ``evals/perturb/{templates.py,README.md}`` and the file."""
+    perturb = folder / "evals" / "perturb"
+    perturb.mkdir(parents=True)
+    (perturb / "templates.py").write_bytes(TEMPLATES_PY.read_bytes())
+    (perturb / "README.md").write_bytes(README.read_bytes())
+    (perturb / "templates.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return folder
+
+
+def test_the_readme_documents_a_check_that_runs_with_templates_py_alone(tmp_path: Path) -> None:
+    """templates.py has no ``__main__``: the README gives the writer one command, which runs where only templates.py
+    and the README are (the standard library alone, no ``evals`` package), prints a count and the digest of a good
+    file, and fails on a bad one naming the problem's kind and place, never the sentence."""
+    env = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    good = _sandbox_copy(tmp_path / "good", FIXTURE)
+    done = subprocess.run(_validator_command(), cwd=good, env=env, capture_output=True, text=True, timeout=60)
+    assert done.returncode == 0, done.stderr[-400:]
+    expected = templates.parse_templates(FIXTURE)
+    assert str(len(expected.strings())) in done.stdout and expected.sha256 in done.stdout
+    bad_data = copy.deepcopy(FIXTURE)
+    bad_data["distractor"]["info_event"]["de"] = ["Testvorlage X: Am {date} endet die Frist."]
+    bad = _sandbox_copy(tmp_path / "bad", bad_data)
+    failed = subprocess.run(
+        _validator_command(), cwd=bad, env=env, capture_output=True, text=True, timeout=60
+    )
+    assert failed.returncode != 0
+    assert "distractor.info_event.de[0]" in failed.stderr and "obligation" in failed.stderr
+    assert "Testvorlage X" not in failed.stdout + failed.stderr
 
 
 # --------------------------------------------------------------------------------------------------
@@ -441,7 +589,75 @@ def test_template_strings_appear_in_no_prompt_file(
 # --------------------------------------------------------------------------------------------------
 
 
-def test_built_files_match_the_manifest_and_two_builds_are_byte_identical(small_build: Any) -> None:
+def test_the_stress_manifest_names_no_day_and_the_runners_letters_take_the_day_they_are_read(
+    tmp_path: Path, synthetic: Path, base: list[Entry], fixture_templates: templates.Templates
+) -> None:
+    """holdout4 is written for a window of days (its letters' today through its last valid day), so one stress
+    manifest serves every day of it: a build for the first day and one for the next give the same manifest, and only
+    the runner's manifest says the day (each letter's simulated today, the day it is recorded)."""
+    (letter,) = [e for e in base if e.id == _one_per_family(base, 1)[0]]
+    first = letter.today_date
+    builds = {}
+    for day in (None, first, first + timedelta(days=1)):
+        out = tmp_path / str(day)
+        doc = build.build(
+            templates=fixture_templates, out=out, only=[letter.id], manifest_path=synthetic, today=day
+        )
+        runnable = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+        assert "today" not in doc
+        assert {e["today"] for e in runnable["entries"]} == {(day or first).isoformat()}
+        builds[day] = doc
+    assert builds[None] == builds[first] == builds[first + timedelta(days=1)]
+    committed = {**builds[None], "today": first.isoformat()}  # a committed manifest that names a day differs
+    assert build.check_build(builds[None], committed) == ["today"]
+
+
+def _stand_in(today: str, valid_until: str | None, deadline: str) -> Any:
+    """What the day check reads of a letter: its today, its last valid day (a final split's manifest names it) and
+    its scored deadlines."""
+    item = SimpleNamespace(scored=True, expected_date=date.fromisoformat(deadline))
+    entry = SimpleNamespace(
+        id="holdout4-x-K1",
+        today=today,
+        today_date=date.fromisoformat(today),
+        truth=SimpleNamespace(items=[item]),
+    )
+    if valid_until is not None:
+        entry.valid_until = valid_until
+    return entry
+
+
+def test_a_letter_is_read_only_on_a_day_of_its_window(entries: list[Entry]) -> None:
+    """The window: from the letter's today (the day it was written for) through its last valid day — the manifest's
+    ``valid_until``, else seven days later (the set is valid through D0 + 7) — and never after its earliest deadline.
+    A build for a day outside it is refused before anything is built, naming how many letters and which day."""
+    letter = _stand_in("2026-12-08", "2026-12-15", "2027-01-11")
+    assert build.window(letter) == (date(2026, 12, 8), date(2026, 12, 15))
+    assert build.window(_stand_in("2026-12-08", None, "2027-01-11")) == (
+        date(2026, 12, 8),
+        date(2026, 12, 15),
+    )
+    assert build.window(_stand_in("2026-12-08", "2026-12-10", "2027-01-11")) == (
+        date(2026, 12, 8),
+        date(2026, 12, 10),
+    )
+    for day in (date(2026, 12, 8), date(2026, 12, 11), date(2026, 12, 15)):
+        build.check_day([letter], day)
+    for day in (date(2026, 12, 7), date(2026, 12, 16)):
+        with pytest.raises(build.BuildError) as refused:
+            build.check_day([letter], day)
+        assert day.isoformat() in str(refused.value) and "1 of 1" in str(refused.value)
+    passed = _stand_in("2026-12-08", "2026-12-15", "2026-12-10")
+    build.check_day([passed], date(2026, 12, 10))
+    with pytest.raises(build.BuildError):
+        build.check_day([passed], date(2026, 12, 11))  # its deadline has passed
+    real = next(e for e in entries if build.eligible(e))
+    assert build.window(real)[0] == real.today_date
+
+
+def test_built_files_match_the_manifest_and_two_builds_are_byte_identical(
+    small_build: Any, synthetic: Path
+) -> None:
     only, first, second, doc_a, doc_b = small_build
     assert doc_a == doc_b
     assert len(doc_a["entries"]) == 2 * len(only)
@@ -458,7 +674,8 @@ def test_built_files_match_the_manifest_and_two_builds_are_byte_identical(small_
     changed["entries"][0]["sha256"] = "f" * 64
     assert len(build.check_build(doc_a, changed)) == 1
     runnable = json.loads((first / "manifest.json").read_text(encoding="utf-8"))
-    assert runnable["dataset"]["manifest_sha256"] == hashlib.sha256(MANIFEST.read_bytes()).hexdigest()
+    assert runnable["dataset"]["manifest_sha256"] == hashlib.sha256(synthetic.read_bytes()).hexdigest()
+    assert doc_a["base_splits"] == ["holdout4"] and "today" not in doc_a
 
 
 def test_truth_is_unchanged_except_the_injection_warning(small_build: Any, entries: list[Entry]) -> None:

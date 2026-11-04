@@ -14,10 +14,15 @@ compare a replay with the published file). It is a replay only: no model is call
 is an error. ``evals/conditions.py`` is not changed (it is part of the benchmark's fingerprint), and the
 per-letter cache goes to a temporary folder, never ``evals/results/cache``.
 
+``--splits`` takes any split ``evals/splits.py`` declares whose letters exist (the final run's are written after
+the code freeze); the default is the published file's five. ``--repeat N`` replays run N of the same letters
+under its recordings' own keys, as ``evals.run --repeat`` does. A file of other splits than the default, or of
+another run than the first, is named after them: ``…-without-land-holdout4-r2.json``.
+
 Run it from the repository root::
 
     .venv/bin/python -m scripts.eval_without_land [--date YYYY-MM-DD] [--splits test holdout holdout2 holdout3 dev]
-        [--out FOLDER]
+        [--repeat N] [--out FOLDER]
 """
 
 from __future__ import annotations
@@ -33,7 +38,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any, get_args
 
-from evals import conditions, report
+from evals import conditions, harness, report
+from evals import splits as registry
 from evals.records import Entry, load_manifest, select_entries
 from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR, RunConfig, _commit, run_benchmark
 
@@ -41,7 +47,11 @@ from ordnung.models import DocumentExtraction, Page
 from ordnung.rules import RuleContext
 from ordnung.rules.postcodes import Reason, suggest_land_why
 
-SPLITS = ("test", "holdout", "holdout2", "holdout3", "dev")
+#: Every split the benchmark declares (:mod:`evals.splits`); one whose letters don't exist yet is refused.
+SPLITS = registry.names()
+#: The splits the published file replays (CI compares a replay of them with it): the default.
+DEFAULT_SPLITS = ("test", "holdout", "holdout2", "holdout3", "dev")
+NAME = "without-land"
 #: Why a letter gets no suggestion: every reason of the app's policy but "suggested".
 NO_SUGGESTION = tuple(reason for reason in get_args(Reason) if reason != "suggested")
 NOTE = (
@@ -97,12 +107,14 @@ def sender_land_suggested() -> Iterator[dict[str, tuple[str | None, Reason]]]:
         conditions.ordnung_rule_context = original
 
 
-async def replay(split: str, model: str, work: Path) -> dict[str, Any]:
-    """The results document of one replay of the Ordnung condition on ``split`` (nothing is written)."""
+async def replay(split: str, model: str, work: Path, *, repeat: int = 1) -> dict[str, Any]:
+    """The results document of one replay of the Ordnung condition on ``split``, run ``repeat`` (nothing is
+    written)."""
     config = RunConfig(
         split=split,
         models=[model],
         conditions=["ordnung"],
+        repeat=repeat,  # run N ≥ 2 under its recordings' own keys (evals.harness.RepeatKey)
         resume=False,  # the cache knows nothing of the Land taken away
         write_results=False,
         write_docs=False,
@@ -214,15 +226,17 @@ def suggestion_counts(
     }
 
 
-async def split_numbers(split: str, model: str, entries: Sequence[Entry]) -> dict[str, Any]:
-    """The three replays of one split, side by side."""
+async def split_numbers(
+    split: str, model: str, entries: Sequence[Entry], *, repeat: int = 1
+) -> dict[str, Any]:
+    """The three replays of one split (run ``repeat``), side by side."""
     lands = {entry.id: entry.authority_region for entry in entries}
     with tempfile.TemporaryDirectory(prefix="ordnung-without-land-") as work:
-        with_land = await replay(split, model, Path(work) / "with")
+        with_land = await replay(split, model, Path(work) / "with", repeat=repeat)
         with sender_land_unknown():
-            without = await replay(split, model, Path(work) / "without")
+            without = await replay(split, model, Path(work) / "without", repeat=repeat)
         with sender_land_suggested() as suggestions:
-            suggested = await replay(split, model, Path(work) / "suggested")
+            suggested = await replay(split, model, Path(work) / "suggested", repeat=repeat)
     suggested_lands = {entry_id: region for entry_id, (region, _) in suggestions.items()}
     return {
         "entries": len(entries),
@@ -236,16 +250,18 @@ async def split_numbers(split: str, model: str, entries: Sequence[Entry]) -> dic
     }
 
 
-async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, Any]:
+async def build(splits: Sequence[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
     manifest = load_manifest(MANIFEST_PATH)
     numbers = {}
+    run = f" (run {repeat})" if repeat > 1 else ""
     for split in splits:
         print(
-            f"{split}: replaying with, without and with the suggested sender's Land …",
+            f"{split}{run}: replaying with, without and with the suggested sender's Land …",
             file=sys.stderr,
             flush=True,
         )
-        numbers[split] = await split_numbers(split, model, select_entries(manifest, split=split))
+        entries = select_entries(manifest, split=split)
+        numbers[split] = await split_numbers(split, model, entries, repeat=repeat)
     return {
         "schema": report.WITHOUT_LAND_SCHEMA,
         "meta": {
@@ -253,7 +269,10 @@ async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, A
             "model": model,
             "condition": "ordnung",
             "backend": "replay",
+            "repeat": repeat,
             "commit": _commit(),
+            # the code paths that differ from that commit, as the runner records them ([] when none; null without git)
+            "dirty": harness.dirty_paths(),
             "fingerprint": conditions.fingerprint("ordnung", model),
             "script": "scripts/eval_without_land.py",
             "note": NOTE,
@@ -262,8 +281,26 @@ async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, A
     }
 
 
-def results_path(run_date: str, model: str, folder: Path = RESULTS_DIR) -> Path:
-    return folder / report.results_filename(run_date, model, "without-land")
+def results_path(
+    run_date: str,
+    model: str,
+    folder: Path = RESULTS_DIR,
+    *,
+    splits: Sequence[str] = DEFAULT_SPLITS,
+    repeat: int = 1,
+) -> Path:
+    """``<date>-<model>-without-land.json`` for the published file's splits, ``…-without-land-<split>….json`` for
+    others (a read of a final split never overwrites the earlier splits' file of the same day), and ``-r<N>`` for
+    run N ≥ 2."""
+    name = NAME if list(splits) == list(DEFAULT_SPLITS) else "-".join([NAME, *splits])
+    return folder / report.results_filename(run_date, model, name + harness.repeat_suffix(repeat))
+
+
+def without_letters(chosen: Sequence[str]) -> list[str]:
+    """The splits of ``chosen`` the manifest has no letters of yet (the final run's are written after the code
+    freeze)."""
+    found = {entry.split for entry in load_manifest(MANIFEST_PATH)}
+    return [split for split in chosen if split not in found]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -272,7 +309,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"the recordings' model (default: {DEFAULT_MODEL})"
     )
-    parser.add_argument("--splits", nargs="+", choices=SPLITS, default=list(SPLITS), help="splits to replay")
+    parser.add_argument(
+        "--splits",
+        "--split",
+        nargs="+",
+        choices=SPLITS,
+        default=list(DEFAULT_SPLITS),
+        help=f"splits to replay (default: {' '.join(DEFAULT_SPLITS)}); a split without letters is refused",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help="replay run N of the same letters, under its recordings' own keys (as evals.run --repeat)",
+    )
     parser.add_argument(
         "--out",
         type=Path,
@@ -281,8 +332,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"folder for the results file (default: {RESULTS_DIR.parent.name}/{RESULTS_DIR.name})",
     )
     args = parser.parse_args(argv)
-    results = asyncio.run(build(args.splits, args.model, args.run_date))
-    path = report.write_json(results_path(args.run_date, args.model, args.out), results)
+    if args.repeat < 1:
+        parser.error(f"--repeat counts runs from 1, not {args.repeat}")
+    for split in without_letters(args.splits):
+        parser.error(f"{split} has no letters yet: the final run's letters are written after the code freeze")
+    results = asyncio.run(build(args.splits, args.model, args.run_date, repeat=args.repeat))
+    where = results_path(args.run_date, args.model, args.out, splits=args.splits, repeat=args.repeat)
+    path = report.write_json(where, results)
     for split, numbers in results["splits"].items():
         suggestion = numbers["suggestion"]
         print(

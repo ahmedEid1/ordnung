@@ -35,6 +35,18 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   file with the command that writes it and the check, if any, that fails while it is stale. A bare `make` lists the
   targets, [evals/README.md](evals/README.md) says how the benchmarks are laid out, replayed and recorded, and a
   new pull request starts from a short checklist.
+- **Evaluation: tooling for the pre-registered final run** (no published number changes). The benchmark's
+  generator takes the final run's letters as a plug-in and tags each date with the labelling convention it rests
+  on; their dates are checked against facts written in a small grammar
+  ([evals/dataset/FACTS.md](evals/dataset/FACTS.md)), and the statutes they follow are in `evals/law/`, with their
+  sources. The runner records a final letter only when the day it gives the letter as today is the day of the
+  recording and inside the letter's window, keeps a read recorded over several days in one results file, stops
+  between letters (`--stop-file`, `--stop-at`) and sets a cut letter's recordings, or those of a read made
+  invalid, aside to be recorded again (`python -m evals.harness retake`). The analysis checks every read against
+  the pre-registration and applies its fixed rules for anything that went wrong; the sentences the README will
+  give about the final run are fixed templates now; the held-out Ask set, the stress cells and the replays without
+  the Land or the checks have their final-run tools; and scripts hash the pre-registration and check it, and the
+  file of deviations from it, against the git history.
 
 ### Changed
 

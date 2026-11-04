@@ -19,15 +19,22 @@ them (the code as it ships) and once per ablation, with one function swapped for
 It writes, per split and ablation, the right, early, late, missed and declined dates and the "Please check" flags
 of the scored items, on how many letters each check acted, and every scored item whose date, outcome, flag or
 confidence differs from the code as it ships, to ``evals/results/<date>-<model>-checks-ablated.json`` (``--out``:
-another folder). ``--check FILE`` replays the splits FILE publishes and exits 1, naming each split and ablation,
-when the replay doesn't give its numbers. It is a replay only: no model is called, and a missing recording is an
-error. ``evals/conditions.py`` is not changed (it is part of the benchmark's fingerprint), and the per-letter
-cache goes to a temporary folder. Only ids, families, dates, outcomes and counts are written: never a letter's
-text, a reading or a quote.
+another folder). ``--check FILE`` replays the splits FILE publishes, at the run it names, and exits 1, naming each
+split and ablation, when the replay doesn't give its numbers. It is a replay only: no model is called, and a
+missing recording is an error. ``evals/conditions.py`` is not changed (it is part of the benchmark's fingerprint),
+and the per-letter cache goes to a temporary folder. Only ids, families, dates, outcomes and counts are written:
+never a letter's text, a reading or a quote.
+
+``--splits`` takes any split ``evals/splits.py`` declares whose letters exist (the final run's are written after
+the code freeze); the default is the published file's five, and the ``held_out`` pool is every held-out or final
+split replayed. ``--repeat N`` replays run N of the same letters under its recordings' own keys, as ``evals.run
+--repeat`` does. A file of other splits than the default, or of another run than the first, is named after them:
+``…-checks-ablated-holdout4-r2.json``.
 
 Run it from the repository root::
 
-    .venv/bin/python -m scripts.eval_ablate_checks [--date YYYY-MM-DD] [--splits test holdout …] [--out FOLDER]
+    .venv/bin/python -m scripts.eval_ablate_checks [--date YYYY-MM-DD] [--splits test holdout …] [--repeat N]
+        [--out FOLDER]
     .venv/bin/python -m scripts.eval_ablate_checks --check evals/results/<date>-<model>-checks-ablated.json
 """
 
@@ -45,20 +52,23 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from evals import conditions, report
+from evals import conditions, harness, report
 from evals import run as run_mod
+from evals import splits as registry
 from evals.conditions import PreparedDocument
-from evals.records import Entry
-from evals.run import DEFAULT_MODEL, RESULTS_DIR, RunConfig, _commit, run_benchmark
+from evals.records import Entry, load_manifest
+from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR, RunConfig, _commit, run_benchmark
 
 from ordnung.ingest import extract as extract_mod
 from ordnung.ingest import plan as plan_mod
 from ordnung.ingest.conflicts import CONFLICTING_DATES
 
 SCHEMA = "ordnung-eval-checks-ablated/1"
-SPLITS = ("test", "holdout", "holdout2", "holdout3", "dev")
-#: The splits pooled as "held_out" in the totals.
-HELD_OUT = ("holdout", "holdout2", "holdout3")
+NAME = "checks-ablated"
+#: Every split the benchmark declares (:mod:`evals.splits`); one whose letters don't exist yet is refused.
+SPLITS = registry.names()
+#: The splits the published file replays: the default.
+DEFAULT_SPLITS = ("test", "holdout", "holdout2", "holdout3", "dev")
 #: The headline metrics of each replay (as the benchmark computes them, with their intervals).
 HEADLINE = ("due_date_accuracy", "dangerous_late_rate", "early_rate", "missed_rate")
 #: What the file says of a changed item, in the code as it ships and in the ablation.
@@ -176,12 +186,14 @@ def ablated(name: str) -> Iterator[None]:
         yield
 
 
-async def replay(split: str, model: str, work: Path) -> dict[str, Any]:
-    """The results document of one replay of the Ordnung condition on ``split`` (nothing is written)."""
+async def replay(split: str, model: str, work: Path, *, repeat: int = 1) -> dict[str, Any]:
+    """The results document of one replay of the Ordnung condition on ``split``, run ``repeat`` (nothing is
+    written)."""
     config = RunConfig(
         split=split,
         models=[model],
         conditions=["ordnung"],
+        repeat=repeat,  # run N ≥ 2 under its recordings' own keys (evals.harness.RepeatKey)
         resume=False,  # the cache knows nothing of the checks switched off
         write_results=False,
         write_docs=False,
@@ -297,8 +309,8 @@ def documents_prepared_once(work: Path) -> Iterator[None]:
         yield
 
 
-async def split_numbers(split: str, model: str) -> dict[str, Any]:
-    """The split replayed as it ships and under every ablation, side by side."""
+async def split_numbers(split: str, model: str, *, repeat: int = 1) -> dict[str, Any]:
+    """The split (run ``repeat``) replayed as it ships and under every ablation, side by side."""
     runs: dict[str, dict[str, Any]] = {}
     with (
         tempfile.TemporaryDirectory(prefix="ordnung-ablate-checks-") as work,
@@ -306,7 +318,7 @@ async def split_numbers(split: str, model: str) -> dict[str, Any]:
     ):
         for name in ABLATIONS:
             with ablated(name):
-                runs[name] = await replay(split, model, Path(work) / name)
+                runs[name] = await replay(split, model, Path(work) / name, repeat=repeat)
     shipped = runs["all_on"]
     return {
         "entries": len(shipped["entries"]),
@@ -337,19 +349,21 @@ def pooled(numbers: Mapping[str, Mapping[str, Any]], splits: Sequence[str]) -> d
 
 
 def totals(numbers: Mapping[str, Mapping[str, Any]]) -> dict[str, Any]:
-    """Every split replayed pooled (``all``), and the held-out splits among them (``held_out``)."""
+    """Every split replayed pooled (``all``), and the held-out and final splits among them (``held_out``,
+    :func:`evals.splits.is_held_out`)."""
     found = {"all": pooled(numbers, list(numbers))}
-    held_out = [split for split in numbers if split in HELD_OUT]
+    held_out = [split for split in numbers if registry.is_held_out(split)]
     if held_out:
         found["held_out"] = pooled(numbers, held_out)
     return found
 
 
-async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, Any]:
+async def build(splits: Sequence[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
     numbers: dict[str, Any] = {}
+    run = f" (run {repeat})" if repeat > 1 else ""
     for split in splits:
-        print(f"{split}: replaying with each code check off …", file=sys.stderr, flush=True)
-        numbers[split] = await split_numbers(split, model)
+        print(f"{split}{run}: replaying with each code check off …", file=sys.stderr, flush=True)
+        numbers[split] = await split_numbers(split, model, repeat=repeat)
     return {
         "schema": SCHEMA,
         "meta": {
@@ -357,7 +371,10 @@ async def build(splits: Sequence[str], model: str, run_date: str) -> dict[str, A
             "model": model,
             "condition": "ordnung",
             "backend": "replay",
+            "repeat": repeat,
             "commit": _commit(),
+            # the code paths that differ from that commit, as the runner records them ([] when none; null without git)
+            "dirty": harness.dirty_paths(),
             "fingerprint": conditions.fingerprint("ordnung", model),
             "script": "scripts/eval_ablate_checks.py",
             "note": NOTE,
@@ -397,8 +414,19 @@ def differences(published: Mapping[str, Any], replayed: Mapping[str, Any]) -> li
     return sorted(found)
 
 
-def results_path(run_date: str, model: str, folder: Path = RESULTS_DIR) -> Path:
-    return folder / report.results_filename(run_date, model, "checks-ablated")
+def results_path(
+    run_date: str,
+    model: str,
+    folder: Path = RESULTS_DIR,
+    *,
+    splits: Sequence[str] = DEFAULT_SPLITS,
+    repeat: int = 1,
+) -> Path:
+    """``<date>-<model>-checks-ablated.json`` for the published file's splits, ``…-checks-ablated-<split>….json``
+    for others (a read of a final split never overwrites the earlier splits' file of the same day), and ``-r<N>``
+    for run N ≥ 2."""
+    name = NAME if list(splits) == list(DEFAULT_SPLITS) else "-".join([NAME, *splits])
+    return folder / report.results_filename(run_date, model, name + harness.repeat_suffix(repeat))
 
 
 def _summary(results: Mapping[str, Any]) -> None:
@@ -415,14 +443,22 @@ def _summary(results: Mapping[str, Any]) -> None:
 
 
 def check(path: Path) -> int:
-    """Replay the splits ``path`` publishes, with its date and model, and compare (1: a difference)."""
+    """Replay the splits ``path`` publishes, with its date, model and run, and compare (1: a difference)."""
     published = json.loads(path.read_text(encoding="utf-8"))
     meta = published["meta"]
-    replayed = asyncio.run(build(list(published["splits"]), meta["model"], meta["date"]))
+    repeat = int(meta.get("repeat", 1))  # a file written before --repeat is of run 1
+    replayed = asyncio.run(build(list(published["splits"]), meta["model"], meta["date"], repeat=repeat))
     differ = differences(published, replayed)
     for name in differ:
         print(f"{name}: the replay doesn't give the published numbers", file=sys.stderr)
     return 1 if differ else 0
+
+
+def without_letters(chosen: Sequence[str]) -> list[str]:
+    """The splits of ``chosen`` the manifest has no letters of yet (the final run's are written after the code
+    freeze)."""
+    found = {entry.split for entry in load_manifest(MANIFEST_PATH)}
+    return [split for split in chosen if split not in found]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -431,7 +467,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--model", default=DEFAULT_MODEL, help=f"the recordings' model (default: {DEFAULT_MODEL})"
     )
-    parser.add_argument("--splits", nargs="+", choices=SPLITS, default=list(SPLITS), help="splits to replay")
+    parser.add_argument(
+        "--splits",
+        "--split",
+        nargs="+",
+        choices=SPLITS,
+        default=list(DEFAULT_SPLITS),
+        help=f"splits to replay (default: {' '.join(DEFAULT_SPLITS)}); a split without letters is refused",
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        metavar="N",
+        help="replay run N of the same letters, under its recordings' own keys (as evals.run --repeat)",
+    )
     parser.add_argument(
         "--out",
         type=Path,
@@ -448,8 +498,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.check is not None:
         return check(args.check)
-    results = asyncio.run(build(args.splits, args.model, args.run_date))
-    path = report.write_json(results_path(args.run_date, args.model, args.out), results)
+    if args.repeat < 1:
+        parser.error(f"--repeat counts runs from 1, not {args.repeat}")
+    for split in without_letters(args.splits):
+        parser.error(f"{split} has no letters yet: the final run's letters are written after the code freeze")
+    results = asyncio.run(build(args.splits, args.model, args.run_date, repeat=args.repeat))
+    where = results_path(args.run_date, args.model, args.out, splits=args.splits, repeat=args.repeat)
+    path = report.write_json(where, results)
     if results["totals"]:
         _summary(results)
     print(f"results → {path}", file=sys.stderr)

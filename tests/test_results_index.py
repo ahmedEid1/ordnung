@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from evals import reproduce, splits
+from evals import analysis, reproduce, splits
 from evals.present import model as present_model
 from evals.run import DEFAULT_MODEL, RESULTS_DIR
 
@@ -441,8 +441,11 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
         ]
     waiting = sorted(name for name, cell in cells.items() if cell["status"] == "not recorded yet")
     assert waiting == [
-        "ablation/holdout4",
+        "ablation/holdout4/r1",
+        "ablation/holdout4/r2",
+        "ablation/holdout4/r3",
         "analysis/final",
+        "ask/heldout/final",
         "ask/heldout/r1",
         "ask/heldout/r2",
         "ask/heldout/r3",
@@ -453,6 +456,9 @@ def test_every_cell_is_replayed_or_says_it_is_not_recorded_yet(index: dict[str, 
         "e2e/holdout4-newkinds",
         "stress/D1",
         "stress/I1",
+        "without-land/holdout4/r1",
+        "without-land/holdout4/r2",
+        "without-land/holdout4/r3",
     ]
     for name in waiting:
         assert cells[name]["needs"], name
@@ -812,6 +818,107 @@ def test_a_final_recording_with_two_todays_is_refused(tmp_path: Path) -> None:
         reproduce.static_index(results)
 
 
+def test_a_final_read_recorded_on_two_days_is_indexed_when_each_letter_keeps_its_unit_s_day(
+    tmp_path: Path,
+) -> None:
+    """A final read may span several days of its window: each unit — a letter with all its conditions — keeps the day
+    it was recorded on as its today. The index takes such a read when every letter's today is the day its predictions
+    were recorded on, and refuses one letter told another day."""
+    results = _copy_results(tmp_path, ["2026-10-06-claude-sonnet-5-holdout3.json"])
+    data = json.loads((results / "2026-10-06-claude-sonnet-5-holdout3.json").read_text(encoding="utf-8"))
+    days = ["2027-01-10", "2027-01-11"]
+    for number, entry in enumerate(data["entries"]):
+        entry["today"] = days[number % 2]
+        for outcome in entry["conditions"].values():
+            outcome["prediction"].update(recorded_on=entry["today"], cli_version="2.1.5 (Claude Code)")
+    data["meta"].update(
+        split="holdout4",
+        simulated_today=days,
+        recording_days=days,
+        cli_versions=["2.1.5 (Claude Code)"],
+        recording_day=days[1],
+    )
+    target = results / "2027-01-10-claude-sonnet-5-holdout4.json"
+    target.write_text(json.dumps(data), encoding="utf-8")
+    reproduce.static_index(results)  # each letter on its unit's day: indexed
+    data["entries"][0]["today"] = "2027-01-12"  # one letter told another day than its unit's
+    target.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(reproduce.ReproduceError, match="two todays"):
+        reproduce.static_index(results)
+    data["entries"][0]["today"] = days[0]
+    data["meta"]["recording_days"] = days[:1]  # the read's days and its letters' days disagree
+    target.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(reproduce.ReproduceError, match="two todays"):
+        reproduce.static_index(results)
+
+
+def test_a_replay_written_from_a_tree_with_changes_is_never_indexed(tmp_path: Path) -> None:
+    """A replay's file names the commit it ran at (``meta.commit``) and the code paths that differed from it
+    (``meta.dirty``, which the runner, the e2e run and the replays without the Land and with checks off record): one
+    written from a tree with changes names a commit whose code did not write it, so it is refused until it is
+    written again from a clean tree. A live recording is what it is; the analysis drops a read recorded so."""
+    e2e, without, live = (
+        "2026-10-30-claude-sonnet-5-e2e.json",
+        "2026-10-08-claude-sonnet-5-without-land.json",
+        "2026-10-06-claude-sonnet-5-holdout3.json",
+    )
+    results = _copy_results(tmp_path, [e2e, without, live])
+
+    def dirty(name: str, paths: list[str]) -> None:
+        data = json.loads((results / name).read_text(encoding="utf-8"))
+        data["meta"]["dirty"] = paths
+        (results / name).write_text(json.dumps(data), encoding="utf-8")
+
+    for name in (e2e, without, live):
+        dirty(name, [])
+    reproduce.static_index(results)  # clean trees: indexed
+    dirty(live, ["evals/generate.py"])
+    reproduce.static_index(results)
+    for name in (e2e, without):
+        dirty(name, ["evals/generate.py", "evals/verify_labels.py"])
+        with pytest.raises(reproduce.ReproduceError, match=f"{name}: written from a tree with changes to "):
+            reproduce.static_index(results)
+        dirty(name, [])
+
+
+def test_the_final_analysis_is_checked_with_the_preregistration_and_the_reads_it_recorded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The final analysis's row runs ``evals.analysis --prereg <the path it recorded> <its reads> --date <its date>
+    --check`` from the repository's root: the earlier held-out splits it pools come from its ``pool_with`` again,
+    never as reads (given as reads, the analysis refuses them), and the check passes on the file as written."""
+    from test_analysis import World  # the synthetic final run of tests/test_analysis.py
+
+    results = _copy_results(tmp_path, list(analysis.HELD_OUT_AS_RECORDED))
+    world = World(tmp_path / "world", pool_with=analysis.HELD_OUT_AS_RECORDED, results=results)
+    monkeypatch.setattr(analysis, "RECORDED_DIR", world.recorded)
+    monkeypatch.setattr(analysis, "DATASET_DIR", world.dataset)
+    folders = ["--results-dir", str(results), "--out-dir", str(results)]
+    assert analysis.main([*world.cli_args(), *folders, "--write"]) == 0
+    static = reproduce.static_index(results)
+    (row,) = [row for row in static["results"] if row["kind"] == "analysis"]
+    assert (row["file"], row["role"], row["check"]) == (
+        "2027-01-03-claude-sonnet-5-final.json",
+        "final",
+        "analysis --check",
+    )
+    tasks = {task.name: task for task in reproduce.plan(static, results, tmp_path / "work")}
+    argv = tasks["analysis/final"].argv
+    names = ["holdout4-r1.json", "holdout4-r2.json", "holdout4-r3.json", "newkinds-r1.json"]
+    reads = [str(results / name) for name in names]
+    assert argv[2:] == [
+        "evals.analysis",
+        "--prereg",
+        str(world.prereg_path.resolve()),
+        *reads,
+        "--date",
+        "2027-01-03",
+        "--check",
+        *folders,
+    ]
+    assert analysis.main(argv[3:]) == 0
+
+
 def test_every_task_is_a_strict_replay_into_the_work_folder(index: dict[str, Any], tmp_path: Path) -> None:
     """No task records, refreshes or writes into the checkout: replays go to the work folder, the checks only read."""
     work = tmp_path / "work"
@@ -1072,3 +1179,113 @@ def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) ->
             r"\b[0-9a-f]{7,40}\b|ADR \d{4}|\d{4}-\d{2}-\d{2}-[\w.-]+\.json", moved["because"]
         ), name
     assert not any("sha256_moved" in row for name, row in rows.items() if name not in recorded)
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's readings replayed another way: without the sender's Land, the check ablation, end to end
+# --------------------------------------------------------------------------------------------------
+
+WITHOUT_LAND = "2026-10-08-claude-sonnet-5-without-land.json"
+ABLATION = "2026-10-30-claude-sonnet-5-checks-ablated.json"
+E2E = "2026-10-30-claude-sonnet-5-e2e.json"
+
+
+def _a_read_of_holdout4(results: Path, source: str, name: str, repeat: int) -> None:
+    """A results file of ``source``'s kind for holdout4's read ``repeat``, as the script writes it (holdout3's
+    numbers stand in)."""
+    data = json.loads((results / source).read_text(encoding="utf-8"))
+    data["splits"] = {"holdout4": data["splits"]["holdout3"]}
+    data["meta"].update(date=name[:10], repeat=repeat)
+    (results / name).write_text(json.dumps(data), encoding="utf-8")
+
+
+def test_the_final_run_is_replayed_without_the_land_and_ablated_once_per_read(tmp_path: Path) -> None:
+    """``without-land/holdout4/rN`` and ``ablation/holdout4/rN``: each read of holdout4 its own cell and its own
+    task, never superseded by another read; the published replay of the earlier splits keeps its cell, gate and
+    command."""
+    results = _copy_results(tmp_path, [WITHOUT_LAND, ABLATION])
+    model = DEFAULT_MODEL
+    _a_read_of_holdout4(results, WITHOUT_LAND, f"2027-01-12-{model}-without-land-holdout4.json", 1)
+    _a_read_of_holdout4(results, WITHOUT_LAND, f"2027-01-12-{model}-without-land-holdout4-r2.json", 2)
+    _a_read_of_holdout4(results, ABLATION, f"2027-01-12-{model}-checks-ablated-holdout4-r3.json", 3)
+    static = reproduce.static_index(results)
+    cells = {cell["cell"]: cell for cell in static["cells"]}
+    assert cells["without-land"] == {
+        "cell": "without-land",
+        "status": "replayed",
+        "checks": [WITHOUT_LAND],
+        "gate": "without-land",
+    }
+    assert cells["without-land/holdout4/r1"]["checks"] == [f"2027-01-12-{model}-without-land-holdout4.json"]
+    assert cells["without-land/holdout4/r2"]["checks"] == [
+        f"2027-01-12-{model}-without-land-holdout4-r2.json"
+    ]
+    assert cells["ablation/holdout4/r3"]["checks"] == [f"2027-01-12-{model}-checks-ablated-holdout4-r3.json"]
+    for name in ("without-land/holdout4/r3", "ablation/holdout4/r1", "ablation/holdout4/r2"):
+        assert cells[name]["status"] == "not recorded yet" and cells[name]["needs"], name
+    assert cells["ablation/dev-holdout-holdout2-holdout3-test"]["checks"] == [ABLATION]
+    assert "ablation/holdout4" not in cells
+    rows = {row["file"]: row for row in static["results"]}
+    assert all(row["check"] != "hash" for row in rows.values())  # no read supersedes another
+    assert rows[f"2027-01-12-{model}-without-land-holdout4-r2.json"]["repeat"] == 2
+    assert "repeat" not in rows[WITHOUT_LAND]  # the published files' rows are as they were
+    work = tmp_path / "work"
+    tasks = {task.name: task for task in reproduce.plan(static, results, work)}
+    old = tasks["without-land"].argv
+    assert old[old.index("--splits") + 1 : old.index("--out")] == [
+        "test",
+        "holdout",
+        "holdout2",
+        "holdout3",
+        "dev",
+    ]
+    assert "--repeat" not in old and tasks["without-land"].out == work / "without-land"
+    second = tasks["without-land/holdout4/r2"]
+    assert second.argv[second.argv.index("--splits") + 1] == "holdout4"
+    assert second.argv[second.argv.index("--repeat") + 1] == "2"
+    assert second.argv[second.argv.index("--date") + 1] == "2027-01-12"
+    assert "--repeat" not in tasks["without-land/holdout4/r1"].argv
+    outs = [task.out for name, task in tasks.items() if name.startswith("without-land")]
+    assert len(set(outs)) == 3 and all(out is not None and out.is_relative_to(work) for out in outs)
+    assert tasks["ablation/holdout4/r3"].argv[2:] == [
+        "scripts.eval_ablate_checks",
+        "--check",
+        str(results / f"2027-01-12-{model}-checks-ablated-holdout4-r3.json"),
+    ]
+    published = json.loads((results / f"2027-01-12-{model}-without-land-holdout4-r2.json").read_text())
+    replayed = copy.deepcopy(published)
+    replayed["splits"]["holdout4"]["entries"] += 1
+    assert reproduce.without_land_problems(published, replayed, "without-land/holdout4/r2") == [
+        "without-land/holdout4/r2 holdout4: the replay doesn't give the published numbers"
+    ]
+
+
+def test_the_final_run_end_to_end_is_held_to_what_it_publishes(tmp_path: Path) -> None:
+    """The earlier splits' end-to-end run keeps its gates (exact parity, no late reminder); the final splits' run
+    is compared with its file and held to what it publishes, whatever the final run shows."""
+    results = _copy_results(tmp_path, [E2E])
+    data = json.loads((results / E2E).read_text(encoding="utf-8"))
+    data["meta"]["splits"] = ["holdout4", "newkinds"]
+    every = data["metrics"]["all"]
+    every["late_reminders"] = ["holdout4-tax_assessment-K1#0"]
+    every["parity"]["differ"] = ["holdout4-tax_assessment-K2#0"]
+    final = results / f"2027-01-14-{DEFAULT_MODEL}-e2e-holdout4-newkinds.json"
+    final.write_text(json.dumps(data), encoding="utf-8")
+    static = reproduce.static_index(results)
+    cells = {cell["cell"]: cell for cell in static["cells"]}
+    assert cells["e2e/holdout4-newkinds"]["checks"] == [final.name]
+    assert cells["e2e/dev-holdout-holdout2-holdout3-test"]["checks"] == [E2E]
+    tasks = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}
+    earlier = tasks["e2e/dev-holdout-holdout2-holdout3-test"]
+    assert "--exact-parity" in earlier and earlier[earlier.index("--max-late-reminders") + 1] == "0"
+    held = tasks["e2e/holdout4-newkinds"]
+    assert held[held.index("--splits") + 1 : held.index("--no-write")] == ["holdout4", "newkinds"]
+    assert held[held.index("--compare") + 1] == str(final)
+    assert "--exact-parity" not in held and held[held.index("--max-late-reminders") + 1] == "1"
+    every["late_reminders"], every["parity"]["differ"] = [], []
+    final.write_text(json.dumps(data), encoding="utf-8")
+    static = reproduce.static_index(results)
+    held = {task.name: task.argv for task in reproduce.plan(static, results, tmp_path / "work")}[
+        "e2e/holdout4-newkinds"
+    ]
+    assert "--exact-parity" in held and held[held.index("--max-late-reminders") + 1] == "0"

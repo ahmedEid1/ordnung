@@ -1,0 +1,231 @@
+Zivilprozessordnung (ZPO)
+Neugefasst durch Bek. v. 5.12.2005 I 3202; 2006 I 431; 2007 I 1781;
+Stand: zuletzt geändert Art. 2 G v. 22.12.2025 I Nr. 349
+Änderung durch Art. 1 G v. 20.5.2026 I Nr. 152 textlich nachgewiesen, dokumentarisch noch nicht abschließend bearbeitet
+Änderung durch Art. 2 G v. 20.5.2026 I Nr. 152 textlich nachgewiesen, dokumentarisch noch nicht abschließend bearbeitet
+Änderung durch Art. 3 G v. 20.5.2026 I Nr. 152 textlich nachgewiesen, dokumentarisch noch nicht abschließend bearbeitet
+Mittelbare Änderung durch Art. 154a Nr. 3 Buchst. a G v. 20.11.2019 I 1626 ist nicht ausführbar, da das geänderte G v. 21.6.2019 I 846 zum Zeitpunkt des Inkrafttretens des mittelbaren Änderungsgesetzes bereits zum 1.11.2019 in Kraft getreten war
+
+§ 166 Zustellung
+
+(1) Zustellung ist die Bekanntgabe eines Dokuments an eine Person in der in diesem Titel bestimmten Form.
+(2) Dokumente, deren Zustellung vorgeschrieben oder vom Gericht angeordnet ist, sind von Amts wegen zuzustellen, soweit nicht anderes bestimmt ist.
+
+§ 167 Rückwirkung der Zustellung
+
+Soll durch die Zustellung eine Frist gewahrt werden oder die Verjährung neu beginnen oder nach § 204 oder § 204a des Bürgerlichen Gesetzbuchs gehemmt werden, tritt diese Wirkung bereits mit Eingang des Antrags oder der Erklärung ein, wenn die Zustellung demnächst erfolgt.
+
+§ 168 Aufgaben der Geschäftsstelle
+
+(1) Die Geschäftsstelle führt die Zustellung nach §§ 173 bis 176 Absatz 1 aus. Sie kann einen nach § 61 des Postgesetzes beliehenen Unternehmer (Post) oder einen Justizbediensteten mit der Ausführung der Zustellung beauftragen. Den Auftrag an die Post erteilt die Geschäftsstelle auf dem dafür vorgesehenen Vordruck.
+(2) Der Vorsitzende des Prozessgerichts oder ein von ihm bestimmtes Mitglied können einen Gerichtsvollzieher oder eine andere Behörde mit der Ausführung der Zustellung beauftragen, wenn eine Zustellung nach Absatz 1 keinen Erfolg verspricht.
+
+§ 169 Bescheinigung des Zeitpunktes der Zustellung; Beglaubigung
+
+(1) Die Geschäftsstelle bescheinigt auf Antrag den Zeitpunkt der Zustellung.
+(2) Die Beglaubigung der zuzustellenden Schriftstücke wird von der Geschäftsstelle vorgenommen. Dies gilt auch, soweit von einem Anwalt eingereichte Schriftstücke nicht bereits von diesem beglaubigt wurden.
+(3) Eine in Papierform zuzustellende Abschrift kann auch durch maschinelle Bearbeitung beglaubigt werden. Anstelle der handschriftlichen Unterzeichnung ist die Abschrift mit dem Gerichtssiegel zu versehen. Dasselbe gilt, wenn eine Abschrift per Telekopie zugestellt wird.
+(4) Ein Schriftstück oder ein elektronisches Dokument kann in beglaubigter elektronischer Abschrift zugestellt werden. Die Beglaubigung erfolgt mit einer qualifizierten elektronischen Signatur des Urkundsbeamten der Geschäftsstelle.
+(5) Ein elektronisches Dokument kann ohne Beglaubigung elektronisch zugestellt werden, wenn es
+    1. nach § 130a oder § 130b Satz 1 mit einer qualifizierten elektronischen Signatur der verantwortenden Personen versehen ist,
+    2. nach § 130a auf einem sicheren Übermittlungsweg eingereicht wurde und mit einem Authentizitäts- und Integritätsnachweis versehen ist oder
+    3. nach Maßgabe des § 298a errichtet wurde und mit einem Übertragungsnachweis nach § 298a Absatz 2 Satz 3 oder 4 versehen ist.
+
+§ 170 Zustellung an Vertreter
+
+(1) Bei nicht prozessfähigen Personen ist an ihren gesetzlichen Vertreter zuzustellen. Die Zustellung an die nicht prozessfähige Person ist unwirksam.
+(2) Ist der Zustellungsadressat keine natürliche Person, genügt die Zustellung an den Leiter.
+(3) Bei mehreren gesetzlichen Vertretern oder Leitern genügt die Zustellung an einen von ihnen.
+
+§ 171 Zustellung an Bevollmächtigte
+
+An den rechtsgeschäftlich bestellten Vertreter kann mit gleicher Wirkung wie an den Vertretenen zugestellt werden. Der Vertreter hat eine schriftliche Vollmacht vorzulegen.
+
+§ 172 Zustellung an Prozessbevollmächtigte
+
+(1) In einem anhängigen Verfahren hat die Zustellung an den für den Rechtszug bestellten Prozessbevollmächtigten zu erfolgen. Das gilt auch für die Prozesshandlungen, die das Verfahren vor diesem Gericht infolge eines Einspruchs, einer Aufhebung des Urteils dieses Gerichts, einer Wiederaufnahme des Verfahrens, einer Rüge nach § 321a oder eines neuen Vorbringens in dem Verfahren der Zwangsvollstreckung betreffen. Das Verfahren vor dem Vollstreckungsgericht gehört zum ersten Rechtszug.
+(2) Ein Schriftsatz, durch den ein Rechtsmittel eingelegt wird, ist dem Prozessbevollmächtigten des Rechtszuges zuzustellen, dessen Entscheidung angefochten wird. Wenn bereits ein Prozessbevollmächtigter für den höheren Rechtszug bestellt ist, ist der Schriftsatz diesem zuzustellen. Der Partei ist selbst zuzustellen, wenn sie einen Prozessbevollmächtigten nicht bestellt hat.
+
+§ 173 Zustellung von elektronischen Dokumenten
+
+(1) Ein elektronisches Dokument kann elektronisch nur auf einem sicheren Übermittlungsweg zugestellt werden.
+(2) Einen sicheren Übermittlungsweg für die elektronische Zustellung eines elektronischen Dokuments haben zu eröffnen:
+    1. Rechtsanwälte, Notare, Gerichtsvollzieher, Steuerberater sowie sonstige in professioneller Eigenschaft am Prozess beteiligte Personen, Vereinigungen und Organisationen, bei denen von einer erhöhten Zuverlässigkeit ausgegangen werden kann, sowie
+    2. Behörden, Körperschaften oder Anstalten des öffentlichen Rechts.
+(3) Die elektronische Zustellung an die in Absatz 2 Genannten wird durch ein elektronisches Empfangsbekenntnis nachgewiesen, das an das Gericht zu übermitteln ist. Für die Übermittlung ist der vom Gericht mit der Zustellung zur Verfügung gestellte strukturierte Datensatz zu verwenden. Stellt das Gericht keinen strukturierten Datensatz zur Verfügung, so ist dem Gericht das elektronische Empfangsbekenntnis als elektronisches Dokument (§ 130a) zu übermitteln.
+(4) An andere als die in Absatz 2 Genannten kann ein elektronisches Dokument elektronisch nur zugestellt werden, wenn sie der Zustellung elektronischer Dokumente für das jeweilige Verfahren zugestimmt haben. Die Zustimmung gilt mit der Einreichung eines elektronischen Dokuments im jeweiligen Verfahren auf einem sicheren Übermittlungsweg als erteilt. Andere als natürliche Personen können die Zustimmung auch allgemein erteilen. Ein elektronisches Dokument gilt am vierten Tag nach dem auf der automatisierten Eingangsbestätigung ausgewiesenen Tag des Eingangs in dem vom Empfänger eröffneten elektronischen Postfach als zugestellt. Satz 4 gilt nicht, wenn der Empfänger nachweist, dass das Dokument nicht oder zu einem späteren Zeitpunkt zugegangen ist.
+
+§ 174 Zustellung durch Aushändigung an der Amtsstelle
+
+Ein Schriftstück kann dem Adressaten oder seinem rechtsgeschäftlich bestellten Vertreter durch Aushändigung an der Amtsstelle zugestellt werden. Zum Nachweis der Zustellung ist auf dem Schriftstück und in den Akten zu vermerken, dass es zum Zwecke der Zustellung ausgehändigt wurde und wann das geschehen ist; bei Aushändigung an den Vertreter ist dies mit dem Zusatz zu vermerken, an wen das Schriftstück ausgehändigt wurde und dass die Vollmacht nach § 171 Satz 2 vorgelegt wurde. Der Vermerk ist von dem Bediensteten zu unterschreiben, der die Aushändigung vorgenommen hat.
+
+§ 175 Zustellung von Schriftstücken gegen Empfangsbekenntnis
+
+(1) Ein Schriftstück kann den in § 173 Absatz 2 Genannten gegen Empfangsbekenntnis zugestellt werden.
+(2) Eine Zustellung gegen Empfangsbekenntnis kann auch durch Telekopie erfolgen. Die Übermittlung soll mit dem Hinweis „Zustellung gegen Empfangsbekenntnis“ eingeleitet werden und die absendende Stelle, den Namen und die Anschrift des Zustellungsadressaten sowie den Namen des Justizbediensteten erkennen lassen, der das Dokument zur Übermittlung aufgegeben hat.
+(3) Die Zustellung nach den Absätzen 1 und 2 wird durch das mit Datum und Unterschrift des Adressaten versehene Empfangsbekenntnis nachgewiesen.
+(4) Das Empfangsbekenntnis muss schriftlich, durch Telekopie oder als elektronisches Dokument (§ 130a) an das Gericht gesandt werden.
+
+§ 176 Zustellung durch Einschreiben mit Rückschein; Zustellungsauftrag
+
+(1) Ein Schriftstück kann durch Einschreiben mit Rückschein zugestellt werden. Zum Nachweis der Zustellung genügt der Rückschein.
+(2) Wird die Post, ein Justizbediensteter oder ein Gerichtsvollzieher mit der Zustellung eines Schriftstücks beauftragt oder wird eine andere Behörde um die Zustellung ersucht, so übergibt die Geschäftsstelle das zuzustellende Schriftstück in einem verschlossenen Umschlag und ein vorbereitetes Formular einer Zustellungsurkunde. Die Zustellung erfolgt nach den §§ 177 bis 181.
+
+§ 177 Ort der Zustellung
+
+Das Schriftstück kann der Person, der zugestellt werden soll, an jedem Ort übergeben werden, an dem sie angetroffen wird.
+
+§ 178 Ersatzzustellung in der Wohnung, in Geschäftsräumen und Einrichtungen
+
+(1) Wird die Person, der zugestellt werden soll, in ihrer Wohnung, in dem Geschäftsraum oder in einer Gemeinschaftseinrichtung, in der sie wohnt, nicht angetroffen, kann das Schriftstück zugestellt werden
+    1. in der Wohnung einem erwachsenen Familienangehörigen, einer in der Familie beschäftigten Person oder einem erwachsenen ständigen Mitbewohner,
+    2. in Geschäftsräumen einer dort beschäftigten Person,
+    3. in Gemeinschaftseinrichtungen dem Leiter der Einrichtung oder einem dazu ermächtigten Vertreter.
+(2) Die Zustellung an eine der in Absatz 1 bezeichneten Personen ist unwirksam, wenn diese an dem Rechtsstreit als Gegner der Person, der zugestellt werden soll, beteiligt ist.
+
+§ 179 Zustellung bei verweigerter Annahme
+
+Wird die Annahme des zuzustellenden Schriftstücks unberechtigt verweigert, so ist das Schriftstück in der Wohnung oder in dem Geschäftsraum zurückzulassen. Hat der Zustellungsadressat keine Wohnung oder ist kein Geschäftsraum vorhanden, ist das zuzustellende Schriftstück zurückzusenden. Mit der Annahmeverweigerung gilt das Schriftstück als zugestellt.
+
+§ 180 Ersatzzustellung durch Einlegen in den Briefkasten
+
+Ist die Zustellung nach § 178 Abs. 1 Nr. 1 oder 2 nicht ausführbar, kann das Schriftstück in einen zu der Wohnung oder dem Geschäftsraum gehörenden Briefkasten oder in eine ähnliche Vorrichtung eingelegt werden, die der Adressat für den Postempfang eingerichtet hat und die in der allgemein üblichen Art für eine sichere Aufbewahrung geeignet ist. Mit der Einlegung gilt das Schriftstück als zugestellt. Der Zusteller vermerkt auf dem Umschlag des zuzustellenden Schriftstücks das Datum der Zustellung.
+
+§ 181 Ersatzzustellung durch Niederlegung
+
+(1) Ist die Zustellung nach § 178 Abs. 1 Nr. 3 oder § 180 nicht ausführbar, kann das zuzustellende Schriftstück auf der Geschäftsstelle des Amtsgerichts, in dessen Bezirk der Ort der Zustellung liegt, niedergelegt werden. Wird die Post mit der Ausführung der Zustellung beauftragt, ist das zuzustellende Schriftstück am Ort der Zustellung oder am Ort des Amtsgerichts bei einer von der Post dafür bestimmten Stelle niederzulegen. Über die Niederlegung ist eine schriftliche Mitteilung auf dem vorgesehenen Formular unter der Anschrift der Person, der zugestellt werden soll, in der bei gewöhnlichen Briefen üblichen Weise abzugeben oder, wenn das nicht möglich ist, an der Tür der Wohnung, des Geschäftsraums oder der Gemeinschaftseinrichtung anzuheften. Das Schriftstück gilt mit der Abgabe der schriftlichen Mitteilung als zugestellt. Der Zusteller vermerkt auf dem Umschlag des zuzustellenden Schriftstücks das Datum der Zustellung.
+(2) Das niedergelegte Schriftstück ist drei Monate zur Abholung bereitzuhalten. Nicht abgeholte Schriftstücke sind danach an den Absender zurückzusenden.
+
+§ 182 Zustellungsurkunde
+
+(1) Zum Nachweis der Zustellung nach den §§ 171, 177 bis 181 ist eine Urkunde auf dem hierfür vorgesehenen Formular anzufertigen. Für diese Zustellungsurkunde gilt § 418.
+(2) Die Zustellungsurkunde muss enthalten:
+    1. die Bezeichnung der Person, der zugestellt werden soll,
+    2. die Bezeichnung der Person, an die der Brief oder das Schriftstück übergeben wurde,
+    3. im Falle des § 171 die Angabe, dass die Vollmachtsurkunde vorgelegen hat,
+    4. im Falle der §§ 178, 180 die Angabe des Grundes, der diese Zustellung rechtfertigt und wenn nach § 181 verfahren wurde, die Bemerkung, wie die schriftliche Mitteilung abgegeben wurde,
+    5. im Falle des § 179 die Erwähnung, wer die Annahme verweigert hat und dass der Brief am Ort der Zustellung zurückgelassen oder an den Absender zurückgesandt wurde,
+    6. die Bemerkung, dass der Tag der Zustellung auf dem Umschlag, der das zuzustellende Schriftstück enthält, vermerkt ist,
+    7. den Ort, das Datum und auf Anordnung der Geschäftsstelle auch die Uhrzeit der Zustellung,
+    8. Name, Vorname und Unterschrift des Zustellers sowie die Angabe des beauftragten Unternehmens oder der ersuchten Behörde.
+(3) Die Zustellungsurkunde ist der Geschäftsstelle in Urschrift oder als elektronisches Dokument unverzüglich zurückzuleiten.
+
+§ 183 Zustellung im Ausland
+
+(1) Für die Durchführung
+    1. der Verordnung (EU) 2020/1784 des Europäischen Parlaments und des Rates vom 25. November 2020 über die Zustellung gerichtlicher und außergerichtlicher Schriftstücke in Zivil- oder Handelssachen in den Mitgliedstaaten (Zustellung von Schriftstücken) (ABl. L 405 vom 2.12.2020, S. 40; L 173 vom 30.6.2022, S. 133) in ihrer jeweils geltenden Fassung sowie
+    2. des Abkommens zwischen der Europäischen Gemeinschaft und dem Königreich Dänemark vom 19. Oktober 2005 über die Zustellung gerichtlicher und außergerichtlicher Schriftstücke in Zivil- oder Handelssachen (ABl. L 300 vom 17.11.2005, S. 55; L 120 vom 5.5.2006, S. 23), das durch die Mitteilung Dänemarks vom 22. Dezember 2020 (ABl. L 19 vom 21.1.2021, S. 1) geändert worden ist,
+gelten § 1067 Absatz 1, § 1069 Absatz 1 sowie die §§ 1070 und 1071. Soweit nicht für die Zustellung im Ausland die vorgenannten Regelungen maßgeblich sind, gelten für die Zustellung im Ausland die Absätze 2 bis 6.
+(2) Eine Zustellung im Ausland ist nach den völkerrechtlichen Vereinbarungen vorzunehmen, die im Verhältnis zu dem jeweiligen Staat gelten. Wenn Schriftstücke aufgrund solcher Vereinbarungen unmittelbar durch die Post zugestellt werden dürfen, dann soll dies durch Einschreiben mit Rückschein oder mittels eines gleichwertigen Nachweises bewirkt werden, anderenfalls soll die Zustellung auf Ersuchen des Vorsitzenden des Prozessgerichts unmittelbar durch die Behörden des ausländischen Staates erfolgen. Eine Zustellung durch die zuständige deutsche Auslandsvertretung soll nur in den Fällen des Absatzes 4 erfolgen.
+(3) Bestehen keine völkerrechtlichen Vereinbarungen zur Zustellung, so erfolgt die Zustellung vorbehaltlich des Absatzes 4 auf Ersuchen des Vorsitzenden des Prozessgerichts durch die Behörden des ausländischen Staates.
+(4) Folgende Zustellungen in den Fällen der Absätze 2 und 3 erfolgen auf Ersuchen des Vorsitzenden des Prozessgerichts durch die zuständige deutsche Auslandsvertretung:
+    1. Zustellungen, deren Erledigung durch die Behörden des ausländischen Staates nicht oder nicht innerhalb einer angemessenen Zeit zu erwarten ist oder für die ein sonstiger begründeter Ausnahmefall vorliegt,
+    2. Zustellungen an ausländische Staaten sowie
+    3. Zustellungen an entsandte Beschäftigte einer deutschen Auslandsvertretung und die in ihrer Privatwohnung lebenden Personen.
+(5) Zum Nachweis der Zustellung nach Absatz 2 Satz 2 erster Halbsatz genügt der Rückschein oder ein gleichwertiger Nachweis. Im Übrigen wird die Zustellung durch das Zeugnis der ersuchten Behörde nachgewiesen.
+(6) Soweit völkerrechtliche Vereinbarungen eine Zustellung außergerichtlicher Schriftstücke ermöglichen, ist für die Übermittlung solcher Schriftstücke in das Ausland das Amtsgericht zuständig, in dessen Bezirk die Person, die die Zustellung betreibt, ihren Wohnsitz oder gewöhnlichen Aufenthalt hat. Bei notariellen Urkunden ist auch das Amtsgericht zuständig, in dessen Bezirk der beurkundende Notar seinen Amtssitz hat. Bei juristischen Personen tritt an die Stelle des Wohnsitzes oder des gewöhnlichen Aufenthalts der Sitz der juristischen Person.
+
+§ 184 Zustellungsbevollmächtigter; Zustellung durch Aufgabe zur Post
+
+(1) Das Gericht kann bei der Zustellung nach § 183 Absatz 2 bis 5 anordnen, dass die Partei innerhalb einer angemessenen Frist einen Zustellungsbevollmächtigten benennt, der im Inland wohnt oder dort einen Geschäftsraum hat, falls sie nicht einen Prozessbevollmächtigten bestellt hat. Wird kein Zustellungsbevollmächtigter benannt, so können spätere Zustellungen bis zur nachträglichen Benennung dadurch bewirkt werden, dass das Schriftstück unter der Anschrift der Partei zur Post gegeben wird.
+(2) Das Schriftstück gilt zwei Wochen nach Aufgabe zur Post als zugestellt. Das Gericht kann eine längere Frist bestimmen. In der Anordnung nach Absatz 1 ist auf diese Rechtsfolgen hinzuweisen. Zum Nachweis der Zustellung ist in den Akten zu vermerken, zu welcher Zeit und unter welcher Anschrift das Schriftstück zur Post gegeben wurde.
+
+§ 185 Öffentliche Zustellung
+
+Die Zustellung kann durch öffentliche Bekanntmachung (öffentliche Zustellung) erfolgen, wenn
+    1. der Aufenthaltsort einer Person unbekannt und eine Zustellung an einen Vertreter oder Zustellungsbevollmächtigten nicht möglich ist,
+    2. bei juristischen Personen, die zur Anmeldung einer inländischen Geschäftsanschrift zum Handelsregister verpflichtet sind, eine Zustellung weder unter der eingetragenen Anschrift noch unter einer im Handelsregister eingetragenen Anschrift einer für Zustellungen empfangsberechtigten Person oder einer ohne Ermittlungen bekannten anderen inländischen Anschrift möglich ist,
+    3. eine Zustellung im Ausland nicht möglich ist oder keinen Erfolg verspricht oder
+    4. die Zustellung nicht erfolgen kann, weil der Ort der Zustellung die Wohnung einer Person ist, die nach den §§ 18 bis 20 des Gerichtsverfassungsgesetzes der Gerichtsbarkeit nicht unterliegt.
+
+§ 186 Bewilligung und Ausführung der öffentlichen Zustellung
+
+(1) Über die Bewilligung der öffentlichen Zustellung entscheidet das Prozessgericht. Die Entscheidung kann ohne mündliche Verhandlung ergehen.
+(2) Die öffentliche Zustellung erfolgt durch Aushang einer Benachrichtigung an der Gerichtstafel oder durch Veröffentlichung der Benachrichtigung in einem elektronischen Informations- und Kommunikationssystem, das im Gericht öffentlich zugänglich ist. Die Benachrichtigung muss erkennen lassen
+    1. die Person, für die zugestellt wird,
+    2. den Namen und die letzte bekannte Anschrift des Zustellungsadressaten,
+    3. das Datum, das Aktenzeichen des Schriftstücks und die Bezeichnung des Prozessgegenstandes sowie
+    4. die Stelle, wo das Schriftstück eingesehen werden kann.
+Die Benachrichtigung muss den Hinweis enthalten, dass ein Schriftstück öffentlich zugestellt wird und Fristen in Gang gesetzt werden können, nach deren Ablauf Rechtsverluste drohen können. Bei der Zustellung einer Ladung muss die Benachrichtigung den Hinweis enthalten, dass das Schriftstück eine Ladung zu einem Termin enthält, dessen Versäumung Rechtsnachteile zur Folge haben kann.
+(3) In den Akten ist zu vermerken, wann die Benachrichtigung ausgehängt und wann sie abgenommen wurde.
+
+§ 187 Veröffentlichung der Benachrichtigung
+
+Das Prozessgericht kann zusätzlich anordnen, dass die Benachrichtigung einmal oder mehrfach im Bundesanzeiger oder in anderen Blättern zu veröffentlichen ist.
+
+§ 188 Zeitpunkt der öffentlichen Zustellung
+
+Das Schriftstück gilt als zugestellt, wenn seit dem Aushang der Benachrichtigung ein Monat vergangen ist. Das Prozessgericht kann eine längere Frist bestimmen.
+
+§ 189 Heilung von Zustellungsmängeln
+
+Lässt sich die formgerechte Zustellung eines Dokuments nicht nachweisen oder ist das Dokument unter Verletzung zwingender Zustellungsvorschriften zugegangen, so gilt es in dem Zeitpunkt als zugestellt, in dem das Dokument der Person, an die die Zustellung dem Gesetz gemäß gerichtet war oder gerichtet werden konnte, tatsächlich zugegangen ist.
+
+§ 190 Einheitliche Zustellungsformulare
+
+Das Bundesministerium der Justiz und für Verbraucherschutz wird ermächtigt, durch Rechtsverordnung mit Zustimmung des Bundesrates zur Vereinfachung und Vereinheitlichung der Zustellung Formulare einzuführen.
+
+§ 191 Zustellung
+
+Ist eine Zustellung auf Betreiben der Parteien zugelassen oder vorgeschrieben, finden die Vorschriften über die Zustellung von Amts wegen entsprechende Anwendung, soweit sich nicht aus den nachfolgenden Vorschriften Abweichungen ergeben.
+
+§ 192 Zustellung durch Gerichtsvollzieher
+
+Die von den Parteien zu betreibenden Zustellungen erfolgen unbeschadet der Zustellung im Ausland (§ 183) durch den Gerichtsvollzieher. Im Verfahren vor dem Amtsgericht kann die Partei den Gerichtsvollzieher durch Vermittlung durch die Geschäftsstelle des Prozessgerichts mit der Zustellung beauftragen. Insoweit hat diese den Gerichtsvollzieher mit der Zustellung zu beauftragen.
+
+§ 193 Zustellung von Schriftstücken
+
+(1) Soll ein Dokument als Schriftstück zugestellt werden, so übermittelt die Partei dem Gerichtsvollzieher das zuzustellende Dokument
+    1. in Papierform zusammen mit den erforderlichen Abschriften oder
+    2. als elektronisches Dokument auf einem sicheren Übermittlungsweg.
+Im Falle des Satzes 1 Nummer 1 beglaubigt der Gerichtsvollzieher die Abschriften; er kann fehlende Abschriften selbst herstellen. Im Falle des Satzes 1 Nummer 2 fertigt der Gerichtsvollzieher die erforderlichen Abschriften als Ausdrucke selbst und beglaubigt diese.
+(2) Der Gerichtsvollzieher beurkundet im Falle des Absatzes 1 Satz 1 Nummer 1 auf der Urschrift des zuzustellenden Schriftstücks oder auf dem mit der Urschrift zu verbindenden hierfür vorgesehenen Formular die Ausführung der Zustellung nach § 182 Abs. 2 und vermerkt die Person, in deren Auftrag er zugestellt hat. Im Falle des Absatzes 1 Satz 1 Nummer 2 gilt Satz 1 mit der Maßgabe, dass der Gerichtsvollzieher die Beurkundung auf einem Ausdruck des zuzustellenden elektronischen Dokuments oder auf dem mit dem Ausdruck zu verbindenden hierfür vorgesehenen Formular vornimmt. Bei Zustellung durch Aufgabe zur Post ist das Datum und die Anschrift, unter der die Aufgabe erfolgte, zu vermerken.
+(3) Der Gerichtsvollzieher vermerkt auf dem zu übergebenden Schriftstück den Tag der Zustellung, sofern er nicht eine beglaubigte Abschrift der Zustellungsurkunde übergibt.
+(4) Die Zustellungsurkunde ist der Partei zu übermitteln, für die zugestellt wurde.
+
+§ 194 Zustellungsauftrag
+
+(1) Beauftragt der Gerichtsvollzieher die Post mit der Ausführung der Zustellung, vermerkt er auf dem zuzustellenden Schriftstück, im Auftrag welcher Person er es der Post übergibt. Auf der Urschrift des zuzustellenden Schriftstücks oder auf einem mit ihr zu verbindenden Übergabebogen bezeugt er, dass die mit der Anschrift des Zustellungsadressaten, der Bezeichnung des absendenden Gerichtsvollziehers und einem Aktenzeichen versehene Sendung der Post übergeben wurde.
+(2) Die Post leitet die Zustellungsurkunde unverzüglich an den Gerichtsvollzieher zurück.
+
+§ 195 Zustellung von Anwalt zu Anwalt
+
+(1) Sind die Parteien durch Anwälte vertreten, so kann ein Dokument auch dadurch zugestellt werden, dass der zustellende Anwalt das Dokument dem anderen Anwalt übermittelt (Zustellung von Anwalt zu Anwalt). Auch Schriftsätze, die nach den Vorschriften dieses Gesetzes vom Amts wegen zugestellt werden, können stattdessen von Anwalt zu Anwalt zugestellt werden, wenn nicht gleichzeitig dem Gegner eine gerichtliche Anordnung mitzuteilen ist. In dem Schriftsatz soll die Erklärung enthalten sein, dass von Anwalt zu Anwalt zugestellt werde. Die Zustellung ist dem Gericht, sofern dies für die zu treffende Entscheidung erforderlich ist, nachzuweisen. Für die Zustellung von Anwalt zu Anwalt gelten § 173 Absatz 1 und § 175 Absatz 2 Satz 1 entsprechend.
+(2) Zum Nachweis der Zustellung eines Schriftstücks genügt das mit Datum und Unterschrift versehene Empfangsbekenntnis desjenigen Anwalts, dem zugestellt worden ist. § 175 Absatz 4 gilt entsprechend. Die Zustellung eines elektronischen Dokuments ist durch ein elektronisches Empfangsbekenntnis in Form eines strukturierten Datensatzes nachzuweisen. Der Anwalt, der zustellt, hat dem anderen Anwalt auf Verlangen eine Bescheinigung über die Zustellung zu erteilen.
+
+§ 222 Fristberechnung
+
+(1) Für die Berechnung der Fristen gelten die Vorschriften des Bürgerlichen Gesetzbuchs.
+(2) Fällt das Ende einer Frist auf einen Sonntag, einen allgemeinen Feiertag oder einen Sonnabend, so endet die Frist mit Ablauf des nächsten Werktages.
+(3) Bei der Berechnung einer Frist, die nach Stunden bestimmt ist, werden Sonntage, allgemeine Feiertage und Sonnabende nicht mitgerechnet.
+
+§ 339 Einspruchsfrist
+
+(1) Die Einspruchsfrist beträgt zwei Wochen; sie ist eine Notfrist und beginnt mit der Zustellung des Versäumnisurteils.
+(2) Muss die Zustellung im Ausland erfolgen, so beträgt die Einspruchsfrist einen Monat. Das Gericht kann im Versäumnisurteil auch eine längere Frist bestimmen.
+(3) Muss die Zustellung durch öffentliche Bekanntmachung erfolgen, so hat das Gericht die Einspruchsfrist im Versäumnisurteil oder nachträglich durch besonderen Beschluss zu bestimmen.
+
+§ 692 Mahnbescheid
+
+(1) Der Mahnbescheid enthält:
+    1. die in § 690 Abs. 1 Nr. 1 bis 5 bezeichneten Erfordernisse des Antrags;
+    2. den Hinweis, dass das Gericht nicht geprüft hat, ob dem Antragsteller der geltend gemachte Anspruch zusteht;
+    3. die Aufforderung, innerhalb von zwei Wochen seit der Zustellung des Mahnbescheids, soweit der geltend gemachte Anspruch als begründet angesehen wird, die behauptete Schuld nebst den geforderten Zinsen und der dem Betrag nach bezeichneten Kosten zu begleichen oder dem Gericht mitzuteilen, ob und in welchem Umfang dem geltend gemachten Anspruch widersprochen wird;
+    4. den Hinweis, dass ein dem Mahnbescheid entsprechender Vollstreckungsbescheid ergehen kann, aus dem der Antragsteller die Zwangsvollstreckung betreiben kann, falls der Antragsgegner nicht bis zum Fristablauf Widerspruch erhoben hat;
+    5. für den Fall, dass Formulare eingeführt sind, den Hinweis, dass der Widerspruch mit einem Formular der beigefügten Art erhoben werden soll, das auch bei jedem Amtsgericht erhältlich ist und ausgefüllt werden kann, und dass für Rechtsanwälte und registrierte Personen nach § 10 Absatz 1 Satz 1 Nummer 1 des Rechtsdienstleistungsgesetzes sowie Kreditdienstleistungsinstitute mit einer Erlaubnis nach § 10 Absatz 1 des Kreditzweitmarktgesetzes § 702 Absatz 2 Satz 2 gilt;
+    6. für den Fall des Widerspruchs die Ankündigung, an welches Gericht die Sache abgegeben wird, mit dem Hinweis, dass diesem Gericht die Prüfung seiner Zuständigkeit vorbehalten bleibt.
+(2) An Stelle einer handschriftlichen Unterzeichnung genügt ein entsprechender Stempelabdruck oder eine elektronische Signatur.
+
+§ 694 Widerspruch gegen den Mahnbescheid
+
+(1) Der Antragsgegner kann gegen den Anspruch oder einen Teil des Anspruchs bei dem Gericht, das den Mahnbescheid erlassen hat, schriftlich Widerspruch erheben, solange der Vollstreckungsbescheid nicht verfügt ist.
+(2) Ein verspäteter Widerspruch wird als Einspruch behandelt. Dies ist dem Antragsgegner, der den Widerspruch erhoben hat, mitzuteilen.
+
+§ 700 Einspruch gegen den Vollstreckungsbescheid
+
+(1) Der Vollstreckungsbescheid steht einem für vorläufig vollstreckbar erklärten Versäumnisurteil gleich.
+(2) Die Streitsache gilt als mit der Zustellung des Mahnbescheids rechtshängig geworden.
+(3) Wird Einspruch eingelegt, so gibt das Gericht, das den Vollstreckungsbescheid erlassen hat, den Rechtsstreit von Amts wegen an das Gericht ab, das in dem Mahnbescheid gemäß § 692 Abs. 1 Nr. 1 bezeichnet worden ist, wenn die Parteien übereinstimmend die Abgabe an ein anderes Gericht verlangen, an dieses. § 696 Abs. 1 Satz 3 bis 5, Abs. 2, 5, § 697 Abs. 1, 4, § 698 gelten entsprechend. § 340 Abs. 3 ist nicht anzuwenden.
+(4) Bei Eingang der Anspruchsbegründung ist wie nach Eingang einer Klage weiter zu verfahren, wenn der Einspruch nicht als unzulässig verworfen wird. § 276 Abs. 1 Satz 1, 3, Abs. 2 ist nicht anzuwenden.
+(5) Geht die Anspruchsbegründung innerhalb der von der Geschäftsstelle gesetzten Frist nicht ein und wird der Einspruch auch nicht als unzulässig verworfen, bestimmt der Vorsitzende unverzüglich Termin; § 697 Abs. 3 Satz 2 gilt entsprechend.
+(6) Der Einspruch darf nach § 345 nur verworfen werden, soweit die Voraussetzungen des § 331 Abs. 1, 2 erster Halbsatz für ein Versäumnisurteil vorliegen; soweit die Voraussetzungen nicht vorliegen, wird der Vollstreckungsbescheid aufgehoben.

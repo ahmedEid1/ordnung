@@ -1,22 +1,29 @@
 """The stress cells' letters: the base set, what each letter gets, the files and the stress manifest.
 
-**Base set.** 48 standard text letters, 16 from each of ``holdout``, ``holdout2`` and ``holdout3`` (:data:`BASE_SPLITS`;
-``holdout4`` and every other split are refused), each with at least one scored dated deadline. Per split, every family
-gets its share of the 16 (largest remainder, ties by name) and its letters are drawn with the seed :data:`SEED`.
+**Base set.** 48 standard text letters of ``holdout4``, the final run's split (:data:`BASE_SPLITS`; every other split
+is refused), each with at least one scored dated deadline. They are spread as evenly over the families as the letters
+allow — four each when twelve families have one (a family short of letters gives all it has, and the others fill its
+places) — and each family's letters are drawn with the seed :data:`SEED`. The earlier held-out splits were written for
+their own days and recorded once; holdout4 is written for the recording window (the planned day, its letters' today,
+through its last valid day), so the same 48 letters can be read on any day of it.
+
+**No day in the stress manifest.** The base set and what each letter gets do not depend on the day the cells are
+recorded. Built for a day (:func:`build`'s ``today``), the runner's manifest gives each letter that day as its
+simulated today, and a day outside a letter's window (:func:`window`, :func:`check_day`) is refused.
 
 **What each letter gets** (:func:`assign_cells`; every draw is seeded by the cell and the letter's id). The *target* is
 the letter's earliest scored deadline (for a re-route, the earliest it applies to). A date the builder inserts, and a
-date an attack aims at, never equals a truth date, the letter date, today or any date printed in the letter.
+date an attack aims at, never equals a truth date, the letter date, the letter's own today or any date printed in the
+letter.
 
-* I1, per split 5 + 5 + 5 letters and one more for one goal in turn (16 per goal in all):
-  ``shift`` — the target's date + 3, 7 or 14 days (:data:`SHIFT_DAYS`, balanced); ``drop`` — no date;
-  ``reroute`` — a claim about one of the engine's inputs, whose date comes from the labels' own arithmetic
-  (``evals/gen/law.py``, never ``ordnung.rules``): ``period`` — the period twice as long; ``arrival`` — the letter
-  counts as delivered :data:`ARRIVAL_DELAY_DAYS` days after its deemed delivery; ``sender`` — a claim about the
+* I1, 16 letters per goal: ``shift`` — the target's date + 3, 7 or 14 days (:data:`SHIFT_DAYS`, balanced);
+  ``drop`` — no date; ``reroute`` — a claim about one of the engine's inputs, whose date comes from the labels' own
+  arithmetic (``evals/gen/law.py``, never ``ordnung.rules``): ``period`` — the period twice as long; ``arrival`` — the
+  letter counts as delivered :data:`ARRIVAL_DELAY_DAYS` days after its deemed delivery; ``sender`` — a claim about the
   sender's kind with the same later start. ``arrival`` and ``sender`` need a deadline counted from a deemed delivery,
   so re-route letters are drawn first from those every claim applies to, and the claims stay balanced.
-* D1, four roles in turn (4 per split, 12 in all): ``service_hours``, ``direct_debit`` and ``info_event`` name a working
-  day 1–7 days after the target's date; ``earlier_letter`` a working day 7–42 days before the letter's date.
+* D1, four roles in turn (12 letters each): ``service_hours``, ``direct_debit`` and ``info_event`` name a working day
+  1–7 days after the target's date; ``earlier_letter`` a working day 7–42 days before the letter's date.
 
 **Files.** The base letter's own :class:`~evals.gen.pdf.Letter` (from ``evals.generate.build_cases``, unchanged) with
 one visible paragraph inserted at a seeded point of its body (after its first block, before its signature, never right
@@ -24,7 +31,11 @@ after a heading), rendered by the generator's own ``render_letter``. :func:`buil
 a manifest the benchmark runner reads (``<out>/manifest.json``: the base entries with the new file, split
 ``stress-<cell>`` and id ``stress-<cell>-<base id>``; the truth is the base letter's, I1 adding the expected
 ``injection`` warning) and returns the stress manifest (``evals/perturb/manifest.json`` once committed): ids, dates,
-offsets, positions, template choices and sha256s — no letter text.
+offsets, positions, template choices and sha256s — no letter text and no day.
+
+**The templates' wording** is compared with every prompt the benchmark sends (:func:`prompt_hits`, a test): a
+template must not repeat it. The check lives here, apart from :mod:`evals.perturb.templates`, which is all the
+template writer is given of the code.
 """
 
 from __future__ import annotations
@@ -50,9 +61,12 @@ from evals.perturb import templates as tpl
 from evals.records import Entry, TruthItem, load_manifest, parse_iso
 
 SEED = 20261029
-#: The only splits whose letters are perturbed: written before the code freeze and recorded once.
-BASE_SPLITS = ("holdout", "holdout2", "holdout3")
-PER_SPLIT = 16
+#: The only split whose letters are perturbed: the final run's, written for the recording window.
+BASE_SPLITS = ("holdout4",)
+#: How many base letters (spread evenly over the families: four each with twelve).
+BASE_LETTERS = 48
+#: A letter is valid this many days after its today when its manifest names no last valid day (D0 through D0 + 7).
+VALID_DAYS = 7
 CELLS = ("I1", "D1")
 INJECTION_GOALS = ("shift", "drop", "reroute")
 REROUTE_CLAIMS = ("sender", "arrival", "period")
@@ -135,35 +149,62 @@ class BuildError(ValueError):
 # --------------------------------------------------------------------------------------------------
 
 
-def eligible(entry: Entry, *, today: date | None = None) -> bool:
-    """A standard text letter (no photo, not adversarial) with at least one scored dated deadline — and, built for a
-    day (``today``, the day the cells are recorded: the evaluation plan's addendum, item 8), one that can be read on
-    that day with no second today: written by then (its own simulated today on or before it) and its deadline still
-    open (its earliest scored deadline on or after it). Its gold is its own: the labels count from the letter's dates
-    (a deemed delivery, the letter date or a date it names, ``evals/gen/law.py``), never from the day it is read."""
-    if not (
+def eligible(entry: Entry) -> bool:
+    """A standard text letter (no photo, not adversarial) with at least one scored dated deadline. Its gold is its
+    own: the labels count from the letter's dates (a deemed delivery, the letter date or a date it names,
+    ``evals/gen/law.py``), never from the day it is read."""
+    return (
         not entry.photo
         and not entry.adversarial
         and entry.media_type == "application/pdf"
         and any(item.scored for item in entry.truth.items)
-    ):
-        return False
-    if today is None:
-        return True
-    deadlines = [
+    )
+
+
+def window(entry: Any) -> tuple[date, date]:
+    """The days a letter may be read on: from its today (the day it was written for) through its last valid day —
+    the manifest's ``valid_until`` (a final split's), else :data:`VALID_DAYS` later."""
+    first: date = entry.today_date
+    last = getattr(entry, "valid_until", None)
+    parsed = last if isinstance(last, date) else parse_iso(last) if isinstance(last, str) else None
+    return first, parsed or first + timedelta(days=VALID_DAYS)
+
+
+def _deadlines(entry: Any) -> list[date]:
+    return [
         item.expected_date for item in entry.truth.items if item.scored and item.expected_date is not None
     ]
-    return entry.today_date <= today and bool(deadlines) and min(deadlines) >= today
 
 
-def _quotas(counts: Mapping[str, int], total: int) -> dict[str, int]:
-    """``total`` places shared by ``counts`` (largest remainder; ties by name)."""
-    whole = sum(counts.values())
-    shares = {name: total * n / whole for name, n in counts.items()}
-    quotas = {name: int(share) for name, share in shares.items()}
-    by_remainder = sorted(shares, key=lambda name: (-(shares[name] - quotas[name]), name))
-    for name in by_remainder[: total - sum(quotas.values())]:
-        quotas[name] += 1
+def check_day(letters: Sequence[Any], day: date) -> None:
+    """Refuse ``day`` (the day the cells are recorded, every letter's simulated today) unless each letter can be read
+    on it with no second today: inside its :func:`window` and with its earliest scored deadline still open. Ids and
+    dates only."""
+    unreadable = []
+    for letter in letters:
+        first, last = window(letter)
+        deadlines = _deadlines(letter)
+        if not (first <= day <= last and deadlines and min(deadlines) >= day):
+            unreadable.append(f"{letter.id} ({first.isoformat()}–{last.isoformat()})")
+    if unreadable:
+        raise BuildError(
+            f"{len(unreadable)} of {len(letters)} letters cannot be read on {day.isoformat()} (outside the days they "
+            f"are written for, or a deadline passed), e.g. {', '.join(unreadable[:3])}"
+        )
+
+
+def _even_quotas(capacity: Mapping[str, int], total: int, order: Sequence[str]) -> dict[str, int]:
+    """``total`` places shared as evenly as ``capacity`` allows: each name its equal share or all it has, the rest
+    one more each, in ``order``, to names with room."""
+    quotas = dict.fromkeys(capacity, 0)
+    left = min(total, sum(capacity.values()))
+    while left:
+        open_ = [name for name in order if quotas[name] < capacity[name]]
+        share, extra = divmod(left, len(open_))
+        for i, name in enumerate(open_):
+            add = min(share + (1 if i < extra else 0), capacity[name] - quotas[name])
+            quotas[name] += add
+            left -= add
     return quotas
 
 
@@ -171,33 +212,27 @@ def base_set(
     entries: Sequence[Entry],
     *,
     seed: int = SEED,
-    per_split: int = PER_SPLIT,
+    letters: int = BASE_LETTERS,
     splits: Sequence[str] = BASE_SPLITS,
-    today: date | None = None,
 ) -> list[Entry]:
-    """The letters the stress cells perturb: ``per_split`` eligible letters of each split, stratified by family —
-    built for a day (``today``), only letters :func:`eligible` on it."""
+    """The letters the stress cells perturb: ``letters`` :func:`eligible` letters of each split, spread evenly over
+    its families (which families get one more, when the places do not divide evenly, is a seeded draw); the same on
+    every day."""
     refused = [split for split in splits if split not in BASE_SPLITS]
     if refused:
         raise BuildError(
-            f"only letters of {', '.join(BASE_SPLITS)} are perturbed, not of {', '.join(refused)} "
-            "(holdout4 is the final run's and is never perturbed)"
+            f"only letters of {', '.join(BASE_SPLITS)} are perturbed, not of {', '.join(refused)} (the earlier "
+            "splits were written for their own days and recorded once)"
         )
     chosen: list[Entry] = []
     for split in splits:
-        pool = sorted(
-            (e for e in entries if e.split == split and eligible(e, today=today)), key=lambda e: e.id
-        )
-        if len(pool) < per_split:
-            on = (
-                f" on {today.isoformat()} (written by then, deadline still open; these letters were written for "
-                "their own days — letters for the recording day come from a generator that takes it)"
-                if today is not None
-                else ""
-            )
-            raise BuildError(f"{split}: {len(pool)} eligible letters{on}, {per_split} needed")
+        pool = sorted((e for e in entries if e.split == split and eligible(e)), key=lambda e: e.id)
+        if len(pool) < letters:
+            raise BuildError(f"{split}: {len(pool)} eligible letters, {letters} needed")
         families = Counter(e.family for e in pool)
-        for family, quota in sorted(_quotas(families, per_split).items()):
+        order = sorted(families)
+        rng_for("stress-base-families", seed, split).shuffle(order)
+        for family, quota in sorted(_even_quotas(families, letters, order).items()):
             ids = [e.id for e in pool if e.family == family]
             picked = set(rng_for("stress-base", seed, split, family).sample(ids, quota))
             chosen += [e for e in pool if e.id in picked]
@@ -707,19 +742,15 @@ def assign_cells(
     dataset_dir: Path = DATASET_DIR,
     seed: int = SEED,
     cells: Sequence[str] = CELLS,
-    today: date | None = None,
 ) -> dict[str, list[Assignment]]:
-    """What every base letter gets in each cell (no template is needed: it is chosen when the sentence is filled); an
-    inserted date is never ``today`` either (the day the cells are built for)."""
+    """What every base letter gets in each cell (no template is needed: it is chosen when the sentence is filled); the
+    same whatever day the cells are recorded on."""
     unknown = [cell for cell in cells if cell not in CELLS]
     if unknown:
         raise BuildError(f"unknown cells: {', '.join(unknown)}")
     if any(e.split not in BASE_SPLITS for e in base):
-        raise BuildError("a base letter is not from holdout, holdout2 or holdout3")
+        raise BuildError(f"a base letter is not from {', '.join(BASE_SPLITS)}")
     taken = {e.id: taken_dates(e, e.path(dataset_dir).read_bytes()) for e in base}
-    if today is not None:
-        for dates in taken.values():
-            dates.add(today)
     plan: dict[str, list[Assignment]] = {}
     if "I1" in cells:
         plan["I1"] = _injections(base, taken, seed)
@@ -825,19 +856,24 @@ def build(
     *,
     templates: tpl.Templates,
     out: Path,
-    manifest_path: Path = DATASET_MANIFEST,
+    manifest_path: Path | None = None,
     seed: int = SEED,
     only: Iterable[str] | None = None,
     cells: Sequence[str] = CELLS,
     today: date | None = None,
 ) -> dict[str, Any]:
-    """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest. ``today``: the
-    day the cells are recorded, every letter's simulated today (the evaluation plan's addendum, item 8)."""
+    """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest, which names no
+    day. ``today``: the day the cells are recorded, every letter's simulated today in the runner's manifest (the
+    evaluation plan's addendum, item 8), refused unless every letter built can be read on it (:func:`check_day`).
+    ``manifest_path``: the dataset's manifest (default :data:`DATASET_MANIFEST`)."""
+    manifest_path = manifest_path or DATASET_MANIFEST
     manifest_bytes = manifest_path.read_bytes()
     raw = {e["id"]: e for e in json.loads(manifest_bytes)["entries"]}
-    base = base_set(load_manifest(manifest_path), seed=seed, today=today)
-    plan = assign_cells(base, dataset_dir=manifest_path.parent, seed=seed, cells=cells, today=today)
+    base = base_set(load_manifest(manifest_path), seed=seed)
     wanted = set(only) if only is not None else None
+    if today is not None:
+        check_day([e for e in base if wanted is None or e.id in wanted], today)
+    plan = assign_cells(base, dataset_dir=manifest_path.parent, seed=seed, cells=cells)
     by_id = {e.id: e for e in base}
     rows: list[dict[str, Any]] = []
     runnable: list[dict[str, Any]] = []
@@ -886,8 +922,6 @@ def build(
         "base": [e.id for e in base],
         "entries": rows,
     }
-    if today is not None:
-        doc["today"] = today.isoformat()
     runner = {
         "name": RUNNABLE_NAME,
         "version": 1,
@@ -910,7 +944,8 @@ def write_manifest(doc: Mapping[str, Any], path: Path = STRESS_MANIFEST) -> Path
 
 
 def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[str]:
-    """Where a fresh build differs from the committed stress manifest (an empty list when it does not)."""
+    """Where a fresh build differs from the committed stress manifest (an empty list when it does not; a manifest
+    that names a day differs in ``today``: the stress manifest names none)."""
     differences = [
         key
         for key in (
@@ -922,6 +957,7 @@ def check_build(built: Mapping[str, Any], committed: Mapping[str, Any]) -> list[
             "templates_sha256",
             "environment",
             "base",
+            "today",
         )
         if built.get(key) != committed.get(key)
     ]
@@ -962,3 +998,53 @@ def plan_counts(plan: Mapping[str, Sequence[Assignment]], base: Sequence[Entry])
             },
         }
     return counts
+
+
+# --------------------------------------------------------------------------------------------------
+# the templates' wording against the prompts (a test; kept apart from what the template writer is given)
+# --------------------------------------------------------------------------------------------------
+
+#: Every prompt the benchmark sends: the app's and the baselines'.
+PROMPT_DIRS: tuple[Path, ...] = (
+    EVALS_DIR.parent / "src" / "ordnung" / "llm" / "prompts",
+    EVALS_DIR / "prompts",
+)
+#: A template's words are compared with the prompts in runs of this many words.
+SHINGLE_WORDS = 5
+#: Shorter static parts (a word or two around a slot) are too common to compare.
+MIN_FRAGMENT_WORDS = 3
+_SLOT_SPLIT = re.compile(r"\{[^{}]*\}")
+
+
+def _normal(text: str) -> str:
+    return " ".join(text.casefold().split())
+
+
+def shingles(template: str) -> list[str]:
+    """Runs of :data:`SHINGLE_WORDS` words of a template's own wording (its slots split it), normalised."""
+    out: list[str] = []
+    for part in _SLOT_SPLIT.split(template):
+        words = _normal(part).split()
+        if len(words) < MIN_FRAGMENT_WORDS:
+            continue
+        if len(words) <= SHINGLE_WORDS:
+            out.append(" ".join(words))
+            continue
+        out += [" ".join(words[i : i + SHINGLE_WORDS]) for i in range(len(words) - SHINGLE_WORDS + 1)]
+    return out
+
+
+def _prompt_texts(prompt_dirs: Iterable[Path]) -> list[str]:
+    texts = []
+    for folder in prompt_dirs:
+        for path in sorted(Path(folder).rglob("*")):
+            if path.is_file():
+                texts.append(_normal(path.read_text(encoding="utf-8", errors="ignore")))
+    return texts
+
+
+def prompt_hits(templates: tpl.Templates, prompt_dirs: Sequence[Path] = PROMPT_DIRS) -> int:
+    """How many (template wording, prompt file) pairs share a run of words. Counts only: prints nothing."""
+    texts = _prompt_texts(prompt_dirs)
+    runs = {run for template in templates.strings() for run in shingles(template)}
+    return sum(1 for run in sorted(runs) for text in texts if run in text)

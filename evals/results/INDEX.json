@@ -3,9 +3,9 @@
  "about": "Every results file with its sha256, role, recording and how `make eval-reproduce` checks it, the replay's verdict at HEAD and every changed date with the fix that changed it; the dataset's and the recordings' hashes, the CI gates and every cell. Written by `python -m evals.reproduce --write`; a change's `because` by a person.",
  "pinned_model": "claude-sonnet-5",
  "dataset": {
-  "manifest_sha256": "1444c112f0e0430b2ac0fab1c474e9894f18cb6b8507038b9ef6d4f67076c9f0",
-  "files": 282,
-  "tree_sha256": "c4d5812bc9dae61adfaf54a488047b42960e488627af0df279e5b381d342e660"
+  "manifest_sha256": "c353fb50424fe0cbcd3af9abd4331126cd57b9287cf8b54590b29192f7ab3c57",
+  "files": 283,
+  "tree_sha256": "0e00e3ceb7e7e9fc71a762537c6ac64b537e870f827b01224429adcb2e988bd7"
  },
  "recordings": {
   "claude-sonnet-5": {
@@ -246,6 +246,11 @@
    "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
   },
   {
+   "cell": "ask/heldout/final",
+   "status": "not recorded yet",
+   "needs": "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)"
+  },
+  {
    "cell": "e2e/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
@@ -258,6 +263,21 @@
    "needs": "holdout4's and newkinds' recorded readings (plan EV9)"
   },
   {
+   "cell": "without-land/holdout4/r1",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+  },
+  {
+   "cell": "without-land/holdout4/r2",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+  },
+  {
+   "cell": "without-land/holdout4/r3",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 3 (the final run)"
+  },
+  {
    "cell": "ablation/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
@@ -265,9 +285,19 @@
    ]
   },
   {
-   "cell": "ablation/holdout4",
+   "cell": "ablation/holdout4/r1",
    "status": "not recorded yet",
-   "needs": "holdout4's recorded readings (plan EV9)"
+   "needs": "the recorded readings of holdout4's read 1 (the final run)"
+  },
+  {
+   "cell": "ablation/holdout4/r2",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 2 (the final run)"
+  },
+  {
+   "cell": "ablation/holdout4/r3",
+   "status": "not recorded yet",
+   "needs": "the recorded readings of holdout4's read 3 (the final run)"
   },
   {
    "cell": "stress/I1",
@@ -2236,7 +2266,7 @@
   },
   {
    "file": "2026-10-30-claude-sonnet-5-e2e.json",
-   "sha256": "072f91b6ade3beb469d4d95042e6028251861d4bdda64ec9c8b19168b772e079",
+   "sha256": "6dbf27f9f4f9cd22779913f813e8bd60c9f47b4680181d96efb50f1e5a466449",
    "kind": "e2e",
    "role": "replay",
    "splits": [
@@ -2248,7 +2278,7 @@
    ],
    "recorded": {
     "date": "2026-10-30",
-    "commit": "0c2b0cda",
+    "commit": "46d8e1de",
     "backend": "replay"
    },
    "gates": [],

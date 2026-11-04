@@ -6,11 +6,12 @@ One command instead of seven. In a temporary folder, a few at a time, it replays
 * every recorded split with every condition (``evals.run``), and each repeat and final split once its recording
   exists; every per-letter results file of the pinned model is compared with the replay of its split, letter by
   letter and item by item;
-* the replay without the sender's Land (``scripts/eval_without_land.py``), compared with the published file;
+* the replay without the sender's Land (``scripts/eval_without_land.py``), compared with the published file, and
+  each read of the final run replayed that way, compared with its own file;
 * the Ask benchmark, development set (and the held-out set once recorded), with the CI gate's thresholds and
   ``--check-docs``;
-* each end-to-end run (``evals.e2e --compare``), each check ablation (``scripts/eval_ablate_checks.py --check``) and
-  each stress run (``scripts/eval_perturb.py --check``) that has a results file;
+* each end-to-end run (``evals.e2e --compare``), each check ablation (``scripts/eval_ablate_checks.py --check``; the
+  final run's once per read) and each stress run (``scripts/eval_perturb.py --check``) that has a results file;
 
 then checks that the analysis (``evals.analysis --check``) and the presenter's pages (``evals.present --check``) are
 what the results render, and that ``evals/results/items.csv`` is what the results files give (:mod:`evals.export`).
@@ -82,10 +83,14 @@ ABOUT = (
 #: The final run's reads per split (plan §6.2): each one a cell, *not recorded yet* until its results file exists.
 FINAL_READS = {"holdout4": 3, "newkinds": 1}
 ASK_HELDOUT_READS = 3
+#: The schema of the file of the held-out Ask set's runs (``python -m evals.ask.heldout --final``).
+ASK_FINAL_SCHEMA = "ordnung-eval-ask-final/"
 STRESS_CELLS = ("I1", "D1")
-#: The planned cells that replay the final run's readings another way (plan EV9).
+#: The planned cells that replay the final run's readings another way: end to end once (read 1), and
+#: without the sender's Land and with the code checks switched off once per read.
 FINAL_E2E = ("holdout4", "newkinds")
 FINAL_ABLATION = ("holdout4",)
+FINAL_WITHOUT_LAND = ("holdout4",)
 #: What a run measures itself, never part of a comparison: the code's fingerprint, the wall-clock time and whether
 #: the answer was live or replayed.
 VOLATILE = frozenset({"prediction.fingerprint", "prediction.calls[].wall_ms", "prediction.calls[].backend"})
@@ -225,8 +230,11 @@ def _options(args: Sequence[str]) -> dict[str, list[str]]:
 
 
 def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
-    """The gates the ``backend-slow`` job of ``ci.yml`` runs: each split's replay (``benchmark/<split>``), the Ask
-    benchmark's arguments (``ask/dev``) and the published file the replay without the Land must equal."""
+    """The gates the ``backend-slow`` job of ``ci.yml`` runs, one per read: each split's replay
+    (``benchmark/<split>`` for its first read, ``benchmark/<split>/r<N>`` for read N of the final run), the Ask
+    benchmark's arguments (``ask/dev`` for the development set, ``ask/<set>/r<N>`` for each run of the held-out set)
+    and the published file the replay without the Land must equal. A command the step continues over the next line
+    after a backslash is read as the shell runs it, as one line."""
     try:
         import yaml  # PyYAML comes with uvicorn[standard]
     except ImportError as exc:  # pragma: no cover - a dependency of the app
@@ -235,18 +243,22 @@ def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
     gates: dict[str, Any] = {}
     for step in workflow["jobs"]["backend-slow"]["steps"]:
         run = str(step.get("run", ""))
-        for line in run.splitlines():
-            if "ordnung eval" not in line:
-                continue
-            options = _options(shlex.split(line.split("ordnung eval", 1)[1]))
-            split = (options.get("--split") or ["test"])[0]
-            gates[f"benchmark/{split}"] = {
-                "conditions": options.get("--conditions") or "all",
-                "min_accuracy": float(options["--min-accuracy"][0]),
-                "max_dangerous_late": float(options["--max-dangerous-late"][0]),
-            }
-        if "-m evals.ask" in run:
-            gates["ask/dev"] = {"args": shlex.split(run.split("-m evals.ask", 1)[1])}
+        for line in run.replace("\\\n", " ").splitlines():
+            if "ordnung eval" in line:
+                options = _options(shlex.split(line.split("ordnung eval", 1)[1]))
+                split = (options.get("--split") or ["test"])[0]
+                repeat = int((options.get("--repeat") or ["1"])[0])
+                gates[f"benchmark/{split}" if repeat == 1 else f"benchmark/{split}/r{repeat}"] = {
+                    "conditions": options.get("--conditions") or "all",
+                    "min_accuracy": float(options["--min-accuracy"][0]),
+                    "max_dangerous_late": float(options["--max-dangerous-late"][0]),
+                }
+            elif "-m evals.ask" in line:
+                args = shlex.split(line.split("-m evals.ask", 1)[1])
+                options = _options(args)
+                ask_set = (options.get("--set") or ["dev"])[0]
+                repeat = int((options.get("--repeat") or ["1"])[0])
+                gates["ask/dev" if ask_set == "dev" else f"ask/{ask_set}/r{repeat}"] = {"args": args}
         if "eval_without_land" in run:
             gates["without-land"] = {"published": Path(step["env"]["PUBLISHED"]).name}
     return dict(sorted(gates.items()))
@@ -267,6 +279,8 @@ def _kind(name: str, data: Mapping[str, Any]) -> tuple[str, str]:
     schema = data.get("schema")
     if isinstance(schema, str) and schema.startswith("ordnung-eval-stress/"):
         return "stress", "final"
+    if isinstance(schema, str) and schema.startswith(ASK_FINAL_SCHEMA):
+        return "ask-final", "final"
     try:
         return present_model.kind_of(name, data), present_model.role_of(name, data)
     except PresentError as exc:
@@ -275,11 +289,22 @@ def _kind(name: str, data: Mapping[str, Any]) -> tuple[str, str]:
 
 def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str, Any]:
     meta: Mapping[str, Any] = data["meta"] if isinstance(data.get("meta"), dict) else {}
+    dirty = meta.get("dirty")
+    if meta.get("backend") == "replay" and isinstance(dirty, list) and dirty:
+        # a replay names the commit it ran at: from a tree with changes, that commit's code is not what wrote it (a
+        # live recording stays as recorded, and the analysis drops a read recorded so)
+        listed = ", ".join(str(item) for item in dirty[:3]) + (" …" if len(dirty) > 3 else "")
+        raise ReproduceError(
+            f"{path.name}: written from a tree with changes to {listed}, so its commit {meta.get('commit')} is not "
+            "the code that wrote it: commit the code, then write it again from a clean tree"
+        )
     row: dict[str, Any] = {"file": path.name, "sha256": sha256_file(path), "kind": kind, "role": role}
     if kind == "run":
         row.update(split=meta["split"], repeat=int(meta.get("repeat", 1)))
         day = meta.get("recording_day")
-        if role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
+        if role in ("final", "held-out") and meta.get("recording_days") is not None:
+            _check_unit_days(path, data, meta)
+        elif role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
             raise ReproduceError(
                 f"{path.name}: a {role} recording made on {day} for letters of {', '.join(meta['simulated_today'])} "
                 "— two todays: its letters are built for the day they are recorded (the plan's addendum, item 8)"
@@ -297,6 +322,8 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         row["splits"] = sorted(meta.get("splits") or [])
     elif kind in ("checks-ablated", "without-land"):
         row["splits"] = sorted(data.get("splits") or {})
+        if meta.get("repeat") is not None:  # the run it replays, when the file names one
+            row["repeat"] = int(meta["repeat"])
     elif kind == "analysis":
         row["analysis"] = meta.get("kind")
     if kind == "ask":
@@ -309,10 +336,42 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         recorded = {
             "date": meta.get("date"),
             "commit": meta.get("commit"),
-            "backend": meta.get("backend") or ("analysis" if kind == "analysis" else None),
+            "backend": meta.get("backend") or ("analysis" if kind in ("analysis", "ask-final") else None),
         }
     row["recorded"] = recorded
     return row
+
+
+def _check_unit_days(path: Path, data: Mapping[str, Any], meta: Mapping[str, Any]) -> None:
+    """A final read recorded on several days of its window (``meta.recording_days``): each letter's today must be the
+    day its unit was recorded on (every prediction's ``recorded_on``), and the read's days its letters' days."""
+    days = sorted(meta.get("recording_days") or [])
+    told = sorted(meta.get("simulated_today") or [])
+    day = meta.get("recording_day")
+    problems = []
+    if days != told:
+        listed = ", ".join(days) or "no day"
+        problems.append(
+            f"its letters are told {', '.join(told) or 'no day'}, its units were recorded on {listed}"
+        )
+    if day and day not in days:
+        problems.append(f"its last run was on {day}, a day none of its units was recorded on")
+    for entry in data.get("entries") or []:
+        recorded = {
+            str(outcome["prediction"].get("recorded_on"))
+            for outcome in (entry.get("conditions") or {}).values()
+            if isinstance(outcome, Mapping) and isinstance(outcome.get("prediction"), Mapping)
+        }
+        if recorded != {str(entry.get("today"))}:
+            listed = ", ".join(sorted(recorded)) or "no day"
+            problems.append(
+                f"{entry.get('id')} is told {entry.get('today')}, its unit was recorded on {listed}"
+            )
+    if problems:
+        raise ReproduceError(
+            f"{path.name}: two todays — {'; '.join(problems[:3])}: each unit's letters are told the day the unit is "
+            "recorded on"
+        )
 
 
 def _ask_rescoring(data: Mapping[str, Any]) -> bool:
@@ -340,8 +399,12 @@ def _group(row: Mapping[str, Any], data: Mapping[str, Any]) -> tuple[Any, ...] |
     if kind == "e2e":
         meta = data.get("meta") or {}
         return ("e2e", tuple(row["splits"]), bool(meta.get("partial")))
-    if kind in ("checks-ablated", "without-land", "stress"):
+    if kind in ("checks-ablated", "without-land"):  # a read of the final run is a group of its own
+        return (kind, tuple(row.get("splits", ())), int(row.get("repeat", 1)))
+    if kind == "stress":
         return (kind, tuple(row.get("splits", ())))
+    if kind == "ask-final":
+        return ("ask-final",)
     return ("analysis", row.get("analysis"))
 
 
@@ -352,6 +415,7 @@ CHECKS = {
     "checks-ablated": "ablation --check",
     "analysis": "analysis --check",
     "stress": "stress --check",
+    "ask-final": "ask-final --check",
 }
 
 
@@ -389,6 +453,17 @@ def _checks(
             row["gates"] = ["without-land"]
 
 
+def _planned_reads(prefix: str, planned: Sequence[str]) -> dict[str, str]:
+    """The cells of a replay of the final run's readings another way, one per read (``<prefix>/<splits>/r<N>``),
+    with what each waits for."""
+    joined = "-".join(sorted(planned))
+    reads = min(FINAL_READS.get(split, 1) for split in planned)
+    return {
+        f"{prefix}/{joined}/r{read}": f"the recorded readings of {joined}'s read {read} (the final run)"
+        for read in range(1, reads + 1)
+    }
+
+
 def _cells(
     rows: Sequence[Mapping[str, Any]], data: Mapping[str, Mapping[str, Any]], gates: Mapping[str, Any]
 ) -> list[dict[str, Any]]:
@@ -411,7 +486,7 @@ def _cells(
                     needs="its letters, written blind after the code freeze (plan EV8), and their recording "
                     "(plan §7)",
                 )
-            elif not splits.get(split).recorded and not files:  # pragma: no cover - a declared split
+            elif not files:  # pragma: no cover - a declared split
                 cell.update(status="not recorded yet", needs="its letters and their recording")
             else:
                 cell.update(status="replayed", checks=sorted(files))
@@ -429,7 +504,9 @@ def _cells(
         else:
             cells.append({"cell": name, "status": "not recorded yet", "needs": needs})
 
-    without_land = [row for row in checked if row["kind"] == "without-land"]
+    without_land = [
+        row for row in checked if row["kind"] == "without-land" and task_of(row) == "without-land"
+    ]
     if without_land:
         add("without-land", "without-land", without_land, "replayed", "")
     asks: dict[tuple[str, int], list[Mapping[str, Any]]] = {}
@@ -448,17 +525,25 @@ def _cells(
             "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their "
             "recording (plan §7, R3 and R6)",
         )
-    for kind, prefix, planned, needs in (
-        ("e2e", "e2e", FINAL_E2E, "holdout4's and newkinds' recorded readings (plan EV9)"),
-        ("checks-ablated", "ablation", FINAL_ABLATION, "holdout4's recorded readings (plan EV9)"),
+    add(
+        "ask/heldout/final",
+        "",
+        [row for row in checked if row["kind"] == "ask-final"],
+        "re-rendered",
+        "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)",
+    )
+    for kind, planned in (
+        (
+            "e2e",
+            {f"e2e/{'-'.join(sorted(FINAL_E2E))}": "holdout4's and newkinds' recorded readings (plan EV9)"},
+        ),
+        ("without-land", _planned_reads("without-land", FINAL_WITHOUT_LAND)),
+        ("checks-ablated", _planned_reads("ablation", FINAL_ABLATION)),
     ):
-        members = [row for row in checked if row["kind"] == kind]
-        names = {"-".join(row["splits"]): row for row in members}
-        for joined, row in sorted(names.items()):
-            add(f"{prefix}/{joined}", "", [row], "replayed", "")
-        joined = "-".join(sorted(planned))
-        if joined not in names:
-            add(f"{prefix}/{joined}", "", [], "", needs)
+        named = {str(task_of(row)): row for row in checked if row["kind"] == kind}
+        named.pop("without-land", None)  # the earlier splits' published replay: its own cell, above
+        for name in sorted(named.keys() | planned.keys()):
+            add(name, "", [named[name]] if name in named else [], "replayed", planned.get(name, ""))
     stress = [row for row in checked if row["kind"] == "stress"]
     for name in STRESS_CELLS:
         covering = [row for row in stress if name in (data[row["file"]].get("meta") or {}).get("cells", [])]
@@ -972,6 +1057,20 @@ def _python(module: str, *args: str) -> list[str]:
     return [sys.executable, "-m", module, *args]
 
 
+def _final(split: str) -> bool:
+    """Whether ``split`` is one of the final run's (:mod:`evals.splits`)."""
+    return split in splits.names() and splits.get(split).role == "final"
+
+
+def _per_read(row: Mapping[str, Any]) -> str | None:
+    """A replay of the final run's readings another way is one per read: ``/r<N>`` after its splits (``None``: the
+    published replay of the earlier splits, of run 1)."""
+    repeat = int(row.get("repeat", 1))
+    if repeat == 1 and not any(_final(split) for split in row["splits"]):
+        return None
+    return f"{'-'.join(row['splits'])}/r{repeat}"
+
+
 def task_of(row: Mapping[str, Any]) -> str | None:
     """The task that checks a row (``None``: its hash only)."""
     check = row.get("check")
@@ -980,15 +1079,18 @@ def task_of(row: Mapping[str, Any]) -> str | None:
     if check == "ask --check-docs":
         return f"ask/{row['set']}/r{row['repeat']}"
     if check == "without-land replay":
-        return "without-land"
+        read = _per_read(row)
+        return f"without-land/{read}" if read else "without-land"
     if check == "e2e --compare":
         return "e2e/" + "-".join(row["splits"])
     if check == "ablation --check":
-        return "ablation/" + "-".join(row["splits"])
+        return "ablation/" + (_per_read(row) or "-".join(row["splits"]))
     if check == "analysis --check":
         return f"analysis/{row['analysis']}"
     if check == "stress --check":
         return "stress"
+    if check == "ask-final --check":
+        return "ask/heldout/final"
     return None
 
 
@@ -1024,13 +1126,15 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
         path = results_dir / row["file"]
         data = _load(path)
         if row["kind"] == "without-land":
-            out = work / "without-land"
+            out = work / _safe(name)  # one folder per task: each read's replay writes its own file
+            repeat = int(row.get("repeat", 1))
             argv = _python(
                 "scripts.eval_without_land",
                 "--date",
                 str(row["recorded"]["date"]),
                 "--splits",
                 *list(data["splits"]),
+                *(["--repeat", str(repeat)] if repeat > 1 else []),
                 "--out",
                 str(out),
             )
@@ -1050,6 +1154,13 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
             tasks.append(Task(name, _python("evals.ask", *args)))
         elif row["kind"] == "e2e":
             known = sorted({str(aside["entry_id"]) for aside in data.get("set_aside", [])})
+            # the earlier splits' run keeps its gates (exact parity, no late reminder); a final split's run is held to
+            # what its file publishes, whatever the final run shows (--compare checks that the replay gives it)
+            every = (data.get("metrics") or {}).get("all") or {}
+            parity = every.get("parity") or {}
+            final = any(_final(split) for split in row["splits"])
+            exact = not final or (bool(parity.get("n")) and not parity.get("differ"))
+            late = len(every.get("late_reminders") or []) if final else 0
             argv = _python(
                 "evals.e2e",
                 "--splits",
@@ -1057,15 +1168,23 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
                 "--no-write",
                 "--compare",
                 str(path),
-                "--exact-parity",
+                *(["--exact-parity"] if exact else []),
                 "--max-late-reminders",
-                "0",
+                str(late),
                 "--known-set-aside",
                 *known,
             )
             tasks.append(Task(name, argv))
         elif row["kind"] == "checks-ablated":
             tasks.append(Task(name, _python("scripts.eval_ablate_checks", "--check", str(path))))
+        elif row["kind"] == "ask-final":
+            runs = [
+                str(results_dir / str(item["file"])) for item in (data.get("meta") or {}).get("inputs", [])
+            ]
+            argv = _python("evals.ask.heldout", "--final", *runs, "--check")
+            if not default:
+                argv += ["--results-dir", str(results_dir)]
+            tasks.append(Task(name, argv))
         elif row["kind"] == "stress":
             out = work / "stress"
             argv = _python(
@@ -1085,12 +1204,20 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
         elif row["kind"] == "analysis":
             if row.get("analysis") == "final":
                 meta = data.get("meta") or {}
-                inputs = [str(results_dir / str(item["file"])) for item in meta.get("inputs", [])]
+                # the pre-registration by the path the file recorded (from the repository's root, where the task
+                # runs) and the reads it was given, never the earlier splits it pools: its pool_with names those
+                inputs = [
+                    str(results_dir / str(item["file"]))
+                    for item in meta.get("inputs", [])
+                    if item.get("role") != "pooled"
+                ]
                 argv = _python(
                     "evals.analysis",
                     "--prereg",
                     str((meta.get("prereg") or {}).get("file")),
                     *inputs,
+                    "--date",
+                    str(meta.get("date")),
                     "--check",
                 )
             else:
@@ -1155,13 +1282,15 @@ def replays_of(tasks: Sequence[Task], done: Mapping[str, Done]) -> dict[str, dic
     return found
 
 
-def without_land_problems(published: Mapping[str, Any], replayed: Mapping[str, Any] | None) -> list[str]:
-    """Like CI's step: the replay gives the published numbers, split by split."""
+def without_land_problems(
+    published: Mapping[str, Any], replayed: Mapping[str, Any] | None, task: str = "without-land"
+) -> list[str]:
+    """Like CI's step: the replay gives the published numbers, split by split (``task`` names the read)."""
     if replayed is None:
-        return ["without-land: the replay wrote no results file"]
+        return [f"{task}: the replay wrote no results file"]
     old, new = published.get("splits", {}), replayed.get("splits", {})
     return [
-        f"without-land {split}: the replay doesn't give the published numbers"
+        f"{task} {split}: the replay doesn't give the published numbers"
         for split in sorted(old.keys() | new.keys())
         if old.get(split) != new.get(split)
     ]
@@ -1256,7 +1385,9 @@ def _verify(
             continue
         ok = done[str(task)].rc == 0
         if ok and row["kind"] == "without-land":
-            failed = without_land_problems(_load(results_dir / row["file"]), replays.get(str(task)))
+            failed = without_land_problems(
+                _load(results_dir / row["file"]), replays.get(str(task)), str(task)
+            )
             problems += failed
             ok = not failed
         row["verdict"] = "checked" if ok else "failed"

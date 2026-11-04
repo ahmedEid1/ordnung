@@ -28,6 +28,10 @@ Commands (zero tokens; none calls a model):
   (system, prompt, schema, attachments, tools …): "is this refactor a re-record?";
 * ``ledger [FILE …]`` — what a recording cost, in calls and dollars, from its ledger;
 * ``unlock`` — free the recorder lock of a recorder that is no longer running;
+* ``retake --split S --repeat N --ids … --to DIR`` (or ``--whole-run --recorded-dir D`` for an Ask run or a stress
+  invocation) — move an incomplete unit's recordings aside and free their lock entries, so it is recorded again whole
+  on its new day; it lists each recording's sha256, outcome and cost. ``--invalid ID`` moves every unit of a read a
+  recorded deviation made invalid (never-waivable, or the runner-defect rule), so the read is recorded again;
 * ``smoke --scratch DIR`` — the live smoke before a paid recording (it calls the model: a few cents), into a
   scratch folder that is thrown away.
 """
@@ -165,6 +169,236 @@ class RecordingDayOver(LLMError):
             "invalid — what is recorded is kept; record the rest with letters or a ledger built for the new day"
         )
         self.day = day
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's units: their window, their day index, stopping at a unit boundary
+# --------------------------------------------------------------------------------------------------
+
+
+def check_window(windows: Iterable[tuple[str, str | None, str | None]], day: date) -> None:
+    """Refuse to record a final split's letters on ``day`` unless it is inside each letter's window: ``(id,
+    final_day, valid_until)`` from the manifest, the planned day the letters were written for and the last day they
+    are valid (every date they score lies after it). A letter whose manifest names no window is never recorded."""
+    unbounded = sorted(entry_id for entry_id, first, last in windows if not (first and last))
+    if unbounded:
+        raise HarnessError(
+            f"{', '.join(unbounded[:5])}{' …' if len(unbounded) > 5 else ''}: the manifest names no window (final_day "
+            "and valid_until), so these letters are never recorded live"
+        )
+    outside = sorted(
+        {
+            (str(first), str(last))
+            for _, first, last in windows
+            if not (str(first) <= day.isoformat() <= str(last))
+        }
+    )
+    if outside:
+        first, last = outside[0]
+        raise HarnessError(
+            f"{day.isoformat()} is outside the letters' window, {first} to {last}: they were written for those days "
+            "and are recorded on no other"
+        )
+
+
+DAY_INDEX_FILE = "final-days.json"
+
+
+class DayIndex:
+    """``final-days.json`` beside a model's recordings: the final splits' units, ``{split: {"r<N>": {entry_id:
+    {"day": "YYYY-MM-DD", "cli": "<claude version>"}}}}``. A unit — one letter in one read with all its conditions — is
+    written the moment it completes, whole (a temporary file, then a rename): its day is the today it was recorded
+    with, so a resume, a replay and the request lock's capture give the letter that day again.
+
+    A unit kept with conditions left unanswered (``--allow-errors``, after the resumes the pre-registration allows) is
+    written too, with ``"complete": false`` and ``"unanswered"``: each such condition's failed prediction, as it was
+    scored. It keeps its day for every replay, which gives those conditions their recorded failure; it is not
+    complete, so a live run still records it (on another day, only after a retake)."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = Path(path)
+        self.data: dict[str, dict[str, dict[str, dict[str, Any]]]] = {}
+        if self.path.is_file():
+            data = json.loads(self.path.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                raise HarnessError(f"{self.path} is not a day index")
+            self.data = data
+
+    def attempted(self, split: str, repeat: int) -> dict[str, dict[str, Any]]:
+        """Every unit of ``split`` at run ``repeat`` the index names, complete or kept unanswered: entry id → its
+        record."""
+        return dict(self.data.get(split, {}).get(f"r{repeat}", {}))
+
+    def units(self, split: str, repeat: int) -> dict[str, dict[str, Any]]:
+        """The complete units of ``split`` at run ``repeat``: entry id → ``{"day", "cli"}``."""
+        return {
+            entry_id: unit
+            for entry_id, unit in self.attempted(split, repeat).items()
+            if unit.get("complete", True)
+        }
+
+    def put(
+        self,
+        split: str,
+        repeat: int,
+        entry_id: str,
+        *,
+        day: str,
+        cli: str | None,
+        unanswered: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Write a unit: complete, or (``unanswered``: condition → its failed prediction) kept unanswered."""
+        unit: dict[str, Any] = {"day": day, "cli": cli}
+        if unanswered:
+            unit.update(complete=False, unanswered=dict(unanswered))
+        self.data.setdefault(split, {}).setdefault(f"r{repeat}", {})[entry_id] = unit
+        self._save()
+
+    def remove(self, split: str, repeat: int, entry_ids: Collection[str]) -> list[str]:
+        """Take these units out of the index (a retake); the ids that were in it."""
+        units = self.data.get(split, {}).get(f"r{repeat}", {})
+        gone = sorted(entry_id for entry_id in entry_ids if entry_id in units)
+        for entry_id in gone:
+            del units[entry_id]
+        if gone:
+            self._save()
+        return gone
+
+    def _save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        text = json.dumps(self.data, indent=1, sort_keys=True) + "\n"
+        write_atomic(self.path, text)
+
+
+#: ``python -m evals.run``, ``evals.ask`` and ``scripts.eval_perturb`` stopped at a unit boundary (a stop file, or
+#: ``--stop-at``): no unit was left half done, and the same command goes on where it stopped.
+STOPPED = 4
+
+
+@dataclass(frozen=True)
+class Stop:
+    """``--stop-file PATH`` and ``--stop-at HH:MM`` (UTC): before a unit starts, a run checks whether the file exists
+    or the clock has passed the time on the day the run started; then no new unit starts, and the units under way
+    finish. (``RecordingDayOver`` still forbids any call after midnight.)"""
+
+    file: Path | None = None
+    at: datetime | None = None
+
+    @classmethod
+    def of(cls, *, file: Path | str | None = None, at: str | None = None) -> Stop | None:
+        """The stop for these options (``None`` when neither is given); ``at`` is ``HH:MM`` on today's UTC date."""
+        if file is None and at is None:
+            return None
+        moment = None
+        if at is not None:
+            match = re.fullmatch(r"([01]\d|2[0-3]):([0-5]\d)", at.strip())
+            if match is None:
+                raise ValueError(f"--stop-at takes a UTC time as HH:MM (00:00 to 23:59), not {at!r}")
+            moment = datetime.combine(_now().date(), datetime.min.time(), tzinfo=UTC).replace(
+                hour=int(match.group(1)), minute=int(match.group(2))
+            )
+        return cls(file=Path(file) if file is not None else None, at=moment)
+
+    @classmethod
+    def from_args(cls, args: argparse.Namespace) -> Stop | None:
+        return cls.of(file=getattr(args, "stop_file", None), at=getattr(args, "stop_at", None))
+
+    def requested(self) -> str | None:
+        """Why no new unit may start, or ``None``."""
+        if self.file is not None and self.file.exists():
+            return f"the stop file {self.file} exists"
+        if self.at is not None and _now() >= self.at:
+            return f"it is past --stop-at {self.at:%H:%M} UTC"
+        return None
+
+
+def stopped_message(reason: str) -> str:
+    """What a run says when it stopped at a unit boundary."""
+    return (
+        f"stopped at a unit boundary: {reason} — no new unit started, the units under way finished; run the same "
+        f"command again to go on (exit {STOPPED})"
+    )
+
+
+def add_stop_arguments(parser: argparse.ArgumentParser) -> None:
+    """``--stop-file`` and ``--stop-at``, as every recorder takes them."""
+    parser.add_argument(
+        "--stop-file",
+        type=Path,
+        metavar="PATH",
+        help="with --live: start no new unit once this file exists (the units under way finish; exit 4)",
+    )
+    parser.add_argument(
+        "--stop-at",
+        metavar="HH:MM",
+        help="with --live: start no new unit once the clock passes this time (UTC) on the day the run started "
+        "(the units under way finish; exit 4)",
+    )
+
+
+def lock_entries_of(
+    lock: RequestLock, *, repeat: int, docs: Collection[str] | None = None
+) -> dict[str, dict[str, Any]]:
+    """The lock's entries of run ``repeat`` whose letters include one of ``docs`` (``None``: every entry of the
+    run)."""
+    wanted = None if docs is None else set(docs)
+    return {
+        key: entry
+        for key, entry in lock.entries.items()
+        if int(entry.get("repeat") or 1) == repeat
+        and (wanted is None or wanted.intersection(entry.get("docs") or []))
+    }
+
+
+def recordings_of(root: Path, key: str) -> list[Path]:
+    """The files a lock key's recording may be: the answer, a recorded model failure, an unreadable one set aside."""
+    base = root / f"{key}.json"
+    candidates = (base, root / f"{key}.failure.json", base.with_name(f"{base.name}.bad"))
+    return [path for path in candidates if path.is_file()]
+
+
+def _ledger_rows(root: Path) -> list[dict[str, Any]]:
+    path = root / LEDGER_FILE
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def recorded_day(path: Path, ledger: Sequence[Mapping[str, Any]] = ()) -> str | None:
+    """The UTC day a recording was made on: its own provenance (``recorded_on``), else its last ledger line's."""
+    try:
+        request = json.loads(path.read_text(encoding="utf-8")).get("request") or {}
+    except (OSError, ValueError, AttributeError):
+        request = {}
+    day = request.get("recorded_on") if isinstance(request, dict) else None
+    if isinstance(day, str) and day:
+        return day
+    key = f"{path.parent.name}/{path.name.split('.', 1)[0]}"
+    times = [str(row.get("at") or "") for row in ledger if f"{row.get('purpose')}/{row.get('key')}" == key]
+    latest: str = max(times, default="")
+    return latest[:10] or None
+
+
+def units_of_another_day(
+    root: Path, entry_ids: Collection[str], *, repeat: int, day: date
+) -> dict[str, list[Path]]:
+    """The incomplete units among ``entry_ids`` that have recordings made on another day than ``day`` (or on a day
+    that cannot be told): entry id → those recordings. Such a unit cannot go on today (its recorded turns told the
+    model another today); it is retaken whole (:func:`retake`)."""
+    lock = RequestLock(root / LOCK_FILE)
+    ledger = _ledger_rows(root)
+    found: dict[str, list[Path]] = {}
+    for key, entry in lock_entries_of(lock, repeat=repeat, docs=entry_ids).items():
+        for path in recordings_of(root, key):
+            if recorded_day(path, ledger) != day.isoformat():
+                for entry_id in set(entry.get("docs") or []) & set(entry_ids):
+                    found.setdefault(entry_id, []).append(path)
+    return {entry_id: sorted(paths) for entry_id, paths in sorted(found.items())}
+
+
+class UnitClosed(LLMError):
+    """A call for a unit that is already complete: its recordings answer every call it makes, so a call that reaches
+    the model would record a valid answer again."""
 
 
 async def _sleep(seconds: float) -> None:
@@ -705,8 +939,9 @@ def _rate_limited(text: str | None) -> bool:
 
 
 class LiveCalls:
-    """Wraps the live ``claude``: the budget stop, waiting through a usage limit, a ledger line per call, and (``day``)
-    no call once the recording's day is over (:class:`RecordingDayOver`)."""
+    """Wraps the live ``claude``: the budget stop, waiting through a usage limit, a ledger line per call, (``day``)
+    no call once the recording's day is over (:class:`RecordingDayOver`), and (``closed``) no call for a letter whose
+    unit is already complete (:class:`UnitClosed`)."""
 
     def __init__(
         self,
@@ -716,16 +951,28 @@ class LiveCalls:
         budget: Budget | None = None,
         waiter: LimitWaiter | None = None,
         day: date | None = None,
+        closed: Collection[str] = (),
     ) -> None:
         self.inner = inner
         self.ledger = ledger
         self.budget = budget
         self.waiter = waiter
         self.day = day
+        self.closed = frozenset(closed)
         self.name = inner.name
 
     def _day_over(self) -> RecordingDayOver | None:
         return RecordingDayOver(self.day) if self.day is not None and utc_today() != self.day else None
+
+    def _refused(self, req: LLMRequest) -> UnitClosed | None:
+        done = sorted(self.closed.intersection(req.doc_ids))
+        if not done:
+            return None
+        return UnitClosed(
+            f"{req.purpose} for {', '.join(done)}: its unit is complete, so its recordings answer every call it makes "
+            "— this one reached the model, which would record a valid answer again on another day; check its "
+            "recordings with a replay"
+        )
 
     def _log(
         self, req: LLMRequest, outcome: str, started: float, response: LLMResponse | None = None
@@ -734,6 +981,8 @@ class LiveCalls:
             self.ledger.write(req, outcome=outcome, started=started, response=response)
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
+        if (refused := self._refused(req)) is not None:
+            raise refused
         while True:
             if self.budget is not None:
                 self.budget.check()
@@ -758,6 +1007,9 @@ class LiveCalls:
     async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
         """As :meth:`complete`, for a streamed call (Ask's): the CLI backend yields its errors as events, so a usage
         limit is an error event before anything else (its reset time is not passed on: the wait is 30 minutes)."""
+        if (refused := self._refused(req)) is not None:
+            yield StreamEvent(type="error", error=str(refused))
+            return
         while True:
             if self.budget is not None and self.budget.reached:
                 yield StreamEvent(type="error", error=self.budget.message())
@@ -803,12 +1055,14 @@ async def claude_version(binary: str | None = None) -> str | None:
 @dataclass
 class LiveSetup:
     """What a live run's stacks share: the budget, the waiting, the ``claude`` asked, its version, the ledgers, the
-    provenance each new cassette is stamped with, and the recording's day (``None``: not checked)."""
+    provenance each new cassette is stamped with, the recording's day (``None``: not checked), and the letters whose
+    unit is already complete (a final split's: no call for them reaches the model)."""
 
     repeat: int = 1
     budget: Budget | None = None
     waiter: LimitWaiter | None = None
     day: date | None = None
+    closed: frozenset[str] = frozenset()
     cli: Any = None
     cli_version: str | None = None
     ledgers: list[Ledger] = field(default_factory=list)
@@ -933,8 +1187,8 @@ def unlock(path: Path) -> tuple[int, str]:
 
 
 def dirty_paths(root: Path = ROOT) -> list[str] | None:
-    """The code paths (under ``src/`` and ``evals/``, not results or recordings) that differ from the commit, or
-    ``None`` without git."""
+    """The code paths (under ``src/`` and ``evals/``, not results, recordings or the deviations file) that differ
+    from the commit, or ``None`` without git."""
     try:
         result = subprocess.run(
             ["git", "status", "--porcelain", "--untracked-files=all", "--", "src", "evals"],
@@ -951,9 +1205,23 @@ def dirty_paths(root: Path = ROOT) -> list[str] | None:
     paths = []
     for line in result.stdout.splitlines():
         path = line[3:].split(" -> ")[-1].strip().strip('"')
-        if path and not path.startswith(("evals/results/", "evals/recorded/")):
+        if path and not path.startswith(("evals/results/", "evals/recorded/")) and not _deviations_file(path):
             paths.append(path)
     return sorted(paths)
+
+
+def shown(path: Path) -> str:
+    """``path`` as a command typed from the repository's root would name it (the absolute path elsewhere)."""
+    try:
+        return Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def _deviations_file(path: str) -> bool:
+    """The pre-registration's deviations file: recorded at the time, while a read may still be under way, and committed
+    with the next checkpoint; it is no code a recording depends on."""
+    return re.fullmatch(r"evals/preregistration/deviations-[^/]+\.json", path) is not None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -985,30 +1253,36 @@ def capture_requests(
     model: str = DEFAULT_MODEL,
     splits: Sequence[str] | None = None,
     ids: Sequence[str] | None = None,
+    manifest: Path | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Replay every recorded split (or ``splits``; or the letters ``ids``) with every condition and return the lock
-    entry of each request made. Fails when a prediction errs (a missing recording, say)."""
+    entry of each request made. Fails when a prediction errs (a missing recording, say). A final split's letters each
+    take their unit's day from the day index beside the recordings, as every replay does (``evals/run.py``)."""
     from evals import run as eval_run
     from evals import splits as registry
     from evals.conditions import ordnung_prompt_hashes
     from evals.records import load_manifest
 
-    manifest = load_manifest(eval_run.MANIFEST_PATH)
-    allowed = {entry.id for entry in manifest}
+    manifest_path = manifest or eval_run.MANIFEST_PATH
+    manifest_entries = load_manifest(manifest_path)
+    allowed = {entry.id for entry in manifest_entries}
     wanted = set(ids or ())
     names = list(splits or registry.recorded())
     if wanted:
-        names = [name for name in names if any(e.split == name and e.id in wanted for e in manifest)]
+        names = [name for name in names if any(e.split == name and e.id in wanted for e in manifest_entries)]
     stale = eval_run.stale_prompts(recorded_dir / eval_run.safe_name(model), ordnung_prompt_hashes())
     if stale:
         raise HarnessError(f"the prompts changed since the recordings were made: {', '.join(stale)}")
     entries: dict[str, dict[str, Any]] = {}
     for name in names:
-        selected = sorted(e.id for e in manifest if e.split == name and e.id in wanted) if wanted else None
+        selected = (
+            sorted(e.id for e in manifest_entries if e.split == name and e.id in wanted) if wanted else None
+        )
         config = eval_run.RunConfig(
             split=name,
             models=[model],
             ids=selected,
+            manifest_path=manifest_path,
             recorded_dir=recorded_dir,
             write_docs=False,
             write_results=False,
@@ -1135,6 +1409,205 @@ def _lock_at(ref: str, path: Path) -> str:
     if result.returncode != 0:
         raise HarnessError(f"no {relative} at {ref}: {result.stderr.strip()[:300]}")
     return result.stdout
+
+
+# --------------------------------------------------------------------------------------------------
+# Retaking a unit
+# --------------------------------------------------------------------------------------------------
+
+
+class NothingToRetake(HarnessError):
+    """The unit asked for has no recording in the folder (a wrong id or repeat, or retaken already)."""
+
+
+#: How each recorded call of a retaken unit went, from its ledger line: an answer, a model failure (scored, never
+#: retaken alone), a timeout, or an infrastructure error (a usage limit, sign-in, a CLI that did not start …).
+RETAKE_OUTCOMES = {"ok": "ok", "bad_output": "failed", "timeout": "timeout"}
+
+
+def _cassette_cost(path: Path) -> float:
+    try:
+        usage = (json.loads(path.read_text(encoding="utf-8")).get("response") or {}).get("usage") or {}
+        return float(usage.get("cost_usd") or 0.0)
+    except (OSError, ValueError, AttributeError, TypeError):
+        return 0.0
+
+
+#: The deviations whose registered consequence records a read again (the pre-registration's table): the never-waivable
+#: kinds, and the runner-defect rule's ``code_hash_changed``.
+RECORD_AGAIN_KINDS = ("fingerprint", "code_digest", "prompt_hash", "model", "code_hash_changed")
+DEVIATIONS_FILE = ROOT / "evals" / "preregistration" / "deviations-0.4.0.json"
+
+
+def retake(
+    recorded_dir: Path,
+    *,
+    to: Path,
+    repeat: int,
+    model: str = DEFAULT_MODEL,
+    split: str | None = None,
+    ids: Sequence[str] = (),
+    whole_run: bool = False,
+    complete_too: bool = False,
+) -> list[str]:
+    """Move an incomplete unit's recordings out of ``recorded_dir`` into ``to`` and remove their request-lock entries,
+    so the unit is recorded again whole on its new day (a unit's calls are all told one today). A unit is the letters
+    ``ids`` of ``split`` at run ``repeat``, or (``whole_run``) every recording of that run in the folder: an Ask run or
+    a stress invocation is one unit, never in the benchmark's folder (where the final splits' day index lives). A
+    complete unit (in the day index) is never retaken, unless ``complete_too`` (:func:`retake_invalid`: a read a
+    deviation made invalid). The retaken units leave the day index.
+
+    Returns one line per recording moved (path, sha256, outcome, cost) and per call of the unit that left no recording
+    (a timeout, an infrastructure error): the evidence of the retake's deviation. Nothing is moved when any target
+    exists already."""
+    from evals.run import safe_name
+
+    if whole_run == bool(ids):
+        raise HarnessError(
+            "retake takes the letters of a unit (--split S --ids …) or --whole-run, one of the two"
+        )
+    if ids and split is None:
+        raise HarnessError("--ids names letters of one split: give --split too")
+    root = recorded_dir / safe_name(model)
+    index = DayIndex(root / DAY_INDEX_FILE)
+    if whole_run:
+        if split is not None:
+            raise HarnessError(
+                "--whole-run retakes an Ask run or a stress invocation, which have no split: not with --split (a "
+                "benchmark's units are retaken with --split S --ids …)"
+            )
+        if recorded_dir.resolve() == RECORDED_DIR.resolve() or index.data:
+            raise HarnessError(
+                f"{root} holds the benchmark's recordings (and the final splits' day index): --whole-run would move "
+                "every letter's recordings of that run. Name the Ask or stress run's own folder with --recorded-dir "
+                "(evals/recorded/ask-heldout, evals/recorded/stress)"
+            )
+    if ids and split is not None and not complete_too:
+        complete = index.units(split, repeat)
+        done = sorted(set(ids) & set(complete))
+        if done:
+            days = ", ".join(sorted({str(complete[entry_id]["day"]) for entry_id in done}))
+            raise HarnessError(
+                f"{', '.join(done)}: complete at run {repeat} (recorded on {days}); a complete unit is never retaken"
+            )
+    lock = RequestLock(root / LOCK_FILE)
+    selected = lock_entries_of(lock, repeat=repeat, docs=None if whole_run else ids)
+    moves = [(key, path) for key in sorted(selected) for path in recordings_of(root, key)]
+    what = f"run {repeat} of {recorded_dir}" if whole_run else f"{', '.join(ids)} at run {repeat}"
+    if not moves:
+        raise NothingToRetake(f"no cassette of {what} in {root}: nothing to retake")
+    target_root = to / root.name
+    targets = [target_root / path.relative_to(root) for _, path in moves]
+    there = [str(target) for target in targets if target.exists()]
+    if there:
+        raise HarnessError(f"{there[0]} exists already: nothing was moved (retake into a fresh folder)")
+    wanted = None if whole_run else set(ids)
+    rows = [
+        row
+        for row in _ledger_rows(root)
+        if int(row.get("repeat") or 1) == repeat
+        and (wanted is None or wanted.intersection(row.get("docs") or []))
+    ]
+    answered = ("ok", "bad_output")
+    lines: list[str] = []
+    for key, path in moves:
+        if path.name.endswith(".failure.json"):
+            outcome = "failed"
+        elif path.name.endswith(".bad"):
+            outcome = "infra"
+        else:
+            outcome = "ok"
+        made = [
+            row
+            for row in rows
+            if f"{row.get('purpose')}/{row.get('key')}" == key and row.get("outcome") in answered
+        ]
+        cost = float(made[-1].get("cost_usd") or 0.0) if made else _cassette_cost(path)
+        sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        lines.append(f"{path.relative_to(recorded_dir).as_posix()} {sha} {outcome} ${cost:.4f}")
+    for row in rows:
+        if row.get("outcome") in answered:
+            continue
+        outcome = RETAKE_OUTCOMES.get(str(row.get("outcome")), "infra")
+        lines.append(
+            f"- {row.get('purpose')}/{row.get('key')} {outcome} ${float(row.get('cost_usd') or 0.0):.4f} "
+            f"(no recording; called at {row.get('at')})"
+        )
+    for (_, path), target in zip(moves, targets, strict=True):
+        target.parent.mkdir(parents=True, exist_ok=True)
+        path.replace(target)
+    for key in selected:
+        del lock.entries[key]
+    lock.save()
+    if ids and split is not None:
+        index.remove(split, repeat, ids)
+    entries = "entry" if len(selected) == 1 else "entries"
+    lines.append(
+        f"moved {len(moves)} recording(s) of {what} to {target_root} and removed {len(selected)} request-lock "
+        f"{entries}: record the unit again whole"
+    )
+    return lines
+
+
+def retake_invalid(
+    recorded_dir: Path,
+    *,
+    to: Path,
+    deviation: str,
+    deviations_file: Path = DEVIATIONS_FILE,
+    model: str = DEFAULT_MODEL,
+) -> list[str]:
+    """Move aside every unit of a read that a deviation recorded at the time made invalid, complete ones too, so the
+    read is recorded again inside the window: the registered consequence of a never-waivable deviation (fingerprint,
+    code digest, prompt hash, served model) and of the runner-defect rule (``code_hash_changed``). The deviation must
+    be in ``deviations_file``, well formed, of one of those kinds, and name the read (``applies_to`` split and repeat;
+    its ``entries``, when it lists some, are the units). The read's results file is set aside by hand."""
+    from evals.analysis import AnalysisError, load_deviations
+    from evals.run import safe_name
+
+    try:
+        found = {entry.id: entry for entry in load_deviations(deviations_file)}
+    except AnalysisError as exc:
+        raise HarnessError(f"{deviations_file}: {exc}") from exc
+    named = found.get(deviation)
+    if named is None:
+        raise HarnessError(f"{deviations_file.name} has no deviation {deviation}")
+    if named.kind not in RECORD_AGAIN_KINDS:
+        raise HarnessError(
+            f"{deviation} is a {named.kind} deviation: only {', '.join(RECORD_AGAIN_KINDS)} make a read recorded "
+            "again"
+        )
+    if named.split is None or named.repeat is None:
+        raise HarnessError(f"{deviation} names no read (applies_to: split and repeat)")
+    root = recorded_dir / safe_name(model)
+    units = DayIndex(root / DAY_INDEX_FILE).attempted(named.split, named.repeat)
+    lock = RequestLock(root / LOCK_FILE)
+    recorded = {
+        doc
+        for entry in lock_entries_of(lock, repeat=named.repeat).values()
+        for doc in entry.get("docs") or []
+    }
+    ids = sorted(named.entries) or sorted(
+        units.keys() | {doc for doc in recorded if doc.startswith(f"{named.split}-")}
+    )
+    if not ids:
+        raise NothingToRetake(
+            f"{named.split} read {named.repeat} has nothing recorded in {root}: nothing to retake"
+        )
+    lines = retake(
+        recorded_dir,
+        to=to,
+        repeat=named.repeat,
+        model=model,
+        split=named.split,
+        ids=ids,
+        complete_too=True,
+    )
+    lines.append(
+        f"{named.split} read {named.repeat} is invalid ({deviation}, {named.kind}): its {len(ids)} unit(s) left the "
+        "day index; set its results file aside, then record the read again whole inside the window"
+    )
+    return lines
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1403,6 +1876,34 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("--model", default=DEFAULT_MODEL)
         command.add_argument("--split", nargs="+", dest="splits", help="only these splits")
         command.add_argument("--ids", nargs="+", help="only these letters (or, with --ask, question ids)")
+        command.add_argument("--manifest", type=Path, default=None, help=argparse.SUPPRESS)
+
+    retake_cmd = commands.add_parser(
+        "retake",
+        help="move an incomplete unit's recordings aside (and their lock entries) so it is recorded again whole",
+    )
+    retake_cmd.add_argument("--to", type=Path, required=True, help="where the recordings go (a fresh folder)")
+    retake_cmd.add_argument("--repeat", type=int, default=1, metavar="N", help="the run (default 1)")
+    retake_cmd.add_argument("--split", help="the letters' split (with --ids)")
+    retake_cmd.add_argument("--ids", nargs="+", default=[], help="the unit's letters")
+    retake_cmd.add_argument(
+        "--whole-run",
+        action="store_true",
+        help="every recording of the run in the folder (an Ask run, a stress run; give its --recorded-dir)",
+    )
+    retake_cmd.add_argument(
+        "--invalid",
+        metavar="ID",
+        help="every unit of the read this deviation made invalid, complete ones too (a never-waivable deviation, or "
+        "the runner-defect rule's code_hash_changed)",
+    )
+    retake_cmd.add_argument(
+        "--deviations", type=Path, default=DEVIATIONS_FILE, help="the deviations file (with --invalid)"
+    )
+    retake_cmd.add_argument(
+        "--recorded-dir", type=Path, default=None, help="recordings root (default: the benchmark's)"
+    )
+    retake_cmd.add_argument("--model", default=DEFAULT_MODEL)
 
     ledger_cmd = commands.add_parser("ledger", help="what a recording cost, from its ledger")
     ledger_cmd.add_argument("files", nargs="*", type=Path)
@@ -1427,7 +1928,9 @@ def _capture(args: argparse.Namespace) -> tuple[dict[str, dict[str, Any]], Path,
         complete = not args.ids
     else:
         root_dir = args.recorded_dir or RECORDED_DIR
-        entries = capture_requests(root_dir, model=args.model, splits=args.splits, ids=args.ids)
+        entries = capture_requests(
+            root_dir, model=args.model, splits=args.splits, ids=args.ids, manifest=args.manifest
+        )
         complete = not (args.ids or args.splits)
     return entries, lock_path(root_dir, args.model), complete
 
@@ -1445,6 +1948,39 @@ def main(argv: Sequence[str] | None = None) -> int:
                 lock_path(ASK_RECORDED_DIR).with_name(LEDGER_FILE),
             ]
             for line in ledger_summary(files, since=args.since):
+                print(line)
+            return 0
+        if args.command == "retake":
+            if args.whole_run and args.recorded_dir is None:
+                raise HarnessError(
+                    "--whole-run needs the Ask or stress run's own folder: --recorded-dir evals/recorded/ask-heldout "
+                    "or evals/recorded/stress"
+                )
+            if args.invalid and (args.whole_run or args.ids or args.split):
+                raise HarnessError("--invalid names the read itself: not with --whole-run, --split or --ids")
+            try:
+                if args.invalid:
+                    lines = retake_invalid(
+                        args.recorded_dir or RECORDED_DIR,
+                        to=args.to,
+                        deviation=args.invalid,
+                        deviations_file=args.deviations,
+                        model=args.model,
+                    )
+                else:
+                    lines = retake(
+                        args.recorded_dir or RECORDED_DIR,
+                        to=args.to,
+                        repeat=args.repeat,
+                        model=args.model,
+                        split=args.split,
+                        ids=args.ids,
+                        whole_run=args.whole_run,
+                    )
+            except NothingToRetake as exc:
+                print(f"error: {exc}", file=sys.stderr)
+                return 1
+            for line in lines:
                 print(line)
             return 0
         if args.command == "smoke":
