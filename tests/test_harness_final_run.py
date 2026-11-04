@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
 import json
+import re
 import shutil
 import sys
 from datetime import UTC, date, datetime, timedelta
@@ -30,7 +32,7 @@ from evals import harness, reproduce  # noqa: E402
 from evals import run as eval_run  # noqa: E402
 from evals.records import Prediction, load_manifest  # noqa: E402
 
-from ordnung.llm.base import LLMRequest  # noqa: E402
+from ordnung.llm.base import ClaudeTimeout, LLMRequest  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
 from test_evals_run import Responder  # noqa: E402
 
@@ -653,3 +655,272 @@ def test_a_replay_gives_each_letter_its_unit_s_day_from_the_day_index(
     index = root(tmp_path) / harness.DAY_INDEX_FILE
     index.rename(tmp_path / "set-aside.json")
     assert run(tmp_path, manifest, "--results-dir", str(tmp_path / "without")) == 1
+
+
+# --------------------------------------------------------------------------------------------------
+# (f) a letter left unanswered, a read made invalid, a claude without a version, a resume with nothing left
+# --------------------------------------------------------------------------------------------------
+
+
+class _Unanswered(FinalResponder):
+    """The plausible model, except that the model alone never answers on one letter (a timeout every time)."""
+
+    def __init__(self, manifest: Path, letter: str) -> None:
+        super().__init__(manifest)
+        self.letter = letter
+
+    def __call__(self, req: LLMRequest) -> Any:
+        if req.doc_ids[:1] == [self.letter] and req.prompt_version.startswith("llm_only"):
+            raise ClaudeTimeout("timed out after 300 s")
+        return super().__call__(req)
+
+
+def _versioned(monkeypatch: pytest.MonkeyPatch, backend: Any, version: str | None = FAKE_VERSION) -> None:
+    """``backend`` as the live ``claude``, a program whose ``--version`` says ``version``."""
+    backend.binary = "claude"
+
+    async def asked(binary: str | None = None) -> str | None:
+        return version
+
+    monkeypatch.setattr(harness, "claude_version", asked)
+    stand_in(monkeypatch, backend)
+
+
+def _checked(path: Path, deviations: list[Any], *, index: dict[str, Any], ledger: Path) -> Any:
+    from evals import analysis
+
+    run = analysis.read_run(path)
+    lines = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+    frozen = analysis.Frozen(
+        planned_day=D0.isoformat(),
+        valid_until=L.isoformat(),
+        fingerprints=run.meta["fingerprints"],
+        cli_versions=(FAKE_VERSION,),
+        served_models=tuple(
+            sorted({str(line["served_model"]) for line in lines if line.get("served_model")})
+        ),
+        manifest_sha256=run.meta["dataset"]["manifest_sha256"],
+        deviations_file="evals/preregistration/deviations-0.4.0.json",
+    )
+    prereg = analysis.parse_prereg({"analysis": analysis.default_prereg_analysis()})
+    return analysis.check_frozen(prereg, frozen, [run], deviations, day_index=index, ledger=lines)
+
+
+def test_a_letter_left_unanswered_keeps_its_day_through_the_check_the_row_and_the_analysis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """After the third resume a letter still unanswered is scored empty with --allow-errors (an ``unanswered``
+    deviation names it): its unit keeps the day it was recorded on, and the replays give it its recorded failure, so
+    ``--check``, the gates, the request lock, ``make eval-reproduce`` and the analysis read it as it was."""
+    from evals import analysis
+
+    manifest = final_split(tmp_path)
+    first, _, third = letters(manifest)
+    monkeypatch.setattr(harness, "dirty_paths", lambda root=None: [])  # recorded from a clean tree
+    _versioned(monkeypatch, FakeBackend(_Unanswered(manifest, third)))
+    _at(monkeypatch, D2)
+    assert run(tmp_path, manifest, "--live", "--today", D2.isoformat()) == 1  # not without --allow-errors
+    assert third not in units(tmp_path)
+    assert run(tmp_path, manifest, "--live", "--today", D2.isoformat(), "--allow-errors") == 0
+    index = day_index(tmp_path)
+    unit = index[SPLIT]["r1"][third]
+    assert (unit["day"], unit["cli"], unit["complete"]) == (D2.isoformat(), FAKE_VERSION, False)
+    assert sorted(unit["unanswered"]) == ["llm_only"]
+    assert units(tmp_path)[first].get("complete", True) is True
+    live = tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
+    data = json.loads(live.read_text(encoding="utf-8"))
+    assert data["meta"]["recording_days"] == [D2.isoformat()]
+    entry = next(e for e in data["entries"] if e["id"] == third)
+    assert entry["conditions"]["llm_only"]["prediction"]["error"]
+    assert {o["prediction"]["recorded_on"] for o in entry["conditions"].values()} == {D2.isoformat()}
+    reproduce._row(live, data, "run", "final")
+    # the replays: --check, the gate's replay (no --allow-errors) and the request lock's capture
+    monkeypatch.setattr(eval_run, "ClaudeCLIBackend", _NoModel)
+    _at(monkeypatch, D2 + timedelta(days=30))
+    capsys.readouterr()
+    assert run(tmp_path, manifest, "--check", str(live)) == 0
+    assert "equal" in capsys.readouterr().out
+    gate = [
+        "--conditions",
+        "llm_only",
+        "--min-accuracy",
+        "0",
+        "--quiet",
+        "--results-dir",
+        str(tmp_path / "gate"),
+    ]
+    assert run(tmp_path, manifest, *gate) == 0
+    harness.capture_requests(tmp_path / "recorded", splits=[SPLIT], manifest=manifest)
+    # a later live run on another day leaves the letter as it is: its read has a results file already
+    deviation = analysis.Deviation("D001", "unanswered", "R2", SPLIT, 1, frozenset({third}), (), (), {})
+    checked = _checked(live, [deviation], index=index, ledger=root(tmp_path) / harness.LEDGER_FILE)
+    assert [row["entry_id"] for row in checked.unanswered] == [third]
+    with pytest.raises(analysis.AnalysisError, match="unanswered"):
+        _checked(live, [], index=index, ledger=root(tmp_path) / harness.LEDGER_FILE)
+
+
+def test_a_live_final_run_needs_the_claude_version_before_any_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Every unit says the ``claude`` that recorded it: when ``claude --version`` answers nothing, nothing is
+    recorded."""
+    manifest = final_split(tmp_path)
+    backend = FakeBackend(FinalResponder(manifest))
+    _versioned(monkeypatch, backend, version=None)
+    _at(monkeypatch, D1)
+    assert run(tmp_path, manifest, "--live", "--today", D1.isoformat()) == 1
+    assert "version" in capsys.readouterr().err
+    assert backend.calls == [] and units(tmp_path) == {}
+    assert not cassettes(root(tmp_path))
+
+
+def test_a_resume_with_nothing_left_to_record_keeps_the_read_s_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Killed after its last unit and before its results file (an infrastructure stop): resumed on the next day, the
+    run records nothing, and the read's day stays its units' last day."""
+    manifest = final_split(tmp_path)
+    backend = FakeBackend(FinalResponder(manifest))
+    _versioned(monkeypatch, backend)
+    _at(monkeypatch, D1)
+    assert run(tmp_path, manifest, "--live", "--today", D1.isoformat()) == 0
+    live = tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
+    live.unlink()
+    made = len(backend.calls)
+    _at(monkeypatch, D2)
+    assert run(tmp_path, manifest, "--live", "--today", D2.isoformat()) == 0
+    assert len(backend.calls) == made
+    data = json.loads(live.read_text(encoding="utf-8"))
+    assert data["meta"]["recording_day"] == D1.isoformat()
+    assert data["meta"]["recording_days"] == [D1.isoformat()]
+    reproduce._row(live, data, "run", "final")
+
+
+def test_a_whole_run_retake_never_touches_a_benchmark_s_recordings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``--whole-run`` is an Ask run's or a stress invocation's: it names its folder, never with --split, and never
+    the benchmark's recordings (where the final splits' day index lives)."""
+    manifest = final_split(tmp_path)
+    record_two_days(tmp_path, monkeypatch, manifest)
+    before = cassettes(root(tmp_path))
+    aside = ["--to", str(tmp_path / "aside")]
+    folder = ["--recorded-dir", str(tmp_path / "recorded")]
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    assert "day index" in capsys.readouterr().err
+    assert (
+        harness.main(["retake", "--split", "newkinds", "--whole-run", "--repeat", "1", *aside, *folder]) == 2
+    )
+    assert "--split" in capsys.readouterr().err
+    assert harness.main(["retake", "--whole-run", "--repeat", "1", *aside]) == 2
+    assert "--recorded-dir" in capsys.readouterr().err
+    assert cassettes(root(tmp_path)) == before and len(units(tmp_path)) == 3
+    assert not (tmp_path / "aside").exists()
+
+
+def test_the_ask_and_stress_stops_name_the_whole_retake_command() -> None:
+    from evals.ask import __main__ as ask_main
+
+    sources = {
+        "ask": inspect.getsource(ask_main),
+        "stress": (ROOT / "scripts" / "eval_perturb.py").read_text(encoding="utf-8"),
+    }
+    for name, text in sources.items():
+        found = re.findall(r"retake --whole-run[^`]*`", text)
+        assert found, name
+        assert all("--recorded-dir" in line and "--repeat" in line for line in found), (name, found)
+
+
+def _deviations_file(path: Path, *entries: dict[str, Any]) -> Path:
+    from evals import analysis
+
+    rows = []
+    for number, entry in enumerate(entries, 1):
+        rows.append(
+            {
+                "id": f"D{number:03d}",
+                "step": "R2",
+                "consequence": analysis.DEVIATION_CONSEQUENCES[entry["kind"]],
+                "created_at": "2026-12-08T20:00:00+00:00",
+                "issue_comment_url": f"https://github.com/owner/repo/issues/1#issuecomment-{number}",
+                "checkpoint_sha": "a" * 40,
+                **entry,
+            }
+        )
+    path.write_text(json.dumps(rows), encoding="utf-8")
+    return path
+
+
+def test_a_read_a_never_waivable_deviation_made_invalid_is_recorded_again_inside_the_window(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The registered consequence of a never-waivable deviation (or the runner-defect rule): the read is recorded
+    again inside the window. ``retake --invalid`` moves every unit of the read aside, complete ones too, only when a
+    deviation recorded at the time names that read."""
+    manifest = final_split(tmp_path)
+    ids = letters(manifest)
+    backend = FakeBackend(FinalResponder(manifest))
+    _versioned(monkeypatch, backend)
+    _at(monkeypatch, D1)
+    assert run(tmp_path, manifest, "--live", "--today", D1.isoformat()) == 0
+    first_results = tmp_path / "results" / f"{D1.isoformat()}-{MODEL}-{SPLIT}.json"
+    before = cassettes(root(tmp_path))
+    applies = {"split": SPLIT, "repeat": 1}
+    deviations = _deviations_file(
+        tmp_path / "deviations.json",
+        {"kind": "retake", "applies_to": {**applies, "entries": [ids[0]]}},
+        {"kind": "prompt_hash", "applies_to": applies},
+        {"kind": "prompt_hash", "applies_to": {"split": SPLIT, "repeat": 2}},
+    )
+    common = ["retake", "--to", str(tmp_path / "invalid"), "--recorded-dir", str(tmp_path / "recorded")]
+    common += ["--deviations", str(deviations)]
+    assert harness.main([*common, "--invalid", "D001"]) == 2  # a retake does not make a read invalid
+    assert harness.main([*common, "--invalid", "D003"]) == 1  # read 2 has nothing recorded
+    assert harness.main([*common, "--invalid", "D009"]) == 2  # no such deviation
+    capsys.readouterr()
+    assert cassettes(root(tmp_path)) == before
+    assert harness.main([*common, "--invalid", "D002"]) == 0
+    out = capsys.readouterr().out
+    assert all(path.name in out for path in before) or len(out.splitlines()) > len(before)
+    assert not cassettes(root(tmp_path)) and units(tmp_path) == {}
+    lock = json.loads((root(tmp_path) / harness.LOCK_FILE).read_text(encoding="utf-8"))
+    assert not any(set(entry["docs"]) & set(ids) for entry in lock.values())
+    # recorded again whole on a later day of the window, its first results file set aside first
+    first_results.rename(tmp_path / "invalid" / first_results.name)
+    _at(monkeypatch, D2)
+    made = len(backend.calls)
+    assert run(tmp_path, manifest, "--live", "--today", D2.isoformat()) == 0
+    assert len(backend.calls) > made
+    assert {unit["day"] for unit in units(tmp_path).values()} == {D2.isoformat()}
+
+
+def test_the_deviations_file_recorded_at_the_time_is_no_code_a_recording_depends_on(tmp_path: Path) -> None:
+    """``meta.dirty`` lists the code that differs from the commit: the deviations file, appended to while a read is
+    under way and committed with the next checkpoint, is not code; anything else under src/ or evals/ is."""
+    import subprocess
+
+    def git(*args: str) -> None:
+        subprocess.run(["git", *args], cwd=tmp_path, check=True, capture_output=True)
+
+    deviations = tmp_path / "evals" / "preregistration" / "deviations-0.4.0.json"
+    deviations.parent.mkdir(parents=True)
+    deviations.write_text("[]\n", encoding="utf-8")
+    (tmp_path / "evals" / "run.py").write_text("x = 1\n", encoding="utf-8")
+    git("init", "-q")
+    git("add", ".")
+    git(
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@example.org",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "-qm",
+        "a",
+    )
+    assert harness.dirty_paths(tmp_path) == []
+    deviations.write_text('[{"id": "D001"}]\n', encoding="utf-8")
+    assert harness.dirty_paths(tmp_path) == []
+    (tmp_path / "evals" / "run.py").write_text("x = 2\n", encoding="utf-8")
+    assert harness.dirty_paths(tmp_path) == ["evals/run.py"]

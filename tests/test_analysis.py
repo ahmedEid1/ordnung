@@ -913,6 +913,17 @@ def test_a_read_that_differs_from_the_frozen_inputs_needs_a_deviation_and_is_the
         world.final()
 
 
+def test_a_deviation_recorded_while_a_read_is_under_way_leaves_its_tree_clean(world: World) -> None:
+    """A deviation is recorded at the time, into the deviations file, and committed with the next checkpoint: a read
+    resumed before that checkpoint is still recorded from a clean tree. Any other changed path is a dirty tree."""
+    meta = world.doc("holdout4", 3)["meta"]
+    meta["dirty"] = ["evals/preregistration/deviations-0.4.0.json"]
+    assert world.final()["primary"]["reads_used"] == [1, 2, 3]
+    meta["dirty"] = ["evals/preregistration/deviations-0.4.0.json", "evals/run.py"]
+    with pytest.raises(analysis.AnalysisError, match="dirty_tree"):
+        world.final()
+
+
 def test_a_unit_recorded_outside_the_window_needs_a_deviation_and_is_then_excluded(world: World) -> None:
     """A unit (one letter in one read, all its conditions) told a day outside [D0, L]: refused without a deviation;
     with a ``day_outside_window`` deviation naming it, its letter leaves the paired analysis (listed)."""

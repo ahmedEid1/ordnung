@@ -28,9 +28,10 @@ Commands (zero tokens; none calls a model):
   (system, prompt, schema, attachments, tools …): "is this refactor a re-record?";
 * ``ledger [FILE …]`` — what a recording cost, in calls and dollars, from its ledger;
 * ``unlock`` — free the recorder lock of a recorder that is no longer running;
-* ``retake --split S --repeat N --ids … --to DIR`` (or ``--whole-run``) — move an incomplete unit's recordings aside and
-  free their lock entries, so it is recorded again whole on its new day; it lists each recording's sha256, outcome
-  and cost;
+* ``retake --split S --repeat N --ids … --to DIR`` (or ``--whole-run --recorded-dir D`` for an Ask run or a stress
+  invocation) — move an incomplete unit's recordings aside and free their lock entries, so it is recorded again whole
+  on its new day; it lists each recording's sha256, outcome and cost. ``--invalid ID`` moves every unit of a read a
+  recorded deviation made invalid (never-waivable, or the runner-defect rule), so the read is recorded again;
 * ``smoke --scratch DIR`` — the live smoke before a paid recording (it calls the model: a few cents), into a
   scratch folder that is thrown away.
 """
@@ -204,10 +205,15 @@ DAY_INDEX_FILE = "final-days.json"
 
 
 class DayIndex:
-    """``final-days.json`` beside a model's recordings: the final splits' complete units, ``{split: {"r<N>":
-    {entry_id: {"day": "YYYY-MM-DD", "cli": "<claude version>"}}}}``. A unit — one letter in one read with all its
-    conditions — is written the moment it completes, whole (a temporary file, then a rename): its day is the today it
-    was recorded with, so a resume, a replay and the request lock's capture give the letter that day again."""
+    """``final-days.json`` beside a model's recordings: the final splits' units, ``{split: {"r<N>": {entry_id:
+    {"day": "YYYY-MM-DD", "cli": "<claude version>"}}}}``. A unit — one letter in one read with all its conditions — is
+    written the moment it completes, whole (a temporary file, then a rename): its day is the today it was recorded
+    with, so a resume, a replay and the request lock's capture give the letter that day again.
+
+    A unit kept with conditions left unanswered (``--allow-errors``, after the resumes the pre-registration allows) is
+    written too, with ``"complete": false`` and ``"unanswered"``: each such condition's failed prediction, as it was
+    scored. It keeps its day for every replay, which gives those conditions their recorded failure; it is not
+    complete, so a live run still records it (on another day, only after a retake)."""
 
     def __init__(self, path: Path) -> None:
         self.path = Path(path)
@@ -218,12 +224,47 @@ class DayIndex:
                 raise HarnessError(f"{self.path} is not a day index")
             self.data = data
 
-    def units(self, split: str, repeat: int) -> dict[str, dict[str, Any]]:
-        """The complete units of ``split`` at run ``repeat``: entry id → ``{"day", "cli"}``."""
+    def attempted(self, split: str, repeat: int) -> dict[str, dict[str, Any]]:
+        """Every unit of ``split`` at run ``repeat`` the index names, complete or kept unanswered: entry id → its
+        record."""
         return dict(self.data.get(split, {}).get(f"r{repeat}", {}))
 
-    def put(self, split: str, repeat: int, entry_id: str, *, day: str, cli: str | None) -> None:
-        self.data.setdefault(split, {}).setdefault(f"r{repeat}", {})[entry_id] = {"day": day, "cli": cli}
+    def units(self, split: str, repeat: int) -> dict[str, dict[str, Any]]:
+        """The complete units of ``split`` at run ``repeat``: entry id → ``{"day", "cli"}``."""
+        return {
+            entry_id: unit
+            for entry_id, unit in self.attempted(split, repeat).items()
+            if unit.get("complete", True)
+        }
+
+    def put(
+        self,
+        split: str,
+        repeat: int,
+        entry_id: str,
+        *,
+        day: str,
+        cli: str | None,
+        unanswered: Mapping[str, Any] | None = None,
+    ) -> None:
+        """Write a unit: complete, or (``unanswered``: condition → its failed prediction) kept unanswered."""
+        unit: dict[str, Any] = {"day": day, "cli": cli}
+        if unanswered:
+            unit.update(complete=False, unanswered=dict(unanswered))
+        self.data.setdefault(split, {}).setdefault(f"r{repeat}", {})[entry_id] = unit
+        self._save()
+
+    def remove(self, split: str, repeat: int, entry_ids: Collection[str]) -> list[str]:
+        """Take these units out of the index (a retake); the ids that were in it."""
+        units = self.data.get(split, {}).get(f"r{repeat}", {})
+        gone = sorted(entry_id for entry_id in entry_ids if entry_id in units)
+        for entry_id in gone:
+            del units[entry_id]
+        if gone:
+            self._save()
+        return gone
+
+    def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         text = json.dumps(self.data, indent=1, sort_keys=True) + "\n"
         write_atomic(self.path, text)
@@ -1146,8 +1187,8 @@ def unlock(path: Path) -> tuple[int, str]:
 
 
 def dirty_paths(root: Path = ROOT) -> list[str] | None:
-    """The code paths (under ``src/`` and ``evals/``, not results or recordings) that differ from the commit, or
-    ``None`` without git."""
+    """The code paths (under ``src/`` and ``evals/``, not results, recordings or the deviations file) that differ
+    from the commit, or ``None`` without git."""
     try:
         result = subprocess.run(
             ["git", "status", "--porcelain", "--untracked-files=all", "--", "src", "evals"],
@@ -1164,9 +1205,23 @@ def dirty_paths(root: Path = ROOT) -> list[str] | None:
     paths = []
     for line in result.stdout.splitlines():
         path = line[3:].split(" -> ")[-1].strip().strip('"')
-        if path and not path.startswith(("evals/results/", "evals/recorded/")):
+        if path and not path.startswith(("evals/results/", "evals/recorded/")) and not _deviations_file(path):
             paths.append(path)
     return sorted(paths)
+
+
+def shown(path: Path) -> str:
+    """``path`` as a command typed from the repository's root would name it (the absolute path elsewhere)."""
+    try:
+        return Path(path).resolve().relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        return str(path)
+
+
+def _deviations_file(path: str) -> bool:
+    """The pre-registration's deviations file: recorded at the time, while a read may still be under way, and committed
+    with the next checkpoint; it is no code a recording depends on."""
+    return re.fullmatch(r"evals/preregistration/deviations-[^/]+\.json", path) is not None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1378,6 +1433,12 @@ def _cassette_cost(path: Path) -> float:
         return 0.0
 
 
+#: The deviations whose registered consequence records a read again (the pre-registration's table): the never-waivable
+#: kinds, and the runner-defect rule's ``code_hash_changed``.
+RECORD_AGAIN_KINDS = ("fingerprint", "code_digest", "prompt_hash", "model", "code_hash_changed")
+DEVIATIONS_FILE = ROOT / "evals" / "preregistration" / "deviations-0.4.0.json"
+
+
 def retake(
     recorded_dir: Path,
     *,
@@ -1387,11 +1448,14 @@ def retake(
     split: str | None = None,
     ids: Sequence[str] = (),
     whole_run: bool = False,
+    complete_too: bool = False,
 ) -> list[str]:
     """Move an incomplete unit's recordings out of ``recorded_dir`` into ``to`` and remove their request-lock entries,
     so the unit is recorded again whole on its new day (a unit's calls are all told one today). A unit is the letters
     ``ids`` of ``split`` at run ``repeat``, or (``whole_run``) every recording of that run in the folder: an Ask run or
-    a stress invocation is one unit. A complete unit (in the day index) is never retaken.
+    a stress invocation is one unit, never in the benchmark's folder (where the final splits' day index lives). A
+    complete unit (in the day index) is never retaken, unless ``complete_too`` (:func:`retake_invalid`: a read a
+    deviation made invalid). The retaken units leave the day index.
 
     Returns one line per recording moved (path, sha256, outcome, cost) and per call of the unit that left no recording
     (a timeout, an infrastructure error): the evidence of the retake's deviation. Nothing is moved when any target
@@ -1405,8 +1469,21 @@ def retake(
     if ids and split is None:
         raise HarnessError("--ids names letters of one split: give --split too")
     root = recorded_dir / safe_name(model)
-    if ids and split is not None:
-        complete = DayIndex(root / DAY_INDEX_FILE).units(split, repeat)
+    index = DayIndex(root / DAY_INDEX_FILE)
+    if whole_run:
+        if split is not None:
+            raise HarnessError(
+                "--whole-run retakes an Ask run or a stress invocation, which have no split: not with --split (a "
+                "benchmark's units are retaken with --split S --ids …)"
+            )
+        if recorded_dir.resolve() == RECORDED_DIR.resolve() or index.data:
+            raise HarnessError(
+                f"{root} holds the benchmark's recordings (and the final splits' day index): --whole-run would move "
+                "every letter's recordings of that run. Name the Ask or stress run's own folder with --recorded-dir "
+                "(evals/recorded/ask-heldout, evals/recorded/stress)"
+            )
+    if ids and split is not None and not complete_too:
+        complete = index.units(split, repeat)
         done = sorted(set(ids) & set(complete))
         if done:
             days = ", ".join(sorted({str(complete[entry_id]["day"]) for entry_id in done}))
@@ -1462,10 +1539,73 @@ def retake(
     for key in selected:
         del lock.entries[key]
     lock.save()
+    if ids and split is not None:
+        index.remove(split, repeat, ids)
     entries = "entry" if len(selected) == 1 else "entries"
     lines.append(
         f"moved {len(moves)} recording(s) of {what} to {target_root} and removed {len(selected)} request-lock "
         f"{entries}: record the unit again whole"
+    )
+    return lines
+
+
+def retake_invalid(
+    recorded_dir: Path,
+    *,
+    to: Path,
+    deviation: str,
+    deviations_file: Path = DEVIATIONS_FILE,
+    model: str = DEFAULT_MODEL,
+) -> list[str]:
+    """Move aside every unit of a read that a deviation recorded at the time made invalid, complete ones too, so the
+    read is recorded again inside the window: the registered consequence of a never-waivable deviation (fingerprint,
+    code digest, prompt hash, served model) and of the runner-defect rule (``code_hash_changed``). The deviation must
+    be in ``deviations_file``, well formed, of one of those kinds, and name the read (``applies_to`` split and repeat;
+    its ``entries``, when it lists some, are the units). The read's results file is set aside by hand."""
+    from evals.analysis import AnalysisError, load_deviations
+    from evals.run import safe_name
+
+    try:
+        found = {entry.id: entry for entry in load_deviations(deviations_file)}
+    except AnalysisError as exc:
+        raise HarnessError(f"{deviations_file}: {exc}") from exc
+    named = found.get(deviation)
+    if named is None:
+        raise HarnessError(f"{deviations_file.name} has no deviation {deviation}")
+    if named.kind not in RECORD_AGAIN_KINDS:
+        raise HarnessError(
+            f"{deviation} is a {named.kind} deviation: only {', '.join(RECORD_AGAIN_KINDS)} make a read recorded "
+            "again"
+        )
+    if named.split is None or named.repeat is None:
+        raise HarnessError(f"{deviation} names no read (applies_to: split and repeat)")
+    root = recorded_dir / safe_name(model)
+    units = DayIndex(root / DAY_INDEX_FILE).attempted(named.split, named.repeat)
+    lock = RequestLock(root / LOCK_FILE)
+    recorded = {
+        doc
+        for entry in lock_entries_of(lock, repeat=named.repeat).values()
+        for doc in entry.get("docs") or []
+    }
+    ids = sorted(named.entries) or sorted(
+        units.keys() | {doc for doc in recorded if doc.startswith(f"{named.split}-")}
+    )
+    if not ids:
+        raise NothingToRetake(
+            f"{named.split} read {named.repeat} has nothing recorded in {root}: nothing to retake"
+        )
+    lines = retake(
+        recorded_dir,
+        to=to,
+        repeat=named.repeat,
+        model=model,
+        split=named.split,
+        ids=ids,
+        complete_too=True,
+    )
+    lines.append(
+        f"{named.split} read {named.repeat} is invalid ({deviation}, {named.kind}): its {len(ids)} unit(s) left the "
+        "day index; set its results file aside, then record the read again whole inside the window"
     )
     return lines
 
@@ -1749,9 +1889,20 @@ def _parser() -> argparse.ArgumentParser:
     retake_cmd.add_argument(
         "--whole-run",
         action="store_true",
-        help="every recording of the run in the folder (an Ask run, a stress run)",
+        help="every recording of the run in the folder (an Ask run, a stress run; give its --recorded-dir)",
     )
-    retake_cmd.add_argument("--recorded-dir", type=Path, default=RECORDED_DIR, help="recordings root")
+    retake_cmd.add_argument(
+        "--invalid",
+        metavar="ID",
+        help="every unit of the read this deviation made invalid, complete ones too (a never-waivable deviation, or "
+        "the runner-defect rule's code_hash_changed)",
+    )
+    retake_cmd.add_argument(
+        "--deviations", type=Path, default=DEVIATIONS_FILE, help="the deviations file (with --invalid)"
+    )
+    retake_cmd.add_argument(
+        "--recorded-dir", type=Path, default=None, help="recordings root (default: the benchmark's)"
+    )
     retake_cmd.add_argument("--model", default=DEFAULT_MODEL)
 
     ledger_cmd = commands.add_parser("ledger", help="what a recording cost, from its ledger")
@@ -1800,16 +1951,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(line)
             return 0
         if args.command == "retake":
-            try:
-                lines = retake(
-                    args.recorded_dir,
-                    to=args.to,
-                    repeat=args.repeat,
-                    model=args.model,
-                    split=args.split,
-                    ids=args.ids,
-                    whole_run=args.whole_run,
+            if args.whole_run and args.recorded_dir is None:
+                raise HarnessError(
+                    "--whole-run needs the Ask or stress run's own folder: --recorded-dir evals/recorded/ask-heldout "
+                    "or evals/recorded/stress"
                 )
+            if args.invalid and (args.whole_run or args.ids or args.split):
+                raise HarnessError("--invalid names the read itself: not with --whole-run, --split or --ids")
+            try:
+                if args.invalid:
+                    lines = retake_invalid(
+                        args.recorded_dir or RECORDED_DIR,
+                        to=args.to,
+                        deviation=args.invalid,
+                        deviations_file=args.deviations,
+                        model=args.model,
+                    )
+                else:
+                    lines = retake(
+                        args.recorded_dir or RECORDED_DIR,
+                        to=args.to,
+                        repeat=args.repeat,
+                        model=args.model,
+                        split=args.split,
+                        ids=args.ids,
+                        whole_run=args.whole_run,
+                    )
             except NothingToRetake as exc:
                 print(f"error: {exc}", file=sys.stderr)
                 return 1

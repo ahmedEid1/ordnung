@@ -52,7 +52,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from evals import analysis, conditions, report, stats
-from evals.harness import STOPPED, Stop, add_stop_arguments, stopped_message
+from evals.harness import STOPPED, Stop, add_stop_arguments, shown, stopped_message
 from evals.perturb import build, score
 from evals.perturb import templates as tpl
 from evals.records import ConditionName, Entry, Prediction, load_manifest
@@ -123,7 +123,8 @@ async def _predictions(
     if outcome.stopped:
         raise StressStopped(
             f"{config.split}: {stopped_message(outcome.stopped)} — a stress invocation is one unit: move its recordings "
-            "aside with `python -m evals.harness retake --whole-run` and record it again whole"
+            f"aside with `python -m evals.harness retake --whole-run --recorded-dir {shown(config.recorded_dir)} "
+            f"--repeat {config.repeat} --to <folder>` and record it again whole"
         )
     if run.results is None:
         problems = "; ".join(f"{p.condition} {p.entry_id}: {(p.error or '')[:120]}" for p in run.errors[:5])

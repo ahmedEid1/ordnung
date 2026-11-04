@@ -49,6 +49,8 @@ today. When a unit completes, its day and the ``claude`` version are written to 
 request lock's capture give each letter its unit's day again, and the results say ``recording_days`` and
 ``cli_versions`` (each prediction its unit's ``recorded_on`` and ``cli_version``). An incomplete unit begun on another
 day is refused until ``python -m evals.harness retake`` moved its recordings aside; a complete one never makes a call.
+A unit kept with conditions left unanswered (``--allow-errors``) is written as not complete, with those failed
+predictions, which every replay gives again. A live run refuses to start when ``claude --version`` gives no version.
 ``--stop-file`` and ``--stop-at`` start no new unit once asked (the units under way finish; exit 4).
 
 The harness (:mod:`evals.harness`) wraps every model call:
@@ -476,11 +478,13 @@ def day_index_path(config: RunConfig, model: str) -> Path:
 @dataclass
 class FinalRead:
     """One read of a final split for one model: its letters each on their unit's day, the units complete before
-    this run (from the day index) and the index itself."""
+    this run (from the day index) and the index itself; on a replay, the conditions a unit kept unanswered (their
+    failed predictions as they were scored: a replay gives them again, with no call)."""
 
     index: harness.DayIndex
     complete: dict[str, dict[str, Any]]
     entries: list[Entry]
+    unanswered: dict[tuple[str, str], Prediction] = field(default_factory=dict)
 
     @property
     def new(self) -> list[Entry]:
@@ -489,20 +493,29 @@ class FinalRead:
 
 
 def final_read(config: RunConfig, model: str, entries: Sequence[Entry]) -> FinalRead | None:
-    """A final split's read (``None`` for every other split): a complete unit's letter takes the day it was recorded
-    on from the day index; a new one ``--today`` on a live run, else the planned day the manifest names."""
+    """A final split's read (``None`` for every other split): a letter whose unit the day index names takes the day
+    it was recorded on; a letter without a complete unit takes ``--today`` on a live run, else the planned day the
+    manifest names."""
     if not splits.is_final(config.split):
         return None
     index = harness.DayIndex(day_index_path(config, model))
     complete = index.units(config.split, config.repeat)
-    days = {entry_id: str(unit["day"]) for entry_id, unit in complete.items()}
+    attempted = index.attempted(config.split, config.repeat)
+    days = {entry_id: str(unit["day"]) for entry_id, unit in attempted.items()}
+    unanswered: dict[tuple[str, str], Prediction] = {}
     if config.live and config.today is not None:
         today = config.today.isoformat()
         days |= {entry.id: today for entry in entries if entry.id not in complete}
+    elif not config.live:
+        unanswered = {
+            (condition, entry_id): Prediction.model_validate(prediction)
+            for entry_id, unit in attempted.items()
+            for condition, prediction in (unit.get("unanswered") or {}).items()
+        }
     on_their_days = [
         entry.model_copy(update={"today": days[entry.id]}) if entry.id in days else entry for entry in entries
     ]
-    return FinalRead(index=index, complete=complete, entries=on_their_days)
+    return FinalRead(index=index, complete=complete, entries=on_their_days, unanswered=unanswered)
 
 
 def check_final_live(config: RunConfig, read: FinalRead) -> None:
@@ -556,7 +569,8 @@ def check_final_live(config: RunConfig, read: FinalRead) -> None:
 def with_units(
     predictions: dict[str, dict[str, Prediction]], units: Mapping[str, Mapping[str, Any]]
 ) -> dict[str, dict[str, Prediction]]:
-    """Each prediction with its unit's day and ``claude`` version (a letter without a complete unit keeps none)."""
+    """Each prediction with its unit's day and ``claude`` version (a letter whose unit the day index does not name
+    keeps none)."""
     return {
         condition: {
             entry_id: prediction.model_copy(
@@ -693,13 +707,17 @@ async def predict_model(
     progress: Progress | None = None,
     on_unit: Callable[[Entry, dict[str, Prediction]], None] | None = None,
     begun: Collection[str] = (),
+    unanswered: Mapping[tuple[str, str], Prediction] | None = None,
 ) -> ModelRun:
     """Every selected condition on every selected letter for one model (bounded concurrency).
 
     The work is grouped in units, a letter with all its conditions, queued together: before a unit starts, the run's
     stop (:class:`evals.harness.Stop`) is asked, and once it asks, no new unit starts while the units under way finish
     (``ModelRun.stopped``). A unit that has a cached prediction, or is one of ``begun`` (complete before this run),
-    has started already. ``on_unit`` hears each unit the moment all its conditions are done."""
+    has started already. ``on_unit`` hears each unit the moment all its conditions are done. ``unanswered`` (a final
+    split's replay): (condition, letter) → the failed prediction its unit was kept with, given again with no call; it
+    counts as no error of this run (it was scored empty when it was recorded)."""
+    recorded = dict(unanswered or {})
     say = progress or (lambda _message: None)
     fingerprints = {condition: fingerprint(condition, model) for condition in config.conditions}
     semaphore = asyncio.Semaphore(max(1, config.concurrency))
@@ -736,7 +754,9 @@ async def predict_model(
             path = cache_path(config, model, condition, entry)
             cached = cached_ones.get((condition, entry.id))
             status = "cached"
-            if cached is not None:
+            if (condition, entry.id) in recorded:
+                prediction, status = recorded[(condition, entry.id)], "unanswered"
+            elif cached is not None:
                 prediction = cached
             else:
                 prediction = await _predict(condition, entry)
@@ -749,7 +769,11 @@ async def predict_model(
                         say(f"warning: could not cache {condition} {entry.id}: {exc}")
             predictions[condition][entry.id] = prediction
             done += 1
-            detail = f" — {prediction.error or prediction.failed}" if status in ("error", "failed") else ""
+            detail = (
+                f" — {prediction.error or prediction.failed}"
+                if status in ("error", "failed", "unanswered")
+                else ""
+            )
             say(
                 f"[{done:>3}/{total}] {model} {condition:<15} {entry.id:<44} {status:<6} "
                 f"{prediction.latency_ms / 1000:6.1f}s ${prediction.cost_usd:.4f}{detail[:160]}"
@@ -796,7 +820,12 @@ async def predict_model(
 
         await asyncio.gather(*(one(condition, entry) for entry in entries for condition in config.conditions))
 
-    errors = [p for by_entry in predictions.values() for p in by_entry.values() if p.error]
+    errors = [
+        p
+        for by_entry in predictions.values()
+        for p in by_entry.values()
+        if p.error and (p.condition, p.entry_id) not in recorded
+    ]
     return ModelRun(
         model=model,
         predictions=predictions,
@@ -977,6 +1006,14 @@ async def _run_models(
             model_backend = make_backend(config, model, allowed, live=live)
         if live is not None:
             await live.resolve_version()
+            read_live = (finals or {}).get(model)
+            if read_live is not None and hasattr(live.cli, "binary") and live.cli_version is None:
+                # every unit names the claude that recorded it (the day index): without it a read cannot be checked
+                raise harness.HarnessError(
+                    "`claude --version` gave no version: a final split's unit records the claude that made it, so "
+                    "nothing was recorded — check that claude runs (`claude --version`), then run the same command "
+                    "again"
+                )
         label = backend.name if backend is not None else ("live" if config.live else "replay")
         if config.write_results:
             _refuse_to_replace_a_recording(
@@ -996,6 +1033,7 @@ async def _run_models(
             progress=say,
             on_unit=on_unit,
             begun=read.complete if read is not None else (),
+            unanswered=read.unanswered if read is not None else None,
         )
         say(f"{model}: predictions done in {time.perf_counter() - started:.1f}s")
         if backend is None and config.live and current_prompts:
@@ -1020,10 +1058,14 @@ async def _run_models(
             _report_errors(run, config, tell)
             continue
         units = None
+        recorded_on = (live.day or harness.utc_today()) if live is not None else None
         if read is not None:
-            known = read.index.units(config.split, config.repeat)
+            known = read.index.attempted(config.split, config.repeat)
             units = {entry.id: known[entry.id] for entry in letters if entry.id in known}
             run.predictions = with_units(run.predictions, units)
+            if recorded_on is not None and units:
+                # a final read's day is its last unit's (a resume that recorded nothing new keeps it)
+                recorded_on = max(date.fromisoformat(str(unit["day"])) for unit in units.values())
         evaluation = evaluate(letters, run.predictions, seed=config.seed, resamples=config.resamples)
         meta = run_meta(
             config,
@@ -1032,7 +1074,7 @@ async def _run_models(
             label,
             left_out=run.left_out,
             cli_version=live.cli_version if live is not None else None,
-            recorded_on=(live.day or harness.utc_today()) if live is not None else None,
+            recorded_on=recorded_on,
             units=units,
         )
         unrecorded = reask_unrecorded(run)
@@ -1083,12 +1125,24 @@ def _unit_writer(
     config: RunConfig, read: FinalRead, live: harness.LiveSetup
 ) -> Callable[[Entry, dict[str, Prediction]], None]:
     """Writes each unit of a live final run into the day index the moment it completes (every condition answered or
-    failed as a model failure, none with an infrastructure error): its today and the ``claude`` that recorded it."""
+    failed as a model failure, none with an infrastructure error): its today and the ``claude`` that recorded it. With
+    ``--allow-errors`` a unit whose conditions all ran is written even when some were left without an answer: kept
+    unanswered (``"complete": false``) with those failed predictions, so every replay gives the letter its day and
+    those conditions their recorded failure. A unit that never started, or that a fatal error cut, is not written."""
 
     def write(entry: Entry, unit: dict[str, Prediction]) -> None:
-        if entry.id in read.complete or any(prediction.error for prediction in unit.values()):
+        if entry.id in read.complete:
             return
-        read.index.put(config.split, config.repeat, entry.id, day=entry.today, cli=live.cli_version)
+        failed = {condition: p for condition, p in unit.items() if p.error}
+        if not failed:
+            read.index.put(config.split, config.repeat, entry.id, day=entry.today, cli=live.cli_version)
+            return
+        cut = any((p.error or "").startswith((NOT_STARTED, "not run:")) for p in failed.values())
+        if config.allow_errors and not cut:
+            kept = {condition: p.model_dump(mode="json") for condition, p in sorted(failed.items())}
+            read.index.put(
+                config.split, config.repeat, entry.id, day=entry.today, cli=live.cli_version, unanswered=kept
+            )
 
     return write
 

@@ -213,6 +213,7 @@ _EXCUSED_BY = {
 FIRST_ATTEMPT_OUTCOMES = ("ok", "failed", "timeout", "infra")
 _COMMENT_URL = re.compile(r"https://github\.com/[A-Za-z0-9._-]+/[A-Za-z0-9._-]+/issues/\d+#issuecomment-\d+")
 _COMMIT = re.compile(r"[0-9a-f]{40}")
+_DEVIATIONS_PATH = re.compile(r"evals/preregistration/deviations-[^/]+\.json")
 
 
 class AnalysisError(ValueError):
@@ -1494,7 +1495,9 @@ def check_frozen(
             )
         if (run.meta.get("dataset") or {}).get("manifest_sha256") != frozen.manifest_sha256:
             found.append(("manifest_mismatch", None, None, "its letters are not the registered build"))
-        if run.meta.get("dirty") != []:
+        dirty = run.meta.get("dirty")
+        if not isinstance(dirty, list) or any(not _DEVIATIONS_PATH.fullmatch(str(path)) for path in dirty):
+            # the deviations file, appended to at the time and committed with the next checkpoint, is no code
             found.append(("dirty_tree", None, None, "recorded from a tree with changes"))
         index = (day_index.get(run.split) or {}).get(f"r{run.repeat}") or {}
         versions = set()

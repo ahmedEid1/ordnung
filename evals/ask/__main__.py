@@ -349,8 +349,9 @@ def main(
     if result.stopped:  # a run is one unit: nothing is scored or written, it is recorded again whole
         print(
             f"{result.stopped} — no new turn started, the turns under way finished; the run is one unit, so nothing "
-            "was written: move its recordings aside with `python -m evals.harness retake --whole-run` and record it "
-            f"again whole (exit {harness.STOPPED})",
+            "was written: move its recordings aside with `python -m evals.harness retake --whole-run --recorded-dir "
+            f"{harness.shown(config.recorded_dir)} --repeat {config.repeat} --to <folder>` and record it again whole "
+            f"(exit {harness.STOPPED})",
             file=sys.stderr,
         )
         return harness.STOPPED
