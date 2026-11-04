@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# README screenshots and the demo video, captured from a fresh demo (`make capture`).
+# Screenshots for the README and the guide (two from the real app), the demo video and GIF (`make capture`).
 # Needs the Python venv, the web app's node_modules and ffmpeg. PW_CHROMIUM_PATH selects a Chromium.
 # The court payment order comes from the app's mock mode (see web/scripts/capture.mjs).
 # Pairing a phone and Your computers come from the real app (see web/e2e/readme-pictures.spec.ts).

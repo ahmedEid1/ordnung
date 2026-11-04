@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * README screenshots and the demo video, captured from a running demo (`make capture`).
+ * Screenshots for the README and the guide, the demo video and GIF, captured from a running demo (`make capture`).
  *
  *   ordnung demo --serve --no-browser --reset --port 8797 --data-dir /tmp/ordnung-capture
  *   node web/scripts/capture.mjs --data /tmp/ordnung-capture --port 8797 --out docs/assets

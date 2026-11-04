@@ -77,7 +77,7 @@ UI_AUDIT_ARGS ?=
 ui-audit: build-web browser ## screenshots + layout/a11y probes of every screen: demo, first run, static demo (ports N..N+2)
 	node web/scripts/ui-audit.mjs --target demo,fresh,static --port $(UI_AUDIT_PORT) --data $(UI_AUDIT_DIR)/data --out $(UI_AUDIT_DIR)/out $(UI_AUDIT_ARGS)
 
-capture: build-web browser  ## README screenshots (two of them from the real app), demo video and GIF (needs ffmpeg)
+capture: build-web browser  ## screenshots for the README and the guide (two from the real app), the demo video and GIF (needs ffmpeg)
 	scripts/capture.sh
 
 clean:              ## caches and coverage; the committed web build in src/ordnung/web/dist stays
