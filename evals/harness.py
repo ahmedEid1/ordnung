@@ -112,12 +112,12 @@ def utc_today() -> date:
 
 
 def check_recording_day(simulated: Iterable[str | date], day: date, *, allow: bool = False) -> None:
-    """Refuse a recording whose simulated today is not ``day``, the day it is recorded (the evaluation plan's
-    addendum, item 8): the CLI tells the model the machine's date as well, its date override does not work in ``-p``
-    mode, so a ledger or letter pinned to another day shows the model two todays (E2's Ask recording, pinned to
-    28 Sep 2026 and recorded on 30 Oct, had answers call open deadlines passed). Build the letters or the ledger for
-    the day instead. ``allow`` (``--allow-another-today``, where :func:`check_another_today` lets it): a development
-    set re-recorded in the open, or a smoke into a scratch folder."""
+    """Refuse a recording whose simulated today is not ``day``, the day it is recorded: the CLI tells the model the
+    machine's date as well, its date override does not work in ``-p`` mode, so a ledger or letter pinned to another
+    day shows the model two todays (the development set's Ask recording of 30 Oct 2026, pinned to 28 Sep, had
+    answers call open deadlines passed). Build the letters or the ledger for the day instead. ``allow``
+    (``--allow-another-today``, where :func:`check_another_today` lets it): a development set re-recorded in the open,
+    or a smoke into a scratch folder."""
     days = {value.isoformat() if isinstance(value, date) else str(value) for value in simulated}
     other = sorted(days - {day.isoformat()})
     if other and not allow:

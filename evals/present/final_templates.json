@@ -1,7 +1,23 @@
 {
   "schema": "ordnung-final-sentences/1",
-  "about": "The sentences the README says about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
+  "about": "The sentences the README and docs/evals.md say about the pre-registered final run, written before any final result exists. evals/present/final.py picks one code per decision by fixed rules and fills its placeholders from the final analysis and the results files it names; nothing else is said about the final run in the README's generated block, but the leads and the link of readme_layout, or in the final section of docs/evals.md. page_block lists every slot, for docs/evals.md. readme_block lists the slots the README says, in the same order, each word for word as on the page; a slot is there for its role, whatever its result: the head, with the deviations recorded and where they are listed, and the rest of the accuracy family of the one confirmatory decision (the model with the rules pasted in, the agent's non-inferiority); every condition's late or missed dates and the two tested harm comparisons; the stability decision; where Ordnung falls short (what its flag caught of its wrong dates, the real obligations set aside as scams, the scam letters whose demands still reached the calendar); “Ask: new questions on the demo household” with its scope; and the caveats that bear on every number (the disputed readings, the slots left open, who wrote the letters). The rest is on the page only. readme_layout lays out the README's block: one paragraph, the chart, a line per item and the link to the page, which holds every sentence, decided or not; final.py holds its limits. Every number is a placeholder; a difference is Ordnung minus the other condition, in percentage points.",
   "readme_block": [
+    "head",
+    "rules_text",
+    "agent",
+    "harm",
+    "f2.llm_only",
+    "f2.llm_rules_text",
+    "stability",
+    "flags",
+    "e2e",
+    "ask",
+    "limitations.ask_scope",
+    "limitations.s_conv",
+    "limitations.ambiguous",
+    "limitations.absolute"
+  ],
+  "page_block": [
     "head",
     "rules_text",
     "agent",
@@ -11,14 +27,29 @@
     "f2.llm_rules_tool",
     "stability",
     "flags",
+    "e2e",
     "newkinds",
     "ask",
+    "limitations.ask_scope",
     "stress",
-    "e2e",
-    "limitations",
+    "limitations.s_conv",
+    "limitations.ambiguous",
+    "limitations.absolute",
+    "limitations.reads",
     "owner",
     "provenance"
   ],
+  "readme_layout": {
+    "paragraph": ["head", "rules_text", "agent", "harm", "f2.llm_only", "f2.llm_rules_text", "stability"],
+    "lines": [
+      {"lead": "**Where it falls short:**", "slots": ["flags", "e2e"]},
+      {"lead": "", "slots": ["ask", "limitations.ask_scope"]},
+      {"lead": "", "slots": ["limitations.s_conv"]},
+      {"lead": "", "slots": ["limitations.ambiguous"]},
+      {"lead": "", "slots": ["limitations.absolute"]}
+    ],
+    "link": "**[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** every pre-registered sentence, decided or not, with the statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)"
+  },
   "conditions": {
     "ordnung": "Ordnung",
     "llm_only": "the model alone",
@@ -67,6 +98,10 @@
     "head.not_confirmed": {
       "text": "Ordnung against the model alone: a difference of {d} points not confirmed by the pre-registered test (Holm p {p}; {level} % CI {lo} to {hi}).",
       "compares": ["ordnung", "llm_only"]
+    },
+    "head.deviations": {
+      "text": "Deviations from the pre-registration, recorded at the time and listed in `{deviations_file}`: {deviations}.",
+      "compares": []
     },
     "rules_text.clear": {
       "text": "Ordnung is ahead of the model with the rules pasted in, which gets {a_b} ({d} points, {level} % CI {lo} to {hi}; Holm p {p}).",
@@ -184,6 +219,14 @@
       "text": "From the letter file to the reminder, on the final letters read once: {e2e_in_time} of {e2e_obligations} real deadlines got a reminder in time, and none was lost to a letter set aside as a scam.",
       "compares": []
     },
+    "e2e.scam_in_calendar": {
+      "text": "{e2e_scam_calendar} of {e2e_scam_letters} scam letters still put their demands in the calendar.",
+      "compares": []
+    },
+    "e2e.no_scam_in_calendar": {
+      "text": "Not one of the {e2e_scam_letters} scam letters put its demands in the calendar.",
+      "compares": []
+    },
     "limitations.s_conv": {
       "text": "On {sc_n} of {n} deadlines the label rests on a disputed reading of the law that the engine's documentation shares; with any defensible reading accepted, exactly right: Ordnung {sc_o}, the model alone {sc_l}, the model with the rules pasted in {sc_r}, the agent {sc_t}.",
       "compares": ["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
@@ -194,6 +237,14 @@
     },
     "limitations.s_conv_none": {
       "text": "No deadline's label rests on a reading of the law listed as disputed.",
+      "compares": []
+    },
+    "limitations.ambiguous": {
+      "text": "Left open between two or more dates by the letter or the law, and so not among the deadlines counted above (counted once for a letter and its photo): deadlines {amb_d}, offered dates {amb_o}, contract dates {amb_c}. Such a deadline counts as handled when the answer lists it and either gives it no date, flags it, or warns that the letter's dates are uncertain; such an offered date or contract date is not scored.",
+      "compares": []
+    },
+    "limitations.ambiguous_none": {
+      "text": "No deadline, offered date or contract date of the final letters is left open between two or more dates by the letter or the law.",
       "compares": []
     },
     "limitations.writer": {
@@ -309,6 +360,11 @@
     "e2e_obligations": {"source": "e2e", "path": "metrics.all.obligations", "format": "int"},
     "e2e_in_time": {"source": "e2e", "path": "metrics.all.reminded_in_time.k", "format": "int"},
     "e2e_set_aside": {"source": "e2e", "path": "metrics.all.scam.set_aside_obligations", "format": "int"},
+    "e2e_scam_letters": {"source": "e2e", "path": "metrics.all.scam.scam_letters", "format": "int"},
+    "e2e_scam_calendar": {"source": "e2e", "path": "metrics.all.scam.in_the_calendar", "total": "count", "format": "int"},
+    "amb_d": {"source": "final", "path": "labels.ambiguous_slots.deadline", "format": "int"},
+    "amb_o": {"source": "final", "path": "labels.ambiguous_slots.offered", "format": "int"},
+    "amb_c": {"source": "final", "path": "labels.ambiguous_slots.contract", "format": "int"},
     "sc_n": {"source": "final", "path": "sensitivities.s_conv.tagged_items", "format": "int"},
     "sc_o": {"source": "final", "path": "sensitivities.s_conv.conditions.ordnung.mean_accuracy", "format": "pct"},
     "sc_l": {"source": "final", "path": "sensitivities.s_conv.conditions.llm_only.mean_accuracy", "format": "pct"},
@@ -322,6 +378,7 @@
     "prereg_file": {"source": "final", "path": "meta.prereg.file", "format": "text"},
     "prereg_hash": {"source": "final", "path": "meta.prereg.sha256", "format": "hash"},
     "deviations": {"source": "deviations", "path": "", "total": "count", "format": "int"},
+    "deviations_file": {"source": "templates", "path": "files.deviations", "format": "text"},
     "baseline": {"source": "context", "path": "baseline", "format": "text"}
   }
 }

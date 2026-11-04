@@ -1,7 +1,7 @@
 """The templates of the stress cells' sentences, and the checks every template must pass.
 
-The templates are written once, before the stress cells are built, by a writer given this module, the README beside
-it and the letters' generator, nothing else of the code (plan EV8, commit A), and committed as
+The templates are written once, after the code freeze and before the stress cells are built, by a writer given this
+module, the README beside it and the letters' generator, nothing else of the code, and committed as
 ``evals/perturb/templates.json``::
 
     {
@@ -41,7 +41,7 @@ from typing import Any
 
 SCHEMA = "ordnung-stress-templates/1"
 PERTURB_DIR = Path(__file__).resolve().parent
-#: Written blind in EV8's commit A (absent until then).
+#: Written blind after the code freeze (absent until then).
 TEMPLATES_PATH = PERTURB_DIR / "templates.json"
 
 LANGUAGES = ("de", "en")
@@ -227,7 +227,7 @@ def load_templates(path: Path = TEMPLATES_PATH) -> Templates:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise TemplateError(f"{path}: no templates yet (they are written blind, plan EV8)") from exc
+        raise TemplateError(f"{path}: no templates yet (written blind after the code freeze)") from exc
     if not isinstance(data, Mapping):
         raise TemplateError(f"{path}: not a JSON object")
     return parse_templates(data)

@@ -1,9 +1,49 @@
-"""The pre-registered sentences about the final run (``sentences(final_doc, prereg)``), standard library only.
+"""The pre-registered sentences about the final run, for the README and docs/evals.md; standard library only.
 
-Every sentence the README's generated block says about the final run is a template of
-``evals/present/final_templates.json`` (the pre-registration copies it as its ``sentences`` section). This module
-picks one template code per decision by the fixed rules below and fills its placeholders; it computes no statistic
-and writes no word of its own, so what the README can say was settled before any final result existed.
+Every sentence the README's generated block and the final-run section of ``docs/evals.md`` say about the final run
+is a template of ``evals/present/final_templates.json`` (the pre-registration copies it as its ``sentences``
+section). This module picks one template code per decision by the fixed rules below and fills its placeholders; it
+computes no statistic and writes no word of its own, so what either page can say was settled before any final result
+existed.
+
+The templates file orders the slots twice (:func:`sentences` takes ``block``, ``"page"`` or ``"readme"``).
+``page_block`` lists every slot: the final section of ``docs/evals.md``, between :data:`PAGE_BEGIN` and
+:data:`PAGE_END`, says all of them. ``readme_block`` lists the slots the README says, in the same order: a
+subsequence of ``page_block``, so each README sentence is a page sentence, word for word. The README holds a slot for
+its role, fixed before any result, never for what it says on a given result, so each of its slots is there whatever
+its code:
+
+* the accuracy family of the one confirmatory decision (``evals.analysis.CONFIRMATORY``): the headline with Ordnung
+  against the model alone (``head``, which ends with the number of deviations recorded at the time and the file that
+  lists them), and the family's two other comparisons, against the model with the rules pasted in (``rules_text``)
+  and the agent's non-inferiority (``agent``);
+* the safety endpoint, every condition's late or missed dates (``harm``), and the harm comparisons the analysis
+  decides, against the model alone and against the model with the rules pasted in (``f2.llm_only``,
+  ``f2.llm_rules_text``; harm against the agent is described, not tested, and stays on the page);
+* the stability decision (``stability``);
+* where Ordnung falls short: what its "please check" flag caught of its wrong dates (``flags``), the real
+  obligations the end-to-end run set aside as scams and the scam letters whose demands still reached the calendar
+  (``e2e``);
+* "Ask: new questions on the demo household" (``ask``), with its sentence for runs not recorded, and its scope: it
+  holds out only its questions (``limitations.ask_scope``);
+* the caveats that bear on every number: the deadlines whose label rests on a disputed reading the engine's
+  documentation shares (``limitations.s_conv``), the slots the letter or the law leaves open, which the deadlines
+  counted leave out (``limitations.ambiguous``), and who wrote the letters, so that every condition's absolute
+  accuracy may be higher than on real mail (``limitations.absolute``).
+
+Everything else is on the page only: harm against the agent, the new kinds, the stress test, the limitation on reads
+recorded within days, the owner's checks and the provenance. The page holds every sentence, decided or not, and the
+README's link says so.
+
+:func:`readme_block` lays the README's sentences out, the one layout phase 2 writes between the README's markers:
+one paragraph of the head, the accuracy family, harm, the tested harm comparisons and stability, wrapped at
+:data:`README_WIDTH` as today's headline; a blank line, the chart, a blank line, as today's block; one line per item
+of the templates' ``readme_layout`` (where Ordnung falls short, under its lead; Ask with its scope; each caveat),
+each ending in ``<br>`` as today's; and the link. Its budget is fixed with it: at most :data:`README_BLOCK_MAX_LINES`
+lines, and every line but the chart's at most :data:`README_LINE_MAX` characters, both taken from the longest block
+the templates can give (``tests/test_present_final.py``). The chart's line is a registered frame too
+(:func:`_is_picture`): ``<source>`` tags and one ``<img>`` with its alt text, no text outside the tags, at most
+:data:`README_PICTURE_MAX` characters.
 
 The rules:
 
@@ -14,9 +54,12 @@ The rules:
   against the agent is described (its difference and interval), never decided;
 * stability is not compared when fewer than ``rules.stability_min_discordant`` deadlines changed for only one of
   Ordnung and the model alone, and is not measured with one read;
+* the label slots the letter or the law leaves open between two or more dates are counted, deadlines, offered dates
+  and contract dates apart, with what counts for them (``labels.ambiguous_slots`` of the final analysis);
+* a slot that has nothing to say says nothing: the limitation on reads recorded within days needs two reads or more;
 * a decision its interval or its counts contradict, a decision code without a template and a named result that is
   missing are refused (:class:`FinalSentenceError`), never written around. A result that was not recorded (the new
-  kinds, Ask, the stress test) has its own sentence, which points to the deviations file; a held-out Ask run left
+  kinds, Ask, the stress test) has its own sentence, which points to the deviations file; an Ask run left
   out, or a stress test not completed, only when a ``budget_cut`` or ``window_closed`` deviation names it
   (``applies_to.split`` :data:`ASK_SPLIT` with the run's ``repeat``, or :data:`STRESS_SPLIT`).
 
@@ -24,7 +67,7 @@ Placeholders are filled only from the final analysis (``evals.analysis --prereg`
 results files it names, passed as ``sources``:
 
 * ``power``: ``evals/preregistration/power-0.4.0.json``, ``comparisons.<family>.<pair>.power`` per comparison;
-* ``ask``: the held-out Ask final file (``evals.ask.heldout.final_payload``), ``r1`` (``summarise_strict`` of the first
+* ``ask``: the Ask set's final file (``evals.ask.heldout.final_payload``), ``r1`` (``summarise_strict`` of the first
   run) and ``consistency`` (``evals.ask.metrics.consistency`` of every run); ``None`` when it was not recorded;
 * ``stress``: the stress results file (``evals.perturb.score.stress_results``); ``None`` when it was not recorded;
 * ``e2e``: the end-to-end replay of the final letters (``evals.e2e``);
@@ -32,7 +75,9 @@ results files it names, passed as ``sources``:
   ``kappa``): the owner's checks, ``pending`` until done;
 * ``deviations``: ``evals/preregistration/deviations-0.4.0.json``, the list of deviations recorded at the time.
 
-:func:`published` finds them in a checkout; :func:`readme_problems` holds the README's block to the sentences.
+:func:`published` finds them in a checkout; :func:`readme_problems` holds the README's block to the README's
+sentences as :func:`readme_block` lays them out, and :func:`page_problems` the final section of ``docs/evals.md`` to
+the page's.
 """
 
 from __future__ import annotations
@@ -42,7 +87,7 @@ import json
 import math
 import re
 import string
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -52,19 +97,44 @@ TEMPLATES_PATH = Path(__file__).resolve().parent / "final_templates.json"
 SCHEMA = "ordnung-final-sentences/1"
 CONDITIONS = ("ordnung", "llm_only", "llm_rules_text", "llm_rules_tool")
 REFERENCE = "ordnung"
+BASELINES = tuple(condition for condition in CONDITIONS if condition != REFERENCE)
 #: The baseline the non-inferiority rule is about: the model with Ordnung's engine as a tool.
 AGENT = "llm_rules_tool"
 #: The results files the sentences name besides the final analysis and the pre-registration.
 NAMED = ("power", "ask", "stress", "e2e", "owner_labels", "owner_kappa", "deviations")
-#: What a deviation names (its ``applies_to.split``) for a held-out Ask run (with its ``repeat``) and for the stress
-#: test; the kinds that say a step was not run or not completed; the held-out Ask runs the pre-registration plans
+#: What a deviation names (its ``applies_to.split``) for a run of the Ask set (with its ``repeat``) and for the stress
+#: test; the kinds that say a step was not run or not completed; the Ask runs the pre-registration plans
 #: (``evals.ask.heldout.REGISTERED_READS``).
 ASK_SPLIT, STRESS_SPLIT = "ask-heldout", "stress"
 NOT_RUN_KINDS = ("budget_cut", "window_closed")
 ASK_REGISTERED_RUNS = 3
 #: Where a placeholder's value comes from (``context``: the slot's comparison).
 SOURCES = ("final", "prereg", "templates", "context", *NAMED)
-#: The slots ``readme_block`` may list; ``f2`` once per baseline, as ``f2.<baseline>``.
+#: The two ordered slot lists of the templates file, by the block each one fills.
+BLOCKS = {"readme": "readme_block", "page": "page_block"}
+#: The README block's budget, registered with the templates before any result: its paragraph is wrapped at
+#: ``README_WIDTH`` characters (the width of today's headline), the block takes at most ``README_BLOCK_MAX_LINES``
+#: lines between the markers, and every line but the chart's at most ``README_LINE_MAX`` characters. Both limits are
+#: the longest block the templates can give (``tests/test_present_final.py`` builds it). The chart's line, whose alt
+#: text describes the chart, takes at most ``README_PICTURE_MAX``: today's chart line for the same four conditions is
+#: 730 characters, and 803 with every number at four digits (``tests/test_present.py``).
+README_WIDTH = 116
+README_BLOCK_MAX_LINES = 26
+README_LINE_MAX = 412
+README_PICTURE_MAX = 1000
+#: The chart's line: a ``<picture>`` that holds ``<source>`` tags, then one ``<img>`` with its alt text, and nothing
+#: but those tags (an attribute's value holds no quote, angle bracket or line break), as today's block writes it.
+_ATTRIBUTE = r' [a-z][a-z-]*="[^"<>\n]*"'
+_PICTURE_LINE = re.compile(
+    rf'<picture>(?:<source(?:{_ATTRIBUTE})+>)*<img(?:{_ATTRIBUTE})* alt="[^"<>\n]+"(?:{_ATTRIBUTE})*></picture>'
+)
+#: Where the README's chart goes when the check lays the block out: any chart line in the frame matches it.
+_ANY_CHART = '<picture><img alt="the chart"></picture>'
+#: docs/evals.md's final section lies between these two lines (the README's block between ``BEGIN`` and ``END``).
+PAGE_BEGIN = "<!-- evals:final:begin: the pre-registered sentences, in page_block order; do not edit -->"
+PAGE_END = "<!-- evals:final:end -->"
+#: The slots a block may list: ``f2`` once per baseline, as ``f2.<baseline>``, and ``limitations`` once per part, as
+#: ``limitations.<part>``.
 SLOTS = (
     "head",
     "rules_text",
@@ -81,6 +151,21 @@ SLOTS = (
     "owner",
     "provenance",
 )
+#: The parts of the limitations: the disputed readings, the slots left open, who wrote the letters with what that
+#: does to absolute accuracy, the Ask set's scope, and reads recorded within days.
+LIMITATIONS = ("s_conv", "ambiguous", "absolute", "ask_scope", "reads")
+#: Every slot, as ``page_block`` must list it (in any order of its own).
+ALL_SLOTS = tuple(
+    name
+    for slot in SLOTS
+    for name in (
+        [f"f2.{b}" for b in BASELINES]
+        if slot == "f2"
+        else [f"limitations.{part}" for part in LIMITATIONS]
+        if slot == "limitations"
+        else [slot]
+    )
+)
 #: Every template code the rules can pick; the templates file holds exactly these.
 CODES = (
     "head.intro",
@@ -90,6 +175,7 @@ CODES = (
     "head.baseline_ahead",
     "head.no_clear_difference",
     "head.not_confirmed",
+    "head.deviations",
     "rules_text.clear",
     "rules_text.baseline_ahead",
     "rules_text.no_clear_difference",
@@ -119,9 +205,13 @@ CODES = (
     "stress.incomplete",
     "e2e.set_aside",
     "e2e.none_set_aside",
+    "e2e.scam_in_calendar",
+    "e2e.no_scam_in_calendar",
     "limitations.s_conv",
     "limitations.s_conv_same",
     "limitations.s_conv_none",
+    "limitations.ambiguous",
+    "limitations.ambiguous_none",
     "limitations.writer",
     "limitations.absolute",
     "limitations.ask_scope",
@@ -145,7 +235,7 @@ class FinalSentenceError(PresentError):
 
 
 class Sentence(NamedTuple):
-    """One rendered sentence: the ``readme_block`` slot it fills, its template code and its text (Markdown)."""
+    """One rendered sentence: the slot it fills, its template code and its text (Markdown)."""
 
     slot: str
     code: str
@@ -172,14 +262,6 @@ def _fields(text: str) -> list[str]:
         raise FinalSentenceError(f"a template's braces do not pair up: {exc}") from exc
 
 
-def _slot_ok(slot: object, baselines: Sequence[str]) -> bool:
-    if not isinstance(slot, str):
-        return False
-    if slot.startswith("f2."):
-        return slot[3:] in baselines
-    return slot in SLOTS and slot != "f2"
-
-
 def check_templates(templates: Mapping[str, Any]) -> list[str]:
     """What is wrong with a template set (empty when nothing is): its slots, codes, placeholders and rules."""
     problems: list[str] = []
@@ -191,16 +273,8 @@ def check_templates(templates: Mapping[str, Any]) -> list[str]:
         conditions = {c: c for c in CONDITIONS}
     elif not all(isinstance(name, str) and name for name in conditions.values()):
         problems.append("every condition needs a name")
-    baselines = [c for c in CONDITIONS if c != REFERENCE]
-    block = templates.get("readme_block")
-    if not isinstance(block, list) or not block:
-        problems.append("readme_block must list the slots in order")
-        block = []
-    for slot in block:
-        if not _slot_ok(slot, baselines):
-            problems.append(f"readme_block names an unknown slot {slot!r}")
-    if len(set(map(str, block))) != len(block):
-        problems.append("readme_block names a slot twice")
+    problems += _block_problems(templates)
+    problems += _layout_problems(templates)
     rules = templates.get("rules")
     minimum = rules.get("stability_min_discordant") if isinstance(rules, Mapping) else None
     if not isinstance(minimum, int) or isinstance(minimum, bool) or minimum < 1:
@@ -252,6 +326,68 @@ def check_templates(templates: Mapping[str, Any]) -> list[str]:
             problems.append(f"{name}: total is sum or count")
         if "each" in spec and spec.get("total") != "sum":
             problems.append(f"{name}: each needs total sum")
+    return problems
+
+
+def _block_problems(templates: Mapping[str, Any]) -> list[str]:
+    """What is wrong with the two slot lists: a slot no rule fills, a slot named twice, a page that leaves a slot
+    out, a README slot the page does not say or says in another order."""
+    problems: list[str] = []
+    blocks: dict[str, list[str]] = {}
+    for name in BLOCKS.values():
+        block = templates.get(name)
+        if not isinstance(block, list) or not block:
+            problems.append(f"{name} must list the slots in order")
+            block = []
+        for slot in block:
+            if _rule(slot) is None:
+                problems.append(f"{name} names an unknown slot {slot!r}, which no rule fills")
+        if len(set(map(str, block))) != len(block):
+            problems.append(f"{name} names a slot twice")
+        blocks[name] = [str(slot) for slot in block]
+    page, readme = blocks[BLOCKS["page"]], blocks[BLOCKS["readme"]]
+    left_out = [slot for slot in ALL_SLOTS if slot not in page]
+    if left_out:
+        problems.append(f"page_block leaves out {', '.join(left_out)}: every slot is said on the page")
+    not_on_page = [slot for slot in readme if slot not in page]
+    if not_on_page:
+        problems.append(f"readme_block names {', '.join(not_on_page)}, which page_block does not")
+    else:
+        rest = iter(page)
+        if not all(slot in rest for slot in readme):
+            problems.append("readme_block lists its slots in another order than page_block")
+    return problems
+
+
+def _layout_problems(templates: Mapping[str, Any]) -> list[str]:
+    """What is wrong with the README block's layout: its paragraph and its lines must lay out ``readme_block``'s
+    slots, each once and in its order; a line has a lead (empty or words, no number) and slots; the link is a line."""
+    layout = templates.get("readme_layout")
+    if not isinstance(layout, Mapping) or set(layout) != {"paragraph", "lines", "link"}:
+        return ["readme_layout must give the paragraph, the lines and the link"]
+    problems: list[str] = []
+    paragraph, lines = layout.get("paragraph"), layout.get("lines")
+    if not isinstance(paragraph, list) or not isinstance(lines, list) or not lines:
+        return ["readme_layout's paragraph and lines must be lists"]
+    laid: list[Any] = list(paragraph)
+    for line in lines:
+        if (
+            not isinstance(line, Mapping)
+            or set(line) != {"lead", "slots"}
+            or not isinstance(line["lead"], str)
+            or not isinstance(line["slots"], list)
+            or not line["slots"]
+        ):
+            problems.append("readme_layout: a line is an object with a lead and its slots")
+            continue
+        if re.search(r"\d", line["lead"]):
+            problems.append("readme_layout: a lead holds a number outside a placeholder")
+        laid += line["slots"]
+    if laid != templates.get(BLOCKS["readme"]):
+        problems.append("readme_layout lays out other slots than readme_block, or in another order")
+    link = layout.get("link")
+    if not isinstance(link, str) or not link.strip() or "\n" in link:
+        problems.append("readme_layout must give the link to the page, on one line")
     return problems
 
 
@@ -436,6 +572,10 @@ def _head(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     decision = str(inputs.final("primary.decisions.beats_llm_only"))
     code = _decided(inputs, "head", "F1_accuracy", "llm_only", decision, "clear", "baseline_ahead")
     yield code, _context(inputs, "F1_accuracy", "llm_only")
+    # "pre-registered" comes with the deviations recorded at the time, whatever their number, and where they are
+    if not isinstance(inputs.docs.get("deviations"), list):
+        raise FinalSentenceError("the deviations file is missing or is not a list")
+    yield "head.deviations", {}
 
 
 def _rules_text(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
@@ -585,9 +725,16 @@ def _e2e(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         inputs.get("e2e", "metrics.all.scam.set_aside_obligations"), "e2e set_aside_obligations"
     )
     yield ("e2e.set_aside" if set_aside else "e2e.none_set_aside"), {}
+    scams = _whole(inputs.get("e2e", "metrics.all.scam.scam_letters"), "e2e scam_letters")
+    in_calendar = inputs.get("e2e", "metrics.all.scam.in_the_calendar")
+    if not isinstance(in_calendar, list) or len(in_calendar) > scams:
+        raise FinalSentenceError(
+            f"e2e: the scam letters in the calendar are not a list of at most {scams} scam letters"
+        )
+    yield ("e2e.scam_in_calendar" if in_calendar else "e2e.no_scam_in_calendar"), {}
 
 
-def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
+def _s_conv(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     if inputs.optional("final", "sensitivities.s_conv") is None:
         raise FinalSentenceError("the final analysis has no s_conv sensitivity analysis")
     tagged = inputs.whole("sensitivities.s_conv.tagged_items")
@@ -596,9 +743,30 @@ def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         yield "limitations.s_conv_none", {}
     else:
         yield ("limitations.s_conv" if changed else "limitations.s_conv_same"), {}
+
+
+def _left_open(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
+    if inputs.optional("final", "labels.ambiguous_slots") is None:
+        raise FinalSentenceError(
+            "the final analysis does not count the label slots left open (labels.ambiguous_slots)"
+        )
+    left_open = sum(
+        inputs.whole(f"labels.ambiguous_slots.{kind}") for kind in ("deadline", "offered", "contract")
+    )
+    yield ("limitations.ambiguous" if left_open else "limitations.ambiguous_none"), {}
+
+
+def _absolute(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
+    # the caveat refers back to the writer ("a model of that family"), so the two are said together
     yield "limitations.writer", {}
     yield "limitations.absolute", {}
+
+
+def _ask_scope(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield "limitations.ask_scope", {}
+
+
+def _reads(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     if inputs.whole("primary.reads") > 1:
         yield "limitations.reads", {}
 
@@ -630,7 +798,8 @@ def _provenance(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
     yield {0: "provenance.none", 1: "provenance.one"}.get(len(deviations), "provenance.some"), {}
 
 
-_RULES = {
+_Rule = Callable[[_Inputs], Iterator[tuple[str, dict[str, str]]]]
+_RULES: dict[str, _Rule] = {
     "head": _head,
     "rules_text": _rules_text,
     "agent": _agent,
@@ -641,10 +810,28 @@ _RULES = {
     "ask": _ask,
     "stress": _stress,
     "e2e": _e2e,
-    "limitations": _limitations,
     "owner": _owner,
     "provenance": _provenance,
 }
+_LIMITATION_RULES: dict[str, _Rule] = {
+    "s_conv": _s_conv,
+    "ambiguous": _left_open,
+    "absolute": _absolute,
+    "ask_scope": _ask_scope,
+    "reads": _reads,
+}
+
+
+def _rule(slot: object) -> _Rule | None:
+    """The rule that picks a slot's codes, or ``None`` for a name that is no slot."""
+    if not isinstance(slot, str):
+        return None
+    family, dot, part = slot.partition(".")
+    if family == "f2" and dot:
+        return (lambda inputs: _f2(inputs, part)) if part in BASELINES else None
+    if family == "limitations" and dot:
+        return _LIMITATION_RULES.get(part)
+    return None if dot else _RULES.get(slot)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -656,11 +843,16 @@ def coded(
     final_doc: Mapping[str, Any],
     prereg: Mapping[str, Any],
     *,
+    block: str,
     sources: Mapping[str, Any] | None = None,
 ) -> list[Sentence]:
-    """Every sentence about the final run, in the pre-registration's ``readme_block`` order, with its slot and code:
-    ``final_doc`` is the final analysis, ``prereg`` the pre-registration (its ``sentences`` are the templates) and
-    ``sources`` the results files it names (:data:`NAMED`)."""
+    """The sentences one block says about the final run, in its order, with their slot and code: ``block`` is
+    ``"page"`` (every slot, ``page_block``) or ``"readme"`` (``readme_block``); ``final_doc`` is the final analysis,
+    ``prereg`` the pre-registration (its ``sentences`` are the templates) and ``sources`` the results files it names
+    (:data:`NAMED`). The page is rendered either way, so the README refuses what the page refuses, and the README's
+    sentences are the page's, word for word."""
+    if block not in BLOCKS:
+        raise FinalSentenceError(f"no block {block!r}: {' or '.join(BLOCKS)}")
     templates = prereg.get("sentences")
     if not isinstance(templates, Mapping):
         raise FinalSentenceError("the pre-registration holds no sentences")
@@ -679,22 +871,29 @@ def coded(
             )
     docs = {"final": final_doc, "prereg": prereg, **{name: named.get(name) for name in NAMED}}
     inputs = _Inputs(templates, docs)
-    out: list[Sentence] = []
-    for slot in templates["readme_block"]:
-        chosen = _f2(inputs, slot[3:]) if slot.startswith("f2.") else _RULES[slot](inputs)
-        for code, context in chosen:
-            out.append(Sentence(slot, code, inputs.render(code, context)))
-    return out
+    page: list[Sentence] = []
+    for slot in templates[BLOCKS["page"]]:
+        rule = _rule(slot)
+        if rule is None:  # check_templates refused it above; never reached
+            raise FinalSentenceError(f"no rule fills the slot {slot!r}")
+        for code, context in rule(inputs):
+            page.append(Sentence(slot, code, inputs.render(code, context)))
+    if block == "page":
+        return page
+    said = set(templates[BLOCKS[block]])
+    return [sentence for sentence in page if sentence.slot in said]
 
 
 def sentences(
     final_doc: Mapping[str, Any],
     prereg: Mapping[str, Any],
     *,
+    block: str,
     sources: Mapping[str, Any] | None = None,
 ) -> list[str]:
-    """The README's sentences about the final run, in ``readme_block`` order (see :func:`coded`)."""
-    return [sentence.text for sentence in coded(final_doc, prereg, sources=sources)]
+    """The sentences one block says about the final run, ``"readme"`` or ``"page"``, in its order (see
+    :func:`coded`)."""
+    return [sentence.text for sentence in coded(final_doc, prereg, block=block, sources=sources)]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -759,12 +958,102 @@ def normalised(text: str) -> str:
     return " ".join(text.split())
 
 
-def readme_problems(readme: str, said: Sequence[str]) -> list[str]:
-    """What keeps the README's generated block from being exactly ``said``, in order (empty when nothing does)."""
-    start, end = readme.find(BEGIN), readme.find(END)
-    if start < 0 or end < start:
+def _fill(value: str, width: int) -> list[str]:
+    """``value`` in lines of at most ``width`` characters, broken at spaces only and never before a ``%`` (the
+    presenter's rule for today's headline, kept here so that the registered layout does not move with it)."""
+    words: list[str] = []
+    for word in value.split():
+        if word.startswith("%") and words:
+            words[-1] += " " + word
+        else:
+            words.append(word)
+    lines: list[str] = []
+    line = ""
+    for word in words:
+        if line and len(line) + 1 + len(word) > width:
+            lines.append(line)
+            line = word
+        else:
+            line = f"{line} {word}" if line else word
+    return [*lines, line]
+
+
+def _is_picture(line: str) -> bool:
+    """The chart's line in its registered frame (:data:`_PICTURE_LINE`), at most :data:`README_PICTURE_MAX`
+    characters: no hand-written text beside, between or around its tags."""
+    return len(line) <= README_PICTURE_MAX and _PICTURE_LINE.fullmatch(line) is not None
+
+
+def readme_block(said: Sequence[Sentence], templates: Mapping[str, Any], picture: str) -> list[str]:
+    """The README's generated block, between :data:`~evals.present.BEGIN` and :data:`~evals.present.END`, line by
+    line, as phase 2 writes it: ``said`` is the README's sentences (:func:`coded` with ``block="readme"``),
+    ``templates`` the registered templates (their ``readme_layout``) and ``picture`` the chart, one ``<picture>``
+    line. The paragraph's sentences wrapped at :data:`README_WIDTH`; a blank line, the chart, a blank line; one line
+    per item of the layout, its lead and its slots' sentences, ending in ``<br>``; the link."""
+    if not _is_picture(picture):
+        raise FinalSentenceError(
+            "the README's chart is one <picture> line of <source> tags and one <img> with its alt text, nothing else, "
+            f"at most {README_PICTURE_MAX} characters"
+        )
+    layout = templates["readme_layout"]
+    slots = [sentence.slot for sentence in said]
+    runs = [slot for i, slot in enumerate(slots) if i == 0 or slots[i - 1] != slot]
+    if runs != list(templates[BLOCKS["readme"]]):
+        raise FinalSentenceError("these are not the README's sentences, slot by slot in readme_block order")
+    texts: dict[str, list[str]] = {}
+    for sentence in said:
+        texts.setdefault(sentence.slot, []).append(sentence.text)
+    paragraph = " ".join(text for slot in layout["paragraph"] for text in texts[slot])
+    lines = [*_fill(paragraph, README_WIDTH), "", picture, ""]
+    for item in layout["lines"]:
+        said_here = [text for slot in item["slots"] for text in texts[slot]]
+        lines.append(" ".join([item["lead"], *said_here] if item["lead"] else said_here) + "<br>")
+    return [*lines, layout["link"]]
+
+
+def readme_problems(readme: str, said: Sequence[Sentence], templates: Mapping[str, Any]) -> list[str]:
+    """What keeps the README's generated block from being exactly :func:`readme_block` of ``said`` (the README's
+    sentences, ``block="readme"``) under ``templates`` (the registered ones), blank lines included, whatever chart its
+    picture line holds (empty when nothing does)."""
+    lines = readme.splitlines()
+    if BEGIN not in lines or END not in lines or lines.index(END) < lines.index(BEGIN):
         return ["the README has no generated evaluation block"]
-    block = normalised(readme[start + len(BEGIN) : end])
+    block = lines[lines.index(BEGIN) + 1 : lines.index(END)]
+    expected = readme_block(said, templates, _ANY_CHART)
+    flat = normalised(" ".join(block))
+    missing = [
+        f"sentence {i} is not in the block"
+        for i, sentence in enumerate(said, 1)
+        if normalised(sentence.text) not in flat
+    ]
+    if missing:
+        return missing
+    for number, (got, want) in enumerate(zip(block, expected, strict=False), 1):
+        if want == _ANY_CHART and not _is_picture(got):
+            return [
+                f"line {number} of the block is not the chart's registered line: <source> tags and one <img> with "
+                f"its alt text, nothing else, at most {README_PICTURE_MAX} characters"
+            ]
+        if got != want and want != _ANY_CHART:
+            return [
+                f"line {number} of the block is not laid out as readme_block lays out the registered sentences"
+            ]
+    if len(block) != len(expected):
+        return [f"the block has {len(block)} lines, not the {len(expected)} readme_block lays out"]
+    return []
+
+
+def page_problems(page: str, said: Sequence[str]) -> list[str]:
+    """What keeps the final section of ``docs/evals.md`` from being exactly ``said`` (the page's sentences,
+    ``block="page"``), in order (empty when nothing does)."""
+    return _between_problems(page, said, PAGE_BEGIN, PAGE_END, "docs/evals.md has no final-run block")
+
+
+def _between_problems(text: str, said: Sequence[str], begin: str, end_marker: str, missing: str) -> list[str]:
+    start, end = text.find(begin), text.find(end_marker)
+    if start < 0 or end < start:
+        return [missing]
+    block = normalised(text[start + len(begin) : end])
     if block == normalised(" ".join(said)):
         return []
     problems = [

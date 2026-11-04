@@ -57,6 +57,9 @@ The composition:
 - 126 entries: 84 template letters as PDFs (the twelve families in variants K, L, M and N), 20 adversarial PDFs (two
   of each of the five kinds of adversarial letter that `holdout3_adversarial.py` writes) and 22 photos of letters;
   24 of them adversarial; 112 scored dated items.
+- In each family whose letters carry a scored dated item in every earlier split (ten of the twelve: contract
+  confirmations and price increases carry none), at least four of its template PDFs have a scored dated item, and
+  there are at least 48 such PDFs in all; `tests/test_eval_dataset.py` checks it.
 - The same share of two-page letters and the same mix of Länder as holdout3. Measure both from holdout3's generator,
   and state them in your notes.
 
@@ -64,6 +67,13 @@ How a letter's truth is made:
 
 - Every date of a truth comes from a function of `evals/gen/law.py`, with a hand-worked `check(item, hand)`, as the
   earlier family modules write it.
+- A decision of a Land authority (under a Land's administrative procedure act) comes only from a Land whose rule is
+  in `evals/law/laender.txt`: never from Bremen, Rheinland-Pfalz, Saarland or Sachsen-Anhalt, whose text could not
+  be read, and which `law.py` refuses. The day it counts as delivered is that Land's own rule, which `law.py` takes
+  from the authority's Land. Baden-Württemberg, Bayern and Mecklenburg-Vorpommern keep the earlier day for a
+  procedure begun before their rule changed. Any letter of theirs that names when its procedure began passes that
+  day to `law.py` as `procedure_began`; one that names none is dated as a procedure begun after the change, and
+  names no day before it. Every such decision is sent by post; `law.py` dates no other.
 - Every random draw comes from `rng_for("holdout4", <entry id>)`.
 - Every sender is new: no sender name of an earlier split appears in holdout4.
 - Each scored item, and each contract, carries the ids of the labelling conventions its dates rest on

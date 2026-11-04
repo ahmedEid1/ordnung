@@ -20,11 +20,13 @@ the letters' writers run it.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
 import subprocess
 import sys
+from collections import Counter
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -244,6 +246,131 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
         case("dev", "adversarial", "scam")
 
 
+#: The final split; how many standard text letters with a dated scored item each of its template families holds at
+#: least, when that family's letters carry a dated scored item in every earlier split (ten of the twelve: contract
+#: confirmations and price increases carry none); and how many it holds at least in all.
+FINAL_SPLIT = "holdout4"
+DATED_TEXT_LETTERS_PER_FAMILY = 4
+DATED_TEXT_LETTERS_IN_ALL = 48
+_ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def dated_text_letter(entry: dict[str, Any]) -> bool:
+    """A standard text letter (a PDF, not a photo, not adversarial) with at least one scored item that has a date."""
+    return (
+        not entry["photo"]
+        and entry["family"] != "adversarial"
+        and entry.get("media_type", "application/pdf") == "application/pdf"
+        and any(_ISO_DAY.fullmatch(str(item.get("expected_due"))) for item in entry["truth"]["items"])
+    )
+
+
+def dated_families(entries: list[dict[str, Any]]) -> list[str]:
+    """The template families whose letters carry a dated scored item in every earlier split that has letters."""
+    earlier = [name for name in SPLITS if any(e["split"] == name for e in entries)]
+    return sorted(
+        family
+        for family in {e["family"] for e in entries if e["split"] in earlier and e["family"] != "adversarial"}
+        if all(
+            any(e["split"] == name and e["family"] == family and dated_text_letter(e) for e in entries)
+            for name in earlier
+        )
+    )
+
+
+def families_short_of_dated_text_letters(
+    entries: list[dict[str, Any]], split: str = FINAL_SPLIT
+) -> dict[str, int]:
+    """The families of :func:`dated_families` with fewer than :data:`DATED_TEXT_LETTERS_PER_FAMILY` dated text
+    letters in ``split``, with how many each has; none while ``split`` has no letters."""
+    letters = [e for e in entries if e["split"] == split]
+    if not letters:
+        return {}
+    counts = Counter(e["family"] for e in letters if dated_text_letter(e))
+    return {
+        family: counts[family]
+        for family in dated_families(entries)
+        if counts[family] < DATED_TEXT_LETTERS_PER_FAMILY
+    }
+
+
+def dated_text_letters_in(entries: list[dict[str, Any]], split: str = FINAL_SPLIT) -> int | None:
+    """How many dated text letters ``split`` holds in all; ``None`` while it has no letters."""
+    letters = [e for e in entries if e["split"] == split]
+    return sum(map(dated_text_letter, letters)) if letters else None
+
+
+def test_holdout4_has_four_dated_text_letters_in_every_family_with_dated_items(
+    manifest: dict[str, Any],
+) -> None:
+    """Each template family whose letters carry a dated scored item in every earlier split has at least four
+    standard text letters with a dated scored item in holdout4, and holdout4 has at least 48 such letters in all (it
+    holds while holdout4 has no letters, and binds once it has)."""
+    entries = _entries(manifest)
+    assert families_short_of_dated_text_letters(entries) == {}
+    assert (dated_text_letters_in(entries) or DATED_TEXT_LETTERS_IN_ALL) >= DATED_TEXT_LETTERS_IN_ALL
+
+
+def holdout3_twice(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The entries with holdout3's letters copied twice as the final split, in place of any it has: the composition
+    the brief asks of it (twice holdout3's letters, photos and scored items), made the way holdout3 is made."""
+    copies = [
+        {**copy.deepcopy(e), "id": f"{e['id']}-{suffix}", "split": FINAL_SPLIT}
+        for suffix in ("K", "M")
+        for e in entries
+        if e["split"] == "holdout3"
+    ]
+    return [*(e for e in entries if e["split"] != FINAL_SPLIT), *copies]
+
+
+def test_a_final_split_made_like_holdout3_meets_the_per_family_rule(manifest: dict[str, Any]) -> None:
+    """A holdout4 made the way holdout3 is made, at twice its size, meets the rule as it stands: the families whose
+    letters carry no dated item in the earlier splits are not asked for four."""
+    entries = holdout3_twice(_entries(manifest))
+    assert len(dated_families(entries)) == 10
+    assert families_short_of_dated_text_letters(entries) == {}
+    assert (dated_text_letters_in(entries) or 0) >= DATED_TEXT_LETTERS_IN_ALL
+
+
+def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
+    """A photo, an adversarial letter and a letter whose only scored item has no single date do not count, and a
+    family whose letters carried no dated item before is not asked for any."""
+
+    def letter(
+        cid: str, split: str, family: str, due: str | None = "2027-03-15", **more: Any
+    ) -> dict[str, Any]:
+        items = [{"expected_due": due}]
+        return {
+            "id": cid,
+            "split": split,
+            "family": family,
+            "photo": False,
+            "truth": {"items": items},
+            **more,
+        }
+
+    earlier = [letter(f"test-{f}-C1", "test", f) for f in ("fine", "invoice", "tax")]
+    earlier.append(letter("test-contract-C1", "test", "contract", due=None))
+    final = [letter(f"holdout4-fine-K{n}", FINAL_SPLIT, "fine") for n in range(1, 5)]
+    final += [letter(f"holdout4-tax-K{n}", FINAL_SPLIT, "tax") for n in range(1, 4)]
+    final += [
+        letter("holdout4-tax-K4-photo", FINAL_SPLIT, "tax", photo=True),
+        letter("holdout4-tax-M1", FINAL_SPLIT, "tax", media_type="image/jpeg"),
+        letter("holdout4-tax-N1", FINAL_SPLIT, "tax", due="ambiguous"),
+        letter("holdout4-tax-N2", FINAL_SPLIT, "tax", due=None),
+        letter("holdout4-adversarial-x", FINAL_SPLIT, "adversarial"),
+    ]
+    assert families_short_of_dated_text_letters(earlier) == {}
+    assert dated_families(earlier) == ["fine", "invoice", "tax"]  # a family never dated before is not bound
+    assert families_short_of_dated_text_letters([*earlier, *final]) == {"invoice": 0, "tax": 3}
+    assert dated_text_letters_in(earlier) is None and dated_text_letters_in([*earlier, *final]) == 7
+    final += [
+        letter("holdout4-tax-K5", FINAL_SPLIT, "tax"),
+        *(letter(f"holdout4-invoice-K{n}", FINAL_SPLIT, "invoice") for n in range(4)),
+    ]
+    assert families_short_of_dated_text_letters([*earlier, *final]) == {}
+
+
 def test_photos_share_truth_with_their_pdf(manifest: dict[str, Any]) -> None:
     by_id = {e["id"]: e for e in _entries(manifest)}
     for entry in _entries(manifest):
@@ -366,16 +493,23 @@ def test_labels_survive_the_independent_recheck() -> None:
         ("HH", "2025-05-14", "vwvfg", False),
         ("BW", "2025-02-06", "vwvfg", True),
         ("BW", "2025-02-07", "vwvfg", False),
-        ("SH", "2025-06-09", "vwvfg", True),
+        ("SH", "2025-06-09", "vwvfg", False),  # § 110 Abs. 2 LVwG: the 4th day from 1 January 2025
+        ("SH", "2025-01-02", "vwvfg", False),
+        ("TH", "2025-01-02", "vwvfg", False),
         ("SH", "2024-12-20", "vwvfg", False),  # the old 3-day rule, certain in every Land
         ("SH", "2025-03-03", "sgbx", False),  # not a Land VwVfG label
         ("NW", "2025-01-02", "vwvfg", False),  # NW, BY and MV: 4 days from 1 Jan 2025
+        ("HE", "2026-09-29", "vwvfg", True),  # Hessen keeps the 3rd day: remedy cannot re-derive it
+        ("HE", "2024-12-20", "vwvfg", False),
+        ("RP", "2026-09-29", "vwvfg", True),  # no verified text
+        (None, "2026-09-29", "vwvfg", True),  # no Land
     ],
 )
 def test_land_vwvfg_labels_avoid_the_uncertain_start_windows(
-    region: str, posted: str, scope: str, flagged: bool
+    region: str | None, posted: str, scope: str, flagged: bool
 ) -> None:
-    """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a letter posted where that is not sure."""
+    """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a hand-read letter posted where that
+    is not the Land's own day."""
     import verify_labels
 
     item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}
@@ -521,6 +655,63 @@ def test_under_other_libraries_a_changed_file_needs_two_runs_that_agree(tmp_path
         _check_generation(generate, tmp_path / "again", committed, dataset)
 
 
+#: The earlier splits' manifest as it stood before the Länder table reworded conventions c03 and c07, with those two
+#: texts left out: the sha256 of its canonical JSON (name, version, generator, the c-conventions, the five splits'
+#: counts and entries, file hashes included). Nothing else of it may change with a convention's wording; a deliberate
+#: change to an earlier split's letters or labels updates this pin and says why in VERIFICATION.md.
+EARLIER_SPLITS_MASKED_SHA256 = "d4e8de39a48ede5b4078939f7bee125dba1a1298ef31a2455bd7d25c8ea93bf1"
+#: The conventions whose wording the Länder table changed (their ids and disputed flags stay).
+REWORDED_FOR_THE_LAENDER = ("c03", "c07")
+
+
+def _earlier_splits_masked(manifest: dict[str, Any]) -> str:
+    conventions = [
+        {**c, "text": None} if c["id"] in REWORDED_FOR_THE_LAENDER else c
+        for c in manifest["conventions"]
+        if re.fullmatch(r"c\d+", c["id"])
+    ]
+    doc = {
+        "name": manifest["name"],
+        "version": manifest["version"],
+        "generator": manifest["generator"],
+        "conventions": conventions,
+        "counts": {split: n for split, n in manifest["counts"].items() if split in SPLITS},
+        "entries": sorted((e for e in manifest["entries"] if e["split"] in SPLITS), key=lambda e: e["id"]),
+    }
+    return hashlib.sha256(json.dumps(doc, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def test_the_earlier_splits_changed_only_in_two_conventions_words(manifest: dict[str, Any]) -> None:
+    """Every letter, label and derivation of dev … holdout3 is as it was before the Länder table; of the manifest
+    only the texts of c03 and c07 changed, and they still carry their ids and disputed flags."""
+    assert _earlier_splits_masked(manifest) == EARLIER_SPLITS_MASKED_SHA256
+    flags = {c["id"]: c["disputed"] for c in manifest["conventions"]}
+    assert (flags["c03"], flags["c07"]) == (True, True)
+
+
+def test_c03_and_c07_say_what_the_land_table_counts(manifest: dict[str, Any]) -> None:
+    """The two conventions about a Land authority's letter name the table of ``evals/gen/law.py`` in plain words: the
+    Land with the 3rd day, the Länder whose 4th day starts later and on which day, the Länder where an older
+    procedure keeps the 3rd, and the Länder no such letter may come from."""
+    texts = {c["id"]: c["text"] for c in manifest["conventions"]}
+    c03, c07 = texts["c03"], texts["c07"]
+    assert "evals/law/laender.txt" in c03 and "evals/law/laender.txt" in c07
+    assert all(law.LAND_NAMES[land] in c03 for land in law.LAND_VWVFG_THIRD_DAY)
+    for land, start in law.LAND_VWVFG_FOURTH_DAY_FROM.items():
+        if start != date(2025, 1, 1):
+            assert law.LAND_NAMES[land] in c03 and start.isoformat() in c03, land
+    assert all(law.LAND_NAMES[land] in c03 for land in law.LAND_VWVFG_OLD_PROCEDURES)
+    # what the label of such a Land's letter rests on when the letter names no start: the 4th day (law.py's)
+    flat = " ".join(c03.split())
+    assert "keeps the 3rd day when the letter states that start" in flat
+    assert (
+        "a letter that states none is labelled as a procedure begun on or after the switch (the 4th day)"
+        in flat
+    )
+    assert all(law.LAND_NAMES[land] in c07 for land in law.LAND_VWVFG_UNVERIFIED)
+    assert "evals/gen/law.py" in c07
+
+
 def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
     def generate(out: Path) -> dict[str, Any]:
         made = _generate(out)
@@ -540,8 +731,9 @@ def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) 
 
 
 def _remedy(posted: date, scope: str, region: str | None) -> tuple[str, str]:
+    """A posted decision's one-month remedy period; a Land authority's (``vwvfg``) sits in ``region``."""
     why = law.Derivation()
-    notified = law.deemed_delivery(posted, scope, region, why)
+    notified = law.deemed_delivery(posted, scope, region, why, land=region)
     end = law.period_end(notified, 1, "months", region, why, shift=True, shift_citation="test")
     return notified.isoformat(), end.isoformat()
 

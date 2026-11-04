@@ -938,9 +938,8 @@ def _code_digest(condition: str) -> str:
 
     It covers every Python file of the package (``src/ordnung/**``) and of the runner (``evals/*.py``), and
     :func:`environment`. Until 0.4.0 it hashed a hand-written list of files per condition, and a change outside it
-    — the replay key's own code, say — left a resumed run serving predictions from the cache (the harness design's
-    weakness 2). Every condition now shares it (``condition`` stays for the callers; :func:`fingerprint` adds the
-    condition and its prompts).
+    — the replay key's own code, say — left a resumed run serving predictions from the cache. Every condition now
+    shares it (``condition`` stays for the callers; :func:`fingerprint` adds the condition and its prompts).
     """
     sha = hashlib.sha256()
     for base, paths in ((_SRC, sorted(_SRC.rglob("*.py"))), (EVALS_DIR, sorted(EVALS_DIR.glob("*.py")))):

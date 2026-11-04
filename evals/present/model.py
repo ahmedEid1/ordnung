@@ -31,7 +31,7 @@ from evals.present import MODEL, RESULTS_DIR, PresentError, palette
 
 SCHEMA = "ordnung-eval-presentation/1"
 ROLES = ("final", "held-out", "re-analysis", "re-scored", "iterated", "replay", "archive")
-#: Files beside the results that are not results (EV4's index of them).
+#: Files beside the results that are not results (the results index).
 NOT_RESULTS = frozenset({"INDEX.json"})
 HELD_OUT_SPLITS = ("holdout", "holdout2", "holdout3")
 #: The pre-registered final run's splits (``evals/splits.py``).
@@ -57,7 +57,10 @@ ADVERSARIAL_CLASSES = (
     ("scam_false_alarm", "Scam false alarm on an ordinary letter (lower is better)"),
     ("conflicting_dates_handled", "Conflicting dates: the earlier kept, or flagged"),
     ("missing_date_handled", "Missing date: no confident date, or flagged"),
-    ("ambiguous_handled", "Ambiguous numeric date: no confident date, or flagged"),
+    (
+        "ambiguous_handled",
+        "Deadline left open between two or more dates: listed with no date, flagged, or warned",
+    ),
 )
 #: The stored explanations of a date computed with the 3-day delivery rule of before 2025.
 _THIRD_DAY = re.compile(r"third day|3rd day|3 days after|\+ ?3 days", re.IGNORECASE)
@@ -179,6 +182,26 @@ def _newest(
     found: Mapping[str, tuple[str, str, dict[str, Any]]], kind: str, role: str | None = None
 ) -> str | None:
     names = [name for name, (k, r, _) in found.items() if k == kind and (role is None or r == role)]
+    return max(names) if names else None
+
+
+def _replayed_splits(kind: str, data: Mapping[str, Any]) -> set[str]:
+    """The splits a replay replays, as ``evals.reproduce`` reads them: an end-to-end run names them in its meta, the
+    other replays key their numbers by them."""
+    if kind == "e2e":
+        meta = data.get("meta") or {}
+        return set(meta.get("splits") or ())
+    return set(data.get("splits") or ())
+
+
+def _newest_replay(found: Mapping[str, tuple[str, str, dict[str, Any]]], kind: str) -> str | None:
+    """The newest replay of ``kind`` of the earlier splits. A replay of a final run's read (one file per read) is
+    the final report's, before its analysis too: never the current report's, however new."""
+    names = [
+        name
+        for name, (k, _, data) in found.items()
+        if k == kind and not _replayed_splits(k, data) & set(FINAL_SPLITS)
+    ]
     return max(names) if names else None
 
 
@@ -373,7 +396,7 @@ def _ask(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
         "harmful": _kn(summary["harmful"]),
         "called_passed": _kn(called_passed),
         # the benchmark's today is not the day it was recorded (schema 2 says both): the claude CLI told the model
-        # that day too, so a date called passed may be the recording day leaking in (the plan's addendum, item 8)
+        # that day too, so a date called passed may be the recording day leaking in
         "two_todays": bool(data.get("today")) and data.get("recorded", data.get("date")) != data.get("today"),
     }
 
@@ -398,7 +421,7 @@ def _wrong_answers(data: Mapping[str, Any]) -> dict[str, int]:
 
 
 def _without_land(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
-    name = _newest(found, "without-land")
+    name = _newest_replay(found, "without-land")
     if name is None:
         return None
     data = found[name][2]
@@ -420,7 +443,7 @@ def _without_land(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[
 
 def _ablation(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
     """``scripts/eval_ablate_checks.py``'s results: Ordnung's code checks switched off one at a time."""
-    name = _newest(found, "checks-ablated")
+    name = _newest_replay(found, "checks-ablated")
     if name is None:
         return None
     data = found[name][2]
@@ -440,7 +463,7 @@ def _ablation(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str,
 
 def _e2e(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
     """``python -m evals.e2e``'s results: from a letter's file to the reminder, through the real app."""
-    name = _newest(found, "e2e")
+    name = _newest_replay(found, "e2e")
     if name is None:
         return None
     data = found[name][2]

@@ -185,9 +185,10 @@ class RunConfig:
     live_setup: harness.LiveSetup | None = None
     #: Check every replayed request against the request lock (``lock-requests`` captures without it).
     check_requests: bool = True
-    #: The day a live run is recorded on, which every letter's simulated today must be (the plan's addendum, item 8):
-    #: ``None`` — the UTC date at the start of a run with the real ``claude`` (a stand-in, which tells the model no
-    #: date, is checked only when this is given). The run starts no call once that day is over.
+    #: The day a live run is recorded on, which every letter's simulated today must be, so the model is never shown
+    #: two todays (:func:`evals.harness.check_recording_day`): ``None`` — the UTC date at the start of a run with the
+    #: real ``claude`` (a stand-in, which tells the model no date, is checked only when this is given). The run
+    #: starts no call once that day is over.
     recording_day: date | None = None
     #: Record letters pinned to another day (``--allow-another-today``): the development splits re-recorded in the
     #: open, or a held-out or final split as a smoke into a scratch folder (:func:`evals.harness.check_another_today`).
@@ -210,8 +211,8 @@ class RunConfig:
     #: :data:`GATE_MAY_LEAVE_OUT`); every other condition must still replay.
     gate_ordnung_only: bool = False
     #: Whether the results file is written: the CI gate's replay (thresholds, no ``--live``) only checks and
-    #: writes no results file unless ``--results-dir`` is given (review round 3 of phase 2: running the gate
-    #: locally left an untracked ``evals/results/<today>-sonnet-test.json`` in the tree). Its per-letter cache
+    #: writes no results file unless ``--results-dir`` is given (running the gate locally used to leave an untracked
+    #: ``evals/results/<today>-sonnet-test.json`` in the tree). Its per-letter cache
     #: still goes to ``<results dir>/cache/`` (gitignored under ``evals/results/``).
     write_results: bool = True
     seed: int = DEFAULT_SEED
@@ -907,7 +908,7 @@ def run_meta(
         # `claude --version` of a live run (null on a replay: no claude ran)
         "cli_version": cli_version,
         # the letters' simulated today, and the day a live run was recorded on (null on a replay): equal after the
-        # code freeze (the evaluation plan's addendum, item 8)
+        # code freeze (evals.harness.check_recording_day)
         "simulated_today": sorted({entry.today for entry in entries}),
         "recording_day": recorded_on.isoformat() if recorded_on is not None else None,
     }
@@ -1000,7 +1001,7 @@ async def _run_models(
                 )
         if backend is not None:
             model_backend = backend
-        elif live is None:  # a replay calls make_backend as it always did (tools wrap it: E2's G1 guard)
+        elif live is None:  # a replay calls make_backend as it always did: wrappers see the same call
             model_backend = make_backend(config, model, allowed)
         else:
             model_backend = make_backend(config, model, allowed, live=live)
@@ -1183,7 +1184,7 @@ def check_against(outcome: RunOutcome, path: Path) -> list[str]:
 def _refuse_to_replace_a_recording(path: Path, backend: str) -> None:
     """A results file of live model calls is the record of that recording (a held-out split is recorded
     once): only another live run may replace it — a replay of the same day, split and model would overwrite it
-    with the checked-out code's numbers (review of the reading check, benchmark 6)."""
+    with the checked-out code's numbers."""
     if backend == "live" or not path.exists():
         return
     try:

@@ -2,10 +2,11 @@
 
 ## The task
 
-A blind reading of the holdout4 and newkinds letters found slots whose dates do not follow from the statutes. The
-file `fix-list.md` in your folder names each one: the entry id, the slot (`i0`, `i1`, ... for an item in the order of
-the entry's truth, `o0`, ... for an optional item, `term_end` or `cancel_by` for a contract) and the reason, with the
-statutes it rests on. You correct exactly these slots in the generator code, and nothing else.
+A blind reading of the holdout4 and newkinds letters found slots whose dates, or the day on which the procedure of
+an authority's decision began, do not follow from the letter and the statutes. The file `fix-list.md` in your folder
+names each one: the entry id, the slot (`i0`, `i1`, ... for an item in the order of the entry's truth, `o0`, ... for an
+optional item, `term_end` or `cancel_by` for a contract) and the reason, with the statutes it rests on. You correct
+exactly these slots in the generator code, and nothing else.
 
 ## The days
 
@@ -39,6 +40,23 @@ For each slot in `fix-list.md`:
 - keep its labelling-convention ids, and the date under the other reading of a disputed one, true to the corrected
   derivation (`with_conventions` in `common.py`);
 - change the letter's text only where the correction cannot be made without it.
+
+Where `fix-list.md` marks a slot `ambiguous` and names its candidate dates, the slot is left open between them, and
+its letter's text stays as it is. For an item, `expected_due` is `"ambiguous"` and its `candidates` are those dates,
+as the earlier modules write such an item with `undated_item` in `common.py`. For a contract date, the slot's key
+(`expected_current_term_end` or `expected_cancel_by`) is `"ambiguous"`, and the contract's `candidates` hold those
+dates under that key. Each candidate date still comes from a function of `law.py`, with a hand-worked check.
+
+Where `fix-list.md` gives a slot's procedure start, the day the procedure of an authority's decision began
+(`procedure began: YYYY-MM-DD` or `procedure began: not stated`), the module that builds the entry passes that day to
+`law.py` as `procedure_began`, or passes none, through `objection_item` in `common.py` as the earlier modules do; the
+item's `spec` then states that day as its `procedure_began`, or holds no such key. Its date may stay as it is; where
+the start changes it, the date follows from `law.py` as for any other slot. The letter's text keeps the day it states.
+`law.py` takes a procedure start only for a Land authority's decision (`objection_item` with scope `vwvfg`): it
+refuses one for a tax office's or a social-law decision, and a date that does not run from a decision's notification
+has no place for one. Where `fix-list.md` gives a start for such a slot and its reason does not make the slot a Land
+authority's decision, pass none, change nothing else for that start, and say so in your last message, with the
+statutes.
 
 Every entry that `fix-list.md` does not name comes out of `python -m evals.generate --final-day {D0}` byte for byte as
 before your change.

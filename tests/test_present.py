@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from evals import reproduce
 from evals.present import (
     BEGIN,
     END,
@@ -225,9 +226,25 @@ def test_the_readme_block_states_the_headline(doc: dict[str, Any]) -> None:
 
 
 def test_the_readme_block_is_short(doc: dict[str, Any]) -> None:
+    """Today's block stays within 12 lines; the final run's block has its own budget, registered with its templates
+    (``evals.present.final.README_BLOCK_MAX_LINES``, held by tests/test_present_final.py)."""
     lines = text.readme_block(doc).strip("\n").splitlines()
     assert lines[0] == BEGIN and lines[-1] == END
     assert len(lines) - 2 <= 12
+
+
+def test_today_s_chart_line_fits_the_final_block_s_frame_and_maximum(doc: dict[str, Any]) -> None:
+    """The final block registers its chart's line as a frame (``evals.present.final._is_picture``: ``<source>`` tags,
+    one ``<img>`` with its alt text, nothing outside the tags) of at most ``final.README_PICTURE_MAX`` characters,
+    before the final chart exists. Today's chart line, in the form the presenter writes, fits it, and so does the same
+    line with every number at four digits and the final run's name for its deadlines."""
+    from evals.present import final
+
+    (picture,) = [line for line in text.readme_block(doc).splitlines() if line.startswith("<picture>")]
+    assert final._is_picture(picture)
+    worst = re.sub(r"\d+\.\d", "100.0", picture.replace("held-out", "final-run"))
+    worst = re.sub(r"(?<![\d.])\d+(?![\d.])", "9999", worst)
+    assert final._is_picture(worst) and len(worst) <= final.README_PICTURE_MAX - 150, len(worst)
 
 
 def _variant(doc: dict[str, Any], **changes: Any) -> dict[str, Any]:
@@ -565,6 +582,22 @@ def _differing(old: Any, new: Any, path: str = "") -> list[str]:
     return [] if old == new else [path]
 
 
+def _checked_replays(rows: list[dict[str, Any]]) -> dict[str, str]:
+    """``{kind: file}``: the replay of the earlier splits the index checks, one file per kind of replay. A replay of
+    the final run's reads (holdout4 or newkinds, one file per read) is checked too, but supersedes none: it is the
+    final report's."""
+    checked: dict[str, str] = {}
+    for row in rows:
+        if row["role"] != "replay" or row["verdict"] != "checked":
+            continue
+        # a read of the final run: its own cell, one per read
+        if set(row["splits"]) & set(model.FINAL_SPLITS):
+            continue
+        assert row["kind"] not in checked, row["file"]  # one checked file per kind of replay
+        checked[row["kind"]] = row["file"]
+    return checked
+
+
 def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: dict[str, str]) -> None:
     """A replay written again names the file it supersedes and why, under the table, for every replay the index keeps
     as superseded; the index keeps the earlier file by its hash; and what the reason says moved is what moved between
@@ -592,11 +625,7 @@ def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: d
     # written again without a reason here fails, not only a missing sentence
     rows = json.loads((RESULTS / "INDEX.json").read_text(encoding="utf-8"))["results"]
     index = {row["file"]: row for row in rows}
-    checked: dict[str, str] = {}
-    for row in rows:
-        if row["role"] == "replay" and row["verdict"] == "checked":
-            assert row["kind"] not in checked, row["file"]  # one checked file per kind of replay
-            checked[row["kind"]] = row["file"]
+    checked = _checked_replays(rows)
     superseded = {row["file"] for row in rows if row["role"] == "replay" and row["verdict"] == "superseded"}
     assert superseded and text.SUPERSEDED.keys() == superseded
     assert text.SUPERSEDED[old][0] == new
@@ -635,6 +664,55 @@ def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: d
     assert len(items) == 1
     two_dates = before["meta"]["ablations"]["no_two_dates_check"]["switches_off"][0]
     assert all(two_dates in after["meta"]["ablations"][name]["switches_off"] for name in ablations)
+
+
+def test_a_read_of_the_final_run_replayed_another_way_leaves_the_current_report_s_replays(
+    tmp_path: Path, doc: dict[str, Any]
+) -> None:
+    """The final run's reads replayed without the sender's Land, with the code checks switched off and end to end are
+    files of their own, one per read, and newer than every published replay: the current report keeps the earlier
+    splits' replays (a read's replay is the final report's, before its analysis too), the history lists every file,
+    and among the earlier splits' replays the index checks one file of each kind, the one each superseded file names
+    (holdout3's numbers stand in for holdout4's, as in tests/test_results_index.py)."""
+    for path in RESULTS.glob("*.json"):
+        (tmp_path / path.name).write_bytes(path.read_bytes())
+    published = {
+        "without_land": "2026-10-08-claude-sonnet-5-without-land.json",
+        "ablation": "2026-11-04-claude-sonnet-5-checks-ablated.json",
+        "e2e": "2026-10-30-claude-sonnet-5-e2e.json",
+    }
+    reads = {
+        "without_land": "2027-01-12-claude-sonnet-5-without-land-holdout4.json",
+        "ablation": "2027-01-12-claude-sonnet-5-checks-ablated-holdout4.json",
+        "e2e": "2027-01-12-claude-sonnet-5-e2e-holdout4-newkinds.json",
+    }
+    for section, name in reads.items():
+        data = json.loads((RESULTS / published[section]).read_text(encoding="utf-8"))
+        if section == "e2e":  # end to end: its splits are named in its meta
+            data["meta"].update(splits=["holdout4", "newkinds"], pooled=["holdout4", "newkinds"])
+        else:
+            data["splits"] = {"holdout4": data["splits"]["holdout3"]}
+            data["meta"]["repeat"] = 1
+        data["meta"]["date"] = name[:10]
+        (tmp_path / name).write_text(json.dumps(data), encoding="utf-8")
+    built = model.build(tmp_path)
+    for section, name in published.items():
+        assert built[section]["file"] == name and built[section] == doc[section], section
+    assert set(reads.values()) <= {row["file"] for row in built["files"]}
+    rows = reproduce.static_index(tmp_path)["results"]
+    for row in rows:  # the verdicts a passing `make eval-reproduce` gives them
+        if row["role"] == "replay":
+            row["verdict"] = "superseded" if row["check"] == "hash" else "checked"
+    assert {row["file"] for row in rows if row["role"] == "replay" and row["verdict"] == "checked"} >= set(
+        reads.values()
+    )
+    checked = _checked_replays(rows)
+    assert checked == {
+        "without-land": published["without_land"],
+        "checks-ablated": published["ablation"],
+        "e2e": published["e2e"],
+    }
+    assert all(later in checked.values() for later, _why in text.SUPERSEDED.values())
 
 
 # --------------------------------------------------------------------------------------------------

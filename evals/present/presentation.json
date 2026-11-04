@@ -2277,7 +2277,7 @@
    },
    {
     "name": "ambiguous_handled",
-    "label": "Ambiguous numeric date: no confident date, or flagged",
+    "label": "Deadline left open between two or more dates: listed with no date, flagged, or warned",
     "k": 3,
     "n": 3,
     "value": 1.0,

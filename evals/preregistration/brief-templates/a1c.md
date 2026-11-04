@@ -47,6 +47,8 @@ It has this shape:
 - A FACT, one per slot: the sealed fact for the slot with the conventions applied. Its `from`, `steps` or `land`
   change only where a convention changes them; the ids go into `conventions`; `slot` and `source` stay as the sealed
   file gives them.
+- `procedure_began` stays as the sealed fact gives it, or absent where it gives none: no convention adds, changes or
+  removes the day a procedure began.
 
 ## Rules
 

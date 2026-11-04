@@ -78,6 +78,11 @@ working day, so the end shift moves nothing.
   lists them).
 - `conflicting`: optional, for a letter that gives more than one date for the same obligation: the other dates,
   each as a derivation (`from`, `steps`, optional `event`).
+- `procedure_began`: optional, in a fact whose date runs from the notification of a Land authority's decision, in a
+  Land whose administrative procedure act keeps its earlier rule for a procedure begun before that act changed: the
+  day the administrative procedure it decides began, `YYYY-MM-DD`, when the letter states it (an application, a
+  hearing, an objection). Leave it out of every other fact, even where the letter names such a day (a tax office's
+  decision that names the day a return was filed, for example).
 
 ### Steps
 

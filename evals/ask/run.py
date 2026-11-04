@@ -146,7 +146,7 @@ class Config:
     recorder_lock: Path | None = None
     #: The day the ledger, the turns and the scores are for: ``None`` — the sample life's own, :data:`TODAY` (the
     #: development set is asked on no other). A held-out set recorded after the freeze is built for the day it is
-    #: recorded (the evaluation plan's addendum, item 8).
+    #: recorded, so the model never sees two todays.
     today: date | None = None
     #: The day a live run is recorded on, which ``today`` must be: ``None`` — the UTC date at the start of a run with
     #: the real ``claude`` (a stand-in, which tells the model no date, is checked only when this is given).

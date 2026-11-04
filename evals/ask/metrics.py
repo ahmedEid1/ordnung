@@ -242,7 +242,7 @@ def summary_v2(summary: Mapping[str, Any], strict: Mapping[str, Any]) -> dict[st
     becomes what it measures — the cited record holds the sentence's value (schema 1's ``citation_support``) — and
     schema 1's ``citation_precision``, the cited record is from the right letter, becomes ``citation_right_letter``;
     ``citation_support`` stays as a deprecated alias of the new ``citation_precision``. Schema 1's ``harmful`` and
-    ``harmful_raw`` (an open date called passed, E2) are ``called_passed`` and ``called_passed_raw``, and ``harmful``
+    ``harmful_raw`` (an open date called passed) are ``called_passed`` and ``called_passed_raw``, and ``harmful``
     is the one definition (:mod:`evals.ask.strict`); the household block likewise. No value changes its number,
     only the names move."""
     out: dict[str, Any] = {}

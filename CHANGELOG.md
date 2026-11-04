@@ -39,14 +39,27 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   generator takes the final run's letters as a plug-in and tags each date with the labelling convention it rests
   on; their dates are checked against facts written in a small grammar
   ([evals/dataset/FACTS.md](evals/dataset/FACTS.md)), and the statutes they follow are in `evals/law/`, with their
-  sources. The runner records a final letter only when the day it gives the letter as today is the day of the
+  sources, among them EGBGB Art. 246a and, for twelve Länder, the rule on when a Land authority's decision counts
+  as delivered, as the Land's own law portal or gazette gives it (the four Länder whose text could not be read are
+  named). The generator dates a Land authority's letter by that Land's own rule (the 3rd day in Hessen; the 4th in
+  Hamburg and Baden-Württemberg only from their switch; the 3rd for a procedure begun before it in
+  Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern when the letter states that start, the 4th when it
+  states none) and writes none from the four, and the label check counts each Land's day with a table of its
+  own; no letter or label of the earlier splits changed.
+  The runner records a final letter only when the day it gives the letter as today is the day of the
   recording and inside the letter's window, keeps a read recorded over several days in one results file, stops
   between letters (`--stop-file`, `--stop-at`) and sets a cut letter's recordings, or those of a read made
   invalid, aside to be recorded again (`python -m evals.harness retake`). The analysis checks every read against
-  the pre-registration and applies its fixed rules for anything that went wrong; the sentences the README will
-  give about the final run are fixed templates now; the held-out Ask set, the stress cells and the replays without
-  the Land or the checks have their final-run tools; and scripts hash the pre-registration and check it, and the
-  file of deviations from it, against the git history.
+  the pre-registration and applies its fixed rules for anything that went wrong; the sentences about the final run
+  are fixed templates now, all of them for docs/evals.md and, for the README's block, those chosen by role whatever
+  they show (accuracy with the number of deviations, the late or missed dates and their tested comparisons,
+  stability, where Ordnung falls short, Ask with its scope and the caveats on every number), in a layout and a
+  length fixed with them; the Ask set's runs ("Ask: new questions on the demo household"), the stress cells and the
+  replays without the Land or the checks have their final-run tools; and scripts hash the pre-registration and
+  check it, and the file of deviations from it, against the git history. A final split's facts are built from its
+  sealed blind audit (`python -m scripts.build_final_facts`); a contract date the letter or the law leaves open
+  between two dates is labelled as such, like a deadline, and not scored, and the final run counts these slots by
+  kind.
 
 ### Changed
 

@@ -36,7 +36,6 @@ It has this shape:
 
 - One REPLY per question id, in the shape that `how_to_reply` in `questions-blind.json` gives: the dates, amounts and
   identifiers that answer it, or the to-dos it asks for, or `"unanswerable": true` when the files do not say.
-- Where `how_to_reply` names another file name, write `answers.json` all the same.
 
 ## Rules
 

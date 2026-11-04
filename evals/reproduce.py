@@ -80,7 +80,8 @@ ABOUT = (
     "verdict at HEAD and every changed date with the fix that changed it; the dataset's and the recordings' hashes, "
     "the CI gates and every cell. Written by `python -m evals.reproduce --write`; a change's `because` by a person."
 )
-#: The final run's reads per split (plan §6.2): each one a cell, *not recorded yet* until its results file exists.
+#: The final run's reads per split, as the pre-registration registers them: each one a cell, *not recorded yet*
+#: until its results file exists.
 FINAL_READS = {"holdout4": 3, "newkinds": 1}
 ASK_HELDOUT_READS = 3
 #: The schema of the file of the held-out Ask set's runs (``python -m evals.ask.heldout --final``).
@@ -307,7 +308,7 @@ def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str,
         elif role in ("final", "held-out") and day and day not in (meta.get("simulated_today") or [day]):
             raise ReproduceError(
                 f"{path.name}: a {role} recording made on {day} for letters of {', '.join(meta['simulated_today'])} "
-                "— two todays: its letters are built for the day they are recorded (the plan's addendum, item 8)"
+                "— two todays: its letters are built for the day they are recorded"
             )
     elif kind == "ask":
         match = _ASK_NAME.match(path.name)
@@ -483,8 +484,7 @@ def _cells(
             if split in FINAL_READS and not files:
                 cell.update(
                     status="not recorded yet",
-                    needs="its letters, written blind after the code freeze (plan EV8), and their recording "
-                    "(plan §7)",
+                    needs="its letters, written blind after the code freeze, and their recording",
                 )
             elif not files:  # pragma: no cover - a declared split
                 cell.update(status="not recorded yet", needs="its letters and their recording")
@@ -522,20 +522,19 @@ def _cells(
             "",
             asks.get(("heldout", repeat), []),
             "replayed",
-            "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their "
-            "recording (plan §7, R3 and R6)",
+            "the held-out questions and attacks, written blind after the code freeze, and their recording",
         )
     add(
         "ask/heldout/final",
         "",
         [row for row in checked if row["kind"] == "ask-final"],
         "re-rendered",
-        "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)",
+        "the held-out Ask set's three runs",
     )
     for kind, planned in (
         (
             "e2e",
-            {f"e2e/{'-'.join(sorted(FINAL_E2E))}": "holdout4's and newkinds' recorded readings (plan EV9)"},
+            {f"e2e/{'-'.join(sorted(FINAL_E2E))}": "holdout4's and newkinds' recorded readings"},
         ),
         ("without-land", _planned_reads("without-land", FINAL_WITHOUT_LAND)),
         ("checks-ablated", _planned_reads("ablation", FINAL_ABLATION)),
@@ -552,7 +551,7 @@ def _cells(
             "",
             covering,
             "replayed",
-            "the blind templates and the stress manifest (plan EV8, commit A) and the cells' recording (plan §7, R7)",
+            "the blind templates and the stress manifest, and the cells' recording",
         )
     analyses = {row.get("analysis"): row for row in checked if row["kind"] == "analysis"}
     add(
@@ -567,7 +566,7 @@ def _cells(
         "",
         [analyses["final"]] if "final" in analyses else [],
         "re-rendered",
-        "the final run (plan EV9) and the pre-registration (plan EV8, commit B)",
+        "the final run and its pre-registration",
     )
     cells.append({"cell": "presenter", "status": "re-rendered"})
     return cells
@@ -1145,7 +1144,7 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
             else:
                 args = ["--set", row["set"], "--repeat", str(row["repeat"])]
             if row["set"] == "heldout" and data.get("today"):
-                # built, asked and scored for the day it was recorded (the plan's addendum, item 8)
+                # built, asked and scored for the day it was recorded, so the model never sees two todays
                 args += ["--today", str(data["today"])]
             if "--check-docs" not in args:
                 args.append("--check-docs")
@@ -1198,7 +1197,7 @@ def plan(index: Mapping[str, Any], results_dir: Path, work: Path) -> list[Task]:
                 str(path),
             )
             built_for = (data.get("meta") or {}).get("today")
-            if built_for:  # its cells were built for the day they were recorded (the plan's addendum, item 8)
+            if built_for:  # built for the day they were recorded, so the model never sees two todays
                 argv += ["--today", str(built_for)]
             tasks.append(Task(name, argv, out))
         elif row["kind"] == "analysis":

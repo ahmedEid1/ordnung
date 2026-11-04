@@ -45,7 +45,12 @@ Definitions, in one place:
   without a date), ``second_look`` (medium confidence: "Worth a second look") or ``none`` (no flag — and a missed date,
   which shows nothing);
 * a **cluster** is a letter together with the photo rendered from it, named with its split;
-* an item is **unstable** over repeated reads when its date (or "no date") is not the same in every read.
+* an item is **unstable** over repeated reads when its date (or "no date") is not the same in every read;
+* a label slot **left open** is one the letter or the law leaves open between two or more dates (``"ambiguous"``): such
+  a deadline (an item the letter requires) is no scored item, and the scorer counts it as handled when the answer
+  lists it and either gives it no date, flags it, or warns that the letter's dates are uncertain; such an offered
+  date (an optional item) or contract date is scored by no condition; :func:`ambiguous_slots` counts them by kind,
+  once per letter, from the registered manifest, in the final analysis's ``labels``.
 
 Every output holds ids, counts, hashes and metric values only (and the days units were recorded on): never a letter's
 text, a title, a quote, a warning or a date it names. Floats are rounded to :data:`SIGNIFICANT_DIGITS` significant digits, so a render is byte-identical on every
@@ -1068,7 +1073,7 @@ def reanalyse(runs: Sequence[Run], *, date: str, settings: Settings | None = Non
 
 
 def default_prereg_analysis() -> dict[str, Any]:
-    """The ``analysis`` section of the final run's pre-registration, as the evaluation plan sets it (§6)."""
+    """The default ``analysis`` section of the final run's pre-registration."""
     return {
         "schema": PREREG_SCHEMA,
         "model": MODEL,
@@ -1706,22 +1711,61 @@ def _read_ledger(path: Path) -> list[Mapping[str, Any]]:
     return lines
 
 
-def _conventions(path: Path, registered: str) -> dict[tuple[str, int], frozenset[str]]:
-    """Per (entry id, item index): the dates the other reading of a disputed convention gives (the manifest's
-    ``convention_alternatives``); ``AnalysisError`` unless the manifest is the registered one."""
+def _manifest_entries(path: Path, registered: str) -> list[Mapping[str, Any]]:
+    """The entries of the dataset's manifest; ``AnalysisError`` unless it is the registered one."""
     try:
         raw = path.read_bytes()
     except OSError as exc:
         raise AnalysisError(f"the dataset's manifest cannot be read: {exc}") from exc
     if hashlib.sha256(raw).hexdigest() != registered:
         raise AnalysisError("the dataset's manifest is not the one the pre-registration pins")
+    return [entry for entry in json.loads(raw).get("entries") or [] if isinstance(entry, Mapping)]
+
+
+def _conventions(entries: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int], frozenset[str]]:
+    """Per (entry id, item index): the dates the other reading of a disputed convention gives (the manifest's
+    ``convention_alternatives``)."""
     found = {}
-    for entry in json.loads(raw).get("entries") or []:
+    for entry in entries:
         for index, item in enumerate((entry.get("truth") or {}).get("items") or []):
             dates = item.get("convention_alternatives") or []
             if dates:
                 found[(str(entry["id"]), index)] = frozenset(str(day) for day in dates)
     return found
+
+
+#: The kinds of a label slot left open between two or more dates: a deadline (an item the letter requires,
+#: ``items``), an offered date (an item it offers, ``optional_items``) and a contract date
+#: (``expected_current_term_end``, ``expected_cancel_by``).
+AMBIGUOUS_KINDS = ("deadline", "offered", "contract")
+_CONTRACT_SLOTS = ("expected_current_term_end", "expected_cancel_by")
+
+
+def ambiguous_slots(entries: Sequence[Mapping[str, Any]], splits: Sequence[str]) -> dict[str, Any]:
+    """How many label slots of ``splits`` the letter or the law leaves open between two or more dates ("ambiguous"),
+    by kind (:data:`AMBIGUOUS_KINDS`), in all and per split. Such a deadline is no scored item: the scorer's
+    ambiguous-date check counts it as handled when the answer lists it and either gives it no date, flags it, or
+    warns that the letter's dates are uncertain. Such an offered date or contract date is scored by no condition.
+    Each letter counts once: a photo shares its letter's truth and is not counted again."""
+    by_split = {split: dict.fromkeys(AMBIGUOUS_KINDS, 0) for split in splits}
+    for entry in entries:
+        counts = by_split.get(str(entry.get("split")))
+        if counts is None or entry.get("photo"):
+            continue
+        truth = entry.get("truth") or {}
+        for key, kind in (("items", "deadline"), ("optional_items", "offered")):
+            counts[kind] += sum(
+                1
+                for item in truth.get(key) or []
+                if isinstance(item, Mapping) and item.get("expected_due") == "ambiguous"
+            )
+        contract = truth.get("contract")
+        if isinstance(contract, Mapping):
+            counts["contract"] += sum(1 for slot in _CONTRACT_SLOTS if contract.get(slot) == "ambiguous")
+    return {
+        **{kind: sum(counts[kind] for counts in by_split.values()) for kind in AMBIGUOUS_KINDS},
+        "by_split": by_split,
+    }
 
 
 # --------------------------------------------------------------------------------------------------
@@ -2136,7 +2180,7 @@ def _decisions(
     item_reads: int,
     ni: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """The pre-registered decision rules (§6.11), as codes the presenter turns into its sentences."""
+    """The pre-registered decision rules, as codes the presenter turns into its sentences."""
     decisions = _comparisons(families, prereg, ni)
     ours = summaries[prereg.reference]
     harmful = sum(row["k"] for row in ours["harmful_per_read"])
@@ -2329,7 +2373,7 @@ def _flags_over_reads(rows: Rows, level: float) -> dict[str, Any]:
     }
 
 
-#: The pre-registered decision codes (§6.11) and the sentence each stands for; the presenter's phase 2 fills the
+#: The pre-registered decision codes and the sentence each stands for; the presenter's phase 2 fills the
 #: placeholders from the final analysis (``{d}``: Ordnung minus the baseline in points, ``{ci}``: its interval).
 DECISION_SENTENCES = {
     "clear": "Ordnung is ahead of {baseline} ({d} points, 95 % CI {ci}).",
@@ -2653,13 +2697,15 @@ def final_analysis(
     prereg_record: Mapping[str, Any] | None = None,
     checked: Checked | None = None,
     conventions: Mapping[tuple[str, int], frozenset[str]] | None = None,
+    ambiguous_slots: Mapping[str, Any] | None = None,
     date: str | None = None,
 ) -> dict[str, Any]:
     """The pre-registered final run: the primary split over its reads, each secondary split, the sensitivity analyses
     and the exploratory blocks (the earlier held-out splits pooled with the primary split's first read among them).
 
     ``checked`` is what :func:`check_frozen` found (:func:`final_from_files` gives it); without it every registered
-    read must be there and no letter may be left without an answer."""
+    read must be there and no letter may be left without an answer. ``ambiguous_slots`` (:func:`ambiguous_slots` of
+    the registered manifest) goes into the document's ``labels``; without it there is no ``labels``."""
     missing = checked.missing if checked is not None else {}
     reads, secondary = _assign_reads(prereg, runs, missing)
     if checked is None:
@@ -2748,7 +2794,7 @@ def final_analysis(
             **checked.evidence,
         }
         meta["deviations"] = [dict(d.record) for d in checked.deviations]
-    return {
+    document = {
         "schema": ANALYSIS_SCHEMA,
         "meta": meta,
         "primary": primary,
@@ -2756,6 +2802,9 @@ def final_analysis(
         "sensitivities": _sensitivities(rows, reads, prereg, context),
         "exploratory": _exploratory(rows, reads, prereg, context, pooled),
     }
+    if ambiguous_slots is not None:
+        document["labels"] = {"ambiguous_slots": dict(ambiguous_slots)}
+    return document
 
 
 def _repo_path(path: Path) -> str:
@@ -2813,7 +2862,7 @@ def final_from_files(
 ) -> dict[str, Any]:
     """:func:`final_analysis` from a pre-registration file and results files, after :func:`check_frozen`: the
     deviations file it names, the day index and the ledger (in ``recorded_dir``), the dataset's manifest (in
-    ``dataset_dir``, for S-conv) and ``pool_with`` (read in ``results_dir``)."""
+    ``dataset_dir``, for S-conv and the slots left open) and ``pool_with`` (read in ``results_dir``)."""
     results_dir = results_dir or RESULTS_DIR
     recorded_dir = recorded_dir or RECORDED_DIR
     dataset_dir = dataset_dir or DATASET_DIR
@@ -2847,11 +2896,11 @@ def final_from_files(
     }
     checked.evidence["day_index"]["file"] = _repo_path(day_index_path)
     checked.evidence["ledger"]["file"] = _repo_path(ledger_path)
-    conventions = {}
-    if "s_conv" in prereg.sensitivities:
-        manifest = dataset_dir / MANIFEST_FILE
-        conventions = _conventions(manifest, frozen.manifest_sha256)
-        checked.evidence["manifest"] = {"file": _repo_path(manifest), "sha256": frozen.manifest_sha256}
+    manifest = dataset_dir / MANIFEST_FILE
+    entries = _manifest_entries(manifest, frozen.manifest_sha256)
+    checked.evidence["manifest"] = {"file": _repo_path(manifest), "sha256": frozen.manifest_sha256}
+    conventions = _conventions(entries) if "s_conv" in prereg.sensitivities else {}
+    splits = (prereg.primary_split, *sorted(split for split, _ in prereg.secondary))
     pooled = [read_run(results_dir / name) for name in prereg.pool_with]
     record = {"file": _repo_path(prereg_path), "sha256": hashlib.sha256(raw).hexdigest()}
     return final_analysis(
@@ -2861,6 +2910,7 @@ def final_from_files(
         prereg_record=record,
         checked=checked,
         conventions=conventions,
+        ambiguous_slots=ambiguous_slots(entries, splits),
         date=date,
     )
 

@@ -103,7 +103,7 @@ def harness_options(
     missing = sorted(name for name, value in wanted.items() if value is not None and name not in fields)
     if missing:
         raise StressError(
-            f"{', '.join(missing)} need the recording harness (evals/harness.py, plan EV3), which this checkout "
+            f"{', '.join(missing)} need the recording harness (evals/harness.py), which this checkout "
             "does not have: nothing was recorded"
         )
     options = {name: value for name, value in wanted.items() if value is not None}
@@ -524,7 +524,7 @@ async def _run(args: argparse.Namespace) -> int:
     if args.live and not (tpl.TEMPLATES_PATH.exists() and build.STRESS_MANIFEST.exists()):
         raise StressError(
             "recording needs the committed templates and stress manifest (evals/perturb/templates.json and "
-            "manifest.json, EV8 commit A)"
+            "manifest.json, committed after the code freeze)"
         )
     base, plan = _base_and_plan(args.cells)
     if args.today is not None:
@@ -642,7 +642,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     if args.live and args.max_cost_usd is None:
-        parser.error("--live needs --max-cost-usd (the run's stop, plan §7)")
+        parser.error("--live needs --max-cost-usd (the run's stop)")
     if args.live and (args.clean_only or args.build_only or args.check is not None):
         parser.error("--live records the cells: not with --clean-only, --build-only or --check")
     try:

@@ -98,6 +98,9 @@ COMPOSITION = {
         "22 photos",
         "24 of them adversarial",
         "112 scored",
+        "at least four of its template PDFs have a scored dated item",
+        "whose letters carry a scored dated item in every earlier split",
+        "at least 48 such PDFs in all",
     ),
     "w1b": ("32 entries", "4 photos", "about 28 scored"),
     "w2": ("104 questions", "60 attacks", "at least 15 letters", "at most 4"),
@@ -288,6 +291,23 @@ def test_a_letter_writer_puts_every_date_after_the_last_valid_day(session: str) 
     assert "after {L}" in _flat(_text(session))
 
 
+def test_the_holdout4_writer_takes_a_land_authority_only_from_a_land_with_a_text() -> None:
+    """A Land authority's letter comes only from a Land whose rule is in ``evals/law/laender.txt`` (``law.py``
+    refuses the four without one), its delivery day is that Land's, and any BW, BY or MV letter that names when its
+    procedure began hands that day to ``law.py``; one that names none is dated as a procedure begun after the change
+    and names no earlier day."""
+    flat = _flat(_text("w1a"))
+    assert "evals/law/laender.txt" in flat
+    for land in ("Bremen", "Rheinland-Pfalz", "Saarland", "Sachsen-Anhalt"):
+        assert land in flat, land
+    assert "names when its procedure began passes that day to `law.py` as `procedure_began`" in flat
+    assert (
+        "one that names none is dated as a procedure begun after the change, and names no day before it"
+        in flat
+    )
+    assert "sent by post" in flat
+
+
 @pytest.mark.parametrize("session", ("a1", "a1re"))
 def test_the_first_blind_reading_has_no_conventions_and_no_answers(session: str) -> None:
     """The convention-free reading: nothing in its brief speaks of the benchmark's conventions or of the dates the
@@ -299,6 +319,70 @@ def test_the_first_blind_reading_has_no_conventions_and_no_answers(session: str)
 @pytest.mark.parametrize("session", ("a1c", "a1p", "a2", "a2p"))
 def test_the_readings_under_the_conventions_get_them(session: str) -> None:
     assert "conventions.md" in _text(session)
+
+
+#: The readers who write a slot's facts from a letter in the grammar of ``evals/dataset/FACTS.md``.
+FACT_WRITERS = ("a1", "a1re", "a1p")
+
+
+@pytest.mark.parametrize("session", FACT_WRITERS)
+def test_a_reader_gives_the_day_a_procedure_began_only_when_the_letter_states_it(session: str) -> None:
+    """FACTS.md's optional ``procedure_began``: a reader who writes a slot's facts from a letter gives the day the
+    procedure an authority's decision closes began only when the letter states that day, and otherwise leaves the
+    key out, never working the day out from other dates."""
+    flat = _flat(_text(session))
+    assert "`procedure_began`, in " in flat
+    assert "the day the procedure the decision closes began, only when the letter states that day" in flat
+    assert "When the letter states no such day, leave the key out: never work it out from other dates" in flat
+    assert "procedure_began" in (ROOT / "evals" / "dataset" / "FACTS.md").read_text(encoding="utf-8")
+
+
+#: The one kind of slot whose date the day its procedure began can change (the facts builder's
+#: ``scripts.build_final_facts.start_counts``), in the words every reader who writes facts, and FACTS.md, give it.
+START_SCOPE = (
+    "whose date runs from the notification of a Land authority's decision, in a Land whose administrative procedure "
+    "act keeps its earlier rule for a procedure begun before that act changed"
+)
+
+
+@pytest.mark.parametrize("session", FACT_WRITERS)
+def test_a_tax_office_slot_gets_no_procedure_start_even_when_its_letter_names_the_filing_day(
+    session: str,
+) -> None:
+    """The day a procedure began changes a date only for a period counted from the notification of a Land
+    authority's decision, in a Land that keeps its earlier rule for a procedure begun before its act changed. A
+    reader states it there only, and leaves it out of every other slot, a tax office's decision whose letter names
+    the day the return was filed among them: so no such slot reaches the adjudicator for its start, the adjudicator
+    never has to rule against a label that cannot hold one, and the fix session is never asked for a start that
+    ``law.py`` refuses. FACTS.md, the grammar every reader gets, says the same."""
+    flat = _flat(_text(session))
+    assert START_SCOPE in flat
+    assert "Leave it out of every other" in flat
+    assert "a tax office's decision that names the day a return was filed" in flat
+    facts = _flat((ROOT / "evals" / "dataset" / "FACTS.md").read_text(encoding="utf-8"))
+    assert START_SCOPE in facts and "a tax office's decision that names the day a return was filed" in facts
+
+
+def test_the_first_adjudication_upholds_not_stated_where_no_start_can_change_the_date() -> None:
+    """Where a slot's date cannot depend on when the procedure began, a side's ``not stated`` is right whatever the
+    letter names, and the ``fact`` states no start: the label's side of such a slot can always be upheld."""
+    write = _flat(_section(_text("a1p"), "## What you write"))
+    assert (
+        "which is right only when the letter states none, or when the slot is not one whose date that day"
+        in write
+    )
+    folder = _flat(_section(_text("a1p"), "## Your folder"))
+    assert "for a slot whose date that day can change" in folder
+
+
+def test_the_second_adjudication_says_in_words_whether_the_letter_states_when_a_procedure_began() -> None:
+    """A2′ writes no facts: where a derivation rests on when a procedure began, its reason says whether the letter
+    states that day, and which."""
+    flat = _flat(_text("a2p"))
+    assert "say in `why` whether the letter states that day, and which day it states" in flat
+    assert (
+        "A day the letter does not state is no fact of the letter: never work it out from other dates" in flat
+    )
 
 
 @pytest.mark.parametrize("session", ADJUDICATORS)
@@ -320,3 +404,111 @@ def test_an_adjudication_fixes_its_verdicts_and_what_each_does(session: str) -> 
     for verdict in VERDICTS:
         assert f"`{verdict}`" in verdicts, verdict
     assert text.index("## What each verdict does") > text.index("## What you write")
+
+
+def test_the_first_adjudication_states_what_an_ambiguous_slot_becomes() -> None:
+    """The rule fixed before any letter exists for a slot A1′ rules ``ambiguous``: its date becomes "ambiguous" with
+    both sides' dates as candidates, and how many slots of each kind the set leaves open is published. It never says
+    both dates are taken as right, and it says nothing of how answers are scored (the adjudicator needs none of it,
+    and nothing an auditor reads names the scorer)."""
+    verdicts = _flat(_section(_text("a1p"), "## What each verdict does"))
+    ambiguous = next(part for part in verdicts.split("- ") if part.startswith("`ambiguous`"))
+    for words in (
+        '"ambiguous"',
+        "X's date and Y's date as its candidates",
+        "how many slots of each kind the set leaves open is published",
+    ):
+        assert words in ambiguous, words
+    assert "as right" not in ambiguous
+    for words in ("answer", "handled", "scored", "flagged", "certain"):
+        assert words not in _flat(_text("a1p")).lower(), words
+
+
+def test_the_fix_session_knows_how_a_slot_left_open_is_written() -> None:
+    """A slot the adjudicator rules ``ambiguous`` goes to the fix session like any other ruling against a label: its
+    brief says how such a slot is written, for an item and for a contract date, with the two candidate dates."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "marks a slot `ambiguous`",
+        '`expected_due` is `"ambiguous"`',
+        "its `candidates` are those dates",
+        '`"ambiguous"`, and the contract\'s `candidates` hold those dates under that key',
+        "`undated_item`",
+    ):
+        assert words in text, words
+
+
+def test_the_first_adjudication_decides_a_case_whose_sides_differ_only_in_the_procedure_start() -> None:
+    """The comparison also sends a slot whose second reading states the day the authority's procedure began
+    otherwise (on one side only, or two different days), even with the same date; its pack then gives each side a
+    ``Procedure began:`` line. The brief says such a case exists, what that line is, that a side is upheld only when
+    its date and its start both follow from the letter (the one rule for the fact's ``procedure_began``), what each
+    verdict does to the start, and that ``ambiguous`` is not open to a case with one date."""
+    text = _text("a1p")
+    task, folder = _flat(_section(text, "## The task")), _flat(_section(text, "## Your folder"))
+    write, verdicts = (
+        _flat(_section(text, "## What you write")),
+        _flat(_section(text, "## What each verdict does")),
+    )
+    assert (
+        "or the same date and a different day on which the procedure of an authority's decision began" in task
+    )
+    for words in (
+        "`Procedure began:` line",
+        "`not stated`",
+        "where neither side states one, neither file has it",
+    ):
+        assert words in folder, words
+    for words in (
+        "for example), whatever X or Y assume. When the letter states no such day, leave the key out",
+        "A side is right only when both its date and its `Procedure began:` line follow from the letter",
+        "the `fact` of `X_right` or `Y_right` states the procedure start of the side it upholds, or none",
+        "the verdict is `both_wrong`, with that date",
+    ):
+        assert words in write, words
+    for words in (
+        "its date and its procedure start stay",
+        "with your date, the procedure start your `fact` states or that it states none",
+        "decides which procedure start the slot keeps",
+        "`ambiguous` is not open to such a case",
+    ):
+        assert words in verdicts, words
+
+
+def test_the_fix_session_sets_or_removes_the_day_a_procedure_began() -> None:
+    """A ruling for the second reading's procedure start goes to the fix session with that start, or with "not
+    stated": its brief says how the slot's ``procedure_began`` is added, changed or removed, and that the date may
+    stay as it is."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "gives a slot's procedure start",
+        "`procedure began: YYYY-MM-DD` or `procedure began: not stated`",
+        "passes that day to `law.py` as `procedure_began`, or passes none",
+        "the item's `spec` then states that day as its `procedure_began`, or holds no such key",
+        "Its date may stay as it is",
+    ):
+        assert words in text, words
+
+
+def test_the_fix_session_passes_no_start_that_law_py_refuses() -> None:
+    """``law.py`` takes a procedure start only for a Land authority's decision (``objection_item`` with scope
+    ``vwvfg``) and refuses one for a tax office's or a social-law decision, and a date that does not run from a
+    decision's notification has no place for one: a fix list that gives a start for such a slot gets none passed,
+    and the session says why instead of stopping."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "`law.py` takes a procedure start only for a Land authority's decision (`objection_item` with scope `vwvfg`)",
+        "pass none, change nothing else for that start, and say so in your last message",
+    ):
+        assert words in text, words
+
+
+def test_the_conventions_reading_keeps_the_day_a_procedure_began() -> None:
+    """No labelling convention says when a procedure began: A1c's fact keeps the sealed fact's ``procedure_began``,
+    or its lack of one, so the comparison's second count of procedure starts differs from the first only where A1c
+    changed nothing it may change."""
+    text = _flat(_text("a1c"))
+    assert (
+        "`procedure_began` stays as the sealed fact gives it, or absent where it gives none: no convention adds, "
+        "changes or removes the day a procedure began" in text
+    )

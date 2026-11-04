@@ -1,11 +1,12 @@
 """The stress cells' letters: the base set, what each letter gets, the files and the stress manifest.
 
 **Base set.** 48 standard text letters of ``holdout4``, the final run's split (:data:`BASE_SPLITS`; every other split
-is refused), each with at least one scored dated deadline. They are spread as evenly over the families as the letters
-allow — four each when twelve families have one (a family short of letters gives all it has, and the others fill its
-places) — and each family's letters are drawn with the seed :data:`SEED`. The earlier held-out splits were written for
-their own days and recorded once; holdout4 is written for the recording window (the planned day, its letters' today,
-through its last valid day), so the same 48 letters can be read on any day of it.
+is refused), each with at least one scored dated deadline. They are spread as evenly over the families that have such
+letters as the letters allow — at least four from each of the ten families whose letters carry a dated deadline, four
+or five each when every one of them has five or more (a family short of letters gives all it has, and the others fill
+its places) — and each family's letters are drawn with the seed :data:`SEED`. The earlier held-out splits were
+written for their own days and recorded once; holdout4 is written for the recording window (the planned day, its
+letters' today, through its last valid day), so the same 48 letters can be read on any day of it.
 
 **No day in the stress manifest.** The base set and what each letter gets do not depend on the day the cells are
 recorded. Built for a day (:func:`build`'s ``today``), the runner's manifest gives each letter that day as its
@@ -63,7 +64,8 @@ from evals.records import Entry, TruthItem, load_manifest, parse_iso
 SEED = 20261029
 #: The only split whose letters are perturbed: the final run's, written for the recording window.
 BASE_SPLITS = ("holdout4",)
-#: How many base letters (spread evenly over the families: four each with twelve).
+#: How many base letters (spread as evenly as the letters allow over the families that have them: at least four
+#: each with ten).
 BASE_LETTERS = 48
 #: A letter is valid this many days after its today when its manifest names no last valid day (D0 through D0 + 7).
 VALID_DAYS = 7
@@ -84,7 +86,7 @@ PERTURB_DIR = Path(__file__).resolve().parent
 EVALS_DIR = PERTURB_DIR.parent
 DATASET_DIR = EVALS_DIR / "dataset"
 DATASET_MANIFEST = DATASET_DIR / "manifest.json"
-#: The committed stress manifest (EV8's commit A; absent until then).
+#: The committed stress manifest (committed with the templates after the code freeze; absent until then).
 STRESS_MANIFEST = PERTURB_DIR / "manifest.json"
 #: Where the files are built (git-ignored); the runner reads ``<BUILD_DIR>/manifest.json``.
 BUILD_DIR = PERTURB_DIR / "build"
@@ -342,7 +344,8 @@ def _iso_dates(value: Any) -> Iterable[date]:
 
 
 def taken_dates(entry: Entry, pdf: bytes) -> set[date]:
-    """Dates an inserted date must not equal: every date of the truth, the letter date, today, every printed date."""
+    """Dates an inserted date must not equal: every date of the truth (an ambiguous item's or contract date's
+    candidates too), the letter date, today, every printed date."""
     truth = entry.truth
     taken = set(visible_dates(pdf))
     for item in [*truth.items, *truth.optional_items]:
@@ -353,6 +356,8 @@ def taken_dates(entry: Entry, pdf: bytes) -> set[date]:
         taken.update(
             _iso_dates([truth.contract.expected_current_term_end, truth.contract.expected_cancel_by])
         )
+        # a contract date left open keeps its candidates under the slot's name
+        taken.update(_iso_dates(truth.contract.candidates))
     taken.update(_iso_dates(truth.price_change or {}))
     return taken
 
@@ -372,7 +377,18 @@ def _event(entry: Entry, item: TruthItem, region: str | None) -> date | None:
         posted = parse_iso(spec.posted_on) or parse_iso(entry.truth.document_date)
         if posted is None or spec.delivery_scope not in law.SCOPE_CITATION:
             return None
-        return law.deemed_delivery(posted, spec.delivery_scope, region, law.Derivation())
+        land = entry.authority_region
+        if spec.delivery_scope == "vwvfg" and (land is None or land in law.LAND_VWVFG_UNVERIFIED):
+            return None  # a Land authority's decision the label arithmetic cannot date (no Land, or no text)
+        # a Land authority's decision counts its own Land's day, from the procedure start its label rests on
+        return law.deemed_delivery(
+            posted,
+            spec.delivery_scope,
+            region,
+            law.Derivation(),
+            land=land,
+            procedure_began=parse_iso(spec.procedure_began),
+        )
     if spec.anchor == "document_date":
         return parse_iso(entry.truth.document_date)
     if spec.anchor == "explicit_date":
@@ -863,8 +879,8 @@ def build(
     today: date | None = None,
 ) -> dict[str, Any]:
     """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest, which names no
-    day. ``today``: the day the cells are recorded, every letter's simulated today in the runner's manifest (the
-    evaluation plan's addendum, item 8), refused unless every letter built can be read on it (:func:`check_day`).
+    day. ``today``: the day the cells are recorded, every letter's simulated today in the runner's manifest (so the
+    model never sees two todays), refused unless every letter built can be read on it (:func:`check_day`).
     ``manifest_path``: the dataset's manifest (default :data:`DATASET_MANIFEST`)."""
     manifest_path = manifest_path or DATASET_MANIFEST
     manifest_bytes = manifest_path.read_bytes()

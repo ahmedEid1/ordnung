@@ -1,26 +1,17 @@
-<p align="center">
-  <img src="docs/assets/logo.svg" width="72" height="72" alt="">
-</p>
+<p align="center"><img src="docs/assets/logo.svg" width="72" height="72" alt=""></p>
 
 <h1 align="center">Ordnung</h1>
 
-<p align="center">
-  <b>A private secretary for the paperwork of life in Germany.</b><br>
+<p align="center"><b>A private secretary for the paperwork of life in Germany.</b><br>
   Claude reads your letters; tested code works out each deadline and shows the law behind it. Ordnung
-  reminds you before things matter, drafts the replies and runs on your own computer.
-</p>
+  reminds you before things matter, drafts the replies and runs on your own computer.</p>
 
-<p align="center">
-  <a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
-  <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
-</p>
+<p align="center"><a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
+  <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a></p>
 
-<p align="center">
-  <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card"><br>
-  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) ·
-  <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a><br>
-  <sub>The court order in the GIF and the video comes from the online demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub>
-</p>
+<p align="center"><img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card"><br>
+  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a><br>
+  <sub>The court order in the GIF and the video comes from the online demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub></p>
 
 <p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a></p>
 
@@ -49,18 +40,15 @@ for you. Whether that beats asking the model is [measured](#evaluation), and eve
   folder your own sync tool keeps in step, with only encrypted files in it.
 - **And more** in [the guide's tour](docs/guide.md#a-tour): Timeline, Contracts, My numbers, your household and backups.
 
-<table>
-<tr>
+<table><tr>
 <td width="50%"><img src="docs/assets/today.png" alt="Today page"><br><b>Today.</b> A secretary's note, the three things that matter this week with countdowns, and Ideas with reasons.</td>
 <td width="50%"><img src="docs/assets/document.png" alt="A photographed tax assessment with the objection sentence highlighted"><br><b>Every letter.</b> What to do and by when, each fact linked to the sentence it came from. This one was read from a phone photo.</td>
 </tr><tr>
 <td><img src="docs/assets/ask.png" alt="Ask with a checked answer"><br><b>Ask.</b> Answers about your letters, every date and amount checked against the record it cites.</td>
 <td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag a letter. Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode.</td>
-</tr>
-</table>
+</tr></table>
 
-<p align="center"><img src="docs/assets/mobile.png" width="30%" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode"></p>
-<p align="center"><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up; CI checks both.</p>
+<p align="center"><img src="docs/assets/mobile.png" width="30%" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up; CI checks both.</p>
 
 ## Install and run
 
@@ -84,16 +72,14 @@ phone, your other computer, Claude Desktop and [the environment variables](docs/
 
 ### Updating
 
-`ordnung --version` shows yours, and [CHANGELOG.md](CHANGELOG.md) what changed. [Updating](docs/guide.md#updating) in
-the guide says how to update, and how to go back.
+`ordnung --version` shows yours, [CHANGELOG.md](CHANGELOG.md) what changed and [the guide](docs/guide.md#updating) how to update, and how to go back.
 
 ## Evaluation
 
 Is it better to let code do the date arithmetic than to ask the model? Ordnung is measured against the same pinned
-model used three other ways: on its own (*LLM only*), with the rules pasted into its prompt (*LLM + rules text*), and
-as an agent that calls Ordnung's engine as a tool (*LLM + rules tool*). A deadline counts as right only on its exact
-date, and as harmful when it comes out late or not at all. Every comparison is paired on the same deadlines: exact
-McNemar tests, a sign-flip test over letter clusters, and Holm's correction across the three comparisons.
+model run three other ways: alone (*LLM only*), with the rules pasted in (*LLM + rules text*), and as an agent using
+Ordnung's engine as a tool (*LLM + rules tool*). A deadline is right only on its exact date, harmful if late or
+missed. Every comparison is paired: exact McNemar tests, a sign-flip test over letter clusters, Holm across the three.
 
 <!-- evals:begin: generated by `python -m evals.present`; do not edit -->
 **Held out, read once.** On 168 deadlines in 189 synthetic letters that nothing was tuned on, Ordnung dates
@@ -118,10 +104,9 @@ Why these numbers can be checked:
 - **Replayable at zero tokens.** `make eval-reproduce` replays every published number from the recorded answers, with
   no API key, and checks each against a hashed index ([`INDEX.json`](evals/results/INDEX.json)); where today's code
   gives another value, the index pins it and names the change. CI runs it on every pull request.
-- **Baselines, stated plainly.** One gives the model Ordnung's own engine as a tool: an agent that decides when to
-  call it and whether to trust it. The tuning effort was unequal, in Ordnung's favour
-  ([§ 4](docs/evals.md#4-conditions-and-baselines)), and the report switches each of Ordnung's code checks, and Ask's
-  answer check, off in turn ([§ 8](docs/evals.md#8-ablations)).
+- **Baselines, stated plainly.** One is an agent with Ordnung's own engine as a tool, which decides when to call it
+  and whether to trust it. Ordnung got more tuning ([§ 4](docs/evals.md#4-conditions-and-baselines)), and the report
+  turns each of Ordnung's code checks, and Ask's answer check, off in turn ([§ 8](docs/evals.md#8-ablations)).
 - **Pre-registered next.** The tests and intervals above were chosen after these results were known, so this analysis
   is not pre-registered. The final run, on letters written after the code freeze, will be pre-registered before it is
   recorded; its numbers then take this headline by the rule the pre-registration sets, whatever they show.
@@ -186,9 +171,8 @@ headless mode, stream-json in and out with JSON-schema output ([ADR 0001](docs/d
 
 ### Tested
 
-- **12,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude` executable, API contract
-  tests), **2,200+ Vitest tests** and **500+ Playwright tests** over the demo and the real app with a fake Claude,
-  with axe accessibility checks in light and dark mode.
+- **12,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude`, API contracts),
+  **2,200+ Vitest tests** and **500+ Playwright tests** (demo and real app, fake Claude, axe in light and dark mode).
 - **The rules engine** has 100 % line and branch coverage, enforced in CI, and `mypy` strict on it, as on the whole
   package and the benchmark code.
 - **A typed API contract:** `make openapi` writes the FastAPI schema and the web app's TypeScript types; a backend test
@@ -217,8 +201,7 @@ computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) sa
 - The app's own text is in English; what Claude writes for you follows the language you choose.
 - The benchmark letters are synthetic and real post is messier; phone access and hand-off sync were tested in
   emulation and with a simulated sync tool, not yet on physical phones or two physical computers.
-
-[The guide](docs/guide.md#limitations) lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
+- **And more** in [the guide](docs/guide.md#limitations), which lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
 
 ## How it was built
 

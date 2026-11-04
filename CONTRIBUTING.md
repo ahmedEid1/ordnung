@@ -120,9 +120,10 @@ commit what it writes. The last column is what fails while one is stale.
 | `evals/results/*-heldout-reanalysis.json` (the held-out splits analysed again from their results files as recorded) | `.venv/bin/python -m evals.analysis --write --date <day>`, with the date in the file's name; without `--date` it writes a new file for today, which `evals/results/INDEX.json` doesn't list, and leaves the old one stale | `python -m evals.analysis --check` and `make eval-reproduce` |
 | `README.md` (its evaluation block), `docs/evals.md`, `docs/evals-history.md`, `docs/assets/eval-*.svg`, `evals/present/presentation.json` | `.venv/bin/python -m evals.present --write` | `tests/test_present.py::test_the_outputs_are_the_committed_files` and `python -m evals.present --check` |
 | `docs/evals-ask.md` | `.venv/bin/python -m evals.ask --write --date <day>`, with the day the page's header says it was re-scored on (the date in the name of the newest `evals/results/*-ask-rescored.json`); without `--date` it writes a new results file for today | the Ask benchmark's step in [Checks](#checks) (`--check-docs`) |
-| `evals/ask/heldout/household-facts.json` (what the blind writer of the held-out Ask set is told of the household ledger) | `.venv/bin/python -m scripts.export_household_facts` (`scripts/export_household_facts.py`), from the household group's constants and the sample life's truth | `tests/test_evals_ask_heldout.py::test_the_household_facts_are_the_household_groups` and `python -m scripts.export_household_facts --check` |
+| `evals/ask/heldout/household-facts.json` (what the blind writer of “Ask: new questions on the demo household” is told of the household ledger) | `.venv/bin/python -m scripts.export_household_facts` (`scripts/export_household_facts.py`), from the household group's constants and the sample life's truth | `tests/test_evals_ask_heldout.py::test_the_household_facts_are_the_household_groups` and `python -m scripts.export_household_facts --check` |
 | `evals/results/INDEX.json`, `evals/results/items.csv` | `.venv/bin/python -m evals.reproduce --write` (a date or count it changes then needs its reason in `INDEX.json`, written by a person); `items.csv` alone: `python -m evals.export --write` | `tests/test_results_index.py`, `tests/test_items_export.py` and `make eval-reproduce` |
 | `evals/dataset/` (the benchmark's letters) | `.venv/bin/python evals/generate.py` (a changed letter needs new recordings) | `tests/test_eval_dataset.py::test_generation_is_byte_identical` |
+| `evals/dataset/*/facts.json` (a final split's facts, which `evals/verify_labels.py` re-derives its labels from) | `.venv/bin/python -m scripts.build_final_facts` (`scripts/build_final_facts.py`), from the sealed blind audit: the readings, the opaque-name map and the adjudications, which stay outside the repository (its `--help` names them) | `.venv/bin/python -m scripts.build_final_facts --check` with the same files (not in CI, which has none of them), and `.venv/bin/python -m evals.verify_labels --require-facts`, which re-derives every label of a final split from them |
 | `web/e2e/fixtures/outlook-bill.msg` | `python scripts/make_msg_fixture.py` | `tests/test_outlook.py::test_e2e_fixture_is_rebuilt_byte_for_byte` |
 | `web/e2e/fixtures/private-photo.jpg` | `python scripts/make_photo_fixture.py` | `tests/test_photo_fixture.py::test_the_e2e_photo_is_what_the_script_draws` |
 | `docs/assets/*.png`, `docs/assets/demo.gif`, `docs/assets/demo.mp4` (the README's pictures and video) | `make capture` (it needs ffmpeg) | nothing: look at them, and commit them as said below |
@@ -185,11 +186,11 @@ check shows in the numbers at once, and costs nothing.
   evals.harness unlock` frees once its process is gone. A replay recomputes every prediction; it reads the
   prediction cache only with `--resume`. A recording is built for the day it is recorded: the claude CLI tells the
   model the computer's date, so letters or a ledger pinned to another day would show it two todays, and a live run
-  refuses them (`python -m evals.ask --set heldout --today <day>` builds the held-out Ask set for that day). The
-  development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be recorded again on
-  another day: `--allow-another-today` does that in the open, and every new recording (`recorded_on`) and results
-  file says both days. A held-out or final set takes `--allow-another-today` only for a smoke into a scratch
-  `--recorded-dir` outside the checkout, thrown away.
+  refuses them (`python -m evals.ask --set heldout --today <day>` builds “Ask: new questions on the demo household”
+  for that day). The development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be
+  recorded again on another day: `--allow-another-today` does that in the open, and every new recording
+  (`recorded_on`) and results file says both days. A held-out or final set takes `--allow-another-today` only for
+  a smoke into a scratch `--recorded-dir` outside the checkout, thrown away.
 
 ## Tests
 

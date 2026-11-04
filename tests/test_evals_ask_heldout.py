@@ -289,7 +289,7 @@ def test_the_committed_held_out_set_is_the_pre_registered_one() -> None:
     """Once the pre-registration (commit B) exists, the held-out files must be byte for byte what it hashed."""
     prereg = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
     if not prereg.exists():
-        pytest.skip("no pre-registration yet (commit B, after the code freeze)")
+        pytest.skip("no pre-registration yet (it is committed after the code freeze)")
     assert heldout.frozen_mismatches(json.loads(prereg.read_text(encoding="utf-8")), ROOT) == []
 
 
@@ -662,7 +662,7 @@ def _harness() -> Any:
     return harness
 
 
-needs_harness = pytest.mark.skipif(_harness() is None, reason="evals/harness.py (EV3) is not merged yet")
+needs_harness = pytest.mark.skipif(_harness() is None, reason="evals/harness.py is not in this checkout")
 
 
 ONE = ["deadline-steuerbescheid_2025-0"]
@@ -1244,13 +1244,38 @@ def test_blind_compare_counts_agreement_by_category(
     replies["replies"][3]["items"] = replies["replies"][3]["items"][:1]
     again = heldout_check.blind_compare(folder, replies, today=date(2026, 9, 28))
     assert again["disagree"] == ["h-pay-week", "h-tax-de"]
-    path, out = tmp_path / "replies.json", tmp_path / "blind-compare.json"
+    path, out = tmp_path / heldout_check.ANSWERS_NAME, tmp_path / "blind-compare.json"
     path.write_text(json.dumps(replies), encoding="utf-8")
     argv = ["--blind-compare", str(path), "--today", "2026-09-28", "--folder", str(folder), "--out", str(out)]
     assert heldout_check.main(argv) == 0
     printed = capsys.readouterr().out
     assert "deadline" in printed and "appeal" not in printed and "Steuerbescheid" not in printed
     assert json.loads(out.read_text(encoding="utf-8"))["disagree"] == ["h-pay-week", "h-tax-de"]
+
+
+def test_the_blind_answers_have_one_file_name_everywhere(tmp_path: Path) -> None:
+    """The blind answerer writes ``answers.json``: the reply instructions of ``--strip-gold`` name that file and no
+    other, the W2v brief asks for it and the copy-out takes it, and nothing in the repository's evaluation code,
+    briefs or docs names the blind answers' file another way."""
+    folder = _write(tmp_path / "heldout", VALID_QUESTIONS, [])
+    told = heldout_check.strip_gold(folder)["how_to_reply"]
+    assert heldout_check.ANSWERS_NAME == "answers.json"
+    assert set(re.findall(r"[\w.-]+\.json", told)) == {heldout_check.ANSWERS_NAME}
+    brief = (ROOT / "evals" / "preregistration" / "brief-templates" / "w2v.md").read_text(encoding="utf-8")
+    assert f"`{heldout_check.ANSWERS_NAME}`" in brief and "another file name" not in brief
+    places = [
+        *ROOT.glob("evals/**/*.py"),
+        *ROOT.glob("evals/**/*.md"),
+        *ROOT.glob("scripts/**/*.py"),
+        *ROOT.glob("tests/*.py"),
+        *ROOT.glob("docs/*.md"),
+        ROOT / "CONTRIBUTING.md",
+    ]
+    other = "replies" + ".json"  # spelled apart, so this file names it nowhere either
+    named = sorted(
+        str(path.relative_to(ROOT)) for path in places if other in path.read_text(encoding="utf-8")
+    )
+    assert not named, named
 
 
 # --------------------------------------------------------------------------------------------------

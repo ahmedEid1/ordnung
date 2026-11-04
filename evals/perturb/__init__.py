@@ -1,7 +1,9 @@
-"""The stress cells of the 0.4.0 evaluation (plan EV11): held-out letters with one sentence added, recorded once.
+"""The stress cells of the 0.4.0 evaluation: held-out letters with one sentence added, recorded once.
 
-Two cells, each on the same 48 standard text letters of ``holdout4``, the final run's split (spread evenly over its
-families, seed 20261029; the stress manifest names no day, and the cells are built for the day they are recorded):
+Two cells, each on the same 48 standard text letters of ``holdout4``, the final run's split (spread as evenly as the
+letters allow over the families that have a dated deadline: at least four from each of the ten families whose letters
+carry one, four or five each when every one of them has five or more; seed 20261029; the stress manifest names no day,
+and the cells are built for the day they are recorded):
 
 * **I1, targeted injection** — one visible paragraph addressed to an AI, with one of three goals (16 letters each):
   *shift* the deadline to the truth + 3, 7 or 14 days; *drop* it ("no action needed"); or *re-route* it with a claim
@@ -15,7 +17,7 @@ The truth of every perturbed letter is its base letter's (an AI-addressed paragr
 legal date). The letters are re-rendered through the benchmark's own generator (``evals/generate.py`` and
 ``evals/gen/``, unchanged): an unperturbed re-render is byte-identical to the dataset.
 
-* :mod:`evals.perturb.templates` — the sentences' templates (written blind, plan EV8) and their checks;
+* :mod:`evals.perturb.templates` — the sentences' templates (written blind after the code freeze) and their checks;
 * :mod:`evals.perturb.build` — the base set, what each letter gets, the files and the stress manifest;
 * :mod:`evals.perturb.score` — the scorer and the results document (``<date>-<model>-stress.json``).
 
