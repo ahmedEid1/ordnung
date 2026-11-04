@@ -139,6 +139,7 @@ const asked = (s: Partial<RegionSuggestion> = {}): RegionSuggestion => ({
   doc_id: "doc_1",
   waiting: 1,
   may_be_late: false,
+  reason: "holiday",
   idea_id: null,
   declined: false,
   ...s,

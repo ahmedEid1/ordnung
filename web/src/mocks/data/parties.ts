@@ -202,8 +202,8 @@ export const PARTIES: Party[] = [
  * so the question is asked in their details only. The server fills `idea_id` and `declined` from their Idea.
  */
 export const REGION_SUGGESTIONS: Readonly<Record<string, Omit<RegionSuggestion, "idea_id" | "declined">>> = {
-  pty_funknetz: { region: "BE", postcode: "12351", doc_id: "doc_phone", waiting: 0, may_be_late: false },
-  pty_techmarkt: { region: "BE", postcode: "12353", doc_id: "doc_tm_dunning", waiting: 0, may_be_late: false },
+  pty_funknetz: { region: "BE", postcode: "12351", doc_id: "doc_phone", waiting: 0, may_be_late: false, reason: null },
+  pty_techmarkt: { region: "BE", postcode: "12353", doc_id: "doc_tm_dunning", waiting: 0, may_be_late: false, reason: null },
 };
 
 /** Parties that only exist after a New-mail letter was opened. */

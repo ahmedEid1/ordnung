@@ -337,6 +337,7 @@ async def test_the_postcode_on_their_letter_asks_and_never_sets_the_land(
             "doc_id": doc_id,
             "waiting": 1,  # Saxony's authorities count 4 days, Ordnung 3 until it is confirmed
             "may_be_late": False,
+            "reason": "days",
             "idea_id": idea_id(party_id, "SN"),
             "declined": False,
         }

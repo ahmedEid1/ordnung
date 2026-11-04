@@ -103,6 +103,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   as their gazettes could not be reached. The Saarland's rule still couldn't be read, so Ordnung keeps the 3rd day
   there, at lower confidence. Schleswig-Holstein's rules for a decision fetched from a portal were read too and need
   no change. On the benchmark no date and no count changes.
+- **The question about a sender's state says why their dates wait for it.** *Is X in Saxony?* in the sender's
+  details and in Today's Ideas spoke only of public holidays. Now, as on the letter, it says what the state decides:
+  for an authority's e-mailed decision, whether it counts from the day it arrived or the 3rd or 4th day after it was
+  sent (until you answer, Ordnung counts from the day it was sent, so a date can be several days early); for an
+  authority's letter, whether it counts as delivered after 3 or 4 days (Ordnung counts 3, so a day early).
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.

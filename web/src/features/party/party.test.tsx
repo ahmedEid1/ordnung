@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Document, Draft, MyNumbers, PartyDetail } from "@/api/types";
+import type { Document, Draft, MyNumbers, PartyDetail, RegionSuggestion } from "@/api/types";
 import { renderWithProviders } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { assertNoRawEnumsInElement } from "@/lib/copy";
@@ -347,10 +347,10 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     expect(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region).toBeNull();
   });
 
-  it("says how many of your dates may change, and when one may be late until you answer", async () => {
+  it("says how many of your dates may change, and why: a holiday, a date that may be late, an e-mailed decision or a Land authority's 3 or 4 days", async () => {
     const { srv } = useMockApi();
     const answer = globalThis.fetch;
-    let suggestion = { waiting: 2, may_be_late: false };
+    let suggestion: Pick<RegionSuggestion, "waiting" | "may_be_late" | "reason"> = { waiting: 2, may_be_late: false, reason: "holiday" };
     vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
       const response = await answer(input, init);
       if (!String(input).endsWith("/api/parties/pty_funknetz")) return response;
@@ -364,10 +364,22 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
       "This may change 2 of your dates with them. Until you answer, Ordnung counts only nationwide holidays, so they may be a day or two early.",
     );
     first.unmount();
-    suggestion = { waiting: 1, may_be_late: true };
+    suggestion = { waiting: 1, may_be_late: true, reason: "earlier" };
     const second = await openDrawer();
     expect(within(second.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
       "This may change 1 of your dates with them. Until you answer, act a working day before it: a holiday in their state could make it earlier.",
+    );
+    second.unmount();
+    suggestion = { waiting: 1, may_be_late: false, reason: "email" };
+    const third = await openDrawer();
+    expect(within(third.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
+      "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so it may be several days early, more around weekends and holidays.",
+    );
+    third.unmount();
+    suggestion = { waiting: 2, may_be_late: false, reason: "days" };
+    const fourth = await openDrawer();
+    expect(within(fourth.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
+      "This may change 2 of your dates with them. Their state decides whether their letters count as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so they may be a day early.",
     );
   });
 

@@ -17,6 +17,7 @@ from ordnung.models import DateSpec
 from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
+    LAND_WAIT_REASONS,
     REGION_EARLIER,
     REGION_UNKNOWN,
     LandWait,
@@ -321,14 +322,14 @@ def warnings(spec: DateSpec, **kw: Any) -> list[str]:
 def test_a_holiday_the_engine_could_not_place_waits_for_the_land() -> None:
     later = warnings(relative("2026-05-29", 5, "other"))  # Fronleichnam, Thu 4 Jun 2026
     assert len(later) == 1 and later[0].startswith(REGION_UNKNOWN) and REGION_EARLIER not in later[0]
-    assert waits_for_sender_land(later, "BY") == LandWait(waits=True, may_be_late=False)
-    assert waits_for_sender_land(later, "TH") == (True, False)
+    assert waits_for_sender_land(later, "BY") == LandWait(waits=True, may_be_late=False, reason="holiday")
+    assert waits_for_sender_land(later, "TH") == (True, False, "holiday")
 
 
 def test_a_date_counted_backwards_waits_and_may_be_late() -> None:
     earlier = warnings(relative("2025-11-05", -5, "declaration"), today=D("2025-10-01"))  # Reformationstag
     assert len(earlier) == 1 and REGION_EARLIER in earlier[0]
-    assert waits_for_sender_land(earlier, "NI") == LandWait(waits=True, may_be_late=True)
+    assert waits_for_sender_land(earlier, "NI") == LandWait(waits=True, may_be_late=True, reason="earlier")
 
 
 def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day() -> None:
@@ -346,20 +347,35 @@ def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day() -> No
     )
     days = warnings(spec, document_date=D("2026-09-29"), delivery_scope="vwvfg")
     assert days == [LAND_DAYS_UNCONFIRMED]
-    assert waits_for_sender_land(days, "BY") == LandWait(waits=True, may_be_late=False)
+    assert waits_for_sender_land(days, "BY") == LandWait(waits=True, may_be_late=False, reason="days")
     for land in ("HE", "SL"):
-        assert waits_for_sender_land(days, land) == (False, False)
-    assert waits_for_sender_land([LAND_DAYS_UNCONFIRMED], "TH") == (True, False)
-    assert waits_for_sender_land(days, "HB") == (True, False)
+        assert waits_for_sender_land(days, land) == (False, False, None)
+    assert waits_for_sender_land([LAND_DAYS_UNCONFIRMED], "TH") == (True, False, "days")
+    assert waits_for_sender_land(days, "HB") == (True, False, "days")
 
 
 def test_an_emailed_decision_waits_for_every_land_but_brandenburg() -> None:
     """Counted from the day it was sent without the sender's Land: only in Brandenburg is that its rule."""
-    assert waits_for_sender_land([LAND_EMAIL_UNCONFIRMED], "BB") == (False, False)
+    assert waits_for_sender_land([LAND_EMAIL_UNCONFIRMED], "BB") == (False, False, None)
     for land in ("HE", "BY", "MV"):
         assert waits_for_sender_land([LAND_EMAIL_UNCONFIRMED], land) == LandWait(
-            waits=True, may_be_late=False
+            waits=True, may_be_late=False, reason="email"
         )
+
+
+def test_the_reason_is_the_strongest_of_a_dates_warnings() -> None:
+    """Why a date waits, the strongest first as the web app's ``landWait`` reads it: counted backwards it may be
+    late; an e-mailed decision may move by days; a Land authority's letter by a day; a holiday by a day or two."""
+    holiday = warnings(relative("2026-05-29", 5, "other"))
+    earlier = warnings(relative("2025-11-05", -5, "declaration"), today=D("2025-10-01"))
+    assert waits_for_sender_land([*holiday, LAND_EMAIL_UNCONFIRMED], "BY").reason == "email"
+    assert waits_for_sender_land([*holiday, LAND_DAYS_UNCONFIRMED], "BY").reason == "days"
+    assert waits_for_sender_land([LAND_DAYS_UNCONFIRMED, LAND_EMAIL_UNCONFIRMED], "BY").reason == "email"
+    assert waits_for_sender_land([LAND_EMAIL_UNCONFIRMED, *earlier], "BY") == (True, True, "earlier")
+    # a reason that holds nowhere in this Land is no reason: Hessen counts 3 days, Brandenburg from arrival
+    assert waits_for_sender_land([*holiday, LAND_DAYS_UNCONFIRMED], "HE").reason == "holiday"
+    assert waits_for_sender_land([*holiday, LAND_EMAIL_UNCONFIRMED], "BB").reason == "holiday"
+    assert LAND_WAIT_REASONS == ("earlier", "email", "days", "holiday")
 
 
 def test_land_days_unconfirmed_is_what_delivery_says() -> None:
@@ -370,5 +386,5 @@ def test_land_days_unconfirmed_is_what_delivery_says() -> None:
 def test_other_warnings_wait_for_nothing() -> None:
     quiet = warnings(relative("2026-09-01", 5, "other"))
     assert quiet == []
-    assert waits_for_sender_land(quiet, "BY") == LandWait(waits=False, may_be_late=False)
-    assert waits_for_sender_land([ASSUMED_RECEIPT_WARNING], "BY") == (False, False)
+    assert waits_for_sender_land(quiet, "BY") == LandWait(waits=False, may_be_late=False, reason=None)
+    assert waits_for_sender_land([ASSUMED_RECEIPT_WARNING], "BY") == (False, False, None)

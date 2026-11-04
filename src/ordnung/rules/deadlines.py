@@ -114,6 +114,14 @@ TOLD_ARRIVAL: Final = "You told us it arrived on"
 ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
 
 
+#: Why confirming a sender's Land may change a date (:func:`waits_for_sender_land`).
+LandWaitReason = Literal["earlier", "email", "days", "holiday"]
+#: The reasons, the strongest first (as the web app's ``landWait`` reads them): counted backwards, a date may be a
+#: day late; an e-mailed decision counted from the day it was sent may be several days early; a Land authority's
+#: letter counted with 3 days, a day early; a regional holiday, a day or two early.
+LAND_WAIT_REASONS: Final[tuple[LandWaitReason, ...]] = ("earlier", "email", "days", "holiday")
+
+
 class LandWait(NamedTuple):
     """What confirming a sender's Land may do to one date (:func:`waits_for_sender_land`)."""
 
@@ -121,10 +129,12 @@ class LandWait(NamedTuple):
     """Confirming the Land may change the date."""
     may_be_late: bool
     """It is counted backwards: until the Land is confirmed it may be a day late."""
+    reason: LandWaitReason | None = None
+    """Why it waits, the strongest of its warnings (:data:`LAND_WAIT_REASONS`); ``None`` when it doesn't."""
 
 
 def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
-    """Whether confirming ``region`` (a Land code) as the sender's Land may change a date, read from its
+    """Whether confirming ``region`` (a Land code) as the sender's Land may change a date, and why, read from its
     receipt's warnings, which the engine wrote without the Land.
 
     A regional holiday it couldn't place (:data:`REGION_UNKNOWN`) may move the date; counted backwards
@@ -135,14 +145,18 @@ def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
     (:data:`~ordnung.rules.delivery.LAND_EMAIL_UNCONFIRMED`) waits for every Land but Brandenburg. "May": the
     holiday in a warning need not be one in ``region``.
     """
-    waits = may_be_late = False
+    found: set[LandWaitReason] = set()
     for warning in warnings:
-        earlier = REGION_EARLIER in warning
-        four_days = warning == LAND_DAYS_UNCONFIRMED and region in VWVFG_FOUR_DAY_FROM
-        emailed = warning == LAND_EMAIL_UNCONFIRMED and region != "BB"
-        waits = waits or earlier or four_days or emailed or warning.startswith(REGION_UNKNOWN)
-        may_be_late = may_be_late or earlier
-    return LandWait(waits, may_be_late)
+        if REGION_EARLIER in warning:
+            found.add("earlier")
+        if warning == LAND_EMAIL_UNCONFIRMED and region != "BB":
+            found.add("email")
+        if warning == LAND_DAYS_UNCONFIRMED and region in VWVFG_FOUR_DAY_FROM:
+            found.add("days")
+        if warning.startswith(REGION_UNKNOWN):
+            found.add("holiday")
+    reason = next((reason for reason in LAND_WAIT_REASONS if reason in found), None)
+    return LandWait(reason is not None, reason == "earlier", reason)
 
 
 #: A notice whose written date is the day the contract should END, not the day the notice must arrive
