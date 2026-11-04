@@ -154,8 +154,9 @@ engine turns the reading into a date and a receipt, shown in the app under *Why 
 
 The same sentence from a city office gives Mon 19 Oct: under § 41 VwVfG the deemed delivery day does not move off a
 Saturday. The engine also covers social-law delivery, consumer contracts, rent, employment, fines and the rare letters
-that are costly to miss, such as a court payment order or a dismissal; in doubt it picks the earliest plausible date.
-[docs/deadline-rules.md](docs/deadline-rules.md) gives every rule with its source.
+that are costly to miss, such as a court payment order or a dismissal; in doubt it picks the earliest plausible date,
+except where a fact only you know decides (when a matter in Baden-Württemberg, Bavaria or Mecklenburg-Vorpommern began):
+a warning names the earlier date. [docs/deadline-rules.md](docs/deadline-rules.md) gives every rule with its source.
 
 ### Trust boundaries
 

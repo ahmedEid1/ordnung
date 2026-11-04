@@ -307,27 +307,29 @@ shows it.
 - Not legal advice. The rules were researched against statutes and case law and checked against
   worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
   warning, and in doubt Ordnung picks the earliest plausible date.
-- Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which
-  state is this sender in?* in its drawer, also offered under a date's *Why this date?*) or answer *Is X in
+- Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which state
+  is this sender in?* in its drawer, also offered under a date's *Why this date?*) or answer *Is X in
   Bavaria?*, which Ordnung asks from the postcode on their letter: in their details, and on the letter and
   among Today's Ideas when one of their dates may depend on it. Until then, for letters from a Land
   authority it uses nationwide public holidays and the 3-day delivery rule at lower confidence, so a date
-  can come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late. Once
-  you set it, Ordnung counts that state's own delivery rule (checked against the states' law gazettes in
-  November 2026): the 4th day in most states, the 3rd in Hessen. For Bremen and the Saarland, whose law
-  Ordnung could not check, it keeps the 3rd day at lower confidence; Rhineland-Palatinate and Saxony-Anhalt
-  are counted with the 4th day without that check, so a date there could be a day late if that is wrong. In
-  Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before their switch to the 4th day
-  (7 February 2025 in Baden-Württemberg, 1 January 2025 in the other two) keeps the 3rd day, which a letter
-  rarely shows: Ordnung counts the 4th, and the date says "Worth a second look" and names the earlier
-  deadline — if your matter began before then, go by that one. An e-mailed decision from a Brandenburg
-  authority counts from the day it arrived; Ordnung counts from the day it was sent unless you enter when it
-  arrived. The benchmark gives Ordnung the Land printed on the letterhead; the
-  [evaluation report](evals.md#6-results) gives its numbers without it, as the app runs. There is
-  no question when the postcode is listed in two states or not at all (many P.O. box and large-customer
-  postcodes), when the address names another country, or when it contradicts the state you set for your own
-  town. A suggestion can be wrong (a central mail centre in another state, a misread digit): the question
-  shows the postcode so you can check.
+  can come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late; an
+  e-mailed decision is counted from the day it was sent until then, so its date can be several days early,
+  more around holidays. Once you set it, Ordnung counts that state's own delivery rule (checked against the
+  states' law gazettes in November 2026): the 4th day in most states, the 3rd in Hessen. For Bremen and the
+  Saarland, whose law Ordnung could not check, it keeps the 3rd day at lower confidence;
+  Rhineland-Palatinate and Saxony-Anhalt are counted with the 4th day without that check, so a date there
+  could be a day late if that is wrong. In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter
+  begun before their switch to the 4th day (7 February 2025 in Baden-Württemberg, 1 January 2025 in the
+  other two) keeps the 3rd day, which a letter rarely shows: Ordnung counts the 4th, and the date says
+  "Worth a second look" and names the earlier deadline with its own send-by date — if your matter with an
+  authority of that state or one of its towns began before then, go by those. An e-mailed decision from a
+  Brandenburg authority counts from the day it arrived when that can be shown; Ordnung counts from the day
+  it was sent unless you enter when it arrived. The benchmark gives Ordnung the Land printed on the
+  letterhead; the [evaluation report](evals.md#6-results) gives its numbers without it, as the app runs.
+  There is no question when the postcode is listed in two states or not at all (many P.O. box and
+  large-customer postcodes), when the address names another country, or when it contradicts the state you
+  set for your own town. A suggestion can be wrong (a central mail centre in another state, a misread
+  digit): the question shows the postcode so you can check.
 - Photos and scans are read by Claude, so reading them needs a model call; Ordnung's own text recognition
   (optional, with Tesseract) is for search only. JPEG photos above about 179 megapixels (some phones' 200 MP
   mode), and PNG, WebP or HEIC images above about 89.5 megapixels, are refused; take the photo at normal

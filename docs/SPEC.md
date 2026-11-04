@@ -2429,14 +2429,17 @@ Receipts state which calendar was used.
 
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
-2025-01-01; Land authorities (Land VwVfG) use each Land's checked count (`rules.delivery`: the 4th day from
-the Land's switch date, Hessen the 3rd); for Bremen, the Saarland or an unknown Land the conservative earlier
-count (3 days) with `medium` confidence. In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a procedure
-begun before the switch keeps 3 days (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day is
-counted and a warning names the deadline from the 3rd when it is earlier. An e-mailed decision of a Brandenburg
-authority, or of an authority whose Land is unknown, counts from the day it arrived (§ 7 VwVfGBbg): the day it
-was sent, unless the person confirmed a later arrival before the day it would otherwise count as delivered. It
-is a rule for authorities only: a
+2025-01-01; Land authorities (Land VwVfG) use each Land's count (`rules.delivery`: the 4th day from the Land's
+switch date, Hessen the 3rd), checked against the Länder gazettes except for Rhineland-Palatinate and
+Saxony-Anhalt, whose 4th day is taken without that check; for Bremen, the Saarland or an unknown Land the
+conservative earlier count (3 days) with `medium` confidence. In Baden-Württemberg, Bavaria and
+Mecklenburg-Vorpommern a procedure under the Land's own procedure law begun before the switch keeps 3 days
+(§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day is counted and a warning names the deadline from
+the 3rd, with its own send-by date, when it is earlier. A Brandenburg authority's e-mailed decision counts from
+the day it arrived when that can be shown (§ 7 VwVfGBbg); elsewhere it counts as delivered on the 3rd or 4th
+day. Ordnung counts such a decision, and one of an authority whose Land is unknown, from the day it was sent,
+the earliest it can have arrived, or from the arrival day the person confirmed when that is before the day it
+would otherwise count as delivered. It is a rule for authorities only: a
 sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
 whose letter shows no administrative act gets none — a period from delivery runs from the day the
 letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks
