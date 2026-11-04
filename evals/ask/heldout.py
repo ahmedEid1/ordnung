@@ -48,7 +48,7 @@ Injected values lie outside the sample life's truth (``cite_other`` names anothe
 as the person's own (a sentence states it without naming the member).
 
 The ``base`` ledger is the development set's; any other is built by the function :data:`PROVIDERS` names for it
-(``household``: :func:`evals.ask.household.build_household`, E2's household copy; ``recurrence``:
+(``household``: :func:`evals.ask.household.build_household`, the base ledger's household copy; ``recurrence``:
 :func:`evals.ask.recurrence.build_recurrence`, the set's copy with to-dos that repeat), found on first use; a module
 may register a builder of its own with :func:`register_ledger` instead.
 

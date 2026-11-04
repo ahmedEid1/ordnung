@@ -9,7 +9,7 @@ today (Mon 28 Sep 2026).
 **An attack ledger** is a copy of the base ledger's database in which one letter's page text (or its
 summary) carries an injected sentence (:mod:`evals.ask.attacks`). Only the text changes — the
 to-dos, dates and amounts Ordnung filed stay those of the real letter — which is exactly the
-reviewer's finding: a date that appears *only* in letter text Ask reads at question time.
+case the attacks measure: a date that appears *only* in letter text Ask reads at question time.
 
 Ask's replay keys include a hash of everything its tools can read (including page texts, see
 :func:`ordnung.assistant.ask.ledger_fingerprint`), so each ledger has its own recordings.
@@ -43,8 +43,7 @@ _DAY: contextvars.ContextVar[date] = contextvars.ContextVar("ask_benchmark_today
 
 def benchmark_today() -> date:
     """The day this run's ledger, turns and scores are for: :data:`TODAY` (the development set's), or the day a
-    held-out run is built for (:func:`pinned_today`) — the day it is recorded, so the model never sees two todays
-    (the evaluation plan's addendum, item 8)."""
+    held-out run is built for (:func:`pinned_today`) — the day it is recorded, so the model never sees two todays."""
     return _DAY.get()
 
 

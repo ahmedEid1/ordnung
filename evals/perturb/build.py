@@ -86,7 +86,7 @@ PERTURB_DIR = Path(__file__).resolve().parent
 EVALS_DIR = PERTURB_DIR.parent
 DATASET_DIR = EVALS_DIR / "dataset"
 DATASET_MANIFEST = DATASET_DIR / "manifest.json"
-#: The committed stress manifest (EV8's commit A; absent until then).
+#: The committed stress manifest (committed with the templates after the code freeze; absent until then).
 STRESS_MANIFEST = PERTURB_DIR / "manifest.json"
 #: Where the files are built (git-ignored); the runner reads ``<BUILD_DIR>/manifest.json``.
 BUILD_DIR = PERTURB_DIR / "build"
@@ -879,8 +879,8 @@ def build(
     today: date | None = None,
 ) -> dict[str, Any]:
     """Write the perturbed letters and the runner's manifest to ``out``; return the stress manifest, which names no
-    day. ``today``: the day the cells are recorded, every letter's simulated today in the runner's manifest (the
-    evaluation plan's addendum, item 8), refused unless every letter built can be read on it (:func:`check_day`).
+    day. ``today``: the day the cells are recorded, every letter's simulated today in the runner's manifest (so the
+    model never sees two todays), refused unless every letter built can be read on it (:func:`check_day`).
     ``manifest_path``: the dataset's manifest (default :data:`DATASET_MANIFEST`)."""
     manifest_path = manifest_path or DATASET_MANIFEST
     manifest_bytes = manifest_path.read_bytes()

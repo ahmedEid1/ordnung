@@ -50,13 +50,14 @@ SCHEMA_2_NOTE = (
     "sentence's value (until schema 2: citation_support, kept as an alias) and citation_right_letter is a citation "
     "from the right letter (until schema 2: citation_precision)."
 )
-#: E3a's re-scoring of E2's recording of the development set: ``(the day it was made, the recording it re-scores)``.
-#: Its note (:func:`_e3a_check_note`) is that file's and no other's: not a live run's own, not a re-scoring of
-#: another recording, and not a later re-scoring of the same one (which says what its own change did).
-E3A_RESCORING = ("2026-10-31", "2026-10-30")
+#: The answer check's re-scoring (31 Oct 2026) of the development set's recording of 30 Oct 2026: ``(the day it was
+#: made, the recording it re-scores)``. Its note (:func:`_answer_check_note`) is that file's and no other's: not a
+#: live run's own, not a re-scoring of another recording, and not a later re-scoring of the same one (which says
+#: what its own change did).
+ANSWER_CHECK_RESCORING = ("2026-10-31", "2026-10-30")
 #: The recorded answers whose raw text put a wrong weekday next to a date — each already corrected by the check
 #: as recorded (``tests/test_results_index.py`` works this out from the files, not with the check).
-E3A_WRONG_WEEKDAYS_AS_RECORDED = (
+WRONG_WEEKDAYS_AS_RECORDED = (
     "deadline-nebenkostenabrechnung_2025-1",
     "payment-rueckmeldung_sose_2027-0",
     "payment-rundfunkbeitrag_zahlungsaufforderung-0",
@@ -752,13 +753,15 @@ def _schema_2(
     def item(entry: Mapping[str, Any]) -> dict[str, Any]:
         return {**entry, **info.get(entry["id"], {}), "strict": strict.get(entry["id"], {})}
 
-    e3a = (
-        [_e3a_check_note(result)]
-        if (backend, payload["date"], recorded) == ("replay", *E3A_RESCORING)
+    answer_check = (
+        [_answer_check_note(result)]
+        if (backend, payload["date"], recorded) == ("replay", *ANSWER_CHECK_RESCORING)
         else []
     )
     notes = (
-        [*payload["notes"], SCHEMA_2_NOTE, _gate_note(result), *e3a] if set_name == "dev" else [HELDOUT_NOTE]
+        [*payload["notes"], SCHEMA_2_NOTE, _gate_note(result), *answer_check]
+        if set_name == "dev"
+        else [HELDOUT_NOTE]
     )
     household = (
         {"household": [item(entry) for entry in payload["household"]]} if "household" in payload else {}
@@ -800,10 +803,10 @@ def _gate_note(result: RunResult) -> str:
     )
 
 
-def _e3a_check_note(result: RunResult) -> str:
-    """What E3a's answer check changes on E2's recording (:data:`E3A_RESCORING`), with this run's counts, as
-    :func:`_gate_note` gives them (``tests/test_results_index.py`` holds them against the run as recorded and the
-    window's re-scoring of it, and works the weekday claim out from the files)."""
+def _answer_check_note(result: RunResult) -> str:
+    """What the answer check of 31 Oct 2026 changes on the recording of 30 Oct 2026 (:data:`ANSWER_CHECK_RESCORING`),
+    with this run's counts, as :func:`_gate_note` gives them (``tests/test_results_index.py`` holds them against the
+    run as recorded and the window's re-scoring of it, and works the weekday claim out from the files)."""
     summary, strict = result.summary, result.strict_summary
 
     def count(block: Any) -> str | None:
@@ -825,8 +828,8 @@ def _e3a_check_note(result: RunResult) -> str:
         if value is not None
     ]
     listed = ", ".join(counts[:-1]) + f" and {counts[-1]}" if len(counts) > 1 else "".join(counts)
-    wrong = ", ".join(f"`{item_id}`" for item_id in E3A_WRONG_WEEKDAYS_AS_RECORDED)
-    recording = E3A_RESCORING[1]
+    wrong = ", ".join(f"`{item_id}`" for item_id in WRONG_WEEKDAYS_AS_RECORDED)
+    recording = ANSWER_CHECK_RESCORING[1]
     return (
         f"E3a's answer check, re-scored on the recordings of {recording} (none recorded anew): it writes the right "
         "weekday next to a date (Thu → Fri in '2 Oct 2026 (Thu)', in English and in German, also after den, dem and "
@@ -1455,7 +1458,7 @@ def stale_docs(
 ) -> list[str]:
     """What differs between this replay and the committed page and results file (empty when both are what
     ``--write`` with the committed file's date would write): a change to the check, the scorer or the tools
-    that moves a number must reach the page (review round 1: the § 556 BGB change never did).
+    that moves a number must reach the page (once, the § 556 BGB change never did).
 
     ``result_payload`` makes the re-scoring of a day; ``as_live`` a live run's own schema-2 file (a newest file that
     is no re-scoring is checked against it); ``as_recorded`` a schema-1 payload: a newest file of schema 1 is checked

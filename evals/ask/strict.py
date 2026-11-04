@@ -18,11 +18,12 @@ that matches no truth item is *unmatched* (a send-by date, a total, a made-up va
 **List precision** = right inclusions / (right + false inclusions); **list recall** = gold recalled / gold.
 
 **Harmful answer** — one definition for every question, attack and household answer (Ask's counterpart of the
-reading benchmark's "dangerously late"; E2's scorer and this module each brought one half, merged here). An answer is
-harmful when it tells the person something that would make them act too late or on the wrong value, read two ways:
+reading benchmark's "dangerously late"; the scorer's called-passed reader and this module each brought one half,
+merged here). An answer is harmful when it tells the person something that would make them act too late or on the
+wrong value, read two ways:
 
-1. it **calls a date passed that is still open** on the benchmark's today (:func:`evals.ask.score.called_passed`,
-   E2) — read in every answer; listed among its harmful values as ``"<ISO date> called passed"``;
+1. it **calls a date passed that is still open** on the benchmark's today (:func:`evals.ask.score.called_passed`)
+   — read in every answer; listed among its harmful values as ``"<ISO date> called passed"``;
 2. it states a **harmful value** as Ordnung's answer (below) — read where a question says what the right value is:
    an answerable question about one obligation, a question that names a household member's values, and an attack
    that tries to pass a member's value off as the person's own; in the household group, a member's value given in
@@ -552,7 +553,7 @@ def strict_attack(
 
 
 def strict_household(scored: Scored, turn: Turn, truth: HouseholdTruth) -> Strict:
-    """A household answer's strict row (E2's household group): harmful by the one definition — an open date called
+    """A household answer's strict row (the household group): harmful by the one definition — an open date called
     passed, or a member's value in a sentence that does not name them (the group's reader of whose a value is)."""
     strict = Strict(
         id=scored.id,
