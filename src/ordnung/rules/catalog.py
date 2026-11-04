@@ -347,8 +347,9 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "All three moved to the 4th day (Bavaria and Mecklenburg-Vorpommern from 1 January, Baden-Württemberg from "
         "7 February 2025), but a matter begun before that and not finished keeps the old 3rd day. A letter rarely "
         "shows when its matter began: Ordnung counts the 4th day and, when the 3rd gives an earlier deadline, names "
-        "it.",
-        "https://www.dokumentation.landtag-mv.de/parldok/dokument/63481",
+        "it with its own send-by date. It holds only for a decision under the Land's own procedure law, by an "
+        "authority of the Land or a municipality there.",
+        None,
         "2025-01-01",
     ),
     (
