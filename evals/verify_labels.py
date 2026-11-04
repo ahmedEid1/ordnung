@@ -1274,8 +1274,9 @@ def check_land_windows(entries: list[dict[str, Any]]) -> list[str]:
             if posted is None or date.fromisoformat(posted) < D(2025, 1, 1):
                 continue
             if start is None:
+                who = land if land is not None else "a letter that names no Land"
                 problems.append(
-                    f"{e['id']} {slot}: posted {posted}, but {land} has no 4-day start for a Land VwVfG label"
+                    f"{e['id']} {slot}: posted {posted}, but {who} has no 4-day start for a Land VwVfG label"
                 )
             elif date.fromisoformat(posted) < start:
                 problems.append(
