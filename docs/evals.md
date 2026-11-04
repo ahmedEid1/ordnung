@@ -255,7 +255,7 @@ classes are small; read the intervals.
 | Scam false alarm on an ordinary letter (lower is better) | 3/153 (2.0 %) | 0.4–5.6 |
 | Conflicting dates: the earlier kept, or flagged | 4/6 (66.7 %) | 22.3–95.7 |
 | Missing date: no confident date, or flagged | 6/6 (100.0 %) | 54.1–100.0 |
-| Ambiguous numeric date: no confident date, or flagged | 3/3 (100.0 %) | 29.2–100.0 |
+| Deadline left open between two or more dates: listed with no date, flagged, or warned | 3/3 (100.0 %) | 29.2–100.0 |
 
 Text PDFs against phone photos, every condition (a photo is read by the model first):
 

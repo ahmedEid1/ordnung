@@ -57,7 +57,10 @@ ADVERSARIAL_CLASSES = (
     ("scam_false_alarm", "Scam false alarm on an ordinary letter (lower is better)"),
     ("conflicting_dates_handled", "Conflicting dates: the earlier kept, or flagged"),
     ("missing_date_handled", "Missing date: no confident date, or flagged"),
-    ("ambiguous_handled", "Ambiguous numeric date: no confident date, or flagged"),
+    (
+        "ambiguous_handled",
+        "Deadline left open between two or more dates: listed with no date, flagged, or warned",
+    ),
 )
 #: The stored explanations of a date computed with the 3-day delivery rule of before 2025.
 _THIRD_DAY = re.compile(r"third day|3rd day|3 days after|\+ ?3 days", re.IGNORECASE)
