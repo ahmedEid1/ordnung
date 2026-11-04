@@ -40,6 +40,12 @@ For each slot in `fix-list.md`:
   derivation (`with_conventions` in `common.py`);
 - change the letter's text only where the correction cannot be made without it.
 
+Where `fix-list.md` marks a slot `ambiguous` and names its candidate dates, the slot is left open between them, and
+its letter's text stays as it is. For an item, `expected_due` is `"ambiguous"` and its `candidates` are those dates,
+as the earlier modules write such an item with `undated_item` in `common.py`. For a contract date, the slot's key
+(`expected_current_term_end` or `expected_cancel_by`) is `"ambiguous"`, and the contract's `candidates` hold those
+dates under that key. Each candidate date still comes from a function of `law.py`, with a hand-worked check.
+
 Every entry that `fix-list.md` does not name comes out of `python -m evals.generate --final-day {D0}` byte for byte as
 before your change.
 

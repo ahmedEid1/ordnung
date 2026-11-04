@@ -325,17 +325,31 @@ def test_an_adjudication_fixes_its_verdicts_and_what_each_does(session: str) -> 
 
 def test_the_first_adjudication_states_what_an_ambiguous_slot_becomes() -> None:
     """The rule fixed before any letter exists for a slot A1′ rules ``ambiguous``: its date becomes "ambiguous" with
-    both sides' dates as candidates; for a thing the letter requires or offers, an answer counts as handled when no
-    single date is given as certain or the date is flagged; a contract slot is not scored; and how many such slots
-    there are, of each kind, is published. It never says both dates are taken as right."""
+    both sides' dates as candidates, and how many slots of each kind the set leaves open is published. It never says
+    both dates are taken as right, and it says nothing of how answers are scored (the adjudicator needs none of it,
+    and nothing an auditor reads names the scorer)."""
     verdicts = _flat(_section(_text("a1p"), "## What each verdict does"))
     ambiguous = next(part for part in verdicts.split("- ") if part.startswith("`ambiguous`"))
     for words in (
         '"ambiguous"',
         "X's date and Y's date as its candidates",
-        "counts as handled when no single date is given as certain or the date is flagged",
-        "`term_end` or `cancel_by`, is not scored",
-        "of each kind is published",
+        "how many slots of each kind the set leaves open is published",
     ):
         assert words in ambiguous, words
     assert "as right" not in ambiguous
+    for words in ("answer", "handled", "scored", "flagged", "certain"):
+        assert words not in _flat(_text("a1p")).lower(), words
+
+
+def test_the_fix_session_knows_how_a_slot_left_open_is_written() -> None:
+    """A slot the adjudicator rules ``ambiguous`` goes to the fix session like any other ruling against a label: its
+    brief says how such a slot is written, for an item and for a contract date, with the two candidate dates."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "marks a slot `ambiguous`",
+        '`expected_due` is `"ambiguous"`',
+        "its `candidates` are those dates",
+        '`"ambiguous"`, and the contract\'s `candidates` hold those dates under that key',
+        "`undated_item`",
+    ):
+        assert words in text, words
