@@ -20,16 +20,18 @@
  * 6. Settings → Your computers, the standing-by screen and the choice pass axe in light and dark mode; the
  *    standing-by screen, while what it would bring over is still arriving, fits a 320 px phone.
  *
- * Afterwards both computers leave sync and the laptop's letter goes, so the real-app specs after this one find the
- * laptop as they expect it. What the pages offer is named once below; the server's
+ * Before the story both computers and the folder are as the global setup leaves them, whatever a run before left
+ * (this file again, with `--repeat-each`, or one cut short): neither syncs, the desktop is a new computer, both
+ * copies of the folder are empty. Afterwards both computers leave sync and the laptop's letter goes, so the
+ * real-app specs after this one find the laptop as they expect it. What the pages offer is named once below; the server's
  * sentences are `ordnung.sync`'s constants (tests/test_e2e_support.py keeps the copies here equal to them).
  *
  * Limits: both computers run on one machine with a simulated sync tool. A pass with a real Nextcloud, Syncthing or
  * iCloud Drive folder on two physical computers is still to be done by hand (ADR 0018).
  */
-import type { APIRequestContext, Browser, BrowserContext, Page, TestInfo } from "@playwright/test";
+import type { APIRequest, APIRequestContext, Browser, BrowserContext, Page, TestInfo } from "@playwright/test";
 import type { components } from "@/api/schema";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { REAL_B_BASE_URL, REAL_B_STORAGE_STATE, REAL_BASE_URL, REAL_LETTER, REAL_STORAGE_STATE, SYNC_A_DIR, SYNC_B_DIR } from "./env";
 import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDetail, open, READ, resetRealApp, settle, shownAs, test, type Letter, type LetterItem } from "./helpers";
 import { isOrdnungName, isSyncToolFile, ORDNUNG_NAMES, SyncTool, type Side } from "./sync-tool";
@@ -39,8 +41,12 @@ type Household = components["schemas"]["Household"];
 
 test.describe.configure({ mode: "serial" });
 // first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
-// puts things back): the persona's name, no household, and no letter from the bank's file
-test.beforeAll(() => resetRealApp());
+// puts things back): the persona's name, no household, and no letter from the bank's file; then both computers and
+// the folder as the story starts them (freshStart, below the two computers)
+test.beforeAll(async ({ playwright }) => {
+  await resetRealApp();
+  await freshStart(playwright.request);
+});
 
 // ------------------------------------------------------------------------------------------------
 // What the pages offer (Settings → Your computers, /join, the standing-by screen, the choice)
@@ -95,7 +101,8 @@ const STANDBY_MESSAGE = (name: string) => `Ordnung is in use on ${name}. Use it 
 /** The project's real app (set up by the global setup) and the second, new computer. */
 const A = { name: "laptop", side: "a" as Side, folder: SYNC_A_DIR, baseURL: REAL_BASE_URL, storageState: REAL_STORAGE_STATE };
 const B = { name: "desktop", side: "b" as Side, folder: SYNC_B_DIR, baseURL: REAL_B_BASE_URL, storageState: REAL_B_STORAGE_STATE };
-const tool = new SyncTool({ a: SYNC_A_DIR, b: SYNC_B_DIR });
+/** The sync tool, new for each run of the story (freshStart): it remembers what it carried and made. */
+let tool = new SyncTool({ a: SYNC_A_DIR, b: SYNC_B_DIR });
 const FILE = "19_bank_preisaenderung.pdf";
 /** What each computer adds to the letter while neither sees the other. */
 const A_TODO = "Compare the fees of two other banks";
@@ -119,6 +126,36 @@ let passphrase = "";
 let letter: ListedLetter | undefined;
 /** The laptop's household once the letter is filed in it (the desktop must find the same). */
 let household: Household | undefined;
+
+/**
+ * Both computers as the global setup leaves them, whatever a run before left (this file again, or one cut short):
+ * neither syncs nor keeps a passphrase (each leaves while its copy of the folder is still there, so it can say
+ * there that it left), the desktop is a new computer again (Delete everything), both copies of the folder are
+ * empty, and the sync tool and this file remember nothing of a run before.
+ */
+async function freshStart(api: APIRequest): Promise<void> {
+  for (const { baseURL, storageState, name } of [A, B]) {
+    const computer = await api.newContext({ baseURL, storageState, extraHTTPHeaders: CLIENT });
+    try {
+      const left = await computer.delete("/api/sync", { data: { forget_passphrase: true, unreceived_ok: true } });
+      expect(left.ok(), `DELETE /api/sync on the ${name} → ${left.status()} ${await left.text()}`).toBe(true);
+      if (name === B.name) {
+        const wiped = await computer.delete("/api/data", { data: { confirm: "DELETE", unreceived_ok: true } });
+        expect(wiped.ok(), `DELETE /api/data on the ${name} → ${wiped.status()} ${await wiped.text()}`).toBe(true);
+      }
+    } finally {
+      await computer.dispose();
+    }
+  }
+  for (const folder of [A.folder, B.folder]) {
+    rmSync(folder, { recursive: true, force: true });
+    mkdirSync(folder, { recursive: true, mode: 0o700 });
+  }
+  tool = new SyncTool({ a: SYNC_A_DIR, b: SYNC_B_DIR });
+  passphrase = "";
+  letter = undefined;
+  household = undefined;
+}
 
 /** The sync status, straight from the server (never through a page's routes). */
 const syncOf = (page: Page): Promise<SyncStatus> => apiGet<SyncStatus>(page, "/api/sync");
