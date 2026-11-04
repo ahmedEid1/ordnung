@@ -43,9 +43,10 @@ a slot the label does not have); a key's case whose X and Y are not the label an
 twice, or ruled on a letter and on its photo with rulings that mean different things; a verdict that is not one of the
 four, a ``both_wrong`` without its date, an ``X_right`` or ``Y_right`` whose dated fact states another procedure start
 than the side it upholds (that side's ``Procedure began:`` line in the pack, none when it says ``not stated`` or has
-no such line), where the start can change the slot's date, and an ``ambiguous`` verdict that names fewer than two candidates, a candidate that is neither X's date
-nor Y's in its pack, no date of one of the two sides, or a fact that is not ambiguous; and a facts file the grammar
-refuses. It prints ids and counts only, never a fact, a date or a reason.
+no such line), where the start can change the slot's date, and an ``ambiguous`` verdict that names fewer than two
+candidates, a candidate that is neither X's date nor Y's in its pack, no date of one of the two sides, or a fact that
+is not ambiguous; and a facts file the grammar refuses. It prints ids and counts only, never a fact, a date or a
+reason.
 
 The audit comparison also sends a slot whose second reading gives the label's date but another day on which the
 authority's procedure began (stated on one side only, or two different days). Such a case is ruled as any other:
