@@ -39,7 +39,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   generator takes the final run's letters as a plug-in and tags each date with the labelling convention it rests
   on; their dates are checked against facts written in a small grammar
   ([evals/dataset/FACTS.md](evals/dataset/FACTS.md)), and the statutes they follow are in `evals/law/`, with their
-  sources. The runner records a final letter only when the day it gives the letter as today is the day of the
+  sources, among them EGBGB Art. 246a and, for six Länder, the rule on when a Land authority's decision counts as
+  delivered, as the Land's own law portal gives it (the ten Länder whose portals could not be read are named).
+  The runner records a final letter only when the day it gives the letter as today is the day of the
   recording and inside the letter's window, keeps a read recorded over several days in one results file, stops
   between letters (`--stop-file`, `--stop-at`) and sets a cut letter's recordings, or those of a read made
   invalid, aside to be recorded again (`python -m evals.harness retake`). The analysis checks every read against
