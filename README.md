@@ -6,148 +6,131 @@
 
 <p align="center">
   <b>A private secretary for the paperwork of life in Germany.</b><br>
-  It reads your letters, works out every deadline with tested legal rules, reminds you before things
-  matter and drafts the replies. It runs on your own computer.
+  Claude reads your letters; tested code works out each deadline and shows the law behind it. Ordnung
+  reminds you before things matter, drafts the replies and runs on your own computer.
 </p>
 
 <p align="center">
-  <a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
-  <img alt="Local-first" src="https://img.shields.io/badge/data-stays%20on%20your%20computer-0f6e66">
-  <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b">
-  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
+  <a href="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ahmedEid1/ordnung/actions/workflows/ci.yml/badge.svg?branch=main&amp;event=push"></a> <img alt="Python 3.11–3.14" src="https://img.shields.io/badge/python-3.11%E2%80%933.14-3776ab">
+  <img alt="Demo costs zero tokens" src="https://img.shields.io/badge/demo-zero%20tokens-8a6d3b"> <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-lightgrey"></a>
 </p>
-
-Anyone living in Germany gets letters that carry deadlines: tax assessments, fines, contract and rent
-changes, reminders, court orders. The deadline is rarely a date on the page. It is *"one month after this notice
-is announced to you"*, and working it out means knowing that a posted notice counts as delivered on
-the fourth day (since 2025), that tax law moves that day off a weekend but administrative law does not,
-and that the holidays depend on the federal state. **Ordnung** lets Claude read the letter and say
-what it says; deterministic, tested code turns that into the date, shows its working with citations,
-and keeps a ledger of every deadline, payment, contract and reply that you can ask questions about.
-Nothing is ever paid, sent or cancelled for you.
 
 <p align="center">
-  <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card">
-</p>
-<p align="center"><a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a>: reading a letter, "Why this date?", a court order, paying by GiroCode, My numbers, Ask, the weekly review, the timeline, contracts, proof of sending and how a letter was read.</p>
-
-<p align="center">
-  <a href="https://ahmedeid1.github.io/ordnung/">Online demo</a> ·
-  <a href="#try-it-in-60-seconds-with-zero-tokens">Try it</a> ·
-  <a href="#a-tour">Tour</a> ·
-  <a href="#the-model-reads-code-computes">The model reads, code computes</a> ·
-  <a href="#built-to-be-trusted">Trust</a> ·
-  <a href="#benchmarks">Benchmarks</a> ·
-  <a href="#privacy">Privacy</a> ·
-  <a href="#install-and-run">Install</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#quality">Quality</a> ·
-  <a href="#limitations">Limitations</a> ·
-  <a href="#documentation">Docs</a>
+  <img src="docs/assets/demo.gif" width="720" alt="Ordnung demo: a photographed tax assessment arrives as new mail and is read; the objection deadline is shown with the sentence it came from and each legal step behind it; a court payment order gets its two-week deadline and a get-advice card"><br>
+  <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) ·
+  <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a><br>
+  <sub>The court order in the GIF and the video comes from the online demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub>
 </p>
 
-## Try it in 60 seconds, with zero tokens
+<p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a></p>
 
-The demo is the sample life of *Sam Rivera*, an international student in the fictional town of
-Musterstadt: 25 letters, contracts, a residence permit, a scam, and three unopened letters in the
-*New mail* tray that are read live. Every model answer in the demo is a recording of a real Claude
-run, so it needs **no Claude account and uses no tokens**.
+Everyone living in Germany gets letters with deadlines: tax assessments, fines, rent increases, contract changes,
+reminders, court orders. The deadline is rarely a date on the page. It is *"one month after this notice is announced
+to you"*, and working it out means knowing that a posted notice counts as delivered on the fourth day (since 2025),
+that tax law moves that day off a weekend but administrative law does not, and that holidays depend on the federal
+state. **Ordnung** lets Claude read the letter and say what it says; deterministic, tested code turns that into the
+date, shows its working with citations, and keeps a ledger you can ask about. Nothing is ever paid, sent or cancelled
+for you. Whether that beats asking the model is [measured](#evaluation), and every number replays with no API key.
 
-**Nothing to install:** open the [online demo](https://ahmedeid1.github.io/ordnung/). It is the
-same interface running in your browser with no server behind it, on the browser-only demo's version of
-Sam's letters, and it keeps nothing once you reload the page. Or run the full demo on your computer:
+## What it does
 
-```bash
-pipx install git+https://github.com/ahmedEid1/ordnung   # or: uv tool install git+https://github.com/ahmedEid1/ordnung
-ordnung demo                                             # opens http://127.0.0.1:8766 with a guided tour
-```
-
-Ask's recorded answers fit the demo as it starts. After you mark things paid or done, Ask says so and
-offers *Start the demo over*, so you can ask again: stop the demo (Ctrl+C where it runs), then run
-`ordnung demo --reset`.
-
-To read your own letters, see [Install and run](#install-and-run).
-
-## A tour
+- **Reads your letters** from a PDF, a phone photo or a saved e-mail (`.eml`, or Outlook's `.msg`): what each one is,
+  what to do, by when and what happens if you ignore it, each fact linked to its sentence and explained in your
+  language (English, German, Arabic, Turkish, Ukrainian, Spanish or French).
+- **Computes the real deadline** with a tested rules engine (deemed delivery, §§ 187–193 BGB, federal-state holidays,
+  notice periods) and shows every step with its legal source under *Why this date?*.
+- **Reminds you in time:** Today's three things that matter this week, a ten-minute weekly review, and a calendar file
+  with alarms (or CalDAV sync) and a morning notification that work while the browser is closed.
+- **Helps you act, never acts for you:** bilingual drafts and DIN 5008 PDFs whose legally operative sentences come from
+  fixed templates, proof of sending, and a GiroCode your banking app scans.
+- **Answers with citations, and resists tricks:** *Ask* checks every date and amount against the record it cites;
+  scam signs flag a letter; text hidden in a PDF or written to steer an AI is shown, never followed.
+- **Goes where you are**, once you turn it on: your phone over your home Wi-Fi, and your other computer through a
+  folder your own sync tool keeps in step, with only encrypted files in it.
+- **And more** in [the guide's tour](docs/guide.md#a-tour): Timeline, Contracts, My numbers, your household and backups.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/today.png" alt="Today page"><br><b>Today.</b> A secretary's note, the three things that matter this week with countdowns, what's coming, Ideas with reasons, and scam warnings.</td>
-<td width="50%"><img src="docs/assets/document.png" alt="A photographed tax assessment with the objection sentence highlighted"><br><b>Every letter.</b> What it is, what to do, by when and what happens if you ignore it. Each fact points to the sentence it came from; this one was read from a phone photo.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/why.png" alt="Why this date? receipt with every rule step"><br><b>Why this date?</b> Every step of the calculation with its rule and citation, and how sure Ordnung is.</td>
-<td><img src="docs/assets/court-order.png" alt="A court payment order with its deadline and a get-advice card"><br><b>High-stakes letters.</b> A court payment order, enforcement order, dismissal, landlord's notice, rent increase or operating-cost statement gets the law's own date and a "get advice" card that names free or low-cost help.†</td>
-</tr>
-<tr>
-<td><img src="docs/assets/pay.png" alt="The Pay panel with a GiroCode"><br><b>Pay by scan.</b> For a bank transfer the Pay panel shows a GiroCode (EPC-QR) your banking app scans. Never for a direct debit, a scam or a bill a reminder replaced; a value read from a photo waits until you compare it with the paper.</td>
-<td><img src="docs/assets/numbers.png" alt="My numbers"><br><b>My numbers.</b> Your Steuer-ID, social insurance, customer and case numbers from your letters, sorted by whose they are, check digits tested, hidden until you choose <i>Show</i>.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/ask.png" alt="Ask with a checked answer"><br><b>Ask.</b> Answers about your letters, every date and amount checked against the record it cites. Here the fine's amount, read from a photo, stays in quotation marks as the letter's, and a note says so.</td>
-<td><img src="docs/assets/week.png" alt="The weekly review, step Pay this week"><br><b>Weekly review.</b> Ten minutes, seven short steps: what's new, what to compare with the paper, pay, post, wait for, decide and file. It ends with "All clear until …" ("All clear for today" when the next thing is due tomorrow) and that next thing, or with what is overdue.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/timeline.png" alt="Timeline with life lanes"><br><b>Timeline.</b> The year ahead as life lanes (permits, contracts, tax, study, work, home), then month by month.</td>
-<td><img src="docs/assets/contracts.png" alt="Contracts"><br><b>Contracts.</b> Fixed costs, how each contract ends in plain words, and the last day to post a cancellation.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/proof.png" alt="Proof of sending for a cancellation sent by Einschreiben"><br><b>Letters and proof of sending.</b> Bilingual drafts and DIN 5008 PDFs; an Einschreiben's tracking number is checked, the posting receipt is kept as proof, and <i>Waiting for</i> reminds you when no answer comes.</td>
-<td><img src="docs/assets/trace.png" alt="How it was read: the steps of reading a letter"><br><b>How it was read.</b> Every step of a letter's reading: what Claude was asked, what it cost, and what code checked and computed. Exports to OpenTelemetry.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag the letter, and its demand is never counted, listed or given a GiroCode. Text hidden in a PDF and instructions aimed at an AI are shown, never followed.</td>
-<td><img src="docs/assets/today-dark.png" alt="Today in dark mode"><br><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one documented exemption (the page image's highlight buttons: WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up (below); CI checks both.</td>
-</tr>
-<tr>
-<td><img src="docs/assets/pair-phone.png" alt="Pairing a phone: on the computer, a QR code and a pairing code; on the phone, once paired, two check words; on the computer, the same two words"><br><b>Your phone at home.</b> Settings → Phone shows a QR code for the phone's camera. Once the phone pairs, both screens show the same two words, so you know the phone that paired is yours. Then it opens Ordnung in its browser over your home Wi-Fi: photograph a letter, tick off a to-do, read what a letter means. Settings, backups and deleting stay on the computer.‡</td>
-<td><img src="docs/assets/your-computers.png" alt="Settings, Your computers: this computer, sam-desktop, is in use and saved to the sync folder; the other, sam-laptop, is standing by and has the latest changes"><br><b>Your computers.</b> Optional: Ordnung moves between your laptop and your desktop through a folder your own sync tool keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive), and only encrypted files go there. One computer is in use at a time; on the other, <i>Use Ordnung here</i> brings everything over. Nothing is merged.‡</td>
+<td width="50%"><img src="docs/assets/today.png" alt="Today page"><br><b>Today.</b> A secretary's note, the three things that matter this week with countdowns, and Ideas with reasons.</td>
+<td width="50%"><img src="docs/assets/document.png" alt="A photographed tax assessment with the objection sentence highlighted"><br><b>Every letter.</b> What to do and by when, each fact linked to the sentence it came from. This one was read from a phone photo.</td>
+</tr><tr>
+<td><img src="docs/assets/ask.png" alt="Ask with a checked answer"><br><b>Ask.</b> Answers about your letters, every date and amount checked against the record it cites.</td>
+<td><img src="docs/assets/scam.png" alt="A scam letter flagged"><br><b>Scam and injection defence.</b> Scam signs such as pressure or a payee account abroad flag a letter. Its dates still show on its page and in the warning, but stay off Today, the calendar and the notification until you choose <i>I checked — it's genuine</i>; it never gets a GiroCode.</td>
 </tr>
 </table>
 
-<p align="center">
-  <img src="docs/assets/mobile.png" width="30%" alt="Today on a phone">
-  &nbsp;
-  <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode">
-</p>
+<p align="center"><img src="docs/assets/mobile.png" width="30%" alt="Today on a phone"> &nbsp; <img src="docs/assets/mobile-dark.png" width="30%" alt="The tax assessment on a phone in dark mode"></p>
+<p align="center"><b>Light and dark.</b> Both themes have no serious or critical violations of axe 4.14's WCAG 2.2 AA rules, with one exemption (the page image's highlight buttons, under WCAG 2.5.8's "equivalent" exception), and every page works from 320 px wide up; CI checks both.</p>
 
-† The recorded demo has no court letter, so this picture (and the court order in the tour) comes from
-the app's mock data, the browser-only demo's, opened with `?mock=full`: a hand-written sample letter
-whose date, "Why this date?" and advice card are generated by the rules engine
-([`scripts/gen_mock_high_stakes.py`](scripts/gen_mock_high_stakes.py),
-[`scripts/gen_mock_advice.py`](scripts/gen_mock_advice.py)). Everything else, apart from the two pictures
-marked ‡, is `ordnung demo`. The mock data is a different sample life, and the tab keeps it (a banner says so)
-until you open `?mock=0`.
+## Install and run
 
-‡ The demo opens itself to no network and syncs nowhere, so these two pictures come from the real app
-(`ordnung serve`) on throwaway data folders, made the way the browser tests run it
-([`web/e2e/readme-pictures.spec.ts`](web/e2e/readme-pictures.spec.ts), part of `make capture`). The phone is
-Chromium emulating a Pixel 7 on the same computer, so its address shows as 127.0.0.1 (at home it is your
-phone's address on your Wi-Fi), and a stand-in for the sync tool copies the folder between the two
-computers; the picture shows a typical path for that folder instead of its temporary one. The phone picture
-puts three moments side by side: the code, the paired phone, and the computer once it paired.
+**Nothing to install:** the [online demo](https://ahmedeid1.github.io/ordnung/) runs the same interface in your browser
+on hand-written sample letters, with no server behind it; it keeps nothing once you reload.
 
-**Also:** *one inbox* — a watched folder for your scanner or phone app, and e-mails (`.eml`, or Outlook's
-`.msg`) whose PDF and photo attachments become letters; new files wait on your computer until you choose
-*Read these* or *Keep private* · *template letters* — withdrawal, more time, instalments, defect notice, GDPR access,
-inspecting receipts, deposit back, new address · *reminders* — calendar export with alarms, a morning
-desktop notification (discreet by default) while the browser is closed, start at login, optional sync
-with your own CalDAV calendar · *app-menu shortcut* — open Ordnung from your app menu, Start menu or
-Applications folder, signed in, without a terminal · *encrypted backup* in one file (AES-256-GCM, under a passphrase of five
-or more unrelated words, or a password manager's random password with capital and small letters) with a
-restore that checks every byte · *tax year* — a year's letters for your tax return, by the date on them;
-mark or unmark any letter yourself, and the Inbox shows one year at a time · *your household* — file a letter
-for your partner or your child when Ordnung asks (it never files one by itself), find their letters, see their
-numbers on My numbers and whose a date is on Today and the Timeline, and reply in their name when they sign
-their own · *export letters* — your originals as files in folders by year and
-sender, with a list for a spreadsheet · *moving checklist* — who needs your new address, from your contracts and letters, starting with the
-Bürgeramt's two weeks · *Claude Desktop and Claude Code* can use the deadline engine as MCP tools.
+**On your computer, with zero tokens:** `ordnung demo` opens the sample life of *Sam Rivera*, an international
+student in the fictional town of Musterstadt: 25 letters, contracts, a residence permit, a scam, and
+three unopened letters in the *New mail* tray. Every model answer in it is a recording of a real Claude run, so it
+needs no Claude account. You need Git, Python 3.11 or newer, and [uv](https://docs.astral.sh/uv/) or pipx:
 
-## The model reads, code computes
+```bash
+uv tool install git+https://github.com/ahmedEid1/ordnung # or: pipx install git+https://github.com/ahmedEid1/ordnung
+ordnung demo                                             # opens http://127.0.0.1:8766 with a guided tour
+ordnung serve                                            # your own letters, on http://127.0.0.1:8765
+```
 
-For the tax assessment above, Claude returns only what the letter says. This is part of its recorded
-answer:
+Reading your own letters needs Claude Code 2.1.0 or newer, signed in with a paid Claude plan or an Anthropic Console
+account. [The guide](docs/guide.md#install-and-run) sets it up and covers words in photos, the app-menu shortcut, your
+phone, your other computer, Claude Desktop and [the environment variables](docs/guide.md#environment-variables).
+
+### Updating
+
+`ordnung --version` shows yours, and [CHANGELOG.md](CHANGELOG.md) what changed. [Updating](docs/guide.md#updating) in
+the guide says how to update, and how to go back.
+
+## Evaluation
+
+Is it better to let code do the date arithmetic than to ask the model? Ordnung is measured against the same pinned
+model used three other ways: on its own (*LLM only*), with the rules pasted into its prompt (*LLM + rules text*), and
+as an agent that calls Ordnung's engine as a tool (*LLM + rules tool*). A deadline counts as right only on its exact
+date, and as harmful when it comes out late or not at all. Every comparison is paired on the same deadlines: exact
+McNemar tests, a sign-flip test over letter clusters, and Holm's correction across the three comparisons.
+
+<!-- evals:begin: generated by `python -m evals.present`; do not edit -->
+**Held out, read once.** On 168 deadlines in 189 synthetic letters that nothing was tuned on, Ordnung dates
+**97.0 %** exactly right (95 % CI 93.2–99.0), with **3 of 168** late or missed. The same model doing the date
+arithmetic itself gets **81.0 %** (31 vs 4 discordant, exact p < 0.001), with **13** late or missed. An agent given
+Ordnung's engine as a tool scores 99.4 % (1 vs 5 discordant): we cannot tell whether Ordnung is within 5 points of
+it (−2.4 points, 95 % CI −5.4 to +0.0).
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-held-out-dark.svg"><img src="docs/assets/eval-held-out-light.svg" width="740" alt="Dot plot of 168 held-out deadlines, with 95 % Clopper–Pearson intervals. LLM + rules tool: 167 of 168 exactly right (99.4 %, 95 % CI 96.7–100.0); 1 late, 0 missed, 0 early: 1 of 168 late or missed; Ordnung: 163 of 168 exactly right (97.0 %, 95 % CI 93.2–99.0); 2 late, 1 missed, 2 early: 3 of 168 late or missed; LLM + rules text: 154 of 168 exactly right (91.7 %, 95 % CI 86.4–95.4); 1 late, 0 missed, 13 early: 1 of 168 late or missed; LLM only: 136 of 168 exactly right (81.0 %, 95 % CI 74.2–86.6); 13 late, 0 missed, 19 early: 13 of 168 late or missed."></picture>
+
+**Where it falls short:** “Please check” caught 0 of Ordnung's 5 wrong dates; 15 of 224 real obligations got no reminder because their letter was set aside as a scam; 2 of 12 scam letters still put their demands in the calendar.<br>
+**Ask:** 40 of 44 answers right (38 of 44 strictly correct): the four wrong answers call a date that is still open passed, the recording day leaking in as today; 6 of 73 answers (questions and attacks) are harmful, all six calling a date that is still open passed; 0 of 21 injected claims reach you (9 of 21 without the answer check); 4 of 5 household answers say whose a number is; a development set, not held out.<br>
+**[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)
+<!-- evals:end -->
+
+Why these numbers can be checked:
+
+- **Held out.** The headline counts only synthetic German letters (PDFs and phone photos) written before anything was
+  recorded on them, by agents that saw neither the reading code, the prompts nor any result; nothing was tuned on them.
+- **Generated, never typed.** `python -m evals.present` writes the block above from the results files. CI fails when
+  one character of it differs, and a test fails when this README types a results file's rate or "k of n" outside it.
+- **Replayable at zero tokens.** `make eval-reproduce` replays every published number from the recorded answers, with
+  no API key, and checks each against a hashed index ([`INDEX.json`](evals/results/INDEX.json)); where today's code
+  gives another value, the index pins it and names the change. CI runs it on every pull request.
+- **Baselines, stated plainly.** One gives the model Ordnung's own engine as a tool: an agent that decides when to
+  call it and whether to trust it. The tuning effort was unequal, in Ordnung's favour
+  ([§ 4](docs/evals.md#4-conditions-and-baselines)), and the report switches each of Ordnung's code checks, and Ask's
+  answer check, off in turn ([§ 8](docs/evals.md#8-ablations)).
+- **Pre-registered next.** The tests and intervals above were chosen after these results were known, so this analysis
+  is not pre-registered. The final run, on letters written after the code freeze, will be pre-registered before it is
+  recorded; its numbers then take this headline by the rule the pre-registration sets, whatever they show.
+
+## Engineering
+
+### The model reads, code computes
+
+For the photographed tax assessment above, Claude returns only what the letter says. Part of its recorded answer:
 
 ```json
 { "kind": "deadline",
@@ -169,497 +152,97 @@ engine turns the reading into a date and a receipt, shown in the app under *Why 
 | One month later | **Wed 21 Oct 2026** | §§ 187, 188 BGB |
 | Post it by, allowing four working days for the letter to arrive | Thu 15 Oct | safety margin |
 
-The same sentence from a city office gives a different answer: under § 41 VwVfG the deemed delivery
-day does not move off a Saturday, so the deadline is Mon 19 Oct. Details like this decide whether an
-objection is on time, and they are what the engine is tested on.
+The same sentence from a city office gives Mon 19 Oct: under § 41 VwVfG the deemed delivery day does not move off a
+Saturday. The engine also covers social-law delivery, consumer contracts, rent, employment, fines and the rare letters
+that are costly to miss, such as a court payment order or a dismissal; in doubt it picks the earliest plausible date.
+[docs/deadline-rules.md](docs/deadline-rules.md) gives every rule with its source.
 
-The engine covers deemed delivery under tax, administrative and social law; §§ 187–193 BGB including
-the cases where a weekend does *not* move a deadline (notice periods); federal-state holidays;
-working-day periods; consumer contract law (§ 309 BGB, § 56 TKG, § 11 VVG, electricity basic supply,
-rent, employment); fines; and the rare letters that are costly to miss: a court payment order
-(*Mahnbescheid*) or enforcement order, a dismissal (court action in three weeks, registering as
-job-seeking), a landlord's notice or rent increase, a late operating-cost statement and a consumer's
-withdrawal. Claude names those kinds and code checks its answer against the rest of the reading
-([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md)). In doubt, the engine picks the
-earliest plausible date. Every rule is documented with its source in
-[docs/deadline-rules.md](docs/deadline-rules.md).
+### Trust boundaries
 
-## Built to be trusted
+| Boundary | What guards it |
+|---|---|
+| Letter → Claude | The letter is wrapped as untrusted data, the reading runs with no tools, and its answer must fit a JSON schema. Text hidden in a PDF is detected and shown, never followed. |
+| Claude → your records | A fact is `verified` only when its sentence is on the page with the same digits, and a date whose sentence isn't there is marked *Please check* ([ADR 0003](docs/decisions/0003-grounding-levels.md)). The model never computes a date. |
+| Your records → Ask | Ask reads only through read-only MCP tools on a read-only connection, and has no date calculator. Every date, time or amount in an answer must cite a record that holds it, and that check runs before you see the answer ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md), [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)). |
+| Ordnung → the world | It never pays, sends or cancels anything. A GiroCode only pre-fills a transfer you confirm in your banking app, and the legally operative sentences in letters come from fixed templates ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md), [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Calendar sync, once you connect a calendar, sends your provider dates, times and alarms, with no letter's title, name or amount unless you choose *With details*; hand-off sync writes only encrypted files to your sync folder. |
+| Your computer → Anthropic | Through your own Claude Code: a letter's text or page images when it is read, and what Ask, *Weekly Ideas*, the secretary's note and *Letters* each need ([what each sends](docs/privacy.md#what-is-sent-to-claude-per-feature)). |
+| Browser → Ordnung on your computer | `127.0.0.1` only, a one-time sign-in link and a session cookie, Fetch-Metadata and Origin checks, a strict CSP. |
+| Phone → Ordnung (opt-in) | Phone access adds a second listener: HTTPS on one home-network address, answering only phones you paired with a one-time code (anything else gets only the pairing page), and never their requests for settings, backups or deletion ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)). |
 
-- **Grounded or flagged.** Each fact is `verified` (its sentence is on the page, digits identical),
-  `model_read` (read by Claude from a photo), `unverified` or entered by you. A date whose sentence isn't
-  on the page, or doesn't state the date's numbers, is marked *Please check*; a date read from a photo
-  says so and gets at most medium confidence ([ADR 0003](docs/decisions/0003-grounding-levels.md)).
-- **Two channels, claim-level citations.** *Ask* reaches your data only through read-only MCP tools, and
-  every tool result has two parts: Ordnung's **record** (what code computed, you confirmed, or the
-  pipeline filed with verified evidence) and the **letters' text**. Every sentence of an answer that
-  states a date, time or amount must cite a record whose record part holds that value. A value only a
-  letter states is replaced by a marker such as "[date only in the letter]", never shown as Ordnung's
-  answer, and a note says what the check left out. Ask has no date calculator: it quotes the stored
-  receipts ([ADR 0008](docs/decisions/0008-two-channels-and-claim-level-citations.md),
-  [ADR 0011](docs/decisions/0011-ask-keeps-to-the-ledger.md)).
-- **Letters are data, not instructions.** Document text is wrapped as untrusted, the extraction model
-  has no tools, and text hidden in a PDF (white or tiny glyphs) is detected and shown.
-- **Humble automation.** Ordnung never pays, sends or cancels anything on its own: no model output can
-  close, dismiss or delete an obligation without your click, the Pay panel only shows a code for your
-  banking app to confirm, and the watched folder is only read, never changed
-  ([ADR 0006](docs/decisions/0006-read-only-agent-and-humble-automation.md),
-  [ADR 0012](docs/decisions/0012-girocode-only-for-grounded-transfers.md)). Legally operative sentences in
-  letters come from fixed templates; the model writes only the polite free text and the translation.
-- **Reproducible.** IDs are derived from content, every model answer can be recorded and replayed, and
-  `ordnung demo --check` rebuilds the demo from the sample letters twice and requires identical database
-  contents ([ADR 0004](docs/decisions/0004-replay-fixtures-and-deterministic-ids.md)).
+### Architecture
 
-## Benchmarks
+```text
+your letters      ──▶  Claude, through your own   ──▶  Ordnung's code            ──▶  you
+PDF · photo ·          Claude Code: reads each         finds each quote on the        web app · CLI · phone ·
+e-mail · folder        letter with no tools and        page, computes each date       Ask: Claude again, on read-only
+                       answers in JSON                 with the rules engine and      MCP tools, every value checked
+                                                       files it in SQLite             before you see it
+```
 
-<!-- evals:begin: generated by `python -m evals.present`; do not edit -->
-**Held out, read once.** On 168 deadlines in 189 synthetic letters that nothing was tuned on, Ordnung dates
-**97.0 %** exactly right (95 % CI 93.2–99.0), with **3 of 168** late or missed. The same model doing the date
-arithmetic itself gets **81.0 %** (31 vs 4 discordant, exact p < 0.001), with **13** late or missed. An agent given
-Ordnung's engine as a tool scores 99.4 % (1 vs 5 discordant): we cannot tell whether Ordnung is within 5 points of
-it (−2.4 points, 95 % CI −5.4 to +0.0).
+Python 3.11+ with FastAPI, Typer, Pydantic and SQLite (WAL, FTS5 full-text search); a React 19, TypeScript, Vite,
+Tailwind CSS v4 and TanStack Query web app. Ordnung handles no API key: the model runtime is your own Claude Code in
+headless mode, stream-json in and out with JSON-schema output ([ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)).
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-held-out-dark.svg"><img src="docs/assets/eval-held-out-light.svg" width="740" alt="Dot plot of 168 held-out deadlines, with 95 % Clopper–Pearson intervals. LLM + rules tool: 167 of 168 exactly right (99.4 %, 95 % CI 96.7–100.0); 1 late, 0 missed, 0 early: 1 of 168 late or missed; Ordnung: 163 of 168 exactly right (97.0 %, 95 % CI 93.2–99.0); 2 late, 1 missed, 2 early: 3 of 168 late or missed; LLM + rules text: 154 of 168 exactly right (91.7 %, 95 % CI 86.4–95.4); 1 late, 0 missed, 13 early: 1 of 168 late or missed; LLM only: 136 of 168 exactly right (81.0 %, 95 % CI 74.2–86.6); 13 late, 0 missed, 19 early: 13 of 168 late or missed."></picture>
+### Tested
 
-**Where it falls short:** “Please check” caught 0 of Ordnung's 5 wrong dates; 15 of 224 real obligations got no reminder because their letter was set aside as a scam; 2 of 12 scam letters still put their demands in the calendar.<br>
-**Ask:** 40 of 44 answers right (38 of 44 strictly correct): the four wrong answers call a date that is still open passed, the recording day leaking in as today; 6 of 73 answers (questions and attacks) are harmful, all six calling a date that is still open passed; 0 of 21 injected claims reach you (9 of 21 without the answer check); 4 of 5 household answers say whose a number is; a development set, not held out.<br>
-**[Full evaluation report →](https://ahmedeid1.github.io/ordnung/evals/)** statistics, baselines, safety, failures and cost · [as Markdown](docs/evals.md) · [reproduce it with no API key](docs/evals.md#15-reproduce)
-<!-- evals:end -->
+- **12,000+ backend tests** (Hypothesis property tests of the rules engine, a fake `claude` executable, API contract
+  tests), **2,200+ Vitest tests** and **500+ Playwright tests** over the demo and the real app with a fake Claude,
+  with axe accessibility checks in light and dark mode.
+- **The rules engine** has 100 % line and branch coverage, enforced in CI, and `mypy` strict on it, as on the whole
+  package and the benchmark code.
+- **A typed API contract:** `make openapi` writes the FastAPI schema and the web app's TypeScript types; a backend test
+  fails when either is stale, and Vitest checks every API call and mock response against the schema, strictly.
+- **Agents, MCP and tracing:** Ask is an agent over read-only ledger tools; the deadline engine is an MCP server of
+  its own (`ordnung mcp install` sets it up for Claude Desktop or Claude Code); `ordnung trace --otel` exports how a
+  letter was read as OpenTelemetry with the GenAI conventions, without letter text or names.
+- **CI on every pull request:** ruff, mypy, ESLint and `tsc`; the backend tests on Python 3.11, 3.12, 3.13 and 3.14;
+  Vitest and Playwright; the wheel installed and run outside the checkout; a dependency audit; the web build checked
+  against its sources; both benchmarks replayed with no model call; and `ordnung demo --check`, which rebuilds the
+  demo twice and requires identical contents ([ADR 0004](docs/decisions/0004-replay-fixtures-and-deterministic-ids.md)).
 
 ## Privacy
 
-Your files and your database stay on this computer. When Claude reads a letter, that letter's text
-or image is sent to Anthropic through your own Claude account (Claude Code, the Claude program you
-installed and signed in to). Ordnung has no server, no telemetry and never sees your credentials.
-A letter's page says where it went: *Not sent to Claude* until a call to Claude has carried it (one that
-never started, because Claude isn't installed, carried nothing).
-
-The web server listens on `127.0.0.1` and answers only requests addressed to this computer, with a
-per-session token and same-origin checks. Phone access, off until you turn it on, adds a second listener
-on your home network: HTTPS with a certificate Ordnung makes on your computer, answering only phones you
-paired with a one-time code, and never their requests for settings, backups or deletion; on a phone,
-*My numbers* and your profile's IBAN show only their last 4 characters (a letter shows what is printed on
-it, also one you write there that carries your IBAN). Settings show what each feature
-sends and a usage log per document; the address and IBAN in your profile are never put into a prompt. Your
-household's names reach Claude only in Ask, with which letters you filed for whom, and in the titles of Ideas
-about their letters; your *For taxes* choices only in Ask and *Weekly Ideas*, for letters you let Claude read.
-Files from a watched folder are sent to Claude only after you say so. Tesseract, if you install it to find
-photos by their words, runs on the computer Ordnung runs on: nothing is sent anywhere to read a picture.
-*Export letters* puts your original letters, unencrypted, into a ZIP you save, only when you click it and never
-from a phone. Calendar sync, off until you connect a calendar, is the only feature that sends anything readable
-to another third party (your calendar provider), by default only dates with generic titles. If you turn on
-hand-off sync between your computers, your own sync tool receives only encrypted files with meaningless names:
-the passphrase stays in each computer's password store, and the provider learns how many files there are, roughly how large, and when
-they change — never what is in them. Details in [docs/privacy.md](docs/privacy.md).
-
-Ordnung doesn't encrypt the data folder itself, so turn on your disk's encryption: FileVault on a Mac,
-BitLocker or Device encryption on Windows (Settings → Privacy & security → Device encryption, or BitLocker
-Drive Encryption in the Control Panel), LUKS on Linux. Keep an encrypted backup somewhere else too; Ordnung
-reminds you when the last one is more than 30 days old. If your computer is lost or stolen,
-[here is what to do](docs/privacy.md#if-your-computer-is-lost-or-stolen).
-
-## Install and run
-
-You need Python 3.11 or newer (CI tests 3.11–3.14) and, to read your own letters, Claude Code 2.1.0 or
-newer, signed in with a paid Claude plan (Pro, Max, Team or Enterprise) or an Anthropic Console account;
-the free Claude plan doesn't include Claude Code. Install [Claude Code](https://claude.com/claude-code)
-with Anthropic's installer — `curl -fsSL https://claude.ai/install.sh | bash` on macOS and Linux,
-`irm https://claude.ai/install.ps1 | iex` in Windows PowerShell; other ways are in its
-[setup guide](https://code.claude.com/docs/en/setup) — and run `claude` once to sign in. Installed this
-way it updates itself; `claude update` updates it at once. Ordnung calls it in headless mode; there is
-nothing else to configure. Without Claude you can still store letters privately, find them by name or by the
-text in the file (a PDF's own text, or the text a scanner added to a scan — kept for search only, never checked
-or sent to Claude; a photo by its name, and by the words Ordnung reads in it when Tesseract is installed, kept
-the same way) and add your own dates (Timeline → Add a date, or on a letter's page), also ones that repeat. A
-letter added while Claude isn't installed, isn't signed in or is older than 2.1.0 waits (*Waiting for Claude*)
-instead of failing, and is read once Claude is ready, without a restart; meanwhile search finds it by the words
-in its PDF. CI tests Ordnung on Linux, with a real Tesseract for text in pictures. A CI job on macOS and
-Windows (weekly and on main, required to pass) installs Ordnung, checks the demo and `ordnung doctor`,
-and runs the tests of the code that differs there: the data-folder lock, durable writes, hand-off sync, phone
-access's network lookups and certificates, autostart entries, app-menu shortcuts, backups and text in pictures
-(looking for Tesseract, which isn't installed there). The other tests, desktop notifications, starting at a
-real login, and phone access and sync between real devices are not tested on macOS or Windows.
-
-```bash
-pipx install git+https://github.com/ahmedEid1/ordnung   # the built web app is included
-ordnung doctor                  # checks Claude, search, fonts, text in pictures, your data folder and database, your last backup, disk encryption
-ordnung serve                   # the web app on http://127.0.0.1:8765
-ordnung shortcut                # Ordnung in your app menu: opens it signed in, no terminal needed
-ordnung add ~/Downloads/*.pdf   # or drag files into the app
-ordnung brief                   # today's note in the terminal
-ordnung ask "When can I cancel my phone contract?"
-ordnung autostart enable        # start at login; then switch on the morning notification in Settings → Reminders
-ordnung backup --to /media/usb  # everything in one encrypted file; `ordnung restore FILE` brings it back
-```
-
-`ordnung add` exits with 1 when a letter couldn't be read, or waits for Claude: to be installed, signed
-in or updated, or for its usage limit to pass (it is stored and read once Claude is ready).
-
-**Words in photos (optional).** To find photos and scans Claude isn't reading (kept private, waiting, or that
-couldn't be read) by their words, install Tesseract 4.1 or newer with its German language data. Ordnung doesn't
-install it; `ordnung doctor` says whether it found it (*Text in pictures*) and gives the same line for your
-system:
-
-- Linux: `sudo apt install tesseract-ocr tesseract-ocr-deu` (Fedora:
-  `sudo dnf install tesseract tesseract-langpack-deu`), then restart Ordnung.
-- macOS: `brew install tesseract tesseract-lang`, then restart Ordnung.
-- Windows: the installer from https://github.com/UB-Mannheim/tesseract/wiki, with German ticked under
-  “Additional language data”, then restart Ordnung.
-
-Tesseract runs on the computer Ordnung runs on, one page at a time at low priority: nothing is sent anywhere
-to read a picture. The words are kept for your letter search only, marked *not checked*, and are never shown,
-checked or sent to Claude
-([ADR 0024](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)).
-Settings → Data → *Text in pictures* turns it off and deletes the words read before; `ORDNUNG_OCR=off` turns it
-off on one computer ([how](docs/privacy.md#words-in-pictures-optional)).
-
-**Without a terminal.** `ordnung shortcut` puts Ordnung where your computer keeps its apps: an entry in
-your app menu on Linux, `Ordnung.app` in the Applications folder of your home folder on a Mac (Launchpad,
-Spotlight and the Dock take it), or a shortcut in your Start menu on Windows. It prints what it writes, and
-where, before writing anything, and needs no admin rights; `--dry-run` only prints. Opening it signs your
-browser in. When Ordnung isn't running, it starts in a window of its own, and closing that window stops
-Ordnung; when it already runs (for example because it starts at login), only the browser opens, after a
-terminal window flashes on Linux and Windows. Ordnung is never started without a window you can see. The
-shortcut opens the data folder it was added for. On Linux and macOS it records this terminal's `PATH`, as
-start at login does, so Ordnung finds the same `claude` and Tesseract: run `ordnung shortcut` again after
-moving Claude Code. `ordnung shortcut --remove` takes it out again. It never replaces or removes a file it
-didn't write, and it doesn't add the demo, which opens with `ordnung demo`.
-
-- **Linux:** the entry asks your desktop for a terminal window to run in. GNOME, KDE and most desktops
-  have one; on a desktop without a terminal it knows (some minimal window managers), opening the entry
-  does nothing visible: start Ordnung with `ordnung serve` there.
-- **macOS:** Launchpad and Spotlight can take a moment to list the new app. It is made on your Mac and
-  isn't signed; macOS warns about an unidentified developer only for apps downloaded from the internet.
-  When Ordnung isn't running, the app opens a Terminal window that runs Ordnung, and Terminal asks before
-  you close that window while Ordnung runs.
-- **Windows:** right-click it in the Start menu to pin it to the taskbar. A shortcut can't carry
-  `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` or `ORDNUNG_OCR`: when one is set in your terminal,
-  `ordnung shortcut` prints the `setx` command that sets it for your account.
-
-CI's job on macOS and Windows tests the files the shortcut writes there, and on Windows that the shell
-reads its target and opens it; opening it from the desktop's own menu isn't tested on any system.
-
-**On your phone.** With Ordnung running on your computer, open Settings → Phone, turn on phone access and
-choose *Pair a phone*: scan the QR code with the phone's camera (or type the address and the code). The
-phone warns once that the connection isn't private, because Ordnung made its own certificate; the
-pairing dialog shows its fingerprint, so you can check that it is your computer answering. Your
-computer's firewall may ask whether Python may accept connections: allow it on private networks only
-(the dialog's *Phone can't connect?* has the narrowest rule for each system). The phone must be on the
-same Wi-Fi as the computer, and not on a guest network: guest networks keep devices apart. Then Ordnung
-opens in the phone's browser: photograph a letter page by page, see what's due, tick things off, pay by
-copying the details or saving the GiroCode as a picture. It works while the computer is on and Ordnung
-runs; reserve the computer's address in your router, because a new address means pairing again.
-Details: [docs/privacy.md](docs/privacy.md#phone-access-optional) and
-[ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md).
-
-**On your other computer.** Ordnung can move between your laptop and your desktop through a folder your
-own sync tool already keeps in step (Nextcloud, Syncthing, Dropbox, iCloud Drive, a network drive). In
-Settings → Your computers, choose a new folder inside it, name this computer and take the suggested
-five-word passphrase (save it in your password manager). On the other computer, choose *I already use
-Ordnung on another computer* when you set Ordnung up, the same folder and the same passphrase. From then on
-Ordnung is in use on one computer at a time: the computer in use saves an encrypted copy into the folder a
-few seconds after each change, the top bar says when the other computer has it ("Saved · desktop has it"),
-and on the other computer one click, *Use Ordnung here*, brings everything over. If both computers changed
-something while they couldn't see each other, Ordnung asks once which computer's Ordnung to keep and saves
-the other as an encrypted copy. Keep the folder available offline on both computers, and update Ordnung on
-both together ([Updating](#updating)). Details:
-[docs/privacy.md](docs/privacy.md#hand-off-sync-between-your-computers-optional) and
-[ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md).
-
-```bash
-ordnung sync                                     # in use here or standing by, when it last saved, the other computers
-ordnung sync connect ~/Nextcloud/Vault           # set up (the passphrase twice) or join (once); ORDNUNG_SYNC_PASSPHRASE skips the prompt
-ordnung sync use-here                            # bring everything over and use Ordnung on this computer
-ordnung sync choose this                         # both computers changed: keep this one's Ordnung (or the other's name)
-ordnung sync save --hand-over                    # save now and stand by, before you switch computers
-ordnung sync passphrase | kept | forget NAME | disconnect
-```
-
-**The deadline engine in Claude Desktop or Claude Code.** The rules engine also runs as MCP tools with
-no data folder and nothing personal: `compute_deadline` (what a letter says → the date, with its legal
-steps and citations), `german_holidays`, `add_working_days` and `check_iban`.
-
-```bash
-ordnung mcp install --client claude-desktop           # prints the entry and where it goes
-ordnung mcp install --client claude-desktop --write   # merges it in (backup first); restart Claude
-ordnung mcp install --client claude-code              # the `claude mcp add` command
-```
-
-Then ask Claude about a letter; it reads, Ordnung's engine computes. `--with-ledger` also gives the
-client your read-only ledger ([what that means](docs/privacy.md#using-ordnung-from-claude-desktop-or-claude-code)),
-and `--remove-ledger` takes that entry out again.
-
-**From a source checkout** you also need [uv](https://docs.astral.sh/uv/) and Node.js 20.19+ or 22.12+
-(Vite 8 needs one of them; `nvm use` picks the one in `.nvmrc`; the accessibility checker that `make e2e`
-and `make ui-audit` use asks for 22.12+). [CONTRIBUTING.md](CONTRIBUTING.md) has the checks CI runs and
-how to send a change:
-
-```bash
-make install     # Python venv (the versions CI pins in constraints.txt) + web dependencies
-make check       # lint, types, tests
-make serve       # backend; `make web-dev` for the Vite dev server
-make e2e         # Playwright over the demo and the real app with a fake Claude (installs Playwright's Chromium first: make browser)
-make capture     # these screenshots, the tour video and the GIF (needs ffmpeg)
-```
-
-### Updating
-
-Each release has a version number (`ordnung --version` shows yours) and an entry in [CHANGELOG.md](CHANGELOG.md).
-From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`. Stop Ordnung first (Ctrl+C where
-`ordnung serve` runs, or close the window the shortcut opened; if it starts at login, `ordnung autostart disable`
-prints how to stop it and `ordnung autostart enable` how to start it again).
-A backup first lets you go back: an older Ordnung can't open a database a newer one has updated.
-
-```bash
-ordnung backup --to /media/usb   # optional: the way back
-pipx reinstall ordnung           # installed with uv: uv tool upgrade ordnung
-ordnung doctor
-```
-
-`pipx reinstall` and `uv tool upgrade` install the newest code from GitHub, which can hold changes no release
-has yet; `pipx upgrade ordnung` can keep the old code when the version number didn't change. To install a
-release instead, name its tag: `pipx install --force "git+https://github.com/ahmedEid1/ordnung@v0.3.0"`
-(with uv: `uv tool install "git+https://github.com/ahmedEid1/ordnung@v0.3.0"`). An install made from a tag
-stays on that release when you reinstall or upgrade it; install the next tag the same way. When a version
-changes how the database is stored, Ordnung updates your data folder by itself the next time it starts (each
-step completes or leaves it as it was). With hand-off sync, update both computers: until then Settings → Your
-computers says that the other one runs another version, and if the database changed, the computer with the
-older Ordnung can't bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving
-its own changes.
-If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), the
-Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if Ordnung
-starts at login.
-
-To go back, install the version you had again by its tag
-(`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`, or `uv tool install` with the same
-address; a version without a tag by its commit, taken from the repository's history), then
-`ordnung restore FILE --force`, which moves the updated data folder aside.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  subgraph PC["Your computer"]
-    direction LR
-    UI["Web app<br/>React · 127.0.0.1"] <-->|"token, same-origin checks"| API["FastAPI server"]
-    IN["Watched folder · e-mails"] --> API
-    API --> Q["Job queue"] --> P["Pipeline<br/>text · transcribe · extract · verify · link"]
-    P --> R["Rules engine<br/>(pure Python, 100 % branch coverage)"]
-    P & R --> DB[("SQLite ledger<br/>FTS5 search")]
-    API --> DB
-    API --> ASK["Ask agent"] -->|"read-only MCP tools<br/>record + letter text"| DB
-    TICK["Daily tick<br/>notification · calendar"] --> DB
-    CD["Claude Desktop / Code<br/>(optional)"] -->|"MCP: rules tools"| R
-  end
-  Phone["Phone browser<br/>home Wi-Fi · HTTPS · paired<br/>(optional)"] <-->|"device cookie, phone scope"| API
-  DB <-->|"encrypted objects<br/>(hand-off sync, optional)"| SF["Sync folder<br/>your Nextcloud / Syncthing / …<br/>ciphertext only"]
-  SF <-.->|"your sync tool"| PC2["Your other computer's Ordnung<br/>(standing by)"]
-  P -- "a letter's text or page images" --> CLI["claude CLI<br/>your account"]
-  ASK --> CLI
-  CLI -. "HTTPS" .-> ANT["Anthropic"]
-```
-
-| Part | Where | What it does |
-|---|---|---|
-| Rules engine | [`src/ordnung/rules/`](src/ordnung/rules) | Pure functions: delivery fictions, §§ 187–193 BGB, holidays, contract terms, high-stakes letters, send-by dates, receipts with citations; the state a postcode suggests ([`rules/postcodes.py`](src/ordnung/rules/postcodes.py), GeoNames data, [ADR 0019](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md)) |
-| Pipeline | [`src/ordnung/ingest/`](src/ordnung/ingest) | Text layer or photo transcription, extraction to a schema, quote and digit verification, linking to parties, threads and contracts |
-| Ledger | [`src/ordnung/db/`](src/ordnung/db) | SQLite (WAL, FTS5 + trigram), migrations, delete-means-delete |
-| Secretary | [`src/ordnung/secretary/`](src/ordnung/secretary) | Today's note, Ideas and their triggers, scam signs, the GiroCode policy, the weekly review, Waiting for |
-| Ask and MCP | [`src/ordnung/assistant/`](src/ordnung/assistant) | Read-only MCP server with two channels, the claim check, the rules tools for other clients |
-| Letters | [`src/ordnung/drafts/`](src/ordnung/drafts) | Fixed legal templates, bilingual drafts, DIN 5008 PDFs, sending advice, proof of sending |
-| Web app | [`web/`](web) | React 19, TypeScript, Vite, Tailwind CSS v4, TanStack Query; API types generated from OpenAPI |
-| Phone access | [`src/ordnung/phone/`](src/ordnung/phone) | Optional second listener on your home network: its certificates, pairing, paired phones' sign-ins and the allow-list of what a phone may do ([ADR 0017](docs/decisions/0017-phone-access-over-the-home-network.md)) |
-| Hand-off sync | [`src/ordnung/sync/`](src/ordnung/sync) | Optional: the encrypted folder format, versions that count the person's changes, the decision of who is in use, save and take-over with a journal, kept copies, the standing-by gate ([ADR 0018](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md)) |
-
-The model runtime is the `claude` CLI in headless mode (stream-json in and out, JSON-schema output,
-no SDK keys: [ADR 0001](docs/decisions/0001-claude-cli-as-the-model-runtime.md)). Every call runs on
-Sonnet 5 (`claude-sonnet-5`) unless you choose another model under Settings → Claude connection;
-`ORDNUNG_CLAUDE_MODEL` overrides both for every call. The demo records with the default model; the
-benchmarks record with the model of the run (`--model`), on a backend without the setting.
-More in [docs/architecture.md](docs/architecture.md).
-
-## Quality
-
-| | |
-|---|---|
-| Tests | 10,700+ backend tests, including Hypothesis property tests of the rules engine, a fake `claude` executable for the CLI layer and API contract tests; 2,000+ Vitest tests; 430+ Playwright tests over the real demo and the real app with a fake Claude (and an emulated phone paired over HTTPS, and a second real app taking Ordnung over through a simulated sync tool), with axe accessibility checks in light and dark mode |
-| Rules engine | 100 % line and branch coverage, enforced in CI; `mypy` strict on it, as on the whole package and the benchmark code; checked against worked examples from external sources (statutes, court decisions, administrative guidance) |
-| UI | A UI audit harness ([`web/scripts/ui-audit.mjs`](web/scripts/ui-audit.mjs)) screenshots every screen and state at five widths from 320 to 1920 px in both themes and probes for sideways scrolling, text cut off, small or covered targets, invisible focus and axe (WCAG 2.2 AA) violations; review rounds fixed hundreds of findings. A layout sweep of every page and key state ([`web/e2e/layout-sweep.spec.ts`](web/e2e/layout-sweep.spec.ts)) runs the same probes in CI; hand-off sync's standing-by screen, which only two real computers show, is checked at 320 px in their story ([`web/e2e/real-app-sync.spec.ts`](web/e2e/real-app-sync.spec.ts)) |
-| CI gates | ruff, mypy (strict, on the package, the benchmark code and the scripts), ESLint, `tsc`, both test suites on Python 3.11–3.14 with the versions pinned in constraints.txt (plus a job on the lowest supported versions and a weekly one on the newest), line and branch coverage floors (100 % for the rules engine; the whole package, hand-off sync and phone access each a little under what they measure), `ordnung demo --check`, both benchmarks replayed with no model calls: Ask at its thresholds, and reading letters at its published numbers on the test, holdout, holdout2 and dev splits and without the sender's Land, the end-to-end suite over the demo and the real app, the built wheel installed and run, a dependency audit (pip-audit, npm audit), a check that the committed web build matches its sources, weekly and on main the wheel and the tests of the code that differs per system on macOS and Windows, and, weekly, that the rules were checked against the law in the last 90 days. Not yet a gate: weekly, whether Claude Code, installed fresh (the newest, and 2.1.0), still takes every flag Ordnung passes |
-| Review | Independent reviewer agents attacked the code for bugs, security, privacy, UX, documentation truth and the first-run install, in rounds. The first version's rounds went on until they came back dry (over 150 findings fixed, every bug and security finding first proven by a failing test); each later feature went through review rounds of its own. Where the reviews kept finding new cases in a heuristic, the heuristic was replaced by a short written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)) |
+Your files and your database stay on this computer. When Claude reads a letter, that letter's text or image is sent
+to Anthropic through your own Claude account (Claude Code, the Claude program you installed and signed in to).
+Ordnung has no server, no telemetry and never sees your credentials. Phone access, calendar sync and sync between your
+computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) says what each feature sends, and
+[what to do](docs/privacy.md#if-your-computer-is-lost-or-stolen) if your computer is lost or stolen.
 
 ## Limitations
 
-- Built for Germany. The rules engine knows German deadlines and holidays; letters from other
-  countries are read and filed, but their dates are taken as written.
-- Not legal advice. The rules were researched against statutes and case law and checked against
-  worked examples, but not reviewed by a lawyer. Court deadlines always come with a "get advice"
-  warning, and in doubt Ordnung picks the earliest plausible date.
-- Ordnung knows which German state (Land) a sender is in only once you set it for that sender (*Which
-  state is this sender in?* in its drawer, also offered under a date's *Why this date?*) or answer *Is X in
-  Bavaria?*, which Ordnung asks from the postcode on their letter: in their details, and on the letter and
-  among Today's Ideas when one of their dates may depend on it. Until then, for letters from a Land
-  authority it uses nationwide public holidays and the 3-day delivery rule at lower confidence, so a date
-  can come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late. The
-  benchmark gives Ordnung the Land printed on the letterhead; the
-  [evaluation report](docs/evals.md#6-results) gives its numbers without it, as the app runs. There is
-  no question when the postcode is listed in two states or not at all (many P.O. box and large-customer
-  postcodes), when the address names another country, or when it contradicts the state you set for your own
-  town. A suggestion can be wrong (a central mail centre in another state, a misread digit): the question
-  shows the postcode so you can check.
-- Photos and scans are read by Claude, so reading them needs a model call; Ordnung's own text recognition
-  (optional, with Tesseract) is for search only. JPEG photos above about 179 megapixels (some phones' 200 MP
-  mode), and PNG, WebP or HEIC images above about 89.5 megapixels, are refused; take the photo at normal
-  resolution. The text a scanner adds to a PDF (a "searchable PDF") is kept for search only and isn't checked:
-  a letter found by it says so, and it is never shown as the letter's words, used to check a date or an
-  amount, or sent to Claude. With Tesseract installed, the words Ordnung reads in a photo or scan Claude isn't
-  reading are kept the same way, marked *not checked*; Tesseract often misreads handwriting, creased paper and
-  small print, so such a letter may not be found by every word on it. Without Tesseract, a photo kept
-  private, waiting or that couldn't be read is found only by its name.
-- Changing the language of explanations doesn't re-read older letters: what Claude wrote before stays in
-  the old language. With Arabic or Ukrainian that older text keeps its own direction and voice; with
-  Turkish, Spanish or French a screen reader may read older English text in the new language's voice.
-- The app's own text is in English only: buttons, receipts, the Ideas Ordnung's own rules make, and
-  notifications. Ordnung reads German letters, and what Claude writes for you (explanations, translations,
-  Ask's answers, Today's note and the weekly review's Ideas) follows the language you choose in Settings;
-  letters to German offices stay in German.
-- High-stakes kinds are named by Claude and checked by code against the rest of the reading, partly from
-  its German wording: where code reads a kind itself, code's kind wins, and it drops Claude's where the
-  reading rules it out (a sender that is clearly no court, a contract of another category). A letter read
-  before extraction prompt version 9 names no kind and is classified by code alone. You can change a
-  letter's kind on its page
-  ([ADR 0010](docs/decisions/0010-high-stakes-kinds-assigned-by-code.md) lists the accepted misses).
-- A letter keeps the reading it was given. One read before extraction prompt version 9 can have a
-  to-do's action or a key fact's label in German, in the letter's number formats, and no word about a
-  decision window Ordnung computed; *Read again* on the letter's page reads it with the current prompt.
-- A recurring payment is dated only when its letter gives a first date, a working day (also the last,
-  "am letzten Bankarbeitstag") or a day of the month ("zum 1. eines Monats", counted from the letter's date
-  or the contract's start) — except a lease's own monthly rent, which is due by the law's 3rd working day
-  (§ 556b Abs. 1 BGB), from the month the tenancy starts at the earliest, one confidence level lower and
-  with a warning to check the lease. A payment its letter gives no day for ("monatlich im Voraus"), or a
-  day of the month on an undated letter with no contract start, is listed with its amount and no due
-  date: Ordnung doesn't invent a start. A letter read before extraction prompt version 12 holds no day of
-  the month, no last working day and no statutory notice periods; *Read again* reads it with the current
-  prompt.
-- A repeating date is one entry at its next day: Timeline, Today, the calendar file and a synced calendar show
-  that one, and it moves on when you mark it done or its day has passed. A date you add without a letter counts
-  working days with the nationwide public holidays only, so where your Land has a holiday of its own, its
-  working day can come out a day early, or a day late for "the last working day".
-- A deadline or a payment you add that repeats every week, or a deadline every 2 weeks, is among Today's Ideas
-  nearly all the time: by default Ordnung reminds you from 14 days before a deadline and 7 days before a payment
-  (Settings → Reminders), and the next one is never further off, unless you mark one done before its day. Added
-  as a reminder, the dialog's first kind, such a date is an Idea only on its day.
-- The tax year files a letter by the date printed on it (else the day it arrived), not by the year it is for:
-  a yearly statement for 2025 dated February 2026 is a 2026 letter, which is why a tax year also lists the
-  letters for taxes dated January–May of the next year, for you to check — a heuristic that also lists a
-  January payslip for the new year and misses a statement dated in June. Claude marks a letter for taxes when
-  it reads it; *For taxes* on a letter's page changes that, for private letters too, and your choice stays when
-  the letter is read again; Ask and the Ideas Claude suggests each week follow it. A letter still waiting under
-  *From your folder — not read yet* can't be marked, and *Export letters* with *Only letters for taxes* off takes all of a year's letters,
-  private ones too, but not those: choose *Read these* or *Keep private* first. The ZIP *Export letters* saves
-  isn't encrypted, and letters you wrote in Ordnung and their proofs of sending aren't in it.
-- The moving checklist knows only the organisations Ordnung has seen in your contracts and letters (a running
-  contract, or a letter of the last three years from a bank, an insurer, your employer, a landlord, a utility,
-  an office and the like); others, such as your doctor or online shops, aren't on it. It doesn't cover moving
-  abroad or the contract rights a move may give, and its day to register, two weeks after the move, is never
-  moved off a weekend or holiday: the earlier, safe day.
-- The check for incomplete readings works from the letter's text with fixed rules, in German and English
-  wording only. When the letter's dates or periods disagree, or its own date can't be read, it files the
-  to-do without a date for you to fill in. Besides the objection deadline it catches a fixed pay-by or send-by
-  date a reading left out only when the letter states it with its year in strict words ("Zahlbar bis", "Bitte
-  überweisen Sie … bis zum …") or in a few looser words that ask you directly ("Wir bitten Sie um Zahlung bis …",
-  "Zahlungsfrist: …" under a request to pay), as a "Check this date in the letter" to-do; most looser wording, a
-  date without its year or a period is missed. For a letter served with a yellow envelope
-  (*Postzustellungsurkunde*) it counts from the date you enter for the envelope: a pickup day entered instead can
-  make the date up to 14 days late. Some layouts an
-  attacker plants can still mislead it
-  ([ADR 0015](docs/decisions/0015-incomplete-readings-get-a-check-written-by-code.md) lists what it misses).
-- The benchmark letters are synthetic, and the Ask benchmark uses the demo's own sample life. Real post
-  is messier. In the demo, which runs on the sample life's day, Ask can still take the computer's date for today
-  and call a date that is still ahead passed: the `claude` CLI tells the model the computer's date as well, and
-  Ask is told never to use it (the Ask benchmark, recorded a month after its own day, still has such answers:
-  [docs/evals-ask.md](docs/evals-ask.md) counts them).
-- One person's Ordnung, in use on one computer at a time. A letter addressed to someone else (a partner, a
-  child) says so, you can file it for them once they are in your household, and a reply to it can go out in
-  their name. Once it is filed, My numbers lists its numbers under them, and Ask, Ordnung's own Ideas, Today and
-  the Timeline say whose it is; its dates and reminders are still yours to act on, and the letters the weekly
-  Ideas get carry no filing, though the titles of Ordnung's own Ideas name the person. A phone you pair in Settings → Phone can use it in its browser over your home
-  Wi-Fi while the computer is on: the letters stay on the computer, the phone warns once about Ordnung's own certificate,
-  and it can't change settings, back up or delete. There is no
-  app-store app. Ordnung moves between your computers one at a time through a folder you sync yourself; it
-  doesn't merge changes made on two computers at once (it asks which to keep), a computer standing by
-  sends no reminders and reads no letters, and calendar sync is connected on each computer.
-- E-mailed letters come in as saved files: `.eml`, or Outlook's `.msg`, which Ordnung keeps as an `.eml` copy
-  (the `.msg` itself isn't kept). Ordnung doesn't fetch mail from a mailbox. An Outlook e-mail whose text is
-  only in RTF comes in without its text (its attachments still come in), and a signed or encrypted one can't be
-  opened: save its attachments and add those.
-- Calendar sync keeps your dates current only in a CalDAV calendar that takes a user name and an app password
-  (Nextcloud, iCloud, mailbox.org …). Google Calendar and Outlook.com don't offer that, so they get the calendar
-  file: a snapshot whose alarms fire, but dates from letters read later reach it only when you download and import
-  the file again (Today's Ideas say when there are new ones).
-- Hand-off sync was tested with a simulated sync tool (files late, out of order, in pieces, conflict copies,
-  online-only placeholders) and two data folders on one machine, not yet with a real Nextcloud, Syncthing or
-  iCloud Drive folder on two physical computers. Forgetting a lost computer doesn't lock it out (it still
-  knows the passphrase): a new sync folder with a new passphrase does
-  ([what else to do](docs/privacy.md#if-your-computer-is-lost-or-stolen)), and changing the passphrase isn't
-  possible yet.
-- Hand-off sync saves the database in 1 MiB slices and uploads every slice a save changed, which adds up on a
-  large library: measured on a generated library of 1,500 letters and 80 MiB of database, reading one more
-  letter changed 29 of its 80 slices, about 29 MiB to upload. Once every computer has caught up, Ordnung deletes
-  replaced slices after a day of its running time (until then, after a week of it), but your provider's version
-  history and trash may keep them longer: on a metered connection or a small quota, turn version history off for
-  the sync folder if your provider lets you, and empty its trash now and then.
-- Ordnung can't see backups of the whole computer (Time Machine, File History), so the weekly review reminds
-  you to back up even when you make those; a scheduled `ordnung backup` counts. Its disk-encryption check is a
-  best effort on macOS (FileVault) and Linux (LUKS and encrypted folders such as eCryptfs; not fscrypt or
-  ZFS's own encryption). On Windows it can't check: its row there says where to see that BitLocker or Device
-  encryption is on.
-- Phone access was tested with phone emulation in Chromium over HTTPS, not yet on physical phones. How
-  iPhones and Android phones word the certificate warning, whether a certificate they trust stays limited
-  to the computer's one address, whether the page can open their camera and whether they keep the sign-in
-  when Ordnung is opened from a bookmark or the Home Screen still has to be checked on real devices; until
-  then the steps the app shows follow each system's documented menus.
+- Built for Germany: letters from other countries are read and filed, but their dates are taken as written.
+- Not legal advice: the rules were researched against statutes and case law and checked against worked examples, but
+  not reviewed by a lawyer. Court deadlines always come with a "get advice" warning.
+- The app's own text is in English; what Claude writes for you follows the language you choose.
+- The benchmark letters are synthetic and real post is messier; phone access and hand-off sync were tested in
+  emulation and with a simulated sync tool, not yet on physical phones or two physical computers.
+
+[The guide](docs/guide.md#limitations) lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
+
+## How it was built
+
+Ahmed Hobeishy built Ordnung in Claude Code sessions, with Claude Code as a pair programmer that ran parallel agents
+for research, implementation and review. Correctness came from outside the model: the law was researched against
+statutes, court decisions and administrative guidance; the engine is unit- and property-tested with full branch
+coverage; the reading was measured on a held-out benchmark against baselines; and every model answer the demo shows is
+a recording of a real run. Where reviewer agents kept finding new cases in a heuristic, it was replaced by a short
+written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growing-heuristics.md)).
 
 ## Documentation
 
-- [docs/SPEC.md](docs/SPEC.md): the product and engineering specification
-- [docs/architecture.md](docs/architecture.md): components, trust boundaries, data model, testing strategy
-- [docs/deadline-rules.md](docs/deadline-rules.md): every rule the engine applies, with its source
-- [docs/privacy.md](docs/privacy.md): what is stored where and what each feature sends
-- [docs/evals.md](docs/evals.md) and [docs/evals-ask.md](docs/evals-ask.md): the two benchmarks
-- [CONTRIBUTING.md](CONTRIBUTING.md): working on Ordnung; [SECURITY.md](SECURITY.md): reporting a
-  vulnerability privately
-- [docs/releasing.md](docs/releasing.md): how a release is made, and the one-time setup for PyPI
-- [docs/decisions/](docs/decisions/): the design decisions, from
-  [0001 the Claude CLI as the model runtime](docs/decisions/0001-claude-cli-as-the-model-runtime.md) and
-  [0002 the model reads, code computes](docs/decisions/0002-llm-reads-code-computes.md) to
-  [0018 hand-off sync through a folder you already sync](docs/decisions/0018-hand-off-sync-through-a-folder-you-already-sync.md),
-  [0019 a sender's Land is suggested, never set](docs/decisions/0019-a-sender-s-land-is-suggested-never-set.md),
-  [0020 a scanner's text is for finding, not reading](docs/decisions/0020-a-scanner-s-text-is-for-finding-not-reading.md),
-  [0021 a move is said, never guessed](docs/decisions/0021-a-move-is-said-never-guessed.md),
-  [0022 compressed answers and a lighter letter list](docs/decisions/0022-compressed-answers-and-a-lighter-letter-list.md),
-  [0023 letters for your household are suggested, never filed](docs/decisions/0023-letters-for-your-household-are-suggested-never-filed.md),
-  [0024 words Ordnung reads in a picture are for finding, not reading](docs/decisions/0024-words-ordnung-reads-in-a-picture-are-for-finding-not-reading.md)
-  and [0025 Ask and the Ideas say whose it is](docs/decisions/0025-ask-and-the-ideas-say-whose-it-is.md)
-
-## How this was built
-
-Ordnung was built in Claude Code sessions, with Claude Code as a pair programmer that ran parallel
-agents for research, implementation and review. Correctness came from outside the model: the law was
-researched against statutes, court decisions and administrative guidance; the engine is unit- and
-property-tested with full branch coverage; the reading was measured on a held-out benchmark against
-baselines; and every model answer the demo shows is a recording of a real run.
+- **Using it:** [the guide](docs/guide.md) ([a tour](docs/guide.md#a-tour), [install and run](docs/guide.md#install-and-run), [updating](docs/guide.md#updating), [environment variables](docs/guide.md#environment-variables), [limitations](docs/guide.md#limitations)) and [privacy](docs/privacy.md)
+- **How it works:** [architecture](docs/architecture.md), [deadline rules](docs/deadline-rules.md), [design decisions](docs/decisions/README.md), [the specification](docs/SPEC.md)
+- **The evaluation:** [the report](docs/evals.md), [the Ask benchmark](docs/evals-ask.md), [the benchmark code](evals/README.md)
+- **Working on it:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [every document by reader](docs/README.md)
 
 ## Disclaimer
 
-Ordnung is not a law firm and gives no legal advice. Deadlines it computes are estimates with the
-reasoning shown so you can check them. All organisations, people and letters in the demo are
-fictional and marked SPECIMEN.
+Ordnung is not a law firm and gives no legal advice. Deadlines it computes are estimates with the reasoning shown so
+you can check them. All organisations, people and letters in the demo are fictional and marked SPECIMEN.
 
 MIT licensed. See [LICENSE](LICENSE). Postcode data © [GeoNames](https://www.geonames.org/),
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), reduced to the states of each postcode
-([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)). The web app bundles
-open-source packages and the Inter and Fraunces fonts under their own licences (MIT, ISC and the
-SIL Open Font License 1.1); their notices ship with it in
-[`THIRD-PARTY-NOTICES.txt`](src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt), written when the web app is
+([`LICENSE-GeoNames.txt`](src/ordnung/rules/data/LICENSE-GeoNames.txt)). The web app bundles open-source packages and
+the Inter and Fraunces fonts under their own licences (MIT, ISC and the SIL Open Font License 1.1); their notices ship
+with it in [`THIRD-PARTY-NOTICES.txt`](src/ordnung/web/dist/THIRD-PARTY-NOTICES.txt), written when the web app is
 built. The Python packages Ordnung runs on are not bundled: pip installs each with its own licence.

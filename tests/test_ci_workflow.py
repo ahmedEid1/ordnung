@@ -105,7 +105,8 @@ def test_only_a_pull_request_s_older_run_is_cancelled() -> None:
 def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     """The release gate counts a run as passed when its macOS or Windows job failed while that job may fail. It
     is required now; only the weekly check of Claude Code's flags, which installs whatever Anthropic released
-    last, still shows a failure without failing the run. The README says so."""
+    last, still shows a failure without failing the run. The guide says so, and neither it nor README says
+    otherwise."""
     jobs = _jobs()
     assert "continue-on-error" not in jobs["other-systems"]
     assert [name for name, job in jobs.items() if "continue-on-error" in job] == ["claude-code"]
@@ -116,8 +117,13 @@ def test_a_failure_on_macos_or_windows_fails_the_run() -> None:
     assert [f"{name}: {step.get('name')}" for name, step in steps if "continue-on-error" in step] == []
     comment = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").split("  other-systems:", 1)[1]
     assert "without failing the run" not in comment.split("    steps:", 1)[0]
-    readme = " ".join((ROOT / "README.md").read_text(encoding="utf-8").split())
-    assert "not yet required to pass" not in readme and "Not yet a gate: weekly and on main" not in readme
+    guide = " ".join((ROOT / "docs/guide.md").read_text(encoding="utf-8").split())
+    assert "(weekly and on main, required to pass)" in guide
+    for name in ("README.md", "docs/guide.md"):
+        text = " ".join((ROOT / name).read_text(encoding="utf-8").split())
+        assert "not yet required to pass" not in text and "Not yet a gate: weekly and on main" not in text, (
+            name
+        )
 
 
 def test_a_hung_test_is_named_and_no_unread_coverage_report_is_written() -> None:
@@ -326,7 +332,7 @@ def test_the_weekly_run_fails_once_the_rules_were_last_checked_more_than_ninety_
     assert "python -m scripts.check_rules_age" in _script(job)
 
 
-def test_the_weekly_run_installs_claude_code_as_the_readme_says_and_checks_its_flags() -> None:
+def test_the_weekly_run_installs_claude_code_as_the_guide_says_and_checks_its_flags() -> None:
     """Every call passes over a dozen Claude Code flags, and CI only ever ran a fake ``claude``. The weekly
     run installs the real one with Anthropic's installer (the newest, and the oldest Ordnung takes) and checks
     them without signing in; while the job is new a failure shows without failing the run."""
@@ -334,7 +340,7 @@ def test_the_weekly_run_installs_claude_code_as_the_readme_says_and_checks_its_f
     assert _weekly(job) and job["continue-on-error"] is True
     assert job["strategy"]["matrix"]["claude"] == ["latest", version_text(MIN_CLAUDE_VERSION)]
     install = native_install("linux")
-    assert f"`{install}`" in (ROOT / "README.md").read_text(encoding="utf-8")
+    assert f"`{install}`" in (ROOT / "docs/guide.md").read_text(encoding="utf-8")
     assert f"{install} -s ${{{{ matrix.claude }}}}" in _script(job)
     assert "python -m scripts.check_claude_flags" in _script(job)
     assert "ANTHROPIC_API_KEY" not in json.dumps(job) and "secrets." not in json.dumps(job)

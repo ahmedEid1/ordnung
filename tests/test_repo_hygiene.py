@@ -265,12 +265,15 @@ def test_the_feature_request_warns_against_real_letters_too() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_contributors_get_the_node_versions_the_readme_requires() -> None:
-    """README: Node.js 20.19+ or 22.12+ (what Vite 8 needs). The web app's package says so, and
+def test_contributors_get_the_node_versions_the_guide_requires() -> None:
+    """The guide, *From a source checkout*: the Node.js the web app's package asks for (what Vite 8 needs), and
     `.nvmrc` picks the line CI tests on."""
-    assert "Node.js 20.19+ or 22.12+" in _text("README.md")
     package = json.loads(_text("web/package.json"))
     lock = json.loads(_text("web/package-lock.json"))
+    lines = re.fullmatch(r"\^(\d+\.\d+)\.0 \|\| >=(\d+\.\d+)\.0", package["engines"]["node"])
+    assert lines, package["engines"]
+    source_checkout = " ".join(_text("docs/guide.md").split("**From a source checkout**", 1)[1].split())
+    assert f"Node.js {lines[1]}+ or {lines[2]}+" in source_checkout
     assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
     assert lock["packages"][""]["engines"] == package["engines"]
     nvmrc = _text(".nvmrc").strip()
@@ -284,15 +287,15 @@ def test_contributors_get_the_node_versions_the_readme_requires() -> None:
 
 def test_contributors_learn_that_the_browser_checks_want_the_node_axe_asks_for() -> None:
     """`@axe-core/playwright`, the accessibility checker of `make e2e` and `make ui-audit`, asks for a newer
-    Node than the web app's own range: README and CONTRIBUTING say so next to that range."""
+    Node than the web app's own range: the guide and CONTRIBUTING say so next to that range."""
     lock = json.loads(_text("web/package-lock.json"))
     axe = lock["packages"]["node_modules/@axe-core/playwright"]
     assert axe["engines"] == {"node": ">=22.12.0"}, (
-        "a new axe: say what Node it asks for in README and CONTRIBUTING"
+        "a new axe: say what Node it asks for in the guide and CONTRIBUTING"
     )
-    readme = " ".join(_text("README.md").split())
+    guide = " ".join(_text("docs/guide.md").split())
     contributing = " ".join(_text("CONTRIBUTING.md").split())
-    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in readme
+    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in guide
     assert "Use 22.12+ for the browser checks (`make e2e`, `make ui-audit`)" in contributing
 
 
