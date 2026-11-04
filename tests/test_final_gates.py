@@ -520,14 +520,35 @@ def test_the_index_reproduce_writes_from_ci_yml_holds_a_gate_per_read(tmp_path: 
     from evals import reproduce
 
     results, index = _published(tmp_path)
-    one_line = WORKFLOW.replace(" \\\n            --max-dangerous-late", " --max-dangerous-late")
     workflow = tmp_path / "ci.yml"
-    workflow.write_text(one_line, encoding="utf-8")  # reproduce reads a gate command on one line
+    workflow.write_text(WORKFLOW, encoding="utf-8")  # holdout4 r1's gate is continued over two lines
     written = reproduce.ci_gates(workflow)
-    reads, gates = final_reads(results), workflow_gates(yaml.safe_load(one_line))
+    reads, gates = final_reads(results), workflow_gates(yaml.safe_load(WORKFLOW))
     assert gate_problems(reads, gates, index, results) == []  # the workflow holds a gate per read
     assert gate_problems(reads, gates, {**index, "gates": written}, results) == []
     assert "heldout" not in written["ask/dev"]["args"]
+
+
+def test_reproduce_reads_a_gate_continued_over_lines_as_the_shell_does(tmp_path: Path) -> None:
+    """A gate command in ci.yml may go on over the next line after a backslash, as holdout4 r1's does in
+    :data:`WORKFLOW` (and ci.yml's own replay without the Land): ``reproduce.ci_gates`` must read the command the
+    shell runs, the same gates as the command written on one line, not stop at the backslash."""
+    pytest.importorskip("yaml")  # PyYAML comes with uvicorn[standard]
+    from evals import reproduce
+
+    assert "\\\n" in WORKFLOW
+    continued, one_line = tmp_path / "continued.yml", tmp_path / "one-line.yml"
+    continued.write_text(WORKFLOW, encoding="utf-8")
+    one_line.write_text(
+        WORKFLOW.replace(" \\\n            --max-dangerous-late", " --max-dangerous-late"), encoding="utf-8"
+    )
+    gates = reproduce.ci_gates(continued)
+    assert gates == reproduce.ci_gates(one_line)
+    assert gates["benchmark/holdout4"] == {
+        "conditions": ["ordnung"],
+        "min_accuracy": 0.973,
+        "max_dangerous_late": 0.0179,
+    }
 
 
 def test_the_final_run_s_gates_are_its_replays() -> None:
