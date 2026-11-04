@@ -172,6 +172,8 @@ class Audit:
         self.pack_dates = {"X": "2028-02-29", "Y": "2028-03-31"}
         #: Per case other than D001: the dates its X and Y give.
         self.case_dates: dict[str, dict[str, str]] = {}
+        #: Per case: the ``Procedure began:`` line of its X and Y (a day or "not stated"); none when it is not here.
+        self.case_began: dict[str, dict[str, str]] = {}
         self.extra: list[str] = []
 
     def path(self, name: str) -> Path:
@@ -199,8 +201,10 @@ class Audit:
             (pack / "letters" / name).write_bytes(self.opaque[Path(name).stem])
             rows.append({"case": case, "letter": f"letters/{name}", "slot": ref["slot"], "kind": None})
             for side, day in self.case_dates.get(case, self.pack_dates).items():
+                began = self.case_began.get(case, {}).get(side)
+                line = f"Procedure began: {began}\n" if began else ""
                 (pack / f"{case}-{side}.md").write_text(
-                    f"Case {case}, derivation {side}\nSlot: {ref['slot']}\nDate: {day}\n\nDerivation:\n-\n",
+                    f"Case {case}, derivation {side}\nSlot: {ref['slot']}\nDate: {day}\n{line}\nDerivation:\n-\n",
                     encoding="utf-8",
                 )
         (pack / "cases.json").write_text(json.dumps(rows), encoding="utf-8")
@@ -567,6 +571,59 @@ def test_a_letter_and_its_photo_that_mean_different_things_are_refused(
     _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
 
 
+@pytest.mark.parametrize(
+    ("photo_began", "letter_began"),
+    [(None, "2024-11-01"), ("2024-11-01", None), ("2024-11-01", "2024-10-15")],
+    ids=["only-the-letter-states-a-start", "only-the-photo-states-a-start", "two-start-days"],
+)
+def test_a_letter_and_its_photo_that_state_another_procedure_start_are_refused(
+    audit: Audit, capsys: pytest.CaptureFixture[str], photo_began: str | None, letter_began: str | None
+) -> None:
+    """The label check takes a slot's procedure start from its fact where the label states none, and for a BW, BY
+    or MV letter that start decides the 3rd or the 4th day: two rulings for the same side and date that state the
+    start differently, or only one of them states it, mean different things and are refused."""
+
+    def began(day: str | None) -> dict[str, Any]:
+        """Both sides wrong, with the label's date and the start the ruling finds in the letter, or none."""
+        ruling = copy.deepcopy(UPHELD) | {"verdict": "both_wrong", "date": "2027-03-15"}
+        if day is not None:
+            ruling["fact"] = ruling["fact"] | {"procedure_began": day}
+        return ruling
+
+    _photo_case(audit, began(photo_began))
+    _letter_case(audit, began(letter_began), label_is_x=True)
+    _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+
+def test_a_ruling_upholds_a_side_with_its_procedure_start(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The comparison sends a slot whose two sides give the same date when the second reading states the day the
+    procedure began and the label does not (or another day); the pack gives each side a ``Procedure began:`` line.
+    ``X_right`` or ``Y_right`` upholds that side's start with its date, so the fact states that start, or none; a
+    fact that states another is refused. ``ambiguous`` is not open to such a case: it has one date."""
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    audit.case_dates["D002"] = {"X": "2027-03-15", "Y": "2027-03-15"}
+    audit.case_began["D002"] = {"X": "not stated", "Y": "2024-11-01"}
+    assert build.main(audit.write()) == 0  # the label's side, which states no start: a fact without one
+    assert "procedure_began" not in audit.facts()["letters"][K1]["slots"]["i0"]
+    (audit.path("dataset") / SPLIT / "facts.json").unlink()
+    the_start = copy.deepcopy(UPHELD)
+    the_start["fact"] = the_start["fact"] | {"procedure_began": "2024-11-01"}
+    _photo_case(audit, the_start)
+    _refused(audit, capsys, "D002: its fact states another procedure start than the side it upholds")
+    _photo_case(audit, the_start | {"verdict": "Y_right"})  # the second reading's side, with its start
+    assert build.main(audit.write()) == 0
+    assert audit.facts()["letters"][K1]["slots"]["i0"]["procedure_began"] == "2024-11-01"
+    (audit.path("dataset") / SPLIT / "facts.json").unlink()
+    _photo_case(audit, copy.deepcopy(UPHELD) | {"verdict": "Y_right"})
+    _refused(audit, capsys, "D002: its fact states another procedure start than the side it upholds")
+    open_ = {"source": "A1p", "land": None, "ambiguous": [{"from": "2027-03-15", "steps": []}] * 2}
+    ambiguous = {"verdict": "ambiguous", "candidates": ["2027-03-15", "2027-03-15"], "fact": open_}
+    _photo_case(audit, copy.deepcopy(UPHELD) | ambiguous)
+    _refused(audit, capsys, "D002: an ambiguous verdict names two or more candidates")
+
+
 def test_a_facts_meaning_ignores_its_form() -> None:
     """The order of the conventions and of an ambiguous fact's readings, the Land where it changes no date, and the
     event's words are form; the date, the candidates and the conventions are meaning."""
@@ -579,6 +636,11 @@ def test_a_facts_meaning_ignores_its_form() -> None:
     assert meaning(dated) == meaning(same)
     assert meaning(dated) != meaning(dated | {"conventions": ["c02"]})
     assert meaning(dated) != meaning(dated | {"from": "2027-03-16"})
+    # the procedure start is meaning: the label check reads it for a BW, BY or MV letter's 3rd or 4th day
+    began = dated | {"procedure_began": "2024-11-01"}
+    assert meaning(dated) != meaning(began)
+    assert meaning(began) != meaning(dated | {"procedure_began": "2024-10-15"})
+    assert meaning(began) == meaning(began | {"land": "NW", "conventions": ["c03", "c02"]})
     one, two = {"from": "2027-03-15", "steps": []}, {"from": "2027-03-16", "steps": []}
     open_ = {"source": "A1p", "land": None, "ambiguous": [one, two]}
     assert meaning(open_) == meaning(open_ | {"ambiguous": [two, one]})

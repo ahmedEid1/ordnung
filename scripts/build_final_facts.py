@@ -1,4 +1,4 @@
-"""Build a final split's ``evals/dataset/<split>/facts.json`` from its sealed blind audit (runbook §2.4, step 6).
+"""Build a final split's ``evals/dataset/<split>/facts.json`` from its sealed blind audit.
 
     python -m scripts.build_final_facts --seal $F/audit-seal.txt --map $F/audit-map.json \\
         --a1 $F/a1-*/work/audit/derived-b*.json --a1c $F/a1c/work/audit/derived-conv.json \\
@@ -34,15 +34,25 @@ a label slot with a date or ``"ambiguous"`` and no fact; a final letter with no 
 an id the manifest or the maps do not know (a map's entry, a reader's letter, a key's case or entry, a verdict's case,
 a slot the label does not have); a key's case whose X and Y are not the label and the second reading; a slot ruled
 twice, or ruled on a letter and on its photo with rulings that mean different things; a verdict that is not one of the
-four, a ``both_wrong`` without its date, and an ``ambiguous`` verdict that names fewer than two candidates, a
-candidate that is neither X's date nor Y's in its pack, no date of one of the two sides, or a fact that is not
-ambiguous; and a facts file the grammar refuses. It prints ids and counts only, never a fact, a date or a reason.
+four, a ``both_wrong`` without its date, an ``X_right`` or ``Y_right`` whose dated fact states another procedure start
+than the side it upholds (that side's ``Procedure began:`` line in the pack, none when it says ``not stated`` or has
+no such line), and an ``ambiguous`` verdict that names fewer than two candidates, a candidate that is neither X's date
+nor Y's in its pack, no date of one of the two sides, or a fact that is not ambiguous; and a facts file the grammar
+refuses. It prints ids and counts only, never a fact, a date or a reason.
+
+The audit comparison also sends a slot whose second reading gives the label's date but another day on which the
+authority's procedure began (stated on one side only, or two different days). Such a case is ruled as any other:
+``X_right`` or ``Y_right`` upholds one side's start with the date, and its fact states that start or none (refused
+otherwise, above); a ruling for the label's side is applied as it stands, and one for the second reading, or
+``both_wrong``, goes back to the writer like a date. ``ambiguous`` is refused for it: its two sides give one date, and
+an ambiguous verdict names two candidates or more.
 
 A letter and its photo are two cases of the adjudication, and the pack draws which side is X for each case on its
 own, so the same ruling can read ``X_right`` in one and ``Y_right`` in the other. The two rulings are compared by what
 they mean (``fact_meaning``): the side each upholds (the label, the second reading, both wrong, or ambiguous), the date
-or the candidates its fact derives under the grammar, the other dates it states, and the conventions it applies; not
-by the verdict's letters or the fact's form. The letter's fact is the one applied.
+or the candidates its fact derives under the grammar, the other dates it states, the day it states the procedure
+began, and the conventions it applies; not by the verdict's letters or the fact's form. The letter's fact is the one
+applied.
 """
 
 from __future__ import annotations
@@ -77,6 +87,7 @@ SIDES = ("label", "a1c")
 CONTRACT_SLOTS = verify_labels.CONTRACT_SLOTS
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 _DATE_LINE = re.compile(r"^Date:\s*(.*)$", re.MULTILINE)
+_BEGAN_LINE = re.compile(r"^Procedure began:\s*(.*)$", re.MULTILINE)
 
 
 class BuildError(Exception):
@@ -276,17 +287,31 @@ def _needs_fact(label: Any) -> bool:
     return isinstance(label, str) and (label == verify_labels.AMBIGUOUS or bool(_ISO_DAY.fullmatch(label)))
 
 
+def _pack_side(pack: Path, case: str, side: str) -> str:
+    path = pack / "pack" / f"{case}-{side}.md"
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        raise BuildError(f"{case}: no {path.name} in the pack") from None
+
+
 def _pack_dates(pack: Path, case: str) -> dict[str, set[str]]:
     """The dates X and Y each give in the case pack (``Date:`` lines; an ambiguous side gives each of its dates)."""
-    dates: dict[str, set[str]] = {}
-    for side in ("X", "Y"):
-        path = pack / "pack" / f"{case}-{side}.md"
-        try:
-            text = path.read_text(encoding="utf-8")
-        except OSError:
-            raise BuildError(f"{case}: no {path.name} in the pack") from None
-        dates[side] = {day for line in _DATE_LINE.findall(text) for day in _ISO_DAY.findall(line)}
-    return dates
+    return {
+        side: {
+            day for line in _DATE_LINE.findall(_pack_side(pack, case, side)) for day in _ISO_DAY.findall(line)
+        }
+        for side in ("X", "Y")
+    }
+
+
+def _pack_began(pack: Path, case: str, side: str) -> str | None:
+    """The day one side of a case says its procedure began (its ``Procedure began:`` line), or ``None`` when it says
+    ``not stated`` or the pack gives no such line (neither side states one)."""
+    days = [
+        day for line in _BEGAN_LINE.findall(_pack_side(pack, case, side)) for day in _ISO_DAY.findall(line)
+    ]
+    return days[0] if days else None
 
 
 def load_rulings(
@@ -365,6 +390,14 @@ def load_rulings(
                 raise BuildError(f"{case}: an ambiguous verdict keeps a date of each side")
             if "ambiguous" not in fact:
                 raise BuildError(f"{case}: an ambiguous verdict's fact is no ambiguous fact")
+        if (
+            said in ("X_right", "Y_right")
+            and "undatable" not in fact
+            and "ambiguous" not in fact
+            and fact.get("procedure_began") != _pack_began(pack, case, said[0])
+        ):
+            # a side is upheld with its procedure start: the start it states, or none
+            raise BuildError(f"{case}: its fact states another procedure start than the side it upholds")
         upheld = str(drawn[said[0]]) if said in ("X_right", "Y_right") else str(said)
         rulings.append(Ruling(case, entry_id, slot, str(said), dict(fact), found[0], upheld))
     return rulings
@@ -376,8 +409,9 @@ def load_rulings(
 
 
 def fact_meaning(fact: Mapping[str, Any], case: str, slot: str) -> tuple[Any, ...]:
-    """What ``verify_labels`` reads from a slot's fact, whatever its form: the date it derives and the other dates
-    it states, the candidates of an ambiguous fact, or that the letter cannot be dated; and the conventions it
+    """What ``verify_labels`` reads from a slot's fact, whatever its form: the date it derives, the other dates it
+    states and the day its procedure began (which decides a BW, BY or MV letter's 3rd or 4th day where the label
+    states none), the candidates of an ambiguous fact, or that the letter cannot be dated; and the conventions it
     applies (which the label's tags must be). The order of the conventions or of the readings, the Land where it
     changes no date, the event's words and the way to a date are form."""
     try:
@@ -391,7 +425,14 @@ def fact_meaning(fact: Mapping[str, Any], case: str, slot: str) -> tuple[Any, ..
         return ("ambiguous", tuple(sorted(set(value[1]))), conventions)
     fn, args, region = cast(verify_labels.Rule, value)
     stated = sorted({f(*a, region=r).isoformat() for f, a, r in parsed.conflicts.get(slot, [])})
-    return ("dated", fn(*args, region=region).isoformat(), tuple(stated), conventions)
+    began = parsed.began.get(slot)
+    return (
+        "dated",
+        fn(*args, region=region).isoformat(),
+        tuple(stated),
+        began.isoformat() if began else None,
+        conventions,
+    )
 
 
 def _meaning(ruling: Ruling) -> tuple[Any, ...]:

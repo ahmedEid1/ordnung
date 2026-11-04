@@ -398,3 +398,66 @@ def test_the_fix_session_knows_how_a_slot_left_open_is_written() -> None:
         "`undated_item`",
     ):
         assert words in text, words
+
+
+def test_the_first_adjudication_decides_a_case_whose_sides_differ_only_in_the_procedure_start() -> None:
+    """The comparison also sends a slot whose second reading states the day the authority's procedure began
+    otherwise (on one side only, or two different days), even with the same date; its pack then gives each side a
+    ``Procedure began:`` line. The brief says such a case exists, what that line is, that a side is upheld only when
+    its date and its start both follow from the letter (the one rule for the fact's ``procedure_began``), what each
+    verdict does to the start, and that ``ambiguous`` is not open to a case with one date."""
+    text = _text("a1p")
+    task, folder = _flat(_section(text, "## The task")), _flat(_section(text, "## Your folder"))
+    write, verdicts = (
+        _flat(_section(text, "## What you write")),
+        _flat(_section(text, "## What each verdict does")),
+    )
+    assert (
+        "or the same date and a different day on which the procedure of an authority's decision began" in task
+    )
+    for words in (
+        "`Procedure began:` line",
+        "`not stated`",
+        "where neither side states one, neither file has it",
+    ):
+        assert words in folder, words
+    for words in (
+        "for example), whatever X or Y assume. When the letter states no such day, leave the key out",
+        "A side is right only when both its date and its `Procedure began:` line follow from the letter",
+        "the `fact` of `X_right` or `Y_right` states the procedure start of the side it upholds, or none",
+        "the verdict is `both_wrong`, with that date",
+    ):
+        assert words in write, words
+    for words in (
+        "its date and its procedure start stay",
+        "with your date, the procedure start your `fact` states or that it states none",
+        "decides which procedure start the slot keeps",
+        "`ambiguous` is not open to such a case",
+    ):
+        assert words in verdicts, words
+
+
+def test_the_fix_session_sets_or_removes_the_day_a_procedure_began() -> None:
+    """A ruling for the second reading's procedure start goes to the fix session with that start, or with "not
+    stated": its brief says how the slot's ``procedure_began`` is added, changed or removed, and that the date may
+    stay as it is."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "gives a slot's procedure start",
+        "`procedure began: YYYY-MM-DD` or `procedure began: not stated`",
+        "passes that day to `law.py` as `procedure_began`, or passes none",
+        "the item's `spec` then states that day as its `procedure_began`, or holds no such key",
+        "Its date may stay as it is",
+    ):
+        assert words in text, words
+
+
+def test_the_conventions_reading_keeps_the_day_a_procedure_began() -> None:
+    """No labelling convention says when a procedure began: A1c's fact keeps the sealed fact's ``procedure_began``,
+    or its lack of one, so the comparison's second count of procedure starts differs from the first only where A1c
+    changed nothing it may change."""
+    text = _flat(_text("a1c"))
+    assert (
+        "`procedure_began` stays as the sealed fact gives it, or absent where it gives none: no convention adds, "
+        "changes or removes the day a procedure began" in text
+    )
