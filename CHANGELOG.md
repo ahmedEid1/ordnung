@@ -97,6 +97,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   state, so such a date can be several days early. On the benchmark no date and no count changes: six replayed dates
   show another confidence (five now say "Worth a second look", one reading under the wrong law shows medium instead of
   low), and the code-check ablation was replayed again for the same reason.
+- **A Bremen authority's letter counts 4 days.** Posted from 1 January 2025, it now counts as delivered on the 4th day
+  (it counted 3, a day early, and said Ordnung couldn't confirm Bremen's rule): Bremen's law follows the federal one.
+  Bremen's, Rhineland-Palatinate's and Saxony-Anhalt's rules were checked against the act their parliament adopted,
+  as their gazettes could not be reached. The Saarland's rule still couldn't be read, so Ordnung keeps the 3rd day
+  there, at lower confidence. Schleswig-Holstein's rules for a decision fetched from a portal were read too and need
+  no change. On the benchmark no date and no count changes.
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.

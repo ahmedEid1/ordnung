@@ -242,8 +242,11 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     expect(reason(threeDays)).toContain(DAYS);
     const both = makeReceipt({ warnings: [...threeDays.warnings, ...holiday.warnings] });
     expect(reason(both)).toContain(DAYS);
-    // Hessen's authorities count 3 days anyway: only its holidays may move the date
+    // Hessen's authorities count 3 days anyway, and the Saarland's 4th day isn't confirmed: only their holidays may
+    // move the date; Bremen's count the 4th day since 2025 (§ 1 BremVwVfG)
     expect(reason(both, "HE")).toContain(HOLIDAYS);
+    expect(reason(both, "SL")).toContain(HOLIDAYS);
+    expect(reason(both, "HB")).toContain(DAYS);
     expect(reason(makeReceipt({ warnings: [...threeDays.warnings, ...earlier.warnings] }))).toContain(BACKWARDS);
     // an e-mailed decision counted from the day it was sent: every state but Brandenburg counts later
     const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be several days early, more around weekends and holidays.";

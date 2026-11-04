@@ -299,7 +299,7 @@ def test_the_shape_alone_passes_that_tax_answer() -> None:
 
 #: Länder whose deemed delivery of an authority's letter is four days, as a tax office's is (§ 122 AO); the
 #: others, and the nationwide calendar, still count three for a letter whose sender the reading doesn't name.
-FOUR_DAYS = ("BB", "BE", "BW", "BY", "HH", "MV", "NI", "NW", "RP", "SH", "SN", "ST")
+FOUR_DAYS = ("BB", "BE", "BW", "BY", "HB", "HH", "MV", "NI", "NW", "RP", "SH", "SN", "ST")
 
 
 @pytest.mark.parametrize("land", FOUR_DAYS)

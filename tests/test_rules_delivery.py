@@ -239,8 +239,13 @@ _LAND_DAYS: list[tuple[str | None, str, str, str, str, str | tuple[str, ...] | N
     ("BW", "2025-02-03", "post", "2025-02-06", "vwvfg_land_days", None),
     ("BW", "2025-02-06", "post", "2025-02-09", "vwvfg_land_days", None),
     ("BW", "2025-02-07", "post", "2025-02-11", "vwvfg_41_2", None),
-    # Bremen and the Saarland (no text could be checked), or no Land: the earlier 3rd day, with the warning
-    ("HB", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    # Bremen: the federal VwVfG by reference since 6 April 2024 (§ 1 Abs. 1 BremVwVfG), so the 4th day for a
+    # posting from 1 January 2025 and the 3rd before it
+    ("HB", "2024-12-30", "post", "2025-01-02", "vwvfg_41_2", None),
+    ("HB", "2025-01-01", "post", "2025-01-05", "vwvfg_41_2", None),
+    ("HB", "2026-09-29", "post", "2026-10-03", "vwvfg_41_2", None),  # a Saturday, not moved
+    ("HB", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+    # the Saarland (its 2025 act could not be read), or no Land: the earlier 3rd day, with the warning
     ("SL", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
     (None, "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
     ("BE", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
@@ -338,11 +343,37 @@ def test_the_email_note_tells_the_law_from_ordnungs_count() -> None:
 
 
 def test_the_land_tables() -> None:
-    """Every Land is in one table: the 4th day from its switch, the 3rd by its own law, or not confirmed."""
-    assert VWVFG_FOUR_DAY_FROM["TH"] == VWVFG_FOUR_DAY_FROM["SH"] == date(2025, 1, 1)
+    """Every Land is in one table: the 4th day from its switch, the 3rd by its own law, or not confirmed (the
+    Saarland only)."""
+    assert {VWVFG_FOUR_DAY_FROM[land] for land in ("TH", "SH", "HB")} == {date(2025, 1, 1)}
     assert VWVFG_THREE_DAYS == frozenset({"HE"})
     assert not VWVFG_THREE_DAYS & set(VWVFG_FOUR_DAY_FROM)
-    assert set(VWVFG_FOUR_DAY_FROM) | VWVFG_THREE_DAYS | {"HB", "SL"} == set(REGION_NAMES)
+    assert set(VWVFG_FOUR_DAY_FROM) | VWVFG_THREE_DAYS | {"SL"} == set(REGION_NAMES)
+
+
+def test_the_rules_page_lists_each_lands_day_as_the_engine_counts_it() -> None:
+    """``docs/deadline-rules.md`` section 5 has a row per Land: "4th" where the engine counts the 4th day from the
+    Land's switch, the 3rd for Hessen, "not confirmed" only where Ordnung could not read the rule. Each row names
+    its source, and none says a 4th day is taken unchecked."""
+    page = (Path(__file__).resolve().parents[1] / "docs" / "deadline-rules.md").read_text("utf-8")
+    start = page.index("| Land | Delivery day | Source |")
+    rows: dict[str, tuple[str, str]] = {}
+    for line in page[start:].splitlines()[2:]:
+        if not line.startswith("|"):
+            break
+        land, day, source = (cell.strip() for cell in line.strip().strip("|").split("|"))
+        rows[land] = (day, source)
+    assert set(rows) == set(REGION_NAMES.values())
+    for code, name in REGION_NAMES.items():
+        day, source = rows[name]
+        assert source not in ("", "–", "-"), name
+        assert "not checked" not in day, name
+        if code in VWVFG_FOUR_DAY_FROM:
+            assert "4th" in day and "not confirmed" not in day, name
+        elif code in VWVFG_THREE_DAYS:
+            assert day.startswith("3rd") and "not confirmed" not in day, name
+        else:
+            assert day.startswith("3rd") and "not confirmed" in day, name
 
 
 def test_the_web_app_counts_four_days_in_the_same_lands() -> None:

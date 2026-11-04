@@ -332,9 +332,9 @@ def test_a_date_counted_backwards_waits_and_may_be_late() -> None:
 
 
 def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day() -> None:
-    """Hessen keeps the 3rd day by its own law, and for HB and SL the 4th day isn't confirmed: Ordnung counts 3 days
-    with their Land as without it. Thüringen counts the 4th since 2025 (§ 1 ThürVwVfG): confirming it may move the
-    date."""
+    """Hessen keeps the 3rd day by its own law, and for SL the 4th day isn't confirmed: Ordnung counts 3 days with
+    their Land as without it. Thüringen and Bremen count the 4th since 2025 (§ 1 ThürVwVfG, § 1 BremVwVfG):
+    confirming either may move the date."""
     spec = DateSpec(
         type="relative",
         anchor="deemed_delivery",
@@ -347,9 +347,10 @@ def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day() -> No
     days = warnings(spec, document_date=D("2026-09-29"), delivery_scope="vwvfg")
     assert days == [LAND_DAYS_UNCONFIRMED]
     assert waits_for_sender_land(days, "BY") == LandWait(waits=True, may_be_late=False)
-    for land in ("HE", "HB", "SL"):
+    for land in ("HE", "SL"):
         assert waits_for_sender_land(days, land) == (False, False)
     assert waits_for_sender_land([LAND_DAYS_UNCONFIRMED], "TH") == (True, False)
+    assert waits_for_sender_land(days, "HB") == (True, False)
 
 
 def test_an_emailed_decision_waits_for_every_land_but_brandenburg() -> None:
