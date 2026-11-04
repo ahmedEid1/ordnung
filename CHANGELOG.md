@@ -5,6 +5,19 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
+## 0.4.0 — 2026-11-09
+
+The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says
+what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
+
+In short: whose it is, on My numbers and in Ask, the Ideas, your reminders and the Timeline; a switch for
+*Text in pictures*; each state's own day an authority's letter counts as delivered; an evaluation report
+anyone can reproduce, and the tooling for a pre-registered final run; macOS and Windows required in CI; and a
+short README with a guide for the rest.
+
+The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until then,
+install this version by its commit, as *Updating* says for a release without a tag.
+
 ### Added
 
 - **Whose number it is.** A number from a letter you filed for someone in your household is listed under *About
@@ -83,6 +96,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   measured. Installing, updating, a tour of the app, the environment variables Ordnung reads and every
   limitation are in [docs/guide.md](docs/guide.md), and [docs/README.md](docs/README.md) lists every document
   by reader.
+- The web app is built with newer minor and patch versions of its packages (React Query 5.105, lucide-react
+  1.64, motion 14.8, React Router 8.5.1), and a test checks that the committed build bundles exactly the
+  versions `web/package-lock.json` pins.
 
 ### Fixed
 

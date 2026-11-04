@@ -12,7 +12,7 @@ const PICTURE_TEXT: PictureTextStatus = {
 };
 
 export const HEALTH: Health = {
-  version: "0.3.0",
+  version: "0.4.0",
   data_dir: "~/.local/share/ordnung-demo",
   demo: true,
   simulated_today: TODAY,

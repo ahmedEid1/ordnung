@@ -81,7 +81,18 @@ def test_the_notes_are_the_changelog_s_section_for_the_version() -> None:
     assert second.startswith("The second numbered release.")
     assert "### Added" in second and "### Upgrading" in second
     assert "Dates you add yourself can repeat" in second
-    for released in (first, second, section(CHANGELOG, VERSION)):
+    assert "**Whose number it is.**" not in second  # the next version's lines stay out
+    third = section(CHANGELOG, "0.4.0")
+    assert third.startswith("The third numbered release.")
+    assert "### Added" in third and "### Upgrading" in third
+    assert "**Whose number it is.**" in third
+    # what it holds in one paragraph, and why it has no tag yet: install it by its commit until then
+    assert "\n\nIn short: " in third
+    assert (
+        "The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until "
+        "then, install this version by its commit"
+    ) in " ".join(third.split())
+    for released in (first, second, third, section(CHANGELOG, VERSION)):
         assert not re.search(r"^## ", released, re.M)  # neither its own heading nor the next one
     assert not section(CHANGELOG, VERSION).startswith("#")  # a sentence first, not a heading
     assert section(TWO_VERSIONS, "0.3.0") == (
