@@ -81,9 +81,10 @@ sent by post counts as notified (Bekanntgabe des Verwaltungsaktes), from one of 
   changes that rule or says which wording applies to procedures already under way.
 - Where the portal could not be fetched, the Land's law gazette (Gesetz- und Verordnungsblatt) as the Land's
   government, its parliament or the gazette's publisher puts it online (Berlin, Hamburg, Hessen,
-  Mecklenburg-Vorpommern, Schleswig-Holstein, Thüringen): the provisions as promulgated that make up the rule in
-  force, that is the section itself where it was enacted or promulgated whole, or else the amending provisions that
-  set it, with the provision that puts them into force and any transitional provision.
+  Mecklenburg-Vorpommern, Schleswig-Holstein, Thüringen): the provisions as promulgated, that is the section itself
+  where it was enacted or promulgated whole, or else the amending provisions that change it, with any transitional
+  provision and the provision on their coming into force (for Berlin and Hessen that provision is not in the block
+  but quoted under "How the file was made").
 
 ### What the file holds
 
@@ -110,8 +111,9 @@ sent by post counts as notified (Bekanntgabe des Verwaltungsaktes), from one of 
   Mecklenburg-Vorpommern's Artikel 1 appears twice, once from each of the two acts named in its "Fundstelle:" lines,
   in the order of those lines.
 - The words are the gazette's, complete and unchanged, apart from white space: every run of white space is one
-  space, a word that the print splits at a line end with a hyphen is joined, and running heads, page numbers and
-  footnote marks (Hessen's "Artikel 23)" is Artikel 2 with footnote mark 3) are left out. What the print gets wrong
+  space, a word that the print splits at a line end with a hyphen is joined, and running heads, page numbers,
+  footnote marks (Hessen's "Artikel 23)" is Artikel 2 with footnote mark 3) and the sentence numbers that the
+  Bürgerschaft's handbook prints in small raised type in Hamburg's Artikel 54 are left out. What the print gets wrong
   is kept: Mecklenburg-Vorpommern's § 120a ends without its closing quotation mark, and its Artikel 95 Abs. 7 reads
   "Artikel 56 Artikel 73" without a comma, both as printed. The signature lines under an act ("Ausgefertigt ...",
   the place, the day and the signatories) are left out.
@@ -136,16 +138,16 @@ and shows the block's reading. The act's day, 13 December, is written into the p
 hand; the next act that changed the statute, of 26 March 2025, cites it as "Gesetz vom 13. Dezember 2024 (GVOBl.
 Schl.-H. S. 934)".
 
-For each gazette source, the acts that changed the statute after the act held were looked for, so that the block is
-the rule in force on the day in the table:
+For each gazette source, the acts that changed the statute after the act held were looked for, up to the day in the
+table. Where the provision of an act held on its coming into force is not in the block, it is quoted here:
 
-- Berlin. The Act of 21 April 2016 came into force on the day after its promulgation. Its § 1 Abs. 1 applies the
-  federal Verwaltungsverfahrensgesetz "in der jeweils geltenden Fassung". Each later amending act cites the one
-  before it: Gesetz vom 5. Juli 2018 (GVBl. S. 462, Artikel 1: § 8), Gesetz vom 12. Oktober 2020 (GVBl. S. 807,
-  Artikel 4: §§ 3, 4), Gesetz vom 17. Dezember 2020 (GVBl. S. 1485, Artikel 4: § 2 Abs. 5), Gesetz vom 27. September 2021
-  (GVBl. S. 1117, Artikel 13: § 8), Gesetz vom 10. Juli 2024 (GVBl. S. 465, Artikel 2: § 2 Abs. 2), Gesetz vom
-  11. Dezember 2025 (GVBl. S. 590, Artikel 5: § 8) and Gesetz vom 1. April 2026 (GVBl. S. 158, Artikel 4: § 6 Abs.
-  2). None changes § 1. Read at
+- Berlin. § 12 of the Act of 21 April 2016 (GVBl. 2016 Nr. 11, S. 220), not held in the block, reads in its first
+  sentence: "Dieses Gesetz tritt am Tage nach der Verkündung im Gesetz- und Verordnungsblatt für Berlin in Kraft."
+  Each later amending act cites the one before it: Gesetz vom 5. Juli 2018 (GVBl. S. 462, Artikel 1: § 8), Gesetz
+  vom 12. Oktober 2020 (GVBl. S. 807, Artikel 4: §§ 3, 4), Gesetz vom 17. Dezember 2020 (GVBl. S. 1485, Artikel 4:
+  § 2 Abs. 5), Gesetz vom 27. September 2021 (GVBl. S. 1117, Artikel 13: § 8), Gesetz vom 10. Juli 2024 (GVBl.
+  S. 465, Artikel 2: § 2 Abs. 2), Gesetz vom 11. Dezember 2025 (GVBl. S. 590, Artikel 5: § 8) and Gesetz vom
+  1. April 2026 (GVBl. S. 158, Artikel 4: § 6 Abs. 2). None changes § 1. Read at
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/18/gvbl/g18180462.pdf,
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/18/gvbl/g20480807.pdf,
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/18/gvbl/g20611485.pdf,
@@ -153,13 +155,16 @@ the rule in force on the day in the table:
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/19/gvbl/g24280465.pdf,
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/19/gvbl/g25360590.pdf and
   https://pardok.parlament-berlin.de/starweb/adis/citat/VT/19/gvbl/g26110158.pdf.
-- Hamburg. The Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes vom 5. Mai 2025 has no
-  provision of its own on its coming into force; Artikel 54 of the constitution puts it into force on the day after
-  the issue of the gazette that carries it (HmbGVBl. Nr. 17 of 13 May 2025). The gazette's subject index for 2025
-  (https://www.luewu.de/wp-content/uploads/2026/02/GVBL-SV-2025.pdf) lists no other change to the act in 2025, and
-  the issues of 2026, Nr. 1 to 33 (https://www.luewu.de/gvbl/2026/), cite it as last changed on 5 May 2025.
+- Hamburg. The Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes vom 5. Mai 2025
+  (HmbGVBl. Nr. 17 of 13 May 2025, S. 338) is in the block whole, up to its signature lines; it has no provision on
+  its coming into force. Artikel 54 of the constitution is in the block. The gazette's subject index for 2025
+  (https://www.luewu.de/wp-content/uploads/2026/02/GVBL-SV-2025.pdf) lists no other change to the act in 2025. Of
+  the issues of 2026, Nr. 1 to 33 (https://www.luewu.de/gvbl/2026/), none changes the act; Nr. 17 cites it as
+  "zuletzt geändert am 5. Mai 2025 (HmbGVBl. S. 338)".
 - Hessen. § 41 is held as promulgated in the Bekanntmachung der Neufassung of 15 January 2010, and Abs. 2a as
-  inserted by Artikel 2 Nr. 5 of the Act of 12 September 2018. Each later amending act cites the one before it:
+  inserted by Artikel 2 Nr. 5 of the Act of 12 September 2018. Artikel 6 of that act (GVBl. 2018 Nr. 21, S. 576),
+  not held in the block, reads: "Dieses Gesetz tritt am Tag nach der Verkündung in Kraft. Abweichend von Satz 1
+  tritt Art. 3 am 1. Dezember 2018 in Kraft." Each later amending act cites the one before it:
   Gesetz vom 13. Dezember 2012 (GVBl. S. 622, Artikel 9: § 96), Gesetz vom 26. Juni 2015 (GVBl. S. 254), Gesetz vom
   12. September 2018 (GVBl. S. 570), Gesetz vom 16. Februar 2023 (GVBl. S. 78, 81) and the Erstes
   Bürokratieabbaugesetz vom 16. Dezember 2025 (GVBl. 2025 Nr. 110, Artikel 40: § 3a Abs. 4). Of these, only the act
@@ -167,28 +172,36 @@ the rule in force on the day in the table:
   https://starweb.hessen.de/cache/GVBL/2015/00016.pdf, https://starweb.hessen.de/cache/GVBL/2023/00006.pdf and
   https://verkuendung.hessen.de/sites/verkuendung.hessen.de/files/veroeffentlichungsplattform_plugin/published/1239/GVBl_2025_Nr_110_Regelungstext.pdf;
   a search of that promulgation platform for the statute's classification number (FFN 304-18) finds no other act.
-- Mecklenburg-Vorpommern. The Act of 11 December 2024 (GVOBl. 2024 Nr. 27) came into force, as far as held here, on
-  1 January 2025 (its Artikel 4). The Erstes Gesetz zur Bürokratieentlastung of 8 July 2026 (GVOBl. 2026 Nr. 21)
-  cites it as the only change since 2020; of 33 issues of 2025 and 2026 read on the Landtag's document server, no
-  other changes the act. Artikel 1 Nr. 14 of the 2026 act comes into force on the day the federal act its Artikel 95
-  Abs. 5 names "[Gesetz zur Fortentwicklung des Verwaltungsverfahrensgesetzes]" comes into force.
-- Schleswig-Holstein. Artikel 1 Nr. 2 of the Act of 13 December 2024 came into force on 1 January 2025 (its Artikel
-  2 Abs. 2). The acts that changed the Landesverwaltungsgesetz after it, each citing the one before it, change other
-  provisions only: Gesetz vom 26. März 2025 (GVOBl. 2025/51), Gesetz vom 10. Juni 2025 (GVOBl. 2025/76) and Gesetz
-  vom 6. Oktober 2026 (GVOBl. 2026/95). Read at
-  https://verkuendungsportal.schleswig-holstein.de/home/gvobl/veroeffentlichungen/2025/2025_juni/2025-76_juni12.pdf
+- Mecklenburg-Vorpommern. The provisions on coming into force of both acts are in the block: Artikel 4 of the Act of
+  11 December 2024 (GVOBl. 2024 Nr. 27, S. 622) and Artikel 95 of the Erstes Gesetz zur Bürokratieentlastung of
+  8 July 2026 (GVOBl. 2026 Nr. 21, S. 754). The opening sentence of the 2026 act's Artikel 1, also in the block,
+  cites the statute in the wording of 6 May 2020 "das durch Artikel 1 des Gesetzes vom 11. Dezember 2024 (GVOBl. M-V
+  S. 617) geändert worden ist". The issues read on the Landtag's document server are, of 2025, Nr. 2, 3, 5, 7 to 11,
+  13, 15, 20, 23 and 26, and, of 2026, Nr. 2 to 5, 7, 9 to 18, 20 to 23 and 27 (issued 22 September 2026); none of
+  them holds another act that changes the statute. Of the issues after Nr. 21 of 2026, Nr. 24, 25 and 26 and every
+  issue after Nr. 27 were not read: they were not found on that server.
+- Schleswig-Holstein. Artikel 2 of the Act of 13 December 2024 (GVOBl. 2024 Nr. 15, S. 936), on its coming into
+  force, is in the block. The acts that changed the Landesverwaltungsgesetz after it change other provisions only:
+  Gesetz vom 26. März 2025 (GVOBl. 2025/51), Gesetz vom 10. Juni 2025 (GVOBl. 2025/76), Gesetz vom 6. Oktober 2026
+  (GVOBl. 2026/95) and the Gesetz zur Stärkung des Verfassungsschutzes im Lande Schleswig-Holstein vom 15. Oktober
+  2026 (GVOBl. 2026/102 of 30 October 2026), whose Artikel 2 Abs. 2 changes § 181a Abs. 3 Satz 5 only. Each cites
+  the one before it as the last change, except that the acts of 6 and of 15 October 2026 both cite the act of
+  10 June 2025. Read at
+  https://verkuendungsportal.schleswig-holstein.de/home/gvobl/veroeffentlichungen/2025/2025_juni/2025-76_juni12.pdf,
+  https://verkuendungsportal.schleswig-holstein.de/home/gvobl/veroeffentlichungen/2026/2026_10/2026-102_oktober30
   and the same portal's pages for 2025/51 and 2026/95.
-- Thüringen. Artikel 1 of the Act of 2 July 2024 is the Thüringer Verwaltungsverfahrensgesetz itself, enacted whole;
-  it came into force on 1 January 2025, when the act of 2014 it replaces went out of force (Artikel 90). The
-  correction in GVBl. 2024 Nr. 11 p. 522 concerns its Artikel 8 only. The issues read since, 2024 Nr. 10 to 17
-  (Nr. 12 was not found on the server), 2025 Nr. 1 to 14 and 2026 Nr. 1 to 9, hold no change to the act; GVBl. 2025
-  Nr. 13 cites it as "vom 2. Juli 2024 (GVBl. S. 277) in der jeweils geltenden Fassung".
+- Thüringen. Artikel 1 of the Act of 2 July 2024 (GVBl. 2024 Nr. 9, S. 277) is the Thüringer
+  Verwaltungsverfahrensgesetz, printed whole; Artikel 90 (S. 297), on the act's coming into force, is in the block.
+  The correction in GVBl. 2024 Nr. 11 p. 522 concerns its Artikel 8 only. The issues read since, 2024 Nr. 10 to 17,
+  2025 Nr. 1 to 14 and 2026 Nr. 1 to 9, hold no change to the act. 2024 Nr. 12, issued on 30 August 2024
+  (https://parldok.thueringer-landtag.de/ParlDok/dokument/99202), holds ordinances and one announcement only. GVBl.
+  2025 Nr. 13 cites the act as "vom 2. Juli 2024 (GVBl. S. 277) in der jeweils geltenden Fassung".
 
 The sha256 in the table is that of the Land's block: the lines from the Land's name to the last line before the
 blank line that precedes the next Land's name (to the end of the file for the last Land), each ending in a line
 break.
 
-sha256 of `laender.txt`: `722b36759359d61afb77c87d93a90f6b7047fde43c1f39c66f54e6cd1264738b`
+sha256 of `laender.txt`: `702ab0cb73093c83b130ec7dff36d2275050702bcefde49baba10582c3d9fa84`
 
 | Land | Statute | Provisions | Source | Retrieved | sha256 |
 |---|---|---|---|---|---|
@@ -198,7 +211,7 @@ sha256 of `laender.txt`: `722b36759359d61afb77c87d93a90f6b7047fde43c1f39c66f54e6
 | Brandenburg | Verwaltungsverfahrensgesetz für das Land Brandenburg (VwVfGBbg) | §§ 1, 7 | https://bravors.brandenburg.de/gesetze/vwvfgbbg | 2026-11-04 | `5aa4391e03a7d26f8243be8695fd20f0ca34afaac84f2ec65726665636e858a1` |
 | Bremen | not retrieved | – | https://www.transparenz.bremen.de/, https://www.gesetzblatt.bremen.de/ | 2026-11-04 | `ea8e9191906c95e417efddbadbc925f72e9903261e86a35b26e16ea024732512` |
 | Hamburg | Hamburgisches Verwaltungsverfahrensgesetz | Zwölftes Gesetz zur Änderung des Hamburgischen Verwaltungsverfahrensgesetzes; Artikel 54 (Verfassung) | https://www.luewu.de/wp-content/uploads/2025/08/GVBL_HH_2025-17.pdf, https://www.hamburgische-buergerschaft.de/resource/blob/1153290/c21dc133a3623d0684ecb939f48c0585/handbuch-2-februar-2026-data.pdf, https://www.luewu.de/wp-content/uploads/2026/02/GVBL-SV-2025.pdf | 2026-11-04 | `254ed304d573e97859beb72275b0a2dde07e3668036e8ac3a20deab67f939f7b` |
-| Hessen | Hessisches Verwaltungsverfahrensgesetz (HVwVfG) | § 41; Artikel 2 (Nr. 5) | https://starweb.hessen.de/cache/GVBL/2010/00003.pdf, https://starweb.hessen.de/cache/GVBL/2018/00021.pdf | 2026-11-04 | `f4a7794c08e24dd1c4db300dc757135e5a8ad1b507fd34c76d8ffcfb06ae87fa` |
+| Hessen | Hessisches Verwaltungsverfahrensgesetz (HVwVfG) | § 41; Artikel 2 (Nr. 5) | https://starweb.hessen.de/cache/GVBL/2010/00003.pdf, https://starweb.hessen.de/cache/GVBL/2018/00021.pdf | 2026-11-04 | `9664a5650965ee91e1539e7f2106328e22a141b479e189dfe93adb01a73cf8cf` |
 | Mecklenburg-Vorpommern | Landesverwaltungsverfahrensgesetz | Artikel 1 (Nr. 14, 34); Artikel 4; Artikel 1 (Nr. 14); Artikel 95 | https://www.dokumentation.landtag-mv.de/parldok/dokument/63481, https://www.dokumentation.landtag-mv.de/parldok/dokument/72069 | 2026-11-04 | `d6db03b4abdcbdd0578b6ac6420808c0e9817f207574460cba0aa38bef33e036` |
 | Niedersachsen | Niedersächsisches Verwaltungsverfahrensgesetz (NVwVfG) | § 1 | https://voris.wolterskluwer-online.de/browse/document/631d25e7-bc57-322f-8763-640c7c45a804, https://voris.wolterskluwer-online.de/browse/document/78aa978e-72b9-39a7-aee5-53b1567912f5 | 2026-11-04 | `4d597a4b7767f71db5e42bb2fe4496d7e860287c7eaa6b6acf0c747fc829a79a` |
 | Nordrhein-Westfalen | Verwaltungsverfahrensgesetz für das Land Nordrhein-Westfalen (Verwaltungsverfahrensgesetz NRW – VwVfG NRW) | §§ 41, 97 | https://recht.nrw.de/lrgv/gesetz/01012025-verwaltungsverfahrensgesetz-fuer-das-land-nordrhein-westfalen | 2026-11-04 | `c61c2ddc3d4063fda0d585f8b6fddb799c879907e5047d022d3ebb6c1dc90101` |
@@ -229,17 +242,18 @@ place.
 
 ### Limits
 
-- Baden-Württemberg's § 102b keeps the wording of the act in force until 6 February 2025 for procedures begun
-  before 7 February 2025. Mecklenburg-Vorpommern's § 120a and Thüringen's § 8 refer to the wording in force before
-  1 January 2025. Those earlier wordings are not here.
-- The sections held for Berlin, Brandenburg, Niedersachsen, Sachsen and Thüringen point to the federal
-  Verwaltungsverfahrensgesetz; its § 41 is in `vwvfg.txt`, in the wording in force on that file's day.
+- Earlier wordings of the law, which are not here, are named in Baden-Württemberg's § 102b ("in der bis zum
+  6. Februar 2025 geltenden Fassung"), Mecklenburg-Vorpommern's § 120a ("in der bis zum 31. Dezember 2024 geltenden
+  Fassung"), Nordrhein-Westfalen's § 97 ("in der zum Zeitpunkt des Beginns des Verfahrensschritts jeweils geltenden
+  Fassung") and Thüringen's § 8 ("nach den bisher geltenden Vorschriften", "nach den bisher geltenden
+  Rechtsvorschriften").
+- The sections held for Berlin, Brandenburg, Niedersachsen, Sachsen and Thüringen name the federal
+  Verwaltungsverfahrensgesetz; its § 41 is in `vwvfg.txt`, in the wording that file's source gave on that file's day.
 - A gazette gives an act as promulgated. Where a block holds amending provisions (Hamburg, Hessen's Abs. 2a,
   Mecklenburg-Vorpommern, Schleswig-Holstein), the section they change is not here in its consolidated wording; for
   Hamburg's § 41 Abs. 2 and Schleswig-Holstein's § 110 Abs. 2, only the words that the amendment replaces are.
-- Whether Artikel 1 Nr. 14 of Mecklenburg-Vorpommern's act of 8 July 2026 is in force depends on the federal act
-  named in its Artikel 95 Abs. 5, which is not here.
-- Thüringen's gazette 2024 Nr. 12 was not found on the Landtag's server; the issues before and after it were read.
+- The federal act that Artikel 95 Abs. 5 of Mecklenburg-Vorpommern's act of 8 July 2026 names, "[Gesetz zur
+  Fortentwicklung des Verwaltungsverfahrensgesetzes]", is not here.
 - Letters of a Land's tax office: the Abgabenordnung is federal law (`ao.txt`). The section that sets its scope,
   § 1 AO, is not among the sections held.
 - A portal shows the wording in force on the day it is read. What it gives as the day each provision took its
