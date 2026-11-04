@@ -864,6 +864,74 @@ def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pyt
     assert live >= 2 and any(command.startswith("make eval-reproduce") for command in commands)
 
 
+#: The options of ``python -m evals.run`` that evals/README.md leaves to ``--help``: the runner's own knobs, which no
+#: recording step needs said. Every other option, the final run's controls among them, is named on the page.
+RUN_OPTIONS_LEFT_TO_HELP = frozenset(
+    {
+        "--allow-errors",
+        "--chart-path",
+        "--concurrency",
+        "--conditions",
+        "--date",
+        "--docs",
+        "--docs-path",
+        "--families",
+        "--help",
+        "--limit",
+        "--manifest",
+        "--max-cost-usd",
+        "--max-dangerous-late",
+        "--min-accuracy",
+        "--model",
+        "--models",
+        "--no-resume",
+        "--quiet",
+        "--recorder-lock",
+        "--refresh",
+        "--resamples",
+        "--resume",
+        "--run-id",
+        "--seed",
+        "--timeout",
+        "--wait-on-limit",
+        "-h",
+    }
+)
+
+
+def test_the_evals_readme_lays_out_every_folder_and_names_every_recording_control() -> None:
+    """evals/README.md is the page the doc map sends a contributor to for where each part of the evaluation lives
+    and how to run it. Its Layout table has a row for every folder and module under evals/, and the page names
+    every subcommand of ``python -m evals.harness`` and every option of ``python -m evals.run`` beyond the runner's
+    own knobs (:data:`RUN_OPTIONS_LEFT_TO_HELP`): the final run's ``--today``, ``--stop-file``, ``--stop-at``,
+    ``--check`` and ``harness retake`` with the rest."""
+    from evals import harness
+    from evals import run as eval_run
+
+    readme = _text("evals/README.md")
+    rows = [line.split("|")[1] for line in _section(readme, "Layout").splitlines() if line.startswith("| `")]
+    laid_out = {name.rstrip("/") for cell in rows for name in re.findall(r"`([^`]+)`", cell)}
+    parts = {
+        path.name
+        for path in (ROOT / "evals").iterdir()
+        if not path.name.startswith((".", "_")) and (path.is_dir() or path.suffix == ".py")
+    }
+    assert sorted(parts - laid_out) == [], "a part of evals/ without its row in evals/README.md's Layout"
+
+    def named(word: str) -> bool:
+        return re.search(rf"(?<![\w-]){re.escape(word)}(?![\w-])", readme) is not None
+
+    import argparse
+
+    commands = next(
+        action for action in harness._parser()._actions if isinstance(action, argparse._SubParsersAction)
+    )
+    assert [name for name in commands.choices if not named(f"evals.harness {name}")] == []
+    options = {option for action in eval_run.build_parser()._actions for option in action.option_strings}
+    assert RUN_OPTIONS_LEFT_TO_HELP <= options, "an option left to --help that the runner no longer has"
+    assert sorted(option for option in options - RUN_OPTIONS_LEFT_TO_HELP if not named(option)) == []
+
+
 class _RunAsked(Exception):
     """Raised in place of a benchmark run, with the configuration ``run_cli`` built for it."""
 
