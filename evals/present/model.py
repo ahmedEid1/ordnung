@@ -31,7 +31,7 @@ from evals.present import MODEL, RESULTS_DIR, PresentError, palette
 
 SCHEMA = "ordnung-eval-presentation/1"
 ROLES = ("final", "held-out", "re-analysis", "re-scored", "iterated", "replay", "archive")
-#: Files beside the results that are not results (EV4's index of them).
+#: Files beside the results that are not results (the results index).
 NOT_RESULTS = frozenset({"INDEX.json"})
 HELD_OUT_SPLITS = ("holdout", "holdout2", "holdout3")
 #: The pre-registered final run's splits (``evals/splits.py``).
@@ -376,7 +376,7 @@ def _ask(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any]
         "harmful": _kn(summary["harmful"]),
         "called_passed": _kn(called_passed),
         # the benchmark's today is not the day it was recorded (schema 2 says both): the claude CLI told the model
-        # that day too, so a date called passed may be the recording day leaking in (the plan's addendum, item 8)
+        # that day too, so a date called passed may be the recording day leaking in
         "two_todays": bool(data.get("today")) and data.get("recorded", data.get("date")) != data.get("today"),
     }
 

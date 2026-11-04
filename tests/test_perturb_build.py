@@ -953,7 +953,7 @@ def test_each_cell_is_scored_against_its_own_letters_clean_reading(
 def test_the_committed_stress_manifest_rebuilds_byte_for_byte(tmp_path: Path) -> None:
     """Every file of both cells (96 letters) rebuilt from the dataset, the committed templates and the seed."""
     if not build.STRESS_MANIFEST.exists() or not templates.TEMPLATES_PATH.exists():
-        pytest.skip("the templates and the stress manifest are written blind in EV8's commit A")
+        pytest.skip("the templates and the stress manifest are written blind after the code freeze")
     committed = json.loads(build.STRESS_MANIFEST.read_text(encoding="utf-8"))
     if not build.pdf_environment_matches(MANIFEST):
         pytest.skip("fpdf2 or zlib differ from the versions the dataset was rendered with")

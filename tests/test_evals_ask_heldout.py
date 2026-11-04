@@ -289,7 +289,7 @@ def test_the_committed_held_out_set_is_the_pre_registered_one() -> None:
     """Once the pre-registration (commit B) exists, the held-out files must be byte for byte what it hashed."""
     prereg = ROOT / "evals" / "preregistration" / "final-0.4.0.json"
     if not prereg.exists():
-        pytest.skip("no pre-registration yet (commit B, after the code freeze)")
+        pytest.skip("no pre-registration yet (it is committed after the code freeze)")
     assert heldout.frozen_mismatches(json.loads(prereg.read_text(encoding="utf-8")), ROOT) == []
 
 
@@ -662,7 +662,7 @@ def _harness() -> Any:
     return harness
 
 
-needs_harness = pytest.mark.skipif(_harness() is None, reason="evals/harness.py (EV3) is not merged yet")
+needs_harness = pytest.mark.skipif(_harness() is None, reason="evals/harness.py is not in this checkout")
 
 
 ONE = ["deadline-steuerbescheid_2025-0"]

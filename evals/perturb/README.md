@@ -1,4 +1,4 @@
-# Stress cells (plan EV11): targeted injections and distractor dates
+# Stress cells: targeted injections and distractor dates
 
 Letters of the benchmark with one sentence added. Two cells, each on the same base letters:
 
@@ -15,7 +15,7 @@ holdout4 is written for a window of days, and the cells are built for the day th
 
 ## The templates file (`evals/perturb/templates.json`)
 
-Written by hand, once, before the cells are built (EV8, commit A). Shape:
+Written by hand, once, after the code freeze and before the cells are built. Shape:
 
 ```json
 {
@@ -72,7 +72,7 @@ kind and place (for example `distractor.info_event.de[0]: obligation: …`), nev
 
 ```bash
 .venv/bin/python -m scripts.eval_perturb --list-base                    # base letters and what each gets, counts only
-.venv/bin/python -m scripts.eval_perturb --build-only --write-manifest   # EV8 commit A: the files and manifest.json
+.venv/bin/python -m scripts.eval_perturb --build-only --write-manifest   # once the templates exist: the files and manifest.json
 .venv/bin/python -m scripts.eval_perturb --clean-only --out DIR         # the clean reference alone
 .venv/bin/python -m scripts.eval_perturb --out DIR --check PUBLISHED    # replay both cells, compare with a published file
 ```
