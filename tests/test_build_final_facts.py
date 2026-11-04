@@ -170,6 +170,8 @@ class Audit:
             },
         }
         self.pack_dates = {"X": "2028-02-29", "Y": "2028-03-31"}
+        #: Per case other than D001: the dates its X and Y give.
+        self.case_dates: dict[str, dict[str, str]] = {}
         self.extra: list[str] = []
 
     def path(self, name: str) -> Path:
@@ -191,16 +193,17 @@ class Audit:
             self.path(name).write_text(json.dumps(doc), encoding="utf-8")
         pack = self.path("pack") / "pack"
         (pack / "letters").mkdir(parents=True, exist_ok=True)
-        (pack / "letters" / "L002.pdf").write_bytes(self.opaque["L002"])
-        (pack / "cases.json").write_text(
-            json.dumps([{"case": "D001", "letter": "letters/L002.pdf", "slot": "term_end", "kind": None}]),
-            encoding="utf-8",
-        )
-        for side, day in self.pack_dates.items():
-            (pack / f"D001-{side}.md").write_text(
-                f"Case D001, derivation {side}\nSlot: term_end\nDate: {day}\n\nDerivation:\n-\n",
-                encoding="utf-8",
-            )
+        rows = []
+        for case, ref in sorted(self.key["cases"].items()):
+            name = ref["name"]
+            (pack / "letters" / name).write_bytes(self.opaque[Path(name).stem])
+            rows.append({"case": case, "letter": f"letters/{name}", "slot": ref["slot"], "kind": None})
+            for side, day in self.case_dates.get(case, self.pack_dates).items():
+                (pack / f"{case}-{side}.md").write_text(
+                    f"Case {case}, derivation {side}\nSlot: {ref['slot']}\nDate: {day}\n\nDerivation:\n-\n",
+                    encoding="utf-8",
+                )
+        (pack / "cases.json").write_text(json.dumps(rows), encoding="utf-8")
         sealed = [self.path("derived-b1.json"), self.path("derived-conv.json"), *map(Path, self.sealed_extra)]
         self.path("audit-seal.txt").write_text(
             "".join(f"{_sha(p.read_bytes())}  {p}\n" for p in sealed), encoding="utf-8"
@@ -266,7 +269,7 @@ def test_the_facts_come_from_the_conventions_reading_and_the_adjudicators_ruling
     assert report["date_problems"] == [] and report["dated_labels_checked"] == 3
     assert report["fact_sources"] == {"A1": 4, "A1p": 1}
     printed = capsys.readouterr().out
-    assert "ruled ambiguous: deadline 0, contract 1" in printed
+    assert "ruled ambiguous: deadline 0, offered 0, contract 1" in printed
     assert "2027" not in printed and "§" not in printed  # ids and counts only
 
 
@@ -426,3 +429,103 @@ def test_the_command_says_what_it_reads(capsys: pytest.CaptureFixture[str]) -> N
         "--check",
     ):
         assert flag in usage, flag
+
+
+def test_an_ambiguous_ruling_keeps_a_date_of_each_side(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The candidates of an ``ambiguous`` verdict are X's date and Y's date: when one side is itself a reading with
+    two dates, a ruling between that side's two dates alone drops the other side's date, which only the other-side
+    or both-wrong path may do."""
+    audit.pack_dates = {"X": "2028-02-29", "Y": "2028-03-31 or 2028-04-28"}
+    audit.adjudication["cases"]["D001"]["candidates"] = ["2028-03-31", "2028-04-28"]
+    _refused(audit, capsys, "D001: an ambiguous verdict keeps a date of each side")
+    audit.adjudication["cases"]["D001"]["candidates"] = ["2028-02-29", "2028-03-31"]
+    assert build.main(audit.write()) == 0
+
+
+def _photo_case(audit: Audit, verdict: dict[str, Any], case: str = "D002") -> None:
+    """A case on K1's photo (L003.jpg), slot i0, with the given verdict; its X and Y are K1's label and a later
+    date."""
+    audit.key["cases"][case] = {"id": K1_PHOTO, "name": "L003.jpg", "slot": "i0", "X": "label", "Y": "a1c"}
+    audit.case_dates[case] = {"X": "2027-03-15", "Y": "2027-03-16"}
+    audit.adjudication["cases"][case] = verdict
+
+
+UPHELD = {
+    "verdict": "X_right",
+    "citations": ["§ 188 Abs. 2 BGB"],
+    "why": "-",
+    "fact": {"source": "A1p", "land": None, "from": "2027-03-15", "steps": [], "conventions": ["c02"]},
+}
+
+
+def test_a_ruling_on_a_photo_applies_to_its_letter(audit: Audit, capsys: pytest.CaptureFixture[str]) -> None:
+    """A photo shares its letter's truth, and the audit comparison sends a photo's slot to the adjudicator like any
+    other: its ruling is applied to the letter's slot and counted, never dropped."""
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    assert build.main(audit.write()) == 0
+    slot = audit.facts()["letters"][K1]["slots"]["i0"]
+    assert slot["source"] == "A1p" and slot["from"] == "2027-03-15"
+    assert "rulings applied: X_right 1, Y_right 0, both_wrong 0, ambiguous 1" in capsys.readouterr().out
+    assert audit.verified()["date_problems"] == []
+
+
+def test_an_ambiguous_ruling_on_a_photo_is_counted_for_its_letter(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    open_due = [{"from": "2027-03-11", "steps": SHIFTED}, {"from": "2027-03-16", "steps": []}]
+    _photo_case(
+        audit,
+        {
+            "verdict": "ambiguous",
+            "candidates": ["2027-03-15", "2027-03-16"],
+            "citations": ["-"],
+            "why": "-",
+            "fact": {"source": "A1p", "land": None, "ambiguous": open_due},
+        },
+    )
+    assert build.main(audit.write()) == 0
+    assert "ambiguous" in audit.facts()["letters"][K1]["slots"]["i0"]
+    assert "ruled ambiguous: deadline 1, offered 0, contract 1" in capsys.readouterr().out
+
+
+def test_a_letter_and_its_photo_ruled_apart_must_agree(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The same slot ruled on the letter and on its photo: the same verdict and fact are applied once; different
+    ones are refused, since the two share one truth."""
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    audit.key["cases"]["D003"] = {"id": K1, "name": "L001.pdf", "slot": "i0", "X": "label", "Y": "a1c"}
+    audit.case_dates["D003"] = audit.case_dates["D002"]
+    audit.adjudication["cases"]["D003"] = copy.deepcopy(UPHELD)
+    assert build.main(audit.write()) == 0
+    assert "rulings applied: X_right 1," in capsys.readouterr().out
+    audit.adjudication["cases"]["D003"]["fact"]["from"] = "2027-03-11"
+    audit.adjudication["cases"]["D003"]["fact"]["steps"] = SHIFTED
+    (audit.path("dataset") / SPLIT / "facts.json").unlink()
+    _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+
+def test_a_ruling_on_a_photo_whose_bytes_changed_is_left_out(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    photo = next(e for e in audit.manifest["entries"] if e["id"] == K1_PHOTO)
+    photo["sha256"] = _sha(b"the photo taken again")
+    assert build.main(audit.write()) == 0
+    assert audit.facts()["letters"][K1]["slots"]["i0"]["source"] == "A1"
+    assert "1 ruling(s) on bytes read again" in capsys.readouterr().out
+
+
+def test_the_ruled_slots_are_counted_by_the_kinds_the_final_analysis_publishes() -> None:
+    from evals import analysis
+
+    assert build.AMBIGUOUS_KINDS == analysis.AMBIGUOUS_KINDS
+    assert [build._kind(slot) for slot in ("i0", "i12", "o0", "term_end", "cancel_by")] == [
+        "deadline",
+        "deadline",
+        "offered",
+        "contract",
+        "contract",
+    ]

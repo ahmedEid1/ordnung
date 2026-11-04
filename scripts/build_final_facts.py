@@ -25,15 +25,17 @@ its pack. A reading or a ruling of bytes the manifest no longer holds is left ou
 ``o0``, ``term_end``, ``cancel_by``, in the manifest's order) is matched with a reader's slot the way the audit
 comparison matches them: an item with the lowest unused reader's slot of the same prefix and kind, else the slot of
 the same name when the reader gave it no kind; a contract slot with the reader's slot of its name. A photo shares its
-letter's truth and gets no facts of its own; a reader's slot that matches no label slot is left out (counted); a
-price change's facts are taken when the label has one.
+letter's truth and gets no facts of its own: a ruling on a photo's slot is applied to its letter's slot (bound to the
+photo's own bytes); a reader's slot that matches no label slot is left out (counted); a price change's facts are taken
+when the label has one.
 
 Refused, with nothing written (exit 2): an audit file that is not in the seal with its sha256, or not in its format;
 a label slot with a date or ``"ambiguous"`` and no fact; a final letter with no reading of its bytes as they are now;
 an id the manifest or the maps do not know (a map's entry, a reader's letter, a key's case or entry, a verdict's case,
-a slot the label does not have); a slot ruled twice; a verdict that is not one of the four, a ``both_wrong`` without
-its date, and an ``ambiguous`` verdict that names fewer than two candidates, a candidate that is neither X's date nor
-Y's in its pack, or a fact that is not ambiguous; and a facts file the grammar refuses. It prints ids and counts
+a slot the label does not have); a slot ruled twice, or ruled on a letter and on its photo with different verdicts or
+facts; a verdict that is not one of the four, a ``both_wrong`` without its date, and an ``ambiguous`` verdict that
+names fewer than two candidates, a candidate that is neither X's date nor Y's in its pack, no date of one of the two
+sides, or a fact that is not ambiguous; and a facts file the grammar refuses. It prints ids and counts
 only, never a fact, a date or a reason.
 """
 
@@ -263,17 +265,16 @@ def _needs_fact(label: Any) -> bool:
     return isinstance(label, str) and (label == verify_labels.AMBIGUOUS or bool(_ISO_DAY.fullmatch(label)))
 
 
-def _pack_dates(pack: Path, case: str) -> set[str]:
-    """The dates X and Y give in the case pack (``Date:`` lines; an ambiguous side gives each of its dates)."""
-    dates: set[str] = set()
+def _pack_dates(pack: Path, case: str) -> dict[str, set[str]]:
+    """The dates X and Y each give in the case pack (``Date:`` lines; an ambiguous side gives each of its dates)."""
+    dates: dict[str, set[str]] = {}
     for side in ("X", "Y"):
         path = pack / "pack" / f"{case}-{side}.md"
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
             raise BuildError(f"{case}: no {path.name} in the pack") from None
-        for line in _DATE_LINE.findall(text):
-            dates.update(_ISO_DAY.findall(line))
+        dates[side] = {day for line in _DATE_LINE.findall(text) for day in _ISO_DAY.findall(line)}
     return dates
 
 
@@ -344,8 +345,10 @@ def load_rulings(
                 raise BuildError(f"{case}: an ambiguous verdict names two or more candidates")
             sides = _pack_dates(pack, case)
             for candidate in candidates:
-                if candidate not in sides:
+                if not any(candidate in dates for dates in sides.values()):
                     raise BuildError(f"{case}: the candidate {candidate} is in neither X nor Y")
+            if not all(sides[side] & set(candidates) for side in sides):
+                raise BuildError(f"{case}: an ambiguous verdict keeps a date of each side")
             if "ambiguous" not in fact:
                 raise BuildError(f"{case}: an ambiguous verdict's fact is no ambiguous fact")
         rulings.append(Ruling(case, entry_id, slot, str(said), dict(fact), found[0]))
@@ -410,15 +413,31 @@ class Report:
         return [
             f"{split}: {self.letters} letters ({self.photos} photos share their letter's facts); facts by source: "
             f"{sources}",
-            f"{split}: rulings applied: {verdicts}; ruled ambiguous: deadline {self.ruled_ambiguous['deadline']}, "
-            f"contract {self.ruled_ambiguous['contract']}; {self.stale_rulings} ruling(s) on bytes read again",
+            f"{split}: rulings applied: {verdicts}; ruled ambiguous: "
+            + ", ".join(f"{kind} {self.ruled_ambiguous[kind]}" for kind in AMBIGUOUS_KINDS)
+            + f"; {self.stale_rulings} ruling(s) on bytes read again",
             f"{split}: {self.unmatched_reader_slots} reader's slot(s) matched no label slot; "
             f"{self.price_changes_without_fact} price change(s) without a fact",
         ]
 
 
+#: The kinds of a slot, as the final analysis counts the slots left open: a deadline the letter requires (``i0``,
+#: ...), a date it offers (``o0``, ...) and a contract date (``term_end``, ``cancel_by``).
+AMBIGUOUS_KINDS = ("deadline", "offered", "contract")
+
+
+def _kind(slot: str) -> str:
+    return "contract" if slot in CONTRACT_SLOTS else "offered" if slot.startswith("o") else "deadline"
+
+
 def _is_final(entry: Mapping[str, Any]) -> bool:
     return "final_day" in entry or "valid_until" in entry
+
+
+def _letter_of(entries: Mapping[str, Mapping[str, Any]], entry_id: str) -> str:
+    """The letter an entry's truth belongs to: a photo's source letter, else the entry itself."""
+    entry = entries.get(entry_id) or {}
+    return str(entry.get("source_id") or entry_id) if entry.get("photo") else entry_id
 
 
 def build(
@@ -437,17 +456,25 @@ def build(
         report.letters += 1
         sha = entry.get("sha256")
         now: dict[str, Ruling] = {}
-        for ruling in rulings:
-            if ruling.entry_id != entry_id:
-                continue
-            if ruling.item.source_sha256 != sha:
+        # a ruling on the letter, then one on a photo of it (which shares its truth), each on the bytes it read
+        applying = sorted(
+            (r for r in rulings if _letter_of(entries, r.entry_id) == entry_id),
+            key=lambda r: (r.entry_id != entry_id, r.case),
+        )
+        for ruling in applying:
+            if ruling.item.source_sha256 != entries[ruling.entry_id].get("sha256"):
                 report.stale_rulings += 1
                 continue
-            if ruling.slot in now:
+            first = now.get(ruling.slot)
+            if first is None:
+                now[ruling.slot] = ruling
+            elif first.entry_id == ruling.entry_id:
+                raise BuildError(f"{entry_id} {ruling.slot}: ruled twice ({first.case}, {ruling.case})")
+            elif (first.verdict, first.fact) != (ruling.verdict, ruling.fact):
                 raise BuildError(
-                    f"{entry_id} {ruling.slot}: ruled twice ({now[ruling.slot].case}, {ruling.case})"
+                    f"{entry_id} {ruling.slot}: ruled differently on the letter and its photo "
+                    f"({min(first.case, ruling.case)}, {max(first.case, ruling.case)})"
                 )
-            now[ruling.slot] = ruling
         current = [
             (reading, item)
             for reading in readings
@@ -470,7 +497,7 @@ def build(
                 source, fact = "A1p", ruled.fact
                 report.verdicts[ruled.verdict] += 1
                 if ruled.verdict == "ambiguous":
-                    report.ruled_ambiguous["contract" if slot in CONTRACT_SLOTS else "deadline"] += 1
+                    report.ruled_ambiguous[_kind(slot)] += 1
             else:
                 mine = matched[slot]
                 found = facts.get(mine) if mine else None
