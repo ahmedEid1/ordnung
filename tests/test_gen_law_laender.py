@@ -11,6 +11,8 @@ the label check's own table (``evals/verify_labels.py``, separate code) gives th
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -34,11 +36,21 @@ OWN_FOURTH = re.compile(
     r"|das Wort „dritten“ durch das Wort „vierten“"
 )
 OWN_THIRD = "am dritten Tag nach der Aufgabe zur Post"
-#: An act that applies the federal Verwaltungsverfahrensgesetz instead of a § 41 of its own, and its exceptions.
+#: An act that applies the federal Verwaltungsverfahrensgesetz instead of a § 41 of its own.
 APPLIES_FEDERAL = re.compile(
-    r"(?:gilt|gelten) (?:dieses Gesetz und )?(?:die Vorschriften )?(?:das|des) Verwaltungsverfahrensgesetz"
-    r"[^.]*?(?:mit Ausnahme der (?P<except>[^.]*?(?:VwVfG|Verwaltungsverfahrensgesetzes|101)))?"
+    r"(?:gilt|gelten) (?:dieses Gesetz und )?(?:die Vorschriften )?(?:das|des) Verwaltungsverfahrensgesetz(?:es)?"
+    r"(?: \(VwVfG\))?"
 )
+#: The sections of the federal act such an act leaves out, read from where :data:`APPLIES_FEDERAL` ends to the end of
+#: the list (its "des Verwaltungsverfahrensgesetzes." or "VwVfG.", or Niedersachsen's "sowie die Vorschriften dieses
+#: Gesetzes"); a list's own "Abs." does not end it.
+EXCEPTED = re.compile(
+    r"\s+mit Ausnahme der (?P<except>.+?)"
+    r"(?:(?:des Verwaltungsverfahrensgesetzes|VwVfG)\.|sowie die Vorschriften dieses Gesetzes)",
+    re.DOTALL,
+)
+#: The Länder whose act applies the federal one with a list of sections left out.
+WITH_EXCEPTIONS = frozenset({"BB", "NI", "TH"})
 #: A provision that keeps the old wording of the act for a procedure begun before the switch.
 OLD_LAW_KEPT = re.compile(
     rf"Auf alle vor dem (?P<day>{DATE}) begonnenen, aber nicht abgeschlossenen Verwaltungsverfahren sind dieses "
@@ -60,6 +72,32 @@ START: dict[str, tuple[str, int]] = {
 }
 #: The day the federal § 41 Abs. 2 VwVfG counts the 4th day from, as the generator has it.
 FEDERAL_START = law.OLD_FICTION_LAST_DAY + timedelta(days=1)
+
+
+@dataclass(frozen=True)
+class Table:
+    """One Länder table: the generator's (``evals/gen/law.py``) or the label check's own (``evals/verify_labels.py``),
+    which is separate code. Both are held to the texts the same way."""
+
+    fourth_from: Mapping[str, date]
+    third_day: frozenset[str]
+    old_procedures: Mapping[str, date]
+    unverified: frozenset[str]
+
+
+def table(name: str) -> Table:
+    if name == "evals/gen/law.py":
+        return Table(
+            law.LAND_VWVFG_FOURTH_DAY_FROM,
+            law.LAND_VWVFG_THIRD_DAY,
+            law.LAND_VWVFG_OLD_PROCEDURES,
+            law.LAND_VWVFG_UNVERIFIED,
+        )
+    assert name == "evals/verify_labels.py", name
+    return Table(vl.LAND_FOUR_DAY_START, vl.LAND_THIRD_DAY, vl.LAND_OLD_PROCEDURES, vl.LAND_UNVERIFIED)
+
+
+TABLES = ("evals/gen/law.py", "evals/verify_labels.py")
 
 
 def german_date(text: str) -> date:
@@ -91,29 +129,34 @@ def fiction(posted: date, land: str | None, began: date | None = None, *, scope:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_table_names_exactly_the_laender_with_a_verified_text() -> None:
+@pytest.mark.parametrize("name", TABLES)
+def test_the_table_names_exactly_the_laender_with_a_verified_text(name: str) -> None:
+    mine = table(name)
     texts = blocks()
     assert set(texts) == set(law.LAENDER)
     with_text = set(verified())
     assert len(with_text) == 12
-    assert set(law.LAND_VWVFG_FOURTH_DAY_FROM) | law.LAND_VWVFG_THIRD_DAY == with_text
-    assert not set(law.LAND_VWVFG_FOURTH_DAY_FROM) & law.LAND_VWVFG_THIRD_DAY
-    assert law.LAND_VWVFG_UNVERIFIED == set(law.LAENDER) - with_text == {"HB", "RP", "SL", "ST"}
-    for code in law.LAND_VWVFG_UNVERIFIED:
+    assert set(mine.fourth_from) | mine.third_day == with_text
+    assert not set(mine.fourth_from) & mine.third_day
+    assert mine.unverified == set(law.LAENDER) - with_text == {"HB", "RP", "SL", "ST"}
+    for code in mine.unverified:
         assert texts[code] == f"{law.LAND_NAMES[code]}\n{NOT_RETRIEVED_LINE}\n", code
     assert set(law.LAND_VWVFG_PROVISION) == with_text
 
 
+@pytest.mark.parametrize("name", TABLES)
 @pytest.mark.parametrize("code", sorted(verified()))
-def test_each_land_s_day_count_and_start_are_its_text_s(code: str) -> None:
+def test_each_land_s_day_count_and_start_are_its_text_s(code: str, name: str) -> None:
     """A Land whose own § 41 (or the amendment of it) says the 3rd day keeps it; one that says the 4th, or that
-    applies the federal act (whose § 41 says the 4th), counts the 4th from the day its block gives."""
+    applies the federal act (whose § 41 says the 4th) without leaving out its § 41, counts the 4th from the day its
+    block gives. Each table, the generator's and the label check's, is held to the block on its own."""
+    mine = table(name)
     block = verified()[code]
     if OWN_THIRD in block and not OWN_FOURTH.search(block):
-        assert code in law.LAND_VWVFG_THIRD_DAY
-        assert code not in law.LAND_VWVFG_FOURTH_DAY_FROM
+        assert code in mine.third_day
+        assert code not in mine.fourth_from
         return
-    assert code in law.LAND_VWVFG_FOURTH_DAY_FROM, code
+    assert code in mine.fourth_from, code
     if OWN_FOURTH.search(block):
         pattern, plus = START[code]
         found = re.search(pattern, block)
@@ -122,7 +165,9 @@ def test_each_land_s_day_count_and_start_are_its_text_s(code: str) -> None:
     else:
         federal = APPLIES_FEDERAL.search(block)
         assert federal, code
-        exceptions = federal.group("except") or ""
+        excepted = EXCEPTED.match(block, federal.end())
+        assert (excepted is not None) == (code in WITH_EXCEPTIONS), (code, "its list of sections left out")
+        exceptions = excepted.group("except") if excepted else ""
         assert not re.search(r"(?<![\d.])41(?![\d])", exceptions), (code, "the federal § 41 is not excepted")
         assert "am vierten Tag nach der Aufgabe zur Post" in VWVFG_TXT.read_text(encoding="utf-8")
         start = FEDERAL_START
@@ -130,7 +175,19 @@ def test_each_land_s_day_count_and_start_are_its_text_s(code: str) -> None:
             found = re.search(START[code][0], block)
             assert found, code
             start = max(start, german_date(found.group(1)))
-    assert law.LAND_VWVFG_FOURTH_DAY_FROM[code] == start, code
+    assert mine.fourth_from[code] == start, code
+
+
+def test_the_exception_lists_are_read_whole() -> None:
+    """The list of federal sections an act leaves out is read to its end, past the "Abs." inside it: Brandenburg's
+    ends with §§ 100 and 101, Niedersachsen's with §§ 100 bis 101, Thüringen's with § 103."""
+    ends = {"BB": "100 und 101 ", "NI": "§§ 100 bis 101 ", "TH": "102a und 103 "}
+    for code, end in ends.items():
+        block = verified()[code]
+        federal = APPLIES_FEDERAL.search(block)
+        assert federal, code
+        excepted = EXCEPTED.match(block, federal.end())
+        assert excepted and excepted.group("except").endswith(end), code
 
 
 def test_hamburg_s_act_takes_effect_the_day_after_its_gazette() -> None:
@@ -142,17 +199,19 @@ def test_hamburg_s_act_takes_effect_the_day_after_its_gazette() -> None:
     )
 
 
-def test_the_laender_that_keep_the_3rd_day_for_an_older_procedure() -> None:
+@pytest.mark.parametrize("name", TABLES)
+def test_the_laender_that_keep_the_3rd_day_for_an_older_procedure(name: str) -> None:
     """Baden-Württemberg's § 102b, Bavaria's Art. 98 and Mecklenburg-Vorpommern's § 120a keep the old wording for a
     procedure begun before their switch; Nordrhein-Westfalen's § 97 and Thüringen's § 8 do not (the new law applies
     to a procedure under way, a posting being a step of its own)."""
+    mine = table(name)
     kept = {
         code: german_date(found.group("day"))
         for code, block in verified().items()
         if (found := OLD_LAW_KEPT.search(block))
     }
-    assert kept == law.LAND_VWVFG_OLD_PROCEDURES
-    assert kept == {code: law.LAND_VWVFG_FOURTH_DAY_FROM[code] for code in kept}
+    assert kept == mine.old_procedures
+    assert kept == {code: mine.fourth_from[code] for code in kept}
     assert set(law.LAND_VWVFG_OLD_PROCEDURE_RULE) == set(kept)
     for code, rule in law.LAND_VWVFG_OLD_PROCEDURE_RULE.items():
         number = rule.split()[1]
@@ -300,13 +359,34 @@ def test_an_objection_item_counts_the_authority_s_land() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
+#: Every posting day from the last days of the old rule to past Hamburg's switch, so every switch day (1 January,
+#: 7 February, 14 May 2025) and the days on either side of it are among them, and one day of the final run's time.
+AGREEMENT_DAYS = [date(2024, 12, 25) + timedelta(days=n) for n in range(147)] + [date(2026, 11, 3)]
+#: Procedure starts on either side of each older-procedure switch (1 January and 7 February 2025).
+AGREEMENT_STARTS = (
+    None,
+    date(2024, 11, 1),
+    date(2024, 12, 31),
+    date(2025, 1, 1),
+    date(2025, 2, 6),
+    date(2025, 2, 7),
+)
+
+
+def test_the_agreement_covers_every_switch_day_and_its_neighbours() -> None:
+    for start in {*law.LAND_VWVFG_FOURTH_DAY_FROM.values(), *law.LAND_VWVFG_OLD_PROCEDURES.values()}:
+        for day in (start - timedelta(days=1), start, start + timedelta(days=1)):
+            assert day in AGREEMENT_DAYS, day
+    for switch in law.LAND_VWVFG_OLD_PROCEDURES.values():
+        assert {switch - timedelta(days=1), switch} <= set(AGREEMENT_STARTS), switch
+
+
 def test_the_label_check_s_table_agrees_with_the_generator_s() -> None:
     """``evals/verify_labels.py`` keeps its own table and arithmetic; for every Land, posting day and procedure start
     it gives the generator's day, and refuses where the generator refuses."""
-    days = [date(2024, 12, 28) + timedelta(days=n) for n in range(0, 170, 3)] + [date(2026, 11, 3)]
     for land in law.LAENDER:
-        for posted in days:
-            for began in (None, date(2024, 11, 1), date(2025, 1, 1), date(2025, 2, 6), date(2025, 2, 7)):
+        for posted in AGREEMENT_DAYS:
+            for began in AGREEMENT_STARTS:
                 if began is not None and began > posted:
                     continue
                 try:
