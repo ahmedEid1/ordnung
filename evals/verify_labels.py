@@ -26,12 +26,17 @@ source. Until a final split has that file its dates are not re-derived, and the 
 4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2,
    holdout3, holdout4, newkinds);
 5. photo entries share the truth of a one-page source PDF;
-6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
-   4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that);
+6. no hand-read Land VwVfG deemed-delivery label counts from a posting day on which its Land did not count the 4th
+   day, nor comes from Hessen, a Land without a verified text or no Land (``remedy`` counts 4 days from 2025-01-01
+   in every Land, so it cannot catch that);
 7. a final split's letter is read on its ``final_day``, and every scored date (with an ambiguous item's
    candidates), contract date (with an ambiguous slot's candidates) and appointment lies after its ``valid_until``;
 8. the conventions a final split's facts apply exist in the manifest and are the ones its label is tagged with (a
-   contract's end of term and last day to cancel together apply the contract's tags).
+   contract's end of term and last day to cancel together apply the contract's tags);
+9. every Land VwVfG deemed-delivery label is the period counted from its Land's own delivery day, with a table and
+   arithmetic of this file's own (``LAND_FOUR_DAY_START`` and the tables after it, from ``evals/law/laender.txt``):
+   the authority's Land has a verified text, Hessen counts the 3rd day, and a BW, BY or MV fact that states a
+   procedure begun before the Land's switch (``procedure_began``) carries the 3rd day.
 
 These rules are the label's; ``evals/dataset/FACTS.md``, which the blind readers get, states the grammar only.
 """
@@ -195,7 +200,7 @@ OPS = ("forward", "back", "month_end")
 UNITS = ("days", "weeks", "months", "werktage", "arbeitstage")
 SOURCES = ("A1", "A1p", "A1re")
 STEP_KEYS = ("op", "n", "unit", "shift")
-DATED_KEYS = ("source", "land", "from", "event", "steps", "conventions", "conflicting")
+DATED_KEYS = ("source", "land", "from", "event", "steps", "conventions", "conflicting", "procedure_began")
 _DERIVATION_KEYS = ("from", "event", "steps")
 _UNDATABLE_KEYS = ("source", "undatable", "conventions")
 _AMBIGUOUS_KEYS = ("source", "land", "ambiguous", "conventions")
@@ -360,6 +365,8 @@ class LetterFacts:
     conventions: dict[str, list[str]] = field(default_factory=dict)
     price_change: PriceChange | None = None
     sources: list[str] = field(default_factory=list)
+    #: The day each slot's administrative procedure began, where its fact states it (``procedure_began``).
+    began: dict[str, date] = field(default_factory=dict)
 
 
 def _letter_facts(cid: str, raw: Any) -> LetterFacts:
@@ -396,6 +403,8 @@ def _letter_facts(cid: str, raw: Any) -> LetterFacts:
             if "conflicting" in fact:
                 others = _derivations(fact["conflicting"], f"{where} conflicting", 1)
                 out.conflicts[slot] = [(derive, other, land) for other in others]
+            if "procedure_began" in fact:
+                out.began[slot] = _day(fact["procedure_began"], f"{where} procedure_began")
         out.conventions[slot] = _applied(fact, where)
     if "price_change" in raw:
         where = f"{cid} price_change"
@@ -799,6 +808,8 @@ class Facts:
     applied: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     #: The facts of the facts.json files by source (A1, A1p, A1re).
     sources: Counter[str] = field(default_factory=Counter)
+    #: The day a slot's administrative procedure began, where a facts.json fact states it (keyed by letter id).
+    began: dict[str, dict[str, date]] = field(default_factory=dict)
     #: Final splits with letters but no facts.json yet: their dates are not re-derived.
     waiting: list[str] = field(default_factory=list)
     #: Splits whose facts.json the grammar refused (the reason is among ``problems``).
@@ -843,6 +854,8 @@ def gather_facts(root: Path, entries: list[dict[str, Any]]) -> Facts:
             facts.slots[cid] = letter.slots
             facts.conflicts[cid] = letter.conflicts
             facts.applied[cid] = letter.conventions
+            if letter.began:
+                facts.began[cid] = letter.began
             if letter.price_change is not None:
                 facts.prices[cid] = letter.price_change
             facts.sources.update(letter.sources)
@@ -1027,6 +1040,7 @@ def check_facts(
         "date_problems": problems + date_problems,
         "splits_without_facts": facts.waiting,
         "fact_sources": dict(sorted(facts.sources.items())),
+        "procedure_began": facts.began,
     }
 
 
@@ -1195,39 +1209,124 @@ def shared_deadline_sentences(entries: list[dict[str, Any]], texts: dict[str, st
     return sorted(f"{'+'.join(sorted(splits))}: {s}" for s, splits in where.items() if len(splits) > 1)
 
 
-#: The day from which a Land VwVfG's 4-day fiction is certain, for the Länder where that is not 1 Jan 2025. It is
-#: certain for BY, NW and MV from 1 Jan 2025, except in BY and MV procedures begun earlier (Art. 98 BayVwVfG, § 120a
-#: VwVfG M-V keep the 3rd day for those; § 97 VwVfG NRW applies the new rule to each step from that day; see
-#: VERIFICATION.md). A letter posted on or after 1 Jan 2025 and before this day would have no sure label.
+#: The day from which a Land's authorities count the 4th day after a decision's posting (the 3rd day before it), by
+#: each Land's text in evals/law/laender.txt, kept apart from the generator's table (only the tests compare the two):
+#: from 1 Jan 2025 where the Land's own act says so or applies the federal VwVfG (BB, BE, BY, MV, NI, NW, SN, SH: the
+#: amendment of § 110 Abs. 2 LVwG took effect that day; TH: the act of 2 July 2024, Art. 90); HH from 14 May 2025
+#: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338, the day after its issue under Art. 54 of Hamburg's constitution); BW from
+#: 7 Feb 2025 (§ 102b LVwVfG). The dataset drew SH letters from 10 Jun 2025 only, a bound kept from before its text was
+#: read; no label depends on it.
 LAND_FOUR_DAY_START: dict[str, date] = {
-    "HH": D(
-        2025, 5, 14
-    ),  # 12. Gesetz zur Änderung des HmbVwVfG, HmbGVBl. 2025 S. 338: in force the day after promulgation
-    "BW": D(2025, 2, 7),  # LVwVfG; § 102b keeps the 3rd day for procedures begun before this day
-    # SH: the law of 13.12.2024 (GVOBl. Schl.-H. 2024 Nr. 15 S. 934) and the consolidated § 110 Abs. 2 LVwG give
-    # 01.01.2025 with no transitional rule; 10.06.2025 is kept as a conservative bound for drawing letters.
-    "SH": D(2025, 6, 10),
+    **{land: D(2025, 1, 1) for land in ("BB", "BE", "BY", "MV", "NI", "NW", "SN", "SH", "TH")},
+    "HH": D(2025, 5, 14),
+    "BW": D(2025, 2, 7),
 }
+#: Länder whose authorities count the 3rd day after posting: Hessen (§ 41 Abs. 2 HVwVfG). No 4th day starts there.
+LAND_THIRD_DAY = frozenset({"HE"})
+#: Länder that keep their old wording, the 3rd day, for a procedure begun before their switch and not finished:
+#: § 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V. NW's § 97 applies the law in force to each step, so a posting
+#: from 1 Jan 2025 gets the 4th day there.
+LAND_OLD_PROCEDURES: dict[str, date] = {"BW": D(2025, 2, 7), "BY": D(2025, 1, 1), "MV": D(2025, 1, 1)}
+#: Länder whose text could not be read: no Land VwVfG label may come from one.
+LAND_UNVERIFIED = frozenset({"HB", "RP", "SL", "ST"})
+
+
+def land_fiction_days(land: str | None, posted: date, began: date | None = None) -> int | None:
+    """The day after posting on which a Land authority's posted decision counts as delivered (3 or 4), by the Land's
+    own law; ``began`` is the day its procedure began, where known. None where no verified text gives it (no Land, or
+    a Land whose text could not be read)."""
+    if land is None or land not in LAENDER or land in LAND_UNVERIFIED:
+        return None
+    if posted < D(2025, 1, 1) or land in LAND_THIRD_DAY or posted < LAND_FOUR_DAY_START[land]:
+        return 3
+    switch = LAND_OLD_PROCEDURES.get(land)
+    return 3 if switch is not None and began is not None and began < switch else 4
+
+
+def _land_vwvfg_slots(entry: Mapping[str, Any]) -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
+    """A letter's Land VwVfG deemed-delivery slots: (slot, item, spec)."""
+    if entry["photo"]:
+        return []
+    out = []
+    for slot, item in _slots(entry["truth"]).items():
+        spec = item.get("spec") or {}
+        if (
+            spec.get("delivery_scope") == "vwvfg"
+            and spec.get("anchor", "deemed_delivery") == "deemed_delivery"
+        ):
+            out.append((slot, item, spec))
+    return out
 
 
 def check_land_windows(entries: list[dict[str, Any]]) -> list[str]:
-    """Every Land VwVfG deemed-delivery label (items, optional items) counts from a posting day outside the Land's uncertain
-    window: the label's ``posted_on``, else the letter's date."""
+    """Every hand-read Land VwVfG deemed-delivery label (items, optional items) counts from a posting day on which its
+    Land counted the 4th day, as ``remedy`` does, or from one before 2025, when every Land counted the 3rd: the label's
+    ``posted_on``, else the letter's date. So none comes from Hessen, from a Land without a verified text or from a
+    letter that names no Land. A final split's labels are checked by :func:`check_land_rules` instead."""
     problems = []
     for e in entries:
-        if e["photo"]:
+        if _is_final(e):
             continue
-        start = LAND_FOUR_DAY_START.get(e["authority_region"])
-        for slot, item in _slots(e["truth"]).items():
-            spec = item.get("spec") or {}
+        land = e["authority_region"]
+        start = LAND_FOUR_DAY_START.get(land) if land is not None else None
+        for slot, _item, spec in _land_vwvfg_slots(e):
             posted = spec.get("posted_on") or e["truth"]["document_date"]
-            if spec.get("delivery_scope") != "vwvfg" or start is None or posted is None:
+            if posted is None or date.fromisoformat(posted) < D(2025, 1, 1):
                 continue
-            if D(2025, 1, 1) <= date.fromisoformat(posted) < start:
+            if start is None:
                 problems.append(
-                    f"{e['id']} {slot}: posted {posted}, before the {e['authority_region']} 4-day rule is certain "
-                    f"({start.isoformat()})"
+                    f"{e['id']} {slot}: posted {posted}, but {land} has no 4-day start for a Land VwVfG label"
                 )
+            elif date.fromisoformat(posted) < start:
+                problems.append(
+                    f"{e['id']} {slot}: posted {posted}, before the {land} 4-day rule ({start.isoformat()})"
+                )
+    return problems
+
+
+def _land_period_end(fiction: date, spec: Mapping[str, Any], region: str) -> date | None:
+    unit, amount = spec.get("unit"), spec.get("amount")
+    if unit not in UNITS or not isinstance(amount, int):
+        return None
+    end = _forward(fiction, amount, unit, region)
+    return next_working_day(end, region) if spec.get("shift") is not False else end
+
+
+def check_land_rules(
+    entries: list[dict[str, Any]], began: Mapping[str, Mapping[str, date]] | None = None
+) -> list[str]:
+    """Every Land VwVfG deemed-delivery label by its Land's own rule, with this file's own table and arithmetic: the
+    authority's Land (``authority_region``) has a verified text, and the label is the period counted from that Land's
+    day after posting (:func:`land_fiction_days`) under the Land's holidays. ``began`` gives the day a slot's
+    procedure began where its facts state it; for a BW, BY or MV letter after the switch whose facts do not, either
+    day may be the letter's (the date re-derived from its facts decides)."""
+    problems = []
+    for e in entries:
+        cid, land = e["id"], e["authority_region"]
+        for slot, item, spec in _land_vwvfg_slots(e):
+            if land is None:
+                problems.append(f"{cid} {slot}: a Land authority's decision that names no Land")
+                continue
+            if land in LAND_UNVERIFIED:
+                problems.append(
+                    f"{cid} {slot}: no verified text of {land}'s delivery rule (evals/law/laender.txt)"
+                )
+                continue
+            label = _dated(item.get("expected_due"))
+            posted = _dated(spec.get("posted_on") or e["truth"]["document_date"])
+            if label is None or posted is None:
+                continue
+            start = (began or {}).get(cid, {}).get(slot)
+            days = {land_fiction_days(land, posted, start)}
+            if start is None and land in LAND_OLD_PROCEDURES and posted >= LAND_FOUR_DAY_START[land]:
+                days = {3, 4}
+            ends = {
+                n: _land_period_end(posted + timedelta(days=n), spec, land)
+                for n in sorted(d for d in days if d)
+            }
+            if label not in ends.values():
+                gives = " or ".join(f"{end} (day {n})" for n, end in ends.items())
+                problems.append(f"{cid} {slot}: label {label}, {land}'s own delivery day gives {gives}")
     return problems
 
 
@@ -1249,6 +1348,7 @@ PROBLEM_KEYS = (
     "shared_split_sentences",
     "photo_problems",
     "land_window_problems",
+    "land_rule_problems",
     "window_problems",
 )
 
@@ -1261,6 +1361,7 @@ def run(root: Path, *, require_facts: bool = False) -> dict[str, Any]:
     leaks = shared_deadline_sentences(entries, texts)
     photo_problems = check_photos(entries)
     land_window_problems = check_land_windows(entries)
+    land_rule_problems = check_land_rules(entries, dates["procedure_began"])
     return {
         "letters": sum(1 for e in entries if not e["photo"]),
         "photos": sum(1 for e in entries if e["photo"]),
@@ -1270,6 +1371,7 @@ def run(root: Path, *, require_facts: bool = False) -> dict[str, Any]:
         "shared_split_sentences": leaks,
         "photo_problems": photo_problems,
         "land_window_problems": land_window_problems,
+        "land_rule_problems": land_rule_problems,
         "window_problems": check_window(entries),
         "splits_without_facts": dates["splits_without_facts"],
         "fact_sources": dates["fact_sources"],

@@ -503,6 +503,108 @@ def test_a_price_change_is_checked_like_a_hand_read_one(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# a Land authority's letter: the day its own Land counts
+# --------------------------------------------------------------------------------------------------
+
+#: Posted Tue 01.12.2026: the 3rd day is Fri 04.12., one month later Mon 04.01.2027; the 4th day is Sat 05.12., one
+#: month later Tue 05.01.2027 (no holiday in BW, BY, HE, MV, NW or RP on either day).
+POSTED, ON_THE_3RD, ON_THE_4TH = "2026-12-01", "2027-01-04", "2027-01-05"
+
+
+def land_item(due: str) -> dict[str, Any]:
+    spec = {"anchor": "deemed_delivery", "delivery_scope": "vwvfg", "posted_on": POSTED, "amount": 1,
+            "unit": "months", "shift": True}  # fmt: skip
+    return item(due, conventions=[], spec=spec)
+
+
+def land_rules(root: Path, entries: list[dict[str, Any]]) -> list[str]:
+    """``verify_labels.run``'s Land check, with the procedure starts the split's facts state."""
+    return vl.check_land_rules(entries, vl.gather_facts(root, entries).began)
+
+
+@pytest.mark.parametrize(
+    ("land", "due", "ok"),
+    [
+        ("HE", ON_THE_3RD, True),  # § 41 Abs. 2 HVwVfG: the 3rd day
+        ("HE", ON_THE_4TH, False),
+        ("NW", ON_THE_4TH, True),
+        ("NW", ON_THE_3RD, False),  # NW keeps no older rule: the posting decides
+        ("MV", ON_THE_4TH, True),  # no fact states when the matter began: either day may be the letter's
+        ("MV", ON_THE_3RD, True),
+        ("BW", ON_THE_3RD, True),
+        ("BY", ON_THE_3RD, True),
+    ],
+)
+def test_a_land_authority_s_label_counts_its_land_s_day(
+    tmp_path: Path, land: str, due: str, ok: bool
+) -> None:
+    problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(due)])])
+    assert (problems == []) == ok, problems
+    if not ok:
+        assert problems[0].startswith(f"holdout4-x-K1 i0: label {due}, {land}'s own delivery day gives ")
+
+
+@pytest.mark.parametrize(
+    ("land", "began"), [("MV", "2024-11-01"), ("BY", "2024-12-31"), ("BW", "2025-02-06")]
+)
+def test_a_matter_begun_before_the_switch_keeps_the_3rd_day(tmp_path: Path, land: str, began: str) -> None:
+    """§ 120a VwVfG M-V, Art. 98 BayVwVfG, § 102b LVwVfG: a fact that states a procedure begun before the Land's
+    switch must carry the 3rd day; one begun later, the 4th."""
+    entries = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])]
+    steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
+    fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=began)
+    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
+    assert land_rules(tmp_path, entries) == [
+        f"holdout4-x-K1 i0: label {ON_THE_4TH}, {land}'s own delivery day gives {ON_THE_3RD} (day 3)"
+    ]
+    entries[0]["truth"]["items"] = [land_item(ON_THE_3RD)]
+    assert land_rules(tmp_path, entries) == []
+    write_facts(
+        tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": {**fact, "procedure_began": "2025-03-01"}}}}
+    )
+    assert land_rules(tmp_path, entries) == [
+        f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
+    ]
+
+
+@pytest.mark.parametrize("land", ["HB", "RP", "SL", "ST", None])
+def test_no_land_authority_s_letter_from_a_land_without_a_text(tmp_path: Path, land: str | None) -> None:
+    problems = land_rules(tmp_path, [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_4TH)])])
+    assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: "), problems
+    assert ("names no Land" if land is None else f"no verified text of {land}'s delivery rule") in problems[0]
+
+
+def test_a_procedure_start_is_a_date_of_a_dated_fact(tmp_path: Path) -> None:
+    path = write_facts(
+        tmp_path,
+        "holdout4",
+        {"holdout4-x-K1": {"slots": {"i0": dated(POSTED, [], procedure_began="1.11.2024")}}},
+    )
+    with pytest.raises(vl.FactsError, match="procedure_began"):
+        vl.load_facts(path)
+    ambiguous = {"source": "A1", "land": None, "procedure_began": "2024-11-01",
+                 "ambiguous": [{"from": POSTED, "steps": []}, {"from": ON_THE_3RD, "steps": []}]}  # fmt: skip
+    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": ambiguous}}})
+    with pytest.raises(vl.FactsError, match="procedure_began"):
+        vl.load_facts(path)
+
+
+def test_the_land_check_is_part_of_the_run(tmp_path: Path) -> None:
+    fixture = entry("holdout4-x-K1", region="HE", items=[land_item(ON_THE_4TH)])
+    fixture["truth"] |= {"sender_name": "Beispielamt", "document_date": POSTED, "references": [], "amounts": [],
+                         "remedy_type": "none"}  # fmt: skip
+    fixture |= {"file": "holdout4/x-K1.pdf", "pages": 1, "source_id": None, "language": "de"}
+    _letter(tmp_path / fixture["file"], ["Beispielamt", "01.12.2026"])
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"conventions": CONVENTIONS, "entries": [fixture]}), encoding="utf-8"
+    )
+    assert "land_rule_problems" in vl.PROBLEM_KEYS
+    assert vl.run(tmp_path)["land_rule_problems"] == [
+        f"holdout4-x-K1 i0: label {ON_THE_4TH}, HE's own delivery day gives {ON_THE_3RD} (day 3)"
+    ]
+
+
+# --------------------------------------------------------------------------------------------------
 # the window of a final letter
 # --------------------------------------------------------------------------------------------------
 
@@ -597,6 +699,8 @@ def test_the_earlier_splits_are_unchanged() -> None:
     assert report["dated_labels_checked"] == 272
     assert report["date_problems"] == [] and report["splits_without_facts"] == []
     assert vl.check_window(earlier) == []
+    # every Land VwVfG label of the earlier splits is the period from its Land's own delivery day
+    assert vl.check_land_rules(earlier) == [] and vl.check_land_windows(earlier) == []
 
 
 def test_every_final_split_in_the_dataset_has_its_facts_file() -> None:

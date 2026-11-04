@@ -493,16 +493,23 @@ def test_labels_survive_the_independent_recheck() -> None:
         ("HH", "2025-05-14", "vwvfg", False),
         ("BW", "2025-02-06", "vwvfg", True),
         ("BW", "2025-02-07", "vwvfg", False),
-        ("SH", "2025-06-09", "vwvfg", True),
+        ("SH", "2025-06-09", "vwvfg", False),  # § 110 Abs. 2 LVwG: the 4th day from 1 January 2025
+        ("SH", "2025-01-02", "vwvfg", False),
+        ("TH", "2025-01-02", "vwvfg", False),
         ("SH", "2024-12-20", "vwvfg", False),  # the old 3-day rule, certain in every Land
         ("SH", "2025-03-03", "sgbx", False),  # not a Land VwVfG label
         ("NW", "2025-01-02", "vwvfg", False),  # NW, BY and MV: 4 days from 1 Jan 2025
+        ("HE", "2026-09-29", "vwvfg", True),  # Hessen keeps the 3rd day: remedy cannot re-derive it
+        ("HE", "2024-12-20", "vwvfg", False),
+        ("RP", "2026-09-29", "vwvfg", True),  # no verified text
+        (None, "2026-09-29", "vwvfg", True),  # no Land
     ],
 )
 def test_land_vwvfg_labels_avoid_the_uncertain_start_windows(
-    region: str, posted: str, scope: str, flagged: bool
+    region: str | None, posted: str, scope: str, flagged: bool
 ) -> None:
-    """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a letter posted where that is not sure."""
+    """``remedy`` counts 4 days from 2025-01-01 in every Land; the guard catches a hand-read letter posted where that
+    is not the Land's own day."""
     import verify_labels
 
     item = {"expected_due": "2025-12-31", "spec": {"delivery_scope": scope, "posted_on": posted}}

@@ -78,6 +78,8 @@ working day, so the end shift moves nothing.
   lists them).
 - `conflicting`: optional, for a letter that gives more than one date for the same obligation: the other dates,
   each as a derivation (`from`, `steps`, optional `event`).
+- `procedure_began`: optional, for a decision of an authority: the day the administrative procedure it decides
+  began, `YYYY-MM-DD`, when the letter states it (an application, a hearing, an objection).
 
 ### Steps
 

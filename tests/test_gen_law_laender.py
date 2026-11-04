@@ -4,7 +4,8 @@ delivered, as each Land's text in ``evals/law/laender.txt`` gives it.
 The table is the generator's, written from those texts. These tests read each Land's block and hold the table to
 it: the day count (the 3rd or the 4th day after posting), the day the 4th day starts, the Länder that keep the 3rd
 day for a procedure begun before their switch, and the Länder with no text, from which no letter may come. They
-also check what ``deemed_delivery`` does with each, and that tax and social-law decisions are untouched.
+also check what ``deemed_delivery`` does with each, that tax and social-law decisions are untouched, and that
+the label check's own table (``evals/verify_labels.py``, separate code) gives the same days.
 """
 
 from __future__ import annotations
@@ -14,6 +15,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
+from evals import verify_labels as vl
 from evals.gen import law
 from evals.gen.common import objection_item
 
@@ -291,3 +293,25 @@ def test_an_objection_item_counts_the_authority_s_land() -> None:
             objection_item(
                 posted=date(2026, 9, 29), scope="vwvfg", remedy="widerspruch", region=region, title="t"
             )
+
+
+# --------------------------------------------------------------------------------------------------
+# the label check's own table gives the same days
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_label_check_s_table_agrees_with_the_generator_s() -> None:
+    """``evals/verify_labels.py`` keeps its own table and arithmetic; for every Land, posting day and procedure start
+    it gives the generator's day, and refuses where the generator refuses."""
+    days = [date(2024, 12, 28) + timedelta(days=n) for n in range(0, 170, 3)] + [date(2026, 11, 3)]
+    for land in law.LAENDER:
+        for posted in days:
+            for began in (None, date(2024, 11, 1), date(2025, 1, 1), date(2025, 2, 6), date(2025, 2, 7)):
+                if began is not None and began > posted:
+                    continue
+                try:
+                    mine = (fiction(posted, land, began) - posted).days
+                except ValueError:
+                    mine = None
+                assert vl.land_fiction_days(land, posted, began) == mine, (land, posted, began)
+    assert vl.land_fiction_days(None, date(2026, 11, 3)) is None
