@@ -233,3 +233,26 @@ Fußnote
 (1) Der Widerspruch des Mieters gegen die Kündigung ist in Textform zu erklären. Auf Verlangen des Vermieters soll der Mieter über die Gründe des Widerspruchs unverzüglich Auskunft erteilen.
 (2) Der Vermieter kann die Fortsetzung des Mietverhältnisses ablehnen, wenn der Mieter ihm den Widerspruch nicht spätestens zwei Monate vor der Beendigung des Mietverhältnisses erklärt hat. Hat der Vermieter nicht rechtzeitig vor Ablauf der Widerspruchsfrist auf die Möglichkeit des Widerspruchs sowie auf dessen Form und Frist hingewiesen, so kann der Mieter den Widerspruch noch im ersten Termin des Räumungsrechtsstreits erklären.
 (3) Eine zum Nachteil des Mieters abweichende Vereinbarung ist unwirksam.
+
+§ 622 Kündigungsfristen bei Arbeitsverhältnissen
+
+(1) Das Arbeitsverhältnis eines Arbeiters oder eines Angestellten (Arbeitnehmers) kann mit einer Frist von vier Wochen zum Fünfzehnten oder zum Ende eines Kalendermonats gekündigt werden.
+(2) Für eine Kündigung durch den Arbeitgeber beträgt die Kündigungsfrist, wenn das Arbeitsverhältnis in dem Betrieb oder Unternehmen
+    1. zwei Jahre bestanden hat, einen Monat zum Ende eines Kalendermonats,
+    2. fünf Jahre bestanden hat, zwei Monate zum Ende eines Kalendermonats,
+    3. acht Jahre bestanden hat, drei Monate zum Ende eines Kalendermonats,
+    4. zehn Jahre bestanden hat, vier Monate zum Ende eines Kalendermonats,
+    5. zwölf Jahre bestanden hat, fünf Monate zum Ende eines Kalendermonats,
+    6. 15 Jahre bestanden hat, sechs Monate zum Ende eines Kalendermonats,
+    7. 20 Jahre bestanden hat, sieben Monate zum Ende eines Kalendermonats.
+(3) Während einer vereinbarten Probezeit, längstens für die Dauer von sechs Monaten, kann das Arbeitsverhältnis mit einer Frist von zwei Wochen gekündigt werden.
+(4) Von den Absätzen 1 bis 3 abweichende Regelungen können durch Tarifvertrag vereinbart werden. Im Geltungsbereich eines solchen Tarifvertrags gelten die abweichenden tarifvertraglichen Bestimmungen zwischen nicht tarifgebundenen Arbeitgebern und Arbeitnehmern, wenn ihre Anwendung zwischen ihnen vereinbart ist.
+(5) Einzelvertraglich kann eine kürzere als die in Absatz 1 genannte Kündigungsfrist nur vereinbart werden,
+    1. wenn ein Arbeitnehmer zur vorübergehenden Aushilfe eingestellt ist; dies gilt nicht, wenn das Arbeitsverhältnis über die Zeit von drei Monaten hinaus fortgesetzt wird;
+    2. wenn der Arbeitgeber in der Regel nicht mehr als 20 Arbeitnehmer ausschließlich der zu ihrer Berufsbildung Beschäftigten beschäftigt und die Kündigungsfrist vier Wochen nicht unterschreitet.
+Bei der Feststellung der Zahl der beschäftigten Arbeitnehmer sind teilzeitbeschäftigte Arbeitnehmer mit einer regelmäßigen wöchentlichen Arbeitszeit von nicht mehr als 20 Stunden mit 0,5 und nicht mehr als 30 Stunden mit 0,75 zu berücksichtigen. Die einzelvertragliche Vereinbarung längerer als der in den Absätzen 1 bis 3 genannten Kündigungsfristen bleibt hiervon unberührt.
+(6) Für die Kündigung des Arbeitsverhältnisses durch den Arbeitnehmer darf keine längere Frist vereinbart werden als für die Kündigung durch den Arbeitgeber.
+
+§ 623 Schriftform der Kündigung
+
+Die Beendigung von Arbeitsverhältnissen durch Kündigung oder Auflösungsvertrag bedürfen zu ihrer Wirksamkeit der Schriftform; die elektronische Form ist ausgeschlossen.

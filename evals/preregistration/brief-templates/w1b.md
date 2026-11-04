@@ -109,7 +109,7 @@ Run these from `/work`, and work until each one passes:
 3. `python -m pytest tests/test_eval_dataset.py -q`
 4. `ruff check evals/gen`
 5. `ruff format --check evals/gen`
-6. `mypy evals/gen evals/generate.py`
+6. `python -m mypy --explicit-package-bases evals/gen evals/generate.py`
 
 Keep `writer-notes-newkinds.md` up to date as you go. The session has a limited number of turns, and a follow-up
 session, given this brief and the word "continue", goes on from your notes.

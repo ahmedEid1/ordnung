@@ -330,7 +330,7 @@ def adversarial() -> list[Case]:
                             derivation=f"Two document dates ({fmt(d_head)} in the header, {fmt(d_body)} in the text). From the earlier one: "
                                        f"Land VwVfG day 4 (Sunday, no shift) → one month (§ 74 Abs. 1 S. 2 VwGO) → {fmt(e_body)}; from "
                                        f"the later one {fmt(e_head)}. The earlier date is the safe label; the item needs review / low "
-                                       "confidence. Remedy is Klage: SPEC §21 shows a 'get advice' card; the legal date is still the label.",
+                                       "confidence. Remedy is Klage: the legal date is still the label.",
                             candidates=[e_body.isoformat(), e_head.isoformat()])  # fmt: skip
     letter = Letter(
         org=org, recipient=O.R_NW, info=[("Aktenzeichen", "63/2-WA-0544/27"), ("Datum", de(d_head))],

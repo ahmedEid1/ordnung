@@ -60,12 +60,12 @@
     {
       "id": "c10",
       "disputed": true,
-      "text": "optional_items are neither required nor penalised (e.g. special-cancellation windows, payments after Rechtskraft, scam demands)."
+      "text": "optional_items are dates a letter offers that the reader need not act on (e.g. special-cancellation windows, payments after Rechtskraft, scam demands); no label requires them."
     },
     {
       "id": "c11",
       "disputed": false,
-      "text": "expected_due 'ambiguous' (with candidates) and null (no confident date) expect low confidence rather than a date."
+      "text": "expected_due 'ambiguous' (with candidates) marks a slot the letter leaves open between two or more dates; null marks one the letter gives no date for."
     },
     {
       "id": "c12",
@@ -85,17 +85,17 @@
     {
       "id": "c15",
       "disputed": false,
-      "text": "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, wording, layout, dates and amounts) before the split's first run; they repeat no deadline-bearing sentence of the dev or test letters. The split is run once and never tuned on."
+      "text": "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, wording, layout, dates and amounts) before the split's first run; they repeat no deadline-bearing sentence of the dev or test letters."
     },
     {
       "id": "c16",
       "disputed": false,
-      "text": "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing sentence of the dev, test or holdout letters. The split is run once and nothing is tuned on it."
+      "text": "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing sentence of the dev, test or holdout letters."
     },
     {
       "id": "c17",
       "disputed": false,
-      "text": "Holdout3 split: variants I, J and the holdout3 adversarial letters were written from scratch (new senders, recipients, wording, layout, dates, amounts and regions) after the code freeze; they repeat no deadline-bearing sentence of the dev, test, holdout or holdout2 letters. The split is audited blind before its one run, and nothing is tuned on it."
+      "text": "Holdout3 split: variants I, J and the holdout3 adversarial letters were written from scratch (new senders, recipients, wording, layout, dates, amounts and regions) after the code freeze; they repeat no deadline-bearing sentence of the dev, test, holdout or holdout2 letters."
     },
     {
       "id": "c18",
@@ -110,7 +110,7 @@
     {
       "id": "c20",
       "disputed": true,
-      "text": "remedy_type follows the letter's own Rechtsbehelfsbelehrung; kind_also_accepted names a second document kind that fits the letter equally well (score kind as correct if it is kind or in kind_also_accepted)."
+      "text": "remedy_type follows the letter's own Rechtsbehelfsbelehrung; kind_also_accepted names a second document kind that fits the letter equally well."
     },
     {
       "id": "c21",
@@ -1381,7 +1381,7 @@
             "derivation": "Klage (no Vorverfahren): one month after Bekanntgabe (§ 74 Abs. 1 S. 2 VwGO); Land VwVfG 4-day fiction without shift. (1) Posted Thu 2025-05-15; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Mon 2025-05-19. (2) Bekanntgabe Mon 2025-05-19 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Mon 2025-05-19 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Thu 2025-06-19. (4) Thu 2025-06-19 is a public holiday (Fronleichnam) → next day (§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO). (5) Fri 2025-06-20 is the next working day (weekends + nationwide + NW holidays). Expected: Fri 2025-06-20.",
             "region_sensitive": true,
             "due_if_region_ignored": "2025-06-19",
-            "note": "Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is still the label."
+            "note": "Remedy is Klage (§ 74 VwGO): the Klage period's end is the label."
           }
         ],
         "optional_items": [],
@@ -5339,7 +5339,7 @@
             "derivation": "Klage (no Vorverfahren): one month after Bekanntgabe (§ 74 Abs. 1 S. 2 VwGO); Land VwVfG 4-day fiction without shift. (1) Posted Mon 2027-09-27; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Fri 2027-10-01. (2) Bekanntgabe Fri 2027-10-01 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Fri 2027-10-01 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Mon 2027-11-01. (4) Mon 2027-11-01 is a public holiday (Allerheiligen) → next day (§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO). (5) Tue 2027-11-02 is the next working day (weekends + nationwide + NW holidays). Expected: Tue 2027-11-02.",
             "region_sensitive": true,
             "due_if_region_ignored": "2027-11-01",
-            "note": "Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is still the label."
+            "note": "Remedy is Klage (§ 74 VwGO): the Klage period's end is the label."
           },
           {
             "kind": "task",
@@ -10014,7 +10014,7 @@
             "amount": null,
             "derivation": "Klage (no Vorverfahren): one month after Bekanntgabe (§ 74 Abs. 1 S. 2 VwGO); Land VwVfG 4-day fiction without shift. (1) Posted Mon 2025-09-22; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Fri 2025-09-26. (2) Bekanntgabe Fri 2025-09-26 (no shift of the fiction day outside tax law). (3) § 187 Abs. 1 BGB: Fri 2025-09-26 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Sun 2025-10-26. (4) Sun 2025-10-26 is a Sunday → next day (§ 57 Abs. 2 VwGO i.V.m. § 222 Abs. 2 ZPO). (5) Mon 2025-10-27 is the next working day (weekends + nationwide + NW holidays). Expected: Mon 2025-10-27.",
             "region_sensitive": false,
-            "note": "Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is still the label."
+            "note": "Remedy is Klage (§ 74 VwGO): the Klage period's end is the label."
           },
           {
             "kind": "task",
@@ -11797,7 +11797,7 @@
               "shift": true
             },
             "amount": null,
-            "derivation": "Two document dates (Fri 2027-07-30 in the header, Wed 2027-07-28 in the text). From the earlier one: Land VwVfG day 4 (Sunday, no shift) → one month (§ 74 Abs. 1 S. 2 VwGO) → Wed 2027-09-01; from the later one Fri 2027-09-03. The earlier date is the safe label; the item needs review / low confidence. Remedy is Klage: SPEC §21 shows a 'get advice' card; the legal date is still the label.",
+            "derivation": "Two document dates (Fri 2027-07-30 in the header, Wed 2027-07-28 in the text). From the earlier one: Land VwVfG day 4 (Sunday, no shift) → one month (§ 74 Abs. 1 S. 2 VwGO) → Wed 2027-09-01; from the later one Fri 2027-09-03. The earlier date is the safe label; the item needs review / low confidence. Remedy is Klage: the legal date is still the label.",
             "region_sensitive": false,
             "candidates": [
               "2027-09-01",
@@ -14670,7 +14670,7 @@
             "amount": null,
             "derivation": "Klage (no Vorverfahren): one month after Bekanntgabe (§ 74 Abs. 1 S. 2 VwGO); Land VwVfG 4-day fiction without shift. (1) Posted Thu 2027-10-28; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Mon 2027-11-01. (2) Mon 2027-11-01 is a public holiday (Allerheiligen), but the fiction day does NOT move outside tax law (BSG B 14 AS 12/09 R; OVG Lüneburg 4 LA 44/10); only the end of the following period can move. (3) § 187 Abs. 1 BGB: Mon 2027-11-01 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Wed 2027-12-01. (4) Wed 2027-12-01 is a working day (weekends + nationwide + BY holidays), no shift. Expected: Wed 2027-12-01.",
             "region_sensitive": false,
-            "note": "Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is still the label."
+            "note": "Remedy is Klage (§ 74 VwGO): the Klage period's end is the label."
           },
           {
             "kind": "task",
@@ -19432,7 +19432,7 @@
             "amount": null,
             "derivation": "Klage (no Vorverfahren): one month after Bekanntgabe (§ 74 Abs. 1 S. 2 VwGO); Land VwVfG 4-day fiction without shift. (1) Posted Tue 2025-12-23; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG)): day 4 after posting = Sat 2025-12-27. (2) Sat 2025-12-27 is a Saturday, but the fiction day does NOT move outside tax law (BSG B 14 AS 12/09 R; OVG Lüneburg 4 LA 44/10); only the end of the following period can move. (3) § 187 Abs. 1 BGB: Sat 2025-12-27 is not counted; § 188 Abs. 2 BGB: 1 month(s) end on the day with the same number → Tue 2026-01-27. (4) Tue 2026-01-27 is a working day (weekends + nationwide + NW holidays), no shift. Expected: Tue 2026-01-27.",
             "region_sensitive": false,
-            "note": "Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is still the label."
+            "note": "Remedy is Klage (§ 74 VwGO): the Klage period's end is the label."
           },
           {
             "kind": "task",

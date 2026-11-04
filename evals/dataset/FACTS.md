@@ -53,7 +53,7 @@ A slot holds one of three kinds of fact: dated, undatable or ambiguous. Every fa
 {
   "source": "A1",
   "land": "BW",
-  "from": "2031-03-07",
+  "from": "2031-03-03",
   "event": "posting day",
   "steps": [
     {"op": "forward", "n": 4, "unit": "days", "shift": false},
@@ -63,8 +63,8 @@ A slot holds one of three kinds of fact: dated, undatable or ambiguous. Every fa
 }
 ```
 
-Posted on Friday 7 March 2031, the fourth day is Tuesday 11 March. One month later is Friday 11 April, Good Friday.
-With the end shift, the date moves past Easter Monday to Tuesday 15 April 2031.
+Posted on Monday 3 March 2031, the fourth day is Friday 7 March 2031. One month later is Monday 7 April 2031, a
+working day, so the end shift moves nothing.
 
 - `source`: see above.
 - `land`: the Land whose public holidays count, as its code (`BW`, `BY`, `BE`, `BB`, `HB`, `HH`, `HE`, `MV`, `NI`,
@@ -75,11 +75,9 @@ With the end shift, the date moves past Easter Monday to Tuesday 15 April 2031.
 - `event`: optional, the event in a few words.
 - `steps`: the arithmetic, applied in order. An empty list for a date the letter states.
 - `conventions`: optional, the ids of the benchmark's labelling conventions the derivation applies (`manifest.json`
-  lists them). They must exist, and they must be exactly the ones the label is tagged with. A contract's end of
-  term and last day to cancel together must apply the contract's tags.
-- `conflicting`: optional, for a letter that gives more than one date for the same obligation. The other dates,
-  each as a derivation (`from`, `steps`, optional `event`). Each must be among the label's candidates, and the label
-  must be the earliest of them.
+  lists them).
+- `conflicting`: optional, for a letter that gives more than one date for the same obligation: the other dates,
+  each as a derivation (`from`, `steps`, optional `event`).
 
 ### Steps
 
@@ -106,13 +104,16 @@ working day before instead. Whether a step shifts is a reading of the law; the f
 
 More worked examples:
 
-- A contract from 1 March 2031 for 12 months, cancellable with one month's notice to the end of the term:
-  - `term_end`: from `2031-03-01`, `forward` 12 `months`, then `back` 1 `days`, neither shifted: 29 February 2032;
-  - `cancel_by`: the same two steps, then `back` 1 `months`, not shifted: 31 January 2032.
-- The end of the second calendar month after 14 November 2031: `month_end` with n 2 gives Saturday 31 January
-  2032; shifted, Monday 2 February 2032.
-- Three `werktage` after Monday 22 December 2031 in NW: 23 and 24 December count, 25 and 26 December are holidays,
-  Saturday 27 December is the third.
+- A contract from Wednesday 1 October 2031 for 12 months, cancellable with one month's notice to the end of the term:
+  - `term_end`: from `2031-10-01`, `forward` 12 `months`, then `back` 1 `days`: Thursday 30 September 2032;
+  - `cancel_by`: the same two steps, then `back` 1 `months`: Tuesday 31 August 2032 (one month forward from it ends
+    on 30 September, September having no 31st).
+
+  Both are working days, so `shift` moves neither.
+- The end of the second calendar month after Monday 14 July 2031: `month_end` with n 2 gives Tuesday 30 September
+  2031.
+- Three `werktage` after Tuesday 23 December 2031 in NW: 24 December counts, 25 and 26 December are holidays,
+  Saturday 27 December counts, and Monday 29 December 2031 is the third.
 
 ### An undatable slot
 
@@ -136,9 +137,7 @@ not name. `undatable` is `true` when it is there.
 }
 ```
 
-`ambiguous` lists two or more readings the letter leaves open, each a derivation. They must be exactly the label's
-candidates. Each must be a working day, and after the last day the letter is valid for (its `valid_until` in
-`manifest.json`).
+`ambiguous` lists two or more readings the letter leaves open, each a derivation.
 
 ## A price change
 

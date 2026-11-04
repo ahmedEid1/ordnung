@@ -32,6 +32,19 @@ FILES = {
     "kschg.txt",
     "tkg.txt",
     "enwg.txt",
+    "vwgo.txt",
+}
+#: Sections the labels' derivations and conventions cite for a period (evals/gen, evals/generate.py): the readers who
+#: write and check the final labels date them from these texts alone.
+CITED = {
+    "bgb.txt": ("§ 187", "§ 188", "§ 193", "§ 309", "§ 622", "§ 623"),
+    "vwgo.txt": ("§ 57", "§ 58", "§ 68", "§ 70", "§ 74"),
+    "tkg.txt": ("§ 56", "§ 57"),
+    "vwvfg.txt": ("§ 31", "§ 41"),
+    "ao.txt": ("§ 108", "§ 122", "§ 355"),
+    "sgb_10.txt": ("§ 26", "§ 37"),
+    "owig.txt": ("§ 46", "§ 67"),
+    "zpo.txt": ("§ 222",),
 }
 ROW = re.compile(
     r"^\| `(?P<file>[^`]+)` \| (?P<statute>[^|]+?) \| (?P<sections>[^|]+?) \| (?P<url>[^|\s]+) "
@@ -244,3 +257,15 @@ def test_the_folder_names_no_software_and_no_file_of_this_repository() -> None:
         text = re.sub(r"öffentliche[nrs]?\s+Ordnung", "", path.read_text(encoding="utf-8"))  # statute German
         assert not re.search(r"(?<![^\W\d_])ordnung(?![^\W\d_])", text, re.IGNORECASE), path.name
         assert not re.search(r"\b(?:src|evals|docs|tests|scripts)/|\.py\b", text), path.name
+
+
+def test_every_section_the_labels_cite_for_a_period_is_here() -> None:
+    """The VwGO's Widerspruch and Klage periods, the TKG's price-change cancellation and the BGB's employment notice
+    periods are cited by the labels' derivations; a reader who dates them from these texts alone needs them."""
+    missing = [
+        f"{name} {section}"
+        for name, sections in CITED.items()
+        for section in sections
+        if not (LAW / name).is_file() or section not in headings((LAW / name).read_text(encoding="utf-8"))
+    ]
+    assert missing == []

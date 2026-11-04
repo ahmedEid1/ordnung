@@ -12,6 +12,7 @@ Every manifest here is synthetic: no test reads a final split's labels.
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -566,3 +567,27 @@ def test_the_grammar_is_written_down_for_people() -> None:
         "price_change",
     ]
     assert [word for word in words if f"`{word}`" not in text] == []
+
+
+def test_the_grammar_s_examples_decide_no_disputed_reading() -> None:
+    """The blind readers get ``FACTS.md`` and no convention: no worked example may end on a Saturday, a Sunday or a
+    public holiday, where whether a date moves is a reading the conventions decide; every weekday it names is the
+    date's own. Nor does it state the label's own rules (which date a label takes, what tags it carries)."""
+    import holidays
+
+    text = (DATASET / "FACTS.md").read_text(encoding="utf-8")
+    months = ("January February March April May June July August September October November December").split()
+    days = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+    named = re.compile(rf"(?:({'|'.join(days)}) )?(\d{{1,2}}) ({'|'.join(months)}) (\d{{4}})")
+    found = [
+        (weekday or None, date(int(year), months.index(month) + 1, int(day)))
+        for weekday, day, month, year in named.findall(text)
+    ]
+    found += [(None, date.fromisoformat(iso)) for iso in re.findall(r"\b(\d{4}-\d{2}-\d{2})\b", text)]
+    assert found
+    national = holidays.country_holidays("DE", years=range(2030, 2034))
+    for weekday, day in found:
+        assert weekday in (None, days[day.weekday()]), (weekday, day)
+        assert day.weekday() < 5 and day not in national, day
+    for rule in ("must be the earliest", "the label is tagged with", "must be a working day", "valid_until"):
+        assert rule not in text, rule

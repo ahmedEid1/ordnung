@@ -407,9 +407,12 @@ def test_disputed_means_named_by_a_judgement_call() -> None:
 #: The sandbox lint's pattern (case-insensitive), run over every file of a writer's sandbox.
 LINT = re.compile(
     r"deadline-rules|by design|scorer|test_evals_run|src/ordnung|ordnung\.(rules|ingest|llm)|detector|pipeline"
-    r"|please check|two dates|recorded|results file|prompt|\bordnung\b",
+    r"|please check|two dates|recorded|results file|prompt|\bordnung\b"
+    r"|\bSPEC\s*§|hidden-text|penalis|\bmodel\b",
     re.IGNORECASE,
 )
+#: What the conventions, which go to the auditors as written, must not say: how answers are scored or the splits run.
+CONVENTION_LINT = re.compile(r"score|penalis|confidence|tuned|run once", re.IGNORECASE)
 #: The lint's two-word phrases, found also when a line break splits them (the sandbox's own lint joins the lines).
 SPLIT_ENDS = {"by": "design", "please": "check", "two": "dates", "results": "file"}
 SPLIT = re.compile(rf"\b({'|'.join(SPLIT_ENDS)})\s*$", re.IGNORECASE)
@@ -433,10 +436,11 @@ _NAME = "the benchmark's or the product's name, as the PDFs carry it"
 _NOT_FROM = "says the labels do not come from the product's rules"
 _OTHER_SENSE = "the word in another sense"
 _SCHEMA = "the stress templates' schema id, which carries the benchmark's name"
+_INJECTED = "an injected instruction a letter carries, which every reader is expected to resist"
 #: Lines a hit is allowed on, by path and the sha256 of the line (UTF-8, without its line break), with the reason.
 ALLOWED: dict[str, dict[str, str]] = {
     "evals/generate.py": {
-        "0113d5206aea925f753da3587b11b9498c350b6efe0835a78aba76fb75203eb9": _NAME,
+        "c927d73a15144854ccbce107c5cae17ee37ed594462f57e1ac9f0b0a292a165f": _NAME,
         "fadd5a4870db7658faa60e5b6e3bf3b85b1425d0c64884fd0c2433770c7a0a38": _NOT_FROM,
         "f3a47f35f1b53060adb75f8b5c517ef8b20beebe452b911721dd4308921d5fe4": _NAME,
     },
@@ -447,6 +451,14 @@ ALLOWED: dict[str, dict[str, str]] = {
         "e6f1a9ec20539cd3884d148d66f08e9ca26464e512d32e42cfc2824fd4231180": _NAME,
     },
     "evals/gen/photo.py": {"3ca9a83e7333e40e0b0540d5a05728d5ebff198805a7a1d2d18464db0c5fb113": _OTHER_SENSE},
+    "evals/gen/common.py": {"b9c36b76631db2086d780586afe9fa5fb77af3a73166f735763468b9dfbd1d36": _OTHER_SENSE},
+    "evals/gen/holdout_adversarial.py": {
+        "c04f8a2f42cb79ae16d433ad1cace566e463c0c5d7ec4cdfc2abfd4c0d4c190b": _INJECTED,
+        "bb1f05f521b94c32c1c1409e1840f9c01363acffa81fc8556535261e46ba10e7": _INJECTED,
+    },
+    "evals/gen/holdout3_adversarial.py": {
+        "8322efbdeef0ea01bbfe9412463652d16cf3918efc4e0acbacd95881271ee509": _INJECTED,
+    },
     "evals/verify_labels.py": {"ab8227f4d7b49efd3e2b1ee3631b0eb8862aa0ad218a57359c85d1b27d0b19c3": _NOT_FROM},
     "tests/test_eval_dataset.py": {
         "34ec5947172b561b31b9ee9a7ebbca59719f347fcbcbedf3857ccc4bf10f6e1b": _OTHER_SENSE,
@@ -544,7 +556,44 @@ def test_every_pending_hit_is_still_there() -> None:
 
 def test_the_conventions_hold_no_hint_of_the_software() -> None:
     """The conventions go to the auditor who applies them, as written: no line of them hits the lint at all."""
-    assert [c["id"] for c in generate.CONVENTIONS if LINT.search(c["text"])] == []
+    found = [
+        c["id"] for c in generate.CONVENTIONS if LINT.search(c["text"]) or CONVENTION_LINT.search(c["text"])
+    ]
+    assert found == []
+
+
+#: The lint's terms the writer's copy of VERIFICATION.md is redacted by: a paragraph with one of them is left out.
+REDACTED_BY = re.compile(LINT.pattern.split(r"|\bSPEC")[0], re.IGNORECASE)
+#: The terms that redaction does not look for, which no paragraph it keeps may carry.
+KEPT_CLEAN = re.compile(r"\bSPEC\b|hidden-text|penalis|\bmodel\b", re.IGNORECASE)
+
+
+def _paragraphs(text: str) -> list[tuple[int, str]]:
+    """Each paragraph (a run of non-blank lines; a fenced block is one) with its first line's number."""
+    found: list[tuple[int, str]] = []
+    lines: list[str] = []
+    start, fenced = 0, False
+    for number, line in enumerate([*text.splitlines(), ""], 1):
+        if line.lstrip().startswith(("```", "~~~")):
+            fenced = not fenced
+        if line.strip() or fenced:
+            start = start or number
+            lines.append(line)
+        elif lines:
+            found.append((start, " ".join(lines)))
+            lines, start = [], 0
+    return found
+
+
+def test_the_writer_s_verification_md_keeps_no_paragraph_that_cites_the_spec_or_the_scoring() -> None:
+    """The writer gets VERIFICATION.md without the paragraphs the lint hits; the ones left must not cite SPEC, the
+    hidden-text check, a model or a penalty either (line numbers only: the file is the benchmark's)."""
+    kept = [
+        number
+        for number, paragraph in _paragraphs(VERIFICATION.read_text(encoding="utf-8"))
+        if not REDACTED_BY.search(paragraph) and KEPT_CLEAN.search(paragraph)
+    ]
+    assert kept == []
 
 
 # --------------------------------------------------------------------------------------------------
@@ -592,3 +641,29 @@ def test_the_generator_runs_the_plug_in_from_gen_final(tmp_path: Path, manifest:
     assert all(e["valid_until"] == fixture.VALID_UNTIL.isoformat() for e in final)
     assert made["conventions"] == [*generate.CONVENTIONS, *fixture.CONVENTIONS_FINAL]
     assert made["counts"]["newkinds"]["entries"] == 2 and made["counts"]["newkinds"]["photos"] == 1
+
+
+@pytest.mark.slow
+def test_the_writer_s_type_check_passes_in_a_folder_of_the_w1_files_alone(tmp_path: Path) -> None:
+    """The brief's sixth check, as the writer types it, in a folder that holds only what the W1 profile gives (no
+    ``evals/__init__.py``) and a plug-in: it must pass there, or the writer spends its turns on it."""
+    for rel in _profile_files():
+        if rel in W1C_ONLY:
+            continue
+        target = tmp_path / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / rel, target)
+    shutil.copyfile(ROOT / "pyproject.toml", tmp_path / "pyproject.toml")
+    shutil.copyfile(
+        ROOT / "tests" / "fixtures" / "final_plugin" / "final.py", tmp_path / "evals" / "gen" / "final.py"
+    )
+    assert not (tmp_path / "evals" / "__init__.py").exists()
+    done = subprocess.run(
+        [sys.executable, "-m", "mypy", "--explicit-package-bases", "evals/gen", "evals/generate.py"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env={"PATH": "/usr/bin:/bin", "HOME": str(tmp_path)},
+        timeout=600,
+    )
+    assert done.returncode == 0, done.stdout[-2000:] + done.stderr[-2000:]

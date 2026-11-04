@@ -244,8 +244,7 @@ def municipal_decision() -> list[Case]:
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
                            title="Klagefrist" if remedy == "klage" else "Widerspruchsfrist",
-                           note=("Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is "
-                                 "still the label.") if remedy == "klage" else None),
+                           note=("Remedy is Klage (§ 74 VwGO): the Klage period's end is the label.") if remedy == "klage" else None),
             hand,
         )  # fmt: skip
         rbb = _rbb_municipal(org, variant, court)

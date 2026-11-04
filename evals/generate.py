@@ -1,4 +1,4 @@
-"""Generate the Ordnung benchmark documents and their ground truth (SPEC §17, §21).
+"""Generate the Ordnung benchmark documents and their ground truth.
 
     .venv/bin/python evals/generate.py                 # writes evals/dataset/<split>/ + manifest.json
     .venv/bin/python evals/generate.py --out /tmp/x    # same, elsewhere (used by the determinism test)
@@ -290,26 +290,28 @@ CONVENTIONS = _conventions(
     ("c08", False, "region_sensitive=true marks items whose date differs if the Land's holidays are ignored (due_if_region_ignored)."),
     ("c09", True, "Remedy 'klage' (no Vorverfahren): the label is the end of the one-month Klage period (§ 74 Abs. 1 S. 2 VwGO), counted like "
      "the other remedy periods."),
-    ("c10", True, "optional_items are neither required nor penalised (e.g. special-cancellation windows, payments after Rechtskraft, scam demands)."),
-    ("c11", False, "expected_due 'ambiguous' (with candidates) and null (no confident date) expect low confidence rather than a date."),
+    ("c10", True, "optional_items are dates a letter offers that the reader need not act on (e.g. special-cancellation windows, payments after "
+     "Rechtskraft, scam demands); no label requires them."),
+    ("c11", False, "expected_due 'ambiguous' (with candidates) marks a slot the letter leaves open between two or more dates; null marks one "
+     "the letter gives no date for."),
     ("c12", False, "Photo entries are phone-photo renderings of page 1 of a one-page PDF entry (source_id) and share its truth."),
     ("c13", False, "today = the day the person reads the letter (posting/letter date + 2..6 days); it is not a receipt date."),
     ("c14", False, "Template wording: the test variants (C, D) and the adversarial letters repeat no deadline-bearing sentence of the dev "
      "variants (A, B); only short statutory phrases (e.g. 'vierten Tag nach Aufgabe zur Post') recur."),
     ("c15", False, "Holdout split: variants E, F and the holdout adversarial letters were written from scratch (new senders, recipients, "
      "wording, layout, dates and amounts) before the split's first run; they repeat no deadline-bearing sentence of the dev or test "
-     "letters. The split is run once and never tuned on."),
+     "letters."),
     ("c16", False, "Holdout2 split: variants G, H and the holdout2 adversarial letters were written from scratch (new senders, recipients, "
      "wording, layout, dates, amounts and regions) after the release's last code change; they repeat no deadline-bearing "
-     "sentence of the dev, test or holdout letters. The split is run once and nothing is tuned on it."),
+     "sentence of the dev, test or holdout letters."),
     ("c17", False, "Holdout3 split: variants I, J and the holdout3 adversarial letters were written from scratch (new senders, recipients, "
      "wording, layout, dates, amounts and regions) after the code freeze; they repeat no deadline-bearing sentence of the dev, "
-     "test, holdout or holdout2 letters. The split is audited blind before its one run, and nothing is tuned on it."),
+     "test, holdout or holdout2 letters."),
     ("c18", False, "references list identifiers only; info-block lines holding a dash, a date or a billing month are printed but not labelled."),
     ("c19", False, "amounts = the sums the reader must pay, will receive, or that the decision sets (old/new price for price changes, fees to "
      "bring to an appointment); line items, sums insured and merely threatened penalties are not listed."),
     ("c20", True, "remedy_type follows the letter's own Rechtsbehelfsbelehrung; kind_also_accepted names a second document kind that fits "
-     "the letter equally well (score kind as correct if it is kind or in kind_also_accepted)."),
+     "the letter equally well."),
     ("c21", False, "Consumer contracts under § 309 Nr. 9 BGB / § 56 TKG are generated so that the written minimum term also fits into 24 months "
      "from conclusion — the open question whether the cap counts from conclusion or from the start of service never matters."),
     ("c22", True, "A notice deadline (cancel-by) stays on a Saturday, Sunday or holiday: § 193 BGB does not apply to notice periods "

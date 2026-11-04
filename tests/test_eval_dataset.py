@@ -1,4 +1,4 @@
-"""Checks for the benchmark dataset produced by ``evals/generate.py`` (SPEC §17).
+"""Checks for the benchmark dataset produced by ``evals/generate.py``.
 
 * the manifest loads and every entry's file exists with the recorded SHA-256;
 * the truth uses the product's vocabularies (DocumentKind as the generator copies it, which
@@ -276,7 +276,7 @@ def _dark_fills(page: Any) -> list[tuple[float, float, float, float]]:
 
 
 def _invisible_chars(page: Any) -> int:
-    """SPEC §21 criteria: < 3 pt, off-page, or white text not on a dark fill counts as hidden."""
+    """Text under 3 pt, off the page, or white and not on a dark fill: no reader sees it."""
     fills = _dark_fills(page)
     hidden = 0
     for ch in page.chars:
@@ -330,7 +330,7 @@ def test_text_pdfs_contain_their_key_date_phrases(
 
 
 def test_invisible_text_only_where_expected(manifest: dict[str, Any], pdf_reads: dict[str, PdfRead]) -> None:
-    """SPEC §21 criteria: < 3 pt, off-page, or white text not on a dark fill counts as hidden."""
+    """Text under 3 pt, off the page, or white and not on a dark fill: no reader sees it."""
     for entry in _entries(manifest):
         if entry["photo"]:
             continue

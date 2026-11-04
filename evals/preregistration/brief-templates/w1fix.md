@@ -67,7 +67,7 @@ for an entry that `fix-list.md` does not name. Then run these from `/work`, and 
 3. `python -m pytest tests/test_eval_dataset.py -q`
 4. `ruff check evals/gen`
 5. `ruff format --check evals/gen`
-6. `mypy evals/gen evals/generate.py`
+6. `python -m mypy --explicit-package-bases evals/gen evals/generate.py`
 
 and check that every file of an entry not named in `fix-list.md` has its sha256 from before.
 

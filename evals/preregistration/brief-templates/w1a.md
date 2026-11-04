@@ -98,7 +98,7 @@ Run these from `/work`, and work until each one passes:
 3. `python -m pytest tests/test_eval_dataset.py -q`
 4. `ruff check evals/gen`
 5. `ruff format --check evals/gen`
-6. `mypy evals/gen evals/generate.py`
+6. `python -m mypy --explicit-package-bases evals/gen evals/generate.py`
 
 `tests/test_eval_dataset.py` learns holdout4's composition in the next session. Until then, a failure that comes only
 from a count it does not know yet is written in your notes, and every other test passes.

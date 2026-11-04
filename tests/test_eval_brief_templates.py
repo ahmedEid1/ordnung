@@ -83,7 +83,8 @@ W1_CHECKS = (
     "python -m pytest tests/test_eval_dataset.py -q",
     "ruff check evals/gen",
     "ruff format --check evals/gen",
-    "mypy evals/gen evals/generate.py",
+    # the writer's folder holds no evals/__init__.py: mypy names its modules from the folders it is given
+    "python -m mypy --explicit-package-bases evals/gen evals/generate.py",
 )
 W2_CHECKS = ("python -m evals.ask.heldout_check --window {D0} {L}",)
 SELF_CHECKS = {"w1a": W1_CHECKS, "w1b": W1_CHECKS, "w1fix": W1_CHECKS, "w2": W2_CHECKS, "w2fix": W2_CHECKS}

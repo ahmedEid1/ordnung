@@ -18,7 +18,8 @@ source. Until a final split has that file its dates are not re-derived, and the 
    holidays of only some municipalities (Mariä Himmelfahrt in BY, Fronleichnam in SN/TH) are counted;
 2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable; each ambiguous
    reading is a working day and not before the letter's today (for a final split's letter: after its
-   ``valid_until``);
+   ``valid_until``), and a final split's ambiguous fact holds exactly the label's candidates; a fact's
+   ``conflicting`` dates are among the label's candidates, and the label is the earliest of them;
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
 4. no deadline-bearing sentence appears verbatim in letters of two splits (dev, test, holdout, holdout2,
@@ -28,7 +29,10 @@ source. Until a final split has that file its dates are not re-derived, and the 
    4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that);
 7. a final split's letter is read on its ``final_day``, and every scored date (with an ambiguous item's
    candidates), contract date and appointment lies after its ``valid_until``;
-8. the conventions a final split's facts apply exist in the manifest and are the ones its label is tagged with.
+8. the conventions a final split's facts apply exist in the manifest and are the ones its label is tagged with (a
+   contract's end of term and last day to cancel together apply the contract's tags).
+
+These rules are the label's; ``evals/dataset/FACTS.md``, which the blind readers get, states the grammar only.
 """
 
 from __future__ import annotations
