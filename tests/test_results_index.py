@@ -111,15 +111,21 @@ def test_every_changed_date_is_declared_with_a_reason(rows: dict[str, dict[str, 
 
 
 def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
-    """Known values of the replay at HEAD (zero tokens): holdout3 and the newest holdout2 re-scoring replay exactly;
-    the held-out recordings as they scored changed by the declared fixes only (holdout 53 → 55 of 56, holdout2
-    54 → 55), and the baselines' dates are the same in every file."""
+    """Known values of the replay at HEAD (zero tokens): holdout3 and the newest holdout2 re-scoring give the same
+    dates (the Länder delivery rules checked on 4 Nov 2026 moved confidences only: holdout3 I1 and J1, holdout2 G1
+    and H2) and their baselines, where replayed, exactly; the held-out recordings as they scored changed by the declared fixes
+    only (holdout 53 → 55 of 56, holdout2 54 → 55), and the baselines' dates are the same in every file."""
     for name in (
         "2026-10-06-claude-sonnet-5-holdout3.json",
         "2026-10-06-claude-sonnet-5-holdout2-rescored.json",
     ):
-        assert rows[name]["verdict"] == "exact"
-        assert {verdict["verdict"] for verdict in rows[name]["conditions"].values()} == {"exact"}
+        conditions = rows[name]["conditions"]
+        assert rows[name]["verdict"] == conditions["ordnung"]["verdict"] == "same-dates"
+        assert conditions["ordnung"]["drift"]["values"] == ["prediction.items[]", "score.items[]"]
+        baselines = {
+            verdict["verdict"] for condition, verdict in conditions.items() if condition != "ordnung"
+        }
+        assert baselines <= {"exact"}
     for name, right, at_head, ids in (
         (
             "2026-09-30-claude-sonnet-5-holdout.json",
@@ -159,7 +165,7 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
         "2026-10-30-claude-sonnet-5-ask.json",
         "2026-10-31-claude-sonnet-5-ask-rescored.json",
         "2026-10-08-claude-sonnet-5-without-land.json",
-        "2026-10-30-claude-sonnet-5-checks-ablated.json",
+        "2026-11-04-claude-sonnet-5-checks-ablated.json",
         "2026-10-30-claude-sonnet-5-e2e.json",
         "2026-10-30-claude-sonnet-5-heldout-reanalysis.json",
     }
@@ -169,6 +175,7 @@ def test_todays_verdicts(rows: dict[str, dict[str, Any]]) -> None:
         "2026-10-01-claude-sonnet-5-ask.json",
         "2026-10-30-claude-sonnet-5-ask-rescored.json",
         "2026-10-06-claude-sonnet-5-without-land.json",
+        "2026-10-30-claude-sonnet-5-checks-ablated.json",
     }
 
 
@@ -1186,7 +1193,8 @@ def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) ->
 # --------------------------------------------------------------------------------------------------
 
 WITHOUT_LAND = "2026-10-08-claude-sonnet-5-without-land.json"
-ABLATION = "2026-10-30-claude-sonnet-5-checks-ablated.json"
+#: the published check ablation of the earlier splits (it supersedes the one of 30 Oct 2026)
+ABLATION = "2026-11-04-claude-sonnet-5-checks-ablated.json"
 E2E = "2026-10-30-claude-sonnet-5-e2e.json"
 
 

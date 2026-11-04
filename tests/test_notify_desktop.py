@@ -5,6 +5,7 @@ once-a-day policy, and the daily tick that calls it."""
 from __future__ import annotations
 
 import base64
+import hashlib
 import subprocess
 from collections.abc import Iterator
 from dataclasses import dataclass, field
@@ -19,7 +20,7 @@ from helpers_secretary import TODAY, seed_ledger
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.llm.runtime import LLMService
-from ordnung.models import RefLink
+from ordnung.models import DateSpec, RefLink
 from ordnung.notify import desktop
 from ordnung.notify.desktop import (
     LAST_SHOWN_KEY,
@@ -37,6 +38,7 @@ from ordnung.notify.desktop import (
     summary,
     things_due,
 )
+from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.secretary import household
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
 from ordnung.tick import DailyTick
@@ -222,6 +224,64 @@ def test_full_mode_names_a_member_and_discreet_does_not(store: Store) -> None:
         "Decide on FitWell membership: cancel by Thu",
     ]
     assert len(clean(long)) == 60 and clean(long).endswith("…")
+
+
+def test_an_older_matter_s_deadline_says_it_can_be_earlier(store: Store) -> None:
+    """A Bavarian authority's objection deadline is listed by its send-by date, as everywhere; *Full* adds that a
+    matter begun before the Land's switch has an earlier one (the calendar event and the letter's page give it);
+    *Discreet* still counts only, and an overdue to-do says no more than that."""
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        legal_basis="§ 70 VwGO",
+    )
+    receipt = compute_due(
+        spec, RuleContext(today=MON, region="BY", document_date=date(2026, 9, 23), delivery_scope="vwvfg")
+    )
+    assert receipt.send_by is not None
+    party = store.add_party(name="Landratsamt Musterkreis", kind="authority", region="BY").id
+    doc = store.add_document(
+        sha256=hashlib.sha256(b"decision").hexdigest(),
+        filename="decision.pdf",
+        mime="application/pdf",
+        file_path="files/decision.pdf",
+    )
+    store.update_document(
+        doc.id, status="processed", kind="authority_letter", title="Decision", party_id=party
+    )
+    store.add_item(
+        kind="deadline",
+        title="Objection deadline",
+        due_date=receipt.due_date,
+        send_by=receipt.send_by,
+        doc_id=doc.id,
+        computation=receipt,
+        date_spec=spec,
+        grounding="verified",
+        created_at="2026-09-24T08:00:00Z",
+        updated_at="2026-09-24T08:00:00Z",
+    )
+    day = date.fromisoformat(receipt.send_by) - timedelta(days=1)
+    clock.set_today(day)
+    earlier = " (earlier for a matter begun before 1 January 2025)"
+    assert [thing.text for thing in desktop.today_things(store, day)] == [
+        f"Objection deadline by tomorrow{earlier}"
+    ]
+    texts = desktop.preview(store, day)
+    assert texts["discreet"] == Notification("Ordnung", "1 thing due this week")
+    week = agenda(
+        overdue=[entry("Objection deadline", MON - timedelta(days=1), kind="deadline")],
+        next_7_days=[entry("Send the objection", MON + timedelta(days=2), kind="deadline")],
+    )
+    switch = {e.id: "1 January 2025" for e in week.entries()}
+    assert [thing.text for thing in things_due(week, {}, {}, switch)] == [
+        "Objection deadline — overdue",
+        f"Send the objection by Wed{earlier}",
+    ]
 
 
 def test_nothing_due_or_switched_off_says_nothing() -> None:

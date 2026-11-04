@@ -1271,11 +1271,28 @@ _KINDS = {
     "checks-ablated": "check ablation",
     "e2e": "end to end",
 }
+#: A replay written again: the earlier file, the file that supersedes it and why it was written again (a person's
+#: words, as a changed date's ``because`` in ``evals/results/INDEX.json``). The history page says so under its table
+#: while both files are in the results. Every replay the index keeps as superseded has its entry here, naming the file
+#: of its kind the index checks (``tests/test_present.py`` holds it).
+SUPERSEDED = {
+    "2026-10-06-claude-sonnet-5-without-land.json": (
+        "2026-10-08-claude-sonnet-5-without-land.json",
+        "this time also with the state the postcode on the sender's letter suggests confirmed (a third replay); its "
+        "letterhead and without-Land replays are the earlier file's, number for number",
+    ),
+    "2026-10-30-claude-sonnet-5-checks-ablated.json": (
+        "2026-11-04-claude-sonnet-5-checks-ablated.json",
+        "the Länder delivery rules checked against the law on 4 November 2026 moved one ablated confidence (one item "
+        "with the two-dates check off, high to medium), and no count changed",
+    ),
+}
 
 
 def history(doc: Mapping[str, Any], legacy: str) -> str:
-    """``docs/evals-history.md``: every results file with its role, then the runs as ``docs/evals.md`` published
-    them up to 0.3.0 (``legacy``: ``evals.report``'s page, rendered from the same files as then)."""
+    """``docs/evals-history.md``: every results file with its role and which replay supersedes which (and why),
+    then the runs as ``docs/evals.md`` published them up to 0.3.0 (``legacy``: ``evals.report``'s page, rendered
+    from the same files as then)."""
     rows = []
     for row in doc["files"]:
         archive = row["role"] == "archive"
@@ -1300,6 +1317,15 @@ def history(doc: Mapping[str, Any], legacy: str) -> str:
         ]
     )
     roles = "\n".join(f"- **{role}**: {meaning}." for role, meaning in ROLE_MEANINGS)
+    listed = {row["file"] for row in doc["files"]}
+    superseded = [
+        _wrap(
+            f"`{earlier}` is superseded by `{later}`, the same replay written again: {why}. The results index "
+            "(`evals/results/INDEX.json`) keeps the earlier file, checked by its hash."
+        )
+        for earlier, (later, why) in SUPERSEDED.items()
+        if earlier in listed and later in listed
+    ]
     body = legacy.split("\n", 1)[1] if legacy.startswith("# ") else legacy
     parts = [
         f"# {HISTORY_TITLE}",
@@ -1313,6 +1339,7 @@ def history(doc: Mapping[str, Any], legacy: str) -> str:
         "Each file's role says what it may support:",
         roles,
         table,
+        *superseded,
         "## The page as published up to 0.3.0",
         body.strip(),
     ]

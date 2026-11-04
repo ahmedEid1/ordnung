@@ -564,6 +564,95 @@ def test_the_history_page_keeps_the_runs_as_they_were_published(rendered: dict[s
     assert set(re.findall(r"\bclaude-[a-z]+-\d+(?:-\d+)*\b", history)) == {"claude-sonnet-5"}
 
 
+def _differing(old: Any, new: Any, path: str = "") -> list[str]:
+    """The paths at which two JSON values differ (a key on one side only counts as a difference)."""
+    if isinstance(old, dict) and isinstance(new, dict):
+        return [
+            found
+            for key in sorted(old.keys() | new.keys())
+            for found in (
+                _differing(old[key], new[key], f"{path}/{key}")
+                if key in old and key in new
+                else [f"{path}/{key}"]
+            )
+        ]
+    if isinstance(old, list) and isinstance(new, list) and len(old) == len(new):
+        return [found for i, pair in enumerate(zip(old, new)) for found in _differing(*pair, f"{path}[{i}]")]
+    return [] if old == new else [path]
+
+
+def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: dict[str, str]) -> None:
+    """A replay written again names the file it supersedes and why, under the table, for every replay the index keeps
+    as superseded; the index keeps the earlier file by its hash; and what the reason says moved is what moved between
+    the two files."""
+    section = _flat(
+        rendered["docs/evals-history.md"].split("## Every results file", 1)[1].split("\n## ", 1)[0]
+    )
+    old, new = (
+        "2026-10-30-claude-sonnet-5-checks-ablated.json",
+        "2026-11-04-claude-sonnet-5-checks-ablated.json",
+    )
+    assert (
+        f"`{old}` is superseded by `{new}`, the same replay written again: the Länder delivery rules checked "
+        "against the law on 4 November 2026 moved one ablated confidence (one item with the two-dates check off, "
+        "high to medium), and no count changed. The results index (`evals/results/INDEX.json`) keeps the earlier "
+        "file, checked by its hash."
+    ) in section
+    assert (
+        "`2026-10-06-claude-sonnet-5-without-land.json` is superseded by `2026-10-08-claude-sonnet-5-without-land.json`, "
+        "the same replay written again: this time also with the state the postcode on the sender's letter suggests "
+        "confirmed (a third replay); its letterhead and without-Land replays are the earlier file's, number for "
+        "number. The results index (`evals/results/INDEX.json`) keeps the earlier file, checked by its hash."
+    ) in section
+    # every replay the index keeps as superseded is explained, by the file of its kind the index checks: a replay
+    # written again without a reason here fails, not only a missing sentence
+    rows = json.loads((RESULTS / "INDEX.json").read_text(encoding="utf-8"))["results"]
+    index = {row["file"]: row for row in rows}
+    checked: dict[str, str] = {}
+    for row in rows:
+        if row["role"] == "replay" and row["verdict"] == "checked":
+            assert row["kind"] not in checked, row["file"]  # one checked file per kind of replay
+            checked[row["kind"]] = row["file"]
+    superseded = {row["file"] for row in rows if row["role"] == "replay" and row["verdict"] == "superseded"}
+    assert superseded and text.SUPERSEDED.keys() == superseded
+    assert text.SUPERSEDED[old][0] == new
+    roles = model.roles(RESULTS)
+    for earlier, (later, _why) in text.SUPERSEDED.items():
+        assert later == checked[index[earlier]["kind"]], earlier
+        assert (index[earlier]["check"], index[earlier]["verdict"]) == ("hash", "superseded"), earlier
+        assert index[later]["verdict"] == "checked" and index[later]["kind"] == index[earlier]["kind"], later
+        assert roles[earlier] == roles[later] == "replay"
+        assert f"`{earlier}` is superseded by `{later}`" in section, earlier
+    # the without-Land replay written again: its first two replays give the earlier file's numbers, number for number,
+    # and it adds the replay with the suggested state
+    first, again = (
+        json.loads((RESULTS / f"2026-10-{day}-claude-sonnet-5-without-land.json").read_text(encoding="utf-8"))
+        for day in ("06", "08")
+    )
+    assert first["splits"].keys() == again["splits"].keys()
+    for split, replays in first["splits"].items():
+        assert {key: again["splits"][split][key] for key in replays} == replays, split
+        assert "with_suggestion" in again["splits"][split] and "with_suggestion" not in replays, split
+    # what moved: one scored item's confidence, high to medium, in the ablations that switch the two-dates check
+    # off; every count, date, outcome and flag is the same
+    before, after = (json.loads((RESULTS / name).read_text(encoding="utf-8")) for name in (old, new))
+    assert _differing(before["totals"], after["totals"]) == []
+    moved = _differing(before["splits"], after["splits"])
+    assert moved
+    items, ablations = set(), set()
+    for path in moved:
+        found = re.fullmatch(r"/(\w+)/ablations/(\w+)/changed\[(\d+)\]/ablated/confidence", path)
+        assert found, path
+        split, ablation, i = found[1], found[2], int(found[3])
+        was, now = (side["splits"][split]["ablations"][ablation]["changed"][i] for side in (before, after))
+        assert (was["ablated"]["confidence"], now["ablated"]["confidence"]) == ("high", "medium"), path
+        items.add((now["entry_id"], now["item"]))
+        ablations.add(ablation)
+    assert len(items) == 1
+    two_dates = before["meta"]["ablations"]["no_two_dates_check"]["switches_off"][0]
+    assert all(two_dates in after["meta"]["ablations"][name]["switches_off"] for name in ablations)
+
+
 # --------------------------------------------------------------------------------------------------
 # One render, checked
 # --------------------------------------------------------------------------------------------------

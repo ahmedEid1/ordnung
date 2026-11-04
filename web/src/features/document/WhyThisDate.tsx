@@ -20,12 +20,13 @@ import { dueDateLabel, sendByLabel } from "./dateLabels";
  * How the rules engine says a date waits for the sender's Land: a regional holiday may move it
  * (`rules.deadlines.REGION_UNKNOWN`, how that warning starts; counted backwards it says `REGION_EARLIER`: the date
  * may then be a day late), or a Land authority's own delivery rule may (`rules.delivery`: "… we couldn't confirm
- * this sender's, so we counted 3 days").
+ * this sender's, so we counted 3 days"; an e-mailed decision counted from the day it was sent, `LAND_EMAIL_UNCONFIRMED`).
  */
 export const LAND_UNKNOWN = {
   start: "Holiday region unknown",
   earlier: "where the deadline would be earlier",
   threeDays: "couldn't confirm this sender's",
+  email: "Without this sender's Land",
 } as const;
 
 /** The to-do a receipt belongs to: what kind of date it is, and its letter. */
@@ -71,7 +72,9 @@ function useLetter(docId: string | null | undefined): { docKind: DocumentKind | 
  */
 export function senderLandUnknown(receipt: Pick<ComputationReceipt, "warnings">, party: Party | null): Party | null {
   if (!party || party.region || looksAbroad(party)) return null;
-  const waits = receipt.warnings.some((w) => w.startsWith(LAND_UNKNOWN.start) || w.includes(LAND_UNKNOWN.threeDays));
+  const waits = receipt.warnings.some(
+    (w) => w.startsWith(LAND_UNKNOWN.start) || w.includes(LAND_UNKNOWN.threeDays) || w.includes(LAND_UNKNOWN.email),
+  );
   return waits ? party : null;
 }
 

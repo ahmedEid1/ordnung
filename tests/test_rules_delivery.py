@@ -11,14 +11,21 @@ bekanntgabe_regime_selection.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
+from ordnung.models import DateSpec
+from ordnung.rules.calendar_de import REGION_NAMES
+from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.delivery import (
+    LAND_DAYS_UNCONFIRMED,
+    LAND_EMAIL_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
+    VWVFG_OLD_PROCEDURES,
+    VWVFG_THREE_DAYS,
     deemed_delivery,
     fiction_days,
     is_private_sender,
@@ -202,33 +209,246 @@ def test_fiction_days_and_scope_mapping() -> None:
     assert "HE" not in VWVFG_FOUR_DAY_FROM
 
 
-@pytest.mark.parametrize(
-    ("posted", "expected"),
-    [
-        ("2025-02-03", "2025-02-06"),  # vwvfg verdict: BW switched to 4 days only on 7 Feb 2025
-        ("2025-02-07", "2025-02-11"),
-    ],
-)
-def test_baden_wuerttemberg_switch_date(posted: str, expected: str) -> None:
-    assert deemed_delivery(D(posted), scope="vwvfg", region="BW")[0] == D(expected)
+#: Each Land's own delivery day for its authorities' letters (checked against the Länder gazettes on 4 Nov 2026,
+#: docs/deadline-rules.md § 5): (Land, posted, channel, day, rule id of the delivery step, warning — or words it
+#: holds).
+_LAND_DAYS: list[tuple[str | None, str, str, str, str, str | tuple[str, ...] | None]] = [
+    # Thüringen: the federal VwVfG by reference (§ 1 ThürVwVfG), the 4th day from 1 January 2025
+    ("TH", "2024-12-31", "post", "2025-01-03", "vwvfg_41_2", None),
+    ("TH", "2025-01-01", "post", "2025-01-05", "vwvfg_41_2", None),
+    ("TH", "2025-01-02", "post", "2025-01-06", "vwvfg_41_2", None),
+    ("TH", "2026-09-29", "post", "2026-10-03", "vwvfg_41_2", None),  # a Saturday, not moved
+    ("TH", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+    # Schleswig-Holstein: § 110 Abs. 2 LVwG, the 4th day from 1 January 2025
+    ("SH", "2024-12-31", "post", "2025-01-03", "vwvfg_41_2", None),
+    ("SH", "2025-01-02", "post", "2025-01-06", "vwvfg_41_2", None),
+    ("SH", "2025-03-03", "post", "2025-03-07", "vwvfg_41_2", None),
+    ("SH", "2025-06-09", "post", "2025-06-13", "vwvfg_41_2", None),
+    ("SH", "2025-06-10", "post", "2025-06-14", "vwvfg_41_2", None),
+    # Hessen keeps the 3rd day (§ 41 Abs. 2 HVwVfG): its law, not a doubt
+    ("HE", "2024-12-30", "post", "2025-01-02", "vwvfg_41_2", None),
+    ("HE", "2025-01-02", "post", "2025-01-05", "vwvfg_land_days", None),
+    ("HE", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", None),
+    ("HE", "2026-10-30", "electronic", "2026-11-02", "vwvfg_land_days", None),
+    # Hamburg: the 3rd day until the law of 5 May 2025 took effect the day after its gazette (Art. 54 HV)
+    ("HH", "2025-01-02", "post", "2025-01-05", "vwvfg_land_days", None),
+    ("HH", "2025-03-03", "post", "2025-03-06", "vwvfg_land_days", None),
+    ("HH", "2025-05-13", "post", "2025-05-16", "vwvfg_land_days", None),
+    ("HH", "2025-05-14", "post", "2025-05-18", "vwvfg_41_2", None),
+    # Baden-Württemberg switched to the 4th day only on 7 February 2025
+    ("BW", "2025-02-03", "post", "2025-02-06", "vwvfg_land_days", None),
+    ("BW", "2025-02-06", "post", "2025-02-09", "vwvfg_land_days", None),
+    ("BW", "2025-02-07", "post", "2025-02-11", "vwvfg_41_2", None),
+    # Bremen and the Saarland (no text could be checked), or no Land: the earlier 3rd day, with the warning
+    ("HB", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    ("SL", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    (None, "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    ("BE", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+    # Brandenburg: an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg) — at the earliest the day sent
+    # ... and names the fiction's day, how far after sending: not the deadline's gap, which weekends widen
+    (
+        "BB",
+        "2026-10-30",
+        "electronic",
+        "2026-10-30",
+        "vwvfg_bb_7",
+        ("§ 7 VwVfGBbg", "Tue 3 Nov 2026, 4 days after"),
+    ),
+    (
+        "BB",
+        "2024-12-20",
+        "electronic",
+        "2024-12-20",
+        "vwvfg_bb_7",
+        ("§ 7 VwVfGBbg", "Mon 23 Dec 2024, 3 days after"),
+    ),
+    ("BB", "2026-10-30", "post", "2026-11-03", "vwvfg_41_2", None),
+    ("BB", "2026-10-30", "portal", "2026-10-31", "vwvfg_41_2a", None),
+    # an e-mailed decision whose sender's Land isn't known may be Brandenburg's: from the day it was sent
+    (None, "2026-10-30", "electronic", "2026-10-30", "vwvfg_bb_7", LAND_EMAIL_UNCONFIRMED),
+]
 
 
 @pytest.mark.parametrize(
-    ("posted", "expected"),
+    ("region", "posted", "channel", "expected", "rule_id", "warning"),
+    _LAND_DAYS,
+    ids=[f"{row[0]}-{row[1]}-{row[2]}" for row in _LAND_DAYS],
+)
+def test_the_lands_own_delivery_day(
+    region: str | None,
+    posted: str,
+    channel: str,
+    expected: str,
+    rule_id: str,
+    warning: str | tuple[str, ...] | None,
+) -> None:
+    result = resolve_delivery(D(posted), scope="vwvfg", channel=channel, region=region)  # type: ignore[arg-type]
+    assert result.day == D(expected)
+    assert result.steps[0].rule_id == rule_id
+    if isinstance(warning, tuple):
+        assert result.uncertainty is not None and all(words in result.uncertainty for words in warning)
+        assert "up to" not in result.uncertainty  # the deadline's gap is not the delivery day's
+    else:
+        assert result.uncertainty == warning
+
+
+def test_brandenburg_email_counts_from_a_confirmed_arrival_before_the_4th_day() -> None:
+    """§ 7 VwVfGBbg: the 4th day does not hold when the decision provably arrived earlier — a later arrival is the
+    late-arrival note's (§ 41 Abs. 2 S. 3 VwVfG)."""
+    sent = D("2026-10-30")
+    arrived = resolve_delivery(
+        sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-11-02")
+    )
+    assert (arrived.day, arrived.steps[0].rule_id, arrived.uncertainty) == (
+        D("2026-11-02"),
+        "vwvfg_bb_7",
+        None,
+    )
+    assert (
+        arrived.steps[0].label == "Counts as delivered on the day it arrived (§ 7 VwVfGBbg): Mon 2 Nov 2026"
+    )
+    late = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-11-05"))
+    assert (late.day, late.steps[0].rule_id, late.uncertainty) == (D("2026-11-03"), "vwvfg_41_2", None)
+    # without the sender's Land: from the day it arrived too, which may be Brandenburg's rule
+    unknown = resolve_delivery(sent, scope=None, channel="electronic", region=None, arrived=D("2026-11-01"))
+    assert (unknown.day, unknown.uncertainty) == (D("2026-11-01"), LAND_EMAIL_UNCONFIRMED)
+    assert unknown.steps[0].label == (
+        "Counted from the day you said it arrived (in Brandenburg an e-mailed decision counts from that day): "
+        "Sun 1 Nov 2026"
+    )
+    sent_only = resolve_delivery(sent, scope="vwvfg", channel="electronic", region=None)
+    assert sent_only.steps[0].label == (
+        "Counted from the day it was sent (in Brandenburg an e-mailed decision counts from the day it arrived): "
+        "Fri 30 Oct 2026"
+    )
+    # an arrival day before the day it was sent is no arrival: from the day it was sent
+    early = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-10-29"))
+    assert early.day == sent and early.steps[0].label.endswith(
+        "— at the earliest the day it was sent: Fri 30 Oct 2026"
+    )
+
+
+def test_the_email_note_tells_the_law_from_ordnungs_count() -> None:
+    """§ 7 VwVfGBbg counts from the day an e-mailed decision provably arrived, in Brandenburg only; the day it was
+    sent is Ordnung's earliest stand-in while the Land is unknown, not the law."""
+    law, _, method = LAND_EMAIL_UNCONFIRMED.partition("Without this sender's Land")
+    assert "counts from the day it arrived when that can be shown (§ 7 VwVfGBbg)" in law
+    assert "elsewhere it counts as delivered on the 3rd or 4th day after sending" in law
+    assert method == " we counted from the day it was sent, or from the arrival day you entered."
+
+
+def test_the_land_tables() -> None:
+    """Every Land is in one table: the 4th day from its switch, the 3rd by its own law, or not confirmed."""
+    assert VWVFG_FOUR_DAY_FROM["TH"] == VWVFG_FOUR_DAY_FROM["SH"] == date(2025, 1, 1)
+    assert VWVFG_THREE_DAYS == frozenset({"HE"})
+    assert not VWVFG_THREE_DAYS & set(VWVFG_FOUR_DAY_FROM)
+    assert set(VWVFG_FOUR_DAY_FROM) | VWVFG_THREE_DAYS | {"HB", "SL"} == set(REGION_NAMES)
+
+
+def test_the_web_app_counts_four_days_in_the_same_lands() -> None:
+    """The sender's-state question asks about a Land authority's 3-day date only where confirming it counts 4
+    (``web/src/features/party/sender-land.ts``): the same Länder as the engine's."""
+    source = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "party" / "sender-land.ts"
+    found = re.search(r"FOUR_DAY_LANDS\b[^=]*=\s*new Set\(\[([^\]]*)\]\)", source.read_text("utf-8"))
+    assert found is not None
+    assert set(re.findall(r'"([A-Z]{2})"', found.group(1))) == set(VWVFG_FOUR_DAY_FROM)
+
+
+def test_the_web_app_matches_the_engines_warnings() -> None:
+    """The web app knows a date waits for the sender's Land by words of the engine's warnings
+    (``LAND_UNKNOWN`` in ``web/src/features/document/WhyThisDate.tsx``): they must be the engine's words."""
+    source = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "document" / "WhyThisDate.tsx"
+    found = re.search(r"export const LAND_UNKNOWN = \{(.*?)\} as const", source.read_text("utf-8"), re.S)
+    assert found is not None
+    words = dict(re.findall(r'(\w+): "([^"]*)"', found.group(1)))
+    assert words["threeDays"] in LAND_DAYS_UNCONFIRMED
+    assert words["email"] in LAND_EMAIL_UNCONFIRMED
+
+
+_MONTHS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("region", "posted", "scope", "older"),
     [
-        ("2025-03-03", "2025-03-06"),  # Hamburg's 4th day came with the law of 5 May 2025
-        ("2025-05-13", "2025-05-16"),  # the gazette's day: still the 3rd day
-        ("2025-05-14", "2025-05-18"),  # in force the day after it (Art. 54 HV)
+        ("MV", "2025-12-09", "vwvfg", ("MV", "2025-12-12")),
+        ("MV", "2025-12-09", None, ("MV", "2025-12-12")),
+        ("BW", "2025-02-07", "vwvfg", ("BW", "2025-02-10")),
+        ("BY", "2025-12-09", "vwvfg", ("BY", "2025-12-12")),
+        ("BY", "2026-10-30", None, ("BY", "2026-11-02")),
+        # before the switch the old law counts the 3rd day anyway; elsewhere no older matter keeps it
+        ("BW", "2025-02-06", "vwvfg", None),
+        ("MV", "2024-12-31", "vwvfg", None),
+        ("BY", "2024-12-31", "vwvfg", None),
+        ("HE", "2025-12-09", "vwvfg", None),
+        ("NW", "2025-12-09", "vwvfg", None),
+        (None, "2025-12-09", "vwvfg", None),
+        ("MV", "2025-12-09", "sgbx", None),
     ],
 )
-def test_hamburg_switch_date(posted: str, expected: str) -> None:
-    assert deemed_delivery(D(posted), scope="vwvfg", region="HH")[0] == D(expected)
+def test_an_older_matter_is_marked_after_the_switch(
+    region: str | None, posted: str, scope: str | None, older: tuple[str, str] | None
+) -> None:
+    """Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern keep the old 3rd day for a matter begun before their
+    switch (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day counts, and the older matter's day is
+    kept for the deadline's note."""
+    result = resolve_delivery(D(posted), scope=scope, region=region)  # type: ignore[arg-type]
+    assert result.older_matter == (None if older is None else (older[0], D(older[1])))
+    if region in VWVFG_OLD_PROCEDURES and older is not None:
+        assert result.day == D(posted) + timedelta(days=4)
+        assert result.uncertainty is None
 
 
-def test_schleswig_holstein_confirmed_from_june_2025() -> None:
-    """vwvfg verdict: § 110 LVwG SH shows the 4th day in the text as of 10 Jun 2025."""
-    assert deemed_delivery(D("2025-03-03"), scope="vwvfg", region="SH")[0] == D("2025-03-06")
-    assert deemed_delivery(D("2026-09-29"), scope="vwvfg", region="SH")[0] == D("2026-10-03")
+def test_the_older_matter_table_names_each_lands_switch() -> None:
+    assert set(VWVFG_OLD_PROCEDURES) == {"BW", "BY", "MV"}
+    for land, (_, switch) in VWVFG_OLD_PROCEDURES.items():
+        day = VWVFG_FOUR_DAY_FROM[land]
+        assert switch == f"{day.day} {_MONTHS[day.month - 1]} {day.year}"
+
+
+def test_delivery_notes_are_not_read_as_doubts_scams_or_injections() -> None:
+    """The benchmark reads a warning naming a conflict or an unknown as the letter's own doubt about its date, one
+    naming a scam as a false alarm and one naming an AI as an injection flagged: a delivery note says none of them."""
+    from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE
+
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        legal_basis="§ 70 VwGO",
+    )
+    notes = [LAND_DAYS_UNCONFIRMED]
+    for land in ("BW", "BY", "MV"):
+        context = RuleContext(
+            today=D("2025-12-01"), region=land, document_date=D("2025-12-09"), delivery_scope="vwvfg"
+        )
+        found = [
+            w
+            for w in compute_due(spec, context).warnings
+            if w.startswith(f"In {REGION_NAMES[land]} a matter")
+        ]
+        assert len(found) == 1, land
+        notes += found
+    for today, nature in (("2026-01-08", "objection"), ("2026-01-13", "objection"), ("2025-12-01", "other")):
+        context = RuleContext(
+            today=D(today), region="MV", document_date=D("2025-12-09"), delivery_scope="vwvfg"
+        )
+        ends = compute_due(spec.model_copy(update={"nature": nature}), context).warnings
+        notes += [w for w in ends if w.startswith("In Mecklenburg-Vorpommern a matter")]
+    notes.append(
+        resolve_delivery(D("2026-10-30"), scope="vwvfg", channel="electronic", region="BB").uncertainty or ""
+    )
+    notes.append(LAND_EMAIL_UNCONFIRMED)
+    for note in notes:
+        assert note
+        for pattern in (UNCERTAINTY_RE, INJECTION_RE, SCAM_RE):
+            assert not pattern.search(note), (pattern.pattern[:30], note)
 
 
 #: A statutory health insurer's remedy notice (§ 37 SGB X, § 84 SGG): an administrative act.

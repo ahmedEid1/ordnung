@@ -33,8 +33,9 @@ import { actionMember } from "@/features/household/logic";
 import { PersonTag } from "@/features/household/PersonTag";
 import { focusAfterLeaving, focusWhenReady } from "./focus";
 import { fadeUp, stagger } from "./motion";
-import { allClearTitle, composerHref, type ActionVerb, type DateRole, type TodayAction } from "./selection";
+import { allClearTitle, composerHref, worthASecondLook, type ActionVerb, type DateRole, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
+import { SECOND_LOOK } from "./helpers";
 import { receiptForContract, receiptForItem } from "./receipt";
 import { ReadMore } from "./ReadMore";
 import { WhyThisDate } from "./WhyThisDate";
@@ -354,7 +355,7 @@ function ActionCard({
           {index + 1}
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex min-h-7 flex-wrap items-center gap-2 pr-6">
+          <div data-part="date-row" className="flex min-h-7 flex-wrap items-center gap-2 pr-6">
             {/* a narrow card keeps its first line for the date */}
             <span className="contents @max-[21rem]:hidden">
               {action.kind === "contract" ? (
@@ -365,6 +366,8 @@ function ActionCard({
             </span>
             {/* one line as a pill; a long one ("Transfer by Tue 22 Sep · 6 days overdue") wraps in a narrow card */}
             <ActionCountdown action={action} className="max-w-full flex-wrap whitespace-normal rounded-[11px]" />
+            {/* an older matter's deadline is earlier ("Why this date?" says when), as the letter's page says of it */}
+            {worthASecondLook(action) ? <span className="text-[12px] text-muted">{SECOND_LOOK}</span> : null}
           </div>
 
           <h3 id={headingId(action.key)} data-top-heading="" className="mt-3.5 text-[16px] font-semibold leading-snug text-ink [overflow-wrap:anywhere]">

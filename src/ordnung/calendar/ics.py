@@ -6,7 +6,11 @@
   The summary starts with a symbol per kind, and with ``⚠ check:`` when the date still needs the
   person's confirmation; a to-do of a letter filed for someone of the household names them after the
   symbol ("⌛ Alex Rivera: Passport expires", ADR 0023). The description says what to do, what happens
-  otherwise, why this date and who it is with, and that it is not legal advice.
+  otherwise, why this date and who it is with, and that it is not legal advice. Under when to post it, an open
+  to-do whose receipt names an older matter's earlier deadline repeats that note
+  (:func:`~ordnung.rules.deadlines.older_matter_note`: in Baden-Württemberg, Bavaria or Mecklenburg-Vorpommern a
+  matter begun before the switch to the 4th day keeps the 3rd), so the earlier send-by date is in the event too —
+  the date and the reminders stay the 4th day's.
 * For contracts with a renewal decision: a "post your cancellation" event on the send-by day and a
   "cancellation must arrive" event on the cancel-by day (never named: the decision is the person's).
 * VALARMs from ``Profile.reminder_days`` for the item's kind (09:00 local on the day for all-day
@@ -32,6 +36,7 @@ from icalendar import Alarm, Calendar, Event
 from ordnung.clock import now_iso
 from ordnung.db.store import NotFoundError, Store
 from ordnung.models import Contract, ContractComputation, Item, Profile
+from ordnung.rules.deadlines import older_matter_note
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.triggers import (
     CALENDAR_META_KEY,
@@ -197,15 +202,17 @@ def _item_description(ledger: Ledger, item: Item, due: date, send_by: date | Non
     party = ledger.party_name(item.party_id or (doc.party_id if doc else None))
     amount = _amount(item)
     receipt = item.computation.summary if item.computation else None
+    is_open = item.status in OPEN_STATUSES
     lines = [
         f"What to do: {item.action}" if item.action else None,
         f"Post it by {fmt_date(send_by)} so it arrives by {fmt_date(due)}." if send_by else None,
+        older_matter_note(item.computation) if is_open else None,
         f"If ignored: {item.consequence}" if item.consequence else None,
         f"Amount: {amount}" if amount else None,
         f"Why this date: {receipt}" if receipt else None,
         f"With: {party}" if party else None,
         "Please check this date in Ordnung — it couldn't be confirmed in the letter."
-        if needs_check(item) and item.status in OPEN_STATUSES
+        if needs_check(item) and is_open
         else None,
         DISCLAIMER,
     ]

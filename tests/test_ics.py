@@ -23,7 +23,9 @@ from ordnung.calendar.ics import (
     needs_check,
 )
 from ordnung.db.store import NotFoundError, Store
-from ordnung.models import ComputationReceipt, Evidence, Item
+from ordnung.models import ComputationReceipt, DateSpec, Evidence, Item
+from ordnung.rules.deadlines import RuleContext, compute_due, older_matter_note
+from ordnung.rules.explain import fmt_date
 from ordnung.secretary import household
 from ordnung.secretary.triggers import run_triggers
 
@@ -217,6 +219,52 @@ def test_needs_check_rules() -> None:
     )
     assert not needs_check(base.model_copy(update={"grounding": "user", "computation": None}))
     assert not needs_check(base.model_copy(update={"grounding": "unverified", "origin": "manual"}))
+
+
+def test_an_older_matter_s_earlier_deadline_is_in_the_event_where_the_person_acts(store: Store) -> None:
+    """A Bavarian authority's decision: the date stays the 4th day's (and so do the reminders), and the event says,
+    under when to post it, that a matter begun before 2025 has an earlier deadline with its own send-by date — the
+    receipt's note, word for word; a finished to-do's event doesn't."""
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        legal_basis="§ 70 VwGO",
+    )
+    receipt = compute_due(
+        spec, RuleContext(today=TODAY, region="BY", document_date=date(2026, 9, 23), delivery_scope="vwvfg")
+    )
+    note = older_matter_note(receipt)
+    assert note is not None and receipt.due_date is not None and receipt.send_by is not None
+    party = store.add_party(name="Landratsamt Musterkreis", kind="authority", region="BY").id
+    doc = _doc(store, "decision", kind="authority_letter", title="Decision", party_id=party)
+    fields = {
+        "kind": "deadline",
+        "title": "Objection deadline",
+        "action": "Send your objection (Widerspruch)",
+        "due_date": receipt.due_date,
+        "send_by": receipt.send_by,
+        "doc_id": doc,
+        "computation": receipt,
+        "date_spec": spec,
+    }
+    item = _item(store, **fields)
+    done = _item(store, **{**fields, "title": "Old objection deadline", "status": "done"})
+    events = _events(build_ics(store, include_done=True))
+    event = events[f"{item}@ordnung.local"]
+    assert str(event["summary"]) == "⚑ Objection deadline"
+    assert event.decoded("dtstart") == date.fromisoformat(receipt.due_date)
+    lines = str(event["description"]).splitlines()
+    posted = lines.index(
+        f"Post it by {fmt_date(date.fromisoformat(receipt.send_by))} so it arrives by "
+        f"{fmt_date(date.fromisoformat(receipt.due_date))}."
+    )
+    assert lines[posted + 1] == note and note.startswith("In Bayern a matter begun before 1 January 2025")
+    assert _triggers(event) == sorted(timedelta(days=-days, hours=9) for days in (14, 7, 6, 3, 1))
+    assert note not in str(events[f"{done}@ordnung.local"]["description"])
 
 
 def test_export_is_stable(store: Store, ids: dict[str, str]) -> None:

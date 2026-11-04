@@ -118,13 +118,24 @@ const ROLE_WORD: Partial<Record<DateRole, string>> = {
 /** The start of a row's second line for a letter filed for someone of the household ("For Alex Rivera"). */
 const forWhom = (name: string | null | undefined) => (name ? `For ${name}` : null);
 
+/** What Today says beside a date that has an earlier deadline for an older matter (`worthASecondLook`), in the words of
+ * the letter's page for its date. */
+export const SECOND_LOOK = "Worth a second look";
+
 /**
  * A Coming-up row's second line: whose letter it is when it is filed for someone of the household (`forName`), what
- * the date means (or the time), and who it is with.
+ * the date means (or the time), whether it is worth a second look (`secondLook`), and who it is with.
  */
-export function comingUpMeta(action: Pick<TodayAction, "dateRole" | "time">, party: Pick<Party, "name"> | undefined, forName: string | null = null): string {
+export function comingUpMeta(
+  action: Pick<TodayAction, "dateRole" | "time">,
+  party: Pick<Party, "name"> | undefined,
+  forName: string | null = null,
+  secondLook = false,
+): string {
   const role = ROLE_WORD[action.dateRole];
-  return [forWhom(forName), role ?? null, action.time ? formatTime(action.time) : null, party?.name ?? null].filter(Boolean).join(" · ");
+  return [forWhom(forName), role ?? null, action.time ? formatTime(action.time) : null, secondLook ? SECOND_LOOK : null, party?.name ?? null]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 // ------------------------------------------------------------------------------------------------

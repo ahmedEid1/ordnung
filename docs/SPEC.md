@@ -276,7 +276,7 @@ Semantics (final text follows the verified research in `docs/deadline-rules.md`)
   `shift_rule == "auto"`). Notice periods (`nature == "notice"`) never shift.
 - **deemed delivery** (`de_admin_post`): letters posted from 2025-01-01 count as delivered on the
   4th day after posting (3rd day before 2025) — § 122 Abs. 2 Nr. 1 AO / § 41 Abs. 2 VwVfG /
-  § 37 Abs. 2 SGB X (PostModG). For tax letters (AO) that day moves to the next working day when it is a
+  § 37 Abs. 2 SGB X (PostModG; Land authorities: § 21). For tax letters (AO) that day moves to the next working day when it is a
   Saturday, Sunday or holiday (BFH IX R 68/98; AEAO zu § 108 Nr. 2). Under § 41 VwVfG and § 37 SGB X it
   does not move (OVG NRW 19 A 4216/99; BSG B 14 AS 12/09 R) — see `docs/deadline-rules.md` § 5. If the
   person entered a later actual arrival date, the receipt keeps the conservative (earlier) deadline and
@@ -2367,7 +2367,10 @@ architecture, deadline-rules (with citations), privacy (data-flow table), evals,
 ## 21. Trust and legal safety
 
 **Safety policy.** Missing a deadline is far worse than acting early. When uncertain, compute the
-**earliest plausible date**, lower `confidence` and list the reasons. No LLM classification or
+**earliest plausible date**, lower `confidence` and list the reasons. A rule that turns on a fact the person
+knows and a letter rarely shows keeps the usual case's date and names the earlier date in a warning (a holiday
+of only part of a Land, confidence unchanged; an older matter in Baden-Württemberg, Bavaria or
+Mecklenburg-Vorpommern, one confidence level lower). No LLM classification or
 document may close, cancel, dismiss, mark missed, or delete an obligation without an explicit user
 click. Overdue is computed on read (the tick never changes item status); recurring items are never
 overdue. **Recurring obligations** follow the policy in `recurrence.py` (ADR 0007): Ordnung cannot see
@@ -2426,8 +2429,17 @@ Receipts state which calendar was used.
 
 **Deemed delivery.** Day count by scope in `catalog.py` with `verified_on`: tax (AO § 122) and
 federal authorities (VwVfG § 41) and social law (SGB X § 37) = 4 days for items posted from
-2025-01-01; Land authorities (Land VwVfG) use the verified value per Land where known, otherwise the
-conservative earlier count (3 days) with `medium` confidence. It is a rule for authorities only: a
+2025-01-01; Land authorities (Land VwVfG) use each Land's count (`rules.delivery`: the 4th day from the Land's
+switch date, Hessen the 3rd), checked against the Länder gazettes except for Rhineland-Palatinate and
+Saxony-Anhalt, whose 4th day is taken without that check; for Bremen, the Saarland or an unknown Land the
+conservative earlier count (3 days) with `medium` confidence. In Baden-Württemberg, Bavaria and
+Mecklenburg-Vorpommern a procedure under the Land's own procedure law begun before the switch keeps 3 days
+(§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day is counted and a warning names the deadline from
+the 3rd, with its own send-by date, when it is earlier. A Brandenburg authority's e-mailed decision counts from
+the day it arrived when that can be shown (§ 7 VwVfGBbg); elsewhere it counts as delivered on the 3rd or 4th
+day. Ordnung counts such a decision, and one of an authority whose Land is unknown, from the day it was sent,
+the earliest it can have arrived, or from the arrival day the person confirmed when that is before the day it
+would otherwise count as delivered. It is a rule for authorities only: a
 sender of a private kind (company, landlord, bank, insurer, employer …; `rules.is_private_sender`)
 whose letter shows no administrative act gets none — a period from delivery runs from the day the
 letter arrived (§ 130 BGB; the letter's date until the person confirms the day, `low`, and the app asks

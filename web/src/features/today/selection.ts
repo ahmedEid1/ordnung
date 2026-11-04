@@ -43,6 +43,21 @@ export type DateRole = "send_by" | "arrive_by" | "pay_by" | "transfer_by" | "col
  * posted today may arrive too late — the date that counts is when it must arrive. */
 export const SENDING_TIME_PASSED = "The usual sending time has passed";
 
+/** The rule a to-do's receipt cites when its note names an older matter's earlier deadline (`OLDER_MATTER_RULE` in
+ * `ordnung.rules.deadlines`; a backend test reads this file): in Baden-Württemberg, Bavaria or Mecklenburg-Vorpommern a
+ * matter begun before the switch to the 4th day keeps the 3rd. The date stays the 4th day's, and "Why this date?"
+ * gives the earlier one with its own send-by date. */
+export const OLDER_MATTER_RULE = "vwvfg_land_old_procedures";
+
+/** Whether Today says an action's date is "Worth a second look", as the letter's page does for its date: a to-do
+ * whose receipt names an older matter's earlier deadline — not once the person confirmed the date (their date, not
+ * ours to doubt), nor on top of "Please check". */
+export function worthASecondLook(action: Pick<TodayAction, "item" | "needsCheck">): boolean {
+  const item = action.item;
+  if (!item || action.needsCheck || item.grounding === "user") return false;
+  return Boolean(item.computation?.rule_ids.includes(OLDER_MATTER_RULE));
+}
+
 /** Whether the usual time to post an item's letter has passed (its receipt says so). */
 export function postTooLate(item: Pick<Item, "send_by" | "due_date" | "computation">): boolean {
   return Boolean(item.send_by && item.due_date && item.computation?.warnings.some((w) => w.startsWith(SENDING_TIME_PASSED)));

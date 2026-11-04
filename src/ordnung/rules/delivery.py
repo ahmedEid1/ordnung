@@ -12,7 +12,8 @@ Which law applies depends on the sender (``scope``):
   the deemed day (BSG B 14 AS 12/09 R).
 
 Since the PostModG, items posted from 1 January 2025 count as delivered on the 4th day after posting
-(3rd day before). Earlier actual receipt never makes the date earlier; later actual receipt is
+(3rd day before). Earlier actual receipt never makes the date earlier — except an e-mailed decision of a
+Brandenburg authority, which counts from the day it arrived (§ 7 VwVfGBbg); later actual receipt is
 handled by the caller (:mod:`ordnung.rules.deadlines`), which keeps the earlier, safe date.
 A Postzustellungsurkunde (yellow envelope) has no fiction at all: the date written on the envelope is
 the delivery day, which callers pass as an explicit anchor date.
@@ -65,29 +66,48 @@ _RULE_BY_SCOPE_CHANNEL: dict[tuple[DeliveryScope, DeliveryChannel], str] = {
 
 _ORDINAL = {3: "3rd", 4: "4th"}
 
-#: Länder whose own VwVfG uses the 4-day rule, with the first posting day it is confirmed for (legal
-#: research checked 2026-09-25): BY, NW and MV amended their laws for 1 Jan 2025, HH only from 14 May
-#: 2025 (Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of 13 May 2025
-#: S. 338, in force the day after under Art. 54 of Hamburg's constitution: re-checked 2026-10-01), BW
-#: only from 7 Feb 2025 (GBl. 2025 Nr. 8; § 102b LVwVfG keeps 3 days for procedures begun earlier); BE, BB, NI,
-#: RP, SN and ST refer to the federal VwVfG. For SH (§ 110 LVwG) the 4th day is confirmed in the text
-#: as of 10 Jun 2025 but not its start date, so earlier postings keep the 3rd day. Hessen still showed
-#: the 3rd day; HB, SL and TH were not confirmed — for them (and when the Land is unknown) the
-#: conservative 3rd day is used (SPEC § 21).
+#: Länder whose own law (or the federal VwVfG it refers to) counts the 4th day, from the first posting day. Checked
+#: against the Länder gazettes on 4 Nov 2026 (docs/deadline-rules.md § 5): BY (Art. 41 BayVwVfG), NW (§ 41 VwVfG NRW;
+#: § 97 keeps the old law only for a step begun before, and posting is the step), MV, BE (§ 1 VwVfG Bln, dynamic),
+#: BB (§ 1 VwVfGBbg), NI (§ 1 NVwVfG), SN (§ 1 SächsVwVfZG, dynamic), SH (§ 110 Abs. 2 LVwG; Art. 2 Abs. 2 of the act
+#: of 13 Dec 2024) and TH (§ 1 ThürVwVfG, dynamic, in force 1 Jan 2025) from 1 January 2025. HH from 14 May 2025
+#: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 of its constitution). BW from 7 Feb 2025 (GBl. 2025 Nr. 8). RP and ST
+#: are taken to refer to the federal VwVfG (research of 2026-09-25; their gazettes could not be reached). Before a
+#: Land's day its old law counts the 3rd day.
 VWVFG_FOUR_DAY_FROM: dict[str, date] = {
-    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST"), FOUR_DAY_RULE_FROM),
+    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST", "SH", "TH"), FOUR_DAY_RULE_FROM),
     "HH": date(2025, 5, 14),
     "BW": date(2025, 2, 7),
-    "SH": date(2025, 6, 10),
+}
+
+#: Länder whose own law is confirmed to keep the 3rd day (§ 41 Abs. 2 HVwVfG, checked 4 Nov 2026).
+VWVFG_THREE_DAYS: Final = frozenset({"HE"})
+
+#: Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern keep the old law's 3rd day for a matter begun before their
+#: switch and not finished (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V, checked 4 Nov 2026): the provision,
+#: and the switch as a note writes it.
+VWVFG_OLD_PROCEDURES: Final[dict[str, tuple[str, str]]] = {
+    "BW": ("§ 102b LVwVfG", "7 February 2025"),
+    "BY": ("Art. 98 BayVwVfG", "1 January 2025"),
+    "MV": ("§ 120a VwVfG M-V", "1 January 2025"),
 }
 
 
-#: Why a general authority's letter counts as delivered on the 3rd day: its Land's own rule isn't confirmed,
-#: or the Land isn't known. Receipts carry it as a warning, and
+#: Why a general authority's letter counts as delivered on the 3rd day although its Land may count the 4th: Bremen's
+#: and the Saarland's rule could not be checked, or the Land isn't known. Receipts carry it as a warning, and
 #: :func:`ordnung.rules.deadlines.waits_for_sender_land` reads it back.
 LAND_DAYS_UNCONFIRMED: Final = (
     "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, "
     "so we counted 3 days (the earlier date)."
+)
+
+#: Why an e-mailed decision of an authority whose Land isn't known is counted from the day it was sent: the law first
+#: (in Brandenburg it counts from the day it provably arrived, § 7 VwVfGBbg; elsewhere the 3rd or 4th day), then
+#: Ordnung's earliest stand-in. Static, so the web app and waits_for_sender_land can match it.
+LAND_EMAIL_UNCONFIRMED: Final = (
+    "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg); "
+    "elsewhere it counts as delivered on the 3rd or 4th day after sending. Without this sender's Land we counted from "
+    "the day it was sent, or from the arrival day you entered."
 )
 
 #: Party kinds a reader may give a social-benefits agency: its name and remedy notice decide.
@@ -244,6 +264,37 @@ class Delivery:
     raw_day: date
     steps: list[ComputationStep]
     uncertainty: str | None = None
+    #: In BW, BY and MV after their switch: the Land and the day a letter of an older matter counts as delivered.
+    older_matter: tuple[str, date] | None = None
+
+
+def _brandenburg_email(
+    posted: date, fiction: date, arrived: date | None, land: str | None
+) -> tuple[str, str | None]:
+    """The step label, and the note when the arrival day isn't known, for an e-mailed decision of a Brandenburg
+    authority, which counts from the day it arrived (§ 7 VwVfGBbg): at the earliest the day it was sent. Without the
+    sender's Land (``land`` None) it may be one: counted the same way, with :data:`LAND_EMAIL_UNCONFIRMED`."""
+    told = arrived is not None and arrived >= posted
+    if land is None:
+        if told:
+            label = "Counted from the day you said it arrived (in Brandenburg an e-mailed decision counts from that day)"
+        else:
+            label = "Counted from the day it was sent (in Brandenburg an e-mailed decision counts from the day it arrived)"
+        return f"{label}: {fmt_date(max(arrived or posted, posted))}", LAND_EMAIL_UNCONFIRMED
+    if arrived is not None and arrived >= posted:
+        return f"Counts as delivered on the day it arrived (§ 7 VwVfGBbg): {fmt_date(arrived)}", None
+    label = (
+        "Counts as delivered on the day it arrived (§ 7 VwVfGBbg) — at the earliest the day it was sent: "
+        f"{fmt_date(posted)}"
+    )
+    if arrived is not None:
+        return label, None
+    return label, (
+        "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg), "
+        f"so we counted from the day it was sent, {fmt_date(posted)}, the earliest it can have arrived. If the "
+        f"authority can't show when it arrived, it counts as delivered on {fmt_date(fiction)}, "
+        f"{(fiction - posted).days} days after it was sent, and the deadline may be later too."
+    )
 
 
 def _step(label: str, d: date, rule_id: str) -> ComputationStep:
@@ -259,19 +310,27 @@ def resolve_delivery(
     channel: DeliveryChannel = "post",
     region: str | None = None,
     abroad: bool = False,
+    arrived: date | None = None,
 ) -> Delivery:
     """Deemed delivery day with explanation steps; ``scope=None`` means the sender type is unknown.
 
     For an unknown scope the conservative variant is used: the day is not moved off weekends. For
-    general authorities (and unknown senders) the 3rd day is used unless the Land's own law is known to
-    use the 4th (:data:`VWVFG_FOUR_DAY_FROM`, SPEC § 21); ``uncertainty`` then explains why. Portal
+    general authorities (and unknown senders) the Land's own day counts: the 4th from its switch
+    (:data:`VWVFG_FOUR_DAY_FROM`), the 3rd before it and in Hessen (:data:`VWVFG_THREE_DAYS`); for Bremen, the
+    Saarland or an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). In
+    Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern after their switch the 4th day counts, and
+    ``older_matter`` gives the 3rd, which a matter begun before the switch keeps (:data:`VWVFG_OLD_PROCEDURES`). Portal
     provision (``channel="portal"``) by a general authority or an unknown sender counts from the day
     after download (§ 41 Abs. 2a VwVfG), taking ``posted`` — the day it was made available — as the
     earliest download; tax (§ 122a Abs. 4 AO) and social-law portals (§ 37 Abs. 2a SGB X) use the 4th day.
     ``region`` is the sender's Land for general authorities; for tax letters it decides which
-    holidays move the deemed day (pass it only when it applies at the recipient's place too).
+    holidays move the deemed day (pass it only when it applies at the recipient's place too). An e-mailed
+    decision of a Brandenburg authority counts from the day it arrived (§ 7 VwVfGBbg): ``arrived``, the day the
+    person confirmed, when it is before the 4th day, else the day it was sent, with a note that says so — and so
+    does one whose authority's Land isn't known (:data:`LAND_EMAIL_UNCONFIRMED`).
     """
     uncertainty: str | None = None
+    older: tuple[str, date] | None = None
     if scope == "ao" and abroad:
         raw = add_months(posted, 1)
         rule_id = "ao_122_2_2"
@@ -284,12 +343,24 @@ def resolve_delivery(
     else:
         days = fiction_days(posted)
         rule_id = _RULE_BY_SCOPE_CHANNEL[(scope, channel)] if scope else "delivery_scope_unknown"
-        land_from = VWVFG_FOUR_DAY_FROM.get(calendar_de.normalize_region(region) or "")
-        if days == 4 and scope in (None, "vwvfg") and (land_from is None or posted < land_from):
-            days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED
+        land = calendar_de.normalize_region(region)
+        land_from = VWVFG_FOUR_DAY_FROM.get(land or "")
+        if days == 4 and scope in (None, "vwvfg"):
+            if land in VWVFG_THREE_DAYS or (land_from is not None and posted < land_from):
+                days, rule_id = 3, "vwvfg_land_days"  # the Land's own law: HE; HH and BW before their day
+            elif land_from is None:
+                days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED  # HB, SL, unknown
+            elif land in VWVFG_OLD_PROCEDURES:
+                older = (land, posted + timedelta(days=3))  # the old law's day, for a matter begun before
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"
+        # § 7 VwVfGBbg: an e-mailed decision that arrived before the 4th day counts from the day it arrived — and
+        # without the sender's Land it may be Brandenburg's
+        earliest = posted if arrived is None else max(arrived, posted)
+        if scope in (None, "vwvfg") and channel == "electronic" and land in (None, "BB") and earliest < raw:
+            label, uncertainty = _brandenburg_email(posted, raw, arrived, land)
+            raw, rule_id = earliest, "vwvfg_bb_7"
     steps = [_step(label, raw, rule_id)]
     if scope == "ao":
         day = calendar_de.next_business_day(raw, region)
@@ -313,7 +384,7 @@ def resolve_delivery(
                 rule_id,
             )
         )
-    return Delivery(day=raw, raw_day=raw, steps=steps, uncertainty=uncertainty)
+    return Delivery(day=raw, raw_day=raw, steps=steps, uncertainty=uncertainty, older_matter=older)
 
 
 def deemed_delivery(

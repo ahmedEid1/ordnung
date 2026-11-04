@@ -3354,7 +3354,7 @@
   }
  },
  "ablation": {
-  "file": "2026-10-30-claude-sonnet-5-checks-ablated.json",
+  "file": "2026-11-04-claude-sonnet-5-checks-ablated.json",
   "splits": [
    "holdout",
    "holdout2",
@@ -4065,6 +4065,16 @@
    "date": "2026-10-31",
    "kind": "ask",
    "role": "iterated",
+   "split": null,
+   "backend": null,
+   "conditions": [],
+   "ordnung": null
+  },
+  {
+   "file": "2026-11-04-claude-sonnet-5-checks-ablated.json",
+   "date": "2026-11-04",
+   "kind": "checks-ablated",
+   "role": "replay",
    "split": null,
    "backend": null,
    "conditions": [],
