@@ -291,6 +291,18 @@ def test_a_letter_writer_puts_every_date_after_the_last_valid_day(session: str) 
     assert "after {L}" in _flat(_text(session))
 
 
+def test_the_holdout4_writer_takes_a_land_authority_only_from_a_land_with_a_text() -> None:
+    """A Land authority's letter comes only from a Land whose rule is in ``evals/law/laender.txt`` (``law.py``
+    refuses the four without one), its delivery day is that Land's, and a letter that rests on an older procedure
+    states when the procedure began, which goes to ``law.py``."""
+    flat = _flat(_text("w1a"))
+    assert "evals/law/laender.txt" in flat
+    for land in ("Bremen", "Rheinland-Pfalz", "Saarland", "Sachsen-Anhalt"):
+        assert land in flat, land
+    assert "states the day its procedure began" in flat and "`procedure_began`" in flat
+    assert "sent by post" in flat
+
+
 @pytest.mark.parametrize("session", ("a1", "a1re"))
 def test_the_first_blind_reading_has_no_conventions_and_no_answers(session: str) -> None:
     """The convention-free reading: nothing in its brief speaks of the benchmark's conventions or of the dates the

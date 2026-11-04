@@ -67,6 +67,12 @@ How a letter's truth is made:
 
 - Every date of a truth comes from a function of `evals/gen/law.py`, with a hand-worked `check(item, hand)`, as the
   earlier family modules write it.
+- A decision of a Land authority (under a Land's administrative procedure act) comes only from a Land whose rule is
+  in `evals/law/laender.txt`: never from Bremen, Rheinland-Pfalz, Saarland or Sachsen-Anhalt, whose text could not
+  be read, and which `law.py` refuses. The day it counts as delivered is that Land's own rule, which `law.py` takes
+  from the authority's Land. Baden-Württemberg, Bayern and Mecklenburg-Vorpommern keep the earlier day for a
+  procedure begun before their rule changed: a letter that rests on that states the day its procedure began, and
+  that day goes to `law.py` as `procedure_began`. Every such decision is sent by post; `law.py` dates no other.
 - Every random draw comes from `rng_for("holdout4", <entry id>)`.
 - Every sender is new: no sender name of an earlier split appears in holdout4.
 - Each scored item, and each contract, carries the ids of the labelling conventions its dates rest on
