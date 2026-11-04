@@ -280,7 +280,7 @@ def test_the_without_land_replay_goes_to_a_temporary_folder_and_must_match_the_p
 
 
 def test_make_eval_reproduce_replays_every_published_number_in_the_slow_job() -> None:
-    """One command reproduces every published number (plan EV4): every split, condition, Ask set, end-to-end,
+    """One command reproduces every published number: every split, condition, Ask set, end-to-end,
     ablation and stress cell that exists replayed with no model call, the analysis and the presenter checked, all
     compared with ``evals/results/INDEX.json``. It runs in backend-slow beside the gates, which stay; like them it
     gets no ``claude`` and no secret (``evals/reproduce.py`` points any stray call at a path that doesn't exist)."""

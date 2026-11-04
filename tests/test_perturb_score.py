@@ -1,4 +1,4 @@
-"""The stress scorer (``evals/perturb/score.py``, plan EV11) on hand-made predictions, its exact statistics on known
+"""The stress scorer (``evals/perturb/score.py``) on hand-made predictions, its exact statistics on known
 values, and the results document it writes (ids, dates, outcomes and numbers only: never a letter's words)."""
 
 from __future__ import annotations

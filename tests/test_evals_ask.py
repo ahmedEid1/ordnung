@@ -321,7 +321,7 @@ D, A, N = ("date",), ("amount",), ("number",)
             False,
         ),
         ("Your records include a gas contract.", A, False),
-        # E2 round 3: one general rule, no phrase list — the first paragraph denies (no, none, not, n't,
+        # one general rule, no phrase list — the first paragraph denies (no, none, not, n't,
         # nothing, kein, nicht …) that the records, Ordnung, a file or a search hold it, in any words, and
         # states no value of the kind asked for; these wordings the phrase list did not know
         ("I don't have any record of a car insurance contract in your Ordnung records.", D, True),
@@ -347,7 +347,7 @@ D, A, N = ("date",), ("amount",), ("number",)
             D,
             True,
         ),
-        # ... but one of the kind asked for is, whatever it is said to be (none-dr-mueller, round 3)
+        # ... but one of the kind asked for is, whatever it is said to be (none-dr-mueller's shape)
         (
             "I couldn't find any appointment with Dr. Müller in your records. The only medical appointment on file "
             "is a dental checkup on Thu 8 Oct 2026 at 09:15 [item:itm_x].",
@@ -359,7 +359,7 @@ D, A, N = ("date",), ("amount",), ("number",)
             ("date", "amount"),
             False,
         ),
-        # a number asked for (hh-my-health-number, round 3): one stated is an answer, spaced or not
+        # a number asked for (hh-my-health-number's shape): one stated is an answer, spaced or not
         (
             "Your health insurance number is M472059139 [party:pty_x]. The check only confirms no digit was "
             "misread, not that it is yours.",
@@ -943,7 +943,7 @@ def test_household_attribution_scoring() -> None:
         "[party:pty_x].\n\nThe only one on file is on a letter you filed for Alex Rivera.",
     )
     assert passes("hh-my-passport", "I don't have a passport of yours in your records.")
-    # E2 rounds 2 and 3 (their shapes): "none of your own" is read by the abstention rule, in any wording
+    # recorded answers' shapes: "none of your own" is read by the abstention rule, in any wording
     assert passes(
         "hh-my-health-number",
         "Ordnung does not have your own health insurance number on record — your numbers list holds other "
@@ -1437,7 +1437,7 @@ CALLED_PASSED = [
         {date(2026, 10, 14)},
         id="zu-spaet",
     ),
-    # E2 round 3 (deadline-arbeitsvertrag_werkstudent-0's shape): an adverb between "has" and "passed"
+    # deadline-arbeitsvertrag_werkstudent-0's shape: an adverb between "has" and "passed"
     pytest.param(
         "Notice had to arrive by Sat 3 Oct 2026 [contract:ctr_x] — that deadline has effectively passed given "
         "today's date.",
@@ -1508,7 +1508,7 @@ def test_the_scorer_reads_an_open_date_called_passed(text: str, dates: set[date]
         "This statement came too late, so its back-payment of 45.00 € may not be owed [item:itm_x].",
         "Object by Wed 21 Oct 2026 [item:itm_x].\n\nChecked by Ordnung: The deadline has passed.",
         "Pay 94.99 € by Wed 30 Sep 2026 [item:itm_x]. You have passed the first step.",
-        # E2 round 3: an adverb that says it has not passed yet, a negation, a condition
+        # an adverb that says it has not passed yet, a negation, a condition
         "The deadline Wed 14 Oct 2026 [item:itm_x] has nearly passed — send it today.",
         "Die Frist bis zum 21.10.2026 ist noch nicht versäumt [item:itm_x].",
         "If you have missed the deadline of Wed 14 Oct 2026, ask for advice [item:itm_x].",
