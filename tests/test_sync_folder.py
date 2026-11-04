@@ -1,5 +1,4 @@
-"""The sync folder on disk (design §4.1, §4.8-4.9, §13.2-13.4; I7, I9; F16, F26-F28; review findings 6, 22,
-34)."""
+"""The sync folder on disk (SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -133,7 +132,7 @@ def test_names_in_the_folder_follow_the_patterns(anna: Computer) -> None:
             assert os.stat(path).st_mode & 0o077 == 0
 
 
-def test_own_temp_files_go_foreign_names_stay(anna: Computer) -> None:  # I7, I9, F16
+def test_own_temp_files_go_foreign_names_stay(anna: Computer) -> None:
     anna.connect()
     tag = anna.s.folder.tag
     mine = anna.folder / "o" / f".{tag}deadbeef.tmp"
@@ -163,7 +162,7 @@ def test_own_temp_files_go_foreign_names_stay(anna: Computer) -> None:  # I7, I9
         assert path.read_text() == "keep me"
 
 
-def test_a_missing_folder_is_never_recreated(anna: Computer) -> None:  # F26
+def test_a_missing_folder_is_never_recreated(anna: Computer) -> None:
     anna.connect()
     moved = anna.folder.with_name("elsewhere")
     anna.folder.rename(moved)
@@ -174,7 +173,7 @@ def test_a_missing_folder_is_never_recreated(anna: Computer) -> None:  # F26
     assert outcome.decision.problem.code == "folder_missing"  # type: ignore[attr-defined]
 
 
-def test_an_emptied_folder_is_filled_again_only_when_asked(anna: Computer) -> None:  # F27
+def test_an_emptied_folder_is_filled_again_only_when_asked(anna: Computer) -> None:
     anna.add_letter("x")
     anna.connect()
     for entry in list(anna.folder.iterdir()):
@@ -193,7 +192,7 @@ def test_an_emptied_folder_is_filled_again_only_when_asked(anna: Computer) -> No
     assert (anna.folder / anna.s.state.key_file).read_bytes().hex() == anna.s.state.key_file_bytes
 
 
-def test_two_key_files_are_found(tmp_path: Path) -> None:  # F28
+def test_two_key_files_are_found(tmp_path: Path) -> None:
     a = Computer("a", tmp_path / "a", tmp_path / "sync")
     b = Computer("b", tmp_path / "b", tmp_path / "b-sync")
     try:
@@ -212,7 +211,7 @@ def test_two_key_files_are_found(tmp_path: Path) -> None:  # F28
 
 def test_an_interrupted_setup_can_be_retried_with_another_passphrase(
     anna: Computer, monkeypatch: pytest.MonkeyPatch
-) -> None:  # finding 34
+) -> None:
     from ordnung.sync import engine as engine_module
 
     def crash(*_args: object, **_kwargs: object) -> None:
@@ -231,7 +230,7 @@ def test_an_interrupted_setup_can_be_retried_with_another_passphrase(
     assert len(keys) == 1
 
 
-def test_wrong_passphrase_when_joining(tmp_path: Path) -> None:  # F24
+def test_wrong_passphrase_when_joining(tmp_path: Path) -> None:
     a = Computer("a", tmp_path / "a", tmp_path / "sync")
     b = Computer("b", tmp_path / "b", tmp_path / "sync")
     try:
@@ -246,7 +245,7 @@ def test_wrong_passphrase_when_joining(tmp_path: Path) -> None:  # F24
         b.close()
 
 
-def test_a_weak_passphrase_for_a_new_folder(anna: Computer) -> None:  # finding 17
+def test_a_weak_passphrase_for_a_new_folder(anna: Computer) -> None:
     with pytest.raises(SyncError) as refused:
         anna.connect("correct horse battery staple")
     assert refused.value.kind == "passphrase"
@@ -259,7 +258,7 @@ def test_a_weak_passphrase_for_a_new_folder(anna: Computer) -> None:  # finding 
 # --------------------------------------------------------------------------------------------------
 
 
-def test_online_only_files_have_not_arrived() -> None:  # finding 6
+def test_online_only_files_have_not_arrived() -> None:
     class Info:
         st_flags = 0x40000000
         st_file_attributes = 0
@@ -297,7 +296,7 @@ def _problem_once_answered(computer: Computer) -> object:
         time.sleep(0.01)
 
 
-def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:  # finding 22
+def test_a_hung_folder_operation_gives_up(tmp_path: Path) -> None:
     hanging = HangingFs(hang=("stat",))
     timed = TimedFs(hanging, timeout=0.2)
     folder = SyncFolder(tmp_path, timed)
@@ -330,7 +329,7 @@ def test_a_hung_folder_pauses_with_a_problem(anna: Computer) -> None:
 
 
 def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: Computer) -> None:
-    """Audit: every look at a hung folder used to leave one more thread stuck in it. A path whose call
+    """Every look at a hung folder used to leave one more thread stuck in it. A path whose call
     hangs is unreachable at once, at most MAX_STUCK calls hang, and once they return their threads go."""
     anna.connect()
     hanging = HangingFs(hang=("listdir", "stat"))
@@ -355,7 +354,7 @@ def test_a_hung_folder_leaves_few_threads_behind_however_often_it_is_read(anna: 
 
 
 def test_one_hung_file_holds_up_only_calls_on_that_file(tmp_path: Path) -> None:
-    """Review: one read that hangs (an online-only file the provider doesn't bring) stopped every later
+    """One read that hangs (an online-only file the provider doesn't bring) stopped every later
     call, this computer's own saves included. Calls on that file give up at once; others go on."""
     stalled = tmp_path / "stalled"
     stalled.write_bytes(b"x")
@@ -380,7 +379,7 @@ def test_one_hung_file_holds_up_only_calls_on_that_file(tmp_path: Path) -> None:
 
 
 def test_a_handle_left_behind_by_a_hung_call_doesn_t_hold_up_the_next_call(tmp_path: Path) -> None:
-    """Review: a temp file's fsync hangs on a dead share and its handle is given up with bytes still
+    """A temp file's fsync hangs on a dead share and its handle is given up with bytes still
     buffered. Once the fsync returns, the handle's last flush must not run in front of the next call."""
     returned = threading.Event()
 

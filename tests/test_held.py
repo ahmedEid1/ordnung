@@ -223,7 +223,7 @@ async def test_a_waiting_letter_put_in_the_trash_before_it_was_stored_still_wait
 async def test_read_these_while_the_letter_is_titled_on_this_computer_stands(
     ctx: AppContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Race (review of wave 2): "Read these" while the held letter's local reading looks up its title.
+    """Race: "Read these" while the held letter's local reading looks up its title.
     The reading must not put it back to ``held`` without being private — "Keep private" would then leave
     it not private while its release job reads it."""
     document = await add_file(ctx, TAX_LETTER.pdf(), "bescheid.pdf", hold=True, source="folder")

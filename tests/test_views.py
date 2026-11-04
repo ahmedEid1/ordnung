@@ -52,7 +52,7 @@ def test_dashboard_attention_and_upcoming(store: Store, ids: dict[str, str]) -> 
 
 
 def test_a_sent_cancellation_leaves_the_decisions_and_life_areas(store: Store, ids: dict[str, str]) -> None:
-    """Walkthrough of phase 2: Today still said "Decide on FunkNetz Smart M" after its cancellation was sent."""
+    """Today still said "Decide on FunkNetz Smart M" after its cancellation was sent."""
     board = dashboard(store, TODAY)
     assert [c.id for c in board.decisions] == [ids["phone"]]
     store.add_draft(
@@ -85,7 +85,7 @@ def test_dashboard_decisions_money_and_stats(store: Store, ids: dict[str, str]) 
 
 
 def test_recent_letters_are_ordered_by_the_day_they_are_listed_under(store: Store) -> None:
-    """UI audit R1-backend-1: the Today page lists a letter under the day it arrived (else its own date,
+    """The Today page lists a letter under the day it arrived (else its own date,
     else when it was added), so the newest six are picked and ordered by that day too."""
     arrived_later = add_doc(store, "a", received_date="2026-09-21", doc_date="2026-09-01", title="A")
     dated_later = add_doc(store, "b", received_date="2026-09-20", doc_date="2026-09-20", title="B")
@@ -111,7 +111,7 @@ def test_dashboard_areas(store: Store, ids: dict[str, str]) -> None:
         "leisure",
     ]
     assert areas["study"].status == "urgent" and areas["study"].headline == "Overdue: Return library books"
-    # the app's one urgency scale: tomorrow is urgent, two days out needs attention (UI audit R1-backend-3)
+    # the app's one urgency scale: tomorrow is urgent, two days out needs attention
     assert areas["mobility"].status == "urgent"  # the parking fine, due tomorrow
     assert areas["money"].status == "attention"  # the reminder, due in two days
     assert areas["home"].status == "ok"  # the phone's send-by, ten days out
@@ -124,7 +124,7 @@ def test_dashboard_areas(store: Store, ids: dict[str, str]) -> None:
 
 
 def test_letters_not_read_make_no_all_good_area(store: Store) -> None:
-    """UX U2: two letters that couldn't be read were filed under "Other" as "All good · 2 letters, nothing
+    """Two letters that couldn't be read were filed under "Other" as "All good · 2 letters, nothing
     due" — Ordnung doesn't know what they ask, so they are in no area until they are read."""
     add_doc(store, "failed-1", status="failed")
     add_doc(store, "failed-2", status="failed")
@@ -136,9 +136,9 @@ def test_letters_not_read_make_no_all_good_area(store: Store) -> None:
 
 
 def test_area_dates_follow_the_one_urgency_scale(store: Store) -> None:
-    """UI audit R1-backend-3: a direct debit is listed by the day the money moves (not a "send by" a
+    """A direct debit is listed by the day the money moves (not a "send by" a
     day earlier) and never turns urgent; a deadline tomorrow does. An appointment tomorrow needs attention,
-    a direct debit none (walkthrough of phase 2: "Getting around · Needs attention" for the Deutschlandticket)."""
+    a direct debit none ("Getting around · Needs attention" for the Deutschlandticket)."""
     ticket = add_doc(store, "ticket", area="mobility", kind="contract")
     add_item(
         store,
@@ -165,7 +165,7 @@ def test_area_dates_follow_the_one_urgency_scale(store: Store) -> None:
 
 
 def test_a_fee_paid_on_site_has_no_day_to_transfer_by(store: Store) -> None:
-    """UI audit R1-backend-8: the €100 residence fee, paid by girocard at the appointment, was listed under
+    """The €100 residence fee, paid by girocard at the appointment, was listed under
     a bank transfer's send-by day ("transfer by 13 Oct"). Its day is the appointment's, it never turns
     urgent (nothing to send) and the timeline says how to pay instead of "Send by"."""
     permit = add_doc(store, "permit", area="residence", kind="residence_permit", title="Appointment")
@@ -190,7 +190,7 @@ def test_a_fee_paid_on_site_has_no_day_to_transfer_by(store: Store) -> None:
 
 
 def test_timeline_says_transfer_by_for_transfers_and_nothing_to_send_for_a_direct_debit(store: Store) -> None:
-    """UI audit R2-inbox-timeline-contracts-3: every dated to-do with a send-by day read "Send by …" on the
+    """Every dated to-do with a send-by day read "Send by …" on the
     timeline — a bank transfer too (Today, the verdict and the receipt say "Transfer by …"), and even a
     direct debit, which the sender collects itself. A posted objection keeps "Send by"."""
     invoice = add_doc(store, "reminder", kind="dunning", title="1st payment reminder")
@@ -236,7 +236,7 @@ def test_timeline_says_transfer_by_for_transfers_and_nothing_to_send_for_a_direc
 
 
 def test_letters_about_the_home_are_never_under_the_residence_permit(store: Store) -> None:
-    """UI audit R1-backend-2: the model may read a running-costs statement under "residence" (the
+    """The model may read a running-costs statement under "residence" (the
     residence-permit area); Today, the timeline and the lanes show it and its to-dos under Home."""
     statement = add_doc(store, "statement", area="residence", kind="utility_bill", title="Running costs 2025")
     back_payment = add_item(
@@ -317,7 +317,7 @@ def test_timeline_merges_letters_items_contracts_and_sent_letters(store: Store, 
 def test_timeline_says_money_in_and_set_aside_payments_are_never_overdue(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """Walkthrough of phase 2: "Salary payment received … Overdue" (money that came in) and an invoice its
+    """A "Salary payment received … Overdue" (money that came in) and an invoice its
     payment reminder replaced showed as overdue on the timeline. Money in is never overdue and says so
     (``direction``); a to-do that is not one to act on says why (``aside``)."""
     salary = add_item(
@@ -408,7 +408,7 @@ def test_contracts_lane_has_notice_windows(store: Store, ids: dict[str, str]) ->
 
 
 def test_a_sent_cancellation_has_no_notice_window_left(store: Store, ids: dict[str, str]) -> None:
-    """Final review: the Timeline still drew the phone's "Send by" window after its cancellation was sent."""
+    """The Timeline still drew the phone's "Send by" window after its cancellation was sent."""
     store.add_draft(
         kind="cancellation", contract_id=ids["phone"], status="sent", sent_at="2026-09-28T09:00:00Z"
     )
@@ -429,14 +429,14 @@ def test_tax_work_and_money_lanes(store: Store, ids: dict[str, str]) -> None:
     money = [m.label for m in by_id["money"].markers]
     assert "Pay TechMarkt reminder" in money
     assert "Pay broadcasting fee" not in money  # scam letter
-    # every payment in its own area's lane, whatever the amount (UI audit R1-backend-4)
+    # every payment in its own area's lane, whatever the amount
     assert [m.label for m in by_id["health"].markers] == ["Therapy invoice"]
     assert [m.label for m in by_id["mobility"].markers] == ["Pay parking fine"]  # €25
     assert by_id["mobility"].label == "Getting around"
 
 
 def test_every_lane_mark_says_its_area_and_what_it_stands_for(store: Store, ids: dict[str, str]) -> None:
-    """UI audit R1-backend-4 / R1-lanes-10: the timeline filters the lanes by area and opens a mark's
+    """The timeline filters the lanes by area and opens a mark's
     to-do or contract; a contract with no end date says so (its end is only where the lanes stop)."""
     by_id = {lane.id: lane for lane in lanes(store, date(2026, 9, 1), date(2027, 8, 31))}
     for lane in by_id.values():
@@ -511,7 +511,7 @@ def test_attention_skips_history_and_past_items_of_letters_that_need_checking(st
 
 
 def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
-    """Demo finding: Ask told Sam the phone contract would "auto-renew for another term"; under § 56 TKG
+    """In the demo, Ask told Sam the phone contract would "auto-renew for another term"; under § 56 TKG
     it runs on and can be cancelled any month."""
     from ordnung.models import Contract, ContractComputation
     from ordnung.views import continuation
@@ -540,11 +540,11 @@ def test_continuation_says_whether_a_contract_renews_or_runs_on() -> None:
     ],
 )
 def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat: str) -> None:
-    """Review findings: the working-student contract "continues with no fixed term" if nothing is done —
+    """The working-student contract "continues with no fixed term" if nothing is done —
     wrong under § 15 Abs. 1 TzBfG: it ends when its time runs out, and only continued work the employer
     knows of and does not object to makes it open-ended (§ 15 Abs. 6 TzBfG). A flat let without a written
     reason for its term counts as open-ended (§ 575 Abs. 1 S. 2 BGB), so Ask's record says to check the
-    contract. Final review: round 4 said a fixed-term job "may still need notice to end then" — wrong: § 15
+    contract. An earlier version said a fixed-term job "may still need notice to end then" — wrong: § 15
     Abs. 4 TzBfG only allows ending it *earlier* when agreed; an undated notice would end the job at the
     next possible date instead. And § 575 does not apply in a student hall (§ 549 Abs. 3 BGB)."""
     from ordnung.models import Contract, ContractTerms
@@ -571,7 +571,7 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
             "(§ 15 Abs. 1 TzBfG). Ending it earlier by ordinary notice needs a notice clause"
         )
         assert notice in text and text.endswith(caveat) and "may still need notice" not in text
-        # final review 2: never "possible only if …" — an agreement or notice for cause end it early too
+        # never "possible only if …" — an agreement or notice for cause end it early too
         assert "possible only if" not in text
         assert "(§ 623 BGB)" in text and "(§ 626 BGB)" in text
         assert "register as job-seeking" in text and "(§ 38 Abs. 1 SGB III)" in text
@@ -582,7 +582,7 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
         assert text.startswith("Its fixed term ends on Wed 31 Mar 2027.")
         assert notice in text and "check the contract" in text and text.endswith(caveat)
         assert "student or youth hall of residence" in text and "(§ 549 Abs. 2 and 3 BGB)" in text
-        # final review 2: "then" read as the case the landlord gave a reason; the exceptions are examples
+        # "then" read as the case the landlord gave a reason; the exceptions are examples
         assert "If it counts as open-ended, leaving needs notice" in text and "; then leaving" not in text
         assert "Exceptions include" in text and "people in urgent need" in text
         assert "not let for lasting use with a family or partner" in text
@@ -597,7 +597,7 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
     if not notice:
         assert past == "Its fixed term ended on Wed 31 Mar 2027." and past_summary is None
         return
-    # final review 3: an active job or flat let past its end date was recorded as "ended", with none of
+    # an active job or flat let past its end date was recorded as "ended", with none of
     # the caveats — though it may never have ended (§ 575 Abs. 1 S. 2 BGB) or continue by conduct
     assert past.startswith("Its fixed term's end date, Wed 31 Mar 2027, has passed. If you still ")
     assert "ended on Wed 31 Mar 2027." not in past
@@ -606,7 +606,7 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
     assert "ended on" not in past_summary
     if category == "rent":
         assert "(§ 575 Abs. 1 S. 2 BGB)" in past and "Check the contract or get advice." in past
-        # final review 3: a fixed term that fails § 575 is often read as a waiver of notice until its end
+        # a fixed term that fails § 575 is often read as a waiver of notice until its end
         assert "VIII ZR 388/12" in text and "may not be possible" in text
         assert summary is not None and "or earlier" not in summary
     # a contract that is no longer active keeps the engine's "ended"
@@ -616,7 +616,7 @@ def test_a_fixed_term_contract_ends_by_itself(category: str, notice: str, caveat
 def test_a_to_do_whose_posting_time_passed_says_when_it_must_arrive(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 4 of phase 2: the inbox and timeline said "Send by Mon 28 Sep · today" for an objection due
+    """The inbox and timeline said "Send by Mon 28 Sep · today" for an objection due
     that day — a letter posted then arrives too late. The receipt's warning (the usual sending time has passed)
     makes it "Must arrive by", here and in the web's Today and inbox rows, which read the same words."""
     from pathlib import Path

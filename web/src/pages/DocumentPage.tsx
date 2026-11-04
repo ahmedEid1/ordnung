@@ -18,7 +18,7 @@ const HOME = { to: "/inbox", label: "Inbox" };
 
 /**
  * A letter link that finds nothing. In the demo, letters still waiting in New mail aren't letters yet —
- * their links (from before a reset) lead here, so the page says where to open them (UI audit round 1:
+ * their links (from before a reset) lead here, so the page says where to open them (not
  * "It may have been deleted" for a letter nobody had opened).
  */
 function LetterNotFound() {
@@ -64,7 +64,7 @@ export default function DocumentPage() {
   const title = doc ? (doc.title ?? doc.filename) : notFound ? "Letter not found" : "Letter";
 
   // the viewer sits closer under the top bar; a message about the letter keeps the page's own spacing, as on a
-  // draft's page (UI audit round 1)
+  // draft's page
   return (
     <Page title={title} parent={parent} className={q.isError ? undefined : "pt-4 md:pt-6"}>
       {q.isPending ? (
@@ -79,7 +79,7 @@ export default function DocumentPage() {
           <LetterNotFound />
         ) : (
           <div className="mx-auto mt-8 max-w-xl">
-            {/* a calm sentence; the server's own words under "Technical details" (UI audit round 1: "Something went wrong (UI audit)") */}
+            {/* a calm sentence; the server's own words under "Technical details", never in "Something went wrong (…)" */}
             <LoadError
               headingLevel={1}
               title="Couldn't open this letter"

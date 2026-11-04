@@ -372,7 +372,7 @@ def _draft_entry(ledger: Ledger, draft: Draft, **fields: object) -> WeekEntry:
 
 
 #: Contracts that after their term only continue month to month, cancellable any time with at most a month's
-#: notice (§ 309 Nr. 9 BGB, § 56 Abs. 3 TKG): they don't renew for another term (walkthrough of phase 2).
+#: notice (§ 309 Nr. 9 BGB, § 56 Abs. 3 TKG): they don't renew for another term.
 _CONTINUES_MONTHLY = ("bgb309_new", "tkg56")
 
 

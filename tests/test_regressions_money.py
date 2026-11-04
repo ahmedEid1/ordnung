@@ -1,4 +1,4 @@
-"""Money sums never mix currencies (round 2, R2-WEB-1): the dashboard's "due this month" is a sum
+"""Money sums never mix currencies: the dashboard's "due this month" is a sum
 in euros, so a dollar invoice must not be added to it as if it were euros."""
 
 from __future__ import annotations

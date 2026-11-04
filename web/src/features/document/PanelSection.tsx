@@ -27,7 +27,7 @@ export function PanelSection({
   return (
     <section id={id} aria-labelledby={hid} className={className}>
       <div className="mb-2.5 flex items-center gap-2 px-1">
-        {/* the app's eyebrow, like the verdict's sections (UI audit round 1) */}
+        {/* the app's eyebrow, like the verdict's sections */}
         <h2 id={hid} className="eyebrow flex items-center gap-2">
           {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
           {title}

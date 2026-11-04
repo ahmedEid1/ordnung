@@ -671,7 +671,7 @@ def test_warning_mentions_ignore_negated_clauses() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Review fixes
+# Regression tests
 # --------------------------------------------------------------------------------------------------
 
 
@@ -882,7 +882,7 @@ def test_calls_belong_to_the_item_whose_sentence_they_were_given() -> None:
 
 
 def test_a_call_given_a_sentence_no_item_quotes_belongs_to_the_item_it_dates() -> None:
-    """Reviewer repro (test-tax_assessment-D1): the model asked about the Einspruch twice — once quoting
+    """The model asked about the Einspruch twice — once quoting
     the remedy sentence (the engine's earlier date), once quoting the posting-day sentence — and answered
     with the second call's date. That is the tool's date, not an override of it."""
     entry = make_entry(
@@ -954,7 +954,7 @@ def test_tool_use_summary() -> None:
 
 
 def test_an_item_with_differing_tool_dates_is_counted_apart() -> None:
-    """Reviewer: on test-tax_assessment-D1 the tools returned 5 Feb (given the letter's date) and 9 Feb
+    """On test-tax_assessment-D1 the tools returned 5 Feb (given the letter's date) and 9 Feb
     (asked again without it), and the model took the later one. That scores as "a date the tools
     returned" and "the tools had the right date", so no override row can show the choice: such items
     are counted apart, with how often the model took a later date than the earliest."""

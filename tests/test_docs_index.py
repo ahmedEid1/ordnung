@@ -408,11 +408,18 @@ def _anchors(path: Path) -> frozenset[str]:
     return frozenset(anchors)
 
 
+#: The pages outside ``docs/`` that link into it: the README (it links the guide's sections), the CHANGELOG,
+#: CONTRIBUTING, SECURITY and the benchmark's README.
+_LINKING_PAGES = ("README.md", "CHANGELOG.md", "CONTRIBUTING.md", "SECURITY.md", "evals/README.md")
+
+
 def test_every_link_between_the_docs_resolves() -> None:
-    """A relative link in ``docs/`` (the generated evaluation pages too) names a file of the repository, and its
-    ``#anchor`` a heading of that page: renaming or renumbering a heading fails here with the links to it."""
+    """A relative link in ``docs/`` (the generated evaluation pages too) and in the pages of ``_LINKING_PAGES``
+    names a file of the repository, and its ``#anchor`` a heading of that page: renaming or renumbering a heading
+    fails here with the links to it."""
     pages = sorted((ROOT / "docs").rglob("*.md"))
     assert len(pages) > 30, pages
+    pages += [ROOT / name for name in _LINKING_PAGES]
     assert _slug("6.4 The app as it ships: without the sender's Land") == (
         "64-the-app-as-it-ships-without-the-senders-land"
     )

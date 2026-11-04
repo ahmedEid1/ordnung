@@ -23,7 +23,7 @@ from ordnung.ingest.pipeline import add_file
 from ordnung.llm.base import ClaudeNotInstalled
 
 DEMO_DB = Path(__file__).resolve().parents[1] / "src" / "ordnung" / "demo" / "demo_db"
-#: The Ask fingerprint of the demo (plan §1), pinned: Ordnung's reading of pictures must never move it.
+#: The Ask fingerprint of the demo, pinned: Ordnung's reading of pictures must never move it.
 DEMO_FINGERPRINT = "6d63e0d2ead937a6c8e4fd974c537b368c20101035bd70fc8f1038096a550b08"
 PICTURE_WORDS = "Hausverwaltung Beispiel GmbH · Ihr Kellerabteil 7 · Gebäude Süd"
 

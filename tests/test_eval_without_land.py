@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import conditions, report, splits  # noqa: E402
+from evals import conditions, harness, report, splits  # noqa: E402
 from evals.records import load_manifest, select_entries  # noqa: E402
 from evals.run import DEFAULT_MODEL, MANIFEST_PATH, RESULTS_DIR  # noqa: E402
 from scripts import eval_without_land  # noqa: E402
@@ -514,3 +514,19 @@ def test_the_results_say_which_run_they_replay(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(eval_without_land, "split_numbers", numbers)
     results = asyncio.run(eval_without_land.build(["dev"], DEFAULT_MODEL, "2027-01-12", repeat=3))
     assert asked == [("dev", 3)] and results["meta"]["repeat"] == 3
+
+
+def test_the_results_name_the_code_paths_that_differ_from_their_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``meta.commit`` is the checked-out commit: the file says, as the runner's do, which code paths under src/ and
+    evals/ differed from it (``harness.dirty_paths``), so a file written from a tree with changes never passes for
+    that commit's (``make eval-reproduce`` refuses it)."""
+
+    async def numbers(split: str, model: str, entries: Any, *, repeat: int = 1) -> dict[str, Any]:
+        return {"entries": len(entries)}
+
+    monkeypatch.setattr(eval_without_land, "split_numbers", numbers)
+    monkeypatch.setattr(harness, "dirty_paths", lambda root=None: ["evals/generate.py"])
+    results = asyncio.run(eval_without_land.build(["dev"], DEFAULT_MODEL, "2027-01-12"))
+    assert results["meta"]["dirty"] == ["evals/generate.py"]

@@ -49,7 +49,7 @@ export function focusAfterLeaving(headings: () => HTMLElement[], leavingId: stri
       const rest = headings();
       return rest[Math.min(at, rest.length - 1)] ?? document.getElementById(fallbackId);
     },
-    // watched from the click (review round 4 of phase 2): the card leaves once the change is saved and the lists
+    // watched from the click: the card leaves once the change is saved and the lists
     // are refreshed, which on a busy machine takes longer than the default window. Waiting longer never pulls
     // back someone who moved on — only lost focus is moved.
     LEAVING_WAIT_MS,

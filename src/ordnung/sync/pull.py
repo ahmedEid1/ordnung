@@ -1,12 +1,12 @@
-"""Bringing a version over (design §11; review findings 1, 10, 11, 12, 32).
+"""Bringing a version over (SPEC §12c).
 
 **Stage and verify, live data untouched** (:func:`stage`): the space is checked first (staged database +
-the live database × 1.1 + the files needed + a kept copy's estimate + 64 MiB, finding 12); the manifest
+the live database × 1.1 + the files needed + a kept copy's estimate + 64 MiB); the manifest
 and buckets are authenticated and checked (names, caps); the database slices are decrypted into
 ``sync/incoming/ordnung.db``, each and the whole file SHA-checked, then ``integrity_check``, schema and
 row counts, a demo database refused, an older schema migrated *here*, a page size made the live one's;
-every path the database names must be among the version's files (finding 10). A local file is reused
-only when its size matches and its cached (or freshly computed) SHA-256 is the version's (finding 11c);
+every path the database names must be among the version's files. A local file is reused
+only when its size matches and its cached (or freshly computed) SHA-256 is the version's;
 every other file is decrypted into ``incoming/`` (``O_EXCL``, ``0600``), checked and ``fsync``-ed.
 Anything that hasn't arrived raises :class:`~ordnung.sync.NotArrived` and the staging is removed.
 
@@ -18,7 +18,7 @@ this computer's own state carried over (:func:`ordnung.sync.scrub.merge_local`) 
 naming the target in that same transaction, then files nothing names any more are pruned (last: a crash
 leaves extra files, never missing ones), then ``state.json``.
 
-If the person changed something after the pull was decided (the counter moved — review blocker 1), the
+If the person changed something after the pull was decided (the counter moved), the
 pull is given up before the database changes: what was placed is only extra files. A database step
 that fails (no space, a file held) leaves the journal; the next start tries again, and the person may
 give it up (``abandon``) while ``sync_mark`` doesn't name the target.
@@ -94,7 +94,7 @@ class PullUnfinished(SyncError):
 
 
 class PullAborted(SyncError):
-    """The person changed something after the pull was decided (blocker 1): it was given up."""
+    """The person changed something after the pull was decided: it was given up."""
 
     def __init__(self) -> None:
         super().__init__("not_needed", "Something changed here meanwhile, so nothing was brought over.")
@@ -153,7 +153,7 @@ def _hash(path: Path) -> str:
 
 
 def local_match(data_dir: Path, entry: FileEntry, cache: dict[str, FilesCacheEntry]) -> bool:
-    """The data folder already holds ``entry`` (size, then cached or computed SHA-256; finding 11c)."""
+    """The data folder already holds ``entry`` (size, then cached or computed SHA-256)."""
     path = data_dir / entry.path
     try:
         info = path.stat()
@@ -189,7 +189,7 @@ def _live_page_size(db: Path) -> int | None:
 
 
 def check_space(paths: Paths, manifest: Manifest, needed_files: int, *, keep: bool) -> None:
-    """Finding 12: room for the staged database, the database written into the live WAL, the files and
+    """Room for the staged database, the database written into the live WAL, the files and
     a kept copy, with a margin."""
     live = paths.db.stat().st_size if paths.db.is_file() else 0
     kept = estimate(paths.data_dir)[1] if keep else 0
@@ -356,7 +356,7 @@ def _stage_file(session: Session, entry: FileEntry, target: Path) -> None:
 
 
 def removed_letters(staged: Staged, store: Store) -> int:
-    """How many letters the live data has that the staged version lacks (Rule K, finding 18)."""
+    """How many letters the live data has that the staged version lacks (Rule K)."""
     live = {str(row[0]) for row in store._conn().execute("SELECT id FROM documents")}
     return len(live - staged.doc_ids)
 
@@ -424,7 +424,7 @@ def _place(paths: Paths, journal: Journal, fs: FsOps, refetch: Refetch | None) -
             if entry is None or refetch is None:
                 raise PullUnfinished("a file waiting to be placed went missing")
             _private_dirs(fs, incoming, PurePosixPath(relative).parent)
-            refetch(entry, source)  # finding 12: fetched again from the folder (the key is here)
+            refetch(entry, source)  # fetched again from the folder (the key is here)
             fs.replace(source, target)
         touched.add(target.parent)
     # every folder up to the data folder: a folder made for a new letter is a new name in its parent
@@ -635,7 +635,7 @@ def unfinished(paths: Paths) -> Journal | None:
 
 
 def abandon(paths: Paths) -> bool:
-    """Give up a pull whose database step failed (finding 12): only while ``sync_mark`` doesn't name its
+    """Give up a pull whose database step failed: only while ``sync_mark`` doesn't name its
     target — once the database is replaced, the pull must finish instead. True when it was given up."""
     local = Local(paths)
     journal = unfinished(paths)

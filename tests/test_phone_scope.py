@@ -95,7 +95,7 @@ def test_never_on_phone_stays_on_the_computer() -> None:
 
 
 def test_calendar_files_stay_on_the_computer() -> None:
-    """Review finding: a phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) although a
+    """A phone downloaded ``ordnung.ics`` (to-do titles, amounts, what to do) although a
     phone keeps no copy and downloads no records. The files and the note that they were downloaded are
     computer-only."""
     for operation in (

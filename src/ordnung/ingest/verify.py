@@ -1184,7 +1184,7 @@ REASON_TEXT: dict[str, str] = {
     READING_INCOMPLETE: "Ordnung took this deadline from the letter's own instructions on how to object, because Claude's reading left it out — check it against the letter.",
     DEADLINE_LEFT_OUT: "Ordnung took this date from the letter's own words, because Claude's reading left it out — check it against the letter.",
 }
-#: The note an incomplete reading's to-do carried before (UX review 2, R2UX-5: it said "worked this date out"
+#: The note an incomplete reading's to-do carried before (it said "worked this date out"
 #: also when no date could be worked out), as receipts already stored say it.
 _EARLIER_READING_INCOMPLETE = "Ordnung worked this date out from the letter's own instructions on how to object, because Claude's reading left the deadline out — check it against the letter."
 UNVERIFIED_NOTE = "We couldn't find this sentence in the letter — please check the date against the letter."

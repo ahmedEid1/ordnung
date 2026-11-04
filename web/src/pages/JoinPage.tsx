@@ -1,5 +1,5 @@
 /**
- * `/join` (design §19.2): "I already use Ordnung on another computer" — bring that Ordnung over instead of setting
+ * `/join` (SPEC §12c): "I already use Ordnung on another computer" — bring that Ordnung over instead of setting
  * up a new one. Outside the app shell, like `/welcome` (the onboarding redirect doesn't apply: the other computer's
  * profile comes along). The setup card in its joining form, then what is arriving; once Ordnung is in use here, the
  * app opens with everything from the other computer.

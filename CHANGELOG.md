@@ -1,7 +1,7 @@
 # Changelog
 
 What changed in each version of Ordnung, newest first. `ordnung --version` shows the one you have, and
-[Updating](README.md#updating) says how to get the newest.
+[Updating](docs/guide.md#updating) says how to get the newest.
 
 ## Unreleased
 
@@ -88,6 +88,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   it is made as the benchmark's today.
 - macOS and Windows are now required in CI: the job that installs Ordnung there and runs the tests of the code
   that differs per system (weekly and on main) fails the run when it fails, as the Linux jobs do.
+- **A short README, and a guide for the rest.** The README says what Ordnung is, how to try it and how it is
+  measured. Installing, updating, a tour of the app, the environment variables Ordnung reads and every
+  limitation are in [docs/guide.md](docs/guide.md), and [docs/README.md](docs/README.md) lists every document
+  by reader.
 
 ### Fixed
 
@@ -180,6 +184,11 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 The second numbered release. [Updating](README.md#updating) says how to install it; *Upgrading* below says
 what a computer still on 0.2.0 does with what this version adds, if you use hand-off sync between the two.
+
+In short: your household, your tax year and your letters as files, a moving checklist, a sender's state
+suggested from the postcode, dates you add yourself that repeat, scans you keep private and, optionally,
+private photos found by their words, e-mails saved from Outlook, an app-menu shortcut, and releases that a
+version tag builds, checks and publishes on GitHub.
 
 ### Added
 
@@ -466,6 +475,11 @@ what a computer still on 0.2.0 does with what this version adds, if you use hand
 The first numbered release. Every install before it reports 0.1.0, the version of the first commit
 (2026-09-25), and pip, so also `pipx upgrade`, only replaces an install whose version went up: hence
 0.2.0, not 0.1.0.
+
+In short: Claude reads your letters and tested rules compute every deadline; Ask answers with checked
+citations; Today's note, the Ideas and the weekly review; letters you send, with proof of sending; reminders
+with a morning notification; your phone at home; hand-off sync between your computers; the rules engine as MCP
+tools; and a demo with recorded answers and zero tokens.
 
 ### Since the first commit
 

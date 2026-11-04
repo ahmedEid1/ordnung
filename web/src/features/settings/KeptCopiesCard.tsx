@@ -1,9 +1,9 @@
 /**
- * Settings → Your computers → Kept copies (design §12.4, §19.1 card 4; shown only when there are some): this
+ * Settings → Your computers → Kept copies (SPEC §12c; shown only when there are some): this
  * computer's data as it was before it was replaced — after a choice, a take-over that would have lost a change of
  * yours, or a repair. Each is an ordinary encrypted backup that `ordnung restore` opens with the sync passphrase.
  * They are never synced and never deleted by themselves; they live in this computer's data folder, so they go with
- * its disk and with Delete everything (finding 35).
+ * its disk and with Delete everything.
  */
 import { useRef, useState } from "react";
 import { Download, FileArchive, Trash2 } from "lucide-react";

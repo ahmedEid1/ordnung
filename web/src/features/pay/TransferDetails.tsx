@@ -2,7 +2,7 @@
  * What both Pay panels — Today's and the letter's — show the same way: the transfer details under one
  * set of names, in the order a German bank form asks for them (Recipient, IBAN, Amount, Reference),
  * each in full with a copy button that says "Copied" in place; the IBAN's check; and the footer with
- * "Mark as paid" (UI audit round 2: "To" / "I've paid it" on one page, "Recipient" / "Mark as paid"
+ * "Mark as paid" (not "To" / "I've paid it" on one page, "Recipient" / "Mark as paid"
  * on the other). A copy says so on its button, not in a toast: a toast covered the popover's footer
  * and waited unseen behind a phone's sheet.
  */
@@ -22,7 +22,7 @@ export function amountForTransfer(amount: number): string {
   return amount.toFixed(2).replace(".", ",");
 }
 
-/** An IBAN in groups of four that never split: the line breaks only between groups (UI audit round 1: "…2130 0" / "0"). */
+/** An IBAN in groups of four that never split: the line breaks only between groups (not "…2130 0" / "0"). */
 export function IbanGroups({ iban }: { iban: string }) {
   const groups = formatIban(iban).split(" ");
   return (

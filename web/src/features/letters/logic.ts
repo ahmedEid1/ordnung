@@ -442,7 +442,7 @@ export function canSuspend(doc: Pick<ListedLetter, "kind"> | null): boolean {
 const COURT_NAME =
   /(?:amts|land|landes|oberlandes|kammer|arbeits|sozial|verwaltungs|finanz|mahn|familien|insolvenz|vollstreckungs|nachlass|betreuungs|register|verfassungs|staats|bundes)gericht(?:e?s|shofe?s?)?\b|\bbundesfinanzhofe?s?\b/i;
 /** A court's abbreviation before its place ("AG Hagen") — a federal court's may stand alone ("BGH"), a local one's
- * never ("AG" alone is no court for the server either: review round 4 of phase 2). */
+ * never ("AG" alone is no court for the server either). */
 const COURT_ABBREVIATION =
   /(?:^|[(,;/]\s*|\b(?:des|dem|der|beim|vom|am)\s+)(?:(?:AG|LG|OLG|ArbG|LAG|SG|LSG|VG|OVG|VGH|FG)\s+\p{Lu}|(?:BGH|BFH|BSG|BAG|BVerwG|BVerfG)(?:\s+\p{Lu}|\s*$|\s*[-–—,;/(]))/u;
 const LEGAL_FORM = /\b(?:GmbH|mbH|AG|SE|KGaA|KG|OHG|UG|GbR|eG|e\.\s?V|Ltd|Inc|LLC)(?![\p{L}\d])/u;
@@ -466,7 +466,7 @@ export function mayBeCourt(name: string | null | undefined): boolean {
  * court (a Mahnbescheid re-filed from what was read as the claimant's reminder) and whose instructions name
  * none. An objection goes to the court that issued the order — sent to the claimant it doesn't stop the order
  * (§ 694, § 700 ZPO); the server refuses to address it to anyone else (drafts/compose.py
- * `objection_to_typed_court`, review round 3 of phase 2).
+ * `objection_to_typed_court`).
  */
 export function needsTypedCourt(
   doc: Pick<ListedLetter, "kind" | "remedy"> | null,

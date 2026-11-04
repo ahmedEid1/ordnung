@@ -119,7 +119,7 @@ def test_objection_deadlines(doc: str, scope: str, region: str, basis: str, expe
     receipt = compute_due(notice_spec(legal_basis=basis), context)
     assert receipt.due_date == expected
     # Hessen may still use the 3-day rule (unverified), which is flagged; court actions (Klage) carry a
-    # "get advice" warning (SPEC § 21, audit B4); everything else is certain.
+    # "get advice" warning (SPEC § 21); everything else is certain.
     uncertain = (region == "HE" and scope == "vwvfg") or "klage_1_month" in receipt.rule_ids
     assert receipt.confidence == ("medium" if uncertain else "high"), receipt.warnings
 
@@ -739,7 +739,7 @@ def test_fixed_date_as_written() -> None:
 
 
 def test_a_payment_made_in_person_gets_no_send_by() -> None:
-    """UI audit R1-backend-8: the residence permit's fee, paid by girocard at the appointment, carried a bank
+    """The residence permit's fee, paid by girocard at the appointment, carried a bank
     transfer's send-by day (§ 675s BGB). Paid in person, the due day is the day."""
     spec = DateSpec(type="fixed", date="2026-10-14", time="10:30", nature="payment")
     receipt = compute_due(spec, replace(ctx(region="NW"), in_person=True))
@@ -756,7 +756,7 @@ def test_a_payment_made_in_person_gets_no_send_by() -> None:
 
 
 def test_a_collected_payment_gets_no_send_by() -> None:
-    """Walkthrough of phase 2: a direct debit (or money coming in) got a bank transfer's send-by day. The
+    """A direct debit (or money coming in) got a bank transfer's send-by day. The
     sender collects it — nothing to transfer ahead, so no send-by day and no § 675s BGB step."""
     spec = DateSpec(type="fixed", date="2026-10-01", nature="payment")
     receipt = compute_due(spec, replace(ctx(region="NW"), collected=True))
@@ -765,12 +765,12 @@ def test_a_collected_payment_gets_no_send_by() -> None:
     assert compute_due(spec, ctx(region="NW")).send_by == "2026-09-30"
 
 
-# the Deutschlandticket's sentence on the university's re-registration letter (walkthrough of phase 2)
+# the Deutschlandticket's sentence on the university's re-registration letter
 _UNI = "Falls Sie ein Deutschlandticket im Abonnement besitzen, denken Sie bitte daran, dieses rechtzeitig zum 31.03.2027 zu kündigen."
 
 
 def test_a_notice_for_a_named_end_is_not_a_receive_by_date() -> None:
-    """Walkthrough of phase 2: "rechtzeitig zum 31.03.2027 zu kündigen" names the day the subscription
+    """The words "rechtzeitig zum 31.03.2027 zu kündigen" name the day the subscription
     should END; it was filed as "must arrive by Wed 31 Mar 2027" with high confidence, three weeks after the
     contract's real deadline (the 10th). The engine counts back one month — the most a consumer contract may
     ask (§ 309 Nr. 9 BGB) —, never moves that day later and says to check the contract (low)."""
@@ -1126,7 +1126,7 @@ def test_a_private_sender_drops_a_delivery_rule_on_the_letters_date() -> None:
 def test_a_private_senders_period_from_a_date_it_gives_never_claims_to_count_from_arrival(
     received: str | None,
 ) -> None:
-    """Reviewer repro: "14 days from the invoice date" read with a delivery rule. The rule goes and the
+    """The words "14 days from the invoice date" read with a delivery rule. The rule goes and the
     invoice date stays, so the receipt must not say the period runs from arrival, nor carry the rule id
     that makes the app ask for the arrival day — an answer it would then ignore."""
     spec = DateSpec(
@@ -1183,7 +1183,7 @@ def test_from_arrival_leaves_other_specs_alone() -> None:
 
 
 def test_a_private_senders_letter_without_a_date_still_asks_for_the_arrival_day() -> None:
-    """Reviewer repro: the engine needs the arrival day, and the app asks for it by the rule id
+    """The engine needs the arrival day, and the app asks for it by the rule id
     ``private_sender_arrival`` — which must be there even when no date could be computed."""
     spec = notice_spec(amount=4, unit="weeks")
     receipt = compute_due(spec, ctx(today="2026-09-26", private_sender=True))
@@ -1195,7 +1195,7 @@ def test_a_private_senders_letter_without_a_date_still_asks_for_the_arrival_day(
 
 
 def test_the_periods_own_words_never_bring_deemed_delivery_back() -> None:
-    """Reviewer repro: words that may name an administrative act are no proof — a gym writes "nach
+    """Words that may name an administrative act are no proof — a gym writes "nach
     Bekanntgabe der Preiserhöhung", an employer's certificate cites "§ 312 Abs. 1 SGB III". A sender filed
     as private keeps counting from the day it arrived, the earliest plausible start: deemed delivery
     would make these dates 3 days late (Mon 19 Oct)."""
@@ -1249,7 +1249,7 @@ def test_the_private_sender_rule_and_the_court_rules_meet() -> None:
     assert dismissal.due_date == "2026-09-22" and {"kschg_4", "private_sender_arrival"} <= set(
         dismissal.rule_ids
     )
-    # review round 3 of phase 2: from a public employer too, and never "not an authority's letter"
+    # from a public employer too, and never "not an authority's letter"
     city = ctx(today="2026-09-26", document_date="2026-09-01", sender_kind="authority")
     public = compute_due(kschg, city)
     assert public.due_date == "2026-09-22" and DECLARATION_ARRIVAL_WARNING in public.warnings
@@ -1310,7 +1310,7 @@ def _late(received: str, **kw: Any) -> RuleContext:
 
 
 def test_a_private_senders_late_arrival_never_makes_the_date_later() -> None:
-    """Reviewer repro: whether a sender is an authority is read, not known (a statutory insurer or a
+    """Whether a sender is an authority is read, not known (a statutory insurer or a
     municipal utility filed as ``company``). An arrival after the day an authority's letter would count as
     delivered must not move the date past the deemed-delivery one; the note gives the date from arrival."""
     spec = notice_spec(amount=14, unit="days", text="Einspruch innerhalb von 14 Tagen")
@@ -1367,7 +1367,7 @@ def test_a_private_senders_late_arrival_never_makes_the_date_later() -> None:
 
 
 def test_a_late_arrival_note_says_when_the_later_date_may_still_be_open() -> None:
-    """Reviewer repro: a company's letter dated Tue 1 Sep arrived Fri 25 Sep; on Thu 1 Oct the date
+    """A company's letter dated Tue 1 Sep arrived Fri 25 Sep; on Thu 1 Oct the date
     shown (Fri 18 Sep, from the usual delivery day) has passed, the one from arrival (Fri 9 Oct) has
     not. The note must not let a probably live deadline read as missed."""
     spec = notice_spec(amount=14, unit="days")
@@ -1395,7 +1395,7 @@ def test_a_late_arrival_note_says_when_the_later_date_may_still_be_open() -> Non
 
 
 def test_a_late_arrival_giving_the_same_date_counts_from_the_arrival() -> None:
-    """Reviewer repro: a company's payment letter dated Tue 1 Sep (NW) usually counts as delivered on
+    """A company's payment letter dated Tue 1 Sep (NW) usually counts as delivered on
     Sat 5 Sep; it arrived Mon 7 Sep. 14 days from either day end on Mon 21 Sep (Sat 19 Sep moves), so
     there is nothing to cap: it counts from the arrival as any private sender's letter, with no note
     that the deadline "may be" the date already shown and no confidence lost."""
@@ -1557,7 +1557,7 @@ def _partial(receipt: Any, name: str) -> list[str]:
 
 
 def test_a_partial_holiday_a_date_is_counted_back_over_is_named_in_the_app_too() -> None:
-    """Reviewer repro: a gym's notice deadline on Tue 15 Aug 2028 in Bavaria. The calendar counts only a
+    """A gym's notice deadline on Tue 15 Aug 2028 in Bavaria. The calendar counts only a
     whole Land's holidays; in Munich that day is one, so the safe date there is a working day earlier.
     The engine says so (the app and the rules tools alike); the Land's calendar stays the rule."""
     notice = DateSpec(type="fixed", date="2028-08-15", nature="notice")
@@ -1635,7 +1635,7 @@ def test_a_period_counted_back_over_a_partial_holiday_is_named() -> None:
 
 
 def test_the_partial_holiday_check_stays_inside_the_calendar() -> None:
-    """Reviewer repro: counting back from 1 Jan 1 raised OverflowError in the rules tools."""
+    """Counting back from 1 Jan 1 raised OverflowError in the rules tools."""
     first = compute_due(DateSpec(type="fixed", date="0001-01-01", nature="notice"), ctx(region="BY"))
     assert first.due_date == "0001-01-01"
     last = DateSpec(type="fixed", date="9999-12-31", nature="objection", shift_rule="next_business_day")

@@ -368,7 +368,7 @@ def is_overdue(item: Item, today: date) -> bool:
     """Computed on read: an active deadline/payment/task whose due date has passed — unless it was
     already history when the letter was filed, it repeats (a schedule shows its next occurrence and
     is never overdue, see :mod:`ordnung.recurrence`), or it is money coming in: the person doesn't owe it
-    (walkthrough of phase 2: a salary transfer showed as "Overdue")."""
+    (a salary transfer showed as "Overdue")."""
     due = parse_day(item.due_date)
     return (
         item.kind in OVERDUE_KINDS
@@ -832,7 +832,7 @@ class Ledger:
         """Active contracts whose end is decided: a letter confirms their cancellation
         (:meth:`pending_confirmations`), or the person marked their own cancellation as sent
         (:func:`cancellations_sent`). Neither is a decision to make any more — no "decide by", no
-        cancellation Idea, no send-by date in the calendar (walkthrough of phase 2)."""
+        cancellation Idea, no send-by date in the calendar."""
         return set(self.pending_confirmations()) | set(cancellations_sent(self.sent_drafts()))
 
     def proofs_of(self, draft_id: str) -> list[Proof]:
@@ -1888,7 +1888,7 @@ def _earlier_invoice(dunning: Document, invoices: dict[str, list[Document]]) -> 
 
 #: Senders that are public bodies: a library's, a university's or an authority's fee is never taken to
 #: a debt collector or a court payment order — they add reminder fees and, in the end, collect it
-#: themselves (administrative enforcement). UI audit R1-backend-7: a €4.50 library fee warned of a
+#: themselves (administrative enforcement). Before this, a €4.50 library fee warned of a
 #: Mahnbescheid.
 PUBLIC_CREDITOR_KINDS = frozenset(
     {"authority", "tax_office", "immigration_office", "university", "public_broadcaster"}
@@ -2004,7 +2004,7 @@ HIDDEN_TEXT_SIGN = "The letter contains hidden text that you can't see on the pa
 
 def scam_signs(doc: Document, reasons: Sequence[str]) -> list[str]:
     """Every warning sign of a letter with scam signs (``reasons``, :func:`_scam_reasons`, not empty), as
-    its page and its Idea list them — one list, one count (walkthrough of phase 2: the Idea said "5
+    its page and its Idea list them — one list, one count (the Idea said "5
     warning signs", the page "the 3 strongest of 7", and hidden text was said twice). Once a letter shows
     scam signs, each warning its reading carries is one more — except notes that are no sign
     (:data:`_NOT_A_SIGN`) —, hidden text is said once, in Ordnung's words, and the code's findings come

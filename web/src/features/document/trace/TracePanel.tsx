@@ -288,7 +288,7 @@ function TraceSkeleton() {
 /**
  * The tab's heading: the letter's title, as the letter tab's verdict card (or waiting card) shows it — the
  * same size, in a card of the same padding under a row as tall as its badges, so switching tabs doesn't move
- * it (UI audit round 2: 25 px left, 65 px up and smaller).
+ * it (it was 25 px left, 65 px up and smaller).
  */
 function TraceHeader({ detail }: { detail: DocumentDetail }) {
   const doc = detail.document;

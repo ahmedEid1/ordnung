@@ -407,7 +407,7 @@ async def test_a_ready_status_that_isnt_backs_off_and_keeps_one_pause(
 ) -> None:
     """``auth status`` says signed in, yet Claude refuses every reading (an expired key): each failure drops the
     cached status, the app keeps hearing one "Waiting for Claude" (no paused/resumed every 30 s), and each
-    check that said "ready" in vain doubles the time to the worker's next one (final check, F-S1)."""
+    check that said "ready" in vain doubles the time to the worker's next one."""
     attempts = refusing(router, ClaudeAuthError("Claude Code is not signed in."))
     dropped: list[None] = []
     ctx.worker.claude_failed = lambda: dropped.append(None)
@@ -447,7 +447,7 @@ async def test_a_reading_that_finds_claude_not_ready_drops_the_cached_status(
     ctx: AppContext, router: Router
 ) -> None:
     """Settings, the upload dialog and the worker's next check ask Claude again instead of saying "ready" from
-    a cache kept ten minutes (final check, F-S1)."""
+    a cache kept ten minutes."""
     probes: list[None] = []
 
     async def probe() -> ClaudeStatus:
@@ -469,7 +469,7 @@ async def test_a_reading_that_finds_claude_not_ready_drops_the_cached_status(
 
 async def test_a_page_opened_while_letters_wait_hears_it_first(ctx: AppContext, router: Router) -> None:
     """The pause is announced once, when it starts: a page opened (or reloaded) later is told on connecting —
-    the wait for Claude, or a usage limit that hasn't ended (final check, F-M2)."""
+    the wait for Claude, or a usage limit that hasn't ended."""
     refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
     await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
     await ctx.worker.run_until_idle()
@@ -492,7 +492,7 @@ async def test_the_wait_is_not_told_once_no_letter_waits_for_claude(
     ctx: AppContext, router: Router, left: str
 ) -> None:
     """The last letter waiting for Claude deleted, or kept private (read on this computer): a page that
-    connects hears no wait for Claude, while Claude is still missing (final fix pass, N1)."""
+    connects hears no wait for Claude, while Claude is still missing."""
     refusing(router, ClaudeNotInstalled("The “claude” command was not found."))
     document = await add_file(ctx, TAX_LETTER.pdf(), "tax.pdf")
     await ctx.worker.run_until_idle()

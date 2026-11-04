@@ -590,7 +590,7 @@ def same_day_channels(guidance: SendGuidance) -> list[SendChannel]:
 
 
 def _too_late_to_post(guidance: SendGuidance, due: date) -> None:
-    """The usual time to post has passed (review round 4 of phase 2: the letter page still said "Post a letter
+    """The usual time to post has passed (the letter page still said "Post a letter
     by" the last day — for a Notfrist, §§ 700 Abs. 1, 339 ZPO, a letter posted then arrives late): say a letter
     posted today may arrive too late, rank the allowed channels that reach the recipient the same day first and
     recommend the first of them."""

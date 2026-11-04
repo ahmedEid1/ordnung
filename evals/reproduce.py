@@ -233,7 +233,8 @@ def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
     """The gates the ``backend-slow`` job of ``ci.yml`` runs, one per read: each split's replay
     (``benchmark/<split>`` for its first read, ``benchmark/<split>/r<N>`` for read N of the final run), the Ask
     benchmark's arguments (``ask/dev`` for the development set, ``ask/<set>/r<N>`` for each run of the held-out set)
-    and the published file the replay without the Land must equal. A gate command stands on one line."""
+    and the published file the replay without the Land must equal. A command the step continues over the next line
+    after a backslash is read as the shell runs it, as one line."""
     try:
         import yaml  # PyYAML comes with uvicorn[standard]
     except ImportError as exc:  # pragma: no cover - a dependency of the app
@@ -242,7 +243,7 @@ def ci_gates(path: Path = CI_PATH) -> dict[str, Any]:
     gates: dict[str, Any] = {}
     for step in workflow["jobs"]["backend-slow"]["steps"]:
         run = str(step.get("run", ""))
-        for line in run.splitlines():
+        for line in run.replace("\\\n", " ").splitlines():
             if "ordnung eval" in line:
                 options = _options(shlex.split(line.split("ordnung eval", 1)[1]))
                 split = (options.get("--split") or ["test"])[0]
@@ -288,6 +289,15 @@ def _kind(name: str, data: Mapping[str, Any]) -> tuple[str, str]:
 
 def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str, Any]:
     meta: Mapping[str, Any] = data["meta"] if isinstance(data.get("meta"), dict) else {}
+    dirty = meta.get("dirty")
+    if meta.get("backend") == "replay" and isinstance(dirty, list) and dirty:
+        # a replay names the commit it ran at: from a tree with changes, that commit's code is not what wrote it (a
+        # live recording stays as recorded, and the analysis drops a read recorded so)
+        listed = ", ".join(str(item) for item in dirty[:3]) + (" …" if len(dirty) > 3 else "")
+        raise ReproduceError(
+            f"{path.name}: written from a tree with changes to {listed}, so its commit {meta.get('commit')} is not "
+            "the code that wrote it: commit the code, then write it again from a clean tree"
+        )
     row: dict[str, Any] = {"file": path.name, "sha256": sha256_file(path), "kind": kind, "role": role}
     if kind == "run":
         row.update(split=meta["split"], repeat=int(meta.get("repeat", 1)))

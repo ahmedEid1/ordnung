@@ -81,7 +81,7 @@ PRIVATE_SENDER_DATED_WARNING: Final = (
     "date the letter gives, not from the day it arrived."
 )
 #: A private-law period (:data:`_PRIVATE_LAW_STATUTES`) runs from arrival whoever sent the letter — a public
-#: employer's dismissal too: it is no administrative act (review round 3 of phase 2: the step and warning said
+#: employer's dismissal too: it is no administrative act (the step and warning said
 #: "this sender is not an authority" of a city's Personalamt).
 DECLARATION_ARRIVAL_WARNING: Final = (
     "No delivery days were added: a dismissal takes effect when it arrives, whoever sends it — a public "
@@ -141,7 +141,7 @@ def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
 
 
 #: A notice whose written date is the day the contract should END, not the day the notice must arrive
-#: (walkthrough of phase 2: "rechtzeitig zum 31.03.2027 zu kündigen" was filed as "must arrive by 31 Mar"):
+#: ("rechtzeitig zum 31.03.2027 zu kündigen" was filed as "must arrive by 31 Mar"):
 #: its words say "zum <date>" ("rechtzeitig zum …", "zum Ablauf des …"), "mit Wirkung zum", "effective" or
 #: "with effect from" — and nothing in them says the notice must arrive by then (:data:`_ARRIVAL_WORDS`).
 _END_WORDS = re.compile(
@@ -215,7 +215,7 @@ _STATUTE_NATURES: dict[str, tuple[DateNature, ...]] = {
     "arbgg_59": ("objection", "declaration"),
     "kschg_4": ("objection", "declaration"),
 }
-#: How a court's period is counted (review round 1: its receipt cited the counting rules of the AO, the
+#: How a court's period is counted (its receipt cited the counting rules of the AO, the
 #: VwVfG, the StPO and the SGG): § 222 Abs. 1 ZPO points to §§ 187, 188 BGB — at a labour court through
 #: § 46 Abs. 2 ArbGG. A Kündigungsschutzklage's three weeks are a period of substantive law: the BGB's alone.
 _COURT_COUNTING = {
@@ -226,7 +226,7 @@ _LABOUR_COURT_COUNTING = {
     rule: f"§ 46 Abs. 2 ArbGG; {citation}" for rule, citation in _COURT_COUNTING.items()
 }
 #: A social court counts under its own act (§ 64 Abs. 1–3 SGG), not § 222 ZPO — the same dates, the right
-#: citation (review round 2 of phase 2).
+#: citation.
 _SOCIAL_COURT_COUNTING = {"bgb_187_1": "§ 64 Abs. 1 SGG", "bgb_188": "§ 64 Abs. 2 SGG"}
 _BGB_COUNTING = {"bgb_187_1": "§ 187 Abs. 1 BGB", "bgb_188": "§ 188 Abs. 1, 2 BGB"}
 _SHIFT_RULE_BY_SCOPE: dict[DeliveryScope, str] = {
@@ -286,10 +286,10 @@ class RuleContext:
     gives is that of a notice given in the alternative, which § 38 Abs. 1 SGB III doesn't count from.
     ``in_person``: the payment is made in person — by card or in cash at the appointment, the desk or a
     machine (:func:`ordnung.payments.pays_on_site`) —, so it gets no send-by date: a bank transfer's day
-    (§ 675s BGB) means nothing there, the due day is the day (UI audit R1-backend-8). ``collected``: nobody
+    (§ 675s BGB) means nothing there, the due day is the day. ``collected``: nobody
     transfers it — the sender collects it by direct debit, or the money comes in
     (:func:`ordnung.payments.is_collected_or_incoming`) —, so it gets no send-by date either: the due day is
-    the day it is collected or paid in (walkthrough of phase 2: a direct debit got a transfer's "send by").
+    the day it is collected or paid in (a direct debit got a transfer's "send by").
     ``rent``: the to-do belongs to the tenancy of a home — its letter is a lease or its contract a rent
     contract (:func:`ordnung.ingest.plan.for_item`) —, so its payments are rent: § 556b Abs. 1 BGB counts
     their working days Monday to Friday (BGH VIII ZR 129/09), and one paid every month that the lease itself
@@ -557,7 +557,7 @@ def place_region(spec: DateSpec, ctx: RuleContext) -> str | None:
     Kündigungsschutzklage may be filed at the labour court of the employer's seat or of the place of work
     (§ 48 Abs. 1a ArbGG), which may be in another Land: a regional holiday counts only where it holds at
     the employer's seat and where the person lives (the place of work's stand-in) — the joint calendar of
-    both Länder (:func:`~ordnung.rules.calendar_de.joint_region`; review round 4 of phase 2: two different
+    both Länder (:func:`~ordnung.rules.calendar_de.joint_region`; two different
     Länder gave nationwide holidays and "Holiday region unknown") —, and with either unknown nationwide
     holidays only: the earlier date, with the warning that a Land's holiday may make it later.
     """

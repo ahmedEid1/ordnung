@@ -271,6 +271,8 @@ async def build(splits: Sequence[str], model: str, run_date: str, *, repeat: int
             "backend": "replay",
             "repeat": repeat,
             "commit": _commit(),
+            # the code paths that differ from that commit, as the runner records them ([] when none; null without git)
+            "dirty": harness.dirty_paths(),
             "fingerprint": conditions.fingerprint("ordnung", model),
             "script": "scripts/eval_without_land.py",
             "note": NOTE,

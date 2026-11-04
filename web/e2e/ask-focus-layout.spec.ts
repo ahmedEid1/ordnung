@@ -1,5 +1,5 @@
 /**
- * Ask's sticky question box on real pages (review round 2 of phase 2; WCAG 2.4.11): keyboard focus on the
+ * Ask's sticky question box on real pages (WCAG 2.4.11): keyboard focus on the
  * citation markers and source chips of real answers never ends up under it, and the live steps and the
  * "Writing the answer" line grow above it. Runs in the "layout" project (its name ends in `layout.spec.ts`).
  *
@@ -74,7 +74,7 @@ function writingLine(page: Page) {
     const turn = line?.closest("[data-turn]")?.getBoundingClientRect();
     if (!line || !turn) return null;
     const box = line.getBoundingClientRect();
-    // the three dots sit level with the first of its wrapped lines (UI audit round 2: beside the middle one)
+    // the three dots sit level with the first of its wrapped lines (they sat beside the middle one)
     const dots = line.querySelector(":scope > span[aria-hidden]")!.getBoundingClientRect();
     const firstLine = parseFloat(getComputedStyle(line).lineHeight);
     return {
@@ -86,7 +86,7 @@ function writingLine(page: Page) {
   });
 }
 
-// review round 2 of phase 2: on /ask the sticky question box covers the bottom of the screen too —
+// on /ask the sticky question box covers the bottom of the screen too —
 // focused citation markers and source chips ended up under it, and the live steps grew behind it
 test.describe("phone: on Ask, focus and the growing answer stay clear of the question box", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

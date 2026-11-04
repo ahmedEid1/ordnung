@@ -1,6 +1,6 @@
 /**
- * Dates you add yourself that repeat, in the mock database as `POST`/`PATCH /api/items` file them (audit item 26;
- * tests/test_api_items_repeat.py is the API's side): placed by their rule at once, moved on when marked done (Undo
+ * Dates you add yourself that repeat, in the mock database as `POST`/`PATCH /api/items` file them
+ * (tests/test_api_items_repeat.py is the API's side): placed by their rule at once, moved on when marked done (Undo
  * brings the date back), and started again at their date only when the person says so. The mock's today is Mon
  * 28 Sep 2026; Sat 3 Oct is a public holiday, and a working day is Monday to Saturday.
  */
@@ -109,7 +109,7 @@ describe("your own repeating dates in the mock", () => {
     expect([same.due_date, same.date_spec?.date]).toEqual(["2026-10-22", "2026-09-10"]);
   });
 
-  it("every week from decades back: its next week from today, as the server finds it (D1 review: the mock gave up after 1200 weeks)", async () => {
+  it("every week from decades back: its next week from today, as the server finds it (the mock once gave up after 1200 weeks)", async () => {
     const s = srv();
     const WEEKLY: Recurrence = { ...MONTHLY, unit: "weeks" };
     // Thu 6 Jan 2000 is 1395 weeks back; every 2 weeks from Thu 3 Jan 1980, 1220 steps

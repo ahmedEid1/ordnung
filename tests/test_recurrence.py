@@ -104,7 +104,7 @@ def test_describe() -> None:
 
 
 def test_the_repeat_words_are_shared_with_the_web() -> None:
-    """Audit item 26: the web said "every month" for "every month on the 3rd working day". Its ``repeatLabel``
+    """The web said "every month" for "every month on the 3rd working day". Its ``repeatLabel``
     and :func:`describe` read the same pairs (the web's test reads this file too), so they say the same."""
     pairs = json.loads(REPEAT_LABELS_FILE.read_text(encoding="utf-8"))
     assert pairs, "no shared repeat words"

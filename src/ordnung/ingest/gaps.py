@@ -1068,7 +1068,7 @@ _OFFERED = re.compile(
     re.IGNORECASE,
 )
 #: A notice that refers back to a decision named before it ("Hiergegen kann …", "Sie können dagegen …"): on a letter
-#: that never names itself a decision (a reminder, a cover letter), another decision (security V4-2, round 4).
+#: that never names itself a decision (a reminder, a cover letter), another decision.
 _BACK_REFERENCE = re.compile(r"\b(?:hiergegen|dagegen)\b", re.IGNORECASE)
 #: A decision named by its article alone ("Bekanntgabe des Bescheides", "gegen den Bescheid"): beside a notice naming
 #: "diesen Bescheid", the same decision — never a compound noun ("des Steuerbescheides") or a back-reference ("o. g.").
@@ -1085,8 +1085,7 @@ _THIS_DECISION = re.compile(
 
 def _names_this_decision(pages: Sequence[PageInput]) -> bool:
     """A sentence of the letter names this letter a decision and a remedy against it, not ruled out ("Gegen diesen
-    Bescheid ist der Widerspruch gegeben."): a notice's bare "des Bescheides" is then this one (false positives
-    R4FP-6, round 4)."""
+    Bescheid ist der Widerspruch gegeben."): a notice's bare "des Bescheides" is then this one."""
     return any(
         _THIS_DECISION.search(sentence) and _GERMAN_REMEDY.search(sentence) and not _NEGATED.search(sentence)
         for page in pages
@@ -1176,7 +1175,7 @@ def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
     worden ist", :data:`_CONDITIONAL`); on any other letter such a sentence stays a notice."""
     found: list[RemedyNotice] = []
     # "Hiergegen …" on a letter that never names itself a decision refers to another; "des Bescheides" beside a
-    # notice naming "diesen Bescheid" is this one (security V4-2, false positives R4FP-6, round 4)
+    # notice naming "diesen Bescheid" is this one
     names_itself = bool(_NAMES_ITSELF.search("\n".join(_visible(page) for page in pages)))
     this_decision = _names_this_decision(pages)
     # only a decision on a remedy (a Widerspruchsbescheid) reports one already lodged in its reasoning
@@ -1192,7 +1191,7 @@ def remedy_notices(pages: Sequence[PageInput]) -> list[RemedyNotice]:
                 and not _OFFERED.search(sentence)
                 and not _CONDITIONAL.search(sentence)
             ):
-                continue  # the remedy already lodged, reported (false positives R4FP-8, round 4)
+                continue  # the remedy already lodged, reported
             following = folded[index + 1] if index + 1 < len(folded) else ""
             own = _periods(_unpaid(sentence))
             # a sentence after a notice with its own period that counts back ("einige Tage vor Fristablauf

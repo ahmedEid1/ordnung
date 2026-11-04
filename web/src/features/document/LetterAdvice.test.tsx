@@ -56,7 +56,7 @@ describe("the advice card of a high-stakes letter", () => {
     assertNoRawEnumsInElement(container);
   });
 
-  it("keeps a landlord's notice card short on a phone: three steps, the rest on demand (review round 1)", async () => {
+  it("keeps a landlord's notice card short on a phone: three steps, the rest on demand", async () => {
     const user = userEvent.setup();
     const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
     const advice = { ...ADVICE_BY_KIND.landlord_notice, steps: ["one", "two", "three", "four", "five", "six"] };
@@ -213,7 +213,7 @@ describe("the advice card of a high-stakes letter", () => {
     expect(screen.getByText("If you ignore it")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Draft objection" })).toBeInTheDocument();
     view.unmount();
-    // review round 3 of phase 2: filed from a sender that is no court (the claimant), the objection goes through
+    // filed from a sender that is no court (the claimant), the objection goes through
     // the composer, which asks for the court — never straight to the claimant
     const claimant = { id: "pty_tm", name: "TechMarkt Online GmbH", kind: "retailer" } as unknown as DocumentDetail["party"];
     renderWithProviders(
@@ -382,7 +382,7 @@ describe("the advice card of a high-stakes letter", () => {
     const badge = screen.getByText("This letter");
     expect(badge.closest(".line-clamp-2")).toBeNull();
     expect(badge).toHaveClass("shrink-0");
-    // two lines, the whole title in the tooltip (UI audit round 1: cut to one line with no way to read it)
+    // two lines, the whole title in the tooltip (not cut to one line with no way to read it)
     const title = screen.getByText(detail.document.title!);
     expect(title).toHaveClass("line-clamp-2");
     expect(title).toHaveAttribute("title", detail.document.title!);
@@ -408,7 +408,7 @@ describe("the advice card of a high-stakes letter", () => {
   });
 
   it("never files a notice without notice period away because the arrears it demands were paid", () => {
-    // final review 2: the server decides — the paid arrears carry no deadline of the notice, so it isn't handled
+    // the server decides — the paid arrears carry no deadline of the notice, so it isn't handled
     const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Fristlose Kündigung" });
     const arrears = makeItem({ kind: "payment", title: "Pay the rent arrears", amount: 1920, status: "done", due_date: "2026-10-10" });
     const advice = { ...ADVICE_BY_KIND.landlord_notice, urgent: true, handled: false, draft: null };
@@ -452,7 +452,7 @@ describe("the advice card of a high-stakes letter", () => {
   });
 
   it("stops saying 'decide before you pay' once the person closed the consent decision, without leading with Pay", () => {
-    // final review 2: decided and marked "Decide whether to agree" done; final review 3: done (or dismissed)
+    // decided and marked "Decide whether to agree" done; done (or dismissed)
     // doesn't say which way, so the verdict says the new rent is owed only if they agreed — no Pay button
     const doc = makeDoc({ id: "doc_increase", kind: "rent_increase", area: "home", title: "Rent increase request" });
     const rent = makeItem({
@@ -474,7 +474,7 @@ describe("the advice card of a high-stakes letter", () => {
   });
 
   it("says a handled card is handled and offers no letter to draft any more", () => {
-    // final review 3: the docs promised the card says so (advice.handled)
+    // the docs promise the card says so (advice.handled)
     const notice = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
     const handled = { ...ADVICE_BY_KIND.landlord_notice, handled: true };
     renderWithProviders(<LetterAdviceCard advice={handled} doc={notice} />, { client: client() });
@@ -484,7 +484,7 @@ describe("the advice card of a high-stakes letter", () => {
   });
 
   it("lets the person say they dealt with a notice no to-do can close, and undo it", async () => {
-    // final review 3: a notice without notice period has no to-do that carries it — without this it would say
+    // a notice without notice period has no to-do that carries it — without this it would say
     // "get advice now" for good
     const user = userEvent.setup();
     const calls: { url: string; body: unknown }[] = [];

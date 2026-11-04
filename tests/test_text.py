@@ -634,7 +634,7 @@ INVISIBLE_IBAN = "IBAN DE02 1203 0000 0000 2020 51"
 
 
 def test_text_drawn_invisibly_is_hidden_text_not_the_page_text(tmp_path: Path) -> None:
-    """Adversarial (review of wave 2): a letter shows one IBAN and carries another in invisible text.
+    """Adversarial: a letter shows one IBAN and carries another in invisible text.
     The invisible one is no printed text — never the page text a quote or a GiroCode value is grounded
     in — and is reported as hidden text (a scam sign)."""
     lines = [Line(LETTER_LEFT, letter_line_y(row), text) for row, text in enumerate(LETTER_PAGES[0])]

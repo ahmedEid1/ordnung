@@ -84,7 +84,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   const busy = doc.status === "queued" || doc.status === "processing" || doc.status === "failed";
   const neverRead = busy && !doc.kind && !doc.title;
   // nothing comes for a letter that couldn't be read, or that waits for Claude until it is connected: no
-  // placeholders that never fill (feature audit G15, final check F-M2)
+  // placeholders that never fill
   const claudeWait = useClaudeWait(doc);
   const reading = neverRead && doc.status !== "failed" && !claudeWait;
   const held = doc.status === "held";
@@ -115,7 +115,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
   }, [doc.status, answers]);
 
   // opened for its advice card ("Open the letter's card" in the composer): scroll to it and focus its title
-  // (review round 3 of phase 2: the page opened at its top, focus on <main>, the card 1250 px below)
+  // (the page once opened at its top, focus on <main>, the card 1250 px below)
   const location = useLocation();
   const toCard = (location.state as { focus?: string } | null)?.focus === "advice" && !neverRead;
   useEffect(() => {
@@ -212,7 +212,7 @@ export function DocumentView({ detail }: { detail: DocumentDetail }) {
 
 /**
  * Loading layout matching the viewer (no layout jump when the data arrives): the view tabs' row first, as
- * tall as the tabs (UI audit round 2: the verdict moved 56 px down when they came in).
+ * tall as the tabs (the verdict once moved 56 px down when they came in).
  */
 export function DocumentSkeleton() {
   return (

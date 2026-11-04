@@ -73,7 +73,7 @@ async def test_contracts_are_computed_on_read_and_can_be_corrected(data_dir: Pat
 
 
 async def test_a_notice_period_the_person_enters_is_recorded_as_theirs(data_dir: Path) -> None:
-    """UI audit R2-inbox-timeline-contracts-1: after "Save notice period" the card still said "Please check"
+    """After "Save notice period" the card still said "Please check"
     (the rules follow terms as written with low confidence, whoever gave them). The terms the person
     entered are now a quote "confirmed by the person" — replaced by the next correction, gone again with
     an Undo back to none — while the rules' confidence stays as it is and the letter's quotes stay."""
@@ -114,7 +114,7 @@ async def test_a_notice_period_the_person_enters_is_recorded_as_theirs(data_dir:
 
 
 async def test_the_persons_notice_terms_replace_the_letters_day_of_the_month(data_dir: Path) -> None:
-    """Review of migration 0004: the rules apply a notice period and the contract's day of the month together
+    """The rules apply a notice period and the contract's day of the month together
     (the earlier deadline decides), so the person's entry decides through the data: saving notice terms clears
     the day, and the Undo, which sends it back with the old terms, restores it."""
     async with api_for(data_dir) as api:
@@ -405,7 +405,7 @@ async def test_profile_is_merged_and_validated(data_dir: Path) -> None:
             {"timezone": "Mars/Olympus"},
             {"postal_buffer_days": -1},
             {"shoe": 42},
-            # UI audit R1-settings-b-3: the server checks what the Profile form checks
+            # the server checks what the Profile form checks
             {"name": "   "},
             {"email": "sam at example"},
             {"email": "sam@example"},

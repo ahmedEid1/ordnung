@@ -147,7 +147,7 @@ describe("backup helpers", () => {
     expect(passphraseProblem(STRONG, STRONG)).toBeNull();
     expect(passphraseProblem(STRONG)).toBeNull();
     expect(passphraseProblem("twenty chars exactly", "twenty chars exactly", 24)?.message).toMatch(/at least 24/);
-    // a password manager's random password: its characters count, not only its words (0.2.0 review)
+    // a password manager's random password: its characters count, not only its words
     expect(passphraseProblem("Xk9#mQ2!vR7@pL4$", "Xk9#mQ2!vR7@pL4$")).toBeNull();
     expect(backupStrengthLine("Xk9#mQ2!vR7@pL4$")).toEqual({ tone: "ok", text: "Strong enough for a backup kept on another drive or in the cloud." });
     expect(WEAK_PASSPHRASE_MESSAGE).toContain("password manager");
@@ -921,7 +921,7 @@ describe("delete everything", () => {
     expect(alert).toHaveTextContent("Nothing was deleted");
     expect(alert).toHaveTextContent(reason);
     // focus goes to the reason (as a failed backup's does), scrolled to its top: on a 320×640 phone it is
-    // taller than the room under the header, and bringing in the field below cut off its heading (round 2)
+    // taller than the room under the header, and bringing in the field below once cut off its heading
     const reasonBox = alert.closest<HTMLElement>("#delete-everything-error")!;
     await waitFor(() => expect(reasonBox).toHaveFocus());
     expect(scrolled.at(-1)).toEqual(["delete-everything-error", "start"]);

@@ -518,8 +518,8 @@ class _Turn:
 
         A result belongs to the call with its ``tool_use_id`` (parallel calls may answer out of
         order); a result without an id (fakes, older recordings) to the oldest call without an id still
-        waiting — never to a call with an id, and a result no call claims stays unclaimed (review round 4
-        of phase 2: an extra result recorded first became the call's). The replay's staleness check pairs
+        waiting — never to a call with an id, and a result no call claims stays unclaimed (an extra
+        result recorded first used to become the call's). The replay's staleness check pairs
         the same way (:func:`~ordnung.assistant.mcp_server.pair_results`).
         Only a result of one of Ordnung's ledger tools (:data:`~ordnung.assistant.mcp_server.TOOL_NAMES`)
         is kept for the check (ADR 0011): the answer is checked against the records alone, so a result

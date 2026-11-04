@@ -30,7 +30,7 @@ import { ideasForLetter, onThisLetter } from "./letter-ideas";
 
 const docDate = (d: Document) => d.doc_date ?? d.received_date ?? d.created_at.slice(0, 10);
 
-/** Titles and subjects wrap to two lines, the whole of it in the tooltip (UI audit round 1: cut to one line). */
+/** Titles and subjects wrap to two lines, the whole of it in the tooltip (not cut to one line). */
 const TWO_LINES = "line-clamp-2 [overflow-wrap:anywhere]";
 
 export function ThreadSection({ detail }: { detail: DocumentDetail }) {
@@ -97,7 +97,7 @@ export function ContractsSection({ contracts }: { contracts: Contract[] }) {
           const cat = copyFor(CONTRACT_CATEGORY_COPY, c.category);
           const comp = c.computed;
           // a contract you can cancel any month (rent, statutory health insurance) has no decision to count down
-          // to, as in the party drawer and on Contracts (UI audit round 2: "decide by … today" in red on a lease)
+          // to, as in the party drawer and on Contracts (not "decide by … today" in red on a lease)
           const rolling = isRollingContract(c);
           const decideBy = c.status === "active" && !rolling ? comp?.send_by : null;
           return (
@@ -107,7 +107,7 @@ export function ContractsSection({ contracts }: { contracts: Contract[] }) {
               </span>
               <div className="min-w-0 flex-1">
                 {/* the name takes the room it needs; the amount goes below it when both don't fit
-                    (UI audit round 1: "€156.55/month" pushed the page wider at 320 px, the name squeezed to 4 lines) */}
+                    ("€156.55/month" once pushed the page wider at 320 px, the name squeezed to 4 lines) */}
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
                   {/* a flat number ("Wohnung 05-2-03") never breaks at its hyphens */}
                   <p lang="de" className="min-w-0 flex-[1_1_12rem] text-[14.5px] font-semibold leading-snug text-ink [overflow-wrap:anywhere] hyphens-auto">

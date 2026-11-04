@@ -802,7 +802,7 @@ def reminder_warning(title: str, kind: str | None) -> str:
 
 def rewarn_for_kind(warnings: Sequence[str], kind: str | None) -> list[str]:
     """A letter's warnings after it was filed as ``kind``: its "pay once" warning worded for that kind, or left
-    out (review round 4 of phase 2: a reminder re-filed as a court order still said "This is a payment
+    out (a reminder re-filed as a court order still said "This is a payment
     reminder")."""
     kept: list[str] = []
     for warning in warnings:

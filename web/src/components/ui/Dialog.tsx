@@ -101,7 +101,7 @@ export function Dialog({
             )}
           >
             {/* with the keyboard open (a short viewport) the header keeps only its title and the footer tightens, so the
-                field being typed in keeps its room (review round 4 of phase 2: 105 px were left at 320×380) */}
+                field being typed in keeps its room (105 px were once left at 320×380) */}
             <div className={cn("flex items-start gap-3 px-5 pt-5 sm:px-6 sm:pt-6 [@media(max-height:560px)]:pt-3", children ? "pb-2" : "pb-5 sm:pb-6")}>
               <div className="min-w-0 flex-1">
                 <h2 id={titleId} className="display text-title font-semibold text-ink">

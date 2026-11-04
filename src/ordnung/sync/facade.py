@@ -1,14 +1,14 @@
-"""The engine façade the sync agent drives (:class:`ordnung.sync.agent.Engine`, design §24.3 I2), built
+"""The engine façade the sync agent drives (:class:`ordnung.sync.agent.Engine`), built
 on the sync core (:mod:`ordnung.sync.engine` and the modules under it).
 
 The core's :class:`~ordnung.sync.engine.Session` carries out whole steps (a round, "Use Ordnung here",
 a choice) in one blocking call. The server needs them in pieces: a version is staged while writes are
 still allowed, then the agent puts the fence up, drains background work, decides again and only then
-keeps a copy and applies (review blocker 1). So this façade hands the agent the core's pieces — scan,
+keeps a copy and applies. So this façade hands the agent the core's pieces — scan,
 local view, decision, stage, kept copy, apply, claim, push — and does around them what the core's whole
 steps do around the same pieces:
 
-* a quiet pull that would remove letters keeps a copy first (Rule K, extended by finding 18);
+* a quiet pull that would remove letters keeps a copy first (Rule K);
 * a version brought in while in use is written into this computer's head;
 * a choice saves the chosen lineage (:func:`~ordnung.sync.lineage.keep_this` /
   :func:`~ordnung.sync.lineage.keep_other`) with a new claim;
@@ -19,7 +19,7 @@ steps do around the same pieces:
 * the core's start runs at the first look and again at every look until it completes (it waits while
   the folder can't be read, and nothing is saved meanwhile: a ``paused`` decision); a local rollback it
   finds is repaired by the agent like any other replacement — the version to put back is the local
-  view's ``repair``, and the decision ``repair`` (review: the repair is fenced like the rest).
+  view's ``repair``, and the decision ``repair`` (the repair is fenced like the rest).
 
 The privacy-log rows of these pieces are the agent's; :func:`connect` and :func:`disconnect` are the
 core's whole steps and write their own.
@@ -359,7 +359,7 @@ def map_decision(found: Any, local: RealLocal, view: RealView) -> AgentDecision:
     if isinstance(found, Idle):
         return AgentDecision("idle")
     if isinstance(found, Standby):
-        if found.late_push:  # the person's change made before this computer stood by (F21)
+        if found.late_push:  # the person's change made before this computer stood by
             return AgentDecision("late_push", late_push=True, from_name=holder_name)
         if found.problem is not None:
             return _paused(found.problem)
@@ -498,7 +498,8 @@ class RealSession:
     # ---- looking -------------------------------------------------------------------------------
 
     def _start(self, store: Store) -> Problem | None:
-        """The core's start, until it completes (F32, the counters, F3, the local rollback): the folder's
+        """The core's start, until it completes (the copied-folder check, the counters, a save that died
+        after its head, the local rollback): the folder's
         problem while it waits for the folder. A local rollback isn't repaired here — the agent does it,
         behind the fence (:attr:`RealLocal.repair`)."""
         inner = self.inner
@@ -628,7 +629,7 @@ class RealSession:
         kept, made = self._kept, None
         try:
             if kept is None and removed_letters(staged, store) > 0:
-                # a quiet pull that would remove letters keeps a copy first (finding 18)
+                # a quiet pull that would remove letters keeps a copy first
                 made = kept = inner.keep_local(
                     f"before bringing in {staged.from_name}'s changes, which remove letters",
                     digest=self._digest,
@@ -830,7 +831,7 @@ class RealEngine:
 
     def decide(self, local: RealLocal, view: RealView, action: Any) -> AgentDecision:
         if local.problem is not None:
-            if local.repair is not None:  # F10 / finding 4: put the last saved state back (fenced)
+            if local.repair is not None:  # a local rollback: put the last saved state back (fenced)
                 return AgentDecision("repair", target=local.repair, keep=True, why=ROLLBACK_WHY)
             return _paused(local.problem)
         wanted = Action("use_here", older_copy=bool(action.older_copy)) if action is not None else None

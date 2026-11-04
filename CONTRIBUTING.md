@@ -30,10 +30,11 @@ make demo        # the sample life with recorded answers: no Claude needed, zero
 old checkout): the history keeps every earlier recording of the README's pictures and video, and every earlier
 web build.
 
-Reading your own letters needs Claude Code, signed in (see the README). The tests never call Claude:
-they use a fake model backend, the end-to-end tests a fake `claude` (`tests/fake_claude.py`), and the
-demo and benchmarks replay recorded answers. Once a week CI checks that a freshly installed Claude Code
-still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without signing in.
+Reading your own letters needs Claude Code, signed in (see [the guide](docs/guide.md#install-and-run)). The
+tests never call Claude: they use a fake model backend, the end-to-end tests a fake `claude`
+(`tests/fake_claude.py`), and the demo and benchmarks replay recorded answers. Once a week CI checks that a
+freshly installed Claude Code still takes every flag Ordnung passes (`scripts/check_claude_flags.py`), without
+signing in.
 
 ## Fast loop
 

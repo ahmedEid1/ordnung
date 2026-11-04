@@ -1,5 +1,5 @@
 """Hand-off sync, whole stories: two (or three) data folders, each with its own view of the sync folder,
-and a simulated sync tool between them (design §23.1; F18-F23; review blockers 2-4, findings 15, 16, 31)."""
+and a simulated sync tool between them."""
 
 from __future__ import annotations
 
@@ -127,12 +127,12 @@ def test_joining_and_keeping_this_computers_letters(pair: Pair) -> None:
     pair.settle()
     a.round()
     assert a.mode == "standing_by"
-    outcome = a.use_here()  # U4: a chose against A's data on B — kept first
+    outcome = a.use_here()  # a chose against A's data on B — kept first
     assert isinstance(outcome.decision, Pull) and outcome.decision.keep and outcome.kept is not None
     assert mine in a.letters() and theirs not in a.letters()
 
 
-def test_both_changed_asks_once_and_either_answer_keeps_a_copy(pair: Pair) -> None:  # F18
+def test_both_changed_asks_once_and_either_answer_keeps_a_copy(pair: Pair) -> None:
     a, b = pair.a, pair.b
     pair.joined()
     a.use_here(older_copy=True)  # apart: A takes over with the copy it has
@@ -158,13 +158,13 @@ def test_both_changed_asks_once_and_either_answer_keeps_a_copy(pair: Pair) -> No
     assert outcome.kept is not None and isinstance(outcome.decision, Pull) and outcome.decision.keep
     assert other.notes() == holder.notes()
     pair.settle()
-    for _ in range(2):  # blocker 3: nobody is asked again
+    for _ in range(2):  # nobody is asked again
         assert not isinstance(holder.round().decision, Choice)
         assert not isinstance(other.round().decision, Choice)
         pair.settle()
 
 
-def test_answered_apart_then_once_more_is_the_last_question(pair: Pair) -> None:  # blocker 3
+def test_answered_apart_then_once_more_is_the_last_question(pair: Pair) -> None:
     """Each computer kept its own before it saw the other's answer; asked once more, the person keeps the
     same one again. That answer stands: the question doesn't come back after every answer."""
     a, b = pair.a, pair.b
@@ -224,7 +224,7 @@ def test_choosing_the_other_computer(pair: Pair) -> None:
     assert "B's change" in b.notes()
 
 
-def test_lid_closed_mid_reading_is_no_question(pair: Pair) -> None:  # F19, F20
+def test_lid_closed_mid_reading_is_no_question(pair: Pair) -> None:
     a, b = pair.a, pair.b
     pair.joined()
     pair.settle()
@@ -241,7 +241,7 @@ def test_lid_closed_mid_reading_is_no_question(pair: Pair) -> None:  # F19, F20
         pair.settle()
 
 
-def test_a_late_change_is_brought_in_quietly(pair: Pair) -> None:  # F21, R5
+def test_a_late_change_is_brought_in_quietly(pair: Pair) -> None:  # R5
     a, b = pair.a, pair.b
     pair.joined()
     # B is in use; A (standing by) takes over; B adds a scan before it notices
@@ -296,7 +296,7 @@ def test_three_computers_and_forgetting_one(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     "skew", [timedelta(days=-3), timedelta(minutes=-5), timedelta(), timedelta(minutes=5), timedelta(days=3)]
 )
-def test_clock_skew_changes_nothing(tmp_path: Path, skew: timedelta) -> None:  # F23
+def test_clock_skew_changes_nothing(tmp_path: Path, skew: timedelta) -> None:
     pair = Pair(tmp_path, skew=skew)
     try:
         a, b = pair.a, pair.b
@@ -333,7 +333,7 @@ def test_windows_style_paths_travel(pair: Pair) -> None:
     assert "\\" not in path and (a.paths.data_dir / path).is_file()
 
 
-def test_delete_everything_on_the_computer_in_use_hands_its_last_version_on(pair: Pair) -> None:  # blocker 2
+def test_delete_everything_on_the_computer_in_use_hands_its_last_version_on(pair: Pair) -> None:
     a, b = pair.a, pair.b
     pair.joined()
     b.person_edit("made just before deleting everything")
@@ -346,7 +346,7 @@ def test_delete_everything_on_the_computer_in_use_hands_its_last_version_on(pair
     assert isinstance(outcome.decision, Pull) and "made just before deleting everything" in a.notes()
 
 
-def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) -> None:  # blocker 4
+def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) -> None:
     from sync_faults import copy_tree
 
     a, b = pair.a, pair.b
@@ -367,7 +367,7 @@ def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) ->
     copy_tree(tmp_path / "os-backup", a.paths.data_dir)
     problem = a.restart()
     assert problem is not None and problem.code == "local_rollback"
-    assert a.s.state.seq >= pushed_seq  # finding 4: the counters were raised to what the folder shows
+    assert a.s.state.seq >= pushed_seq  # the counters were raised to what the folder shows
     outcome = a.s.repair_rollback(a.db)
     assert outcome.kept is not None
     assert {"after the backup: 1", "after the backup: 2"} <= a.notes()
@@ -376,7 +376,7 @@ def test_a_data_folder_put_back_from_an_os_backup(pair: Pair, tmp_path: Path) ->
     assert not isinstance(b.round().decision, Choice)
 
 
-def test_the_calendar_record_travels_for_the_same_calendar(pair: Pair) -> None:  # finding 15
+def test_the_calendar_record_travels_for_the_same_calendar(pair: Pair) -> None:
     a, b = pair.a, pair.b
     state = CalendarSyncState(
         url="https://cal.example/", username="anna", connection="aa", events={"x.ics": "1"}
@@ -397,7 +397,7 @@ def test_the_calendar_record_travels_for_the_same_calendar(pair: Pair) -> None: 
     )
 
 
-def test_a_watched_folder_both_computers_share(pair: Pair) -> None:  # finding 16
+def test_a_watched_folder_both_computers_share(pair: Pair) -> None:
     from ordnung.ingest import watcher
 
     a, b = pair.a, pair.b

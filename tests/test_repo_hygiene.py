@@ -2,7 +2,7 @@
 notices, the security policy, the issue forms and the pull request template, the Node pin, the dependency
 updates, the Makefile's help, the ignore file and the contributor docs' commands, files and generated files.
 
-Written by a release audit: the build stripped every licence comment and no notices file shipped (the
+Written after a release check: the build stripped every licence comment and no notices file shipped (the
 fonts' SIL Open Font License and the MIT and ISC licences of the bundled code need their notice to
 travel with copies), nothing said how to report a vulnerability privately, nothing warned a bug reporter
 against attaching real letters, contributors had no Node pin, and pins moved only by hand.
@@ -173,7 +173,7 @@ def test_the_wheel_lists_the_notices_among_its_licence_files() -> None:
 
 
 def test_the_wheel_s_licence_expression_names_every_licence_it_ships() -> None:
-    """Audit (batch A review): the wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
+    """The wheel said ``License-Expression: MIT`` beside notices for ISC and OFL-1.1
     code and fonts, the DejaVu fonts (Bitstream Vera) and GeoNames' postcodes (CC BY 4.0)."""
     pyproject = tomllib.loads(_text("pyproject.toml"))
     expression = set(pyproject["project"]["license"].split(" AND "))
@@ -212,7 +212,7 @@ def test_security_problems_are_reported_privately() -> None:
 
 
 def test_without_private_reporting_a_security_contact_issue_asks_for_nothing_about_the_problem() -> None:
-    """Audit (batch A review): SECURITY.md's fallback was an issue "that says nothing else", but blank
+    """SECURITY.md's fallback was an issue "that says nothing else", but blank
     issues are off and the bug form requires what happened and the steps. A form of its own asks for
     nothing but a box ticked to say the issue tells nothing about the problem."""
     form = _form(".github/ISSUE_TEMPLATE/security_contact.yml")
@@ -265,12 +265,15 @@ def test_the_feature_request_warns_against_real_letters_too() -> None:
 # --------------------------------------------------------------------------------------------------
 
 
-def test_contributors_get_the_node_versions_the_readme_requires() -> None:
-    """README: Node.js 20.19+ or 22.12+ (what Vite 8 needs). The web app's package says so, and
+def test_contributors_get_the_node_versions_the_guide_requires() -> None:
+    """The guide, *From a source checkout*: the Node.js the web app's package asks for (what Vite 8 needs), and
     `.nvmrc` picks the line CI tests on."""
-    assert "Node.js 20.19+ or 22.12+" in _text("README.md")
     package = json.loads(_text("web/package.json"))
     lock = json.loads(_text("web/package-lock.json"))
+    lines = re.fullmatch(r"\^(\d+\.\d+)\.0 \|\| >=(\d+\.\d+)\.0", package["engines"]["node"])
+    assert lines, package["engines"]
+    source_checkout = " ".join(_text("docs/guide.md").split("**From a source checkout**", 1)[1].split())
+    assert f"Node.js {lines[1]}+ or {lines[2]}+" in source_checkout
     assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
     assert lock["packages"][""]["engines"] == package["engines"]
     nvmrc = _text(".nvmrc").strip()
@@ -284,15 +287,15 @@ def test_contributors_get_the_node_versions_the_readme_requires() -> None:
 
 def test_contributors_learn_that_the_browser_checks_want_the_node_axe_asks_for() -> None:
     """`@axe-core/playwright`, the accessibility checker of `make e2e` and `make ui-audit`, asks for a newer
-    Node than the web app's own range: README and CONTRIBUTING say so next to that range."""
+    Node than the web app's own range: the guide and CONTRIBUTING say so next to that range."""
     lock = json.loads(_text("web/package-lock.json"))
     axe = lock["packages"]["node_modules/@axe-core/playwright"]
     assert axe["engines"] == {"node": ">=22.12.0"}, (
-        "a new axe: say what Node it asks for in README and CONTRIBUTING"
+        "a new axe: say what Node it asks for in the guide and CONTRIBUTING"
     )
-    readme = " ".join(_text("README.md").split())
+    guide = " ".join(_text("docs/guide.md").split())
     contributing = " ".join(_text("CONTRIBUTING.md").split())
-    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in readme
+    assert "the accessibility checker that `make e2e` and `make ui-audit` use asks for 22.12+" in guide
     assert "Use 22.12+ for the browser checks (`make e2e`, `make ui-audit`)" in contributing
 
 
@@ -369,7 +372,7 @@ def test_typescript_majors_wait_until_the_packages_that_need_typescript_take_the
 
 
 def test_every_environment_variable_contributing_names_is_read_somewhere() -> None:
-    """Audit (batch A review): CONTRIBUTING named ``ORDNUNG_LIVE_TESTS=1`` for tests that call Claude,
+    """CONTRIBUTING named ``ORDNUNG_LIVE_TESTS=1`` for tests that call Claude,
     though no such tests were left and nothing read the variable."""
     named = set(re.findall(r"\bORDNUNG_[A-Z_]+\b", _text("CONTRIBUTING.md")))
     code = "\n".join(
@@ -874,6 +877,74 @@ def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pyt
             ]
             eval_run.recording_day(config, entries)
     assert live >= 2 and any(command.startswith("make eval-reproduce") for command in commands)
+
+
+#: The options of ``python -m evals.run`` that evals/README.md leaves to ``--help``: the runner's own knobs, which no
+#: recording step needs said. Every other option, the final run's controls among them, is named on the page.
+RUN_OPTIONS_LEFT_TO_HELP = frozenset(
+    {
+        "--allow-errors",
+        "--chart-path",
+        "--concurrency",
+        "--conditions",
+        "--date",
+        "--docs",
+        "--docs-path",
+        "--families",
+        "--help",
+        "--limit",
+        "--manifest",
+        "--max-cost-usd",
+        "--max-dangerous-late",
+        "--min-accuracy",
+        "--model",
+        "--models",
+        "--no-resume",
+        "--quiet",
+        "--recorder-lock",
+        "--refresh",
+        "--resamples",
+        "--resume",
+        "--run-id",
+        "--seed",
+        "--timeout",
+        "--wait-on-limit",
+        "-h",
+    }
+)
+
+
+def test_the_evals_readme_lays_out_every_folder_and_names_every_recording_control() -> None:
+    """evals/README.md is the page the doc map sends a contributor to for where each part of the evaluation lives
+    and how to run it. Its Layout table has a row for every folder and module under evals/, and the page names
+    every subcommand of ``python -m evals.harness`` and every option of ``python -m evals.run`` beyond the runner's
+    own knobs (:data:`RUN_OPTIONS_LEFT_TO_HELP`): the final run's ``--today``, ``--stop-file``, ``--stop-at``,
+    ``--check`` and ``harness retake`` with the rest."""
+    from evals import harness
+    from evals import run as eval_run
+
+    readme = _text("evals/README.md")
+    rows = [line.split("|")[1] for line in _section(readme, "Layout").splitlines() if line.startswith("| `")]
+    laid_out = {name.rstrip("/") for cell in rows for name in re.findall(r"`([^`]+)`", cell)}
+    parts = {
+        path.name
+        for path in (ROOT / "evals").iterdir()
+        if not path.name.startswith((".", "_")) and (path.is_dir() or path.suffix == ".py")
+    }
+    assert sorted(parts - laid_out) == [], "a part of evals/ without its row in evals/README.md's Layout"
+
+    def named(word: str) -> bool:
+        return re.search(rf"(?<![\w-]){re.escape(word)}(?![\w-])", readme) is not None
+
+    import argparse
+
+    commands = next(
+        action for action in harness._parser()._actions if isinstance(action, argparse._SubParsersAction)
+    )
+    assert [name for name in commands.choices if not named(f"evals.harness {name}")] == []
+    options = {option for action in eval_run.build_parser()._actions for option in action.option_strings}
+    assert RUN_OPTIONS_LEFT_TO_HELP <= options, "an option left to --help that the runner no longer has"
+    assert sorted(option for option in options - RUN_OPTIONS_LEFT_TO_HELP if not named(option)) == []
 
 
 class _RunAsked(Exception):

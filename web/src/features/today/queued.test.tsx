@@ -1,7 +1,6 @@
 /**
  * Letters in the queue — waiting for a missing or signed-out Claude, say, which keeps them queued instead of
- * failing them — are letters not read yet: Today never says "All clear" while any are there (final check F-M1,
- * which reopened UX U2).
+ * failing them — are letters not read yet: Today never says "All clear" while any are there.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";

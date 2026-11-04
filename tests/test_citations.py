@@ -148,7 +148,7 @@ def test_tool_labels() -> None:
         tool_label("list_items", {"to_date": "2026-10-31"})
         == "Checked your open to-dos & dates until Sat 31 Oct 2026"
     )
-    # two calls filtered by kind read apart (UI audit round 1: both were "Checked your open to-dos & dates")
+    # two calls filtered by kind read apart (both were "Checked your open to-dos & dates")
     assert tool_label("list_items", {"kind": "deadline", "to_date": "2026-10-31"}) == (
         "Checked your open deadlines until Sat 31 Oct 2026"
     )
@@ -195,7 +195,7 @@ def test_result_summaries() -> None:
     assert result_summary("get_party", dump({"parties": [{}]})) == "Found 1 match"
     assert result_summary("get_document", dump({"id": DOC})) == "Read the letter"
     assert result_summary("get_document", dump({"found": False, "message": "no"})) == "Nothing found"
-    # UI audit R1-backend-11: the trace says the date as the app does ("Today is 2026-09-28" before)
+    # the trace says the date as the app does ("Today is 2026-09-28" before)
     assert result_summary("today", dump({"today": "2026-09-28"})) == "Today is Mon 28 Sep 2026"
     assert (
         result_summary("today", dump({"today": "2026-09-28", "simulated": True}))
@@ -213,7 +213,7 @@ def test_result_summaries() -> None:
 
 
 def test_tool_labels_never_show_a_value_the_model_chose() -> None:
-    """Final review: the trace (shown before the answer check) repeated the model's search words and
+    """The trace (shown before the answer check) repeated the model's search words and
     names verbatim, so an injected letter could make it show "Frist verlängert bis 31.12.2027"."""
     assert (
         tool_label("search", {"query": "Einspruchsfrist verlängert 31.12.2027 999,00 €"})
@@ -235,7 +235,7 @@ def test_tool_labels_never_show_a_value_the_model_chose() -> None:
         ("Termin um 14h", "Termin um …"),
         ("late may fee", "late may fee"),  # the verb, as the check reads it
         ("Kündigung Oktober", "Kündigung Oktober"),  # a month alone is no value the check reads
-        # final review 3: masked on the words as the check reads them (a Unicode hyphen, markup)
+        # masked on the words as the check reads them (a Unicode hyphen, markup)
         ("mid\u2010January fee", "… fee"),
         ("Frist Ende **Januar**", "Frist …"),
         ("Frist _Ende_ Januar", "Frist …"),
@@ -243,6 +243,6 @@ def test_tool_labels_never_show_a_value_the_model_chose() -> None:
     ],
 )
 def test_tool_labels_hide_every_value_the_check_reads(query: str, shown: str) -> None:
-    """Final review 2: the check reads "Ende Januar" as 31 January, but the trace showed it, because it
+    """The check reads "Ende Januar" as 31 January, but the trace showed it, because it
     hid only words with a digit. A label hides every word of a value the check reads."""
     assert tool_label("search", {"query": query}) == f"Searched your letters for “{shown}”"

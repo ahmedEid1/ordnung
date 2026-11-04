@@ -1,4 +1,4 @@
-"""Pulling: stage, verify, keep, apply (design §11; F29, F31, F33, F38; review findings 10, 11c, 12, 18)."""
+"""Pulling: stage, verify, keep, apply (SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -139,7 +139,7 @@ def test_prune_removes_only_what_nothing_names(pair) -> None:  # type: ignore[no
     assert all((a.paths.data_dir / p).is_file() for p in referenced)
 
 
-def test_rule_k_a_quiet_pull_that_removes_letters_keeps_a_copy(pair) -> None:  # finding 18
+def test_rule_k_a_quiet_pull_that_removes_letters_keeps_a_copy(pair) -> None:
     a, b = pair
     joined(a, b)
     b.delete_letter(next(iter(b.letters())))
@@ -148,7 +148,7 @@ def test_rule_k_a_quiet_pull_that_removes_letters_keeps_a_copy(pair) -> None:  #
     assert outcome.kept is not None and (a.s.local.kept_dir / outcome.kept.name).is_file()
 
 
-def test_hostile_manifests_are_refused(pair) -> None:  # type: ignore[no-untyped-def]  # F33
+def test_hostile_manifests_are_refused(pair) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     b.round()
@@ -167,7 +167,7 @@ def test_hostile_manifests_are_refused(pair) -> None:  # type: ignore[no-untyped
         assert not (a.paths.data_dir / "sync" / "incoming").exists()
 
 
-def test_a_newer_schema_is_refused(pair) -> None:  # type: ignore[no-untyped-def]  # F31
+def test_a_newer_schema_is_refused(pair) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     forge(b, schema_version=latest_version() + 1)
@@ -220,7 +220,7 @@ def test_a_page_size_mismatch_is_made_right_in_staging(tmp_path: Path) -> None:
         b.close()
 
 
-def test_a_demo_database_arriving_is_refused(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]  # F38
+def test_a_demo_database_arriving_is_refused(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     from ordnung.sync import push as push_module
@@ -234,7 +234,7 @@ def test_a_demo_database_arriving_is_refused(pair, monkeypatch: pytest.MonkeyPat
         a.s.stage(a.s.scan().by_computer(b.s.state.computer))  # type: ignore[arg-type]
 
 
-def test_no_space_is_checked_before_staging(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]  # F29, finding 12
+def test_no_space_is_checked_before_staging(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     b.person_edit("x")
@@ -251,7 +251,7 @@ def test_no_space_is_checked_before_staging(pair, monkeypatch: pytest.MonkeyPatc
     assert "x" not in a.notes()
 
 
-def test_a_damaged_local_file_is_replaced_not_trusted(pair) -> None:  # type: ignore[no-untyped-def]  # finding 11c
+def test_a_damaged_local_file_is_replaced_not_trusted(pair) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     letter = next(iter(a.letters()))
@@ -263,7 +263,7 @@ def test_a_damaged_local_file_is_replaced_not_trusted(pair) -> None:  # type: ig
     assert page.read_bytes() == (b.paths.derived / letter / "page-1.jpg").read_bytes()
 
 
-def test_a_write_after_the_decision_gives_the_pull_up(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]  # blocker 1
+def test_a_write_after_the_decision_gives_the_pull_up(pair, monkeypatch: pytest.MonkeyPatch) -> None:  # type: ignore[no-untyped-def]
     a, b = pair
     joined(a, b)
     b.person_edit("from b")

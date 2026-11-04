@@ -28,10 +28,12 @@ What is measured:
 | `dataset/` | the letters, as PDFs and phone photos, split by split, and `manifest.json` with each letter's truth; `VERIFICATION.md` says how the labels were checked |
 | `generate.py`, `gen/` | the generator of `dataset/` (the labels' date arithmetic is `gen/law.py`, never `ordnung.rules`) |
 | `verify_labels.py` | a re-check of the labels that shares no code with the generator or the app |
+| `law/` | the sections of the statutes the labels' periods rest on, word for word as Gesetze im Internet gives them, and `law/SOURCES.md`: where each comes from, the day it was fetched and its sha256 |
 | `splits.py` | the splits: their role, their letters' variants, and which are recorded yet |
 | `conditions.py`, `prompts/` | the four conditions, and the prompts of the three that are not Ordnung's pipeline (Ordnung's own are in `src/ordnung/llm/prompts/`) |
 | `run.py`, `records.py`, `metrics.py`, `report.py` | the runner, the manifest's and the answers' types, the scoring, and the results files |
 | `stats.py`, `analysis.py` | the statistics, and the analysis of the held-out splits (and of the final run, once it is recorded) |
+| `preregistration/` | the pre-registered final run: `preregistration/brief-templates/`, the briefs of its blind sessions (writing the new letters, Ask questions and stress sentences; reading letters and deriving their dates; deciding between two derivations or answers), and, as they are made, the pre-registration, its deviations and the files it rests on |
 | `harness.py` | recording: a cost cap, waiting through a usage limit, repeats, one recorder at a time, the ledger and the request lock |
 | `ask/`, `e2e/`, `perturb/` | the Ask benchmark, the run through the real app, and the stress cells ([their own README](perturb/README.md)) |
 | `recorded/` | the recorded answers: `recorded/claude-sonnet-5/` by what each call is for, `recorded/ask/claude-sonnet-5/` for Ask; beside each, `prompts.lock.json` and `requests.lock.json` |
@@ -62,6 +64,7 @@ Whether a change needs new recordings (each says which request changed, if one d
 ```bash
 .venv/bin/python -m evals.harness lock-requests --check          # reading letters, against recorded/claude-sonnet-5/requests.lock.json
 .venv/bin/python -m evals.harness lock-requests --ask --check    # Ask
+.venv/bin/python -m evals.harness diff-requests                  # which requests changed since the lock at HEAD (or at a commit you name), and in which part
 ```
 
 ## Record (costs tokens)
@@ -77,6 +80,8 @@ for then:
 .venv/bin/python -m evals.ask --live --allow-another-today                        # record the Ask answers that are missing
 ORDNUNG_RECORD=1 .venv/bin/ordnung demo --live --rebuild --no-serve               # the demo's answers
 .venv/bin/python -m evals.harness ledger                                          # what the live runs it logged cost
+.venv/bin/python -m evals.harness unlock                                          # free the recorder lock a recorder that is no longer running left
+.venv/bin/python -m evals.harness smoke --scratch /tmp/ordnung-smoke              # before a paid recording: a few dev letters again, into a folder thrown away (calls the model)
 ```
 
 Right after, replay what you recorded and check that nothing is stale or missing. The committed recordings were

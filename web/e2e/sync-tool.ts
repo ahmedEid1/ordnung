@@ -1,5 +1,5 @@
 /**
- * The sync tool, played by the tests (design §23.5): two folders — each one computer's copy of "the" synced
+ * The sync tool, played by the tests (SPEC §12c): two folders — each one computer's copy of "the" synced
  * folder (`SYNC_A_DIR`, `SYNC_B_DIR` in e2e/env.ts) — kept in step only when a test says so. A test decides what
  * arrives where, when and in which order, and what the tool leaves next to it. What a real one (Nextcloud,
  * Syncthing, Dropbox, iCloud Drive) does that matters to Ordnung:
@@ -52,7 +52,7 @@ export interface DeliverOptions {
 }
 
 /**
- * The names Ordnung's sync folder may hold (design §4.1, `ordnung.sync`'s `KEY_FILE_RE`, `HEAD_RE`, `SHARD_RE`,
+ * The names Ordnung's sync folder may hold (SPEC §12c, `ordnung.sync`'s `KEY_FILE_RE`, `HEAD_RE`, `SHARD_RE`,
  * `OBJECT_RE` and `TEMP_RE`), as paths relative to the folder. Nothing else in it is Ordnung's.
  */
 export const ORDNUNG_NAMES = {

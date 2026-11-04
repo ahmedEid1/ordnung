@@ -216,7 +216,7 @@ async def test_rejected_upload_raises_a_readable_error(ctx: AppContext) -> None:
 
 
 async def test_an_upload_refused_while_its_pages_render_leaves_no_files(ctx: AppContext) -> None:
-    """ROB G2: the original was stored before its pages were rendered; refused there (a page that can't be
+    """The original was stored before its pages were rendered; refused there (a page that can't be
     read), neither it nor its page folder stays on disk (where backups would copy them)."""
     broken = (
         b"%PDF-1.4\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n"
@@ -523,7 +523,7 @@ async def _stages_seen(ctx: AppContext, content: bytes, filename: str) -> list[s
 
 
 async def test_on_stage_callback_sees_every_stage_that_happens(ctx: AppContext) -> None:
-    """UI audit R1-backend-5: the stepper said "Reading the photo" for a PDF with text and "Reading the
+    """The stepper said "Reading the photo" for a PDF with text and "Reading the
     text" for a phone photo. Only the stages that happen are reported: a PDF's text layer is read, a photo
     and a PDF page without text are transcribed."""
     after = ["extract", "verify", "compute", "link", "plan", "done"]
@@ -587,7 +587,7 @@ async def test_received_date_from_the_person_counts_as_confirmed(ctx: AppContext
 async def test_letters_use_the_person_s_country_and_only_a_chosen_region(
     ctx: AppContext, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit B integration: ``Profile.country`` reaches letter dates, and ``Profile.region`` counts as the
+    """``Profile.country`` reaches letter dates, and ``Profile.region`` counts as the
     person's Land only once they chose it (onboarding) — the default ``NW`` must not move payments."""
     seen: list[dict[str, object]] = []
     real = pipeline.rule_context
@@ -719,7 +719,7 @@ async def test_an_empty_reading_of_a_decision_gets_a_dated_please_check_to_do(ga
 
 
 async def test_the_please_check_idea_says_the_reading_came_back_incomplete(gap_ctx: AppContext) -> None:
-    """Nothing was "not found" on the letter: the Idea says why the to-do is there (UX review)."""
+    """Nothing was "not found" on the letter: the Idea says why the to-do is there."""
     doc_id = await _read_gap_letter(gap_ctx)
     [idea] = please_check(Ledger(gap_ctx.store, clock.today()))
     assert idea.body.startswith(
@@ -770,7 +770,7 @@ def _graded_as_ordnung_s_own(check: Item) -> bool:
 
 
 async def test_a_recompute_keeps_ordnung_s_own_grade_until_the_person_confirms(data_dir: Path) -> None:
-    """Review (tests 1): only Ordnung's own reason keeps the to-do ``low`` — its quote states the letter's date
+    """Only Ordnung's own reason keeps the to-do ``low`` — its quote states the letter's date
     and the period. A recompute keeps it; once the person confirmed the date, a recompute no longer adds it."""
     async with api_for(data_dir, router=gap_api_router(SERVED_LETTER)) as api:
         doc_id, check = await _served_check(api)
@@ -802,7 +802,7 @@ async def test_a_recompute_keeps_ordnung_s_own_grade_until_the_person_confirms(d
 async def test_a_corrected_letter_date_never_moves_the_check_to_do_later(
     data_dir: Path, corrected: str, due: str
 ) -> None:
-    """Review (A3): the person's letter date moves the to-do only earlier; a later one gets a note."""
+    """The person's letter date moves the to-do only earlier; a later one gets a note."""
     async with api_for(data_dir, router=gap_api_router(SERVED_LETTER)) as api:
         doc_id, check = await _served_check(api)
         response = await api.client.patch(f"/api/documents/{doc_id}", json={"doc_date": corrected})
@@ -885,7 +885,7 @@ def _router(*letters: Letter) -> ApiRouter:
     return router
 
 
-#: Two dates for one payment (review round 2, R2UX-2): the earlier is kept, and stays once confirmed.
+#: Two dates for one payment: the earlier is kept, and stays once confirmed.
 TWO_PAY = _letter(
     "Zweifachzahlung",
     "Stadt Beispielhausen · Stadtkasse · Rathausplatz 1 · 12345 Beispielhausen",
@@ -916,7 +916,7 @@ TWO_PAY = _letter(
 
 
 async def test_a_confirmed_to_do_keeps_the_earlier_of_its_two_dates_when_recomputed(data_dir: Path) -> None:
-    """UX review 2, R2UX-2 (older than the reading check): confirming the earlier date, then changing the region
+    """Older than the reading check: confirming the earlier date, then changing the region
     or entering the arrival, never moves it to the later one."""
     async with api_for(data_dir, router=_router(TWO_PAY)) as api:
         doc_id = (await api.upload(("gebuehr.pdf", TWO_PAY.pdf())))["documents"][0]["id"]
@@ -950,7 +950,7 @@ UNDATED_DECISION = _letter(
 
 
 async def test_the_incomplete_reading_s_warning_follows_its_to_do(data_dir: Path) -> None:
-    """UX review 2, R2UX-3 and R2UX-4: once the person enters the letter's date the warning says the deadline was
+    """Once the person enters the letter's date the warning says the deadline was
     added (not "couldn't work it out"); once they confirm the to-do, the warning goes."""
     async with api_for(data_dir, router=_router(UNDATED_DECISION)) as api:
         doc_id = (await api.upload(("ohnedatum.pdf", UNDATED_DECISION.pdf())))["documents"][0]["id"]
@@ -1027,7 +1027,7 @@ def _fine(months: int | None) -> Letter:
 async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_entered(
     data_dir: Path, months: int | None, due: str, flagged: bool
 ) -> None:
-    """False positives F1: the person enters the yellow envelope's date (20.09, 19 days after the letter's): two
+    """The person enters the yellow envelope's date (20.09, 19 days after the letter's): two
     weeks from service is Mon 5 Oct, never the letter's date's passed 15 Sep — and a planted three months is still
     pulled to 5 Oct, with "Please check" on the letter."""
     letter = _fine(months)
@@ -1043,9 +1043,9 @@ async def test_the_letter_s_notice_never_overrides_the_service_date_the_person_e
 
 
 async def test_the_check_s_own_to_do_never_gets_the_notice_beside_it_when_recomputed(data_dir: Path) -> None:
-    """R2T-9: the check to-do is stored as read, so a recompute meets it with the reading's to-dos; it gets no
+    """The check to-do is stored as read, so a recompute meets it with the reading's to-dos; it gets no
     second date. (Its own date is the notice's, so this can't tell whether ``with_notice`` skips it: the
-    ``CHECK_SLOT`` filter there is defensive — tests review 3, R3T-11.)"""
+    ``CHECK_SLOT`` filter there is defensive.)"""
     async with api_for(data_dir, router=gap_api_router()) as api:
         doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
         await api.read_all()
@@ -1115,7 +1115,7 @@ OLD_DECISION = Letter(
 
 
 async def test_a_letter_read_months_after_its_only_date_gets_an_undated_check(data_dir: Path) -> None:
-    """Tests review 3, R3T-8: the pipeline hands the check the day the letter is read, so a start resting on one
+    """The pipeline hands the check the day the letter is read, so a start resting on one
     date months before it is none — never an overdue to-do."""
     async with api_for(data_dir, router=gap_api_router(OLD_DECISION)) as api:
         doc_id = (await api.upload(("alt.pdf", OLD_DECISION.pdf())))["documents"][0]["id"]
@@ -1127,7 +1127,7 @@ async def test_a_letter_read_months_after_its_only_date_gets_an_undated_check(da
 async def test_reading_again_after_the_person_confirmed_the_check_brings_no_warning_back(
     data_dir: Path,
 ) -> None:
-    """UX review 3, R3UX-3(b): "Read again" after the person confirmed Ordnung's own to-do: its warning stays
+    """A "Read again" after the person confirmed Ordnung's own to-do: its warning stays
     gone (a first read still says it)."""
     async with api_for(data_dir, router=gap_api_router()) as api:
         doc_id = (await api.upload(("bescheid.pdf", GAP_LETTER.pdf())))["documents"][0]["id"]
@@ -1143,7 +1143,7 @@ async def test_reading_again_after_the_person_confirmed_the_check_brings_no_warn
 
 
 async def test_a_confirmed_to_do_is_never_listed_as_unsure_in_the_please_check_idea(data_dir: Path) -> None:
-    """R3UX-4: once the person confirmed the check to-do, the Idea no longer says the reading came back
+    """Once the person confirmed the check to-do, the Idea no longer says the reading came back
     incomplete nor lists it (the letter's other unsure to-do keeps it in review)."""
     pay = {
         "kind": "payment",

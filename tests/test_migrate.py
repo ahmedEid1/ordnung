@@ -316,7 +316,7 @@ def test_split_statements_of_empty_script() -> None:
 
 def test_the_shipped_migrations_are_numbered_without_a_gap() -> None:
     """Numbers may be handed out ahead on branches, but what ships runs 0001, 0002, 0003, … (the
-    runner's policy); the integration of wave 2 of phase 2 made proof 0002 and traces 0003."""
+    runner's policy); proof became 0002 and traces 0003 when both were merged."""
     found = discover(MIGRATIONS_DIR)
     assert [m.version for m in found] == list(range(1, len(found) + 1))
     assert [m.name for m in found[:5]] == [

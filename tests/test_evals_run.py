@@ -845,7 +845,7 @@ def test_manifest_views() -> None:
 
 
 def test_the_benchmark_rule_context_follows_the_sender_as_the_app_does(tmp_path: Path) -> None:
-    """Reviewer repro: the benchmark's context must decide deemed delivery exactly as the app's
+    """The benchmark's context must decide deemed delivery exactly as the app's
     (``ingest.plan.rule_context``) — the sender's kind included, which caps a late arrival."""
     from evals.conditions import ordnung_rule_context
 
@@ -871,7 +871,7 @@ def test_the_benchmark_rule_context_follows_the_sender_as_the_app_does(tmp_path:
 
 
 # --------------------------------------------------------------------------------------------------
-# Review fixes: cache validity, stale recordings, failure isolation, docs only from complete runs
+# Regression tests: cache validity, stale recordings, failure isolation, docs only from complete runs
 # --------------------------------------------------------------------------------------------------
 
 
@@ -1067,7 +1067,7 @@ async def test_published_page_only_from_an_error_free_run(
 async def test_a_run_of_some_conditions_never_rewrites_the_published_page(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Reviewer repro: re-recording the tool condition as documented (``--live --conditions
+    """Re-recording the tool condition as documented (``--live --conditions
     llm_rules_tool``, test split) rendered docs/evals.md from that run alone — a one-row headline that
     replaced the held-out page. Only a run of every condition writes the page."""
     one = [e for e in load_manifest(MANIFEST) if e.id == "test-tax_assessment-C1"]
@@ -1211,7 +1211,7 @@ def test_the_ci_gate_leaves_out_a_baseline_without_recordings(
 def test_the_ci_gate_replay_writes_no_results_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Review round 3 of phase 2: running the CI gate locally left an untracked results file in the tree.
+    """Running the CI gate locally left an untracked results file in the tree.
     The gate's replay only checks; with --results-dir, or without thresholds, the file is written."""
     default = tmp_path / "default-results"
     monkeypatch.setattr(eval_run, "RESULTS_DIR", default)
@@ -1279,7 +1279,7 @@ async def test_rescored_run_is_shown_next_to_the_held_out_one(tmp_path: Path) ->
     assert "Social-law senders were read as authorities." in section and "`abc1234`" in section
     assert "no longer held-out" in section and "Held-out run (headline)" in section
     assert "## After the held-out run" not in report.render_markdown([held_out])
-    # a commit that is no longer in the published history says so (final review of phase 2)
+    # a commit that is no longer in the published history says so
     squashed = {
         **rescored,
         "meta": {**rescored["meta"], "commit_note": "a commit from before the history was squashed"},
@@ -1619,7 +1619,7 @@ async def _holdout2_run(
 async def test_a_replay_never_overwrites_a_live_recording(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Review of the reading check (benchmark 6): a replay on the day of a held-out recording would overwrite
+    """A replay on the day of a held-out recording would overwrite
     it with the checked-out code's numbers — it is refused, and a held-out replay from the command line needs
     its own --results-dir; another live run may still replace it."""
     recorded = tmp_path / "results" / "2026-09-25-claude-sonnet-5-holdout2.json"
@@ -2193,12 +2193,12 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
         "$3.40, $3.50, plus smoke runs of a few letters whose cost was not recorded." in spent
     )
     assert "budget" not in spent
-    # the page says how to record the added condition again without replacing it (reviewer: only --help did)
+    # the page says how to record the added condition again without replacing it (only --help did)
     reproduce = report.render_markdown([fourth]).split("## Reproduce", 1)[1]
     assert "--conditions llm_rules_tool`, which never rewrites this page" in reproduce
     assert "--add-condition llm_rules_tool=evals/results/<new run>.json" in reproduce
     assert "--add-condition" not in report.render_markdown([before]).split("## Reproduce", 1)[1]
-    # with the budget set for it, the page says plainly whether it was kept (reviewer: $14.91 of "well
+    # with the budget set for it, the page says plainly whether it was kept ($14.91 of "well
     # under $15", smoke runs uncounted, was reported as "at the ceiling")
     fourth["meta"]["added_conditions"]["llm_rules_tool"]["recording_budget_usd"] = 9
     fifth = report.add_condition(fourth, later.results, "llm_rules_tool")
@@ -2249,7 +2249,7 @@ async def test_a_condition_added_later_keeps_the_published_numbers(tmp_path: Pat
 
 
 def test_the_benchmarks_rule_context_marks_court_letters_as_the_app_does() -> None:
-    """Review round 4: like ``ingest.plan.rule_context``, a court's (or labour court's) letter is marked as
+    """Like ``ingest.plan.rule_context``, a court's (or labour court's) letter is marked as
     one from the sender's name, and the end a termination announces is graded against the pages."""
     from evals.conditions import ordnung_rule_context
 
@@ -2283,7 +2283,7 @@ def test_the_benchmarks_rule_context_marks_court_letters_as_the_app_does() -> No
 
 
 def test_eval_help_names_the_real_default_model() -> None:
-    """``ordnung eval --help`` names the model a run uses when none is given (docs audit G9): the pinned id the
+    """``ordnung eval --help`` names the model a run uses when none is given: the pinned id the
     recordings are made for, not the alias ``sonnet``."""
     help_text = " ".join(eval_run.build_parser().format_help().split())
     assert f"(default: {eval_run.DEFAULT_MODEL})" in help_text and "(default: sonnet)" not in help_text

@@ -167,7 +167,7 @@ for (const width of [320, 1280]) {
     expect(await sideways(page), "the page scrolls sideways").toBe(0);
     await expect(page.getByText(/Nothing needs you/)).toHaveCount(0);
     // "not read yet" once, in the card's heading: its text says what is new, and the note above gets no line
-    // that says it again (UI audit round 2); the card has the Inbox's mark for these letters, not the hourglass
+    // that says it again; the card has the Inbox's mark for these letters, not the hourglass
     await expect(card.getByText(/^Ordnung can't tell you what they ask or by when until they're read\./)).toBeVisible();
     await expect(page.getByText(/Not in this note/)).toHaveCount(0);
     await expect(card.locator("svg.lucide-folder-input")).toHaveCount(1);

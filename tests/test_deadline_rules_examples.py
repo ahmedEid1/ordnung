@@ -1,4 +1,4 @@
-"""Worked examples of docs/deadline-rules.md that no other test pinned (docs audit G11): the document says every
+"""Worked examples of docs/deadline-rules.md that no other test pinned: the document says every
 worked example is an executable test, so each row here is computed by the engine exactly as the table shows it."""
 
 from __future__ import annotations

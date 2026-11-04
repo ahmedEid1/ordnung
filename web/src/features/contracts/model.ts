@@ -142,8 +142,8 @@ export function noticeFromYou(c: Pick<Contract, "evidence">): boolean {
 export const NOTICE_ASSUMED = "The contract's notice period wasn't found";
 
 /**
- * The dates rest on a notice period the rules assumed — the letter gave none (walkthrough of phase 2: the
- * Deutschlandticket's card said "1 month's notice … Earliest end Mon 2 Nov" with no "Please check", while its
+ * The dates rest on a notice period the rules assumed — the letter gave none (the
+ * Deutschlandticket's card once said "1 month's notice … Earliest end Mon 2 Nov" with no "Please check", while its
  * letter says "by the 10th of a month, to that month's end"). Not once the person entered the period.
  */
 export function noticeAssumed(c: Pick<Contract, "computed" | "status" | "evidence">): boolean {
@@ -199,8 +199,7 @@ export function noticeEditable(
 
 /**
  * The person's cancellation of this contract, marked as sent (the API's `cancellation_sent`), while the
- * contract is still active: the decision is taken — no "Decide by", no "Draft cancellation"
- * (walkthrough of phase 2).
+ * contract is still active: the decision is taken — no "Decide by", no "Draft cancellation".
  */
 export function cancellationSent(c: Pick<Contract, "status" | "cancellation_sent">): Contract["cancellation_sent"] {
   return c.status === "active" ? (c.cancellation_sent ?? null) : null;
@@ -497,7 +496,7 @@ export function contractLanes(contracts: Contract[], range: { from: string; to: 
     }
 
     // a contract you can cancel any month has no window that closes — just when it would end; nor has one
-    // whose cancellation was sent (final review: the chart still said "Send by 8 Oct" after it was)
+    // whose cancellation was sent (the chart once still said "Send by 8 Oct" after it was)
     const rolling = isRollingContract(c);
     const sent = Boolean(cancellationSent(c));
     if (c.status === "active" && comp?.cancel_by && !rolling && !sent) {

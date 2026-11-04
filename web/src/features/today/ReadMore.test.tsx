@@ -1,5 +1,5 @@
 /**
- * ReadMore (UI audit round 2, R2-today-ask-1): a link below the cut takes keyboard focus; focusing it
+ * ReadMore: a link below the cut takes keyboard focus; focusing it
  * opens the text from its first line instead of leaving the cut box scrolled to the link, while a link
  * in the lines that show (a mouse click on it) leaves the text as it is. jsdom has no layout: the cut and
  * the boxes are stubbed.

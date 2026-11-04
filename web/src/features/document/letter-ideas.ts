@@ -1,6 +1,6 @@
 /**
- * Which Ideas the letter page shows under "Ideas", and how their text names this letter (UI audit
- * round 1: the letter page repeated the verdict's payment as an Idea, showed "Add your 26 dates to
+ * Which Ideas the letter page shows under "Ideas", and how their text names this letter (the
+ * letter page once repeated the verdict's payment as an Idea, showed "Add your 26 dates to
  * your calendar" on every letter, and a "Please check" Idea pointed at the letter you were reading).
  */
 import type { Item, Suggestion } from "@/api/types";

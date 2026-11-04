@@ -1,20 +1,20 @@
-"""Saving this computer's data into the sync folder (design §10; review findings 7, 10, 11, 14, 19, 21).
+"""Saving this computer's data into the sync folder (SPEC §12c).
 
 A push, in order:
 
-1. **Snapshot.** The live demo is refused before anything is read (finding 19). An in-memory copy of
+1. **Snapshot.** The live demo is refused before anything is read. An in-memory copy of
    the database (one read transaction, the WAL folded in) is taken; the person-change counter is read
-   from that very copy, so the version holds exactly the person changes it counts (finding 5a). The copy
+   from that very copy, so the version holds exactly the person changes it counts. The copy
    is scrubbed (:mod:`ordnung.sync.scrub`); a demo database is refused again. The SQLite header's change
    counters (bytes 24-27 and 92-95) are zeroed in the serialized copy, so the first 1 MiB slice changes
    only when its pages do (measured: one row changed elsewhere then changes 1 slice of 157, not 2).
 2. **Files.** Every data file is listed; only new files, or files whose size, mtime or inode changed,
    are hashed (``sync/files.json``). Every path the snapshot names must be among them — else a letter
-   was deleted between the snapshot and the walk, and the push is tried again later (finding 10). An
+   was deleted between the snapshot and the walk, and the push is tried again later. An
    original under ``files/`` whose content no longer matches its name is never sealed
-   (``local_damaged``, finding 11c).
+   (``local_damaged``).
 3. **Nothing to do?** The digest equals the base's: no version is written. If the counter moved anyway
-   (a person's write that changed nothing synced), it is accounted for without a version (finding 14).
+   (a person's write that changed nothing synced), it is accounted for without a version.
 4. **Upload what the folder lacks** — database slices, file-list buckets, data files — each sealed into
    a temp file, ``fsync``-ed and renamed. A data file is hashed again while it is sealed; if it changed
    underneath, the push is abandoned and no head is written.
@@ -28,7 +28,7 @@ at its next push; GC frees the rest). After the head and before ``state.json``, 
 head: its ``sync_mark`` names it, or — dead before ``sync_mark`` too — the database's digest equals the
 head's (a database put back from an OS backup doesn't, and is a ``local_rollback``).
 
-Churn (finding 21), measured in P1 on a generated library of 1,500 letters (each with two pages, three
+Churn, measured on a generated library of 1,500 letters (each with two pages, three
 cache rows, two dates, an activity row; an 80 MiB database, 80 slices): one more reading changed 29
 slices (the search index merges its segments), one note 1, a search-index ``optimize`` 44. That is far
 above :data:`ordnung.sync.SLICE_CHURN_LIMIT_BYTES`, so GC drops the superseded slices of a version every
@@ -104,7 +104,7 @@ CHANGED_MESSAGE = "Files changed while Ordnung was saving; it tries again in a m
 
 
 class LocalDamaged(SyncError):
-    """A local original whose content no longer matches its name (finding 11c)."""
+    """A local original whose content no longer matches its name."""
 
     #: the problem the sync agent shows (:data:`ordnung.sync.SyncProblemCode`)
     problem = "local_damaged"
@@ -261,7 +261,7 @@ def take_snapshot(session: Session, *, demo: bool = False) -> Snapshot:
             name for name in names if not (name.startswith("/") or (len(name) > 1 and name[1] == ":"))
         }
         if not relative <= walked:
-            raise TryAgain()  # finding 10: a file the snapshot names is gone (deleted meanwhile)
+            raise TryAgain()  # a file the snapshot names is gone (deleted meanwhile)
         for entry in entries:
             if not _original_matches(entry):
                 raise LocalDamaged(entry.path)
@@ -438,7 +438,7 @@ def push(
     wanted_state = head_state or state.head_state
     if base is not None and snap.digest == base.digest and lineage is None and not force:
         if person:
-            # finding 14: a person's write that changed nothing synced makes no version
+            # a person's write that changed nothing synced makes no version
             if snap.person is None and store is not None:
                 session.mark(store, base.id, person_row=True)  # the counter row, back
             state.pushed = snap.person if snap.person is not None else 0

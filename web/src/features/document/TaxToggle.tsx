@@ -1,5 +1,5 @@
 /**
- * "For taxes" on a letter's page (D3): one press marks the letter for taxes, or takes one Claude marked off them —
+ * "For taxes" on a letter's page: one press marks the letter for taxes, or takes one Claude marked off them —
  * private letters too, and on a paired phone. The choice is the person's own, kept apart from Claude's reading
  * (`tax_choice`; `secretary.tax_choice` on the server): it counts over Claude's mark both ways and stays when the
  * letter is read again. The Tax year page, the export's "Only letters for taxes" and the tax-season Idea follow it.

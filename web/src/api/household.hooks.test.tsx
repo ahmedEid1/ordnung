@@ -1,5 +1,5 @@
 /**
- * Your household's hooks (D3 contract): the household is part of the ledger's keys (a new reading changes the
+ * Your household's hooks: the household is part of the ledger's keys (a new reading changes the
  * suggestions), `profile.updated` refreshes it (household writes announce themselves so), and filing sends at
  * most 1,000 letters per request — a larger set goes in chunks, inside one mutation.
  */

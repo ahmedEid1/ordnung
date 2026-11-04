@@ -13,7 +13,7 @@ describe("focusAfterLeaving", () => {
 
   const headings = () => Array.from(document.querySelectorAll<HTMLElement>("h3"));
 
-  it("waits for a card whose exit is slow, then focuses the one now in its place (review round 4: focus was lost on a busy machine)", () => {
+  it("waits for a card whose exit is slow, then focuses the one now in its place (focus was once lost on a busy machine)", () => {
     focusAfterLeaving(headings, "card-a", "top3");
     vi.advanceTimersByTime(8_000);
     expect(document.activeElement).toBe(document.body);

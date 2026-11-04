@@ -1,6 +1,6 @@
 """A sync tool, simulated: two copies of "the" sync folder, kept in step the way Nextcloud, Syncthing,
 Dropbox or iCloud Drive would — late, in any order, in pieces, with conflict copies, online-only
-placeholders and the odd rollback (design §23.2, review findings 6 and 7).
+placeholders and the odd rollback.
 
 ``SyncToolSim(a, b, rng)``: :meth:`poll` notices what changed on either side since the last look (what
 the tool would upload); :meth:`step` delivers one pending change in a chosen or random ``mode``;

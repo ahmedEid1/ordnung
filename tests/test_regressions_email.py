@@ -1,4 +1,4 @@
-"""Hidden text in HTML e-mails (ingest/text.py; round 2, R2-MAIL-1).
+"""Hidden text in HTML e-mails (ingest/text.py).
 
 The classes of an e-mail's ``<style>`` blocks count, and media queries used to count as if they applied
 on every screen ("a rule that hides something on any screen counts"). The standard responsive-e-mail

@@ -500,7 +500,7 @@ async def test_stopping_ends_the_watch_when_asked_and_can_be_repeated(ctx: AppCo
 
 
 # --------------------------------------------------------------------------------------------------
-# Review round 1: consent for files already there, copies, stops, odd names, access, size
+# consent for files already there, copies, stops, odd names, access, size
 # --------------------------------------------------------------------------------------------------
 
 
@@ -725,7 +725,7 @@ async def test_a_letter_ordnung_drafted_is_not_added_as_one_received(ctx: AppCon
 async def test_a_restored_backup_holds_the_files_already_in_its_watched_folder(
     ctx: AppContext, inbox: Path, tmp_path: Path
 ) -> None:
-    """Adversarial (review of wave 2): a backup made while the folder was watched with auto-read on,
+    """Adversarial: a backup made while the folder was watched with auto-read on,
     restored on a computer whose folder of the same path holds other files — those were never "new
     arrivals" there. The restored copy lists the folder as chosen now (they wait) and starts with
     auto-read off until the person turns it on again (privacy.md: a busy folder is never sent)."""

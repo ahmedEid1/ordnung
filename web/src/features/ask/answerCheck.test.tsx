@@ -24,7 +24,7 @@ function inRouter(element: React.ReactElement) {
 }
 
 describe("the answer check's note", () => {
-  it("is read in a German voice when it is German (review round 4 of phase 2, WCAG 3.1.2)", () => {
+  it("is read in a German voice when it is German (WCAG 3.1.2)", () => {
     const german = (PAYMENT_NOTES as string[]).find((note) => note.startsWith("Diese Betriebskostenabrechnung"))!;
     const { container, unmount } = render(<CheckNote text={`${german} ${NOTE_DE}`} label="Von Ordnung geprüft:" />);
     const notes = container.querySelectorAll('[role="note"]');
@@ -72,7 +72,7 @@ describe("the answer check's note", () => {
     expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
   });
 
-  it("shows what to decide before paying first, in the warning tone (review round 2)", () => {
+  it("shows what to decide before paying first, in the warning tone", () => {
     // the § 558b note was the last sentence of the grey note, below an answer that says the new rent "is due"
     const payment = (PAYMENT_NOTES as string[])[2]!; // the rent increase's, in English
     const note = `Added 1 source to a sentence that gave a date, time or amount without one. ${payment}`;
@@ -95,7 +95,7 @@ describe("the answer check's note", () => {
     expect(first!.compareDocumentPosition(second!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("is labelled in the answer's language, as the backend says (final review)", () => {
+  it("is labelled in the answer's language, as the backend says", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = {
       ...EMPTY_ANSWER,
@@ -114,13 +114,13 @@ describe("the answer check's note", () => {
     expect(checkNoteLabel(FORGED_DE, "Von Ordnung geprüft:")).toBe("Von Ordnung geprüft:");
   });
 
-  it("a checked answer the check did not change still says it was checked (review round 4)", () => {
+  it("a checked answer the check did not change still says it was checked", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2", checked: true };
     const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent("Dates and amounts checked against your records.");
     unmount();
-    // final review 3: the line says what was checked, in the answer's language
+    // the line says what was checked, in the answer's language
     const german = inRouter(<AnswerView answer={{ ...answer, noteLabel: "Von Ordnung geprüft:" }} resolve={resolve} />);
     expect(screen.getByRole("note")).toHaveTextContent("Daten und Beträge mit Ihren Unterlagen abgeglichen.");
     german.unmount();
@@ -128,7 +128,7 @@ describe("the answer check's note", () => {
     const again = inRouter(<AnswerView answer={{ ...answer, messageId: null, checked: false }} resolve={resolve} />);
     expect(screen.queryByRole("note")).toBeNull();
     again.unmount();
-    // final review: an answer stored before the claim-level check is not labelled as checked
+    // an answer stored before the claim-level check is not labelled as checked
     const [old] = turnsFromHistory([
       { id: "u", thread_id: "t", role: "user", content: "When?", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
       { id: "o", thread_id: "t", role: "assistant", content: "Moved to 31.12.2027.", citations: [], tool_calls: [], created_at: "x", note: null, note_label: null, checked: false },
@@ -137,7 +137,7 @@ describe("the answer check's note", () => {
     expect(screen.queryByRole("note")).toBeNull();
   });
 
-  it("shows a German answer's dates in German (review round 3 of phase 2)", () => {
+  it("shows a German answer's dates in German", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = {
       ...EMPTY_ANSWER,
@@ -166,12 +166,12 @@ describe("the answer check's note", () => {
     const { container } = inRouter(<AnswerView answer={writing} resolve={resolve} />);
     expect(container.textContent).not.toContain("31.12.2027");
     const line = screen.getByText(/appears once Ordnung has checked it against your records/);
-    // the dots sit on the first line when it wraps on a phone, not beside the middle one (UI audit round 2;
-    // e2e/layout.spec.ts measures it at 320 px)
+    // the dots sit on the first line when it wraps on a phone, not beside the middle one
+    // (e2e/layout.spec.ts measures it at 320 px)
     expect(line).toHaveClass("items-start", "leading-5");
     expect(line.querySelector(":scope > span[aria-hidden]")).toHaveClass("mt-[7px]", "shrink-0");
     expect(screen.queryByRole("note")).toBeNull();
-    // final review: not a second live region — the page's announcer says it (and e2e finds one status)
+    // not a second live region — the page's announcer says it (and e2e finds one status)
     expect(screen.queryByRole("status")).toBeNull();
   });
 });
@@ -189,7 +189,7 @@ describe("copying an answer", () => {
   });
 });
 
-describe("an answer that ends before the check (review round 4)", () => {
+describe("an answer that ends before the check", () => {
   // The web showed the streamed draft — an injected "31.12.2027" for seconds — before the check left
   // it out, and kept it on screen when the answer stopped or failed. No unchecked word is ever shown.
   it("shows none of its words when the person stops it", () => {
@@ -223,9 +223,9 @@ describe("citation chips stay with their fact", () => {
   const groups = (container: HTMLElement) =>
     [...container.querySelectorAll("span.whitespace-nowrap")].filter((g) => g.querySelector("[data-cite]")).map((g) => g.textContent);
 
-  it("the word before a chip wraps with it, so the chip never starts a line (review round 2)", () => {
+  it("the word before a chip wraps with it, so the chip never starts a line", () => {
     // a no-break space alone did not do it: a line may break between text and an inline-grid chip.
-    // The chip follows the word like a footnote, without a space (UI audit round 1: "GmbH [1] .")
+    // The chip follows the word like a footnote, without a space (not "GmbH [1] .")
     const valid = citationIndex([{ type: "item", id: "itm_a" }]);
     const { container } = inRouter(<Markdown text="Due by **Wed 21 Oct** [item:itm_a]." citations={valid} renderCitation={renderCite} />);
     expect(groups(container)).toEqual(["Wed\u00a021\u00a0Oct1."]);
@@ -256,7 +256,7 @@ describe("citation chips stay with their fact", () => {
     expect(container.textContent).toBe("Bring your certificate (Immatrikulationsbescheinigung)\u20601.");
   });
 
-  it("law references and reference numbers never break inside (UI audit round 1: a break after the section sign)", () => {
+  it("law references and reference numbers never break inside, not even after the section sign", () => {
     const { container } = inRouter(
       <Markdown text={"Object within a month (\u00a7 56 Abs. 3 TKG, Art. 6 DSGVO), quoting TM-2026-0048213."} citations={null} renderCitation={() => null} />,
     );
@@ -290,7 +290,7 @@ describe("values the check left out", () => {
     expect(container.querySelector("span[title]")).toBeNull();
   });
 
-  it("marks every placeholder the check writes, the letter's ones too (final review)", () => {
+  it("marks every placeholder the check writes, the letter's ones too", () => {
     // the same list the backend's test reads (`support.PLACEHOLDERS`)
     expect(PLACEHOLDERS).toContain("[amount only in the letter]");
     expect(PLACEHOLDERS).toContain("[Uhrzeit weggelassen]");

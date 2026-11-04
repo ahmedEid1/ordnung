@@ -41,11 +41,11 @@ export default function AskPage() {
   const replayDemo = isStaticDemo() || health.data?.backend === "replay";
   const documents = useDocuments();
   const adder = useOptionalAddLetters();
-  // nothing to ask about yet: offer to add letters instead of questions about someone else's (UI audit round 1)
+  // nothing to ask about yet: offer to add letters instead of questions about someone else's
   const noLetters = !demo && documents.data?.length === 0;
   // the demo's answers were recorded on Sam's letters as it started: once the person changed them, the backend
   // offers no suggested question (each would miss) and a question asked says so — the page then says how to
-  // start over instead of offering what just failed (FEAT G2)
+  // start over instead of offering what just failed
   const recorded = useDemoQuestions(demo);
   const demoChanged = demo && (recorded.data?.length === 0 || thread.all.some((t) => t.answer.errorCode === "demo_changed"));
 
@@ -72,7 +72,7 @@ export default function AskPage() {
     if (finePointer()) inputRef.current?.focus({ preventScroll: true });
   };
 
-  // "New chat" can be undone, and leaves focus where the next question is typed (UI audit round 1: the
+  // "New chat" can be undone, and leaves focus where the next question is typed (before, the
   // conversation was gone at once and focus fell back to the page)
   const startNewChat = () => {
     const undo = thread.newChat();
@@ -98,13 +98,13 @@ export default function AskPage() {
   const lastKey = last?.key;
   const lastLen = last?.answer.text.length ?? 0;
   // the answer's words only come once checked (ADR 0008): while it is worked on, the trace's steps and the
-  // "Writing the answer" line are what grows (review round 2: they grew behind the composer on phones)
+  // "Writing the answer" line are what grows (they once grew behind the composer on phones)
   const lastSteps = last?.answer.tools.length ?? 0;
   const lastWriting = last?.answer.writing ?? false;
   const lastStatus = last?.answer.status;
 
   // the sticky composer covers the bottom of the screen: its height is published (--ask-composer-h) so that
-  // whatever gets focus or is scrolled to stops clear of it, as of the tab bar (WCAG 2.4.11, review round 2)
+  // whatever gets focus or is scrolled to stops clear of it, as of the tab bar (WCAG 2.4.11)
   const composerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = composerRef.current;
@@ -129,7 +129,7 @@ export default function AskPage() {
 
   // while it is worked on — and when it arrives — keep the growing turn visible above the composer (and, on
   // phones, the tab bar). While it is worked on, the newest step and the "Writing the answer" line stay in view
-  // even when the question has to scroll off (review round 4 of phase 2: at 320×640 they stayed behind the
+  // even when the question has to scroll off (at 320×640 they once stayed behind the
   // composer for the whole write); the answer that arrives never scrolls its question away
   useEffect(() => {
     if (!lastKey || (!thread.streaming && lastStatus !== "done")) return;
@@ -145,7 +145,7 @@ export default function AskPage() {
   }, [lastLen, lastSteps, lastWriting, lastStatus, thread.streaming, lastKey]);
 
   // a stored conversation opens at its last question, clear of the top bar (the page's scroll-padding), with
-  // as much of its answer as fits (UI audit round 1: scrolled to the very end, the question sat under the bar)
+  // as much of its answer as fits (once, scrolled to the very end, the question sat under the bar)
   const hadHistory = thread.past.length > 0;
   useEffect(() => {
     if (!hadHistory) return;
@@ -302,7 +302,7 @@ export default function AskPage() {
       {/* opaque down to the screen's edge (under the see-through tab bar too), so the answer never
           shows around the tour's bar or through the tab bar */}
       {/* on phones it keeps to the essentials — less fade above it, a one-line hint — so the answer has
-          the screen (UI audit round 1: box, hint, tour bar and tab bar took half of a 320 × 640 screen) */}
+          the screen (box, hint, tour bar and tab bar once took half of a 320 × 640 screen) */}
       <div ref={composerRef} data-ask-composer className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-6 bg-linear-to-t from-canvas from-80% to-transparent px-4 pb-[calc(0.75rem+var(--ordnung-toast-lift,0px))] pt-3 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[calc(4rem+env(safe-area-inset-bottom))] after:bg-canvas sm:-mx-6 sm:px-6 sm:pt-6 md:bottom-0 md:pb-[calc(1.25rem+var(--ordnung-toast-lift,0px))] md:after:hidden lg:-mx-10 lg:px-10">
         <AskComposer
           value={draft}

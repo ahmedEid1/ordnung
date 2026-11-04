@@ -1,4 +1,4 @@
-"""``/api/household``: who the person's letters are for (D3, ADR 0023). The policy is in
+"""``/api/household``: who the person's letters are for (ADR 0023). The policy is in
 ``test_household.py``; here the routes: their answers and refusals, the letter's page, the live event, hand-off
 sync's gate, the phone, and Ask's ledger fingerprint, which moves only with what Ask sees of the household."""
 

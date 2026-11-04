@@ -1,5 +1,5 @@
 /**
- * The standing-by screen (design §19.3): another computer is in use, so the app shows this instead of its pages —
+ * The standing-by screen (SPEC §12c): another computer is in use, so the app shows this instead of its pages —
  * up to date, still arriving (wait for it, or use the copy this computer has), waiting (with when it stops), a
  * problem (the passphrase field), a choice. "Use Ordnung here" takes over and every cached page loads again. The
  * screen never covers Settings → Your computers or the privacy log, and there is no `checking` mode any more: a
@@ -82,7 +82,7 @@ describe("the standing-by screen", () => {
     expect(screen.getAllByText(/^Waiting for 4 of 9 files from your sync tool \(\d+ KB\)\.$/).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Use it here as soon as they've arrived" }));
     expect(await screen.findByText("Waiting for sam-desktop's latest changes", {}, WAIT)).toBeInTheDocument();
-    // a waiting take-over ends by itself (finding 23)
+    // a waiting take-over ends by itself
     expect(screen.getByText(new RegExp(`It stops waiting after ${TAKE_OVER_WAIT_MINUTES} minutes, or if sam-desktop saves a new change meanwhile`))).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(await screen.findByRole("button", { name: "Use it here as soon as they've arrived" }, WAIT)).toBeInTheDocument();
@@ -113,7 +113,7 @@ describe("the standing-by screen", () => {
     expect(srv.sync.mode).toBe("in_use");
   });
 
-  it("says when files are online only on this computer, or nothing arrives any more (finding 6)", async () => {
+  it("says when files are online only on this computer, or nothing arrives any more", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().otherTakesOver().arriving(5, 9, { onlyOnline: 3 });
     await renderAppAt("/", HEADING);

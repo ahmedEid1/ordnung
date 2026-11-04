@@ -154,7 +154,7 @@ def test_a_rules_file_of_another_schema_or_none_is_refused(
 
 def test_the_held_out_runner_finds_the_recurrence_and_household_ledgers() -> None:
     """Each held-out ledger has a builder the runner finds by name, with nothing registered by hand first: the
-    household copy (E2's) and the recurrence copy."""
+    household copy (``evals/ask/household.py``) and the recurrence copy."""
     from evals.ask.household import build_household
 
     assert heldout.ledger_builder("recurrence") is recurrence.build_recurrence

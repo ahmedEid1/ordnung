@@ -1,5 +1,5 @@
 /**
- * "For taxes" on a letter's page (D3) on real pages, at 320, 390 and 1280 px in light and dark: the footer's action
+ * "For taxes" on a letter's page, on real pages, at 320, 390 and 1280 px in light and dark: the footer's action
  * row with the toggle fits without sideways scroll, a press shows the toast and Undo puts `aria-pressed` back (and
  * the person's choice back to none), and axe finds nothing serious with the toast open. Runs against the demo in
  * the "layout" project on the TechMarkt invoice, which Claude didn't mark; every test leaves it without a choice.

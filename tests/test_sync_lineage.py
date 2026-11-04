@@ -1,10 +1,10 @@
-"""Versions by the person's changes (design §7.1, §9; review blockers 2 and 3, finding 18).
+"""Versions by the person's changes (SPEC §12c).
 
 The unit tests pin the algebra; the generated histories run the pure decision function over two or three
 computers that change, push, deliver late, take over and choose — with a model of the data that knows
-which person changes each computer holds — and check the properties of design §9: nothing the person did
+which person changes each computer holds — and check the decision function's properties: nothing the person did
 is lost without a kept copy or a recorded choice, background work never asks, nothing a choice answered
-is asked again (blocker 3), and once every head has arrived all computers agree who is in use.
+is asked again, and once every head has arrived all computers agree who is in use.
 """
 
 from __future__ import annotations
@@ -84,7 +84,7 @@ def test_bump_keep_this_keep_other() -> None:
         (L({A: [(1, 1)]}), L({A: [(1, 2)]}), "ahead"),
         (L({A: [(1, 2)]}), L({A: [(1, 1)]}), "behind"),
         (L({A: [(1, 1)]}), L({B: [(1, 1)]}), "diverged"),
-        # blocker 3: the winner of "keep this one" sees the loser as behind, never as diverged
+        # the winner of "keep this one" sees the loser as behind, never as diverged
         (L({A: [(1, 2)]}, {B: [(1, 1)]}), L({A: [(1, 1)], B: [(1, 1)]}), "behind"),
         # … and the loser sees the winner as having decided
         (L({A: [(1, 1)], B: [(1, 1)]}), L({A: [(1, 2)]}, {B: [(1, 1)]}), "decided"),
@@ -133,7 +133,7 @@ def test_keeping_the_other_over_an_answer_that_dropped_it_settles_it() -> None:
     assert lin.keep_other(laptop, third, [laptop]) == L({A: [(1, 1)], B: [(1, 1)]})
 
 
-def test_a_lineage_may_not_claim_beyond_what_a_computer_published() -> None:  # finding 18
+def test_a_lineage_may_not_claim_beyond_what_a_computer_published() -> None:
     claims_all = L({A: [(1, 1000)], B: [(1, 1)]})
     assert not lin.claims_within(claims_all, {A: 3, B: 1})
     assert lin.claims_within(L({A: [(1, 3)]}), {A: 3, B: 0})
@@ -490,7 +490,7 @@ class Histories(RuleBasedStateMachine):
     @rule()
     def settle(self) -> None:
         """Every head delivered everywhere, then one round each: the questions a choice answered stay
-        answered (blocker 3), and all computers agree who is in use."""
+        answered, and all computers agree who is in use."""
         world = self.world
         machines = [m for m in world.machines.values() if m.base is not None]
         settled_choice = bool(world.choices) and not world.changed_since_choice and not world.conflicting
@@ -555,7 +555,7 @@ def test_background_only_histories_never_ask() -> None:
                 assert not isinstance(world.use_here(b), Choice)
 
 
-def test_the_winner_is_not_asked_again() -> None:  # blocker 3
+def test_the_winner_is_not_asked_again() -> None:
     world = World(2)
     a, b = world.machines[A], world.machines[B]
     world.person(a)
@@ -582,13 +582,13 @@ def test_the_winner_is_not_asked_again() -> None:  # blocker 3
         world.deliver(a, b)
         world.deliver(b, a)
     loser = world.use_here(b)
-    assert isinstance(loser, Pull) and loser.keep  # U4: a copy of b's data first
+    assert isinstance(loser, Pull) and loser.keep  # a copy of b's data first
     assert b.kept and world.everything_kept() >= world.made - world.choices[0][1]
     world.deliver(b, a)
     assert not isinstance(world.round(a), Choice)
 
 
-def test_a_left_head_still_counts_for_content() -> None:  # blocker 2
+def test_a_left_head_still_counts_for_content() -> None:
     world = World(2)
     a, b = world.machines[A], world.machines[B]
     world.person(a)

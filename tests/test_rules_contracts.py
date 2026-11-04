@@ -308,7 +308,7 @@ def test_fixed_term_employment_is_a_milestone() -> None:
 
 
 def test_a_fixed_term_flat_let_may_still_need_notice() -> None:
-    """Release blocker (ADR 0008), resolved in review round 1: a flat let's fixed term needs a written legal
+    """A release blocker (ADR 0008): a flat let's fixed term needs a written legal
     reason, or the lease counts as open-ended (§ 575 Abs. 1 S. 2 BGB) — never "ends by itself, no
     cancellation needed" — and one used on after its end may continue (§ 545 BGB): never "ended"."""
     lease = compute_contract(terms(category="rent", start_date="2025-04-01", end_date="2027-03-31"), ctx())
@@ -445,7 +445,7 @@ def test_the_day_is_a_shorter_months_last_day(day: int, today: str, cancel_by: s
 
 
 def test_a_notice_period_stated_with_the_day_applies_too() -> None:
-    """Review of migration 0004: prompt 9 read this letter's "bis zum 10." as 10 days' notice. Read with the
+    """Prompt 9 read this letter's "bis zum 10." as 10 days' notice. Read with the
     day as well, a stated period that won over it gave "cancel any time with 10 days' notice … ends on Mon 12
     Oct" — no deadline, 19 days before the true one. Both apply now, the earlier deadline decides; another
     basis ignores the day."""
@@ -507,7 +507,7 @@ def test_a_first_term_is_left_by_the_day_of_its_last_month() -> None:
 
 
 def test_an_end_date_with_the_day_needs_notice() -> None:
-    """Review of migration 0004: a minimum term's end read as the end date, with the day as the only notice
+    """A minimum term's end read as the end date, with the day as the only notice
     term, was "ends by itself — no cancellation needed" while the contract runs on. The day needs notice, as a
     notice period does."""
     gym = {
@@ -529,7 +529,7 @@ def test_an_end_date_with_the_day_needs_notice() -> None:
 
 
 def test_the_day_waits_for_a_first_term_that_still_runs() -> None:
-    """Review of migration 0004: under the contract's own terms (here a business contract), "by the 10th of a
+    """Under the contract's own terms (here a business contract), "by the 10th of a
     month, to its end" gave an exit inside a 24-month first term. The first term is left by the day of its last
     month; once that has passed, the month ends after it."""
     business = {
@@ -650,7 +650,7 @@ FLOOR = (
 
 
 def test_a_job_left_before_its_end_gets_at_least_the_statutory_notice() -> None:
-    """Review of migration 0004: the working-student contract's probation clause ("mit einer Frist von zwei
+    """The working-student contract's probation clause ("mit einer Frist von zwei
     Wochen") is where a model picks up 2 weeks or any day. Planned as read, the job "ends on Fri 16 Oct" with no
     deadline; after probation § 622 Abs. 1 BGB applies (a contract can't shorten it, § 622 Abs. 5 BGB): arrive by
     Sat 3 Oct for Sat 31 Oct."""
@@ -1109,7 +1109,7 @@ def test_309_old_caps_and_bases() -> None:
 
 
 def test_a_current_account_can_be_closed_any_time() -> None:
-    """Walkthrough of phase 2: "Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei
+    """The sentence "Selbstverständlich können auch Sie Ihr Girokonto jederzeit kostenfrei
     kündigen" (read as notice any time, no period) got "We couldn't compute a cancellation date". A consumer's
     current account can be closed any time without notice unless one was agreed, and an agreed one counts
     for at most a month (§ 675h Abs. 1 BGB)."""
@@ -1257,7 +1257,7 @@ def test_energy_price_increase() -> None:
     assert receipt.confidence == "high"
     assert receipt.warnings == []
     assert "enwg_41_5" in receipt.rule_ids
-    # a special contract: the basic-supply regulation (StromGVV) is not cited (walkthrough of phase 2)
+    # a special contract: the basic-supply regulation (StromGVV) is not cited
     assert "stromgvv_5_3" not in receipt.rule_ids
     assert all("StromGVV" not in step.citation for step in receipt.steps if step.citation)
 
@@ -1464,7 +1464,7 @@ def test_docs_mention_every_rule_and_the_check_date() -> None:
 
 
 def test_the_static_demo_shows_the_catalogs_texts_for_the_engines_rule_ids() -> None:
-    """Reviewer repro: the static demo's rules list (``web/src/mocks/data/system.ts``) carries entries by
+    """The static demo's rules list (``web/src/mocks/data/system.ts``) carries entries by
     the engine's ids; their title, citation and summary are the catalog's, word for word — the demo
     once cited § 188 Abs. 1, 2 BGB for the month-end clause of Abs. 3."""
     mocks = Path(__file__).resolve().parents[1] / "web" / "src" / "mocks" / "data" / "system.ts"

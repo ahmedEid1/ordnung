@@ -74,7 +74,7 @@ describe("Timeline page", () => {
     assertNoRawEnumsInElement(container);
   });
 
-  it("gives a phone row's detail two lines: its day is never cut short (R2-inbox-timeline-contracts-3)", async () => {
+  it("gives a phone row's detail two lines: its day is never cut short", async () => {
     const client = await seededClient();
     const timeline = client.getQueryData<TimelineEntry[]>(qk.timeline(defaultLaneRange(TEST_TODAY).from, defaultLaneRange(TEST_TODAY).to))!;
     const parking = timeline.find((e) => e.ref.id === "itm_parking")!;
@@ -181,7 +181,7 @@ describe("Timeline page", () => {
   });
 });
 
-describe("your own dates and repeating ones (audit item 26)", () => {
+describe("your own dates and repeating ones", () => {
   const ownDate = (srv: MockServer) => {
     srv.db.addItem("itm_own_vat", { kind: "reminder", title: "UStVA", due_date: "2026-10-14", recurrence: { interval: 1, unit: "months", working_day: 3 } });
   };

@@ -316,7 +316,7 @@ describe("copy", () => {
     expect(entryStatus({ type: "contract", status: "active", date: "2026-10-01", past: false }, TODAY)).toBeNull();
   });
 
-  it("never calls money coming in or a to-do that is not one to act on overdue (walkthrough of phase 2)", () => {
+  it("never calls money coming in or a to-do that is not one to act on overdue", () => {
     const salary = { type: "payment" as const, status: "open", date: "2026-09-10", past: true, direction: "in" as const };
     expect(entryStatus(salary, TODAY)?.label).toBe("Received?");
     expect(entryStatus({ ...salary, date: "2026-10-10", past: false }, TODAY)).toBeNull();

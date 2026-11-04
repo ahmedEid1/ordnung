@@ -463,7 +463,7 @@ def _note(run: _BuildRun, label: str, exc: BaseException) -> None:
 def _added_on_arrival(store: Store, doc_id: str, received: str | None, index: int) -> None:
     """Date a library letter as added on the day it arrived (its received date), as a person adds a letter
     when it comes — not on the day the demo was built: the weekly review's *New in the last 7 days* then
-    lists the week's letters, not the whole sample life (walkthrough of phase 2: "23 letters since Mon 21
+    lists the week's letters, not the whole sample life ("23 letters since Mon 21
     Sep", each "Added Mon 28 Sep"). The manifest's order stays the order they were added (``index``
     minutes after 8:00). ``created_at`` is no input of any recorded model call, nor of the demo check."""
     if received:

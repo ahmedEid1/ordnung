@@ -148,7 +148,7 @@ describe("rules in plain words", () => {
     expect(ruleInWords({ ...byId("ctr_rent"), notice_value: null, notice_unit: null, notice_statutory: true }, TODAY).text).toMatch(
       /^Open-ended, with the statutory notice as the lease says: notice given by the 3rd working day/,
     );
-    // a current account (walkthrough of phase 2: "we couldn't compute a cancellation date")
+    // a current account (it said "we couldn't compute a cancellation date")
     const giro = byId("ctr_bank");
     const account: Contract = { ...giro, computed: { ...giro.computed!, regime: "bgb675h" } };
     expect(ruleInWords(account, TODAY)).toEqual({ text: "Current account: cancellable any time, without notice", citation: "§ 675h BGB" });
@@ -250,7 +250,7 @@ describe("contracts-only lanes", () => {
     expect(bars.every((b) => b.ref?.id === "ctr_phone")).toBe(true);
   });
 
-  it("draws no window to cancel once the cancellation was sent, only when it ends (final review)", () => {
+  it("draws no window to cancel once the cancellation was sent, only when it ends", () => {
     const phone: Contract = { ...byId("ctr_phone"), cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } };
     const [l] = contractLanes([phone], range, TODAY);
     expect(l!.bars.map((b) => b.kind)).toEqual(["contract", "contract"]);
@@ -341,7 +341,7 @@ describe("contracts-only lanes", () => {
     expect(pleaseCheckHint(written)).toBe("Ordnung follows the notice period as written — check it against the contract");
     expect(noticeEditable(written)).toBe(true);
     expect(ruleInWords(written, TODAY).text).toBe("As written in the contract: 3 months' notice to the end of a month");
-    // R2-inbox-timeline-contracts-1: saved on the card, the period is the person's
+    // saved on the card, the period is the person's
     const quote = { doc_id: "doc_bank", page: null, quote: "three months' notice to the end of a month", grounding: "user" as const, value_consistent: true, score: 0, boxes: [] };
     const entered = { ...written, evidence: [quote] };
     expect(noticeFromYou(entered)).toBe(true);

@@ -645,11 +645,33 @@ def test_a_published_file_equals_a_fresh_run_whatever_its_date_and_commit() -> N
         "checker_sha256": "1",
     }
     published = copy.deepcopy(fresh)
-    published["meta"] |= {"date": "2026-10-01", "commit": "def5678", "fingerprint": "b" * 16}
+    published["meta"] |= {"date": "2026-10-01", "commit": "def5678", "fingerprint": "b" * 16, "dirty": []}
+    fresh["meta"]["dirty"] = [
+        "evals/generate.py"
+    ]  # a replay from a tree with changes: its numbers still compare
     assert report.differences(fresh, published) == []
     published["meta"]["checker_sha256"] = "2"
     published["metrics"]["pooled"]["parity"] = {"k": 1, "n": 2, "differ": ["test-x-1#0"]}
     assert report.differences(fresh, published) == ["meta.checker_sha256", "metrics"]
+
+
+def test_the_results_name_the_code_paths_that_differ_from_their_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``meta.commit`` is the checked-out commit: the file says, as the runner's do, which code paths under src/ and
+    evals/ differed from it (``evals.harness.dirty_paths``), so a file written from a tree with changes never passes
+    for that commit's (``make eval-reproduce`` refuses it)."""
+    import argparse
+
+    from evals import harness as benchmark_harness
+    from evals.e2e import __main__ as cli
+
+    monkeypatch.setattr(benchmark_harness, "dirty_paths", lambda root=None: ["evals/generate.py"])
+    entries = [entry for entry in load_manifest(MANIFEST_PATH) if entry.id == "test-invoice_relative-C1"]
+    args = argparse.Namespace(run_date="2026-10-30", model="claude-sonnet-5", ids=None, seed=0, resamples=10)
+    meta = cli._meta(args, entries, {}, False)
+    assert meta["dirty"] == ["evals/generate.py"]
+    assert list(meta).index("dirty") == list(meta).index("commit") + 1
 
 
 def test_a_letter_the_harness_could_not_run_always_fails() -> None:

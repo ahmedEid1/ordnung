@@ -63,7 +63,7 @@ export function CitationMarker({ info, n }: { info: RefInfo; n: number }) {
 
 /**
  * A source in the list under an answer: number, icon and title. A long title wraps, up to three lines
- * (UI audit round 1: cut to one line, the rest only in a hover title touch can't reach); the whole of
+ * (not cut to one line, the rest only in a hover title touch can't reach); the whole of
  * it is the link's name and title: "Source 1: “Phone contract” — Letter", what it shows (the number, then
  * the title) in that order and together (WCAG 2.5.3), then its kind.
  */

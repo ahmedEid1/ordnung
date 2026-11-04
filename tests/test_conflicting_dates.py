@@ -757,7 +757,7 @@ def test_only_the_first_header_date_that_reads_one_way_is_the_letters() -> None:
 
 
 # --------------------------------------------------------------------------------------------------
-# Review of the widened check: what must never be a second date
+# the widened check: what must never be a second date
 # --------------------------------------------------------------------------------------------------
 
 
@@ -806,7 +806,7 @@ def _alone(verified: VerifiedItem, ctx: RuleContext) -> ComputedDate:
 def test_how_long_a_document_is_valid_or_an_optional_day_is_no_second_send_by_date(
     text: str, quote: str, due: str
 ) -> None:
-    """Review F1: a certificate's validity, an earlier day documents are handled by, the longer period with
+    """A certificate's validity, an earlier day documents are handled by, the longer period with
     a tax adviser — none is a second day to send the documents by."""
     own = fixed(quote, due, nature="declaration")
     [verified] = read(f"Familienkasse Musterstadt, 01.09.2026\n{text}\n", own, kind="authority_letter")
@@ -864,7 +864,7 @@ CANCEL_BY = "Ihre Kündigung muss uns bis zum 30.09.2026 vorliegen."
     ],
 )
 def test_a_contracts_term_or_service_end_is_no_second_cancellation_deadline(text: str, quote: str) -> None:
-    """Review F2: how long cover, supply, a term or a price lasts — even in a sentence that speaks of
+    """How long cover, supply, a term or a price lasts — even in a sentence that speaks of
     cancelling — is not the day a cancellation must arrive by."""
     own = fixed(quote, "2026-09-30", nature="notice")
     [verified] = read(f"Muster Versicherung AG, 01.06.2026\n{text}\n", own, kind="contract")
@@ -879,7 +879,7 @@ def _box(text: str, x0: float, y0: float) -> list[Any]:
 
 
 def test_an_old_invoices_date_in_a_reminders_table_is_not_its_own() -> None:
-    """Review F3 (1): a reminder dated in its first line ("Musterstadt, 01.09.2026", no salutation) lists the
+    """A reminder dated in its first line ("Musterstadt, 01.09.2026", no salutation) lists the
     invoice in a table — "Rechnungsnummer | Datum" over "RE-2026-123 | 14.07.2026". Counted from that
     date, the payment "7 Tage nach Zugang dieses Schreibens" was due on 21 Jul, before the letter itself."""
     quote = "Bitte zahlen Sie den Betrag innerhalb von 7 Tagen nach Zugang dieses Schreibens."
@@ -913,7 +913,7 @@ def test_an_old_invoices_date_in_a_reminders_table_is_not_its_own() -> None:
 def test_another_decisions_or_an_offences_date_is_not_the_letters(
     header: str, letter: date, scope: str
 ) -> None:
-    """Review F3 (2, 3): a Widerspruchsbescheid's "Datum des Bescheids" names the decision it rules on; a
+    """A Widerspruchsbescheid's "Datum des Bescheids" names the decision it rules on; a
     fine's "Tatort … Datum … Uhrzeit" names the offence. Counted from either, the Klage or the Einspruch was
     weeks too early."""
     text = (
@@ -928,7 +928,7 @@ def test_another_decisions_or_an_offences_date_is_not_the_letters(
 
 
 def test_a_claims_table_in_a_court_order_is_not_its_date_for_the_laws_deadline() -> None:
-    """Review F3 (4): a Mahnbescheid without a salutation lists the claim "Kaufvertrag   500,00 EUR
+    """A Mahnbescheid without a salutation lists the claim "Kaufvertrag   500,00 EUR
     12.03.2026" under "Hauptforderung   Betrag   Datum" — the date is in the column, but it is the
     contract's: the § 692 ZPO deadline still counts from the letter's own date."""
     from ordnung.ingest.conflicts import law_rivals, settle_law
@@ -977,7 +977,7 @@ def test_a_claims_table_in_a_court_order_is_not_its_date_for_the_laws_deadline()
 def test_a_date_near_the_header_label_that_is_not_its_value_is_not_the_letters(
     header: str, words: list[Any]
 ) -> None:
-    """Review F3 (5), F4 (M3, M7): an appointment's date, a date under another column, after "vom" or not
+    """An appointment's date, a date under another column, after "vom" or not
     ending the label's next line is never read as the letter's own date."""
     page = (1, f"Stadt Musterstadt\n{header}\nSehr geehrte Damen und Herren,\nDanke.\n", words, "text")
     assert [statement for statement in letter_statements([page]) if statement.letter_date] == []
@@ -998,7 +998,7 @@ def test_a_column_label_with_its_value_right_under_it_is_the_letters_date() -> N
 
 
 def test_a_header_ends_at_the_letters_first_sentence_without_a_salutation() -> None:
-    """Review F4 (M2): a letter without a salutation — its header ends with its first sentence, so a
+    """A letter without a salutation — its header ends with its first sentence, so a
     "Datum:" after it (a receipt it confirms) is not the letter's date."""
     page = (
         1,
@@ -1020,7 +1020,7 @@ def test_a_header_ends_at_the_letters_first_sentence_without_a_salutation() -> N
 
 
 def test_an_optional_day_in_the_to_dos_own_sentence_leaves_the_date_to_the_reading() -> None:
-    """Review F4 (M5): "möglichst bis" in the to-do's own sentence: which date must be met is the reading's to
+    """A "möglichst bis" in the to-do's own sentence: which date must be met is the reading's to
     tell, so the letter's other date is no rival."""
     quote = "Bitte reichen Sie die fehlenden Unterlagen möglichst bis zum 20.03.2026 ein."
     text = f"Beispiel Versicherung AG, 02.03.2026\n{quote}\nFrist für die Unterlagen: 27.03.2026\n"
@@ -1030,7 +1030,7 @@ def test_an_optional_day_in_the_to_dos_own_sentence_leaves_the_date_to_the_readi
 
 
 def test_a_letter_date_far_from_the_one_read_or_a_date_before_the_letter_is_never_kept() -> None:
-    """Review F3: a date the letter gives for itself weeks from the one read is another's; and no rival
+    """A date the letter gives for itself weeks from the one read is another's; and no rival
     ever moves a date before the letter's own date as read."""
     text = (
         "Finanzamt Musterstadt\nDatum: 16.02.2026\nSehr geehrte Damen und Herren,\n"

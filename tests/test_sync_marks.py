@@ -1,4 +1,4 @@
-"""The person-change counter (review finding 5a, which replaces design §7.3's marks): moved inside the very
+"""The person-change counter (SPEC §12c): moved inside the very
 transaction of each write the person made, read by a push from its own snapshot — so a version holds
 exactly the person changes it counts, in every interleaving, and nothing is ever under-counted."""
 

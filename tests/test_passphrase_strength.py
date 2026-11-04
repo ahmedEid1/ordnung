@@ -119,7 +119,7 @@ SIXTEEN: dict[str, tuple[str, ...]] = {
 
 @pytest.mark.parametrize("name", list(GENERATORS))
 def test_a_password_manager_s_random_password_protects_a_new_backup_and_sync_folder(name: str) -> None:
-    """Audit (0.2.0 review): the estimator counted words only — symbols nothing, case nothing, a run of
+    """The estimator counted words only — symbols nothing, case nothing, a run of
     letters one word at most — so a strong password from a password manager was refused for a new backup
     and a new sync folder. Nearly all of each generator's passwords pass now (PASSING; the rest show by
     chance a pattern people make: a word-like run of letters, a common word, a year, digits in order)."""
@@ -143,7 +143,7 @@ def test_sixteen_random_capital_and_small_letters_pass_as_the_refusal_says(sets:
 
 
 def test_random_small_letters_alone_count_as_words() -> None:
-    """Audit (batch A review): 16 random small letters can't be told from a long word ("bundeskanzlerin")
+    """16 random small letters can't be told from a long word ("bundeskanzlerin")
     without a dictionary, so they count as one word and are refused — the refusal asks for capital and
     small letters, rather than promising that any random password of 16 characters passes."""
     chosen = random.Random("sixteen small letters")
@@ -232,7 +232,7 @@ def test_a_pattern_people_make_takes_the_count_of_random_characters_away(made_up
 
 
 def test_words_with_digits_and_symbols_count_as_words_not_random_characters() -> None:
-    """Audit (batch A review): a name or a word or two with digits and symbols ("Max#Richter#94",
+    """A name or a word or two with digits and symbols ("Max#Richter#94",
     "Familie#8312") showed no pattern, so every character counted as random. When every letter is in a
     word, the words and runs of digits count as tokens and only the other characters as random ones."""
     every_character = math.log2(26 + 26 + 10 + 33)

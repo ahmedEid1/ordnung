@@ -74,8 +74,7 @@ Policies:
 
 "Today" is the server's pinned day (``RulesTools(today=…)``, ``ORDNUNG_TODAY``), else the date in
 Germany (:data:`HOME_ZONE`) — never the machine's own time zone, and never a caller's ``today`` (see
-above): a German deadline runs to midnight German time (review round 3 of phase 2: a caller's day
-before the server's replaced it).
+above): a German deadline runs to midnight German time (a caller's day once replaced the server's).
 
 The tools' descriptions, :data:`SPEC_HELP`, :data:`INSTRUCTIONS` and the input schemas (generated
 from ``DateSpec``, ``PartyKind`` and ``RemedyType`` in :mod:`ordnung.models`) are what a model reads,
@@ -252,7 +251,7 @@ _DELIVERY_LAW = {
 }
 #: The step every deemed delivery counts from (:func:`ordnung.rules.deadlines._apply_delivery`):
 #: ``delivery_law`` names the law only when one was applied — a period from arrival (a dismissal's three
-#: weeks from an authority as employer) applied none (review round 2 of phase 2).
+#: weeks from an authority as employer) applied none.
 DEEMED_DELIVERY_STEP = "posting_day"
 #: A court's letter (``ordnung.rules.routing.is_court``) has no deemed delivery, whatever its sender kind.
 COURT_DELIVERY_LAW = "a court's letter: formal service (§ 180 ZPO), no deemed delivery"
@@ -492,7 +491,7 @@ class RulesTools:
     def _other_day(self, given: date | None, server_day: date) -> date | None:
         """A caller's today to report on as well (``for_today_given``), or ``None``.
 
-        The result is always for the server's day (review round 3 of phase 2): a deadline runs to midnight
+        The result is always for the server's day: a deadline runs to midnight
         German time, so a caller's later day would make a live deadline look missed, and an earlier one — a
         stale conversation date, or a machine on UTC shortly after German midnight — would make a deadline
         that ended yesterday read "send it today". Any other day only gets ``for_today_given`` and a warning,
@@ -814,7 +813,7 @@ _ARRIVAL_STEPS = ("sgb3_38", "bgb_558b", "bgb_573c_landlord")
 def arrival_counted(spec: DateSpec, receipt: ComputationReceipt) -> DateSpec:
     """``spec`` as the engine counted it for the arrival day ``assumed`` reports: a letter rule that counts
     from the letter's arrival (:data:`_ARRIVAL_STEPS`) does so whatever the anchor — a § 38 SGB III date
-    anchored on the job's end, a § 558b BGB date on the letter's date (review round 4 of phase 2: the arrival
+    anchored on the job's end, a § 558b BGB date on the letter's date (the arrival
     they counted from was reported as "not used")."""
     if not any(step.rule_id in _ARRIVAL_STEPS for step in receipt.steps) or spec.anchor == "receipt":
         return spec
@@ -1009,8 +1008,8 @@ def _today_warning(given: date | None, server_day: date, *, pinned: bool) -> lis
 
 def _holidays_from(payer_pays: bool, rule_ids: Sequence[str] = ()) -> str:
     """Which argument's Land the holidays come from, and why (for ``assumed``): the rule the engine applied
-    decides, as in :func:`ordnung.rules.deadlines.place_region` and :mod:`ordnung.rules.letters` (review round
-    3 of phase 2: a withdrawal's and a Kündigungsschutzklage's named the sender's Land)."""
+    decides, as in :func:`ordnung.rules.deadlines.place_region` and :mod:`ordnung.rules.letters` (for a
+    withdrawal and a Kündigungsschutzklage it once named the sender's Land)."""
     if payer_pays:
         return (
             "recipient_region: a payment to a company or person is made where the payer lives "
@@ -1129,7 +1128,7 @@ def deadline_hints(
         )
     if _warned(receipt, REGION_UNKNOWN, start=True):
         way = "earlier" if _warned(receipt, REGION_EARLIER) else "later"
-        if COURT_ACTION_RULE in receipt.rule_ids:  # the engine's place_region: both Länder (review round 4)
+        if COURT_ACTION_RULE in receipt.rule_ids:  # the engine's place_region: both Länder
             missing = [
                 f"{name} — {what}"
                 for name, value, what in (

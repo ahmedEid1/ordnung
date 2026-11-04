@@ -107,8 +107,8 @@ SEEN_META_KEY = "inbox_seen"
 BASELINE_META_KEY = "inbox_baseline"
 #: The SHA-256 of every file brought in from a watched folder, oldest first (the newest
 #: :data:`FOLDER_TAKEN_MAX`): hand-off sync merges it between computers as a union, and while sync is on a file whose content is in it is
-#: skipped quietly — a folder both computers watch doesn't bring a deleted letter back (review finding
-#: 16). Pinned equal to :data:`ordnung.sync.FOLDER_TAKEN_META_KEY` by a test.
+#: skipped quietly — a folder both computers watch doesn't bring a deleted letter back.
+#: Pinned equal to :data:`ordnung.sync.FOLDER_TAKEN_META_KEY` by a test.
 FOLDER_TAKEN_META_KEY = "folder_taken"
 FOLDER_TAKEN_MAX = 5000
 MAX_FILES = 5000

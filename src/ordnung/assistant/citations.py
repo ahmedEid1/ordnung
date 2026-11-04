@@ -13,7 +13,7 @@ word of them with a digit in it or in a value the answer check reads ("Ende Janu
 trace appears before the answer check, so it never shows a date, time or amount of the model's words the
 check reads (ADR 0008). A record the model named by its id is shown by its title as the app shows it on
 every list and letter page ("Read "Income tax assessment 2025""): the AI's reading of a letter, which may
-hold a date the letter put there — no more than the letter's own page shows (review round 4 of phase 2).
+hold a date the letter put there — no more than the letter's own page shows.
 Date ranges of the tools' arguments are shown as the range looked at.
 """
 

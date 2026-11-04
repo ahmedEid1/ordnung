@@ -1,6 +1,6 @@
-"""The benchmark's plumbing for the check for incomplete readings (``ingest/gaps.py``), round 2 of its review:
-the code's own to-dos count apart from the reading's (benchmark N1, N2; tests R2T-7), P5's signal is emitted
-(R2T-6), and the command line refuses only what it should (R2T-8, benchmark N3). Replay only: no model call,
+"""The benchmark's plumbing for the check for incomplete readings (``ingest/gaps.py``): the code's
+own to-dos count apart from the reading's, the signal that the letter's notice replaced a reading's date is
+emitted, and the command line refuses only what it should. Replay only: no model call,
 nothing written to ``evals/results``."""
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _entry(entry_id: str) -> Any:
 
 
 def test_an_unmatched_code_made_to_do_is_counted_as_the_check_s_false_alarm_never_the_reading_s() -> None:
-    """N1, R2T-7: no false positive of the reading's — a false alarm of the check's, counted apart."""
+    """No false positive of the reading's — a false alarm of the check's, counted apart."""
     entry = _entry("dev-contract_confirmation-A1")
     code = PredictedItem(kind="deadline", title="Deadline to object", due_date="2031-01-01", origin="code")
     model = code.model_copy(update={"origin": "model"})
@@ -55,7 +55,7 @@ def test_an_unmatched_code_made_to_do_is_counted_as_the_check_s_false_alarm_neve
 
 
 def test_only_dated_unmatched_code_items_are_the_check_s_false_alarms() -> None:
-    """R3T-10: a matched dated code item, an undated one (the placeholder) and a stray dated one: two filed, one
+    """A matched dated code item, an undated one (the placeholder) and a stray dated one: two filed, one
     unmatched."""
     entry = _entry("dev-municipal_decision-A1")
     [truth] = entry.truth.items[:1]
@@ -74,7 +74,7 @@ def test_only_dated_unmatched_code_items_are_the_check_s_false_alarms() -> None:
 
 
 def test_the_check_s_to_do_never_takes_the_match_from_the_reading_s_own() -> None:
-    """Benchmark review 3, R3B-1: a reading's objection to-do whose date doesn't compute (no letter date read)
+    """A reading's objection to-do whose date doesn't compute (no letter date read)
     beside the check's dated one: the reading's recall, false positives and grounding are as without the check;
     the letter's date is the check's, correct."""
     entry = _entry("dev-municipal_decision-A1")
@@ -110,7 +110,7 @@ def test_the_check_s_to_do_never_takes_the_match_from_the_reading_s_own() -> Non
 
 
 def test_the_letters_the_check_fired_on_are_counted_dated_or_not() -> None:
-    """R3B-3: an undated to-do of the check's is never scored; the letters with its signal are counted."""
+    """An undated to-do of the check's is never scored; the letters with its signal are counted."""
     entry = _entry("dev-contract_confirmation-A1")
     signalled = Prediction(
         entry_id=entry.id, condition="ordnung", model="m", items=[], signals=["reading_incomplete"]
@@ -123,7 +123,7 @@ def test_the_letters_the_check_fired_on_are_counted_dated_or_not() -> None:
 
 
 def test_a_wrong_code_made_date_is_the_check_s_never_the_reading_s_or_the_computing_s() -> None:
-    """N2, R2T-7: its cause is "check", and the taxonomy page gets a row for it."""
+    """Its cause is "check", and the taxonomy page gets a row for it."""
     entry = _entry("dev-municipal_decision-A1")
     [truth] = entry.truth.items[:1]
     assert truth.expected_due is not None
@@ -160,7 +160,7 @@ def test_the_taxonomy_page_names_the_check_s_wrong_dates_only_when_there_are_any
 
 
 async def test_an_objection_date_long_after_the_letter_s_notice_is_signalled(tmp_path: Path) -> None:
-    """R2T-6: the benchmark says when the letter's notice replaced a reading's objection date."""
+    """The benchmark says when the letter's notice replaced a reading's objection date."""
     entry = _entry("dev-municipal_decision-A1")
     document = prepare_document(entry, MANIFEST.parent, tmp_path)
     reading = {
@@ -185,7 +185,7 @@ async def test_an_objection_date_long_after_the_letter_s_notice_is_signalled(tmp
 
 
 def test_a_held_out_replay_into_its_own_results_dir_runs(tmp_path: Path) -> None:
-    """R2T-8: the documented held-out replay (with its own --results-dir) still runs."""
+    """The documented held-out replay (with its own --results-dir) still runs."""
     out = tmp_path / "replayed"
     code = eval_run.run_cli(
         [
@@ -200,7 +200,7 @@ def test_a_held_out_replay_into_its_own_results_dir_runs(tmp_path: Path) -> None
 def test_the_gate_may_replay_a_held_out_split_where_it_is(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """N3: the threshold gate writes no results file, so it needs no --results-dir (its cache goes to a scratch
+    """The threshold gate writes no results file, so it needs no --results-dir (its cache goes to a scratch
     folder here, never evals/results)."""
     monkeypatch.setattr(eval_run, "RESULTS_DIR", tmp_path / "results")
     code = eval_run.run_cli(
@@ -216,7 +216,7 @@ def test_the_gate_may_replay_a_held_out_split_where_it_is(
 def test_a_live_held_out_recording_needs_no_results_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """R2T-8: only a replay of a held-out split is held to its own folder; a live recording is the held-out run
+    """Only a replay of a held-out split is held to its own folder; a live recording is the held-out run
     (the model is faked here)."""
     monkeypatch.setattr(eval_run, "RESULTS_DIR", tmp_path / "results")
     reading = {"kind": "other", "title": "Letter", "summary": "A letter.", "explanation": "Read it."}
@@ -232,7 +232,7 @@ def test_a_live_held_out_recording_needs_no_results_dir(
 
 
 def test_a_partial_replay_never_overwrites_a_live_partial_recording(tmp_path: Path) -> None:
-    """R2T-8: the refusal holds for a partial results file too, and says what to do."""
+    """The refusal holds for a partial results file too, and says what to do."""
     results = tmp_path / "results"
     results.mkdir()
     name = report.results_filename("2026-09-25", "claude-sonnet-5", "holdout2", partial=True)

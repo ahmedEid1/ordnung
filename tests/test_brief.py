@@ -115,7 +115,7 @@ def test_agenda_text_is_never_all_clear_while_letters_wait() -> None:
 
 @pytest.mark.parametrize("status", ["failed", "held", "queued", "processing"])
 def test_letters_not_read_are_waiting_so_the_note_is_never_all_clear(store: Store, status: str) -> None:
-    """UX U2: a letter that couldn't be read (Claude signed out, an answer that could not be used) — or that
+    """A letter that couldn't be read (Claude signed out, an answer that could not be used) — or that
     waits in the folder or is being read — is in no section of the agenda, so the note says nothing is due
     from the letters that were read instead of "All clear" (Today said it three times while the Inbox said
     "Please check 2")."""
@@ -263,7 +263,7 @@ async def test_generate_brief_stores_the_brief_of_the_day(store: Store, ids: dic
 async def test_the_models_note_is_shown_only_while_its_agenda_is_unchanged(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """FEAT N1: after the TechMarkt reminder is paid, a note that calls it "the most urgent thing" (with a
+    """After the TechMarkt reminder is paid, a note that calls it "the most urgent thing" (with a
     footer saying every amount was checked) gives way to the code-written note of the agenda as it is."""
     llm = LLMService(FakeBackend({"brief": {"text": GOOD_NOTE}}), sink=store)
     written = await generate_brief(store, llm, TODAY)

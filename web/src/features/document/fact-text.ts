@@ -1,6 +1,6 @@
 /**
  * Key facts and reference numbers as the model copied them from a German letter, shown the app's
- * way (UI audit round 1: "Gültig ab", "1.320 kWh" and "670,00 € (bisher 640,00 €)" were shown as
+ * way ("Gültig ab", "1.320 kWh" and "670,00 € (bisher 640,00 €)" were once shown as
  * written):
  *
  * - labels in English with the letter's own word in brackets — "Valid from (Gültig ab)" — for the
@@ -282,7 +282,7 @@ const valid = (s: string) => tryParseDate(s) !== null;
 
 /**
  * German dates in English running text the app's way — "due by 09.10.2026" → "due by Fri 9 Oct 2026", a pair
- * of days "18./20.08.2026" → "18/20 Aug 2026" (UI audit round 2: it read "18./Thu 20 Aug 2026") — or the text
+ * of days "18./20.08.2026" → "18/20 Aug 2026" (it read "18./Thu 20 Aug 2026") — or the text
  * as written when one of them is no real date.
  */
 function englishDates(text: string): string {

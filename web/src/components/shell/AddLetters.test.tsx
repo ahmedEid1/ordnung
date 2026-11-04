@@ -1,5 +1,5 @@
 /**
- * Adding letters (audit round 1, bucket "shell-b"): the dialog says what happens in the mode the
+ * Adding letters: the dialog says what happens in the mode the
  * switch is in ("Keep private — no AI" never promises Claude reads), files are rows with an icon,
  * a middle-truncated name, type and size and a way to take one out, every file and page can be
  * reached, pages can be put in order and seen larger, skipped files are named, and the drop

@@ -405,7 +405,7 @@ async def test_a_file_waiting_from_the_folder_is_kept_private_when_it_becomes_pr
 
 
 async def test_a_proof_from_the_folder_can_never_wait_again_nor_be_read(ctx: AppContext, gym: Gym) -> None:
-    """Adversarial (review of wave 2): a folder file kept private because it became proof has a
+    """Adversarial: a folder file kept private because it became proof has a
     ``document.kept_private`` entry like any answered wait — yet "Undo Keep private" must not make it wait
     again, and "Read these" must never send it to Claude (privacy.md: a proof is never sent to Claude)."""
     from ordnung.api.routes.documents import document_detail
@@ -517,7 +517,7 @@ async def test_a_proof_can_be_corrected(ctx: AppContext, gym: Gym) -> None:
 
 
 def test_an_other_proof_with_a_note_says_what_the_note_says() -> None:
-    """UI audit R2-proof-6: an "other" proof with a note kept saying "Shows: What it shows — describe it
+    """An "other" proof with a note kept saying "Shows: What it shows — describe it
     in the note" — an instruction presented as a fact. With a note it points to the note; the
     instruction stays only while there is none. Other kinds keep their own words, note or not."""
     other = proof.PROOF_KINDS["other"]

@@ -107,7 +107,7 @@ def test_a_flag_claude_no_longer_takes_fails_the_check(
     printed = capsys.readouterr()
     assert "Error: unknown option '--max-budget-usd'" in printed.out + printed.err
     # Claude Code stops at the first option it can't read, so the made-up flag after them is never read:
-    # that is no second problem (audit, batch A review: the log blamed Claude Code for taking any option)
+    # that is no second problem (the log blamed Claude Code for taking any option)
     assert CANARY not in printed.err
     assert printed.err.count("error: ") == 1
 
@@ -115,7 +115,7 @@ def test_a_flag_claude_no_longer_takes_fails_the_check(
 def test_a_claude_given_by_a_relative_path_is_checked(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit (batch A review): a relative ``--claude`` was started from the fresh home folder, where it
+    """A relative ``--claude`` was started from the fresh home folder, where it
     isn't, and the check ended in a traceback."""
     claude, _ = _fake(tmp_path)
     monkeypatch.chdir(tmp_path)
