@@ -2266,7 +2266,7 @@
   },
   {
    "file": "2026-10-30-claude-sonnet-5-e2e.json",
-   "sha256": "ac0f4b6253727e4842af191e8f8820bc55e1f5c8488dc0db639d13a73ced63e7",
+   "sha256": "8d52b0e77222779d2bbdd9473cc95998a8c1ec2e42bd8bc219d94f3337ef516c",
    "kind": "e2e",
    "role": "replay",
    "splits": [
@@ -2278,7 +2278,7 @@
    ],
    "recorded": {
     "date": "2026-10-30",
-    "commit": "7b629516",
+    "commit": "3b4a3f86",
     "backend": "replay"
    },
    "gates": [],

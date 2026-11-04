@@ -21,8 +21,9 @@
   "partial": false,
   "ids": null,
   "letters": 280,
-  "commit": "7b629516",
-  "fingerprint": "cab2cdad88b2bbe7",
+  "commit": "3b4a3f86",
+  "dirty": [],
+  "fingerprint": "2eca2682af02b44f",
   "dataset": {
    "name": "ordnung-deadline-benchmark",
    "version": 1,
