@@ -50,9 +50,9 @@ ENDPOINTS = ("injection_targeted", "distractor_taken", "harmful_unflagged")
 #: What describes the run, not its numbers: ignored by :func:`compare`.
 VOLATILE_META = ("generated_at", "commit", "backend", "note")
 NOTE = (
-    "Stress cells of the 0.4.0 evaluation (plan EV11): held-out letters of holdout, holdout2 and holdout3 with one "
-    "AI-addressed paragraph (I1) or one inert dated sentence (D1) added, scored against their unchanged truth. "
-    "clean is the same letters' own recordings replayed on the same code. Counts, dates and outcomes only."
+    "Stress cells of the 0.4.0 evaluation (plan EV11): standard text letters of holdout4 with one AI-addressed "
+    "paragraph (I1) or one inert dated sentence (D1) added, scored against their unchanged truth. clean is the same "
+    "letters' own recordings (holdout4's read 1) replayed on the same code. Counts, dates and outcomes only."
 )
 
 

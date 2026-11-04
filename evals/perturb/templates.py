@@ -1,10 +1,11 @@
 """The templates of the stress cells' sentences, and the checks every template must pass.
 
-The templates are written once, before any stress recording, by a writer who has seen neither Ordnung's injection
-detector nor any prompt (plan EV8, commit A), and committed as ``evals/perturb/templates.json``::
+The templates are written once, before the stress cells are built, by a writer given this module, the README beside
+it and the letters' generator, nothing else of the code (plan EV8, commit A), and committed as
+``evals/perturb/templates.json``::
 
     {
-      "schema": "ordnung-stress-templates/1",
+      "schema": SCHEMA,                   # the string below
       "injection": {                      # cell I1: one paragraph addressed to an AI
         "shift":   {"de": [...], "en": [...]},   # needs {date} (the truth + 3, 7 or 14 days); may use {days}
         "drop":    {"de": [...], "en": [...]},   # "no action needed": no slot at all
@@ -24,8 +25,8 @@ Slots are filled by :mod:`evals.perturb.build`: ``{date}`` and ``{arrival}`` in 
 (``dd.mm.yyyy`` in German, ``2 January 2026`` in English), ``{days}`` and ``{period}`` as numbers with their unit,
 ``{ref}`` a made-up contract or file number. A template is refused when a slot it needs is missing or unknown, when
 it carries text markup or a literal date, and — for a distractor — when it holds an obligation word
-(:data:`OBLIGATION_PATTERNS`: a distractor must not create a duty). A test checks that no template repeats the
-wording of a prompt file (:func:`prompt_hits`); nothing here prints a template or a prompt.
+(:data:`OBLIGATION_PATTERNS`: a distractor must not create a duty). It needs the standard library only, and nothing
+here prints a template: a problem is named by its kind and place.
 """
 
 from __future__ import annotations
@@ -33,18 +34,15 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 SCHEMA = "ordnung-stress-templates/1"
 PERTURB_DIR = Path(__file__).resolve().parent
-ROOT = PERTURB_DIR.parents[1]
 #: Written blind in EV8's commit A (absent until then).
 TEMPLATES_PATH = PERTURB_DIR / "templates.json"
-#: Every prompt the benchmark sends: the app's and the baselines'.
-PROMPT_DIRS: tuple[Path, ...] = (ROOT / "src" / "ordnung" / "llm" / "prompts", ROOT / "evals" / "prompts")
 
 LANGUAGES = ("de", "en")
 INJECTION_KEYS = ("shift", "drop", "sender", "arrival", "period")
@@ -115,10 +113,6 @@ _SLOT_RE = re.compile(r"\{([^{}]*)\}")
 #: fpdf2's text markup (bold, italics, underline, strike) and anything that would leave the paragraph.
 _MARKUP_RE = re.compile(r"\*\*|__|--|~~|[\n\r\t<>]")
 _DATE_RE = re.compile(r"\d{1,2}\.\s?\d{1,2}\.|\b(?:19|20)\d{2}\b|\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{2,4}")
-#: A template's words are compared with the prompts in runs of this many words.
-SHINGLE_WORDS = 5
-#: Shorter static parts (a word or two around a slot) are too common to compare.
-MIN_FRAGMENT_WORDS = 3
 
 
 class TemplateError(ValueError):
@@ -242,37 +236,3 @@ def load_templates(path: Path = TEMPLATES_PATH) -> Templates:
 def fill(template: str, values: Mapping[str, str]) -> str:
     """The template with every slot filled (``KeyError`` for a slot without a value)."""
     return _SLOT_RE.sub(lambda match: values[match.group(1)], template)
-
-
-def _normal(text: str) -> str:
-    return " ".join(text.casefold().split())
-
-
-def shingles(template: str) -> list[str]:
-    """Runs of :data:`SHINGLE_WORDS` words of a template's own wording (its slots split it), normalised."""
-    out: list[str] = []
-    for part in _SLOT_RE.split(template)[::2]:
-        words = _normal(part).split()
-        if len(words) < MIN_FRAGMENT_WORDS:
-            continue
-        if len(words) <= SHINGLE_WORDS:
-            out.append(" ".join(words))
-            continue
-        out += [" ".join(words[i : i + SHINGLE_WORDS]) for i in range(len(words) - SHINGLE_WORDS + 1)]
-    return out
-
-
-def _prompt_texts(prompt_dirs: Iterable[Path]) -> list[str]:
-    texts = []
-    for folder in prompt_dirs:
-        for path in sorted(Path(folder).rglob("*")):
-            if path.is_file():
-                texts.append(_normal(path.read_text(encoding="utf-8", errors="ignore")))
-    return texts
-
-
-def prompt_hits(templates: Templates, prompt_dirs: Sequence[Path] = PROMPT_DIRS) -> int:
-    """How many (template wording, prompt file) pairs share a run of words. Counts only: prints nothing."""
-    texts = _prompt_texts(prompt_dirs)
-    runs = {run for template in templates.strings() for run in shingles(template)}
-    return sum(1 for run in sorted(runs) for text in texts if run in text)

@@ -11,7 +11,7 @@ built from a ``calc(region)`` closure so the generator can prove, for every date
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
@@ -56,10 +56,10 @@ ITEM_KINDS = {"deadline", "payment", "appointment", "task", "expiry"}
 NATURES = {"objection", "payment", "declaration", "notice", "appointment", "other"}
 REMEDIES = {"einspruch", "widerspruch", "klage", "none", "unclear"}
 WARNINGS = {"scam", "injection", "hidden_text", "conflicting_dates", "missing_date"}
-#: The template variants of each split: dev (prompts may be tuned on it), test (published), holdout (written after
-#: extraction prompt 11, recorded once with frozen prompts), holdout2 (written after the release's last change to how letters are read,
-#: recorded once, nothing tuned on it), holdout3 (written after the code freeze, audited blind before its one recording, nothing tuned on
-#: it). Adversarial letters are one-offs in test, holdout, holdout2 and holdout3.
+#: The template variants of each split: dev (anything may be tuned on it), test (published), holdout (written from
+#: scratch before its first run, run once), holdout2 (written after the release's last code change, run once, nothing
+#: tuned on it), holdout3 (written after the code freeze, audited blind before its one run, nothing tuned on it).
+#: Adversarial letters are one-offs in test, holdout, holdout2 and holdout3.
 SPLIT_VARIANTS = {
     "dev": ("A", "B"),
     "test": ("C", "D"),
@@ -189,6 +189,26 @@ def undated_item(
         item["note"] = note
     item.update(extra)
     return item
+
+
+def with_conventions(
+    part: dict[str, Any],
+    ids: Sequence[str],
+    alternatives: Sequence[date] | Mapping[str, Sequence[date]] | None = None,
+) -> dict[str, Any]:
+    """Tag a scored item (or a contract) of a final split with the ids of the labelling conventions its dates rest
+    on (``CONVENTIONS`` and the plug-in's ``CONVENTIONS_FINAL``, in evals/generate.py). When one of them is disputed,
+    ``alternatives`` gives the dates under its other reading, worked out with :mod:`law`: a list for an item, and
+    for a contract a mapping from ``expected_current_term_end`` / ``expected_cancel_by`` to its list. An empty list
+    says the other reading gives no other date. The generator checks the tags."""
+    part["conventions"] = list(ids)
+    if isinstance(alternatives, Mapping):
+        part["convention_alternatives"] = {
+            slot: [day.isoformat() for day in days] for slot, days in alternatives.items()
+        }
+    elif alternatives is not None:
+        part["convention_alternatives"] = [day.isoformat() for day in alternatives]
+    return part
 
 
 def spec(

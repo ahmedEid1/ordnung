@@ -18,7 +18,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SerializerFunctionWrapHandler, model_serializer
 
 ConditionName = Literal["ordnung", "llm_only", "llm_rules_text", "llm_rules_tool"]
 CONDITIONS: tuple[ConditionName, ...] = ("ordnung", "llm_only", "llm_rules_text", "llm_rules_tool")
@@ -146,6 +146,10 @@ class Entry(_Lenient):
     pages: int = 1
     language: str = "de"
     today: str
+    #: A final split's window, from the manifest: the planned day its letters were written for, and the last day they
+    #: are valid; a live run records a unit only on a day inside it, which is the unit's today.
+    final_day: str | None = None
+    valid_until: str | None = None
     authority_region: str | None = None
     recipient_region: str | None = None
     key_phrases: list[str] = Field(default_factory=list)
@@ -233,6 +237,8 @@ def iso_or_none(value: str | None) -> str | None:
 # --------------------------------------------------------------------------------------------------
 
 Confidence = Literal["high", "medium", "low"]
+#: What a final split's prediction says about its unit (:class:`Prediction`), written only when it is known.
+UNIT_FIELDS = ("recorded_on", "cli_version")
 
 
 class CallRecord(BaseModel):
@@ -346,6 +352,20 @@ class Prediction(BaseModel):
     #: An infrastructure problem (replay miss, CLI error, timeout) — the run is incomplete.
     error: str | None = None
     fingerprint: str = ""
+    #: A final split's unit (its letter with all its conditions, in one read): the day it was recorded on, which is
+    #: its today, and the ``claude`` version that recorded it (from the day index). ``None`` on every other split, and
+    #: then not written, so no other results file changes shape.
+    recorded_on: str | None = None
+    cli_version: str | None = None
+
+    @model_serializer(mode="wrap")
+    def _without_an_absent_unit(self, handler: SerializerFunctionWrapHandler) -> Any:
+        data = handler(self)
+        if isinstance(data, dict):
+            for key in UNIT_FIELDS:
+                if data.get(key) is None:
+                    data.pop(key, None)
+        return data
 
     @property
     def cost_usd(self) -> float:

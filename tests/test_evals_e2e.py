@@ -644,11 +644,33 @@ def test_a_published_file_equals_a_fresh_run_whatever_its_date_and_commit() -> N
         "checker_sha256": "1",
     }
     published = copy.deepcopy(fresh)
-    published["meta"] |= {"date": "2026-10-01", "commit": "def5678", "fingerprint": "b" * 16}
+    published["meta"] |= {"date": "2026-10-01", "commit": "def5678", "fingerprint": "b" * 16, "dirty": []}
+    fresh["meta"]["dirty"] = [
+        "evals/generate.py"
+    ]  # a replay from a tree with changes: its numbers still compare
     assert report.differences(fresh, published) == []
     published["meta"]["checker_sha256"] = "2"
     published["metrics"]["pooled"]["parity"] = {"k": 1, "n": 2, "differ": ["test-x-1#0"]}
     assert report.differences(fresh, published) == ["meta.checker_sha256", "metrics"]
+
+
+def test_the_results_name_the_code_paths_that_differ_from_their_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``meta.commit`` is the checked-out commit: the file says, as the runner's do, which code paths under src/ and
+    evals/ differed from it (``evals.harness.dirty_paths``), so a file written from a tree with changes never passes
+    for that commit's (``make eval-reproduce`` refuses it)."""
+    import argparse
+
+    from evals import harness as benchmark_harness
+    from evals.e2e import __main__ as cli
+
+    monkeypatch.setattr(benchmark_harness, "dirty_paths", lambda root=None: ["evals/generate.py"])
+    entries = [entry for entry in load_manifest(MANIFEST_PATH) if entry.id == "test-invoice_relative-C1"]
+    args = argparse.Namespace(run_date="2026-10-30", model="claude-sonnet-5", ids=None, seed=0, resamples=10)
+    meta = cli._meta(args, entries, {}, False)
+    assert meta["dirty"] == ["evals/generate.py"]
+    assert list(meta).index("dirty") == list(meta).index("commit") + 1
 
 
 def test_a_letter_the_harness_could_not_run_always_fails() -> None:
@@ -824,3 +846,75 @@ def test_the_harness_leaves_the_clock_as_it_found_it() -> None:
     entries = [e for e in load_manifest(MANIFEST_PATH) if e.id == THREE[0]]
     asyncio.run(harness.observe_all(entries))
     assert not clock.simulated()
+
+
+# --------------------------------------------------------------------------------------------------
+# the final run's splits
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_splits_are_the_registry_s_and_one_without_letters_is_refused_by_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``--splits holdout4 newkinds`` is a choice before their letters exist (evals/splits.py declares them);
+    asked for then, the run says so instead of running no letter."""
+    from evals.e2e import __main__ as cli
+
+    assert cli.build_parser().parse_args(["--splits", "holdout4", "newkinds"]).splits == [
+        "holdout4",
+        "newkinds",
+    ]
+    letters = [
+        _entry(entry_id="test-tax_assessment-Z1"),
+        _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4"),
+    ]
+    monkeypatch.setattr(cli, "load_manifest", lambda _path: letters)
+    with pytest.raises(SystemExit, match="newkinds has no letters yet"):
+        cli._entries(["holdout4", "newkinds"], None, "claude-sonnet-5")
+    assert [entry.id for entry in cli._entries(["holdout4"], None, "claude-sonnet-5")] == [
+        "holdout4-tax_assessment-K1"
+    ]
+
+
+def _day_index(path: Path, data: dict[str, Any]) -> Path:
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def test_a_final_split_s_letter_runs_on_the_day_its_unit_was_recorded(tmp_path: Path) -> None:
+    """A unit of the final run's read 1 recorded on a later day of its window told the model that day: the
+    end-to-end run replays read 1's recordings, so the letter is read on that day (the day index beside the
+    recordings); a letter it doesn't name, another read's day and every earlier split keep the manifest's day."""
+    from evals.e2e import __main__ as cli
+
+    moved = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
+    kept = _entry(entry_id="holdout4-tax_assessment-K2", split="holdout4")
+    earlier = _entry(entry_id="test-tax_assessment-Z1")
+    unit = {"day": "2026-03-10", "cli": "2.0.0"}
+    index = _day_index(
+        tmp_path / cli.DAY_INDEX,
+        {
+            "holdout4": {"r1": {moved.id: unit}, "r2": {kept.id: {"day": "2026-03-11", "cli": "2.0.0"}}},
+            "test": {"r1": {earlier.id: unit}},
+        },
+    )
+    days = {entry.id: entry.today for entry in cli.on_their_days([moved, kept, earlier], index)}
+    assert days == {moved.id: "2026-03-10", kept.id: READ_ON, earlier.id: READ_ON}
+    assert [entry.today for entry in cli.on_their_days([moved], tmp_path / "none.json")] == [READ_ON]
+
+
+def test_the_run_reads_the_day_index_beside_the_model_s_recordings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from evals.e2e import __main__ as cli
+
+    letter = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
+    monkeypatch.setattr(cli, "load_manifest", lambda _path: [letter])
+    monkeypatch.setattr(cli, "RECORDED_DIR", tmp_path)
+    (tmp_path / "claude-sonnet-5").mkdir()
+    _day_index(
+        tmp_path / "claude-sonnet-5" / cli.DAY_INDEX,
+        {"holdout4": {"r1": {letter.id: {"day": "2026-03-12", "cli": "2.0.0"}}}},
+    )
+    (chosen,) = cli._entries(["holdout4"], None, "claude-sonnet-5")
+    assert chosen.today == "2026-03-12" and chosen.today_date.isoformat() == "2026-03-12"

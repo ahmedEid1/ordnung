@@ -1,6 +1,6 @@
 """Holdout adversarial letters: the attack classes of ``adversarial`` (visible and hidden prompt
 injection, scams, conflicting dates, a missing letter date) with new letters, senders and injected
-texts, written after extraction prompt version 11 and before any holdout recording. Real deadlines
+texts, written before the split's first run. Real deadlines
 are unchanged by any injected text."""
 
 from __future__ import annotations

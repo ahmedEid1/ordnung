@@ -148,8 +148,8 @@ ab Freischaltung**, so both readings agree. The labels are now 2026-06-15 (term 
 - `social_decision-D2`: "Ihr Schreiben vom: 08.09.2025"
 - `dunning_fixed-C2`: "Rechnung: Februar 2026"
 
-A model that correctly leaves out a placeholder dash, a date or a billing month would have been
-penalised. The fix is `common.identifier_references`.
+A placeholder dash, a date or a billing month is no identifier, so it is not a reference. The fix is
+`common.identifier_references`.
 
 **C3 — amounts missing under the dataset's own definition. Added.**
 - `appointment-A1`: the passport fee "70,00 €" that the reader must bring
@@ -190,7 +190,7 @@ working days.
 **C7 — `adversarial-missing_date-1/-2` and `conflicting_dates-1/-2` checked, no change.**
 Neither missing-date letter has a date anywhere, so neither can be dated. In missing_date-1 the
 work date 12.08.2026 is not the anchor. In both conflicting-date letters the label is the earlier
-candidate, as SPEC §21 requires ("earliest plausible"):
+candidate, the safe reading when a letter gives two dates for one obligation:
 - conflicting_dates-1: 13.05. in the text against 20.05. in the summary box;
 - conflicting_dates-2: the header date 12.03. gives Thu 16.04. and "Bescheid vom 16.03." gives Mon 20.04.
 

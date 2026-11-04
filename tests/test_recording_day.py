@@ -18,7 +18,7 @@ import dataclasses
 import json
 import sys
 from collections.abc import AsyncIterator
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -291,45 +291,48 @@ def test_a_held_out_run_is_built_asked_and_scored_on_its_day(
 
 
 def test_the_stress_cells_are_built_for_a_day(tmp_path: Path) -> None:
-    """A stress letter is read on the day it is built for: its simulated today is that day, it was written by then
-    and its deadline is still open. The held-out letters the cells perturb were written for their own days (2024 to
-    2027), so on a recording day at the end of 2026 too few of them qualify and the builder says so."""
+    """A stress letter is read on the day it is built for: its simulated today is that day, a day of the letter's
+    window (written by then, still valid, its deadline still open). The base set and the stress manifest name no day:
+    holdout4 is written for the recording window, so one set serves each day of it, and a day outside is refused."""
     entries = load_manifest(stress.DATASET_MANIFEST)
-    by_id = {e.id: e for e in entries}
-    letter = next(e for e in entries if e.split in stress.BASE_SPLITS and stress.eligible(e))
+    # a letter of holdout3 stands in for holdout4's, whose letters are written after the code freeze
+    letter = next(e for e in entries if e.split == "holdout3" and stress.eligible(e))
     own = date.fromisoformat(letter.today)
     target = min(item.expected_date for item in letter.truth.items if item.expected_date is not None)
-    assert stress.eligible(letter, today=own)
-    assert not stress.eligible(letter, today=date.fromordinal(own.toordinal() - 1))  # not written yet
-    assert not stress.eligible(
-        letter, today=date.fromordinal(target.toordinal() + 1)
-    )  # its deadline has passed
+    first, last = stress.window(letter)
+    assert first == own and last == own + timedelta(days=stress.VALID_DAYS)
+    stress.check_day([letter], own)
+    with pytest.raises(stress.BuildError, match=(own - timedelta(days=1)).isoformat()):
+        stress.check_day([letter], own - timedelta(days=1))  # not written yet
+    with pytest.raises(stress.BuildError):
+        stress.check_day([letter], last + timedelta(days=1))  # past its last valid day
+    late = letter.model_copy(update={"today": (target - timedelta(days=1)).isoformat()})
+    with pytest.raises(stress.BuildError):
+        stress.check_day([late], target + timedelta(days=1))  # its deadline has passed
     raw = json.loads(stress.DATASET_MANIFEST.read_text(encoding="utf-8"))
     base_raw = next(e for e in raw["entries"] if e["id"] == letter.id)
     row = {"id": f"stress-I1-{letter.id}", "cell": "D1", "file": "D1/x.pdf", "sha256": "0", "bytes": 1, "pages": 1,
            "base_id": letter.id, "kind": "service_hours", "claim": None, "target_index": 0}  # fmt: skip
     assert stress.runnable_entry(base_raw, row)["today"] == letter.today
     assert stress.runnable_entry(base_raw, row, today=target)["today"] == target.isoformat()
-    with pytest.raises(stress.BuildError, match="2026-11-20"):
-        stress.base_set(entries, today=DAY)
-    assert by_id  # the default build (no day) is the one the tests of evals/perturb pin
 
 
 def test_a_stress_run_says_the_day_its_cells_were_built_for(tmp_path: Path) -> None:
     """The results file names the day (``meta.today``), so its replay (``make eval-reproduce``) builds the same
-    letters again; a build without a day (before item 8) writes none."""
+    letters again; a run without a day writes none. The stress manifest itself names no day."""
     from scripts import eval_perturb
 
-    def meta(stress_doc: dict[str, Any] | None) -> dict[str, Any]:
+    def meta(today: date | None) -> dict[str, Any]:
         return eval_perturb.run_meta(
             run_date=DAY.isoformat(),
             model="claude-sonnet-5",
             cells=["I1"],
             live=False,
             recorded_dir=tmp_path,
-            stress_doc=stress_doc,
+            stress_doc={"templates_sha256": "0"},
             runs={},
+            today=today,
         )
 
-    assert meta({"today": DAY.isoformat(), "templates_sha256": "0"})["today"] == DAY.isoformat()
-    assert "today" not in meta({"templates_sha256": "0"}) and "today" not in meta(None)
+    assert meta(DAY)["today"] == DAY.isoformat()
+    assert "today" not in meta(None)

@@ -3,9 +3,9 @@ fires on exactly one letter — the empty reading it was written after —, the 
 set beside a reading's objection date (``gaps.notice_rival``: no recorded reading dates it weeks later), and no
 reading left out a fixed date the letter sets (``gaps.deadline_items``: no ``check:deadline`` to-do).
 
-Every manifest entry is read as the benchmark's Ordnung condition reads it, on replay only (no model call):
-its pages rendered and their text layer read (``prepare_document``), photos transcribed from the recorded
-transcripts, the recorded extraction, then the verification with the reading check. A new false positive on a
+Every manifest entry of a recorded split is read as the benchmark's Ordnung condition reads it, on replay only (no
+model call): its pages rendered and their text layer read (``prepare_document``), photos transcribed from the
+recorded transcripts, the recorded extraction, then the verification with the reading check. A new false positive on a
 recorded letter — or a recording the current prompts no longer match — fails here. Only entry ids are compared.
 """
 
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,7 @@ from evals.run import RecordedFailures  # noqa: E402
 
 from ordnung.llm.replay import ReplayBackend  # noqa: E402
 from ordnung.llm.runtime import LLMService  # noqa: E402
+from test_final_labels_unused import unrecorded_final_splits  # noqa: E402
 from test_reading_reask import WithoutReask, as_first_recorded  # noqa: E402
 
 DATASET = ROOT / "evals" / "dataset"
@@ -37,9 +39,16 @@ RECORDED = ROOT / "evals" / "recorded" / MODEL
 pytestmark = pytest.mark.slow
 #: The one letter whose recorded reading came back incomplete (only its required fields).
 EXPECTED = {"holdout2-adversarial-injection_visible-1"}
-#: Splits not recorded yet: their letters stay unseen until their one recording, so the app is never run on them here.
-#: None since holdout3's one recording (2026-10-06): every split's readings are guarded.
-UNRECORDED: set[str] = set()
+RESULTS = ROOT / "evals" / "results"
+
+
+def recorded_letters(entries: Sequence[Entry], results_dir: Path = RESULTS) -> list[Entry]:
+    """The letters whose readings the census replays: every split's but those of a final split whose live run is not
+    published in ``results_dir`` yet (``tests/test_final_labels_unused.py``). Those stay unseen until their one
+    recording, so the app is never run on them here; read from the results, a published final run joins the census
+    with no edit here."""
+    unrecorded = unrecorded_final_splits(results_dir)
+    return [entry for entry in entries if entry.split not in unrecorded]
 
 
 async def _fires(entries: list[Entry], work: Path) -> tuple[set[str], set[str], set[str], int]:
@@ -74,7 +83,7 @@ async def test_the_reading_check_fires_on_exactly_the_one_empty_recorded_reading
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     as_first_recorded(monkeypatch)  # the readings as first recorded: the empty one's re-ask is missed
-    entries = [entry for entry in load_manifest(DATASET / "manifest.json") if entry.split not in UNRECORDED]
+    entries = recorded_letters(load_manifest(DATASET / "manifest.json"))
     fired, replaced, dropped, read = await _fires(entries, tmp_path)
     splits = {entry.split for entry in entries}
     assert splits >= {"dev", "test", "holdout", "holdout2"}

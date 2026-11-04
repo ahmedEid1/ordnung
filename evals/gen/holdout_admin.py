@@ -1,6 +1,6 @@
 """Holdout split, families 1, 2, 3, 7 and 12: variants E and F of the administrative acts.
 
-Written after extraction prompt version 11 and before any holdout recording, from scratch: new
+Written from scratch before the split's first run: new
 senders, recipients, wording and layout (variant F prints the date in a place line above the subject
 and the Rechtsbehelfsbelehrung inline). No deadline-bearing sentence of variants A–D recurs
 (``evals/verify_labels.py`` checks it). The posting and service days were drawn with a seeded random
@@ -244,8 +244,7 @@ def municipal_decision() -> list[Case]:
         item = check(
             objection_item(posted=posted, scope="vwvfg", remedy=remedy, region=org.region,
                            title="Klagefrist" if remedy == "klage" else "Widerspruchsfrist",
-                           note=("Remedy is Klage: SPEC §21 shows a 'get advice' card instead of a computed date; the legal date is "
-                                 "still the label.") if remedy == "klage" else None),
+                           note=("Remedy is Klage (§ 74 VwGO): the Klage period's end is the label.") if remedy == "klage" else None),
             hand,
         )  # fmt: skip
         rbb = _rbb_municipal(org, variant, court)

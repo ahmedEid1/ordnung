@@ -1,11 +1,12 @@
-"""Independent legal date arithmetic for the benchmark labels (SPEC §17, §21).
+"""Legal date arithmetic for the benchmark labels, from the statutes and decisions cited below.
 
-This module deliberately does **not** import ``ordnung.rules``: the benchmark compares the product's
-rules engine against these labels, so the labels must come from a separate, small, readable
-implementation. Every function returns the date *and* the human-readable steps that justify it; the
-steps end up verbatim in the manifest (``derivation``) so a reviewer can check each label by hand.
+The labels come from this small, readable module and from nothing else. Every function returns the date *and* the
+human-readable steps that justify it; the steps end up verbatim in the manifest (``derivation``) so a reviewer can
+check each label by hand. Where a rule is one of the benchmark's labelling conventions, its id in
+``evals/generate.py``'s ``CONVENTIONS`` is named; "disputed" marks a reading that another defensible reading
+contests.
 
-Legal basis (see docs/deadline-rules.md and the verified research notes):
+Legal basis:
 
 * Period start: the event day is not counted (§ 187 Abs. 1 BGB; § 108 Abs. 1 AO; § 31 Abs. 1 VwVfG;
   § 26 Abs. 1 SGB X; § 43 StPO i.V.m. § 46 OWiG).
@@ -13,14 +14,15 @@ Legal basis (see docs/deadline-rules.md and the verified research notes):
   day; if that day number does not exist, on the last day of the month (§ 188 Abs. 2, 3 BGB).
 * End shift: an end on Saturday, Sunday or a public holiday moves to the next working day (§ 193
   BGB; § 108 Abs. 3 AO; § 31 Abs. 3 VwVfG; § 26 Abs. 3 SGB X; § 64 Abs. 3 SGG; § 43 Abs. 2 StPO).
-  Never for notice periods (BGH III ZR 172/04) and never for appointments.
+  Never for notice periods (BGH III ZR 172/04; c22, disputed) and never for appointments.
 * Posted administrative acts: deemed notified on the 4th day after posting for items posted from
-  2025-01-01, the 3rd day before (PostModG; Art. 97 § 1 Abs. 15 EGAO). Tax law (AO) moves that day
-  to the next working day (§ 108 Abs. 3 AO, BFH IX R 68/98); VwVfG and SGB X do not (BSG B 14 AS
-  12/09 R; OVG Lüneburg 4 LA 44/10).
+  2025-01-01, the 3rd day before (PostModG; Art. 97 § 1 Abs. 15 EGAO), counted from the stated posting
+  day, else the letter date (c02, disputed). Tax law (AO) moves that day to the next working day
+  (§ 108 Abs. 3 AO, BFH IX R 68/98); VwVfG and SGB X do not (BSG B 14 AS 12/09 R; OVG Lüneburg
+  4 LA 44/10; c03, disputed).
 * Holidays: weekend + the nine nationwide holidays always; regional (Land) holidays only when the
-  relevant Land is known (``region``); municipal-only holidays are never used — the generator
-  asserts that no label depends on them.
+  relevant Land is known (``region``; c04); municipal-only holidays are never used — the generator
+  asserts that no label depends on them (c05).
 """
 
 from __future__ import annotations
@@ -126,6 +128,8 @@ def regional_holidays(year: int, land: str) -> dict[date, str]:
         out[date(year, 3, 8)] = "Internationaler Frauentag"
     if land == "BE" and year == 2025:
         out[date(2025, 5, 8)] = "80. Jahrestag der Befreiung (einmalig)"
+    if land == "BE" and year == 2028:
+        out[date(2028, 6, 17)] = "75. Jahrestag des Volksaufstandes vom 17. Juni 1953 (einmalig)"
     if land in ("BW", "BY", "HE", "NW", "RP", "SL"):
         out[easter + timedelta(days=60)] = "Fronleichnam"
     if land == "SL":

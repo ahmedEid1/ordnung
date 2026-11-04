@@ -154,6 +154,9 @@ class Config:
     #: Record on another day than the set's (``--allow-another-today``): the development set, pinned to the sample
     #: life's day, recorded again in the open; the held-out set only as a smoke into a scratch folder.
     allow_another_today: bool = False
+    #: ``--stop-file`` / ``--stop-at``: once either asks, no new turn starts (the turns under way finish). A run is
+    #: one unit, so a run cut this way is recorded again whole.
+    stop: harness.Stop | None = None
 
     @property
     def day(self) -> date:
@@ -190,6 +193,8 @@ class RunResult:
     drift: list[str] = field(default_factory=list)
     #: the household group's strict rows (only the unified harmful reading applies to them)
     household_strict: list[Strict] = field(default_factory=list)
+    #: why the run stopped before every turn was asked (its stop file, ``--stop-at``): turns were left unasked
+    stopped: str | None = None
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -257,15 +262,31 @@ class Capture:
 
     name = "ask-benchmark"  # not "replay": a missing recording is an error here, not a demo note
 
-    def __init__(self, inner: LLMBackend, root: Path | None = None, *, repeat: int = 1) -> None:
+    def __init__(
+        self,
+        inner: LLMBackend,
+        root: Path | None = None,
+        *,
+        repeat: int = 1,
+        stop: harness.Stop | None = None,
+    ) -> None:
         self.inner = inner
         self.root = root
         self.repeat = repeat
+        #: the run's stop, asked before each turn starts; ``stopped``: why it stopped (once it has)
+        self.stop = stop
+        self.stopped: list[str] = []
         self.calls: dict[str, _Call] = {}
         self.missed: list[str] = []  # the questions (by id) without a recording
         self.stale: dict[str, tuple[Path | None, list[str]]] = {}
         self.drift: list[str] = []
         self.results: dict[str, list[str]] = {}  # each question's tool results (by id)
+
+    def may_start(self) -> bool:
+        """Whether a new turn may start: never again once the run's stop asked."""
+        if not self.stopped and self.stop is not None and (reason := self.stop.requested()) is not None:
+            self.stopped.append(reason)
+        return not self.stopped
 
     async def complete(self, req: LLMRequest) -> LLMResponse:
         return await self.inner.complete(req)
@@ -512,6 +533,15 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
     )
 
 
+#: The error of a turn the run never asked because it stopped (a stop file, ``--stop-at``).
+NOT_ASKED = "not asked: the run stopped"
+
+
+def stopped_by(turns: Mapping[str, Turn]) -> str | None:
+    """Why a run stopped before asking every turn (``None``: it did not)."""
+    return next((turn.error for turn in turns.values() if (turn.error or "").startswith(NOT_ASKED)), None)
+
+
 async def _ask_many(
     data_dir: Path,
     capture: Capture,
@@ -524,6 +554,10 @@ async def _ask_many(
 
     async def one(item_id: str, question: str) -> Turn:
         async with limit:
+            if not capture.may_start():
+                return Turn(
+                    item_id, question, ledger, "", "", [], [], error=f"{NOT_ASKED} ({capture.stopped[0]})"
+                )
             return await _ask(ctx, capture, item_id, question, ledger)
 
     try:
@@ -707,7 +741,10 @@ async def _capture(config: Config, life: SampleLife, live: Any) -> Capture:
     """The run's backend (:func:`make_backend`) inside the :class:`Capture`; a live run asks ``claude --version``
     once (no model call) for its ledger."""
     capture = Capture(
-        make_backend(config, set(life.doc_ids.values()), live=live), config.root, repeat=config.repeat
+        make_backend(config, set(life.doc_ids.values()), live=live),
+        config.root,
+        repeat=config.repeat,
+        stop=config.stop,
     )
     if live is not None:
         await live.resolve_version()
@@ -765,6 +802,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         household_strict=household_strict,
         context=context,
         tool_results=tool_results,
+        stopped=stopped_by(turns),
     )
 
 
@@ -926,6 +964,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         strict_summary=summarise_strict(scored, strict),
         info=info,
         drift=drift,
+        stopped=stopped_by(turns),
     )
 
 

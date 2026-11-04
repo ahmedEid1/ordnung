@@ -24,7 +24,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from evals import conditions  # noqa: E402
+from evals import conditions, harness, splits  # noqa: E402
 from evals.run import DEFAULT_MODEL, RESULTS_DIR  # noqa: E402
 from scripts import eval_ablate_checks  # noqa: E402
 from scripts.eval_ablate_checks import (  # noqa: E402
@@ -398,11 +398,11 @@ def test_the_differences_name_each_split_and_ablation_and_ignore_the_meta() -> N
 def test_main_writes_the_results_file_to_the_folder_given(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    async def fake_build(splits: list[str], model: str, run_date: str) -> dict[str, Any]:
+    async def fake_build(chosen: list[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
         return {"schema": SCHEMA, "meta": {"date": run_date, "model": model}, "splits": {}, "totals": {}}
 
     monkeypatch.setattr(eval_ablate_checks, "build", fake_build)
-    assert eval_ablate_checks.main(["--date", "2026-01-02", "--splits", "dev", "--out", str(tmp_path)]) == 0
+    assert eval_ablate_checks.main(["--date", "2026-01-02", "--out", str(tmp_path)]) == 0
     written = json.loads((tmp_path / f"2026-01-02-{DEFAULT_MODEL}-checks-ablated.json").read_text())
     assert written["meta"] == {"date": "2026-01-02", "model": DEFAULT_MODEL}
 
@@ -418,16 +418,16 @@ def test_check_replays_the_published_splits_and_fails_on_a_difference(
     }
     path = tmp_path / "published.json"
     path.write_text(json.dumps(published), encoding="utf-8")
-    asked: list[tuple[list[str], str, str]] = []
+    asked: list[tuple[list[str], str, str, int]] = []
     replay_gives = json.dumps(published)
 
-    async def fake_build(splits: list[str], model: str, run_date: str) -> dict[str, Any]:
-        asked.append((list(splits), model, run_date))
+    async def fake_build(chosen: list[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
+        asked.append((list(chosen), model, run_date, repeat))
         return json.loads(replay_gives)
 
     monkeypatch.setattr(eval_ablate_checks, "build", fake_build)
     assert eval_ablate_checks.main(["--check", str(path)]) == 0
-    assert asked == [(["dev"], DEFAULT_MODEL, "2026-01-02")]
+    assert asked == [(["dev"], DEFAULT_MODEL, "2026-01-02", 1)]  # a file that names no run is of run 1
     published["splits"]["dev"]["ablations"]["all_on"]["right"] = 1
     path.write_text(json.dumps(published), encoding="utf-8")
     assert eval_ablate_checks.main(["--check", str(path)]) == 1
@@ -449,7 +449,7 @@ def test_the_published_file_is_a_replay_of_every_split_under_every_ablation() ->
     # the numbers are checked by replaying them, test_check_replays_the_published_file and make eval-reproduce)
     assert re.fullmatch(r"[0-9a-f]{16}", meta["fingerprint"])
     assert list(meta["ablations"]) == list(ABLATIONS)
-    assert list(results["splits"]) == list(eval_ablate_checks.SPLITS)
+    assert list(results["splits"]) == list(eval_ablate_checks.DEFAULT_SPLITS)
     for numbers in results["splits"].values():
         assert list(numbers["ablations"]) == list(ABLATIONS)
         assert numbers["ablations"]["all_on"]["changed"] == []
@@ -544,3 +544,142 @@ def test_a_replay_of_each_ablation_gives_the_published_split() -> None:
     published = _published()
     replayed = asyncio.run(eval_ablate_checks.build(["holdout2"], DEFAULT_MODEL, published["meta"]["date"]))
     assert replayed["splits"]["holdout2"] == published["splits"]["holdout2"]
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's splits, read by read
+# --------------------------------------------------------------------------------------------------
+
+
+class _Stop(Exception):
+    """Raised where the replay's backend is made: the test has what it needs."""
+
+
+def _backend_of_a_replay(tmp_path: Path, repeat: int) -> object:
+    """The backend a replay of the dev split at run ``repeat`` asks its recordings through (no letter replayed)."""
+    from evals import run as run_mod
+
+    made: list[object] = []
+    original = run_mod.make_backend
+
+    def capture(*args: Any, **kwargs: Any) -> Any:
+        made.append(original(*args, **kwargs))
+        raise _Stop
+
+    with pytest.MonkeyPatch.context() as patch, pytest.raises(_Stop):
+        patch.setattr(run_mod, "make_backend", capture)
+        asyncio.run(eval_ablate_checks.replay("dev", DEFAULT_MODEL, tmp_path, repeat=repeat))
+    (backend,) = made
+    return backend
+
+
+def test_a_repeat_is_replayed_under_its_own_keys(tmp_path: Path) -> None:
+    """``--repeat N`` replays run N's recordings, as ``evals.run --repeat`` does (:class:`evals.harness.RepeatKey`):
+    run 1 is replayed as before."""
+    second = _backend_of_a_replay(tmp_path, 2)
+    assert isinstance(second, harness.RepeatKey) and second.repeat == 2
+    assert not isinstance(_backend_of_a_replay(tmp_path, 1), harness.RepeatKey)
+
+
+def test_the_splits_are_the_registry_s_and_the_held_out_pool_too() -> None:
+    """Any split the registry declares may be replayed; the published file's five are the default, and the
+    ``held_out`` pool is every held-out or final split replayed (holdout4 alone in a read of the final run)."""
+    assert eval_ablate_checks.SPLITS == splits.names()
+    assert eval_ablate_checks.DEFAULT_SPLITS == ("test", "holdout", "holdout2", "holdout3", "dev")
+    one = _published()["splits"]["holdout3"]
+    assert eval_ablate_checks.totals({"holdout4": one})["held_out"]["splits"] == ["holdout4"]
+    assert "held_out" not in eval_ablate_checks.totals({"dev": one, "test": one})
+    assert eval_ablate_checks.totals(_published()["splits"]) == _published()["totals"]
+
+
+def test_the_file_is_named_for_its_splits_and_its_read(tmp_path: Path) -> None:
+    """The published file's name for the usual splits; another set's names them, and a repeat says which run, so
+    a read of the final split never overwrites the earlier splits' file or another read."""
+    path = eval_ablate_checks.results_path
+    assert (
+        path("2027-01-12", DEFAULT_MODEL, tmp_path).name == f"2027-01-12-{DEFAULT_MODEL}-checks-ablated.json"
+    )
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path, splits=["holdout4"]).name == (
+        f"2027-01-12-{DEFAULT_MODEL}-checks-ablated-holdout4.json"
+    )
+    assert path("2027-01-12", DEFAULT_MODEL, tmp_path, splits=["holdout4"], repeat=2).name == (
+        f"2027-01-12-{DEFAULT_MODEL}-checks-ablated-holdout4-r2.json"
+    )
+
+
+def _letters_of(monkeypatch: pytest.MonkeyPatch, *names: str) -> None:
+    """The manifest the script reads has letters of these splits only."""
+    letters = [type("Letter", (), {"split": name, "id": f"{name}-x"})() for name in names]
+    monkeypatch.setattr(eval_ablate_checks, "load_manifest", lambda _path: letters)
+
+
+def test_a_read_of_a_final_split_is_written_under_its_own_name_and_checked_as_that_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``python -m scripts.eval_ablate_checks --split holdout4 --repeat N`` once holdout4's letters exist, and
+    ``--check`` replays the run its file names."""
+    asked: list[tuple[list[str], str, int]] = []
+
+    async def fake_build(chosen: list[str], model: str, run_date: str, *, repeat: int = 1) -> dict[str, Any]:
+        asked.append((list(chosen), run_date, repeat))
+        meta = {"date": run_date, "model": model, "repeat": repeat}
+        return {"schema": SCHEMA, "meta": meta, "splits": {"holdout4": {"ablations": {}}}, "totals": {}}
+
+    monkeypatch.setattr(eval_ablate_checks, "build", fake_build)
+    _letters_of(monkeypatch, "dev", "holdout4")
+    argv = ["--date", "2027-01-12", "--split", "holdout4", "--repeat", "3", "--out", str(tmp_path)]
+    assert eval_ablate_checks.main(argv) == 0
+    written = tmp_path / f"2027-01-12-{DEFAULT_MODEL}-checks-ablated-holdout4-r3.json"
+    assert json.loads(written.read_text(encoding="utf-8"))["meta"]["repeat"] == 3
+    assert eval_ablate_checks.main(["--check", str(written)]) == 0
+    assert asked == [(["holdout4"], "2027-01-12", 3), (["holdout4"], "2027-01-12", 3)]
+
+
+def test_a_split_without_letters_is_refused_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The final run's splits are declared before their letters exist: asked for before then, the script says so
+    instead of replaying nothing. A repeat counts from 1."""
+
+    async def never(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise AssertionError("nothing is replayed")
+
+    monkeypatch.setattr(eval_ablate_checks, "build", never)
+    _letters_of(monkeypatch, "dev")
+    with pytest.raises(SystemExit) as refused:
+        eval_ablate_checks.main(["--split", "holdout4", "--out", str(tmp_path)])
+    assert refused.value.code == 2 and "holdout4 has no letters yet" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        eval_ablate_checks.main(["--split", "dev", "--repeat", "0", "--out", str(tmp_path)])
+    assert "--repeat counts runs from 1" in capsys.readouterr().err
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_the_results_say_which_run_they_replay(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: list[tuple[str, int]] = []
+    one = _published()["splits"]["dev"]
+
+    async def numbers(split: str, model: str, *, repeat: int = 1) -> dict[str, Any]:
+        asked.append((split, repeat))
+        return one
+
+    monkeypatch.setattr(eval_ablate_checks, "split_numbers", numbers)
+    results = asyncio.run(eval_ablate_checks.build(["dev"], DEFAULT_MODEL, "2027-01-12", repeat=2))
+    assert asked == [("dev", 2)] and results["meta"]["repeat"] == 2
+
+
+def test_the_results_name_the_code_paths_that_differ_from_their_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``meta.commit`` is the checked-out commit: the file says, as the runner's do, which code paths under src/ and
+    evals/ differed from it (``harness.dirty_paths``), so a file written from a tree with changes never passes for
+    that commit's (``make eval-reproduce`` refuses it)."""
+    one = _published()["splits"]["dev"]
+
+    async def numbers(split: str, model: str, *, repeat: int = 1) -> dict[str, Any]:
+        return one
+
+    monkeypatch.setattr(eval_ablate_checks, "split_numbers", numbers)
+    monkeypatch.setattr(harness, "dirty_paths", lambda root=None: ["evals/generate.py"])
+    results = asyncio.run(eval_ablate_checks.build(["dev"], DEFAULT_MODEL, "2027-01-12"))
+    assert results["meta"]["dirty"] == ["evals/generate.py"]
