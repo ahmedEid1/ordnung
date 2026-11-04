@@ -89,7 +89,7 @@ W1_CHECKS = (
 W2_CHECKS = ("python -m evals.ask.heldout_check --window {D0} {L}",)
 SELF_CHECKS = {"w1a": W1_CHECKS, "w1b": W1_CHECKS, "w1fix": W1_CHECKS, "w2": W2_CHECKS, "w2fix": W2_CHECKS}
 
-#: The composition each writer is given (runbook §2.2), as numbers its brief states.
+#: The composition each writer is given, as numbers its brief states.
 COMPOSITION = {
     "w1a": (
         "126 entries",
