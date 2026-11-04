@@ -8,8 +8,8 @@ failure; a letter the harness could not run always does.
 
 ``--splits`` takes any split ``evals/splits.py`` declares whose letters exist (the final run's are written after the
 code freeze). The run replays read 1's recordings, so a final split's letter is read on the day its unit of read 1
-was recorded on, as the runner's day index beside the recordings says (``final-days.json``; a letter it doesn't name
-keeps the manifest's day).
+was recorded on, as the runner's day index beside the recordings says (``final-days.json``, read with the runner's own
+reader, ``evals.harness.DayIndex``; a letter it doesn't name keeps the manifest's day).
 """
 
 from __future__ import annotations
@@ -29,6 +29,7 @@ from evals import conditions
 from evals import report as benchmark_report
 from evals import splits as registry
 from evals.e2e import check, harness, metrics, report
+from evals.harness import DAY_INDEX_FILE, DayIndex
 from evals.metrics import DEFAULT_RESAMPLES, DEFAULT_SEED
 from evals.records import PERSONA_LANGUAGE, PERSONA_REGION, Entry, load_manifest, select_entries
 from evals.run import (
@@ -43,9 +44,6 @@ from evals.run import (
 )
 
 CHECKER = Path(check.__file__)
-#: The runner's day index beside a model's recordings: the day each unit of a final split's read was recorded on,
-#: which its letters were told (``{split: {"r<N>": {entry_id: {"day": "YYYY-MM-DD", "cli": …}}}}``).
-DAY_INDEX = "final-days.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -99,14 +97,13 @@ def _final(name: str) -> bool:
 
 def on_their_days(entries: Sequence[Entry], index: Path) -> list[Entry]:
     """``entries``, each letter of a final split on the day its unit of read 1 was recorded on (the day index
-    ``index``); a letter it doesn't name, and every other split's, keeps the manifest's day."""
-    try:
-        days = json.loads(index.read_text(encoding="utf-8"))
-    except FileNotFoundError:
-        return list(entries)
+    ``index``, as the runner reads it: a unit kept unanswered keeps its day too); a letter it doesn't name, and every
+    other split's, keeps the manifest's day."""
+    days = DayIndex(index)
+    units = {split: days.attempted(split, 1) for split in {entry.split for entry in entries} if _final(split)}
     placed = []
     for entry in entries:
-        unit = (days.get(entry.split) or {}).get("r1", {}).get(entry.id) if _final(entry.split) else None
+        unit = units.get(entry.split, {}).get(entry.id)
         placed.append(entry.model_copy(update={"today": str(unit["day"])}) if unit else entry)
     return placed
 
@@ -126,7 +123,7 @@ def _entries(splits: Sequence[str], ids: Sequence[str] | None, model: str) -> li
         missing = sorted(set(ids) - {entry.id for entry in chosen})
         if missing:
             raise SystemExit(f"not in the splits {', '.join(splits)}: {', '.join(missing)}")
-    return on_their_days(chosen, RECORDED_DIR / safe_name(model) / DAY_INDEX)
+    return on_their_days(chosen, RECORDED_DIR / safe_name(model) / DAY_INDEX_FILE)
 
 
 def _meta(

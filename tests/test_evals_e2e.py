@@ -35,6 +35,7 @@ from evals.e2e.observe import (  # noqa: E402
     LetterObservation,
     StoredItem,
 )
+from evals.harness import DAY_INDEX_FILE, DayIndex  # noqa: E402
 from evals.records import Entry, load_manifest  # noqa: E402
 from evals.run import MANIFEST_PATH  # noqa: E402
 
@@ -870,7 +871,7 @@ def test_a_final_split_s_letter_runs_on_the_day_its_unit_was_recorded(tmp_path: 
     earlier = _entry(entry_id="test-tax_assessment-Z1")
     unit = {"day": "2026-03-10", "cli": "2.0.0"}
     index = _day_index(
-        tmp_path / cli.DAY_INDEX,
+        tmp_path / DAY_INDEX_FILE,
         {
             "holdout4": {"r1": {moved.id: unit}, "r2": {kept.id: {"day": "2026-03-11", "cli": "2.0.0"}}},
             "test": {"r1": {earlier.id: unit}},
@@ -879,6 +880,42 @@ def test_a_final_split_s_letter_runs_on_the_day_its_unit_was_recorded(tmp_path: 
     days = {entry.id: entry.today for entry in cli.on_their_days([moved, kept, earlier], index)}
     assert days == {moved.id: "2026-03-10", kept.id: READ_ON, earlier.id: READ_ON}
     assert [entry.today for entry in cli.on_their_days([moved], tmp_path / "none.json")] == [READ_ON]
+
+
+def test_the_run_and_the_runner_read_the_same_days_from_one_reader_of_the_day_index(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The day index has one reader, the runner's (``evals.harness.DayIndex``): the end-to-end run gives each final
+    letter the day of its unit of read 1 as that reader gives it, a unit kept unanswered included (its recordings
+    were made that day too), and it asks that reader rather than reading the file itself."""
+    from evals.e2e import __main__ as cli
+
+    complete = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
+    unanswered = _entry(entry_id="holdout4-tax_assessment-K2", split="holdout4")
+    other_read = _entry(entry_id="holdout4-tax_assessment-K3", split="holdout4")
+    index = DayIndex(tmp_path / DAY_INDEX_FILE)
+    index.put("holdout4", 1, complete.id, day="2026-03-10", cli="2.0.0")
+    index.put("holdout4", 1, unanswered.id, day="2026-03-11", cli="2.0.0", unanswered={"ordnung": {}})
+    index.put("holdout4", 2, other_read.id, day="2026-03-12", cli="2.0.0")
+    asked: list[tuple[str, int]] = []
+    attempted = DayIndex.attempted
+
+    def spy(self: DayIndex, split: str, repeat: int) -> dict[str, dict[str, Any]]:
+        asked.append((split, repeat))
+        return attempted(self, split, repeat)
+
+    monkeypatch.setattr(DayIndex, "attempted", spy)
+    placed = cli.on_their_days([complete, unanswered, other_read], index.path)
+    assert asked and set(asked) == {("holdout4", 1)}
+    runner = {
+        entry_id: unit["day"] for entry_id, unit in attempted(DayIndex(index.path), "holdout4", 1).items()
+    }
+    assert {entry.id: entry.today for entry in placed} == {
+        complete.id: runner[complete.id],
+        unanswered.id: runner[unanswered.id],
+        other_read.id: READ_ON,
+    }
+    assert not hasattr(cli, "DAY_INDEX")  # one name for the file, the harness's
 
 
 def test_the_run_reads_the_day_index_beside_the_model_s_recordings(
@@ -891,7 +928,7 @@ def test_the_run_reads_the_day_index_beside_the_model_s_recordings(
     monkeypatch.setattr(cli, "RECORDED_DIR", tmp_path)
     (tmp_path / "claude-sonnet-5").mkdir()
     _day_index(
-        tmp_path / "claude-sonnet-5" / cli.DAY_INDEX,
+        tmp_path / "claude-sonnet-5" / DAY_INDEX_FILE,
         {"holdout4": {"r1": {letter.id: {"day": "2026-03-12", "cli": "2.0.0"}}}},
     )
     (chosen,) = cli._entries(["holdout4"], None, "claude-sonnet-5")
