@@ -143,6 +143,16 @@ def good() -> dict[str, Any]:
             }
         },
         "sensitivities": {"s_conv": {"tagged_items": 9, "items_changed": 0, "same_as_primary": True}},
+        "labels": {
+            "ambiguous_slots": {
+                "deadline": 3,
+                "contract": 1,
+                "by_split": {
+                    "holdout4": {"deadline": 2, "contract": 1},
+                    "newkinds": {"deadline": 1, "contract": 0},
+                },
+            }
+        },
     }
     return doc
 
@@ -184,6 +194,8 @@ def bad() -> dict[str, Any]:
         flags_caught={"caught": 0, "wrong": 0, "caught_reads": 0, "wrong_reads": 0},
     )
     doc["secondary"]["newkinds"] = {"not_recorded": {"reason": "window_closed"}}
+    zero = {"deadline": 0, "contract": 0}
+    doc["labels"]["ambiguous_slots"] = {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}
     doc["sensitivities"]["s_conv"] = {
         "tagged_items": 11,
         "items_changed": 14,
@@ -644,6 +656,10 @@ def test_a_missing_named_result_is_refused_not_left_out() -> None:
     del doc["sensitivities"]
     with pytest.raises(final.FinalSentenceError, match="s_conv"):
         final.sentences(doc, prereg(), sources=sources())
+    doc = good()
+    del doc["labels"]
+    with pytest.raises(final.FinalSentenceError, match="left open"):
+        final.sentences(doc, prereg(), sources=sources())
     with pytest.raises(final.FinalSentenceError, match="weather"):
         final.sentences(good(), prereg(), sources={**sources(), "weather": {}})
 
@@ -694,6 +710,15 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
         assert final.load_templates()["templates"][code]["text"].startswith(name), code
     assert "1 of 16 letters for Ordnung and 5 for the agent" in text["stress"]
     assert "141 of 150 real deadlines" in text["e2e"]
+    assert (
+        "Left open between two or more dates by the letter or the law, and so not among the deadlines counted "
+        "above: deadlines 3, contract dates 1. Such a deadline counts as handled when no single date is given as "
+        "certain or the date is flagged; such a contract date is not scored." in text["limitations"]
+    )
+    assert (
+        "No deadline or contract date of the final letters is left open between two or more dates by the letter "
+        "or the law." in _slots(final.coded(bad(), prereg(), sources=sources()))["limitations"]
+    )
     assert "hash 0123456789ab" in text["provenance"]
     assert "no deviation was recorded" in text["provenance"]
 
@@ -790,7 +815,12 @@ def test_the_final_analysis_itself_renders() -> None:
     runs = [analysis.load_run(_synthetic_run("holdout4", read, 12)) for read in (1, 2, 3)]
     runs.append(analysis.load_run(_synthetic_run("newkinds", 1, 6)))
     record = {"file": "evals/preregistration/final-0.4.0.json", "sha256": "ab" * 32}
-    doc = json.loads(analysis.render(analysis.final_analysis(registered, runs, prereg_record=record)))
+    left_open = analysis.ambiguous_slots([], ("holdout4", "newkinds"))
+    doc = json.loads(
+        analysis.render(
+            analysis.final_analysis(registered, runs, prereg_record=record, ambiguous_slots=left_open)
+        )
+    )
     if "noninferiority" not in doc["primary"]:
         pytest.skip("this final analysis gives no non-inferiority bound against the agent yet")
     coded = final.coded(doc, prereg(), sources=sources())
@@ -806,7 +836,7 @@ def test_the_final_analysis_itself_renders() -> None:
         "ask",
         "stress",
         "e2e",
-        *["limitations"] * 5,
+        *["limitations"] * 6,
         "owner",
         "provenance",
     ]

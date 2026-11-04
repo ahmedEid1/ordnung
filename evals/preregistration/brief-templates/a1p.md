@@ -62,7 +62,10 @@ These consequences are fixed before any letter of the set exists, and they are t
 - `X_right` or `Y_right`, for the side of the second reading, or `both_wrong`: the slot goes back to the letters'
   writer with your date, citations and reason; the letter is made again; every letter whose bytes change is read
   again by a new blind reader; and the comparison runs again.
-- `ambiguous`: the slot accepts both dates, X's and Y's, as right, and the number of such slots is published.
+- `ambiguous`: the slot's date becomes "ambiguous", with X's date and Y's date as its candidates, and the number
+  of such slots of each kind is published. For a thing the letter requires or offers (`i0`, `i1`, ..., `o0`, ...),
+  an answer counts as handled when no single date is given as certain or the date is flagged. A contract slot,
+  `term_end` or `cancel_by`, is not scored.
 
 ## Rules
 

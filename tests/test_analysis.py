@@ -471,6 +471,8 @@ class World:
         self.extra: dict[str, dict[str, Any]] = {}
         #: Per (entry id, item index): the dates a disputed convention's other reading gives.
         self.alternatives: dict[tuple[str, int], list[str]] = {}
+        #: Per entry id: more of its truth in the manifest (optional items, a contract …).
+        self.truth: dict[str, dict[str, Any]] = {}
         #: Per (split, read, entry id): the claude version the day index records (default CLI).
         self.cli: dict[tuple[str, int, str], str] = {}
         #: Per (read, entry id): the model the ledger says answered (default SERVED).
@@ -534,7 +536,10 @@ class World:
                     if (entry["id"], index) in self.alternatives:
                         item["convention_alternatives"] = self.alternatives[(entry["id"], index)]
                     items.append(item)
-                seen.setdefault(entry["id"], {"id": entry["id"], "truth": {"items": items}})
+                truth = {"items": items, **self.truth.get(entry["id"], {})}
+                seen.setdefault(
+                    entry["id"], {"id": entry["id"], "split": doc["meta"]["split"], "truth": truth}
+                )
         raw = json.dumps({"name": "synthetic", "version": 1, "entries": list(seen.values())}).encode()
         self.dataset.mkdir(parents=True, exist_ok=True)
         (self.dataset / "manifest.json").write_bytes(raw)
@@ -1383,6 +1388,49 @@ def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
         "items_changed": 0,
         "same_as_primary": True,
     }
+
+
+def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(world: World) -> None:
+    """A label slot the letter or the law leaves open between two or more dates ("ambiguous") is no scored item,
+    and an ambiguous contract date is scored by no condition: the final analysis counts such slots from the
+    registered manifest, deadlines (an item the letter requires or offers) and contract dates apart, per analysed
+    split and in all. The primary does not move."""
+    plain = world.final()
+    zero = {"deadline": 0, "contract": 0}
+    assert plain["labels"] == {"ambiguous_slots": {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}}
+    both = {
+        "expected_current_term_end": [TRUE_DATE, LATE_DATE],
+        "expected_cancel_by": [EARLY_DATE, TRUE_DATE],
+    }
+    world.truth["holdout4-L2"] = {
+        "optional_items": [{"expected_due": "ambiguous", "candidates": [TRUE_DATE, LATE_DATE]}],
+        "contract": {
+            "expected_current_term_end": "ambiguous",
+            "expected_cancel_by": "ambiguous",
+            "candidates": both,
+        },
+    }
+    world.truth["holdout4-L3"] = {
+        "contract": {"expected_current_term_end": TRUE_DATE, "expected_cancel_by": None}
+    }
+    world.truth["newkinds-L1"] = {
+        "contract": {
+            "expected_current_term_end": TRUE_DATE,
+            "expected_cancel_by": "ambiguous",
+            "candidates": {"expected_cancel_by": both["expected_cancel_by"]},
+        }
+    }
+    result = world.final()
+    assert result["primary"] == plain["primary"]
+    assert result["labels"]["ambiguous_slots"] == {
+        "deadline": 1,
+        "contract": 3,
+        "by_split": {"holdout4": {"deadline": 1, "contract": 2}, "newkinds": {"deadline": 0, "contract": 1}},
+    }
+    assert "labels" not in analysis.final_analysis(
+        analysis.parse_prereg({"analysis": world.prereg["analysis"]}),
+        [analysis.read_run(path) for path in world.write()[1]],
+    )
 
 
 def test_the_label_corrected_sensitivity_applies_label_errors_to_all_four_conditions(world: World) -> None:

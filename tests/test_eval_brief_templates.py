@@ -320,3 +320,21 @@ def test_an_adjudication_fixes_its_verdicts_and_what_each_does(session: str) -> 
     for verdict in VERDICTS:
         assert f"`{verdict}`" in verdicts, verdict
     assert text.index("## What each verdict does") > text.index("## What you write")
+
+
+def test_the_first_adjudication_states_what_an_ambiguous_slot_becomes() -> None:
+    """The rule fixed before any letter exists for a slot A1′ rules ``ambiguous``: its date becomes "ambiguous" with
+    both sides' dates as candidates; for a thing the letter requires or offers, an answer counts as handled when no
+    single date is given as certain or the date is flagged; a contract slot is not scored; and how many such slots
+    there are, of each kind, is published. It never says both dates are taken as right."""
+    verdicts = _flat(_section(_text("a1p"), "## What each verdict does"))
+    ambiguous = next(part for part in verdicts.split("- ") if part.startswith("`ambiguous`"))
+    for words in (
+        '"ambiguous"',
+        "X's date and Y's date as its candidates",
+        "counts as handled when no single date is given as certain or the date is flagged",
+        "`term_end` or `cancel_by`, is not scored",
+        "of each kind is published",
+    ):
+        assert words in ambiguous, words
+    assert "as right" not in ambiguous

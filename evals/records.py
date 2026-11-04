@@ -104,14 +104,28 @@ class TruthReference(_Lenient):
     value: str
 
 
+#: A contract's two dated slots, as the truth names them.
+CONTRACT_SLOTS = ("expected_current_term_end", "expected_cancel_by")
+
+
 class TruthContract(_Lenient):
-    """Contract terms stated by a letter and the dates the law derives from them."""
+    """Contract terms stated by a letter and the dates the law derives from them.
+
+    A slot the letter or the law leaves open between two or more dates is written as an item's is: ``"ambiguous"``,
+    with its candidate dates in ``candidates`` under the slot's name. Such a slot is not scored.
+    """
 
     category: str = "other"
     regime: str | None = None
     expected_current_term_end: str | None = None
     expected_cancel_by: str | None = None
     derivation: str = ""
+    candidates: dict[str, list[str]] = Field(default_factory=dict)
+
+    @property
+    def ambiguous(self) -> tuple[str, ...]:
+        """The slots (of :data:`CONTRACT_SLOTS`) left open between two or more dates."""
+        return tuple(slot for slot in CONTRACT_SLOTS if getattr(self, slot) == AMBIGUOUS)
 
 
 class Truth(_Lenient):

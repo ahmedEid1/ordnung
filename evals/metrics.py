@@ -62,6 +62,7 @@ from typing import Any, Literal
 from rapidfuzz import fuzz, utils
 
 from evals.records import (
+    AMBIGUOUS,
     CONDITIONS,
     Entry,
     PredictedItem,
@@ -790,7 +791,8 @@ def score_document(entry: Entry, pred: Prediction) -> DocScore:
             ),
             (truth.contract.expected_cancel_by, predicted_contract.cancel_by if predicted_contract else None),
         ):
-            if expected is not None:
+            # a slot left open between two dates ("ambiguous") is not scored, for any condition
+            if expected is not None and expected != AMBIGUOUS:
                 contract_pairs.append((expected, predicted))
     calls = pred.calls
     answer = answered(pred)

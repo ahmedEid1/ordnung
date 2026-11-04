@@ -18,7 +18,8 @@ source. Until a final split has that file its dates are not re-derived, and the 
    holidays of only some municipalities (Mariä Himmelfahrt in BY, Fronleichnam in SN/TH) are counted;
 2. 'ambiguous' and null labels are exactly where the letter is ambiguous / undatable; each ambiguous
    reading is a working day and not before the letter's today (for a final split's letter: after its
-   ``valid_until``), and a final split's ambiguous fact holds exactly the label's candidates; a fact's
+   ``valid_until``), and a final split's ambiguous fact holds exactly the label's candidates (an item's
+   ``candidates``; a contract slot's under its name in the contract's ``candidates``); a fact's
    ``conflicting`` dates are among the label's candidates, and the label is the earliest of them;
 3. the PDF text states what the truth claims (sender, document date, references, amounts, remedy,
    stated dates);
@@ -28,7 +29,7 @@ source. Until a final split has that file its dates are not re-derived, and the 
 6. no Land VwVfG deemed-delivery label counts from a posting day in a Land's uncertain window for the
    4-day rule (``remedy`` counts 4 days from 2025-01-01 in every Land, so it cannot catch that);
 7. a final split's letter is read on its ``final_day``, and every scored date (with an ambiguous item's
-   candidates), contract date and appointment lies after its ``valid_until``;
+   candidates), contract date (with an ambiguous slot's candidates) and appointment lies after its ``valid_until``;
 8. the conventions a final split's facts apply exist in the manifest and are the ones its label is tagged with (a
    contract's end of term and last day to cancel together apply the contract's tags).
 
@@ -772,12 +773,18 @@ CONFLICT_ALTERNATIVES: dict[str, Rule] = {
 # --------------------------------------------------------------------------------------------------
 
 
+#: A contract's slots and the truth's names for them; an ambiguous one keeps its candidates under the same name.
+CONTRACT_SLOTS = {"term_end": "expected_current_term_end", "cancel_by": "expected_cancel_by"}
+
+
 def _slots(truth: dict[str, Any]) -> dict[str, dict[str, Any]]:
     slots = {f"i{i}": item for i, item in enumerate(truth["items"])}
     slots.update({f"o{i}": item for i, item in enumerate(truth["optional_items"])})
-    if truth["contract"]:
-        slots["term_end"] = {"expected_due": truth["contract"]["expected_current_term_end"]}
-        slots["cancel_by"] = {"expected_due": truth["contract"]["expected_cancel_by"]}
+    contract = truth["contract"]
+    if contract:
+        candidates = contract.get("candidates") or {}
+        for slot, key in CONTRACT_SLOTS.items():
+            slots[slot] = {"expected_due": contract[key], "candidates": list(candidates.get(key) or [])}
     return slots
 
 
@@ -1029,7 +1036,8 @@ def _dated(value: Any) -> date | None:
 
 def check_window(entries: list[dict[str, Any]]) -> list[str]:
     """A final split's letter is read on its ``final_day`` and stays valid through ``valid_until``: every scored
-    date (an ambiguous or conflicting item's candidates too), contract date and appointment lies after it."""
+    date (an ambiguous or conflicting item's candidates too), contract date (an ambiguous slot's candidates too) and
+    appointment lies after it."""
     problems = []
     for e in entries:
         if e["photo"] or not _is_final(e):
@@ -1053,9 +1061,11 @@ def check_window(entries: list[dict[str, Any]]) -> list[str]:
         for n, item in enumerate(truth["optional_items"]):
             if item.get("kind") == "appointment":
                 dates.append((f"optional_items[{n}]", item.get("expected_due")))
-        for key in ("expected_current_term_end", "expected_cancel_by"):
-            if truth["contract"]:
-                dates.append((f"contract.{key}", truth["contract"].get(key)))
+        contract = truth["contract"] or {}
+        for key in CONTRACT_SLOTS.values():
+            if contract:
+                candidates = (contract.get("candidates") or {}).get(key) or []
+                dates += [(f"contract.{key}", value) for value in [contract.get(key), *candidates]]
         seen = set()
         for where, value in dates:
             day = _dated(value)

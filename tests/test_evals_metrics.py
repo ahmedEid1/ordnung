@@ -41,7 +41,16 @@ from evals.metrics import (  # noqa: E402
     tool_backing,
     wilson_interval,
 )
-from evals.records import CallRecord, Entry, PredictedItem, Prediction, ToolUse, TruthItem  # noqa: E402
+from evals.records import (  # noqa: E402
+    CONDITIONS,
+    CallRecord,
+    Entry,
+    PredictedContract,
+    PredictedItem,
+    Prediction,
+    ToolUse,
+    TruthItem,
+)
 
 # --------------------------------------------------------------------------------------------------
 # Builders
@@ -333,6 +342,53 @@ def test_unscored_items_count_for_recall_but_not_accuracy() -> None:
     assert score.matched_required == 2 and score.required == 2
     assert score.false_positives == 1  # the invented dated item; the matched optional one is not counted
     assert score.adversarial["ambiguous_handled"] is True
+
+
+def _contract_letter(**contract: Any) -> Entry:
+    base = {
+        "category": "telecom",
+        "expected_current_term_end": "2027-09-30",
+        "expected_cancel_by": "2027-08-31",
+    }
+    return make_entry("test-contract-1", kind="contract_confirmation", items=[], contract=base | contract)
+
+
+def test_an_ambiguous_contract_slot_is_left_out_of_every_contract_metric() -> None:
+    """A contract date the label leaves open between two dates is written as an item's is: ``"ambiguous"``, with
+    its candidates (keyed by the slot, as a contract's ``convention_alternatives``). It is not scored: whatever
+    date an answer gives for it, for every condition, the contract dates count only the contract's other slot."""
+    open_end = {"expected_current_term_end": ["2027-09-30", "2027-10-31"]}
+    entry = _contract_letter(expected_current_term_end="ambiguous", candidates=open_end)
+    contract = entry.truth.contract
+    assert contract is not None
+    assert contract.ambiguous == ("expected_current_term_end",)
+    assert contract.candidates == open_end
+    for condition in CONDITIONS:
+        for term_end in ("2027-09-30", "2027-10-31", "2027-12-31", None):
+            answer = PredictedContract(current_term_end=term_end, cancel_by="2027-08-31")
+            pred = prediction(entry, [], condition=condition, contract=answer)
+            assert score_document(entry, pred).contract_dates == (1, 1), (condition, term_end)
+        wrong = prediction(
+            entry, [], condition=condition, contract=PredictedContract(current_term_end="2027-09-30")
+        )
+        assert score_document(entry, wrong).contract_dates == (0, 1)
+    both = _contract_letter(
+        expected_current_term_end="ambiguous",
+        expected_cancel_by="ambiguous",
+        candidates=open_end | {"expected_cancel_by": ["2027-08-31", "2027-09-30"]},
+    )
+    assert both.truth.contract is not None and len(both.truth.contract.ambiguous) == 2
+    answer = PredictedContract(current_term_end="2027-09-30", cancel_by="2027-08-31")
+    scores = [score_document(both, prediction(both, [], condition=c, contract=answer)) for c in CONDITIONS]
+    assert {score.contract_dates for score in scores} == {(0, 0)}
+    assert summarise_condition(scores[:1])["extraction"]["contract_dates"]["n"] == 0
+
+
+def test_a_dated_contract_keeps_both_slots_scored() -> None:
+    entry = _contract_letter()
+    assert entry.truth.contract is not None and entry.truth.contract.ambiguous == ()
+    answer = PredictedContract(current_term_end="2027-09-30", cancel_by="2027-08-30")
+    assert score_document(entry, prediction(entry, [], contract=answer)).contract_dates == (1, 2)
 
 
 # --------------------------------------------------------------------------------------------------

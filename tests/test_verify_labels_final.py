@@ -397,6 +397,59 @@ def test_a_contract_applies_its_conventions_over_both_dates(tmp_path: Path) -> N
     ]
 
 
+def test_an_ambiguous_contract_slot_holds_exactly_the_candidates_of_its_fact(tmp_path: Path) -> None:
+    """A contract date left open between two dates is labelled as an item is (``"ambiguous"``, its candidates under
+    the slot's name); its fact is ambiguous and gives exactly those candidates, and the contract's other date is
+    re-derived as before."""
+    term = [step("forward", 12, "months", shift=False), step("back", 1, "days", shift=False)]
+    open_end = {"source": "A1p", "land": None, "ambiguous": [{"from": "2027-03-01", "steps": term},
+                                                             {"from": "2028-03-31", "steps": []}]}  # fmt: skip
+    slots = {
+        "term_end": open_end,
+        "cancel_by": dated("2027-03-01", [*term, step("back", 1, "months", shift=False)]),
+    }
+    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": slots}})
+    contract = {
+        "expected_current_term_end": "ambiguous",
+        "expected_cancel_by": "2028-01-31",
+        "candidates": {"expected_current_term_end": ["2028-03-31", "2028-02-29"]},
+        "conventions": [],
+    }
+    entries = [entry("holdout4-x-K1", contract=contract)]
+    assert check(tmp_path, entries) == (1, [], [])
+    contract["candidates"] = {"expected_current_term_end": ["2028-02-29", "2028-04-28"]}
+    assert check(tmp_path, entries)[1] == [
+        "holdout4-x-K1 term_end: expected ambiguous ['2028-02-29', '2028-03-31'], label ambiguous "
+        "['2028-02-29', '2028-04-28']"
+    ]
+    contract["candidates"] = {}
+    assert check(tmp_path, entries)[1] == [
+        "holdout4-x-K1 term_end: expected ambiguous ['2028-02-29', '2028-03-31'], label ambiguous []"
+    ]
+    contract |= {"expected_current_term_end": "2028-02-29"}
+    assert check(tmp_path, entries)[1] == [
+        "holdout4-x-K1 term_end: expected ambiguous ['2028-02-29', '2028-03-31'], label 2028-02-29 []"
+    ]
+    slots["term_end"] = dated("2027-03-01", term)
+    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": slots}})
+    contract |= {"expected_current_term_end": "ambiguous"}
+    assert check(tmp_path, entries)[1] == ["holdout4-x-K1 term_end: label ambiguous, independent 2028-02-29"]
+
+
+def test_an_ambiguous_contract_slot_s_candidates_lie_after_the_window() -> None:
+    contract = {
+        "expected_current_term_end": "ambiguous",
+        "expected_cancel_by": "ambiguous",
+        "candidates": {
+            "expected_current_term_end": ["2026-12-14", "2027-01-29"],
+            "expected_cancel_by": ["2026-12-16", "2026-12-31"],
+        },
+    }
+    assert vl.check_window([entry("holdout4-x-K1", contract=contract)]) == [
+        "holdout4-x-K1 contract.expected_current_term_end: 2026-12-14 is not after the window (valid until 2026-12-15)"
+    ]
+
+
 def test_an_ambiguous_reading_lies_after_the_window(tmp_path: Path) -> None:
     """A final letter is valid through ``valid_until``, so a candidate on or before it is no plausible reading (a
     letter of an earlier split keeps the bound of its own today)."""
