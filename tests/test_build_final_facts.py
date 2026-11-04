@@ -490,21 +490,107 @@ def test_an_ambiguous_ruling_on_a_photo_is_counted_for_its_letter(
     assert "ruled ambiguous: deadline 1, offered 0, contract 1" in capsys.readouterr().out
 
 
+def _letter_case(audit: Audit, verdict: dict[str, Any], *, label_is_x: bool, case: str = "D003") -> None:
+    """A case on K1 itself (L001.pdf), slot i0: the photo's dispute read again on the letter. The pack draws which
+    side is X per case, so ``label_is_x`` says how this case's draw fell."""
+    label, other = "2027-03-15", "2027-03-16"
+    audit.key["cases"][case] = {
+        "id": K1,
+        "name": "L001.pdf",
+        "slot": "i0",
+        "X": "label" if label_is_x else "a1c",
+        "Y": "a1c" if label_is_x else "label",
+    }
+    audit.case_dates[case] = {"X": label, "Y": other} if label_is_x else {"X": other, "Y": label}
+    audit.adjudication["cases"][case] = verdict
+
+
 def test_a_letter_and_its_photo_ruled_apart_must_agree(
     audit: Audit, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The same slot ruled on the letter and on its photo: the same verdict and fact are applied once; different
-    ones are refused, since the two share one truth."""
+    """The same slot ruled on the letter and on its photo: the same verdict and fact are applied once; a fact that
+    gives another date is refused, since the two share one truth."""
     _photo_case(audit, copy.deepcopy(UPHELD))
-    audit.key["cases"]["D003"] = {"id": K1, "name": "L001.pdf", "slot": "i0", "X": "label", "Y": "a1c"}
-    audit.case_dates["D003"] = audit.case_dates["D002"]
-    audit.adjudication["cases"]["D003"] = copy.deepcopy(UPHELD)
+    _letter_case(audit, copy.deepcopy(UPHELD), label_is_x=True)
     assert build.main(audit.write()) == 0
     assert "rulings applied: X_right 1," in capsys.readouterr().out
-    audit.adjudication["cases"]["D003"]["fact"]["from"] = "2027-03-11"
-    audit.adjudication["cases"]["D003"]["fact"]["steps"] = SHIFTED
+    audit.adjudication["cases"]["D003"]["fact"]["steps"] = [
+        {"op": "forward", "n": 1, "unit": "days", "shift": False}
+    ]
     (audit.path("dataset") / SPLIT / "facts.json").unlink()
     _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+
+def test_a_letter_and_its_photo_whose_sides_were_drawn_apart_agree_when_they_uphold_the_same_side(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The photo's case drew the label as X and the letter's case drew it as Y; both uphold the label, so the
+    photo's verdict is X_right and the letter's Y_right. They mean the same, and so do two facts that differ only
+    in form (another way to the same date, the Land, the event in words): the build goes on and applies the
+    letter's fact, counted once under the letter's verdict."""
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    upheld_as_y = copy.deepcopy(UPHELD) | {"verdict": "Y_right"}
+    upheld_as_y["fact"] = {
+        "source": "A1p",
+        "land": "BY",
+        "event": "the letter's date",
+        "from": "2027-03-11",
+        "steps": SHIFTED,
+        "conventions": ["c02"],
+    }
+    _letter_case(audit, upheld_as_y, label_is_x=False)
+    assert build.main(audit.write()) == 0
+    assert audit.facts()["letters"][K1]["slots"]["i0"] == upheld_as_y["fact"]
+    assert "rulings applied: X_right 0, Y_right 1, both_wrong 0, ambiguous 1" in capsys.readouterr().out
+    assert audit.verified()["date_problems"] == []
+
+
+@pytest.mark.parametrize(
+    ("verdict", "fact"),
+    [
+        ("X_right", {"from": "2027-03-16"}),
+        ("X_right", {}),
+        ("Y_right", {"conventions": []}),
+    ],
+    ids=["other-side-upheld", "other-side-upheld-with-the-labels-date", "conventions-differ"],
+)
+def test_a_letter_and_its_photo_that_mean_different_things_are_refused(
+    audit: Audit, capsys: pytest.CaptureFixture[str], verdict: str, fact: dict[str, Any]
+) -> None:
+    """The letter's case drew the second reading as X. ``X_right`` there upholds the second reading, the opposite of
+    the photo's ``X_right`` (with the second reading's date, or even with the label's); and a ruling for the same
+    side and date that applies other conventions tags the label differently. Each is refused."""
+    _photo_case(audit, copy.deepcopy(UPHELD))
+    ruling = copy.deepcopy(UPHELD) | {"verdict": verdict}
+    ruling["fact"] = ruling["fact"] | fact
+    _letter_case(audit, ruling, label_is_x=False)
+    _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
+
+
+def test_a_facts_meaning_ignores_its_form() -> None:
+    """The order of the conventions and of an ambiguous fact's readings, the Land where it changes no date, and the
+    event's words are form; the date, the candidates and the conventions are meaning."""
+
+    def meaning(fact: dict[str, Any]) -> tuple[Any, ...]:
+        return build.fact_meaning(fact, "D001", "i0")
+
+    dated = {"source": "A1p", "land": None, "from": "2027-03-15", "steps": [], "conventions": ["c02", "c03"]}
+    same = dated | {"land": "NW", "event": "posted", "conventions": ["c03", "c02"]}
+    assert meaning(dated) == meaning(same)
+    assert meaning(dated) != meaning(dated | {"conventions": ["c02"]})
+    assert meaning(dated) != meaning(dated | {"from": "2027-03-16"})
+    one, two = {"from": "2027-03-15", "steps": []}, {"from": "2027-03-16", "steps": []}
+    open_ = {"source": "A1p", "land": None, "ambiguous": [one, two]}
+    assert meaning(open_) == meaning(open_ | {"ambiguous": [two, one]})
+    assert meaning(open_) != meaning(dated | {"conventions": []})
+    assert meaning({"source": "A1p", "undatable": True}) != meaning(open_)
+
+
+def test_a_key_whose_sides_are_not_the_label_and_the_second_reading_is_refused(
+    audit: Audit, capsys: pytest.CaptureFixture[str]
+) -> None:
+    audit.key["cases"]["D001"]["Y"] = "label"
+    _refused(audit, capsys, "D001: X and Y are not the label and the second reading")
 
 
 def test_a_ruling_on_a_photo_whose_bytes_changed_is_left_out(

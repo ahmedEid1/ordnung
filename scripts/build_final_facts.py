@@ -32,11 +32,17 @@ when the label has one.
 Refused, with nothing written (exit 2): an audit file that is not in the seal with its sha256, or not in its format;
 a label slot with a date or ``"ambiguous"`` and no fact; a final letter with no reading of its bytes as they are now;
 an id the manifest or the maps do not know (a map's entry, a reader's letter, a key's case or entry, a verdict's case,
-a slot the label does not have); a slot ruled twice, or ruled on a letter and on its photo with different verdicts or
-facts; a verdict that is not one of the four, a ``both_wrong`` without its date, and an ``ambiguous`` verdict that
-names fewer than two candidates, a candidate that is neither X's date nor Y's in its pack, no date of one of the two
-sides, or a fact that is not ambiguous; and a facts file the grammar refuses. It prints ids and counts
-only, never a fact, a date or a reason.
+a slot the label does not have); a key's case whose X and Y are not the label and the second reading; a slot ruled
+twice, or ruled on a letter and on its photo with rulings that mean different things; a verdict that is not one of the
+four, a ``both_wrong`` without its date, and an ``ambiguous`` verdict that names fewer than two candidates, a
+candidate that is neither X's date nor Y's in its pack, no date of one of the two sides, or a fact that is not
+ambiguous; and a facts file the grammar refuses. It prints ids and counts only, never a fact, a date or a reason.
+
+A letter and its photo are two cases of the adjudication, and the pack draws which side is X for each case on its
+own, so the same ruling can read ``X_right`` in one and ``Y_right`` in the other. The two rulings are compared by what
+they mean (``fact_meaning``): the side each upholds (the label, the second reading, both wrong, or ambiguous), the date
+or the candidates its fact derives under the grammar, the other dates it states, and the conventions it applies; not
+by the verdict's letters or the fact's form. The letter's fact is the one applied.
 """
 
 from __future__ import annotations
@@ -52,7 +58,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from evals import verify_labels
 
@@ -65,6 +71,8 @@ CONV_FORMAT = "ev8-derived-conv/1"
 ADJUDICATION_FORMAT = "ev8-adjudication/1"
 KEY_FORMAT = "ev8-adjudication-key/1"
 VERDICTS = ("X_right", "Y_right", "both_wrong", "ambiguous")
+#: What the key says each case's X and Y are: the label and the second reading (A1c), in the order drawn for the case.
+SIDES = ("label", "a1c")
 #: A contract's slots and the truth's names for them (``term_end`` -> ``expected_current_term_end``).
 CONTRACT_SLOTS = verify_labels.CONTRACT_SLOTS
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -237,7 +245,9 @@ def load_reading(
 
 @dataclass(frozen=True)
 class Ruling:
-    """One adjudicated slot: its case, entry and slot, the verdict and its fact, and the bytes it ruled on."""
+    """One adjudicated slot: its case, entry and slot, the verdict and its fact, the bytes it ruled on, and what the
+    verdict upholds (``upheld``: ``label`` or ``a1c`` for X_right and Y_right, by the key's sides of this case;
+    else the verdict itself)."""
 
     case: str
     entry_id: str
@@ -245,6 +255,7 @@ class Ruling:
     verdict: str
     fact: dict[str, Any]
     item: MapItem
+    upheld: str
 
 
 def _label_slots(truth: Mapping[str, Any]) -> list[tuple[str, str | None, Any]]:
@@ -310,6 +321,9 @@ def load_rulings(
             raise BuildError(f"{key.name} {case}: unknown entry id {entry_id}")
         if slot not in {s for s, _, _ in _label_slots(entries[entry_id]["truth"])}:
             raise BuildError(f"{key.name} {case}: unknown slot {slot} of {entry_id}")
+        drawn = {"X": ref.get("X"), "Y": ref.get("Y")}
+        if sorted(map(str, drawn.values())) != sorted(SIDES):
+            raise BuildError(f"{key.name} {case}: X and Y are not the label and the second reading")
         row = listed.get(case)
         if row is None or row.get("slot") != slot or _stem(str(row.get("letter"))) != _stem(name):
             raise BuildError(f"{case}: the pack's cases.json does not list it with its letter and slot")
@@ -351,13 +365,38 @@ def load_rulings(
                 raise BuildError(f"{case}: an ambiguous verdict keeps a date of each side")
             if "ambiguous" not in fact:
                 raise BuildError(f"{case}: an ambiguous verdict's fact is no ambiguous fact")
-        rulings.append(Ruling(case, entry_id, slot, str(said), dict(fact), found[0]))
+        upheld = str(drawn[said[0]]) if said in ("X_right", "Y_right") else str(said)
+        rulings.append(Ruling(case, entry_id, slot, str(said), dict(fact), found[0], upheld))
     return rulings
 
 
 # --------------------------------------------------------------------------------------------------
 # The build
 # --------------------------------------------------------------------------------------------------
+
+
+def fact_meaning(fact: Mapping[str, Any], case: str, slot: str) -> tuple[Any, ...]:
+    """What ``verify_labels`` reads from a slot's fact, whatever its form: the date it derives and the other dates
+    it states, the candidates of an ambiguous fact, or that the letter cannot be dated; and the conventions it
+    applies (which the label's tags must be). The order of the conventions or of the readings, the Land where it
+    changes no date, the event's words and the way to a date are form."""
+    try:
+        parsed = verify_labels._letter_facts(case, {"slots": {slot: {**fact, "source": "A1p"}}})
+    except verify_labels.FactsError:
+        raise BuildError(f"{case}: its fact is not in the grammar of evals/dataset/FACTS.md") from None
+    value, conventions = parsed.slots[slot], tuple(sorted(set(parsed.conventions[slot])))
+    if value is None:
+        return ("undatable", conventions)
+    if value[0] == verify_labels.AMBIGUOUS:
+        return ("ambiguous", tuple(sorted(set(value[1]))), conventions)
+    fn, args, region = cast(verify_labels.Rule, value)
+    stated = sorted({f(*a, region=r).isoformat() for f, a, r in parsed.conflicts.get(slot, [])})
+    return ("dated", fn(*args, region=region).isoformat(), tuple(stated), conventions)
+
+
+def _meaning(ruling: Ruling) -> tuple[Any, ...]:
+    """A ruling as the side it upholds and its fact's meaning (the pack draws X and Y per case)."""
+    return (ruling.upheld, fact_meaning(ruling.fact, ruling.case, ruling.slot))
 
 
 def match(
@@ -470,7 +509,7 @@ def build(
                 now[ruling.slot] = ruling
             elif first.entry_id == ruling.entry_id:
                 raise BuildError(f"{entry_id} {ruling.slot}: ruled twice ({first.case}, {ruling.case})")
-            elif (first.verdict, first.fact) != (ruling.verdict, ruling.fact):
+            elif _meaning(first) != _meaning(ruling):
                 raise BuildError(
                     f"{entry_id} {ruling.slot}: ruled differently on the letter and its photo "
                     f"({min(first.case, ruling.case)}, {max(first.case, ruling.case)})"
