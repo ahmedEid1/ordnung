@@ -376,6 +376,17 @@ def test_the_rules_page_lists_each_lands_day_as_the_engine_counts_it() -> None:
             assert day.startswith("3rd") and "not confirmed" in day, name
 
 
+def test_the_confidence_table_names_the_lands_whose_rule_is_not_confirmed() -> None:
+    """``docs/deadline-rules.md`` section 1: the soft criterion "the Land's rule not confirmed (…)" names exactly the
+    Länder whose authorities the engine gives the unconfirmed 3rd day, and an unknown Land."""
+    page = (Path(__file__).resolve().parents[1] / "docs" / "deadline-rules.md").read_text("utf-8")
+    found = re.search(r"the Land's rule not confirmed \(([^)]*)\)", page)
+    assert found is not None
+    named = {part.strip() for part in found.group(1).split(",")}
+    unconfirmed = set(REGION_NAMES) - set(VWVFG_FOUR_DAY_FROM) - VWVFG_THREE_DAYS
+    assert named == unconfirmed | {"Land unknown"}
+
+
 def test_the_web_app_counts_four_days_in_the_same_lands() -> None:
     """The sender's-state question asks about a Land authority's 3-day date only where confirming it counts 4
     (``web/src/features/party/sender-land.ts``): the same Länder as the engine's."""

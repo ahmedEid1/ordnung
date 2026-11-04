@@ -79,7 +79,7 @@ further lowers confidence for quote problems (quote not found, digits not matchi
 |---|---|---|
 | Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed; a termination's end date not written in the letter | hard → `low` |
 | Anchor date stated in the document | "today" read as the letter's date | soft |
-| Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; the Land's rule not confirmed (HB, SL, Land unknown); a BW/BY/MV matter that may have begun before the switch; an e-mailed decision without its Land; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
+| Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; the Land's rule not confirmed (SL, Land unknown); a BW/BY/MV matter that may have begun before the switch; an e-mailed decision without its Land; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
 | Holiday region known | region unknown **and** a regional holiday could change this result (counted forward: the days counted or the end; counted back: the days counted back or the safe date) | soft |
 
 `high` only if every criterion holds; one soft failure → `medium`; two soft failures or any hard
