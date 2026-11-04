@@ -1273,8 +1273,14 @@ _KINDS = {
 }
 #: A replay written again: the earlier file, the file that supersedes it and why it was written again (a person's
 #: words, as a changed date's ``because`` in ``evals/results/INDEX.json``). The history page says so under its table
-#: while both files are in the results.
+#: while both files are in the results. Every replay the index keeps as superseded has its entry here, naming the file
+#: of its kind the index checks (``tests/test_present.py`` holds it).
 SUPERSEDED = {
+    "2026-10-06-claude-sonnet-5-without-land.json": (
+        "2026-10-08-claude-sonnet-5-without-land.json",
+        "this time also with the state the postcode on the sender's letter suggests confirmed (a third replay); its "
+        "letterhead and without-Land replays are the earlier file's, number for number",
+    ),
     "2026-10-30-claude-sonnet-5-checks-ablated.json": (
         "2026-11-04-claude-sonnet-5-checks-ablated.json",
         "the Länder delivery rules checked against the law on 4 November 2026 moved one ablated confidence (one item "

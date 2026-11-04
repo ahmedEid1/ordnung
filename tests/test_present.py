@@ -566,8 +566,9 @@ def _differing(old: Any, new: Any, path: str = "") -> list[str]:
 
 
 def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: dict[str, str]) -> None:
-    """A replay written again names the file it supersedes and why, under the table; the index keeps the earlier
-    file by its hash; and what the reason says moved is what moved between the two files."""
+    """A replay written again names the file it supersedes and why, under the table, for every replay the index keeps
+    as superseded; the index keeps the earlier file by its hash; and what the reason says moved is what moved between
+    the two files."""
     section = _flat(
         rendered["docs/evals-history.md"].split("## Every results file", 1)[1].split("\n## ", 1)[0]
     )
@@ -581,17 +582,41 @@ def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: d
         "high to medium), and no count changed. The results index (`evals/results/INDEX.json`) keeps the earlier "
         "file, checked by its hash."
     ) in section
-    assert text.SUPERSEDED.keys() == {old} and text.SUPERSEDED[old][0] == new
-    # each pair is two versions of one replay: the index checks the newer one and keeps the earlier by its hash
-    index = {
-        row["file"]: row
-        for row in json.loads((RESULTS / "INDEX.json").read_text(encoding="utf-8"))["results"]
-    }
+    assert (
+        "`2026-10-06-claude-sonnet-5-without-land.json` is superseded by `2026-10-08-claude-sonnet-5-without-land.json`, "
+        "the same replay written again: this time also with the state the postcode on the sender's letter suggests "
+        "confirmed (a third replay); its letterhead and without-Land replays are the earlier file's, number for "
+        "number. The results index (`evals/results/INDEX.json`) keeps the earlier file, checked by its hash."
+    ) in section
+    # every replay the index keeps as superseded is explained, by the file of its kind the index checks: a replay
+    # written again without a reason here fails, not only a missing sentence
+    rows = json.loads((RESULTS / "INDEX.json").read_text(encoding="utf-8"))["results"]
+    index = {row["file"]: row for row in rows}
+    checked: dict[str, str] = {}
+    for row in rows:
+        if row["role"] == "replay" and row["verdict"] == "checked":
+            assert row["kind"] not in checked, row["file"]  # one checked file per kind of replay
+            checked[row["kind"]] = row["file"]
+    superseded = {row["file"] for row in rows if row["role"] == "replay" and row["verdict"] == "superseded"}
+    assert superseded and text.SUPERSEDED.keys() == superseded
+    assert text.SUPERSEDED[old][0] == new
     roles = model.roles(RESULTS)
     for earlier, (later, _why) in text.SUPERSEDED.items():
+        assert later == checked[index[earlier]["kind"]], earlier
         assert (index[earlier]["check"], index[earlier]["verdict"]) == ("hash", "superseded"), earlier
         assert index[later]["verdict"] == "checked" and index[later]["kind"] == index[earlier]["kind"], later
         assert roles[earlier] == roles[later] == "replay"
+        assert f"`{earlier}` is superseded by `{later}`" in section, earlier
+    # the without-Land replay written again: its first two replays give the earlier file's numbers, number for number,
+    # and it adds the replay with the suggested state
+    first, again = (
+        json.loads((RESULTS / f"2026-10-{day}-claude-sonnet-5-without-land.json").read_text(encoding="utf-8"))
+        for day in ("06", "08")
+    )
+    assert first["splits"].keys() == again["splits"].keys()
+    for split, replays in first["splits"].items():
+        assert {key: again["splits"][split][key] for key in replays} == replays, split
+        assert "with_suggestion" in again["splits"][split] and "with_suggestion" not in replays, split
     # what moved: one scored item's confidence, high to medium, in the ablations that switch the two-dates check
     # off; every count, date, outcome and flag is the same
     before, after = (json.loads((RESULTS / name).read_text(encoding="utf-8")) for name in (old, new))
