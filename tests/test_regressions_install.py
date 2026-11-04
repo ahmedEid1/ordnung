@@ -255,7 +255,8 @@ def test_the_guide_says_how_to_update() -> None:
     code when the version didn't change (measured with pipx 1.17 on its pip backend). The guide's *Updating*
     says it: a release is installed by its tag (measured with pipx 1.18 and uv 0.11: an install from a tag stays
     on it when reinstalled or upgraded), and going back names the tag of the version you had. It writes a tag as
-    ``vX.Y.Z``, never this version's, so a release doesn't have to edit it."""
+    ``vX.Y.Z``, never this version's, so a release doesn't have to edit it. No release has a tag on GitHub yet,
+    so both say how to name a release without one: by its commit."""
     guide = (ROOT / "docs" / "guide.md").read_text(encoding="utf-8")
     updating = guide.split("\n### Updating\n", 1)[1].split("\n## ", 1)[0]
     for command in ("pipx reinstall ordnung", "uv tool upgrade ordnung", "ordnung doctor"):
@@ -265,11 +266,14 @@ def test_the_guide_says_how_to_update() -> None:
     install_a_release = flat.split("To install a release instead,", 1)[1].split("To go back,", 1)[0]
     assert f'`pipx install --force "{tagged}"`' in install_a_release
     assert f'`uv tool install "{tagged}"`' in install_a_release
+    assert "name its tag once it has one" in install_a_release
+    assert "a release without a tag by its commit, taken from the repository's history" in install_a_release
     assert f"@v{ordnung.__version__}" not in guide
     assert "From 0.3.0 on" not in flat and "and a tag on GitHub" not in flat
     going_back = flat.split("To go back,", 1)[1]
     assert f'`pipx install --force "{tagged}"`' in going_back
     assert "ordnung restore FILE --force" in going_back
+    assert "a version without a tag by its commit, taken from the repository's history" in going_back
 
 
 def test_the_bug_template_suggests_this_version() -> None:

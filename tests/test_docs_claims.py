@@ -146,6 +146,24 @@ def test_mypy_is_strict_on_the_rules_engine() -> None:
     )
 
 
+def test_the_ci_gates_row_says_where_each_test_suite_runs() -> None:
+    """docs/architecture.md's *CI gates* row: the backend tests run on each Python of the backend job's matrix, and
+    Vitest once, in the frontend job on its Node version; neither suite is said to run on every Python."""
+    import yaml
+
+    jobs = yaml.safe_load((ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8"))["jobs"]
+    versions = jobs["backend"]["strategy"]["matrix"]["python"]
+    frontend = jobs["frontend"]["steps"]
+    (node,) = [step["with"]["node-version"] for step in frontend if "setup-node" in step.get("uses", "")]
+    assert any(step.get("run") == "npm test" for step in frontend)
+    testing = _section((ROOT / "docs" / "architecture.md").read_text(encoding="utf-8"), "## Testing strategy")
+    (row,) = [_flat(line) for line in testing.splitlines() if line.startswith("| CI gates |")]
+    tested = ", ".join(versions[:-1]) + f" and {versions[-1]}"
+    assert f"the backend tests on Python {tested} with the versions pinned in constraints.txt" in row
+    assert f"Vitest on Node {node}," in row
+    assert "both test suites" not in row
+
+
 def test_the_spec_s_quality_bar_names_what_mypy_checks() -> None:
     """SPEC § 18's "`mypy --strict` clean (…)" names what pyproject.toml gives mypy: the package and each other
     folder, so a folder added to the list (or taken off it) fails here until the SPEC follows."""
@@ -2210,9 +2228,9 @@ def test_the_docs_say_what_the_folder_reveals_and_how_it_was_tested() -> None:
         assert "two physical computers" in text and "still to be done" in text, document
         assert "simulated sync tool" in text, document
     assert "roughly how many letters and pages are added" in _flat(sync.__doc__ or "")
-    guide = _flat(_guide())
-    assert "simulated sync tool" in guide and "two physical computers" in guide
-    assert "two data folders on one machine" in guide
+    for document, text in (("README.md", _flat(_readme())), ("docs/guide.md", _flat(_guide()))):
+        assert "simulated sync tool" in text and "two physical computers" in text, document
+    assert "two data folders on one machine" in _flat(_guide())
 
 
 def test_forgetting_a_computer_is_said_not_to_lock_it_out() -> None:

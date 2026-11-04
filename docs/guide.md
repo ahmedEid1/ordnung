@@ -248,14 +248,15 @@ ordnung doctor
 
 `pipx reinstall` and `uv tool upgrade` install the newest code from GitHub, which can hold changes no release
 has yet; `pipx upgrade ordnung` can keep the old code when the version number didn't change. To install a
-release instead, name its tag: `pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`
-(with uv: `uv tool install "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`). An install made from a tag
-stays on that release when you reinstall or upgrade it; install the next tag the same way. When a version
-changes how the database is stored, Ordnung updates your data folder by itself the next time it starts (each
-step completes or leaves it as it was). With hand-off sync, update both computers: until then Settings → Your
-computers says that the other one runs another version, and if the database changed, the computer with the
-older Ordnung can't bring the other's changes over; it says *Update Ordnung on this computer* and keeps saving
-its own changes.
+release instead, name its tag once it has one:
+`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`
+(with uv: `uv tool install "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`), and a release without a tag by
+its commit, taken from the repository's history. An install made from a tag stays on that release when you
+reinstall or upgrade it; install the next tag the same way. When a version changes how the database is stored,
+Ordnung updates your data folder by itself the next time it starts (each step completes or leaves it as it was).
+With hand-off sync, update both computers: until then Settings → Your computers says that the other one runs
+another version, and if the database changed, the computer with the older Ordnung can't bring the other's
+changes over; it says *Update Ordnung on this computer* and keeps saving its own changes.
 If the shortcut stops opening Ordnung after an update (its window closes at once, or nothing opens), the
 Python it runs has moved: run `ordnung shortcut` again, and `ordnung autostart enable` too if Ordnung
 starts at login.
