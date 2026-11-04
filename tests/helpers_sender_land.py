@@ -15,6 +15,7 @@ MUNICH = "Marienplatz 8, 80331 München"
 NUREMBERG = "Hauptmarkt 18, 90403 Nürnberg"
 DRESDEN = "Theaterplatz 1, 01067 Dresden"
 ERFURT = "Fischmarkt 1, 99084 Erfurt"
+WIESBADEN = "Schlossplatz 6, 65183 Wiesbaden"
 
 #: Five working days from Fri 13 Nov 2026, past Buß- und Bettag (Wed 18 Nov, a holiday in Saxony only).
 HOLIDAY = DateSpec(

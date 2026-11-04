@@ -8,10 +8,10 @@ import { LAND_UNKNOWN } from "@/features/document/WhyThisDate";
 
 /**
  * Länder whose authorities' letters count as delivered on the 4th day (`rules.delivery.VWVFG_FOUR_DAY_FROM`): only
- * there can confirming the state change a date the engine counted with 3 days. Bremen, the Saarland and Thuringia
- * count 3 days anyway.
+ * there can confirming the state change a date the engine counted with 3 days. Hessen keeps the 3rd day by its own
+ * law, and Bremen's and the Saarland's 4th day isn't confirmed: Ordnung counts 3 days there anyway.
  */
-export const FOUR_DAY_LANDS: ReadonlySet<string> = new Set(["BB", "BE", "BW", "BY", "HH", "MV", "NI", "NW", "RP", "SH", "SN", "ST"]);
+export const FOUR_DAY_LANDS: ReadonlySet<string> = new Set(["BB", "BE", "BW", "BY", "HH", "MV", "NI", "NW", "RP", "SH", "SN", "ST", "TH"]);
 
 /** Why a letter's date may change once the sender's state is confirmed. */
 export type LandWait = "earlier" | "days" | "holiday";

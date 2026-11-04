@@ -65,25 +65,26 @@ _RULE_BY_SCOPE_CHANNEL: dict[tuple[DeliveryScope, DeliveryChannel], str] = {
 
 _ORDINAL = {3: "3rd", 4: "4th"}
 
-#: Länder whose own VwVfG uses the 4-day rule, with the first posting day it is confirmed for (legal
-#: research checked 2026-09-25): BY, NW and MV amended their laws for 1 Jan 2025, HH only from 14 May
-#: 2025 (Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of 13 May 2025
-#: S. 338, in force the day after under Art. 54 of Hamburg's constitution: re-checked 2026-10-01), BW
-#: only from 7 Feb 2025 (GBl. 2025 Nr. 8; § 102b LVwVfG keeps 3 days for procedures begun earlier); BE, BB, NI,
-#: RP, SN and ST refer to the federal VwVfG. For SH (§ 110 LVwG) the 4th day is confirmed in the text
-#: as of 10 Jun 2025 but not its start date, so earlier postings keep the 3rd day. Hessen still showed
-#: the 3rd day; HB, SL and TH were not confirmed — for them (and when the Land is unknown) the
-#: conservative 3rd day is used (SPEC § 21).
+#: Länder whose own law (or the federal VwVfG it refers to) counts the 4th day, from the first posting day. Checked
+#: against the Länder gazettes on 4 Nov 2026 (docs/deadline-rules.md § 5): BY (Art. 41 BayVwVfG), NW (§ 41 VwVfG NRW;
+#: § 97 keeps the old law only for a step begun before, and posting is the step), MV, BE (§ 1 VwVfG Bln, dynamic),
+#: BB (§ 1 VwVfGBbg), NI (§ 1 NVwVfG), SN (§ 1 SächsVwVfZG, dynamic), SH (§ 110 Abs. 2 LVwG; Art. 2 Abs. 2 of the act
+#: of 13 Dec 2024) and TH (§ 1 ThürVwVfG, dynamic, in force 1 Jan 2025) from 1 January 2025. HH from 14 May 2025
+#: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 of its constitution). BW from 7 Feb 2025 (GBl. 2025 Nr. 8). RP and ST
+#: are taken to refer to the federal VwVfG (research of 2026-09-25; their gazettes could not be reached). Before a
+#: Land's day its old law counts the 3rd day.
 VWVFG_FOUR_DAY_FROM: dict[str, date] = {
-    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST"), FOUR_DAY_RULE_FROM),
+    **dict.fromkeys(("BY", "NW", "MV", "BE", "BB", "NI", "RP", "SN", "ST", "SH", "TH"), FOUR_DAY_RULE_FROM),
     "HH": date(2025, 5, 14),
     "BW": date(2025, 2, 7),
-    "SH": date(2025, 6, 10),
 }
 
+#: Länder whose own law is confirmed to keep the 3rd day (§ 41 Abs. 2 HVwVfG, checked 4 Nov 2026).
+VWVFG_THREE_DAYS: Final = frozenset({"HE"})
 
-#: Why a general authority's letter counts as delivered on the 3rd day: its Land's own rule isn't confirmed,
-#: or the Land isn't known. Receipts carry it as a warning, and
+
+#: Why a general authority's letter counts as delivered on the 3rd day although its Land may count the 4th: Bremen's
+#: and the Saarland's rule could not be checked, or the Land isn't known. Receipts carry it as a warning, and
 #: :func:`ordnung.rules.deadlines.waits_for_sender_land` reads it back.
 LAND_DAYS_UNCONFIRMED: Final = (
     "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, "
@@ -263,8 +264,9 @@ def resolve_delivery(
     """Deemed delivery day with explanation steps; ``scope=None`` means the sender type is unknown.
 
     For an unknown scope the conservative variant is used: the day is not moved off weekends. For
-    general authorities (and unknown senders) the 3rd day is used unless the Land's own law is known to
-    use the 4th (:data:`VWVFG_FOUR_DAY_FROM`, SPEC § 21); ``uncertainty`` then explains why. Portal
+    general authorities (and unknown senders) the Land's own day counts: the 4th from its switch
+    (:data:`VWVFG_FOUR_DAY_FROM`), the 3rd before it and in Hessen (:data:`VWVFG_THREE_DAYS`); for Bremen, the
+    Saarland or an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). Portal
     provision (``channel="portal"``) by a general authority or an unknown sender counts from the day
     after download (§ 41 Abs. 2a VwVfG), taking ``posted`` — the day it was made available — as the
     earliest download; tax (§ 122a Abs. 4 AO) and social-law portals (§ 37 Abs. 2a SGB X) use the 4th day.
@@ -284,9 +286,13 @@ def resolve_delivery(
     else:
         days = fiction_days(posted)
         rule_id = _RULE_BY_SCOPE_CHANNEL[(scope, channel)] if scope else "delivery_scope_unknown"
-        land_from = VWVFG_FOUR_DAY_FROM.get(calendar_de.normalize_region(region) or "")
-        if days == 4 and scope in (None, "vwvfg") and (land_from is None or posted < land_from):
-            days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED
+        land = calendar_de.normalize_region(region)
+        land_from = VWVFG_FOUR_DAY_FROM.get(land or "")
+        if days == 4 and scope in (None, "vwvfg"):
+            if land in VWVFG_THREE_DAYS or (land_from is not None and posted < land_from):
+                days, rule_id = 3, "vwvfg_land_days"  # the Land's own law: HE; HH and BW before their day
+            elif land_from is None:
+                days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED  # HB, SL, unknown
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"

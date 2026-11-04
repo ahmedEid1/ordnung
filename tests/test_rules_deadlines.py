@@ -118,9 +118,9 @@ def test_objection_deadlines(doc: str, scope: str, region: str, basis: str, expe
     context = ctx(region=region, recipient_region=region, document_date=doc, delivery_scope=scope)
     receipt = compute_due(notice_spec(legal_basis=basis), context)
     assert receipt.due_date == expected
-    # Hessen may still use the 3-day rule (unverified), which is flagged; court actions (Klage) carry a
-    # "get advice" warning (SPEC § 21); everything else is certain.
-    uncertain = (region == "HE" and scope == "vwvfg") or "klage_1_month" in receipt.rule_ids
+    # Court actions (Klage) carry a "get advice" warning (SPEC § 21); everything else is certain — Hessen's
+    # 3rd day too, which is its own law (§ 41 Abs. 2 HVwVfG).
+    uncertain = "klage_1_month" in receipt.rule_ids
     assert receipt.confidence == ("medium" if uncertain else "high"), receipt.warnings
 
 
@@ -137,14 +137,42 @@ def test_vwvfg_no_shift_summary_mentions_it() -> None:
     assert "vwvfg_31_3" in receipt.rule_ids
 
 
-def test_hessen_three_day_rule_is_flagged() -> None:
+def test_hessen_three_day_rule_is_its_law() -> None:
     receipt = compute_due(
         notice_spec(legal_basis="§ 70 VwGO"),
         ctx(region="HE", document_date="2026-09-29", delivery_scope="vwvfg"),
     )
     assert receipt.due_date == "2026-11-02"
-    assert receipt.confidence == "medium"
+    assert (receipt.confidence, receipt.warnings) == ("high", [])
     assert "vwvfg_land_days" in receipt.rule_ids
+
+
+#: A Land authority's one-month objection period (§ 70 VwGO) from a letter posted on its date: (Land, posted, due,
+#: confidence).
+_LAND_DEADLINES = [
+    ("TH", "2026-09-29", "2026-11-03", "high"),
+    ("TH", "2025-01-02", "2025-02-06", "high"),
+    ("SH", "2025-01-02", "2025-02-06", "high"),
+    ("SH", "2025-03-03", "2025-04-07", "high"),
+    ("HH", "2025-05-13", "2025-06-16", "high"),
+    ("HE", "2026-09-29", "2026-11-02", "high"),
+    ("HB", "2026-09-29", "2026-11-02", "medium"),
+]
+
+
+@pytest.mark.parametrize(
+    ("region", "posted", "expected", "confidence"),
+    _LAND_DEADLINES,
+    ids=[f"{row[0]}-{row[1]}" for row in _LAND_DEADLINES],
+)
+def test_a_lands_delivery_day_in_the_deadline(
+    region: str, posted: str, expected: str, confidence: str
+) -> None:
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO"),
+        ctx(region=region, document_date=posted, delivery_scope="vwvfg"),
+    )
+    assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
 
 
 @pytest.mark.parametrize(

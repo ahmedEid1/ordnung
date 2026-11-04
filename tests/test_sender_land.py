@@ -18,6 +18,7 @@ from helpers_sender_land import (
     MUNICH,
     NUREMBERG,
     QUIET,
+    WIESBADEN,
     letter_from,
     to_do,
     without_land,
@@ -186,17 +187,18 @@ def test_a_date_counted_backwards_may_be_late(store: Store) -> None:
 
 
 def test_the_3_or_4_day_rule_waits_only_for_a_land_that_uses_the_4th_day(store: Store) -> None:
-    """Thuringia's authorities count 3 days, as Ordnung does without the Land: confirming it changes nothing."""
+    """Hessen's authorities count 3 days by its own law, as Ordnung does without the Land: confirming it changes
+    nothing. Thuringia's count 4 since 2025 (§ 1 ThürVwVfG): confirming it may."""
     receipt = compute_due(DELIVERY, without_land(DELIVERY))
     assert receipt.warnings == [LAND_DAYS_UNCONFIRMED]
-    erfurt, munich = _sender(store, name="Stadt Erfurt"), _sender(store, name="Stadt München")
+    wiesbaden, erfurt = _sender(store, name="Stadt Wiesbaden"), _sender(store, name="Stadt Erfurt")
+    to_do(store, wiesbaden, letter_from(store, wiesbaden, WIESBADEN), DELIVERY)
     to_do(store, erfurt, letter_from(store, erfurt, ERFURT), DELIVERY)
-    to_do(store, munich, letter_from(store, munich, MUNICH), DELIVERY)
 
-    in_thuringia, in_bavaria = _suggest(store, erfurt), _suggest(store, munich)
+    in_hessen, in_thuringia = _suggest(store, wiesbaden), _suggest(store, erfurt)
 
-    assert in_thuringia is not None and (in_thuringia.region, in_thuringia.waiting) == ("TH", 0)
-    assert in_bavaria is not None and (in_bavaria.region, in_bavaria.waiting) == ("BY", 1)
+    assert in_hessen is not None and (in_hessen.region, in_hessen.waiting) == ("HE", 0)
+    assert in_thuringia is not None and (in_thuringia.region, in_thuringia.waiting) == ("TH", 1)
 
 
 def test_a_payment_to_a_company_waits_for_the_person_s_land_not_the_sender_s(store: Store) -> None:

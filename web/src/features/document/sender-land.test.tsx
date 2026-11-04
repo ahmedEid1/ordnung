@@ -231,8 +231,8 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     expect(reason(threeDays)).toContain(DAYS);
     const both = makeReceipt({ warnings: [...threeDays.warnings, ...holiday.warnings] });
     expect(reason(both)).toContain(DAYS);
-    // Thuringia's authorities count 3 days anyway: only its holidays may move the date
-    expect(reason(both, "TH")).toContain(HOLIDAYS);
+    // Hessen's authorities count 3 days anyway: only its holidays may move the date
+    expect(reason(both, "HE")).toContain(HOLIDAYS);
     expect(reason(makeReceipt({ warnings: [...threeDays.warnings, ...earlier.warnings] }))).toContain(BACKWARDS);
   });
 

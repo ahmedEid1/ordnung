@@ -16,9 +16,12 @@ from pathlib import Path
 
 import pytest
 
+from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.delivery import (
+    LAND_DAYS_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
+    VWVFG_THREE_DAYS,
     deemed_delivery,
     fiction_days,
     is_private_sender,
@@ -202,33 +205,72 @@ def test_fiction_days_and_scope_mapping() -> None:
     assert "HE" not in VWVFG_FOUR_DAY_FROM
 
 
-@pytest.mark.parametrize(
-    ("posted", "expected"),
-    [
-        ("2025-02-03", "2025-02-06"),  # vwvfg verdict: BW switched to 4 days only on 7 Feb 2025
-        ("2025-02-07", "2025-02-11"),
-    ],
-)
-def test_baden_wuerttemberg_switch_date(posted: str, expected: str) -> None:
-    assert deemed_delivery(D(posted), scope="vwvfg", region="BW")[0] == D(expected)
+#: Each Land's own delivery day for its authorities' letters (checked against the Länder gazettes on 4 Nov 2026,
+#: docs/deadline-rules.md § 5): (Land, posted, channel, day, rule id of the delivery step, warning).
+_LAND_DAYS: list[tuple[str | None, str, str, str, str, str | None]] = [
+    # Thüringen: the federal VwVfG by reference (§ 1 ThürVwVfG), the 4th day from 1 January 2025
+    ("TH", "2024-12-31", "post", "2025-01-03", "vwvfg_41_2", None),
+    ("TH", "2025-01-01", "post", "2025-01-05", "vwvfg_41_2", None),
+    ("TH", "2025-01-02", "post", "2025-01-06", "vwvfg_41_2", None),
+    ("TH", "2026-09-29", "post", "2026-10-03", "vwvfg_41_2", None),  # a Saturday, not moved
+    ("TH", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+    # Schleswig-Holstein: § 110 Abs. 2 LVwG, the 4th day from 1 January 2025
+    ("SH", "2024-12-31", "post", "2025-01-03", "vwvfg_41_2", None),
+    ("SH", "2025-01-02", "post", "2025-01-06", "vwvfg_41_2", None),
+    ("SH", "2025-03-03", "post", "2025-03-07", "vwvfg_41_2", None),
+    ("SH", "2025-06-09", "post", "2025-06-13", "vwvfg_41_2", None),
+    ("SH", "2025-06-10", "post", "2025-06-14", "vwvfg_41_2", None),
+    # Hessen keeps the 3rd day (§ 41 Abs. 2 HVwVfG): its law, not a doubt
+    ("HE", "2024-12-30", "post", "2025-01-02", "vwvfg_41_2", None),
+    ("HE", "2025-01-02", "post", "2025-01-05", "vwvfg_land_days", None),
+    ("HE", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", None),
+    ("HE", "2026-10-30", "electronic", "2026-11-02", "vwvfg_land_days", None),
+    # Hamburg: the 3rd day until the law of 5 May 2025 took effect the day after its gazette (Art. 54 HV)
+    ("HH", "2025-01-02", "post", "2025-01-05", "vwvfg_land_days", None),
+    ("HH", "2025-03-03", "post", "2025-03-06", "vwvfg_land_days", None),
+    ("HH", "2025-05-13", "post", "2025-05-16", "vwvfg_land_days", None),
+    ("HH", "2025-05-14", "post", "2025-05-18", "vwvfg_41_2", None),
+    # Baden-Württemberg switched to the 4th day only on 7 February 2025
+    ("BW", "2025-02-03", "post", "2025-02-06", "vwvfg_land_days", None),
+    ("BW", "2025-02-06", "post", "2025-02-09", "vwvfg_land_days", None),
+    ("BW", "2025-02-07", "post", "2025-02-11", "vwvfg_41_2", None),
+    # Bremen and the Saarland (no text could be checked), or no Land: the earlier 3rd day, with the warning
+    ("HB", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    ("SL", "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    (None, "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
+    ("BE", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
+]
 
 
 @pytest.mark.parametrize(
-    ("posted", "expected"),
-    [
-        ("2025-03-03", "2025-03-06"),  # Hamburg's 4th day came with the law of 5 May 2025
-        ("2025-05-13", "2025-05-16"),  # the gazette's day: still the 3rd day
-        ("2025-05-14", "2025-05-18"),  # in force the day after it (Art. 54 HV)
-    ],
+    ("region", "posted", "channel", "expected", "rule_id", "warning"),
+    _LAND_DAYS,
+    ids=[f"{row[0]}-{row[1]}-{row[2]}" for row in _LAND_DAYS],
 )
-def test_hamburg_switch_date(posted: str, expected: str) -> None:
-    assert deemed_delivery(D(posted), scope="vwvfg", region="HH")[0] == D(expected)
+def test_the_lands_own_delivery_day(
+    region: str | None, posted: str, channel: str, expected: str, rule_id: str, warning: str | None
+) -> None:
+    result = resolve_delivery(D(posted), scope="vwvfg", channel=channel, region=region)  # type: ignore[arg-type]
+    assert result.day == D(expected)
+    assert result.steps[0].rule_id == rule_id
+    assert result.uncertainty == warning
 
 
-def test_schleswig_holstein_confirmed_from_june_2025() -> None:
-    """vwvfg verdict: § 110 LVwG SH shows the 4th day in the text as of 10 Jun 2025."""
-    assert deemed_delivery(D("2025-03-03"), scope="vwvfg", region="SH")[0] == D("2025-03-06")
-    assert deemed_delivery(D("2026-09-29"), scope="vwvfg", region="SH")[0] == D("2026-10-03")
+def test_the_land_tables() -> None:
+    """Every Land is in one table: the 4th day from its switch, the 3rd by its own law, or not confirmed."""
+    assert VWVFG_FOUR_DAY_FROM["TH"] == VWVFG_FOUR_DAY_FROM["SH"] == date(2025, 1, 1)
+    assert VWVFG_THREE_DAYS == frozenset({"HE"})
+    assert not VWVFG_THREE_DAYS & set(VWVFG_FOUR_DAY_FROM)
+    assert set(VWVFG_FOUR_DAY_FROM) | VWVFG_THREE_DAYS | {"HB", "SL"} == set(REGION_NAMES)
+
+
+def test_the_web_app_counts_four_days_in_the_same_lands() -> None:
+    """The sender's-state question asks about a Land authority's 3-day date only where confirming it counts 4
+    (``web/src/features/party/sender-land.ts``): the same Länder as the engine's."""
+    source = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "party" / "sender-land.ts"
+    found = re.search(r"FOUR_DAY_LANDS\b[^=]*=\s*new Set\(\[([^\]]*)\]\)", source.read_text("utf-8"))
+    assert found is not None
+    assert set(re.findall(r'"([A-Z]{2})"', found.group(1))) == set(VWVFG_FOUR_DAY_FROM)
 
 
 #: A statutory health insurer's remedy notice (§ 37 SGB X, § 84 SGG): an administrative act.

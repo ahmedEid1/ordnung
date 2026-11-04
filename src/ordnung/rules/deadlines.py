@@ -128,8 +128,8 @@ def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
     A regional holiday it couldn't place (:data:`REGION_UNKNOWN`) may move the date; counted backwards
     (:data:`REGION_EARLIER`) the date shown may then be a day late. The 3-day delivery rule
     (:data:`~ordnung.rules.delivery.LAND_DAYS_UNCONFIRMED`) changes only for a Land whose authorities use the
-    4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HB, SL and TH, confirming changes
-    nothing. "May": the holiday in a warning need not be one in ``region``.
+    4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HE (the 3rd day by its own law), HB and
+    SL, confirming changes nothing. "May": the holiday in a warning need not be one in ``region``.
     """
     waits = may_be_late = False
     for warning in warnings:
