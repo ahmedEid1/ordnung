@@ -205,11 +205,16 @@ def test_brandenburg_email_with_its_arrival_day(arrived: str, expected: str, lat
 #: The note on a date where a matter begun before the Land's switch keeps the 3rd day: how it starts.
 _OLDER = "In {} a matter begun before"
 
-_MV_NOTE = (
-    "In Mecklenburg-Vorpommern a matter begun before 1 January 2025 keeps the old 3-day rule (§ 120a VwVfG M-V). "
-    "If this one began earlier (you applied, were heard or objected before that day), the letter counts as "
-    "delivered on Fri 12 Dec 2025 and the deadline is Mon 12 Jan 2026: act by then to be safe."
+#: How the note begins: the provision binds only the Land's own procedure law (a federal authority, or a
+#: Widerspruchsbescheid served under the VwZG, has no such transition).
+_MV_RULE = (
+    "In Mecklenburg-Vorpommern a matter begun before 1 January 2025 keeps the old 3-day rule (§ 120a VwVfG M-V) "
+    "when an authority of the Land or a municipality there decides it under the Land's own procedure law. If so, "
+    "and this matter began earlier (you applied or were heard before that day), the letter counts as delivered on "
+    "Fri 12 Dec 2025 and the deadline is Mon 12 Jan 2026"
 )
+#: ... and how it ends: the earlier deadline's own send-by date, counted as the receipt's (4 business days by post)
+_MV_NOTE = _MV_RULE + ": it must arrive by then, so send it by Tue 6 Jan 2026."
 
 
 @pytest.mark.parametrize(
@@ -217,10 +222,20 @@ _MV_NOTE = (
     [
         pytest.param("MV", "2025-12-09", "2026-01-13", "medium", (_MV_NOTE,), id="MV"),
         pytest.param(
-            "BW", "2025-02-07", "2025-03-11", "medium", ("Mon 10 Feb 2025", "Mon 10 Mar 2025"), id="BW"
+            "BW",
+            "2025-02-07",
+            "2025-03-11",
+            "medium",
+            ("Mon 10 Feb 2025", "Mon 10 Mar 2025", "send it by Tue 4 Mar 2025."),
+            id="BW",
         ),
         pytest.param(
-            "BY", "2026-02-10", "2026-03-16", "medium", ("Fri 13 Feb 2026", "Fri 13 Mar 2026"), id="BY"
+            "BY",
+            "2026-02-10",
+            "2026-03-16",
+            "medium",
+            ("Fri 13 Feb 2026", "Fri 13 Mar 2026", "send it by Mon 9 Mar 2026."),
+            id="BY",
         ),
         # Easter: the 3rd day gives the same deadline
         pytest.param("BW", "2026-03-02", "2026-04-07", "high", None, id="BW-easter"),
@@ -246,6 +261,48 @@ def test_an_older_matter_in_bw_by_or_mv_names_the_earlier_deadline(
         assert notes == []
     else:
         assert len(notes) == 1 and all(name in notes[0] for name in names), notes
+
+
+@pytest.mark.parametrize(
+    ("today", "nature", "ending"),
+    [
+        # the receipt's own send-by for the later date is Wed 7 Jan: a day short of the earlier deadline
+        ("2025-12-01", "objection", ": it must arrive by then, so send it by Tue 6 Jan 2026."),
+        # a bank transfer needs one bank business day, as on the receipt
+        ("2025-12-01", "payment", ": it must arrive by then, so send it by Fri 9 Jan 2026."),
+        # past the earlier send-by day, as the receipt says once its own has passed
+        (
+            "2026-01-08",
+            "objection",
+            ": it must arrive by then, so send it today by the fastest channel allowed (online, fax or in person).",
+        ),
+        ("2026-01-13", "objection", ", which has already passed."),
+        # nothing to send: no send-by date on the receipt either
+        ("2025-12-01", "other", ": act by then to be safe."),
+    ],
+)
+def test_an_older_matter_s_note_says_when_to_send(today: str, nature: str, ending: str) -> None:
+    """The earlier deadline is the day it must arrive: the note gives its own send-by date, the way the receipt
+    counts one for the later date, so posting on the receipt's send-by day is never a day short."""
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO", nature=nature),
+        ctx(today=today, region="MV", document_date="2025-12-09", delivery_scope="vwvfg"),
+    )
+    assert receipt.due_date == "2026-01-13"
+    assert _MV_RULE + ending in receipt.warnings, receipt.warnings
+
+
+def test_an_older_matter_s_note_counts_the_period_the_deadline_uses() -> None:
+    """When the law's shorter period replaces the letter's, the older matter's deadline runs with the law's
+    too: the note names it (and the date is one level less confident than with the period warning alone)."""
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO", amount=2),
+        ctx(today="2024-12-01", region="BW", document_date="2025-02-07", delivery_scope="vwvfg"),
+    )
+    assert (receipt.due_date, receipt.confidence) == ("2025-03-11", "low"), receipt.warnings
+    assert "vwvfg_land_old_procedures" in receipt.rule_ids
+    notes = [w for w in receipt.warnings if w.startswith(_OLDER.format("Baden-Württemberg"))]
+    assert len(notes) == 1 and "Mon 10 Feb 2025" in notes[0] and "the deadline is Mon 10 Mar 2025" in notes[0]
 
 
 def test_an_older_matter_s_note_only_on_a_period_counted_forward() -> None:

@@ -1053,24 +1053,55 @@ def _date_from(start: date, period: tuple[int, PeriodUnit], region: str | None, 
 
 
 def _older_matter_note(
-    trace: Trace, due: date, period: tuple[int, PeriodUnit], region: str | None, shift: bool
+    ctx: RuleContext,
+    trace: Trace,
+    due: date,
+    periods: list[tuple[int, PeriodUnit]],
+    region: str | None,
+    shift: bool,
+    nature: str,
+    postal_buffer_days: int,
 ) -> None:
     """In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch to the 4th day keeps
-    the 3rd (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V), which a letter rarely shows: the date stays the
-    4th day's, and a note names the deadline from the 3rd when it is earlier, one level less confident."""
+    the 3rd (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) — for the Land's own procedure law only, and a
+    letter rarely shows when its matter began: the date stays the 4th day's, and a note names the deadline from the
+    3rd when it is earlier, with its own send-by date, one level less confident. ``periods`` are those the
+    deadline was counted with (the letter's, and the law's when they differ: the earlier end counts)."""
     if trace.older_matter is None:
         return
     land, day = trace.older_matter
-    earlier = _date_from(day, period, region, shift)
+    earlier = min(_date_from(day, period, region, shift) for period in periods)
     if earlier >= due:
         return
     provision, switch = VWVFG_OLD_PROCEDURES[land]
     trace.soft(
-        f"In {calendar_de.REGION_NAMES[land]} a matter begun before {switch} keeps the old 3-day rule ({provision}). "
-        "If this one began earlier (you applied, were heard or objected before that day), the letter counts as "
-        f"delivered on {fmt_date(day)} and the deadline is {fmt_date(earlier)}: act by then to be safe."
+        f"In {calendar_de.REGION_NAMES[land]} a matter begun before {switch} keeps the old 3-day rule ({provision}) "
+        "when an authority of the Land or a municipality there decides it under the Land's own procedure law. If "
+        "so, and this matter began earlier (you applied or were heard before that day), the letter counts as "
+        f"delivered on {fmt_date(day)} and the deadline is {fmt_date(earlier)}"
+        + _act_by(ctx, earlier, nature, region, postal_buffer_days)
     )
     trace.use("vwvfg_land_old_procedures")
+
+
+def _act_by(
+    ctx: RuleContext, deadline: date, nature: str, region: str | None, postal_buffer_days: int
+) -> str:
+    """How a note naming an earlier deadline ends: when to send, counted as the receipt counts its own send-by
+    date (:func:`_send_by`), so that posting on the receipt's send-by day is never what the note asks."""
+    if deadline < ctx.today:
+        return ", which has already passed."
+    scratch = Trace()  # the receipt's own steps and warnings stay the later date's
+    send = (
+        _send_by(scratch, ctx, deadline, nature, region, postal_buffer_days)
+        if nature in _SEND_BY_NATURES
+        else None
+    )
+    if send is None:
+        return ": act by then to be safe."
+    if any(warning.startswith(SENDING_TIME_PASSED) for warning in scratch.warnings):
+        return ": it must arrive by then, so send it today by the fastest channel allowed (online, fax or in person)."
+    return f": it must arrive by then, so send it by {fmt_date(send)}."
 
 
 def _late_receipt_note(
@@ -1432,6 +1463,8 @@ def _compute_relative(
 
     backward = amount < 0
     counted_back_from: date | None = None
+    # the periods the deadline is counted with: the letter's, and the law's when they differ (the earlier end counts)
+    periods: list[tuple[int, PeriodUnit]] = [(amount, unit)]
     if not backward:
         raw_end, steps = add_period(event, amount, unit, region=place)
         trace.step(f"Counting starts the day after {fmt_date(event)}", event, "bgb_187_1")
@@ -1442,6 +1475,7 @@ def _compute_relative(
             and not any(_same_period((amount, unit), p) for p in statutory_periods)
         ):
             legal = statutory_periods[0]
+            periods.append(legal)
             legal_end, _ = add_period(event, *legal, region=place)
             trace.soft(
                 f"The letter says {period}, but the law ({catalog.citation(statute)}) gives "
@@ -1511,7 +1545,7 @@ def _compute_relative(
             check_regional_holidays(trace, [raw_end], later=False)
     if uses_delivery and not backward:
         _late_receipt_note(ctx, trace, event, due, (amount, unit), place, shift)
-        _older_matter_note(trace, due, (amount, unit), place, shift)
+        _older_matter_note(ctx, trace, due, periods, place, shift, spec.nature, postal_buffer_days)
     if late is not None:
         _private_late_note(trace, ctx, late, due)
 

@@ -20,6 +20,7 @@ from ordnung.rules.calendar_de import (
 from ordnung.rules.contracts import compute_contract
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.delivery import VWVFG_FOUR_DAY_FROM, VWVFG_OLD_PROCEDURES, deemed_delivery
+from ordnung.rules.explain import fmt_date
 from ordnung.rules.periods import add_period, days_in_month, latest_receipt_for
 
 dates = st.dates(min_value=date(2000, 1, 1), max_value=date(2060, 12, 31))
@@ -204,13 +205,22 @@ _LEVEL = {"low": 0, "medium": 1, "high": 2}
     st.integers(min_value=-12, max_value=36).filter(bool),
     positive_units,
     natures,
+    st.sampled_from([None, "§ 70 VwGO", "§ 74 VwGO"]),
 )
 def test_an_older_matter_never_moves_a_date(
-    posted: date, land: str, scope: str | None, rule: str, amount: int, unit: str, nature: str
+    posted: date,
+    land: str,
+    scope: str | None,
+    rule: str,
+    amount: int,
+    unit: str,
+    nature: str,
+    basis: str | None,
 ) -> None:
     """In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch keeps the 3rd day,
     which a letter rarely shows (docs/deadline-rules.md § 5): its note may name the earlier deadline, but every date
-    and step is the one Ordnung gives without that rule. The note and its rule are all it adds."""
+    and step is the one Ordnung gives without that rule. The note and its rule are all it adds — exactly when the
+    old law's 3rd day (the Land's switch pushed past the posting day) gives an earlier date, which it names."""
     spec = DateSpec(
         type="relative",
         anchor="deemed_delivery",
@@ -218,6 +228,7 @@ def test_an_older_matter_never_moves_a_date(
         unit=unit,  # type: ignore[arg-type]
         delivery_rule=rule,  # type: ignore[arg-type]
         nature=nature,  # type: ignore[arg-type]
+        legal_basis=basis,
     )
     context = RuleContext(
         today=posted, region=land, recipient_region=land, document_date=posted, delivery_scope=scope
@@ -225,6 +236,19 @@ def test_an_older_matter_never_moves_a_date(
     receipt = compute_due(spec, context)
     with patch.dict(VWVFG_OLD_PROCEDURES, clear=True):
         plain = compute_due(spec, context)
+    with patch.dict(VWVFG_FOUR_DAY_FROM, {land: posted + timedelta(days=1)}):
+        old_law = compute_due(spec, context)
+    earlier = (
+        plain.due_date is not None
+        and old_law.due_date is not None
+        and amount > 0
+        and old_law.due_date < plain.due_date
+    )
+    assert ("vwvfg_land_old_procedures" in receipt.rule_ids) is earlier
+    if earlier:
+        assert old_law.due_date is not None
+        named = f"the deadline is {fmt_date(date.fromisoformat(old_law.due_date))}"
+        assert any(named in warning for warning in receipt.warnings), (named, receipt.warnings)
     kept = {"warnings", "rule_ids", "confidence"}
     assert receipt.model_dump(exclude=kept) == plain.model_dump(exclude=kept)
     older = "vwvfg_land_old_procedures"
