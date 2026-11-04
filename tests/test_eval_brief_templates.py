@@ -337,6 +337,44 @@ def test_a_reader_gives_the_day_a_procedure_began_only_when_the_letter_states_it
     assert "procedure_began" in (ROOT / "evals" / "dataset" / "FACTS.md").read_text(encoding="utf-8")
 
 
+#: The one kind of slot whose date the day its procedure began can change (the facts builder's
+#: ``scripts.build_final_facts.start_counts``), in the words every reader who writes facts, and FACTS.md, give it.
+START_SCOPE = (
+    "whose date runs from the notification of a Land authority's decision, in a Land whose administrative procedure "
+    "act keeps its earlier rule for a procedure begun before that act changed"
+)
+
+
+@pytest.mark.parametrize("session", FACT_WRITERS)
+def test_a_tax_office_slot_gets_no_procedure_start_even_when_its_letter_names_the_filing_day(
+    session: str,
+) -> None:
+    """The day a procedure began changes a date only for a period counted from the notification of a Land
+    authority's decision, in a Land that keeps its earlier rule for a procedure begun before its act changed. A
+    reader states it there only, and leaves it out of every other slot, a tax office's decision whose letter names
+    the day the return was filed among them: so no such slot reaches the adjudicator for its start, the adjudicator
+    never has to rule against a label that cannot hold one, and the fix session is never asked for a start that
+    ``law.py`` refuses. FACTS.md, the grammar every reader gets, says the same."""
+    flat = _flat(_text(session))
+    assert START_SCOPE in flat
+    assert "Leave it out of every other" in flat
+    assert "a tax office's decision that names the day a return was filed" in flat
+    facts = _flat((ROOT / "evals" / "dataset" / "FACTS.md").read_text(encoding="utf-8"))
+    assert START_SCOPE in facts and "a tax office's decision that names the day a return was filed" in facts
+
+
+def test_the_first_adjudication_upholds_not_stated_where_no_start_can_change_the_date() -> None:
+    """Where a slot's date cannot depend on when the procedure began, a side's ``not stated`` is right whatever the
+    letter names, and the ``fact`` states no start: the label's side of such a slot can always be upheld."""
+    write = _flat(_section(_text("a1p"), "## What you write"))
+    assert (
+        "which is right only when the letter states none, or when the slot is not one whose date that day"
+        in write
+    )
+    folder = _flat(_section(_text("a1p"), "## Your folder"))
+    assert "for a slot whose date that day can change" in folder
+
+
 def test_the_second_adjudication_says_in_words_whether_the_letter_states_when_a_procedure_began() -> None:
     """A2′ writes no facts: where a derivation rests on when a procedure began, its reason says whether the letter
     states that day, and which."""
@@ -448,6 +486,19 @@ def test_the_fix_session_sets_or_removes_the_day_a_procedure_began() -> None:
         "passes that day to `law.py` as `procedure_began`, or passes none",
         "the item's `spec` then states that day as its `procedure_began`, or holds no such key",
         "Its date may stay as it is",
+    ):
+        assert words in text, words
+
+
+def test_the_fix_session_passes_no_start_that_law_py_refuses() -> None:
+    """``law.py`` takes a procedure start only for a Land authority's decision (``objection_item`` with scope
+    ``vwvfg``) and refuses one for a tax office's or a social-law decision, and a date that does not run from a
+    decision's notification has no place for one: a fix list that gives a start for such a slot gets none passed,
+    and the session says why instead of stopping."""
+    text = _flat(_text("w1fix"))
+    for words in (
+        "`law.py` takes a procedure start only for a Land authority's decision (`objection_item` with scope `vwvfg`)",
+        "pass none, change nothing else for that start, and say so in your last message",
     ):
         assert words in text, words
 

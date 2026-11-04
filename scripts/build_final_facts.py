@@ -29,6 +29,13 @@ letter's truth and gets no facts of its own: a ruling on a photo's slot is appli
 photo's own bytes); a reader's slot that matches no label slot is left out (counted); a price change's facts are taken
 when the label has one.
 
+The day an authority's procedure began is a fact of a slot only where it can change the slot's date
+(:func:`start_counts`): a Land authority's decision counted from its deemed delivery, in a Land that keeps its earlier
+day for a procedure begun before its switch (BW, BY and MV; ``verify_labels.land_fiction_days``). Anywhere else (a tax
+office's or a social-law decision whose letter names the day a return was filed or an application made, another
+Land's decision, a date the decision fixes) the label states no start, so one that a reader or the adjudicator states
+there is left out of the facts (counted), and "not stated" is the right side of such a slot.
+
 Refused, with nothing written (exit 2): an audit file that is not in the seal with its sha256, or not in its format;
 a label slot with a date or ``"ambiguous"`` and no fact; a final letter with no reading of its bytes as they are now;
 an id the manifest or the maps do not know (a map's entry, a reader's letter, a key's case or entry, a verdict's case,
@@ -36,7 +43,7 @@ a slot the label does not have); a key's case whose X and Y are not the label an
 twice, or ruled on a letter and on its photo with rulings that mean different things; a verdict that is not one of the
 four, a ``both_wrong`` without its date, an ``X_right`` or ``Y_right`` whose dated fact states another procedure start
 than the side it upholds (that side's ``Procedure began:`` line in the pack, none when it says ``not stated`` or has
-no such line), and an ``ambiguous`` verdict that names fewer than two candidates, a candidate that is neither X's date
+no such line), where the start can change the slot's date, and an ``ambiguous`` verdict that names fewer than two candidates, a candidate that is neither X's date
 nor Y's in its pack, no date of one of the two sides, or a fact that is not ambiguous; and a facts file the grammar
 refuses. It prints ids and counts only, never a fact, a date or a reason.
 
@@ -267,6 +274,8 @@ class Ruling:
     fact: dict[str, Any]
     item: MapItem
     upheld: str
+    #: The adjudicator's fact stated a procedure start where none can change the slot's date: it is left out.
+    start_left_out: bool = False
 
 
 def _label_slots(truth: Mapping[str, Any]) -> list[tuple[str, str | None, Any]]:
@@ -285,6 +294,30 @@ def _label_slots(truth: Mapping[str, Any]) -> list[tuple[str, str | None, Any]]:
 def _needs_fact(label: Any) -> bool:
     """A label with a date or ``"ambiguous"``: verify_labels re-derives it, so it needs its fact."""
     return isinstance(label, str) and (label == verify_labels.AMBIGUOUS or bool(_ISO_DAY.fullmatch(label)))
+
+
+def start_counts(entry: Mapping[str, Any], slot: str) -> bool:
+    """Whether the day a slot's procedure began can change its label's date, and so is a fact of the slot: only an
+    item of a Land authority's decision counted from its deemed delivery (its spec's ``delivery_scope`` ``vwvfg``),
+    sent by an authority of a Land that keeps its earlier day for a procedure begun before its switch
+    (``verify_labels.LAND_OLD_PROCEDURES``, where ``verify_labels.land_fiction_days`` reads the start). ``entry`` is
+    the letter's manifest entry (a photo shares its letter's truth); a contract date never depends on it."""
+    prefix, number = slot[:1], slot[1:]
+    if prefix not in ("i", "o") or not number.isdigit():
+        return False
+    items = entry.get("truth", {}).get("items" if prefix == "i" else "optional_items") or []
+    if int(number) >= len(items):
+        return False
+    spec = items[int(number)].get("spec") or {}
+    return (
+        spec.get("delivery_scope") == "vwvfg"
+        and spec.get("anchor", "deemed_delivery") == "deemed_delivery"
+        and entry.get("authority_region") in verify_labels.LAND_OLD_PROCEDURES
+    )
+
+
+def _without_start(fact: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in fact.items() if key != "procedure_began"}
 
 
 def _pack_side(pack: Path, case: str, side: str) -> str:
@@ -390,8 +423,10 @@ def load_rulings(
                 raise BuildError(f"{case}: an ambiguous verdict keeps a date of each side")
             if "ambiguous" not in fact:
                 raise BuildError(f"{case}: an ambiguous verdict's fact is no ambiguous fact")
+        counts = start_counts(entries.get(_letter_of(entries, entry_id)) or entries[entry_id], slot)
         if (
-            said in ("X_right", "Y_right")
+            counts
+            and said in ("X_right", "Y_right")
             and "undatable" not in fact
             and "ambiguous" not in fact
             and fact.get("procedure_began") != _pack_began(pack, case, said[0])
@@ -399,7 +434,10 @@ def load_rulings(
             # a side is upheld with its procedure start: the start it states, or none
             raise BuildError(f"{case}: its fact states another procedure start than the side it upholds")
         upheld = str(drawn[said[0]]) if said in ("X_right", "Y_right") else str(said)
-        rulings.append(Ruling(case, entry_id, slot, str(said), dict(fact), found[0], upheld))
+        # where no start changes the slot's date, "not stated" is right and a stated start is left out
+        left_out = not counts and "procedure_began" in fact
+        ruled = _without_start(fact) if left_out else dict(fact)
+        rulings.append(Ruling(case, entry_id, slot, str(said), ruled, found[0], upheld, left_out))
     return rulings
 
 
@@ -486,6 +524,7 @@ class Report:
     photos: int = 0
     unmatched_reader_slots: int = 0
     price_changes_without_fact: int = 0
+    starts_left_out: int = 0
 
     def lines(self, split: str) -> list[str]:
         sources = ", ".join(f"{name} {self.sources[name]}" for name in verify_labels.SOURCES)
@@ -497,7 +536,8 @@ class Report:
             + ", ".join(f"{kind} {self.ruled_ambiguous[kind]}" for kind in AMBIGUOUS_KINDS)
             + f"; {self.stale_rulings} ruling(s) on bytes read again",
             f"{split}: {self.unmatched_reader_slots} reader's slot(s) matched no label slot; "
-            f"{self.price_changes_without_fact} price change(s) without a fact",
+            f"{self.price_changes_without_fact} price change(s) without a fact; "
+            f"{self.starts_left_out} procedure start(s) left out where no start changes the date",
         ]
 
 
@@ -576,6 +616,7 @@ def build(
             if ruled is not None:
                 source, fact = "A1p", ruled.fact
                 report.verdicts[ruled.verdict] += 1
+                report.starts_left_out += ruled.start_left_out
                 if ruled.verdict == "ambiguous":
                     report.ruled_ambiguous[_kind(slot)] += 1
             else:
@@ -586,6 +627,9 @@ def build(
                         raise BuildError(f"{entry_id} {slot}: no fact")
                     continue
                 source, fact = reading.source, found
+                if "procedure_began" in fact and not start_counts(entry, slot):
+                    fact = _without_start(fact)
+                    report.starts_left_out += 1
             letter["slots"][slot] = {**fact, "source": source}
             report.sources[source] += 1
         if truth.get("price_change"):

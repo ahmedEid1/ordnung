@@ -571,6 +571,25 @@ def test_a_letter_and_its_photo_that_mean_different_things_are_refused(
     _refused(audit, capsys, f"{K1} i0: ruled differently on the letter and its photo (D002, D003)")
 
 
+def _decision(audit: Audit, spec: dict[str, Any], land: str | None) -> None:
+    """K1's deadline (and its photo's, which shares the truth) as a decision with this ``spec``, sent by an authority
+    of ``land``."""
+    for entry in audit.manifest["entries"]:
+        if entry["id"] in (K1, K1_PHOTO):
+            entry["authority_region"] = land
+            entry["truth"]["items"][0]["spec"] = {"type": "relative", "amount": 1, "unit": "months", **spec}
+
+
+#: A Land authority's decision counted from its deemed delivery, in a Land that keeps its earlier day for a procedure
+#: begun before its switch: the one slot whose date the day its procedure began can change.
+LAND_DECISION = {
+    "anchor": "deemed_delivery",
+    "delivery_scope": "vwvfg",
+    "posted_on": "2027-02-11",
+    "shift": True,
+}
+
+
 @pytest.mark.parametrize(
     ("photo_began", "letter_began"),
     [(None, "2024-11-01"), ("2024-11-01", None), ("2024-11-01", "2024-10-15")],
@@ -582,6 +601,7 @@ def test_a_letter_and_its_photo_that_state_another_procedure_start_are_refused(
     """The label check takes a slot's procedure start from its fact where the label states none, and for a BW, BY
     or MV letter that start decides the 3rd or the 4th day: two rulings for the same side and date that state the
     start differently, or only one of them states it, mean different things and are refused."""
+    _decision(audit, LAND_DECISION, "BY")
 
     def began(day: str | None) -> dict[str, Any]:
         """Both sides wrong, with the label's date and the start the ruling finds in the letter, or none."""
@@ -602,6 +622,7 @@ def test_a_ruling_upholds_a_side_with_its_procedure_start(
     procedure began and the label does not (or another day); the pack gives each side a ``Procedure began:`` line.
     ``X_right`` or ``Y_right`` upholds that side's start with its date, so the fact states that start, or none; a
     fact that states another is refused. ``ambiguous`` is not open to such a case: it has one date."""
+    _decision(audit, LAND_DECISION, "BY")
     _photo_case(audit, copy.deepcopy(UPHELD))
     audit.case_dates["D002"] = {"X": "2027-03-15", "Y": "2027-03-15"}
     audit.case_began["D002"] = {"X": "not stated", "Y": "2024-11-01"}
@@ -622,6 +643,65 @@ def test_a_ruling_upholds_a_side_with_its_procedure_start(
     ambiguous = {"verdict": "ambiguous", "candidates": ["2027-03-15", "2027-03-15"], "fact": open_}
     _photo_case(audit, copy.deepcopy(UPHELD) | ambiguous)
     _refused(audit, capsys, "D002: an ambiguous verdict names two or more candidates")
+
+
+@pytest.mark.parametrize(
+    ("spec", "land"),
+    [
+        (
+            {"anchor": "deemed_delivery", "delivery_scope": "ao", "posted_on": "2027-02-11", "shift": True},
+            "BY",
+        ),
+        (
+            {"anchor": "deemed_delivery", "delivery_scope": "sgbx", "posted_on": "2027-02-11", "shift": True},
+            "BY",
+        ),
+        (LAND_DECISION, "NW"),
+        ({"type": "fixed", "date": "2027-03-15"}, "BY"),
+    ],
+    ids=["tax-office", "social-law", "a-land-without-the-older-rule", "a-date-the-decision-fixes"],
+)
+def test_a_slot_whose_date_no_procedure_start_can_change_keeps_none(
+    audit: Audit, capsys: pytest.CaptureFixture[str], spec: dict[str, Any], land: str
+) -> None:
+    """A tax office's decision whose letter names the day the return was filed (and a social-law decision, another
+    Land's, or a payment date a Land's decision fixes): the day its procedure began cannot change its date, so it is
+    no fact of the slot. The second reading may state it anyway and the adjudicator's fact may too, while the label,
+    which ``law.py`` gives no start there, states none; the side that says "not stated" is then upheld as it is, never
+    refused, and the start is left out of the facts (counted), from a ruling and from a reading alike."""
+    _decision(audit, spec, land)
+    filed = "2026-03-12"
+    for name in ("L001", "L003"):
+        audit.a1c["letters"][name]["facts"][0]["procedure_began"] = filed
+    assert build.main(audit.write()) == 0  # from the conventions reading
+    assert "procedure_began" not in audit.facts()["letters"][K1]["slots"]["i0"]
+    assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
+    (audit.path("dataset") / SPLIT / "facts.json").unlink()
+    ruled = copy.deepcopy(UPHELD)
+    ruled["fact"] = ruled["fact"] | {"procedure_began": filed}
+    _photo_case(audit, ruled)  # the label's side, "not stated", upheld with a fact that states the filing day
+    audit.case_dates["D002"] = {"X": "2027-03-15", "Y": "2027-03-15"}
+    audit.case_began["D002"] = {"X": "not stated", "Y": filed}
+    assert build.main(audit.write()) == 0
+    slot = audit.facts()["letters"][K1]["slots"]["i0"]
+    assert slot["source"] == "A1p" and "procedure_began" not in slot
+    assert "1 procedure start(s) left out where no start changes the date" in capsys.readouterr().out
+    assert audit.verified()["date_problems"] == []
+    assert not build.start_counts(next(e for e in audit.manifest["entries"] if e["id"] == K1), "i0")
+
+
+def test_only_a_land_decision_counted_from_its_delivery_in_bw_by_or_mv_takes_a_procedure_start() -> None:
+    """``start_counts`` is where the facts builder, like the label check, lets a procedure start change a date: a
+    Land authority's decision counted from its deemed delivery in a Land that keeps its earlier day for a procedure
+    begun before its switch (``verify_labels.LAND_OLD_PROCEDURES``); never a contract date."""
+    truth = _truth(items=[{"kind": "deadline", "spec": {"type": "relative", **LAND_DECISION}}])
+    for land in ("BW", "BY", "MV"):
+        assert build.start_counts({"authority_region": land, "truth": truth}, "i0"), land
+    assert set(vl.LAND_OLD_PROCEDURES) == {"BW", "BY", "MV"}
+    for land in ("NW", "HE", None):
+        assert not build.start_counts({"authority_region": land, "truth": truth}, "i0"), land
+    assert not build.start_counts({"authority_region": "BY", "truth": truth}, "o0")
+    assert not build.start_counts({"authority_region": "BY", "truth": truth}, "term_end")
 
 
 def test_a_facts_meaning_ignores_its_form() -> None:

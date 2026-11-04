@@ -52,6 +52,11 @@ Where `fix-list.md` gives a slot's procedure start, the day the procedure of an 
 `law.py` as `procedure_began`, or passes none, through `objection_item` in `common.py` as the earlier modules do; the
 item's `spec` then states that day as its `procedure_began`, or holds no such key. Its date may stay as it is; where
 the start changes it, the date follows from `law.py` as for any other slot. The letter's text keeps the day it states.
+`law.py` takes a procedure start only for a Land authority's decision (`objection_item` with scope `vwvfg`): it
+refuses one for a tax office's or a social-law decision, and a date that does not run from a decision's notification
+has no place for one. Where `fix-list.md` gives a start for such a slot and its reason does not make the slot a Land
+authority's decision, pass none, change nothing else for that start, and say so in your last message, with the
+statutes.
 
 Every entry that `fix-list.md` does not name comes out of `python -m evals.generate --final-day {D0}` byte for byte as
 before your change.
