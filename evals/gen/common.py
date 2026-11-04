@@ -273,19 +273,24 @@ def objection_item(
     rule: str | None = None,
     money: float | None = None,
     shift_citation: str | None = None,
+    procedure_began: date | None = None,
 ) -> dict[str, Any]:
     """One-month period after the deemed notification of a posted administrative act (remedy period,
     or a payment period the authority set 'innerhalb eines Monats nach Bekanntgabe'). ``shift_citation``
     names the rule that moves the end where it is not the scope's usual one (e.g. an SGB X decision that
-    goes to the administrative courts)."""
+    goes to the administrative courts). ``region`` is also the authority's Land, whose own delivery day a Land
+    VwVfG decision counts; ``procedure_began`` is the day its procedure began, when the letter states it."""
     key = "ao" if scope == "ao" else ("sgbx" if scope == "sgbx" else f"vwvfg_{remedy}")
     default_shift, default_rule = REMEDY_RULES[key]
     shift_citation = shift_citation or default_shift
     rule = rule or default_rule
+    authority = region
 
     def calc(region: str | None) -> tuple[date, Derivation]:
         why = Derivation()
-        notified = law.deemed_delivery(posted, scope, region, why)
+        notified = law.deemed_delivery(
+            posted, scope, region, why, land=authority, procedure_began=procedure_began
+        )
         end = law.period_end(notified, 1, "months", region, why, shift=True, shift_citation=shift_citation)
         return end, why
 

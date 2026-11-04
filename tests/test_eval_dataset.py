@@ -667,8 +667,9 @@ def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) 
 
 
 def _remedy(posted: date, scope: str, region: str | None) -> tuple[str, str]:
+    """A posted decision's one-month remedy period; a Land authority's (``vwvfg``) sits in ``region``."""
     why = law.Derivation()
-    notified = law.deemed_delivery(posted, scope, region, why)
+    notified = law.deemed_delivery(posted, scope, region, why, land=region)
     end = law.period_end(notified, 1, "months", region, why, shift=True, shift_citation="test")
     return notified.isoformat(), end.isoformat()
 

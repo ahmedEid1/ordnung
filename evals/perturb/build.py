@@ -377,7 +377,12 @@ def _event(entry: Entry, item: TruthItem, region: str | None) -> date | None:
         posted = parse_iso(spec.posted_on) or parse_iso(entry.truth.document_date)
         if posted is None or spec.delivery_scope not in law.SCOPE_CITATION:
             return None
-        return law.deemed_delivery(posted, spec.delivery_scope, region, law.Derivation())
+        try:  # a Land authority's decision counts its own Land's day; one the arithmetic refuses gives nothing back
+            return law.deemed_delivery(
+                posted, spec.delivery_scope, region, law.Derivation(), land=entry.authority_region
+            )
+        except ValueError:
+            return None
     if spec.anchor == "document_date":
         return parse_iso(entry.truth.document_date)
     if spec.anchor == "explicit_date":

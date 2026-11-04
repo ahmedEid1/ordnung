@@ -20,6 +20,11 @@ Legal basis:
   day, else the letter date (c02, disputed). Tax law (AO) moves that day to the next working day
   (§ 108 Abs. 3 AO, BFH IX R 68/98); VwVfG and SGB X do not (BSG B 14 AS 12/09 R; OVG Lüneburg
   4 LA 44/10; c03, disputed).
+* A Land authority's decision (scope ``vwvfg``) counts its own Land's day, as the Land's text in
+  ``evals/law/laender.txt`` gives it (``LAND_VWVFG_*`` below): Hessen the 3rd day, Hamburg and
+  Baden-Württemberg the 4th only from a later day, and in Baden-Württemberg, Bayern and
+  Mecklenburg-Vorpommern a procedure begun before the switch keeps the 3rd. A Land whose text could not be
+  read is refused (c07), and so is a decision sent other than by post.
 * Holidays: weekend + the nine nationwide holidays always; regional (Land) holidays only when the
   relevant Land is known (``region``; c04); municipal-only holidays are never used — the generator
   asserts that no label depends on them (c05).
@@ -60,9 +65,61 @@ WEEKDAYS_DE = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 WEEKDAYS_EN = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
 # Posting dates up to and including this day use the old 3-day fiction (PostModG, in force 2025-01-01;
-# Art. 97 § 1 Abs. 15 EGAO for the AO; § 37 SGB X and § 41 VwVfG have no transitional rule, the
-# posting date decides — for 29.–31.12.2024 the earlier 3-day result is also the safe one).
+# Art. 97 § 1 Abs. 15 EGAO for the AO; § 37 SGB X and the federal § 41 VwVfG have no transitional rule,
+# the posting date decides — for 29.–31.12.2024 the earlier 3-day result is also the safe one). A Land
+# authority's day is its Land's own (the LAND_VWVFG_* tables below).
 OLD_FICTION_LAST_DAY = date(2024, 12, 31)
+
+# --------------------------------------------------------------------------------------------------
+# the Länder: the day a posted decision of a Land authority counts as delivered (evals/law/laender.txt)
+# --------------------------------------------------------------------------------------------------
+
+#: The day from which a Land's authorities count the 4th day after posting (the 3rd day before it), as each Land's
+#: block in evals/law/laender.txt gives it: BY (Art. 41 Abs. 2 and Art. 98 BayVwVfG), NW (§ 41 Abs. 2 VwVfG NRW, in
+#: force 1 January 2025), MV (§ 41 Abs. 2 as amended by Art. 1 Nr. 14 of the act of 11 December 2024, in force
+#: 1 January 2025 under its Art. 4), SH (§ 110 Abs. 2 LVwG as amended by Art. 1 Nr. 2 of the act of 13 December 2024,
+#: in force 1 January 2025 under its Art. 2 Abs. 2), BE, BB, NI and SN (their acts apply the federal VwVfG, whose
+#: § 41 Abs. 2 counts the 4th day from 1 January 2025), TH (§ 1 ThürVwVfG applies the federal VwVfG; the act is in
+#: force from 1 January 2025 under Art. 90), HH (the Zwölftes Gesetz zur Änderung des HmbVwVfG, HmbGVBl. Nr. 17 of
+#: 13 May 2025, in force the day after under Art. 54 of Hamburg's constitution) and BW (§ 102b LVwVfG: the wording
+#: up to 6 February 2025 for a procedure begun before 7 February 2025).
+LAND_VWVFG_FOURTH_DAY_FROM: dict[str, date] = {
+    **dict.fromkeys(("BB", "BE", "BY", "MV", "NI", "NW", "SH", "SN", "TH"), date(2025, 1, 1)),
+    "HH": date(2025, 5, 14),
+    "BW": date(2025, 2, 7),
+}
+#: Länder whose authorities count the 3rd day after posting: Hessen (§ 41 Abs. 2 HVwVfG).
+LAND_VWVFG_THIRD_DAY: frozenset[str] = frozenset({"HE"})
+#: Länder that keep their old wording, and so the 3rd day, for a procedure begun before their switch and not
+#: finished, and that switch: BW (§ 102b LVwVfG), BY (Art. 98 BayVwVfG), MV (§ 120a VwVfG M-V). Elsewhere the
+#: posting day decides (NW: § 97 VwVfG NRW applies the law in force to each step; TH: § 8 Abs. 1 ThürVwVfG).
+LAND_VWVFG_OLD_PROCEDURES: dict[str, date] = {
+    "BW": date(2025, 2, 7),
+    "BY": date(2025, 1, 1),
+    "MV": date(2025, 1, 1),
+}
+LAND_VWVFG_OLD_PROCEDURE_RULE: dict[str, str] = {
+    "BW": "§ 102b LVwVfG",
+    "BY": "Art. 98 BayVwVfG",
+    "MV": "§ 120a VwVfG M-V",
+}
+#: Länder whose text could not be read (evals/law/SOURCES.md): no letter of one of their authorities can be dated.
+LAND_VWVFG_UNVERIFIED: frozenset[str] = frozenset({"HB", "RP", "SL", "ST"})
+#: Each verified Land's provision for the day its authorities' posted decision counts as delivered.
+LAND_VWVFG_PROVISION: dict[str, str] = {
+    "BB": "§ 1 Abs. 1 VwVfGBbg with § 41 Abs. 2 S. 1 VwVfG",
+    "BE": "§ 1 Abs. 1 of Berlin's Gesetz über das Verfahren der Berliner Verwaltung with § 41 Abs. 2 S. 1 VwVfG",
+    "BW": "§ 41 Abs. 2 S. 1 LVwVfG",
+    "BY": "Art. 41 Abs. 2 S. 1 BayVwVfG",
+    "HE": "§ 41 Abs. 2 S. 1 HVwVfG",
+    "HH": "§ 41 Abs. 2 S. 1 HmbVwVfG",
+    "MV": "§ 41 Abs. 2 S. 1 VwVfG M-V",
+    "NI": "§ 1 Abs. 1 NVwVfG with § 41 Abs. 2 S. 1 VwVfG",
+    "NW": "§ 41 Abs. 2 S. 1 VwVfG NRW",
+    "SH": "§ 110 Abs. 2 S. 1 LVwG",
+    "SN": "§ 1 SächsVwVfZG with § 41 Abs. 2 S. 1 VwVfG",
+    "TH": "§ 1 Abs. 1 ThürVwVfG with § 41 Abs. 2 S. 1 VwVfG",
+}
 
 
 def fmt(d: date) -> str:
@@ -368,22 +425,94 @@ SCOPE_CITATION = {
 }
 
 
-def deemed_delivery(posted: date, scope: str, region: str | None, why: Derivation) -> date:
+def _land_vwvfg_rule(posted: date, land: str | None, procedure_began: date | None) -> str | None:
+    """Why a Land authority's decision posted on ``posted`` counts the 3rd day where the federal rule counts the
+    4th (Hessen; Hamburg and Baden-Württemberg before their switch; an older procedure in BW, BY or MV), or None
+    when it counts the federal rule's day. Refuses a decision with no Land or from a Land with no verified text."""
+    if land is None:
+        raise ValueError(
+            "a Land authority's decision (scope vwvfg) needs the authority's Land (land=...): the day it counts as "
+            "delivered is that Land's own rule (evals/law/laender.txt)"
+        )
+    if land not in LAENDER:
+        raise ValueError(f"unknown Land {land!r}")
+    if land in LAND_VWVFG_UNVERIFIED:
+        raise ValueError(
+            f"{LAND_NAMES[land]} ({land}): evals/law/laender.txt holds no verified text of its rule on when its "
+            "authorities' decisions count as delivered, so no letter from one of them can be dated; take the "
+            "authority from a Land whose text is there"
+        )
+    provision, name = LAND_VWVFG_PROVISION[land], LAND_NAMES[land]
+    if posted <= OLD_FICTION_LAST_DAY:
+        return None  # every Land counted the 3rd day then: the old rule's words
+    if land in LAND_VWVFG_THIRD_DAY:
+        return f"{provision} ({name} keeps the 3-day rule, evals/law/laender.txt)"
+    start = LAND_VWVFG_FOURTH_DAY_FROM[land]
+    if posted < start:
+        return (
+            f"{provision} (Land VwVfG: {name} counts the 4th day only for items posted from {start.isoformat()}, "
+            "so the old 3-day rule)"
+        )
+    switch = LAND_VWVFG_OLD_PROCEDURES.get(land)
+    if switch is not None and procedure_began is not None and procedure_began < switch:
+        return (
+            f"{provision} in its wording before {switch.isoformat()} ({LAND_VWVFG_OLD_PROCEDURE_RULE[land]}: the "
+            f"procedure began {fmt(procedure_began)}, before {switch.isoformat()}, so the old 3-day rule)"
+        )
+    return None
+
+
+def deemed_delivery(
+    posted: date,
+    scope: str,
+    region: str | None,
+    why: Derivation,
+    *,
+    land: str | None = None,
+    procedure_began: date | None = None,
+    channel: str = "post",
+) -> date:
     """Day a posted administrative act counts as notified (Bekanntgabe).
 
-    ``region`` is the recipient's Land for the AO shift (OFD Cottbus 2004); the generator only uses
-    region-dependent fiction days when the recipient lives in the authority's Land.
+    ``region`` is the Land whose holidays count, the recipient's Land for the AO shift (OFD Cottbus 2004); the
+    generator only uses region-dependent fiction days when the recipient lives in the authority's Land. ``land`` is
+    the authority's Land: a Land authority's decision (scope ``vwvfg``) must name it, and counts that Land's own day
+    (the ``LAND_VWVFG_*`` tables); tax and social-law decisions do not depend on it. ``procedure_began`` is the day
+    the administrative procedure began, when the letter states it: in BW, BY and MV a procedure begun before the
+    Land's switch keeps the 3rd day. ``channel`` is how the decision was sent: only ``"post"`` has a rule here.
     """
-    days = 3 if posted <= OLD_FICTION_LAST_DAY else 4
-    fiction = posted + timedelta(days=days)
-    rule = (
-        "old 3-day rule, posted before 2025-01-01"
-        if days == 3
-        else "4-day rule for items posted from 2025-01-01 (PostModG)"
-    )
-    why.add(
-        f"Posted {fmt(posted)}; {SCOPE_CITATION[scope]} ({rule}): day {days} after posting = {fmt(fiction)}."
-    )
+    if channel != "post":
+        brandenburg = (
+            " (in Brandenburg an e-mailed decision counts from the day it arrived when that can be shown, "
+            "§ 7 VwVfGBbg)"
+            if land == "BB"
+            else ""
+        )
+        raise ValueError(
+            f"law.py dates decisions sent by post only: there is no rule here for one sent {channel!r}{brandenburg}"
+        )
+    if procedure_began is not None and scope != "vwvfg":
+        raise ValueError(
+            "a procedure's start decides the day only for a Land authority's decision (scope vwvfg)"
+        )
+    if procedure_began is not None and procedure_began > posted:
+        raise ValueError(f"the procedure began {procedure_began}, after the decision was posted on {posted}")
+    land_rule = _land_vwvfg_rule(posted, land, procedure_began) if scope == "vwvfg" else None
+    if land_rule is not None:
+        days = 3
+        fiction = posted + timedelta(days=days)
+        why.add(f"Posted {fmt(posted)}; {land_rule}: day {days} after posting = {fmt(fiction)}.")
+    else:
+        days = 3 if posted <= OLD_FICTION_LAST_DAY else 4
+        fiction = posted + timedelta(days=days)
+        rule = (
+            "old 3-day rule, posted before 2025-01-01"
+            if days == 3
+            else "4-day rule for items posted from 2025-01-01 (PostModG)"
+        )
+        why.add(
+            f"Posted {fmt(posted)}; {SCOPE_CITATION[scope]} ({rule}): day {days} after posting = {fmt(fiction)}."
+        )
     if scope == "ao":
         if is_working_day(fiction, region):
             why.add(f"{fmt(fiction)} is a working day, so Bekanntgabe is {fmt(fiction)}.")

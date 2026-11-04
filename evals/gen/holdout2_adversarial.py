@@ -300,7 +300,7 @@ def adversarial() -> list[Case]:
 
     def vwvfg_end(posted: date) -> date:
         why = Derivation()
-        notified = law.deemed_delivery(posted, "vwvfg", "BW", why)
+        notified = law.deemed_delivery(posted, "vwvfg", "BW", why, land="BW")
         return law.period_end(
             notified, 1, "months", "BW", why, shift=True, shift_citation="§ 31 Abs. 3 VwVfG"
         )
