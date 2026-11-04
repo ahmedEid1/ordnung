@@ -11,8 +11,8 @@ was planned with (``--no-composition`` skips it), and that every gold has the sa
 state on each day from D0 to L. It prints ids, days and counts, never a question's words.
 
 Two more uses, outside the writer's sandbox: ``--strip-gold`` writes the questions without their gold for a blind
-second answerer (``questions-blind.json``), and ``--blind-compare REPLIES`` compares that answerer's replies with the
-gold, value by value, and prints the agreement per category (writing the ids that disagree or got no reply).
+second answerer (``questions-blind.json``), and ``--blind-compare answers.json`` compares that answerer's replies
+(its ``answers.json``) with the gold, value by value, and prints the agreement per category (writing the ids that disagree or got no reply).
 
 The loader of the set (``evals/ask/heldout.py``) reads the same files with the same vocabulary; the day tokens, the
 window check and the recurrence gold live here, so both use one reading of them.
@@ -40,6 +40,8 @@ SCHEMA = "ask-heldout/1"
 RECURRENCE_SCHEMA = "ask-heldout-recurrence/1"
 BLIND_SCHEMA = "ask-heldout-blind/1"
 REPLIES_SCHEMA = "ask-heldout-replies/1"
+#: The file the blind second answerer writes its replies to (the W2v brief and its copy-out name it too).
+ANSWERS_NAME = "answers.json"
 QUESTIONS_NAME = "questions.json"
 ATTACKS_NAME = "attacks.json"
 RECURRENCE_NAME = "recurrence.json"
@@ -758,7 +760,7 @@ def check(
 
 HOW_TO_REPLY = (
     "Answer each question from the sample life's letters, the household facts and the to-dos that repeat, as of the "
-    "day you are given, and nothing else. Write replies.json as "
+    "day you are given, and nothing else. Write " + ANSWERS_NAME + " as "
     '{"schema": "' + REPLIES_SCHEMA + '", "replies": [...]}, one reply per question id: {"id": "...", '
     '"unanswerable": true} when the letters do not say; otherwise {"id": "...", "dates": ["YYYY-MM-DD"], "amounts": '
     '[12.3], "numbers": ["an identifier"]} with exactly the values that answer it, or for a question that asks for '
@@ -865,7 +867,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     mode.add_argument("--window", nargs=2, type=date.fromisoformat, metavar=("D0", "L"), help="check the set")
     mode.add_argument("--strip-gold", action="store_true", help="write the questions without their gold")
     mode.add_argument(
-        "--blind-compare", type=Path, metavar="REPLIES", help="compare blind replies with the gold"
+        "--blind-compare",
+        type=Path,
+        metavar=ANSWERS_NAME.upper().replace(".", "_"),
+        help=f"compare the blind answerer's {ANSWERS_NAME} with the gold",
     )
     parser.add_argument(
         "--folder", type=Path, default=HELDOUT_DIR, help="the set's folder (default: evals/ask/heldout)"
