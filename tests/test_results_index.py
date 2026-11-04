@@ -1193,7 +1193,8 @@ def test_no_run_as_recorded_moved_undeclared(rows: dict[str, dict[str, Any]]) ->
 # --------------------------------------------------------------------------------------------------
 
 WITHOUT_LAND = "2026-10-08-claude-sonnet-5-without-land.json"
-ABLATION = "2026-10-30-claude-sonnet-5-checks-ablated.json"
+#: the published check ablation of the earlier splits (it supersedes the one of 30 Oct 2026)
+ABLATION = "2026-11-04-claude-sonnet-5-checks-ablated.json"
 E2E = "2026-10-30-claude-sonnet-5-e2e.json"
 
 
