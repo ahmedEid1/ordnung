@@ -53,29 +53,115 @@ def final_manifest(path: Path) -> Path:
     return path
 
 
-def test_holdout4_gives_the_stress_base_four_letters_of_every_template_family() -> None:
-    """Once holdout4 has letters, the base set takes four standard text letters with a dated deadline from each of the
-    twelve template families (48 in all): no family falls short, so none gives its places to the others (it holds
-    while holdout4 has no letters)."""
-    from evals.generate import TEMPLATE_FAMILIES
-
+def test_holdout4_gives_the_stress_base_four_letters_of_every_family_with_dated_deadlines() -> None:
+    """Once holdout4 has letters, the base set takes 48 standard text letters with a dated deadline, and at least four
+    from each family whose letters carry a dated deadline in every earlier split: what the dataset's per-family rule,
+    which the letters' writer checks, promises (it holds while holdout4 has no letters)."""
     entries = load_manifest(MANIFEST)
     if not any(entry.split == "holdout4" for entry in entries):
         return
-    assert Counter(entry.family for entry in build.base_set(entries)) == dict.fromkeys(TEMPLATE_FAMILIES, 4)
+    raw = json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"]
+    assert_the_stress_base_keeps_the_per_family_rule(entries, raw)
+
+
+def assert_the_stress_base_keeps_the_per_family_rule(
+    entries: list[Entry], raw: list[dict[str, Any]]
+) -> Counter[str]:
+    """The base set's letters by family: :data:`build.BASE_LETTERS` in all, and at least the per-family rule's four
+    from each family whose letters carry a dated deadline in every earlier split."""
+    from test_eval_dataset import DATED_TEXT_LETTERS_PER_FAMILY, dated_families
+
+    chosen = Counter(entry.family for entry in build.base_set(entries))
+    assert sum(chosen.values()) == build.BASE_LETTERS
+    short = {
+        family: chosen[family]
+        for family in dated_families(raw)
+        if chosen[family] < DATED_TEXT_LETTERS_PER_FAMILY
+    }
+    assert short == {}, short
+    return chosen
+
+
+def test_a_holdout4_made_like_holdout3_gives_the_stress_base_its_letters() -> None:
+    """holdout3's letters copied twice as holdout4 (the brief's composition, made the way holdout3 is made) give the
+    stress base its 48 letters as the per-family rule promises, four or five from each of the ten families."""
+    from test_eval_dataset import holdout3_twice
+
+    raw = holdout3_twice(json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"])
+    entries = [Entry.model_validate(entry) for entry in raw]
+    chosen = assert_the_stress_base_keeps_the_per_family_rule(entries, raw)
+    assert len(chosen) == 10 and set(chosen.values()) == {4, 5}, chosen
+
+
+#: Families a holdout4 at the rule's minimum gives four dated letters each, no more (six of the ten).
+AT_THE_MINIMUM = (
+    "appointment",
+    "dunning_fixed",
+    "english_letter",
+    "relative_business_days",
+    "social_decision",
+    "tax_assessment",
+)
+
+
+def test_a_holdout4_at_the_rule_s_minimum_still_gives_the_stress_base_its_letters() -> None:
+    """The per-family rule the letters' writer checks asks four dated letters of each family with dated deadlines and
+    48 in all, no more. A holdout4 with only four in several families passes that check, and the base set still takes
+    its 48 letters with at least four of each such family: the families with more give the places the others cannot
+    (:func:`build.base_set`, as evenly as the letters allow)."""
+    from test_eval_dataset import (
+        DATED_TEXT_LETTERS_IN_ALL,
+        dated_text_letter,
+        dated_text_letters_in,
+        families_short_of_dated_text_letters,
+        holdout3_twice,
+    )
+
+    kept: Counter[str] = Counter()
+    raw = []
+    for entry in holdout3_twice(json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"]):
+        if entry["split"] == "holdout4" and entry["family"] in AT_THE_MINIMUM and dated_text_letter(entry):
+            kept[entry["family"]] += 1
+            if kept[entry["family"]] > 4:
+                continue
+        raw.append(entry)
+    assert families_short_of_dated_text_letters(raw) == {}  # the letters' writer's own check passes
+    assert (dated_text_letters_in(raw) or 0) >= DATED_TEXT_LETTERS_IN_ALL
+    entries = [Entry.model_validate(entry) for entry in raw]
+    chosen = assert_the_stress_base_keeps_the_per_family_rule(entries, raw)
+    assert all(chosen[family] == 4 for family in AT_THE_MINIMUM), chosen
 
 
 def test_the_dataset_tests_count_the_letters_the_stress_base_draws_from() -> None:
     """The dataset's per-family rule for holdout4 (``tests/test_eval_dataset.py``, which the letters' writer runs)
     counts exactly the letters :func:`build.eligible` lets into the base set, on every letter of the dataset."""
-    from test_eval_dataset import DATED_TEXT_LETTERS_PER_FAMILY, dated_text_letter
+    from test_eval_dataset import DATED_TEXT_LETTERS_IN_ALL, dated_text_letter
 
     raw = {entry["id"]: entry for entry in json.loads(MANIFEST.read_text(encoding="utf-8"))["entries"]}
     entries = load_manifest(MANIFEST)
-    assert DATED_TEXT_LETTERS_PER_FAMILY * 12 == build.BASE_LETTERS
+    assert DATED_TEXT_LETTERS_IN_ALL == build.BASE_LETTERS
     differ = [entry.id for entry in entries if dated_text_letter(raw[entry.id]) != build.eligible(entry)]
     assert not differ, differ[:5]
     assert sum(map(build.eligible, entries)) > 100
+
+
+def test_an_inserted_date_avoids_the_candidates_of_a_contract_date_left_open() -> None:
+    """A contract date left open between two dates (``"ambiguous"``) keeps its candidates under the slot's name; an
+    inserted date may equal none of them, as it may equal none of an item's candidates."""
+    entries = {entry.id: entry for entry in load_manifest(MANIFEST)}
+    letter = entries["holdout3-contract_confirmation-I1"]
+    assert letter.truth.contract is not None
+    pdf = letter.path(DATASET).read_bytes()
+    open_end = ["2031-02-28", "2031-03-31"]
+    contract = letter.truth.contract.model_copy(
+        update={
+            "expected_current_term_end": "ambiguous",
+            "candidates": {"expected_current_term_end": open_end},
+        }
+    )
+    left_open = letter.model_copy(update={"truth": letter.truth.model_copy(update={"contract": contract})})
+    taken = build.taken_dates(left_open, pdf)
+    assert {date.fromisoformat(day) for day in open_end} <= taken
 
 
 #: Neutral sentences for the tests only (the real ones are written blind, plan EV8).

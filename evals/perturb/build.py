@@ -1,11 +1,12 @@
 """The stress cells' letters: the base set, what each letter gets, the files and the stress manifest.
 
 **Base set.** 48 standard text letters of ``holdout4``, the final run's split (:data:`BASE_SPLITS`; every other split
-is refused), each with at least one scored dated deadline. They are spread as evenly over the families as the letters
-allow — four each when twelve families have one (a family short of letters gives all it has, and the others fill its
-places) — and each family's letters are drawn with the seed :data:`SEED`. The earlier held-out splits were written for
-their own days and recorded once; holdout4 is written for the recording window (the planned day, its letters' today,
-through its last valid day), so the same 48 letters can be read on any day of it.
+is refused), each with at least one scored dated deadline. They are spread as evenly over the families that have such
+letters as the letters allow — at least four from each of the ten families whose letters carry a dated deadline, four
+or five each when every one of them has five or more (a family short of letters gives all it has, and the others fill
+its places) — and each family's letters are drawn with the seed :data:`SEED`. The earlier held-out splits were
+written for their own days and recorded once; holdout4 is written for the recording window (the planned day, its
+letters' today, through its last valid day), so the same 48 letters can be read on any day of it.
 
 **No day in the stress manifest.** The base set and what each letter gets do not depend on the day the cells are
 recorded. Built for a day (:func:`build`'s ``today``), the runner's manifest gives each letter that day as its
@@ -63,7 +64,8 @@ from evals.records import Entry, TruthItem, load_manifest, parse_iso
 SEED = 20261029
 #: The only split whose letters are perturbed: the final run's, written for the recording window.
 BASE_SPLITS = ("holdout4",)
-#: How many base letters (spread evenly over the families: four each with twelve).
+#: How many base letters (spread as evenly as the letters allow over the families that have them: at least four
+#: each with ten).
 BASE_LETTERS = 48
 #: A letter is valid this many days after its today when its manifest names no last valid day (D0 through D0 + 7).
 VALID_DAYS = 7
@@ -342,7 +344,8 @@ def _iso_dates(value: Any) -> Iterable[date]:
 
 
 def taken_dates(entry: Entry, pdf: bytes) -> set[date]:
-    """Dates an inserted date must not equal: every date of the truth, the letter date, today, every printed date."""
+    """Dates an inserted date must not equal: every date of the truth (an ambiguous item's or contract date's
+    candidates too), the letter date, today, every printed date."""
     truth = entry.truth
     taken = set(visible_dates(pdf))
     for item in [*truth.items, *truth.optional_items]:
@@ -353,6 +356,8 @@ def taken_dates(entry: Entry, pdf: bytes) -> set[date]:
         taken.update(
             _iso_dates([truth.contract.expected_current_term_end, truth.contract.expected_cancel_by])
         )
+        # a contract date left open keeps its candidates under the slot's name
+        taken.update(_iso_dates(truth.contract.candidates))
     taken.update(_iso_dates(truth.price_change or {}))
     return taken
 

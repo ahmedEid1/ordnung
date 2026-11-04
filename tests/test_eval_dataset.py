@@ -20,6 +20,7 @@ the letters' writers run it.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -245,10 +246,12 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
         case("dev", "adversarial", "scam")
 
 
-#: The final split, and how many standard text letters with a dated scored item each of its twelve template families
-#: holds at least.
+#: The final split; how many standard text letters with a dated scored item each of its template families holds at
+#: least, when that family's letters carry a dated scored item in every earlier split (ten of the twelve: contract
+#: confirmations and price increases carry none); and how many it holds at least in all.
 FINAL_SPLIT = "holdout4"
 DATED_TEXT_LETTERS_PER_FAMILY = 4
+DATED_TEXT_LETTERS_IN_ALL = 48
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
@@ -262,27 +265,76 @@ def dated_text_letter(entry: dict[str, Any]) -> bool:
     )
 
 
+def dated_families(entries: list[dict[str, Any]]) -> list[str]:
+    """The template families whose letters carry a dated scored item in every earlier split that has letters."""
+    earlier = [name for name in SPLITS if any(e["split"] == name for e in entries)]
+    return sorted(
+        family
+        for family in {e["family"] for e in entries if e["split"] in earlier and e["family"] != "adversarial"}
+        if all(
+            any(e["split"] == name and e["family"] == family and dated_text_letter(e) for e in entries)
+            for name in earlier
+        )
+    )
+
+
 def families_short_of_dated_text_letters(
     entries: list[dict[str, Any]], split: str = FINAL_SPLIT
 ) -> dict[str, int]:
-    """The template families (those of the earlier splits) with fewer than :data:`DATED_TEXT_LETTERS_PER_FAMILY`
-    dated text letters in ``split``, with how many each has; none while ``split`` has no letters."""
+    """The families of :func:`dated_families` with fewer than :data:`DATED_TEXT_LETTERS_PER_FAMILY` dated text
+    letters in ``split``, with how many each has; none while ``split`` has no letters."""
     letters = [e for e in entries if e["split"] == split]
     if not letters:
         return {}
-    families = sorted({e["family"] for e in entries if e["split"] in SPLITS and e["family"] != "adversarial"})
     counts = Counter(e["family"] for e in letters if dated_text_letter(e))
-    return {family: counts[family] for family in families if counts[family] < DATED_TEXT_LETTERS_PER_FAMILY}
+    return {
+        family: counts[family]
+        for family in dated_families(entries)
+        if counts[family] < DATED_TEXT_LETTERS_PER_FAMILY
+    }
 
 
-def test_holdout4_has_four_dated_text_letters_in_every_template_family(manifest: dict[str, Any]) -> None:
-    """Each of the twelve template families has at least four standard text letters with a dated scored item in
-    holdout4 (it holds while holdout4 has no letters, and binds once it has)."""
-    assert families_short_of_dated_text_letters(_entries(manifest)) == {}
+def dated_text_letters_in(entries: list[dict[str, Any]], split: str = FINAL_SPLIT) -> int | None:
+    """How many dated text letters ``split`` holds in all; ``None`` while it has no letters."""
+    letters = [e for e in entries if e["split"] == split]
+    return sum(map(dated_text_letter, letters)) if letters else None
+
+
+def test_holdout4_has_four_dated_text_letters_in_every_family_with_dated_items(
+    manifest: dict[str, Any],
+) -> None:
+    """Each template family whose letters carry a dated scored item in every earlier split has at least four
+    standard text letters with a dated scored item in holdout4, and holdout4 has at least 48 such letters in all (it
+    holds while holdout4 has no letters, and binds once it has)."""
+    entries = _entries(manifest)
+    assert families_short_of_dated_text_letters(entries) == {}
+    assert (dated_text_letters_in(entries) or DATED_TEXT_LETTERS_IN_ALL) >= DATED_TEXT_LETTERS_IN_ALL
+
+
+def holdout3_twice(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The entries with holdout3's letters copied twice as the final split, in place of any it has: the composition
+    the brief asks of it (twice holdout3's letters, photos and scored items), made the way holdout3 is made."""
+    copies = [
+        {**copy.deepcopy(e), "id": f"{e['id']}-{suffix}", "split": FINAL_SPLIT}
+        for suffix in ("K", "M")
+        for e in entries
+        if e["split"] == "holdout3"
+    ]
+    return [*(e for e in entries if e["split"] != FINAL_SPLIT), *copies]
+
+
+def test_a_final_split_made_like_holdout3_meets_the_per_family_rule(manifest: dict[str, Any]) -> None:
+    """A holdout4 made the way holdout3 is made, at twice its size, meets the rule as it stands: the families whose
+    letters carry no dated item in the earlier splits are not asked for four."""
+    entries = holdout3_twice(_entries(manifest))
+    assert len(dated_families(entries)) == 10
+    assert families_short_of_dated_text_letters(entries) == {}
+    assert (dated_text_letters_in(entries) or 0) >= DATED_TEXT_LETTERS_IN_ALL
 
 
 def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
-    """A photo, an adversarial letter and a letter whose only scored item has no single date do not count."""
+    """A photo, an adversarial letter and a letter whose only scored item has no single date do not count, and a
+    family whose letters carried no dated item before is not asked for any."""
 
     def letter(
         cid: str, split: str, family: str, due: str | None = "2027-03-15", **more: Any
@@ -298,6 +350,7 @@ def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
         }
 
     earlier = [letter(f"test-{f}-C1", "test", f) for f in ("fine", "invoice", "tax")]
+    earlier.append(letter("test-contract-C1", "test", "contract", due=None))
     final = [letter(f"holdout4-fine-K{n}", FINAL_SPLIT, "fine") for n in range(1, 5)]
     final += [letter(f"holdout4-tax-K{n}", FINAL_SPLIT, "tax") for n in range(1, 4)]
     final += [
@@ -308,7 +361,9 @@ def test_the_per_family_rule_counts_dated_text_letters_only() -> None:
         letter("holdout4-adversarial-x", FINAL_SPLIT, "adversarial"),
     ]
     assert families_short_of_dated_text_letters(earlier) == {}
+    assert dated_families(earlier) == ["fine", "invoice", "tax"]  # a family never dated before is not bound
     assert families_short_of_dated_text_letters([*earlier, *final]) == {"invoice": 0, "tax": 3}
+    assert dated_text_letters_in(earlier) is None and dated_text_letters_in([*earlier, *final]) == 7
     final += [
         letter("holdout4-tax-K5", FINAL_SPLIT, "tax"),
         *(letter(f"holdout4-invoice-K{n}", FINAL_SPLIT, "invoice") for n in range(4)),

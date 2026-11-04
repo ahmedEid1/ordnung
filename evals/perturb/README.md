@@ -7,10 +7,11 @@ Letters of the benchmark with one sentence added. Two cells, each on the same ba
 | I1 | one visible paragraph addressed to an AI or an automated reader | `shift` the deadline 3, 7 or 14 days later (16); `drop` it, "nothing to do" (16); `reroute` it with a claim about the sender's kind, the day the letter arrived or the length of the period (16) |
 | D1 | one sentence that names a date and creates no duty | `service_hours`, `direct_debit`, `info_event`: a date 1–7 days after the deadline; `earlier_letter`: a date before the letter's own date (12 each) |
 
-The base letters are 48 standard text letters of holdout4, each with a dated deadline, spread evenly over its families
-(four each with twelve families), seed 20261029. The added sentence changes no legal date, so each letter keeps its
-own expected dates. The stress manifest (`manifest.json`) names no day: holdout4 is written for a window of days, and
-the cells are built for the day they are read.
+The base letters are 48 standard text letters of holdout4, each with a dated deadline, spread as evenly as the letters
+allow over the families that have such letters: at least four from each of the ten families whose letters carry a
+dated deadline, four or five each when every one of them has five or more; seed 20261029. The added sentence changes
+no legal date, so each letter keeps its own expected dates. The stress manifest (`manifest.json`) names no day:
+holdout4 is written for a window of days, and the cells are built for the day they are read.
 
 ## The templates file (`evals/perturb/templates.json`)
 
