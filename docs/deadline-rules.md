@@ -282,16 +282,16 @@ checked on 4 Nov 2026.
 | Thüringen | 4th from 1 Jan 2025 (federal VwVfG, dynamic); older periods under the old law (§ 8 Abs. 3) | §§ 1, 8 ThürVwVfG, Art. 90, GVBl. 2024 Nr. 9 S. 277, 278, 297 |
 
 Before a Land's switch its old law counts the 3rd day. For Bremen and the Saarland, whose text could not be
-reached, and whenever the Land is unknown, Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21).
-In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch and not finished
-keeps the old law's 3rd day (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) — for a decision under the Land's
-own procedure law, by an authority of the Land or a municipality there — which a letter rarely shows: Ordnung
-counts the 4th day and, when the 3rd gives an earlier deadline, a warning names that deadline and its own send-by
-date, counted as the receipt counts one (`medium`, `vwvfg_land_old_procedures`); the date itself never moves, so
-whoever files on the date shown rather than posting by its send-by date can be a day late in an older matter. A Brandenburg authority's
-e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg): Ordnung counts from the
-day it was sent, the earliest it can have arrived, or from the arrival day you entered when that is before the
-4th day (`vwvfg_bb_7`); a later arrival keeps the 4th day and the late-arrival note.
+reached, and whenever the Land is unknown, Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). In
+Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch and not finished keeps the
+old law's 3rd day (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) — for a decision under the Land's own
+procedure law, by an authority of the Land or a municipality there — which a letter rarely shows: Ordnung counts
+the 4th day and, when the 3rd gives an earlier deadline, a warning names that deadline and its own send-by date,
+counted as the receipt counts one (`medium`, `vwvfg_land_old_procedures`); the date itself never moves, so whoever
+files on the date shown rather than posting by its send-by date can be a day late in an older matter. A
+Brandenburg authority's e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg):
+Ordnung counts from the day it was sent, the earliest it can have arrived, or from the arrival day you entered
+when that is before the 4th day (`vwvfg_bb_7`); a later arrival keeps the 4th day and the late-arrival note.
 
 In the app a sender's Land is unknown until you set it for that sender (*Which state is this sender in?*
 in its drawer) or say Yes when Ordnung asks *Is X in Bavaria?* from the postcode on their letter: reading a
