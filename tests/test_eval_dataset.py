@@ -648,6 +648,56 @@ def test_under_other_libraries_a_changed_file_needs_two_runs_that_agree(tmp_path
         _check_generation(generate, tmp_path / "again", committed, dataset)
 
 
+#: The earlier splits' manifest as it stood before the Länder table reworded conventions c03 and c07, with those two
+#: texts left out: the sha256 of its canonical JSON (name, version, generator, the c-conventions, the five splits'
+#: counts and entries, file hashes included). Nothing else of it may change with a convention's wording; a deliberate
+#: change to an earlier split's letters or labels updates this pin and says why in VERIFICATION.md.
+EARLIER_SPLITS_MASKED_SHA256 = "d4e8de39a48ede5b4078939f7bee125dba1a1298ef31a2455bd7d25c8ea93bf1"
+#: The conventions whose wording the Länder table changed (their ids and disputed flags stay).
+REWORDED_FOR_THE_LAENDER = ("c03", "c07")
+
+
+def _earlier_splits_masked(manifest: dict[str, Any]) -> str:
+    conventions = [
+        {**c, "text": None} if c["id"] in REWORDED_FOR_THE_LAENDER else c
+        for c in manifest["conventions"]
+        if re.fullmatch(r"c\d+", c["id"])
+    ]
+    doc = {
+        "name": manifest["name"],
+        "version": manifest["version"],
+        "generator": manifest["generator"],
+        "conventions": conventions,
+        "counts": {split: n for split, n in manifest["counts"].items() if split in SPLITS},
+        "entries": sorted((e for e in manifest["entries"] if e["split"] in SPLITS), key=lambda e: e["id"]),
+    }
+    return hashlib.sha256(json.dumps(doc, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def test_the_earlier_splits_changed_only_in_two_conventions_words(manifest: dict[str, Any]) -> None:
+    """Every letter, label and derivation of dev … holdout3 is as it was before the Länder table; of the manifest
+    only the texts of c03 and c07 changed, and they still carry their ids and disputed flags."""
+    assert _earlier_splits_masked(manifest) == EARLIER_SPLITS_MASKED_SHA256
+    flags = {c["id"]: c["disputed"] for c in manifest["conventions"]}
+    assert (flags["c03"], flags["c07"]) == (True, True)
+
+
+def test_c03_and_c07_say_what_the_land_table_counts(manifest: dict[str, Any]) -> None:
+    """The two conventions about a Land authority's letter name the table of ``evals/gen/law.py`` in plain words: the
+    Land with the 3rd day, the Länder whose 4th day starts later and on which day, the Länder where an older
+    procedure keeps the 3rd, and the Länder no such letter may come from."""
+    texts = {c["id"]: c["text"] for c in manifest["conventions"]}
+    c03, c07 = texts["c03"], texts["c07"]
+    assert "evals/law/laender.txt" in c03 and "evals/law/laender.txt" in c07
+    assert all(law.LAND_NAMES[land] in c03 for land in law.LAND_VWVFG_THIRD_DAY)
+    for land, start in law.LAND_VWVFG_FOURTH_DAY_FROM.items():
+        if start != date(2025, 1, 1):
+            assert law.LAND_NAMES[land] in c03 and start.isoformat() in c03, land
+    assert all(law.LAND_NAMES[land] in c03 for land in law.LAND_VWVFG_OLD_PROCEDURES)
+    assert all(law.LAND_NAMES[land] in c07 for land in law.LAND_VWVFG_UNVERIFIED)
+    assert "evals/gen/law.py" in c07
+
+
 def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
     def generate(out: Path) -> dict[str, Any]:
         made = _generate(out)

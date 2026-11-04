@@ -278,15 +278,20 @@ def _conventions(*entries: tuple[str, bool, str]) -> list[Convention]:
 CONVENTIONS = _conventions(
     ("c01", False, "Labels are computed from the statutes by evals/gen/law.py and asserted against dates worked out by hand."),
     ("c02", True, "Posting date for the deemed-delivery fiction = the letter date, unless the letter states a separate posting date (spec.posted_on)."),
-    ("c03", True, "Deemed delivery: 3rd day after posting for items posted up to 2024-12-31, 4th day from 2025-01-01; AO moves a Sat/Sun/holiday "
-     "fiction day to the next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), "
-     "end moved off Sat/Sun/holidays; Bußgeld: two weeks after the Zustellung date on the envelope."),
+    ("c03", True, "Deemed delivery: 3rd day after posting for items posted up to 2024-12-31, 4th day from 2025-01-01 (federal law and SGB X). "
+     "A Land authority's letter counts its own Land's day (evals/law/laender.txt): Hessen the 3rd day; Hamburg the 4th from 2025-05-14 and "
+     "Baden-Württemberg from 2025-02-07, the 3rd before; the other Länder with a text the 4th from 2025-01-01; in Baden-Württemberg, Bayern "
+     "and Mecklenburg-Vorpommern a procedure begun before that Land's switch keeps the 3rd. AO moves a Sat/Sun/holiday fiction day to the "
+     "next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), end moved off "
+     "Sat/Sun/holidays; Bußgeld: two weeks after the Zustellung date on the envelope."),
     ("c04", False, "authority_region is set only when the letterhead names the Land; then expected_due uses that Land's holidays. When it is null, "
      "every dated item was verified to have the same date under all 16 Land calendars (so nationwide-only == legally correct)."),
     ("c05", False, "No label depends on municipal-only holidays (Mariä Himmelfahrt in parts of BY, Fronleichnam in parts of SN/TH, Augsburg) — asserted."),
     ("c06", False, "Private-law payment/declaration deadlines are generated region-independent (place of performance is debatable); fixed dates in "
      "dunning and English letters fall on working days; Werktage periods never end on a Saturday — so no § 193 BGB edge case is labelled."),
-    ("c07", True, "Municipal (Land VwVfG) letters come only from Länder whose 4-day fiction was verified (BY, BW, NW, HH, SH, MV)."),
+    ("c07", True, "Municipal (Land VwVfG) letters come only from Länder whose delivery rule was checked against the Land's own published "
+     "law (evals/law/laender.txt); never from Bremen, Rheinland-Pfalz, Saarland or Sachsen-Anhalt, whose text could not be read "
+     "(evals/gen/law.py refuses them)."),
     ("c08", False, "region_sensitive=true marks items whose date differs if the Land's holidays are ignored (due_if_region_ignored)."),
     ("c09", True, "Remedy 'klage' (no Vorverfahren): the label is the end of the one-month Klage period (§ 74 Abs. 1 S. 2 VwGO), counted like "
      "the other remedy periods."),
