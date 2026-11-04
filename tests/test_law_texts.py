@@ -136,6 +136,18 @@ NOT_RETRIEVED = {
     "Sachsen-Anhalt",
 }
 NOT_RETRIEVED_LINE = "Not retrieved (see SOURCES.md)."
+#: Each retrieved Land's provision on which wording of its act applies to procedures already under way when the
+#: delivery rule changed, where its act has one: a reader needs it beside the rule. Mecklenburg-Vorpommern's § 120a is
+#: inserted by an amending article (Artikel 1 Nr. 34), so its block holds it inside that article, not as a heading.
+TRANSITIONAL = {
+    "Baden-Württemberg": "§ 102b",
+    "Bayern": "Art. 98",
+    "Nordrhein-Westfalen": "§ 97",
+    "Thüringen": "§ 8",
+}
+TRANSITIONAL_INSERTED = {
+    "Mecklenburg-Vorpommern": "„§ 120a Übergangsregelung für die Durchführung von Verwaltungsverfahren"
+}
 #: Sections the labels' derivations and conventions cite for a period (evals/gen, evals/generate.py): the readers who
 #: write and check the final labels date them from these texts alone.
 CITED = {
@@ -430,6 +442,16 @@ def test_each_retrieved_land_states_when_its_authorities_letters_count_as_delive
         assert own or applies or sets_day, land
 
 
+def test_each_land_s_provision_on_procedures_already_under_way_is_held() -> None:
+    """Baden-Württemberg's § 102b, Bavaria's Art. 98, Nordrhein-Westfalen's § 97 and Thüringen's § 8 stand in their
+    blocks as provisions of their own; Mecklenburg-Vorpommern's § 120a inside the article that inserts it."""
+    blocks = dict(land_blocks((LAW / LAENDER_FILE).read_text(encoding="utf-8")))
+    for land, provision in TRANSITIONAL.items():
+        assert provision in headings(blocks[land], LAND_HEADING), land
+    for land, line in TRANSITIONAL_INSERTED.items():
+        assert any(row.strip() == line for row in blocks[land].split("\n")), land
+
+
 def test_each_gazette_block_names_its_gazette_and_pages() -> None:
     """A block taken from a gazette rather than the Land's portal says so in its status lines: one 'Fundstelle:' line
     per issue used, naming the gazette and the pages."""
@@ -546,6 +568,28 @@ def _drop_a_fundstelle(folder: Path) -> None:
     )
 
 
+def _drop_a_land_provision(folder: Path) -> None:
+    """Bavaria's block without Art. 98, with the block's and the file's sha256 updated: only the provision list
+    catches it."""
+    path = folder / "laender.txt"
+    old = path.read_bytes()
+    text = old.decode("utf-8")
+    (block,) = [b for land, b in land_blocks(text) if land == "Bayern"]
+    changed = block.split("\nArt. 98 ", 1)[0]
+    assert changed != block
+    new = text.replace(block, changed, 1).encode("utf-8")
+    path.write_bytes(new)
+    _resync_file_sha(folder, old, new)
+    sources = folder / "SOURCES.md"
+    sha = hashlib.sha256
+    sources.write_text(
+        sources.read_text(encoding="utf-8").replace(
+            sha(block.encode("utf-8")).hexdigest(), sha(changed.encode("utf-8")).hexdigest()
+        ),
+        encoding="utf-8",
+    )
+
+
 def _claim_a_land_not_retrieved(folder: Path) -> None:
     sources = folder / "SOURCES.md"
     row = next(r for r in land_rows(folder) if r.land == "Bayern")
@@ -583,6 +627,10 @@ def _edit_sources(old: str, new: str):
         (_edit_sources("| `tkg.txt` |", "| `tkg.txt` |"), None),
         (_flip_a_land_byte, "laender.txt: Bayern: sha256 is not the one in SOURCES.md"),
         (_drop_a_land, "laender.txt: the Länder are not the sixteen, each once, in order"),
+        (
+            _drop_a_land_provision,
+            "laender.txt: Bayern: provisions in the file are not the ones SOURCES.md lists",
+        ),
         (_move_a_land_source, "laender.txt: Bayern: source is not on www.gesetze-bayern.de"),
         (_move_a_gazette_source, "laender.txt: Thüringen: source is not on"),
         (
@@ -603,6 +651,7 @@ def _edit_sources(old: str, new: str):
         "unchanged",
         "land-changed-byte",
         "land-dropped",
+        "land-dropped-provision",
         "land-other-site",
         "gazette-other-site",
         "gazette-without-fundstelle",
@@ -650,6 +699,7 @@ def test_the_section_lists_read_ranges_letters_and_articles() -> None:
     assert listed_provisions("§§ 41, 102b") == ["§ 41", "§ 102b"] and listed_provisions("Art. 41") == [
         "Art. 41"
     ]
+    assert listed_provisions("Art. 41, 98") == ["Art. 41", "Art. 98"]
     assert listed_provisions("§ 1") == ["§ 1"] and listed_provisions("41") is None
     assert listed_provisions("§§ 1, 8; Artikel 90") == ["§ 1", "§ 8", "Artikel 90"]
     assert listed_provisions("Artikel 1 (Nr. 14, 34); Artikel 4") == ["Artikel 1", "Artikel 4"]

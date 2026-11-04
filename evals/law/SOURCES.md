@@ -201,12 +201,12 @@ The sha256 in the table is that of the Land's block: the lines from the Land's n
 blank line that precedes the next Land's name (to the end of the file for the last Land), each ending in a line
 break.
 
-sha256 of `laender.txt`: `702ab0cb73093c83b130ec7dff36d2275050702bcefde49baba10582c3d9fa84`
+sha256 of `laender.txt`: `a03cc3666e9fb5334999d7429071224af3278dc27cff690d2d019ff18b9fa32b`
 
 | Land | Statute | Provisions | Source | Retrieved | sha256 |
 |---|---|---|---|---|---|
 | Baden-Württemberg | Verwaltungsverfahrensgesetz für Baden-Württemberg (Landesverwaltungsverfahrensgesetz - LVwVfG) | §§ 41, 102b | https://www.landesrecht-bw.de/perma?d=jlr-NNLBW00007E83, https://www.landesrecht-bw.de/perma?d=jlr-NNLBW00007E83NN00000000103, https://www.landesrecht-bw.de/perma?d=jlr-NNLBW00007E83NN00000000202 | 2026-11-04 | `2aed656ef7576afe5c0d4e7445144a91ae178ac87c55654cbf8570555a84eae0` |
-| Bayern | Bayerisches Verwaltungsverfahrensgesetz (BayVwVfG) | Art. 41 | https://www.gesetze-bayern.de/Content/Document/BayVwVfG, https://www.gesetze-bayern.de/Content/Document/BayVwVfG-41 | 2026-11-04 | `8df47a97cc72084e1515c6e8ac28397826a83d3878b17985c569531fa03fcefd` |
+| Bayern | Bayerisches Verwaltungsverfahrensgesetz (BayVwVfG) | Art. 41, 98 | https://www.gesetze-bayern.de/Content/Document/BayVwVfG, https://www.gesetze-bayern.de/Content/Document/BayVwVfG-41, https://www.gesetze-bayern.de/Content/Document/BayVwVfG-98 | 2026-11-04 | `a575e54d129b0c4dbdc0af2bd2226c9cee9b7e3057d748568c603cd38dd9b7ae` |
 | Berlin | Gesetz über das Verfahren der Berliner Verwaltung | § 1 | https://pardok.parlament-berlin.de/starweb/adis/citat/VT/17/gvbl/g16110218.pdf | 2026-11-04 | `ae0c38978fafe3dc943d04ce555ec87e03bde5cfbb79b76647e62af563ca0edd` |
 | Brandenburg | Verwaltungsverfahrensgesetz für das Land Brandenburg (VwVfGBbg) | §§ 1, 7 | https://bravors.brandenburg.de/gesetze/vwvfgbbg | 2026-11-04 | `5aa4391e03a7d26f8243be8695fd20f0ca34afaac84f2ec65726665636e858a1` |
 | Bremen | not retrieved | – | https://www.transparenz.bremen.de/, https://www.gesetzblatt.bremen.de/ | 2026-11-04 | `ea8e9191906c95e417efddbadbc925f72e9903261e86a35b26e16ea024732512` |
@@ -243,8 +243,9 @@ place.
 ### Limits
 
 - Earlier wordings of the law, which are not here, are named in Baden-Württemberg's § 102b ("in der bis zum
-  6. Februar 2025 geltenden Fassung"), Mecklenburg-Vorpommern's § 120a ("in der bis zum 31. Dezember 2024 geltenden
-  Fassung"), Nordrhein-Westfalen's § 97 ("in der zum Zeitpunkt des Beginns des Verfahrensschritts jeweils geltenden
+  6. Februar 2025 geltenden Fassung"), Bayern's Art. 98 ("in der bis zum Ablauf des 31. Dezember 2024 geltenden
+  Fassung"), Mecklenburg-Vorpommern's § 120a ("in der bis zum 31. Dezember 2024 geltenden Fassung"),
+  Nordrhein-Westfalen's § 97 ("in der zum Zeitpunkt des Beginns des Verfahrensschritts jeweils geltenden
   Fassung") and Thüringen's § 8 ("nach den bisher geltenden Vorschriften", "nach den bisher geltenden
   Rechtsvorschriften").
 - The sections held for Berlin, Brandenburg, Niedersachsen, Sachsen and Thüringen name the federal
@@ -257,6 +258,7 @@ place.
 - Letters of a Land's tax office: the Abgabenordnung is federal law (`ao.txt`). The section that sets its scope,
   § 1 AO, is not among the sections held.
 - A portal shows the wording in force on the day it is read. What it gives as the day each provision took its
-  present wording: Baden-Württemberg § 41 and § 102b "gültig ab: 07.02.2025"; Bayern Art. 41 "Text gilt ab:
-  01.01.2025"; Nordrhein-Westfalen §§ 41 and 97, the footnotes in the file (1 January 2025); Niedersachsen § 1 "ab
-  01.10.2022 (aktuelle Fassung)"; Brandenburg and Sachsen give the statute's status only (the lines in the file).
+  present wording: Baden-Württemberg § 41 and § 102b "gültig ab: 07.02.2025"; Bayern "Text gilt ab: 01.01.2025",
+  shown alike on the statute's front page and on the pages of Art. 41 and Art. 98; Nordrhein-Westfalen §§ 41 and 97,
+  the footnotes in the file (1 January 2025); Niedersachsen § 1 "ab 01.10.2022 (aktuelle Fassung)"; Brandenburg and
+  Sachsen give the statute's status only (the lines in the file).
