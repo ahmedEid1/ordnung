@@ -261,7 +261,7 @@
    "cell": "ablation/dev-holdout-holdout2-holdout3-test",
    "status": "replayed",
    "checks": [
-    "2026-10-30-claude-sonnet-5-checks-ablated.json"
+    "2026-11-04-claude-sonnet-5-checks-ablated.json"
    ]
   },
   {
@@ -1393,7 +1393,10 @@
        "score.deadline_letters"
       ],
       "removed": [],
-      "values": []
+      "values": [
+       "prediction.items[]",
+       "score.items[]"
+      ]
      },
      "changes": [],
      "metrics_at_head": "0a28dde388617735"
@@ -1440,7 +1443,10 @@
        "score.deadline_letters"
       ],
       "removed": [],
-      "values": []
+      "values": [
+       "prediction.items[]",
+       "score.items[]"
+      ]
      },
      "changes": [],
      "metrics_at_head": "7e8d2efb06264eb5"
@@ -2020,10 +2026,10 @@
    },
    "gates": [],
    "check": "replay",
-   "verdict": "exact",
+   "verdict": "same-dates",
    "conditions": {
     "ordnung": {
-     "verdict": "exact",
+     "verdict": "same-dates",
      "right": [
       55,
       56
@@ -2035,7 +2041,10 @@
      "drift": {
       "added": [],
       "removed": [],
-      "values": []
+      "values": [
+       "prediction.items[]",
+       "score.items[]"
+      ]
      },
      "changes": [],
      "metrics_at_head": "dc4ebefb3cebbaa0"
@@ -2056,10 +2065,10 @@
    },
    "gates": [],
    "check": "replay",
-   "verdict": "exact",
+   "verdict": "same-dates",
    "conditions": {
     "ordnung": {
-     "verdict": "exact",
+     "verdict": "same-dates",
      "right": [
       56,
       56
@@ -2071,7 +2080,10 @@
      "drift": {
       "added": [],
       "removed": [],
-      "values": []
+      "values": [
+       "prediction.items[]",
+       "score.items[]"
+      ]
      },
      "changes": [],
      "metrics_at_head": "13332134c6c94856"
@@ -2231,8 +2243,8 @@
     "backend": "replay"
    },
    "gates": [],
-   "check": "ablation --check",
-   "verdict": "checked"
+   "check": "hash",
+   "verdict": "superseded"
   },
   {
    "file": "2026-10-30-claude-sonnet-5-e2e.json",
@@ -2288,6 +2300,27 @@
     "ask/dev"
    ],
    "check": "ask --check-docs",
+   "verdict": "checked"
+  },
+  {
+   "file": "2026-11-04-claude-sonnet-5-checks-ablated.json",
+   "sha256": "552189b343ec47056821be15a7c7ee2b11c4d55c5c9ac1853cc42b6dc9285ea9",
+   "kind": "checks-ablated",
+   "role": "replay",
+   "splits": [
+    "dev",
+    "holdout",
+    "holdout2",
+    "holdout3",
+    "test"
+   ],
+   "recorded": {
+    "date": "2026-11-04",
+    "commit": "90b15ee5",
+    "backend": "replay"
+   },
+   "gates": [],
+   "check": "ablation --check",
    "verdict": "checked"
   }
  ]
