@@ -25,6 +25,7 @@ from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
+    VWVFG_OLD_PROCEDURES,
     DeliveryChannel,
     DeliveryScope,
     resolve_delivery,
@@ -341,6 +342,9 @@ class Trace:
     soft_failures: int = 0
     hard_failure: bool = False
     region_flagged: bool = False
+    #: In BW, BY and MV after their switch: the Land and the day a letter of an older matter counts as delivered
+    #: (:attr:`ordnung.rules.delivery.Delivery.older_matter`), for :func:`_older_matter_note`.
+    older_matter: tuple[str, date] | None = None
     #: A step's citation by the procedure its deadline follows, where the catalog's names several (a court's
     #: period is counted under § 222 ZPO, not the AO or the VwVfG: :data:`_COURT_COUNTING`).
     cite: dict[str, str] = field(default_factory=dict)
@@ -985,6 +989,7 @@ def _apply_delivery(
     if scope == "ao" and calendar_de.normalize_region(ctx.recipient_region) != region:
         delivery_region = None  # regional holidays only count when they apply at both places
     delivery = resolve_delivery(anchor.day, scope=scope, channel=channel, region=delivery_region)
+    trace.older_matter = delivery.older_matter
     trace.extend(delivery.steps)
     if delivery.uncertainty:
         trace.soft(delivery.uncertainty)
@@ -1038,6 +1043,27 @@ def _date_from(start: date, period: tuple[int, PeriodUnit], region: str | None, 
     """The end of a period counted forward from ``start``, moved off a weekend or holiday if ``shift``."""
     end, _ = add_period(start, *period, region=region)
     return calendar_de.next_business_day(end, region) if shift else end
+
+
+def _older_matter_note(
+    trace: Trace, due: date, period: tuple[int, PeriodUnit], region: str | None, shift: bool
+) -> None:
+    """In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch to the 4th day keeps
+    the 3rd (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V), which a letter rarely shows: the date stays the
+    4th day's, and a note names the deadline from the 3rd when it is earlier, one level less confident."""
+    if trace.older_matter is None:
+        return
+    land, day = trace.older_matter
+    earlier = _date_from(day, period, region, shift)
+    if earlier >= due:
+        return
+    provision, switch = VWVFG_OLD_PROCEDURES[land]
+    trace.soft(
+        f"In {calendar_de.REGION_NAMES[land]} a matter begun before {switch} keeps the old 3-day rule ({provision}). "
+        "If this one began earlier (you applied, were heard or objected before that day), the letter counts as "
+        f"delivered on {fmt_date(day)} and the deadline is {fmt_date(earlier)}: act by then to be safe."
+    )
+    trace.use("vwvfg_land_old_procedures")
 
 
 def _late_receipt_note(
@@ -1478,6 +1504,7 @@ def _compute_relative(
             check_regional_holidays(trace, [raw_end], later=False)
     if uses_delivery and not backward:
         _late_receipt_note(ctx, trace, event, due, (amount, unit), place, shift)
+        _older_matter_note(trace, due, (amount, unit), place, shift)
     if late is not None:
         _private_late_note(trace, ctx, late, due)
 

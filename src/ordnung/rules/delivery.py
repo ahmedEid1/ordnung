@@ -82,6 +82,15 @@ VWVFG_FOUR_DAY_FROM: dict[str, date] = {
 #: Länder whose own law is confirmed to keep the 3rd day (§ 41 Abs. 2 HVwVfG, checked 4 Nov 2026).
 VWVFG_THREE_DAYS: Final = frozenset({"HE"})
 
+#: Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern keep the old law's 3rd day for a matter begun before their
+#: switch and not finished (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V, checked 4 Nov 2026): the provision,
+#: and the switch as a note writes it.
+VWVFG_OLD_PROCEDURES: Final[dict[str, tuple[str, str]]] = {
+    "BW": ("§ 102b LVwVfG", "7 February 2025"),
+    "BY": ("Art. 98 BayVwVfG", "1 January 2025"),
+    "MV": ("§ 120a VwVfG M-V", "1 January 2025"),
+}
+
 
 #: Why a general authority's letter counts as delivered on the 3rd day although its Land may count the 4th: Bremen's
 #: and the Saarland's rule could not be checked, or the Land isn't known. Receipts carry it as a warning, and
@@ -245,6 +254,8 @@ class Delivery:
     raw_day: date
     steps: list[ComputationStep]
     uncertainty: str | None = None
+    #: In BW, BY and MV after their switch: the Land and the day a letter of an older matter counts as delivered.
+    older_matter: tuple[str, date] | None = None
 
 
 def _step(label: str, d: date, rule_id: str) -> ComputationStep:
@@ -266,7 +277,9 @@ def resolve_delivery(
     For an unknown scope the conservative variant is used: the day is not moved off weekends. For
     general authorities (and unknown senders) the Land's own day counts: the 4th from its switch
     (:data:`VWVFG_FOUR_DAY_FROM`), the 3rd before it and in Hessen (:data:`VWVFG_THREE_DAYS`); for Bremen, the
-    Saarland or an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). Portal
+    Saarland or an unknown Land the earlier 3rd day, and ``uncertainty`` says why (SPEC § 21). In
+    Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern after their switch the 4th day counts, and
+    ``older_matter`` gives the 3rd, which a matter begun before the switch keeps (:data:`VWVFG_OLD_PROCEDURES`). Portal
     provision (``channel="portal"``) by a general authority or an unknown sender counts from the day
     after download (§ 41 Abs. 2a VwVfG), taking ``posted`` — the day it was made available — as the
     earliest download; tax (§ 122a Abs. 4 AO) and social-law portals (§ 37 Abs. 2a SGB X) use the 4th day.
@@ -274,6 +287,7 @@ def resolve_delivery(
     holidays move the deemed day (pass it only when it applies at the recipient's place too).
     """
     uncertainty: str | None = None
+    older: tuple[str, date] | None = None
     if scope == "ao" and abroad:
         raw = add_months(posted, 1)
         rule_id = "ao_122_2_2"
@@ -293,6 +307,8 @@ def resolve_delivery(
                 days, rule_id = 3, "vwvfg_land_days"  # the Land's own law: HE; HH and BW before their day
             elif land_from is None:
                 days, rule_id, uncertainty = 3, "vwvfg_land_days", LAND_DAYS_UNCONFIRMED  # HB, SL, unknown
+            elif land in VWVFG_OLD_PROCEDURES:
+                older = (land, posted + timedelta(days=3))  # the old law's day, for a matter begun before
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"
@@ -319,7 +335,7 @@ def resolve_delivery(
                 rule_id,
             )
         )
-    return Delivery(day=raw, raw_day=raw, steps=steps, uncertainty=uncertainty)
+    return Delivery(day=raw, raw_day=raw, steps=steps, uncertainty=uncertainty, older_matter=older)
 
 
 def deemed_delivery(

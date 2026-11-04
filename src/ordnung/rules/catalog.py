@@ -324,6 +324,17 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "2025-01-01",
     ),
     (
+        "vwvfg_land_old_procedures",
+        "Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern: the 3rd day for older matters",
+        "§ 102b LVwVfG; Art. 98 BayVwVfG; § 120a VwVfG M-V",
+        "All three moved to the 4th day (Bavaria and Mecklenburg-Vorpommern from 1 January, Baden-Württemberg from "
+        "7 February 2025), but a matter begun before that and not finished keeps the old 3rd day. A letter rarely "
+        "shows when its matter began: Ordnung counts the 4th day and, when the 3rd gives an earlier deadline, names "
+        "it.",
+        "https://www.dokumentation.landtag-mv.de/parldok/dokument/63481",
+        "2025-01-01",
+    ),
+    (
         "vwvfg_41_2a",
         "Authority portals: day after download",
         "§ 41 Abs. 2a VwVfG",

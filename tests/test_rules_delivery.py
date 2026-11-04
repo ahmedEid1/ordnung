@@ -11,16 +11,19 @@ bekanntgabe_regime_selection.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
 
+from ordnung.models import DateSpec
 from ordnung.rules.calendar_de import REGION_NAMES
+from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
+    VWVFG_OLD_PROCEDURES,
     VWVFG_THREE_DAYS,
     deemed_delivery,
     fiction_days,
@@ -271,6 +274,81 @@ def test_the_web_app_counts_four_days_in_the_same_lands() -> None:
     found = re.search(r"FOUR_DAY_LANDS\b[^=]*=\s*new Set\(\[([^\]]*)\]\)", source.read_text("utf-8"))
     assert found is not None
     assert set(re.findall(r'"([A-Z]{2})"', found.group(1))) == set(VWVFG_FOUR_DAY_FROM)
+
+
+_MONTHS = (
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+)  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("region", "posted", "scope", "older"),
+    [
+        ("MV", "2025-12-09", "vwvfg", ("MV", "2025-12-12")),
+        ("MV", "2025-12-09", None, ("MV", "2025-12-12")),
+        ("BW", "2025-02-07", "vwvfg", ("BW", "2025-02-10")),
+        ("BY", "2025-12-09", "vwvfg", ("BY", "2025-12-12")),
+        ("BY", "2026-10-30", None, ("BY", "2026-11-02")),
+        # before the switch the old law counts the 3rd day anyway; elsewhere no older matter keeps it
+        ("BW", "2025-02-06", "vwvfg", None),
+        ("MV", "2024-12-31", "vwvfg", None),
+        ("BY", "2024-12-31", "vwvfg", None),
+        ("HE", "2025-12-09", "vwvfg", None),
+        ("NW", "2025-12-09", "vwvfg", None),
+        (None, "2025-12-09", "vwvfg", None),
+        ("MV", "2025-12-09", "sgbx", None),
+    ],
+)
+def test_an_older_matter_is_marked_after_the_switch(
+    region: str | None, posted: str, scope: str | None, older: tuple[str, str] | None
+) -> None:
+    """Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern keep the old 3rd day for a matter begun before their
+    switch (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V): the 4th day counts, and the older matter's day is
+    kept for the deadline's note."""
+    result = resolve_delivery(D(posted), scope=scope, region=region)  # type: ignore[arg-type]
+    assert result.older_matter == (None if older is None else (older[0], D(older[1])))
+    if region in VWVFG_OLD_PROCEDURES and older is not None:
+        assert result.day == D(posted) + timedelta(days=4)
+        assert result.uncertainty is None
+
+
+def test_the_older_matter_table_names_each_lands_switch() -> None:
+    assert set(VWVFG_OLD_PROCEDURES) == {"BW", "BY", "MV"}
+    for land, (_, switch) in VWVFG_OLD_PROCEDURES.items():
+        day = VWVFG_FOUR_DAY_FROM[land]
+        assert switch == f"{day.day} {_MONTHS[day.month - 1]} {day.year}"
+
+
+def test_delivery_notes_are_not_read_as_doubts_scams_or_injections() -> None:
+    """The benchmark reads a warning naming a conflict or an unknown as the letter's own doubt about its date, one
+    naming a scam as a false alarm and one naming an AI as an injection flagged: a delivery note says none of them."""
+    from evals.metrics import INJECTION_RE, SCAM_RE, UNCERTAINTY_RE
+
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+        legal_basis="§ 70 VwGO",
+    )
+    notes = [LAND_DAYS_UNCONFIRMED]
+    for land in ("BW", "BY", "MV"):
+        context = RuleContext(
+            today=D("2025-12-01"), region=land, document_date=D("2025-12-09"), delivery_scope="vwvfg"
+        )
+        found = [
+            w
+            for w in compute_due(spec, context).warnings
+            if w.startswith(f"In {REGION_NAMES[land]} a matter")
+        ]
+        assert len(found) == 1, land
+        notes += found
+    for note in notes:
+        for pattern in (UNCERTAINTY_RE, INJECTION_RE, SCAM_RE):
+            assert not pattern.search(note), (pattern.pattern[:30], note)
 
 
 #: A statutory health insurer's remedy notice (§ 37 SGB X, § 84 SGG): an administrative act.

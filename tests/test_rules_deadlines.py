@@ -18,6 +18,7 @@ from typing import Any
 import pytest
 
 from ordnung.models import DateSpec
+from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import (
     ASSUMED_RECEIPT_WARNING,
     DECLARATION_ARRIVAL_WARNING,
@@ -173,6 +174,62 @@ def test_a_lands_delivery_day_in_the_deadline(
         ctx(region=region, document_date=posted, delivery_scope="vwvfg"),
     )
     assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+
+
+#: The note on a date where a matter begun before the Land's switch keeps the 3rd day: how it starts.
+_OLDER = "In {} a matter begun before"
+
+_MV_NOTE = (
+    "In Mecklenburg-Vorpommern a matter begun before 1 January 2025 keeps the old 3-day rule (§ 120a VwVfG M-V). "
+    "If this one began earlier (you applied, were heard or objected before that day), the letter counts as "
+    "delivered on Fri 12 Dec 2025 and the deadline is Mon 12 Jan 2026: act by then to be safe."
+)
+
+
+@pytest.mark.parametrize(
+    ("region", "posted", "expected", "confidence", "names"),
+    [
+        pytest.param("MV", "2025-12-09", "2026-01-13", "medium", (_MV_NOTE,), id="MV"),
+        pytest.param(
+            "BW", "2025-02-07", "2025-03-11", "medium", ("Mon 10 Feb 2025", "Mon 10 Mar 2025"), id="BW"
+        ),
+        pytest.param(
+            "BY", "2026-02-10", "2026-03-16", "medium", ("Fri 13 Feb 2026", "Fri 13 Mar 2026"), id="BY"
+        ),
+        # Easter: the 3rd day gives the same deadline
+        pytest.param("BW", "2026-03-02", "2026-04-07", "high", None, id="BW-easter"),
+        # before the switch the old law's 3rd day is counted anyway
+        pytest.param("BW", "2025-02-06", "2025-03-10", "high", None, id="BW-old-law"),
+        pytest.param("MV", "2024-12-31", "2025-02-03", "high", None, id="MV-old-law"),
+        pytest.param("BY", "2024-12-31", "2025-02-03", "high", None, id="BY-old-law"),
+        # without the Land: the 3rd day and the warning that it isn't confirmed, as before
+        pytest.param(None, "2025-12-09", "2026-01-12", "medium", None, id="no-land"),
+    ],
+)
+def test_an_older_matter_in_bw_by_or_mv_names_the_earlier_deadline(
+    region: str | None, posted: str, expected: str, confidence: str, names: tuple[str, ...] | None
+) -> None:
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO"),
+        ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
+    )
+    assert (receipt.due_date, receipt.confidence) == (expected, confidence), receipt.warnings
+    notes = [w for w in receipt.warnings if region and w.startswith(_OLDER.format(REGION_NAMES[region]))]
+    assert ("vwvfg_land_old_procedures" in receipt.rule_ids) is (names is not None)
+    if names is None:
+        assert notes == []
+    else:
+        assert len(notes) == 1 and all(name in notes[0] for name in names), notes
+
+
+def test_an_older_matter_s_note_only_on_a_period_counted_forward() -> None:
+    receipt = compute_due(
+        notice_spec(legal_basis=None, amount=-1, nature="notice"),
+        ctx(today="2024-12-01", region="MV", document_date="2025-12-09", delivery_scope="vwvfg"),
+    )
+    assert receipt.due_date is not None
+    assert "vwvfg_land_old_procedures" not in receipt.rule_ids
+    assert not any(w.startswith(_OLDER.format("Mecklenburg-Vorpommern")) for w in receipt.warnings)
 
 
 @pytest.mark.parametrize(
