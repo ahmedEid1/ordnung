@@ -197,11 +197,11 @@
       "compares": []
     },
     "limitations.ambiguous": {
-      "text": "Left open between two or more dates by the letter or the law, and so not among the deadlines counted above: deadlines {amb_d}, contract dates {amb_c}. Such a deadline counts as handled when no single date is given as certain or the date is flagged; such a contract date is not scored.",
+      "text": "Left open between two or more dates by the letter or the law, and so not among the deadlines counted above (counted once for a letter and its photo): deadlines {amb_d}, offered dates {amb_o}, contract dates {amb_c}. Such a deadline counts as handled when the answer lists it and either gives it no date, flags it, or warns that the letter's dates are uncertain; such an offered date or contract date is not scored.",
       "compares": []
     },
     "limitations.ambiguous_none": {
-      "text": "No deadline or contract date of the final letters is left open between two or more dates by the letter or the law.",
+      "text": "No deadline, offered date or contract date of the final letters is left open between two or more dates by the letter or the law.",
       "compares": []
     },
     "limitations.writer": {
@@ -318,6 +318,7 @@
     "e2e_in_time": {"source": "e2e", "path": "metrics.all.reminded_in_time.k", "format": "int"},
     "e2e_set_aside": {"source": "e2e", "path": "metrics.all.scam.set_aside_obligations", "format": "int"},
     "amb_d": {"source": "final", "path": "labels.ambiguous_slots.deadline", "format": "int"},
+    "amb_o": {"source": "final", "path": "labels.ambiguous_slots.offered", "format": "int"},
     "amb_c": {"source": "final", "path": "labels.ambiguous_slots.contract", "format": "int"},
     "sc_n": {"source": "final", "path": "sensitivities.s_conv.tagged_items", "format": "int"},
     "sc_o": {"source": "final", "path": "sensitivities.s_conv.conditions.ordnung.mean_accuracy", "format": "pct"},

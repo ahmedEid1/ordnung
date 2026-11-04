@@ -146,10 +146,11 @@ def good() -> dict[str, Any]:
         "labels": {
             "ambiguous_slots": {
                 "deadline": 3,
+                "offered": 2,
                 "contract": 1,
                 "by_split": {
-                    "holdout4": {"deadline": 2, "contract": 1},
-                    "newkinds": {"deadline": 1, "contract": 0},
+                    "holdout4": {"deadline": 2, "offered": 2, "contract": 1},
+                    "newkinds": {"deadline": 1, "offered": 0, "contract": 0},
                 },
             }
         },
@@ -194,7 +195,7 @@ def bad() -> dict[str, Any]:
         flags_caught={"caught": 0, "wrong": 0, "caught_reads": 0, "wrong_reads": 0},
     )
     doc["secondary"]["newkinds"] = {"not_recorded": {"reason": "window_closed"}}
-    zero = {"deadline": 0, "contract": 0}
+    zero = {"deadline": 0, "offered": 0, "contract": 0}
     doc["labels"]["ambiguous_slots"] = {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}
     doc["sensitivities"]["s_conv"] = {
         "tagged_items": 11,
@@ -712,13 +713,18 @@ def test_the_sentences_carry_the_numbers_of_the_final_analysis() -> None:
     assert "141 of 150 real deadlines" in text["e2e"]
     assert (
         "Left open between two or more dates by the letter or the law, and so not among the deadlines counted "
-        "above: deadlines 3, contract dates 1. Such a deadline counts as handled when no single date is given as "
-        "certain or the date is flagged; such a contract date is not scored." in text["limitations"]
+        "above (counted once for a letter and its photo): deadlines 3, offered dates 2, contract dates 1. Such a "
+        "deadline counts as handled when the answer lists it and either gives it no date, flags it, or warns that "
+        "the letter's dates are uncertain; such an offered date or contract date is not scored."
+        in text["limitations"]
     )
     assert (
-        "No deadline or contract date of the final letters is left open between two or more dates by the letter "
-        "or the law." in _slots(final.coded(bad(), prereg(), sources=sources()))["limitations"]
+        "No deadline, offered date or contract date of the final letters is left open between two or more dates "
+        "by the letter or the law." in _slots(final.coded(bad(), prereg(), sources=sources()))["limitations"]
     )
+    only_offered = bad()
+    only_offered["labels"]["ambiguous_slots"]["offered"] = 1
+    assert "offered dates 1" in _slots(final.coded(only_offered, prereg(), sources=sources()))["limitations"]
     assert "hash 0123456789ab" in text["provenance"]
     assert "no deviation was recorded" in text["provenance"]
 

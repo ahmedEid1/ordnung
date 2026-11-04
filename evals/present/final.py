@@ -14,8 +14,8 @@ The rules:
   against the agent is described (its difference and interval), never decided;
 * stability is not compared when fewer than ``rules.stability_min_discordant`` deadlines changed for only one of
   Ordnung and the model alone, and is not measured with one read;
-* the label slots the letter or the law leaves open between two or more dates are counted, deadlines and contract
-  dates apart, with what counts for them (``labels.ambiguous_slots`` of the final analysis);
+* the label slots the letter or the law leaves open between two or more dates are counted, deadlines, offered dates
+  and contract dates apart, with what counts for them (``labels.ambiguous_slots`` of the final analysis);
 * a decision its interval or its counts contradict, a decision code without a template and a named result that is
   missing are refused (:class:`FinalSentenceError`), never written around. A result that was not recorded (the new
   kinds, Ask, the stress test) has its own sentence, which points to the deviations file; a held-out Ask run left
@@ -604,8 +604,8 @@ def _limitations(inputs: _Inputs) -> Iterator[tuple[str, dict[str, str]]]:
         raise FinalSentenceError(
             "the final analysis does not count the label slots left open (labels.ambiguous_slots)"
         )
-    left_open = inputs.whole("labels.ambiguous_slots.deadline") + inputs.whole(
-        "labels.ambiguous_slots.contract"
+    left_open = sum(
+        inputs.whole(f"labels.ambiguous_slots.{kind}") for kind in ("deadline", "offered", "contract")
     )
     yield ("limitations.ambiguous" if left_open else "limitations.ambiguous_none"), {}
     yield "limitations.writer", {}

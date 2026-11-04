@@ -1392,11 +1392,11 @@ def test_s_conv_accepts_a_disputed_conventions_other_date(world: World) -> None:
 
 def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(world: World) -> None:
     """A label slot the letter or the law leaves open between two or more dates ("ambiguous") is no scored item,
-    and an ambiguous contract date is scored by no condition: the final analysis counts such slots from the
-    registered manifest, deadlines (an item the letter requires or offers) and contract dates apart, per analysed
-    split and in all. The primary does not move."""
+    and an ambiguous offered date or contract date is scored by no condition: the final analysis counts such slots
+    from the registered manifest, deadlines (an item the letter requires), offered dates (an item it offers) and
+    contract dates apart, per analysed split and in all. The primary does not move."""
     plain = world.final()
-    zero = {"deadline": 0, "contract": 0}
+    zero = {"deadline": 0, "offered": 0, "contract": 0}
     assert plain["labels"] == {"ambiguous_slots": {**zero, "by_split": {"holdout4": zero, "newkinds": zero}}}
     both = {
         "expected_current_term_end": [TRUE_DATE, LATE_DATE],
@@ -1423,13 +1423,40 @@ def test_the_slots_left_open_are_counted_by_kind_from_the_registered_manifest(wo
     result = world.final()
     assert result["primary"] == plain["primary"]
     assert result["labels"]["ambiguous_slots"] == {
-        "deadline": 1,
+        "deadline": 0,
+        "offered": 1,
         "contract": 3,
-        "by_split": {"holdout4": {"deadline": 1, "contract": 2}, "newkinds": {"deadline": 0, "contract": 1}},
+        "by_split": {
+            "holdout4": {"deadline": 0, "offered": 1, "contract": 2},
+            "newkinds": {"deadline": 0, "offered": 0, "contract": 1},
+        },
     }
     assert "labels" not in analysis.final_analysis(
         analysis.parse_prereg({"analysis": world.prereg["analysis"]}),
         [analysis.read_run(path) for path in world.write()[1]],
+    )
+
+
+def test_the_slots_left_open_are_counted_once_per_letter_with_offered_dates_apart() -> None:
+    """A photo shares its letter's truth, so a slot left open counts once for the letter and its photo; a date the
+    letter offers (``optional_items``), which no condition is scored on, is counted apart from a deadline it requires
+    (an item scored by the ambiguous-date check) and from a contract date."""
+    two = [TRUE_DATE, LATE_DATE]
+    truth = {
+        "items": [{"expected_due": "ambiguous", "candidates": two}, {"expected_due": TRUE_DATE}],
+        "optional_items": [{"expected_due": "ambiguous", "candidates": two}],
+        "contract": {
+            "expected_current_term_end": "ambiguous",
+            "expected_cancel_by": TRUE_DATE,
+            "candidates": {"expected_current_term_end": two},
+        },
+    }
+    pdf = {"id": "holdout4-x-K1", "split": "holdout4", "photo": False, "truth": truth}
+    photo = {**pdf, "id": "holdout4-x-K1-photo", "photo": True, "source_id": pdf["id"]}
+    once = {"deadline": 1, "offered": 1, "contract": 1}
+    assert analysis.ambiguous_slots([pdf, photo], ("holdout4",)) == {**once, "by_split": {"holdout4": once}}
+    assert analysis.ambiguous_slots([pdf], ("holdout4",)) == analysis.ambiguous_slots(
+        [pdf, photo], ("holdout4",)
     )
 
 

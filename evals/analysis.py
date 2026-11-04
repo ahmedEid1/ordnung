@@ -47,9 +47,10 @@ Definitions, in one place:
 * a **cluster** is a letter together with the photo rendered from it, named with its split;
 * an item is **unstable** over repeated reads when its date (or "no date") is not the same in every read;
 * a label slot **left open** is one the letter or the law leaves open between two or more dates (``"ambiguous"``): such
-  a deadline is no scored item (the scorer counts it as handled when no single date is given as certain or the date
-  is flagged), and such a contract date is scored by no condition; :func:`ambiguous_slots` counts them by kind, from
-  the registered manifest, in the final analysis's ``labels``.
+  a deadline (an item the letter requires) is no scored item, and the scorer counts it as handled when the answer
+  lists it and either gives it no date, flags it, or warns that the letter's dates are uncertain; such an offered
+  date (an optional item) or contract date is scored by no condition; :func:`ambiguous_slots` counts them by kind,
+  once per letter, from the registered manifest, in the final analysis's ``labels``.
 
 Every output holds ids, counts, hashes and metric values only (and the days units were recorded on): never a letter's
 text, a title, a quote, a warning or a date it names. Floats are rounded to :data:`SIGNIFICANT_DIGITS` significant digits, so a render is byte-identical on every
@@ -1733,25 +1734,27 @@ def _conventions(entries: Sequence[Mapping[str, Any]]) -> dict[tuple[str, int], 
     return found
 
 
-#: The kinds of a label slot left open between two or more dates: a deadline (an item the letter requires or offers,
-#: ``items`` and ``optional_items``) and a contract date (``expected_current_term_end``, ``expected_cancel_by``).
-AMBIGUOUS_KINDS = ("deadline", "contract")
+#: The kinds of a label slot left open between two or more dates: a deadline (an item the letter requires,
+#: ``items``), an offered date (an item it offers, ``optional_items``) and a contract date
+#: (``expected_current_term_end``, ``expected_cancel_by``).
+AMBIGUOUS_KINDS = ("deadline", "offered", "contract")
 _CONTRACT_SLOTS = ("expected_current_term_end", "expected_cancel_by")
 
 
 def ambiguous_slots(entries: Sequence[Mapping[str, Any]], splits: Sequence[str]) -> dict[str, Any]:
     """How many label slots of ``splits`` the letter or the law leaves open between two or more dates ("ambiguous"),
-    by kind (:data:`AMBIGUOUS_KINDS`), in all and per split. Such a deadline is no scored item (it counts as handled
-    when no single date is given as certain or the date is flagged); such a contract date is scored by no condition.
-    Every entry counts, a photo as its own letter, as the scored items do."""
+    by kind (:data:`AMBIGUOUS_KINDS`), in all and per split. Such a deadline is no scored item: the scorer's
+    ambiguous-date check counts it as handled when the answer lists it and either gives it no date, flags it, or
+    warns that the letter's dates are uncertain. Such an offered date or contract date is scored by no condition.
+    Each letter counts once: a photo shares its letter's truth and is not counted again."""
     by_split = {split: dict.fromkeys(AMBIGUOUS_KINDS, 0) for split in splits}
     for entry in entries:
         counts = by_split.get(str(entry.get("split")))
-        if counts is None:
+        if counts is None or entry.get("photo"):
             continue
         truth = entry.get("truth") or {}
-        for key in ("items", "optional_items"):
-            counts["deadline"] += sum(
+        for key, kind in (("items", "deadline"), ("optional_items", "offered")):
+            counts[kind] += sum(
                 1
                 for item in truth.get(key) or []
                 if isinstance(item, Mapping) and item.get("expected_due") == "ambiguous"
