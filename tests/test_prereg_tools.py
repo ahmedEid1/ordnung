@@ -1192,7 +1192,7 @@ def test_a_deviation_checkpointed_after_the_results_were_published_is_refused(re
     found = prereg_hashes.history_problems(repo, filled, freeze=freeze)
     assert [p.split(":")[0] for p in found if "published" in p] == [
         "D001"
-    ]  # a label error comes from the review
+    ]  # a label error comes from the blind review of discordant items
 
 
 def test_every_deviation_is_a_comment_on_the_one_registered_issue(repo: Path) -> None:
