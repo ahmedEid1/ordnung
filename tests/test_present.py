@@ -548,6 +548,70 @@ def test_the_history_page_keeps_the_runs_as_they_were_published(rendered: dict[s
     assert set(re.findall(r"\bclaude-[a-z]+-\d+(?:-\d+)*\b", history)) == {"claude-sonnet-5"}
 
 
+def _differing(old: Any, new: Any, path: str = "") -> list[str]:
+    """The paths at which two JSON values differ (a key on one side only counts as a difference)."""
+    if isinstance(old, dict) and isinstance(new, dict):
+        return [
+            found
+            for key in sorted(old.keys() | new.keys())
+            for found in (
+                _differing(old[key], new[key], f"{path}/{key}")
+                if key in old and key in new
+                else [f"{path}/{key}"]
+            )
+        ]
+    if isinstance(old, list) and isinstance(new, list) and len(old) == len(new):
+        return [found for i, pair in enumerate(zip(old, new)) for found in _differing(*pair, f"{path}[{i}]")]
+    return [] if old == new else [path]
+
+
+def test_the_history_page_says_which_replay_supersedes_which_and_why(rendered: dict[str, str]) -> None:
+    """A replay written again names the file it supersedes and why, under the table; the index keeps the earlier
+    file by its hash; and what the reason says moved is what moved between the two files."""
+    section = _flat(
+        rendered["docs/evals-history.md"].split("## Every results file", 1)[1].split("\n## ", 1)[0]
+    )
+    old, new = (
+        "2026-10-30-claude-sonnet-5-checks-ablated.json",
+        "2026-11-04-claude-sonnet-5-checks-ablated.json",
+    )
+    assert (
+        f"`{old}` is superseded by `{new}`, the same replay written again: the Länder delivery rules checked "
+        "against the law on 4 November 2026 moved one ablated confidence (one item with the two-dates check off, "
+        "high to medium), and no count changed. The results index (`evals/results/INDEX.json`) keeps the earlier "
+        "file, checked by its hash."
+    ) in section
+    assert text.SUPERSEDED.keys() == {old} and text.SUPERSEDED[old][0] == new
+    # each pair is two versions of one replay: the index checks the newer one and keeps the earlier by its hash
+    index = {
+        row["file"]: row
+        for row in json.loads((RESULTS / "INDEX.json").read_text(encoding="utf-8"))["results"]
+    }
+    roles = model.roles(RESULTS)
+    for earlier, (later, _why) in text.SUPERSEDED.items():
+        assert (index[earlier]["check"], index[earlier]["verdict"]) == ("hash", "superseded"), earlier
+        assert index[later]["verdict"] == "checked" and index[later]["kind"] == index[earlier]["kind"], later
+        assert roles[earlier] == roles[later] == "replay"
+    # what moved: one scored item's confidence, high to medium, in the ablations that switch the two-dates check
+    # off; every count, date, outcome and flag is the same
+    before, after = (json.loads((RESULTS / name).read_text(encoding="utf-8")) for name in (old, new))
+    assert _differing(before["totals"], after["totals"]) == []
+    moved = _differing(before["splits"], after["splits"])
+    assert moved
+    items, ablations = set(), set()
+    for path in moved:
+        found = re.fullmatch(r"/(\w+)/ablations/(\w+)/changed\[(\d+)\]/ablated/confidence", path)
+        assert found, path
+        split, ablation, i = found[1], found[2], int(found[3])
+        was, now = (side["splits"][split]["ablations"][ablation]["changed"][i] for side in (before, after))
+        assert (was["ablated"]["confidence"], now["ablated"]["confidence"]) == ("high", "medium"), path
+        items.add((now["entry_id"], now["item"]))
+        ablations.add(ablation)
+    assert len(items) == 1
+    two_dates = before["meta"]["ablations"]["no_two_dates_check"]["switches_off"][0]
+    assert all(two_dates in after["meta"]["ablations"][name]["switches_off"] for name in ablations)
+
+
 # --------------------------------------------------------------------------------------------------
 # One render, checked
 # --------------------------------------------------------------------------------------------------
