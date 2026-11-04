@@ -288,10 +288,13 @@ old law's 3rd day (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) — for 
 procedure law, by an authority of the Land or a municipality there — which a letter rarely shows: Ordnung counts
 the 4th day and, when the 3rd gives an earlier deadline, a warning names that deadline and its own send-by date,
 counted as the receipt counts one (`medium`, `vwvfg_land_old_procedures`); the date itself never moves, so whoever
-files on the date shown rather than posting by its send-by date can be a day late in an older matter. A
-Brandenburg authority's e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg):
-Ordnung counts from the day it was sent, the earliest it can have arrived, or from the arrival day you entered
-when that is before the 4th day (`vwvfg_bb_7`); a later arrival keeps the 4th day and the late-arrival note.
+files on the date shown rather than posting by its send-by date can be a day late in an older matter. Where the
+person acts, the earlier deadline is said too: the calendar event repeats the warning under when to post, the morning
+notification adds "(earlier for a matter begun before 1 January 2025)" and Today says "Worth a second look" beside
+the date, as the letter's page does; their reminders still follow the 4th day's send-by date. A Brandenburg
+authority's e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg): Ordnung counts
+from the day it was sent, the earliest it can have arrived, or from the arrival day you entered when that is before
+the 4th day (`vwvfg_bb_7`); a later arrival keeps the 4th day and the late-arrival note.
 
 In the app a sender's Land is unknown until you set it for that sender (*Which state is this sender in?*
 in its drawer) or say Yes when Ordnung asks *Is X in Bavaria?* from the postcode on their letter: reading a

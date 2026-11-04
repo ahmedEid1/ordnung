@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -24,12 +25,15 @@ from ordnung.rules.deadlines import (
     DECLARATION_ARRIVAL_WARNING,
     DECLARATION_DATED_WARNING,
     NEEDS_ARRIVAL_WARNING,
+    OLDER_MATTER_RULE,
     PRIVATE_SENDER_DATED_WARNING,
     PRIVATE_SENDER_WARNING,
     RuleContext,
     compute_due,
     compute_one_year_fallback,
     from_arrival,
+    older_matter_note,
+    older_matter_switch,
     parse_date,
     period_problem,
     sending_time_passed,
@@ -303,6 +307,42 @@ def test_an_older_matter_s_note_counts_the_period_the_deadline_uses() -> None:
     assert "vwvfg_land_old_procedures" in receipt.rule_ids
     notes = [w for w in receipt.warnings if w.startswith(_OLDER.format("Baden-Württemberg"))]
     assert len(notes) == 1 and "Mon 10 Feb 2025" in notes[0] and "the deadline is Mon 10 Mar 2025" in notes[0]
+
+
+@pytest.mark.parametrize(
+    ("region", "posted", "switch"),
+    [
+        ("MV", "2025-12-09", "1 January 2025"),
+        ("BW", "2025-02-07", "7 February 2025"),
+        ("BY", "2026-02-10", "1 January 2025"),
+    ],
+)
+def test_an_older_matter_s_note_is_found_by_its_rule(region: str, posted: str, switch: str) -> None:
+    """The calendar file, the morning notification and the web app's Today find the note by its rule id (the web
+    app reads the same id): the note itself and the Land's switch day; none on a receipt without the rule, or whose
+    rule's note isn't there (never another warning instead)."""
+    receipt = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO"),
+        ctx(today="2024-12-01", region=region, document_date=posted, delivery_scope="vwvfg"),
+    )
+    note = older_matter_note(receipt)
+    assert OLDER_MATTER_RULE in receipt.rule_ids
+    assert (
+        note is not None and note in receipt.warnings and note.startswith(_OLDER.format(REGION_NAMES[region]))
+    )
+    assert older_matter_switch(receipt) == switch
+    other = [w for w in receipt.warnings if w != note] + ["The letter's period is longer than the law's."]
+    without = receipt.model_copy(update={"warnings": other})
+    assert older_matter_note(without) is None and older_matter_switch(without) is None
+    plain = compute_due(
+        notice_spec(legal_basis="§ 70 VwGO"),
+        ctx(today="2024-12-01", region="NW", document_date=posted, delivery_scope="vwvfg"),
+    )
+    assert OLDER_MATTER_RULE not in plain.rule_ids
+    assert older_matter_note(plain) is None and older_matter_switch(plain) is None
+    assert older_matter_note(None) is None and older_matter_switch(None) is None
+    web = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "today" / "selection.ts"
+    assert f'OLDER_MATTER_RULE = "{OLDER_MATTER_RULE}"' in web.read_text(encoding="utf-8")
 
 
 def test_an_older_matter_s_note_only_on_a_period_counted_forward() -> None:

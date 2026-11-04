@@ -14,6 +14,7 @@ import { qk } from "@/api/hooks";
 import type { Brief, Household, Suggestion } from "@/api/types";
 import { Toaster, __clearToasts } from "@/components/ui/Toast";
 import { contract, item } from "@/mocks/data/helpers";
+import { makeReceipt } from "@/features/document/fixtures";
 import { makeTestQueryClient, renderWithProviders, TEST_TODAY } from "@/test/render";
 import { useMockApi } from "@/test/mockFetch";
 import { createMockServer } from "@/mocks/server";
@@ -21,7 +22,7 @@ import { ComingUp } from "./ComingUp";
 import { comingUpMeta, ideaActionLabel, ideaHref, noteText, payActionFor, recentLetterDate, recentLetterMeta, sortRecentLetters } from "./helpers";
 import { PartyDrawer } from "@/features/party/PartyDrawer";
 import { RecentLetters } from "./RecentLetters";
-import { actionFromContract, actionFromItem, type TodayAction } from "./selection";
+import { actionFromContract, actionFromItem, OLDER_MATTER_RULE, type TodayAction } from "./selection";
 import { TodayView } from "./TodayView";
 import { TopThree } from "./TopThree";
 
@@ -421,6 +422,51 @@ function withHousehold(filed: Record<string, string>, client = makeTestQueryClie
   client.setQueryData(qk.household, household);
   return client;
 }
+
+describe("an older matter's earlier deadline", () => {
+  // a Bavarian decision: the date is the 4th day's; a matter begun before 2025 has an earlier one ("Why this date?")
+  const receipt = makeReceipt({
+    due_date: "2026-10-27",
+    send_by: "2026-10-21",
+    confidence: "medium",
+    rule_ids: ["bgb_188", OLDER_MATTER_RULE],
+    warnings: ["In Bayern a matter begun before 1 January 2025 keeps the old 3-day rule (Art. 98 BayVwVfG) …"],
+  });
+  const objection = (p: Partial<Parameters<typeof item>[0]> = {}) =>
+    actionFromItem(
+      item({ id: "itm_obj", kind: "deadline", title: "Objection deadline", due_date: "2026-10-27", send_by: "2026-10-21", computation: receipt, ...p }),
+      { today: TEST_TODAY },
+    )!;
+  const fee = actionFromItem(item({ id: "itm_fee", kind: "payment", title: "Pay the fee", amount: 5, due_date: "2026-10-02" }), { today: TEST_TODAY })!;
+
+  it("a Top 3 card says it is worth a second look, beside its send-by date", () => {
+    renderWithProviders(<TopThree actions={[objection(), fee]} next={undefined} partyById={new Map()} today={TEST_TODAY} />);
+    const card = screen.getByText("Objection deadline").closest("article")!;
+    const look = within(card).getByText("Worth a second look");
+    const pill = card.querySelector("time")!;
+    expect(pill.textContent).toMatch(/^Send by Wed 21 Oct/);
+    expect(look.parentElement).toBe(pill.closest("[data-part=date-row]"));
+    expect(within(card).queryByText("Please check")).toBeNull();
+    expect(within(screen.getByText("Pay the fee").closest("article")!).queryByText("Worth a second look")).toBeNull();
+  });
+
+  it("a Coming-up row says so after what the date means; not once the person confirmed the date", () => {
+    const { unmount } = renderWithProviders(<ComingUp actions={[objection(), fee]} partyById={new Map()} today={TEST_TODAY} />);
+    const meta = (title: string) => screen.getByText(title).closest("a")!.querySelector<HTMLElement>("[data-part=meta]");
+    expect(meta("Objection deadline")!.textContent).toBe("Send · Worth a second look");
+    expect(meta("Pay the fee")?.textContent ?? "").not.toMatch(/second look/);
+    unmount();
+    renderWithProviders(<ComingUp actions={[objection({ grounding: "user" })]} partyById={new Map()} today={TEST_TODAY} />);
+    expect(meta("Objection deadline")!.textContent).toBe("Send");
+  });
+
+  it("the Coming-up line puts it after the date's word and before who it is with", () => {
+    expect(comingUpMeta({ dateRole: "send_by", time: null }, { name: "Landratsamt Musterkreis" }, "Alex Rivera", true)).toBe(
+      "For Alex Rivera · Send · Worth a second look · Landratsamt Musterkreis",
+    );
+    expect(comingUpMeta({ dateRole: "send_by", time: null }, { name: "Landratsamt Musterkreis" }, null, false)).toBe("Send · Landratsamt Musterkreis");
+  });
+});
 
 describe("whose letter it is", () => {
   it("a Coming-up row's second line, and a recent letter's, start with who the letter is filed for", () => {

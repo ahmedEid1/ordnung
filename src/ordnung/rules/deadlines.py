@@ -112,6 +112,12 @@ TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
 #: Words for the app's person (who answers the app); the rules tools put them in their own voice.
 TOLD_ARRIVAL: Final = "You told us it arrived on"
 ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
+#: The rule a receipt cites when its note names an older matter's earlier deadline (:func:`_older_matter_note`):
+#: the date stays the 4th day's, and the calendar file, the morning notification and the web app's Today
+#: (``web/src/features/today/selection.ts`` reads the same id) say there is an earlier one where the person acts.
+OLDER_MATTER_RULE: Final = "vwvfg_land_old_procedures"
+#: How that note names the matter, before the Land's switch day ("In Bayern a matter begun before 1 January 2025 …").
+OLDER_MATTER: Final = "a matter begun before"
 
 
 class LandWait(NamedTuple):
@@ -631,6 +637,24 @@ def _no_date(trace: Trace, ctx: RuleContext, reason: str) -> ComputationReceipt:
     )
 
 
+def older_matter_note(receipt: ComputationReceipt | None) -> str | None:
+    """The note of a receipt that names an older matter's earlier deadline and its own send-by date
+    (:func:`_older_matter_note`), word for word; ``None`` without one."""
+    if receipt is None or OLDER_MATTER_RULE not in receipt.rule_ids:
+        return None
+    return next((warning for warning in receipt.warnings if OLDER_MATTER in warning), None)
+
+
+def older_matter_switch(receipt: ComputationReceipt | None) -> str | None:
+    """The Land's switch day that note names ("1 January 2025"): a matter begun before it has the earlier deadline."""
+    note = older_matter_note(receipt)
+    if note is None:
+        return None
+    return next(
+        (switch for _, switch in VWVFG_OLD_PROCEDURES.values() if f"{OLDER_MATTER} {switch}" in note), None
+    )
+
+
 def sending_time_passed(receipt: ComputationReceipt | None) -> bool:
     """Whether a receipt's send-by date is only "today" because the usual time to post has passed
     (:func:`plan_send_by`): a letter posted today may arrive too late, so the date that counts is the due date."""
@@ -1075,13 +1099,13 @@ def _older_matter_note(
         return
     provision, switch = VWVFG_OLD_PROCEDURES[land]
     trace.soft(
-        f"In {calendar_de.REGION_NAMES[land]} a matter begun before {switch} keeps the old 3-day rule ({provision}) "
+        f"In {calendar_de.REGION_NAMES[land]} {OLDER_MATTER} {switch} keeps the old 3-day rule ({provision}) "
         "when an authority of the Land or a municipality there decides it under the Land's own procedure law. If "
         "so, and this matter began earlier (you applied or were heard before that day), the letter counts as "
         f"delivered on {fmt_date(day)} and the deadline is {fmt_date(earlier)}"
         + _act_by(ctx, earlier, nature, region, postal_buffer_days)
     )
-    trace.use("vwvfg_land_old_procedures")
+    trace.use(OLDER_MATTER_RULE)
 
 
 def _act_by(

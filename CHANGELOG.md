@@ -91,12 +91,13 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   counted 3, a day early). Hessen's 3rd day, Hamburg's before 14 May 2025 and Baden-Württemberg's before 7 February
   2025 no longer say Ordnung couldn't confirm them. In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern, where a
   matter begun before the switch keeps the 3rd day, the date stays the 4th day's; where the 3rd day gives an earlier
-  deadline, the date shows "Worth a second look" and a note names that deadline and when to send for it. A Brandenburg
-  authority's e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg): Ordnung counts
-  it from the day it was sent, and does the same for an authority whose state it doesn't know yet, until you set the
-  state, so such a date can be several days early. On the benchmark no date and no count changes: six replayed dates
-  show another confidence (five now say "Worth a second look", one reading under the wrong law shows medium instead of
-  low), and the code-check ablation was replayed again for the same reason.
+  deadline, the date shows "Worth a second look" (on Today too) and a note names that deadline and when to send for
+  it, in "Why this date?" and in the calendar event; the morning notification says the deadline is earlier for such a
+  matter. A Brandenburg authority's e-mailed decision counts from the day it arrived when that can be shown
+  (§ 7 VwVfGBbg): Ordnung counts it from the day it was sent, and does the same for an authority whose state it
+  doesn't know yet, until you set the state, so such a date can be several days early. On the benchmark no date and no
+  count changes: six replayed dates show another confidence (five now say "Worth a second look", one reading under the
+  wrong law shows medium instead of low), and the code-check ablation was replayed again for the same reason.
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.

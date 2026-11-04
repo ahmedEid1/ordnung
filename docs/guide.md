@@ -321,11 +321,13 @@ shows it.
   could be a day late if that is wrong. In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter
   begun before their switch to the 4th day (7 February 2025 in Baden-Württemberg, 1 January 2025 in the
   other two) keeps the 3rd day, which a letter rarely shows: Ordnung counts the 4th, and the date says
-  "Worth a second look" and names the earlier deadline with its own send-by date — if your matter with an
-  authority of that state or one of its towns began before then, go by those. An e-mailed decision from a
-  Brandenburg authority counts from the day it arrived when that can be shown; Ordnung counts from the day
-  it was sent unless you enter when it arrived. The benchmark gives Ordnung the Land printed on the
-  letterhead; the [evaluation report](evals.md#6-results) gives its numbers without it, as the app runs.
+  "Worth a second look" (on Today and on the letter's page) and names the earlier deadline with its own
+  send-by date ("Why this date?", and the calendar event; the morning notification says it is earlier) — if
+  your matter with an authority of that state or one of its towns began before then, go by those: the
+  reminders follow the later date. An e-mailed decision from a Brandenburg authority counts from the day it
+  arrived when that can be shown; Ordnung counts from the day it was sent unless you enter when it arrived.
+  The benchmark gives Ordnung the Land printed on the letterhead; the
+  [evaluation report](evals.md#6-results) gives its numbers without it, as the app runs.
   There is no question when the postcode is listed in two states or not at all (many P.O. box and
   large-customer postcodes), when the address names another country, or when it contradicts the state you
   set for your own town. A suggestion can be wrong (a central mail centre in another state, a misread
