@@ -424,6 +424,39 @@ SCOPE_CITATION = {
     "sgbx": "§ 37 Abs. 2 S. 1 SGB X",
 }
 
+_EARLIER_WORDS = [False]
+
+
+@contextmanager
+def earlier_splits_words() -> Iterator[None]:
+    """While the five earlier splits are built: a Land authority's 4th-day step keeps the words those splits' letters
+    were written with (the federal rule's, "(Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG))"),
+    so they stay byte for byte. Outside it the step names the Land's own provision and the day its 4th day starts."""
+    before = _EARLIER_WORDS[0]
+    _EARLIER_WORDS[0] = True
+    try:
+        yield
+    finally:
+        _EARLIER_WORDS[0] = before
+
+
+def in_earlier_splits_words() -> bool:
+    """Whether :func:`earlier_splits_words` is in force."""
+    return _EARLIER_WORDS[0]
+
+
+def _land_fourth_day_rule(land: str, procedure_began: date | None) -> str:
+    """Why a Land authority's decision counts the 4th day: the Land's provision and the day its 4th day starts, and
+    in BW, BY and MV that the procedure began on or after the switch, or that the letter states no earlier start."""
+    start = LAND_VWVFG_FOURTH_DAY_FROM[land]
+    rule = f"{LAND_VWVFG_PROVISION[land]} ({LAND_NAMES[land]} counts the 4th day for items posted from {start.isoformat()}"
+    switch = LAND_VWVFG_OLD_PROCEDURES.get(land)
+    if switch is not None and procedure_began is None:
+        rule += f"; the letter states no procedure begun before {switch.isoformat()}"
+    elif switch is not None and procedure_began is not None:
+        rule += f"; the procedure began {fmt(procedure_began)}, not before {switch.isoformat()}"
+    return rule + ")"
+
 
 def _land_vwvfg_rule(posted: date, land: str | None, procedure_began: date | None) -> str | None:
     """Why a Land authority's decision posted on ``posted`` counts the 3rd day where the federal rule counts the
@@ -502,6 +535,13 @@ def deemed_delivery(
         days = 3
         fiction = posted + timedelta(days=days)
         why.add(f"Posted {fmt(posted)}; {land_rule}: day {days} after posting = {fmt(fiction)}.")
+    elif scope == "vwvfg" and land is not None and posted > OLD_FICTION_LAST_DAY and not _EARLIER_WORDS[0]:
+        days = 4
+        fiction = posted + timedelta(days=days)
+        why.add(
+            f"Posted {fmt(posted)}; {_land_fourth_day_rule(land, procedure_began)}: day {days} after posting = "
+            f"{fmt(fiction)}."
+        )
     else:
         days = 3 if posted <= OLD_FICTION_LAST_DAY else 4
         fiction = posted + timedelta(days=days)

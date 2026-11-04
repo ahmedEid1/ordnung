@@ -258,6 +258,10 @@ REMEDY_RULES = {
         "Widerspruch: one month after Bekanntgabe (§ 84 Abs. 1 SGG).",
     ),
 }
+#: The words of a Land authority's remedy rule in the five earlier splits, and what a letter outside them says
+#: instead: its Land counts its own day (``law.deemed_delivery``), the 3rd in Hessen or for an older procedure.
+LAND_4_DAY_WORDS = "Land VwVfG 4-day fiction without shift."
+LAND_OWN_DAY_WORDS = "the Land's own delivery day (evals/law/laender.txt), without shift."
 
 
 def objection_item(
@@ -282,6 +286,8 @@ def objection_item(
     VwVfG decision counts; ``procedure_began`` is the day its procedure began, when the letter states it."""
     key = "ao" if scope == "ao" else ("sgbx" if scope == "sgbx" else f"vwvfg_{remedy}")
     default_shift, default_rule = REMEDY_RULES[key]
+    if scope == "vwvfg" and not law.in_earlier_splits_words():
+        default_rule = default_rule.replace(LAND_4_DAY_WORDS, LAND_OWN_DAY_WORDS)
     shift_citation = shift_citation or default_shift
     rule = rule or default_rule
     authority = region
@@ -294,21 +300,24 @@ def objection_item(
         end = law.period_end(notified, 1, "months", region, why, shift=True, shift_citation=shift_citation)
         return end, why
 
+    item_spec = spec(
+        "relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_scope=scope,
+        posted_on=posted,
+        shift=True,
+    )
+    if procedure_began is not None:  # the start the label rests on (the earlier splits' letters state none)
+        item_spec["procedure_began"] = procedure_began.isoformat()
     return dated_item(
         kind=kind,
         nature=nature,
         title=title,
         calc=calc,
         region=region,
-        spec=spec(
-            "relative",
-            anchor="deemed_delivery",
-            amount=1,
-            unit="months",
-            delivery_scope=scope,
-            posted_on=posted,
-            shift=True,
-        ),
+        spec=item_spec,
         rule=rule,
         amount=money,
         note=note,

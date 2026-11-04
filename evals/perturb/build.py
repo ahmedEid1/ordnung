@@ -377,12 +377,18 @@ def _event(entry: Entry, item: TruthItem, region: str | None) -> date | None:
         posted = parse_iso(spec.posted_on) or parse_iso(entry.truth.document_date)
         if posted is None or spec.delivery_scope not in law.SCOPE_CITATION:
             return None
-        try:  # a Land authority's decision counts its own Land's day; one the arithmetic refuses gives nothing back
-            return law.deemed_delivery(
-                posted, spec.delivery_scope, region, law.Derivation(), land=entry.authority_region
-            )
-        except ValueError:
-            return None
+        land = entry.authority_region
+        if spec.delivery_scope == "vwvfg" and (land is None or land in law.LAND_VWVFG_UNVERIFIED):
+            return None  # a Land authority's decision the label arithmetic cannot date (no Land, or no text)
+        # a Land authority's decision counts its own Land's day, from the procedure start its label rests on
+        return law.deemed_delivery(
+            posted,
+            spec.delivery_scope,
+            region,
+            law.Derivation(),
+            land=land,
+            procedure_began=parse_iso(spec.procedure_began),
+        )
     if spec.anchor == "document_date":
         return parse_iso(entry.truth.document_date)
     if spec.anchor == "explicit_date":

@@ -66,6 +66,8 @@ class TruthSpec(_Lenient):
     date: str | None = None
     time: str | None = None
     shift: bool | None = None
+    #: The day a Land authority's procedure began, where the letter states it and the label rests on it.
+    procedure_began: str | None = None
 
 
 class TruthItem(_Lenient):

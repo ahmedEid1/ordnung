@@ -517,6 +517,42 @@ def test_reroute_targets_use_the_labels_own_arithmetic() -> None:
     assert build.reroute_target(entry, fixed, "period") is None
 
 
+def _land_entry(land: str | None, due: str, began: str | None = None) -> Entry:
+    spec = {"type": "relative", "anchor": "deemed_delivery", "amount": 1, "unit": "months",
+            "delivery_scope": "vwvfg", "posted_on": "2025-12-09", "shift": True}  # fmt: skip
+    if began is not None:
+        spec["procedure_began"] = began
+    return Entry.model_validate(
+        {"id": "holdout4-municipal_decision-K9", "split": "holdout4", "family": "municipal_decision", "file": "x.pdf",
+         "sha256": "0" * 64, "today": "2025-12-12", "authority_region": land,
+         "truth": {"kind": "municipal_decision", "document_date": "2025-12-09",
+                   "items": [{"kind": "deadline", "expected_due": due, "spec": spec}]}}
+    )  # fmt: skip
+
+
+def test_a_land_decision_is_counted_from_its_own_procedure_start() -> None:
+    """Worked by hand: an MV decision posted Tue 2025-12-09 in a procedure begun 2024-11-01 counts the 3rd day
+    (§ 120a VwVfG M-V), Fri 2025-12-12, one month → Mon 2026-01-12; the same decision with no start counts the 4th,
+    Sat 2025-12-13 → Tue 2026-01-13. Each label is the arithmetic's own; the other is not."""
+    older = _land_entry("MV", "2026-01-12", began="2024-11-01")
+    assert build.recompute_due(older, older.truth.items[0]) == date(2026, 1, 12)
+    newer = _land_entry("MV", "2026-01-13")
+    assert build.recompute_due(newer, newer.truth.items[0]) == date(2026, 1, 13)
+    wrong = _land_entry("MV", "2026-01-12")
+    assert build.recompute_due(wrong, wrong.truth.items[0]) is None
+
+
+@pytest.mark.parametrize("land", [None, "RP"])
+def test_a_land_decision_the_arithmetic_cannot_date_gives_nothing_back(land: str | None) -> None:
+    """No Land, or a Land whose text could not be read: there is no label arithmetic to follow, so nothing is
+    derived. Any other refusal is an error, not a quiet ``None``."""
+    entry = _land_entry(land, "2026-01-13")
+    assert build.recompute_due(entry, entry.truth.items[0]) is None
+    late = _land_entry("MV", "2026-01-13", began="2025-12-10")  # a start after the posting is refused
+    with pytest.raises(ValueError, match="after the decision was posted"):
+        build.recompute_due(late, late.truth.items[0])
+
+
 def test_every_relative_deadline_of_the_base_set_is_reproduced_by_the_label_arithmetic(
     base: list[Entry],
 ) -> None:

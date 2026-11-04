@@ -10,11 +10,13 @@ the label check's own table (``evals/verify_labels.py``, separate code) gives th
 
 from __future__ import annotations
 
+import importlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 from evals import verify_labels as vl
@@ -308,16 +310,127 @@ def test_tax_and_social_law_decisions_are_the_same_in_every_land(scope: str, pos
         assert (day - posted).days >= (3 if posted <= law.OLD_FICTION_LAST_DAY else 4)
 
 
-def test_the_4th_day_keeps_its_words_and_the_3rd_names_the_land_s_provision() -> None:
-    """Every earlier letter takes the 4th-day path, whose step reads as before; a 3rd-day step names the Land's
-    own provision, and an older procedure its start and the provision that keeps the old day."""
+#: The step every Land 4th-day label of the five earlier splits carries, word for word.
+EARLIER_FOURTH_DAY_STEP = (
+    "Posted Tue 2026-09-29; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 "
+    "(PostModG)): day 4 after posting = Sat 2026-10-03."
+)
+
+
+def step(posted: date, land: str, began: date | None = None) -> str:
     why = law.Derivation()
-    fiction_ = law.deemed_delivery(date(2026, 9, 29), "vwvfg", "NW", why, land="NW")
-    assert fiction_ == date(2026, 10, 3)
-    assert why.steps[0] == (
-        "Posted Tue 2026-09-29; § 41 Abs. 2 S. 1 VwVfG (Land VwVfG) (4-day rule for items posted from 2025-01-01 "
-        "(PostModG)): day 4 after posting = Sat 2026-10-03."
+    law.deemed_delivery(posted, "vwvfg", land, why, land=land, procedure_began=began)
+    return why.steps[0]
+
+
+def test_the_earlier_splits_keep_the_words_of_their_4th_day_step() -> None:
+    """While the five earlier splits are built (:func:`law.earlier_splits_words`) a Land's 4th-day step reads as it
+    always has, so their letters stay byte for byte; the switch is off again afterwards."""
+    with law.earlier_splits_words():
+        assert step(date(2026, 9, 29), "NW") == EARLIER_FOURTH_DAY_STEP
+        bw = step(date(2026, 9, 29), "BW")
+    assert bw == EARLIER_FOURTH_DAY_STEP
+    assert step(date(2026, 9, 29), "NW") != EARLIER_FOURTH_DAY_STEP
+
+
+@pytest.mark.parametrize(
+    ("land", "posted", "began", "words"),
+    [
+        (
+            "NW",
+            date(2026, 9, 29),
+            None,
+            "§ 41 Abs. 2 S. 1 VwVfG NRW (Nordrhein-Westfalen counts the 4th day for items "
+            "posted from 2025-01-01): day 4 after posting = Sat 2026-10-03.",
+        ),
+        (
+            "HH",
+            date(2025, 5, 14),
+            None,
+            "§ 41 Abs. 2 S. 1 HmbVwVfG (Hamburg counts the 4th day for items posted "
+            "from 2025-05-14): day 4 after posting = Sun 2025-05-18.",
+        ),
+        (
+            "BW",
+            date(2025, 2, 7),
+            None,
+            "§ 41 Abs. 2 S. 1 LVwVfG (Baden-Württemberg counts the 4th day for items "
+            "posted from 2025-02-07; the letter states no procedure begun before 2025-02-07): day 4 after posting = "
+            "Tue 2025-02-11.",
+        ),
+        (
+            "BY",
+            date(2026, 9, 29),
+            None,
+            "Art. 41 Abs. 2 S. 1 BayVwVfG (Bayern counts the 4th day for items posted "
+            "from 2025-01-01; the letter states no procedure begun before 2025-01-01): day 4",
+        ),
+        (
+            "MV",
+            date(2025, 12, 9),
+            date(2025, 3, 1),
+            "§ 41 Abs. 2 S. 1 VwVfG M-V (Mecklenburg-Vorpommern counts the "
+            "4th day for items posted from 2025-01-01; the procedure began Sat 2025-03-01, not before 2025-01-01)",
+        ),
+        (
+            "NI",
+            date(2026, 9, 29),
+            None,
+            "§ 1 Abs. 1 NVwVfG with § 41 Abs. 2 S. 1 VwVfG (Niedersachsen counts the "
+            "4th day for items posted from 2025-01-01)",
+        ),
+    ],
+)
+def test_a_land_s_4th_day_step_names_its_own_provision_and_start(
+    land: str, posted: date, began: date | None, words: str
+) -> None:
+    """Outside the earlier splits a Land's 4th-day step cites the Land's provision and the day its 4th day starts,
+    not the federal rule's start (PostModG); in BW, BY and MV it also says that the label rests on a procedure begun
+    on or after the switch."""
+    text = step(posted, land, began)
+    assert words in text and "PostModG" not in text and "(Land VwVfG)" not in text, text
+
+
+def test_a_final_letter_s_land_step_is_its_land_s_own() -> None:
+    """``build_cases`` builds the five earlier splits with their words and a final plug-in's letters without them. The
+    plug-in's builder uses the generator's own modules (``gen.*`` when ``evals/generate.py`` runs), as ``gen/final.py``
+    does."""
+    from evals import generate
+
+    common = importlib.import_module(f"{generate.law.__name__.rpartition('.')[0]}.common")
+    seen: list[str] = []
+
+    class Built(Exception):
+        pass
+
+    def builder() -> list[Any]:
+        made = common.objection_item(
+            posted=date(2026, 12, 1), scope="vwvfg", remedy="widerspruch", region="NW", title="t"
+        )
+        seen.append(made["derivation"])
+        raise Built
+
+    earlier = [c for c in generate.build_cases(None) if c.id == "dev-municipal_decision-A1"]
+    assert earlier
+    assert "(Land VwVfG) (4-day rule for items posted from 2025-01-01 (PostModG))" in str(earlier[0].truth)
+    assert "Land VwVfG 4-day fiction without shift." in str(earlier[0].truth)
+    plugin = generate.FinalPlugin(
+        final_day=date(2026, 12, 8),
+        valid_until=date(2026, 12, 15),
+        families={"holdout4": (("municipal_decision", builder),)},
+        conventions=[],
+        kind_also_accepted={},
     )
+    with pytest.raises(Built):
+        generate.build_cases(plugin)
+    assert "§ 41 Abs. 2 S. 1 VwVfG NRW (Nordrhein-Westfalen counts the 4th day" in seen[0]
+    assert "PostModG" not in seen[0] and "4-day fiction" not in seen[0]
+    assert "the Land's own delivery day (evals/law/laender.txt), without shift." in seen[0]
+
+
+def test_the_3rd_day_names_the_land_s_provision() -> None:
+    """A 3rd-day step names the Land's own provision, and an older procedure its start and the provision that keeps
+    the old day."""
     hessen = law.Derivation()
     law.deemed_delivery(date(2026, 9, 29), "vwvfg", "HE", hessen, land="HE")
     assert (
@@ -347,6 +460,9 @@ def test_an_objection_item_counts_the_authority_s_land() -> None:
         posted=date(2025, 12, 9), scope="vwvfg", remedy="widerspruch", region="MV", title="t"
     )
     assert newer["expected_due"] == "2026-01-13"
+    # the start the label rests on is written with it, and only where it was given (the earlier splits have none)
+    assert older["spec"]["procedure_began"] == "2024-11-01"
+    assert "procedure_began" not in newer["spec"] and "procedure_began" not in hessen["spec"]
     for region in (None, "RP"):
         with pytest.raises(ValueError):
             objection_item(

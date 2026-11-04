@@ -566,12 +566,13 @@ def build_cases(final: FinalPlugin | Literal["installed"] | None = "installed") 
     variants, and no variant is in two splits; a final split without variants has its own families."""
     plugin = load_final() if isinstance(final, str) else final
     cases: list[Case] = []
-    for family, builder in (*FAMILIES, *HOLDOUT_FAMILIES, *HOLDOUT2_FAMILIES, *HOLDOUT3_FAMILIES):
-        built = builder()
-        assert built, family
-        for case in built:
-            assert case.family == family, (case.id, family)
-        cases.extend(built)
+    with law.earlier_splits_words():  # their letters keep the words they were written with
+        for family, builder in (*FAMILIES, *HOLDOUT_FAMILIES, *HOLDOUT2_FAMILIES, *HOLDOUT3_FAMILIES):
+            built = builder()
+            assert built, family
+            for case in built:
+                assert case.family == family, (case.id, family)
+            cases.extend(built)
     final_splits = plugin.splits if plugin else ()
     final_ids: set[str] = set()
     for split, pairs in (plugin.families if plugin else {}).items():
