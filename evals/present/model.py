@@ -185,6 +185,26 @@ def _newest(
     return max(names) if names else None
 
 
+def _replayed_splits(kind: str, data: Mapping[str, Any]) -> set[str]:
+    """The splits a replay replays, as ``evals.reproduce`` reads them: an end-to-end run names them in its meta, the
+    other replays key their numbers by them."""
+    if kind == "e2e":
+        meta = data.get("meta") or {}
+        return set(meta.get("splits") or ())
+    return set(data.get("splits") or ())
+
+
+def _newest_replay(found: Mapping[str, tuple[str, str, dict[str, Any]]], kind: str) -> str | None:
+    """The newest replay of ``kind`` of the earlier splits. A replay of a final run's read (one file per read) is
+    the final report's, before its analysis too: never the current report's, however new."""
+    names = [
+        name
+        for name, (k, _, data) in found.items()
+        if k == kind and not _replayed_splits(k, data) & set(FINAL_SPLITS)
+    ]
+    return max(names) if names else None
+
+
 # --------------------------------------------------------------------------------------------------
 # The headline: the held-out splits as recorded, re-analysed
 # --------------------------------------------------------------------------------------------------
@@ -401,7 +421,7 @@ def _wrong_answers(data: Mapping[str, Any]) -> dict[str, int]:
 
 
 def _without_land(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
-    name = _newest(found, "without-land")
+    name = _newest_replay(found, "without-land")
     if name is None:
         return None
     data = found[name][2]
@@ -423,7 +443,7 @@ def _without_land(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[
 
 def _ablation(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
     """``scripts/eval_ablate_checks.py``'s results: Ordnung's code checks switched off one at a time."""
-    name = _newest(found, "checks-ablated")
+    name = _newest_replay(found, "checks-ablated")
     if name is None:
         return None
     data = found[name][2]
@@ -443,7 +463,7 @@ def _ablation(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str,
 
 def _e2e(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dict[str, Any] | None:
     """``python -m evals.e2e``'s results: from a letter's file to the reminder, through the real app."""
-    name = _newest(found, "e2e")
+    name = _newest_replay(found, "e2e")
     if name is None:
         return None
     data = found[name][2]
