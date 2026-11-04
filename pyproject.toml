@@ -92,7 +92,7 @@ ordnung = "ordnung.cli:app"
 
 [project.urls]
 Homepage = "https://github.com/ahmedEid1/ordnung"
-Documentation = "https://github.com/ahmedEid1/ordnung/tree/main/docs"
+Documentation = "https://github.com/ahmedEid1/ordnung/blob/main/docs/README.md"
 Repository = "https://github.com/ahmedEid1/ordnung"
 Issues = "https://github.com/ahmedEid1/ordnung/issues"
 Changelog = "https://github.com/ahmedEid1/ordnung/blob/main/CHANGELOG.md"

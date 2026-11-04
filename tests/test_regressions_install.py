@@ -250,25 +250,30 @@ def test_the_changelog_names_this_version_and_the_package_links_to_it() -> None:
     assert re.search(rf"^## {re.escape(ordnung.__version__)} — \d{{4}}-\d{{2}}-\d{{2}}$", changelog, re.M)
 
 
-def test_the_readme_says_how_to_update() -> None:
+def test_the_guide_says_how_to_update() -> None:
     """The README installed from git but never said how to update; ``pipx upgrade`` alone keeps the old
-    code when the version didn't change (measured with pipx 1.17 on its pip backend). A release is
-    installed by its tag, the newest one by name (measured with pipx 1.18 and uv 0.11: an install from a
-    tag stays on it when reinstalled or upgraded), and going back names the tag of the version you had."""
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    updating = readme.split("### Updating", 1)[1].split("\n## ", 1)[0]
+    code when the version didn't change (measured with pipx 1.17 on its pip backend). The guide's *Updating*
+    says it: a release is installed by its tag (measured with pipx 1.18 and uv 0.11: an install from a tag stays
+    on it when reinstalled or upgraded), and going back names the tag of the version you had. It writes a tag as
+    ``vX.Y.Z``, never this version's, so a release doesn't have to edit it. No release has a tag on GitHub yet,
+    so both say how to name a release without one: by its commit."""
+    guide = (ROOT / "docs" / "guide.md").read_text(encoding="utf-8")
+    updating = guide.split("\n### Updating\n", 1)[1].split("\n## ", 1)[0]
     for command in ("pipx reinstall ordnung", "uv tool upgrade ordnung", "ordnung doctor"):
         assert command in updating, command
-    tagged = f"git+https://github.com/ahmedEid1/ordnung@v{ordnung.__version__}"
+    tagged = "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"
     flat = " ".join(updating.split())
-    assert f'`pipx install --force "{tagged}"`' in flat
-    assert f'`uv tool install "{tagged}"`' in flat
-    # 0.2.0 was released without a tag: tags start with 0.3.0 (review of D5)
-    assert "From 0.3.0 on, each release also has a tag on GitHub, such as `v0.3.0`." in flat
-    assert "and a tag on GitHub" not in flat
+    install_a_release = flat.split("To install a release instead,", 1)[1].split("To go back,", 1)[0]
+    assert f'`pipx install --force "{tagged}"`' in install_a_release
+    assert f'`uv tool install "{tagged}"`' in install_a_release
+    assert "name its tag once it has one" in install_a_release
+    assert "a release without a tag by its commit, taken from the repository's history" in install_a_release
+    assert f"@v{ordnung.__version__}" not in guide
+    assert "From 0.3.0 on" not in flat and "and a tag on GitHub" not in flat
     going_back = flat.split("To go back,", 1)[1]
-    assert '`pipx install --force "git+https://github.com/ahmedEid1/ordnung@vX.Y.Z"`' in going_back
+    assert f'`pipx install --force "{tagged}"`' in going_back
     assert "ordnung restore FILE --force" in going_back
+    assert "a version without a tag by its commit, taken from the repository's history" in going_back
 
 
 def test_the_bug_template_suggests_this_version() -> None:

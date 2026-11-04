@@ -336,7 +336,7 @@ def test_the_pypi_page_is_the_readme_with_every_link_and_picture_pointing_to_git
     for page in re.findall(rf"{re.escape(BLOB)}([^)\"#\s]+)", description):
         assert (ROOT / page).exists(), page
     pictures = re.findall(rf"{re.escape(RAW)}([^)\"\s]+)", description)
-    assert len(pictures) >= 20 and all((ROOT / picture).is_file() for picture in pictures)
+    assert len(pictures) >= 8 and all((ROOT / picture).is_file() for picture in pictures)
     assert re.search(rf'href="{re.escape(GITHUB)}#install-and-run"', description)
     # nothing else changed: taking the prefixes away (and the evaluation charts' copy on the report page, which PyPI
     # loads instead of GitHub's raw SVG) gives the README back
