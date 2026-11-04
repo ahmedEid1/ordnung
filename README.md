@@ -73,8 +73,7 @@ phone, your other computer, Claude Desktop and [the environment variables](docs/
 
 ### Updating
 
-`ordnung --version` shows yours, and [CHANGELOG.md](CHANGELOG.md) what changed. [Updating](docs/guide.md#updating) in
-the guide says how to update, and how to go back.
+`ordnung --version` shows yours, [CHANGELOG.md](CHANGELOG.md) what changed and [the guide](docs/guide.md#updating) how to update, and how to go back.
 
 ## Evaluation
 
@@ -202,8 +201,7 @@ computers stay off until you turn them on. [docs/privacy.md](docs/privacy.md) sa
 - The app's own text is in English; what Claude writes for you follows the language you choose.
 - The benchmark letters are synthetic and real post is messier; phone access and hand-off sync were tested in
   emulation and with a simulated sync tool, not yet on physical phones or two physical computers.
-
-[The guide](docs/guide.md#limitations) lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
+- **And more** in [the guide](docs/guide.md#limitations), which lists every limitation; the evaluation report has [its own](docs/evals.md#14-limitations).
 
 ## How it was built
 

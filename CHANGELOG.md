@@ -54,11 +54,12 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   are fixed templates now, all of them for docs/evals.md and, for the README's block, those chosen by role whatever
   they show (accuracy with the number of deviations, the late or missed dates and their tested comparisons,
   stability, where Ordnung falls short, Ask with its scope and the caveats on every number), in a layout and a
-  length fixed with them; the held-out Ask set, the stress cells and the replays without the Land or the checks have
-  their final-run tools; and scripts hash the pre-registration and check it, and the file of deviations from it,
-  against the git history. A final split's facts are built from its sealed blind audit
-  (`python -m scripts.build_final_facts`); a contract date the letter or the law leaves open between two dates is
-  labelled as such, like a deadline, and not scored, and the final run counts these slots by kind.
+  length fixed with them; the Ask set's runs ("Ask: new questions on the demo household"), the stress cells and the
+  replays without the Land or the checks have their final-run tools; and scripts hash the pre-registration and
+  check it, and the file of deviations from it, against the git history. A final split's facts are built from its
+  sealed blind audit (`python -m scripts.build_final_facts`); a contract date the letter or the law leaves open
+  between two dates is labelled as such, like a deadline, and not scored, and the final run counts these slots by
+  kind.
 
 ### Changed
 
