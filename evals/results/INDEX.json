@@ -178,7 +178,7 @@
     "llm_rules_tool"
    ],
    "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+   "needs": "its letters, written blind after the code freeze, and their recording"
   },
   {
    "cell": "benchmark/holdout4/r2",
@@ -189,7 +189,7 @@
     "llm_rules_tool"
    ],
    "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+   "needs": "its letters, written blind after the code freeze, and their recording"
   },
   {
    "cell": "benchmark/holdout4/r3",
@@ -200,7 +200,7 @@
     "llm_rules_tool"
    ],
    "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+   "needs": "its letters, written blind after the code freeze, and their recording"
   },
   {
    "cell": "benchmark/newkinds/r1",
@@ -211,7 +211,7 @@
     "llm_rules_tool"
    ],
    "status": "not recorded yet",
-   "needs": "its letters, written blind after the code freeze (plan EV8), and their recording (plan §7)"
+   "needs": "its letters, written blind after the code freeze, and their recording"
   },
   {
    "cell": "without-land",
@@ -233,22 +233,22 @@
   {
    "cell": "ask/heldout/r1",
    "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
   },
   {
    "cell": "ask/heldout/r2",
    "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
   },
   {
    "cell": "ask/heldout/r3",
    "status": "not recorded yet",
-   "needs": "the held-out questions and attacks, written blind after the code freeze (plan EV10), and their recording (plan §7, R3 and R6)"
+   "needs": "the held-out questions and attacks, written blind after the code freeze, and their recording"
   },
   {
    "cell": "ask/heldout/final",
    "status": "not recorded yet",
-   "needs": "the held-out Ask set's three runs (plan EV10; §7, R3 and R6)"
+   "needs": "the held-out Ask set's three runs"
   },
   {
    "cell": "e2e/dev-holdout-holdout2-holdout3-test",
@@ -260,7 +260,7 @@
   {
    "cell": "e2e/holdout4-newkinds",
    "status": "not recorded yet",
-   "needs": "holdout4's and newkinds' recorded readings (plan EV9)"
+   "needs": "holdout4's and newkinds' recorded readings"
   },
   {
    "cell": "without-land/holdout4/r1",
@@ -302,12 +302,12 @@
   {
    "cell": "stress/I1",
    "status": "not recorded yet",
-   "needs": "the blind templates and the stress manifest (plan EV8, commit A) and the cells' recording (plan §7, R7)"
+   "needs": "the blind templates and the stress manifest, and the cells' recording"
   },
   {
    "cell": "stress/D1",
    "status": "not recorded yet",
-   "needs": "the blind templates and the stress manifest (plan EV8, commit A) and the cells' recording (plan §7, R7)"
+   "needs": "the blind templates and the stress manifest, and the cells' recording"
   },
   {
    "cell": "analysis/heldout-reanalysis",
@@ -319,7 +319,7 @@
   {
    "cell": "analysis/final",
    "status": "not recorded yet",
-   "needs": "the final run (plan EV9) and the pre-registration (plan EV8, commit B)"
+   "needs": "the final run and its pre-registration"
   },
   {
    "cell": "presenter",

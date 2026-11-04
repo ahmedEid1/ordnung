@@ -111,7 +111,7 @@ EXTRACTION_LABELS: dict[str, str] = {
 
 def _commit_note(meta: Mapping[str, Any]) -> str:
     """What the results file says about its commit, after it (``meta.commit_note``): a commit that is no longer
-    in the published history, say (final review of phase 2: `17f2292` and `5c3e35b` were squashed)."""
+    in the published history, say (`17f2292` and `5c3e35b`, which were squashed)."""
     note = meta.get("commit_note")
     return f", {note}" if note else ""
 

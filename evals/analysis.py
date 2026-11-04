@@ -1073,7 +1073,7 @@ def reanalyse(runs: Sequence[Run], *, date: str, settings: Settings | None = Non
 
 
 def default_prereg_analysis() -> dict[str, Any]:
-    """The ``analysis`` section of the final run's pre-registration, as the evaluation plan sets it (§6)."""
+    """The default ``analysis`` section of the final run's pre-registration."""
     return {
         "schema": PREREG_SCHEMA,
         "model": MODEL,
@@ -2180,7 +2180,7 @@ def _decisions(
     item_reads: int,
     ni: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """The pre-registered decision rules (§6.11), as codes the presenter turns into its sentences."""
+    """The pre-registered decision rules, as codes the presenter turns into its sentences."""
     decisions = _comparisons(families, prereg, ni)
     ours = summaries[prereg.reference]
     harmful = sum(row["k"] for row in ours["harmful_per_read"])
@@ -2373,7 +2373,7 @@ def _flags_over_reads(rows: Rows, level: float) -> dict[str, Any]:
     }
 
 
-#: The pre-registered decision codes (§6.11) and the sentence each stands for; the presenter's phase 2 fills the
+#: The pre-registered decision codes and the sentence each stands for; the presenter's phase 2 fills the
 #: placeholders from the final analysis (``{d}``: Ordnung minus the baseline in points, ``{ci}``: its interval).
 DECISION_SENTENCES = {
     "clear": "Ordnung is ahead of {baseline} ({d} points, 95 % CI {ci}).",
