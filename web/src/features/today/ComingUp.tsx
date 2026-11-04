@@ -12,17 +12,18 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { formatMoney, formatTotals } from "@/lib/format";
 import { fadeUp } from "./motion";
 import { comingUpMeta } from "./helpers";
-import { groupByWeek, isOutgoingPayment, type TodayAction } from "./selection";
+import { groupByWeek, isOutgoingPayment, worthASecondLook, type TodayAction } from "./selection";
 import { actionHref } from "./useTodayData";
 
 /**
  * One date: the calendar leaf, then the title (up to two lines) and what/who (up to two lines),
  * each with its full text on hover. A roomy card adds the kind icon and puts the amount in its
  * own column; a phone-sized one leads the second line with the amount instead, so the title keeps
- * the width. A letter filed for someone of the household says so first ("For Alex Rivera · …").
+ * the width. A letter filed for someone of the household says so first ("For Alex Rivera · …"); a date with an
+ * earlier deadline for an older matter says it is worth a second look.
  */
 function Row({ action, party, forName }: { action: TodayAction; party: Party | undefined; forName: string | null }) {
-  const meta = comingUpMeta(action, party, forName);
+  const meta = comingUpMeta(action, party, forName, worthASecondLook(action));
   const money = action.amount ? formatMoney(action.amount, { currency: action.currency }) : null;
   const full = [money, meta].filter(Boolean).join(" · ");
   return (

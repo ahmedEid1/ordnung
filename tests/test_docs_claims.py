@@ -653,6 +653,21 @@ def test_the_guide_says_when_ordnung_asks_no_question_about_a_sender_s_state() -
     assert suggest_land_why("Am Markt 1, 80331 Musterstadt")[1] == "suggested"
 
 
+def test_the_readme_s_earliest_date_promise_names_the_older_matter_exception() -> None:
+    """In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern the date shown is the 4th day's, a day later than
+    the old law's 3rd for a matter begun before the switch (SPEC § 21, ``rules.delivery.VWVFG_OLD_PROCEDURES``):
+    README's "earliest plausible date" says so, with the Länder the engine names."""
+    from ordnung.rules.delivery import VWVFG_OLD_PROCEDURES
+
+    readme = _flat(_readme())
+    start = readme.index("in doubt it picks the earliest plausible date")
+    promise = readme[start : readme.index("[docs/deadline-rules.md]", start)]
+    assert "except where a fact only you know decides (when a matter in" in promise
+    assert "a warning names the earlier date" in promise
+    words = {"BW": "Baden-Württemberg", "BY": "Bavaria", "MV": "Mecklenburg-Vorpommern"}
+    assert [land for land, word in words.items() if word in promise] == sorted(VWVFG_OLD_PROCEDURES)
+
+
 def test_the_readme_credits_geonames_for_the_postcode_data() -> None:
     """CC BY 4.0 asks for credit, the licence and the changes: README's credit links the licence file the
     wheel carries (``license-files``)."""

@@ -224,7 +224,7 @@ call (the agent), as text (rules text) and not at all (the model alone) ([Summar
 ### Ordnung's code checks, switched off one at a time
 
 The recorded readings of holdout, holdout2 and holdout3 replayed with each check switched off
-(`scripts/eval_ablate_checks.py`, `2026-10-30-claude-sonnet-5-checks-ablated.json`): what each layer prevents.
+(`scripts/eval_ablate_checks.py`, `2026-11-04-claude-sonnet-5-checks-ablated.json`): what each layer prevents.
 
 | Configuration | Exactly right | Late | Missed | Early |
 |---|---|---|---|---|

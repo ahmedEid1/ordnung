@@ -19,7 +19,10 @@ Written policy (ADR 0007):
   The titles are letters' words: control and bidirectional characters are removed, whitespace is
   collapsed, a leading dash is dropped and each is cut to :data:`MAX_TITLE_CHARS` characters. A to-do
   of a letter filed for someone of the household starts with their name, cut the same way ("Alex
-  Rivera: Dentist appointment today 10:30", ADR 0023); *Discreet* never says it.
+  Rivera: Dentist appointment today 10:30", ADR 0023); *Discreet* never says it. A to-do whose receipt names an
+  older matter's earlier deadline says so after its day ("Objection deadline by Wed (earlier for a matter begun
+  before 1 January 2025)"): its day is the 4th day's send-by date, and the earlier one is in the calendar event and
+  on the letter's page (:func:`~ordnung.rules.deadlines.older_matter_note`).
 * **When.** Once per local day (the profile's time zone), at the chosen time
   (``settings.desktop_notify_time``, default 08:00) — the daily tick wakes up for it, whatever time
   it is — or, when Ordnung wasn't running then, :data:`STARTUP_GRACE_S` seconds after it starts (at
@@ -58,6 +61,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from ordnung import clock
 from ordnung.db.store import Store
 from ordnung.models import AppSettings
+from ordnung.rules.deadlines import older_matter_switch
 from ordnung.rules.explain import fmt_date
 from ordnung.secretary.brief import Agenda, AgendaEntry, build_agenda
 from ordnung.secretary.triggers import Ledger, money, parse_day
@@ -210,14 +214,19 @@ def _title(entry: AgendaEntry, people: Mapping[str, str]) -> str:
 
 
 def things_due(
-    agenda: Agenda, times: Mapping[str, str] | None = None, people: Mapping[str, str] | None = None
+    agenda: Agenda,
+    times: Mapping[str, str] | None = None,
+    people: Mapping[str, str] | None = None,
+    older: Mapping[str, str] | None = None,
 ) -> list[_Thing]:
     """Everything the notification counts, in the order it lists it (module policy); ``times``:
     an appointment's time of day (``HH:MM``) by its agenda id; ``people``: the name of the person of the
-    household each letter is filed for, by letter id (a contract's decision is never named)."""
+    household each letter is filed for, by letter id (a contract's decision is never named); ``older``: the switch
+    day of a to-do whose deadline is earlier for an older matter, by its agenda id (not said once it is overdue)."""
     today = parse_day(agenda.date) or clock.today()
     times = times or {}
     people = people or {}
+    older = older or {}
     found: list[_Thing] = []
     for entry in agenda.overdue:
         day = parse_day(entry.date) or today
@@ -225,6 +234,8 @@ def things_due(
     for entry in [*agenda.today, *agenda.next_7_days]:
         day = parse_day(entry.date) or today
         text = f"{_title(entry, people)}{_amount(entry)} {_when(entry, day, today, times)}"
+        if entry.id in older:
+            text += f" (earlier for a matter begun before {older[entry.id]})"
         found.append(_Thing(text, day, "today" if day <= today else "upcoming", _RANKS.get(entry.kind, 1)))
     for entry in agenda.decisions:
         send_by = parse_day(entry.date)
@@ -289,6 +300,19 @@ def appointment_times(store: Store, agenda: Agenda) -> dict[str, str]:
     return times
 
 
+def older_matters(store: Store, agenda: Agenda) -> dict[str, str]:
+    """The switch day of each to-do due today or this week whose receipt names an older matter's earlier deadline,
+    by agenda id (:func:`~ordnung.rules.deadlines.older_matter_switch`)."""
+    switches: dict[str, str] = {}
+    for entry in [*agenda.today, *agenda.next_7_days]:
+        if entry.ref.type == "item":
+            item = store.get_item(entry.ref.id)
+            switch = older_matter_switch(item.computation) if item is not None else None
+            if switch is not None:
+                switches[entry.id] = switch
+    return switches
+
+
 def household_names(store: Store, today: date) -> dict[str, str]:
     """The name of the person of the household each letter outside the trash is filed for, by letter id
     (:attr:`ordnung.secretary.triggers.Ledger.household_filed`; ADR 0023)."""
@@ -297,9 +321,12 @@ def household_names(store: Store, today: date) -> dict[str, str]:
 
 def today_things(store: Store, today: date) -> list[_Thing]:
     """What the notification says on ``today``: the day's agenda, appointments with their time, a letter's
-    to-do with the name of the person of the household it is filed for."""
+    to-do with the name of the person of the household it is filed for, and one with an older matter's earlier
+    deadline saying so."""
     agenda = build_agenda(store, today)
-    return things_due(agenda, appointment_times(store, agenda), household_names(store, today))
+    return things_due(
+        agenda, appointment_times(store, agenda), household_names(store, today), older_matters(store, agenda)
+    )
 
 
 def preview(store: Store, today: date) -> dict[Mode, Notification | None]:

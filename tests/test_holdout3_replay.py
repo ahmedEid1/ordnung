@@ -1,6 +1,7 @@
 """holdout3 was recorded once, on the code frozen for it (2026-10-06); the code has changed since. Replayed on the
-current code, its one recording must give the Ordnung path the same prediction for every letter, so README row ¹⁰
-still describes what the app does. Replay only: no model call, nothing written to ``evals/results``."""
+current code, its one recording must give the Ordnung path the same prediction for every letter — but for the
+confidence the Länder delivery rules moved on two of them —, so README row ¹⁰ still describes what the app does.
+Replay only: no model call, nothing written to ``evals/results``."""
 
 from __future__ import annotations
 
@@ -58,4 +59,18 @@ def test_holdout3_s_recording_gives_the_same_predictions_on_the_current_code(tmp
     before, after = _ordnung_predictions(recorded), _ordnung_predictions(replayed)
     assert after.keys() == before.keys()
     changed = sorted(entry_id for entry_id in before if after[entry_id] != before[entry_id])
-    assert changed == []
+    # the Länder delivery rules checked on 4 Nov 2026 (docs/deadline-rules.md § 5): in Mecklenburg-Vorpommern (I1) and
+    # Bavaria (J1) a matter begun before 2025 keeps the 3rd day, so the same date names the earlier deadline in a note,
+    # one level less sure; nothing else of either reading moves
+    assert changed == ["holdout3-municipal_decision-I1", "holdout3-municipal_decision-J1"]
+    for entry_id in changed:
+        was, now = before[entry_id], after[entry_id]
+        assert {key: was[key] for key in was if key != "items"} == {
+            key: now[key] for key in now if key != "items"
+        }
+        moved = [
+            (old["confidence"], new["confidence"], sorted(key for key in old if old[key] != new[key]))
+            for old, new in zip(was["items"], now["items"], strict=True)
+            if old != new
+        ]
+        assert moved == [("high", "medium", ["confidence", "notes", "rule_ids"])], entry_id

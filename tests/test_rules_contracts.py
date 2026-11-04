@@ -1434,6 +1434,19 @@ def test_catalog_entries_are_complete() -> None:
         catalog.get_rule("nope")
 
 
+def test_the_older_matter_rule_cites_each_lands_provision_and_links_none_of_them() -> None:
+    """One rule covers three Länder (``rules.delivery.VWVFG_OLD_PROCEDURES``): its citation names each provision,
+    and it links no single Land's act — a Bavarian note once linked Mecklenburg-Vorpommern's gazette.
+    docs/deadline-rules.md § 11 links all three."""
+    from ordnung.rules.delivery import VWVFG_FOUR_DAY_FROM, VWVFG_OLD_PROCEDURES
+
+    rule = catalog.get_rule("vwvfg_land_old_procedures")
+    assert all(provision in rule.citation for provision, _ in VWVFG_OLD_PROCEDURES.values())
+    assert rule.url is None
+    # the earliest switch; the summary names each Land's
+    assert rule.effective_from == min(VWVFG_FOUR_DAY_FROM[land] for land in VWVFG_OLD_PROCEDURES).isoformat()
+
+
 def test_every_rule_is_listed_under_a_topic_in_one_run() -> None:
     """The settings screen groups the rules by topic: every rule has one and each topic is one block."""
     assert set(catalog.TOPIC_STARTS) <= set(catalog.RULES)

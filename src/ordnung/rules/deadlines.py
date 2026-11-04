@@ -23,8 +23,10 @@ from ordnung.models import ComputationReceipt, ComputationStep, Confidence, Date
 from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
+    LAND_EMAIL_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
+    VWVFG_OLD_PROCEDURES,
     DeliveryChannel,
     DeliveryScope,
     resolve_delivery,
@@ -110,6 +112,12 @@ TAX_OFFICE_HOLIDAY: Final = "is a public holiday where the tax office is"
 #: Words for the app's person (who answers the app); the rules tools put them in their own voice.
 TOLD_ARRIVAL: Final = "You told us it arrived on"
 ENTER_ENVELOPE_DATE: Final = "enter the envelope date for the exact deadline"
+#: The rule a receipt cites when its note names an older matter's earlier deadline (:func:`_older_matter_note`):
+#: the date stays the 4th day's, and the calendar file, the morning notification and the web app's Today
+#: (``web/src/features/today/selection.ts`` reads the same id) say there is an earlier one where the person acts.
+OLDER_MATTER_RULE: Final = "vwvfg_land_old_procedures"
+#: How that note names the matter, before the Land's switch day ("In Bayern a matter begun before 1 January 2025 …").
+OLDER_MATTER: Final = "a matter begun before"
 
 
 class LandWait(NamedTuple):
@@ -128,14 +136,17 @@ def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
     A regional holiday it couldn't place (:data:`REGION_UNKNOWN`) may move the date; counted backwards
     (:data:`REGION_EARLIER`) the date shown may then be a day late. The 3-day delivery rule
     (:data:`~ordnung.rules.delivery.LAND_DAYS_UNCONFIRMED`) changes only for a Land whose authorities use the
-    4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HB, SL and TH, confirming changes
-    nothing. "May": the holiday in a warning need not be one in ``region``.
+    4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HE (the 3rd day by its own law), HB and
+    SL, confirming changes nothing. An e-mailed decision counted from the day it was sent
+    (:data:`~ordnung.rules.delivery.LAND_EMAIL_UNCONFIRMED`) waits for every Land but Brandenburg. "May": the
+    holiday in a warning need not be one in ``region``.
     """
     waits = may_be_late = False
     for warning in warnings:
         earlier = REGION_EARLIER in warning
         four_days = warning == LAND_DAYS_UNCONFIRMED and region in VWVFG_FOUR_DAY_FROM
-        waits = waits or earlier or four_days or warning.startswith(REGION_UNKNOWN)
+        emailed = warning == LAND_EMAIL_UNCONFIRMED and region != "BB"
+        waits = waits or earlier or four_days or emailed or warning.startswith(REGION_UNKNOWN)
         may_be_late = may_be_late or earlier
     return LandWait(waits, may_be_late)
 
@@ -341,6 +352,9 @@ class Trace:
     soft_failures: int = 0
     hard_failure: bool = False
     region_flagged: bool = False
+    #: In BW, BY and MV after their switch: the Land and the day a letter of an older matter counts as delivered
+    #: (:attr:`ordnung.rules.delivery.Delivery.older_matter`), for :func:`_older_matter_note`.
+    older_matter: tuple[str, date] | None = None
     #: A step's citation by the procedure its deadline follows, where the catalog's names several (a court's
     #: period is counted under § 222 ZPO, not the AO or the VwVfG: :data:`_COURT_COUNTING`).
     cite: dict[str, str] = field(default_factory=dict)
@@ -620,6 +634,24 @@ def _no_date(trace: Trace, ctx: RuleContext, reason: str) -> ComputationReceipt:
         due=None,
         summary=f"No date could be computed: {reason[0].lower()}{reason[1:]}",
         region=ctx.region,
+    )
+
+
+def older_matter_note(receipt: ComputationReceipt | None) -> str | None:
+    """The note of a receipt that names an older matter's earlier deadline and its own send-by date
+    (:func:`_older_matter_note`), word for word; ``None`` without one."""
+    if receipt is None or OLDER_MATTER_RULE not in receipt.rule_ids:
+        return None
+    return next((warning for warning in receipt.warnings if OLDER_MATTER in warning), None)
+
+
+def older_matter_switch(receipt: ComputationReceipt | None) -> str | None:
+    """The Land's switch day that note names ("1 January 2025"): a matter begun before it has the earlier deadline."""
+    note = older_matter_note(receipt)
+    if note is None:
+        return None
+    return next(
+        (switch for _, switch in VWVFG_OLD_PROCEDURES.values() if f"{OLDER_MATTER} {switch}" in note), None
     )
 
 
@@ -984,7 +1016,11 @@ def _apply_delivery(
     delivery_region = region
     if scope == "ao" and calendar_de.normalize_region(ctx.recipient_region) != region:
         delivery_region = None  # regional holidays only count when they apply at both places
-    delivery = resolve_delivery(anchor.day, scope=scope, channel=channel, region=delivery_region)
+    arrived = ctx.received_date if ctx.received_confirmed else None
+    delivery = resolve_delivery(
+        anchor.day, scope=scope, channel=channel, region=delivery_region, arrived=arrived
+    )
+    trace.older_matter = delivery.older_matter
     trace.extend(delivery.steps)
     if delivery.uncertainty:
         trace.soft(delivery.uncertainty)
@@ -1038,6 +1074,58 @@ def _date_from(start: date, period: tuple[int, PeriodUnit], region: str | None, 
     """The end of a period counted forward from ``start``, moved off a weekend or holiday if ``shift``."""
     end, _ = add_period(start, *period, region=region)
     return calendar_de.next_business_day(end, region) if shift else end
+
+
+def _older_matter_note(
+    ctx: RuleContext,
+    trace: Trace,
+    due: date,
+    periods: list[tuple[int, PeriodUnit]],
+    region: str | None,
+    shift: bool,
+    nature: str,
+    postal_buffer_days: int,
+) -> None:
+    """In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch to the 4th day keeps
+    the 3rd (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) — for the Land's own procedure law only, and a
+    letter rarely shows when its matter began: the date stays the 4th day's, and a note names the deadline from the
+    3rd when it is earlier, with its own send-by date, one level less confident. ``periods`` are those the
+    deadline was counted with (the letter's, and the law's when they differ: the earlier end counts)."""
+    if trace.older_matter is None:
+        return
+    land, day = trace.older_matter
+    earlier = min(_date_from(day, period, region, shift) for period in periods)
+    if earlier >= due:
+        return
+    provision, switch = VWVFG_OLD_PROCEDURES[land]
+    trace.soft(
+        f"In {calendar_de.REGION_NAMES[land]} {OLDER_MATTER} {switch} keeps the old 3-day rule ({provision}) "
+        "when an authority of the Land or a municipality there decides it under the Land's own procedure law. If "
+        "so, and this matter began earlier (you applied or were heard before that day), the letter counts as "
+        f"delivered on {fmt_date(day)} and the deadline is {fmt_date(earlier)}"
+        + _act_by(ctx, earlier, nature, region, postal_buffer_days)
+    )
+    trace.use(OLDER_MATTER_RULE)
+
+
+def _act_by(
+    ctx: RuleContext, deadline: date, nature: str, region: str | None, postal_buffer_days: int
+) -> str:
+    """How a note naming an earlier deadline ends: when to send, counted as the receipt counts its own send-by
+    date (:func:`_send_by`), so that posting on the receipt's send-by day is never what the note asks."""
+    if deadline < ctx.today:
+        return ", which has already passed."
+    scratch = Trace()  # the receipt's own steps and warnings stay the later date's
+    send = (
+        _send_by(scratch, ctx, deadline, nature, region, postal_buffer_days)
+        if nature in _SEND_BY_NATURES
+        else None
+    )
+    if send is None:
+        return ": act by then to be safe."
+    if any(warning.startswith(SENDING_TIME_PASSED) for warning in scratch.warnings):
+        return ": it must arrive by then, so send it today by the fastest channel allowed (online, fax or in person)."
+    return f": it must arrive by then, so send it by {fmt_date(send)}."
 
 
 def _late_receipt_note(
@@ -1211,7 +1299,7 @@ def _private_late_arrival(
     if posted is None:
         return None
     channel = _CHANNEL_BY_RULE.get(read.delivery_rule, "post")
-    deemed = resolve_delivery(posted.day, scope=None, channel=channel, region=region).day
+    deemed = resolve_delivery(posted.day, scope=None, channel=channel, region=region, arrived=arrived).day
     if arrived <= deemed:
         return None
     if period[0] < 0:
@@ -1399,6 +1487,8 @@ def _compute_relative(
 
     backward = amount < 0
     counted_back_from: date | None = None
+    # the periods the deadline is counted with: the letter's, and the law's when they differ (the earlier end counts)
+    periods: list[tuple[int, PeriodUnit]] = [(amount, unit)]
     if not backward:
         raw_end, steps = add_period(event, amount, unit, region=place)
         trace.step(f"Counting starts the day after {fmt_date(event)}", event, "bgb_187_1")
@@ -1409,6 +1499,7 @@ def _compute_relative(
             and not any(_same_period((amount, unit), p) for p in statutory_periods)
         ):
             legal = statutory_periods[0]
+            periods.append(legal)
             legal_end, _ = add_period(event, *legal, region=place)
             trace.soft(
                 f"The letter says {period}, but the law ({catalog.citation(statute)}) gives "
@@ -1478,6 +1569,7 @@ def _compute_relative(
             check_regional_holidays(trace, [raw_end], later=False)
     if uses_delivery and not backward:
         _late_receipt_note(ctx, trace, event, due, (amount, unit), place, shift)
+        _older_matter_note(ctx, trace, due, periods, place, shift, spec.nature, postal_buffer_days)
     if late is not None:
         _private_late_note(trace, ctx, late, due)
 

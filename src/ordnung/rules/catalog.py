@@ -44,6 +44,23 @@ PENDING_CHANGES: tuple[PendingChange, ...] = (
         ),
         source="https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html",
     ),
+    PendingChange(
+        change=(
+            "Mecklenburg-Vorpommern's new § 41 Abs. 2 (Art. 1 Nr. 14 of the act of 8 Jul 2026, GVOBl. 2026 Nr. 21): a "
+            "decision made available for download counts as delivered on the day it is downloaded, at the latest the "
+            "4th day after it was made available"
+        ),
+        status=(
+            "Promulgated 21 Jul 2026; in force only with the federal Gesetz zur Fortentwicklung des "
+            "Verwaltungsverfahrensgesetzes (Art. 95 Abs. 5), which has not passed"
+        ),
+        rule_ids=("vwvfg_41_2a",),
+        update=(
+            "count an MV portal decision (and the federal one, if it passes with the same words) from the day it was "
+            "made available, not the day after"
+        ),
+        source="https://www.dokumentation.landtag-mv.de/parldok/dokument/72069",
+    ),
 )
 
 _GII = "https://www.gesetze-im-internet.de"
@@ -313,14 +330,38 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
     ),
     (
         "vwvfg_land_days",
-        "Authorities of the Länder: 4 days where confirmed",
-        "§ 41 Abs. 2 of the Länder VwVfGs (e.g. Art. 41 BayVwVfG; § 102b LVwVfG BW)",
-        "Most Länder moved to the 4-day rule in 2025 (confirmed for BY, NW, HH, MV from 1 January, BW from "
-        "7 February and SH at least from 10 June 2025; BE, BB, NI, RP, SN and ST follow the federal law). "
-        "For Hessen, Bremen, Saarland and Thüringen, or when the Land is unknown, Ordnung uses the "
-        "earlier 3rd day.",
+        "Authorities of the Länder: the 3rd or the 4th day",
+        "§ 41 Abs. 2 of the Länder VwVfGs (e.g. Art. 41 BayVwVfG, § 41 HVwVfG, § 110 LVwG SH, § 1 ThürVwVfG)",
+        "Most Länder moved to the 4-day rule in 2025: Bavaria, Berlin, Brandenburg, Lower Saxony, North "
+        "Rhine-Westphalia, Saxony, Schleswig-Holstein, Thuringia and Mecklenburg-Vorpommern from 1 January, "
+        "Baden-Württemberg from 7 February and Hamburg from 14 May. Rhineland-Palatinate and Saxony-Anhalt are taken "
+        "to follow the federal law; their gazettes were not checked. Hessen keeps the 3rd day. For Bremen and the "
+        "Saarland, whose law Ordnung could not check, or when the Land is unknown, Ordnung uses the earlier 3rd day.",
         f"{_GII}/vwvfg/__41.html",
         "2025-01-01",
+    ),
+    (
+        "vwvfg_land_old_procedures",
+        "Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern: the 3rd day for older matters",
+        "§ 102b LVwVfG; Art. 98 BayVwVfG; § 120a VwVfG M-V",
+        "All three moved to the 4th day (Bavaria and Mecklenburg-Vorpommern from 1 January, Baden-Württemberg from "
+        "7 February 2025), but a matter begun before that and not finished keeps the old 3rd day. A letter rarely "
+        "shows when its matter began: Ordnung counts the 4th day and, when the 3rd gives an earlier deadline, names "
+        "it with its own send-by date. It holds only for a decision under the Land's own procedure law, by an "
+        "authority of the Land or a municipality there.",
+        None,
+        "2025-01-01",
+    ),
+    (
+        "vwvfg_bb_7",
+        "Brandenburg: e-mailed decisions count from the day they arrived",
+        "§ 7 VwVfGBbg; § 41 Abs. 2 S. 2 VwVfG",
+        "In Brandenburg a decision sent by e-mail counts as delivered on the day it arrived when that can be shown, "
+        "not on the 4th day after sending. Ordnung counts from the day it was sent, the earliest it can have "
+        "arrived, or from the day you say it arrived; also for an e-mailed decision whose sender's Land it doesn't "
+        "know yet.",
+        "https://bravors.brandenburg.de/gesetze/vwvfgbbg",
+        None,
     ),
     (
         "vwvfg_41_2a",
@@ -409,7 +450,8 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "early_receipt",
         "Arriving early changes nothing",
         "BFH X R 96/98; BSG B 14 AS 12/09 R; BVerwG 6 C 3.22",
-        "If a letter arrives before its deemed delivery day, the deemed day still counts.",
+        "If a letter arrives before its deemed delivery day, the deemed day still counts — except an e-mailed "
+        "decision of a Brandenburg authority (§ 7 VwVfGBbg).",
         _court("BFH", "13.12.2000", "X R 96/98"),
         None,
     ),

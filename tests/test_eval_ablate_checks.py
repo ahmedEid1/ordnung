@@ -37,8 +37,9 @@ from scripts.eval_ablate_checks import (  # noqa: E402
     letters_acted,
 )
 
-#: The published replay (``python -m scripts.eval_ablate_checks --date 2026-10-30``).
-PUBLISHED = RESULTS_DIR / "2026-10-30-claude-sonnet-5-checks-ablated.json"
+#: The published replay, the newest (``python -m scripts.eval_ablate_checks --date …``): an older one is superseded,
+#: and the results index checks it by its hash.
+PUBLISHED = sorted(RESULTS_DIR.glob("*-checks-ablated.json"))[-1]
 #: The functions the ablations swap, as (module, attribute).
 TARGETS = {
     "settle": (plan_mod, "settle"),

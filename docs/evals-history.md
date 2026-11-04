@@ -51,6 +51,17 @@ Each file's role says what it may support:
 | 2026-10-30 | `2026-10-30-claude-sonnet-5-heldout-reanalysis.json` | analysis |  | re-analysis |  |  |
 | 2026-10-30 | `2026-10-30-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
 | 2026-10-31 | `2026-10-31-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
+| 2026-11-04 | `2026-11-04-claude-sonnet-5-checks-ablated.json` | check ablation |  | replay |  |  |
+
+`2026-10-06-claude-sonnet-5-without-land.json` is superseded by `2026-10-08-claude-sonnet-5-without-land.json`, the
+same replay written again: this time also with the state the postcode on the sender's letter suggests confirmed (a
+third replay); its letterhead and without-Land replays are the earlier file's, number for number. The results index
+(`evals/results/INDEX.json`) keeps the earlier file, checked by its hash.
+
+`2026-10-30-claude-sonnet-5-checks-ablated.json` is superseded by `2026-11-04-claude-sonnet-5-checks-ablated.json`,
+the same replay written again: the Länder delivery rules checked against the law on 4 November 2026 moved one
+ablated confidence (one item with the two-dates check off, high to medium), and no count changed. The results index
+(`evals/results/INDEX.json`) keeps the earlier file, checked by its hash.
 
 ## The page as published up to 0.3.0
 

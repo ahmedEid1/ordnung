@@ -20,6 +20,8 @@ import {
   stripGreeting,
   urgencyScore,
   toPayTotals,
+  OLDER_MATTER_RULE,
+  worthASecondLook,
 } from "./selection";
 
 const TODAY = "2026-09-28"; // Monday
@@ -241,6 +243,36 @@ describe("actions from to-dos & dates", () => {
     expect(urgencyScore({ ...base, priority: "high" })).toBeLessThan(urgencyScore(base));
     expect(urgencyScore({ ...base, needsCheck: true })).toBeLessThan(urgencyScore(base));
     expect(urgencyScore({ ...base, kind: "deadline" })).toBeLessThan(urgencyScore(base));
+  });
+});
+
+describe("an older matter's earlier deadline", () => {
+  // the receipt's note: in Bavaria a matter begun before 2025 keeps the 3rd day (the date stays the 4th day's)
+  const note =
+    "In Bayern a matter begun before 1 January 2025 keeps the old 3-day rule (Art. 98 BayVwVfG) when an authority of the Land or a municipality there decides it under the Land's own procedure law. If so, and this matter began earlier (you applied or were heard before that day), the letter counts as delivered on Sat 7 Nov 2026 and the deadline is Mon 7 Dec 2026: it must arrive by then, so send it by Tue 1 Dec 2026.";
+  const older = makeReceipt({ due_date: "2026-12-08", send_by: "2026-12-02", confidence: "medium", rule_ids: ["bgb_188", OLDER_MATTER_RULE], warnings: [note] });
+  const objection = (p: Partial<Item> = {}) =>
+    actionFromItem(item({ kind: "deadline", title: "Objection deadline", due_date: "2026-12-08", send_by: "2026-12-02", computation: older, ...p }), { today: TODAY })!;
+
+  it("is worth a second look by its send-by date, as on the letter's page — found by the rule its receipt cites", () => {
+    const action = objection();
+    expect(action.actionDate).toBe("2026-12-02");
+    expect(action.needsCheck).toBe(false);
+    expect(worthASecondLook(action)).toBe(true);
+    // the same date without the rule (another medium receipt) says nothing more on Today, as before
+    expect(worthASecondLook(objection({ computation: makeReceipt({ ...older, rule_ids: ["bgb_188"], warnings: [] }) }))).toBe(false);
+    expect(worthASecondLook(objection({ computation: null }))).toBe(false);
+  });
+
+  it("says nothing more once the person confirmed the date, or when the date asks to be checked anyway", () => {
+    expect(worthASecondLook(objection({ grounding: "user" }))).toBe(false);
+    const unconfirmed = objection({ grounding: "unverified" });
+    expect(unconfirmed.needsCheck).toBe(true);
+    expect(worthASecondLook(unconfirmed)).toBe(false);
+  });
+
+  it("is never a contract's decision", () => {
+    expect(worthASecondLook({ item: null, needsCheck: false })).toBe(false);
   });
 });
 
