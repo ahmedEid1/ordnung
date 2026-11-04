@@ -233,7 +233,7 @@ describe("trace copy", () => {
     for (const text of [party, plan]) assertNoRawEnums(`${text.what} ${text.detail}`);
   });
 
-  it("titles a reading by what happened: read, read again — or only stored (R2-document-pay-reading-6)", () => {
+  it("titles a reading by what happened: read, read again — or only stored", () => {
     const run = { reading: 1, trigger: "read", result: "processed", started_at: "2026-09-28T08:48:00Z" } as TraceRun;
     expect(runTitle(run, false)).toBe("Read on 28 Sep 2026");
     expect(runTitle({ ...run, reading: 2, trigger: "read_again" }, true)).toBe("Reading 2 · read again on 28 Sep 2026");

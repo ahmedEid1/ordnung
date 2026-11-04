@@ -28,7 +28,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("Deleting a letter (audit)", () => {
+describe("Deleting a letter", () => {
   it("removes it from this computer as the dialog promises (purge, not just the trash)", async () => {
     renderWithProviders(<DocumentFooter detail={makeDetail({ document: makeDoc({ title: "Tax assessment" }) })} />);
     const user = userEvent.setup();
@@ -43,7 +43,7 @@ describe("Deleting a letter (audit)", () => {
   });
 });
 
-describe("Where the letter went (FEAT G4)", () => {
+describe("Where the letter went", () => {
   it("says a letter no model call carried was not sent to Claude (Claude not installed, or it waits)", () => {
     const doc = makeDoc({ status: "queued", ai_processed_at: null });
     renderWithProviders(<DocumentFooter detail={makeDetail({ document: doc, given_to_model: false })} />);

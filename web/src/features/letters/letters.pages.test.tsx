@@ -45,7 +45,7 @@ function stubEmptyInstall() {
 
 const classOf = (el: Element | null | undefined) => el?.getAttribute("class") ?? "";
 
-describe("composer on a phone (R2-letters-1)", () => {
+describe("composer on a phone", () => {
   it("pins only the title: the description scrolls with the form, and screen readers hear it once", async () => {
     useMockApi();
     renderWithProviders(<LettersPage />, { route: "/letters?kind=payment_plan&doc=doc_tm_dunning" });
@@ -80,7 +80,7 @@ describe("composer on a phone (R2-letters-1)", () => {
   });
 });
 
-describe("composer's contract picker (R2-letters-2, R2-letters-5)", () => {
+describe("composer's contract picker", () => {
   it("never counts down to a contract you can cancel any month; a term's send-by starts with a capital", async () => {
     const { srv } = useMockApi();
     // the demo's health insurance and rent: cancellable any month, with a "send by" that only says when it would end
@@ -112,7 +112,7 @@ describe("composer's contract picker (R2-letters-2, R2-letters-5)", () => {
     expect(cancellableContracts([anyMonth, phone]).map((c) => c.id)).toEqual(["ctr_phone", "ctr_dticket"]);
   });
 
-  it("keeps a reference whole in a letter's name; its title stays plain (R2-letters-4)", async () => {
+  it("keeps a reference whole in a letter's name; its title stays plain", async () => {
     const { srv } = useMockApi();
     const dunning = srv.db.state.documents.find((d) => d.id === "doc_tm_dunning")!;
     dunning.title = "1st Payment Reminder (Mahnung) – Invoice TM-2026-0048213";
@@ -125,7 +125,7 @@ describe("composer's contract picker (R2-letters-2, R2-letters-5)", () => {
   });
 });
 
-describe("Letters list (R2-letters-5, R2-letters-8)", () => {
+describe("Letters list", () => {
   it("says 'Send by' at the start of a row's date, under the app's one section label", async () => {
     useMockApi();
     renderWithProviders(<LettersPage />, { route: "/letters" });
@@ -142,7 +142,7 @@ describe("Letters list (R2-letters-5, R2-letters-8)", () => {
   });
 });
 
-describe("the way to Waiting for (R2-letters-3, R2-letters-6, R2-letters-8)", () => {
+describe("the way to Waiting for", () => {
   it("an empty install's page has no header actions: 'Write your first letter' is the one way on", async () => {
     stubEmptyInstall();
     renderWithProviders(<LettersPage />, { route: "/letters" });
@@ -189,7 +189,7 @@ describe("the way to Waiting for (R2-letters-3, R2-letters-6, R2-letters-8)", ()
   });
 });
 
-describe("the deposit letter's link to Settings (R2-letters-7)", () => {
+describe("the deposit letter's link to Settings", () => {
   it("shows that it opens a new tab: the external-link icon after the words, and says so to screen readers", async () => {
     useMockApi();
     renderWithProviders(<LettersPage />, { route: "/letters?kind=deposit_return" });
@@ -214,7 +214,7 @@ function renderLetter(id: string) {
   );
 }
 
-describe("the letter page (R2-letters-8)", () => {
+describe("the letter page", () => {
   it("titles the letter at the detail pages' size and labels the print preview and the sending facts like the rest of the app", async () => {
     useMockApi();
     renderLetter("drf_phone");

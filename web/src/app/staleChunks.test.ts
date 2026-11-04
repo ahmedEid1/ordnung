@@ -4,7 +4,7 @@ import { reloadIfServing } from "./staleChunks";
 beforeEach(() => sessionStorage.clear());
 afterEach(() => vi.unstubAllGlobals());
 
-describe("a page chunk that failed to load (UX audit U7)", () => {
+describe("a page chunk that failed to load", () => {
   it("loads the new build while Ordnung answers — once a minute at most", async () => {
     const health = vi.fn(async () => new Response("{}", { status: 200 }));
     vi.stubGlobal("fetch", health);

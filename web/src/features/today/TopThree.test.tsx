@@ -163,7 +163,7 @@ describe("the Pay panel", () => {
     await waitFor(() => expect(document.activeElement).toBe(within(top).getByRole("heading", { name: "Pay TechMarkt reminder" })));
   });
 
-  it("says where a repeating payment of your own moved on to once paid (audit item 26)", async () => {
+  it("says where a repeating payment of your own moved on to once paid", async () => {
     const { srv } = useMockApi();
     // as if added by hand, every month from Wed 30 Sep
     Object.assign(srv.db.state.items.find((i) => i.id === "itm_tm_dunning")!, { origin: "manual", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
@@ -175,7 +175,7 @@ describe("the Pay panel", () => {
     expect(toast).toHaveTextContent("Pay TechMarkt reminder · Next: Fri 30 Oct");
   });
 
-  it("says it's paid and moves focus on even when the card leaves before every list is refreshed (review round 4: a slow refresh lost both)", async () => {
+  it("says it's paid and moves focus on even when the card leaves before every list is refreshed (a slow refresh once lost both)", async () => {
     useMockApi();
     // the letter's details are refreshed last: the card leaves with the refreshed Top 3, before the mark-as-paid
     // call is done — its own callbacks never ran in a card that had gone (a flaky e2e run on a busy machine)
@@ -203,7 +203,7 @@ describe("the Pay panel", () => {
 });
 
 describe("Mark done", () => {
-  it("keeps focus on a weekly to-do of your own that moves on and stays in Top 3 (D1 review: focus fell to <body>)", async () => {
+  it("keeps focus on a weekly to-do of your own that moves on and stays in Top 3 (focus once fell to <body>)", async () => {
     const { srv } = useMockApi();
     // a quiet week: TechMarkt, a to-do of your own every week from today, and a contract
     srv.db.state.items = srv.db.state.items.filter((i) => i.id === "itm_tm_dunning");

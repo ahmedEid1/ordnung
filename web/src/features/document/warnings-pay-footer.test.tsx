@@ -38,7 +38,7 @@ const unconfirmed = makeItem({
   evidence: [{ doc_id: "doc_1", page: 1, quote: "Die ersten drei Monate gelten als Probezeit.", grounding: "verified", value_consistent: false, score: 1, boxes: [] }],
 });
 
-describe("Please check (R1-document-c-1)", () => {
+describe("Please check", () => {
   it("says it once per thing to check, in one style: the reading's count of unconfirmed dates is left to the to-do's card", () => {
     const doc = makeDoc({
       status: "needs_review",
@@ -60,14 +60,14 @@ describe("Please check (R1-document-c-1)", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("drops the count as letters are read now, without the 'Please check:' before it (R1-backend-7)", () => {
+  it("drops the count as letters are read now, without the 'Please check:' before it", () => {
     const doc = makeDoc({ warnings: ["1 date could not be confirmed against the letter's text."] });
     const { container } = renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc })} />, { client: client() });
     expect(container).toBeEmptyDOMElement();
   });
 });
 
-describe("IBAN checksum claims (R1-document-c-2)", () => {
+describe("IBAN checksum claims", () => {
   const claim =
     "The studio's stated bank account IBAN (DE05 1234 6700 0029 9001 50) does not pass the standard IBAN checksum, and several details look like placeholder data, so verify the account before relying on it.";
 
@@ -89,7 +89,7 @@ describe("IBAN checksum claims (R1-document-c-2)", () => {
   });
 });
 
-describe("the scam banner (R1-document-c-3)", () => {
+describe("the scam banner", () => {
   const scamDetail = (): DocumentDetail =>
     makeDetail({
       document: makeDoc({
@@ -114,7 +114,7 @@ describe("the scam banner (R1-document-c-3)", () => {
   });
 });
 
-describe("Why this date? (R1-document-c-4)", () => {
+describe("Why this date?", () => {
   it("names a transfer's send-by day 'Transfer by', anything else's 'Send by'", () => {
     const receipt = makeReceipt({ due_date: "2026-09-30", send_by: "2026-09-29" });
     const pay = makeItem({ kind: "payment", direction: "out", title: "Pay the reminder" });
@@ -153,7 +153,7 @@ describe("Why this date? (R1-document-c-4)", () => {
   });
 });
 
-describe("the Pay panel (R1-document-c-5)", () => {
+describe("the Pay panel", () => {
   const doc = makeDoc({ payment: { iban: "DE70123478000048213000", payee: "TechMarkt Online GmbH", iban_valid: true, reference: "TM-2026-0048213" } });
   const item = makeItem({ kind: "payment", direction: "out", title: "Pay the reminder", amount: 94.99, currency: "EUR", due_date: "2026-09-30", send_by: "2026-09-29" });
 
@@ -177,7 +177,7 @@ describe("the Pay panel (R1-document-c-5)", () => {
   });
 });
 
-describe("the footer (R1-document-c-6)", () => {
+describe("the footer", () => {
   it("offers no reply to a passport, a payslip, a certificate or an appointment card — but to a letter", () => {
     for (const kind of ["identity_document", "payslip", "certificate", "appointment"] as const) {
       expect(NO_REPLY_KINDS.has(kind)).toBe(true);

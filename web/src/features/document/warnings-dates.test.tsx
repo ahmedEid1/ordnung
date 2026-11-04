@@ -17,7 +17,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const WARNING = "Claude's reading of this letter left out a date the letter sets for you. Ordnung added it as a to-do from the letter's own words — please check it against the letter.";
 
-describe("round-5 limits review (RL-T6 web mutants)", () => {
+describe("warnings about a letter's dates", () => {
   it("asks a court order for the court's letter's envelope date", () => {
     const doc = makeDoc({ id: "doc_c", kind: "court_payment_order", area: "money", title: "Mahnbescheid", received_date: null, doc_date: "2026-09-22" });
     const spec = { type: "relative" as const, anchor: "receipt" as const, amount: 2, unit: "weeks" as const, nature: "objection" as const, text: "", anchor_date: null, date: null, time: null, legal_basis: null, delivery_rule: "none" as const, shift_rule: "auto" as const };

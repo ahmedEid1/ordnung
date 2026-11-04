@@ -7,7 +7,7 @@ const shown = (value: string) => {
   return { text: plainText(v.text), german: v.german };
 };
 
-describe("key fact values in the app's format (UI audit round 1)", () => {
+describe("key fact values in the app's format", () => {
   it.each([
     // numbers and units: "1.320 kWh" read as 1.32
     ["1.320 kWh", "1,320 kWh"],
@@ -94,7 +94,7 @@ describe("English running text", () => {
     expect(englishInline("Version 1.30.11.2026")).toBe("Version 1.30.11.2026");
   });
 
-  it("writes a pair of days of one month as one date, never half of it (UI audit round 2: '18./Thu 20 Aug 2026')", () => {
+  it("writes a pair of days of one month as one date, never half of it: not '18./Thu 20 Aug 2026'", () => {
     const shown = englishInline("A headphone ordered and delivered on 18./20.08.2026, due by 03.09.2026.");
     expect(shown).toContain("18/20 Aug 2026");
     expect(plainText(shown)).toBe("A headphone ordered and delivered on 18/20 Aug 2026, due by Thu 3 Sep 2026.");

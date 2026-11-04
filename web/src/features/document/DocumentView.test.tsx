@@ -93,7 +93,7 @@ describe("Document viewer — tax assessment (phone photo, Einspruch)", () => {
 });
 
 describe("Document viewer — the arrival day's name", () => {
-  it("names a court order's one date 'delivered', as its question and receipts do (review round 1)", () => {
+  it("names a court order's one date 'delivered', as its question and receipts do", () => {
     const dates = { doc_date: "2026-09-10", received_date: "2026-09-12" };
     const court = makeDetail({ document: makeDoc({ kind: "court_payment_order", title: "Mahnbescheid", ...dates }) });
     const { unmount } = renderWithProviders(<DocumentView detail={court} />, { client: client() });
@@ -108,7 +108,7 @@ describe("Document viewer — the arrival day's name", () => {
 });
 
 describe("Document viewer — the online demo's own note", () => {
-  it("shows a re-filed letter's demo note at the top of the verdict, not under Please check (review round 1)", () => {
+  it("shows a re-filed letter's demo note at the top of the verdict, not under Please check", () => {
     const note = "Online demo: the dates and to-dos on this page are still those of the kind it was read as, “Payment reminder”.";
     const detail = makeDetail({ document: makeDoc({ kind: "enforcement_order", title: "Mahnbescheid", warnings: [note, "Check the amount."] }) });
     renderWithProviders(<DocumentView detail={detail} />, { client: client() });
@@ -132,7 +132,7 @@ describe("Document viewer — suspected scam", () => {
     assertNoRawEnumsInElement(container);
   });
 
-  it("lists the signs its Idea counts, and never asks to correct the date of the demand (walkthrough of phase 2)", async () => {
+  it("lists the signs its Idea counts, and never asks to correct the date of the demand", async () => {
     const base = await detailFromMock("doc_scam");
     const signs = ["The letter contains hidden text that you can't see on the page.", "The IBAN is abroad.", "It threatens enforcement within 48 hours.", "The e-mail domain is not the office's."];
     const demand = base.items.find((i) => i.kind === "payment") ?? base.items[0]!;
@@ -239,7 +239,7 @@ describe("warnings & Please check", () => {
     expect(screen.queryByText(/may be an authority/)).toBeNull();
   });
 
-  it("never fills in a day for a dismissal, and says when a letter counts as received (review round 2)", async () => {
+  it("never fills in a day for a dismissal, and says when a letter counts as received", async () => {
     // a dismissal uploaded after a holiday saved "today" — § 4 KSchG runs from Zugang: the day it was put in the letterbox
     const doc = makeDoc({ kind: "dismissal", doc_date: "2026-09-20", received_date: null });
     const item = makeItem({

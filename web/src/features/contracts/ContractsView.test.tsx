@@ -258,7 +258,7 @@ describe("Contracts page — fits every width, honest states", () => {
     expect(within(bank).queryByRole("link", { name: /Open letter/ })).toBeNull();
   });
 
-  it("a notice period the rules assumed: 'Please check' and 'Add notice period' (walkthrough of phase 2)", async () => {
+  it("a notice period the rules assumed: 'Please check' and 'Add notice period'", async () => {
     // the Deutschlandticket as the rules had it before its day of the month was read (migration 0004): the letter's
     // "by the 10th of a month, to its end" gave no notice period, so they assumed the longest the law allows
     const assumed = "The contract's notice period wasn't found; we assumed the longest the law allows, which gives the earliest date.";

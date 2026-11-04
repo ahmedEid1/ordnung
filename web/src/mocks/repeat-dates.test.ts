@@ -109,7 +109,7 @@ describe("your own repeating dates in the mock", () => {
     expect([same.due_date, same.date_spec?.date]).toEqual(["2026-10-22", "2026-09-10"]);
   });
 
-  it("every week from decades back: its next week from today, as the server finds it (D1 review: the mock gave up after 1200 weeks)", async () => {
+  it("every week from decades back: its next week from today, as the server finds it (the mock once gave up after 1200 weeks)", async () => {
     const s = srv();
     const WEEKLY: Recurrence = { ...MONTHLY, unit: "weeks" };
     // Thu 6 Jan 2000 is 1395 weeks back; every 2 weeks from Thu 3 Jan 1980, 1220 steps

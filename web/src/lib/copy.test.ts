@@ -77,7 +77,7 @@ describe("enum copy", () => {
     expect(DOCUMENT_KIND_COPY.rent_increase.hint).toMatch(/end of the second month after it arrives/);
   });
 
-  it("uses one icon per meaning: the hourglass is the Deadline kind only (R2-ui-foundations-3)", () => {
+  it("uses one icon per meaning: the hourglass is the Deadline kind only", () => {
     const icons = Object.values(MEANING_ICONS);
     expect(new Set(icons).size, "one meaning per icon").toBe(icons.length);
     expect(MEANING_ICONS.deadline).toBe(Hourglass);

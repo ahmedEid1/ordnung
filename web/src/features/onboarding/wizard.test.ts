@@ -83,7 +83,7 @@ describe("wizard", () => {
     expect(claudeState({ ...base, installed: true, ok: false, version: "2.0.9 (Claude Code)", needs_version: "2.1.0" })).toBe("outdated");
   });
 
-  it("tells a pending or failed health check apart from a missing Claude (UI audit R1-onboarding-6)", () => {
+  it("tells a pending or failed health check apart from a missing Claude", () => {
     const ready = { version: "2.1.4 (Claude Code)", path: null, detail: null, needs_version: null, installed: true, ok: true };
     expect(claudeView(undefined, { pending: true, failed: false })).toBe("checking");
     expect(claudeView(undefined, { pending: false, failed: true })).toBe("unknown");
@@ -93,7 +93,7 @@ describe("wizard", () => {
     expect(views.filter(claudeUsable)).toEqual(["ready", "unchecked"]);
   });
 
-  it("names every step in the tab title (UI audit R1-onboarding-4)", () => {
+  it("names every step in the tab title", () => {
     expect(WIZARD_STEPS.map((_, i) => wizardTitle(i))).toEqual([
       "Step 1 of 4: Welcome to Ordnung · Ordnung",
       "Step 2 of 4: Where do you live? · Ordnung",
@@ -104,7 +104,7 @@ describe("wizard", () => {
     expect(wizardTitle(DONE_STEP)).toBe("Setup complete · Ordnung");
   });
 
-  it("offers “Skip for now” only while nothing is typed (UI audit R1-onboarding-7)", () => {
+  it("offers “Skip for now” only while nothing is typed", () => {
     expect(addressEmpty(draft())).toBe(true);
     expect(addressEmpty(draft({ name: "  ", address: "\n" }))).toBe(true);
     expect(addressEmpty(draft({ address: "Musterweg 12" }))).toBe(false);

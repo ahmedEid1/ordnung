@@ -156,7 +156,7 @@ describe("inbox filters", () => {
     expect(m.size).toBe(1);
   });
 
-  it("leaves out to-dos the list sets aside: no count, never the next step (R2-inbox-timeline-contracts-2)", () => {
+  it("leaves out to-dos the list sets aside: no count, never the next step", () => {
     // the TechMarkt invoice its payment reminder took over read "Pay by Thu 3 Sep · 25 days overdue", "1 to-do"
     const listed = (i: Partial<Item>, aside: ItemAside | null = null): ListedItem => ({ ...makeItem(i), aside });
     const m = openItemsByDoc(

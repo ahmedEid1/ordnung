@@ -60,7 +60,7 @@ function setup() {
   return { qc, wrapper };
 }
 
-describe("drafts listed on the letter they are about (audit)", () => {
+describe("drafts listed on the letter they are about", () => {
   it("deleting a draft refreshes the letter's drafts list", async () => {
     const { qc, wrapper } = setup();
     const { result } = renderHook(() => useDeleteDraft(), { wrapper });

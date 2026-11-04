@@ -228,7 +228,7 @@ describe("linked text (Ideas)", () => {
     expect(screen.getByText("https://pay-now.example/very/long/path/to/somewhere").className).toContain("[overflow-wrap:anywhere]");
   });
 
-  it("shows a record's whole title (UI audit round 1: cut after 48 characters mid-word)", async () => {
+  it("shows a record's whole title (it was once cut after 48 characters, mid-word)", async () => {
     const { srv } = useMockApi();
     const client = makeTestQueryClient();
     // an id as Weekly Ideas writes it (the mock data's short ids are no record ids to the text)

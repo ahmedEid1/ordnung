@@ -88,7 +88,7 @@ describe("the choice dialog", () => {
     expect(srv.sync.choice).not.toBeNull();
   });
 
-  it("keeping this computer's says the other's copy is made there, once it next starts (finding 28)", async () => {
+  it("keeping this computer's says the other's copy is made there, once it next starts", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().bothChanged();
     const user = userEvent.setup();

@@ -67,7 +67,7 @@ describe("client", () => {
     expect(demo.message).toBe("Install Ordnung to try this");
   });
 
-  it("says a server error with no words for a person plainly, its own words kept for the technical details (UX audit U9)", async () => {
+  it("says a server error with no words for a person plainly, its own words kept for the technical details", async () => {
     const failed = async (status: number, body: unknown, headers?: Record<string, string>) => {
       mockFetch(status, body, headers);
       return (await request("/items").catch((e: unknown) => e)) as ApiError;

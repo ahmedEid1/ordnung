@@ -157,7 +157,7 @@ describe("pairing", () => {
     expect(replace).toHaveBeenCalledWith("/");
   });
 
-  it("an 11th character typed at the end is dropped: the code it shows is the code it sends (UX review)", async () => {
+  it("an 11th character typed at the end is dropped: the code it shows is the code it sends", async () => {
     const { srv, code } = useUnpairedPhone();
     const { user } = openPair("/pair");
     const input = await screen.findByRole("textbox", { name: "Code from your computer" });
@@ -281,7 +281,7 @@ describe("why the phone is here again", () => {
     expect(note.closest("div.rounded-xl")).toHaveClass("bg-danger-soft");
   });
 
-  it("?removed=code_reused: another device used its pairing code (UX review: it said only 'removed')", async () => {
+  it("?removed=code_reused: another device used its pairing code (it once said only 'removed')", async () => {
     useUnpairedPhone();
     openPair("/pair?removed=code_reused");
     const note = await screen.findByText(CODE_REUSED_NOTE);

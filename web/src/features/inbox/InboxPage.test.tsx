@@ -151,7 +151,7 @@ describe("Inbox", () => {
     assertNoRawEnumsInElement(container);
   });
 
-  it("stamps each New-mail envelope with the day it arrived, and says it in words (R1-inbox-b-10)", async () => {
+  it("stamps each New-mail envelope with the day it arrived, and says it in words", async () => {
     renderInbox();
     const tray = await screen.findByRole("region", { name: /New mail/ });
     const card = within(tray).getByText("Stadtwerke Musterstadt").closest("li")!;

@@ -56,7 +56,7 @@ describe("the advice card of a high-stakes letter", () => {
     assertNoRawEnumsInElement(container);
   });
 
-  it("keeps a landlord's notice card short on a phone: three steps, the rest on demand (review round 1)", async () => {
+  it("keeps a landlord's notice card short on a phone: three steps, the rest on demand", async () => {
     const user = userEvent.setup();
     const doc = makeDoc({ id: "doc_notice", kind: "landlord_notice", area: "home", title: "Kündigung" });
     const advice = { ...ADVICE_BY_KIND.landlord_notice, steps: ["one", "two", "three", "four", "five", "six"] };

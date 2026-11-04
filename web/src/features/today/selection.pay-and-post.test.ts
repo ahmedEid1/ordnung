@@ -49,7 +49,7 @@ function payment(id: string, due: string, amount: number, currency: string): Ite
   };
 }
 
-describe("To pay · next 30 days (round 2)", () => {
+describe("To pay · next 30 days", () => {
   // the euro sum ignored TodayAction.currency: 100 EUR + 50 USD was reported as €150.00
   it("never adds another currency's amount to the euro total", () => {
     const ctx = { today: TODAY };
@@ -70,7 +70,7 @@ describe("To pay · next 30 days (round 2)", () => {
   });
 });
 
-describe("the usual time to post has passed (review round 4 of phase 2)", () => {
+describe("the usual time to post has passed", () => {
   // the inbox and Today said "Send by Mon 28 Sep · today" for an Einspruch due that day: a letter posted then arrives late
   it("says when it must arrive, not when to post it", () => {
     const base = payment("einspruch", "2026-09-29", 0, "EUR");

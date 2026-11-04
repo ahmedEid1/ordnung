@@ -300,7 +300,7 @@ describe("composer — template letters", () => {
     expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(false);
   });
 
-  it("offers instalments on a court order to its claimant, typed in (review round 1: it was a dead end)", async () => {
+  it("offers instalments on a court order to its claimant, typed in (it was once a dead end)", async () => {
     const { calls } = useMockApi({ full: true });
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?new=1&doc=doc_mahnbescheid" });
@@ -327,7 +327,7 @@ describe("composer — template letters", () => {
     expect(post?.body).toMatchObject({ kind: "payment_plan", doc_id: "doc_mahnbescheid", party_id: null, details: { recipient: "Streamline Media GmbH\nMusterweg 1\n12345 Berlin" } });
   });
 
-  it("knows a court's name from a company's (review round 3 of phase 2)", () => {
+  it("knows a court's name from a company's", () => {
     for (const court of ["Amtsgericht Hünfeld", "Zentrales Mahngericht Berlin-Brandenburg", "AG Hagen", "Arbeitsgericht Köln", "des LG Köln"]) {
       expect(mayBeCourt(court), court).toBe(true);
     }
@@ -373,7 +373,7 @@ describe("composer — template letters", () => {
     expect(post?.body).toMatchObject({ kind: "objection", doc_id: "doc_tm_dunning", party_id: null, details: { recipient: expect.stringContaining("Amtsgericht Hünfeld") } });
   });
 
-  it("never takes the court for the claimant, and shows one recipient box (review round 3 of phase 2)", async () => {
+  it("never takes the court for the claimant, and shows one recipient box", async () => {
     const { calls } = useMockApi({ full: true });
     const user = userEvent.setup();
     renderWithProviders(<LettersPage />, { route: "/letters?new=1&doc=doc_mahnbescheid" });
@@ -392,7 +392,7 @@ describe("composer — template letters", () => {
     expect(calls.some((c) => c.method === "POST" && c.path === "/drafts")).toBe(false);
   });
 
-  it("lists the letters a template answers first (review round 3 of phase 2)", async () => {
+  it("lists the letters a template answers first", async () => {
     useMockApi({ full: true });
     const user = userEvent.setup();
     renderWithProviders(<LettersPage />, { route: "/letters?new=1" });

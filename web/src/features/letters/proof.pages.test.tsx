@@ -82,7 +82,7 @@ function renderAt(route: string) {
 
 const PROOF_PAGE = "/letters/drf_gym/proofs/doc_gym_receipt";
 
-describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
+describe("the proof file page", () => {
   it("is named by its kind under 'Letter' — never by the file's name — and shows the whole file name", async () => {
     const { srv } = useMockApi();
     const long = "IMG_20260910_Einlieferungsbeleg_Einwurf-Einschreiben_FunkNetz_Kundenkuendigung_FN-88213407.jpg";
@@ -139,7 +139,7 @@ describe("the proof file page (R2-proof-2, R2-proof-5, R2-proof-9)", () => {
   });
 });
 
-describe("a proof that can't be loaded (R2-proof-3)", () => {
+describe("a proof that can't be loaded", () => {
   it("says so like every other page: the calm sentence, Try again, technical details — and the way back", async () => {
     useMockApi();
     const mocked = globalThis.fetch;
@@ -163,7 +163,7 @@ describe("a proof that can't be loaded (R2-proof-3)", () => {
   });
 });
 
-describe("removing a proof from its page (R2-proof-7)", () => {
+describe("removing a proof from its page", () => {
   it("asks like the letter's proof card does: which proof, which file, for good — and offers to download it first", async () => {
     useMockApi();
     const user = userEvent.setup();
@@ -182,7 +182,7 @@ async function openLetter() {
   return screen.findByRole("region", { name: "Proof of sending" });
 }
 
-describe("the Add proof dialog (R2-proof-4, R2-proof-8, R2-proof-9)", () => {
+describe("the Add proof dialog", () => {
   it("edits the note in a few lines — a long note is read whole — and counts down near its limit", async () => {
     const { srv } = useMockApi();
     const note = "Postfiliale im Hauptbahnhof, Schalter 3 — die Mitarbeiterin hat den Umschlag gewogen und frankiert. Zeugin: meine Nachbarin Frau Kowalczyk-Hernández";
@@ -235,7 +235,7 @@ describe("the Add proof dialog (R2-proof-4, R2-proof-8, R2-proof-9)", () => {
   });
 });
 
-describe("the proof card (R2-proof-6, R2-proof-8, R2-proof-9)", () => {
+describe("the proof card", () => {
   it("says an 'other' proof shows what its note says — the request for a note only while there is none", async () => {
     const { srv } = useMockApi();
     const other = srv.db.state.proofs[0]!;

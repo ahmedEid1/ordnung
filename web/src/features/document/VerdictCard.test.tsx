@@ -43,7 +43,7 @@ function renderVerdict(detail: DocumentDetail) {
   return screen.getByRole("article");
 }
 
-describe("a date the person confirmed (UX review 2, R2UX-6)", () => {
+describe("a date the person confirmed", () => {
   it("is no longer “Please check this date”, though its receipt keeps a low grade", () => {
     const receipt = makeReceipt({ due_date: "2026-10-19", confidence: "low" });
     const item = makeItem({ id: "itm_ok", kind: "deadline", title: "Deadline to object", due_date: "2026-10-19", computation: receipt, grounding: "user" });
@@ -272,7 +272,7 @@ describe("a date no calendar holds (31 Dec 9999, a misread year)", () => {
   });
 });
 
-describe("a price increase that asks for consent (walkthrough of phase 2)", () => {
+describe("a price increase that asks for consent", () => {
   it("is a choice by a date, not a to-do: 'Decide by', and what happens if you don't agree", () => {
     const consent = makeItem({
       id: "itm_consent",

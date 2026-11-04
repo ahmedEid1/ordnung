@@ -171,7 +171,7 @@ describe("sending", () => {
     expect(instantPhrase(guidance.channels)).toBeNull();
   });
 
-  it("on the last days, says when it must arrive and that a letter may be too late (review round 4)", () => {
+  it("on the last days, says when it must arrive and that a letter may be too late", () => {
     const court: SendGuidance = {
       ...STATUTORY_OBJECTIONS.enforcement_order!.guidance,
       send_by: "2026-09-28",

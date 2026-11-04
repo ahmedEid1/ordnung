@@ -150,7 +150,7 @@ describe("safe markdown renderer", () => {
     expect(container.textContent).not.toMatch(/\[doc:|\[item:/);
   });
 
-  it("keeps a citation chip with the placeholder before it, however long (review round 1)", () => {
+  it("keeps a citation chip with the placeholder before it, however long", () => {
     const { container } = renderMd("The fee is [amount only in the letter] [item:itm_phone_cancel].");
     const chip = container.querySelector("[data-cite]")!;
     const group = chip.closest(".whitespace-nowrap")!;
@@ -164,7 +164,7 @@ describe("safe markdown renderer", () => {
     expect(container.textContent).toBe("Send by Thu\u00a08\u00a0Oct and more"); // a date never breaks across lines
   });
 
-  it("shows a line that starts with a day as the date it is, and list items with their own numbers (final review)", () => {
+  it("shows a line that starts with a day as the date it is, and list items with their own numbers", () => {
     // the check reads "21. Oktober 2026"; the browser must not renumber it to "2."
     const dates = parseMarkdown("Ihre Termine:\n5. Oktober 2026: Steuererstattung\n21. Oktober 2026: Einspruchsfrist", { citations: null });
     expect(dates.map((b) => b.t)).toEqual(["p"]);
@@ -176,7 +176,7 @@ describe("safe markdown renderer", () => {
     expect([...list.container.querySelectorAll("li")].map((li) => li.getAttribute("value"))).toEqual(["1", "3", "7"]);
   });
 
-  it("knows every month name the check knows, from the shared list (final review 2)", () => {
+  it("knows every month name the check knows, from the shared list", () => {
     // "Sept.", "Jänner" and "Marz" were list items here but text lines for the check
     for (const line of ["5. Sept. 2026: Miete", "3. Jänner 2027: Termin", "1. Marz 2027: Frist", "2) Okt: Termin"]) {
       expect(parseMarkdown(`Termine:\n${line}`, { citations: null }).map((b) => b.t), line).toEqual(["p"]);
@@ -207,7 +207,7 @@ describe("stream accumulation", () => {
     { type: "text", text: "**Thu 8 Oct** [item:itm_phone_cancel] [doc:doc_x]." },
   ];
 
-  it("builds the tool trace as events arrive, and never keeps unchecked words (review round 4)", () => {
+  it("builds the tool trace as events arrive, and never keeps unchecked words", () => {
     const s = accumulateAll(events);
     expect(s.status).toBe("streaming");
     expect(s.tools.map((t) => [t.name, t.done, t.result])).toEqual([

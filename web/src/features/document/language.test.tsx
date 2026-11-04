@@ -46,7 +46,7 @@ describe("a letter's language, however its reading named it", () => {
     expect(languageName("fr")).toBe("French");
   });
 
-  it("is named as it is under the explanation, not 'German' for every letter (A1)", () => {
+  it("is named as it is under the explanation, not 'German' for every letter", () => {
     expect(writtenFrom("German")).toBe("Written by Claude from the German letter. The letter itself is what counts.");
     expect(writtenFrom("fr")).toBe("Written by Claude from the French letter. The letter itself is what counts.");
     expect(writtenFrom("en")).toBeNull();
@@ -54,7 +54,7 @@ describe("a letter's language, however its reading named it", () => {
   });
 });
 
-describe("a quote from a letter (U5)", () => {
+describe("a quote from a letter", () => {
   it("is read in the letter's language, also when its words aren't on the German word list", () => {
     renderWithProviders(<Receipt summary="One week after it arrived." confidence="high" quote={{ text: WEEK_QUOTE, language: "German" }} />);
     expect(screen.getByText(WEEK_QUOTE).closest("blockquote")).toHaveAttribute("lang", "de");
@@ -86,7 +86,7 @@ describe("a quote from a letter (U5)", () => {
   });
 });
 
-describe("Claude's words in the person's language (U6)", () => {
+describe("Claude's words in the person's language", () => {
   it("are marked with it, right to left for Arabic", () => {
     expect(langProps("ar", "ادفع الغرامة")).toEqual({ lang: "ar", dir: "auto" });
     expect(langProps("uk", "Сплатіть штраф")).toEqual({ lang: "uk" });
@@ -95,7 +95,7 @@ describe("Claude's words in the person's language (U6)", () => {
     expect(langProps(null, "Pay the fine")).toEqual({});
   });
 
-  it("aren't marked when written before the language was changed: none of its script's letters (final check)", () => {
+  it("aren't marked when written before the language was changed: none of its script's letters", () => {
     expect(langProps("ar", "Pay the fine by 2 October 2026.")).toEqual({});
     expect(langProps("uk", "Pay the fine")).toEqual({});
     expect(langProps("ar", null)).toEqual({});
@@ -123,7 +123,7 @@ describe("Claude's words in the person's language (U6)", () => {
     rtl(within(screen.getByRole("region", { name: /To-dos & dates/ })).getByText("ادفع الغرامة"));
   });
 
-  it("read in English before the profile became Arabic: not marked Arabic, nor right to left (final check)", () => {
+  it("read in English before the profile became Arabic: not marked Arabic, nor right to left", () => {
     const doc = makeDoc({
       title: "Parking fine",
       summary: "Pay €20 by 2 October 2026.",

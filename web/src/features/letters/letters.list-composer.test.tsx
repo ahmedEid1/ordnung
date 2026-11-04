@@ -70,7 +70,7 @@ describe("letters a letter can answer", () => {
   });
 });
 
-describe("Letters page (audit)", () => {
+describe("Letters page", () => {
   it("rows keep their title (two lines, the whole of it on hover) and show the same facts at every width", async () => {
     useMockApi();
     renderWithProviders(<LettersPage />, { route: "/letters" });
@@ -120,7 +120,7 @@ describe("Letters page (audit)", () => {
   });
 });
 
-describe("composer (audit)", () => {
+describe("composer", () => {
   it("shows a chosen contract first, in the dialog's own scroll, with the resignation note under it", async () => {
     useMockApi();
     const user = userEvent.setup();

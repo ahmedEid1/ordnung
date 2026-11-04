@@ -81,7 +81,7 @@ describe("Inbox letters list", () => {
     expect(within(parking).getAllByTitle(/^Added .* · letter dated Tue 22 Sep$/).length).toBeGreaterThan(0);
   });
 
-  it("counts no to-do its payment reminder took over, and shows it as no next step (R2-inbox-timeline-contracts-2)", async () => {
+  it("counts no to-do its payment reminder took over, and shows it as no next step", async () => {
     // the invoice payment still open, as on the real demo: "Pay by Thu 3 Sep · 25 days overdue", "1 to-do"
     srv.db.state.items.find((i) => i.id === "itm_tm_invoice")!.status = "open";
     renderInbox();
@@ -93,7 +93,7 @@ describe("Inbox letters list", () => {
     expect(within(reminder).getAllByText("1 to-do").length).toBeGreaterThan(0);
   });
 
-  it("says 'No sender' only for a letter that was read: one kept private unread has no sender line (R2-inbox-timeline-contracts-4)", async () => {
+  it("says 'No sender' only for a letter that was read: one kept private unread has no sender line", async () => {
     await srv.handle("POST", "/documents/held/keep-private", new URLSearchParams(), { doc_ids: ["doc_folder_scan"] });
     renderInbox();
     const link = await screen.findByRole("link", { name: "Scan_2026-09-28_0914.pdf" });

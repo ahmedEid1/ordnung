@@ -34,7 +34,7 @@ function AddOnePdf() {
   );
 }
 
-describe("Keep private — no AI (audit)", () => {
+describe("Keep private — no AI", () => {
   it("is offered before a single PDF is sent to Claude", async () => {
     renderWithProviders(
       <AddLettersProvider>

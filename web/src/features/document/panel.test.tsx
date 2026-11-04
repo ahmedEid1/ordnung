@@ -202,7 +202,7 @@ describe("To-dos & dates", () => {
     expect(tick.querySelector("span")).toHaveClass("border-muted");
   });
 
-  it("keeps focus on the mark-done button while the change is saved: aria-disabled, not disabled (UX audit U4)", async () => {
+  it("keeps focus on the mark-done button while the change is saved: aria-disabled, not disabled", async () => {
     let answer: () => void = () => {};
     const patches: unknown[] = [];
     vi.stubGlobal("fetch", async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -263,7 +263,7 @@ describe("To-dos & dates", () => {
     await waitFor(() => expect(more).toHaveFocus());
   });
 
-  describe("repeating dates (audit item 26)", () => {
+  describe("repeating dates", () => {
     const rule = { interval: 1, unit: "months" as const, working_day: 3, day_of_month: null };
     const own = () => makeItem({ id: "itm_own", kind: "reminder", title: "UStVA", origin: "manual", grounding: "user", evidence: [], ...due("2026-10-05"), recurrence: rule });
     const read = () => makeItem({ id: "itm_rent", kind: "payment", title: "Pay the rent", ...due("2026-10-05"), recurrence: rule });

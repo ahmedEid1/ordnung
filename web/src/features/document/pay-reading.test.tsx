@@ -49,7 +49,7 @@ function client() {
   return qc;
 }
 
-describe("the letter's Pay panel (R2-document-pay-reading-1, -2, -4)", () => {
+describe("the letter's Pay panel", () => {
   it("says a copy on its button — no toast over its footer or behind the sheet — with Today's names and order", async () => {
     const { srv } = useMockApi();
     const user = userEvent.setup();
@@ -139,7 +139,7 @@ describe("the letter's Pay panel (R2-document-pay-reading-1, -2, -4)", () => {
   });
 });
 
-describe("“Read the letter again” in the GiroCode block (R2-document-pay-reading-3)", () => {
+describe("“Read the letter again” in the GiroCode block", () => {
   /** The reading's progress as the page has it (the job asked for). */
   function Job() {
     const job = useJobProgress("doc_parking");
@@ -237,7 +237,7 @@ describe("“Read the letter again” in the GiroCode block (R2-document-pay-rea
   });
 });
 
-describe("reading a letter again (R2-document-pay-reading-5, -7)", () => {
+describe("reading a letter again", () => {
   const appointment = { title: "Dental appointment reminder", kind: "appointment" as const };
   const blurry = "Claude couldn't read this photo — it is too blurry.";
 
@@ -279,7 +279,7 @@ describe("reading a letter again (R2-document-pay-reading-5, -7)", () => {
   });
 });
 
-describe("a waiting letter's title (R2-document-pay-reading-8, -9)", () => {
+describe("a waiting letter's title", () => {
   it("keeps a file name's date and a reference whole: it breaks only after an underscore", () => {
     const { container } = renderWithProviders(
       <>
@@ -322,7 +322,7 @@ describe("a waiting letter's title (R2-document-pay-reading-8, -9)", () => {
   });
 });
 
-describe("the “How it was read” tab's heading (R2-document-pay-reading-9)", () => {
+describe("the “How it was read” tab's heading", () => {
   it("sits in a card like the verdict's, under a badge row, in the detail-title size", async () => {
     const { srv } = useMockApi();
     renderWithProviders(<TracePanel detail={await detail(srv, "doc_nebenkosten")} />, { client: client() });

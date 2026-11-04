@@ -113,7 +113,7 @@ describe("the standing-by screen", () => {
     expect(srv.sync.mode).toBe("in_use");
   });
 
-  it("says when files are online only on this computer, or nothing arrives any more (finding 6)", async () => {
+  it("says when files are online only on this computer, or nothing arrives any more", async () => {
     const { srv } = useMockApi();
     srv.sync.setUp().otherTakesOver().arriving(5, 9, { onlyOnline: 3 });
     await renderAppAt("/", HEADING);

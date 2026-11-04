@@ -24,7 +24,7 @@ function inRouter(element: React.ReactElement) {
 }
 
 describe("the answer check's note", () => {
-  it("is read in a German voice when it is German (review round 4 of phase 2, WCAG 3.1.2)", () => {
+  it("is read in a German voice when it is German (WCAG 3.1.2)", () => {
     const german = (PAYMENT_NOTES as string[]).find((note) => note.startsWith("Diese Betriebskostenabrechnung"))!;
     const { container, unmount } = render(<CheckNote text={`${german} ${NOTE_DE}`} label="Von Ordnung geprüft:" />);
     const notes = container.querySelectorAll('[role="note"]');
@@ -72,7 +72,7 @@ describe("the answer check's note", () => {
     expect(document.body.textContent).toMatch(/the fine is “25,00\s€”/);
   });
 
-  it("shows what to decide before paying first, in the warning tone (review round 2)", () => {
+  it("shows what to decide before paying first, in the warning tone", () => {
     // the § 558b note was the last sentence of the grey note, below an answer that says the new rent "is due"
     const payment = (PAYMENT_NOTES as string[])[2]!; // the rent increase's, in English
     const note = `Added 1 source to a sentence that gave a date, time or amount without one. ${payment}`;
@@ -95,7 +95,7 @@ describe("the answer check's note", () => {
     expect(first!.compareDocumentPosition(second!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("is labelled in the answer's language, as the backend says (final review)", () => {
+  it("is labelled in the answer's language, as the backend says", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = {
       ...EMPTY_ANSWER,
@@ -114,7 +114,7 @@ describe("the answer check's note", () => {
     expect(checkNoteLabel(FORGED_DE, "Von Ordnung geprüft:")).toBe("Von Ordnung geprüft:");
   });
 
-  it("a checked answer the check did not change still says it was checked (review round 4)", () => {
+  it("a checked answer the check did not change still says it was checked", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = { ...EMPTY_ANSWER, status: "done", text: "Due Wed 21 Oct.", messageId: "msg_2", checked: true };
     const { unmount } = inRouter(<AnswerView answer={answer} resolve={resolve} />);
@@ -137,7 +137,7 @@ describe("the answer check's note", () => {
     expect(screen.queryByRole("note")).toBeNull();
   });
 
-  it("shows a German answer's dates in German (review round 3 of phase 2)", () => {
+  it("shows a German answer's dates in German", () => {
     const { resolve } = makeRefResolver({});
     const answer: AnswerState = {
       ...EMPTY_ANSWER,
@@ -189,7 +189,7 @@ describe("copying an answer", () => {
   });
 });
 
-describe("an answer that ends before the check (review round 4)", () => {
+describe("an answer that ends before the check", () => {
   // The web showed the streamed draft — an injected "31.12.2027" for seconds — before the check left
   // it out, and kept it on screen when the answer stopped or failed. No unchecked word is ever shown.
   it("shows none of its words when the person stops it", () => {
@@ -223,7 +223,7 @@ describe("citation chips stay with their fact", () => {
   const groups = (container: HTMLElement) =>
     [...container.querySelectorAll("span.whitespace-nowrap")].filter((g) => g.querySelector("[data-cite]")).map((g) => g.textContent);
 
-  it("the word before a chip wraps with it, so the chip never starts a line (review round 2)", () => {
+  it("the word before a chip wraps with it, so the chip never starts a line", () => {
     // a no-break space alone did not do it: a line may break between text and an inline-grid chip.
     // The chip follows the word like a footnote, without a space (not "GmbH [1] .")
     const valid = citationIndex([{ type: "item", id: "itm_a" }]);
@@ -256,7 +256,7 @@ describe("citation chips stay with their fact", () => {
     expect(container.textContent).toBe("Bring your certificate (Immatrikulationsbescheinigung)\u20601.");
   });
 
-  it("law references and reference numbers never break inside (UI audit round 1: a break after the section sign)", () => {
+  it("law references and reference numbers never break inside, not even after the section sign", () => {
     const { container } = inRouter(
       <Markdown text={"Object within a month (\u00a7 56 Abs. 3 TKG, Art. 6 DSGVO), quoting TM-2026-0048213."} citations={null} renderCitation={() => null} />,
     );
@@ -290,7 +290,7 @@ describe("values the check left out", () => {
     expect(container.querySelector("span[title]")).toBeNull();
   });
 
-  it("marks every placeholder the check writes, the letter's ones too (final review)", () => {
+  it("marks every placeholder the check writes, the letter's ones too", () => {
     // the same list the backend's test reads (`support.PLACEHOLDERS`)
     expect(PLACEHOLDERS).toContain("[amount only in the letter]");
     expect(PLACEHOLDERS).toContain("[Uhrzeit weggelassen]");

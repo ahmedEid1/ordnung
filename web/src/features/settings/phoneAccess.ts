@@ -5,7 +5,8 @@
  * - The status line ("On · https://192.168.178.23:8767 · 1 phone paired, Anna's iPhone active now").
  * - The firewall's narrow rules for this address, port and home network — never "allow Python everywhere".
  * - Where the optional "Stop the security warning" step is offered: only on phones whose browser keeps the
- *   certificate to this computer's address (its name constraint) — a device check before release (SPEC §12b).
+ *   certificate to this computer's address (its name constraint; SPEC §12b) — a device check before release
+ *   (ADR 0017, known limits).
  * - How to install the certificate on a phone, and how to remove it again (after Start over, Delete everything,
  *   or a new address, which makes a new certificate).
  */
@@ -137,7 +138,7 @@ const OTHER_ANDROID_BROWSERS = /SamsungBrowser|Firefox|OPR\/|EdgA|YaBrowser|UCBr
  * Whether this phone's browser keeps a trusted certificate to this computer's address (the authority's name
  * constraint), so offering to trust it can't let it stand in for the router or any other device: iOS and iPadOS
  * (every browser there uses the system's checks) and Chrome on Android. Anything else gets no offer — it warns
- * once per certificate instead. DEVICE CHECK (SPEC §12b): widen or narrow this list from the device tests.
+ * once per certificate instead. DEVICE CHECK (ADR 0017, known limits): widen or narrow this list from the device tests.
  */
 export function trustStepPlatform(userAgent: string, maxTouchPoints = 0): TrustPlatform | null {
   if (/\b(iPhone|iPad|iPod)\b/.test(userAgent)) return "ios";
@@ -155,7 +156,10 @@ export const CERTIFICATE_PATH = "/ordnung-certificate.crt";
 /** What the certificate is called on the phone (a neutral name: the whole network sees it). */
 export const CERTIFICATE_NAME = "Home network certificate";
 
-/** Installing the authority, step by step (the wording follows each system's menus; DEVICE CHECK §19.1 #9). */
+/**
+ * Installing the authority, step by step (the wording follows each system's menus; DEVICE CHECK: ADR 0017, known
+ * limits).
+ */
 export const INSTALL_STEPS: Record<TrustPlatform, string[]> = {
   ios: [
     "Tap Download the certificate, then Allow.",

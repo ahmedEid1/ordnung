@@ -39,7 +39,7 @@ function renderVerdict(detail: DocumentDetail) {
 
 const history = (id: string): ItemAside => ({ item_id: id, reason: "history", replaced_by: null });
 
-describe("the verdict says a set-aside to-do once (R2-document-verdict-1)", () => {
+describe("the verdict says a set-aside to-do once", () => {
   it("lists a dismissal's past law deadlines under 'Probably dealt with' only, never also as 'Also: … overdue'", () => {
     const certificate = makeItem({ id: "cert", kind: "task", title: "Submit enrollment certificate each semester", due_date: "2026-10-15" });
     const court = makeItem({ id: "court", kind: "deadline", origin: "rule", priority: "critical", title: "Get advice now: court action against the dismissal", due_date: "2026-04-10" });
@@ -63,7 +63,7 @@ describe("the verdict says a set-aside to-do once (R2-document-verdict-1)", () =
   });
 });
 
-describe("the headline and its badge (R2-document-verdict-5, -9)", () => {
+describe("the headline and its badge", () => {
   it("keeps an amount with its € sign and uses the detail-title size", () => {
     renderVerdict(makeDetail({ document: makeDoc({ title: "Traffic fine warning (Verwarnung) – 30 € Verwarnungsgeld for parking violation" }) }));
     const h1 = screen.getByRole("heading", { level: 1 });
@@ -93,7 +93,7 @@ describe("the headline and its badge (R2-document-verdict-5, -9)", () => {
   });
 });
 
-describe("To-dos & dates: a to-do set aside (R2-document-verdict-2)", () => {
+describe("To-dos & dates: a to-do set aside", () => {
   const invoice = makeItem({ id: "inv", kind: "payment", direction: "out", title: "Pay TechMarkt Online invoice", amount: 89.99, due_date: "2026-09-03", send_by: "2026-09-02" });
   const deposit = makeItem({ id: "dep", kind: "payment", direction: "out", title: "Security deposit (Kaution)", amount: 1560, due_date: "2025-10-01" });
   const rent = makeItem({ id: "rent", kind: "payment", direction: "out", title: "Monthly rent", amount: 640, due_date: "2026-10-03", recurrence: { interval: 1, unit: "months", working_day: null, day_of_month: null } });
@@ -140,7 +140,7 @@ describe("To-dos & dates: a to-do set aside (R2-document-verdict-2)", () => {
   });
 });
 
-describe("the contract card (R2-document-verdict-3)", () => {
+describe("the contract card", () => {
   const base = { cost_amount: 640, cost_currency: "EUR", cost_interval: "monthly", status: "active" } as const;
 
   it("says 'Cancel any time' for a rolling contract — no red 'decide by … tomorrow'", () => {
@@ -176,7 +176,7 @@ describe("the contract card (R2-document-verdict-3)", () => {
   });
 });
 
-describe("references stay whole (R2-document-verdict-6)", () => {
+describe("references stay whole", () => {
   it("in the 'Please check' card", () => {
     const doc = makeDoc({ warnings: ["Please check: This is a payment reminder about “TechMarkt Online invoice TM-2026-0048213 – 89.99 EUR”, which is still open."] });
     renderWithProviders(<DocumentWarnings detail={makeDetail({ document: doc })} />, { client: client() });
@@ -195,7 +195,7 @@ describe("references stay whole (R2-document-verdict-6)", () => {
   });
 });
 
-describe("'Why this date?' (R2-document-verdict-8)", () => {
+describe("'Why this date?'", () => {
   it("shows one tile when the send-by day is the due date itself", () => {
     const receipt = makeReceipt({ due_date: "2026-09-28", send_by: "2026-09-28" });
     expect(receiptDates(receipt, makeItem({ kind: "deadline" }), { nature: "objection" })).toEqual([{ label: "Must arrive by", date: "2026-09-28" }]);
@@ -205,7 +205,7 @@ describe("'Why this date?' (R2-document-verdict-8)", () => {
   });
 });
 
-describe("the loading page (R2-document-verdict-4)", () => {
+describe("the loading page", () => {
   it("starts with a placeholder as tall as the view tabs, so the verdict doesn't move when it loads", () => {
     const { container } = render(<DocumentSkeleton />);
     const column = container.firstElementChild!.firstElementChild!;

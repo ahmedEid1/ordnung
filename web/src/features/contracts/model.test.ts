@@ -250,7 +250,7 @@ describe("contracts-only lanes", () => {
     expect(bars.every((b) => b.ref?.id === "ctr_phone")).toBe(true);
   });
 
-  it("draws no window to cancel once the cancellation was sent, only when it ends (final review)", () => {
+  it("draws no window to cancel once the cancellation was sent, only when it ends", () => {
     const phone: Contract = { ...byId("ctr_phone"), cancellation_sent: { draft_id: "drf_1", sent_on: "2026-09-28", channel: "registered_letter" } };
     const [l] = contractLanes([phone], range, TODAY);
     expect(l!.bars.map((b) => b.kind)).toEqual(["contract", "contract"]);

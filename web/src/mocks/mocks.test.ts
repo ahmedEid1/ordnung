@@ -117,7 +117,7 @@ describe("mock dataset", () => {
     for (const b of ranged.flatMap((l) => l.bars)) for (const m of b.markers) expect(m.date >= "2026-06-01" && m.date <= "2027-09-30").toBe(true);
   });
 
-  it("words a timeline to-do's day as the API does: transfer, direct debit or post (R2-inbox-timeline-contracts-3)", async () => {
+  it("words a timeline to-do's day as the API does: transfer, direct debit or post", async () => {
     const s = srv();
     const items = s.db.state.items;
     Object.assign(items.find((i) => i.id === "itm_parking")!, { send_by: "2026-09-25" });
@@ -186,7 +186,7 @@ describe("mock dataset", () => {
     expect(doc.warnings.filter((w) => w.startsWith("Online demo:"))).toEqual([]);
   });
 
-  it("drops a statement's card once the person files it as the utility bill it is stored as (review round 2)", async () => {
+  it("drops a statement's card once the person files it as the utility bill it is stored as", async () => {
     const s = srv();
     const before = await get<DocumentDetail>(s, "/documents/doc_nebenkosten");
     expect(before.document.kind).toBe("utility_bill");
@@ -670,7 +670,7 @@ describe("mock dataset", () => {
   });
 });
 
-describe("the mock's clock (walkthrough of phase 2)", () => {
+describe("the mock's clock", () => {
   it("stamps what it records on the demo's today, never the real date", async () => {
     const s = srv();
     s.openAllMail();

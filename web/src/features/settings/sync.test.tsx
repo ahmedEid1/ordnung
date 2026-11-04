@@ -300,7 +300,7 @@ describe("hand-off sync helpers", () => {
     );
   });
 
-  it("words the choice — and says the other side's copy is made by its own computer, once it next starts (finding 28)", () => {
+  it("words the choice — and says the other side's copy is made by its own computer, once it next starts", () => {
     expect(choiceSideLine({ letters: 342, added: 2 })).toBe("342 letters, 2 added since you last switched");
     expect(choiceSideLine({ letters: 1, added: 0 })).toBe("1 letter");
     expect(choiceSideLine({ letters: 12, added: 12 }, true)).toBe("12 letters");
@@ -330,7 +330,7 @@ describe("hand-off sync helpers", () => {
     expect(chosenMessage(sides[1]!, sides)).toEqual({ title: "Kept anna-thinkpad's Ordnung", description: "This computer's is saved as a backup (Settings → Your computers)." });
   });
 
-  it("asks twice before going while no other computer has this one's latest changes (finding 2)", () => {
+  it("asks twice before going while no other computer has this one's latest changes", () => {
     expect(unreceivedLine({ connected: true, others_have_latest: true, computers: [here, computer({ has_latest: true })] })).toBeNull();
     expect(unreceivedLine({ connected: true, others_have_latest: false, computers: [here, computer({ has_latest: false })] })).toMatch(
       /^desktop hasn't received your latest changes yet/,
@@ -339,7 +339,7 @@ describe("hand-off sync helpers", () => {
     expect(unreceivedLine({ connected: false, others_have_latest: false, computers: [] })).toBeNull();
   });
 
-  it("says where calendar sync runs when it isn't connected here (design §6.4)", () => {
+  it("says where calendar sync runs when it isn't connected here (SPEC §12c)", () => {
     const status = { connected: true, mode: "in_use" as const, computers: [here, computer({ calendar: "other" })] };
     expect(calendarElsewhereNote(status, false)).toBe(
       "Calendar sync is set up on desktop only. Connect it here too, so your calendar stays current while you use this computer.",
@@ -527,7 +527,7 @@ describe("Settings → Your computers: setting up", () => {
     expect(within(kept).getByText(/before you brought sam-desktop's Ordnung here/)).toBeInTheDocument();
   });
 
-  it("a name another computer has already gets “ (2)” (finding 29)", async () => {
+  it("a name another computer has already gets “ (2)”", async () => {
     const { srv } = useMockApi();
     srv.db.state.documents = []; // nothing here yet: joining brings the other computer's Ordnung over
     const user = userEvent.setup();
@@ -715,7 +715,7 @@ describe("Settings → Your computers: connected", () => {
     expect(srv.sync.connected).toBe(false);
   });
 
-  it("asks a second time while no other computer has this one's latest changes (finding 2)", async () => {
+  it("asks a second time while no other computer has this one's latest changes", async () => {
     const { srv, calls } = useMockApi();
     srv.sync.setUp();
     srv.sync.computers[1]!.has_latest = false;
