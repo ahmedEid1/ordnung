@@ -51,6 +51,7 @@ Each file's role says what it may support:
 | 2026-10-30 | `2026-10-30-claude-sonnet-5-heldout-reanalysis.json` | analysis |  | re-analysis |  |  |
 | 2026-10-30 | `2026-10-30-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
 | 2026-10-31 | `2026-10-31-claude-sonnet-5-ask-rescored.json` | Ask benchmark |  | iterated |  |  |
+| 2026-11-04 | `2026-11-04-claude-sonnet-5-checks-ablated.json` | check ablation |  | replay |  |  |
 
 ## The page as published up to 0.3.0
 
