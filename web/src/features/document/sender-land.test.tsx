@@ -38,6 +38,16 @@ const threeDays = makeReceipt({
   warnings: ["Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, so we counted 3 days (the earlier date)."],
 });
 
+/** … or, for an e-mailed decision, from the day it was sent, which only Brandenburg counts from. */
+const emailed = makeReceipt({
+  due_date: "2026-11-30",
+  holiday_calendar: NATIONWIDE,
+  confidence: "medium",
+  warnings: [
+    "In Brandenburg an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg). Without this sender's Land we counted from that day — the day it was sent, unless you told us when it arrived; elsewhere it counts as delivered on the 3rd or 4th day after sending.",
+  ],
+});
+
 /** … or where a Land's holiday may make the date later. */
 const holiday = makeReceipt({
   due_date: "2027-11-01",
@@ -52,6 +62,7 @@ describe("a date that waits for the sender's state", () => {
   it("is one the engine says its Land would change, for a sender in Germany whose state isn't set", () => {
     expect(senderLandUnknown(threeDays, party())?.id).toBe("pty_city");
     expect(senderLandUnknown(holiday, party())?.id).toBe("pty_city");
+    expect(senderLandUnknown(emailed, party())?.id).toBe("pty_city");
     expect(senderLandUnknown(threeDays, party({ region: "SN" }))).toBeNull(); // the person said
     expect(senderLandUnknown(threeDays, party({ address: "1 Example Road, Examplia" }))).toBeNull(); // abroad
     expect(senderLandUnknown(threeDays, null)).toBeNull();
@@ -234,6 +245,11 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     // Hessen's authorities count 3 days anyway: only its holidays may move the date
     expect(reason(both, "HE")).toContain(HOLIDAYS);
     expect(reason(makeReceipt({ warnings: [...threeDays.warnings, ...earlier.warnings] }))).toContain(BACKWARDS);
+    // an e-mailed decision counted from the day it was sent: every state but Brandenburg counts later
+    const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be a few days early.";
+    expect(reason(emailed, "BY")).toContain(EMAIL);
+    expect(reason(emailed, "BB")).not.toContain(EMAIL);
+    expect(reason(makeReceipt({ warnings: [...emailed.warnings, ...earlier.warnings] }), "BY")).toContain(BACKWARDS);
   });
 
   it("Yes saves their state, takes the keyboard to the verdict and says which of the letter's dates moved; Undo takes it back", async () => {

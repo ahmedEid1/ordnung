@@ -226,6 +226,9 @@ CALENDAR_DISCLAIMER_TEMPLATE = (
 )
 #: The rule the engine applies when a Land's 4-day rule for its authorities is not confirmed.
 LAND_DAYS_RULE = "vwvfg_land_days"
+#: The rule an e-mailed decision is counted by from the day it was sent or arrived (§ 7 VwVfGBbg): without the Land
+#: too, which may be Brandenburg.
+BB_EMAIL_RULE = "vwvfg_bb_7"
 #: Where "today" is when neither the caller nor the server pins it: Ordnung's letters are German.
 HOME_ZONE = "Europe/Berlin"
 #: Set to "1" (with ``ORDNUNG_TODAY``) to make the rules-only server ignore a caller's ``today``.
@@ -1109,10 +1112,11 @@ def deadline_hints(
             "company, landlord …) and sender_name so the right delivery law applies; without them the "
             "earliest plausible date is used."
         )
-    if region is None and LAND_DAYS_RULE in receipt.rule_ids:
+    if region is None and (LAND_DAYS_RULE in receipt.rule_ids or BB_EMAIL_RULE in receipt.rule_ids):
         hints.append(
             "Pass region — the Land of the authority: where its own law is confirmed to use the 4-day "
-            "rule (e.g. NW or BY), the letter counts as delivered a day later, and so may the deadline."
+            "rule (e.g. NW or BY), the letter counts as delivered a day later, and so may the deadline; an "
+            "e-mailed decision counts from the day it was sent only in Brandenburg."
         )
     if formally_served_may_apply:
         hints.append(FORMAL_SERVICE_HINT)

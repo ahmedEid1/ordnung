@@ -23,6 +23,7 @@ from ordnung.models import ComputationReceipt, ComputationStep, Confidence, Date
 from ordnung.rules import calendar_de, catalog, routing
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
+    LAND_EMAIL_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
     VWVFG_OLD_PROCEDURES,
@@ -130,13 +131,16 @@ def waits_for_sender_land(warnings: Iterable[str], region: str) -> LandWait:
     (:data:`REGION_EARLIER`) the date shown may then be a day late. The 3-day delivery rule
     (:data:`~ordnung.rules.delivery.LAND_DAYS_UNCONFIRMED`) changes only for a Land whose authorities use the
     4th day (:data:`~ordnung.rules.delivery.VWVFG_FOUR_DAY_FROM`): for HE (the 3rd day by its own law), HB and
-    SL, confirming changes nothing. "May": the holiday in a warning need not be one in ``region``.
+    SL, confirming changes nothing. An e-mailed decision counted from the day it was sent
+    (:data:`~ordnung.rules.delivery.LAND_EMAIL_UNCONFIRMED`) waits for every Land but Brandenburg. "May": the
+    holiday in a warning need not be one in ``region``.
     """
     waits = may_be_late = False
     for warning in warnings:
         earlier = REGION_EARLIER in warning
         four_days = warning == LAND_DAYS_UNCONFIRMED and region in VWVFG_FOUR_DAY_FROM
-        waits = waits or earlier or four_days or warning.startswith(REGION_UNKNOWN)
+        emailed = warning == LAND_EMAIL_UNCONFIRMED and region != "BB"
+        waits = waits or earlier or four_days or emailed or warning.startswith(REGION_UNKNOWN)
         may_be_late = may_be_late or earlier
     return LandWait(waits, may_be_late)
 

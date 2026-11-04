@@ -160,6 +160,7 @@ _LAND_DEADLINES = [
     ("HB", "2026-09-29", "de_admin_post", "2026-11-02", "medium"),
     ("BB", "2026-10-30", "de_admin_electronic", "2026-11-30", "medium"),
     ("BB", "2026-10-30", "de_admin_post", "2026-12-03", "high"),
+    (None, "2026-10-30", "de_admin_electronic", "2026-11-30", "medium"),
 ]
 
 
@@ -169,7 +170,7 @@ _LAND_DEADLINES = [
     ids=[f"{row[0]}-{row[1]}-{row[2].removeprefix('de_admin_')}" for row in _LAND_DEADLINES],
 )
 def test_a_lands_delivery_day_in_the_deadline(
-    region: str, posted: str, rule: str, expected: str, confidence: str
+    region: str | None, posted: str, rule: str, expected: str, confidence: str
 ) -> None:
     receipt = compute_due(
         notice_spec(legal_basis="§ 70 VwGO", delivery_rule=rule),

@@ -223,9 +223,22 @@ def test_hints_name_the_authoritys_land_where_the_4_day_rule_is_unconfirmed(tool
         POSTED, document_date="2026-09-10", sender_kind="immigration_office", region="NW"
     )
     assert confirmed["due_date"] == "2026-10-14" and confirmed["hints"] == [FORMAL_SERVICE_HINT]
-    # Hessen's own law is not confirmed: the region is given, so there is nothing to ask for
+    # Hessen keeps the 3rd day by its own law: the region is given, so there is nothing to ask for
     hesse = tools.compute_deadline(POSTED, document_date="2026-09-10", sender_kind="authority", region="HE")
     assert hesse["due_date"] == "2026-10-13" and hesse["hints"] == [FORMAL_SERVICE_HINT]
+
+
+def test_hints_name_the_authoritys_land_for_an_emailed_decision(tools: RulesTools) -> None:
+    """Without the Land an e-mailed decision counts from the day it was sent (Brandenburg's rule, § 7 VwVfGBbg):
+    the Land is what would make it later."""
+    emailed = {**OBJECTION, "delivery_rule": "de_admin_electronic"}
+    unknown = tools.compute_deadline(emailed, document_date="2026-09-15", sender_kind="immigration_office")
+    assert unknown["due_date"] == "2026-10-15" and _hint(unknown, "Pass region — the Land of the authority")
+    assert any("only in Brandenburg" in hint for hint in unknown["hints"])
+    given = tools.compute_deadline(
+        emailed, document_date="2026-09-15", sender_kind="immigration_office", region="NW"
+    )
+    assert given["due_date"] == "2026-10-19" and not _hint(given, "Pass region")
 
 
 def test_hints_for_a_tax_letter_name_the_other_place() -> None:

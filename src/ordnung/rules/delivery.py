@@ -101,6 +101,14 @@ LAND_DAYS_UNCONFIRMED: Final = (
     "so we counted 3 days (the earlier date)."
 )
 
+#: Why an e-mailed decision of an authority whose Land isn't known is counted from the day it was sent: in Brandenburg
+#: it counts from the day it arrived (§ 7 VwVfGBbg). Static, so the web app and waits_for_sender_land can match it.
+LAND_EMAIL_UNCONFIRMED: Final = (
+    "In Brandenburg an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg). Without this sender's Land we "
+    "counted from that day — the day it was sent, unless you told us when it arrived; elsewhere it counts as "
+    "delivered on the 3rd or 4th day after sending."
+)
+
 #: Party kinds a reader may give a social-benefits agency: its name and remedy notice decide.
 _REFINABLE_KINDS = frozenset({"authority", "university", "insurer", "company", "other"})
 
@@ -259,9 +267,19 @@ class Delivery:
     older_matter: tuple[str, date] | None = None
 
 
-def _brandenburg_email(posted: date, fiction: date, arrived: date | None) -> tuple[str, str | None]:
+def _brandenburg_email(
+    posted: date, fiction: date, arrived: date | None, land: str | None
+) -> tuple[str, str | None]:
     """The step label, and the note when the arrival day isn't known, for an e-mailed decision of a Brandenburg
-    authority, which counts from the day it arrived (§ 7 VwVfGBbg): at the earliest the day it was sent."""
+    authority, which counts from the day it arrived (§ 7 VwVfGBbg): at the earliest the day it was sent. Without the
+    sender's Land (``land`` None) it may be one: counted the same way, with :data:`LAND_EMAIL_UNCONFIRMED`."""
+    told = arrived is not None and arrived >= posted
+    if land is None:
+        if told:
+            label = "Counted from the day you said it arrived (in Brandenburg an e-mailed decision counts from that day)"
+        else:
+            label = "Counted from the day it was sent (in Brandenburg an e-mailed decision counts from the day it arrived)"
+        return f"{label}: {fmt_date(max(arrived or posted, posted))}", LAND_EMAIL_UNCONFIRMED
     if arrived is not None and arrived >= posted:
         return f"Counts as delivered on the day it arrived (§ 7 VwVfGBbg): {fmt_date(arrived)}", None
     label = (
@@ -307,7 +325,8 @@ def resolve_delivery(
     ``region`` is the sender's Land for general authorities; for tax letters it decides which
     holidays move the deemed day (pass it only when it applies at the recipient's place too). An e-mailed
     decision of a Brandenburg authority counts from the day it arrived (§ 7 VwVfGBbg): ``arrived``, the day the
-    person confirmed, when it is before the 4th day, else the day it was sent, with a note that says so.
+    person confirmed, when it is before the 4th day, else the day it was sent, with a note that says so — and so
+    does one whose authority's Land isn't known (:data:`LAND_EMAIL_UNCONFIRMED`).
     """
     uncertainty: str | None = None
     older: tuple[str, date] | None = None
@@ -335,10 +354,11 @@ def resolve_delivery(
         raw = posted + timedelta(days=days)
         what = {"post": "posting", "electronic": "sending", "portal": "being made available"}[channel]
         label = f"Counts as delivered on the {_ORDINAL[days]} day after {what}: {fmt_date(raw)}"
-        # § 7 VwVfGBbg: an e-mailed decision that arrived before the 4th day counts from the day it arrived
+        # § 7 VwVfGBbg: an e-mailed decision that arrived before the 4th day counts from the day it arrived — and
+        # without the sender's Land it may be Brandenburg's
         earliest = posted if arrived is None else max(arrived, posted)
-        if scope in (None, "vwvfg") and channel == "electronic" and land == "BB" and earliest < raw:
-            label, uncertainty = _brandenburg_email(posted, raw, arrived)
+        if scope in (None, "vwvfg") and channel == "electronic" and land in (None, "BB") and earliest < raw:
+            label, uncertainty = _brandenburg_email(posted, raw, arrived, land)
             raw, rule_id = earliest, "vwvfg_bb_7"
     steps = [_step(label, raw, rule_id)]
     if scope == "ao":

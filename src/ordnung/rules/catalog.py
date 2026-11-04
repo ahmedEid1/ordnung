@@ -340,7 +340,8 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "§ 7 VwVfGBbg; § 41 Abs. 2 S. 2 VwVfG",
         "In Brandenburg a decision sent by e-mail counts as delivered on the day it arrived when that can be shown, "
         "not on the 4th day after sending. Ordnung counts from the day it was sent, the earliest it can have "
-        "arrived, or from the day you say it arrived.",
+        "arrived, or from the day you say it arrived; also for an e-mailed decision whose sender's Land it doesn't "
+        "know yet.",
         "https://bravors.brandenburg.de/gesetze/vwvfgbbg",
         None,
     ),

@@ -21,6 +21,7 @@ from ordnung.rules.calendar_de import REGION_NAMES
 from ordnung.rules.deadlines import RuleContext, compute_due
 from ordnung.rules.delivery import (
     LAND_DAYS_UNCONFIRMED,
+    LAND_EMAIL_UNCONFIRMED,
     MAY_BE_PUBLIC_KINDS,
     VWVFG_FOUR_DAY_FROM,
     VWVFG_OLD_PROCEDURES,
@@ -248,6 +249,8 @@ _LAND_DAYS: list[tuple[str | None, str, str, str, str, str | tuple[str, ...] | N
     ("BB", "2024-12-20", "electronic", "2024-12-20", "vwvfg_bb_7", ("§ 7 VwVfGBbg", "up to 3 days")),
     ("BB", "2026-10-30", "post", "2026-11-03", "vwvfg_41_2", None),
     ("BB", "2026-10-30", "portal", "2026-10-31", "vwvfg_41_2a", None),
+    # an e-mailed decision whose sender's Land isn't known may be Brandenburg's: from the day it was sent
+    (None, "2026-10-30", "electronic", "2026-10-30", "vwvfg_bb_7", LAND_EMAIL_UNCONFIRMED),
 ]
 
 
@@ -290,6 +293,18 @@ def test_brandenburg_email_counts_from_a_confirmed_arrival_before_the_4th_day() 
     )
     late = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-11-05"))
     assert (late.day, late.steps[0].rule_id, late.uncertainty) == (D("2026-11-03"), "vwvfg_41_2", None)
+    # without the sender's Land: from the day it arrived too, which may be Brandenburg's rule
+    unknown = resolve_delivery(sent, scope=None, channel="electronic", region=None, arrived=D("2026-11-01"))
+    assert (unknown.day, unknown.uncertainty) == (D("2026-11-01"), LAND_EMAIL_UNCONFIRMED)
+    assert unknown.steps[0].label == (
+        "Counted from the day you said it arrived (in Brandenburg an e-mailed decision counts from that day): "
+        "Sun 1 Nov 2026"
+    )
+    sent_only = resolve_delivery(sent, scope="vwvfg", channel="electronic", region=None)
+    assert sent_only.steps[0].label == (
+        "Counted from the day it was sent (in Brandenburg an e-mailed decision counts from the day it arrived): "
+        "Fri 30 Oct 2026"
+    )
     # an arrival day before the day it was sent is no arrival: from the day it was sent
     early = resolve_delivery(sent, scope="vwvfg", channel="electronic", region="BB", arrived=D("2026-10-29"))
     assert early.day == sent and early.steps[0].label.endswith(
@@ -312,6 +327,17 @@ def test_the_web_app_counts_four_days_in_the_same_lands() -> None:
     found = re.search(r"FOUR_DAY_LANDS\b[^=]*=\s*new Set\(\[([^\]]*)\]\)", source.read_text("utf-8"))
     assert found is not None
     assert set(re.findall(r'"([A-Z]{2})"', found.group(1))) == set(VWVFG_FOUR_DAY_FROM)
+
+
+def test_the_web_app_matches_the_engines_warnings() -> None:
+    """The web app knows a date waits for the sender's Land by words of the engine's warnings
+    (``LAND_UNKNOWN`` in ``web/src/features/document/WhyThisDate.tsx``): they must be the engine's words."""
+    source = Path(__file__).resolve().parents[1] / "web" / "src" / "features" / "document" / "WhyThisDate.tsx"
+    found = re.search(r"export const LAND_UNKNOWN = \{(.*?)\} as const", source.read_text("utf-8"), re.S)
+    assert found is not None
+    words = dict(re.findall(r'(\w+): "([^"]*)"', found.group(1)))
+    assert words["threeDays"] in LAND_DAYS_UNCONFIRMED
+    assert words["email"] in LAND_EMAIL_UNCONFIRMED
 
 
 _MONTHS = (
@@ -387,6 +413,7 @@ def test_delivery_notes_are_not_read_as_doubts_scams_or_injections() -> None:
     notes.append(
         resolve_delivery(D("2026-10-30"), scope="vwvfg", channel="electronic", region="BB").uncertainty or ""
     )
+    notes.append(LAND_EMAIL_UNCONFIRMED)
     for note in notes:
         assert note
         for pattern in (UNCERTAINTY_RE, INJECTION_RE, SCAM_RE):
