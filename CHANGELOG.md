@@ -74,6 +74,15 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ### Fixed
 
+- **Each state's delivery rule, checked against its law gazette.** A letter from an authority in Thuringia, or in
+  Schleswig-Holstein posted from 1 January 2025, now counts as delivered on the 4th day (it counted 3, a day early).
+  Hessen's 3rd day, and Hamburg's before 14 May 2025, no longer say Ordnung couldn't confirm them. In
+  Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern, where a matter begun before the switch keeps the 3rd day,
+  the date names that earlier deadline. An e-mailed decision from a Brandenburg authority, or from an authority
+  whose state Ordnung doesn't know yet, counts from the day it was sent (§ 7 VwVfGBbg). On the benchmark no date and
+  no count changes: six replayed dates show another confidence (five now say "Worth a second look", one reading
+  under the wrong law shows medium instead of low), and the code-check ablation was replayed again for the same
+  reason.
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.

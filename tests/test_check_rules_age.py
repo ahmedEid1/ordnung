@@ -50,3 +50,13 @@ def test_the_warning_says_what_to_update_for_each_pending_change() -> None:
     )
     assert stale_warning(date(2026, 1, 1), date(2026, 6, 1), []) == warning.split("\n", 1)[0]
     assert stale_warning(date(2026, 1, 1), date(2026, 3, 31), [change]) is None
+
+
+def test_mecklenburg_vorpommerns_portal_rule_is_pending() -> None:
+    """Mecklenburg-Vorpommern's new § 41 Abs. 2 (promulgated 21 Jul 2026, in force only with a federal act that has
+    not passed) counts a portal decision from the day it is downloaded: Ordnung's day after provision would then be a
+    day late, so it is on the re-check list with the portal rule it touches."""
+    [portal] = [change for change in PENDING_CHANGES if "Mecklenburg-Vorpommern" in change.change]
+    assert "GVOBl. 2026 Nr. 21" in portal.change and portal.rule_ids == ("vwvfg_41_2a",)
+    assert "has not passed" in portal.status and "from the day it was made available" in portal.update
+    assert portal.source == "https://www.dokumentation.landtag-mv.de/parldok/dokument/72069"

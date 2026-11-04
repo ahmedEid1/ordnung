@@ -59,7 +59,8 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Arrival day of a letter needed but not confirmed | Uses the letter's date and asks when it really arrived (`low` confidence). |
 | Arrival day stated in the letter and a different one entered by the person | Uses the earlier of the two and names both (one soft failure). |
 | End of a job or tenancy (read by the model) not written in the notice's own sentence | The deadlines counted from it (objection to a landlord's notice, registering three months before the job ends) are `medium` when the date is written elsewhere in the letter, `low` with "Please check" when it isn't written in the letter at all (`termination_end`). |
-| Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available). |
+| Kind of sender (procedural law) unknown | 3rd/4th-day rule **without** the weekend shift; 3 days unless the Land is known to use 4 (portal: the day after it was made available); an e-mailed decision counts from the day it was sent (Brandenburg counts one from the day it arrived, § 7 VwVfGBbg). |
+| A Baden-Württemberg, Bavarian or Mecklenburg-Vorpommern authority's letter after the switch (7 Feb / 1 Jan / 1 Jan 2025) | 4th day; a matter begun before the switch keeps the 3rd (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V), which a letter rarely shows: when the 3rd day gives an earlier deadline, a warning names it (`medium`, `vwvfg_land_old_procedures`). |
 | Letter from a company, landlord, bank, employer or other private sender | No deemed delivery — it is a rule for authorities' letters: a period from delivery runs from the day the letter arrived (§ 130 Abs. 1 BGB), the letter's date until the person says when (`low`); a period the letter counts from its own date or another date it names runs from that date, with no delivery days added and no question about the arrival day (`private_sender_no_delivery`). Whether the sender is an authority is read, not known (a municipal utility's Gebührenbescheid, a statutory health insurer filed as a company), so for a kind a public body may be filed as (company, insurer, utility, employer), and for any sender whose period names an administrative act in its own words (a *Bescheid*, its *Bekanntgabe* — in the spec's text or legal basis, or the item's quote), an arrival day after the day a letter usually counts as delivered never moves the date later: it runs from that earlier day (`medium`; from the arrival when both days give the same date), and a note says the date from arrival holds once the arrival is shown — for an authority's letter too (§ 41 Abs. 2 S. 3 VwVfG) — and that the deadline may still be open when only the earlier date has passed (`private_sender_late_arrival`). A gym's, landlord's or bank's letter whose words name no administrative act counts from the day it arrived. Words alone never bring deemed delivery back (a gym, too, writes "nach Bekanntgabe der Preiserhöhung"). A sender filed as private keeps the deemed delivery only when its letter names a remedy statute, or its *Einspruch*, *Widerspruch* or *Klage* notice names an administrative route (a *Bescheid* as the decision — "diesen Bescheid", a *Gebührenbescheid*, "Bescheid vom …", not "Bescheid geben" (let us know) —, its *Bekanntgabe*, an administrative, social or finance court); a Kündigungsschutzklage (§ 4 KSchG), a Widerspruch under the BGB or VVG, or a firm's own "Einspruch" window (a private parking operator's, say) does not. An unknown sender (kind `other`) keeps the deemed delivery. |
 | A date counted back over a holiday of only part of a Land (15 August in Bavaria, Augsburg's 8 August, Fronleichnam in parts of Saxony and Thuringia) | The calendar never counts it (the community is unknown), so where it holds a send-by or safe date is a working day late: the warning names the holiday and where it holds (confidence unchanged). |
 | Court order (Mahnbescheid, Vollstreckungsbescheid) without the envelope date | Counts from the order's own date and asks for the date on the yellow envelope (`low`); court deadlines are never `high`. Once the envelope date is entered it is the start, whatever anchor the period was read with — unless the reading names an earlier start of its own (a delivery day or an explicit start): then the earlier of the two, with a warning naming both. |
@@ -78,7 +79,7 @@ further lowers confidence for quote problems (quote not found, digits not matchi
 |---|---|---|
 | Anchor date stated in the document or confirmed by the user | anchor missing; arrival date assumed; a termination's end date not written in the letter | hard → `low` |
 | Anchor date stated in the document | "today" read as the letter's date | soft |
-| Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; Land not confirmed for the 4-day rule; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
+| Rule known and its scope verified | unknown sender type; channel assumed; letter's period ≠ statute; the Land's rule not confirmed (HB, SL, Land unknown); a BW/BY/MV matter that may have begun before the switch; an e-mailed decision without its Land; *Anhörungsbogen*; fine counted from the letter date; court action (*Klage*: "get advice") | soft |
 | Holiday region known | region unknown **and** a regional holiday could change this result (counted forward: the days counted or the end; counted back: the days counted back or the safe date) | soft |
 
 `high` only if every criterion holds; one soft failure → `medium`; two soft failures or any hard
@@ -258,20 +259,42 @@ delivered the day after download (§ 41 Abs. 2a VwVfG); unless the download day 
 takes the day it was made available as the earliest download. Tax portals use the 4th day after
 provision (§ 122a Abs. 4 AO), social-law portals the 4th day after the notification (§ 37 Abs. 2a SGB X).
 
-**The Länder.** Authorities of a Land apply their own VwVfG. Confirmed 4-day rule: BY, NW, MV
-(from 1 Jan 2025), HH (from 14 May 2025: the Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025,
-HmbGVBl. Nr. 17 of 13 May 2025 S. 338, in force the next day under Art. 54 of Hamburg's constitution;
-earlier postings keep 3 days), BW (from 7 Feb 2025, GBl. 2025 Nr. 8) and SH (§ 110 LVwG; confirmed in
-the text as of 10 Jun 2025, so earlier postings keep 3 days); BE, BB, NI, RP, SN and ST refer to the
-federal law.
-For Hessen (still showing the 3rd day), Bremen, Saarland and Thüringen — and whenever the Land is
-unknown — Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Baden-Württemberg keeps 3 days for procedures begun before 7 Feb 2025
-(§ 102b LVwVfG), and Bavaria and Mecklenburg-Vorpommern for procedures begun before 1 Jan 2025 (Art. 98
-BayVwVfG, § 120a VwVfG M-V); Ordnung cannot see when a procedure began and notes this here.
+**The Länder.** Authorities of a Land apply their own VwVfG or the federal one by reference; the gazettes were
+checked on 4 Nov 2026.
+
+| Land | Delivery day | Source |
+|---|---|---|
+| Baden-Württemberg | 4th day from 7 Feb 2025; a matter begun before keeps the 3rd (§ 102b) | §§ 41, 102b LVwVfG (GBl. 2025 Nr. 8), landesrecht-bw.de |
+| Bayern | 4th from 1 Jan 2025; a matter begun before keeps the 3rd (Art. 98) | Art. 41 Abs. 2, Art. 98 BayVwVfG, last amended by the acts of 9 and 23 Dec 2024 (GVBl. 2024 S. 570, 599), gesetze-bayern.de |
+| Berlin | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 Gesetz über das Verfahren der Berliner Verwaltung, GVBl. 2016 Nr. 11 S. 218 |
+| Brandenburg | 4th from 1 Jan 2025; an e-mailed decision: the day it arrived, if shown | §§ 1, 7 VwVfGBbg, bravors.brandenburg.de |
+| Bremen | 3rd (not confirmed: no text reachable) | – |
+| Hamburg | 3rd; 4th from 14 May 2025 | 12. ÄndG HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 Verfassung |
+| Hessen | 3rd | § 41 Abs. 2 HVwVfG (GVBl. 2010 Nr. 3 S. 18, 32; 2018 Nr. 21 S. 570, 574, 575) |
+| Mecklenburg-Vorpommern | 4th from 1 Jan 2025; a matter begun before keeps the 3rd (§ 120a) | Art. 1 Nr. 14, 34, Art. 4 of the act of 11 Dec 2024, GVOBl. 2024 Nr. 27 S. 617 |
+| Niedersachsen | 4th from 1 Jan 2025 (federal VwVfG) | § 1 NVwVfG |
+| Nordrhein-Westfalen | 4th from 1 Jan 2025 (§ 97: posting decides) | §§ 41, 97 VwVfG NRW (GV. NRW. 2024 S. 1184), recht.nrw.de |
+| Rheinland-Pfalz | 4th from 1 Jan 2025, taken to follow the federal VwVfG; **not checked against the gazette** | research of 25 Sep 2026 |
+| Saarland | 3rd (not confirmed: no text reachable) | – |
+| Sachsen | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 SächsVwVfZG, revosax.sachsen.de |
+| Sachsen-Anhalt | 4th from 1 Jan 2025, taken to follow the federal VwVfG; **not checked against the gazette** | research of 25 Sep 2026 |
+| Schleswig-Holstein | 4th from 1 Jan 2025 | § 110 Abs. 2 LVwG; Art. 1 Nr. 2, Art. 2 Abs. 2 of the act of 13 Dec 2024, GVOBl. 2024 Nr. 15 S. 934, 936 |
+| Thüringen | 4th from 1 Jan 2025 (federal VwVfG, dynamic); older periods under the old law (§ 8 Abs. 3) | §§ 1, 8 ThürVwVfG, Art. 90, GVBl. 2024 Nr. 9 S. 277, 278, 297 |
+
+Before a Land's switch its old law counts the 3rd day. For Bremen and the Saarland, whose text could not be
+reached, and whenever the Land is unknown, Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21).
+In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before the switch and not finished
+keeps the old law's 3rd day (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V), which a letter rarely shows:
+Ordnung counts the 4th day and, when the 3rd gives an earlier deadline, a warning names that deadline ("act by
+then to be safe", `medium`, `vwvfg_land_old_procedures`); the date itself never moves. A Brandenburg authority's
+e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg): Ordnung counts from the
+day it was sent, the earliest it can have arrived, or from the arrival day you entered when that is before the
+4th day (`vwvfg_bb_7`); a later arrival keeps the 4th day and the late-arrival note.
+
 In the app a sender's Land is unknown until you set it for that sender (*Which state is this sender in?*
 in its drawer) or say Yes when Ordnung asks *Is X in Bavaria?* from the postcode on their letter: reading a
-letter never sets it. Until then a Land authority's letter gets the 3rd day and nationwide holidays, at
-lower confidence — early, never late. The benchmark gives Ordnung the Land the letterhead prints; replayed
+letter never sets it. Until then a Land authority's letter gets the 3rd day (an e-mailed decision: the day it
+was sent) and nationwide holidays, at lower confidence — early, never late. The benchmark gives Ordnung the Land the letterhead prints; replayed
 without it, Ordnung scores 85.7 % on the test split, 89.3 % on the holdout split and 83.9 % on the holdout2
 split instead of 98.2 %, with no late date; with the state the postcode on their letter suggests confirmed,
 it scores 98.2 % on each ([evals.md](evals.md#64-the-app-as-it-ships-without-the-senders-land)).
@@ -281,7 +304,8 @@ printed date is the conservative stand-in, because posting can only be the same 
 letter names a later posting day, Ordnung keeps the letter's date and mentions the later deadline
 (legal research verdict: never replace the anchor with a later date for the primary result).
 
-**Early receipt changes nothing** (BFH X R 96/98; BSG B 14 AS 12/09 R). **Late receipt** only helps
+**Early receipt changes nothing** (BFH X R 96/98; BSG B 14 AS 12/09 R) — except an e-mailed decision of a
+Brandenburg authority, which counts from the day it arrived when that can be shown (§ 7 VwVfGBbg). **Late receipt** only helps
 if you can show it (BFH VI R 18/22, VI R 6/23, IX B 95/25): Ordnung keeps the earlier deadline and
 adds the later one as a warning. A **pre-dated** letter (received before its printed date) is
 counted from the day it arrived, with a hint that you may get more time (Wiedereinsetzung).
@@ -315,6 +339,10 @@ formal delivery, in which case the day it was put in your letterbox is used (the
 | Tue 27 Oct 2026 | City of Hannover (NI) | Sat 31 Oct — not moved | Mon 30 Nov 2026 | *vwvfg* |
 | Wed 23 Dec 2026 | immigration office (NW) | Sun 27 Dec — not moved | Wed 27 Jan 2027 | *vwvfg* |
 | Tue 29 Sep 2026 | authority in Hessen | Fri 2 Oct (3rd day) | Mon 2 Nov 2026 | *vwvfg Hessen* |
+| Tue 29 Sep 2026 | authority in Thüringen | Sat 3 Oct — not moved | Tue 3 Nov 2026 | § 1 ThürVwVfG |
+| Mon 3 Mar 2025 | authority in Schleswig-Holstein | Fri 7 Mar | Mon 7 Apr 2025 | § 110 LVwG |
+| Tue 9 Dec 2025 | authority in Mecklenburg-Vorpommern | Sat 13 Dec (a matter begun before 2025: Fri 12 Dec) | Tue 13 Jan 2026 (older matter: Mon 12 Jan) | § 120a VwVfG M-V |
+| Fri 30 Oct 2026 | authority in Brandenburg, e-mail | Fri 30 Oct (the day it was sent, the earliest arrival) | Mon 30 Nov 2026 | § 7 VwVfGBbg |
 | Tue 29 Sep 2026 | job centre | Sat 3 Oct — not moved | Tue 3 Nov 2026 | *sgg 84* |
 | Fri 27 Nov 2026 | health insurer (BE) | Tue 1 Dec | Fri 1 Jan → Mon 4 Jan 2027 | *sgg 84* |
 | Wed 26 Sep 2007 | social court letter (3-day era) | Sat 29 Sep 2007 | Mon 29 Oct 2007 | BSG B 14 AS 12/09 R |
@@ -1213,6 +1241,9 @@ Changes to the law that are on their way and would change a rule or its copy. Th
 | Change | Status (25 Sep 2026) | Update when it passes | Source |
 |---|---|---|---|
 | *Mietrecht II* (BT-Drs. 21/6807), new § 573 Abs. 4 BGB: paying the rent arrears within the grace period also undoes an **ordinary** notice for arrears, once per tenancy | adopted by the federal cabinet on 29 Apr 2026; first reading on 9 Jul 2026, in committee | `ARREARS_CURE` (the card's fact, the ordinary card's step, the composer's refusal) and the landlord's notice above | [Deubner Recht](https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html) |
+| Mecklenburg-Vorpommern's new § 41 Abs. 2 (Art. 1 Nr. 14 of the act of 8 Jul 2026, GVOBl. 2026 Nr. 21): a decision made available for download counts as delivered on the day it is downloaded, at the latest the 4th day after it was made available | (4 Nov 2026) promulgated 21 Jul 2026; in force only with the federal Gesetz zur Fortentwicklung des Verwaltungsverfahrensgesetzes (Art. 95 Abs. 5), which has not passed | count an MV portal decision (and the federal one, if it passes with the same words) from the day it was made available, not the day after (`vwvfg_41_2a`) | [Landtag M-V](https://www.dokumentation.landtag-mv.de/parldok/dokument/72069) |
+
+Two Länder rules that need no change: Schleswig-Holstein's § 110 Abs. 2b LVwG moved its portal day from the 3rd to the 4th day after provision, and Ordnung's portal day (the day after provision) is earlier than either; § 97 VwVfG NRW keeps the old law for a step begun before 1 Jan 2025, and posting is the step, so the posting day decides, as in Ordnung (4 Nov 2026).
 
 ## 10. What Ordnung deliberately does not compute
 
@@ -1228,7 +1259,7 @@ Changes to the law that are on their way and would change a rule or its copy. Th
 | Work-day limits for students (§ 16b Abs. 3 AufenthG: 140 days, weekly counting) | Needs complete work records and lecture periods; replaced by a static info card with links (SPEC § 21). |
 | Residence permit extension deadlines beyond "apply before the expiry date" (§ 81 Abs. 4 AufenthG) | The expiry date is used as written; how early to apply is office practice, shown as reminders. |
 | Several formal deliveries (e.g. to you and your lawyer, § 51 Abs. 4 OWiG, § 37 Abs. 2 StPO) | Ordnung uses the delivery you know about — the earlier, safe date. |
-| Baden-Württemberg procedures begun before 7 Feb 2025 (§ 102b LVwVfG); Bavarian and Mecklenburg-Vorpommern procedures begun before 1 Jan 2025 (Art. 98 BayVwVfG, § 120a VwVfG M-V) | Not visible in a letter; the 3rd-day risk is documented here. |
+| Whether a Baden-Württemberg, Bavarian or Mecklenburg-Vorpommern matter began before the switch (§ 102b LVwVfG, Art. 98 BayVwVfG, § 120a VwVfG M-V) | Not visible in a letter: the 4th day is counted and the earlier deadline named (§ 5). |
 | Municipal fee notices under a Land KAG (which may follow the AO shift) | Treated as general authority letters — no shift, the earlier date. |
 | Late-payment surcharges (§ 240 AO, 3-day grace period), default interest (§ 288 BGB) | Money consequences, not deadlines; the grace period is never used for planning. |
 | Energy move-out cancellation (§ 41b Abs. 5 EnWG), early telecom extensions (BGH III ZR 61/24), missing cancellation buttons (§ 312k Abs. 6) | Need facts a letter rarely contains; flagged for review instead. |

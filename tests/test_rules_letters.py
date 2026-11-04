@@ -2567,7 +2567,7 @@ def test_paying_the_arrears_names_what_must_be_paid_and_the_public_body_undertak
         assert "all rent due by then" in text and "(§ 546a BGB)" in text
         assert "Jobcenter or Sozialamt promising to pay it" in text
         assert "under current law not a notice with a notice period given as well" in text
-    [pending] = catalog.PENDING_CHANGES
+    [pending] = [change for change in catalog.PENDING_CHANGES if "Mietrecht II" in change.change]
     assert "Mietrecht II" in pending.change and "§ 573 Abs. 4 BGB" in pending.change
     assert all(catalog.get_rule(rule_id) for rule_id in pending.rule_ids)
     assert "ARREARS_CURE" in pending.update and pending.source.startswith("https://")

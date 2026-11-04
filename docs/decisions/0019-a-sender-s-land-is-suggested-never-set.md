@@ -116,3 +116,7 @@ only ever removes a question.
   away; it opens the sender's details, which is harmless. Update both computers.
 - The question's title (the sender's name and the Land) is part of what *Weekly Ideas* sends, like every
   Idea's ([privacy.md](../privacy.md)).
+
+## Later changes
+- Since 0.4.0 a date also waits when an e-mailed decision was counted from the day it was sent and the
+  suggested Land is not Brandenburg (§ 7 VwVfGBbg; `rules.delivery.LAND_EMAIL_UNCONFIRMED`).

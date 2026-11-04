@@ -44,6 +44,23 @@ PENDING_CHANGES: tuple[PendingChange, ...] = (
         ),
         source="https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html",
     ),
+    PendingChange(
+        change=(
+            "Mecklenburg-Vorpommern's new § 41 Abs. 2 (Art. 1 Nr. 14 of the act of 8 Jul 2026, GVOBl. 2026 Nr. 21): a "
+            "decision made available for download counts as delivered on the day it is downloaded, at the latest the "
+            "4th day after it was made available"
+        ),
+        status=(
+            "Promulgated 21 Jul 2026; in force only with the federal Gesetz zur Fortentwicklung des "
+            "Verwaltungsverfahrensgesetzes (Art. 95 Abs. 5), which has not passed"
+        ),
+        rule_ids=("vwvfg_41_2a",),
+        update=(
+            "count an MV portal decision (and the federal one, if it passes with the same words) from the day it was "
+            "made available, not the day after"
+        ),
+        source="https://www.dokumentation.landtag-mv.de/parldok/dokument/72069",
+    ),
 )
 
 _GII = "https://www.gesetze-im-internet.de"
