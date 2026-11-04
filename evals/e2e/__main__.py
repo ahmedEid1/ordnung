@@ -3,8 +3,8 @@
 A replay only (no model is called; a reading without its recording is an error, by id). Writes
 ``evals/results/<date>-<model>-e2e.json`` (``--out``: another folder; ``--no-write``: none) and prints one line per
 split. The gates (``--exact-parity``, ``--max-late-reminders``, ``--known-set-aside``, ``--min-reminded``) and
-``--compare FILE`` (a published file must equal the fresh run, its date, commit and fingerprint aside) exit 1 on a
-failure; a letter the harness could not run always does.
+``--compare FILE`` (a published file must equal the fresh run, its date, commit, fingerprint and the code paths that
+differed from the commit aside) exit 1 on a failure; a letter the harness could not run always does.
 
 ``--splits`` takes any split ``evals/splits.py`` declares whose letters exist (the final run's are written after the
 code freeze). The run replays read 1's recordings, so a final split's letter is read on the day its unit of read 1
@@ -26,6 +26,7 @@ from typing import Any
 
 from evals import __version__ as evals_version
 from evals import conditions
+from evals import harness as benchmark_harness
 from evals import report as benchmark_report
 from evals import splits as registry
 from evals.e2e import check, harness, metrics, report
@@ -144,6 +145,8 @@ def _meta(
         "ids": sorted(args.ids) if args.ids else None,
         "letters": len(entries),
         "commit": _commit(),
+        # the code paths that differ from that commit, as the runner records them ([] when none; null without git)
+        "dirty": benchmark_harness.dirty_paths(),
         "fingerprint": conditions.fingerprint("ordnung", args.model),
         "dataset": _manifest_info(MANIFEST_PATH),
         "evals_version": evals_version,

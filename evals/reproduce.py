@@ -289,6 +289,15 @@ def _kind(name: str, data: Mapping[str, Any]) -> tuple[str, str]:
 
 def _row(path: Path, data: Mapping[str, Any], kind: str, role: str) -> dict[str, Any]:
     meta: Mapping[str, Any] = data["meta"] if isinstance(data.get("meta"), dict) else {}
+    dirty = meta.get("dirty")
+    if meta.get("backend") == "replay" and isinstance(dirty, list) and dirty:
+        # a replay names the commit it ran at: from a tree with changes, that commit's code is not what wrote it (a
+        # live recording stays as recorded, and the analysis drops a read recorded so)
+        listed = ", ".join(str(item) for item in dirty[:3]) + (" …" if len(dirty) > 3 else "")
+        raise ReproduceError(
+            f"{path.name}: written from a tree with changes to {listed}, so its commit {meta.get('commit')} is not "
+            "the code that wrote it: commit the code, then write it again from a clean tree"
+        )
     row: dict[str, Any] = {"file": path.name, "sha256": sha256_file(path), "kind": kind, "role": role}
     if kind == "run":
         row.update(split=meta["split"], repeat=int(meta.get("repeat", 1)))

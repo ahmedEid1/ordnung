@@ -665,3 +665,20 @@ def test_the_results_say_which_run_they_replay(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(eval_ablate_checks, "split_numbers", numbers)
     results = asyncio.run(eval_ablate_checks.build(["dev"], DEFAULT_MODEL, "2027-01-12", repeat=2))
     assert asked == [("dev", 2)] and results["meta"]["repeat"] == 2
+
+
+def test_the_results_name_the_code_paths_that_differ_from_their_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``meta.commit`` is the checked-out commit: the file says, as the runner's do, which code paths under src/ and
+    evals/ differed from it (``harness.dirty_paths``), so a file written from a tree with changes never passes for
+    that commit's (``make eval-reproduce`` refuses it)."""
+    one = _published()["splits"]["dev"]
+
+    async def numbers(split: str, model: str, *, repeat: int = 1) -> dict[str, Any]:
+        return one
+
+    monkeypatch.setattr(eval_ablate_checks, "split_numbers", numbers)
+    monkeypatch.setattr(harness, "dirty_paths", lambda root=None: ["evals/generate.py"])
+    results = asyncio.run(eval_ablate_checks.build(["dev"], DEFAULT_MODEL, "2027-01-12"))
+    assert results["meta"]["dirty"] == ["evals/generate.py"]

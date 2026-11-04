@@ -852,6 +852,35 @@ def test_a_final_read_recorded_on_two_days_is_indexed_when_each_letter_keeps_its
         reproduce.static_index(results)
 
 
+def test_a_replay_written_from_a_tree_with_changes_is_never_indexed(tmp_path: Path) -> None:
+    """A replay's file names the commit it ran at (``meta.commit``) and the code paths that differed from it
+    (``meta.dirty``, which the runner, the e2e run and the replays without the Land and with checks off record): one
+    written from a tree with changes names a commit whose code did not write it, so it is refused until it is
+    written again from a clean tree. A live recording is what it is; the analysis drops a read recorded so."""
+    e2e, without, live = (
+        "2026-10-30-claude-sonnet-5-e2e.json",
+        "2026-10-08-claude-sonnet-5-without-land.json",
+        "2026-10-06-claude-sonnet-5-holdout3.json",
+    )
+    results = _copy_results(tmp_path, [e2e, without, live])
+
+    def dirty(name: str, paths: list[str]) -> None:
+        data = json.loads((results / name).read_text(encoding="utf-8"))
+        data["meta"]["dirty"] = paths
+        (results / name).write_text(json.dumps(data), encoding="utf-8")
+
+    for name in (e2e, without, live):
+        dirty(name, [])
+    reproduce.static_index(results)  # clean trees: indexed
+    dirty(live, ["evals/generate.py"])
+    reproduce.static_index(results)
+    for name in (e2e, without):
+        dirty(name, ["evals/generate.py", "evals/verify_labels.py"])
+        with pytest.raises(reproduce.ReproduceError, match=f"{name}: written from a tree with changes to "):
+            reproduce.static_index(results)
+        dirty(name, [])
+
+
 def test_the_final_analysis_is_checked_with_the_preregistration_and_the_reads_it_recorded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
