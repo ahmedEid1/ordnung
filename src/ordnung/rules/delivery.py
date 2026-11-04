@@ -101,12 +101,13 @@ LAND_DAYS_UNCONFIRMED: Final = (
     "so we counted 3 days (the earlier date)."
 )
 
-#: Why an e-mailed decision of an authority whose Land isn't known is counted from the day it was sent: in Brandenburg
-#: it counts from the day it arrived (§ 7 VwVfGBbg). Static, so the web app and waits_for_sender_land can match it.
+#: Why an e-mailed decision of an authority whose Land isn't known is counted from the day it was sent: the law first
+#: (in Brandenburg it counts from the day it provably arrived, § 7 VwVfGBbg; elsewhere the 3rd or 4th day), then
+#: Ordnung's earliest stand-in. Static, so the web app and waits_for_sender_land can match it.
 LAND_EMAIL_UNCONFIRMED: Final = (
-    "In Brandenburg an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg). Without this sender's Land we "
-    "counted from that day — the day it was sent, unless you told us when it arrived; elsewhere it counts as "
-    "delivered on the 3rd or 4th day after sending."
+    "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg); "
+    "elsewhere it counts as delivered on the 3rd or 4th day after sending. Without this sender's Land we counted from "
+    "the day it was sent, or from the arrival day you entered."
 )
 
 #: Party kinds a reader may give a social-benefits agency: its name and remedy notice decide.
@@ -291,8 +292,8 @@ def _brandenburg_email(
     return label, (
         "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg), "
         f"so we counted from the day it was sent, {fmt_date(posted)}, the earliest it can have arrived. If the "
-        f"authority can't show when it arrived, it counts as delivered on {fmt_date(fiction)}, and the deadline may "
-        f"be up to {(fiction - posted).days} days later."
+        f"authority can't show when it arrived, it counts as delivered on {fmt_date(fiction)}, "
+        f"{(fiction - posted).days} days after it was sent, and the deadline may be later too."
     )
 
 

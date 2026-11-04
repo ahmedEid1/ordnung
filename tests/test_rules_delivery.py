@@ -245,8 +245,23 @@ _LAND_DAYS: list[tuple[str | None, str, str, str, str, str | tuple[str, ...] | N
     (None, "2026-09-29", "post", "2026-10-02", "vwvfg_land_days", LAND_DAYS_UNCONFIRMED),
     ("BE", "2026-10-30", "electronic", "2026-11-03", "vwvfg_41_2", None),
     # Brandenburg: an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg) — at the earliest the day sent
-    ("BB", "2026-10-30", "electronic", "2026-10-30", "vwvfg_bb_7", ("§ 7 VwVfGBbg", "up to 4 days")),
-    ("BB", "2024-12-20", "electronic", "2024-12-20", "vwvfg_bb_7", ("§ 7 VwVfGBbg", "up to 3 days")),
+    # ... and names the fiction's day, how far after sending: not the deadline's gap, which weekends widen
+    (
+        "BB",
+        "2026-10-30",
+        "electronic",
+        "2026-10-30",
+        "vwvfg_bb_7",
+        ("§ 7 VwVfGBbg", "Tue 3 Nov 2026, 4 days after"),
+    ),
+    (
+        "BB",
+        "2024-12-20",
+        "electronic",
+        "2024-12-20",
+        "vwvfg_bb_7",
+        ("§ 7 VwVfGBbg", "Mon 23 Dec 2024, 3 days after"),
+    ),
     ("BB", "2026-10-30", "post", "2026-11-03", "vwvfg_41_2", None),
     ("BB", "2026-10-30", "portal", "2026-10-31", "vwvfg_41_2a", None),
     # an e-mailed decision whose sender's Land isn't known may be Brandenburg's: from the day it was sent
@@ -272,6 +287,7 @@ def test_the_lands_own_delivery_day(
     assert result.steps[0].rule_id == rule_id
     if isinstance(warning, tuple):
         assert result.uncertainty is not None and all(words in result.uncertainty for words in warning)
+        assert "up to" not in result.uncertainty  # the deadline's gap is not the delivery day's
     else:
         assert result.uncertainty == warning
 
@@ -310,6 +326,15 @@ def test_brandenburg_email_counts_from_a_confirmed_arrival_before_the_4th_day() 
     assert early.day == sent and early.steps[0].label.endswith(
         "— at the earliest the day it was sent: Fri 30 Oct 2026"
     )
+
+
+def test_the_email_note_tells_the_law_from_ordnungs_count() -> None:
+    """§ 7 VwVfGBbg counts from the day an e-mailed decision provably arrived, in Brandenburg only; the day it was
+    sent is Ordnung's earliest stand-in while the Land is unknown, not the law."""
+    law, _, method = LAND_EMAIL_UNCONFIRMED.partition("Without this sender's Land")
+    assert "counts from the day it arrived when that can be shown (§ 7 VwVfGBbg)" in law
+    assert "elsewhere it counts as delivered on the 3rd or 4th day after sending" in law
+    assert method == " we counted from the day it was sent, or from the arrival day you entered."
 
 
 def test_the_land_tables() -> None:
@@ -410,6 +435,12 @@ def test_delivery_notes_are_not_read_as_doubts_scams_or_injections() -> None:
         ]
         assert len(found) == 1, land
         notes += found
+    for today, nature in (("2026-01-08", "objection"), ("2026-01-13", "objection"), ("2025-12-01", "other")):
+        context = RuleContext(
+            today=D(today), region="MV", document_date=D("2025-12-09"), delivery_scope="vwvfg"
+        )
+        ends = compute_due(spec.model_copy(update={"nature": nature}), context).warnings
+        notes += [w for w in ends if w.startswith("In Mecklenburg-Vorpommern a matter")]
     notes.append(
         resolve_delivery(D("2026-10-30"), scope="vwvfg", channel="electronic", region="BB").uncertainty or ""
     )

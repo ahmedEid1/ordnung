@@ -44,7 +44,7 @@ const emailed = makeReceipt({
   holiday_calendar: NATIONWIDE,
   confidence: "medium",
   warnings: [
-    "In Brandenburg an e-mailed decision counts from the day it arrived (§ 7 VwVfGBbg). Without this sender's Land we counted from that day — the day it was sent, unless you told us when it arrived; elsewhere it counts as delivered on the 3rd or 4th day after sending.",
+    "In Brandenburg an e-mailed decision counts from the day it arrived when that can be shown (§ 7 VwVfGBbg); elsewhere it counts as delivered on the 3rd or 4th day after sending. Without this sender's Land we counted from the day it was sent, or from the arrival day you entered.",
   ],
 });
 
@@ -246,7 +246,7 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     expect(reason(both, "HE")).toContain(HOLIDAYS);
     expect(reason(makeReceipt({ warnings: [...threeDays.warnings, ...earlier.warnings] }))).toContain(BACKWARDS);
     // an e-mailed decision counted from the day it was sent: every state but Brandenburg counts later
-    const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be a few days early.";
+    const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be several days early, more around weekends and holidays.";
     expect(reason(emailed, "BY")).toContain(EMAIL);
     expect(reason(emailed, "BB")).not.toContain(EMAIL);
     expect(reason(makeReceipt({ warnings: [...emailed.warnings, ...earlier.warnings] }), "BY")).toContain(BACKWARDS);

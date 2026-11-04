@@ -1115,8 +1115,8 @@ def deadline_hints(
     if region is None and (LAND_DAYS_RULE in receipt.rule_ids or BB_EMAIL_RULE in receipt.rule_ids):
         hints.append(
             "Pass region — the Land of the authority: where its own law is confirmed to use the 4-day "
-            "rule (e.g. NW or BY), the letter counts as delivered a day later, and so may the deadline; an "
-            "e-mailed decision counts from the day it was sent only in Brandenburg."
+            "rule (e.g. NW or BY), the letter counts as delivered a day later, and so may the deadline; only in "
+            "Brandenburg does an e-mailed decision count from the day it arrived (the day it was sent at the earliest)."
         )
     if formally_served_may_apply:
         hints.append(FORMAL_SERVICE_HINT)

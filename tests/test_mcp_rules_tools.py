@@ -229,12 +229,18 @@ def test_hints_name_the_authoritys_land_where_the_4_day_rule_is_unconfirmed(tool
 
 
 def test_hints_name_the_authoritys_land_for_an_emailed_decision(tools: RulesTools) -> None:
-    """Without the Land an e-mailed decision counts from the day it was sent (Brandenburg's rule, § 7 VwVfGBbg):
-    the Land is what would make it later."""
+    """Without the Land an e-mailed decision is counted from the day it was sent, the earliest it can count from
+    in Brandenburg, where it counts from the day it arrived (§ 7 VwVfGBbg): the Land is what would make it later.
+    The hint says what the law says, not Ordnung's stand-in."""
     emailed = {**OBJECTION, "delivery_rule": "de_admin_electronic"}
     unknown = tools.compute_deadline(emailed, document_date="2026-09-15", sender_kind="immigration_office")
     assert unknown["due_date"] == "2026-10-15" and _hint(unknown, "Pass region — the Land of the authority")
-    assert any("only in Brandenburg" in hint for hint in unknown["hints"])
+    assert any(
+        "only in Brandenburg does an e-mailed decision count from the day it arrived (the day it was sent at the "
+        "earliest)" in hint
+        for hint in unknown["hints"]
+    )
+    assert not any("counts from the day it was sent only in Brandenburg" in hint for hint in unknown["hints"])
     given = tools.compute_deadline(
         emailed, document_date="2026-09-15", sender_kind="immigration_office", region="NW"
     )

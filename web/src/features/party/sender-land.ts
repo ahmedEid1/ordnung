@@ -47,7 +47,7 @@ export function senderLandLine(s: Pick<RegionSuggestion, "waiting" | "may_be_lat
 export const LAND_WAIT_REASON: Record<LandWait, string> = {
   earlier: "A holiday in their state could make a date earlier. Until you answer, act a working day before it.",
   email:
-    "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be a few days early.",
+    "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be several days early, more around weekends and holidays.",
   days: "Their state decides whether this letter counts as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so the date may be a day early.",
   holiday:
     "Their state's public holidays may move this letter's dates. Until you answer, Ordnung counts only nationwide holidays, so a date may be a day or two early.",
