@@ -97,7 +97,7 @@ def test_the_e2e_specs_quote_the_server_s_sync_sentences_exactly() -> None:
 
 def _ordnung_name(path: str) -> bool:
     """Whether ``path`` (relative to the sync folder, with ``/``) is one of Ordnung's names, by
-    :mod:`ordnung.sync`'s own patterns (design §4.1)."""
+    :mod:`ordnung.sync`'s own patterns."""
     parts = path.split("/")
     name = parts[-1]
     where_ok = (

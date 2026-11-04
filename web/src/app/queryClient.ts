@@ -21,7 +21,7 @@ declare module "@tanstack/react-query" {
 /**
  * The error's sentence, and the server's own words under "Technical details" when the sentence stands in for them
  * (a server error without words for a person, an answer that isn't Ordnung's JSON — never "Internal Server Error"
- * as the sentence: UX audit U9).
+ * as the sentence).
  */
 function sentence(err: ApiError): ReactNode {
   if (!err.technical) return err.message;

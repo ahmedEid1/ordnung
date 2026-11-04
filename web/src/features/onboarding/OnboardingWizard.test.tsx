@@ -1,5 +1,5 @@
 /**
- * The first-run wizard as a person walks it (UI audit round 1, onboarding): focus follows the
+ * The first-run wizard as a person walks it: focus follows the
  * steps, the tab title names them, "Continue" stays reachable and explains itself, typed answers
  * survive, a failed finish shows next to its button, the online demo's finish screen points to
  * Sam's letters, and someone who is set up already has a way back into the app.
@@ -52,7 +52,7 @@ function firstRun(api: ReturnType<typeof useMockApi>, health: Partial<Health> = 
 const h1 = (name: string) => screen.findByRole("heading", { level: 1, name });
 
 describe("walking the wizard", () => {
-  it("moves the focus to each new step's heading once it is on screen, and names the step in the tab title (R1-onboarding-1, -4)", async () => {
+  it("moves the focus to each new step's heading once it is on screen, and names the step in the tab title", async () => {
     const { user } = firstRun(useMockApi());
     await h1("Welcome to Ordnung");
     expect(document.title).toBe("Step 1 of 4: Welcome to Ordnung · Ordnung");
@@ -73,7 +73,7 @@ describe("walking the wizard", () => {
     await waitFor(() => expect(screen.getByRole("heading", { level: 1, name: "Your name and address" })).toHaveFocus());
   });
 
-  it("keeps “Continue” reachable without a state: the hint describes it and it leads to the question (R1-onboarding-8)", async () => {
+  it("keeps “Continue” reachable without a state: the hint describes it and it leads to the question", async () => {
     const { user } = firstRun(useMockApi());
     await user.click(await screen.findByRole("button", { name: "Get started" }));
     await h1("Where do you live?");
@@ -99,7 +99,7 @@ describe("walking the wizard", () => {
     expect(screen.queryByText("Choose your state to continue.")).toBeNull();
   });
 
-  it("offers “Skip for now” only while nothing is typed, and never throws typed answers away (R1-onboarding-7)", async () => {
+  it("offers “Skip for now” only while nothing is typed, and never throws typed answers away", async () => {
     const { user, calls } = firstRun(useMockApi());
     await user.click(await screen.findByRole("button", { name: "Get started" }));
     await user.click(await screen.findByRole("radio", { name: /Berlin/ }));
@@ -121,7 +121,7 @@ describe("walking the wizard", () => {
     expect(calls.find((c) => c.method === "POST" && c.path === "/onboarding")?.body).toMatchObject({ profile: { region: "BE", name: "Sam Rivera" } });
   });
 
-  it("shows a failed finish next to the button, not as a toast, and clears it on success (R1-onboarding-7)", async () => {
+  it("shows a failed finish next to the button, not as a toast, and clears it on success", async () => {
     const { user } = firstRun(useMockApi());
     const mocked = globalThis.fetch;
     let fail = true;
@@ -150,7 +150,7 @@ describe("walking the wizard", () => {
 });
 
 describe("the name & address step", () => {
-  it("shows a four-line address whole and the letterhead line on up to two readable lines (R1-onboarding-5)", async () => {
+  it("shows a four-line address whole and the letterhead line on up to two readable lines", async () => {
     const user = userEvent.setup();
     const { rerender } = render(<StepAddress draft={{ ...initialDraft(), name: "", address: "" }} onChange={() => {}} headingRef={() => {}} />);
     const address = screen.getByRole("textbox", { name: /Postal address/ });
@@ -191,7 +191,7 @@ describe("the Claude check", () => {
     <StepClaude claude={undefined} view="missing" checking={false} onRecheck={() => {}} headingRef={() => {}} {...props} />
   );
 
-  it("says what it found in its own words, with one name for the program (R1-onboarding-6)", () => {
+  it("says what it found in its own words, with one name for the program", () => {
     const { rerender } = render(step({ claude: claude({}), view: "ready" }));
     const status = () => screen.getByRole("status");
     expect(status()).toHaveTextContent("Claude is readySigned in and working.Claude Code 2.1.4");
@@ -211,7 +211,7 @@ describe("the Claude check", () => {
     expect(screen.queryByText(/isn't installed/)).toBeNull();
   });
 
-  it("answers “Check again” even when nothing changed (R1-onboarding-6)", async () => {
+  it("answers “Check again” even when nothing changed", async () => {
     const user = userEvent.setup();
     const onRecheck = vi.fn();
     const { rerender } = render(step({ onRecheck }));
@@ -257,7 +257,7 @@ describe("the Claude check", () => {
     expect(screen.getByRole("button", { name: "Check again" })).toBeInTheDocument();
   });
 
-  it("shows the installer command whole, wrapping only inside its address (R1-onboarding-3)", () => {
+  it("shows the installer command whole, wrapping only inside its address", () => {
     const command = CLAUDE_INSTALL.mac.command;
     render(<CopyCommand command={command} label="install Claude Code" />);
     const code = screen.getByText(command);
@@ -268,7 +268,7 @@ describe("the Claude check", () => {
     expect(screen.getByRole("button", { name: `Copy command to install Claude Code: ${command}` })).toBeInTheDocument();
   });
 
-  it("shows a long npm command whole, wrapping after the package scope (R1-onboarding-3)", () => {
+  it("shows a long npm command whole, wrapping after the package scope", () => {
     render(<CopyCommand command={CLAUDE_NPM_INSTALL} label="install Claude Code with npm" />);
     expect(screen.getByText(CLAUDE_NPM_INSTALL).innerHTML).toBe("npm install -g @anthropic-ai/<wbr>claude-code");
   });
@@ -296,7 +296,7 @@ describe("the finish screen", () => {
     return ctx;
   }
 
-  it("leaves setup for Today without keeping the wizard in the history (R1-onboarding-4, -9)", async () => {
+  it("leaves setup for Today without keeping the wizard in the history", async () => {
     const { user, router } = await finishSetup(useMockApi());
     expect(document.title).toBe("Setup complete · Ordnung");
     expect(screen.getByText("Setup complete")).toBeInTheDocument(); // not "All set" above "You're all set"
@@ -311,7 +311,7 @@ describe("the finish screen", () => {
     expect(router.state.historyAction).toBe("REPLACE");
   });
 
-  it("points to Sam's letters in the online demo, which can't keep files (R1-onboarding-9)", async () => {
+  it("points to Sam's letters in the online demo, which can't keep files", async () => {
     await finishSetup(useMockApi(), { staticDemo: true });
     expect(screen.getByRole("heading", { level: 2, name: "Sam's letters are waiting" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open New mail" })).toHaveAttribute("href", "/inbox");
@@ -321,7 +321,7 @@ describe("the finish screen", () => {
 });
 
 describe("someone who is set up already", () => {
-  it("sees “Change your setup” with a way back into the app, which leaves the wizard out of the history (R1-onboarding-4)", async () => {
+  it("sees “Change your setup” with a way back into the app, which leaves the wizard out of the history", async () => {
     const api = useMockApi();
     const user = userEvent.setup();
     const { router } = renderWithProviders(<OnboardingWizard />, { route: "/welcome" });
@@ -355,7 +355,7 @@ describe("someone who uses Ordnung on another computer already (hand-off sync)",
 });
 
 describe("progress", () => {
-  it("ends in a “Done” pill instead of a stray check after the dots (R1-onboarding-9)", () => {
+  it("ends in a “Done” pill instead of a stray check after the dots", () => {
     const { rerender } = render(<ProgressDots steps={WIZARD_STEPS} current={1} />);
     expect(screen.getByRole("list", { name: "Setup, step 2 of 4" })).toBeInTheDocument();
     rerender(<ProgressDots steps={WIZARD_STEPS} current={WIZARD_STEPS.length} />);

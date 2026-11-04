@@ -133,7 +133,7 @@ def test_compute_due_never_before_the_anchor_for_positive_periods(
 def test_backward_periods_never_move_past_the_count(
     event: date, amount: int, unit: str, nature: str, region: str | None
 ) -> None:
-    """Audit B1: "N before <event>" ends on the backward count, never on a later day."""
+    """The words "N before <event>" end on the backward count, never on a later day."""
     spec = DateSpec(
         type="relative",
         anchor="explicit_date",
@@ -158,7 +158,7 @@ def test_backward_periods_never_move_past_the_count(
     natures,
 )
 def test_compute_due_never_raises(anchor: date, amount: int, unit: str, nature: str) -> None:
-    """Audit B6: any anchor and period gives a receipt; impossible ones give no date and low confidence."""
+    """Any anchor and period gives a receipt; impossible ones give no date and low confidence."""
     spec = DateSpec(
         type="relative",
         anchor="explicit_date",

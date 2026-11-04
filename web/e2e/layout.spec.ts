@@ -124,7 +124,7 @@ test.describe("phone: focus stays clear of the top bar and the tab bar", () => {
   }
 });
 
-// UI audit round 1 (R1-deferred-8): on phones the demo tour — its bar, or the card it opens into —
+// on phones the demo tour — its bar, or the card it opens into —
 // partly covered the field that had focus; the page's scroll-padding counts its height now
 test.describe("phone: focus stays clear of the demo tour", () => {
   test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
@@ -149,7 +149,7 @@ test.describe("phone: focus stays clear of the demo tour", () => {
   });
 });
 
-// E1 review: at 320 px a step's "Show me …" button left its step dots no room, and "Previous step" lay over
+// at 320 px a step's "Show me …" button left its step dots no room, and "Previous step" lay over
 // the last of them (a press on "Step 4" went back a step instead)
 test.describe("phone: the tour card's step dots stay clear of its buttons", () => {
   test.use({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
@@ -220,7 +220,7 @@ async function withToastOn(page: Page, path: string, h1: string | RegExp): Promi
   });
 }
 
-// UI audit round 2 (R2-ui-foundations-1): while a toast (or an upload card) was up, Tab moved focus to
+// while a toast (or an upload card) was up, Tab moved focus to
 // controls hidden behind it — the page's scroll-padding left the toast column out; it mirrors
 // `.room-for-overlays` now (phones: the taller of the tour bar and the toasts; from md: the toast column)
 for (const [width, height, phone] of [
@@ -344,7 +344,7 @@ for (const height of [800, 720]) {
       await open(page, "/", /Sam/);
       const pay = page.getByRole("main").getByRole("button", { name: /^Pay: / }).first();
       // a fixed place for the trigger — a third of the way down — whatever the shared demo's earlier tests left
-      // on Today and wherever the click would scroll it (review round 3 of phase 2: a run with the trigger near
+      // on Today and wherever the click would scroll it (a run with the trigger near
       // the top left no room to make below it, and the panel scrolled inside)
       await pinInView(page, pay);
       await pay.click();

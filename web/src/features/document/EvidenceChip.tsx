@@ -5,7 +5,7 @@
  *
  * The page number is left out for a one-page letter ("· p.1" says nothing there). Where a whole
  * list shares one grounding, the list says it once and each chip is just its icon (`iconOnly`), a
- * 24 px button with the same words in its tooltip and name (UI audit round 1: seven identical
+ * 24 px button with the same words in its tooltip and name (not seven identical
  * "Read by AI from the photo · p.1" pills on a passport). As a button the chip is 24 px tall (WCAG 2.5.8;
  * the layout sweep, e2e/layout-sweep.spec.ts: 22 px on phones).
  */

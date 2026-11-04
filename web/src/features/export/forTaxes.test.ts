@@ -1,5 +1,5 @@
 /**
- * "For taxes" on any letter (D3 contract): one helper decides whether a letter counts for taxes — the person's
+ * "For taxes" on any letter: one helper decides whether a letter counts for taxes — the person's
  * own choice if they made one, else Claude's mark (`secretary.tax_choice.for_taxes` on the server) — and the
  * Tax year page, the export's count and the Inbox read years with one parser.
  */

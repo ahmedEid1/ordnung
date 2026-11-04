@@ -260,7 +260,7 @@ def test_list_items_filters(tools: LedgerTools, ids: dict[str, str]) -> None:
 def test_list_items_with_a_range_brings_contracts_cancellation_deadlines(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Walkthrough of phase 2: "Which deadlines are coming up in October?" listed the to-dos and left out
+    """The question "Which deadlines are coming up in October?" listed the to-dos and left out
     the phone contract's cancellation deadline (must arrive by 14 Oct, send by 8 Oct) — a contract's
     deadline is no to-do. With a range, deadlines (or every kind) bring the contracts' too, in the record."""
     october = tools.list_items(kind="deadline", from_date="2026-10-01", to_date="2026-10-31")
@@ -389,7 +389,7 @@ def test_of_two_price_increases_the_contract_gives_the_window_that_closes_first(
 def test_the_timeline_gives_a_price_increase_windows_days(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: the timeline listed the phone contract's deadline in October but not the electricity
+    """The timeline listed the phone contract's deadline in October but not the electricity
     price increase's special window (post by 26 Oct, must arrive by 31 Oct), the earliest one — the app
     shows it as an Idea, not on its timeline. Ask's timeline gives the window's days, as the contract's and
     the price letter's."""
@@ -432,7 +432,7 @@ def test_the_timeline_gives_a_price_increase_windows_days(
 def test_a_window_counted_from_the_letters_date_needs_it_written(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: a phone contract's window (§ 57 TKG: three months from being told) counts from the
+    """A phone contract's window (§ 57 TKG: three months from being told) counts from the
     letter's own date as the model read it, so a misread letter date moves its last day — later than the
     law allows when read too late. The window is to be checked unless the letter's text writes that date
     as well as the effective date."""
@@ -603,7 +603,7 @@ def test_list_contracts_carry_rule_dates(tools: LedgerTools, ids: dict[str, str]
 def test_a_cancellation_letter_never_puts_its_end_date_in_the_record(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: ``cancellation_confirmed.effective`` — a letter's date nobody confirmed — sat in
+    """``cancellation_confirmed.effective`` — a letter's date nobody confirmed — sat in
     the record, so "your gym membership ends on 31 Dec 2026, nothing more is due" passed as Ordnung's."""
     extraction = store.get_extraction(ids["doc_gym_confirm"])
     assert extraction is not None
@@ -715,7 +715,7 @@ def test_money_summary(tools: LedgerTools, ids: dict[str, str]) -> None:
 def test_money_summary_names_undated_payments_and_demands_not_to_pay(
     store: Store, tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Review finding (round 2): the demo's "what do I have to pay" answers left out the rent (a
+    """The demo's "what do I have to pay" answers left out the rent (a
     payment with no stored due date) and the scam demand, because money_summary listed neither."""
     from helpers_secretary import add_item
 
@@ -782,7 +782,7 @@ def test_render_result_is_compact_json_without_empty_fields() -> None:
 
 
 def test_a_result_over_the_budget_is_cut_by_rows() -> None:
-    """Review finding (round 2): results over 20,000 characters were cut in the middle for the check;
+    """Results over 20,000 characters were cut in the middle for the check;
     now a tool keeps each result within the budget itself, whole, and says what it left out."""
     rows = [{"id": f"itm_{n:012d}", "due_date": "2026-10-21"} for n in range(400)]
     letters = {row["id"]: {"title": "Letter text " * 8} for row in rows}
@@ -808,7 +808,7 @@ def test_list_items_stays_within_the_budget(store: Store, tools: LedgerTools) ->
 
 
 def test_a_cut_off_result_keeps_what_can_be_read_whole() -> None:
-    """Review finding (round 2): without its closing tag a result lost its whole record or letter part."""
+    """Without its closing tag a result lost its whole record or letter part."""
     rendered = render_tool_result(
         ToolAnswer(
             {"today": "2026-09-28", "items": [{"id": "itm_aaaaaaaaaaaa", "due_date": "2026-10-21"}] * 3},
@@ -851,7 +851,7 @@ async def test_server_lists_exactly_the_read_only_tools(store: Store, ids: dict[
 
 
 async def test_scam_demands_are_not_to_be_paid_until_checked(store: Store, ids: dict[str, str]) -> None:
-    """Review round 4: "do_not_pay: never to be paid" was stronger than the app's own scam Idea ("don't
+    """The note "do_not_pay: never to be paid" was stronger than the app's own scam Idea ("don't
     pay until you've checked with the sender"): a real landlord whose bank account changed shows the
     same signs, and a missed rent has consequences."""
     listed = {
@@ -1054,7 +1054,7 @@ async def test_letter_text_never_reaches_the_record_part(store: Store, ids: dict
 def test_money_totals_add_up_only_verified_amounts(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: a contract cost read by AI from a photo reached the record through the totals."""
+    """A contract cost read by AI from a photo reached the record through the totals."""
     store.update_contract(
         ids["ticket"], evidence=_evidence(ids["doc_phone"], "63,00 € monatlich", "model_read")
     )
@@ -1072,7 +1072,7 @@ def test_money_totals_add_up_only_verified_amounts(
 def test_free_text_codes_from_a_letter_stay_letter_text(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review finding: model-read strings (a document's language, a currency) sat in the record."""
+    """Model-read strings (a document's language, a currency) sat in the record."""
     store.update_document(ids["doc_tax"], language="31.12.2027")
     store.update_item(ids["dunning_payment"], currency="EUR bis 31.12.2027")
     doc = tools.get_document(ids["doc_tax"])
@@ -1090,7 +1090,7 @@ def test_free_text_codes_from_a_letter_stay_letter_text(
 def test_a_to_dos_time_is_record_only_as_a_clock_time(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 4: a to-do's time is the extraction model's reading of the letter, and nothing
+    """A to-do's time is the extraction model's reading of the letter, and nothing
     checked its form — "verlängert bis 31.12.2027" in it put that date into the record, where it backed
     "your objection deadline was extended to 31.12.2027 [item:…]"."""
     item = ids["tax_objection"]
@@ -1119,7 +1119,7 @@ def test_a_to_dos_time_is_record_only_as_a_clock_time(
 
 
 def test_every_timeline_entry_keeps_its_wording(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: a contract with several timeline entries kept only the last one's title."""
+    """A contract with several timeline entries kept only the last one's title."""
     answer = tools.timeline("2026-01-01", "2027-12-31")
     rows = [row for row in answer.record["entries"] if row["id"] == ids["phone"]]
     titles = answer.letters[ids["phone"]]["titles"]
@@ -1132,7 +1132,7 @@ def test_every_timeline_entry_keeps_its_wording(tools: LedgerTools, ids: dict[st
 
 
 def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review finding: replays re-ran the check on tool results as recorded, so moving letter text back
+    """Replays re-ran the check on tool results as recorded, so moving letter text back
     into the record part (or an unverified amount into it) would have passed the benchmark's gate."""
     doc = ids["doc_tax"]
     calls = [("get_document", {"doc_id": doc}), ("list_contracts", {}), ("today", {})]
@@ -1148,7 +1148,7 @@ def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids
     unknown = [{"type": "tool_use", "name": "mcp__ordnung__delete_all", "input": {}}, events[3]]
     assert mcp_server.stale_tool_results(tools, unknown) == ["delete_all"]
     # parallel calls answered out of order pair by id; without ids Ask pairs them in order, so the recording
-    # is stale (review round 4 of phase 2: they were compared as a multiset, unlike Ask)
+    # is stale (they were compared as a multiset, unlike Ask)
     with_ids = [{**event, "tool_use_id": str(index)} for index, event in enumerate(events[:3])]
     with_ids += [
         {**event, "tool_use_id": str(index)} for index, event in reversed(list(enumerate(events[3:])))
@@ -1159,7 +1159,7 @@ def test_a_recording_whose_tool_results_changed_is_stale(tools: LedgerTools, ids
 
 
 def test_a_result_no_call_claims_makes_a_recording_stale(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4 of phase 2: a result recorded before the real one (no ids) became the call's in Ask, and
+    """A result recorded before the real one (no ids) became the call's in Ask, and
     the staleness check never reported leftover results — a tampered recording passed the replay gates."""
     doc = ids["doc_tax"]
     call = {"type": "tool_use", "name": "mcp__ordnung__get_document", "input": {"doc_id": doc}}
@@ -1241,8 +1241,8 @@ async def test_a_replay_reads_a_protocol_error_as_text(
 
 
 def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: dict[str, str]) -> None:
-    """Review round 4: list_contracts told Ask "no cancellation is needed" with no word on ending a job
-    early. Final review: the replacement said it "may still need notice to end then" — wrong under § 15
+    """list_contracts told Ask "no cancellation is needed" with no word on ending a job
+    early. An earlier replacement said it "may still need notice to end then" — wrong under § 15
     Abs. 1 TzBfG (a calendar-fixed job ends with its time); an undated notice would end it at the next
     possible date. The record says it ends by itself, and that only ending it earlier needs agreed notice
     (§ 15 Abs. 4 TzBfG)."""
@@ -1262,7 +1262,7 @@ def test_a_fixed_term_job_ends_by_itself_on_its_date(tools: LedgerTools, ids: di
 def test_a_fixed_term_job_can_still_end_early_and_the_record_says_how(
     tools: LedgerTools, ids: dict[str, str]
 ) -> None:
-    """Final review 2: the record said ending the job earlier "is possible only if the contract or a
+    """The record said ending the job earlier "is possible only if the contract or a
     collective agreement allows it" — § 15 Abs. 4 TzBfG limits only *ordinary* notice; a written
     termination agreement (§ 623 BGB) or notice for cause (§ 626 BGB) end it early too, and the model
     repeated the record as "you are locked in". It also left out the duty to register as job-seeking 3
@@ -1317,7 +1317,7 @@ def test_a_fixed_term_job_its_contract_lets_you_leave_early_keeps_the_notice_dat
 
 
 def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[str, str]) -> None:
-    """Final review 2: explain_date gave a fixed-term flat let the catalog's rule "Fixed-term contracts end
+    """explain_date gave a fixed-term flat let the catalog's rule "Fixed-term contracts end
     by themselves" next to a summary saying it may still need notice (§ 575 Abs. 1 S. 2 BGB)."""
     store.update_contract(ids["job"], category="rent", end_date="2027-03-31")
     record = LedgerTools(store, today=TODAY).explain_date(ids["job"]).record
@@ -1333,7 +1333,7 @@ def test_a_flat_lets_fixed_term_rule_says_what_it_needs(store: Store, ids: dict[
 def test_an_active_fixed_term_past_its_end_is_never_recorded_as_ended(
     store: Store, ids: dict[str, str], category: str, law: str
 ) -> None:
-    """Final review 3: an active flat let or job past its end date was recorded as "Its fixed term ended
+    """An active flat let or job past its end date was recorded as "Its fixed term ended
     on … This contract ended on …" — though a flat let without a written reason for its term never ended
     (§ 575 Abs. 1 S. 2 BGB), and one used on continues (§ 545 BGB, § 15 Abs. 6 TzBfG)."""
     store.update_contract(ids["job"], category=category, start_date="2025-09-01", end_date="2026-08-31")
@@ -1354,7 +1354,7 @@ def test_an_active_fixed_term_past_its_end_is_never_recorded_as_ended(
 
 
 def test_a_payment_made_at_an_appointment_has_no_transfer_date(store: Store, ids: dict[str, str]) -> None:
-    """Final review 3: the residence permit's fee is paid by card at the appointment, but Ask's record gave
+    """The residence permit's fee is paid by card at the appointment, but Ask's record gave
     it the bank-transfer send-by date (the day before), and a demo answer called that the day to cancel
     the appointment by — shown as checked, because the date was in the cited record."""
     doc = ids["doc_permit"]
@@ -1387,7 +1387,7 @@ def test_a_payment_made_at_an_appointment_has_no_transfer_date(store: Store, ids
 def test_a_payment_its_words_say_is_made_on_site_has_no_transfer_date(
     store: Store, ids: dict[str, str]
 ) -> None:
-    """UI audit R1-backend-8: Ask's record follows the app's views (``pays_on_site``): a fee paid at the
+    """Ask's record follows the app's views (``pays_on_site``): a fee paid at the
     service desk or by card on site has no bank transfer's send-by date, with or without an appointment
     that day — a letter read before the fix still has one stored."""
     doc = ids["doc_permit"]
@@ -1410,7 +1410,7 @@ def test_a_payment_its_words_say_is_made_on_site_has_no_transfer_date(
 def test_explain_date_keeps_an_unverified_contracts_steps_out_of_the_record(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 1: the steps repeat the terms they start from ("The first term runs from Wed 1 Jan 2025
+    """The steps repeat the terms they start from ("The first term runs from Wed 1 Jan 2025
     …"). For a contract whose terms were read from a photo they are letter text, like the terms themselves
     (ADR 0008 point 1): an AI-read start date cited to the contract passed the check as Ordnung's record
     through explain_date, but not through list_contracts."""
@@ -1438,7 +1438,7 @@ def test_explain_date_keeps_an_unverified_contracts_steps_out_of_the_record(
 def test_explain_date_withholds_a_private_or_trashed_letters_words(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 2 of phase 2: marking a read letter private (or trashing it) still let explain_date
+    """Marking a read letter private (or trashing it) still let explain_date
     return its verbatim evidence quote and wording, which get_document withholds."""
     objection = ids["tax_objection"]
     shared = tools.explain_date(objection)
@@ -1457,7 +1457,7 @@ def test_explain_date_withholds_a_private_or_trashed_letters_words(
 def test_the_totals_note_never_counts_a_payment_listed_to_decide_on(
     tools: LedgerTools, store: Store, ids: dict[str, str]
 ) -> None:
-    """Review round 2 of phase 2 (a mutation that survived): an unverified payment the app says to decide on
+    """A mutation that survived: an unverified payment the app says to decide on
     first is neither in the totals nor among the payments the totals leave out."""
     from ordnung.models import ComputationReceipt
     from ordnung.rules.advice import RENT_INCREASE_PAYMENT_WARNING

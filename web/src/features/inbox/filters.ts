@@ -102,8 +102,8 @@ export function inboxDate(d: ListedLetter): string {
  * The date a row shows — the one its month group is built from ({@link inboxDate}) — and what it
  * is: "Arrived" (the letter's arrival date; "Delivered" for a letter served formally) or "Added" (no arrival
  * date: when it was added). The letter's own date goes along when it differs ("dated 31 Aug"). `served`: an
- * open to-do of the letter counts from formal service ({@link OpenSummary.served}) — as its page says (review
- * round 3 of phase 2: a court letter filed as another kind read "delivered" there and "Arrived" here); a court
+ * open to-do of the letter counts from formal service ({@link OpenSummary.served}) — as its page says (a
+ * court letter filed as another kind once read "delivered" there and "Arrived" here); a court
  * order is served whatever its to-dos.
  */
 export function inboxDateInfo(
@@ -111,7 +111,7 @@ export function inboxDateInfo(
   served = false,
 ): { date: string; verb: "Arrived" | "Delivered" | "Added"; docDate: string | null } {
   const date = inboxDate(d);
-  // a court order's day is the one on the yellow envelope: "delivered", as everywhere (review round 2)
+  // a court order's day is the one on the yellow envelope: "delivered", as everywhere
   const arrived = served || d.kind === "court_payment_order" || d.kind === "enforcement_order" ? "Delivered" : "Arrived";
   return { date, verb: d.received_date ? arrived : "Added", docDate: d.doc_date && d.doc_date !== date ? d.doc_date : null };
 }

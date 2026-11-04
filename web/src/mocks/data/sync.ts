@@ -1,5 +1,5 @@
 /**
- * Hand-off sync in the mock, as `src/ordnung/api/routes/sync.py` and the sync gate answer it (design §17, §19.5).
+ * Hand-off sync in the mock, as `src/ordnung/api/routes/sync.py` and the sync gate answer it (SPEC §12c).
  *
  * - **Two computers**: this one ({@link SYNC_THIS_NAME}) and {@link SYNC_OTHER_NAME}, which set up a sync in
  *   {@link SYNC_EXISTING_FOLDER} — joining that folder brings its Ordnung over; any other full path starts a new
@@ -325,7 +325,7 @@ export class MockSync {
     }
     if (!body.passphrase) throw new SyncRefusal(422, "Type the passphrase of this sync folder.", "passphrase");
     if (body.passphrase.trim().toLowerCase().startsWith(SYNC_WRONG_PASSPHRASE)) throw new SyncRefusal(422, WRONG_PASSPHRASE_MESSAGE, "wrong_passphrase");
-    // a taken name gets " (2)" (finding 29)
+    // a taken name gets " (2)"
     const name = body.name.trim() === SYNC_OTHER_NAME ? `${SYNC_OTHER_NAME} (2)` : body.name.trim();
     const letters = this.db.liveDocuments().length;
     if (letters && !body.keep) return { status: this.status(), choice: this.joiningChoice(name, letters) };

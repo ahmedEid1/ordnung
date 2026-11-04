@@ -293,8 +293,8 @@ _STREET_GAP = "street and house number"
 def recipient_complete(draft: Draft, context: CheckContext) -> DraftCheck:
     """The address field has a name, a street (or PO box) and a postcode with town — for a court (its name,
     :func:`~ordnung.rules.routing.may_be_court`), the postcode and town alone: a central Mahngericht is addressed
-    by its own postcode ("Amtsgericht Hünfeld / Zentrales Mahngericht / 36088 Hünfeld"; review round 4 of
-    phase 2: a correct court address was flagged as missing a street)."""
+    by its own postcode ("Amtsgericht Hünfeld / Zentrales Mahngericht / 36088 Hünfeld"; a correct
+    court address was flagged as missing a street)."""
     from ordnung.rules.routing import may_be_court
 
     gaps = _address_gaps(draft.recipient_block)

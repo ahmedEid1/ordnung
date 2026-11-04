@@ -1,4 +1,4 @@
-"""The sync folder's keys, names and sealing (design §4.2-4.3; review findings 8, 17, 26; F24)."""
+"""The sync folder's keys, names and sealing (SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def test_the_key_file_round_trips_and_holds_no_plaintext() -> None:
         assert secret not in made.data
 
 
-def test_a_wrong_passphrase_is_refused_before_anything_is_stored() -> None:  # F24
+def test_a_wrong_passphrase_is_refused_before_anything_is_stored() -> None:
     made = new_key_file(PASS)
     with pytest.raises(WrongSyncPassphrase, match="doesn't open this folder"):
         open_key_file(made.name, made.data, "orbit velvet canyon maple thundeR")
@@ -94,13 +94,13 @@ def test_a_newer_folder_format_says_update() -> None:
         open_key_file(made.name, data, PASS)
 
 
-def test_the_kdf_is_scrypt_2_18_r_8_within_the_readers_cap() -> None:  # finding 17
+def test_the_kdf_is_scrypt_2_18_r_8_within_the_readers_cap() -> None:
     assert (SYNC_KDF.log2_n, SYNC_KDF.r, SYNC_KDF.p) == (18, 8, 1)
     assert SYNC_KDF.memory == 256 * 1024 * 1024
     SYNC_KDF.check()
 
 
-def test_passphrase_rule_for_a_new_folder() -> None:  # finding 17
+def test_passphrase_rule_for_a_new_folder() -> None:
     assert passphrase_problem(PASS) is None
     assert passphrase_bits(PASS) >= 70
     assert passphrase_problem("correct horse battery staple") is not None  # four words
@@ -110,7 +110,7 @@ def test_passphrase_rule_for_a_new_folder() -> None:  # finding 17
 
 
 # --------------------------------------------------------------------------------------------------
-# sizes (finding 8)
+# sizes
 # --------------------------------------------------------------------------------------------------
 
 
@@ -210,7 +210,7 @@ def test_names_are_keyed() -> None:
     assert a.head_name(computer) != b.head_name(computer) and len(a.temp_tag(computer)) == 8
 
 
-def test_content_named_objects_seal_to_the_same_bytes_heads_do_not() -> None:  # finding 26
+def test_content_named_objects_seal_to_the_same_bytes_heads_do_not() -> None:
     keys = vault()
     data = os.urandom(10_000)
     name = keys.object_name("f", hashlib.sha256(data).hexdigest())

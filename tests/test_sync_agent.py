@@ -272,7 +272,7 @@ async def test_a_person_s_change_is_saved_within_seconds(tmp_path: Path, folder:
 
 
 async def test_a_change_shows_as_unsaved_from_the_moment_it_is_made(tmp_path: Path, folder: Path) -> None:
-    """Integration finding: right after a change the status said "saved" (the last look found nothing
+    """Right after a change the status said "saved" (the last look found nothing
     unsaved), though the change wasn't in the folder yet."""
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
@@ -290,7 +290,7 @@ async def test_a_change_shows_as_unsaved_from_the_moment_it_is_made(tmp_path: Pa
 async def test_files_changing_while_saving_wait_and_a_damaged_original_shows_at_once(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Integration finding: both fell back to "the folder can't be reached"."""
+    """Both fell back to "the folder can't be reached"."""
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     async with computer(desk, engine=engine) as api:
@@ -443,7 +443,7 @@ async def test_background_threads_drain_before_the_data_is_replaced(tmp_path: Pa
 
 
 async def test_a_change_made_while_staging_stops_a_quiet_pull(tmp_path: Path, folder: Path) -> None:
-    """Critique finding 1: a write between the decision and the apply is never overwritten — the
+    """A write between the decision and the apply is never overwritten — the
     decision is taken again behind the fence, and the staging is discarded."""
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
@@ -527,7 +527,7 @@ async def test_a_take_over_waits_for_what_hasn_t_arrived_and_finishes_by_itself(
 async def test_after_taking_over_this_computer_is_the_one_in_use_at_once(
     tmp_path: Path, folder: Path
 ) -> None:
-    """Integration finding: the last look still named the other computer until the next one."""
+    """The last look still named the other computer until the next one."""
     engine = FakeEngine()
     desk, lap = _dirs(tmp_path)
     async with computer(desk, engine=engine) as a, computer(lap, engine=engine) as b:
@@ -689,7 +689,7 @@ async def test_a_hanging_folder_is_unreachable_and_the_status_still_answers(
 async def test_a_folder_that_doesn_t_answer_is_looked_at_less_often_until_it_does(
     tmp_path: Path, folder: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit: a hung folder was looked at as often as ever (each look left a thread stuck in it)."""
+    """A hung folder was looked at as often as ever (each look left a thread stuck in it)."""
     engine = FakeEngine()
     desk, _ = _dirs(tmp_path)
     answering = FakeSession.scan

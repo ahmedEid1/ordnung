@@ -1,6 +1,6 @@
 /**
- * The letter's Pay panel and its "How it was read" tab on the real demo, where jsdom can't look (UI audit
- * round 2, document-pay-reading): a copy says "Copied" on its button — no toast over the popover's footer
+ * The letter's Pay panel and its "How it was read" tab on the real demo, where jsdom can't look:
+ * a copy says "Copied" on its button — no toast over the popover's footer
  * (from 768 px) or unseen behind the phone's sheet — "Mark as paid" hands keyboard focus on to the verdict's
  * heading (never <body>), and the tab's title sits where the verdict's does, so switching tabs doesn't move it.
  */

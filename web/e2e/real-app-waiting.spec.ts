@@ -1,8 +1,8 @@
 /**
  * The real app (`ordnung serve`) while Claude is missing: a letter you add waits for it, and a page loaded
  * afterwards still says so — the "Waiting for Claude" banner, the letter's waiting card with "Add a date" and
- * no placeholders, and neither Today nor the weekly review saying "All clear" (final check F-M1, F-M2: the
- * pause was said once, live, and a reload lost it). Claude goes missing by taking away the link the real app
+ * no placeholders, and neither Today nor the weekly review saying "All clear" (the
+ * pause was once said only live, and a reload lost it). Claude goes missing by taking away the link the real app
  * runs as `claude` (e2e/env.ts); it comes back at the end. Runs after real-app-letters.spec.ts.
  *
  * A scan added meanwhile waits too, yet the letter search finds it by the text its scanner added, marked "not

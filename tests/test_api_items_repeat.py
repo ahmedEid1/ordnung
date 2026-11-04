@@ -1,4 +1,4 @@
-"""Dates you add yourself that repeat (audit item 26): set when added, changed later, and where the next one
+"""Dates you add yourself that repeat: set when added, changed later, and where the next one
 stands (ordnung.recurrence points 2, 4, 7, 8 and 10 for a to-do added by hand)."""
 
 from __future__ import annotations

@@ -454,7 +454,7 @@ CAFE_ROUTER = "192.168.1.1 11:22:33:44:55:66"
 
 
 async def test_a_router_unreadable_when_turned_on_is_remembered_once_it_can_be_read(data_dir: Path) -> None:
-    """Risk review: the router was saved only when phone access was turned on, so one that couldn't be
+    """The router was saved only when phone access was turned on, so one that couldn't be
     read then (no ARP entry yet) was never learned and the pause on another network stayed off. The
     first reading is kept, and a different router never replaces it."""
     async with phone_app(data_dir, network=FakeNetwork(router=None)) as (api, net, _servers):
@@ -502,7 +502,7 @@ async def test_phones_unused_for_thirty_days_are_forgotten(data_dir: Path) -> No
 
 
 async def test_a_phone_unused_for_thirty_days_is_refused_when_it_comes_back(data_dir: Path) -> None:
-    """Lifecycle review: only the watcher's daily round forgot unused phones, so after a restart (or
+    """Only the watcher's daily round forgot unused phones, so after a restart (or
     with phone access turned on again) a phone unused for 45 days got in during the first 30 s — and
     that visit counted as a use, so it was never forgotten. It is refused and forgotten at once."""
     async with phone_app(data_dir) as (api, _net, _servers), phone_client(api) as phone:
@@ -521,7 +521,7 @@ async def test_a_phone_unused_for_thirty_days_is_refused_when_it_comes_back(data
 
 
 async def test_starting_or_turning_on_phone_access_forgets_unused_phones(data_dir: Path) -> None:
-    """Lifecycle review: the sweep of unused phones runs when phone access starts (a restart) and when
+    """The sweep of unused phones runs when phone access starts (a restart) and when
     it is turned on again, not only a day later — Settings never lists a phone it would refuse."""
     idle = (datetime.now(UTC) - timedelta(days=DEVICE_IDLE_DAYS + 15)).strftime("%Y-%m-%dT%H:%M:%SZ")
     async with phone_app(data_dir) as (api, _net, _servers):
@@ -599,7 +599,7 @@ async def test_the_sign_in_changes_hourly_and_an_old_one_coming_back_signs_the_p
         now[0] += 20
         reused = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={first}"})
         assert (reused.status_code, reused.json()["removed"]) == (401, "token_reuse")
-        # the phone's own sign-in is told why too (UX and lifecycle review: it said "removed")
+        # the phone's own sign-in is told why too (it said "removed")
         own = await phone.get("/api/items", headers={"Cookie": f"{COOKIE}={second}"})
         assert (own.status_code, own.json()["removed"]) == (401, "token_reuse")
         page = await phone.get("/today", headers={"Cookie": f"{COOKIE}={second}"})
@@ -638,7 +638,7 @@ async def test_a_phone_that_missed_its_new_sign_in_gets_another(
 async def test_two_page_loads_that_cross_the_hourly_change_keep_the_phone_signed_in(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, crossing: str, last: str
 ) -> None:
-    """Risk review: two page loads with the same cookie at the hourly change (restored tabs, a double
+    """Two page loads with the same cookie at the hourly change (restored tabs, a double
     reload) could each change the sign-in, so the phone could end up with one the computer had already
     replaced (signed out at once) or with the previous one (signed out 2 minutes after it used the new
     one). Whichever answer its browser applies last, the phone stays signed in."""
@@ -710,7 +710,7 @@ async def test_a_late_page_load_with_the_previous_sign_in_leaves_the_new_one_alo
 
 
 # --------------------------------------------------------------------------------------------------
-# what a phone sees (M6) and does
+# what a phone sees and does
 # --------------------------------------------------------------------------------------------------
 
 
@@ -753,7 +753,7 @@ def _letters(n: int, start: int = 0) -> list[tuple[str, tuple[str, bytes]]]:
 
 
 async def test_an_upload_counts_each_letter_against_the_phone_s_hour(data_dir: Path) -> None:
-    """Scope review: the hourly upload limit counted requests, so one request of 60 files queued 60
+    """The hourly upload limit counted requests, so one request of 60 files queued 60
     readings ("upload slots used: 1 of 30"). Each letter counts; photos combined into one letter count
     once; a refused upload files nothing and counts for nothing."""
     pages = [(SAMPLES / f"23_steuerbescheid_2025_p{n}.jpg").read_bytes() for n in (1, 2)]

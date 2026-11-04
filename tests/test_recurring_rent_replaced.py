@@ -654,7 +654,7 @@ async def test_a_rent_on_the_same_day_of_every_month_passes_that_day_on(data_dir
 
 
 # --------------------------------------------------------------------------------------------------
-# review of the rent replacement: what a later payment replaces, and what an Undo gives back
+# the rent replacement: what a later payment replaces, and what an Undo gives back
 # --------------------------------------------------------------------------------------------------
 
 PREPAYMENT_QUOTE = "Ihre monatliche Vorauszahlung beträgt ab dem 01.11.2026 150,00 EUR (bisher 120,00 EUR)."

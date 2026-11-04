@@ -41,7 +41,7 @@ function Emphasised({ text }: { text: string }) {
  * the ledger) with a "write a new note" button. Falls back to a code-generated agenda sentence. The
  * note is written from what was read: letters from the watched folder that wait unread have the card
  * right below it ("Not read yet: 3 letters from your folder"), so a note by Claude doesn't get a line
- * that says so again (UI audit round 2). The fallback sentence names them itself, so it never reads
+ * that says so again. The fallback sentence names them itself, so it never reads
  * as "all clear".
  */
 export function SecretaryNote({ fallback }: { fallback: string }) {

@@ -1,5 +1,5 @@
 /**
- * "Edit your date" (audit item 26): a date of the person's own, changed later — what it says, how it repeats, and
+ * "Edit your date": a date of the person's own, changed later — what it says, how it repeats, and
  * which dates move — or removed (dismissed, with Undo; a paired phone may do that, unlike deleting it).
  */
 import { useState } from "react";

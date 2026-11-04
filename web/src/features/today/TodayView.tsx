@@ -128,7 +128,7 @@ export function dayErrorDescription(error: unknown, phone = false): string {
 
 /** "A PDF, a phone photo or a saved e‑mail": the app's words for what can be added ("e‑mail" never splits at its hyphen). */
 const ADD_WHAT = ACCEPTED_ONE.charAt(0).toUpperCase() + ACCEPTED_ONE.slice(1);
-/** The inline-code look of Settings: a command reads as one, not as body text in another colour (UI audit round 2). */
+/** The inline-code look of Settings: a command reads as one, not as body text in another colour. */
 const CODE = "whitespace-nowrap rounded bg-surface-2 px-1 font-mono text-[13px] text-ink";
 
 /** A fresh install with no letters yet: one clear first step instead of a page of zeros and "All clear". */

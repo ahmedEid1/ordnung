@@ -106,7 +106,7 @@ describe("the tour spotlights each page's element", () => {
     expect(screen.getByTestId("tour-spotlight").className).toContain("z-[5]");
   });
 
-  // UI audit round 1 (R1-tour-6): the tray's swipe row ran past a ring around the whole tray
+  // the tray's swipe row ran past a ring around the whole tray
   it("step 1 on phones · the first envelope, not the whole tray (its swipe row runs past the screen's edges)", async () => {
     const { srv } = useMockApi();
     srv.db.state.tour = { active: true, step: 0, completed: false };

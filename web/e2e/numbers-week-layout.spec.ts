@@ -116,7 +116,7 @@ for (const [variant, label] of Object.entries(LONG_LABELS)) {
     const title = page.getByRole("main").getByText(label, { exact: true });
     await expect(title).toBeVisible();
     expect(await outOfBounds(page)).toEqual([]);
-    // UI audit R2-party-numbers-8: it broke mid-word ("…/Sozialvers" · "icherungsnummer…"); now after its
+    // it broke mid-word ("…/Sozialvers" · "icherungsnummer…"); now after its
     // slashes. Hyphenation fills a line greedily ("…nummer/Versi-" · "cherungsnummer" with Chrome's German
     // dictionary), so each part that fits a line must still be on one.
     const lines = await title.evaluate((p) => {
@@ -134,7 +134,7 @@ for (const [variant, label] of Object.entries(LONG_LABELS)) {
 }
 
 test("the cards of a row are as tall as each other, their letter lines level", async ({ page }) => {
-  // UI audit R2-party-numbers-7: short cards left gaps, the "Last letter" lines never lined up
+  // short cards left gaps, the "Last letter" lines never lined up
   await page.setViewportSize({ width: 1280, height: 800 });
   for (const tab of ["organisations", "cases"]) {
     await open(page, `/numbers?tab=${tab}`, "My numbers");
@@ -159,7 +159,7 @@ test("the cards of a row are as tall as each other, their letter lines level", a
 for (const width of [390, 1280]) {
   test(`Next and Back at ${width}px: the focus on the new step's heading, its “Step n of m” clear of the top bar`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
-    // R2-week-waiting-3. The review opens on its first step, and that isn't always "New": the demo's library
+    // The review opens on its first step, and that isn't always "New": the demo's library
     // notice must be returned by Fri 2 Oct, so its send-by day is the demo's today (Mon 28 Sep) and "Act now"
     // (one row) comes first. Start on the step before "Compare with the letter" — New, with every letter of
     // the week — as the review did before

@@ -1,6 +1,6 @@
 /**
- * Settings → Phone (computer only): use Ordnung in a phone's browser over the home Wi‑Fi (design §13.1, with the
- * security review's amendments).
+ * Settings → Phone (computer only): use Ordnung in a phone's browser over the home Wi‑Fi (SPEC §12b,
+ * ADR 0017).
  *
  * - **Use Ordnung on your phone**: what it is, three facts, the switch. Turning it on asks first — at which
  *   address (this computer's home networks, the one it reaches the internet from recommended; never a VPN), with the

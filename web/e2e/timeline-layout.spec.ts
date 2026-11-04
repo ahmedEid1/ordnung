@@ -1,5 +1,5 @@
 /**
- * The Timeline on the real demo, where jsdom can't look (UI audit round 1, timeline): on phones
+ * The Timeline on the real demo, where jsdom can't look: on phones
  * the list is part of the page (no scroll box that traps the thumb), starts at Today and keeps its
  * month headers to one 44 px line under the top bar; "Back to today" floats above the tab bar; from
  * 768 px the card opens with the Today divider exactly under its sticky header; a lane marker

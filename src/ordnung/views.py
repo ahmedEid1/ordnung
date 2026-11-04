@@ -144,7 +144,7 @@ def _home_letter(ledger: Ledger, doc: Document | None) -> bool:
 
 def document_area(ledger: Ledger, doc: Document) -> Area:
     """The life area a letter is shown under: its own, but a letter about the home is never shown under
-    the residence permit (UI audit R1-backend-2)."""
+    the residence permit."""
     area: Area = doc.area or "other"
     return "home" if area == "residence" and _home_letter(ledger, doc) else area
 
@@ -294,7 +294,7 @@ class _AreaDate:
     what: str
     capped: bool = False  # nothing to send (an appointment, a payment nobody sends by bank): never urgent
     #: nothing to do at all — a direct debit the sender collects, money coming in: never raises the area
-    #: (walkthrough of phase 2: "Getting around · Needs attention" for the Deutschlandticket's direct debit)
+    #: (no "Getting around · Needs attention" for the Deutschlandticket's direct debit)
     quiet: bool = False
 
 
@@ -490,7 +490,7 @@ def _item_subtitle(item: Item, today: date) -> str | None:
     """What an item's day asks of the person, in Today's words: money sent by bank transfer "Transfer
     by …" (its send-by day), a direct debit "Collected by direct debit" (the sender takes it on the
     day: nothing to send), anything posted "Send by …" — or "Must arrive by …" once the usual time to
-    post has passed (review round 4). A fee paid by card at the appointment has no day to transfer by
+    post has passed. A fee paid by card at the appointment has no day to transfer by
     (``None``: its own words say how to pay)."""
     payment = item.kind == "payment" and item.direction != "in"
     if payment and is_direct_debit(item):
@@ -542,7 +542,7 @@ def _item_entries(ledger: Ledger) -> list[TimelineEntry]:
 def _aside(ledger: Ledger, item: Item) -> Literal["replaced", "attached", "history"] | None:
     """Why an open to-do is not one to act on, for the timeline (as ``ItemAside`` for a letter's page): a
     payment reminder replaced it, the e-mail's attached bill repeats it, or it was history when filed — never
-    "Overdue" there (walkthrough of phase 2: an invoice its reminder replaced showed as overdue)."""
+    "Overdue" there (an invoice its reminder replaced showed as overdue)."""
     if item.status in ("done", "dismissed"):
         return None
     if ledger.is_superseded_by_reminder(item):

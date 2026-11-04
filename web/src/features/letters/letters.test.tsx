@@ -171,7 +171,7 @@ describe("sending", () => {
     expect(instantPhrase(guidance.channels)).toBeNull();
   });
 
-  it("on the last days, says when it must arrive and that a letter may be too late (review round 4)", () => {
+  it("on the last days, says when it must arrive and that a letter may be too late", () => {
     const court: SendGuidance = {
       ...STATUTORY_OBJECTIONS.enforcement_order!.guidance,
       send_by: "2026-09-28",
@@ -242,7 +242,7 @@ describe("Letters page", () => {
     const user = userEvent.setup();
     const { router } = renderWithProviders(<LettersPage />, { route: "/letters?kind=objection&doc=doc_tax" });
     const dialog = await screen.findByRole("dialog", { name: "New letter" });
-    // said on phones too: under the letter's name there, beside it from 640 px (UI audit round 1)
+    // said on phones too: under the letter's name there, beside it from 640 px
     const pills = await within(dialog).findAllByText("Einspruch possible");
     expect(pills.map((p) => p.parentElement!.className)).toEqual([expect.stringMatching(/(^| )sm:hidden( |$)/), expect.stringMatching(/(^| )hidden .*sm:inline-flex/)]);
     expect(dialog).toHaveTextContent(/To\s*FM\s*Finanzamt Musterstadt\s*Steuerring 10, 12345 Musterstadt/);

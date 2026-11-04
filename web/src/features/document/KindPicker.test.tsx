@@ -41,7 +41,7 @@ describe("KindPicker", () => {
     expect(JSON.parse(String(init.body))).toEqual({ kind: "court_payment_order" });
   });
 
-  it("never claims the online demo worked the dates out again (review round 1: it has no rules engine)", async () => {
+  it("never claims the online demo worked the dates out again (it has no rules engine)", async () => {
     vi.stubEnv("VITE_STATIC_DEMO", "1");
     const { note, description } = await refile();
     expect(note).not.toBeNull();
@@ -49,7 +49,7 @@ describe("KindPicker", () => {
     expect(description).not.toMatch(/were worked out again/);
   });
 
-  it("says what each letter kind with legal deadlines changes, its German name marked German (R2-ui-foundations-5)", async () => {
+  it("says what each letter kind with legal deadlines changes, its German name marked German", async () => {
     renderWithProviders(<KindPicker doc={{ id: "doc_1", kind: "operating_costs" }} />, { client: makeTestQueryClient() });
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Change what kind of letter this is" }));

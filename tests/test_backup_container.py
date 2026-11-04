@@ -73,7 +73,7 @@ def test_round_trip_at_every_chunk_boundary(size: int) -> None:
     assert len(sealed) == HEADER_BYTES + size + TAG_BYTES * expected_chunks
 
 
-GOLDEN = {  # format v1 bytes as written before the STREAM refactor (hand-off sync P1), byte for byte
+GOLDEN = {  # format v1 bytes as written before the STREAM refactor (hand-off sync), byte for byte
     0: "0b56f588422545dee657ad0fe205f8e35e23a293600a5438352ad96f682f8635",
     1: "99c2f659c95b03190da67306abb8bc5822ed68556ddc0f72181af28e91dd7382",
     CHUNK - 1: "28128d917083af1a3f35c5e2926ffbbf5cdf180073abd555e0184f6b17fcf2a1",

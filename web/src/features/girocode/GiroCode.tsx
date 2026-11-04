@@ -416,7 +416,7 @@ function CompareFirst({
     if (reprocess.error) scrollClear(readFailedRef.current);
   }, [answered, reprocess.error]);
   // The reading asked for here, followed to its end: the block stays (its code may still ask to compare), so
-  // it says when the reading is done — or why it failed — and offers it again (UI audit round 2: "Reading it
+  // it says when the reading is done — or why it failed — and offers it again (not "Reading it
   // again" for good). Kept once seen: the letter's page drops a finished job from the progress list.
   const job = useJobProgress(docId);
   const asked = reprocess.data?.id;

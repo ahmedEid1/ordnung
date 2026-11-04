@@ -1,9 +1,9 @@
 /**
- * The Letters list and the New-letter composer on the real demo, where jsdom can't measure (UI audit
- * round 1, letters-b): beside "How letters work" (1024–1280 px) the rows kept only their icon and
+ * The Letters list and the New-letter composer on the real demo, where jsdom can't measure:
+ * beside "How letters work" (1024–1280 px) the rows kept only their icon and
  * status — the title squeezed out by a fixed status column; phones lost the date and the row's focus
  * ring was clipped to a line; the composer's lists scrolled inside the scrolling dialog, a contract
- * chosen by a link out of view; picking a kind on a small phone changed nothing visible. Round 2: on a
+ * chosen by a link out of view; picking a kind on a small phone changed nothing visible. On a
  * 320×640 phone the pinned description and a tall footer left under half the sheet for the choices, and
  * contracts that can be cancelled any month counted down in red to their "send by".
  */

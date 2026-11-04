@@ -1,4 +1,4 @@
-"""The "Please check" status after reading a letter again (round 2, R2-REV-1).
+"""The "Please check" status after reading a letter again.
 
 dates.py defines the rule: "a letter is 'Please check' exactly while one of its open to-dos still needs
 checking (confirmed, re-dated, dismissed, done or deleted ones don't)", and plan.py keeps what the

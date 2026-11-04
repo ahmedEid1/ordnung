@@ -27,7 +27,7 @@ export function useClaudeWait(doc: Pick<Document, "id" | "status">): string | nu
 
 /**
  * The letter waits in the queue until Claude can read it: why, and where to connect Claude — no stepper that
- * never moves past "Opening the file…" (final check, F-M2). No "Try again" either: it is read as soon as Claude
+ * never moves past "Opening the file…". No "Try again" either: it is read as soon as Claude
  * is ready, and a second reading would only queue it twice.
  */
 function ClaudeWaitCard({ reason, again }: { reason: string; again: boolean }) {
@@ -62,7 +62,7 @@ function ClaudeWaitCard({ reason, again }: { reason: string; again: boolean }) {
 
 /**
  * A letter read before says so in a line above the verdict, whose title is the page's heading — no second
- * title over it (UI audit round 2: the title twice, an h2 before the page's h1). A letter read for the first
+ * title over it (not the title twice, an h2 before the page's h1). A letter read for the first
  * time has no verdict yet: the card's title is the page's heading.
  */
 export function ProcessingCard({ doc }: { doc: Document }) {

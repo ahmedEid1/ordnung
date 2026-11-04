@@ -1,4 +1,4 @@
-"""Pushing (design §10; review findings 7, 10, 11c, 14, 19, 20, 21; F1-F2, F17)."""
+"""Pushing (SPEC §12c)."""
 
 from __future__ import annotations
 
@@ -86,7 +86,7 @@ def test_background_work_pushes_without_a_person_number(anna: Computer) -> None:
     assert anna.s.state.pnum == before
 
 
-def test_a_person_write_that_changes_nothing_synced_makes_no_version(anna: Computer) -> None:  # finding 14
+def test_a_person_write_that_changes_nothing_synced_makes_no_version(anna: Computer) -> None:
     anna.connect()
     seq = anna.s.state.seq
     with person_write():
@@ -96,7 +96,7 @@ def test_a_person_write_that_changes_nothing_synced_makes_no_version(anna: Compu
     assert anna.s.state.seq == seq and not anna.s.pending(anna.db)
 
 
-def test_the_demo_never_pushes(anna: Computer) -> None:  # finding 19, F38
+def test_the_demo_never_pushes(anna: Computer) -> None:
     anna.connect()
     anna.db.save_settings(anna.db.get_settings().model_copy(update={"demo": True}))
     with pytest.raises(SyncRefused):
@@ -105,7 +105,7 @@ def test_the_demo_never_pushes(anna: Computer) -> None:  # finding 19, F38
         anna.s.push(anna.db, demo=True)
 
 
-def test_a_file_the_snapshot_names_must_be_there(anna: Computer) -> None:  # finding 10
+def test_a_file_the_snapshot_names_must_be_there(anna: Computer) -> None:
     anna.connect()
     doc = anna.add_letter("gone")
     (anna.paths.derived / doc / "page-1.jpg").unlink()
@@ -113,7 +113,7 @@ def test_a_file_the_snapshot_names_must_be_there(anna: Computer) -> None:  # fin
         anna.s.push(anna.db)
 
 
-def test_a_damaged_original_is_never_sealed(anna: Computer) -> None:  # finding 11c
+def test_a_damaged_original_is_never_sealed(anna: Computer) -> None:
     anna.connect()
     anna.add_letter("rotting")
     original = next(p for p in anna.paths.files.rglob("*.pdf"))
@@ -159,7 +159,7 @@ def test_the_fence_stands_by_when_a_higher_claim_appeared(tmp_path: Path) -> Non
         b.close()
 
 
-def test_missing_objects_are_written_again(anna: Computer) -> None:  # F17, finding 7
+def test_missing_objects_are_written_again(anna: Computer) -> None:
     anna.add_letter("first")
     anna.connect()
     victims = sorted(objects(anna.folder))[:3]
@@ -170,7 +170,7 @@ def test_missing_objects_are_written_again(anna: Computer) -> None:  # F17, find
     assert anna.s.scanner.completeness(anna.s.state.base.ref, {}).ready  # type: ignore[union-attr]
 
 
-def test_the_own_head_is_rewritten_when_it_goes_back(anna: Computer) -> None:  # F15, finding 7
+def test_the_own_head_is_rewritten_when_it_goes_back(anna: Computer) -> None:
     anna.connect()
     head = next((anna.folder / "h").iterdir())
     old = head.read_bytes()
@@ -183,7 +183,7 @@ def test_the_own_head_is_rewritten_when_it_goes_back(anna: Computer) -> None:  #
     assert not view.own_stale
 
 
-def test_gc_waits_seven_days_of_wall_clock_and_running_time(anna: Computer) -> None:  # finding 20
+def test_gc_waits_seven_days_of_wall_clock_and_running_time(anna: Computer) -> None:
     anna.add_letter("doomed")
     anna.connect()
     doc = next(iter(anna.letters()))
@@ -213,7 +213,7 @@ def test_buckets_follow_the_data_folders_layout() -> None:
     assert bucket_key("drafts/x.pdf") == "drafts"
 
 
-def test_the_counter_is_read_from_the_snapshot(anna: Computer) -> None:  # finding 5a
+def test_the_counter_is_read_from_the_snapshot(anna: Computer) -> None:
     anna.connect()
     with person_write():
         anna.db.add_note("one")

@@ -467,7 +467,7 @@ async def test_objection_to_a_court_order_uses_the_statutory_remedy(
 
 
 async def test_suspending_enforcement_is_a_ticked_choice(ctx: AppContext, ids: dict[str, str]) -> None:
-    """Review round 4: the application to suspend enforcement (§§ 719, 707 ZPO) comes from the explicit
+    """The application to suspend enforcement (§§ 719, 707 ZPO) comes from the explicit
     choice, not from keywords in the wishes; a court payment order has nothing to suspend yet."""
     asked = await compose(ctx, "objection", doc_id=ids["enforcement"], suspend_enforcement=True)
     assert "Zwangsvollstreckung aus dem Vollstreckungsbescheid einstweilen einzustellen" in asked.body
@@ -493,7 +493,7 @@ async def test_objection_to_a_landlords_notice(ctx: AppContext, ids: dict[str, s
 async def test_objection_to_a_notice_in_the_alternative_says_when_the_hardship_objection_is_excluded(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
-    """Final review 3: the hardship objection is excluded whenever the landlord had grounds for a notice
+    """The hardship objection is excluded whenever the landlord had grounds for a notice
     without notice period — also against the notice given in the alternative (§ 574 Abs. 1 S. 2 BGB; BGH,
     01.07.2020, VIII ZR 323/18). The letter is still drafted (the safe side), with the card's note; an
     ordinary notice's letter has no such note."""
@@ -628,20 +628,18 @@ async def test_instalments_are_offered_to_the_claimant_not_the_court(
     for letter in ("order", "enforcement"):
         with pytest.raises(DraftError, match="the claimant does") as refused:
             await compose(ctx, "payment_plan", doc_id=ids[letter], details=details)
-        assert "§ 212 Abs. 1 Nr. 1 BGB" in str(
-            refused.value
-        )  # review round 1: an offer acknowledges the claim
+        assert "§ 212 Abs. 1 Nr. 1 BGB" in str(refused.value)  # an offer acknowledges the claim
     claimant = ctx.store.add_party(name="Streamline Media GmbH", kind="company").id
     offer = await compose(ctx, "payment_plan", party_id=claimant, details=details)
     assert offer.recipient_block.startswith("Streamline Media GmbH")
-    # review round 1: the offer restarts the limitation period and gives up disputing the claim
+    # the offer restarts the limitation period and gives up disputing the claim
     assert ACKNOWLEDGES_CLAIM in offer.notes_for_user
 
 
 async def test_an_offer_to_the_claimant_stays_linked_to_the_order(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
-    """Review round 2 of phase 2: "Write to the claimant instead" unlinked the order, so the offer lost its
+    """The choice "Write to the claimant instead" unlinked the order, so the offer lost its
     Geschäftsnummer and date. Linked to the order with the claimant typed in, it keeps them, goes to the
     claimant (never the court) and still says what it acknowledges."""
     details = LetterDetails(
@@ -670,7 +668,7 @@ async def test_an_offer_to_the_claimant_stays_linked_to_the_order(
 async def test_typing_the_court_as_the_claimant_is_still_refused(
     ctx: AppContext, ids: dict[str, str], court: str
 ) -> None:
-    """Review round 3 of phase 2: any typed recipient counted as the claimant, so typing the court addressed
+    """Any typed recipient counted as the claimant, so typing the court addressed
     an offer of instalments to the Amtsgericht and the refusal never fired."""
     details = LetterDetails(instalment=20, first_instalment="2026-10-15", amount=111.88, recipient=court)
     with pytest.raises(DraftError, match="the claimant does"):
@@ -680,7 +678,7 @@ async def test_typing_the_court_as_the_claimant_is_still_refused(
 async def test_an_offer_on_a_court_order_says_its_deadline_still_runs(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
-    """Review round 3 of phase 2: the offer's notes lost the refusal's key sentence — pay or object by the
+    """The offer's notes lost the refusal's key sentence — pay or object by the
     court's deadline, or an enforcement order can follow."""
     details = LetterDetails(
         instalment=20,
@@ -704,7 +702,7 @@ async def test_an_offer_on_a_court_order_says_its_deadline_still_runs(
 async def test_an_objection_to_a_court_order_never_goes_to_a_sender_that_isnt_a_court(
     ctx: AppContext, ids: dict[str, str]
 ) -> None:
-    """Review round 3 of phase 2: a Mahnbescheid re-filed from what was read as the claimant's reminder kept
+    """A Mahnbescheid re-filed from what was read as the claimant's reminder kept
     the claimant as its sender, and the objection was addressed to them — it doesn't stop the order there
     (§ 694 ZPO). Such an objection is refused unless the court is typed in, and then goes to the court."""
     order = _doc(
@@ -1046,7 +1044,7 @@ async def test_a_template_letter_to_someone_not_in_ordnung_yet(ctx: AppContext, 
 async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
     ctx: AppContext, ids: dict[str, str], name: str, kind: str, court: bool
 ) -> None:
-    """Final review 1: "LG Electronics" is a retailer, not a Landgericht: an e-mail withdrawal is valid, and
+    """The name "LG Electronics" is a retailer's, not a Landgericht: an e-mail withdrawal is valid, and
     no court's Aktenzeichen is asked for."""
     party = ctx.store.add_party(name=name, kind=kind, address="Postfach 1, 65760 Eschborn").id
     details = LetterDetails(subject_matter="Fernseher", received_on="2026-09-24")
@@ -1062,7 +1060,7 @@ async def test_a_withdrawal_to_a_company_named_like_a_court_may_go_by_email(
 async def test_a_request_for_more_time_to_a_court_typed_by_its_abbreviation_goes_in_writing(
     ctx: AppContext, recipient: str
 ) -> None:
-    """Final review 3: "AG Hagen" typed in may be a court, where a plain e-mail doesn't count: the letter's
+    """The name "AG Hagen" typed in may be a court's, where a plain e-mail doesn't count: the letter's
     sending advice leads with the signed letter and says e-mail is valid only if it isn't a court."""
     details = LetterDetails(recipient=recipient, until="2026-11-15", subject_matter="Stellungnahme")
     draft = await compose(ctx, "extension_request", details=details)
@@ -1085,7 +1083,7 @@ async def test_a_request_for_more_time_to_a_court_typed_by_its_abbreviation_goes
 async def test_a_typed_recipient_is_a_court_only_by_its_full_name(
     ctx: AppContext, recipient: str, court: bool
 ) -> None:
-    """Final review 2: a recipient typed in has no kind, so a court's abbreviation ("LG", "OLG", "AG") in a
+    """A recipient typed in has no kind, so a court's abbreviation ("LG", "OLG", "AG") in a
     company's name doesn't give it a court's sending advice: e-mail stays valid, no Aktenzeichen is asked."""
     details = LetterDetails(recipient=recipient, subject_matter="Fernseher", received_on="2026-09-24")
     draft = await compose(ctx, "withdrawal", details=details)

@@ -115,7 +115,7 @@ def test_a_staged_version_is_kept_as_a_copy_that_opens_with_the_passphrase(
 def test_a_kept_copy_of_a_staged_version_reaches_the_disk_with_ordnung_s_own_flush(
     pair: Pair, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit: it was flushed with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS), as the backup was."""
+    """It was flushed with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS), as the backup was."""
     sizes: list[int] = []  # of every file flushed: the copy is the only one its size
     real = durable.fsync
     monkeypatch.setattr(durable, "fsync", lambda fd: (sizes.append(os.fstat(fd).st_size), real(fd)))
@@ -200,7 +200,7 @@ def _info(name: str = "ordnung-kept-2026-10-07-0912.ordnung-backup") -> KeptInfo
 def test_the_kept_record_reaches_the_disk_with_its_folder(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Audit: the record was written with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS) and its
+    """The record was written with a plain ``os.fsync`` (not ``F_FULLFSYNC`` on macOS) and its
     folder was never synced, so the rename could be lost in a power cut."""
     folder = tmp_path / "kept"
     files: list[int] = []

@@ -121,7 +121,7 @@ def test_the_warning_is_no_scam_sign_and_no_hedge(gap: str, injected: bool) -> N
 
 
 # --------------------------------------------------------------------------------------------------
-# No further call once the letter was trashed or deleted (ux F2)
+# No further call once the letter was trashed or deleted
 # --------------------------------------------------------------------------------------------------
 
 
@@ -159,7 +159,7 @@ async def test_a_letter_trashed_or_deleted_during_the_extraction_is_not_sent_aga
 
 
 # --------------------------------------------------------------------------------------------------
-# Read again and compared (ux F7)
+# Read again and compared
 # --------------------------------------------------------------------------------------------------
 
 
@@ -187,7 +187,7 @@ async def test_read_again_and_compare_says_whether_the_re_ask_s_answer_was_used(
 def test_a_prediction_made_without_the_re_ask_s_recording_is_never_served_from_the_cache(
     tmp_path: Path,
 ) -> None:
-    """Benchmark review H1: a recording made since (no fingerprint covers it) must be replayed, and a live run
+    """A recording made since (no fingerprint covers it) must be replayed, and a live run
     must make the call."""
     path = tmp_path / "cached.json"
     missing = Prediction(
@@ -202,7 +202,7 @@ def test_a_prediction_made_without_the_re_ask_s_recording_is_never_served_from_t
 async def test_a_replay_without_the_re_ask_s_recording_says_so_and_keeps_it_in_the_results(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Benchmark review H3: the warning, ``meta.reading_reask_missing``, and nothing cached for the letter."""
+    """The warning, ``meta.reading_reask_missing``, and nothing cached for the letter."""
     as_first_recorded(monkeypatch)
     said: list[str] = []
     config = eval_run.RunConfig(
@@ -257,7 +257,7 @@ def test_the_warning_is_said_under_quiet_too(
 
 
 async def test_a_re_ask_miss_on_any_other_letter_is_a_replay_error(tmp_path: Path) -> None:
-    """Benchmark review H3: only the letter recorded before the re-ask existed may miss it; a change that makes
+    """Only the letter recorded before the re-ask existed may miss it; a change that makes
     the check fire elsewhere must record that call, never score the first reading silently."""
     entry = {e.id: e for e in load_manifest(MANIFEST)}["dev-municipal_decision-A1"]
     document = prepare_document(entry, MANIFEST.parent, tmp_path)

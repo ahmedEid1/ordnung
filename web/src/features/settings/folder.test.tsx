@@ -107,7 +107,7 @@ describe("Settings → Watched folder", () => {
     expect(field).toHaveAccessibleDescription("Please choose a full folder path (for example /home/you/Scans).");
     await waitFor(() => expect(field).toHaveFocus());
     expect(srv.db.state.settings.inbox_dir).toBe("/home/sam/Scans");
-    // the save bar says what to fix at once (round 2: it kept "Unsaved changes" until a second Save)
+    // the save bar says what to fix at once (it once kept "Unsaved changes" until a second Save)
     expect(screen.getByText("Fix the highlighted field to save")).toBeInTheDocument();
     expect(screen.queryByText("Unsaved changes")).toBeNull();
     // typing again clears the reason

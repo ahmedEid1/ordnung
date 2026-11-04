@@ -386,7 +386,7 @@ def test_reprocessing_refreshes_only_fields_the_person_did_not_edit(store: Store
 
 
 def test_reprocessing_keeps_the_notice_terms_the_person_entered_as_theirs(store: Store) -> None:
-    """UI audit R2-inbox-timeline-contracts-1: "Save notice period" records the terms as the person's (a
+    """The button "Save notice period" records the terms as the person's (a
     ``user`` quote) so the card stops asking to check them; reading the letter again keeps that quote while
     their terms stand — and drops it when the reading rewrites them."""
     party = store.add_party(name="Musterbank eG", kind="bank")

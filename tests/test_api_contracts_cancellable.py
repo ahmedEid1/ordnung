@@ -130,7 +130,7 @@ def test_the_store_decodes_contracts_with_the_defaults(data_dir: Path) -> None:
 
 
 async def test_a_contract_says_when_its_cancellation_was_sent(data_dir: Path) -> None:
-    """Walkthrough of phase 2: after the FunkNetz cancellation was marked as sent, its card still asked the
+    """After the FunkNetz cancellation was marked as sent, its card still asked the
     person to decide and offered "Draft cancellation". The contract carries the sent letter (worked out on
     read, never stored): the latest cancellation that names it and was marked as sent."""
     async with api_for(data_dir) as api:

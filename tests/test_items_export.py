@@ -1,5 +1,5 @@
 """evals/export.py and evals/results/items.csv: every scored item of every published run as ids, dates, outcomes,
-cost and latency, with no free text (plan EV4; the per-item table an analyst reads instead of 1.4 MB JSON files)."""
+cost and latency, with no free text (the per-item table an analyst reads instead of 1.4 MB JSON files)."""
 
 from __future__ import annotations
 

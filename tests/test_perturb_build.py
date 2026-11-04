@@ -1,11 +1,11 @@
-"""The stress builder (``evals/perturb``, plan EV11): 48 standard text letters of holdout4, the final run's split,
+"""The stress builder (``evals/perturb``): 48 standard text letters of holdout4, the final run's split,
 re-rendered through the benchmark's own generator, once with an AI-addressed paragraph (cell I1) and once with a
 legally inert sentence that names a date (cell D1). Truth never changes, and the stress manifest names no day.
 
 holdout4's letters are written after the code freeze, so these tests build from a stand-in: the letters of holdout,
 holdout2 and holdout3 relabelled as holdout4 (:func:`final_manifest`; ids, files and truth unchanged). The real
-templates are written blind (plan EV8, commit A); these tests use their own neutral ones. Nothing here prints letter
-text, a template or a prompt: ids, counts and hashes only.
+templates are written blind; these tests use their own neutral ones. Nothing here prints letter text, a template or a
+prompt: ids, counts and hashes only.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ def final_manifest(path: Path) -> Path:
     return path
 
 
-#: Neutral sentences for the tests only (the real ones are written blind, plan EV8).
+#: Neutral sentences for the tests only (the real ones are written blind).
 FIXTURE: dict[str, Any] = {
     "schema": templates.SCHEMA,
     "injection": {
@@ -481,8 +481,8 @@ def test_no_obligation_word_in_a_filled_distractor(
 def test_template_strings_appear_in_no_prompt_file(
     fixture_templates: templates.Templates, tmp_path: Path
 ) -> None:
-    """Checked for these templates and, once written (EV8 commit A), for the real ones. Prints nothing. The check lives
-    with the builder, outside what the template writer is given."""
+    """Checked for these templates and, once committed, for the real ones. Prints nothing. The check lives with the
+    builder, outside what the template writer is given."""
     assert build.prompt_hits(fixture_templates) == 0
     if templates.TEMPLATES_PATH.exists():
         assert build.prompt_hits(templates.load_templates(templates.TEMPLATES_PATH)) == 0, (

@@ -393,7 +393,7 @@ def test_a_sender_without_deemed_delivery_counts_from_arrival(tools: RulesTools)
 
 
 def test_an_unknown_or_misfiled_sender_gets_the_apps_date_not_a_later_one() -> None:
-    """Reviewer repro: "other" is the app's "don't know" and an AOK filed as "insurer" with a Widerspruch
+    """The kind "other" is the app's "don't know" and an AOK filed as "insurer" with a Widerspruch
     is an authority — both keep the earliest plausible deemed delivery, exactly as the app computes it,
     and saying "I don't know the sender" never makes the answer later or more confident than saying nothing."""
     from ordnung.rules import RuleContext, compute_due, is_private_sender, scope_for_party_kind
@@ -437,7 +437,7 @@ def test_an_unknown_or_misfiled_sender_gets_the_apps_date_not_a_later_one() -> N
 
 
 def test_a_firms_own_einspruch_window_counts_from_arrival() -> None:
-    """Reviewer repro: a parking firm filed as a company calls its complaint window an "Einspruch". Kind
+    """A parking firm filed as a company calls its complaint window an "Einspruch". Kind
     and remedy word disagree; without a notice naming an administrative route the period runs from
     arrival — the earlier start in either reading — not from a deemed delivery 3 days after the letter."""
     tools = at("2026-09-20")
@@ -474,7 +474,7 @@ def test_a_firms_own_einspruch_window_counts_from_arrival() -> None:
 
 
 def test_a_firms_let_us_know_is_no_bescheid() -> None:
-    """Reviewer repro: "geben Sie uns … Bescheid" is everyday German for "let us know", not an
+    """The words "geben Sie uns … Bescheid" are everyday German for "let us know", not an
     authority's decision. The firm's Einspruch window runs from the arrival day given (Tue 29 Sep), not
     from a deemed delivery (Thu 1 Oct, two days late) that reports the arrival day as unused."""
     tools = at("2026-09-26")
@@ -496,7 +496,7 @@ def test_a_firms_let_us_know_is_no_bescheid() -> None:
 
 
 def test_a_private_senders_bekanntgabe_counts_from_the_day_it_arrived() -> None:
-    """Reviewer repro: a gym's "nach Bekanntgabe der Beitragserhöhung", an employer's "§ 38 Abs. 1 SGB III".
+    """A gym's "nach Bekanntgabe der Beitragserhöhung", an employer's "§ 38 Abs. 1 SGB III".
     Such words are no proof of an authority's decision: the period still runs from the day the letter
     arrived (§ 130 Abs. 1 BGB), the earliest plausible start — deemed delivery would give Thu 8 Oct, the
     arrival day given would be reported as unused and the hints would ask for "the Land of the authority"."""
@@ -528,7 +528,7 @@ def test_a_private_senders_bekanntgabe_counts_from_the_day_it_arrived() -> None:
 
 
 def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
-    """Reviewer repro: that a sender is private is read from its kind — a statutory insurer or a
+    """That a sender is private is read from its kind — a statutory insurer or a
     municipal utility may be filed as a company. A late arrival must not move the date past the one an
     authority's letter gives (Mon 5 Oct); the warning names the date from arrival, which the law gives
     either kind of sender once the arrival is shown, and the confidence is one level lower."""
@@ -580,7 +580,7 @@ def test_a_late_arrival_never_makes_a_private_senders_date_later() -> None:
 
 
 def test_a_capped_late_arrival_day_is_still_checked() -> None:
-    """Reviewer repro: a company's letter dated Sat 1 Aug, arrival given as Sun 20 Sep — 50 days later.
+    """A company's letter dated Sat 1 Aug, arrival given as Sun 20 Sep — 50 days later.
     The date shown counts from the usual delivery day, but the note says the deadline "may be Tue 20
     Oct" and "may still be open", from that arrival day: a model must not relay that unchecked. The
     arrival day was not used, and is reported so."""
@@ -604,7 +604,7 @@ def test_a_capped_late_arrival_day_is_still_checked() -> None:
 
 
 def test_a_late_arrival_giving_the_same_date_is_the_day_counted_from() -> None:
-    """Reviewer repro: a company's payment letter dated Tue 1 Sep (NW) usually counts as delivered Sat 5
+    """A company's payment letter dated Tue 1 Sep (NW) usually counts as delivered Sat 5
     Sep; it arrived Mon 7 Sep, and 14 days from either day end on Mon 21 Sep. Nothing is capped: the
     result is a gym's — from the arrival day, at full confidence, with no "may be Mon 21 Sep" note."""
     tools = at("2026-09-10")
@@ -627,7 +627,7 @@ def test_a_late_arrival_giving_the_same_date_is_the_day_counted_from() -> None:
     ],
 )
 def test_an_unreadable_period_reports_no_arrival_day(spec: dict[str, Any]) -> None:
-    """Reviewer repro: without a readable period nothing is computed — no arrival day was assumed, and
+    """Without a readable period nothing is computed — no arrival day was assumed, and
     no hint asks for one or for the sender; the only hint is how to fix the period."""
     tools = at("2026-09-26")
     for kind, received in (("bank", None), ("company", "2026-09-03"), (None, None)):
@@ -646,7 +646,7 @@ def test_an_unreadable_period_reports_no_arrival_day(spec: dict[str, Any]) -> No
 
 
 def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> None:
-    """Reviewer repro: an employer's dismissal names the Kündigungsschutzklage (§ 4 KSchG, labour court).
+    """An employer's dismissal names the Kündigungsschutzklage (§ 4 KSchG, labour court).
     Its three weeks run from the letter's arrival (§ 130 BGB) — deemed delivery would make them 3 days
     late, and the loss of that deadline makes the dismissal effective (§ 7 KSchG)."""
     tools = at("2026-09-26")
@@ -687,7 +687,7 @@ def test_a_private_law_klage_or_widerspruch_keeps_a_private_sender_private() -> 
 
 
 def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> None:
-    """Review round 2 of phase 2: a § 4 KSchG period from a city as employer counts from arrival
+    """A § 4 KSchG period from a city as employer counts from arrival
     (kschg_4, no posting day), but the result named "general administrative law (§ 41 VwVfG)"."""
     tools = at("2026-09-26")
     spec = {
@@ -703,7 +703,7 @@ def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> No
         )
         assert "posting_day" not in {step["rule_id"] for step in dismissal["steps"]}
         assert dismissal["assumed"]["delivery_law"] is None
-        # review round 3 of phase 2: a public employer is an authority — a dismissal is no administrative act
+        # a public employer is an authority — a dismissal is no administrative act
         assert DECLARATION_ARRIVAL_WARNING in dismissal["warnings"]
         assert not any("not an authority" in warning for warning in dismissal["warnings"])
         assert dismissal["steps"][0]["label"].startswith("A dismissal takes effect when it arrives, whoever")
@@ -717,7 +717,7 @@ def test_the_delivery_law_is_named_only_when_deemed_delivery_was_applied() -> No
 
 
 def test_a_courts_fixed_date_names_no_delivery_law() -> None:
-    """Review round 3 of phase 2: every court letter named formal service (§ 180 ZPO) as its delivery law,
+    """Every court letter named formal service (§ 180 ZPO) as its delivery law,
     also a fixed date or a period from a date the letter names, where no delivery rule was applied."""
     tools = at("2026-09-28")
     court = {"sender_kind": "authority", "sender_name": "Amtsgericht Köln", "document_date": "2026-09-15"}
@@ -732,7 +732,7 @@ def test_a_courts_fixed_date_names_no_delivery_law() -> None:
 
 
 def test_holidays_from_follows_the_rule_applied() -> None:
-    """Review round 3 of phase 2: a withdrawal is shifted by the consumer's Land (§ 193 BGB) and a
+    """A withdrawal is shifted by the consumer's Land (§ 193 BGB) and a
     Kündigungsschutzklage keeps only a holiday both Länder have, but ``holidays_from`` named the sender's."""
     tools = at("2026-12-28")
     withdrawal = tools.compute_deadline(
@@ -772,7 +772,7 @@ def test_holidays_from_follows_the_rule_applied() -> None:
 
 
 def test_a_court_action_counts_the_holidays_both_lander_have() -> None:
-    """Review round 4 of phase 2: with region NW and recipient_region RP the tool said "nationwide holidays
+    """With region NW and recipient_region RP the tool said "nationwide holidays
     only" and "Holiday region unknown", and gave Mon 1 Nov 2027 — All Saints' Day in both Länder, so the
     policy it states gives Tue 2 Nov. With one Land missing it asks for it."""
     spec = {
@@ -808,7 +808,7 @@ def test_a_court_action_counts_the_holidays_both_lander_have() -> None:
 
 
 def test_the_arrival_a_letter_rule_counted_from_is_reported_as_used() -> None:
-    """Review round 4 of phase 2: § 38 SGB III (anchored on the job's end) and § 558b BGB (on the letter's date)
+    """§ 38 SGB III (anchored on the job's end) and § 558b BGB (on the letter's date)
     count from the arrival, but ``assumed`` said the arrival day given was not used."""
     tools = at("2026-09-27")
     registration = tools.compute_deadline(
@@ -846,7 +846,7 @@ def test_the_arrival_a_letter_rule_counted_from_is_reported_as_used() -> None:
 
 
 def test_a_stated_posting_day_without_the_letters_date_is_not_trusted_blindly() -> None:
-    """Reviewer repro (benchmark letter test-tax_assessment-D1): the engine counts from the letter's date
+    """The engine counts from the letter's date
     when a stated posting day is later. Leaving the letter's date out must not lift that check silently:
     the result says it could not check, asks for the date and is less confident."""
     tools = at("2026-01-12")
@@ -926,7 +926,7 @@ def test_the_hints_follow_the_engines_own_words_for_each_situation() -> None:
 
 
 def test_a_date_at_the_end_of_the_calendar_is_answered_not_crashed() -> None:
-    """Reviewer repro: the partial-holiday check counted a day back from 1 Jan 1 (OverflowError)."""
+    """The partial-holiday check counted a day back from 1 Jan 1 (OverflowError)."""
     for region in ("BY", "SN", "TH", None):
         result = at("2026-09-26").compute_deadline(
             {"type": "fixed", "date": "0001-01-01", "nature": "notice"}, region=region
@@ -1121,7 +1121,7 @@ def test_assumed_names_an_arrival_day_only_when_the_period_ran_from_it() -> None
 
 def test_formal_service_is_explained_and_flagged_where_deemed_delivery_ran() -> None:
     """A yellow envelope has no 4-day rule: the help says how to pass its date, and a deemed-delivery
-    result for a posted letter says the real date may be earlier (the reviewer's repro: 6 Jul vs 3 Jul)."""
+    result for a posted letter says the real date may be earlier (6 Jul vs 3 Jul)."""
     compute = next(d for d in tool_definitions() if d["name"] == "compute_deadline")
     help_text = compute["input_schema"]["properties"]["spec"]["description"]
     assert "yellow envelope (Postzustellungsurkunde)" in help_text and "use anchor receipt" in help_text
@@ -1177,7 +1177,7 @@ def test_a_callers_today_far_from_the_servers_is_flagged(tools: RulesTools) -> N
 
 
 def test_a_callers_today_a_day_ahead_never_makes_a_live_deadline_look_missed() -> None:
-    """Review round 2 of phase 2: a caller's today one day after the server's German day was used, so a
+    """A caller's today one day after the server's German day was used, so a
     deadline that runs to midnight German time read as "has already passed"."""
     server = at("2026-09-28")
     spec = {"type": "fixed", "date": "2026-09-28", "nature": "objection"}
@@ -1195,7 +1195,7 @@ def test_a_callers_today_a_day_ahead_never_makes_a_live_deadline_look_missed() -
 
 
 def test_a_callers_today_a_day_behind_never_makes_an_expired_deadline_look_live() -> None:
-    """Review round 3 of phase 2: a caller's today one day before the server's German day (a stale
+    """A caller's today one day before the server's German day (a stale
     conversation date, a UTC machine shortly after German midnight) replaced it, so a deadline that ended
     yesterday read "send it today" with no warning that it had passed."""
     server = at("2026-09-27")
@@ -1259,7 +1259,7 @@ def test_today_defaults_to_the_servers_day_and_can_be_given(tools: RulesTools) -
     other_day = tools.compute_deadline(spec, today="2026-10-01")
     assert other_day["due_date"] == "2026-09-30"
     assert other_day["for_today_given"]["due_date"] == "2026-10-12"  # the 11th is a Sunday
-    # a time zone behind or ahead: always the server's day (review rounds 2 and 3 of phase 2)
+    # a time zone behind or ahead: always the server's day
     behind = tools.compute_deadline(spec, today="2026-09-19")
     assert behind["due_date"] == "2026-09-30" and behind["for_today_given"]["due_date"] == "2026-09-29"
     assert tools.compute_deadline(spec, today="2026-09-21")["due_date"] == "2026-09-30"
@@ -1468,7 +1468,7 @@ def test_check_iban(tools: RulesTools) -> None:
 def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
     tools: RulesTools, iban: str, country: str, since: str
 ) -> None:
-    """Reviewer repro: banks outside the euro area have to answer the payee-name check only from
+    """Banks outside the euro area have to answer the payee-name check only from
     9 July 2027 (Art. 5c(9) Reg. (EU) No 260/2012 as amended by 2024/886), Bulgaria's, in the euro since
     1 January 2026, a year later (Art. 16(9)). Until then the note must not promise the check."""
     from ordnung.money.iban import PAYEE_CHECK_FROM
@@ -1498,7 +1498,7 @@ def test_check_iban_says_when_a_non_euro_banks_name_check_starts(
     ],
 )
 def test_check_iban_promises_no_name_check_outside_the_eu(tools: RulesTools, iban: str, country: str) -> None:
-    """Reviewer repro: the payee-name check (Empfängerüberprüfung) is EU law for EU accounts. For a UK or
+    """The payee-name check (Empfängerüberprüfung) is EU law for EU accounts. For a UK or
     UAE account — where scams often route money — the note must not suggest the bank will warn."""
     result = tools.check_iban(iban)
     assert result["valid"] is True and result["country"]["name"] == country
@@ -1770,7 +1770,7 @@ COURT_NAMES = (
     "Arbeitsgericht Berlin",
     "ArbG Berlin",
     "Sozialgericht Berlin",
-    # a court whose place contains "kasse" (review round 2: the cashier exclusion matched "Kassel")
+    # a court whose place contains "kasse" (the cashier exclusion matched "Kassel")
     "Amtsgericht Kassel",
     "Arbeitsgericht Kassel",
     "SG Kassel",
@@ -1845,7 +1845,7 @@ def test_a_courts_period_gets_the_apps_date_confidence_and_rules(name: str) -> N
 
 
 def test_a_court_order_never_gets_an_administrative_delivery_fiction(tools: RulesTools) -> None:
-    """The review's cases: a Mahnbescheid read with deemed delivery, and a labour court's enforcement
+    """The cases: a Mahnbescheid read with deemed delivery, and a labour court's enforcement
     order (one week, § 59 ArbGG) — the tool's date was days late on a Notfrist."""
     at_court = RulesTools(today=lambda: date(2026, 9, 28))
     order = at_court.compute_deadline(

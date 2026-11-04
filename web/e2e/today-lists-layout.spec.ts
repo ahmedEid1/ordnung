@@ -1,5 +1,5 @@
 /**
- * Today's lists on the real demo, where jsdom can't look (UI audit round 1, today-b): Coming-up
+ * Today's lists on the real demo, where jsdom can't look: Coming-up
  * rows that give the title the width on phones and never cut it to one line, week headings whose
  * name has its space, Ideas whose "Show more" hands focus on and stays as "Show fewer", an Idea's
  * "Pay" that opens the Top-3 Pay panel, focus after "Not relevant" and Undo, Recent letters with
@@ -125,7 +125,7 @@ test("Ideas: 'Show more' moves on to the first new Idea and becomes 'Show fewer'
   await expect(more).toBeInViewport();
 });
 
-// UI audit round 2: the links in lines 5–6 of a cut Idea took focus unseen, and Chrome scrolled the cut
+// the links in lines 5–6 of a cut Idea once took focus unseen, and Chrome scrolled the cut
 // box to them — the card then read from its third line on while "Read more" still said it was cut
 for (const [width, height] of [
   [390, 844],

@@ -596,7 +596,7 @@ export function spanDetails(
 /**
  * "Read on 28 Sep 2026" / "Read again on …" (+ the reading's number when there are several). A letter the
  * watched folder brought in is only stored until the person answers: "Stored on …" — never "Read" next to
- * "Stored — not read yet" (UI audit round 2).
+ * "Stored — not read yet".
  */
 export function runTitle(run: TraceRun, several: boolean): string {
   const when = formatDate(run.started_at, { style: "medium" });

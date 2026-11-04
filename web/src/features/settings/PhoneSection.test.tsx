@@ -1,5 +1,5 @@
 /**
- * Settings → Phone on the computer (mock API, design §13.1 with the security review's amendments): off by default;
+ * Settings → Phone on the computer (mock API, SPEC §12b, ADR 0017): off by default;
  * turning it on asks first, at which address; the pairing dialog's QR code reads back to its link, its countdown
  * runs out, and it follows the phone (reached, paired with its two words, a code used twice, wrong codes); help
  * after a minute with the narrowest firewall rules; removing a phone (and what it changed), starting over (and

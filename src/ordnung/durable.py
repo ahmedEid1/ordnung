@@ -7,7 +7,7 @@ database already names must be on disk before a push can carry the database, so 
 turns on :func:`fsync` of every such file and of its folder (:mod:`ordnung.ingest.intake`), and the
 store commits with ``synchronous=FULL`` (:meth:`ordnung.db.store.Store.set_durable`).
 
-Measured (hand-off sync P1, Linux, SQLite 3.45.1): 1,000 small commits take 0.51 s with
+Measured (Linux, SQLite 3.45.1): 1,000 small commits take 0.51 s with
 ``synchronous=FULL`` against 0.02 s with ``NORMAL`` — half a millisecond per commit, which Ordnung (a
 few writes per action) never notices.
 

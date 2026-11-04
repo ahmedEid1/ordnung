@@ -1,5 +1,5 @@
 /**
- * The letter page's panel on real pages (UI audit round 1): key facts, reference numbers and bank
+ * The letter page's panel on real pages: key facts, reference numbers and bank
  * details are never cut ("RE-2…", "DE51 / 1234 / …") and an IBAN breaks only between its groups; the
  * contract card fits a 320 px phone; a scam letter's demand is no to-do; the calendar sweep and the
  * verdict's own payment don't come back under "Ideas".

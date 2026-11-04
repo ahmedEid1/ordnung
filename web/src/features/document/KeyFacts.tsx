@@ -3,7 +3,7 @@
  * and bank details, with copy buttons. For a suspected scam the bank account is flagged, and says
  * why there is no GiroCode to scan.
  *
- * All three share one grid (UI audit round 1: references and IBANs were cut to "RE-2…" and "DE51 /
+ * All three share one grid (references and IBANs were once cut to "RE-2…" and "DE51 /
  * 1234 / …" on phones): below `sm` the label sits above its value, from `sm` in a 10rem column,
  * with the same gap everywhere so the columns line up. Values wrap — a reference or an IBAN is never
  * cut; an IBAN breaks only between its groups of four. A reference already shown as a key fact isn't

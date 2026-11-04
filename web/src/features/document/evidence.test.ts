@@ -102,7 +102,7 @@ describe("anchors & highlight groups", () => {
   });
 });
 
-describe("UI audit round 1: highlight targets and labels", () => {
+describe("highlight targets and labels", () => {
   // a payslip: "Hourly wage" on one line, the two-line "Monthly salary payment" quote around it
   const detail = (): DocumentDetail =>
     makeDetail({

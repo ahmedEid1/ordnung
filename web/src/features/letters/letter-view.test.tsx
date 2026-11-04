@@ -1,5 +1,5 @@
 /**
- * The letter page after the UI audit (round 1, "letters-a"): the print preview as an image, the
+ * The letter page: the print preview as an image, the
  * ways to send ranked in words, a way that doesn't count said as a warning, the Mark-as-sent
  * dialog's dates and ways, a sent letter that reads as sent, status actions with Undo, the notes
  * without a second disclaimer and a load error you can leave.

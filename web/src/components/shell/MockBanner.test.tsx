@@ -3,7 +3,7 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "@/test/render";
 import { MockBanner } from "./MockBanner";
 
-describe("MockBanner (walkthrough of phase 2)", () => {
+describe("MockBanner", () => {
   afterEach(() => sessionStorage.clear());
 
   it("says the tab shows browser-only sample data and links back to the recorded demo", () => {

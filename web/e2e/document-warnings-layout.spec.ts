@@ -1,6 +1,6 @@
 /**
- * The letter page's warnings, Pay panel, footer and not-found page on real pages (UI audit round 1,
- * document-c): "Please check" once per thing to check, no checksum warning a valid IBAN contradicts, an IBAN
+ * The letter page's warnings, Pay panel, footer and not-found page on real pages:
+ * "Please check" once per thing to check, no checksum warning a valid IBAN contradicts, an IBAN
  * that breaks only between its groups in a 320 px Pay sheet whose buttons stay in view, no "Draft a reply"
  * under a passport, and a not-found page with its h1 and a way back.
  */
@@ -87,7 +87,7 @@ function toCheckOf({ document, items }: LetterDetail): { toCheck: string[]; own:
   };
 }
 
-// UI audit round 1 (document-c): "Please check" three times on one letter — a to-do whose date doesn't match
+// "Please check" said three times on one letter — a to-do whose date doesn't match
 // the sentence it came from (a card of its own), a warning of the reading's own (a card for all of them) and
 // the reading's count of the dates it couldn't confirm, which that to-do's card already says. Each recording
 // of the demo left the count on another letter (with prompt 11 the residence permit's appointment, then the

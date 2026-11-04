@@ -124,7 +124,7 @@ test("a payment the reminder took over is set apart, not listed as overdue", asy
 const CLIENT = { "X-Ordnung-Client": "web" };
 
 test("the drawer's numbers are My numbers': English names, hidden until Show, their own set apart", async ({ page }) => {
-  // UI audit R2-party-numbers-3: the drawer listed the raw labels in full, the creditor's own ID as "yours"
+  // the drawer listed the raw labels in full, the creditor's own ID as "yours"
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");
   const parties = await apiGet<PartyRow[]>(page, "/api/parties");
@@ -150,7 +150,7 @@ test("the drawer's numbers are My numbers': English names, hidden until Show, th
 });
 
 test("a half-written call note is kept, and closing asks first: “Keep writing” goes back to it, “Discard” closes", async ({ page }) => {
-  // UI audit R2-party-numbers-1: Escape, the backdrop or × threw the note away unasked
+  // Escape, the backdrop or × threw the note away unasked
   await page.setViewportSize({ width: 390, height: 844 });
   await open(page, "/");
   const parties = await apiGet<PartyRow[]>(page, "/api/parties");
@@ -182,7 +182,7 @@ test("a half-written call note is kept, and closing asks first: “Keep writing�
 });
 
 test("call notes keep the keyboard in the drawer: the bin's question, “Keep it”, “They kept it”", async ({ page }) => {
-  // UI audit R2-party-numbers-2: focus fell to <body> after "They kept it" and "Keep it"
+  // focus fell to <body> after "They kept it" and "Keep it"
   await page.setViewportSize({ width: 1280, height: 800 });
   await open(page, "/");
   const parties = await apiGet<PartyRow[]>(page, "/api/parties");
@@ -238,7 +238,7 @@ test("closing a drawer opened from a chip goes back, so Back then leaves the pag
 const THREE_DAYS =
   "Some Länder may still use the 3-day rule for their authorities and we couldn't confirm this sender's, so we counted 3 days (the earlier date).";
 
-// Final check of the fix wave: at 390 px "Why this date?" is a modal sheet, and its "Choose their state" opened the
+// At 390 px "Why this date?" is a modal sheet, and its "Choose their state" opened the
 // sender's drawer over it while the sheet kept the keyboard — Tab went round its three buttons, never to the
 // drawer's State picker. No demo date waits for a sender's Land (the demo's person lives in a known one), so the
 // letter's page is served with one that does: the immigration office's fee, counted without the office's Land.

@@ -369,7 +369,7 @@ def test_the_ask_command_takes_a_recordings_folder(tmp_path: Path) -> None:
 
 def test_the_registry_declares_every_split_and_the_final_ones_before_their_letters() -> None:
     assert splits.names() == ("dev", "test", "holdout", "holdout2", "holdout3", "holdout4", "newkinds")
-    # a run over every split replays the recorded ones (E2's G1 guard iterates SPLITS); --split takes all
+    # a run over every split replays the recorded ones (a script that replays every split iterates SPLITS); --split takes all
     assert eval_run.SPLITS == splits.recorded()
     split_option = next(a for a in eval_run.build_parser()._actions if a.dest == "split")
     assert tuple(split_option.choices or ()) == splits.names()

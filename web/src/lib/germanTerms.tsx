@@ -1,7 +1,7 @@
 /**
  * Titles with a German term in them — "Operating-cost statement (Betriebskostenabrechnung)", "Nebenkostenabrechnung
  * 2025 (Betriebs- und Heizkostenabrechnung) – Wohnbau Musterstadt eG" — keep the term whole or break it where
- * German breaks it: at 320 px it broke as "(Heizkostenabrechn" / "ung)" (review rounds 3 and 4 of phase 2). A German
+ * German breaks it: at 320 px it broke as "(Heizkostenabrechn" / "ung)". A German
  * term in brackets is marked German (hyphenated as German, read in a German voice), and a soft hyphen after the head
  * of a long compound lets it break there even where no German hyphenation is installed.
  */

@@ -49,7 +49,7 @@ export interface ReceiptQuote {
   citation?: string | null;
   /**
    * The language of the letter the words come from (its `language`: "de", "German"), so a screen reader reads
-   * them with that language's voice (UX audit U5). Unknown, the words themselves decide whether they are German.
+   * them with that language's voice. Unknown, the words themselves decide whether they are German.
    */
   language?: string | null;
 }
@@ -138,7 +138,6 @@ function Steps({ steps, holidayCalendar }: { steps: ReceiptStep[]; holidayCalend
                         target="_blank"
                         rel="noreferrer noopener"
                         // a 24 px target (WCAG 2.5.8): two steps' links on consecutive lines were 22 px tall, touching
-                        // (review round 4 of phase 2)
                         className="inline-flex min-h-6 items-center gap-1 rounded-sm py-1 font-medium text-accent underline-offset-2 hover:underline"
                       >
                         {inline(s.citation)}
@@ -226,7 +225,7 @@ export function Receipt({
           <figcaption className="mb-1 flex items-start gap-1.5 text-xs font-medium text-muted">
             <Quote className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>
-              {/* one parenthesis at most (review round 2: "(§ 692 …, in short) (in German — …)") */}
+              {/* one parenthesis at most (not "(§ 692 …, in short) (in German — …)") */}
               {quote.source === "law"
                 ? `What the law says, in short${quote.citation ? ` — ${quote.citation}` : ""}`
                 : "What the letter says"}

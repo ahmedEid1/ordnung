@@ -235,7 +235,7 @@ def test_the_steps_over_the_seeded_ledger(store: Store, ids: dict[str, str]) -> 
     assert _refs(decide) == [ids["phone"], ids["tax_objection"]]
     assert [entry.date_role for entry in decide.entries] == ["decide_by", "send_by"]
     # a phone contract only continues month to month after its term (§ 56 Abs. 3 TKG): it doesn't renew
-    # (walkthrough of phase 2: "Renews unless you send a cancellation by then")
+    # ("Renews unless you send a cancellation by then")
     assert decide.entries[0].note == (
         "Continues after its term unless you send a cancellation by then — then cancellable monthly."
     )
@@ -799,7 +799,7 @@ def test_a_letter_waiting_or_kept_private_unread_is_never_filed(store: Store, id
 
 
 def test_older_letters_not_read_are_listed_every_week(store: Store, ids: dict[str, str]) -> None:
-    """UX U2: Today counts the letters that couldn't be read (or wait from the folder) until they are read,
+    """Today counts the letters that couldn't be read (or wait from the folder) until they are read,
     so the review lists them too, whenever they came — not only in the week they arrived."""
     _all_created(store, _stamp(TODAY - timedelta(days=20)))
     store.set_meta(SESSION_KEY, _stored(TODAY - timedelta(days=7)))

@@ -1,5 +1,5 @@
 """The sync folder on disk: every file operation, the folder's layout and the rules for choosing one
-(design §4.1, §4.8-4.9; review findings 6, 7, 11, 22, 32).
+(SPEC §12c).
 
 **One file-system seam.** Every call goes through :class:`FsOps` (``open_new``, ``open_read``,
 ``fsync``, ``replace``, ``unlink``, ``fsync_dir``, ``mkdir``, ``rmdir``, ``listdir``, ``stat``):
@@ -119,7 +119,7 @@ UNREACHABLE_MESSAGE = (
 
 
 class FolderUnreachable(SyncError):
-    """A folder operation didn't finish within :data:`~ordnung.sync.FOLDER_OP_TIMEOUT_S` (finding 22)."""
+    """A folder operation didn't finish within :data:`~ordnung.sync.FOLDER_OP_TIMEOUT_S`."""
 
     def __init__(self, message: str = UNREACHABLE_MESSAGE) -> None:
         super().__init__("folder_problem", message)
@@ -131,7 +131,7 @@ class FolderUnreachable(SyncError):
 
 
 class FsOps(Protocol):
-    """Every file operation sync makes (design §4.8): the seam tests crash and cut power at."""
+    """Every file operation sync makes: the seam tests crash and cut power at."""
 
     def open_new(self, path: Path) -> BinaryIO:
         """A new file for writing bytes: exclusive create, ``0600``."""
@@ -177,7 +177,7 @@ class RealFs:
             try:
                 src.replace(dst)
                 return
-            except PermissionError:  # Windows: the sync tool (or a reader) holds the file — finding 32
+            except PermissionError:  # Windows: the sync tool (or a reader) holds the file
                 if attempt == REPLACE_TRIES - 1:
                     raise
                 time.sleep(wait)
@@ -307,7 +307,7 @@ class _TimedHandle:
 
 
 class TimedFs:
-    """:class:`FsOps` with a deadline on every operation (finding 22): :class:`FolderUnreachable`."""
+    """:class:`FsOps` with a deadline on every operation: :class:`FolderUnreachable`."""
 
     def __init__(self, inner: FsOps | None = None, timeout: float = FOLDER_OP_TIMEOUT_S) -> None:
         self.inner: FsOps = inner or RealFs()
@@ -354,7 +354,7 @@ FULL_MESSAGE = "The sync folder (or the drive or account it is on) is full. Ordn
 
 
 class FolderFull(SyncError):
-    """ENOSPC or EDQUOT while writing into the sync folder (F30; the problem ``folder_full``)."""
+    """ENOSPC or EDQUOT while writing into the sync folder (the problem ``folder_full``)."""
 
     def __init__(self, message: str = FULL_MESSAGE) -> None:
         super().__init__("folder_problem", message)
@@ -382,7 +382,7 @@ def _raise_if_full(exc: OSError) -> None:
 
 def online_only(info: os.stat_result) -> bool:
     """The sync tool keeps this file online-only here (its data isn't on this computer): a dataless
-    file (macOS iCloud Drive and File Provider clouds) or a Windows placeholder (finding 6)."""
+    file (macOS iCloud Drive and File Provider clouds) or a Windows placeholder."""
     if getattr(info, "st_flags", 0) & SF_DATALESS:
         return True
     return bool(getattr(info, "st_file_attributes", 0) & _PLACEHOLDER_ATTRIBUTES)
@@ -414,7 +414,7 @@ class FileInfo:
 
     @property
     def signature(self) -> tuple[int, int, int, int]:
-        """What says the file is unchanged (finding 9: the inode and ctime too)."""
+        """What says the file is unchanged (the inode and ctime too)."""
         return (self.size, self.mtime_ns, self.ino, self.ctime_ns)
 
 
@@ -555,7 +555,7 @@ class SyncFolder:
         self.make_dirs()
 
     def make_dirs(self) -> None:
-        """``h/`` and ``o/`` — only next to a key file, and never under a missing folder (F26)."""
+        """``h/`` and ``o/`` — only next to a key file, and never under a missing folder."""
         for folder in (self.heads_dir, self.objects_dir):
             try:
                 self.fs.mkdir(folder)
@@ -624,7 +624,7 @@ class SyncFolder:
         return info
 
     def shard(self, prefix: str) -> dict[str, FileInfo]:
-        """The objects of one shard ``o/<prefix>/`` by full name (one listing; finding 7). An older
+        """The objects of one shard ``o/<prefix>/`` by full name (one listing). An older
         iCloud Drive placeholder (``.<rest>.icloud`` instead of the file) is listed as online-only."""
         found: dict[str, FileInfo] = {}
         folder = self.objects_dir / prefix
@@ -714,7 +714,7 @@ class SyncFolder:
 
 
 # --------------------------------------------------------------------------------------------------
-# choosing the folder (§4.9)
+# choosing the folder (SPEC §12c)
 # --------------------------------------------------------------------------------------------------
 
 
@@ -728,7 +728,7 @@ def _is_ours(name: str) -> bool:
 
 @dataclass(frozen=True)
 class FolderInfo:
-    """What a folder would be for sync (design §4.9, ``POST /api/sync/inspect``)."""
+    """What a folder would be for sync (``POST /api/sync/inspect``)."""
 
     kind: Literal["new", "existing", "refused"]
     folder: str

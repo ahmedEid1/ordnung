@@ -34,7 +34,7 @@ export function DraftKindIcon({ kind, size = "md", className }: { kind: Draft["k
  * One letter in the list: kind, recipient, German subject, status and the important date. The list is a
  * container: a roomy one (from 36rem) puts the status and date in a column on the right, a narrow one
  * (a phone, or beside the "How letters work" card) under the subject — the same facts either way, and the
- * title is never squeezed out by them (UI audit round 1).
+ * title is never squeezed out by them.
  */
 export function DraftRow({ draft, party }: { draft: Draft; party?: Party | null }) {
   const sendBy = draft.status !== "sent" ? draft.send_guidance?.send_by : null;
@@ -95,7 +95,7 @@ export function DraftGroup({ title, drafts, parties, id }: { title: string; draf
   return (
     // no margin after the last group: the page's grid gap follows it
     <section aria-labelledby={id} className="mb-8 last:mb-0">
-      {/* the app's one section label (13 px), flush with the page title and the cards (UI audit round 2) */}
+      {/* the app's one section label (13 px), flush with the page title and the cards */}
       <SectionHeader id={id} title={title} count={drafts.length} className="mb-2.5" />
       <ul className="card @container/drafts divide-y divide-line overflow-hidden">
         {drafts.map((d) => (

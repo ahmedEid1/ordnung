@@ -1,5 +1,5 @@
 /**
- * The letter page on the real demo, where jsdom can't look (UI audit round 1, letters-a): the
+ * The letter page on the real demo, where jsdom can't look: the
  * German letter is never squeezed next to the sending panel (its panes sit side by side only when
  * the card has room, by a container query), the print preview follows the letter with no empty
  * band, the preview is an image (phones show no PDF inline), the header's chips aren't cut off, on
