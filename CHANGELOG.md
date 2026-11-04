@@ -43,8 +43,9 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   as delivered, as the Land's own law portal or gazette gives it (the four Länder whose text could not be read are
   named). The generator dates a Land authority's letter by that Land's own rule (the 3rd day in Hessen; the 4th in
   Hamburg and Baden-Württemberg only from their switch; the 3rd for a procedure begun before it in
-  Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern) and writes none from the four, and the label check
-  counts each Land's day with a table of its own; no letter or label of the earlier splits changed.
+  Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern when the letter states that start, the 4th when it
+  states none) and writes none from the four, and the label check counts each Land's day with a table of its
+  own; no letter or label of the earlier splits changed.
   The runner records a final letter only when the day it gives the letter as today is the day of the
   recording and inside the letter's window, keeps a read recorded over several days in one results file, stops
   between letters (`--stop-file`, `--stop-at`) and sets a cut letter's recordings, or those of a read made

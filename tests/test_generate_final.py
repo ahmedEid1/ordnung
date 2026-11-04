@@ -616,9 +616,18 @@ def test_the_writer_s_verification_md_says_each_land_s_delivery_day() -> None:
         "§ 102b LVwVfG",
         "§ 7 VwVfGBbg",
         "HB, RP, SL and ST",
+        # what a BW, BY or MV label rests on when the letter states no start (c03)
+        "a letter that states none is labelled as a procedure begun on or after the switch (the 4th day)",
     ):
         assert words in flat, words
     assert "\n## Länder delivery rules, checked 2026-11-04\n" in text
+    finding = " ".join(
+        text.split("\n## Länder delivery rules, checked 2026-11-04\n", 1)[1].split("\n## ", 1)[0].split()
+    )
+    # what the data shows: no SH letter in the window the baseline's text gets wrong, and the one BY letter that
+    # states no start gives the same date under both rules
+    assert "no SH letter of any split is posted between 1 Jan and 9 Jun 2025" in finding
+    assert "or (test hidden_text-1) give the same date under both rules" in finding
 
 
 # --------------------------------------------------------------------------------------------------

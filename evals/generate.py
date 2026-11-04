@@ -281,8 +281,9 @@ CONVENTIONS = _conventions(
     ("c03", True, "Deemed delivery: 3rd day after posting for items posted up to 2024-12-31, 4th day from 2025-01-01 (federal law and SGB X). "
      "A Land authority's letter counts its own Land's day (evals/law/laender.txt): Hessen the 3rd day; Hamburg the 4th from 2025-05-14 and "
      "Baden-Württemberg from 2025-02-07, the 3rd before; the other Länder with a text the 4th from 2025-01-01; in Baden-Württemberg, Bayern "
-     "and Mecklenburg-Vorpommern a procedure begun before that Land's switch keeps the 3rd. AO moves a Sat/Sun/holiday fiction day to the "
-     "next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), end moved off "
+     "and Mecklenburg-Vorpommern a procedure begun before that Land's switch keeps the 3rd day when the letter states that start; a letter "
+     "that states none is labelled as a procedure begun on or after the switch (the 4th day). AO moves a Sat/Sun/holiday fiction day to "
+     "the next working day, VwVfG and SGB X do not. Remedy periods: one month (§§ 187 Abs. 1, 188 Abs. 2, 3 BGB), end moved off "
      "Sat/Sun/holidays; Bußgeld: two weeks after the Zustellung date on the envelope."),
     ("c04", False, "authority_region is set only when the letterhead names the Land; then expected_due uses that Land's holidays. When it is null, "
      "every dated item was verified to have the same date under all 16 Land calendars (so nationwide-only == legally correct)."),

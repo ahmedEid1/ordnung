@@ -65,11 +65,12 @@ Re-run at any time:
   - BY, NW and MV from 1 Jan 2025: Art. 41 Abs. 2 BayVwVfG; § 41 Abs. 2 VwVfG NRW, in force on that day;
     § 41 Abs. 2 VwVfG M-V as amended by the act of 11 Dec 2024 (GVOBl. M-V 2024 Nr. 27 S. 617), in
     force on that day. BY and MV keep the 3rd day for a procedure begun before that day and not
-    finished (Art. 98 BayVwVfG, § 120a VwVfG M-V). NW's § 97 VwVfG NRW applies the law in force to each
-    procedural step, so a posting from 1 Jan 2025 gets the 4th day there. Every BY or MV letter of the
-    earlier splits states a procedure begun in 2025 or later (dev municipal_decision B1, holdout3
-    municipal_decision I1 and J1) or gives the same date under both rules (test hidden_text-1:
-    03.08.2026).
+    finished (Art. 98 BayVwVfG, § 120a VwVfG M-V) when the letter states that start; a letter that
+    states none is labelled as a procedure begun on or after the switch (the 4th day), as c03 says, in
+    BW too. NW's § 97 VwVfG NRW applies the law in force to each procedural step, so a posting from
+    1 Jan 2025 gets the 4th day there. Every BY or MV letter of the earlier splits states a procedure
+    begun in 2025 or later (dev municipal_decision B1, holdout3 municipal_decision I1 and J1) or gives
+    the same date under both rules (test hidden_text-1: 03.08.2026).
   - BE, BB, NI, SN and TH from 1 Jan 2025: their acts apply the federal VwVfG (§ 1 of each). TH's act of
     2 July 2024 took effect on 1 Jan 2025 (Art. 90), and its § 8 Abs. 3 counts a period begun before
     that under the old law. In Brandenburg a decision sent electronically counts from the day it
@@ -81,8 +82,8 @@ Re-run at any time:
   - HH from 14 May 2025: Zwölftes Gesetz zur Änderung des HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of
     13 May 2025 S. 338. It has no in-force clause, so it took effect the day after promulgation
     (Art. 54 of Hamburg's constitution). A decision posted before counts the 3rd day.
-  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day. A
-    decision posted before counts the 3rd day.
+  - BW from 7 Feb 2025; § 102b LVwVfG keeps the 3rd day for procedures begun before that day, when
+    the letter states that start (as in BY and MV). A decision posted before counts the 3rd day.
   - HE keeps the 3rd day (§ 41 Abs. 2 HVwVfG).
   - HB, RP, SL and ST: no text could be read (`evals/law/SOURCES.md`), so no Land VwVfG letter comes
     from them (c07; `evals/gen/law.py` refuses one).
@@ -90,7 +91,9 @@ Re-run at any time:
   `evals/verify_labels.py` fails if a hand-read Land VwVfG label counts from a posting day on or after
   1 Jan 2025 and before HH's or BW's start, or comes from HE, a Land without a text or no Land
   (`land_window_problems`), and if any Land VwVfG label is not the period from its Land's own day
-  (`land_rule_problems`; a final split's fact may state when the procedure began).
+  (`land_rule_problems`). The procedure's start is the label's own (`procedure_began`, which must be
+  printed in the letter), else the one a final split's fact states; a BW, BY or MV letter whose label
+  states none may name no day before its Land's switch.
 - **Only the AO moves the deemed-delivery day** off a Saturday, Sunday or holiday (§ 108 Abs. 3 AO,
   BFH IX R 68/98), using holidays at the tax office's seat. Under VwVfG and SGB X that day does not
   move (OVG NRW 19 A 4216/99, BSG B 14 AS 12/09 R).
@@ -1028,19 +1031,24 @@ the 3rd day for a procedure begun before their switch.
 **No label changes.** Under each Land's own rule none of the 26 dated Land VwVfG labels changes (22
 letters and 4 photos of them: BW 4, BY 3, HH 5, MV 1, NW 5, SH 8); one more NW letter, adversarial
 missing_date-2, has no date. None comes from TH, HE or BB, or from a Land without a text. Each is posted
-after its Land's switch, and the BY and MV letters state procedures begun in 2025 or later. The 6 dated
-labels from Land or municipal senders and Jobcenters that decide under SGB X follow § 37 SGB X, not a
-Land's act. `evals/verify_labels.py` now re-derives every Land VwVfG label from its Land's day with a
-table of its own (`land_rule_problems`: 0).
+after its Land's switch, and the BY and MV letters state procedures begun in 2025 or later, or (test
+hidden_text-1) give the same date under both rules. No BW, BY or MV letter names a day before its Land's
+switch, so none rests on an older procedure; for a letter that states no start at all, c03 now says it
+is labelled as a procedure begun on or after the switch (the 4th day, as `law.py` counts it). The 6
+dated labels from Land or municipal senders and Jobcenters that decide under SGB X follow § 37 SGB X,
+not a Land's act. `evals/verify_labels.py` now re-derives every Land VwVfG label from its Land's day
+with a table of its own (`land_rule_problems`: 0).
 
-**What changed.** `evals/gen/law.py` counts a Land authority's decision by its Land's own day (the 3rd in
-HE; in HH and BW the 4th only from their switch; in BW, BY and MV the 3rd for a procedure begun before
-it, which the letter must state) and refuses a letter from HB, RP, SL or ST, one that names no Land and
-any decision not sent by post. Conventions c03 and c07 say so in plain words; their ids and disputed
-flags are unchanged. The dataset was generated again: no letter or photo changed, and the manifest
-differs only in those two texts. The label check counts SH from 1 Jan 2025 too, where it used the
-drawing bound of 10 Jun 2025.
+**What changed.** `evals/gen/law.py` counts a Land authority's decision by its Land's own day (the 3rd
+in HE; in HH and BW the 4th only from their switch; in BW, BY and MV the 3rd for a procedure begun
+before it, which the letter must state and the label keeps as `procedure_began`) and refuses a letter
+from HB, RP, SL or ST, one that names no Land and any decision not sent by post. The 4th-day step of a
+Land letter written from now on names its Land's provision and start; the five splits keep their words.
+Conventions c03 and c07 say so in plain words; their ids and disputed flags are unchanged. The dataset
+was generated again: no letter or photo changed, and the manifest differs only in those two texts. The
+label check counts SH from 1 Jan 2025 too, where it used the drawing bound of 10 Jun 2025.
 
-The rules-text baseline's prompt still gives SH's start as 10 Jun 2025, which is wrong in law. No letter
-of any split is posted between 1 Jan and 9 Jun 2025, so no recorded answer depends on it; changing it
-would change that condition's request lock and need a re-recording, so it is left as it is.
+The rules-text baseline's prompt still gives SH's start as 10 Jun 2025, which is wrong in law, but no SH
+letter of any split is posted between 1 Jan and 9 Jun 2025 (40 other entries are dated or posted in that
+window), so no recorded answer depends on it; changing it would change that condition's request lock and
+need a re-recording, so it is left as it is.

@@ -701,6 +701,13 @@ def test_c03_and_c07_say_what_the_land_table_counts(manifest: dict[str, Any]) ->
         if start != date(2025, 1, 1):
             assert law.LAND_NAMES[land] in c03 and start.isoformat() in c03, land
     assert all(law.LAND_NAMES[land] in c03 for land in law.LAND_VWVFG_OLD_PROCEDURES)
+    # what the label of such a Land's letter rests on when the letter names no start: the 4th day (law.py's)
+    flat = " ".join(c03.split())
+    assert "keeps the 3rd day when the letter states that start" in flat
+    assert (
+        "a letter that states none is labelled as a procedure begun on or after the switch (the 4th day)"
+        in flat
+    )
     assert all(law.LAND_NAMES[land] in c07 for land in law.LAND_VWVFG_UNVERIFIED)
     assert "evals/gen/law.py" in c07
 

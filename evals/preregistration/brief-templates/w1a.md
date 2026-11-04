@@ -71,8 +71,9 @@ How a letter's truth is made:
   in `evals/law/laender.txt`: never from Bremen, Rheinland-Pfalz, Saarland or Sachsen-Anhalt, whose text could not
   be read, and which `law.py` refuses. The day it counts as delivered is that Land's own rule, which `law.py` takes
   from the authority's Land. Baden-Württemberg, Bayern and Mecklenburg-Vorpommern keep the earlier day for a
-  procedure begun before their rule changed: a letter that rests on that states the day its procedure began, and
-  that day goes to `law.py` as `procedure_began`. Every such decision is sent by post; `law.py` dates no other.
+  procedure begun before their rule changed. Any letter of theirs that names when its procedure began passes that
+  day to `law.py` as `procedure_began`; one that names none is dated as a procedure begun after the change, and
+  names no day before it. Every such decision is sent by post; `law.py` dates no other.
 - Every random draw comes from `rng_for("holdout4", <entry id>)`.
 - Every sender is new: no sender name of an earlier split appears in holdout4.
 - Each scored item, and each contract, carries the ids of the labelling conventions its dates rest on

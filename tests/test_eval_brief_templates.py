@@ -293,13 +293,18 @@ def test_a_letter_writer_puts_every_date_after_the_last_valid_day(session: str) 
 
 def test_the_holdout4_writer_takes_a_land_authority_only_from_a_land_with_a_text() -> None:
     """A Land authority's letter comes only from a Land whose rule is in ``evals/law/laender.txt`` (``law.py``
-    refuses the four without one), its delivery day is that Land's, and a letter that rests on an older procedure
-    states when the procedure began, which goes to ``law.py``."""
+    refuses the four without one), its delivery day is that Land's, and any BW, BY or MV letter that names when its
+    procedure began hands that day to ``law.py``; one that names none is dated as a procedure begun after the change
+    and names no earlier day."""
     flat = _flat(_text("w1a"))
     assert "evals/law/laender.txt" in flat
     for land in ("Bremen", "Rheinland-Pfalz", "Saarland", "Sachsen-Anhalt"):
         assert land in flat, land
-    assert "states the day its procedure began" in flat and "`procedure_began`" in flat
+    assert "names when its procedure began passes that day to `law.py` as `procedure_began`" in flat
+    assert (
+        "one that names none is dated as a procedure begun after the change, and names no day before it"
+        in flat
+    )
     assert "sent by post" in flat
 
 
