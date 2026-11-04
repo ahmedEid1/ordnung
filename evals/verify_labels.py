@@ -1173,7 +1173,7 @@ def check_text(entries: list[dict[str, Any]], root: Path) -> tuple[dict[str, str
             problems.append(f"{cid}: remedy 'none' but the letter has a Rechtsbehelfsbelehrung")
         for slot, item in _slots(t).items():
             spec = item.get("spec") or {}
-            for key in ("date", "anchor_date", "posted_on"):
+            for key in ("date", "anchor_date", "posted_on", "procedure_began"):
                 iso = spec.get(key)
                 if not iso or has_date(iso):
                     continue
@@ -1293,14 +1293,43 @@ def _land_period_end(fiction: date, spec: Mapping[str, Any], region: str) -> dat
     return next_working_day(end, region) if spec.get("shift") is not False else end
 
 
+#: A German date in a letter's text: 14.10.2024 or 14. Oktober 2024, and a month named with its year (Oktober 2024).
+_GERMAN_DAY = re.compile(r"(?<![\d.])(\d{1,2})\.(\d{1,2})\.(\d{4})(?!\d)")
+_GERMAN_LONG_DAY = re.compile(rf"(?<!\d)(\d{{1,2}})\. ({'|'.join(_MONTHS_DE)}) (\d{{4}})(?!\d)")
+_GERMAN_MONTH = re.compile(rf"\b({'|'.join(_MONTHS_DE)}) (\d{{4}})(?!\d)")
+
+
+def days_named_before(text: str, switch: date) -> list[date]:
+    """The days a letter's text names that lie before ``switch``; a month named with its year (``Oktober 2024``)
+    counts as its last day."""
+    named: set[date] = set()
+    for match in _GERMAN_DAY.finditer(text):
+        try:
+            named.add(D(int(match[3]), int(match[2]), int(match[1])))
+        except ValueError:
+            continue
+    for match in _GERMAN_LONG_DAY.finditer(text):
+        try:
+            named.add(D(int(match[3]), _MONTHS_DE.index(match[2]) + 1, int(match[1])))
+        except ValueError:
+            continue
+    for match in _GERMAN_MONTH.finditer(text):
+        year, month = int(match[2]), _MONTHS_DE.index(match[1]) + 1
+        named.add(D(year, month, calendar.monthrange(year, month)[1]))
+    return sorted(day for day in named if day < switch)
+
+
 def check_land_rules(
-    entries: list[dict[str, Any]], began: Mapping[str, Mapping[str, date]] | None = None
+    entries: list[dict[str, Any]],
+    began: Mapping[str, Mapping[str, date]] | None = None,
+    texts: Mapping[str, str] | None = None,
 ) -> list[str]:
     """Every Land VwVfG deemed-delivery label by its Land's own rule, with this file's own table and arithmetic: the
     authority's Land (``authority_region``) has a verified text, and the label is the period counted from that Land's
-    day after posting (:func:`land_fiction_days`) under the Land's holidays. ``began`` gives the day a slot's
-    procedure began where its facts state it; for a BW, BY or MV letter after the switch whose facts do not, either
-    day may be the letter's (the date re-derived from its facts decides)."""
+    day after posting (:func:`land_fiction_days`) under the Land's holidays. The procedure's start is the label's own
+    (its spec's ``procedure_began``), else the one its facts state (``began``); with neither, a BW, BY or MV letter is
+    labelled as a procedure begun on or after the Land's switch (convention c03). So such a letter's text (``texts``)
+    may name no day before the switch unless its label states when the procedure began."""
     problems = []
     for e in entries:
         cid, land = e["id"], e["authority_region"]
@@ -1317,17 +1346,28 @@ def check_land_rules(
             posted = _dated(spec.get("posted_on") or e["truth"]["document_date"])
             if label is None or posted is None:
                 continue
-            start = (began or {}).get(cid, {}).get(slot)
-            days = {land_fiction_days(land, posted, start)}
-            if start is None and land in LAND_OLD_PROCEDURES and posted >= LAND_FOUR_DAY_START[land]:
-                days = {3, 4}
-            ends = {
-                n: _land_period_end(posted + timedelta(days=n), spec, land)
-                for n in sorted(d for d in days if d)
-            }
-            if label not in ends.values():
-                gives = " or ".join(f"{end} (day {n})" for n, end in ends.items())
-                problems.append(f"{cid} {slot}: label {label}, {land}'s own delivery day gives {gives}")
+            own = _dated(spec.get("procedure_began"))
+            start = own if own is not None else (began or {}).get(cid, {}).get(slot)
+            switch = LAND_OLD_PROCEDURES.get(land)
+            text = (texts or {}).get(cid)
+            if (
+                switch is not None
+                and own is None
+                and text is not None
+                and posted >= LAND_FOUR_DAY_START[land]
+            ):
+                earlier = days_named_before(text, switch)
+                if earlier:
+                    problems.append(
+                        f"{cid} {slot}: the letter names {earlier[0].isoformat()}, before {land}'s switch "
+                        f"({switch.isoformat()}), but its label states no procedure_began"
+                    )
+            days = land_fiction_days(land, posted, start)
+            end = _land_period_end(posted + timedelta(days=days), spec, land) if days else None
+            if end is not None and label != end:
+                problems.append(
+                    f"{cid} {slot}: label {label}, {land}'s own delivery day gives {end} (day {days})"
+                )
     return problems
 
 
@@ -1362,7 +1402,7 @@ def run(root: Path, *, require_facts: bool = False) -> dict[str, Any]:
     leaks = shared_deadline_sentences(entries, texts)
     photo_problems = check_photos(entries)
     land_window_problems = check_land_windows(entries)
-    land_rule_problems = check_land_rules(entries, dates["procedure_began"])
+    land_rule_problems = check_land_rules(entries, dates["procedure_began"], texts)
     return {
         "letters": sum(1 for e in entries if not e["photo"]),
         "photos": sum(1 for e in entries if e["photo"]),

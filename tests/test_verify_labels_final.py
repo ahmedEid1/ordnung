@@ -511,9 +511,11 @@ def test_a_price_change_is_checked_like_a_hand_read_one(tmp_path: Path) -> None:
 POSTED, ON_THE_3RD, ON_THE_4TH = "2026-12-01", "2027-01-04", "2027-01-05"
 
 
-def land_item(due: str) -> dict[str, Any]:
+def land_item(due: str, began: str | None = None) -> dict[str, Any]:
     spec = {"anchor": "deemed_delivery", "delivery_scope": "vwvfg", "posted_on": POSTED, "amount": 1,
             "unit": "months", "shift": True}  # fmt: skip
+    if began is not None:  # the procedure start the label rests on, as the generator writes it
+        spec["procedure_began"] = began
     return item(due, conventions=[], spec=spec)
 
 
@@ -529,10 +531,13 @@ def land_rules(root: Path, entries: list[dict[str, Any]]) -> list[str]:
         ("HE", ON_THE_4TH, False),
         ("NW", ON_THE_4TH, True),
         ("NW", ON_THE_3RD, False),  # NW keeps no older rule: the posting decides
-        ("MV", ON_THE_4TH, True),  # no fact states when the matter began: either day may be the letter's
-        ("MV", ON_THE_3RD, True),
-        ("BW", ON_THE_3RD, True),
-        ("BY", ON_THE_3RD, True),
+        # neither the label nor a fact states when the matter began: a procedure begun on or after the switch (c03)
+        ("MV", ON_THE_4TH, True),
+        ("MV", ON_THE_3RD, False),
+        ("BW", ON_THE_4TH, True),
+        ("BW", ON_THE_3RD, False),
+        ("BY", ON_THE_4TH, True),
+        ("BY", ON_THE_3RD, False),
     ],
 )
 def test_a_land_authority_s_label_counts_its_land_s_day(
@@ -565,6 +570,58 @@ def test_a_matter_begun_before_the_switch_keeps_the_3rd_day(tmp_path: Path, land
     assert land_rules(tmp_path, entries) == [
         f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
     ]
+
+
+@pytest.mark.parametrize(
+    ("land", "early", "late"), [("MV", "2024-11-01", "2025-03-01"), ("BW", "2025-02-06", "2025-02-07")]
+)
+def test_the_label_s_own_procedure_start_comes_before_the_facts(
+    tmp_path: Path, land: str, early: str, late: str
+) -> None:
+    """The start the label rests on (its ``procedure_began``, which the generator writes) decides its day; a fact's
+    start counts only where the label states none."""
+    older = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=early)])]
+    assert land_rules(tmp_path, older) == []
+    steps = [step("forward", 4, "days", shift=False), step("forward", 1, "months", shift=True)]
+    fact = dated(POSTED, steps, land=land, conventions=[], procedure_began=late)
+    write_facts(tmp_path, "holdout4", {"holdout4-x-K1": {"slots": {"i0": fact}}})
+    assert land_rules(tmp_path, older) == []
+    newer = [entry("holdout4-x-K1", region=land, items=[land_item(ON_THE_3RD, began=late)])]
+    assert land_rules(tmp_path, newer) == [
+        f"holdout4-x-K1 i0: label {ON_THE_3RD}, {land}'s own delivery day gives {ON_THE_4TH} (day 4)"
+    ]
+
+
+def letter_text(land: str | None, text: str, *, began: str | None = None) -> list[str]:
+    """``check_land_rules`` for one letter of ``land`` labelled with the day its label's start gives, whose text is
+    ``text``."""
+    due = ON_THE_3RD if began is not None and land == "MV" else ON_THE_4TH
+    entries = [entry("holdout4-x-K1", region=land, items=[land_item(due, began=began)])]
+    return vl.check_land_rules(entries, {}, {"holdout4-x-K1": text})
+
+
+@pytest.mark.parametrize("land", ["BW", "BY", "MV"])
+@pytest.mark.parametrize(
+    "named",
+    ["Ihr Antrag vom 14.10.2024", "Ihr Antrag vom 3. Dezember 2024", "Ihr Antrag aus dem November 2024"],
+)
+def test_a_letter_that_names_an_earlier_day_states_its_procedure_start(land: str, named: str) -> None:
+    """A BW, BY or MV letter that names a day before its Land's switch rests on a procedure start the label must
+    state (``procedure_began``): without one its label counts the 4th day while the letter may name an older
+    matter, the 3rd."""
+    problems = letter_text(land, f"Bescheid vom 01.12.2026. {named}.")
+    assert len(problems) == 1 and problems[0].startswith("holdout4-x-K1 i0: the letter names "), problems
+    assert f"before {land}'s switch" in problems[0] and "procedure_began" in problems[0]
+
+
+def test_a_letter_that_names_no_earlier_day_or_states_its_start_passes() -> None:
+    assert letter_text("MV", "Bescheid vom 01.12.2026. Ihr Antrag vom 02.01.2025.") == []  # after MV's switch
+    assert letter_text("BW", "Bescheid vom 01.12.2026. Ihr Antrag vom 07.02.2025.") == []  # BW's switch day
+    assert letter_text("BW", "Bescheid vom 01.12.2026. Ihr Antrag aus dem Februar 2025.") == []
+    assert (
+        letter_text("NW", "Bescheid vom 01.12.2026. Ihr Antrag vom 14.10.2024.") == []
+    )  # NW keeps no older rule
+    assert letter_text("MV", "Bescheid vom 01.12.2026. Ihr Antrag vom 01.11.2024.", began="2024-11-01") == []
 
 
 @pytest.mark.parametrize("land", ["HB", "RP", "SL", "ST", None])
@@ -602,6 +659,28 @@ def test_the_land_check_is_part_of_the_run(tmp_path: Path) -> None:
     assert vl.run(tmp_path)["land_rule_problems"] == [
         f"holdout4-x-K1 i0: label {ON_THE_4TH}, HE's own delivery day gives {ON_THE_3RD} (day 3)"
     ]
+
+
+def test_the_run_reads_a_letter_s_procedure_start_from_its_text(tmp_path: Path) -> None:
+    """The run hands each letter's text to the Land check, and a procedure start the label states must be printed in
+    the letter, as every date of its spec."""
+    fixture = entry("holdout4-x-K1", region="MV", items=[land_item(ON_THE_4TH)])
+    fixture["truth"] |= {"sender_name": "Beispielamt", "document_date": POSTED, "references": [], "amounts": [],
+                         "remedy_type": "none"}  # fmt: skip
+    fixture |= {"file": "holdout4/x-K1.pdf", "pages": 1, "source_id": None, "language": "de"}
+    _letter(tmp_path / fixture["file"], ["Beispielamt", "01.12.2026", "Ihr Antrag vom 14.10.2024"])
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"conventions": CONVENTIONS, "entries": [fixture]}), encoding="utf-8")
+    report = vl.run(tmp_path)
+    assert len(report["land_rule_problems"]) == 1 and "2024-10-14" in report["land_rule_problems"][0]
+    assert report["text_problems"] == []
+    fixture["truth"]["items"] = [
+        land_item(ON_THE_3RD, began="2024-10-15")
+    ]  # a start the letter does not print
+    manifest.write_text(json.dumps({"conventions": CONVENTIONS, "entries": [fixture]}), encoding="utf-8")
+    report = vl.run(tmp_path)
+    assert report["land_rule_problems"] == []
+    assert report["text_problems"] == ["holdout4-x-K1 i0: spec procedure_began 2024-10-15 not in the letter"]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -701,6 +780,15 @@ def test_the_earlier_splits_are_unchanged() -> None:
     assert vl.check_window(earlier) == []
     # every Land VwVfG label of the earlier splits is the period from its Land's own delivery day
     assert vl.check_land_rules(earlier) == [] and vl.check_land_windows(earlier) == []
+    # no BW, BY or MV Land VwVfG letter (BW 4, BY 3, MV 1) names a day before its Land's switch: none rests on an
+    # older procedure, so each is labelled with the 4th day (c03)
+    older_rule = {
+        e["id"]: vl._pdf_text(DATASET / e["file"])
+        for e in earlier
+        if e["authority_region"] in vl.LAND_OLD_PROCEDURES and vl._land_vwvfg_slots(e)
+    }
+    assert len(older_rule) == 8
+    assert vl.check_land_rules(earlier, None, older_rule) == []
 
 
 def test_every_final_split_in_the_dataset_has_its_facts_file() -> None:
