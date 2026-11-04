@@ -19,7 +19,7 @@ import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import type { Household, NumbersPage } from "@/api/types";
 import { REAL_LETTER } from "./env";
-import { apiGet, apiSend, expect, open, test, type Letter } from "./helpers";
+import { apiGet, apiSend, expect, open, resetRealApp, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 const RENAMED = "Alex Rivera";
@@ -29,6 +29,9 @@ const CHILD = "Mia Rivera";
 const CARD = "Bank card expires";
 
 test.describe.configure({ mode: "serial" });
+// first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
+// puts things back): the persona's name, no household, and no letter from the bank's file
+test.beforeAll(() => resetRealApp());
 
 /** The letter once the API lists it as read (it is read in the background). */
 async function readLetter(page: Page): Promise<Letter> {

@@ -31,13 +31,16 @@ import type { APIRequestContext, Browser, BrowserContext, Page, TestInfo } from 
 import type { components } from "@/api/schema";
 import { readFileSync } from "node:fs";
 import { REAL_B_BASE_URL, REAL_B_STORAGE_STATE, REAL_BASE_URL, REAL_LETTER, REAL_STORAGE_STATE, SYNC_A_DIR, SYNC_B_DIR } from "./env";
-import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDetail, open, READ, settle, shownAs, test, type Letter, type LetterItem } from "./helpers";
+import { apiGet, apiSend, expect, expectAccessible, expectNoRawEnums, letterDetail, open, READ, resetRealApp, settle, shownAs, test, type Letter, type LetterItem } from "./helpers";
 import { isOrdnungName, isSyncToolFile, ORDNUNG_NAMES, SyncTool, type Side } from "./sync-tool";
 
 type SyncStatus = components["schemas"]["SyncStatus"];
 type Household = components["schemas"]["Household"];
 
 test.describe.configure({ mode: "serial" });
+// first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
+// puts things back): the persona's name, no household, and no letter from the bank's file
+test.beforeAll(() => resetRealApp());
 
 // ------------------------------------------------------------------------------------------------
 // What the pages offer (Settings → Your computers, /join, the standing-by screen, the choice)

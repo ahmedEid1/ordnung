@@ -13,7 +13,7 @@
   <a href="https://ahmedeid1.github.io/ordnung/"><b>Open the online demo</b></a> (nothing to install) · <a href="docs/assets/demo.mp4">Watch the whole tour (MP4, 1 min 33 s)</a><br>
   <sub>The court order in the GIF and the video comes from the online demo's sample letters (<code>?mock=full</code>); its date and advice card are the rules engine's.</sub></p>
 
-<p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a></p>
+<p align="center"><a href="#what-it-does">What it does</a> · <a href="#install-and-run">Install</a> · <a href="#evaluation">Evaluation</a> · <a href="#engineering">Engineering</a> · <a href="#documentation">Docs</a> · <a href="docs/README.md">Every document, by reader</a></p>
 
 Everyone living in Germany gets letters with deadlines: tax assessments, fines, rent increases, contract changes,
 reminders, court orders. The deadline is rarely a date on the page. It is *"one month after this notice is announced
@@ -217,7 +217,7 @@ written policy ([ADR 0007](docs/decisions/0007-short-written-policies-over-growi
 - **Using it:** [the guide](docs/guide.md) ([a tour](docs/guide.md#a-tour), [install and run](docs/guide.md#install-and-run), [updating](docs/guide.md#updating), [environment variables](docs/guide.md#environment-variables), [limitations](docs/guide.md#limitations)) and [privacy](docs/privacy.md)
 - **How it works:** [architecture](docs/architecture.md), [deadline rules](docs/deadline-rules.md), [design decisions](docs/decisions/README.md), [the specification](docs/SPEC.md)
 - **The evaluation:** [the report](docs/evals.md), [the Ask benchmark](docs/evals-ask.md), [the benchmark code](evals/README.md)
-- **Working on it:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md), and [every document by reader](docs/README.md)
+- **Working on it:** [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md)
 
 ## Disclaimer
 

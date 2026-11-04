@@ -4,6 +4,7 @@
   SECURITY.md and CHANGELOG.md is linked from the map, so a page added to ``docs/`` fails here until the map
   names it.
 - ``pyproject.toml``'s ``[project.urls] Documentation`` is the map on GitHub, and the map exists.
+- README's nav line links the map, and no other line of README does.
 """
 
 from __future__ import annotations
@@ -46,3 +47,12 @@ def test_pypi_s_documentation_link_opens_the_doc_map() -> None:
     urls = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["urls"]
     assert urls["Documentation"] == f"{REPOSITORY}/blob/main/docs/README.md"
     assert MAP.is_file()
+
+
+def test_the_readme_s_nav_line_links_the_doc_map() -> None:
+    """README's nav line, under the demo, links the doc map, so a reader finds every document by its reader from
+    the top of the page; no other line of README links it."""
+    lines = (ROOT / "README.md").read_text(encoding="utf-8").splitlines()
+    (nav,) = [line for line in lines if 'href="#what-it-does"' in line]
+    assert 'href="docs/README.md"' in nav
+    assert [line for line in lines if "docs/README.md" in line] == [nav]

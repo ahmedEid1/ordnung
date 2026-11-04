@@ -31,9 +31,12 @@ import {
   WRONG_CODE_MESSAGE,
 } from "@/mocks/data/phone";
 import { PHONE_ADDRESS, PHONE_BASE_URL, PHONE_PORT, REAL_BASE_URL, REAL_DATA_DIR, REAL_LETTER, REAL_STORAGE_STATE, phoneCookie } from "./env";
-import { apiGet, apiSend, expect, expectAccessible, open, phoneContext, READ, test } from "./helpers";
+import { apiGet, apiSend, expect, expectAccessible, open, phoneContext, READ, resetRealApp, test } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
+// first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
+// puts things back): the persona's name, no household, and no letter from the bank's file
+test.beforeAll(() => resetRealApp());
 
 // ------------------------------------------------------------------------------------------------
 // What the pages offer

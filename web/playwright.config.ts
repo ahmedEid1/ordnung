@@ -43,7 +43,7 @@ import {
 const desktop = { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } };
 /** The real app's specs: these files run in the project "real-app" only. */
 const REAL_APP_SPECS = /real-app-[\w-]+\.spec\.ts$/;
-/** README's two pictures from the real app: made only by `make capture` (it sets ORDNUNG_CAPTURE_OUT), else skipped. */
+/** The guide's two screenshots from the real app: made only by `make capture` (it sets ORDNUNG_CAPTURE_OUT), else skipped. */
 const PICTURES_SPEC = /readme-pictures\.spec\.ts$/;
 
 export default defineConfig({
@@ -81,7 +81,7 @@ export default defineConfig({
   // recorded answers replay only against the untouched demo, so the layout project's Ask guards come first.
   // Then dates of the person's own (e2e/add-date.spec.ts: added to the shared demo, then taken away), then
   // the real app: e2e/real-app-*.spec.ts, against `ordnung serve` (real-app-sync.spec.ts with the second one);
-  // and last README's two pictures from the real app (e2e/readme-pictures.spec.ts), which run only for
+  // and last the guide's two screenshots from the real app (e2e/readme-pictures.spec.ts), which run only for
   // `make capture`. One worker runs projects in order.
   projects: [
     { name: "tour", testMatch: /tour\.spec\.ts$/, use: desktop },
