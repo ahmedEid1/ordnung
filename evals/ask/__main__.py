@@ -305,6 +305,22 @@ def _check(result: RunResult, path: Path, data: Mapping[str, Any]) -> bool:
     return False
 
 
+def _way_on(result: RunResult, config: Config) -> str:
+    """How a run cut short (:attr:`RunResult.cut`) goes on: the same day with the same command, or a higher
+    ``--max-cost-usd`` (its recorded turns kept, only the rest asked), or retaken whole — the only way once its
+    recording day is over."""
+    retake = (
+        f"move its recordings aside with `python -m evals.harness retake --whole-run --recorded-dir "
+        f"{harness.shown(config.recorded_dir)} --repeat {config.repeat} --to <folder>` and record it again whole"
+    )
+    if result.unasked.get(harness.UNASKED_DAY_OVER):
+        return f"it cannot go on on another day: {retake}"
+    how = "a higher --max-cost-usd" if result.unasked.get(harness.UNASKED_BUDGET) else "the same command"
+    if result.unasked.get(harness.UNASKED_LIMIT):
+        how += " once the usage limit resets"
+    return f"resume it the same day with {how} (the turns recorded are kept, only the rest are asked), or {retake}"
+
+
 def main(
     argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR, heldout_dir: Path | None = None
 ) -> int:
@@ -355,12 +371,9 @@ def main(
             file=sys.stderr,
         )
         return harness.STOPPED
-    if result.budget_cut:  # a run is one unit: nor is one its budget cut written (the gate fails it)
+    if result.cut:  # a run is one unit: nor is one written that was cut short (budget, usage limit, midnight)
         print(
-            f"error: {result.budget_cut} — the run is one unit, so nothing was written: resume it the same day with a "
-            "higher --max-cost-usd (the turns recorded are kept, only the rest are asked), or move its recordings aside "
-            f"with `python -m evals.harness retake --whole-run --recorded-dir {harness.shown(config.recorded_dir)} "
-            f"--repeat {config.repeat} --to <folder>` and record it again whole",
+            f"error: {result.cut} — the run is one unit, so nothing was written: {_way_on(result, config)}",
             file=sys.stderr,
         )
         args.write = False

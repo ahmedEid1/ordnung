@@ -960,10 +960,21 @@ def _rate_limited(text: str | None) -> bool:
     return "usage limit" in lowered or "rate limit" in lowered
 
 
+#: Why :class:`LiveCalls` returned a call without an answer for a reason of the whole run, not of the call
+#: (:attr:`LiveCalls.unasked`): ``--max-cost-usd`` refused it, a usage limit was met and not waited out (no
+#: ``--wait-on-limit``, or a reset after its end), or the recording day is over (midnight UTC). An Ask run is one unit:
+#: one with such a call was cut, and ``evals.ask`` writes no results file for it.
+UNASKED_BUDGET = "budget"
+UNASKED_LIMIT = "usage limit"
+UNASKED_DAY_OVER = "day over"
+
+
 class LiveCalls:
     """Wraps the live ``claude``: the budget stop, waiting through a usage limit, a ledger line per call, (``day``)
     no call once the recording's day is over (:class:`RecordingDayOver`), and (``closed``) no call for a letter whose
-    unit is already complete (:class:`UnitClosed`)."""
+    unit is already complete (:class:`UnitClosed`). ``unasked`` counts, by reason (:data:`UNASKED_BUDGET`,
+    :data:`UNASKED_LIMIT`, :data:`UNASKED_DAY_OVER`), the calls it returned without an answer for a reason of the run:
+    what a runner reads to tell a run they cut from a whole one, whatever the cause."""
 
     def __init__(
         self,
@@ -974,6 +985,7 @@ class LiveCalls:
         waiter: LimitWaiter | None = None,
         day: date | None = None,
         closed: Collection[str] = (),
+        unasked: Counter[str] | None = None,
     ) -> None:
         self.inner = inner
         self.ledger = ledger
@@ -981,6 +993,7 @@ class LiveCalls:
         self.waiter = waiter
         self.day = day
         self.closed = frozenset(closed)
+        self.unasked: Counter[str] = unasked if unasked is not None else Counter()
         self.name = inner.name
 
     def _day_over(self) -> RecordingDayOver | None:
@@ -1007,8 +1020,13 @@ class LiveCalls:
             raise refused
         while True:
             if self.budget is not None:
-                self.budget.check()
+                try:
+                    self.budget.check()
+                except BudgetReached:
+                    self.unasked[UNASKED_BUDGET] += 1
+                    raise
             if (over := self._day_over()) is not None:
+                self.unasked[UNASKED_DAY_OVER] += 1
                 raise over
             started = time.monotonic()
             try:
@@ -1017,6 +1035,7 @@ class LiveCalls:
                 self._log(req, "rate_limited", started)
                 if self.waiter is not None and await self.waiter.wait(exc.reset_at):
                     continue
+                self.unasked[UNASKED_LIMIT] += 1
                 raise
             except LLMError as exc:
                 self._log(req, outcome_of(exc), started)
@@ -1034,9 +1053,11 @@ class LiveCalls:
             return
         while True:
             if self.budget is not None and self.budget.reached:
+                self.unasked[UNASKED_BUDGET] += 1
                 yield StreamEvent(type="error", error=self.budget.refuse())
                 return
             if (over := self._day_over()) is not None:
+                self.unasked[UNASKED_DAY_OVER] += 1
                 yield StreamEvent(type="error", error=str(over))
                 return
             started = time.monotonic()
@@ -1065,6 +1086,7 @@ class LiveCalls:
             self._log(req, "rate_limited", started)
             if self.waiter is not None and await self.waiter.wait(None):
                 continue
+            self.unasked[UNASKED_LIMIT] += 1
             yield limited
             return
 
@@ -1077,8 +1099,9 @@ async def claude_version(binary: str | None = None) -> str | None:
 @dataclass
 class LiveSetup:
     """What a live run's stacks share: the budget, the waiting, the ``claude`` asked, its version, the ledgers, the
-    provenance each new cassette is stamped with, the recording's day (``None``: not checked), and the letters whose
-    unit is already complete (a final split's: no call for them reaches the model)."""
+    provenance each new cassette is stamped with, the recording's day (``None``: not checked), the letters whose
+    unit is already complete (a final split's: no call for them reaches the model), and the calls its stacks returned
+    without an answer for a reason of the run, by reason (:attr:`LiveCalls.unasked`)."""
 
     repeat: int = 1
     budget: Budget | None = None
@@ -1089,6 +1112,7 @@ class LiveSetup:
     cli_version: str | None = None
     ledgers: list[Ledger] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
+    unasked: Counter[str] = field(default_factory=Counter)
 
     async def resolve_version(self) -> None:
         """Ask the live ``claude`` for its version once (a stand-in without a ``binary`` has none)."""

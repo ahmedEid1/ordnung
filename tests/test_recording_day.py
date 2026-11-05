@@ -93,6 +93,7 @@ async def test_no_call_starts_once_the_recording_day_is_over(monkeypatch: pytest
     events = [event async for event in calls.stream(request)]
     assert [event.type for event in events] == ["error"] and "2026-11-20" in (events[0].error or "")
     assert len(inner.calls) == 1  # neither reached the model
+    assert calls.unasked == {harness.UNASKED_DAY_OVER: 2}  # each counted as a call the run left unasked
     assert harness.RecordingDayOver in eval_run.FATAL_ERRORS  # the run stops scheduling, keeps what is done
 
 

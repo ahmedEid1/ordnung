@@ -568,9 +568,17 @@ async def test_a_streamed_call_waits_through_a_usage_limit_and_is_ledgered(
     lines = [json.loads(line) for line in ledger.path.read_text(encoding="utf-8").splitlines()]
     assert [line["outcome"] for line in lines] == ["rate_limited", "ok"]
     assert lines[1]["cost_usd"] == 0.02 and lines[1]["repeat"] == 2 and lines[1]["purpose"] == "ask"
+    assert live.unasked == {}  # a limit waited out leaves nothing unasked
 
-    # without --wait-on-limit the limit is the answer, as before
-    assert await _types(harness.LiveCalls(Streaming(limited=1)).stream(_ask())) == ["error"]
+    # without --wait-on-limit the limit is the answer, as before, and the call is counted as one the run left unasked
+    alone = harness.LiveCalls(Streaming(limited=1))
+    assert await _types(alone.stream(_ask())) == ["error"]
+    assert alone.unasked == {harness.UNASKED_LIMIT: 1}
+    # nor does a wait that would end after --wait-on-limit's end start: the call is unasked as well
+    clock.slept.clear()
+    short = harness.LiveCalls(Streaming(limited=1), waiter=harness.LimitWaiter(0.1))
+    assert await _types(short.stream(_ask())) == ["error"]
+    assert clock.slept == [] and short.unasked == {harness.UNASKED_LIMIT: 1}
 
 
 async def test_a_streamed_call_stops_at_the_budget() -> None:
@@ -584,7 +592,10 @@ async def test_a_streamed_call_stops_at_the_budget() -> None:
     refused = [event async for event in live.stream(_ask())]
     assert [event.type for event in refused] == ["error"] and "budget reached" in (refused[0].error or "")
     assert model.calls == 2 and budget.spent == pytest.approx(0.04)
-    assert budget.refused == 1  # what a runner reads to tell a run its budget cut from a whole one
+    assert budget.refused == 1
+    assert live.unasked == {
+        harness.UNASKED_BUDGET: 1
+    }  # what a runner reads to tell a run it cut from a whole one
 
 
 async def test_the_budget_counts_the_calls_it_refuses() -> None:
@@ -594,7 +605,7 @@ async def test_the_budget_counts_the_calls_it_refuses() -> None:
     for _ in range(2):
         with pytest.raises(harness.BudgetReached):
             await live.complete(LLMRequest(purpose="test", prompt="p", system="s", doc_ids=["d"]))
-    assert model.calls == 0 and budget.refused == 2
+    assert model.calls == 0 and budget.refused == 2 and live.unasked == {harness.UNASKED_BUDGET: 2}
 
 
 async def test_a_streamed_recording_is_locked_and_checked(tmp_path: Path) -> None:
