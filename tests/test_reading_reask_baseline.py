@@ -39,6 +39,7 @@ from ordnung.llm.fake import FakeBackend
 from ordnung.llm.runtime import LLMService
 from ordnung.models import DateSpec, ExtractedItem
 from ordnung.rules import RuleContext
+from ordnung.rules.delivery import VWVFG_FOUR_DAY_FROM
 from test_reading_reask import pages_of, reading
 from test_reading_reask_floor import (
     BLANK,
@@ -297,9 +298,17 @@ def test_the_shape_alone_passes_that_tax_answer() -> None:
     assert _not_later_spec(floor.item.date, second.items[0].date, second, ctx)
 
 
-#: Länder whose deemed delivery of an authority's letter is four days, as a tax office's is (§ 122 AO); the
-#: others, and the nationwide calendar, still count three for a letter whose sender the reading doesn't name.
-FOUR_DAYS = ("BB", "BE", "BW", "BY", "HB", "HH", "MV", "NI", "NW", "RP", "SH", "SN", "ST")
+#: Länder whose deemed delivery of an authority's letter is four days, as a tax office's is (§ 122 AO), read from the
+#: engine's own table so that a Land it adds is compared too; the others, and the nationwide calendar, still count
+#: three for a letter whose sender the reading doesn't name.
+FOUR_DAYS = tuple(sorted(VWVFG_FOUR_DAY_FROM))
+
+
+def test_every_four_day_land_counts_four_days_by_the_letters_compared() -> None:
+    """The letters below are of January 2026, after every Land's switch to the 4th day (Hamburg's 14 May 2025 the
+    last), so each Land of the table counts four days for them."""
+    assert FOUR_DAYS and max(VWVFG_FOUR_DAY_FROM.values()) < date(2026, 1, 19)
+    assert {"HB", "TH"} <= set(FOUR_DAYS)
 
 
 @pytest.mark.parametrize("land", FOUR_DAYS)
