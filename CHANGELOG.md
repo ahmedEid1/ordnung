@@ -187,6 +187,10 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
   answer (five such citations dropped) and no number: the three recorded answers with a wrong weekday had been
   corrected by the check as recorded already. The recording stays as recorded and its re-scoring of 2026-10-31
   says so ([docs/evals-ask.md](docs/evals-ask.md)).
+- Evaluation: an Ask benchmark run that `--max-cost-usd` cuts short no longer writes a results file that scores the
+  questions it never asked as errors; it says how to go on (the same day with a higher cap, or retaken whole), and a
+  run of "Ask: new questions on the demo household" with answers recorded on an earlier day is refused until it is
+  retaken whole. No published number changes.
 
 ### Upgrading
 
