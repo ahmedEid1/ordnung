@@ -355,6 +355,15 @@ def main(
             file=sys.stderr,
         )
         return harness.STOPPED
+    if result.budget_cut:  # a run is one unit: nor is one its budget cut written (the gate fails it)
+        print(
+            f"error: {result.budget_cut} — the run is one unit, so nothing was written: resume it the same day with a "
+            "higher --max-cost-usd (the turns recorded are kept, only the rest are asked), or move its recordings aside "
+            f"with `python -m evals.harness retake --whole-run --recorded-dir {harness.shown(config.recorded_dir)} "
+            f"--repeat {config.repeat} --to <folder>` and record it again whole",
+            file=sys.stderr,
+        )
+        args.write = False
     for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:

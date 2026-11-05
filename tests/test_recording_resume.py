@@ -579,9 +579,22 @@ async def test_a_streamed_call_stops_at_the_budget() -> None:
     live = harness.LiveCalls(model, budget=budget)
     for _ in range(2):
         assert await _types(live.stream(_ask())) == ["text", "done"]
+    # the last call reached the budget, and none was refused: a run that ends here asked everything
+    assert budget.reached and budget.refused == 0
     refused = [event async for event in live.stream(_ask())]
     assert [event.type for event in refused] == ["error"] and "budget reached" in (refused[0].error or "")
     assert model.calls == 2 and budget.spent == pytest.approx(0.04)
+    assert budget.refused == 1  # what a runner reads to tell a run its budget cut from a whole one
+
+
+async def test_the_budget_counts_the_calls_it_refuses() -> None:
+    budget = harness.Budget(0.0)
+    model = Limited(after=None)
+    live = harness.LiveCalls(model, budget=budget)
+    for _ in range(2):
+        with pytest.raises(harness.BudgetReached):
+            await live.complete(LLMRequest(purpose="test", prompt="p", system="s", doc_ids=["d"]))
+    assert model.calls == 0 and budget.refused == 2
 
 
 async def test_a_streamed_recording_is_locked_and_checked(tmp_path: Path) -> None:

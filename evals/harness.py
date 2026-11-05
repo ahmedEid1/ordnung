@@ -396,6 +396,20 @@ def units_of_another_day(
     return {entry_id: sorted(paths) for entry_id, paths in sorted(found.items())}
 
 
+def recordings_of_another_day(root: Path, *, repeat: int, day: date) -> dict[Path, str | None]:
+    """The recordings of run ``repeat`` in ``root`` (by its request lock) made on another day than ``day``, each with
+    the day it was made on (``None``: a day that cannot be told). An Ask run or a stress invocation is one unit: with
+    any such recording it cannot go on today (its recorded turns told the model another today), and it is retaken
+    whole (:func:`retake` with ``whole_run``), which moves the same recordings."""
+    ledger = _ledger_rows(root)
+    days = {
+        path: recorded_day(path, ledger)
+        for key in lock_entries_of(RequestLock(root / LOCK_FILE), repeat=repeat)
+        for path in recordings_of(root, key)
+    }
+    return {path: made for path, made in sorted(days.items()) if made != day.isoformat()}
+
+
 class UnitClosed(LLMError):
     """A call for a unit that is already complete: its recordings answer every call it makes, so a call that reaches
     the model would record a valid answer again."""
@@ -758,13 +772,16 @@ class BudgetReached(LLMError):
 
 class Budget:
     """The run's live spend against its cap (``--max-cost-usd``); replayed answers cost nothing. ``spent`` starts at
-    what this step already spent (:func:`ledger_spent`), so resuming with the same command gets no new cap."""
+    what this step already spent (:func:`ledger_spent`), so resuming with the same command gets no new cap.
+    ``refused`` counts the calls it kept from starting: a run whose last call reached the cap refused none, and asked
+    everything; one that refused a call was cut."""
 
     def __init__(self, cap: float, *, spent: float = 0.0) -> None:
         if cap < 0:
             raise ValueError("a budget is not negative")
         self.cap = cap
         self.spent = max(0.0, spent)
+        self.refused = 0
 
     @property
     def reached(self) -> bool:
@@ -776,9 +793,14 @@ class Budget:
             "calls in its ledger); what is recorded is kept — resume with a higher --max-cost-usd"
         )
 
+    def refuse(self) -> str:
+        """Keep a call from starting: count it, and say why (:meth:`message`)."""
+        self.refused += 1
+        return self.message()
+
     def check(self) -> None:
         if self.reached:
-            raise BudgetReached(self.message())
+            raise BudgetReached(self.refuse())
 
     def add(self, cost: float) -> None:
         self.spent += max(0.0, cost)
@@ -1012,7 +1034,7 @@ class LiveCalls:
             return
         while True:
             if self.budget is not None and self.budget.reached:
-                yield StreamEvent(type="error", error=self.budget.message())
+                yield StreamEvent(type="error", error=self.budget.refuse())
                 return
             if (over := self._day_over()) is not None:
                 yield StreamEvent(type="error", error=str(over))
