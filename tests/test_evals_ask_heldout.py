@@ -17,7 +17,7 @@ import subprocess
 import sys
 from collections.abc import AsyncIterator
 from dataclasses import asdict
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -1563,3 +1563,158 @@ def test_a_replay_checks_the_live_runs_file_and_fails_after_a_one_character_edit
     assert path.name in out and "appeal" not in out  # what differs, by key and id: never a question's words
     path.write_text(text, encoding="utf-8")
     assert main([*argv, "--repeat", "2"], heldout_dir=folder) == 2  # the file is run 1's
+
+
+# --------------------------------------------------------------------------------------------------
+# a run is one unit: one its budget cut is never written, and one begun on another day never goes on
+# --------------------------------------------------------------------------------------------------
+
+D = date(2026, 9, 28)  # the sample life's day, so the development set is recorded on its own day too
+D1 = date(2026, 9, 29)
+#: a held-out set of three turns: at $0.01 a turn, --max-cost-usd 0.015 lets two start and cuts the third
+CUT_SET = ([VALID_QUESTIONS[0], VALID_QUESTIONS[2]], [_attack("h-attack-tax")])
+ONE_MORE = "none-car-insurance"
+
+
+def _on(monkeypatch: pytest.MonkeyPatch, agent: StandInAgent, day: date) -> StandInAgent:
+    """``agent`` as the live ``claude`` of :mod:`evals.ask` (the rest of the live stack is the real one: the budget,
+    the ledger, the recording day), on ``day`` (UTC), its tools read for that day as the run's are. The agent."""
+    from evals import harness
+    from evals.ask import run as ask_run
+
+    import test_evals_ask
+
+    monkeypatch.setattr(ask_run, "ClaudeCLIBackend", lambda **_options: agent)
+    monkeypatch.setattr(test_evals_ask, "TODAY", day)
+    moment = datetime(day.year, day.month, day.day, 9, tzinfo=UTC)
+    monkeypatch.setattr(harness, "_now", lambda: moment)
+    return agent
+
+
+def _live_heldout(tmp_path: Path, day: date, cap: str, *extra: str) -> list[str]:
+    """The final run's held-out command (runbook §4.6: R6, run 3), on ``day``, into ``tmp_path``."""
+    return [
+        "--set", "heldout", "--live", "--write", "--repeat", "3", "--today", day.isoformat(), "--date",
+        day.isoformat(), "--concurrency", "1", "--max-cost-usd", cap, "--recorded-dir", str(tmp_path / "recorded"),
+        "--recorder-lock", str(tmp_path / "recording.lock"), "--results-dir", str(tmp_path / "pending"), *extra,
+    ]  # fmt: skip
+
+
+def _results(tmp_path: Path) -> list[str]:
+    folder = tmp_path / "pending"
+    return sorted(path.name for path in folder.rglob("*.json")) if folder.exists() else []
+
+
+def _errors(err: str) -> list[str]:
+    return [line for line in err.splitlines() if line.startswith("error: ")]
+
+
+@pytest.mark.slow  # records a held-out run three times: once, in backend-slow, without coverage
+def test_a_held_out_run_its_budget_cuts_writes_no_results_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    first = _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "0.015"), heldout_dir=folder) == 1  # the gate still fails it
+    err = capsys.readouterr().err
+    assert len(first.calls) == 2
+    assert _results(tmp_path) == []  # a cut run is never a whole run: nothing is written
+    (error,) = _errors(err)  # one error, naming the cause and both ways on
+    assert error.startswith("error: budget reached: --max-cost-usd 0.015 (")
+    assert "1 turn(s) were not asked" in error
+    assert "nothing was written" in error and "the same day with a higher --max-cost-usd" in error
+    assert f"retake --whole-run --recorded-dir {tmp_path / 'recorded'} --repeat 3 --to <folder>`" in error
+    assert any(line.startswith("gate: budget reached: ") for line in err.splitlines())
+    ledger = (tmp_path / "recorded" / DEFAULT_MODEL / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(ledger) == 2  # what was recorded is kept
+
+    # resumed the same day with a higher cap: only the turn not asked is asked, and the whole run is written
+    again = _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 0
+    assert len(again.calls) == 1 and not _errors(capsys.readouterr().err)
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
+
+
+@pytest.mark.slow  # records a development run: once, in backend-slow, without coverage
+def test_a_development_run_its_budget_cuts_writes_no_results_file_either(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from evals.ask import run as ask_run
+
+    # the whole set, made small (--write takes no --only)
+    two = [q for q in ask_run.all_questions() if q.id in ("deadline-steuerbescheid_2025-0", ONE_MORE)]
+    monkeypatch.setattr(ask_run, "all_questions", lambda: two)
+    monkeypatch.setattr(ask_run, "ATTACKS", [])
+    monkeypatch.setattr(ask_run, "household_questions", lambda: [])
+    agent = _on(monkeypatch, StandInAgent(), D)
+    # run 2: a development run 1 writes the page too
+    argv = ["--live", "--write", "--repeat", "2", "--concurrency", "1", "--max-cost-usd", "0.005"]
+    lock = ["--recorder-lock", str(tmp_path / "recording.lock")]
+    folders = ["--recorded-dir", str(tmp_path / "recorded"), "--results-dir", str(tmp_path / "pending")]
+    assert main([*argv, *lock, *folders]) == 1
+    err = capsys.readouterr().err
+    assert len(agent.calls) == 1 and _results(tmp_path) == []
+    (error,) = _errors(err)
+    assert "nothing was written" in error and "--repeat 2" in error
+
+
+@pytest.mark.slow  # records a held-out run, then replays it: once, in backend-slow, without coverage
+def test_a_whole_held_out_run_writes_its_results_file_as_before(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A run its budget cut nowhere — its last call reaches the cap exactly — is whole: written byte for byte as the
+    results file of the run (``results_payload``), and the runbook's replay ``--check`` holds it."""
+    from evals.ask import __main__ as ask_main
+
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    agent = _on(monkeypatch, StandInAgent(), D)
+    runs: list[RunResult] = []
+    monkeypatch.setattr(ask_main, "run", lambda config: runs.append(run(config)) or runs[-1])
+    assert main(_live_heldout(tmp_path, D, "0.03"), heldout_dir=folder) == 0
+    assert len(agent.calls) == 3 and not _errors(capsys.readouterr().err)
+    (name,) = _results(tmp_path)
+    path = tmp_path / "pending" / name
+    payload = results_payload(runs[0], run_date=D.isoformat())
+    assert path.read_text(encoding="utf-8") == json.dumps(payload, ensure_ascii=False, indent=1) + "\n"
+    replay = ["--set", "heldout", "--recorded-dir", str(tmp_path / "recorded"), "--repeat", "3"]
+    assert main([*replay, "--check", str(path)], heldout_dir=folder) == 0
+    assert "matches this replay byte for byte" in capsys.readouterr().out
+
+
+@pytest.mark.slow  # records held-out runs on two days: once, in backend-slow, without coverage
+def test_a_held_out_run_begun_on_another_day_is_refused_until_it_is_retaken_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from evals import harness
+
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    recorded = tmp_path / "recorded"
+    root = recorded / DEFAULT_MODEL
+    # run 1, whole on D, and run 3, cut on D
+    whole = _on(monkeypatch, StandInAgent(), D)
+    run_1 = [arg if arg != "3" else "1" for arg in _live_heldout(tmp_path, D, "1")]
+    assert main(run_1, heldout_dir=folder) == 0 and len(whole.calls) == 3
+    _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "0.015"), heldout_dir=folder) == 1
+    capsys.readouterr()
+    cassettes = sorted(path.name for path in root.rglob("*.json"))
+    ledger = (root / harness.LEDGER_FILE).read_text(encoding="utf-8")
+
+    # the next day, the same command with that day's --today: refused before any call, naming the whole-run retake
+    later = _on(monkeypatch, StandInAgent(), D1)
+    assert main(_live_heldout(tmp_path, D1, "1"), heldout_dir=folder) == 2
+    (error,) = _errors(capsys.readouterr().err)
+    assert later.calls == []
+    assert f"2 recording(s) of run 3 were made on another day ({D}), not on {D1}" in error
+    assert f"retake --whole-run --recorded-dir {recorded} --repeat 3 --to <folder>`, then record it" in error
+    assert sorted(path.name for path in root.rglob("*.json")) == cassettes
+    assert (root / harness.LEDGER_FILE).read_text(encoding="utf-8") == ledger
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout.json"]  # run 1's only
+
+    # retaken whole, run 3 is recorded again on D1 (run 1, whole on D, never stops it)
+    aside = ["--recorded-dir", str(recorded), "--repeat", "3", "--to", str(tmp_path / "aside")]
+    assert harness.main(["retake", "--whole-run", *aside]) == 0
+    again = _on(monkeypatch, StandInAgent(), D1)
+    assert main(_live_heldout(tmp_path, D1, "1"), heldout_dir=folder) == 0
+    assert len(again.calls) == 3
+    assert f"{D1}-{DEFAULT_MODEL}-ask-heldout-r3.json" in _results(tmp_path)

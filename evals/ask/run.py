@@ -195,6 +195,8 @@ class RunResult:
     household_strict: list[Strict] = field(default_factory=list)
     #: why the run stopped before every turn was asked (its stop file, ``--stop-at``): turns were left unasked
     stopped: str | None = None
+    #: why a live run left turns unasked at its budget (:func:`budget_cut`): a run is one unit, so it is not written
+    budget_cut: str | None = None
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -348,6 +350,39 @@ def recording_day(config: Config) -> date | None:
     return day
 
 
+def check_one_day(config: Config, day: date | None) -> None:
+    """Refuse a live run of the held-out set that would go on with turns recorded on another day than ``day``: a run
+    is one unit, told one today, so a run begun on another day is retaken whole
+    (:func:`evals.harness.recordings_of_another_day`; the turns of its other runs never count). The development set,
+    pinned to its own day and recorded again in the open on any day, and a smoke with ``--allow-another-today`` are
+    not held to it; ``day`` ``None``: the day is not checked (a stand-in without an explicit ``recording_day``)."""
+    if day is None or config.set_name != "heldout" or config.allow_another_today:
+        return
+    found = harness.recordings_of_another_day(config.root, repeat=config.repeat, day=day)
+    if found:
+        days = sorted({found_day or "a day that cannot be told" for found_day in found.values()})
+        raise BenchmarkError(
+            f"{len(found)} recording(s) of run {config.repeat} were made on another day ({', '.join(days)}), not on "
+            f"{day.isoformat()} (UTC): a run is one unit and cannot go on on a new day (its recorded turns told the "
+            "model another today) — move its recordings aside with `python -m evals.harness retake --whole-run "
+            f"--recorded-dir {harness.shown(config.recorded_dir)} --repeat {config.repeat} --to <folder>`, then "
+            "record it again whole"
+        )
+
+
+def budget_cut(live: Any) -> str | None:
+    """Why a live run left turns unasked at its budget, from the calls ``--max-cost-usd`` refused
+    (:attr:`evals.harness.Budget.refused`; an Ask turn is one call); ``None`` when it refused none — a run whose last
+    call reached the budget asked every turn."""
+    budget = getattr(live, "budget", None)
+    if budget is None or not budget.refused:
+        return None
+    return (
+        f"budget reached: --max-cost-usd {budget.cap:g} (${budget.spent:.4f} spent on this run, counting its ledger) "
+        f"and {budget.refused} turn(s) were not asked"
+    )
+
+
 def live_setup(config: Config) -> Any:
     """What a live run's backend stacks share (:class:`evals.harness.LiveSetup`): its budget, its waiting and the
     provenance each new cassette is stamped with (the repeat, the commit, and once asked, the ``claude`` version).
@@ -390,7 +425,7 @@ def _recording(config: Config) -> Iterator[Any]:
     if not (config.live or config.refresh):
         yield None
         return
-    recording_day(config)  # refused before the lock is taken or any turn asked
+    check_one_day(config, recording_day(config))  # refused before the lock is taken or any turn asked
     lock = harness.RecorderLock(
         config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME,
         command=" ".join(["evals.ask", *sys.argv[1:]]),
@@ -772,6 +807,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         turns, misses, stale, drift, tool_results = asyncio.run(
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
+        cut = budget_cut(live)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -803,6 +839,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         context=context,
         tool_results=tool_results,
         stopped=stopped_by(turns),
+        budget_cut=cut,
     )
 
 
@@ -924,6 +961,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         turns, misses, stale, drift = asyncio.run(
             _run_heldout(config, work, life, items, hostile, targets, live)
         )
+        cut = budget_cut(live)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -965,6 +1003,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         info=info,
         drift=drift,
         stopped=stopped_by(turns),
+        budget_cut=cut,
     )
 
 
