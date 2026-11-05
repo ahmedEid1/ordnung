@@ -689,12 +689,17 @@ async function shot(page, name, options = {}) {
   console.log(`shot → ${name}.png`);
 }
 
+/** The Ask picture's window: tall enough for the question, the whole answer and what it offers after it. */
+const ASK_VIEWPORT = { width: 1440, height: 1700 };
+
 /**
  * Ask, on the untouched demo (before the video reads a letter): a recorded answer replays only
- * against the ledger it was recorded from (`ledger_fingerprint`), and this one's check has work to do.
+ * against the ledger it was recorded from (`ledger_fingerprint`), and this one's check has work to do. The
+ * question box stays at the bottom of the window: the answer's end (its "Copy answer" row, and the questions
+ * offered after it) must clear it, or the picture shows them cut off under it and the capture stops.
  */
 async function askShot(browser) {
-  const context = await newContext(browser, { viewport: { width: 1440, height: 1500 }, deviceScaleFactor: 1 });
+  const context = await newContext(browser, { viewport: ASK_VIEWPORT, deviceScaleFactor: 1 });
   const page = await context.newPage();
   await page.goto(`${BASE}/ask`);
   await settle(page);
@@ -702,6 +707,18 @@ async function askShot(browser) {
   await page.getByRole("main").getByRole("status").filter({ hasText: "Answer ready." }).waitFor({ timeout: 60_000 });
   await page.evaluate(() => window.scrollTo(0, 0));
   await settle(page);
+  const box = await page.locator("form:has(#ask-input)").boundingBox();
+  const ends = [page.getByRole("main").getByRole("button", { name: "Copy answer" }).last()];
+  const offered = page.getByRole("main").getByRole("list", { name: "Suggested questions" });
+  if (await offered.count()) ends.push(offered.last());
+  for (const end of ends) {
+    const at = await end.boundingBox();
+    if (!box || !at || at.y + at.height > box.y) {
+      throw new Error(
+        `the Ask picture cuts the answer off: its end reaches y ${at ? Math.round(at.y + at.height) : "?"}, the question box starts at y ${box ? Math.round(box.y) : "?"} (make ASK_VIEWPORT taller)`,
+      );
+    }
+  }
   await shot(page, "ask");
   await context.close();
 }
