@@ -113,7 +113,7 @@ test("their details say why an e-mailed decision's date waits for their state: s
   await page.goto(`/?party=${party.id}`);
   const group = page.getByRole("dialog", { name: party.name }).getByRole("group", { name: question("TechMarkt Online GmbH", suggestion.postcode) });
   await expect(group).toContainText(
-    "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so it may be several days early, more around weekends and holidays.",
+    "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts such a decision from the day it was sent, or from the arrival day you entered, so it may be several days early, more around weekends and holidays.",
   );
   await expect(group).not.toContainText("a day or two early");
   expect(await drawerFaults(page), "the longer line fits the drawer").toEqual([]);

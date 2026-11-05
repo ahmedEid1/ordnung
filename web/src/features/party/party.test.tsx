@@ -270,6 +270,9 @@ describe("People & organisations drawer", () => {
     const picker = within(drawer).getByRole("combobox", { name: "Which state is this sender in?" });
     expect(picker).toHaveValue("");
     expect(picker).toHaveAccessibleDescription(/Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule/);
+    // an authority's delivery rules follow the state too, and an e-mailed decision waits for it as well
+    expect(picker).toHaveAccessibleDescription(/an authority's letters follow its delivery rules/);
+    expect(picker).toHaveAccessibleDescription(/counts an e-mailed decision from the day it was sent/);
     expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual(["Don't know", ...BUNDESLAENDER.map((b) => b.name)]);
     expect(BUNDESLAENDER).toHaveLength(16);
 
@@ -370,16 +373,23 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
       "This may change 1 of your dates with them. Until you answer, act a working day before it: a holiday in their state could make it earlier.",
     );
     second.unmount();
+    // the strongest reason among them: the others may wait for a weaker one, so not every one may be made earlier
+    suggestion = { waiting: 3, may_be_late: true, reason: "earlier" };
+    const several = await openDrawer();
+    expect(within(several.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
+      "This may change 3 of your dates with them. Until you answer, act a working day before them: a holiday in their state could make some of them earlier.",
+    );
+    several.unmount();
     suggestion = { waiting: 1, may_be_late: false, reason: "email" };
     const third = await openDrawer();
     expect(within(third.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
-      "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so it may be several days early, more around weekends and holidays.",
+      "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts such a decision from the day it was sent, or from the arrival day you entered, so it may be several days early, more around weekends and holidays.",
     );
     third.unmount();
     suggestion = { waiting: 2, may_be_late: false, reason: "days" };
     const fourth = await openDrawer();
     expect(within(fourth.drawer).getByRole("group", { name: FUNKNETZ })).toHaveTextContent(
-      "This may change 2 of your dates with them. Their state decides whether their letters count as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so they may be a day early.",
+      "This may change 2 of your dates with them. Their state decides whether their letters count as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so they may be a day early, more around weekends and holidays.",
     );
   });
 
@@ -425,6 +435,41 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     expect(picker).toHaveValue("");
   });
 
+  it("credits the state's delivery rules when that is why their dates wait: Yes, and the picker choosing that state", async () => {
+    const { srv } = useMockApi();
+    const answer = globalThis.fetch;
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+      const response = await answer(input, init);
+      if ((init?.method ?? "GET") !== "GET" || !String(input).endsWith("/api/parties/pty_funknetz")) return response;
+      const detail = (await response.json()) as PartyDetail;
+      const days = detail.region_suggestion && { ...detail.region_suggestion, waiting: 1, reason: "days" as const };
+      return new Response(JSON.stringify({ ...detail, region_suggestion: days }), { status: 200, headers: { "Content-Type": "application/json" } });
+    });
+    const region = () => srv.db.state.parties.find((p) => p.id === "pty_funknetz")!.region;
+    const yes = await openDrawer();
+    await yes.user.click(within(within(yes.drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Yes" }));
+    await waitFor(() => expect(region()).toBe("BE"));
+    expect(await screen.findByText("Their dates now follow the delivery rules and public holidays of Berlin.")).toBeInTheDocument();
+    expect(screen.queryByText(/skip the public holidays/)).toBeNull();
+    yes.unmount();
+    act(() => __clearToasts());
+
+    Object.assign(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!, { region: null });
+    const chosen = await openDrawer();
+    await chosen.user.selectOptions(chosen.picker, "BE");
+    await waitFor(() => expect(region()).toBe("BE"));
+    expect(await screen.findByText("Their dates now follow the delivery rules and public holidays of Berlin.")).toBeInTheDocument();
+    chosen.unmount();
+    act(() => __clearToasts());
+
+    // another state than the one asked about: what waited for Berlin's rules says nothing of Saxony's
+    Object.assign(srv.db.state.parties.find((p) => p.id === "pty_funknetz")!, { region: null });
+    const other = await openDrawer();
+    await other.user.selectOptions(other.picker, "SN");
+    await waitFor(() => expect(region()).toBe("SN"));
+    expect(await screen.findByText("Their dates now skip the public holidays of Saxony.")).toBeInTheDocument();
+  });
+
   it("“Other state…” leaves the question for this visit and focuses the State picker; nothing is saved", async () => {
     const { calls } = useMockApi();
     const { user, drawer, picker } = await openDrawer();
@@ -454,7 +499,7 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     await user.click(within(question).getByRole("button", { name: "Don't know" }));
     await waitFor(() => expect(idea().status).toBe("dismissed"));
     expect(calls.filter((c) => c.method !== "GET")).toEqual([{ method: "PATCH", path: "/suggestions/sug_land_funknetz", body: { status: "dismissed" } }]);
-    expect(await screen.findByText("Okay — nationwide holidays for FunkNetz Mobil GmbH")).toBeInTheDocument();
+    expect(await screen.findByText("Okay — the state of FunkNetz Mobil GmbH stays unknown")).toBeInTheDocument();
     expect(screen.getByText("Their dates stay the earlier ones. You can choose their state any time in their details.")).toBeInTheDocument();
     // the drawer keeps asking, without "Don't know"; nothing was set; the keyboard is on the State heading, not on Yes
     await waitFor(() => expect(within(question).queryByRole("button", { name: "Don't know" })).toBeNull());
@@ -489,7 +534,7 @@ describe("a sender's state, suggested from the postcode on their letter (ADR 001
     });
     const { user, drawer } = await openDrawer();
     await user.click(within(within(drawer).getByRole("group", { name: FUNKNETZ })).getByRole("button", { name: "Don't know" }));
-    expect(await screen.findByText("Okay — nationwide holidays for FunkNetz Mobil GmbH")).toBeInTheDocument();
+    expect(await screen.findByText("Okay — the state of FunkNetz Mobil GmbH stays unknown")).toBeInTheDocument();
     expect(
       screen.getByText("A holiday in their state could make a date earlier: act a working day before it. You can choose their state any time in their details."),
     ).toBeInTheDocument();

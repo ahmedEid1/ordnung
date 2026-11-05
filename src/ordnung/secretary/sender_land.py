@@ -63,22 +63,25 @@ _IDEA_STANDS: Final = ("new", "snoozed", "dismissed")
 
 #: The Idea's text by why its dates wait (the strongest reason among them): what the Land decides, and what Ordnung
 #: counts until the person answers, in the words of the letter's own question (``LAND_WAIT_REASON`` in
-#: ``web/src/features/party/sender-land.ts``). ``{them}`` is "it" or "them", ``{may}`` "it may" or "they may".
+#: ``web/src/features/party/sender-land.ts``). The count is all the sender's waiting dates, which may wait for
+#: weaker reasons too, so it is the state's rules', and what Ordnung counts is said of the reason's own dates ("such a
+#: decision"). A day more before the delivery day can push a period's end over a weekend and the holidays: more than a
+#: day. ``{them}`` is "it" or "them", ``{may}`` "it may" or "they may".
 IDEA_REASONS: Final[dict[LandWaitReason, str]] = {
     "earlier": (
-        "{postcode} is on their letter. Their state's public holidays may change {count} of your dates with them; "
-        "until you answer, act a working day before {them}."
+        "{postcode} is on their letter. Their state's rules and public holidays may change {count} of your dates "
+        "with them; until you answer, act a working day before {them}."
     ),
     "email": (
         "{postcode} is on their letter. Their state decides whether an e-mailed decision counts from the day it "
-        "arrived or the 3rd or 4th day after it was sent, which may change {count} of your dates with them; until "
-        "you answer, Ordnung counts from the day it was sent, so {may} be several days early, more around weekends "
-        "and holidays."
+        "arrived or the 3rd or 4th day after it was sent, and its rules may change {count} of your dates with them; "
+        "until you answer, Ordnung counts such a decision from the day it was sent, or from the arrival day you "
+        "entered, so {may} be several days early, more around weekends and holidays."
     ),
     "days": (
         "{postcode} is on their letter. Their state decides whether their letters count as delivered after 3 or 4 "
-        "days, which may change {count} of your dates with them; until you answer, Ordnung counts 3, so {may} be a "
-        "day early."
+        "days, and its rules may change {count} of your dates with them; until you answer, Ordnung counts 3, so "
+        "{may} be a day early, more around weekends and holidays."
     ),
     "holiday": (
         "{postcode} is on their letter. Their state's public holidays may change {count} of your dates with them; "

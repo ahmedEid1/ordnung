@@ -31,7 +31,13 @@ from ordnung.db.store import Store
 from ordnung.models import ContractComputation, Party, RegionSuggestion, Suggestion
 from ordnung.rules import normalize_region
 from ordnung.rules.calendar_de import REGION_NAMES
-from ordnung.rules.deadlines import REGION_EARLIER, REGION_UNKNOWN, compute_due
+from ordnung.rules.deadlines import (
+    REGION_EARLIER,
+    REGION_UNKNOWN,
+    RuleContext,
+    compute_due,
+    waits_for_sender_land,
+)
 from ordnung.rules.delivery import LAND_DAYS_UNCONFIRMED, LAND_EMAIL_UNCONFIRMED
 from ordnung.secretary import sender_land
 from ordnung.secretary.sender_land import (
@@ -350,17 +356,19 @@ def test_the_idea_says_when_a_date_may_be_late(store: Store) -> None:
     [idea] = _ideas(store)
 
     assert idea.body == (
-        "80331 is on their letter. Their state's public holidays may change 2 of your dates with them; until "
-        "you answer, act a working day before them."
+        "80331 is on their letter. Their state's rules and public holidays may change 2 of your dates with them; "
+        "until you answer, act a working day before them."
     )
     item = store.get_item(early)
     assert item is not None and idea.due_date == item.send_by == "2026-11-09"  # the earliest day to act
 
 
 def test_the_idea_says_why_an_emailed_decision_waits(store: Store) -> None:
-    """Counted from the day it was sent while the sender's Land is unknown, an e-mailed decision may count from the
-    3rd or 4th day after it: several days, not a holiday's day or two. The Idea and the question in their details
-    say why, as the letter's own question does. A date counted backwards still says to act a working day before."""
+    """Counted from the day it was sent (or the arrival day the person entered) while the sender's Land is unknown,
+    an e-mailed decision may count from the 3rd or 4th day after it: several days, not a holiday's day or two. The
+    Idea and the question in their details say why, as the letter's own question does, of that decision only: the
+    sender's other waiting dates (here a holiday's) are no e-mailed decision, so the count is the state's rules'. A
+    date counted backwards still says to act a working day before."""
     assert compute_due(EMAILED, without_land(EMAILED)).warnings == [LAND_EMAIL_UNCONFIRMED]
     party = _sender(store, name="Stadt München")
     letter = letter_from(store, party, MUNICH)
@@ -373,15 +381,15 @@ def test_the_idea_says_why_an_emailed_decision_waits(store: Store) -> None:
     assert found is not None and (found.waiting, found.may_be_late, found.reason) == (2, False, "email")
     assert idea.body == (
         "80331 is on their letter. Their state decides whether an e-mailed decision counts from the day it arrived "
-        "or the 3rd or 4th day after it was sent, which may change 2 of your dates with them; until you answer, "
-        "Ordnung counts from the day it was sent, so they may be several days early, more around weekends and "
-        "holidays."
+        "or the 3rd or 4th day after it was sent, and its rules may change 2 of your dates with them; until you "
+        "answer, Ordnung counts such a decision from the day it was sent, or from the arrival day you entered, so "
+        "they may be several days early, more around weekends and holidays."
     )
     to_do(store, party, letter, BACKWARDS)
     [late] = _ideas(store)
     assert late.body == (
-        "80331 is on their letter. Their state's public holidays may change 3 of your dates with them; until "
-        "you answer, act a working day before them."
+        "80331 is on their letter. Their state's rules and public holidays may change 3 of your dates with them; "
+        "until you answer, act a working day before them."
     )
 
 
@@ -395,8 +403,27 @@ def test_the_idea_says_why_a_land_authority_s_letter_waits(store: Store) -> None
     assert idea.title == "Is Stadt Erfurt in Thuringia?"
     assert idea.body == (
         "99084 is on their letter. Their state decides whether their letters count as delivered after 3 or 4 days, "
-        "which may change 1 of your dates with them; until you answer, Ordnung counts 3, so it may be a day early."
+        "and its rules may change 1 of your dates with them; until you answer, Ordnung counts 3, so it may be a day "
+        "early, more around weekends and holidays."
     )
+
+
+def test_a_land_authority_s_letter_counted_with_3_days_may_be_more_than_a_day_early() -> None:
+    """One day more before the delivery day can push a period's end over a weekend and the holidays: a Thuringian
+    authority's letter posted Fri 27 Nov 2026 with a month to object is due Wed 30 Dec 2026 with 3 days, Mon 4 Jan
+    2027 with Thuringia's 4, five days later, while its only warning is the 3 days' (the Idea's ``days``)."""
+
+    def due(region: str | None) -> str | None:
+        context = RuleContext(
+            today=TODAY, region=region, document_date=date(2026, 11, 27), delivery_scope="vwvfg"
+        )
+        return compute_due(DELIVERY, context).due_date
+
+    assert (due(None), due("TH")) == ("2026-12-30", "2027-01-04")
+    context = RuleContext(today=TODAY, region=None, document_date=date(2026, 11, 27), delivery_scope="vwvfg")
+    warnings = compute_due(DELIVERY, context).warnings
+    assert waits_for_sender_land(warnings, "TH").reason == "days"
+    assert "more around weekends and holidays" in sender_land.IDEA_REASONS["days"]
 
 
 def test_the_idea_gives_the_reason_in_the_letter_s_own_words() -> None:
@@ -408,21 +435,21 @@ def test_the_idea_gives_the_reason_in_the_letter_s_own_words() -> None:
     letter = " ".join(found.group(1).split())
     for words in (
         "decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent",
-        "Ordnung counts from the day it was sent, so",
+        "from the day it was sent, or from the arrival day you entered, so",
         "several days early, more around weekends and holidays",
         "decides whether this letter counts as delivered after 3 or 4 days",
         "Ordnung counts 3, so",
-        "a day early",
+        "a day early, more around weekends and holidays",
     ):
         assert words in letter, words
     idea = " ".join((sender_land.IDEA_REASONS["email"] + sender_land.IDEA_REASONS["days"]).split())
     for words in (
         "decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent",
-        "Ordnung counts from the day it was sent, so",
+        "from the day it was sent, or from the arrival day you entered, so",
         "several days early, more around weekends and holidays",
         "decides whether their letters count as delivered after 3 or 4 days",
         "Ordnung counts 3, so",
-        "a day early",
+        "a day early, more around weekends and holidays",
     ):
         assert words in idea, words
 

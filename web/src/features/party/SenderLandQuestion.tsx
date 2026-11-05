@@ -5,7 +5,7 @@
  * from is shown so a wrong one can be seen.
  *
  * - **Yes** saves the state (`PATCH /api/parties/{id}`, which recomputes their dates), with an Undo that sets it
- *   back to unknown.
+ *   back to unknown. Its toast credits the state's delivery rules too when that is why their dates waited.
  * - **Other state…** goes to the State picker (`onOther`).
  * - **Don't know**, while the sender's Idea stands, dismisses that Idea (`PATCH /api/suggestions/{id}`) with the
  *   Idea's own Undo: the letter and Today stop asking, their details keep the question. Its toast says the dates
@@ -23,6 +23,7 @@ import { toast } from "@/components/ui/Toast";
 import { AnswerButton } from "@/features/inbox/AnswerButton";
 import { focusWhenReady } from "@/features/today/focus";
 import { cn } from "@/lib/utils";
+import { savedStateLine } from "./sender-land";
 import { regionName } from "./timeline";
 
 export type PartyUpdate = ReturnType<typeof useUpdateParty>;
@@ -86,7 +87,7 @@ export function SenderLandQuestion({
     const state = regionName(saved.region) ?? land;
     const moved = afterYes ? await afterYes() : null;
     toast.success(`Saved: ${saved.name} is in ${state}`, {
-      description: [`Their dates now skip the public holidays of ${state}.`, moved].filter(Boolean).join(" "),
+      description: [savedStateLine(state, suggestion.reason), moved].filter(Boolean).join(" "),
       undo: () => update.mutateAsync({ id: party.id, patch: { region: null } }).then(
         () => undefined,
         () => undefined,
@@ -102,7 +103,7 @@ export function SenderLandQuestion({
       () => {
         setBusy(null);
         toast({
-          title: `Okay — nationwide holidays for ${party.name}`,
+          title: `Okay — the state of ${party.name} stays unknown`,
           description: `${
             suggestion.may_be_late ? "A holiday in their state could make a date earlier: act a working day before it." : "Their dates stay the earlier ones."
           } You can choose their state any time in their details.`,
