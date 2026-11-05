@@ -1718,3 +1718,163 @@ def test_a_held_out_run_begun_on_another_day_is_refused_until_it_is_retaken_whol
     assert main(_live_heldout(tmp_path, D1, "1"), heldout_dir=folder) == 0
     assert len(again.calls) == 3
     assert f"{D1}-{DEFAULT_MODEL}-ask-heldout-r3.json" in _results(tmp_path)
+
+
+class LimitedFrom(StandInAgent):
+    """The stand-in, whose call number ``at`` (from 1) and every later one meet a usage limit (the CLI yields it as an
+    error event, its reset time not passed on)."""
+
+    def __init__(self, at: int) -> None:
+        super().__init__()
+        self.at = at
+
+    async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+        if len(self.calls) + 1 >= self.at:
+            self.calls.append(req)
+            yield StreamEvent(type="error", error="Claude AI usage limit reached")
+            return
+        async for event in super().stream(req):
+            yield event
+
+
+@pytest.mark.slow  # records a held-out run twice: once, in backend-slow, without coverage
+@pytest.mark.parametrize("wait", [[], ["--wait-on-limit", "0.1"]], ids=["no-wait", "wait-gives-up"])
+def test_a_held_out_run_a_usage_limit_cuts_writes_no_results_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], wait: list[str]
+) -> None:
+    """A usage limit met without --wait-on-limit, or whose wait would end after --wait-on-limit's (six minutes here,
+    the unnamed reset's wait 30), cuts the run as its budget does: nothing is written, and it goes on the same day."""
+    from evals import harness
+
+    async def no_sleep(seconds: float) -> None:
+        raise AssertionError(f"a wait of {seconds}s past --wait-on-limit's end")
+
+    monkeypatch.setattr(harness, "_sleep", no_sleep)
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    agent = _on(monkeypatch, LimitedFrom(3), D)
+    assert main(_live_heldout(tmp_path, D, "1", *wait), heldout_dir=folder) == 1  # the gate still fails it
+    err = capsys.readouterr().err
+    asked = len(agent.calls)
+    assert asked == 3 and _results(tmp_path) == []  # a cut run is never a whole run: nothing is written
+    assert ("stopping — run the same command again later, it resumes" in err) == bool(wait)
+    (error,) = _errors(err)  # one error, naming the cause and both ways on
+    assert error.startswith("error: a usage limit ") and "1 turn(s) were not asked" in error
+    assert (
+        "nothing was written" in error
+        and "the same day with the same command once the usage limit resets" in error
+    )
+    assert "budget" not in error  # the budget cut nothing
+    assert f"retake --whole-run --recorded-dir {tmp_path / 'recorded'} --repeat 3 --to <folder>`" in error
+
+    # resumed the same day, the limit reset: only the turn not asked is asked, and the whole run is written
+    again = _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "1", *wait), heldout_dir=folder) == 0
+    asked = len(again.calls)
+    assert asked == 1 and not _errors(capsys.readouterr().err)
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
+
+
+@pytest.mark.slow  # records a held-out run: once, in backend-slow, without coverage
+def test_a_held_out_run_the_recording_days_end_cuts_writes_no_results_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Without --stop-at, midnight UTC (``RecordingDayOver``) cuts the run between two turns: nothing is written, and
+    the run, which cannot go on on the new day, is retaken whole."""
+    from evals import harness
+
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    agent = _on(monkeypatch, StandInAgent(), D)
+    clock = {"now": datetime(D.year, D.month, D.day, 23, 50, tzinfo=UTC)}
+    monkeypatch.setattr(harness, "_now", lambda: clock["now"])
+    answer = agent.stream
+
+    async def stream(req: LLMRequest) -> AsyncIterator[StreamEvent]:
+        async for event in answer(req):
+            yield event
+        if len(agent.calls) == 2:  # midnight passes after the second turn
+            clock["now"] = datetime(D1.year, D1.month, D1.day, 0, 5, tzinfo=UTC)
+
+    monkeypatch.setattr(agent, "stream", stream)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 1
+    err = capsys.readouterr().err
+    asked = len(agent.calls)
+    assert asked == 2 and _results(tmp_path) == []
+    (error,) = _errors(err)
+    assert error.startswith(f"error: the recording day {D} is over (UTC) and 1 turn(s) were not asked — ")
+    assert "nothing was written" in error and "the same day" not in error  # its day is over: no resume
+    assert f"retake --whole-run --recorded-dir {tmp_path / 'recorded'} --repeat 3 --to <folder>`" in error
+    # the next day the same command is refused before any call, naming the same retake
+    later = _on(monkeypatch, StandInAgent(), D1)
+    assert main(_live_heldout(tmp_path, D1, "1"), heldout_dir=folder) == 2
+    asked = len(later.calls)
+    assert asked == 0 and _results(tmp_path) == []
+
+
+@pytest.mark.slow  # records development runs on two days: once, in backend-slow, without coverage
+@pytest.mark.parametrize(
+    ("begun", "resumed", "flags"),
+    [
+        (date(2026, 9, 27), D, []),  # in the open the day before its own day, resumed on it
+        (D1, date(2026, 9, 30), ["--allow-another-today"]),  # in the open on two later days
+    ],
+    ids=["own-day", "later-days"],
+)
+def test_a_development_run_is_not_held_to_one_day(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    begun: date,
+    resumed: date,
+    flags: list[str],
+) -> None:
+    """The development set, pinned to its own day, is recorded again in the open on any day: a run of it begun on
+    another day goes on, its recorded turns kept (the held-out set's one-day rule is not its)."""
+    from evals import harness
+    from evals.ask import run as ask_run
+
+    two = [q for q in ask_run.all_questions() if q.id in ("deadline-steuerbescheid_2025-0", ONE_MORE)]
+    monkeypatch.setattr(ask_run, "all_questions", lambda: two)
+    monkeypatch.setattr(ask_run, "ATTACKS", [])
+    monkeypatch.setattr(ask_run, "household_questions", lambda: [])
+    argv = ["--live", "--write", "--repeat", "2", "--concurrency", "1", "--date", D.isoformat()]
+    lock = ["--recorder-lock", str(tmp_path / "recording.lock")]
+    folders = ["--recorded-dir", str(tmp_path / "recorded"), "--results-dir", str(tmp_path / "pending")]
+
+    def on(day: date) -> StandInAgent:  # the set's tools read for its own day, the clock on ``day``
+        agent = _on(monkeypatch, StandInAgent(), D)
+        monkeypatch.setattr(harness, "_now", lambda: datetime(day.year, day.month, day.day, 9, tzinfo=UTC))
+        return agent
+
+    first = on(begun)
+    assert main([*argv, "--max-cost-usd", "0.005", "--allow-another-today", *lock, *folders]) == 1
+    asked = len(first.calls)
+    assert asked == 1 and _results(tmp_path) == []
+    capsys.readouterr()
+    again = on(resumed)
+    assert main([*argv, "--max-cost-usd", "1", *flags, *lock, *folders]) == 0
+    asked = len(again.calls)
+    assert asked == 1 and not _errors(capsys.readouterr().err)
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-r2.json"]
+
+
+@pytest.mark.slow  # records a held-out smoke on two days: once, in backend-slow, without coverage
+def test_a_held_out_smoke_with_another_today_is_not_held_to_one_day(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A held-out smoke with --allow-another-today, into a scratch folder outside the checkout and thrown away, is not
+    held to one day: cut on D, the same command goes on on D+1."""
+    from evals import harness
+
+    assert not tmp_path.resolve().is_relative_to(ROOT.resolve())  # a scratch folder outside the checkout
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    first = _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "0.015", "--allow-another-today"), heldout_dir=folder) == 1
+    asked = len(first.calls)
+    assert asked == 2 and _results(tmp_path) == []
+    capsys.readouterr()
+    again = _on(monkeypatch, StandInAgent(), D)  # its --today is still D; the clock is on D+1
+    monkeypatch.setattr(harness, "_now", lambda: datetime(D1.year, D1.month, D1.day, 9, tzinfo=UTC))
+    assert main(_live_heldout(tmp_path, D, "1", "--allow-another-today"), heldout_dir=folder) == 0
+    asked = len(again.calls)
+    assert asked == 1 and not _errors(capsys.readouterr().err)
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]

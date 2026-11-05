@@ -190,8 +190,9 @@ check shows in the numbers at once, and costs nothing.
   for that day). The development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be
   recorded again on another day: `--allow-another-today` does that in the open, and every new recording
   (`recorded_on`) and results file says both days. A held-out or final set takes `--allow-another-today` only for
-  a smoke into a scratch `--recorded-dir` outside the checkout, thrown away. An Ask run its budget cuts writes no
-  results file: resume it the same day with a higher `--max-cost-usd`, or retake it whole.
+  a smoke into a scratch `--recorded-dir` outside the checkout, thrown away. An Ask run cut short (by its
+  `--max-cost-usd`, a usage limit not waited out, or midnight UTC) writes no results file: resume it the same day
+  (a higher cap, or once the limit resets), or retake it whole.
 
 ## Tests
 

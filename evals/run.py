@@ -380,7 +380,13 @@ def make_backend(
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
         calls = harness.LiveCalls(
-            cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day, closed=setup.closed
+            cli,
+            ledger=ledger,
+            budget=setup.budget,
+            waiter=setup.waiter,
+            day=setup.day,
+            closed=setup.closed,
+            unasked=setup.unasked,
         )
         recorder = RecordingBackend(calls, root, allowed_doc_ids=allowed_doc_ids, provenance=setup.provenance)
         if config.refresh:

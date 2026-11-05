@@ -195,8 +195,11 @@ class RunResult:
     household_strict: list[Strict] = field(default_factory=list)
     #: why the run stopped before every turn was asked (its stop file, ``--stop-at``): turns were left unasked
     stopped: str | None = None
-    #: why a live run left turns unasked at its budget (:func:`budget_cut`): a run is one unit, so it is not written
-    budget_cut: str | None = None
+    #: why a live run left turns unasked for a reason of the whole run (:func:`cut_by`: its budget, a usage limit not
+    #: waited out, the recording day's end): a run is one unit, so it is not written
+    cut: str | None = None
+    #: how many turns each such reason left unasked (:attr:`evals.harness.LiveSetup.unasked`)
+    unasked: dict[str, int] = field(default_factory=dict)
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -370,17 +373,34 @@ def check_one_day(config: Config, day: date | None) -> None:
         )
 
 
-def budget_cut(live: Any) -> str | None:
-    """Why a live run left turns unasked at its budget, from the calls ``--max-cost-usd`` refused
-    (:attr:`evals.harness.Budget.refused`; an Ask turn is one call); ``None`` when it refused none — a run whose last
-    call reached the budget asked every turn."""
-    budget = getattr(live, "budget", None)
-    if budget is None or not budget.refused:
+def unasked_by(live: Any) -> dict[str, int]:
+    """How many turns a live run left unasked for each reason of the whole run, from the calls its stack returned
+    without an answer (:attr:`evals.harness.LiveSetup.unasked`; an Ask turn is one call); empty when there were none —
+    a run whose last call reached the budget asked every turn."""
+    counts = getattr(live, "unasked", None) or {}
+    return {reason: count for reason, count in sorted(counts.items()) if count}
+
+
+def cut_by(live: Any) -> str | None:
+    """Why a live run left turns unasked for a reason of the whole run (:func:`unasked_by`): ``--max-cost-usd``
+    refused them, a usage limit was met and not waited out (no ``--wait-on-limit``, or a reset after its end), or the
+    recording day ended (midnight UTC: no call starts on a later day); ``None`` when every turn was asked."""
+    unasked = unasked_by(live)
+    if not unasked:
         return None
-    return (
-        f"budget reached: --max-cost-usd {budget.cap:g} (${budget.spent:.4f} spent on this run, counting its ledger) "
-        f"and {budget.refused} turn(s) were not asked"
-    )
+    causes = []
+    if unasked.get(harness.UNASKED_BUDGET):
+        budget = live.budget
+        causes.append(
+            f"budget reached: --max-cost-usd {budget.cap:g} (${budget.spent:.4f} spent on this run, counting its "
+            "ledger)"
+        )
+    if unasked.get(harness.UNASKED_LIMIT):
+        waited = "a reset after --wait-on-limit's end" if live.waiter is not None else "no --wait-on-limit"
+        causes.append(f"a usage limit was not waited out ({waited})")
+    if unasked.get(harness.UNASKED_DAY_OVER):
+        causes.append(f"the recording day {live.day.isoformat()} is over (UTC)")
+    return f"{'; '.join(causes)} and {sum(unasked.values())} turn(s) were not asked"
 
 
 def live_setup(config: Config) -> Any:
@@ -467,7 +487,9 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
         ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
-        cli = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
+        cli = harness.LiveCalls(
+            cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day, unasked=setup.unasked
+        )
         provenance = setup.provenance  # stamped on each new cassette, as the benchmark's are
         recorder = RecordingBackend(cli, root, allowed_doc_ids=allowed_doc_ids, provenance=provenance)
         stack = recorder if config.refresh else ReplayBackend(root, fallback=recorder)
@@ -807,7 +829,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         turns, misses, stale, drift, tool_results = asyncio.run(
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
-        cut = budget_cut(live)
+        cut, unasked = cut_by(live), unasked_by(live)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -839,7 +861,8 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         context=context,
         tool_results=tool_results,
         stopped=stopped_by(turns),
-        budget_cut=cut,
+        cut=cut,
+        unasked=unasked,
     )
 
 
@@ -961,7 +984,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         turns, misses, stale, drift = asyncio.run(
             _run_heldout(config, work, life, items, hostile, targets, live)
         )
-        cut = budget_cut(live)
+        cut, unasked = cut_by(live), unasked_by(live)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -1003,7 +1026,8 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         info=info,
         drift=drift,
         stopped=stopped_by(turns),
-        budget_cut=cut,
+        cut=cut,
+        unasked=unasked,
     )
 
 
