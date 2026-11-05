@@ -72,10 +72,13 @@ _ORDINAL = {3: "3rd", 4: "4th"}
 #: BB (§ 1 VwVfGBbg), NI (§ 1 NVwVfG), SN (§ 1 SächsVwVfZG, dynamic), SH (§ 110 Abs. 2 LVwG; Art. 2 Abs. 2 of the act
 #: of 13 Dec 2024) and TH (§ 1 ThürVwVfG, dynamic, in force 1 Jan 2025) from 1 January 2025. HH from 14 May 2025
 #: (HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 of its constitution). BW from 7 Feb 2025 (GBl. 2025 Nr. 8). HB, RP
-#: and ST refer to the federal VwVfG "in der jeweils geltenden Fassung", checked against the Landtag record of the act
-#: as adopted, as their gazettes could not be reached: HB (§ 1 Abs. 1 BremVwVfG since 6 Apr 2024; Bürgerschaft
-#: Drs. 21/299), RP (§ 1 Abs. 1 LVwVfG; Landtag Drs. 14/2221, GVBl. 2003 S. 155) and ST (§ 1 Abs. 1 VwVfG LSA of
-#: 18 Nov 2005; Landtag Drs. 4/1838, 4/2412), from 1 January 2025. Before a Land's day its old law counts the 3rd day.
+#: and ST refer to the federal VwVfG "in der jeweils geltenden Fassung", from 1 January 2025; their gazettes could not
+#: be reached. HB (§ 1 Abs. 1 BremVwVfG since 6 Apr 2024; Bürgerschaft Drs. 21/299) and ST (§ 1 Abs. 1 VwVfG LSA of
+#: 18 Nov 2005; Landtag Drs. 4/1838, 4/2412) were checked against the Landtag record of the act as adopted; RP only
+#: against the government's statement of § 1 Abs. 1 LVwVfG in its bill's reasoning (Landtag Drs. 14/2221, adopted
+#: unanimously, GVBl. 2003 S. 155; mdi.rlp.de; Bremen's Drs. 21/299 names it), and its § 3 Abs. 1, which modifies
+#: § 41 Abs. 2 Satz 1 VwVfG, was not read: it is taken to concern only "im Inland" (docs/deadline-rules.md § 5).
+#: Before a Land's day its old law counts the 3rd day.
 VWVFG_FOUR_DAY_FROM: dict[str, date] = {
     **dict.fromkeys(
         ("BY", "NW", "MV", "BE", "BB", "HB", "NI", "RP", "SN", "ST", "SH", "TH"), FOUR_DAY_RULE_FROM

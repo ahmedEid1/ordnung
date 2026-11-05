@@ -260,8 +260,9 @@ takes the day it was made available as the earliest download. Tax portals use th
 provision (§ 122a Abs. 4 AO), social-law portals the 4th day after the notification (§ 37 Abs. 2a SGB X).
 
 **The Länder.** Authorities of a Land apply their own VwVfG or the federal one by reference; the gazettes were
-checked on 4 Nov 2026, and for Bremen, Rheinland-Pfalz and Sachsen-Anhalt, whose gazettes could not be reached, the
-Landtag's record of the act as adopted.
+checked on 4 Nov 2026, for Bremen and Sachsen-Anhalt, whose gazettes could not be reached, the Landtag's record of
+the act as adopted, and for Rheinland-Pfalz, whose gazette could not be reached either, the government's statement
+of its law in a bill the Landtag adopted (below).
 
 | Land | Delivery day | Source |
 |---|---|---|
@@ -269,13 +270,13 @@ Landtag's record of the act as adopted.
 | Bayern | 4th from 1 Jan 2025; a matter begun before keeps the 3rd (Art. 98) | Art. 41 Abs. 2, Art. 98 BayVwVfG, last amended by the acts of 9 and 23 Dec 2024 (GVBl. 2024 S. 570, 599), gesetze-bayern.de |
 | Berlin | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 Gesetz über das Verfahren der Berliner Verwaltung, GVBl. 2016 Nr. 11 S. 218 |
 | Brandenburg | 4th from 1 Jan 2025; an e-mailed decision: the day it arrived, if shown | §§ 1, 7 VwVfGBbg of 7 Jul 2009 (GVBl. I/09 Nr. 12 S. 262, 264), last amended by the act of 8 May 2018 (GVBl. I/18 Nr. 8 S. 4), bravors.brandenburg.de |
-| Bremen | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 Abs. 1 BremVwVfG of 13 Mar 2024, Brem.GBl. Nr. 27/2024 S. 127; Bürgerschaft Drs. 21/299, adopted 13/14 Mar 2024 |
+| Bremen | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 Abs. 1 BremVwVfG (Brem.GBl. 2024 Nr. 27 S. 127; in force 6 Apr 2024); Bürgerschaft Drs. 21/299, adopted 13/14 Mar 2024 |
 | Hamburg | 3rd; 4th from 14 May 2025 | 12. ÄndG HmbVwVfG of 5 May 2025, HmbGVBl. Nr. 17 of 13 May 2025 S. 338; Art. 54 Verfassung |
 | Hessen | 3rd | § 41 Abs. 2 HVwVfG (GVBl. 2010 Nr. 3 S. 18, 32; 2018 Nr. 21 S. 570, 574, 575) |
 | Mecklenburg-Vorpommern | 4th from 1 Jan 2025; a matter begun before keeps the 3rd (§ 120a) | Art. 1 Nr. 14, 34, Art. 4 of the act of 11 Dec 2024, GVOBl. 2024 Nr. 27 S. 617 |
 | Niedersachsen | 4th from 1 Jan 2025 (federal VwVfG) | § 1 NVwVfG of 3 Dec 1976 (Nds. GVBl. S. 311), last amended by the act of 22 Sep 2022 (Nds. GVBl. S. 589), voris.wolterskluwer-online.de |
 | Nordrhein-Westfalen | 4th from 1 Jan 2025 (§ 97: posting decides) | §§ 41, 97 VwVfG NRW (GV. NRW. 2024 S. 1184), recht.nrw.de |
-| Rheinland-Pfalz | 4th from 1 Jan 2025 (federal VwVfG, dynamic reference; checked against the Landtag record) | § 1 Abs. 1 LVwVfG (dynamic); Landtag RP Drs. 14/2221, GVBl. 2003 Nr. 11 S. 155; mdi.rlp.de |
+| Rheinland-Pfalz | 4th from 1 Jan 2025 (federal VwVfG, dynamic reference, as the government's bill states it; § 3 Abs. 1 LVwVfG not read) | § 1 Abs. 1 LVwVfG as stated in the reasoning of Landtag RP Drs. 14/2221 (adopted unanimously, PlPr 14/51; GVBl. 2003 Nr. 11 S. 155); mdi.rlp.de; Bürgerschaft Bremen Drs. 21/299 |
 | Saarland | 3rd (not confirmed: its 2025 act could not be read) | Gesetz vom 27.08.2025, Amtsbl. 2025 Nr. 38 S. 854 (Landtag Drs. 17/1587), not read: every Saarland host refused |
 | Sachsen | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung") | § 1 SächsVwVfZG, revosax.sachsen.de |
 | Sachsen-Anhalt | 4th from 1 Jan 2025 (federal VwVfG "in der jeweils geltenden Fassung"; checked against the Landtag record) | § 1 Abs. 1 VwVfG LSA of 18 Nov 2005 (GVBl. LSA S. 698, 699); Landtag LSA Drs. 4/1838, 4/2412 |
@@ -283,10 +284,16 @@ Landtag's record of the act as adopted.
 | Thüringen | 4th from 1 Jan 2025 (federal VwVfG, dynamic); older periods under the old law (§ 8 Abs. 3) | §§ 1, 8 ThürVwVfG, Art. 90, GVBl. 2024 Nr. 9 S. 277, 278, 297 |
 
 Before a Land's switch its old law counts the 3rd day. For the Saarland, whose act of 2025 could not be read, and
-whenever the Land is unknown, Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Bremen,
-Rheinland-Pfalz and Sachsen-Anhalt apply the federal VwVfG "in der jeweils geltenden Fassung" (Bremen since 6 Apr
-2024); their 4th day rests on the bill as the Landtag adopted it and the vote, as their gazettes could not be
-reached, and the evaluation's statute folder, which takes only a portal's or a gazette's text, does not hold them
+whenever the Land is unknown, Ordnung uses the **3rd day** with `medium` confidence (SPEC § 21). Bremen and
+Sachsen-Anhalt apply the federal VwVfG "in der jeweils geltenden Fassung" (Bremen since 6 Apr 2024); their 4th day
+rests on the bill as the Landtag adopted it and the vote, as their gazettes could not be reached. Rheinland-Pfalz's
+rests on less. The act its Landtag adopted in 2003 (Drs. 14/2221, unanimously, PlPr 14/51) only changes the date of
+the federal VwVfG its § 1 Abs. 1 cites; the words "in der jeweils geltenden Fassung" are in the government's
+statement of § 1 Abs. 1 in the bill's reasoning, which the Land's Ministry of the Interior (mdi.rlp.de) and
+Bremen's bill (Drs. 21/299, naming Rheinland-Pfalz among the Länder with such a reference law) bear out. § 3 Abs. 1
+LVwVfG, which modifies § 41 Abs. 2 Satz 1 VwVfG, the sentence that sets the delivery day, was not read from an
+official text; it is taken to concern only "im Inland", as do § 15 Satz 1 and § 16 Abs. 1 Nr. 3, which it names with
+it. The evaluation's statute folder, which takes only a portal's or a gazette's text, holds none of the three
 ([`evals/law/SOURCES.md`](../evals/law/SOURCES.md)). A Sachsen-Anhalt authority's decision in an OZG mailbox counts
 as delivered on the 4th day after it was made available (§ 2 Abs. 5 VwVfG LSA with § 9 Abs. 1 OZG); Ordnung counts
 the day after, which is earlier, the safe side. In
@@ -1255,7 +1262,7 @@ Changes to the law that are on their way and would change a rule or its copy. Th
 | *Mietrecht II* (BT-Drs. 21/6807), new § 573 Abs. 4 BGB: paying the rent arrears within the grace period also undoes an **ordinary** notice for arrears, once per tenancy | adopted by the federal cabinet on 29 Apr 2026; first reading on 9 Jul 2026, in committee | `ARREARS_CURE` (the card's fact, the ordinary card's step, the composer's refusal) and the landlord's notice above | [Deubner Recht](https://www.deubner-recht.de/themen/neues-mietrecht/mietrechtsreform-2026/schonfristzahlung.html) |
 | Mecklenburg-Vorpommern's new § 41 Abs. 2 (Art. 1 Nr. 14 of the act of 8 Jul 2026, GVOBl. 2026 Nr. 21): a decision made available for download counts as delivered on the day it is downloaded, at the latest the 4th day after it was made available | (4 Nov 2026) promulgated 21 Jul 2026; in force only with the federal Gesetz zur Fortentwicklung des Verwaltungsverfahrensgesetzes (Art. 95 Abs. 5), which has not passed | count an MV portal decision (and the federal one, if it passes with the same words) from the day it was made available, not the day after (`vwvfg_41_2a`) | [Landtag M-V](https://www.dokumentation.landtag-mv.de/parldok/dokument/72069) |
 
-One Länder rule that needs no change: § 97 VwVfG NRW keeps the old law for a step begun before 1 Jan 2025, and posting is the step, so the posting day decides, as in Ordnung (4 Nov 2026). Two that need no change either, read on 4 Nov 2026: Schleswig-Holstein's portal rules. A decision downloaded from an authority's portal counts as delivered the day after the download (§ 110 Abs. 2a LVwG, as the federal § 41 Abs. 2a VwVfG), and one in an OZG mailbox on the 4th day after it was made available (§ 110 Abs. 2b S. 3, the 3rd before 2025: Art. 1 Nr. 9 of the act of 16 Mar 2022, GVOBl. 2022 S. 286–287; Art. 1 Nr. 2 of the act of 13 Dec 2024, GVOBl. 2024 S. 934; the new first sentences of Art. 1 Nr. 5, S. 935, are on consent only). Ordnung's day after provision is the same or earlier.
+One Länder rule that needs no change: § 97 VwVfG NRW keeps the old law for a step begun before 1 Jan 2025, and posting is the step, so the posting day decides, as in Ordnung (4 Nov 2026). Two that need no change either, read on 4 Nov 2026: Schleswig-Holstein's portal rules. A decision downloaded from an authority's portal counts as delivered the day after the download (§ 110 Abs. 2a LVwG, as the federal § 41 Abs. 2a VwVfG), and one in an OZG mailbox on the 3rd or the 4th day after it was made available (§ 110 Abs. 2b S. 4, S. 3 before 31 Dec 2024: Art. 1 Nr. 9 of the act of 16 Mar 2022, GVOBl. 2022 S. 286–287, the 3rd day; Art. 1 Nr. 5 of the act of 13 Dec 2024, GVOBl. 2024 S. 935, in force on 31 Dec 2024, puts two first sentences on consent only in place of Satz 1, so the day's sentence becomes Satz 4; Art. 1 Nr. 2, S. 934, in force on 1 Jan 2025, makes "dritten" "vierten" but names the sentence by its old number, Satz 3, so it may miss it). Ordnung's day after provision is the same or earlier either way.
 
 ## 10. What Ordnung deliberately does not compute
 

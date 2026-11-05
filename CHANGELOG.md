@@ -11,10 +11,10 @@ The third numbered release. [Updating](docs/guide.md#updating) says how to insta
 what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
 
 In short: whose it is, on My numbers and in Ask, the Ideas, your reminders and the Timeline; a switch for
-*Text in pictures*; each state's own day an authority's letter counts as delivered, checked against its law, and
-why an e-mailed decision's date waits until you say which state its sender is in; an evaluation report anyone
-can reproduce, and the tooling for a pre-registered final run; macOS and Windows required in CI; and a short
-README with a guide for the rest.
+*Text in pictures*; each state's own day an authority's letter counts as delivered, checked against its law
+wherever it could be read (not yet the Saarland's), and why an e-mailed decision's date waits until you say which
+state its sender is in; an evaluation report anyone can reproduce, and the tooling for a pre-registered final run;
+macOS and Windows required in CI; and a short README with a guide for the rest.
 
 The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until then,
 install this version by its commit, as *Updating* says for a release without a tag.
@@ -118,29 +118,34 @@ install this version by its commit, as *Updating* says for a release without a t
 
 ### Fixed
 
-- **Each state's delivery rule, checked against its law gazette.** A letter from an authority in Thuringia posted from
-  1 January 2025, or in Schleswig-Holstein posted 1 January–9 June 2025, now counts as delivered on the 4th day (it
-  counted 3, a day early). Hessen's 3rd day, Hamburg's before 14 May 2025 and Baden-Württemberg's before 7 February
-  2025 no longer say Ordnung couldn't confirm them. In Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern, where a
-  matter begun before the switch keeps the 3rd day, the date stays the 4th day's; where the 3rd day gives an earlier
-  deadline, the date shows "Worth a second look" (on Today too) and a note names that deadline and when to send for
-  it, in "Why this date?" and in the calendar event; the morning notification says the deadline is earlier for such a
-  matter. A Brandenburg authority's e-mailed decision counts from the day it arrived when that can be shown
-  (§ 7 VwVfGBbg): Ordnung counts it from the day it was sent, and does the same for an authority whose state it
-  doesn't know yet, until you set the state, so such a date can be several days early. On the benchmark no date and no
-  count changes: six replayed dates show another confidence (five now say "Worth a second look", one reading under the
-  wrong law shows medium instead of low), and the code-check ablation was replayed again for the same reason.
+- **Each state's delivery rule, checked against its law where it could be read.** A letter from an authority in
+  Thuringia posted from 1 January 2025, or in Schleswig-Holstein posted 1 January–9 June 2025, now counts as
+  delivered on the 4th day (it counted 3, a day early). Hessen's 3rd day, Hamburg's before 14 May 2025 and
+  Baden-Württemberg's before 7 February 2025 no longer say Ordnung couldn't confirm them. In Baden-Württemberg,
+  Bavaria and Mecklenburg-Vorpommern, where a matter begun before the switch keeps the 3rd day, the date stays the
+  4th day's; where the 3rd day gives an earlier deadline, the date shows "Worth a second look" (on Today too) and a
+  note names that deadline and when to send for it, in "Why this date?" and in the calendar event; the morning
+  notification says the deadline is earlier for such a matter. A Brandenburg authority's e-mailed decision counts
+  from the day it arrived when that can be shown (§ 7 VwVfGBbg): Ordnung counts it from the day it was sent, and
+  does the same for an authority whose state it doesn't know yet, until you set the state, so such a date can be
+  several days early. On the benchmark no date and no count changes: six replayed dates show another confidence
+  (five now say "Worth a second look", one reading under the wrong law shows medium instead of low), and the
+  code-check ablation was replayed again for the same reason.
 - **A Bremen authority's letter counts 4 days.** Posted from 1 January 2025, it now counts as delivered on the 4th day
   (it counted 3, a day early, and said Ordnung couldn't confirm Bremen's rule): Bremen's law follows the federal one.
-  Bremen's, Rhineland-Palatinate's and Saxony-Anhalt's rules were checked against the act their parliament adopted,
-  as their gazettes could not be reached. The Saarland's rule still couldn't be read, so Ordnung keeps the 3rd day
+  Bremen's and Saxony-Anhalt's rules were checked against the act their parliament adopted, and
+  Rhineland-Palatinate's against its government's account of its law in a bill its parliament adopted, as their
+  gazettes could not be reached. The Saarland's rule still couldn't be read, so Ordnung keeps the 3rd day
   there, at lower confidence. Schleswig-Holstein's rules for a decision fetched from a portal were read too and need
   no change. On the benchmark no date and no count changes.
 - **The question about a sender's state says why their dates wait for it.** *Is X in Saxony?* in the sender's
   details and in Today's Ideas spoke only of public holidays. Now, as on the letter, it says what the state decides:
   for an authority's e-mailed decision, whether it counts from the day it arrived or the 3rd or 4th day after it was
-  sent (until you answer, Ordnung counts from the day it was sent, so a date can be several days early); for an
-  authority's letter, whether it counts as delivered after 3 or 4 days (Ordnung counts 3, so a day early).
+  sent (until you answer, Ordnung counts from the day it was sent, or from the arrival day you entered, so a date
+  can be several days early); for an authority's letter, whether it counts as delivered after 3 or 4 days (Ordnung
+  counts 3, so a day early, more around weekends and holidays). What Ordnung counts is said of those dates only,
+  not of the sender's other dates that wait for their state's holidays, and once you answer, the note says the
+  state's delivery rules now count too.
 - *Renew your passport before extending your residence permit* pairs a passport and a residence permit of the
   same person, and the student permit card reads only your own residence permit: a letter filed for someone of
   your household no longer counts as yours there.

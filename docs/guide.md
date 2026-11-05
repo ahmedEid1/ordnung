@@ -331,8 +331,9 @@ shows it.
   can come out a few days early (1–3 on the benchmark's letters, up to 5 around Christmas), never late; an
   e-mailed decision is counted from the day it was sent until then, so its date can be several days early,
   more around holidays. Once you set it, Ordnung counts that state's own delivery rule (checked against the
-  states' law gazettes in November 2026, or for Bremen, Rhineland-Palatinate and Saxony-Anhalt, whose gazettes
-  could not be reached, against the record of the act their parliament adopted): the 4th day in most states, the
+  states' law gazettes in November 2026, or for Bremen and Saxony-Anhalt, whose gazettes could not be reached,
+  against the record of the act their parliament adopted, and for Rhineland-Palatinate against its government's
+  account of its law in a bill its parliament adopted): the 4th day in most states, the
   3rd in Hessen. For the Saarland, whose law Ordnung could not read, it keeps the 3rd day at lower confidence. In
   Baden-Württemberg, Bavaria and Mecklenburg-Vorpommern a matter begun before their switch to the 4th day
   (7 February 2025 in Baden-Württemberg, 1 January 2025 in the other two) keeps the 3rd day, which a letter
