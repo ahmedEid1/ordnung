@@ -684,7 +684,9 @@ async function coveredProbeInPage() {
       detail: { by: path(hit), byText: clean(hit.innerText, 60), at: where },
     });
   };
-  // is the point inside every scrolling/clipping parent (not scrolled away inside a list)?
+  // is the point inside every scrolling/clipping parent (not scrolled away inside a list)? A point within a
+  // pixel of the edge counts as outside: elementFromPoint takes the pixel past it (a list item whose centre lies
+  // 0.03 px above a drawer's footer hits the footer)
   const insideParents = (el, x, y) => {
     for (let a = el.parentElement; a && a !== document.body && a !== root; a = a.parentElement) {
       const s = getComputedStyle(a);
@@ -692,7 +694,7 @@ async function coveredProbeInPage() {
         const ar = a.getBoundingClientRect();
         const l = ar.left + (parseFloat(s.borderLeftWidth) || 0);
         const t = ar.top + (parseFloat(s.borderTopWidth) || 0);
-        if (x < l || y < t || x > l + a.clientWidth || y > t + a.clientHeight) return false;
+        if (x < l + 1 || y < t + 1 || x > l + a.clientWidth - 1 || y > t + a.clientHeight - 1) return false;
       }
       if (s.position === "fixed") break;
     }
