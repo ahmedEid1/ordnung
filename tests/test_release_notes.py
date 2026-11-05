@@ -33,6 +33,10 @@ from scripts.release_notes import (  # noqa: E402
 
 VERSION = ordnung.__version__
 CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+#: The day of the freeze that named 0.4.0 before its tag, which follows the pre-registered evaluation's
+#: publication. While its section carries this date it says the tag follows; the pull request whose merge is
+#: tagged dates it the release day and drops that sentence (docs/releasing.md), with no change here.
+FREEZE_DAY_040 = "2026-11-09"
 
 TWO_VERSIONS = """# Changelog
 
@@ -86,12 +90,15 @@ def test_the_notes_are_the_changelog_s_section_for_the_version() -> None:
     assert third.startswith("The third numbered release.")
     assert "### Added" in third and "### Upgrading" in third
     assert "**Whose number it is.**" in third
-    # what it holds in one paragraph, and why it has no tag yet: install it by its commit until then
+    # what it holds in one paragraph, and, from the freeze until its release, why it has no tag yet: install it by
+    # its commit until then
     assert "\n\nIn short: " in third
-    assert (
+    waits = (
         "The `v0.4.0` tag and its GitHub release follow once the pre-registered evaluation is published; until "
         "then, install this version by its commit"
     ) in " ".join(third.split())
+    dated = re.search(r"^## 0\.4\.0 — (\S+)$", CHANGELOG, re.M)
+    assert dated is not None and waits == (dated.group(1) == FREEZE_DAY_040)
     for released in (first, second, third, section(CHANGELOG, VERSION)):
         assert not re.search(r"^## ", released, re.M)  # neither its own heading nor the next one
     assert not section(CHANGELOG, VERSION).startswith("#")  # a sentence first, not a heading
@@ -170,6 +177,29 @@ def test_a_tag_on_a_commit_with_changes_its_notes_leave_out_stops_the_release(
     assert not out.exists()
     # without a tag it is only a preview: the notes print
     assert main(["--root", str(root), "0.3.0"]) == 0
+
+
+def test_a_tag_is_refused_while_its_section_says_the_tag_is_still_to_follow(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A version named at a freeze says that its tag and GitHub release follow later, and how to install it until
+    then (0.4.0, until the pre-registered evaluation is published). Tagged as it stands, the release would tell its
+    readers it hasn't happened yet: the commit that is tagged must have dropped that sentence. Without a tag the
+    notes are printed as they are, so the section can be read before then."""
+    waiting = RELEASED.replace(
+        "The third one.\n",
+        "The third one.\n\nThe `v0.3.0` tag and its GitHub release follow once the pre-registered evaluation is "
+        "published; until then,\ninstall this version by its commit.\n",
+    )
+    root = _root(tmp_path, "0.3.0", waiting)
+    assert main(["--root", str(root), "--tag", "v0.3.0", "--out", str(tmp_path / "notes.md")]) == 1
+    error = capsys.readouterr().err
+    assert "CHANGELOG.md's section for 0.3.0 still says its tag follows later" in error
+    assert "drop that sentence" in error and not (tmp_path / "notes.md").exists()
+    assert main(["--root", str(root)]) == 0  # the notes as they stand, to read before the release
+    assert "follow once the pre-registered evaluation is published" in capsys.readouterr().out
+    released = _root(tmp_path / "released", "0.3.0", RELEASED)
+    assert main(["--root", str(released), "--tag", "v0.3.0", "--out", str(tmp_path / "notes.md")]) == 0
 
 
 def test_an_empty_unreleased_section_above_the_version_is_fine(tmp_path: Path) -> None:

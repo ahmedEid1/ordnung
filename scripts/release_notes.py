@@ -9,7 +9,10 @@ or published, this script checks that
    and it isn't empty;
 3. that section is the newest: above it there is at most an empty ``## Unreleased``. Anything else there means
    the tagged commit holds changes the notes leave out (a tag on main after a later merge, say), and PyPI can
-   never take a version back.
+   never take a version back;
+4. that section no longer says its tag is still to follow: a version named at a freeze says that its tag and
+   GitHub release follow later, and how to install it until then (:data:`TAG_FOLLOWS`); the commit that is
+   tagged has dropped that sentence and set the section's date to the release day.
 
 Otherwise it says what is wrong and exits with 1, and the release stops. The notes are that section, with the
 links that are relative to the repository pointed at the tagged files on GitHub (that is what they mean on a
@@ -50,6 +53,11 @@ STANDS_ALONE = ("#", "|", "```", "~~~")
 #: An inline Markdown link or image whose target has no scheme (``https:``, ``mailto:``): relative to the
 #: repository, or an anchor in CHANGELOG.md itself.
 RELATIVE_LINK = re.compile(r"(!?)\[([^\]]*)\]\((?![a-zA-Z][a-zA-Z0-9+.-]*:)([^)\s]+)\)")
+
+
+#: The sentence of a version named at a freeze, before its tag: "The `v0.4.0` tag and its GitHub release follow
+#: once …". A release whose notes still say so would tell its readers it hasn't happened yet.
+TAG_FOLLOWS = r"`v{version}` tag and its GitHub release follow\b"
 
 
 class ReleaseError(Exception):
@@ -127,6 +135,18 @@ def check_newest(changelog: str, version: str) -> None:
         )
 
 
+def check_tag_sentence(changelog: str, version: str) -> None:
+    """Refuse to release ``version`` while its section still says the tag follows later (:data:`TAG_FOLLOWS`)."""
+    if re.search(
+        TAG_FOLLOWS.format(version=re.escape(version)), " ".join(section(changelog, version).split())
+    ):
+        raise ReleaseError(
+            f"CHANGELOG.md's section for {version} still says its tag follows later (\"The `v{version}` tag and its "
+            f"GitHub release follow …\"): drop that sentence, and set the section's date to the release day, in the "
+            f"commit you tag."
+        )
+
+
 def unwrapped(text: str) -> str:
     """``text`` with the lines of each paragraph and list item joined. CHANGELOG.md is wrapped at 110
     characters, and a release page shows each line end as a line break. Headings, list items, code blocks,
@@ -192,6 +212,7 @@ def _release(root: Path, tag: str | None, version: str | None) -> tuple[str, str
     text = notes(changelog, version)
     if tag is not None:
         check_newest(changelog, version)
+        check_tag_sentence(changelog, version)
     return version, text
 
 

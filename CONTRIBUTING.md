@@ -230,8 +230,9 @@ check shows in the numbers at once, and costs nothing.
   app would put it: "Read again never queues a second reading of the same letter". An area and a
   colon may come first: "Windows: the lock message names the process holding the data folder",
   "Docs: …". The rebuilt web app goes in a commit of its own: "Rebuild the web app for …".
-- A change people will notice gets a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md). A design
-  decision gets a short record in [docs/decisions/](docs/decisions/).
+- A change people will notice gets a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md), or, while a
+  version named before its tag waits for it, under that version ([docs/releasing.md](docs/releasing.md)). A
+  design decision gets a short record in [docs/decisions/](docs/decisions/).
 - Pull requests go to `main`, and CI must pass. Say what changed and how you checked it, and keep
   real letters and personal data out of the description too.
 - The owner makes releases from a version tag on `main`; [docs/releasing.md](docs/releasing.md) says how.
