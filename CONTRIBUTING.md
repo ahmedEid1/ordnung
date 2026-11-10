@@ -193,7 +193,10 @@ check shows in the numbers at once, and costs nothing.
   a smoke into a scratch `--recorded-dir` outside the checkout, thrown away. An Ask run cut short (by its
   `--max-cost-usd`, a usage limit not waited out, or midnight UTC), or with a turn that failed part-way (a usage
   limit met after the turn's first request, a timeout, a CLI error), writes no results file: resume it the same day
-  (a higher cap, or the same command once the limit resets), or retake it whole.
+  (a higher cap, or the same command once the limit resets), or retake it whole. A turn still without an answer
+  after the final run's three resumes is scored as no answer by the same command with `--allow-errors` (as
+  `evals.run`'s; it keeps the turn beside the recordings, so a replay gives the same failure), with an `unanswered`
+  deviation; a cut run is never written.
 
 ## Tests
 

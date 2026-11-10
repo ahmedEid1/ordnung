@@ -230,7 +230,9 @@ install this version by its commit, as *Updating* says for a release without a t
   CLI error) no longer writes a results file that scores the questions without an answer as errors; it says how to
   go on (the same day with a higher cap, or the same command once the limit resets, or retaken whole), and a run of
   "Ask: new questions on the demo household" with answers recorded on an earlier day is refused until it is retaken
-  whole. No published number changes.
+  whole. A turn that keeps failing no longer blocks the run: after the final run's three resumes, the same command
+  with `--allow-errors` (as `python -m evals.run` has) writes it with that turn scored as no answer, as before, and
+  keeps the failure beside the recordings so every replay gives it again. No published number changes.
 
 ### Upgrading
 

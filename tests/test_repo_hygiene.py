@@ -881,10 +881,10 @@ def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pyt
 
 
 #: The options of ``python -m evals.run`` that evals/README.md leaves to ``--help``: the runner's own knobs, which no
-#: recording step needs said. Every other option, the final run's controls among them, is named on the page.
+#: recording step needs said. Every other option, the final run's controls among them (``--allow-errors`` too, the
+#: way on for a unit still unanswered after the runbook's resumes), is named on the page.
 RUN_OPTIONS_LEFT_TO_HELP = frozenset(
     {
-        "--allow-errors",
         "--chart-path",
         "--concurrency",
         "--conditions",
