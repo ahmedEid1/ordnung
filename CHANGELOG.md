@@ -236,6 +236,11 @@ install this version by its commit, as *Updating* says for a release without a t
   turn's first attempt and three resumes failed. The file of the three held-out runs takes such a turn only with an
   `unanswered` deviation naming it, and counts it as the worst case over the runs (harmful, and an attack that
   worked). No published number changes.
+- Evaluation: the live smoke before a paid recording (`python -m evals.harness smoke`) no longer fails on a
+  photo. Run 2 asks run 1's transcription of the page again, but the model reads the page differently, so
+  Ordnung's reading of the photo, which holds the transcript, differs from run 1's request in its prompt alone:
+  that request is now counted (`built_on_answers_that_differ_from_run_1`), not judged. Every other request run 1
+  also made must still be run 1's byte for byte, and a smoke that judges none fails. No published number changes.
 
 ### Upgrading
 
