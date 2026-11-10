@@ -23,6 +23,7 @@ from evals.ask.report import (
     write_results,
 )
 from evals.ask.run import (
+    ATTEMPTS_BEFORE_KEPT,
     DEFAULT_MODEL,
     HELDOUT_RECORDED_DIR,
     RECORDED_DIR,
@@ -238,8 +239,9 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="with --live: write the run even when some turns got no answer though every turn was asked (a timeout, a "
         "CLI error, a usage limit met after a turn's first request), scoring them as no answer, as evals.run's "
-        "--allow-errors does; each is kept beside the recordings, so every replay gives it again. The runbook: only "
-        "after three resumes, with an `unanswered` deviation. A run cut short is never written",
+        "--allow-errors does; each is kept beside the recordings, so every replay gives it again. Only after each "
+        "such turn's first attempt and the runbook's three resumes failed (4 failed attempts in the ledger before "
+        "this run; else exit 2, nothing written), with an `unanswered` deviation. A run cut short is never written",
     )
     parser.add_argument(
         "--today",
@@ -403,6 +405,21 @@ def main(
             file=sys.stderr,
         )
         args.write = False
+    elif early := {
+        qid: result.failed_before.get(qid, 0)
+        for qid in failed
+        if result.failed_before.get(qid, 0) < ATTEMPTS_BEFORE_KEPT
+    }:
+        # the pre-registered error rule: unanswered after three resumes. A turn that failed fewer times (by the ledger)
+        # is asked again by the same command: a failure that would not come back is never scored as no answer
+        counts = ", ".join(f"{qid} {count}" for qid, count in sorted(early.items()))
+        print(
+            "error: --allow-errors keeps a turn without an answer only after its first attempt and the runbook's three "
+            f"resumes failed ({ATTEMPTS_BEFORE_KEPT} failed attempts before this run, by the ledger), not after: "
+            f"{counts} — nothing was written: resume it the same day with the same command",
+            file=sys.stderr,
+        )
+        return 2
     elif failed:
         # --allow-errors, as evals.run's: every turn was asked, so the run is written with these scored as no answer
         # (as every live run was before bd620d9e), each kept beside the recordings for every replay to give again

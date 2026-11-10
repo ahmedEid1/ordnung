@@ -28,7 +28,9 @@ The benchmark harness (:mod:`evals.harness`) wraps the model calls as it does th
 replayed request is checked against ``requests.lock.json``; a live run holds the one recorder lock, stops starting
 calls at ``--max-cost-usd``, waits through a usage limit with ``--wait-on-limit`` and writes one ``ledger.jsonl``
 line per call. A live run written with ``--allow-errors`` keeps each turn that got no answer beside the recordings
-(:func:`keep_unanswered`), so every replay gives that turn its failure again, with no call.
+(:func:`keep_unanswered`), so every replay gives that turn its failure again, with no call; it may only after the
+turn's first attempt and the runbook's three resumes failed (:data:`ATTEMPTS_BEFORE_KEPT`, counted from the ledger:
+:attr:`RunResult.failed_before`).
 """
 
 from __future__ import annotations
@@ -104,7 +106,7 @@ from ordnung.llm import prompts
 from ordnung.llm.base import LLMBackend, LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path
-from ordnung.llm.runtime import LLMService
+from ordnung.llm.runtime import LLMService, request_key
 from ordnung.models import AppSettings
 
 EVALS_DIR = Path(__file__).resolve().parents[1]
@@ -124,6 +126,14 @@ UNANSWERED_FILE = "unanswered-r{repeat}.json"
 #: ``evals.present.final.ASK_SPLIT``) — and the one "condition" an Ask turn has.
 UNANSWERED_SPLITS = {"dev": "ask", "heldout": "ask-heldout"}
 ASK_CONDITION = "ask"
+#: How many failed attempts of a turn the ledger must hold from before a live run for ``--allow-errors`` to keep it
+#: unanswered: its first attempt and the runbook's three resumes (the pre-registered error rule, "unanswered after
+#: three resumes"). A turn that failed fewer times is asked again: a failure that would not come back is never scored
+#: as no answer.
+ATTEMPTS_BEFORE_KEPT = 4
+#: The ledger outcomes that are no failed attempt of a turn: its answer, and a usage limit (waited out and the call
+#: asked again, or the run cut, which is never written).
+NOT_FAILED = ("ok", "rate_limited")
 
 
 class BenchmarkError(RuntimeError):
@@ -215,6 +225,10 @@ class RunResult:
     kept: list[str] = field(default_factory=list)
     #: the ``claude`` version a live run asked with (``None``: a replay, or a stand-in)
     cli_version: str | None = None
+    #: a live run: for each turn without an answer, how many attempts of it failed before this run — its ledger's lines
+    #: of this run's repeat with the turn's request key and an outcome other than :data:`NOT_FAILED`, read before its
+    #: first call (``evals.ask --allow-errors`` keeps a turn only after :data:`ATTEMPTS_BEFORE_KEPT`)
+    failed_before: dict[str, int] = field(default_factory=dict)
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -273,6 +287,8 @@ class _Call:
     response: LLMResponse | None = None
     error: str | None = None
     path: Path | None = None
+    #: the call as the ledger names it: its purpose and request key (``evals.harness.Ledger``)
+    key: tuple[str, str] | None = None
 
 
 class Capture:
@@ -303,6 +319,34 @@ class Capture:
         self.results: dict[str, list[str]] = {}  # each question's tool results (by id)
         #: a replay's turns kept unanswered (:func:`kept_unanswered`): each given its failure again, with no call
         self.kept: dict[str, Mapping[str, Any]] = {}
+        #: a live run: its ledger's lines from before its first call, and each turn's call as the ledger names it
+        #: (:meth:`failed_before`)
+        self.live = False
+        self.earlier: list[dict[str, Any]] = []
+        self.called: dict[str, tuple[str, str]] = {}
+
+    def failed_before(self, item_id: str) -> int:
+        """How many attempts of a turn failed before this run: the earlier ledger lines of this repeat with its call's
+        purpose and key whose outcome is not :data:`NOT_FAILED` (0 for a turn that made no call)."""
+        named = self.called.get(item_id)
+        if named is None:
+            return 0
+        purpose, key = named
+        return sum(
+            1
+            for row in self.earlier
+            if (row.get("purpose"), row.get("key")) == (purpose, key)
+            and int(row.get("repeat") or 1) == self.repeat
+            and row.get("outcome") not in (None, *NOT_FAILED)
+        )
+
+    def failures(self, turns: Mapping[str, Turn]) -> dict[str, int]:
+        """:meth:`failed_before` for every turn of ``turns`` without an answer (a live run's; empty for a replay)."""
+        if not self.live:
+            return {}
+        return {
+            item_id: self.failed_before(item_id) for item_id, turn in turns.items() if turn.error is not None
+        }
 
     def may_start(self) -> bool:
         """Whether a new turn may start: never again once the run's stop asked."""
@@ -317,6 +361,7 @@ class Capture:
         call = self.calls[req.cache_key or req.prompt] = _Call()
         recorded = harness.repeat_request(req, self.repeat) if self.repeat > 1 else req
         call.path = fixture_path(self.root, recorded) if self.root is not None else None
+        call.key = (recorded.purpose, request_key(recorded)[:24])
         async for event in self.inner.stream(req):
             if event.type in ("tool_use", "tool_result"):
                 call.events.append(event)
@@ -619,6 +664,8 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
         elif event.type == "error":
             error = event.error or "error"
     call = capture.calls.get(ask_cache_key(ctx.store, question, [], benchmark_today()))
+    if call is not None and call.key is not None:
+        capture.called[item_id] = call.key
     if call is not None and (call.error or "").startswith("no recorded response"):
         capture.missed.append(item_id)
     if call is not None and (
@@ -839,7 +886,12 @@ async def _run_all(
     household: Sequence[HouseholdQuestion] = (),
     live: Any = None,
 ) -> tuple[
-    dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str], dict[str, list[str]]
+    dict[str, Turn],
+    list[str],
+    dict[str, tuple[Path | None, list[str]]],
+    list[str],
+    dict[str, list[str]],
+    dict[str, int],
 ]:
     capture = await _capture(config, life, live)
     limit = asyncio.Semaphore(max(1, config.concurrency))
@@ -858,12 +910,14 @@ async def _run_all(
         asked = [(q.id, q.text) for q in household]
         jobs.append(_ask_many(folder, capture, config.model, asked, "household", limit))
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
+    by_id = {turn.id: turn for turn in turns}
     return (
-        {turn.id: turn for turn in turns},
+        by_id,
         sorted(capture.missed),
         capture.stale,
         capture.drift,
         capture.results,
+        capture.failures(by_id),
     )
 
 
@@ -878,8 +932,18 @@ async def _capture(config: Config, life: SampleLife, live: Any) -> Capture:
     )
     capture.kept = kept_unanswered(config)
     if live is not None:
+        # what earlier attempts of this run asked, before its first call: a turn's failed attempts (--allow-errors)
+        capture.live, capture.earlier = True, _ledger_lines(config.root)
         await live.resolve_version()
     return capture
+
+
+def _ledger_lines(root: Path) -> list[dict[str, Any]]:
+    """The lines of ``ledger.jsonl`` beside the recordings in ``root`` (none: no call was made there yet)."""
+    path = root / harness.LEDGER_FILE
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
@@ -900,7 +964,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life)
-        turns, misses, stale, drift, tool_results = asyncio.run(
+        turns, misses, stale, drift, tool_results, failed_before = asyncio.run(
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
         cut, unasked = cut_by(live), unasked_by(live)
@@ -940,6 +1004,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         unasked=unasked,
         kept=sorted(set(kept_unanswered(config)) & set(turns)),
         cli_version=cli_version,
+        failed_before=failed_before,
     )
 
 
@@ -1058,7 +1123,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life, [a.attack for a in hostile])
-        turns, misses, stale, drift = asyncio.run(
+        turns, misses, stale, drift, failed_before = asyncio.run(
             _run_heldout(config, work, life, items, hostile, targets, live)
         )
         cut, unasked = cut_by(live), unasked_by(live)
@@ -1108,6 +1173,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         unasked=unasked,
         kept=sorted(set(kept_unanswered(config)) & set(turns)),
         cli_version=cli_version,
+        failed_before=failed_before,
     )
 
 
@@ -1119,7 +1185,7 @@ async def _run_heldout(
     hostile: Sequence[heldout.HeldOutAttack],
     targets: dict[str, str],
     live: Any = None,
-) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str]]:
+) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str], dict[str, int]]:
     capture = await _capture(config, life, live)
     limit = asyncio.Semaphore(max(1, config.concurrency))
     folders = {"base": work / "base"}
@@ -1141,7 +1207,8 @@ async def _run_heldout(
             _ask_many(folder, capture, config.model, [(attack.id, attack.question)], attack.id, limit)
         )
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
-    return {turn.id: turn for turn in turns}, sorted(capture.missed), capture.stale, capture.drift
+    by_id = {turn.id: turn for turn in turns}
+    return by_id, sorted(capture.missed), capture.stale, capture.drift, capture.failures(by_id)
 
 
 def recorded_prompt_versions(root: Path) -> dict[str, list[str]]:
