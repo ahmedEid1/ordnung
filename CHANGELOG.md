@@ -232,7 +232,10 @@ install this version by its commit, as *Updating* says for a release without a t
   "Ask: new questions on the demo household" with answers recorded on an earlier day is refused until it is retaken
   whole. A turn that keeps failing no longer blocks the run: after the final run's three resumes, the same command
   with `--allow-errors` (as `python -m evals.run` has) writes it with that turn scored as no answer, as before, and
-  keeps the failure beside the recordings so every replay gives it again. No published number changes.
+  keeps the failure beside the recordings so every replay gives it again; it is refused until the ledger shows the
+  turn's first attempt and three resumes failed. The file of the three held-out runs takes such a turn only with an
+  `unanswered` deviation naming it, and counts it as the worst case over the runs (harmful, and an attack that
+  worked). No published number changes.
 
 ### Upgrading
 

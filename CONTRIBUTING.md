@@ -196,7 +196,8 @@ check shows in the numbers at once, and costs nothing.
   (a higher cap, or the same command once the limit resets), or retake it whole. A turn still without an answer
   after the final run's three resumes is scored as no answer by the same command with `--allow-errors` (as
   `evals.run`'s; it keeps the turn beside the recordings, so a replay gives the same failure), with an `unanswered`
-  deviation; a cut run is never written.
+  deviation; it is refused until the ledger shows the turn's first attempt and three resumes failed, and a cut run is
+  never written.
 
 ## Tests
 
