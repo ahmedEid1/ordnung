@@ -27,7 +27,8 @@ The benchmark harness (:mod:`evals.harness`) wraps the model calls as it does th
 ``--repeat N`` asks run N (≥ 2) of the same questions under replay keys of its own, with the same request; every
 replayed request is checked against ``requests.lock.json``; a live run holds the one recorder lock, stops starting
 calls at ``--max-cost-usd``, waits through a usage limit with ``--wait-on-limit`` and writes one ``ledger.jsonl``
-line per call.
+line per call. A live run written with ``--allow-errors`` keeps each turn that got no answer beside the recordings
+(:func:`keep_unanswered`), so every replay gives that turn its failure again, with no call.
 """
 
 from __future__ import annotations
@@ -115,6 +116,14 @@ ASK_PROMPTS = ("ask_system", "ask")
 SETS = ("dev", "heldout")
 #: The lock entry of what every Ask turn is given besides its prompts (:func:`ask_tools_digest`).
 ASK_TOOLS = "ask_tools"
+#: The turns a live run kept unanswered (``--allow-errors``), beside its recordings: one file per run (``--repeat``), in
+#: the day index's form (:class:`evals.harness.DayIndex`, evals.run's for a unit kept with conditions unanswered). Not
+#: ``final-days.json``: ``harness retake --whole-run`` refuses a folder that holds a day index (the benchmark's).
+UNANSWERED_FILE = "unanswered-r{repeat}.json"
+#: Each set's name in that index — the held-out set's is the one deviations name it by (``applies_to.split``,
+#: ``evals.present.final.ASK_SPLIT``) — and the one "condition" an Ask turn has.
+UNANSWERED_SPLITS = {"dev": "ask", "heldout": "ask-heldout"}
+ASK_CONDITION = "ask"
 
 
 class BenchmarkError(RuntimeError):
@@ -200,6 +209,12 @@ class RunResult:
     cut: str | None = None
     #: how many turns each such reason left unasked (:attr:`evals.harness.LiveSetup.unasked`)
     unasked: dict[str, int] = field(default_factory=dict)
+    #: the turns kept unanswered: on a replay, those given the failure a live run kept for them
+    #: (:func:`kept_unanswered`); on a live run with ``--allow-errors``, those it keeps (set by ``evals.ask``). Scored as
+    #: no answer, they are no failure of this run: its gate does not count them
+    kept: list[str] = field(default_factory=list)
+    #: the ``claude`` version a live run asked with (``None``: a replay, or a stand-in)
+    cli_version: str | None = None
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -286,6 +301,8 @@ class Capture:
         self.stale: dict[str, tuple[Path | None, list[str]]] = {}
         self.drift: list[str] = []
         self.results: dict[str, list[str]] = {}  # each question's tool results (by id)
+        #: a replay's turns kept unanswered (:func:`kept_unanswered`): each given its failure again, with no call
+        self.kept: dict[str, Mapping[str, Any]] = {}
 
     def may_start(self) -> bool:
         """Whether a new turn may start: never again once the run's stop asked."""
@@ -401,6 +418,60 @@ def cut_by(live: Any) -> str | None:
     if unasked.get(harness.UNASKED_DAY_OVER):
         causes.append(f"the recording day {live.day.isoformat()} is over (UTC)")
     return f"{'; '.join(causes)} and {sum(unasked.values())} turn(s) were not asked"
+
+
+def unanswered_path(config: Config) -> Path:
+    """The file of the turns run ``config.repeat`` kept unanswered, beside its recordings (:data:`UNANSWERED_FILE`)."""
+    return config.root / UNANSWERED_FILE.format(repeat=config.repeat)
+
+
+def kept_unanswered(config: Config) -> dict[str, Mapping[str, Any]]:
+    """On a replay, the turns a live run of this set and run kept unanswered (``--allow-errors``), asked for this run's
+    day: turn id → its failure as it was scored (its ``error`` and the ``tools`` it called), which the replay gives
+    again with no call, as evals.run gives a unit's unanswered conditions again. A live run asks them again (they have
+    no recording): ``{}``."""
+    path = unanswered_path(config)
+    if config.live or config.refresh or not path.is_file():
+        return {}
+    try:
+        units = harness.DayIndex(path).attempted(UNANSWERED_SPLITS[config.set_name], config.repeat)
+    except (harness.HarnessError, ValueError) as exc:
+        raise BenchmarkError(f"{path}: not a file of turns kept unanswered ({exc})") from exc
+    kept: dict[str, Mapping[str, Any]] = {}
+    for item_id, unit in units.items():
+        failure = (unit.get("unanswered") or {}).get(ASK_CONDITION) if isinstance(unit, Mapping) else None
+        if not (
+            isinstance(failure, Mapping) and failure.get("error") and isinstance(failure.get("tools"), list)
+        ):
+            raise BenchmarkError(f"{path}: {item_id} has no failure kept for it")
+        # a run is one unit, told one today: a turn kept on another day is not this run's
+        if unit.get("day") == config.day.isoformat():
+            kept[item_id] = failure
+    return kept
+
+
+def keep_unanswered(result: RunResult) -> Path | None:
+    """Beside a live run's recordings, once its results file is written: the turns it kept unanswered
+    (:attr:`RunResult.kept`, ``--allow-errors``), each with its day, the ``claude`` version and its failure as it was
+    scored, in the day index's form (``"complete": false``, ``"unanswered"``) — or none, the file of an earlier run of
+    the same set and run removed (its turns are answered now). The path written, else ``None``."""
+    config = result.config
+    path = unanswered_path(config)
+    path.unlink(missing_ok=True)
+    if not result.kept:
+        return None
+    index = harness.DayIndex(path)
+    for item_id in result.kept:
+        turn = result.turns[item_id]
+        index.put(
+            UNANSWERED_SPLITS[config.set_name],
+            config.repeat,
+            item_id,
+            day=config.day.isoformat(),
+            cli=result.cli_version,
+            unanswered={ASK_CONDITION: {"error": turn.error, "tools": list(turn.tools)}},
+        )
+    return path
 
 
 def live_setup(config: Config) -> Any:
@@ -610,6 +681,8 @@ async def _ask_many(
     ctx = _context(data_dir, capture, model)
 
     async def one(item_id: str, question: str) -> Turn:
+        if (kept := capture.kept.get(item_id)) is not None:  # as it was scored when it was recorded: no call
+            return Turn(item_id, question, ledger, "", "", [], list(kept["tools"]), error=str(kept["error"]))
         async with limit:
             if not capture.may_start():
                 return Turn(
@@ -803,6 +876,7 @@ async def _capture(config: Config, life: SampleLife, live: Any) -> Capture:
         repeat=config.repeat,
         stop=config.stop,
     )
+    capture.kept = kept_unanswered(config)
     if live is not None:
         await live.resolve_version()
     return capture
@@ -830,6 +904,7 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
         cut, unasked = cut_by(live), unasked_by(live)
+        cli_version = getattr(live, "cli_version", None)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -863,6 +938,8 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         stopped=stopped_by(turns),
         cut=cut,
         unasked=unasked,
+        kept=sorted(set(kept_unanswered(config)) & set(turns)),
+        cli_version=cli_version,
     )
 
 
@@ -985,6 +1062,7 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
             _run_heldout(config, work, life, items, hostile, targets, live)
         )
         cut, unasked = cut_by(live), unasked_by(live)
+        cli_version = getattr(live, "cli_version", None)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -1028,6 +1106,8 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         stopped=stopped_by(turns),
         cut=cut,
         unasked=unasked,
+        kept=sorted(set(kept_unanswered(config)) & set(turns)),
+        cli_version=cli_version,
     )
 
 

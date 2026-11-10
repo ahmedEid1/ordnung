@@ -32,6 +32,7 @@ from evals.ask.run import (
     Config,
     RunResult,
     as_recorded,
+    keep_unanswered,
     run,
 )
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
@@ -62,8 +63,11 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
             f"{len(result.stale)} recording(s) have tool results the current tools no longer give ({listed}) "
             f"— delete them with --prune-stale and record them again with {_record_flags(args)}"
         )
-    if s["not_answered"]:
-        problems.append(f"{s['not_answered']} question(s) got no answer")
+    # the turns kept unanswered (--allow-errors) are scored as no answer, as recorded: no failure of this run
+    kept = set(result.kept)
+    not_answered = sum(1 for score in result.scored if not score.answered and score.id not in kept)
+    if not_answered:
+        problems.append(f"{not_answered} question(s) got no answer")
     accuracy = s["accuracy"]["value"]
     if args.min_accuracy is not None and (accuracy is None or accuracy < args.min_accuracy):
         problems.append(f"answer accuracy {accuracy} is below {args.min_accuracy}")
@@ -87,8 +91,9 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
             f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
         )
     household = s.get("household")
-    if household and household["not_answered"]:
-        problems.append(f"{household['not_answered']} household question(s) got no answer")
+    unanswered = sum(1 for score in result.household_scored if not score.answered and score.id not in kept)
+    if household and unanswered:
+        problems.append(f"{unanswered} household question(s) got no answer")
     if args.min_household is not None:
         attribution = household["attribution"]["value"] if household else None
         if attribution is None or attribution < args.min_household:
@@ -227,6 +232,14 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         metavar="HOURS",
         help="with --live: on a usage limit, wait for its reset (no call is made) and go on, until HOURS after the "
         "start",
+    )
+    parser.add_argument(
+        "--allow-errors",
+        action="store_true",
+        help="with --live: write the run even when some turns got no answer though every turn was asked (a timeout, a "
+        "CLI error, a usage limit met after a turn's first request), scoring them as no answer, as evals.run's "
+        "--allow-errors does; each is kept beside the recordings, so every replay gives it again. The runbook: only "
+        "after three resumes, with an `unanswered` deviation. A run cut short is never written",
     )
     parser.add_argument(
         "--today",
@@ -380,15 +393,26 @@ def main(
             file=sys.stderr,
         )
         args.write = False
-    elif failed:
+    elif failed and not args.allow_errors:
         # nor one with a turn that failed part-way (a usage limit met after its first request, a timeout, a CLI
         # error): that turn has no answer and no recording, so the same command the same day asks it again
         print(
             f"error: {len(failed)} turn(s) got no answer ({', '.join(failed)}) — the run is one unit, so nothing was "
-            f"written: {_way_on(result, config)}",
+            f"written: {_way_on(result, config)}, or, after the runbook's three resumes, the same command with "
+            "--allow-errors scores them as no answer (record an `unanswered` deviation)",
             file=sys.stderr,
         )
         args.write = False
+    elif failed:
+        # --allow-errors, as evals.run's: every turn was asked, so the run is written with these scored as no answer
+        # (as every live run was before bd620d9e), each kept beside the recordings for every replay to give again
+        result.kept = failed
+        print(
+            f"warning: {len(failed)} turn(s) got no answer ({', '.join(failed)}) — --allow-errors scores them as no "
+            "answer, and --write keeps each beside the recordings for every replay; record an `unanswered` deviation "
+            "naming them",
+            file=sys.stderr,
+        )
     for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:
@@ -417,6 +441,8 @@ def main(
             )
             return 2
         written = write_results(payload, args.results_dir)
+        if result.config.live:  # the turns it kept unanswered, if any, beside its recordings
+            keep_unanswered(result)
         if _has_page(args):
             print(f"wrote {written} and {write_docs(payload)}")
         else:  # a held-out run or a repeat sits beside the page's run, never replaces it

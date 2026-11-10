@@ -1944,3 +1944,198 @@ def test_a_held_out_smoke_with_another_today_is_not_held_to_one_day(
     asked = len(again.calls)
     assert asked == 1 and not _errors(capsys.readouterr().err)
     assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
+
+
+# --------------------------------------------------------------------------------------------------
+# a turn that keeps failing: the runbook's resumes, then --allow-errors writes the run with it scored as no answer
+# --------------------------------------------------------------------------------------------------
+
+#: the way on after the runbook's three resumes, which the error line of a run with a turn without an answer names
+ALLOW_ERRORS_WAY = (
+    "or, after the runbook's three resumes, the same command with --allow-errors scores them as no answer (record an "
+    "`unanswered` deviation)"
+)
+TIMEOUT = "Claude did not answer within 300 s"
+
+
+class FailsEveryTime(StandInAgent):
+    """The stand-in, whose turn on any of ``questions`` reads its tool and gets the real result, then fails before its
+    answer every time it is asked (a turn that keeps failing: a timeout, a CLI error). Every other turn answers."""
+
+    def __init__(self, questions: set[str], error: str = TIMEOUT) -> None:
+        super().__init__()
+        self.questions, self.error = questions, error
+
+    async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+        failing = req.prompt.rsplit("The person asks:\n", 1)[-1].strip() in self.questions
+        async for event in super().stream(req):
+            if failing and event.type in ("text", "done"):
+                yield StreamEvent(type="error", error=self.error)
+                return
+            yield event
+
+
+def _warnings(err: str) -> list[str]:
+    return [line for line in err.splitlines() if line.startswith("warning: ")]
+
+
+@pytest.mark.slow  # records a held-out run three times, then replays it twice: once, in backend-slow, without coverage
+def test_a_held_out_run_whose_turn_keeps_failing_is_written_with_allow_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A turn that fails every time it is asked: without --allow-errors nothing is written, and the error line names
+    the way on after the runbook's resumes; the same command with it writes the run, the turn scored as no answer. The
+    file is the run's results file as every live run's is written (``results_payload``: what 94f6b971 wrote for it),
+    with no field of its own; the turn's failure is kept beside the recordings in the day index's form (evals.run's,
+    for a unit kept unanswered), so the runbook's --check replays the file byte for byte with no call."""
+    from evals import harness
+    from evals.ask import __main__ as ask_main
+    from evals.present.final import ASK_SPLIT
+
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    boat = {str(VALID_QUESTIONS[2]["text"])}
+    root = tmp_path / "recorded" / DEFAULT_MODEL
+    first = _on(monkeypatch, FailsEveryTime(boat), D)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 1
+    err = capsys.readouterr().err
+    asked = len(first.calls)
+    assert asked == 3 and _results(tmp_path) == []
+    (line,) = _errors(err)
+    assert line.startswith(
+        "error: 1 turn(s) got no answer (h-none-boat) — the run is one unit, so nothing was written: resume it the "
+        "same day with the same command"
+    )
+    assert line.endswith(f"and record it again whole, {ALLOW_ERRORS_WAY}")
+    # a resume (the runbook allows three): the same command asks only that turn, which fails again
+    again = _on(monkeypatch, FailsEveryTime(boat), D)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 1
+    asked = len(again.calls)
+    assert asked == 1 and _results(tmp_path) == []
+    assert _errors(capsys.readouterr().err) == [line]
+
+    # the same command with --allow-errors: every turn ran, so the run is written, that turn scored as no answer
+    last = _on(monkeypatch, FailsEveryTime(boat), D)
+    runs: list[RunResult] = []
+    monkeypatch.setattr(ask_main, "run", lambda config: runs.append(run(config)) or runs[-1])
+    assert main(_live_heldout(tmp_path, D, "1", "--allow-errors"), heldout_dir=folder) == 0
+    err = capsys.readouterr().err
+    asked = len(last.calls)
+    assert asked == 1 and not _errors(err)
+    (warning,) = _warnings(err)
+    assert warning.startswith(
+        "warning: 1 turn(s) got no answer (h-none-boat) — --allow-errors scores them as no answer"
+    )
+    assert "record an `unanswered` deviation" in warning
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
+    path = tmp_path / "pending" / f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"
+    payload = results_payload(runs[0], run_date=D.isoformat())
+    assert path.read_text(encoding="utf-8") == json.dumps(payload, ensure_ascii=False, indent=1) + "\n"
+    (row,) = [item for item in payload["questions"] if item["id"] == "h-none-boat"]
+    assert row["turn"]["error"] == TIMEOUT and row["turn"]["tools"] == ["list_items"]
+    assert row["scores"]["answered"] is False and payload["summary"]["not_answered"] == 1
+    # kept beside the recordings, as evals.run keeps a unit with a condition left unanswered in its day index
+    kept = harness.DayIndex(root / "unanswered-r3.json").attempted(ASK_SPLIT, 3)
+    assert kept == {
+        "h-none-boat": {
+            "day": D.isoformat(),
+            "cli": None,  # the stand-in has no version
+            "complete": False,
+            "unanswered": {"ask": {"error": TIMEOUT, "tools": ["list_items"]}},
+        }
+    }
+
+    # the runbook's --check: the replay gives the kept failure again, with no call, and is the file byte for byte
+    replay = _on(monkeypatch, StandInAgent(), D)
+    check = [
+        "--set",
+        "heldout",
+        "--recorded-dir",
+        str(tmp_path / "recorded"),
+        "--repeat",
+        "3",
+        "--check",
+        str(path),
+    ]
+    assert main(check, heldout_dir=folder) == 0
+    out = capsys.readouterr()
+    assert f"{path.name}: matches this replay byte for byte" in out.out and "gate: " not in out.err
+    assert replay.calls == []
+    # without it the turn has no recording: the replay is not the file
+    (root / "unanswered-r3.json").replace(tmp_path / "aside.json")
+    assert main(check, heldout_dir=folder) == 1
+    out = capsys.readouterr()
+    assert f"{path.name}: differs from this replay" in out.out
+    assert "gate: 1 question(s) have no recording (h-none-boat)" in out.err
+    assert replay.calls == []
+
+
+@pytest.mark.slow  # records a held-out run: once each, in backend-slow, without coverage
+@pytest.mark.parametrize("cut", ["budget", "usage-limit"])
+def test_a_cut_run_is_never_written_with_allow_errors_either(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], cut: str
+) -> None:
+    """--allow-errors writes a run whose turns all ran; a run cut short (here by its budget, or by a usage limit not
+    waited out) is never written, with it or without it, as evals.run keeps no unit a cut left unanswered."""
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    agent = _on(monkeypatch, StandInAgent() if cut == "budget" else LimitedFrom(3), D)
+    cap = "0.015" if cut == "budget" else "1"
+    assert main(_live_heldout(tmp_path, D, cap, "--allow-errors"), heldout_dir=folder) == 1
+    err = capsys.readouterr().err
+    asked = len(agent.calls)
+    assert asked == (2 if cut == "budget" else 3) and _results(tmp_path) == []
+    (error,) = _errors(err)
+    cause = (
+        "budget reached: --max-cost-usd 0.015 (" if cut == "budget" else "a usage limit was not waited out"
+    )
+    assert error.startswith(f"error: {cause}") and "nothing was written" in error
+    assert "--allow-errors" not in error and not _warnings(err)
+    assert list((tmp_path / "recorded").rglob("unanswered-*.json")) == []
+
+
+@pytest.mark.slow  # records a development run three times, then replays it: once, in backend-slow, without coverage
+def test_a_development_run_whose_turn_keeps_failing_is_written_with_allow_errors_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The development set behaves the same: no file and the way on named without --allow-errors; with it the run is
+    written, the turn scored as no answer and kept beside the recordings, and --check replays it with no call."""
+    from evals import harness
+    from evals.ask import run as ask_run
+
+    two = [q for q in ask_run.all_questions() if q.id in ("deadline-steuerbescheid_2025-0", ONE_MORE)]
+    monkeypatch.setattr(ask_run, "all_questions", lambda: two)
+    monkeypatch.setattr(ask_run, "ATTACKS", [])
+    monkeypatch.setattr(ask_run, "household_questions", lambda: [])
+    failing = {q.text for q in two if q.id == ONE_MORE}
+    # run 2: a development run 1 writes the page too
+    argv = ["--live", "--write", "--repeat", "2", "--concurrency", "1", "--date", D.isoformat()]
+    lock = ["--recorder-lock", str(tmp_path / "recording.lock")]
+    recorded = ["--recorded-dir", str(tmp_path / "recorded")]
+    folders = [*recorded, "--results-dir", str(tmp_path / "pending")]
+    first = _on(monkeypatch, FailsEveryTime(failing), D)
+    assert main([*argv, *lock, *folders]) == 1
+    err = capsys.readouterr().err
+    asked = len(first.calls)
+    assert asked == 2 and _results(tmp_path) == []
+    (line,) = _errors(err)
+    assert line.startswith(f"error: 1 turn(s) got no answer ({ONE_MORE}) — ") and line.endswith(
+        ALLOW_ERRORS_WAY
+    )
+    assert "--repeat 2" in line
+
+    last = _on(monkeypatch, FailsEveryTime(failing), D)
+    assert main([*argv, "--allow-errors", *lock, *folders]) == 0
+    err = capsys.readouterr().err
+    asked = len(last.calls)
+    assert asked == 1 and not _errors(err) and len(_warnings(err)) == 1
+    name = f"{D}-{DEFAULT_MODEL}-ask-r2.json"
+    assert _results(tmp_path) == [name]
+    data = json.loads((tmp_path / "pending" / name).read_text(encoding="utf-8"))
+    (row,) = [item for item in data["questions"] if item["id"] == ONE_MORE]
+    assert row["turn"]["error"] == TIMEOUT and row["scores"]["answered"] is False
+    assert data["summary"]["not_answered"] == 1
+    kept = harness.DayIndex(tmp_path / "recorded" / DEFAULT_MODEL / "unanswered-r2.json").attempted("ask", 2)
+    assert list(kept) == [ONE_MORE] and kept[ONE_MORE]["unanswered"]["ask"]["error"] == TIMEOUT
+
+    replay = _on(monkeypatch, StandInAgent(), D)
+    assert main(["--repeat", "2", *recorded, "--check", str(tmp_path / "pending" / name)]) == 0
+    assert "matches this replay byte for byte" in capsys.readouterr().out and replay.calls == []
