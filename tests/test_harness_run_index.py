@@ -26,7 +26,7 @@ from evals import run as eval_run  # noqa: E402
 from evals.gen.common import SPLIT_VARIANTS  # noqa: E402
 from evals.records import load_manifest  # noqa: E402
 
-from ordnung.llm.base import LLMRequest, LLMResponse, StreamEvent  # noqa: E402
+from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent  # noqa: E402
 from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
 from ordnung.llm.runtime import request_key  # noqa: E402
@@ -353,6 +353,196 @@ def test_the_smoke_is_not_ok_when_its_ask_turns_do_not_run() -> None:
     passed = {**report, "ask_exit": 0, "ask": {**benchmark, "calls": 3, "repeated": 3}}
     assert harness.smoke_ok(passed, ids=["a", "b"], ask_only=["q1", "q2", "q3"])
     assert not harness.smoke_ok({**report, "ask": "not run"}, ids=["a", "b"], ask_only=["q1"])
+
+
+# --------------------------------------------------------------------------------------------------
+# What the smoke judges: run 1's requests again, but for a prompt built on an answer that differs
+# --------------------------------------------------------------------------------------------------
+
+PHOTO, TEXT = REAL_IDS
+#: Run 1's transcript of the photo, and what its other requests answered.
+READING, ANSWER = "the page as run 1 read it", {"kind": "tax_letter"}
+
+
+def _smoke_calls(
+    image: Path, *, reading: str = READING, answer: Any = ANSWER, **changed: Mapping[str, Any]
+) -> list[tuple[LLMRequest, Any]]:
+    """One run of the two smoke letters as the pipeline makes it, with each request's answer: the photo is
+    transcribed (its key: the image's sha256) and Ordnung reads the transcript (``reading``, the transcription's
+    answer) under a key that names only where its text came from; the text letter is read from its own text; each
+    letter gets a baseline. ``answer`` is what every request but the transcription answered; ``changed`` gives a
+    request's fields that differ from run 1's, by name."""
+    image_sha = hashlib.sha256(image.read_bytes()).hexdigest()
+    picture = [Attachment(path=image, media_type="image/jpeg")]
+    requests = {
+        "transcribe": LLMRequest(
+            purpose="transcribe", prompt="Transcribe the page.", system="t", attachments=picture,
+            doc_ids=[PHOTO], cache_key=image_sha, prompt_version="1.1",
+        ),
+        "photo_extract": _request(prompt=f"Read: {reading}", doc_ids=[PHOTO], cache_key=f"{image_sha}|transcript"),
+        "text_extract": _request(prompt="Read: the letter's own text", doc_ids=[TEXT], cache_key="text|text"),
+        "photo_baseline": LLMRequest(
+            purpose="eval_baseline", prompt="Read the picture.", system="b", attachments=picture,
+            doc_ids=[PHOTO], cache_key=f"llm_only|{image_sha}", prompt_version="llm_only.1",
+        ),
+        "text_baseline": LLMRequest(
+            purpose="eval_baseline", prompt="Read: the letter's own text", system="b", doc_ids=[TEXT],
+            cache_key="llm_only|text", prompt_version="llm_only.1",
+        ),
+    }  # fmt: skip
+    answers = {name: answer for name in requests} | {"transcribe": {"text": reading}}
+    return [
+        (requests[name].model_copy(update=dict(changed.get(name, {}))), answers[name]) for name in requests
+    ]
+
+
+def _record_smoke(root: Path, calls: list[tuple[LLMRequest, Any]], *, repeat: int) -> Path:
+    """``calls`` recorded into ``root`` as run ``repeat`` records them: a lock entry, a cassette with the answer and
+    a ledger line each."""
+    lock = harness.RequestLock(root / harness.LOCK_FILE)
+    lines = []
+    for req, answer in calls:
+        sent = harness.repeat_request(req, repeat)
+        key = harness.lock_key(sent)
+        lock.entries[key] = harness.lock_entry(sent, repeat=repeat)
+        cassette = root / f"{key}.json"
+        cassette.parent.mkdir(parents=True, exist_ok=True)
+        recorded = {"request": {"purpose": sent.purpose, "repeat": repeat}, "response": {"data": answer}}
+        cassette.write_text(json.dumps(recorded), encoding="utf-8")
+        lines.append(json.dumps({"key": key, "purpose": sent.purpose, "repeat": repeat, "cost_usd": 0.01}))
+    lock.save()
+    (root / harness.LEDGER_FILE).write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
+    return root
+
+
+def _smoke(tmp_path: Path, **again: Any) -> dict[str, Any]:
+    """:func:`harness.smoke_checks` of a repeat (``again``: :func:`_smoke_calls`' arguments for run 2) against
+    run 1 of the two smoke letters."""
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8 a photographed page")
+    committed = _record_smoke(tmp_path / "run1", _smoke_calls(image), repeat=1)
+    scratch = _record_smoke(tmp_path / "run2", _smoke_calls(image, **again), repeat=2)
+    return harness.smoke_checks(scratch, committed, cap=1.0)
+
+
+def test_the_smoke_counts_a_reading_built_on_a_transcript_that_differs_and_judges_the_rest(
+    tmp_path: Path,
+) -> None:
+    """The live smoke of 0.E: run 2 transcribes the photo with run 1's request, but the model answers it otherwise,
+    so Ordnung's reading of the photo, which holds the transcript, differs from run 1's in its prompt alone. That
+    request is counted, not judged; every other one is run 1's byte for byte."""
+    checks = _smoke(tmp_path, reading="the page as run 2 read it", answer={"kind": "other"})
+    assert checks["requests_identical_to_run_1"], checks
+    assert checks["built_on_answers_that_differ_from_run_1"] == 1
+    assert checks["repeated"] == checks["locked"] == checks["calls"] == checks["cassettes"] == 5
+    assert checks["keys_differ_from_run_1"] and checks["one_ledger_line_per_call"] and checks["within_budget"]
+    assert checks["follow_ups_run_1_did_not_make"] == 0
+    assert checks["answers_compared"] == checks["answers_that_differ_from_run_1"] == 5
+
+
+def test_a_repeat_that_asks_run_one_s_requests_again_counts_nothing_apart(tmp_path: Path) -> None:
+    checks = _smoke(
+        tmp_path, answer={"kind": "other"}
+    )  # the transcript is run 1's: the reading is run 1's request
+    assert checks["requests_identical_to_run_1"] and checks["built_on_answers_that_differ_from_run_1"] == 0
+    assert checks["answers_that_differ_from_run_1"] == 4
+
+
+NEW_READING = "the page as run 2 read it"
+
+
+@pytest.mark.parametrize(
+    ("again", "why"),
+    [
+        (
+            {"transcribe": {"prompt": "Transcribe this page."}},
+            "the photo's first request differs (its prompt)",
+        ),
+        ({"transcribe": {"system": "t2"}}, "the photo's first request differs (another part)"),
+        ({"text_extract": {"prompt": "Read: another text"}}, "a text letter's reading is a first request"),
+        ({"photo_baseline": {"prompt": "Read this picture."}}, "a baseline is a first request"),
+        ({"text_baseline": {"schema_": {"type": "object"}}}, "a baseline differs in another part"),
+        ({"photo_extract": {"system": "s2"}}, "the reading differs in more than its prompt"),
+        ({"photo_extract": {"schema_": {"type": "object"}}}, "the reading differs in more than its prompt"),
+    ],
+)
+def test_the_smoke_still_judges_every_first_request_and_every_other_part(
+    tmp_path: Path, again: dict[str, dict[str, Any]], why: str
+) -> None:
+    """Even with a transcript that differs from run 1's (and every baseline's answer too), a first request that is
+    not run 1's, or a reading that differs in more than its prompt, fails the smoke."""
+    checks = _smoke(tmp_path, reading=NEW_READING, answer={"kind": "other"}, **again)
+    assert checks["repeated"] == 5, why  # run 1's key still: judged, not a follow-up
+    assert not checks["requests_identical_to_run_1"], why
+
+
+def test_a_reading_whose_prompt_differs_on_run_one_s_transcript_fails(tmp_path: Path) -> None:
+    """The transcript is run 1's (the baselines' answers differ): nothing explains another prompt."""
+    checks = _smoke(tmp_path, answer={"kind": "other"}, photo_extract={"prompt": "Read again: " + READING})
+    assert not checks["requests_identical_to_run_1"]
+    assert checks["built_on_answers_that_differ_from_run_1"] == 0
+
+
+def test_a_reading_is_built_only_on_its_own_letter_s_transcript(tmp_path: Path) -> None:
+    """The photo's transcript differs, and the text letter's baseline answer too: the text letter's reading is built on
+    neither, so another prompt of it fails."""
+    checks = _smoke(
+        tmp_path, reading=NEW_READING, answer={"kind": "other"}, text_extract={"prompt": "Read: another text"}
+    )
+    assert not checks["requests_identical_to_run_1"]
+    assert (
+        checks["built_on_answers_that_differ_from_run_1"] == 1
+    )  # the photo's reading, not the text letter's
+
+
+def test_a_reading_is_counted_only_on_a_transcription_that_is_run_one_s_request(tmp_path: Path) -> None:
+    """A transcription asked otherwise explains nothing: the reading built on its answer is judged too."""
+    checks = _smoke(tmp_path, reading=NEW_READING, transcribe={"system": "t2"})
+    assert not checks["requests_identical_to_run_1"]
+    assert checks["built_on_answers_that_differ_from_run_1"] == 0
+
+
+def test_a_smoke_that_judges_nothing_fails(tmp_path: Path) -> None:
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8 a photographed page")
+    committed = _record_smoke(tmp_path / "run1", _smoke_calls(image), repeat=1)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert not harness.smoke_checks(empty, committed, cap=1.0)["requests_identical_to_run_1"]
+    # only calls run 1 never made (another page): counted as follow-ups, nothing judged
+    other = tmp_path / "other.jpg"
+    other.write_bytes(b"\xff\xd8 another page")
+    scratch = _record_smoke(tmp_path / "run2", _smoke_calls(other)[:2], repeat=2)
+    checks = harness.smoke_checks(scratch, committed, cap=1.0)
+    assert checks["repeated"] == 0 and checks["follow_ups_run_1_did_not_make"] == 2
+    assert not checks["requests_identical_to_run_1"]
+
+
+def _ask_calls(question: str, answer: str) -> list[tuple[LLMRequest, Any]]:
+    """An Ask turn as the smoke's Ask part records it: no letter of its own, the answer as text."""
+    turn = LLMRequest(
+        purpose="ask",
+        prompt=question,
+        system="ask",
+        allowed_tools=["mcp__ordnung__search"],
+        cache_key=f"ask|{question}",
+    )
+    return [(turn, answer)]
+
+
+def test_the_smoke_judges_every_ask_turn(tmp_path: Path) -> None:
+    committed = _record_smoke(tmp_path / "run1", _ask_calls("q1", "a1") + _ask_calls("q2", "a2"), repeat=1)
+    same = _record_smoke(tmp_path / "same", _ask_calls("q1", "b1") + _ask_calls("q2", "b2"), repeat=2)
+    checks = harness.smoke_checks(same, committed, cap=0.3)
+    assert checks["requests_identical_to_run_1"] and checks["repeated"] == 2
+    assert (
+        checks["built_on_answers_that_differ_from_run_1"] == 0
+        and checks["answers_that_differ_from_run_1"] == 2
+    )
+    asked, answer = _ask_calls("q2", "b2")[0]
+    changed = [*_ask_calls("q1", "b1"), (asked.model_copy(update={"prompt": "q2, asked otherwise"}), answer)]
+    checks = harness.smoke_checks(_record_smoke(tmp_path / "other", changed, repeat=2), committed, cap=0.3)
+    assert checks["repeated"] == 2 and not checks["requests_identical_to_run_1"]
 
 
 def test_the_ask_command_takes_a_recordings_folder(tmp_path: Path) -> None:

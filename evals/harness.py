@@ -1717,12 +1717,26 @@ def _recording(root: Path, key: str) -> Path:
     return path if path.is_file() else root / f"{key}.failure.json"
 
 
+#: Which requests' prompts hold the answers of which earlier requests of the same letter, by purpose: Ordnung reads a
+#: picture letter from the transcript of its pages (``ordnung.ingest.pipeline``: ``transcribe_pages`` stores each
+#: page's transcript as its text, and ``extraction_request`` puts the pages' text in the prompt), under a key that
+#: names only where each page's text came from (``extraction_cache_key``). A repeat's reading of a photo therefore
+#: repeats run 1's reading under its key, while its prompt holds this run's transcript.
+BUILT_ON: dict[str, tuple[str, ...]] = {"extract": ("transcribe",)}
+
+
 def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dict[str, Any]:
     """Compare a repeat recorded into ``scratch_root`` with run 1's recordings in ``committed_root``.
 
-    A repeat's first request of each letter and condition is run 1's request under a key of its own: it must be
-    byte for byte the same request (``requests_identical_to_run_1``). Its follow-ups (a repair, a re-ask) depend on
-    the answers, so some may be calls run 1 never made; they are counted, not judged."""
+    A repeat's first request of each letter and condition (a transcription, a text letter's reading, every
+    baseline, every Ask turn) is run 1's request under a key of its own: it must be byte for byte the same request,
+    and so must every other request of run 1's that the repeat makes again (``requests_identical_to_run_1``; false
+    when nothing was judged). One kind of request is counted, not judged (``built_on_answers_that_differ_from_run_1``):
+    one whose prompt holds an earlier answer of this run (:data:`BUILT_ON`: a photo's reading holds its
+    transcript), when it differs from run 1's request in its prompt alone and a request it is built on — of its
+    letter, run 1's request byte for byte — got an answer that differs from run 1's. The model is not deterministic,
+    so its prompt cannot be run 1's. Follow-ups (a repair, a re-ask) depend on the answers, so some may be calls run 1
+    never made; they are counted, not judged."""
     lock = RequestLock(scratch_root / LOCK_FILE).entries
     committed = RequestLock(committed_root / LOCK_FILE).entries
     cassettes = _cassettes(scratch_root)
@@ -1738,6 +1752,32 @@ def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dic
         (_answer(_recording(scratch_root, key)), _answer(_recording(committed_root, str(entry["of"]))))
         for key, entry in repeated.items()
     ]
+
+    def identical(entry: Mapping[str, Any]) -> bool:
+        return committed[str(entry["of"])].get("content") == entry.get("content")
+
+    def answered_otherwise(key: str, entry: Mapping[str, Any]) -> bool:
+        mine, first = _recording(scratch_root, key), _recording(committed_root, str(entry["of"]))
+        return mine.is_file() and first.is_file() and _answer(mine) != _answer(first)
+
+    def built_on_another_answer(key: str, entry: Mapping[str, Any]) -> bool:
+        first, mine = entry_fields(committed[str(entry["of"])]), entry_fields(entry)
+        if {name for name in FIELDS if mine.get(name) != first.get(name)} != {"prompt"}:
+            return False
+        letter = set(entry.get("docs") or [])
+        upstream = BUILT_ON.get(key.partition("/")[0], ())
+        return bool(letter) and any(
+            other.partition("/")[0] in upstream
+            and set(earlier.get("docs") or []) == letter
+            and identical(earlier)
+            and answered_otherwise(other, earlier)
+            for other, earlier in repeated.items()
+        )
+
+    built_on = {
+        key for key, entry in repeated.items() if not identical(entry) and built_on_another_answer(key, entry)
+    }
+    judged = [entry for key, entry in repeated.items() if key not in built_on]
     return {
         "calls": len(ledger),
         "cassettes": len(cassettes),
@@ -1745,10 +1785,8 @@ def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dic
         "keys_differ_from_run_1": bool(lock) and not set(lock) & set(committed),
         "repeated": len(repeated),
         "follow_ups_run_1_did_not_make": len(lock) - len(repeated),
-        "requests_identical_to_run_1": bool(repeated)
-        and all(
-            committed[str(entry["of"])].get("content") == entry.get("content") for entry in repeated.values()
-        ),
+        "requests_identical_to_run_1": bool(judged) and all(identical(entry) for entry in judged),
+        "built_on_answers_that_differ_from_run_1": len(built_on),
         "one_ledger_line_per_call": len(ledger) == len(cassettes) == len(lock),
         "spent_usd": round(sum(costs), 4),
         # the cap stops new calls: the calls already under way may pass it by one call each
