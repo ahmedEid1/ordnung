@@ -5,7 +5,7 @@ What changed in each version of Ordnung, newest first. `ordnung --version` shows
 
 ## Unreleased
 
-## 0.4.0 — 2026-11-09
+## 0.4.0 — 2026-11-16
 
 The third numbered release. [Updating](docs/guide.md#updating) says how to install it; *Upgrading* below says
 what a computer still on 0.3.0 does with what this version adds, if you use hand-off sync between the two.
