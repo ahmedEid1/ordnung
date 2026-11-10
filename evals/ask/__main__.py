@@ -371,9 +371,21 @@ def main(
             file=sys.stderr,
         )
         return harness.STOPPED
+    failed = (
+        sorted(qid for qid, turn in result.turns.items() if not turn.answered) if result.config.live else []
+    )
     if result.cut:  # a run is one unit: nor is one written that was cut short (budget, usage limit, midnight)
         print(
             f"error: {result.cut} — the run is one unit, so nothing was written: {_way_on(result, config)}",
+            file=sys.stderr,
+        )
+        args.write = False
+    elif failed:
+        # nor one with a turn that failed part-way (a usage limit met after its first request, a timeout, a CLI
+        # error): that turn has no answer and no recording, so the same command the same day asks it again
+        print(
+            f"error: {len(failed)} turn(s) got no answer ({', '.join(failed)}) — the run is one unit, so nothing was "
+            f"written: {_way_on(result, config)}",
             file=sys.stderr,
         )
         args.write = False

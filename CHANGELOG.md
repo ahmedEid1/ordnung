@@ -226,10 +226,11 @@ install this version by its commit, as *Updating* says for a release without a t
   corrected by the check as recorded already. The recording stays as recorded and its re-scoring of 2026-10-31
   says so ([docs/evals-ask.md](docs/evals-ask.md)).
 - Evaluation: an Ask benchmark run cut short — by `--max-cost-usd`, by a usage limit it did not wait out, or by
-  midnight UTC — no longer writes a results file that scores the questions it never asked as errors; it says how to
-  go on (the same day with a higher cap or once the limit resets, or retaken whole), and a run of "Ask: new
-  questions on the demo household" with answers recorded on an earlier day is refused until it is retaken whole. No
-  published number changes.
+  midnight UTC — or with a turn that failed part-way (a usage limit met after the turn's first request, a timeout, a
+  CLI error) no longer writes a results file that scores the questions without an answer as errors; it says how to
+  go on (the same day with a higher cap, or the same command once the limit resets, or retaken whole), and a run of
+  "Ask: new questions on the demo household" with answers recorded on an earlier day is refused until it is retaken
+  whole. No published number changes.
 
 ### Upgrading
 

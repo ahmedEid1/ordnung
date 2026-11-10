@@ -191,8 +191,9 @@ check shows in the numbers at once, and costs nothing.
   recorded again on another day: `--allow-another-today` does that in the open, and every new recording
   (`recorded_on`) and results file says both days. A held-out or final set takes `--allow-another-today` only for
   a smoke into a scratch `--recorded-dir` outside the checkout, thrown away. An Ask run cut short (by its
-  `--max-cost-usd`, a usage limit not waited out, or midnight UTC) writes no results file: resume it the same day
-  (a higher cap, or once the limit resets), or retake it whole.
+  `--max-cost-usd`, a usage limit not waited out, or midnight UTC), or with a turn that failed part-way (a usage
+  limit met after the turn's first request, a timeout, a CLI error), writes no results file: resume it the same day
+  (a higher cap, or the same command once the limit resets), or retake it whole.
 
 ## Tests
 

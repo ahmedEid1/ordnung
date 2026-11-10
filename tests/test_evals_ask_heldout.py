@@ -1774,6 +1774,72 @@ def test_a_held_out_run_a_usage_limit_cuts_writes_no_results_file(
     assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
 
 
+#: what the ``claude`` backend yields for a usage limit (``ordnung.llm.claude_cli``'s own words)
+LIMIT_REACHED = "Your Claude usage limit or a rate limit was reached. Ordnung will continue when it resets."
+
+
+class FailsPartWay(StandInAgent):
+    """The stand-in, whose call number ``at`` (from 1) reads its tool and gets the real result, then fails before its
+    answer with ``error`` (an error event, as the CLI backend yields it): a usage limit met on a later request of the
+    turn, a timeout, a CLI error. Every other call answers."""
+
+    def __init__(self, at: int, error: str) -> None:
+        super().__init__()
+        self.at, self.error = at, error
+
+    async def stream(self, req: LLMRequest) -> AsyncIterator[StreamEvent]:
+        failing = len(self.calls) + 1 == self.at
+        async for event in super().stream(req):
+            if failing and event.type in ("text", "done"):
+                yield StreamEvent(type="error", error=self.error)
+                return
+            yield event
+
+
+@pytest.mark.slow  # records a held-out run twice: once, in backend-slow, without coverage
+@pytest.mark.parametrize(
+    ("at", "error", "failed"),
+    [
+        (3, LIMIT_REACHED, "h-attack-tax"),  # the last turn: no later turn starts to meet the limit first
+        (2, LIMIT_REACHED, "h-none-boat"),  # a later turn answered
+        (2, "Claude did not answer within 300 s", "h-none-boat"),
+    ],
+    ids=["limit-last-turn", "limit-then-answered", "timeout"],
+)
+def test_a_held_out_run_with_a_turn_that_failed_part_way_writes_no_results_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    at: int,
+    error: str,
+    failed: str,
+) -> None:
+    """A turn that fails after its first request (a usage limit met once it has read its tool, so not the stream's
+    first event and not a cut; a timeout; a CLI error) leaves the run without that turn's answer or recording: the run
+    is one unit, so nothing is written, with one error naming the turn and both ways on."""
+    folder = _write(tmp_path / "heldout", *CUT_SET)
+    agent = _on(monkeypatch, FailsPartWay(at, error), D)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 1  # the gate still fails it
+    err = capsys.readouterr().err
+    asked = len(agent.calls)
+    assert asked == 3 and _results(tmp_path) == []  # never a whole run: nothing is written
+    assert "gate: 1 question(s) got no answer" in err.splitlines()
+    (line,) = _errors(err)  # one error, naming the turn and both ways on
+    assert line.startswith(
+        f"error: 1 turn(s) got no answer ({failed}) — the run is one unit, so nothing was written"
+    )
+    assert "resume it the same day with the same command (the turns recorded are kept" in line
+    assert f"retake --whole-run --recorded-dir {tmp_path / 'recorded'} --repeat 3 --to <folder>`" in line
+    assert "budget" not in line and "usage limit was not waited out" not in line  # no cut
+
+    # resumed the same day: only the turn without an answer is asked, and the whole run is written
+    again = _on(monkeypatch, StandInAgent(), D)
+    assert main(_live_heldout(tmp_path, D, "1"), heldout_dir=folder) == 0
+    asked = len(again.calls)
+    assert asked == 1 and not _errors(capsys.readouterr().err)
+    assert _results(tmp_path) == [f"{D}-{DEFAULT_MODEL}-ask-heldout-r3.json"]
+
+
 @pytest.mark.slow  # records a held-out run: once, in backend-slow, without coverage
 def test_a_held_out_run_the_recording_days_end_cuts_writes_no_results_file(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]

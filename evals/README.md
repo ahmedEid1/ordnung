@@ -107,9 +107,11 @@ below; the recording commands, with each step's budget and stop, are pre-registe
   not complete is refused, with its ids, until it is retaken; a stopped Ask run or stress invocation is retaken whole.
 - **`--max-cost-usd USD`**, with `--live`: no new call starts once the step has cost that much, counting what its
   ledger says earlier runs of it spent. An Ask run that this cap, a usage limit not waited out (no `--wait-on-limit`,
-  or a reset after its end) or midnight UTC cuts short writes no results file and fails its gate, with one `error:`
-  line: resume it the same day (a higher cap, or the same command once the limit resets), or retake it whole; an
-  `evals.ask --set heldout` run with turns from an earlier day is refused until it is retaken whole.
+  or a reset after its end) or midnight UTC cuts short, or one with a turn that failed part-way (a usage limit met
+  after the turn's first request, a timeout, a CLI error), writes no results file and fails its gate, with one
+  `error:` line: resume it the same day (a higher cap, or the same command once the limit resets: only the turns
+  without an answer are asked), or retake it whole; an `evals.ask --set heldout` run with turns from an earlier day
+  is refused until it is retaken whole.
 - **`--check FILE`.** Replay, then exit 1 unless the replay gives what FILE, a live results file, holds. `evals.run`
   and `evals.ask` write no results file then and name what differs on stdout; `scripts.eval_perturb` writes its
   replay into its `--out` folder, as every stress replay does, and names what differs on stderr.
