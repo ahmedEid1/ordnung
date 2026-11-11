@@ -36,7 +36,7 @@ CHANGELOG = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
 #: The day of the freeze that named 0.4.0 before its tag, which follows the pre-registered evaluation's
 #: publication. While its section carries this date it says the tag follows; the pull request whose merge is
 #: tagged dates it the release day and drops that sentence (docs/releasing.md), with no change here.
-FREEZE_DAY_040 = "2026-11-16"
+FREEZE_DAY_040 = "2026-11-11"
 
 TWO_VERSIONS = """# Changelog
 
