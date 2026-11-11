@@ -190,7 +190,14 @@ check shows in the numbers at once, and costs nothing.
   for that day). The development sets (Ask's, pinned to 28 Sep 2026, and the dev and test splits) can only be
   recorded again on another day: `--allow-another-today` does that in the open, and every new recording
   (`recorded_on`) and results file says both days. A held-out or final set takes `--allow-another-today` only for
-  a smoke into a scratch `--recorded-dir` outside the checkout, thrown away.
+  a smoke into a scratch `--recorded-dir` outside the checkout, thrown away. An Ask run cut short (by its
+  `--max-cost-usd`, a usage limit not waited out, or midnight UTC), or with a turn that failed part-way (a usage
+  limit met after the turn's first request, a timeout, a CLI error), writes no results file: resume it the same day
+  (a higher cap, or the same command once the limit resets), or retake it whole. A turn still without an answer
+  after the final run's three resumes is scored as no answer by the same command with `--allow-errors` (as
+  `evals.run`'s; it keeps the turn beside the recordings, so a replay gives the same failure), with an `unanswered`
+  deviation; it is refused until the ledger shows the turn's first attempt and three resumes failed, and a cut run is
+  never written.
 
 ## Tests
 
@@ -229,8 +236,9 @@ check shows in the numbers at once, and costs nothing.
   app would put it: "Read again never queues a second reading of the same letter". An area and a
   colon may come first: "Windows: the lock message names the process holding the data folder",
   "Docs: …". The rebuilt web app goes in a commit of its own: "Rebuild the web app for …".
-- A change people will notice gets a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md). A design
-  decision gets a short record in [docs/decisions/](docs/decisions/).
+- A change people will notice gets a line under "Unreleased" in [CHANGELOG.md](CHANGELOG.md), or, while a
+  version named before its tag waits for it, under that version ([docs/releasing.md](docs/releasing.md)). A
+  design decision gets a short record in [docs/decisions/](docs/decisions/).
 - Pull requests go to `main`, and CI must pass. Say what changed and how you checked it, and keep
   real letters and personal data out of the description too.
 - The owner makes releases from a version tag on `main`; [docs/releasing.md](docs/releasing.md) says how.

@@ -24,6 +24,7 @@ from ordnung.api.routes import documents
 from ordnung.api.routes.drafts import DraftCreate
 from ordnung.db.store import HOUSEHOLD_META_KEY
 from ordnung.ingest import pipeline
+from ordnung.rules.deadlines import LAND_WAIT_REASONS
 from test_api_support import TODAY, api_for
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -302,10 +303,13 @@ def test_party_and_letter_details_carry_a_region_suggestion(schema: dict[str, An
         "doc_id",
         "waiting",
         "may_be_late",
+        "reason",
         "idea_id",
         "declined",
     }
     assert set(suggestion["required"]) == set(suggestion["properties"])
+    reason = {"type": "string", "enum": list(LAND_WAIT_REASONS)}
+    assert suggestion["properties"]["reason"]["anyOf"] == [reason, {"type": "null"}]
     for name in ("PartyDetail", "DocumentDetail"):
         field = components[name]["properties"]["region_suggestion"]
         assert field["anyOf"] == [{"$ref": "#/components/schemas/RegionSuggestion"}, {"type": "null"}], name

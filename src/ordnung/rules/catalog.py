@@ -332,11 +332,14 @@ _RULES: list[tuple[str, str, str, str, str | None, str | None]] = [
         "vwvfg_land_days",
         "Authorities of the Länder: the 3rd or the 4th day",
         "§ 41 Abs. 2 of the Länder VwVfGs (e.g. Art. 41 BayVwVfG, § 41 HVwVfG, § 110 LVwG SH, § 1 ThürVwVfG)",
-        "Most Länder moved to the 4-day rule in 2025: Bavaria, Berlin, Brandenburg, Lower Saxony, North "
-        "Rhine-Westphalia, Saxony, Schleswig-Holstein, Thuringia and Mecklenburg-Vorpommern from 1 January, "
-        "Baden-Württemberg from 7 February and Hamburg from 14 May. Rhineland-Palatinate and Saxony-Anhalt are taken "
-        "to follow the federal law; their gazettes were not checked. Hessen keeps the 3rd day. For Bremen and the "
-        "Saarland, whose law Ordnung could not check, or when the Land is unknown, Ordnung uses the earlier 3rd day.",
+        "Most Länder moved to the 4-day rule in 2025: Bavaria, Berlin, Brandenburg, Bremen, Lower Saxony, North "
+        "Rhine-Westphalia, Rhineland-Palatinate, Saxony, Saxony-Anhalt, Schleswig-Holstein, Thuringia and "
+        "Mecklenburg-Vorpommern from 1 January, Baden-Württemberg from 7 February and Hamburg from 14 May. Bremen, "
+        "Rhineland-Palatinate and Saxony-Anhalt follow the federal law by reference; as their gazettes could not be "
+        "reached, this was checked against the Landtag record of Bremen's and Saxony-Anhalt's acts and, for "
+        "Rhineland-Palatinate, against its government's statement of its law in a bill the Landtag adopted. Hessen "
+        "keeps the 3rd day. For the Saarland, whose law Ordnung could not read, or when the Land is unknown, Ordnung "
+        "uses the earlier 3rd day.",
         f"{_GII}/vwvfg/__41.html",
         "2025-01-01",
     ),

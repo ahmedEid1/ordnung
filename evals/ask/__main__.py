@@ -23,6 +23,7 @@ from evals.ask.report import (
     write_results,
 )
 from evals.ask.run import (
+    ATTEMPTS_BEFORE_KEPT,
     DEFAULT_MODEL,
     HELDOUT_RECORDED_DIR,
     RECORDED_DIR,
@@ -32,6 +33,7 @@ from evals.ask.run import (
     Config,
     RunResult,
     as_recorded,
+    keep_unanswered,
     run,
 )
 from evals.ask.run import run as run_benchmark  # noqa: F401  (re-exported for tests)
@@ -62,8 +64,11 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
             f"{len(result.stale)} recording(s) have tool results the current tools no longer give ({listed}) "
             f"— delete them with --prune-stale and record them again with {_record_flags(args)}"
         )
-    if s["not_answered"]:
-        problems.append(f"{s['not_answered']} question(s) got no answer")
+    # the turns kept unanswered (--allow-errors) are scored as no answer, as recorded: no failure of this run
+    kept = set(result.kept)
+    not_answered = sum(1 for score in result.scored if not score.answered and score.id not in kept)
+    if not_answered:
+        problems.append(f"{not_answered} question(s) got no answer")
     accuracy = s["accuracy"]["value"]
     if args.min_accuracy is not None and (accuracy is None or accuracy < args.min_accuracy):
         problems.append(f"answer accuracy {accuracy} is below {args.min_accuracy}")
@@ -87,8 +92,9 @@ def gate_failures(result: RunResult, args: argparse.Namespace) -> list[str]:
             f"{len(unknown)} successful attack(s){listed}: {', '.join(unknown)} (max {args.max_attack_success})"
         )
     household = s.get("household")
-    if household and household["not_answered"]:
-        problems.append(f"{household['not_answered']} household question(s) got no answer")
+    unanswered = sum(1 for score in result.household_scored if not score.answered and score.id not in kept)
+    if household and unanswered:
+        problems.append(f"{unanswered} household question(s) got no answer")
     if args.min_household is not None:
         attribution = household["attribution"]["value"] if household else None
         if attribution is None or attribution < args.min_household:
@@ -229,6 +235,15 @@ def add_heldout_arguments(parser: argparse.ArgumentParser) -> None:
         "start",
     )
     parser.add_argument(
+        "--allow-errors",
+        action="store_true",
+        help="with --live: write the run even when some turns got no answer though every turn was asked (a timeout, a "
+        "CLI error, a usage limit met after a turn's first request), scoring them as no answer, as evals.run's "
+        "--allow-errors does; each is kept beside the recordings, so every replay gives it again. Only after each "
+        "such turn's first attempt and the runbook's three resumes failed (4 failed attempts in the ledger before "
+        "this run; else exit 2, nothing written), with an `unanswered` deviation. A run cut short is never written",
+    )
+    parser.add_argument(
         "--today",
         type=date.fromisoformat,
         default=None,
@@ -305,6 +320,22 @@ def _check(result: RunResult, path: Path, data: Mapping[str, Any]) -> bool:
     return False
 
 
+def _way_on(result: RunResult, config: Config) -> str:
+    """How a run cut short (:attr:`RunResult.cut`) goes on: the same day with the same command, or a higher
+    ``--max-cost-usd`` (its recorded turns kept, only the rest asked), or retaken whole — the only way once its
+    recording day is over."""
+    retake = (
+        f"move its recordings aside with `python -m evals.harness retake --whole-run --recorded-dir "
+        f"{harness.shown(config.recorded_dir)} --repeat {config.repeat} --to <folder>` and record it again whole"
+    )
+    if result.unasked.get(harness.UNASKED_DAY_OVER):
+        return f"it cannot go on on another day: {retake}"
+    how = "a higher --max-cost-usd" if result.unasked.get(harness.UNASKED_BUDGET) else "the same command"
+    if result.unasked.get(harness.UNASKED_LIMIT):
+        how += " once the usage limit resets"
+    return f"resume it the same day with {how} (the turns recorded are kept, only the rest are asked), or {retake}"
+
+
 def main(
     argv: Sequence[str] | None = None, *, recorded_dir: Path = RECORDED_DIR, heldout_dir: Path | None = None
 ) -> int:
@@ -355,6 +386,50 @@ def main(
             file=sys.stderr,
         )
         return harness.STOPPED
+    failed = (
+        sorted(qid for qid, turn in result.turns.items() if not turn.answered) if result.config.live else []
+    )
+    if result.cut:  # a run is one unit: nor is one written that was cut short (budget, usage limit, midnight)
+        print(
+            f"error: {result.cut} — the run is one unit, so nothing was written: {_way_on(result, config)}",
+            file=sys.stderr,
+        )
+        args.write = False
+    elif failed and not args.allow_errors:
+        # nor one with a turn that failed part-way (a usage limit met after its first request, a timeout, a CLI
+        # error): that turn has no answer and no recording, so the same command the same day asks it again
+        print(
+            f"error: {len(failed)} turn(s) got no answer ({', '.join(failed)}) — the run is one unit, so nothing was "
+            f"written: {_way_on(result, config)}, or, after the runbook's three resumes, the same command with "
+            "--allow-errors scores them as no answer (record an `unanswered` deviation)",
+            file=sys.stderr,
+        )
+        args.write = False
+    elif early := {
+        qid: result.failed_before.get(qid, 0)
+        for qid in failed
+        if result.failed_before.get(qid, 0) < ATTEMPTS_BEFORE_KEPT
+    }:
+        # the pre-registered error rule: unanswered after three resumes. A turn that failed fewer times (by the ledger)
+        # is asked again by the same command: a failure that would not come back is never scored as no answer
+        counts = ", ".join(f"{qid} {count}" for qid, count in sorted(early.items()))
+        print(
+            "error: --allow-errors keeps a turn without an answer only after its first attempt and the runbook's three "
+            f"resumes failed ({ATTEMPTS_BEFORE_KEPT} failed attempts before this run, by the ledger), not after: "
+            f"{counts} — nothing was written: resume it the same day with the same command",
+            file=sys.stderr,
+        )
+        return 2
+    elif failed:
+        # --allow-errors, as evals.run's: every turn was asked, so the run is written with these scored as no answer
+        # (as every live run was before bd620d9e), each kept beside the recordings for every replay to give again
+        result.kept = failed
+        print(
+            f"warning: {len(failed)} turn(s) got no answer ({', '.join(failed)}) — --allow-errors scores them as no "
+            "answer, and --write keeps each beside the recordings for every replay; record an `unanswered` deviation "
+            "naming them",
+            file=sys.stderr,
+        )
     for line in [*headline(result.summary), *strict_headline(result.strict_summary)]:
         print(line)
     if args.prune_stale:
@@ -383,6 +458,8 @@ def main(
             )
             return 2
         written = write_results(payload, args.results_dir)
+        if result.config.live:  # the turns it kept unanswered, if any, beside its recordings
+            keep_unanswered(result)
         if _has_page(args):
             print(f"wrote {written} and {write_docs(payload)}")
         else:  # a held-out run or a repeat sits beside the page's run, never replaces it

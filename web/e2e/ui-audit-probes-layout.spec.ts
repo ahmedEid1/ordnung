@@ -106,6 +106,35 @@ test.describe("laptop", () => {
   });
 });
 
+test.describe("tablet", () => {
+  test.use({ viewport: { width: 768, height: 1024 } });
+
+  // a drawer: a body that scrolls above a footer that doesn't, a list item in it, and the footer's button
+  const drawerPage = doc(`<div role="dialog" aria-modal="true" aria-label="Drawer" style="position:fixed;inset:0 0 0 320px;display:flex;flex-direction:column;background:#fff">
+      <div id="body" style="min-height:0;flex:1;overflow-y:auto">
+        <div id="spacer" style="height:100px"></div>
+        <a id="edge" href="#e" style="display:block;height:56.5625px;${plain}">Attend the meeting</a>
+        <div style="height:600px"></div>
+      </div>
+      <footer style="flex:none;padding:12px 20px;border-top:1px solid #888;background:#fff"><button id="write">Write to them</button></footer>
+    </div>`);
+
+  test("an item whose centre is within a pixel of its scrolling box's edge counts as scrolled away, not covered", async ({ page }) => {
+    await page.setContent(drawerPage);
+    // the item's centre 0.03 px above the body's bottom edge, where the footer starts (the People drawer at 768 px)
+    const centre = await page.evaluate(() => {
+      const body = document.getElementById("body")!.getBoundingClientRect();
+      const spacer = document.getElementById("spacer")!;
+      const item = document.getElementById("edge")!.getBoundingClientRect();
+      spacer.style.height = `${body.bottom - 0.03 - item.height / 2 - body.top}px`;
+      const r = document.getElementById("edge")!.getBoundingClientRect();
+      return { centre: r.top + r.height / 2, bottom: body.bottom };
+    });
+    expect(centre.bottom - centre.centre).toBeCloseTo(0.03, 2);
+    expect(await covered(page)).toEqual([]);
+  });
+});
+
 test.describe("phone", () => {
   test.use({ viewport: { width: 320, height: 640 } });
 

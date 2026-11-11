@@ -60,7 +60,7 @@ PICTURES: dict[str, tuple[int, int] | None] = {
     "scam.png": DESKTOP,
     "pair-phone.png": DESKTOP,
     "your-computers.png": DESKTOP,
-    "ask.png": (1440, 1500),
+    "ask.png": (1440, 1700),
     "mobile.png": (780, 1688),
     "mobile-dark.png": (780, 1688),
     "why.png": None,

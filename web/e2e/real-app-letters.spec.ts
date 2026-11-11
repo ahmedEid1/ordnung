@@ -14,12 +14,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { REAL_DATA_DIR, REAL_LETTER } from "./env";
-import { apiGet, expect, letterDetail, open, READ, shownAs, test, type Letter } from "./helpers";
+import { apiGet, expect, letterDetail, open, READ, resetRealApp, shownAs, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 const OUTLOOK_FILE = join(dirname(fileURLToPath(import.meta.url)), "fixtures", "outlook-bill.msg");
 
 test.describe.configure({ mode: "serial" });
+// first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
+// puts things back): the persona's name, no household, and no letter from the bank's file
+test.beforeAll(() => resetRealApp());
 
 /** The uploaded letter, once the API lists it as read (it is read in the background). */
 async function readLetter(page: Page): Promise<Letter & { status: string }> {

@@ -272,7 +272,8 @@ def test_contributors_get_the_node_versions_the_guide_requires() -> None:
     lock = json.loads(_text("web/package-lock.json"))
     lines = re.fullmatch(r"\^(\d+\.\d+)\.0 \|\| >=(\d+\.\d+)\.0", package["engines"]["node"])
     assert lines, package["engines"]
-    source_checkout = " ".join(_text("docs/guide.md").split("**From a source checkout**", 1)[1].split())
+    part = _text("docs/guide.md").split("\n### From a source checkout\n", 1)[1].split("\n### ", 1)[0]
+    source_checkout = " ".join(part.split())
     assert f"Node.js {lines[1]}+ or {lines[2]}+" in source_checkout
     assert package["engines"] == {"node": "^20.19.0 || >=22.12.0"}
     assert lock["packages"][""]["engines"] == package["engines"]
@@ -880,10 +881,10 @@ def test_the_evals_readme_names_commands_that_run_and_no_number(monkeypatch: pyt
 
 
 #: The options of ``python -m evals.run`` that evals/README.md leaves to ``--help``: the runner's own knobs, which no
-#: recording step needs said. Every other option, the final run's controls among them, is named on the page.
+#: recording step needs said. Every other option, the final run's controls among them (``--allow-errors`` too, the
+#: way on for a unit still unanswered after the runbook's resumes), is named on the page.
 RUN_OPTIONS_LEFT_TO_HELP = frozenset(
     {
-        "--allow-errors",
         "--chart-path",
         "--concurrency",
         "--conditions",

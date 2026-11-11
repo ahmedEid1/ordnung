@@ -3,7 +3,7 @@
   "info": {
     "title": "Ordnung",
     "description": "Local API of Ordnung, the private AI secretary for life admin.",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/api/health": {
@@ -16572,6 +16572,23 @@
             "title": "May Be Late",
             "default": false
           },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "earlier",
+                  "email",
+                  "days",
+                  "holiday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
           "idea_id": {
             "anyOf": [
               {
@@ -16596,6 +16613,7 @@
           "doc_id",
           "waiting",
           "may_be_late",
+          "reason",
           "idea_id",
           "declined"
         ],

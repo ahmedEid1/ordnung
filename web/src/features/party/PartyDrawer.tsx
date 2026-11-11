@@ -52,7 +52,7 @@ import { actionDate, asideNote, countdownMode, dateRole, identifierDisplay, iden
 import { byYear, letterTimeline, mailtoUrl, regionName, websiteUrl } from "./timeline";
 import { CallNotes } from "./CallNotes";
 import { SenderLandQuestion } from "./SenderLandQuestion";
-import { senderLandLine } from "./sender-land";
+import { savedStateLine, senderLandLine } from "./sender-land";
 import { WebsiteLink } from "./WebsiteLink";
 
 /** To-dos listed before "Show N more". */
@@ -479,8 +479,8 @@ const STATE_HEADING = "pty-region";
  * and, for a Land authority, how many days its post takes to count as delivered. Nothing Ordnung reads tells
  * it for sure: the postcode on their letter may suggest it, asked above the picker (ADR 0019), but it is
  * never set by itself and the picker is never preselected. Until the person sets it, nationwide holidays and
- * the 3-day rule count, at lower confidence: usually an earlier date, but one counted backwards may be a day
- * late. Saved on change (or with Yes): the server recomputes its letters' dates. Yes hands the keyboard to the
+ * the 3-day rule count, and an e-mailed decision counts from the day it was sent, at lower confidence: usually an
+ * earlier date, but one counted backwards may be a day late. Saved on change (or with Yes): the server recomputes its letters' dates. Yes hands the keyboard to the
  * heading, never to the picker, where a stray arrow key would save a state nobody chose.
  *
  * Opened at their state (`?state=`): `ask` focuses the heading — the question comes next, and a stray Enter
@@ -505,7 +505,10 @@ function SenderLand({ party, suggestion }: { party: Party; suggestion: RegionSug
         onSuccess: (saved) => {
           const state = regionName(saved.region);
           toast.success(state ? `Saved: ${saved.name} is in ${state}` : "Saved: their state isn't known", {
-            description: state ? `Their dates now skip the public holidays of ${state}.` : "Their dates use nationwide holidays again — the earlier date.",
+            // what waited for the state asked about says nothing of another one's rules
+            description: state
+              ? savedStateLine(state, saved.region === suggestion?.region ? suggestion.reason : null)
+              : "Their dates use nationwide holidays again — the earlier date.",
           });
         },
       },
@@ -539,7 +542,7 @@ function SenderLand({ party, suggestion }: { party: Party; suggestion: RegionSug
       ) : null}
       <Field
         label="Which state is this sender in?"
-        hint="Their deadlines skip that state's public holidays. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule: usually an earlier date, but one counted backwards may be a day late."
+        hint="Their deadlines skip that state's public holidays, and an authority's letters follow its delivery rules. Until you choose, Ordnung uses nationwide holidays and the 3-day delivery rule, and counts an e-mailed decision from the day it was sent: usually an earlier date, but one counted backwards may be a day late."
       >
         {/* German names, as letterheads print them */}
         <Select ref={picker} value={shown} onChange={(e) => choose(e.target.value)} className="sm:max-w-xs">

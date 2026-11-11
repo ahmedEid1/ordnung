@@ -18,8 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BENCHMARK = ROOT / "evals" / "recorded"
 DEMO = ROOT / "src" / "ordnung" / "demo" / "fixtures"
 #: Files beside the recordings that are no recording: the prompts lock, the harness's request lock and the final
-#: splits' day index.
+#: splits' day index; and the turns an Ask run kept unanswered (``--allow-errors``: ``unanswered-r<N>.json``).
 LOCKS = ("prompts.lock.json", "requests.lock.json", "final-days.json")
+KEPT_UNANSWERED = re.compile(r"unanswered-r\d+\.json")
 
 
 def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
@@ -28,7 +29,11 @@ def _recordings() -> Iterator[tuple[Path, str, dict[str, Any]]]:
     app's pinned model's."""
     for root in (BENCHMARK, DEMO):
         for path in sorted(root.rglob("*.json")):
-            if path.name in LOCKS or path.name.endswith(".failure.json"):
+            if (
+                path.name in LOCKS
+                or KEPT_UNANSWERED.fullmatch(path.name)
+                or path.name.endswith(".failure.json")
+            ):
                 continue
             parts = path.relative_to(root).parts
             model = DEFAULT_MODEL if root == DEMO else parts[1] if parts[0] == "ask" else parts[0]

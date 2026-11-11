@@ -1,9 +1,10 @@
 /**
- * README's two pictures that `ordnung demo` can't show: pairing a phone (the computer's QR code, the paired phone's two
- * check words, the computer showing the same two) and Settings → Your computers (this computer in use, the other
- * standing by with its latest changes). The demo never opens itself to a network and never syncs, so both come from
- * the real app as the browser tests run it: `ordnung serve` on throwaway data folders, phone access on loopback only
- * (`ORDNUNG_PHONE_TEST_ADDRESS`), each computer with the e2e password store, and a stand-in Claude that is never asked.
+ * The guide's two screenshots that `ordnung demo` can't show: pairing a phone (the computer's QR code, the paired
+ * phone's two check words, the computer showing the same two) and Settings → Your computers (this computer in use,
+ * the other standing by with its latest changes). The demo never opens itself to a network and never syncs, so both
+ * come from the real app as the browser tests run it: `ordnung serve` on throwaway data folders, phone access on
+ * loopback only (`ORDNUNG_PHONE_TEST_ADDRESS`), each computer with the e2e password store, and a stand-in Claude that
+ * is never asked.
  *
  * `make capture` runs it last (scripts/capture.sh sets ORDNUNG_CAPTURE_OUT, the folder the pictures go to); without
  * that variable it is skipped, so CI lists its tests and writes nothing. To make just these two pictures:
@@ -26,9 +27,9 @@ import { SyncTool } from "./sync-tool";
 
 type SyncStatus = components["schemas"]["SyncStatus"];
 
-/** Where the pictures go: README's `docs/assets` when `make capture` runs this. */
+/** Where the pictures go: `docs/assets`, beside the other screenshots, when `make capture` runs this. */
 const OUT = process.env.ORDNUNG_CAPTURE_OUT ? resolve(process.env.ORDNUNG_CAPTURE_OUT) : "";
-/** README's tour pictures: 1440×900 at device scale 1, like the rest. */
+/** The size of the guide's tour pictures: 1440×900 at device scale 1, like the rest. */
 const CANVAS = { width: 1440, height: 900 };
 const PHONE_NAME = "Sam's Pixel";
 const COMPUTERS = { a: "sam-laptop", b: "sam-desktop" } as const;
@@ -50,7 +51,7 @@ const CLAUDE_CALLS = `${REAL_DATA_DIR}-claude-calls.jsonl`;
 const CLIENT = { "X-Ordnung-Client": "web" };
 
 test.describe.configure({ mode: "serial" });
-test.skip(!OUT, "makes README's pictures of phone access and hand-off sync: make capture");
+test.skip(!OUT, "makes the guide's pictures of phone access and hand-off sync: make capture");
 
 const claudeCalls = () => (existsSync(CLAUDE_CALLS) ? readFileSync(CLAUDE_CALLS, "utf8").split("\n").filter(Boolean).length : 0);
 let callsBefore = 0;

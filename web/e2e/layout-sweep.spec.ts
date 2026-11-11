@@ -146,7 +146,15 @@ async function setTheme(page: Page, theme: Theme): Promise<void> {
     document.head.appendChild(style);
   });
   await page.emulateMedia({ colorScheme: theme });
-  await expect(page.locator("html")).toHaveClass(theme === "dark" ? /\bdark\b/ : /^(?![\s\S]*\bdark\b)/);
+  const followed = theme === "dark" ? /\bdark\b/ : /^(?![\s\S]*\bdark\b)/;
+  try {
+    await expect(page.locator("html")).toHaveClass(followed, { timeout: 5_000 });
+  } catch {
+    // a busy machine can lose the change of the system's scheme: once more, from the other one
+    await page.emulateMedia({ colorScheme: theme === "dark" ? "light" : "dark" });
+    await page.emulateMedia({ colorScheme: theme });
+    await expect(page.locator("html")).toHaveClass(followed);
+  }
   await page.evaluate(() => {
     // a style read makes the new colours final before transitions come back
     void getComputedStyle(document.body).color;
@@ -157,6 +165,15 @@ async function setTheme(page: Page, theme: Theme): Promise<void> {
 
 /** A step that didn't finish in time (see `within`). */
 class Stuck extends Error {}
+
+/**
+ * Whether a failure is one of time rather than of layout: a step `within` gave up on, or one of Playwright's own
+ * limits — an action's ("Timeout 30000ms exceeded") or an `expect`'s ("Timeout: 10000ms", "Timed out 10000ms
+ * waiting for expect"), read from the whole message, as the report keeps only its first lines.
+ */
+function outOfTime(err: unknown, message: string): boolean {
+  return err instanceof Stuck || /Timeout \d+ms exceeded|Timeout: \d+ms|Timed out \d+ms waiting for expect/.test(message);
+}
 
 /**
  * `promise`, or an error naming the step once it has taken `seconds`: a page that gets stuck fails its own
@@ -230,15 +247,13 @@ async function sweep(browser: Browser, device: Device, state: SweepState, demo: 
     }
   } catch (err) {
     // (Playwright's message without its colours, on one line)
-    const message = String((err as Error).message ?? err)
+    const lines = String((err as Error).message ?? err)
       .replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "")
       .split("\n")
       .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 4)
-      .join(" · ");
-    stuck = err instanceof Stuck || /Timeout \d+ms exceeded/.test(message);
-    problems.push(`${state.name} (${device}, ${at}): ${message}`);
+      .filter(Boolean);
+    stuck = outOfTime(err, lines.join("\n"));
+    problems.push(`${state.name} (${device}, ${at}): ${lines.slice(0, 4).join(" · ")}`);
   } finally {
     await within(30, "closing the page", context.close()).catch(() => {});
   }

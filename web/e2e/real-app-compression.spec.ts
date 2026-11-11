@@ -10,7 +10,7 @@ import { request as httpRequest, type IncomingHttpHeaders } from "node:http";
 import { gunzipSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import { REAL_BASE_URL, REAL_LETTER, tokenCookie } from "./env";
-import { apiGet, apiSend, expect, open, test, type Letter } from "./helpers";
+import { apiGet, apiSend, expect, open, resetRealApp, test, type Letter } from "./helpers";
 
 const FILE = "19_bank_preisaenderung.pdf";
 const GZIP = { "Accept-Encoding": "gzip" };
@@ -18,6 +18,9 @@ const GZIP = { "Accept-Encoding": "gzip" };
 const STARTS_WITHIN_MS = 5_000;
 
 test.describe.configure({ mode: "serial" });
+// first, the real app as the specs share it, whatever an earlier spec left behind (a test that timed out never
+// puts things back): the persona's name, no household, and no letter from the bank's file
+test.beforeAll(() => resetRealApp());
 
 interface Wire {
   status: number;

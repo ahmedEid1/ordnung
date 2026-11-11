@@ -396,6 +396,20 @@ def units_of_another_day(
     return {entry_id: sorted(paths) for entry_id, paths in sorted(found.items())}
 
 
+def recordings_of_another_day(root: Path, *, repeat: int, day: date) -> dict[Path, str | None]:
+    """The recordings of run ``repeat`` in ``root`` (by its request lock) made on another day than ``day``, each with
+    the day it was made on (``None``: a day that cannot be told). An Ask run or a stress invocation is one unit: with
+    any such recording it cannot go on today (its recorded turns told the model another today), and it is retaken
+    whole (:func:`retake` with ``whole_run``), which moves the same recordings."""
+    ledger = _ledger_rows(root)
+    days = {
+        path: recorded_day(path, ledger)
+        for key in lock_entries_of(RequestLock(root / LOCK_FILE), repeat=repeat)
+        for path in recordings_of(root, key)
+    }
+    return {path: made for path, made in sorted(days.items()) if made != day.isoformat()}
+
+
 class UnitClosed(LLMError):
     """A call for a unit that is already complete: its recordings answer every call it makes, so a call that reaches
     the model would record a valid answer again."""
@@ -758,13 +772,16 @@ class BudgetReached(LLMError):
 
 class Budget:
     """The run's live spend against its cap (``--max-cost-usd``); replayed answers cost nothing. ``spent`` starts at
-    what this step already spent (:func:`ledger_spent`), so resuming with the same command gets no new cap."""
+    what this step already spent (:func:`ledger_spent`), so resuming with the same command gets no new cap.
+    ``refused`` counts the calls it kept from starting: a run whose last call reached the cap refused none, and asked
+    everything; one that refused a call was cut."""
 
     def __init__(self, cap: float, *, spent: float = 0.0) -> None:
         if cap < 0:
             raise ValueError("a budget is not negative")
         self.cap = cap
         self.spent = max(0.0, spent)
+        self.refused = 0
 
     @property
     def reached(self) -> bool:
@@ -776,9 +793,14 @@ class Budget:
             "calls in its ledger); what is recorded is kept — resume with a higher --max-cost-usd"
         )
 
+    def refuse(self) -> str:
+        """Keep a call from starting: count it, and say why (:meth:`message`)."""
+        self.refused += 1
+        return self.message()
+
     def check(self) -> None:
         if self.reached:
-            raise BudgetReached(self.message())
+            raise BudgetReached(self.refuse())
 
     def add(self, cost: float) -> None:
         self.spent += max(0.0, cost)
@@ -938,10 +960,21 @@ def _rate_limited(text: str | None) -> bool:
     return "usage limit" in lowered or "rate limit" in lowered
 
 
+#: Why :class:`LiveCalls` returned a call without an answer for a reason of the whole run, not of the call
+#: (:attr:`LiveCalls.unasked`): ``--max-cost-usd`` refused it, a usage limit was met and not waited out (no
+#: ``--wait-on-limit``, or a reset after its end), or the recording day is over (midnight UTC). An Ask run is one unit:
+#: one with such a call was cut, and ``evals.ask`` writes no results file for it.
+UNASKED_BUDGET = "budget"
+UNASKED_LIMIT = "usage limit"
+UNASKED_DAY_OVER = "day over"
+
+
 class LiveCalls:
     """Wraps the live ``claude``: the budget stop, waiting through a usage limit, a ledger line per call, (``day``)
     no call once the recording's day is over (:class:`RecordingDayOver`), and (``closed``) no call for a letter whose
-    unit is already complete (:class:`UnitClosed`)."""
+    unit is already complete (:class:`UnitClosed`). ``unasked`` counts, by reason (:data:`UNASKED_BUDGET`,
+    :data:`UNASKED_LIMIT`, :data:`UNASKED_DAY_OVER`), the calls it returned without an answer for a reason of the run:
+    what a runner reads to tell a run they cut from a whole one, whatever the cause."""
 
     def __init__(
         self,
@@ -952,6 +985,7 @@ class LiveCalls:
         waiter: LimitWaiter | None = None,
         day: date | None = None,
         closed: Collection[str] = (),
+        unasked: Counter[str] | None = None,
     ) -> None:
         self.inner = inner
         self.ledger = ledger
@@ -959,6 +993,7 @@ class LiveCalls:
         self.waiter = waiter
         self.day = day
         self.closed = frozenset(closed)
+        self.unasked: Counter[str] = unasked if unasked is not None else Counter()
         self.name = inner.name
 
     def _day_over(self) -> RecordingDayOver | None:
@@ -985,8 +1020,13 @@ class LiveCalls:
             raise refused
         while True:
             if self.budget is not None:
-                self.budget.check()
+                try:
+                    self.budget.check()
+                except BudgetReached:
+                    self.unasked[UNASKED_BUDGET] += 1
+                    raise
             if (over := self._day_over()) is not None:
+                self.unasked[UNASKED_DAY_OVER] += 1
                 raise over
             started = time.monotonic()
             try:
@@ -995,6 +1035,7 @@ class LiveCalls:
                 self._log(req, "rate_limited", started)
                 if self.waiter is not None and await self.waiter.wait(exc.reset_at):
                     continue
+                self.unasked[UNASKED_LIMIT] += 1
                 raise
             except LLMError as exc:
                 self._log(req, outcome_of(exc), started)
@@ -1012,9 +1053,11 @@ class LiveCalls:
             return
         while True:
             if self.budget is not None and self.budget.reached:
-                yield StreamEvent(type="error", error=self.budget.message())
+                self.unasked[UNASKED_BUDGET] += 1
+                yield StreamEvent(type="error", error=self.budget.refuse())
                 return
             if (over := self._day_over()) is not None:
+                self.unasked[UNASKED_DAY_OVER] += 1
                 yield StreamEvent(type="error", error=str(over))
                 return
             started = time.monotonic()
@@ -1043,6 +1086,7 @@ class LiveCalls:
             self._log(req, "rate_limited", started)
             if self.waiter is not None and await self.waiter.wait(None):
                 continue
+            self.unasked[UNASKED_LIMIT] += 1
             yield limited
             return
 
@@ -1055,8 +1099,9 @@ async def claude_version(binary: str | None = None) -> str | None:
 @dataclass
 class LiveSetup:
     """What a live run's stacks share: the budget, the waiting, the ``claude`` asked, its version, the ledgers, the
-    provenance each new cassette is stamped with, the recording's day (``None``: not checked), and the letters whose
-    unit is already complete (a final split's: no call for them reaches the model)."""
+    provenance each new cassette is stamped with, the recording's day (``None``: not checked), the letters whose
+    unit is already complete (a final split's: no call for them reaches the model), and the calls its stacks returned
+    without an answer for a reason of the run, by reason (:attr:`LiveCalls.unasked`)."""
 
     repeat: int = 1
     budget: Budget | None = None
@@ -1067,6 +1112,7 @@ class LiveSetup:
     cli_version: str | None = None
     ledgers: list[Ledger] = field(default_factory=list)
     provenance: dict[str, Any] = field(default_factory=dict)
+    unasked: Counter[str] = field(default_factory=Counter)
 
     async def resolve_version(self) -> None:
         """Ask the live ``claude`` for its version once (a stand-in without a ``binary`` has none)."""
@@ -1671,12 +1717,39 @@ def _recording(root: Path, key: str) -> Path:
     return path if path.is_file() else root / f"{key}.failure.json"
 
 
+#: Which requests' prompts hold the answers of which earlier requests of the same letter, by purpose: Ordnung reads a
+#: picture letter from the transcript of its pages (``ordnung.ingest.pipeline``: ``transcribe_pages`` stores each
+#: page's transcript as its text, and ``extraction_request`` puts the pages' text in the prompt), under a key that
+#: names only where each page's text came from (``extraction_cache_key``). A repeat's reading of a photo therefore
+#: repeats run 1's reading under its key, while its prompt holds this run's transcript. That is the only link across
+#: purposes. A repair's prompt holds this run's validation problems, under the key of run 1's repair of the letter
+#: (``ordnung.ingest.extract.repair_request``, ``evals.conditions.baseline_repair_request``): it is judged when run 1
+#: made it too (no dev letter has one).
+BUILT_ON: dict[str, tuple[str, ...]] = {"extract": ("transcribe",)}
+
+#: Purposes of which a repeat must ask each of run 1's requests again, under its key, for every letter the repeat
+#: read with Ordnung (made a request of one of these purposes, or of one in :data:`BUILT_ON`, for it): a
+#: transcription is one call per page, with no follow-up, keyed by the sha256 of its page image
+#: (``ordnung.ingest.transcribe.transcription_request``). Sent with other bytes (the page rendered by another
+#: Pillow build, say), it is under another key, where the smoke would count it as a call run 1 never made.
+ASKED_AGAIN: tuple[str, ...] = ("transcribe",)
+
+
 def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dict[str, Any]:
     """Compare a repeat recorded into ``scratch_root`` with run 1's recordings in ``committed_root``.
 
-    A repeat's first request of each letter and condition is run 1's request under a key of its own: it must be
-    byte for byte the same request (``requests_identical_to_run_1``). Its follow-ups (a repair, a re-ask) depend on
-    the answers, so some may be calls run 1 never made; they are counted, not judged."""
+    A repeat's first request of each letter and condition (a transcription, a text letter's reading, every
+    baseline, every Ask turn) is run 1's request under a key of its own: it must be byte for byte the same request,
+    and so must every other request the repeat makes under the key of one of run 1's
+    (``requests_identical_to_run_1``; false when nothing was judged). Each of run 1's transcriptions of the letters
+    the repeat read with Ordnung must be asked again (:data:`ASKED_AGAIN`; ``run_1_transcriptions_not_asked_again``,
+    and ``requests_identical_to_run_1`` is false when one was not). One kind of request is counted, not judged
+    (``built_on_answers_that_differ_from_run_1``): one whose prompt holds earlier answers of this run
+    (:data:`BUILT_ON`: a photo's reading holds its pages' transcripts), when it differs from run 1's request in its
+    prompt alone, the requests of its letter it is built on are run 1's (each of them asked again, byte for byte,
+    and no other), and one of them got an answer that differs from run 1's. The model is not deterministic, so its
+    prompt cannot be run 1's. A follow-up (a repair, a re-ask) depends on the answers: one run 1 never made is
+    counted (``follow_ups_run_1_did_not_make``), not judged; one run 1 made too is judged."""
     lock = RequestLock(scratch_root / LOCK_FILE).entries
     committed = RequestLock(committed_root / LOCK_FILE).entries
     cassettes = _cassettes(scratch_root)
@@ -1692,6 +1765,52 @@ def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dic
         (_answer(_recording(scratch_root, key)), _answer(_recording(committed_root, str(entry["of"]))))
         for key, entry in repeated.items()
     ]
+
+    def identical(entry: Mapping[str, Any]) -> bool:
+        return committed[str(entry["of"])].get("content") == entry.get("content")
+
+    def answered_otherwise(key: str, entry: Mapping[str, Any]) -> bool:
+        mine, first = _recording(scratch_root, key), _recording(committed_root, str(entry["of"]))
+        return mine.is_file() and first.is_file() and _answer(mine) != _answer(first)
+
+    def of_letter(
+        entries: Mapping[str, Mapping[str, Any]], purposes: Collection[str], letter: set[str]
+    ) -> dict[str, Mapping[str, Any]]:
+        return {
+            key: entry
+            for key, entry in entries.items()
+            if key.partition("/")[0] in purposes and set(entry.get("docs") or []) == letter
+        }
+
+    def built_on_another_answer(key: str, entry: Mapping[str, Any]) -> bool:
+        first, mine = entry_fields(committed[str(entry["of"])]), entry_fields(entry)
+        if {name for name in FIELDS if mine.get(name) != first.get(name)} != {"prompt"}:
+            return False
+        letter = set(entry.get("docs") or [])
+        upstream = BUILT_ON.get(key.partition("/")[0], ())
+        built_on, run_1s = of_letter(lock, upstream, letter), of_letter(committed, upstream, letter)
+        return (
+            bool(letter)
+            and {str(earlier.get("of")) for earlier in built_on.values()} == set(run_1s)
+            and all(identical(earlier) for earlier in built_on.values())
+            and any(answered_otherwise(other, earlier) for other, earlier in built_on.items())
+        )
+
+    built_on = {
+        key for key, entry in repeated.items() if not identical(entry) and built_on_another_answer(key, entry)
+    }
+    judged = [entry for key, entry in repeated.items() if key not in built_on]
+    read = {
+        doc
+        for key, entry in lock.items()
+        if key.partition("/")[0] in {*ASKED_AGAIN, *BUILT_ON}
+        for doc in entry.get("docs") or []
+    }
+    not_asked_again = {
+        key
+        for key, entry in committed.items()
+        if key.partition("/")[0] in ASKED_AGAIN and set(entry.get("docs") or []) & read
+    } - {str(entry["of"]) for entry in repeated.values()}
     return {
         "calls": len(ledger),
         "cassettes": len(cassettes),
@@ -1699,10 +1818,11 @@ def smoke_checks(scratch_root: Path, committed_root: Path, *, cap: float) -> dic
         "keys_differ_from_run_1": bool(lock) and not set(lock) & set(committed),
         "repeated": len(repeated),
         "follow_ups_run_1_did_not_make": len(lock) - len(repeated),
-        "requests_identical_to_run_1": bool(repeated)
-        and all(
-            committed[str(entry["of"])].get("content") == entry.get("content") for entry in repeated.values()
-        ),
+        "run_1_transcriptions_not_asked_again": len(not_asked_again),
+        "requests_identical_to_run_1": bool(judged)
+        and not not_asked_again
+        and all(identical(entry) for entry in judged),
+        "built_on_answers_that_differ_from_run_1": len(built_on),
         "one_ledger_line_per_call": len(ledger) == len(cassettes) == len(lock),
         "spent_usd": round(sum(costs), 4),
         # the cap stops new calls: the calls already under way may pass it by one call each

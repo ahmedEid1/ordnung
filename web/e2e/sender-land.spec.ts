@@ -22,6 +22,7 @@ interface RegionSuggestion {
   doc_id: string;
   waiting: number;
   may_be_late: boolean;
+  reason: "earlier" | "email" | "days" | "holiday" | null;
   idea_id: string | null;
   declined: boolean;
 }
@@ -51,6 +52,7 @@ async function asked(page: Page, name: Asked): Promise<{ party: PartyRow; sugges
   expect(detail.region_suggestion, `the postcode on ${name}'s letter suggests Berlin, and no demo date waits for it`).toMatchObject({
     region: "BE",
     waiting: 0,
+    reason: null,
     idea_id: null,
   });
   return { party: detail.party, suggestion: detail.region_suggestion! };
@@ -93,6 +95,29 @@ for (const width of [320, 390]) {
     }
   });
 }
+
+test("their details say why an e-mailed decision's date waits for their state: several days, not a holiday's one or two", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, "/");
+  const { party, suggestion } = await asked(page, "TechMarkt Online GmbH");
+  // the details as the API serves them when an e-mailed decision of theirs was counted from the day it was sent
+  await page.route(
+    (url) => url.pathname === `/api/parties/${party.id}`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      const response = await route.fetch();
+      const detail = (await response.json()) as PartyDetail;
+      await route.fulfill({ response, json: { ...detail, region_suggestion: { ...suggestion, waiting: 1, reason: "email" } } });
+    },
+  );
+  await page.goto(`/?party=${party.id}`);
+  const group = page.getByRole("dialog", { name: party.name }).getByRole("group", { name: question("TechMarkt Online GmbH", suggestion.postcode) });
+  await expect(group).toContainText(
+    "This may change 1 of your dates with them. Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts such a decision from the day it was sent, or from the arrival day you entered, so it may be several days early, more around weekends and holidays.",
+  );
+  await expect(group).not.toContainText("a day or two early");
+  expect(await drawerFaults(page), "the longer line fits the drawer").toEqual([]);
+});
 
 test("the asking drawers pass axe in light and dark", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });

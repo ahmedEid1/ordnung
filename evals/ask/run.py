@@ -27,7 +27,10 @@ The benchmark harness (:mod:`evals.harness`) wraps the model calls as it does th
 ``--repeat N`` asks run N (≥ 2) of the same questions under replay keys of its own, with the same request; every
 replayed request is checked against ``requests.lock.json``; a live run holds the one recorder lock, stops starting
 calls at ``--max-cost-usd``, waits through a usage limit with ``--wait-on-limit`` and writes one ``ledger.jsonl``
-line per call.
+line per call. A live run written with ``--allow-errors`` keeps each turn that got no answer beside the recordings
+(:func:`keep_unanswered`), so every replay gives that turn its failure again, with no call; it may only after the
+turn's first attempt and the runbook's three resumes failed (:data:`ATTEMPTS_BEFORE_KEPT`, counted from the ledger:
+:attr:`RunResult.failed_before`).
 """
 
 from __future__ import annotations
@@ -103,7 +106,7 @@ from ordnung.llm import prompts
 from ordnung.llm.base import LLMBackend, LLMRequest, LLMResponse, StreamEvent
 from ordnung.llm.claude_cli import ClaudeCLIBackend
 from ordnung.llm.replay import RecordingBackend, ReplayBackend, fixture_path
-from ordnung.llm.runtime import LLMService
+from ordnung.llm.runtime import LLMService, request_key
 from ordnung.models import AppSettings
 
 EVALS_DIR = Path(__file__).resolve().parents[1]
@@ -115,6 +118,22 @@ ASK_PROMPTS = ("ask_system", "ask")
 SETS = ("dev", "heldout")
 #: The lock entry of what every Ask turn is given besides its prompts (:func:`ask_tools_digest`).
 ASK_TOOLS = "ask_tools"
+#: The turns a live run kept unanswered (``--allow-errors``), beside its recordings: one file per run (``--repeat``), in
+#: the day index's form (:class:`evals.harness.DayIndex`, evals.run's for a unit kept with conditions unanswered). Not
+#: ``final-days.json``: ``harness retake --whole-run`` refuses a folder that holds a day index (the benchmark's).
+UNANSWERED_FILE = "unanswered-r{repeat}.json"
+#: Each set's name in that index — the held-out set's is the one deviations name it by (``applies_to.split``,
+#: ``evals.present.final.ASK_SPLIT``) — and the one "condition" an Ask turn has.
+UNANSWERED_SPLITS = {"dev": "ask", "heldout": "ask-heldout"}
+ASK_CONDITION = "ask"
+#: How many failed attempts of a turn the ledger must hold from before a live run for ``--allow-errors`` to keep it
+#: unanswered: its first attempt and the runbook's three resumes (the pre-registered error rule, "unanswered after
+#: three resumes"). A turn that failed fewer times is asked again: a failure that would not come back is never scored
+#: as no answer.
+ATTEMPTS_BEFORE_KEPT = 4
+#: The ledger outcomes that are no failed attempt of a turn: its answer, and a usage limit (waited out and the call
+#: asked again, or the run cut, which is never written).
+NOT_FAILED = ("ok", "rate_limited")
 
 
 class BenchmarkError(RuntimeError):
@@ -195,6 +214,21 @@ class RunResult:
     household_strict: list[Strict] = field(default_factory=list)
     #: why the run stopped before every turn was asked (its stop file, ``--stop-at``): turns were left unasked
     stopped: str | None = None
+    #: why a live run left turns unasked for a reason of the whole run (:func:`cut_by`: its budget, a usage limit not
+    #: waited out, the recording day's end): a run is one unit, so it is not written
+    cut: str | None = None
+    #: how many turns each such reason left unasked (:attr:`evals.harness.LiveSetup.unasked`)
+    unasked: dict[str, int] = field(default_factory=dict)
+    #: the turns kept unanswered: on a replay, those given the failure a live run kept for them
+    #: (:func:`kept_unanswered`); on a live run with ``--allow-errors``, those it keeps (set by ``evals.ask``). Scored as
+    #: no answer, they are no failure of this run: its gate does not count them
+    kept: list[str] = field(default_factory=list)
+    #: the ``claude`` version a live run asked with (``None``: a replay, or a stand-in)
+    cli_version: str | None = None
+    #: a live run: for each turn without an answer, how many attempts of it failed before this run — its ledger's lines
+    #: of this run's repeat with the turn's request key and an outcome other than :data:`NOT_FAILED`, read before its
+    #: first call (``evals.ask --allow-errors`` keeps a turn only after :data:`ATTEMPTS_BEFORE_KEPT`)
+    failed_before: dict[str, int] = field(default_factory=dict)
     #: what the development set is scored against, and each answer's tool results: :func:`as_recorded` scores the
     #: answers of the run as recorded with them
     context: Context | None = field(default=None, repr=False, compare=False)
@@ -253,6 +287,8 @@ class _Call:
     response: LLMResponse | None = None
     error: str | None = None
     path: Path | None = None
+    #: the call as the ledger names it: its purpose and request key (``evals.harness.Ledger``)
+    key: tuple[str, str] | None = None
 
 
 class Capture:
@@ -281,6 +317,36 @@ class Capture:
         self.stale: dict[str, tuple[Path | None, list[str]]] = {}
         self.drift: list[str] = []
         self.results: dict[str, list[str]] = {}  # each question's tool results (by id)
+        #: a replay's turns kept unanswered (:func:`kept_unanswered`): each given its failure again, with no call
+        self.kept: dict[str, Mapping[str, Any]] = {}
+        #: a live run: its ledger's lines from before its first call, and each turn's call as the ledger names it
+        #: (:meth:`failed_before`)
+        self.live = False
+        self.earlier: list[dict[str, Any]] = []
+        self.called: dict[str, tuple[str, str]] = {}
+
+    def failed_before(self, item_id: str) -> int:
+        """How many attempts of a turn failed before this run: the earlier ledger lines of this repeat with its call's
+        purpose and key whose outcome is not :data:`NOT_FAILED` (0 for a turn that made no call)."""
+        named = self.called.get(item_id)
+        if named is None:
+            return 0
+        purpose, key = named
+        return sum(
+            1
+            for row in self.earlier
+            if (row.get("purpose"), row.get("key")) == (purpose, key)
+            and int(row.get("repeat") or 1) == self.repeat
+            and row.get("outcome") not in (None, *NOT_FAILED)
+        )
+
+    def failures(self, turns: Mapping[str, Turn]) -> dict[str, int]:
+        """:meth:`failed_before` for every turn of ``turns`` without an answer (a live run's; empty for a replay)."""
+        if not self.live:
+            return {}
+        return {
+            item_id: self.failed_before(item_id) for item_id, turn in turns.items() if turn.error is not None
+        }
 
     def may_start(self) -> bool:
         """Whether a new turn may start: never again once the run's stop asked."""
@@ -295,6 +361,7 @@ class Capture:
         call = self.calls[req.cache_key or req.prompt] = _Call()
         recorded = harness.repeat_request(req, self.repeat) if self.repeat > 1 else req
         call.path = fixture_path(self.root, recorded) if self.root is not None else None
+        call.key = (recorded.purpose, request_key(recorded)[:24])
         async for event in self.inner.stream(req):
             if event.type in ("tool_use", "tool_result"):
                 call.events.append(event)
@@ -348,6 +415,110 @@ def recording_day(config: Config) -> date | None:
     return day
 
 
+def check_one_day(config: Config, day: date | None) -> None:
+    """Refuse a live run of the held-out set that would go on with turns recorded on another day than ``day``: a run
+    is one unit, told one today, so a run begun on another day is retaken whole
+    (:func:`evals.harness.recordings_of_another_day`; the turns of its other runs never count). The development set,
+    pinned to its own day and recorded again in the open on any day, and a smoke with ``--allow-another-today`` are
+    not held to it; ``day`` ``None``: the day is not checked (a stand-in without an explicit ``recording_day``)."""
+    if day is None or config.set_name != "heldout" or config.allow_another_today:
+        return
+    found = harness.recordings_of_another_day(config.root, repeat=config.repeat, day=day)
+    if found:
+        days = sorted({found_day or "a day that cannot be told" for found_day in found.values()})
+        raise BenchmarkError(
+            f"{len(found)} recording(s) of run {config.repeat} were made on another day ({', '.join(days)}), not on "
+            f"{day.isoformat()} (UTC): a run is one unit and cannot go on on a new day (its recorded turns told the "
+            "model another today) — move its recordings aside with `python -m evals.harness retake --whole-run "
+            f"--recorded-dir {harness.shown(config.recorded_dir)} --repeat {config.repeat} --to <folder>`, then "
+            "record it again whole"
+        )
+
+
+def unasked_by(live: Any) -> dict[str, int]:
+    """How many turns a live run left unasked for each reason of the whole run, from the calls its stack returned
+    without an answer (:attr:`evals.harness.LiveSetup.unasked`; an Ask turn is one call); empty when there were none —
+    a run whose last call reached the budget asked every turn."""
+    counts = getattr(live, "unasked", None) or {}
+    return {reason: count for reason, count in sorted(counts.items()) if count}
+
+
+def cut_by(live: Any) -> str | None:
+    """Why a live run left turns unasked for a reason of the whole run (:func:`unasked_by`): ``--max-cost-usd``
+    refused them, a usage limit was met and not waited out (no ``--wait-on-limit``, or a reset after its end), or the
+    recording day ended (midnight UTC: no call starts on a later day); ``None`` when every turn was asked."""
+    unasked = unasked_by(live)
+    if not unasked:
+        return None
+    causes = []
+    if unasked.get(harness.UNASKED_BUDGET):
+        budget = live.budget
+        causes.append(
+            f"budget reached: --max-cost-usd {budget.cap:g} (${budget.spent:.4f} spent on this run, counting its "
+            "ledger)"
+        )
+    if unasked.get(harness.UNASKED_LIMIT):
+        waited = "a reset after --wait-on-limit's end" if live.waiter is not None else "no --wait-on-limit"
+        causes.append(f"a usage limit was not waited out ({waited})")
+    if unasked.get(harness.UNASKED_DAY_OVER):
+        causes.append(f"the recording day {live.day.isoformat()} is over (UTC)")
+    return f"{'; '.join(causes)} and {sum(unasked.values())} turn(s) were not asked"
+
+
+def unanswered_path(config: Config) -> Path:
+    """The file of the turns run ``config.repeat`` kept unanswered, beside its recordings (:data:`UNANSWERED_FILE`)."""
+    return config.root / UNANSWERED_FILE.format(repeat=config.repeat)
+
+
+def kept_unanswered(config: Config) -> dict[str, Mapping[str, Any]]:
+    """On a replay, the turns a live run of this set and run kept unanswered (``--allow-errors``), asked for this run's
+    day: turn id → its failure as it was scored (its ``error`` and the ``tools`` it called), which the replay gives
+    again with no call, as evals.run gives a unit's unanswered conditions again. A live run asks them again (they have
+    no recording): ``{}``."""
+    path = unanswered_path(config)
+    if config.live or config.refresh or not path.is_file():
+        return {}
+    try:
+        units = harness.DayIndex(path).attempted(UNANSWERED_SPLITS[config.set_name], config.repeat)
+    except (harness.HarnessError, ValueError) as exc:
+        raise BenchmarkError(f"{path}: not a file of turns kept unanswered ({exc})") from exc
+    kept: dict[str, Mapping[str, Any]] = {}
+    for item_id, unit in units.items():
+        failure = (unit.get("unanswered") or {}).get(ASK_CONDITION) if isinstance(unit, Mapping) else None
+        if not (
+            isinstance(failure, Mapping) and failure.get("error") and isinstance(failure.get("tools"), list)
+        ):
+            raise BenchmarkError(f"{path}: {item_id} has no failure kept for it")
+        # a run is one unit, told one today: a turn kept on another day is not this run's
+        if unit.get("day") == config.day.isoformat():
+            kept[item_id] = failure
+    return kept
+
+
+def keep_unanswered(result: RunResult) -> Path | None:
+    """Beside a live run's recordings, once its results file is written: the turns it kept unanswered
+    (:attr:`RunResult.kept`, ``--allow-errors``), each with its day, the ``claude`` version and its failure as it was
+    scored, in the day index's form (``"complete": false``, ``"unanswered"``) — or none, the file of an earlier run of
+    the same set and run removed (its turns are answered now). The path written, else ``None``."""
+    config = result.config
+    path = unanswered_path(config)
+    path.unlink(missing_ok=True)
+    if not result.kept:
+        return None
+    index = harness.DayIndex(path)
+    for item_id in result.kept:
+        turn = result.turns[item_id]
+        index.put(
+            UNANSWERED_SPLITS[config.set_name],
+            config.repeat,
+            item_id,
+            day=config.day.isoformat(),
+            cli=result.cli_version,
+            unanswered={ASK_CONDITION: {"error": turn.error, "tools": list(turn.tools)}},
+        )
+    return path
+
+
 def live_setup(config: Config) -> Any:
     """What a live run's backend stacks share (:class:`evals.harness.LiveSetup`): its budget, its waiting and the
     provenance each new cassette is stamped with (the repeat, the commit, and once asked, the ``claude`` version).
@@ -390,7 +561,7 @@ def _recording(config: Config) -> Iterator[Any]:
     if not (config.live or config.refresh):
         yield None
         return
-    recording_day(config)  # refused before the lock is taken or any turn asked
+    check_one_day(config, recording_day(config))  # refused before the lock is taken or any turn asked
     lock = harness.RecorderLock(
         config.recorder_lock or config.recorded_dir / harness.RECORDER_LOCK_NAME,
         command=" ".join(["evals.ask", *sys.argv[1:]]),
@@ -432,7 +603,9 @@ def make_backend(config: Config, allowed_doc_ids: set[str], *, live: Any = None)
         ledger = harness.Ledger(root / harness.LEDGER_FILE, repeat=config.repeat)
         ledger.cli_version = setup.cli_version
         setup.ledgers.append(ledger)
-        cli = harness.LiveCalls(cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day)
+        cli = harness.LiveCalls(
+            cli, ledger=ledger, budget=setup.budget, waiter=setup.waiter, day=setup.day, unasked=setup.unasked
+        )
         provenance = setup.provenance  # stamped on each new cassette, as the benchmark's are
         recorder = RecordingBackend(cli, root, allowed_doc_ids=allowed_doc_ids, provenance=provenance)
         stack = recorder if config.refresh else ReplayBackend(root, fallback=recorder)
@@ -491,6 +664,8 @@ async def _ask(ctx: _AskContext, capture: Capture, item_id: str, question: str, 
         elif event.type == "error":
             error = event.error or "error"
     call = capture.calls.get(ask_cache_key(ctx.store, question, [], benchmark_today()))
+    if call is not None and call.key is not None:
+        capture.called[item_id] = call.key
     if call is not None and (call.error or "").startswith("no recorded response"):
         capture.missed.append(item_id)
     if call is not None and (
@@ -553,6 +728,8 @@ async def _ask_many(
     ctx = _context(data_dir, capture, model)
 
     async def one(item_id: str, question: str) -> Turn:
+        if (kept := capture.kept.get(item_id)) is not None:  # as it was scored when it was recorded: no call
+            return Turn(item_id, question, ledger, "", "", [], list(kept["tools"]), error=str(kept["error"]))
         async with limit:
             if not capture.may_start():
                 return Turn(
@@ -709,7 +886,12 @@ async def _run_all(
     household: Sequence[HouseholdQuestion] = (),
     live: Any = None,
 ) -> tuple[
-    dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str], dict[str, list[str]]
+    dict[str, Turn],
+    list[str],
+    dict[str, tuple[Path | None, list[str]]],
+    list[str],
+    dict[str, list[str]],
+    dict[str, int],
 ]:
     capture = await _capture(config, life, live)
     limit = asyncio.Semaphore(max(1, config.concurrency))
@@ -728,12 +910,14 @@ async def _run_all(
         asked = [(q.id, q.text) for q in household]
         jobs.append(_ask_many(folder, capture, config.model, asked, "household", limit))
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
+    by_id = {turn.id: turn for turn in turns}
     return (
-        {turn.id: turn for turn in turns},
+        by_id,
         sorted(capture.missed),
         capture.stale,
         capture.drift,
         capture.results,
+        capture.failures(by_id),
     )
 
 
@@ -746,9 +930,20 @@ async def _capture(config: Config, life: SampleLife, live: Any) -> Capture:
         repeat=config.repeat,
         stop=config.stop,
     )
+    capture.kept = kept_unanswered(config)
     if live is not None:
+        # what earlier attempts of this run asked, before its first call: a turn's failed attempts (--allow-errors)
+        capture.live, capture.earlier = True, _ledger_lines(config.root)
         await live.resolve_version()
     return capture
+
+
+def _ledger_lines(root: Path) -> list[dict[str, Any]]:
+    """The lines of ``ledger.jsonl`` beside the recordings in ``root`` (none: no call was made there yet)."""
+    path = root / harness.LEDGER_FILE
+    if not path.is_file():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
@@ -769,9 +964,11 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life)
-        turns, misses, stale, drift, tool_results = asyncio.run(
+        turns, misses, stale, drift, tool_results, failed_before = asyncio.run(
             _run_all(config, work, life, questions, attacks, targets, household, live)
         )
+        cut, unasked = cut_by(live), unasked_by(live)
+        cli_version = getattr(live, "cli_version", None)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -803,6 +1000,11 @@ def run(config: Config, *, work_dir: Path | None = None) -> RunResult:
         context=context,
         tool_results=tool_results,
         stopped=stopped_by(turns),
+        cut=cut,
+        unasked=unasked,
+        kept=sorted(set(kept_unanswered(config)) & set(turns)),
+        cli_version=cli_version,
+        failed_before=failed_before,
     )
 
 
@@ -921,9 +1123,11 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         work = Path(tmp)
         build_base(work / "base", life)
         targets = attack_targets(work / "base", life, [a.attack for a in hostile])
-        turns, misses, stale, drift = asyncio.run(
+        turns, misses, stale, drift, failed_before = asyncio.run(
             _run_heldout(config, work, life, items, hostile, targets, live)
         )
+        cut, unasked = cut_by(live), unasked_by(live)
+        cli_version = getattr(live, "cli_version", None)
         context = scoring_context(work / "base", life, targets)
         strict_ctx = strict_context(work / "base", context)
     if config.live or config.refresh:
@@ -965,6 +1169,11 @@ def _run_heldout_on_its_day(config: Config, folder: Path, work_dir: Path | None)
         info=info,
         drift=drift,
         stopped=stopped_by(turns),
+        cut=cut,
+        unasked=unasked,
+        kept=sorted(set(kept_unanswered(config)) & set(turns)),
+        cli_version=cli_version,
+        failed_before=failed_before,
     )
 
 
@@ -976,7 +1185,7 @@ async def _run_heldout(
     hostile: Sequence[heldout.HeldOutAttack],
     targets: dict[str, str],
     live: Any = None,
-) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str]]:
+) -> tuple[dict[str, Turn], list[str], dict[str, tuple[Path | None, list[str]]], list[str], dict[str, int]]:
     capture = await _capture(config, life, live)
     limit = asyncio.Semaphore(max(1, config.concurrency))
     folders = {"base": work / "base"}
@@ -998,7 +1207,8 @@ async def _run_heldout(
             _ask_many(folder, capture, config.model, [(attack.id, attack.question)], attack.id, limit)
         )
     turns = [turn for batch in await asyncio.gather(*jobs) for turn in batch]
-    return {turn.id: turn for turn in turns}, sorted(capture.missed), capture.stale, capture.drift
+    by_id = {turn.id: turn for turn in turns}
+    return by_id, sorted(capture.missed), capture.stale, capture.drift, capture.failures(by_id)
 
 
 def recorded_prompt_versions(root: Path) -> dict[str, list[str]]:

@@ -161,7 +161,10 @@ _LAND_DEADLINES = [
     ("SH", "2025-03-03", "de_admin_post", "2025-04-07", "high"),
     ("HH", "2025-05-13", "de_admin_post", "2025-06-16", "high"),
     ("HE", "2026-09-29", "de_admin_post", "2026-11-02", "high"),
-    ("HB", "2026-09-29", "de_admin_post", "2026-11-02", "medium"),
+    ("HB", "2026-09-29", "de_admin_post", "2026-11-03", "high"),
+    # posted before Bremen's switch, the 3rd day: Thu 2 Jan, a month on Sun 2 Feb
+    ("HB", "2024-12-30", "de_admin_post", "2025-02-03", "high"),
+    ("SL", "2026-09-29", "de_admin_post", "2026-11-02", "medium"),
     ("BB", "2026-10-30", "de_admin_electronic", "2026-11-30", "medium"),
     ("BB", "2026-10-30", "de_admin_post", "2026-12-03", "high"),
     (None, "2026-10-30", "de_admin_electronic", "2026-11-30", "medium"),

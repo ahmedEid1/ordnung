@@ -139,6 +139,7 @@ const asked = (s: Partial<RegionSuggestion> = {}): RegionSuggestion => ({
   doc_id: "doc_1",
   waiting: 1,
   may_be_late: false,
+  reason: "holiday",
   idea_id: null,
   declined: false,
   ...s,
@@ -236,17 +237,20 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
       return text;
     };
     const HOLIDAYS = "Their state's public holidays may move this letter's dates. Until you answer, Ordnung counts only nationwide holidays, so a date may be a day or two early.";
-    const DAYS = "Their state decides whether this letter counts as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so the date may be a day early.";
+    const DAYS = "Their state decides whether this letter counts as delivered after 3 or 4 days. Until you answer, Ordnung counts 3, so the date may be a day early, more around weekends and holidays.";
     const BACKWARDS = "A holiday in their state could make a date earlier. Until you answer, act a working day before it.";
     expect(reason(holiday)).toContain(HOLIDAYS);
     expect(reason(threeDays)).toContain(DAYS);
     const both = makeReceipt({ warnings: [...threeDays.warnings, ...holiday.warnings] });
     expect(reason(both)).toContain(DAYS);
-    // Hessen's authorities count 3 days anyway: only its holidays may move the date
+    // Hessen's authorities count 3 days anyway, and the Saarland's 4th day isn't confirmed: only their holidays may
+    // move the date; Bremen's count the 4th day since 2025 (§ 1 BremVwVfG)
     expect(reason(both, "HE")).toContain(HOLIDAYS);
+    expect(reason(both, "SL")).toContain(HOLIDAYS);
+    expect(reason(both, "HB")).toContain(DAYS);
     expect(reason(makeReceipt({ warnings: [...threeDays.warnings, ...earlier.warnings] }))).toContain(BACKWARDS);
     // an e-mailed decision counted from the day it was sent: every state but Brandenburg counts later
-    const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, so the date may be several days early, more around weekends and holidays.";
+    const EMAIL = "Their state decides whether an e-mailed decision counts from the day it arrived or the 3rd or 4th day after it was sent. Until you answer, Ordnung counts from the day it was sent, or from the arrival day you entered, so the date may be several days early, more around weekends and holidays.";
     expect(reason(emailed, "BY")).toContain(EMAIL);
     expect(reason(emailed, "BB")).not.toContain(EMAIL);
     expect(reason(makeReceipt({ warnings: [...emailed.warnings, ...earlier.warnings] }), "BY")).toContain(BACKWARDS);
@@ -282,6 +286,16 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     expect(await screen.findByText("Their dates now skip the public holidays of Berlin. No date on this letter moved.")).toBeInTheDocument();
   });
 
+  it.each(["email", "days"] as const)("Yes credits the state's delivery rules when that is why the letter asked (%s)", async (reason) => {
+    const { srv } = useMockApi();
+    serveLandLetter(srv, { reason }, { moves: false });
+    const user = userEvent.setup();
+    renderWithProviders(<LoadedLetter id="doc_tm_dunning" />);
+    await user.click(within(await screen.findByRole("group", { name: QUESTION })).getByRole("button", { name: "Yes" }));
+    expect(await screen.findByText("Their dates now follow the delivery rules and public holidays of Berlin. No date on this letter moved.")).toBeInTheDocument();
+    expect(screen.queryByText(/skip the public holidays/)).toBeNull();
+  });
+
   it("“Other state…” opens their details to choose (`state=choose`); nothing is saved", async () => {
     const user = userEvent.setup();
     const { router } = renderLetter(landLetter());
@@ -310,7 +324,7 @@ describe("the letter asks for the sender's state the postcode on it suggests", (
     await waitFor(() => expect(screen.queryByRole("group", { name: QUESTION })).toBeNull());
     expect(calls.filter((c) => c.method !== "GET")).toEqual([{ method: "PATCH", path: "/suggestions/sug_land_techmarkt", body: { status: "dismissed" } }]);
     expect(srv.db.state.parties.find((p) => p.id === "pty_techmarkt")!.region).toBeNull();
-    expect(await screen.findByText("Okay — nationwide holidays for TechMarkt Online GmbH")).toBeInTheDocument();
+    expect(await screen.findByText("Okay — the state of TechMarkt Online GmbH stays unknown")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("heading", { name: "To-dos & dates" })).toHaveFocus());
 
     await user.click(screen.getByRole("button", { name: "Undo" }));
