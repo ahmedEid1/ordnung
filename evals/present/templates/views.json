@@ -163,6 +163,240 @@
    "text": "Filled: held out and recorded, once or as pre-registered. Hollow: tuned, iterated on, or not yet run.",
    "fields": []
   },
+  "interval": {"text": "{level} % CI {lo} to {hi}", "fields": ["level", "lo", "hi"]},
+  "interval.none": {"text": "no deadline differs", "fields": []},
+  "summary.caption": {"text": "The final run, each condition over its reads", "fields": []},
+  "summary.col.condition": {"text": "Condition", "fields": []},
+  "summary.col.mean": {"text": "Exact date right, mean over the reads [{level} % CI]", "fields": ["level"]},
+  "summary.col.reads": {"text": "Exact date right, each read", "fields": []},
+  "summary.col.harm": {"text": "Late or missed, over the reads", "fields": []},
+  "summary.col.all": {"text": "Right in every read", "fields": []},
+  "verdict.caption": {"text": "The pre-registered comparisons of the final run, with their decisions", "fields": []},
+  "verdict.col.comparison": {"text": "Comparison", "fields": []},
+  "verdict.col.test": {"text": "Test", "fields": []},
+  "verdict.col.result": {"text": "Result, points", "fields": []},
+  "verdict.col.role": {"text": "Role", "fields": []},
+  "verdict.col.decision": {"text": "Decision", "fields": []},
+  "verdict.col.sentence": {"text": "Sentence", "fields": []},
+  "verdict.comparison.accuracy": {"text": "Exact date right: Ordnung against {baseline}", "fields": ["baseline"]},
+  "verdict.comparison.noninferiority": {
+   "text": "Exact date right: Ordnung not behind {baseline} by more than {margin} points",
+   "fields": ["baseline", "margin"]
+  },
+  "verdict.comparison.harm": {"text": "Late or missed: Ordnung against {baseline}", "fields": ["baseline"]},
+  "verdict.comparison.stability": {
+   "text": "Date changed between reads: Ordnung against {baseline}",
+   "fields": ["baseline"]
+  },
+  "verdict.test.signflip": {"text": "Sign-flip test over letter clusters, Holm within its family", "fields": []},
+  "verdict.test.noninferiority": {"text": "Sign-flip test inverted into a {level} % bound", "fields": ["level"]},
+  "verdict.test.described": {"text": "Described, not tested", "fields": []},
+  "verdict.test.mcnemar": {
+   "text": "McNemar mid-p on the deadlines that changed for only one, Holm within its family",
+   "fields": []
+  },
+  "verdict.result": {"text": "{shown}; Holm p {p}", "fields": ["shown", "p"]},
+  "verdict.result.noninferiority": {
+   "text": "{d}; {level} % bound {bound}; margin {margin}",
+   "fields": ["d", "level", "bound", "margin"]
+  },
+  "verdict.result.stability": {
+   "text": "{b} against {c} deadlines changed for only one; Holm mid-p {p}",
+   "fields": ["b", "c", "p"]
+  },
+  "verdict.result.not_run": {"text": "not tested: fewer reads than the test needs", "fields": []},
+  "results.final.reads.caption": {"text": "Each read of the final run", "fields": []},
+  "results.final.reads.col.condition": {"text": "Condition", "fields": []},
+  "results.final.reads.col.exact": {"text": "Read {read}: exact date right", "fields": ["read"]},
+  "results.final.reads.col.harm": {"text": "Read {read}: late or missed", "fields": ["read"]},
+  "results.final.missing.lead": {
+   "text": "{used} of the {registered} pre-registered reads were recorded. Each read that was not, with the deviation recorded at the time that says why:",
+   "fields": ["used", "registered"]
+  },
+  "results.final.missing.caption": {"text": "Pre-registered reads not recorded", "fields": []},
+  "results.final.missing.col.read": {"text": "Read", "fields": []},
+  "results.final.missing.col.kinds": {"text": "Deviation kind", "fields": []},
+  "results.final.missing.col.deviations": {"text": "Deviation", "fields": []},
+  "results.final.sens.lead": {
+   "text": "Each sensitivity analysis the pre-registration names, beside the primary analysis and never in its place:",
+   "fields": []
+  },
+  "results.final.sens.caption": {"text": "The primary analysis and its sensitivity analyses", "fields": []},
+  "results.final.sens.col.analysis": {"text": "Analysis", "fields": []},
+  "results.final.sens.col.items": {"text": "Deadlines it changes", "fields": []},
+  "results.final.sens.col.ordnung": {"text": "Ordnung, exact date right", "fields": []},
+  "results.final.sens.col.alone": {"text": "The model alone, exact date right", "fields": []},
+  "results.final.sens.col.accuracy": {"text": "Exact dates against the model alone", "fields": []},
+  "results.final.sens.col.stability": {"text": "Steadiness against the model alone", "fields": []},
+  "results.final.sens.col.deviations": {"text": "Deviations", "fields": []},
+  "results.final.sens.primary": {"text": "Primary analysis", "fields": []},
+  "results.final.sens.s_conv": {"text": "Any defensible reading of a disputed rule accepted", "fields": []},
+  "results.final.sens.label_corrected": {"text": "The labels the blind review corrected", "fields": []},
+  "results.final.sens.first_attempt": {
+   "text": "A timed-out first attempt of a retaken letter counted as missed",
+   "fields": []
+  },
+  "results.final.sens.same_day_f3": {"text": "Steadiness on the deadlines whose reads share one day", "fields": []},
+  "results.final.sens.same_cli_f3": {
+   "text": "Steadiness on the deadlines read by one version of Claude Code",
+   "fields": []
+  },
+  "results.final.sens.same": {"text": "as the primary", "fields": []},
+  "results.final.sens.not_run": {"text": "not run", "fields": []},
+  "results.final.sens.stability": {"text": "{b} against {c}; Holm mid-p {p}", "fields": ["b", "c", "p"]},
+  "results.final.newkinds.lead": {
+   "text": "The letters of new kinds, read once and described without a test: {letters} letters, {items} deadlines.",
+   "fields": ["letters", "items"]
+  },
+  "results.final.newkinds.caption": {"text": "The new kinds, one read", "fields": []},
+  "results.final.newkinds.col.condition": {"text": "Condition", "fields": []},
+  "results.final.newkinds.col.exact": {"text": "Exact date right [{level} % CI]", "fields": ["level"]},
+  "results.final.newkinds.col.harm": {"text": "Late or missed", "fields": []},
+  "results.final.newkinds.not_recorded": {
+   "text": "The letters of new kinds were not recorded (read {read}; deviation kind {kinds}; {deviations}).",
+   "fields": ["read", "kinds", "deviations"]
+  },
+  "pooled.note": {
+   "text": "As recorded, not pre-registered: these are the earlier held-out splits, re-analysed after their results were known. The final run's numbers are in [Results]({results}) and [Statistics]({statistics}).",
+   "fields": ["results", "statistics"]
+  },
+  "robustness.stress": {
+   "text": "The final run's stress test, targeted injections and distractor dates against the agent, is said by its pre-registered sentence in [Results]({anchor}).",
+   "fields": ["anchor"]
+  },
+  "stats.lead": {
+   "text": "The final run's analysis, as pre-registered: each comparison by a sign-flip test over letter clusters ({draws} draws where the clusters are too many to enumerate), Holm within each family, with a bootstrap interval over letter clusters ({resamples} resamples, seed {seed}); non-inferiority against the agent by inverting the sign-flip test, with a margin of {margin} points; how steady the dates are by McNemar's mid-p on the deadlines that changed between reads for only one of the two, with a Bonett–Price interval. The power beside each comparison was computed before any recording.",
+   "fields": ["draws", "resamples", "seed", "margin"]
+  },
+  "stats.noninferiority.caption": {"text": "Non-inferiority against the agent", "fields": []},
+  "stats.noninferiority.col.pair": {"text": "Ordnung against", "fields": []},
+  "stats.noninferiority.col.margin": {"text": "Margin, points", "fields": []},
+  "stats.noninferiority.col.estimate": {"text": "Difference, points", "fields": []},
+  "stats.noninferiority.col.bound": {"text": "{level} % bound, points", "fields": ["level"]},
+  "stats.noninferiority.col.ours": {"text": "Ordnung: not exactly right, over every read", "fields": []},
+  "stats.noninferiority.col.theirs": {"text": "The agent: not exactly right, over every read", "fields": []},
+  "stats.noninferiority.col.decision": {"text": "Decision", "fields": []},
+  "stats.stability.caption": {"text": "How steady the dates are, Ordnung against each baseline", "fields": []},
+  "stats.stability.col.pair": {"text": "Ordnung against", "fields": []},
+  "stats.stability.col.n": {"text": "Deadlines", "fields": []},
+  "stats.stability.col.b": {"text": "Changed for Ordnung only", "fields": []},
+  "stats.stability.col.c": {"text": "Changed for the baseline only", "fields": []},
+  "stats.stability.col.diff": {"text": "Difference, points [{level} % Bonett–Price]", "fields": ["level"]},
+  "stats.stability.col.midp": {"text": "Mid-p", "fields": []},
+  "stats.stability.col.holm": {"text": "Holm mid-p", "fields": []},
+  "stats.stability.col.decision": {"text": "Decision", "fields": []},
+  "stats.stability.not_run": {
+   "text": "How steady the dates are over reads was not tested: the pre-registered test needs more reads than were recorded.",
+   "fields": []
+  },
+  "stats.pooled.heading": {"text": "The earlier held-out splits, re-analysed (not pre-registered)", "fields": []},
+  "gallery.lead": {
+   "text": "The final run's failures, by id: every late or missed date first, in every condition and read, then Ordnung's other wrong dates, in the page's order of conditions. Ids and codes only, never a letter's words. The analysis lists the errors of {split}, the final split.",
+   "fields": ["split"]
+  },
+  "gallery.caption": {"text": "The final run's late or missed dates, and Ordnung's other wrong dates", "fields": []},
+  "gallery.none": {
+   "text": "The final run's analysis lists no late or missed date and no other wrong date from Ordnung.",
+   "fields": []
+  },
+  "gallery.col.letter": {"text": "Letter", "fields": []},
+  "gallery.col.read": {"text": "Read", "fields": []},
+  "gallery.col.condition": {"text": "Condition", "fields": []},
+  "gallery.col.family": {"text": "Family", "fields": []},
+  "gallery.col.modality": {"text": "Text or photo", "fields": []},
+  "gallery.col.outcome": {"text": "Outcome", "fields": []},
+  "gallery.col.days": {"text": "Days off", "fields": []},
+  "gallery.col.confidence": {"text": "Confidence", "fields": []},
+  "gallery.col.flag": {"text": "Flag", "fields": []},
+  "gallery.col.cause": {"text": "Cause", "fields": []},
+  "gallery.pooled.heading": {"text": "The earlier held-out splits, as recorded (not pre-registered)", "fields": []},
+  "limitations.synthetic": {
+   "text": "The letters are synthetic, one or two clean pages each: real post is messier.",
+   "fields": []
+  },
+  "limitations.pooled": {
+   "text": "The earlier held-out splits were recorded with the code and prompts of their day, and their statistics chosen after their results were known: **not pre-registered**. The final run's were pre-registered before any recording ([Provenance]({anchor})).",
+   "fields": ["anchor"]
+  },
+  "limitations.reads": {
+   "text": "Reads of each letter in the final run: {reads} of the {registered} pre-registered, recorded within days, so they measure run-to-run noise, not drift over months.",
+   "fields": ["reads", "registered"]
+  },
+  "limitations.labels": {
+   "text": "The labels are code, audited by agents of the same model family; no lawyer reviewed the rules.",
+   "fields": []
+  },
+  "limitations.kinds": {
+   "text": "The letter families leave out most of the rarer high-stakes kinds the engine covers; the final run's new kinds are a small set ([Results]({anchor})).",
+   "fields": ["anchor"]
+  },
+  "limitations.land": {
+   "text": "The benchmark gives Ordnung the Land on the letterhead; the app counts without it until the person sets or confirms it ([Results]({anchor})).",
+   "fields": ["anchor"]
+  },
+  "limitations.ask": {
+   "text": "Ask's held-out set holds out only its questions ([Results]({anchor})); the Ask numbers outside the final run's sentences are its development set's, not held out.",
+   "fields": ["anchor"]
+  },
+  "limitations.model": {"text": "One model: `{model}`.", "fields": ["model"]},
+  "deviations.title": {"text": "{number}. Deviations", "fields": ["number"]},
+  "deviations.lead": {
+   "text": "Every deviation from the pre-registration, recorded at the time in `{file}`, as the file holds it: {count}.",
+   "fields": ["file", "count"]
+  },
+  "deviations.none": {
+   "text": "No deviation from the pre-registration was recorded: `{file}` lists none.",
+   "fields": ["file"]
+  },
+  "deviations.caption": {"text": "Deviations recorded at the time", "fields": []},
+  "deviations.col.id": {"text": "Id", "fields": []},
+  "deviations.col.kind": {"text": "Kind", "fields": []},
+  "deviations.col.applies": {"text": "Applies to", "fields": []},
+  "deviations.col.consequence": {"text": "Consequence, as registered", "fields": []},
+  "deviations.col.recorded": {"text": "Recorded", "fields": []},
+  "deviations.col.comment": {"text": "Comment", "fields": []},
+  "deviations.col.checkpoint": {"text": "Checkpoint", "fields": []},
+  "deviations.applies.read": {"text": "read {repeat}", "fields": ["repeat"]},
+  "deviations.applies.entries": {"text": "letters: {count}", "fields": ["count"]},
+  "deviations.applies.items": {"text": "deadlines: {count}", "fields": ["count"]},
+  "deviations.comment": {"text": "[comment]({url})", "fields": ["url"]},
+  "deviations.not_recorded": {"text": "not recorded", "fields": []},
+  "provenance.title": {"text": "{number}. Provenance", "fields": ["number"]},
+  "provenance.lead": {
+   "text": "Where the final run's numbers come from: every value below is a field recorded in the pre-registration, the final analysis or the files they name, and the hash of this report's presentation.json as rendered.",
+   "fields": []
+  },
+  "provenance.caption": {"text": "Provenance of the final run", "fields": []},
+  "provenance.col.what": {"text": "What", "fields": []},
+  "provenance.col.value": {"text": "Value", "fields": []},
+  "provenance.prereg": {"text": "The pre-registration", "fields": []},
+  "provenance.prereg.hash": {"text": "Its hash, the one the final analysis names", "fields": []},
+  "provenance.freeze": {"text": "The code freeze, its commit", "fields": []},
+  "provenance.freeze_pr": {"text": "The pull request that froze the code", "fields": []},
+  "provenance.commit_a": {"text": "The commit that added the final run's letters", "fields": []},
+  "provenance.planned_day": {"text": "The planned day of the first read", "fields": []},
+  "provenance.valid_until": {"text": "The pre-registration holds until", "fields": []},
+  "provenance.manifest": {"text": "The hash of the data's manifest", "fields": []},
+  "provenance.tree": {"text": "The hash of the data's tree", "fields": []},
+  "provenance.blind": {"text": "Blind writing: `{path}`", "fields": ["path"]},
+  "provenance.source": {"text": "The final analysis, `{file}`", "fields": ["file"]},
+  "provenance.input": {"text": "A file it analyses, `{file}`, as {role}", "fields": ["file", "role"]},
+  "provenance.input.value": {
+   "text": "`{sha}`, recorded {date} at commit `{commit}`",
+   "fields": ["sha", "date", "commit"]
+  },
+  "provenance.named": {"text": "A file its sentences read, `{file}`", "fields": ["file"]},
+  "provenance.phase2.head": {"text": "The presenter's posted head", "fields": []},
+  "provenance.phase2.tree": {"text": "The hash of the presenter's posted tree", "fields": []},
+  "provenance.presentation": {"text": "`{file}` as rendered for this report", "fields": ["file"]},
+  "split.role.holdout4": {
+   "text": "the final run on the version that ships: written after the code freeze, pre-registered, read as registered",
+   "fields": []
+  },
+  "split.role.newkinds": {
+   "text": "letters of kinds the benchmark never had, read once with the final run and described, not tested",
+   "fields": []
+  },
   "split.short.holdout4": {"text": "final run, pre-registered", "fields": []},
   "split.short.newkinds": {"text": "new kinds, described", "fields": []}
  }

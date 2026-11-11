@@ -34,6 +34,7 @@ from evals.present import (
     final,
     finalcharts,
     finalrun,
+    finaltext,
     fmt,
     model,
     palette,
@@ -734,7 +735,8 @@ def test_the_owner_sentence_is_pending_until_the_files_say_done(
 
 def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path) -> None:
     """A read of a final split replayed with later code (a fix after the run) is a re-scored row of the history page,
-    not held out; the final run, its order and its report stay as they are."""
+    not held out; the final run, its order and its report stay as they are (but for the provenance's hash of
+    presentation.json, which lists every results file)."""
     doc, src, reads = hf.realistic()
     prereg = hf.complete_prereg(builders.prereg())
     rescored = json.loads(reads[0][1])
@@ -752,7 +754,14 @@ def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path) -> No
     rows = [line for line in text.history(built, "# Legacy\n").splitlines() if f"`{name}`" in line]
     assert len(rows) == 1 and "| re-scored |" in rows[0]
     assert name not in text.report(built)
-    assert text.report(built) == text.report(plain)
+
+    def unhashed(doc: dict[str, Any]) -> str:
+        digest = hashlib.sha256(model.dumps(doc).encode("utf-8")).hexdigest()
+        report = text.report(doc)
+        assert report.count(f"`{digest}`") == 1
+        return report.replace(f"`{digest}`", "`presentation.json`")
+
+    assert unhashed(built) == unhashed(plain)
 
 
 def test_the_history_lists_every_results_file_once_with_a_final(made: Callable[[str], Made]) -> None:
@@ -1279,3 +1288,434 @@ def test_every_final_caption_is_a_filled_view_template(made: Callable[[str], Mad
                 assert not re.search(r"[A-Za-z]", value) or re.fullmatch(r"[a-z_]+(?:\.[a-z_]+)+", value), (
                     value
                 )
+
+
+# --------------------------------------------------------------------------------------------------
+# The final report's sections: summary, results, statistics, failures, deviations, provenance
+# --------------------------------------------------------------------------------------------------
+
+#: The verdict table's rows: each registered slot that says a decision, and the analysis's key for it (harm against
+#: the agent is described, not decided).
+VERDICTS = (
+    ("head", "beats_llm_only"),
+    ("rules_text", "vs_llm_rules_text"),
+    ("agent", "vs_llm_rules_tool"),
+    ("f2.llm_only", "f2_vs_llm_only"),
+    ("f2.llm_rules_text", "f2_vs_llm_rules_text"),
+    ("f2.llm_rules_tool", None),
+    ("stability", "more_stable_than_llm_only"),
+)
+#: The sections whose numbers are the earlier held-out splits' with a final run, each carrying that label.
+POOLED_SECTIONS = (
+    "8. Ablations",
+    "9. Robustness",
+    "10. Safety and selective prediction",
+    "12. Cost and latency",
+    "13. From a letter to a reminder",
+)
+
+
+def _table(blocks: list[text.Block], key: str) -> text.Table:
+    """The one table among ``blocks`` whose caption is the view template ``key``."""
+    (found,) = [
+        block
+        for block in blocks
+        if isinstance(block, text.Table) and getattr(block.caption, "key", None) == key
+    ]
+    return found
+
+
+def _no_words(value: str) -> bool:
+    """Numbers, signs and ids or codes in backticks only."""
+    return not re.search(r"[A-Za-z]", re.sub(r"`[^`]*`", "", value))
+
+
+def _templated(value: str, said: list[str]) -> bool:
+    """A view template filled, a registered sentence (or several), a condition's name, or no word at all."""
+    if isinstance(value, views.Filled) or value in palette.LABELS.values():
+        return True
+    rest = value
+    for sentence in sorted(said, key=len, reverse=True):
+        rest = rest.replace(sentence, " ")
+    return _no_words(rest)
+
+
+def _shown(doc: dict[str, Any], blocks: list[text.Block]) -> Iterator[str]:
+    """Every string a reader sees of ``blocks``: paragraphs, bullets, headings, tables, and each chart's title,
+    description, caption and table."""
+    for block in blocks:
+        if isinstance(block, (text.Paragraph, text.Subheading)):
+            yield block.text
+        elif isinstance(block, text.Bullets):
+            yield from block.items
+        elif isinstance(block, text.Table):
+            yield block.caption
+            yield from block.header
+            yield from (cell for row in block.rows for cell in row)
+        elif isinstance(block, text.Chart):
+            yield charts.title(block.name, doc)
+            yield charts.description(block.name, doc)
+            yield finalcharts.caption(block.name, doc)
+            header, rows = charts.table(block.name, doc)
+            yield from header
+            yield from (cell for row in rows for cell in row)
+
+
+@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+def test_the_final_report_s_prose_is_registered_or_templated(
+    made: Callable[[str], Made], name: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every string the final run adds to sections 1, 6.1 and 7 (and draws in its charts: titles, subtitles,
+    headings, values, tooltips, footnotes, descriptions, captions) is a view template filled, a registered sentence,
+    a condition's name, an id or code, or a number: nothing worded in code or after the results."""
+    doc = made(name).doc
+    said = [s["text"] for block in ("page", "readme") for s in doc["final"]["sentences"][block]]
+    drawn: list[str] = []
+    original = charts._dot_chart
+
+    def capture(
+        ident: str,
+        theme: str,
+        narrow: bool,
+        title: str,
+        subtitle: str,
+        description: str,
+        panels: Any,
+        footnote: str,
+    ) -> str:
+        drawn.extend([title, subtitle, description, footnote])
+        for panel in panels:
+            drawn.append(panel.heading)
+            for row in panel.rows:
+                drawn.extend([row.shown, row.tip, *(tip for _, tip in row.rings)])
+        return original(ident, theme, narrow, title, subtitle, description, panels, footnote)
+
+    monkeypatch.setattr(charts, "_dot_chart", capture)
+    for chart in _final_charts(doc):
+        charts.svg(chart, doc, "light")
+    assert drawn
+    blocks = [*finaltext.summary(doc), *finaltext.final_run(doc), *finaltext.statistics(doc)]
+    shown = list(_shown(doc, blocks))
+    assert [value for value in [*shown, *drawn] if not _templated(value, said)] == []
+
+
+@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+def test_the_verdict_table_shows_decision_codes_not_words(made: Callable[[str], Made], name: str) -> None:
+    """The summary's verdict table has one row per pre-registered comparison, in the registered order: what it
+    compares and how it is tested (view templates), its numbers, its role, the analysis's decision code and the code
+    of the registered sentence that says it; no verdict in words of its own."""
+    doc = made(name).doc
+    shown = doc["final"]
+    table = _table(finaltext.summary(doc), "verdict.caption")
+    assert all(isinstance(cell, views.Filled) for cell in table.header)
+    assert len(table.rows) == len(VERDICTS)
+    page = shown["sentences"]["page"]
+    for (slot, key), row in zip(VERDICTS, table.rows, strict=True):
+        comparison, test, result, role, decision, sentence = row
+        assert isinstance(comparison, views.Filled) and isinstance(test, views.Filled)
+        assert isinstance(result, views.Filled) or _no_words(result), result
+        codes = [
+            s["code"]
+            for s in page
+            if s["slot"] == slot and s["code"].split(".")[1] not in ("intro", "deviations")
+        ]
+        assert sentence == f"`{codes[0]}`", slot
+        if key is None:
+            assert (role, decision) == ("—", "—")
+            continue
+        assert role == f"`{shown['decision_roles'][key]}`"
+        value = shown["decisions"][key]
+        expected = "—" if value is None else f"`{json.dumps(value) if isinstance(value, bool) else value}`"
+        assert decision == expected, slot
+    assert table.rows[0][3] == "`confirmatory`"
+
+
+@pytest.mark.parametrize("name", ["good", "bad", "realistic"])
+def test_the_gallery_lists_harmful_errors_first_by_id_only(made: Callable[[str], Made], name: str) -> None:
+    """Section 11 opens with the final run's failures: every late or missed date first (every condition and read),
+    then Ordnung's other wrong dates, in the page's row order; letter ids, reads and codes only. The earlier held-out
+    splits' table follows under its own label."""
+    _, doc, outputs = made(name)
+    rank = {c: i for i, c in enumerate(doc["order"])}
+
+    def harmful(row: dict[str, Any]) -> bool:
+        return bool(row["outcome"] == "missed" or row["direction"] == "late")
+
+    chosen = sorted(
+        (row for row in doc["final"]["errors"] if harmful(row) or row["condition"] == "ordnung"),
+        key=lambda row: (
+            not harmful(row),
+            rank[row["condition"]],
+            row["read"],
+            row["split"],
+            row["entry_id"],
+            row["item"],
+        ),
+    )
+    assert chosen and harmful(chosen[0])
+    table = _table(finaltext.gallery(doc), "gallery.caption")
+    assert [row[0] for row in table.rows] == [f"`{row['entry_id']}`" for row in chosen]
+    assert [row[1] for row in table.rows] == [str(row["read"]) for row in chosen]
+    assert [row[2] for row in table.rows] == [palette.LABELS[row["condition"]] for row in chosen]
+    for row in table.rows:
+        assert all(_no_words(cell) for cell in row[3:]), row
+    failures = _section(outputs["docs/evals.md"], "11. Failure analysis")
+    pooled = views.fill(doc["final"]["views"], "gallery.pooled.heading")
+    first = failures.index(f"`{chosen[0]['entry_id']}`")
+    assert first < failures.index(f"### {pooled}") < failures.index("| Letter | Condition |")
+
+
+def _deviation_entries() -> list[dict[str, Any]]:
+    """One deviation of each kind the section must list, recorded at the time."""
+    entries = [
+        hf._deviation(1, "code_hash_changed", None)
+        | {"evidence": ["evals/present/text.py presentation only", "evals/present/site.py"]},
+        hf._deviation(2, "budget_cut", {"split": "stress"}),
+        hf._deviation(3, "unanswered", {"split": "holdout4", "repeat": 2, "entries": ["holdout4-syn-001"]}),
+        hf._deviation(
+            4,
+            "retake",
+            {"split": "holdout4", "repeat": 1, "entries": ["holdout4-syn-002", "holdout4-syn-003"]},
+        ),
+        hf._deviation(
+            5, "label_error", {"split": "holdout4", "items": [{"entry_id": "holdout4-syn-004", "item": 0}]}
+        ),
+    ]
+    for entry in entries:
+        entry["what"] = "a distinctive account of what happened"
+    return entries
+
+
+def test_the_deviations_section_lists_every_entry_and_its_count_matches(
+    made: Callable[[str], Made], tmp_path: Path
+) -> None:
+    """Section 16 lists every entry of the deviations file: its id and kind, what it applies to, its registered
+    consequence, when it was recorded, its comment and checkpoint; never its ``what``. Its count is the head's and the
+    provenance sentence's; an empty file says there is none."""
+    doc, src = hf.scenario("good")
+    src["deviations"] = _deviation_entries()
+    root = hf.final_root(tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()))
+    built = model.build(root / "evals" / "results")
+    report = text.report(built)
+    section = _section(report, "16. Deviations")
+    rows = [line for line in section.splitlines() if line.startswith("| `D")]
+    assert len(rows) == len(src["deviations"]) == 5
+    for entry, row in zip(src["deviations"], rows, strict=True):
+        assert row.startswith(f"| `{entry['id']}` | `{entry['kind']}` |")
+        assert entry["consequence"] in row and entry["created_at"] in row
+        assert f"]({entry['issue_comment_url']})" in row and f"`{entry['checkpoint_sha'][:12]}`" in row
+    assert "`evals/present/text.py`" in rows[0] and "`evals/present/site.py`" in rows[0]
+    assert "`holdout4`" in rows[2] and "`stress`" in rows[1]
+    assert "a distinctive account" not in report
+    sentences = {s["code"]: s["text"] for s in built["final"]["sentences"]["page"]}
+    assert sentences["head.deviations"].endswith(": 5.") and "5 deviations" in sentences["provenance.some"]
+    assert views.fill(
+        built["final"]["views"], "deviations.lead", file=hf.FILES["deviations"], count=5
+    ) in _flat(section)
+    empty = made("good")
+    none = views.fill(empty.doc["final"]["views"], "deviations.none", file=hf.FILES["deviations"])
+    assert none in _flat(_section(empty.outputs["docs/evals.md"], "16. Deviations"))
+
+
+def _recorded(doc: dict[str, Any]) -> set[str]:
+    """Every value the provenance may show: the recorded fields of the pre-registration, the final analysis and the
+    files they name, and presentation.json's hash as rendered."""
+    shown = doc["final"]
+    prereg = shown["prereg"]
+    values = {prereg["file"], prereg["sha256"], *map(str, prereg["registered"].values())}
+    values |= {*prereg["data"].values(), *prereg["blind_writing"], *prereg["blind_writing"].values()}
+    values |= {shown["source"]["file"], shown["source"]["sha256"]}
+    for row in shown["inputs"]:
+        values |= {str(row[key]) for key in ("file", "sha256", "date", "commit", "role")}
+    for row in shown["files"].values():
+        if row:
+            values |= {row["file"], row["sha256"]}
+    if shown["phase2"]:
+        values |= {str(value) for value in shown["phase2"].values()}
+    values.add(hashlib.sha256(model.dumps(doc).encode("utf-8")).hexdigest())
+    values.add(build.PRESENTATION)
+    return values
+
+
+def test_every_provenance_value_is_a_recorded_field(made: Callable[[str], Made], tmp_path: Path) -> None:
+    """Section 17's values are recorded fields only (the pre-registration and its hash, the freeze, the commit that
+    added the letters, the days, the data's and the blind writing's hashes, the final analysis and its reads, the
+    named files, the presenter's posted tree when there is one) and presentation.json's hash as rendered; no hash is
+    typed into a template."""
+    doc, src, reads = hf.realistic()
+    record = {"head": "c" * 40, "tree_sha256": "d" * 64}
+    root = hf.final_root(
+        tmp_path,
+        doc,
+        sources=src,
+        prereg=hf.complete_prereg(builders.prereg()),
+        reads=reads,
+        extra=[("evals/preregistration/phase2-0.4.0.json", record)],
+    )
+    with_phase2 = model.build(root / "evals" / "results")
+    assert with_phase2["final"]["phase2"] == record
+    for built in (made("good").doc, made("realistic").doc, with_phase2):
+        recorded = _recorded(built)
+        table = _table(finaltext.provenance(built), "provenance.caption")
+        values = [row[1] for row in table.rows]
+        for value in values:
+            tokens = re.findall(r"`([^`]+)`", value) + re.findall(r"\b\d{4}-\d{2}-\d{2}\b", value)
+            tokens += re.findall(r"#(\d+)\b", value)
+            assert tokens and all(token in recorded for token in tokens), value
+        joined = " ".join(values)
+        presentation = hashlib.sha256(model.dumps(built).encode("utf-8")).hexdigest()
+        assert presentation in joined and built["final"]["prereg"]["sha256"] in joined
+        for value in built["final"]["prereg"]["blind_writing"].values():
+            assert value in joined
+        if built["final"]["phase2"]:
+            assert record["head"] in joined and record["tree_sha256"] in joined
+    raw = views.VIEWS_PATH.read_text(encoding="utf-8")
+    assert not re.search(r"\b[0-9a-f]{12,}\b", raw)
+
+
+def _places(made_: Made) -> tuple[Any, ...]:
+    """Where the final run is said: the report's headings, the charts, the registered slots and the summary's and
+    statistics' tables."""
+    report = made_.outputs["docs/evals.md"]
+    doc = made_.doc
+    blocks = [*finaltext.summary(doc), *finaltext.statistics(doc)]
+    return (
+        [line for line in report.splitlines() if line.startswith(("## ", "### "))],
+        charts.names(doc),
+        list(dict.fromkeys(s["slot"] for s in doc["final"]["sentences"]["page"])),
+        list(dict.fromkeys(s["slot"] for s in doc["final"]["sentences"]["readme"])),
+        [(list(block.header), len(block.rows)) for block in blocks if isinstance(block, text.Table)],
+    )
+
+
+def test_good_and_bad_results_fill_the_same_places(made: Callable[[str], Made]) -> None:
+    """Whatever the result, the final run is said in the same places: the same sections and subsections, charts,
+    registered slots and tables; only the codes and the values differ."""
+    assert _places(made("good")) == _places(made("bad"))
+
+
+@pytest.mark.parametrize("name", ["two_reads", "one_read"])
+def test_a_read_not_run_is_said_with_its_deviation(made: Callable[[str], Made], name: str) -> None:
+    """A registered read that was not recorded is published as such: section 6.1 lists it with the kind and id of the
+    deviation recorded at the time, the card says how many reads were used of those registered, and nothing is
+    drawn from a read that does not exist."""
+    _, doc, outputs = made(name)
+    shown = doc["final"]
+    assert shown["reads_missing"]
+    table = _table(finaltext.final_run(doc), "results.final.missing.caption")
+    assert table.rows == [
+        [
+            str(row["read"]),
+            ", ".join(f"`{kind}`" for kind in row["kinds"]),
+            ", ".join(f"`{dev}`" for dev in row["deviations"]),
+        ]
+        for row in shown["reads_missing"]
+    ]
+    report = outputs["docs/evals.md"]
+    final_run = _section(report, "6. Results").split("\n### 6.2 ", 1)[0]
+    deviations = _section(report, "16. Deviations")
+    for row in shown["reads_missing"]:
+        for dev in row["deviations"]:
+            assert f"`{dev}`" in final_run and f"`{dev}`" in deviations
+    assert "`budget_cut`" in final_run
+    assert _card(report)["Reads"] == views.fill(
+        shown["views"], "card.reads", used=len(shown["reads_used"]), registered=shown["reads_registered"]
+    )
+    _, rows = charts.table("final", doc)
+    assert all(len(row[3].split(" · ")) == len(shown["reads_used"]) for row in rows)
+
+
+def test_sensitivities_sit_beside_the_primary_under_their_labels(made: Callable[[str], Made]) -> None:
+    """Each sensitivity analysis is a row under its own label beside the primary analysis, with its own numbers;
+    the headline, the summary and the charts keep the primary's."""
+    _, doc, outputs = made("bad")
+    shown = doc["final"]
+    table = _table(finaltext.final_run(doc), "results.final.sens.caption")
+    names = [name for name in finalrun.SENSITIVITIES if name in shown["sensitivities"]]
+    assert [row[0] for row in table.rows] == [
+        views.fill(shown["views"], f"results.final.sens.{name}") for name in ("primary", *names)
+    ]
+    primary, s_conv = table.rows[0], table.rows[1]
+    ours = shown["conditions"]["ordnung"]["mean_accuracy"]["value"]
+    sensitivity = shown["sensitivities"]["s_conv"]
+    assert primary[2] == fmt.pct(ours)
+    assert s_conv[1] == str(sensitivity["items_changed"])
+    assert s_conv[2] == fmt.pct(sensitivity["conditions"]["ordnung"]["mean_accuracy"]) != primary[2]
+    assert s_conv[4] == f"`{sensitivity['decisions']['beats_llm_only']}`"
+    summary = _table(finaltext.summary(doc), "summary.caption")
+    (row,) = [row for row in summary.rows if row[0] == "Ordnung"]
+    assert row[1].startswith(fmt.pct(ours))
+    assert fmt.pct(ours) in charts.description("final", doc)
+    final_run = _section(outputs["docs/evals.md"], "6. Results").split("\n### 6.2 ", 1)[0]
+    label = views.fill(shown["views"], "results.final.sens.s_conv")
+    assert final_run.index(final.PAGE_END) < final_run.index(f"| {label} | {s_conv[1]} | {s_conv[2]} |")
+
+
+@pytest.mark.parametrize("name", ["good", "realistic"])
+def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Made], name: str) -> None:
+    """With a final run, section 3's timeline and table show holdout4 (and the new kinds) as recorded: when, how many
+    reads, Ordnung's exact dates over them, and the split's part in the words of the view templates; never "not yet
+    written"."""
+    _, doc, outputs = made(name)
+    shown = doc["final"]
+    rows = {row["split"]: row for row in doc["splits"]}
+    held = rows["holdout4"]
+    assert held["role"] == views.fill(shown["views"], "split.role.holdout4")
+    exact = shown["conditions"]["ordnung"]["exact_per_read"]
+    assert (held["ordnung"]["k"], held["ordnung"]["n"]) == (
+        sum(rate["k"] for rate in exact),
+        sum(rate["n"] for rate in exact),
+    )
+    assert held["recordings"] == len(shown["reads_used"])
+    dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == "holdout4")
+    assert held["recorded"] == (dates[0] if dates else shown["date"])
+    newkinds = rows["newkinds"]
+    assert newkinds["role"] == views.fill(shown["views"], "split.role.newkinds")
+    assert newkinds["ordnung"]["k"] == shown["newkinds"]["conditions"]["ordnung"]["exact"]["k"]
+    _, table = charts.table("timeline", doc)
+    (row,) = [row for row in table if row[0] == "holdout4"]
+    assert row[1] == held["recorded"] and row[5] == fmt.of(held["ordnung"])
+    assert row[4] == views.fill(shown["views"], "split.short.holdout4")
+    for content in (
+        outputs["docs/evals.md"],
+        outputs["evals/present/presentation.json"],
+        charts.svg("timeline", doc),
+    ):
+        assert "not yet written" not in content and "to be pre-registered" not in content
+
+
+def test_the_pooled_numbers_carry_their_not_pre_registered_label_with_a_final(
+    made: Callable[[str], Made],
+) -> None:
+    """With a final run the earlier held-out splits' numbers are never a headline: every section and subsection that
+    shows them says they are as recorded, not pre-registered, and no line still says the final run is to come."""
+    _, doc, outputs = made("good")
+    report = outputs["docs/evals.md"]
+    note = views.fill(
+        doc["final"]["views"],
+        "pooled.note",
+        results=finaltext.RESULTS_ANCHOR,
+        statistics=finaltext.STATISTICS_ANCHOR,
+    )
+    assert "not pre-registered" in note
+    pooled = _section(report, "6. Results").split("\n### 6.2 ", 1)[1]
+    assert note in _flat(pooled.split("\n### 6.3 ", 1)[0])
+    statistics = _section(report, "7. Statistics")
+    heading = views.fill(doc["final"]["views"], "stats.pooled.heading")
+    assert "not pre-registered" in heading and f"\n### {heading}\n" in statistics
+    assert statistics.index(f"### {heading}") < statistics.index("assets/eval-differences-light.svg")
+    assert statistics.index("assets/eval-final-differences-light.svg") < statistics.index(f"### {heading}")
+    for title in POOLED_SECTIONS:
+        assert note in _flat(_section(report, title)), title
+    gallery = views.fill(doc["final"]["views"], "gallery.pooled.heading")
+    assert "not pre-registered" in gallery and f"### {gallery}" in _section(report, "11. Failure analysis")
+    for stale in (
+        "will be pre-registered",
+        "One read per letter",
+        "Not yet run: the targeted injections",
+        "has not been recorded yet",
+    ):
+        assert stale not in report, stale
+    limitations = _section(report, "14. Limitations")
+    assert f"`{doc['final']['model']}`" in limitations and "**not pre-registered**" in limitations
+    assert "#17-provenance" in limitations and "\n## 17. Provenance\n" in report

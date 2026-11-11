@@ -42,6 +42,10 @@ class Filled(str):
         filled.key = key
         return filled
 
+    def __getnewargs__(self) -> tuple[str, str]:  # type: ignore[override]
+        # a copy (or a pickle) keeps the key it was filled from
+        return (str(self), self.key)
+
 
 def load(path: Path = VIEWS_PATH) -> dict[str, Any]:
     """The templates file, as committed."""

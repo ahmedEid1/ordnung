@@ -30,7 +30,7 @@ from pathlib import Path
 from typing import Any
 
 from evals import stats
-from evals.present import MODEL, RESULTS_DIR, PresentError, finalrun, palette
+from evals.present import MODEL, RESULTS_DIR, PresentError, finalrun, palette, views
 
 SCHEMA = "ordnung-eval-presentation/1"
 ROLES = ("final", "held-out", "re-analysis", "re-scored", "iterated", "replay", "archive")
@@ -541,10 +541,18 @@ def _first_test_run(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> dic
     }
 
 
-def _composition(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
-    """Each split's size, from the newest live run of the pinned model on it, and its role in the protocol."""
+def _composition(
+    found: Mapping[str, tuple[str, str, dict[str, Any]]], final: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Each split's size, from the newest live run of the pinned model on it, and its role in the protocol; with a
+    final run, the final splits as it recorded them (:func:`_final_split`)."""
     rows: list[dict[str, Any]] = []
     for split in SPLIT_ORDER:
+        if final is not None and split in FINAL_SPLITS:
+            row = _final_split(found, final, split)
+            if row is not None:
+                rows.append(row)
+            continue
         names = sorted(
             name
             for name, (kind, role, data) in found.items()
@@ -575,6 +583,58 @@ def _composition(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[d
             }
         )
     return rows
+
+
+def _final_split(
+    found: Mapping[str, tuple[str, str, dict[str, Any]]], final: Mapping[str, Any], split: str
+) -> dict[str, Any] | None:
+    """A final split as the final run recorded it: when, how many reads, the letters and deadlines (from its reads'
+    files, or from the final analysis when they are not among the results), Ordnung's exact dates over every read,
+    and its part in the words of the final run's view templates. The new kinds have no row when they were not
+    recorded."""
+    if split == final["split"]:
+        rates = final["conditions"]["ordnung"]["exact_per_read"]
+        mean = final["conditions"]["ordnung"]["mean_accuracy"]
+        ordnung = {
+            "k": sum(int(rate["k"]) for rate in rates),
+            "n": sum(int(rate["n"]) for rate in rates),
+            "value": mean["value"],
+            "ci": mean["ci"],
+        }
+        reads, letters, items = len(final["reads_used"]), final["letters"], final["items"]
+    else:
+        newkinds = final["newkinds"]
+        if "not_recorded" in newkinds:
+            return None
+        ordnung = dict(newkinds["conditions"]["ordnung"]["exact"])
+        reads, letters, items = 1, newkinds["letters"], newkinds["items"]
+    names = sorted(
+        name
+        for name, (kind, role, data) in found.items()
+        if kind == "run" and role == "final" and data["meta"].get("split") == split
+    )
+    dates = sorted(
+        str(row["date"]) for row in final["inputs"] if row.get("split") == split and row.get("date")
+    )
+    row: dict[str, Any] = {
+        "split": split,
+        "role": str(views.fill(final["views"], f"split.role.{split}")),
+        "recorded": dates[0] if dates else final["date"],
+        "recordings": reads,
+        "entries": letters,
+        "photos": None,
+        "adversarial": None,
+        "scored_items": items,
+        "ordnung": ordnung,
+    }
+    if names:
+        meta = found[names[-1]][2]["meta"]
+        row |= {
+            "recorded": sorted(found[name][2]["meta"]["date"] for name in names)[0],
+            "recordings": len(names),
+            **{key: int(meta[key]) for key in ("entries", "photos", "adversarial", "scored_items")},
+        }
+    return row
 
 
 def _file_rows(found: Mapping[str, tuple[str, str, dict[str, Any]]]) -> list[dict[str, Any]]:
@@ -632,7 +692,7 @@ def build(results_dir: Path = RESULTS_DIR) -> dict[str, Any]:
         "ablation": _ablation(found),
         "e2e": _e2e(found),
         "llm_only_first_run": _first_test_run(found),
-        "splits": _composition(found),
+        "splits": _composition(found, final),
         "files": _file_rows(found),
         "final": final,
     }

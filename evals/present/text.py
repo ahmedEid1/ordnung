@@ -10,8 +10,10 @@ the same place and at the same size as a good one. Nothing here is typed by hand
 
 Once ``presentation.json`` holds the final run (its ``final``), the final run is the headline: the README's block is the
 registered README sentences laid out as registered (:func:`evals.present.final.readme_block`), and the report's header,
-evaluation card, summary and section 6.1 are :mod:`evals.present.finaltext`'s, every word a registered sentence or a
-view template; section 6.1 holds the registered page sentences between the page's markers (:class:`Marker`).
+evaluation card, summary, section 6.1, the final run's statistics and failures, the limitations and the sections on
+deviations and provenance are :mod:`evals.present.finaltext`'s, every word a registered sentence or a view template;
+section 6.1 holds the registered page sentences between the page's markers (:class:`Marker`). Every section that still
+shows the earlier held-out splits says they are as recorded, not pre-registered.
 """
 
 from __future__ import annotations
@@ -352,6 +354,16 @@ def _final_readme_block(doc: Mapping[str, Any]) -> str:
 # --------------------------------------------------------------------------------------------------
 
 
+def _pooled(doc: Mapping[str, Any]) -> list[Block]:
+    """With a final run, the note that a section shows the earlier held-out splits as recorded, not pre-registered;
+    nothing without one."""
+    if doc.get("final") is None:
+        return []
+    from evals.present import finaltext
+
+    return [finaltext.pooled_note(doc)]
+
+
 def _card(doc: Mapping[str, Any]) -> Section:
     common = {
         "task": ["Task", "Find each deadline in a German letter and give its exact date"],
@@ -624,6 +636,7 @@ def _results(doc: Mapping[str, Any]) -> Section:
         blocks = [
             *finaltext.final_run(doc),
             Subheading("6.2 The held-out splits pooled, as recorded"),
+            *_pooled(doc),
             Chart("held-out"),
         ]
     else:
@@ -806,7 +819,8 @@ def _statistics(doc: Mapping[str, Any]) -> Section:
     if doc.get("final") is not None:
         from evals.present import finaltext
 
-        blocks = [*finaltext.statistics(doc), *blocks]
+        # the final run's statistics first; the earlier held-out splits' after them, under their own heading
+        blocks = [*finaltext.statistics(doc), finaltext.pooled_heading(doc, "stats.pooled.heading"), *blocks]
     return Section("7. Statistics", blocks)
 
 
@@ -849,6 +863,7 @@ def _since_0_3_0(doc: Mapping[str, Any]) -> list[list[str]]:
 
 def _ablations(doc: Mapping[str, Any]) -> Section:
     blocks: list[Block] = [
+        *_pooled(doc),
         Paragraph(
             "The four conditions are the first ablation: the engine as the one that computes (Ordnung), as a tool "
             "the model may call (the agent), as text (rules text) and not at all (the model alone) "
@@ -910,9 +925,19 @@ def _robustness(doc: Mapping[str, Any]) -> Section:
                 for kind in ("text", "photo")
             ]
         )
+    stress: Block = Paragraph(
+        "Not yet run: the targeted injections and distractor dates of the planned stress cells, to be "
+        "pre-registered with the final run (`scripts/eval_perturb.py`), on held-out letters re-rendered with "
+        "one planted paragraph each."
+    )
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        stress = finaltext.stress(doc)
     return Section(
         "9. Robustness",
         [
+            *_pooled(doc),
             Paragraph(
                 f"Adversarial letters in the held-out splits ({h['adversarial']} of {h['letters']}): Ordnung, by "
                 "class, with 95 % Clopper–Pearson intervals. The classes are small; read the intervals."
@@ -924,11 +949,7 @@ def _robustness(doc: Mapping[str, Any]) -> Section:
             Table(
                 ["Condition", "Text PDFs [95 % CI]", "Phone photos [95 % CI]"], modality, "Text against photo"
             ),
-            Paragraph(
-                "Not yet run: the targeted injections and distractor dates of the planned stress cells, to be "
-                "pre-registered with the final run (`scripts/eval_perturb.py`), on held-out letters re-rendered with "
-                "one planted paragraph each."
-            ),
+            stress,
         ],
     )
 
@@ -971,6 +992,7 @@ def _safety(doc: Mapping[str, Any]) -> Section:
         else f"Ordnung's “Please check” caught {flags['caught']} of its {flags['wrong']} wrong dates."
     )
     blocks: list[Block] = [
+        *_pooled(doc),
         Table(
             ["Condition", "Late or missed [95 % CI]", "Late", "Missed", "Days late, each"],
             harm_rows,
@@ -1037,9 +1059,16 @@ def _failures(doc: Mapping[str, Any]) -> Section:
     ours = [row for row in errors if row["condition"] == _REFERENCE]
     causes = {cause: sum(1 for row in ours if row["cause"] == cause) for cause in ("reading", "computing")}
     missed = sum(1 for row in ours if row["outcome"] == "missed")
+    final_run: list[Block] = []
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        # the final run's failures first; the earlier held-out splits' after them, under their own heading
+        final_run = [*finaltext.gallery(doc), finaltext.pooled_heading(doc, "gallery.pooled.heading")]
     return Section(
         "11. Failure analysis",
         [
+            *final_run,
             Paragraph(
                 "Every harmful error first (late or missed, every condition), then Ordnung's other wrong dates. Ids, "
                 "classes and days only: never a letter's text."
@@ -1084,6 +1113,7 @@ def _cost(doc: Mapping[str, Any]) -> Section:
     return Section(
         "12. Cost and latency",
         [
+            *_pooled(doc),
             Chart("cost"),
             Table(header, rows, "Cost and latency"),
             Paragraph(
@@ -1100,7 +1130,7 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
     if not e2e:
         return Section(
             "13. From a letter to a reminder",
-            [Paragraph("No results file of the end-to-end run yet (`python -m evals.e2e`).")],
+            [*_pooled(doc), Paragraph("No results file of the end-to-end run yet (`python -m evals.e2e`).")],
         )
     causes = (
         "; ".join(
@@ -1110,6 +1140,7 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
     )
     reminded = e2e["reminded_in_time"]
     blocks: list[Block] = [
+        *_pooled(doc),
         Paragraph(
             f"Every letter of {fmt.join(e2e['splits'])} read by the real app in a fresh data folder, from the "
             f"recorded readings, through to the calendar and the morning note (`python -m evals.e2e`, "
@@ -1154,6 +1185,11 @@ def _e2e(doc: Mapping[str, Any]) -> Section:
 
 
 def _limitations(doc: Mapping[str, Any]) -> Section:
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        # with a final run, the limitations its numbers leave (the bullets a final run makes untrue are gone)
+        return Section("14. Limitations", [Bullets(finaltext.limitations(doc))])
     claim = _headline(doc).get("rules_text_claim")
     items = [
         "The letters are synthetic, one or two clean pages each: real post is messier.",
@@ -1219,8 +1255,9 @@ def _reproduce(doc: Mapping[str, Any]) -> Section:
 
 
 def sections(doc: Mapping[str, Any]) -> list[Section]:
-    """The report's sections, in the order an expert reads them."""
-    return [
+    """The report's sections, in the order an expert reads them (with a final run, its deviations and provenance
+    after section 15, so every earlier anchor stays)."""
+    listed = [
         _card(doc),
         _summary(doc),
         _task(doc),
@@ -1238,6 +1275,11 @@ def sections(doc: Mapping[str, Any]) -> list[Section]:
         _limitations(doc),
         _reproduce(doc),
     ]
+    if doc.get("final") is None:
+        return listed
+    from evals.present import finaltext
+
+    return [*listed, *finaltext.appendix(doc)]
 
 
 # --------------------------------------------------------------------------------------------------
