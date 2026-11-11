@@ -5,9 +5,12 @@
   condition, the mean over the reads of the exact dates right and of the late or missed ones, each with its
   letter-cluster bootstrap interval, and each read alone as a hollow ring.
 * ``final-differences`` is the forest of the pre-registered comparisons (the statistics section's): Ordnung minus
-  each baseline, for exact dates and for late or missed ones, each difference with its letter-cluster bootstrap
-  interval and a line at zero. A difference is printed as the registered sentences print it; when no deadline differs
-  (an interval of 0 to 0) no interval is drawn and the chart says so, never "[+0.0, +0.0]".
+  each baseline, for exact dates and for late or missed ones, each difference with the interval its registered
+  sentence prints (the letter-cluster bootstrap's; for exact dates against the agent, the non-inferiority test's
+  bound) and a line at zero, and how each is tested (a view template). A sign-flip and Holm p stand only beside a
+  tested comparison: the non-inferiority bound has none, and harm against the agent is described, not tested. Every
+  number is printed as the registered sentences print it; when no deadline differs (an interval of 0 to 0) no interval
+  is drawn and the chart says so, never "[+0.0, +0.0]". No decision is worded here: the registered sentences say them.
 * ``final-stability`` shows how steady the dates are over the reads (the final run's results section): right in every
   read and changed between reads, each with its Clopper–Pearson interval. It is drawn only when the stability test
   ran, that is with two reads or more; with one read the registered sentence says it was not measured.
@@ -30,8 +33,9 @@ from evals.present.charts import Panel, Row
 Parts = tuple[list[str], list[list[str]], str]
 #: The comparisons' families, each with its view keys' part.
 FAMILIES = (("F1_accuracy", "exact"), ("F2_harm", "harm"))
-#: The comparison each registered slot says, and the analysis's decision for it (harm against the agent is
-#: described, not decided).
+#: The tested comparisons, and the analysis's decision key for each (whose role the verdict table shows; the decision
+#: itself is said by the registered sentence). Harm against the agent is described, not tested, and exact dates
+#: against the agent are tested by the non-inferiority bound (:data:`BOUNDED`).
 DECISIONS = {
     ("F1_accuracy", "llm_only"): "beats_llm_only",
     ("F1_accuracy", "llm_rules_text"): "vs_llm_rules_text",
@@ -39,6 +43,8 @@ DECISIONS = {
     ("F2_harm", "llm_only"): "f2_vs_llm_only",
     ("F2_harm", "llm_rules_text"): "f2_vs_llm_rules_text",
 }
+#: The comparison the pre-registration tests by the non-inferiority bound, which its sentence prints.
+BOUNDED = ("F1_accuracy", final.AGENT)
 #: The final splits whose part in the timeline a view template words.
 SPLITS = ("holdout4", "newkinds")
 NONE = "—"
@@ -73,6 +79,12 @@ def p_value(value: float | None) -> str:
     return NONE if value is None else fmt.p_value(float(value))
 
 
+def p_said(value: float) -> str:
+    """A p-value as the registered sentences print it after "Holm p" (``= 0.020``, ``< 0.001``): every template that
+    prints one after its name uses this, so one p is printed one way."""
+    return final._formatted(value, "p", WHERE)
+
+
 def pair_key(baseline: str) -> str:
     return f"{final.REFERENCE}-vs-{baseline}"
 
@@ -96,22 +108,41 @@ def shown(doc: Mapping[str, Any], row: Mapping[str, Any]) -> str:
 
 
 def code(value: Any) -> str:
-    """A decision as the analysis records it, as a code (``true``/``false`` for a yes or no), or a dash for none."""
+    """A code as the analysis records it (a role), in backticks (``true``/``false`` for a yes or no), or a dash for
+    none."""
     if value is None:
         return NONE
     return f"`{json.dumps(value) if isinstance(value, bool) else value}`"
 
 
-def decision(doc: Mapping[str, Any], family: str, baseline: str) -> str:
-    """The analysis's decision for a comparison, or the view template that says it is described, not tested."""
-    key = DECISIONS.get((family, baseline))
-    if key is None:
-        return _view(doc, "chart.final-differences.described")
-    return code(_final(doc)["decisions"][key])
+def compared(doc: Mapping[str, Any], family: str, baseline: str) -> dict[str, Any]:
+    """A comparison as its registered sentence prints it: the difference with the bootstrap interval, or for exact dates
+    against the agent with the non-inferiority bound (``diff``, ``lo``, ``hi``), and the sign-flip and Holm p only
+    when it is tested by them."""
+    row = _final(doc)["families"][family][pair_key(baseline)]
+    if (family, baseline) == BOUNDED:
+        bound = _final(doc)["noninferiority"][pair_key(baseline)]
+        return {"diff": row["diff"], "lo": bound["lo"], "hi": bound["hi"], "p": None, "holm": None}
+    if (family, baseline) not in DECISIONS:
+        return {**row, "p": None, "holm": None}
+    return dict(row)
+
+
+def tested_by(doc: Mapping[str, Any], family: str, baseline: str) -> str:
+    """How a comparison is tested, in the verdict table's words: a sign-flip test with Holm, the non-inferiority bound,
+    or described, not tested."""
+    if (family, baseline) == BOUNDED:
+        return _view(doc, "verdict.test.noninferiority", level=_level(doc))
+    if (family, baseline) not in DECISIONS:
+        return _view(doc, "verdict.test.described")
+    return _view(doc, "verdict.test.signflip")
 
 
 def power(doc: Mapping[str, Any], family: str, baseline: str) -> str:
-    """The pre-registered power of a comparison (the power file's), or a dash when there is none."""
+    """The pre-registered power of a tested comparison (the power file's), or a dash when there is none or the
+    comparison is described, not tested."""
+    if (family, baseline) not in DECISIONS:
+        return NONE
     powers = _final(doc).get("power") or {}
     value = (powers.get(family) or {}).get(pair_key(baseline))
     return NONE if value is None else final._formatted(value, "pct_whole", WHERE)
@@ -290,6 +321,8 @@ def _hero_caption(doc: Mapping[str, Any]) -> str:
         ordnung_harm=mean("ordnung", "mean_harmful"),
         alone_exact=mean("llm_only", "mean_accuracy"),
         alone_harm=mean("llm_only", "mean_harmful"),
+        text_exact=mean("llm_rules_text", "mean_accuracy"),
+        text_harm=mean("llm_rules_text", "mean_harmful"),
         agent_exact=mean("llm_rules_tool", "mean_accuracy"),
         agent_harm=mean("llm_rules_tool", "mean_harmful"),
     )
@@ -302,12 +335,12 @@ def _hero_caption(doc: Mapping[str, Any]) -> str:
 
 def _differences_rows(doc: Mapping[str, Any]) -> list[tuple[str, str, list[str]]]:
     """``(family, baseline, cells)`` for each comparison, the accuracy family's first, baselines in the page's
-    order."""
-    shown_ = _final(doc)
+    order: the difference and interval its registered sentence prints, its sign-flip and Holm p when it is tested by
+    them, its power and how it is tested."""
     rows: list[tuple[str, str, list[str]]] = []
     for family, part in FAMILIES:
         for baseline in baselines(doc):
-            row = shown_["families"][family][pair_key(baseline)]
+            row = compared(doc, family, baseline)
             cells = [
                 palette.LABELS[baseline],
                 _view(doc, f"chart.final-differences.measure.{part}"),
@@ -315,10 +348,40 @@ def _differences_rows(doc: Mapping[str, Any]) -> list[tuple[str, str, list[str]]
                 p_value(row["p"]),
                 p_value(row["holm"]),
                 power(doc, family, baseline),
-                decision(doc, family, baseline),
+                tested_by(doc, family, baseline),
             ]
             rows.append((family, baseline, cells))
     return rows
+
+
+def _said_row(doc: Mapping[str, Any], family: str, baseline: str, cells: Sequence[str]) -> str:
+    """A comparison in the forest's description: its numbers and how it is tested, with a p only beside a test."""
+    values = {"baseline": cells[0], "measure": cells[1], "shown": cells[2], "test": cells[6]}
+    if (family, baseline) == BOUNDED:
+        return _view(doc, "chart.final-differences.row.bound", power=cells[5], **values)
+    if (family, baseline) not in DECISIONS:
+        return _view(doc, "chart.final-differences.row.described", **values)
+    row = compared(doc, family, baseline)
+    return _view(
+        doc,
+        "chart.final-differences.row",
+        p=p_said(row["p"]),
+        holm=p_said(row["holm"]),
+        power=cells[5],
+        **values,
+    )
+
+
+def _tip(doc: Mapping[str, Any], family: str, baseline: str, cells: Sequence[str]) -> str:
+    """A comparison's mark tooltip: its numbers, with the Holm p only beside a test."""
+    values = {"baseline": cells[0], "measure": cells[1], "shown": cells[2]}
+    if (family, baseline) == BOUNDED:
+        return _view(doc, "chart.final-differences.tip.bound", level=_level(doc), **values)
+    if (family, baseline) not in DECISIONS:
+        return _view(doc, "chart.final-differences.tip.described", **values)
+    return _view(
+        doc, "chart.final-differences.tip", holm=p_said(compared(doc, family, baseline)["holm"]), **values
+    )
 
 
 def _differences_parts(doc: Mapping[str, Any]) -> Parts:
@@ -330,23 +393,11 @@ def _differences_parts(doc: Mapping[str, Any]) -> Parts:
         _view(doc, "chart.final-differences.col.p"),
         _view(doc, "chart.final-differences.col.holm"),
         _view(doc, "chart.final-differences.col.power"),
-        _view(doc, "chart.final-differences.col.code"),
+        _view(doc, "chart.final-differences.col.test"),
     ]
-    rows = [cells for _, _, cells in _differences_rows(doc)]
-    said = [
-        _view(
-            doc,
-            "chart.final-differences.row",
-            baseline=cells[0],
-            measure=cells[1],
-            shown=cells[2],
-            p=cells[3],
-            holm=cells[4],
-            power=cells[5],
-            code=cells[6].replace("`", ""),
-        )
-        for cells in rows
-    ]
+    found = _differences_rows(doc)
+    rows = [cells for _, _, cells in found]
+    said = [_said_row(doc, family, baseline, cells) for family, baseline, cells in found]
     description: str = _view(
         doc,
         "chart.final-differences.description",
@@ -363,7 +414,7 @@ def _differences(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -
     by_family: dict[str, list[Row]] = {family: [] for family, _ in FAMILIES}
     ends: dict[str, list[float]] = {family: [0.0] for family, _ in FAMILIES}
     for family, baseline, cells in _differences_rows(doc):
-        row = shown_["families"][family][pair_key(baseline)]
+        row = compared(doc, family, baseline)
         ends[family] += [row["lo"], row["hi"], row["diff"]]
         value = _view(doc, "chart.final-differences.same") if same(row) else points(row["diff"])
         by_family[family].append(
@@ -372,15 +423,7 @@ def _differences(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -
                 row["diff"],
                 None if same(row) else (row["lo"], row["hi"]),
                 value,
-                _view(
-                    doc,
-                    "chart.final-differences.tip",
-                    baseline=cells[0],
-                    measure=cells[1],
-                    shown=cells[2],
-                    holm=cells[4],
-                    code=cells[6].replace("`", ""),
-                ),
+                _tip(doc, family, baseline, cells),
             )
         )
     # each panel's axis takes in its intervals and the zero line, at least 5 points either side of it
@@ -415,7 +458,7 @@ def _differences(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -
         subtitle,
         description,
         panels,
-        _view(doc, "chart.final-differences.footnote"),
+        _view(doc, "chart.final-differences.footnote", level=_level(doc)),
     )
 
 
@@ -563,23 +606,20 @@ def _stability(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> 
     )
 
 
+#: The view keys' part for each condition in a caption that names all four.
+_PARTS = {"ordnung": "ordnung", "llm_only": "alone", "llm_rules_text": "text", "llm_rules_tool": "agent"}
+
+
 def _stability_caption(doc: Mapping[str, Any]) -> str:
     shown_ = _final(doc)
     conditions = shown_["conditions"]
     row = shown_["families"]["F3_stability"][pair_key("llm_only")]
-    (said,) = [s["code"] for s in shown_["sentences"]["page"] if s["slot"] == "stability"]
-    return _view(
-        doc,
-        "chart.final-stability.caption",
-        ordnung_all=fmt.pct(conditions["ordnung"]["pass_all"]["value"]),
-        alone_all=fmt.pct(conditions["llm_only"]["pass_all"]["value"]),
-        ordnung_unstable=fmt.pct(conditions["ordnung"]["unstable"]["value"]),
-        alone_unstable=fmt.pct(conditions["llm_only"]["unstable"]["value"]),
-        b=row["b"],
-        c=row["c"],
-        p=p_value(row["holm"]),
-        code=said,
-    )
+    rates = {
+        f"{part}_{name}": fmt.pct(conditions[condition][key]["value"])
+        for condition, part in _PARTS.items()
+        for key, name in (("pass_all", "all"), ("unstable", "unstable"))
+    }
+    return _view(doc, "chart.final-stability.caption", b=row["b"], c=row["c"], p=p_said(row["holm"]), **rates)
 
 
 #: Each chart: how it is drawn, its parts (header, rows, description), its title's view and its caption.

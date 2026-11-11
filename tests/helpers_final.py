@@ -50,6 +50,13 @@ N = builders.N
 PAIRS = {baseline: f"ordnung-vs-{baseline}" for baseline in final.BASELINES}
 #: How many synthetic letters each of :func:`realistic_reads`' splits has.
 READ_LETTERS = {"holdout4": 12, "newkinds": 6}
+#: Disputed readings for :func:`realistic`'s ``conventions``: two deadlines the model alone dates otherwise in every read
+#: (``tests/test_present_final.py``'s synthetic reads), each with that other date as a defensible reading, so the
+#: analysis's S-conv sensitivity changes more scored answers than it tags deadlines.
+DISPUTED = {
+    ("holdout4-L0", 0): frozenset({"2027-03-12"}),
+    ("holdout4-L3", 0): frozenset({"2027-03-12"}),
+}
 
 
 def _hex(seed: str) -> str:
@@ -92,8 +99,12 @@ def realistic_reads() -> list[tuple[str, str]]:
     ]
 
 
-def analyse(reads: Sequence[tuple[str, str]]) -> dict[str, Any]:
-    """The real final analysis of ``reads`` (``(name, text)``), as ``evals.analysis`` renders it."""
+def analyse(
+    reads: Sequence[tuple[str, str]],
+    conventions: Mapping[tuple[str, int], frozenset[str]] | None = None,
+) -> dict[str, Any]:
+    """The real final analysis of ``reads`` (``(name, text)``), as ``evals.analysis`` renders it, with
+    ``conventions`` as the disputed readings S-conv accepts."""
     section = analysis.default_prereg_analysis()
     section["pool_with"] = []
     registered = analysis.parse_prereg({"analysis": section})
@@ -105,7 +116,9 @@ def analyse(reads: Sequence[tuple[str, str]]) -> dict[str, Any]:
     ]
     record = {"file": FILES["prereg"], "sha256": "ab" * 32}
     left_open = analysis.ambiguous_slots([], ("holdout4", "newkinds"))
-    document = analysis.final_analysis(registered, runs, prereg_record=record, ambiguous_slots=left_open)
+    document = analysis.final_analysis(
+        registered, runs, prereg_record=record, conventions=conventions, ambiguous_slots=left_open
+    )
     data: dict[str, Any] = json.loads(analysis.render(document))
     return data
 
@@ -123,12 +136,13 @@ def real() -> dict[str, Any]:
 
 def realistic(
     src: Mapping[str, Any] | None = None,
+    conventions: Mapping[tuple[str, int], frozenset[str]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]:
-    """The real final analysis of :func:`realistic_reads`, the sources it renders with and the reads themselves, to
-    write beside it (:func:`final_root` with ``reads=``)."""
+    """The real final analysis of :func:`realistic_reads` (with ``conventions`` as its disputed readings), the
+    sources it renders with and the reads themselves, to write beside it (:func:`final_root` with ``reads=``)."""
     reads = realistic_reads()
     named = as_written(copy.deepcopy(dict(src or builders.no_set_aside(builders.sources()))))
-    return analyse(reads), named, reads
+    return analyse(reads, conventions), named, reads
 
 
 def calibration_reads() -> list[tuple[str, str]]:

@@ -115,6 +115,8 @@ def role_of(name: str, data: Mapping[str, Any]) -> str:
     model = data.get("model") if kind == "ask" else meta.get("model")
     if model != MODEL:
         return "archive"
+    # evals.reproduce takes these roles for its results index too (its ``_kind``): a held-out Ask run is listed as
+    # ``final``, and a final split's non-live replay as ``re-scored`` (a history row, never the final run)
     if kind == "ask":
         # the held-out Ask set is the final run's (shown only through its file of runs); the rest is the dev set
         return "final" if data.get("set") == "heldout" else "iterated"
@@ -589,19 +591,16 @@ def _final_split(
     found: Mapping[str, tuple[str, str, dict[str, Any]]], final: Mapping[str, Any], split: str
 ) -> dict[str, Any] | None:
     """A final split as the final run recorded it: when, how many reads, the letters and deadlines (from its reads'
-    files, or from the final analysis when they are not among the results), Ordnung's exact dates over every read,
-    and its part in the words of the final run's view templates. The new kinds have no row when they were not
-    recorded."""
+    files, or from the final analysis when they are not among the results), Ordnung's exact dates as the final
+    analysis holds them (the primary split's mean over the reads with its interval, never a count summed over the
+    reads; the new kinds' one read), and its part in the words of the final run's view templates, with the count of
+    deviations recorded at the time. The new kinds have no row when they were not recorded."""
+    role: dict[str, object] = {}
     if split == final["split"]:
-        rates = final["conditions"]["ordnung"]["exact_per_read"]
         mean = final["conditions"]["ordnung"]["mean_accuracy"]
-        ordnung = {
-            "k": sum(int(rate["k"]) for rate in rates),
-            "n": sum(int(rate["n"]) for rate in rates),
-            "value": mean["value"],
-            "ci": mean["ci"],
-        }
+        ordnung = {"value": mean["value"], "ci": mean["ci"]}
         reads, letters, items = len(final["reads_used"]), final["letters"], final["items"]
+        role = {"count": len(final["deviations"])}
     else:
         newkinds = final["newkinds"]
         if "not_recorded" in newkinds:
@@ -618,7 +617,7 @@ def _final_split(
     )
     row: dict[str, Any] = {
         "split": split,
-        "role": str(views.fill(final["views"], f"split.role.{split}")),
+        "role": str(views.fill(final["views"], f"split.role.{split}", **role)),
         "recorded": dates[0] if dates else final["date"],
         "recordings": reads,
         "entries": letters,

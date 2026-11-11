@@ -8,17 +8,21 @@ number; nothing here is worded in code. With a final run:
 * the report's header names the final analysis, and the evaluation card says how the final run was pre-registered, read
   and analysed;
 * section 1 is the README's registered paragraph with the final run's chart, a table of each condition over the reads,
-  and the verdict table: each pre-registered comparison with its numbers, its role, the analysis's decision code and
-  the code of the registered sentence that says it;
+  and the verdict table: each pre-registered comparison with its numbers, its role and the code of the registered
+  sentence that says it (a decision is said by its registered sentence alone, never by the analysis's own code);
 * section 6.1 is every registered page sentence, in its order, between :data:`evals.present.final.PAGE_BEGIN` and
   :data:`~evals.present.final.PAGE_END`, then each read's numbers, how steady the dates are (two reads or more), the
-  reads not recorded with the deviations that say why, the sensitivity analyses beside the primary, and the new kinds;
+  reads not recorded with the deviations that say why, the sensitivity analyses beside the primary (the scored answers
+  each changes and the deadlines it applies to, each under its own words), and the new kinds;
 * section 7 is the final run's statistics: the forest of the comparisons with its table, the non-inferiority bound and
   the stability test; the earlier held-out splits' statistics follow under their own heading, not pre-registered;
-* section 11 opens with the final run's failures by id, every late or missed date first; section 14 says the
-  limitations a final run leaves; sections 16 and 17 list every deviation as recorded and where every number comes
-  from;
+* section 3 says which of its rows are the final run's and which the earlier held-out splits'; section 11 opens with the
+  final run's failures by id, every late or missed date first; section 14 says the limitations a final run leaves (the
+  run-to-run noise only when two reads or more measured it); sections 16 and 17 list every deviation as recorded and
+  where every number comes from;
 * the sections that show only the earlier held-out splits carry a note that they are as recorded, not pre-registered;
+* the words on how the final run was read (the card, the timeline, the page's lede) carry the count of deviations
+  recorded at the time;
 * the report page's tiles are the final run's mean accuracy for Ordnung and for the model alone and their late or
   missed dates over the reads, its lede, description and timeline caption are the final run's, and its footer names
   the hash of ``presentation.json`` (:func:`presentation_sha256`), the one section 17 lists.
@@ -35,7 +39,7 @@ from typing import Any
 
 from evals.present import PAGES_URL, charts, final, finalcharts, fmt, palette, views
 from evals.present.final import PAGE_BEGIN, PAGE_END
-from evals.present.finalcharts import NONE, WHERE, code, pair_key, points, shown
+from evals.present.finalcharts import NONE, WHERE, code, p_said, pair_key, points, shown
 from evals.present.text import Block, Chart, Marker, Paragraph, Section, Subheading, Table, slug
 
 #: The evaluation card's rows with a final run, in order: the ones every card has (``text``'s) and the final run's.
@@ -53,8 +57,9 @@ CARD = (
     "sources",
     "newest",
 )
-#: The anchors the final run's parts link to (the report's sections 3, 6 and 7) and the final run's subsection.
+#: The anchors the final run's parts link to (the report's sections 3, 6, 7 and 16) and the final run's subsection.
 DATA_ANCHOR, RESULTS_ANCHOR, STATISTICS_ANCHOR = "#3-data-and-labels", "#6-results", "#7-statistics"
+DEVIATIONS_ANCHOR = "#16-deviations"
 FINAL_SUBSECTION = "6.1"
 #: The sections a final run adds after section 15, by number.
 DEVIATIONS_SECTION, PROVENANCE_SECTION = 16, 17
@@ -122,7 +127,13 @@ def card_rows(doc: Mapping[str, Any], common: Mapping[str, Sequence[str]]) -> li
             items=shown["items"],
             clusters=shown["clusters"],
         ),
-        "protocol": view(doc, "card.protocol", anchor=DATA_ANCHOR),
+        "protocol": view(
+            doc,
+            "card.protocol",
+            count=deviation_count(doc),
+            deviations=DEVIATIONS_ANCHOR,
+            anchor=DATA_ANCHOR,
+        ),
         "prereg": view(
             doc,
             "card.prereg",
@@ -139,6 +150,11 @@ def card_rows(doc: Mapping[str, Any], common: Mapping[str, Sequence[str]]) -> li
     return [
         list(common[key]) if key in common else [view(doc, f"card.{key}.label"), own[key]] for key in CARD
     ]
+
+
+def deviation_count(doc: Mapping[str, Any]) -> int:
+    """How many deviations from the pre-registration were recorded at the time (the deviations file's entries)."""
+    return len(_final(doc)["deviations"])
 
 
 def summary(doc: Mapping[str, Any]) -> list[Block]:
@@ -186,11 +202,6 @@ def _margin(doc: Mapping[str, Any]) -> str:
     return final._formatted(_final(doc)["settings"]["noninferiority_margin"], "percent_number", WHERE)
 
 
-def _p(value: float) -> str:
-    """A p-value as the registered sentences print it after "Holm p"."""
-    return final._formatted(value, "p", WHERE)
-
-
 def _bound(doc: Mapping[str, Any], low: float, high: float) -> str:
     """An interval in points, ``[lo, hi]``, or the view template that says no deadline differs (never 0 to 0)."""
     if low == 0 and high == 0:
@@ -210,14 +221,14 @@ def _sentence_code(doc: Mapping[str, Any], slot: str) -> str:
 
 def _verdicts(doc: Mapping[str, Any]) -> Table:
     """The verdict table: each pre-registered comparison, in the registered order of its slot, with what it compares
-    and how it is tested (view templates), its numbers, its role, the analysis's decision and the registered sentence
-    that says it."""
+    and how it is tested (view templates), its numbers, its role and the registered sentence that says its decision
+    (the analysis's own decision code is never shown: ``level_within_noise`` or ``no_clear_difference`` beside an
+    interval that excludes 0 would contradict the registered rules)."""
     shown_ = _final(doc)
     order = list(dict.fromkeys(sentence["slot"] for sentence in shown_["sentences"]["page"]))
     rows = [_verdict(doc, slot, *VERDICTS[slot]) for slot in order if slot in VERDICTS]
     header = [
-        view(doc, f"verdict.col.{name}")
-        for name in ("comparison", "test", "result", "role", "decision", "sentence")
+        view(doc, f"verdict.col.{name}") for name in ("comparison", "test", "result", "role", "sentence")
     ]
     return Table(header, rows, view(doc, "verdict.caption"))
 
@@ -226,7 +237,7 @@ def _verdict(doc: Mapping[str, Any], slot: str, family: str, baseline: str) -> l
     shown_ = _final(doc)
     label = palette.LABELS[baseline]
     sentence = _sentence_code(doc, slot)
-    decisions, roles = shown_["decisions"], shown_["decision_roles"]
+    roles = shown_["decision_roles"]
     if family == "noninferiority":
         bound = shown_["noninferiority"][pair_key(baseline)]
         key = finalcharts.DECISIONS[("F1_accuracy", baseline)]
@@ -249,18 +260,23 @@ def _verdict(doc: Mapping[str, Any], slot: str, family: str, baseline: str) -> l
             result = view(doc, "verdict.result.not_run")
         else:
             row = rows[pair_key(baseline)]
-            result = view(doc, "verdict.result.stability", b=row["b"], c=row["c"], p=_p(row["holm"]))
+            result = view(doc, "verdict.result.stability", b=row["b"], c=row["c"], p=p_said(row["holm"]))
     else:
         row = shown_["families"][family][pair_key(baseline)]
         part = "accuracy" if family == "F1_accuracy" else "harm"
         comparison = view(doc, f"verdict.comparison.{part}", baseline=label)
         if (family, baseline) not in finalcharts.DECISIONS:
-            # described, not tested: no decision and no role
-            return [comparison, view(doc, "verdict.test.described"), shown(doc, row), NONE, NONE, sentence]
+            # described, not tested: no role
+            return [comparison, view(doc, "verdict.test.described"), shown(doc, row), NONE, sentence]
         key = finalcharts.DECISIONS[(family, baseline)]
         test = view(doc, "verdict.test.signflip")
-        result = view(doc, "verdict.result", shown=shown(doc, row), p=_p(row["holm"]))
-    return [comparison, test, result, code(roles.get(key)), code(decisions.get(key)), sentence]
+        result = _result(doc, row)
+    return [comparison, test, result, code(roles.get(key)), sentence]
+
+
+def _result(doc: Mapping[str, Any], row: Mapping[str, Any]) -> str:
+    """A tested comparison's numbers: its difference and interval, and its Holm p as the sentences print it."""
+    return view(doc, "verdict.result", shown=shown(doc, row), p=p_said(row["holm"]))
 
 
 def final_run(doc: Mapping[str, Any]) -> list[Block]:
@@ -333,12 +349,19 @@ def _stability_cell(doc: Mapping[str, Any], rows: Mapping[str, Any] | None) -> s
     if rows is None:
         return NONE
     row = rows[pair_key("llm_only")]
-    return view(doc, "results.final.sens.stability", b=row["b"], c=row["c"], p=fmt.p_value(row["holm"]))
+    return view(doc, "results.final.sens.stability", b=row["b"], c=row["c"], p=p_said(row["holm"]))
+
+
+def _count(value: Any) -> str:
+    return NONE if value is None else str(value)
 
 
 def _sensitivities(doc: Mapping[str, Any]) -> list[Block]:
-    """Each sensitivity analysis under its own label, beside the primary analysis and never in its place: the
-    deadlines it changes, each side's exact dates, its decisions and the deviations it applies."""
+    """Each sensitivity analysis under its own label, beside the primary analysis and never in its place: the scored
+    answers it changes (``items_changed``, counted over every condition, deadline and read), the deadlines it applies
+    to (the disputed readings' ``tagged_items``; the ``items`` a same-day or same-version steadiness test runs on),
+    each side's exact dates, exact dates against the model alone (its difference, interval and Holm p, never a
+    decision code), steadiness against the model alone and the deviations it applies."""
     shown_ = _final(doc)
     conditions = shown_["conditions"]
     alike = view(doc, "results.final.sens.same")
@@ -346,24 +369,26 @@ def _sensitivities(doc: Mapping[str, Any]) -> list[Block]:
         [
             view(doc, "results.final.sens.primary"),
             NONE,
+            NONE,
             fmt.pct(conditions["ordnung"]["mean_accuracy"]["value"]),
             fmt.pct(conditions["llm_only"]["mean_accuracy"]["value"]),
-            code(shown_["decisions"]["beats_llm_only"]),
+            _result(doc, shown_["families"]["F1_accuracy"][pair_key("llm_only")]),
             _stability_cell(doc, shown_["families"]["F3_stability"]),
             NONE,
         ]
     ]
     for name, block in shown_["sensitivities"].items():
         primary = bool(block.get("same_as_primary"))
-        items = block.get("items_changed", block.get("items"))
+        changed = _count(block.get("items_changed"))
+        items = _count(block.get("tagged_items", block.get("items")))
         if "not_run" in block:
             exact = [view(doc, "results.final.sens.not_run"), NONE]
         elif "conditions" in block:
             exact = [fmt.pct(block["conditions"][c]["mean_accuracy"]) for c in ("ordnung", "llm_only")]
         else:
             exact = [alike, alike] if primary else [NONE, NONE]
-        if "decisions" in block:
-            accuracy = code(block["decisions"].get("beats_llm_only"))
+        if "F1_accuracy" in block:
+            accuracy = _result(doc, block["F1_accuracy"][pair_key("llm_only")])
         else:
             accuracy = alike if primary else NONE
         if "F3_stability" in block:
@@ -373,7 +398,8 @@ def _sensitivities(doc: Mapping[str, Any]) -> list[Block]:
         rows.append(
             [
                 view(doc, f"results.final.sens.{name}"),
-                NONE if items is None else str(items),
+                changed,
+                items,
                 *exact,
                 accuracy,
                 stability,
@@ -382,7 +408,16 @@ def _sensitivities(doc: Mapping[str, Any]) -> list[Block]:
         )
     header = [
         view(doc, f"results.final.sens.col.{column}")
-        for column in ("analysis", "items", "ordnung", "alone", "accuracy", "stability", "deviations")
+        for column in (
+            "analysis",
+            "changed",
+            "items",
+            "ordnung",
+            "alone",
+            "accuracy",
+            "stability",
+            "deviations",
+        )
     ]
     return [
         Paragraph(view(doc, "results.final.sens.lead")),
@@ -453,6 +488,8 @@ def statistics(doc: Mapping[str, Any]) -> list[Block]:
 
 
 def _noninferiority(doc: Mapping[str, Any]) -> Table:
+    """The non-inferiority bound against the agent: its margin, estimate, bound and errors, and the registered
+    sentence that says its decision (the agent's; a pair no slot says has none)."""
     rows = [
         [
             palette.LABELS[pair.split("-vs-", 1)[1]],
@@ -461,7 +498,7 @@ def _noninferiority(doc: Mapping[str, Any]) -> Table:
             _bound(doc, block["lo"], block["hi"]),
             str(block["errors"]["ours"]),
             str(block["errors"]["theirs"]),
-            code(block["decision"]),
+            _sentence_code(doc, "agent") if pair == pair_key(final.AGENT) else NONE,
         ]
         for pair, block in _final(doc)["noninferiority"].items()
     ]
@@ -469,14 +506,15 @@ def _noninferiority(doc: Mapping[str, Any]) -> Table:
         view(doc, "stats.noninferiority.col.bound", level=_level(doc))
         if column == "bound"
         else view(doc, f"stats.noninferiority.col.{column}")
-        for column in ("pair", "margin", "estimate", "bound", "ours", "theirs", "decision")
+        for column in ("pair", "margin", "estimate", "bound", "ours", "theirs", "sentence")
     ]
     return Table(header, rows, view(doc, "stats.noninferiority.caption"))
 
 
 def _stability(doc: Mapping[str, Any]) -> list[Block]:
     """The stability test, Ordnung against each baseline: the deadlines whose date changed between reads for only one
-    of the two, the difference with its Bonett–Price interval, the mid-p and its Holm adjustment."""
+    of the two, the difference with its Bonett–Price interval, the mid-p and its Holm adjustment, and for the model
+    alone (the registered comparison) the registered sentence that says its decision."""
     shown_ = _final(doc)
     family = shown_["families"]["F3_stability"]
     if family is None:
@@ -499,14 +537,14 @@ def _stability(doc: Mapping[str, Any]) -> list[Block]:
                 difference,
                 finalcharts.p_value(row["midp"]),
                 finalcharts.p_value(row["holm"]),
-                code(shown_["decisions"].get(STABILITY)) if baseline == "llm_only" else NONE,
+                _sentence_code(doc, "stability") if baseline == "llm_only" else NONE,
             ]
         )
     header = [
         view(doc, "stats.stability.col.diff", level=_level(doc))
         if column == "diff"
         else view(doc, f"stats.stability.col.{column}")
-        for column in ("pair", "n", "b", "c", "diff", "midp", "holm", "decision")
+        for column in ("pair", "n", "b", "c", "diff", "midp", "holm", "sentence")
     ]
     return [Table(header, rows, view(doc, "stats.stability.caption"))]
 
@@ -585,12 +623,15 @@ def gallery(doc: Mapping[str, Any]) -> list[Block]:
 
 
 def limitations(doc: Mapping[str, Any]) -> list[str]:
-    """Section 14 with a final run: what its numbers cannot say, and what the earlier splits' cannot."""
+    """Section 14 with a final run: what its numbers cannot say, and what the earlier splits' cannot. The reads measure
+    run-to-run noise only when there are two or more (the registered ``limitations.reads`` is quiet with one); with one
+    read it says that none was measured."""
     shown_ = _final(doc)
+    reads = "limitations.reads" if int(shown_["reads"]) >= 2 else "limitations.reads.one"
     return [
         view(doc, "limitations.synthetic"),
         view(doc, "limitations.pooled", anchor=_anchor(doc, "provenance.title", PROVENANCE_SECTION)),
-        view(doc, "limitations.reads", reads=shown_["reads"], registered=shown_["reads_registered"]),
+        view(doc, reads, reads=shown_["reads"], registered=shown_["reads_registered"]),
         view(doc, "limitations.labels"),
         view(doc, "limitations.kinds", anchor=RESULTS_ANCHOR),
         view(doc, "limitations.land", anchor=RESULTS_ANCHOR),
@@ -724,8 +765,8 @@ def presentation_sha256(doc: Mapping[str, Any]) -> str:
 
 
 def page_lede(doc: Mapping[str, Any]) -> str:
-    """The report page's lede with a final run."""
-    return view(doc, "site.lede")
+    """The report page's lede with a final run, with the count of deviations recorded at the time."""
+    return view(doc, "site.lede", count=deviation_count(doc))
 
 
 def page_description(doc: Mapping[str, Any]) -> str:
@@ -775,8 +816,16 @@ def page_footer(doc: Mapping[str, Any]) -> str:
 
 
 def timeline_caption(doc: Mapping[str, Any]) -> str:
-    """The timeline's "What this shows" with a final run: the final run's splits read as pre-registered."""
-    return view(doc, "chart.timeline.caption")
+    """The timeline's "What this shows" with a final run: the final run's splits read under the pre-registration, with
+    the count of deviations recorded at the time."""
+    return view(doc, "chart.timeline.caption", count=deviation_count(doc))
+
+
+def data_note(doc: Mapping[str, Any]) -> Paragraph:
+    """Section 3's note with a final run: which rows of its timeline and table are the final run's, and that the earlier
+    held-out splits' are as recorded, not pre-registered."""
+    final_splits = [row["split"] for row in doc["splits"] if row["split"] in finalcharts.SPLITS]
+    return Paragraph(view(doc, "data.note", splits=fmt.join(final_splits), results=RESULTS_ANCHOR))
 
 
 def kind(doc: Mapping[str, Any], name: str) -> str:

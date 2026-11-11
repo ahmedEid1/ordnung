@@ -529,9 +529,16 @@ def _task(doc: Mapping[str, Any]) -> Section:
 
 def _data(doc: Mapping[str, Any]) -> Section:
     header, rows = charts.table("timeline", doc)
+    note: list[Block] = []
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        # which rows are the final run's, and that the earlier held-out splits' are as recorded
+        note = [finaltext.data_note(doc)]
     return Section(
         "3. Data and labels",
         [
+            *note,
             Paragraph(
                 "The letters are synthetic: code writes them (`evals/gen/`) from templates with a known answer, as "
                 "PDFs and as phone photos of them. Each label is the generator's own arithmetic, checked again by "

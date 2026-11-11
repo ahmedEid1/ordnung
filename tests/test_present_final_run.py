@@ -1084,27 +1084,46 @@ def _baselines(doc: dict[str, Any]) -> list[str]:
 @pytest.mark.parametrize("name", ["good", "bad", "undecided", "not_confirmed", "realistic"])
 def test_the_forest_chart_s_numbers_are_the_sentences_numbers(made: Callable[[str], Made], name: str) -> None:
     """The forest of the final run, Ordnung minus each baseline for exact dates and for late or missed ones, shows
-    each comparison's difference and bootstrap interval in the format its registered sentence prints them, beside
-    its sign-flip and Holm p; the agent's sentence prints the non-inferiority bound, which the statistics show."""
+    each comparison's difference and interval as its registered sentence prints them, every comparison's, the agent's
+    included: exact dates against the agent are the non-inferiority test's bound, with no sign-flip or Holm p beside it,
+    and harm against the agent is described, not tested, so it has no p and no power either."""
     doc = made(name).doc
     shown = doc["final"]
-    _, rows = charts.table("final-differences", doc)
+    header, rows = charts.table("final-differences", doc)
+    assert header[6] == views.fill(shown["views"], "chart.final-differences.col.test")
     pairs = [(family, b) for family in ("F1_accuracy", "F2_harm") for b in _baselines(doc)]
     assert [row[0] for row in rows] == [palette.LABELS[b] for _, b in pairs]
+    bound = shown["noninferiority"][f"ordnung-vs-{final.AGENT}"]
     for (family, baseline), row in zip(pairs, rows, strict=True):
         pair = shown["families"][family][f"ordnung-vs-{baseline}"]
+        lo, hi = (
+            (bound["lo"], bound["hi"])
+            if (family, baseline) == ("F1_accuracy", final.AGENT)
+            else (
+                pair["lo"],
+                pair["hi"],
+            )
+        )
         numbers = _POINTS.findall(row[2])
         said = _POINTS.findall(_slot_text(doc, SLOTS[(family, baseline)]))
         assert numbers[0] == said[0] == _points(pair["diff"]), (family, baseline)
-        if pair["lo"] == pair["hi"] == 0:
+        if lo == hi == 0:
             assert numbers == [_points(pair["diff"])]
         else:
-            assert numbers == [_points(pair["diff"]), _points(pair["lo"]), _points(pair["hi"])]
-            if (family, baseline) != ("F1_accuracy", final.AGENT):
-                assert numbers == said[:3], (family, baseline)
-        assert row[3:5] == [fmt.p_value(pair["p"]), fmt.p_value(pair["holm"])]
-    bound = shown["noninferiority"][f"ordnung-vs-{final.AGENT}"]
-    assert _POINTS.findall(_slot_text(doc, "agent"))[1:3] == [_points(bound["lo"]), _points(bound["hi"])]
+            assert numbers == [_points(pair["diff"]), _points(lo), _points(hi)] == said[:3], (
+                family,
+                baseline,
+            )
+        if (family, baseline) == ("F1_accuracy", final.AGENT):
+            assert row[3:5] == ["—", "—"] and row[6] == views.fill(
+                shown["views"], "verdict.test.noninferiority", level="95"
+            )
+        elif family == "F2_harm" and baseline == final.AGENT:
+            assert row[3:6] == ["—", "—", "—"]
+            assert row[6] == views.fill(shown["views"], "verdict.test.described")
+        else:
+            assert row[3:5] == [fmt.p_value(pair["p"]), fmt.p_value(pair["holm"])]
+            assert row[6] == views.fill(shown["views"], "verdict.test.signflip")
     assert "[+0.0, +0.0]" not in " ".join(cell for row in rows for cell in row)
 
 
@@ -1177,7 +1196,8 @@ def test_every_final_chart_names_itself_every_value_and_has_its_table(
         assert row[0] in description, (name, row[0])
         for cell in row[1:]:
             plain = cell.replace("`", "")
-            assert plain in description or plain in unescaped, (name, cell)
+            # a dash is no value: the comparison has none (described, or bounded with no p)
+            assert plain == finalcharts.NONE or plain in description or plain in unescaped, (name, cell)
     titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
     assert len(titled) >= len(rows)
     series = {palette.LIGHT[c] for c in palette.CONDITIONS} | {palette.DARK[c] for c in palette.CONDITIONS}
@@ -1279,9 +1299,10 @@ def _template_pattern(template: str) -> re.Pattern[str]:
 
 
 def test_every_final_caption_is_a_filled_view_template(made: Callable[[str], Made]) -> None:
-    """Each final chart's "What this shows" is its view template filled with values only: numbers, and the code of a
-    registered sentence, never a word chosen for the result."""
+    """Each final chart's "What this shows" is its view template filled with numbers only, never a word chosen for the
+    result nor a code, and it names all four conditions by their registered names, the one that beats Ordnung too."""
     templates = _views()["templates"]
+    names = final.load_templates()["conditions"]
     for name in ("good", "bad", "one_read", "realistic"):
         doc = made(name).doc
         for chart in _final_charts(doc):
@@ -1290,9 +1311,9 @@ def test_every_final_caption_is_a_filled_view_template(made: Callable[[str], Mad
             match = _template_pattern(templates[caption.key]["text"]).fullmatch(caption)
             assert match, (chart, caption)
             for value in match.groupdict().values():
-                assert not re.search(r"[A-Za-z]", value) or re.fullmatch(r"[a-z_]+(?:\.[a-z_]+)+", value), (
-                    value
-                )
+                assert not re.search(r"[A-Za-z`]", value), value
+            for condition in final.CONDITIONS:
+                assert names[condition] in caption, (chart, condition)
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1405,18 +1426,24 @@ def test_the_final_report_s_prose_is_registered_or_templated(
 
 
 @pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
-def test_the_verdict_table_shows_decision_codes_not_words(made: Callable[[str], Made], name: str) -> None:
+def test_the_verdict_table_says_each_decision_by_its_registered_sentence_code_only(
+    made: Callable[[str], Made], name: str
+) -> None:
     """The summary's verdict table has one row per pre-registered comparison, in the registered order: what it
-    compares and how it is tested (view templates), its numbers, its role, the analysis's decision code and the code
-    of the registered sentence that says it; no verdict in words of its own."""
+    compares and how it is tested (view templates), its numbers, its role and the code of the registered sentence that
+    says it. The analysis's own decision code (``level_within_noise``, ``no_clear_difference`` with an interval that
+    excludes 0) is never shown: the registered sentence is the decision a reader sees."""
     doc = made(name).doc
     shown = doc["final"]
     table = _table(finaltext.summary(doc), "verdict.caption")
     assert all(isinstance(cell, views.Filled) for cell in table.header)
+    assert [cell.key for cell in table.header] == [
+        f"verdict.col.{column}" for column in ("comparison", "test", "result", "role", "sentence")
+    ]
     assert len(table.rows) == len(VERDICTS)
     page = shown["sentences"]["page"]
     for (slot, key), row in zip(VERDICTS, table.rows, strict=True):
-        comparison, test, result, role, decision, sentence = row
+        comparison, test, result, role, sentence = row
         assert isinstance(comparison, views.Filled) and isinstance(test, views.Filled)
         assert isinstance(result, views.Filled) or _no_words(result), result
         codes = [
@@ -1425,13 +1452,7 @@ def test_the_verdict_table_shows_decision_codes_not_words(made: Callable[[str], 
             if s["slot"] == slot and s["code"].split(".")[1] not in ("intro", "deviations")
         ]
         assert sentence == f"`{codes[0]}`", slot
-        if key is None:
-            assert (role, decision) == ("—", "—")
-            continue
-        assert role == f"`{shown['decision_roles'][key]}`"
-        value = shown["decisions"][key]
-        expected = "—" if value is None else f"`{json.dumps(value) if isinstance(value, bool) else value}`"
-        assert decision == expected, slot
+        assert role == ("—" if key is None else f"`{shown['decision_roles'][key]}`"), slot
     assert table.rows[0][3] == "`confirmatory`"
 
 
@@ -1630,12 +1651,45 @@ def test_a_read_not_run_is_said_with_its_deviation(made: Callable[[str], Made], 
     assert all(len(row[3].split(" · ")) == len(shown["reads_used"]) for row in rows)
 
 
+#: The sensitivity table's columns, in order.
+SENSITIVITY_COLUMNS = (
+    "analysis",
+    "changed",
+    "items",
+    "ordnung",
+    "alone",
+    "accuracy",
+    "stability",
+    "deviations",
+)
+
+
+def _said_p(value: float) -> str:
+    """A p-value as the registered sentences print it after "Holm p" (``= 0.020``, ``< 0.001``)."""
+    return final._formatted(value, "p", "test")
+
+
+def _difference(doc: dict[str, Any], row: dict[str, Any]) -> str:
+    """Exact dates against the model alone, as the summary's verdict table words a comparison."""
+    shown = (
+        views.fill(doc["final"]["views"], "chart.final-differences.none", d=_points(row["diff"]))
+        if row["lo"] == row["hi"] == 0
+        else f"{_points(row['diff'])} [{_points(row['lo'])}, {_points(row['hi'])}]"
+    )
+    return views.fill(doc["final"]["views"], "verdict.result", shown=shown, p=_said_p(row["holm"]))
+
+
 def test_sensitivities_sit_beside_the_primary_under_their_labels(made: Callable[[str], Made]) -> None:
     """Each sensitivity analysis is a row under its own label beside the primary analysis, with its own numbers;
-    the headline, the summary and the charts keep the primary's."""
+    the headline, the summary and the charts keep the primary's. The scored answers a sensitivity changes (counted
+    over every condition, deadline and read) and the deadlines it applies to are two columns, each under its own
+    words; exact dates against the model alone are its numbers, never the analysis's decision code."""
     _, doc, outputs = made("bad")
     shown = doc["final"]
     table = _table(finaltext.final_run(doc), "results.final.sens.caption")
+    assert [cell.key for cell in table.header] == [
+        f"results.final.sens.col.{column}" for column in SENSITIVITY_COLUMNS
+    ]
     names = [name for name in finalrun.SENSITIVITIES if name in shown["sensitivities"]]
     assert [row[0] for row in table.rows] == [
         views.fill(shown["views"], f"results.final.sens.{name}") for name in ("primary", *names)
@@ -1643,10 +1697,15 @@ def test_sensitivities_sit_beside_the_primary_under_their_labels(made: Callable[
     primary, s_conv = table.rows[0], table.rows[1]
     ours = shown["conditions"]["ordnung"]["mean_accuracy"]["value"]
     sensitivity = shown["sensitivities"]["s_conv"]
-    assert primary[2] == fmt.pct(ours)
-    assert s_conv[1] == str(sensitivity["items_changed"])
-    assert s_conv[2] == fmt.pct(sensitivity["conditions"]["ordnung"]["mean_accuracy"]) != primary[2]
-    assert s_conv[4] == f"`{sensitivity['decisions']['beats_llm_only']}`"
+    assert primary[1:3] == ["—", "—"] and primary[3] == fmt.pct(ours)
+    assert primary[5] == _difference(doc, shown["families"]["F1_accuracy"]["ordnung-vs-llm_only"])
+    assert s_conv[1] == str(sensitivity["items_changed"]) == "14"
+    assert s_conv[2] == str(sensitivity["tagged_items"]) == "11"
+    assert s_conv[3] == fmt.pct(sensitivity["conditions"]["ordnung"]["mean_accuracy"]) != primary[3]
+    assert s_conv[5] == _difference(doc, sensitivity["F1_accuracy"]["ordnung-vs-llm_only"])
+    # the registered sentence beside it counts the same deadlines
+    (said,) = [s["text"] for s in shown["sentences"]["page"] if s["code"] == "limitations.s_conv"]
+    assert f" {s_conv[2]} of {shown['items']} " in said
     summary = _table(finaltext.summary(doc), "summary.caption")
     (row,) = [row for row in summary.rows if row[0] == "Ordnung"]
     assert row[1].startswith(fmt.pct(ours))
@@ -1656,22 +1715,79 @@ def test_sensitivities_sit_beside_the_primary_under_their_labels(made: Callable[
     assert final_run.index(final.PAGE_END) < final_run.index(f"| {label} | {s_conv[1]} | {s_conv[2]} |")
 
 
+def test_a_same_day_or_same_version_steadiness_test_counts_the_deadlines_in_it_not_changes(
+    tmp_path: Path,
+) -> None:
+    """The steadiness tests on the deadlines whose reads share one day or one version of Claude Code run on a subset:
+    its size is the deadlines they apply to, never a count of answers they change."""
+    doc, src = hf.scenario("good")
+    primary = doc["primary"]
+    doc["sensitivities"]["same_day_f3"] = {"items": primary["items"], "same_as_primary": True}
+    doc["sensitivities"]["same_cli_f3"] = {
+        "versions": ["2.1.0", "2.1.1"],
+        "items": 40,
+        "F3_stability": copy.deepcopy(primary["families"]["F3_stability"]),
+    }
+    root = hf.final_root(tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()))
+    built = model.build(root / "evals" / "results")
+    table = _table(finaltext.final_run(built), "results.final.sens.caption")
+    rows = {row[0]: row for row in table.rows}
+    alike = views.fill(built["final"]["views"], "results.final.sens.same")
+    same_day = rows[views.fill(built["final"]["views"], "results.final.sens.same_day_f3")]
+    assert same_day[1:3] == ["—", str(primary["items"])]
+    assert same_day[3:7] == [alike] * 4
+    same_cli = rows[views.fill(built["final"]["views"], "results.final.sens.same_cli_f3")]
+    assert same_cli[1:3] == ["—", "40"]
+    row = primary["families"]["F3_stability"]["ordnung-vs-llm_only"]
+    assert same_cli[6] == views.fill(
+        built["final"]["views"],
+        "results.final.sens.stability",
+        b=row["b"],
+        c=row["c"],
+        p=_said_p(row["holm"]),
+    )
+
+
+def test_a_real_analysis_counts_the_answers_a_disputed_reading_changes_apart_from_its_deadlines(
+    tmp_path: Path,
+) -> None:
+    """On a real ``evals.analysis`` final whose disputed readings change more scored answers than they tag deadlines
+    (every condition and read that gave the other reading), the table shows each number under its own words, and the
+    deadlines are the ones the registered sentence counts."""
+    doc, src, reads = hf.realistic(conventions=hf.DISPUTED)
+    s_conv = doc["sensitivities"]["s_conv"]
+    assert s_conv["items_changed"] > s_conv["tagged_items"] > 0
+    root = hf.final_root(
+        tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()), reads=reads
+    )
+    built = model.build(root / "evals" / "results")
+    table = _table(finaltext.final_run(built), "results.final.sens.caption")
+    (row,) = [
+        row
+        for row in table.rows
+        if row[0] == views.fill(built["final"]["views"], "results.final.sens.s_conv")
+    ]
+    assert row[1:3] == [str(s_conv["items_changed"]), str(s_conv["tagged_items"])]
+    (said,) = [s["text"] for s in built["final"]["sentences"]["page"] if s["code"] == "limitations.s_conv"]
+    assert f" {s_conv['tagged_items']} of {built['final']['items']} " in said
+
+
 @pytest.mark.parametrize("name", ["good", "realistic"])
 def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Made], name: str) -> None:
     """With a final run, section 3's timeline and table show holdout4 (and the new kinds) as recorded: when, how many
-    reads, Ordnung's exact dates over them, and the split's part in the words of the view templates; never "not yet
-    written"."""
+    reads, Ordnung's exact dates, and the split's part in the words of the view templates; never "not yet written".
+    holdout4's are Ordnung's mean over the reads, the analysis's own number, said as such beside its count of
+    deadlines (never answers summed over the reads); the new kinds', read once, their count of that read. The section
+    says which of its rows are the final run's and which the earlier held-out splits', as recorded."""
     _, doc, outputs = made(name)
     shown = doc["final"]
     assert shown["split"] == "holdout4"
     rows = {row["split"]: row for row in doc["splits"]}
     held = rows["holdout4"]
-    assert held["role"] == views.fill(shown["views"], "split.role.holdout4")
-    exact = shown["conditions"]["ordnung"]["exact_per_read"]
-    assert (held["ordnung"]["k"], held["ordnung"]["n"]) == (
-        sum(rate["k"] for rate in exact),
-        sum(rate["n"] for rate in exact),
-    )
+    deviations = len(shown["deviations"])
+    assert held["role"] == views.fill(shown["views"], "split.role.holdout4", count=deviations)
+    mean = shown["conditions"]["ordnung"]["mean_accuracy"]
+    assert held["ordnung"] == {"value": mean["value"], "ci": mean["ci"]}
     assert held["recordings"] == len(shown["reads_used"])
     dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == shown["split"])
     assert held["recorded"] == (dates[0] if dates else shown["date"])
@@ -1680,8 +1796,19 @@ def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Ma
     assert newkinds["ordnung"]["k"] == shown["newkinds"]["conditions"]["ordnung"]["exact"]["k"]
     _, table = charts.table("timeline", doc)
     (row,) = [row for row in table if row[0] == "holdout4"]
-    assert row[1] == held["recorded"] and row[5] == fmt.of(held["ordnung"])
+    assert row[1] == held["recorded"] and row[3] == str(shown["items"])
+    assert row[5] == views.fill(shown["views"], "chart.timeline.mean", value=fmt.pct(mean["value"]))
     assert row[4] == views.fill(shown["views"], "split.short.holdout4")
+    (row,) = [row for row in table if row[0] == "newkinds"]
+    assert row[5] == fmt.of(newkinds["ordnung"])
+    exact = shown["conditions"]["ordnung"]["exact_per_read"]
+    summed = f"{sum(rate['k'] for rate in exact)} of {sum(rate['n'] for rate in exact)}"
+    data = _flat(_section(outputs["docs/evals.md"], "3. Data and labels"))
+    note = views.fill(
+        shown["views"], "data.note", splits="holdout4 and newkinds", results=finaltext.RESULTS_ANCHOR
+    )
+    assert note in data and data.index(note) < data.index("| Split |")
+    assert summed not in data and summed not in charts.svg("timeline", doc)
     for content in (
         outputs["docs/evals.md"],
         outputs["evals/present/presentation.json"],
@@ -1725,6 +1852,96 @@ def test_the_pooled_numbers_carry_their_not_pre_registered_label_with_a_final(
     limitations = _section(report, "14. Limitations")
     assert f"`{doc['final']['model']}`" in limitations and "**not pre-registered**" in limitations
     assert "#17-provenance" in limitations and "\n## 17. Provenance\n" in report
+
+
+@pytest.mark.parametrize("name", ["good", "two_reads", "one_read"])
+def test_the_reads_limitation_says_run_to_run_noise_only_when_the_reads_measured_it(
+    made: Callable[[str], Made], name: str
+) -> None:
+    """With two reads or more, section 14 says the reads were recorded within days, so they measure run-to-run noise.
+    With one read the registered rules say nothing of the kind (``limitations.reads`` is quiet), and section 14 says
+    only that no run-to-run noise was measured."""
+    _, doc, outputs = made(name)
+    shown = doc["final"]
+    limitations = _flat(_section(outputs["docs/evals.md"], "14. Limitations"))
+    values = {"reads": shown["reads"], "registered": shown["reads_registered"]}
+    measured = views.fill(shown["views"], "limitations.reads", **values)
+    unmeasured = views.fill(shown["views"], "limitations.reads.one", **values)
+    if int(shown["reads"]) >= 2:
+        assert measured in limitations and unmeasured not in limitations
+    else:
+        assert unmeasured in limitations and measured not in limitations
+        assert "they measure run-to-run noise" not in limitations
+        assert all(s["slot"] != "limitations.reads" for s in shown["sentences"]["page"])
+
+
+def test_the_final_run_s_protocol_words_name_the_deviations_recorded_at_the_time(
+    made: Callable[[str], Made],
+) -> None:
+    """The card, the timeline's caption, holdout4's part in the protocol and the page's lede say the final run was read
+    under its pre-registration with the count of deviations recorded at the time, never that it was read as registered
+    whatever the deviations; and the writers are said to be kept from the reading code, the prompts and every result,
+    which is what their sandbox kept them from."""
+    raw = views.VIEWS_PATH.read_text(encoding="utf-8")
+    for claim in (
+        "read as registered",
+        "read as pre-registered",
+        "whatever the earlier reads showed",
+        "isolated from the code,",
+    ):
+        assert claim not in raw, claim
+    for name in ("good", "bad"):
+        _, doc, outputs = made(name)
+        shown = doc["final"]
+        count = len(shown["deviations"])
+        assert (count > 0) == (name == "bad")
+        protocol = views.fill(
+            shown["views"],
+            "card.protocol",
+            count=count,
+            deviations=finaltext.DEVIATIONS_ANCHOR,
+            anchor=finaltext.DATA_ANCHOR,
+        )
+        assert _card(outputs["docs/evals.md"])["Held-out protocol"] == protocol
+        assert "isolated from the reading code, the prompts and every result" in protocol
+        assert f": {count} " in protocol
+        assert site.caption("timeline", doc) == views.fill(
+            shown["views"], "chart.timeline.caption", count=count
+        )
+        (held,) = [row for row in doc["splits"] if row["split"] == "holdout4"]
+        assert held["role"] == views.fill(shown["views"], "split.role.holdout4", count=count)
+        assert finaltext.page_lede(doc) == views.fill(shown["views"], "site.lede", count=count)
+        for said in (site.caption("timeline", doc), held["role"], finaltext.page_lede(doc)):
+            assert f": {count})" in said, said
+
+
+#: A p-value printed after "Holm p", "Holm mid-p" or "sign-flip p" without the registered format's sign.
+_BARE_P = re.compile(r"\b(?:Holm (?:mid-)?|sign-flip )p (?=[0-9])")
+
+
+def _site_texts(doc: dict[str, Any], out: Path) -> dict[str, str]:
+    """The report page of ``doc``, built into ``out``: every file a reader opens (the page, its CSVs and charts)."""
+    site.build_site(doc, out)
+    return {
+        f"site/{path.name}": path.read_text(encoding="utf-8")
+        for path in sorted(out.iterdir())
+        if path.suffix in (".html", ".csv", ".svg")
+    }
+
+
+@pytest.mark.parametrize("name", ["bad", "undecided", "realistic"])
+def test_every_p_a_template_prints_after_holm_or_sign_flip_is_in_the_registered_format(
+    made: Callable[[str], Made], name: str, tmp_path: Path
+) -> None:
+    """One Holm p is printed one way: wherever a template says "Holm p", "Holm mid-p" or "sign-flip p" before a value,
+    the value is in the registered sentences' format (``= 0.020``, ``< 0.001``), in the report, the README, the charts
+    and the page; a table cell under such a heading holds the number alone."""
+    _, doc, outputs = made(name)
+    texts = {**outputs, **_site_texts(doc, tmp_path / "site")}
+    found = {relative: _BARE_P.findall(content) for relative, content in texts.items()}
+    assert {relative: hits for relative, hits in found.items() if hits} == {}
+    _, rows = charts.table("final-differences", doc)
+    assert not [cell for row in rows for cell in row[3:5] if cell.startswith("=")]
 
 
 # --------------------------------------------------------------------------------------------------
@@ -1840,7 +2057,9 @@ def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_proven
             views.fill(templates, "site.tile.alone", interval=interval(alone)),
         ),
     ]
-    lede, description = views.fill(templates, "site.lede"), views.fill(templates, "site.description")
+    count = len(shown["deviations"])
+    lede = views.fill(templates, "site.lede", count=count)
+    description = views.fill(templates, "site.description")
     assert f'<p class="lede">{html.escape(lede, quote=False)}</p>' in page
     assert f'<meta name="description" content="{html.escape(description)}">' in page
     assert html.escape(site.DESCRIPTION) not in page and "held out)</span>" not in page
@@ -1854,7 +2073,7 @@ def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_proven
     assert ('<figure id="final-stability">' in page) == (int(shown["reads"]) >= 2)
     timeline = page.split('<figure id="timeline">', 1)[1].split("</figure>", 1)[0]
     caption = html.unescape(timeline.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0])
-    assert caption == "What this shows: " + views.fill(templates, "chart.timeline.caption")
+    assert caption == "What this shows: " + views.fill(templates, "chart.timeline.caption", count=count)
 
     # every section in the contents, the deviations and the provenance last; the final run's tables
     sections = text.sections(doc)
@@ -2049,6 +2268,122 @@ def test_every_synthetic_final_renders_through_the_whole_presenter(name: str, tm
         assert str(tmp_path) not in content and str(hf.ROOT) not in content, relative
 
 
+#: A difference's interval as the pages print one: ``[lo, hi]`` or ``lo to hi``, each end a signed number of points.
+_INTERVAL = re.compile(r"([+−-]\d+(?:\.\d+)?)(?:, | to )([+−-]\d+(?:\.\d+)?)")
+_NO_CLEAR = re.compile(r"no[ _]clear[ _]difference", re.IGNORECASE)
+
+
+def _number(value: str) -> float:
+    return float(value.replace("−", "-"))
+
+
+def _units(relative: str, content: str) -> list[str]:
+    """A reader's units of an output: a table row, a CSV line, or a sentence of a paragraph (wrapped lines joined),
+    tags dropped, so that a row's interval and its words are one unit."""
+    if relative.endswith(".csv"):
+        return content.splitlines()
+    if relative.endswith((".html", ".svg")):
+        content = re.sub(
+            r"</tr>|</p>|</li>|</h\d>|</caption>|</figcaption>|</title>|</desc>|<br\s*/?>", "\n\n", content
+        )
+        content = re.sub(r"</t[dh]>", " | ", content)
+        content = html.unescape(re.sub(r"<[^>]+>", " ", content))
+    units: list[str] = []
+    for block in re.split(r"\n\s*\n", content):
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        rows = [line for line in lines if line.startswith("|") or " | " in line]
+        units += rows
+        prose = " ".join(line for line in lines if line not in rows)
+        units += re.split(r"(?<=[.!?])\s+(?=[A-Z*`(\[])", prose) if prose else []
+    return units
+
+
+def _clauses(unit: str) -> list[str]:
+    """A unit's clauses: its parts between semicolons and colons."""
+    return re.split(r"[;:]\s+", unit)
+
+
+def _plain_text(value: str) -> str:
+    """Text without Markdown's links, bold and code marks, its whitespace collapsed."""
+    value = re.sub(r"\[([^\]]+)\]\([^)\s]+\)", r"\1", value)
+    value = _flat(re.sub(r"\*\*|`", "", value))
+    return re.sub(r"\s+([,.;:)])", r"\1", value).replace("( ", "(")
+
+
+@pytest.fixture(scope="module")
+def no_final_units(tmp_path_factory: pytest.TempPathFactory) -> set[str]:
+    """Every unit a reader sees with no final run (the committed README, report, history and charts, and the report
+    page built from the committed ``presentation.json``), as plain text: the earlier held-out splits' own words."""
+    doc = json.loads((hf.ROOT / build.PRESENTATION).read_text(encoding="utf-8"))
+    texts = {
+        relative: (hf.ROOT / relative).read_text(encoding="utf-8")
+        for relative in build.OUTPUT_PATHS
+        if relative != build.PRESENTATION
+    }
+    texts |= _site_texts(doc, tmp_path_factory.mktemp("no-final") / "site")
+    units = [unit for relative, content in texts.items() for unit in _units(relative, content)]
+    # each unit, and each of its clauses (a caption lists the baselines in the page's order, which a final run sets)
+    return {_plain_text(part) for unit in units for part in (unit, *_clauses(unit))}
+
+
+def _decision_problems(texts: dict[str, str], codes: set[str], known: set[str]) -> list[tuple[str, str]]:
+    """Where an output says a decision other than by a registered sentence: "within noise", a bare decision code of
+    the analysis, or "no clear difference" beside an interval that excludes 0; a unit the outputs with no final run
+    hold too (the earlier held-out splits' own words) is theirs, not the final run's."""
+    problems: list[tuple[str, str]] = []
+
+    def theirs(unit: str, pattern: str) -> bool:
+        """Every clause of ``unit`` that says ``pattern`` is a clause the outputs hold with no final run."""
+        said = [part for part in _clauses(unit) if re.search(pattern, part, re.IGNORECASE)]
+        return all(_plain_text(part) in known for part in said)
+
+    for relative, content in texts.items():
+        for unit in _units(relative, content):
+            if _plain_text(unit) in known:
+                continue
+            if re.search(r"within[ _]noise", unit, re.IGNORECASE) and not theirs(unit, r"within[ _]noise"):
+                problems.append((relative, unit[:160]))
+            for code_ in codes:
+                # a registered sentence's code (``head.no_clear_difference``) says it; the bare code never stands alone
+                if re.search(rf"(?<![.\w]){re.escape(code_)}(?!\w)", unit):
+                    problems.append((relative, f"{code_}: {unit[:160]}"))
+            if _NO_CLEAR.search(unit):
+                intervals = [(_number(lo), _number(hi)) for lo, hi in _INTERVAL.findall(unit)]
+                if intervals and all(lo <= 0 <= hi for lo, hi in intervals):
+                    continue
+                if not intervals and theirs(unit, _NO_CLEAR.pattern):
+                    continue
+                problems.append((relative, unit[:160]))
+    return problems
+
+
+@pytest.mark.parametrize("name", EVERY_FINAL)
+def test_no_output_of_a_final_prints_the_analysis_s_decision_codes_or_within_noise(
+    name: str, tmp_path: Path, no_final_units: set[str]
+) -> None:
+    """Every page a reader sees of a final run (the README, docs/evals.md, the history, every chart, the report page and
+    its CSVs) says a decision only by the registered sentences: no "within noise", no decision code of the analysis
+    (``level_within_noise``, ``no_clear_difference``) outside a registered sentence's code, and "no clear difference"
+    only where every interval beside it includes 0. The earlier held-out splits' own words, which the outputs hold with
+    no final run too, are theirs."""
+    root = _final_root(tmp_path / "checkout", name)
+    outputs = build.outputs(root)
+    doc = json.loads(outputs[build.PRESENTATION])
+    texts = {path: content for path, content in outputs.items() if path != build.PRESENTATION}
+    texts |= _site_texts(doc, tmp_path / "site")
+    codes = {
+        value
+        for value in (*doc["final"]["decisions"].values(), "level_within_noise", "no_clear_difference")
+        if isinstance(value, str) and "_" in value
+    }
+    assert _decision_problems(texts, codes, no_final_units) == []
+    # the check finds what it looks for: a bare code and a contradicted "no clear difference"
+    planted = {
+        "x.md": "| a | `level_within_noise` |\n\nNo clear difference (+3.0 points, 95 % CI +1.0 to +5.0)."
+    }
+    assert len(_decision_problems(planted, codes, no_final_units)) == 3
+
+
 #: The code at the freeze for the pre-registered final evaluation.
 FREEZE = "f2cacf64771a8736262f52a535d29b79032969c9"
 
@@ -2154,3 +2489,37 @@ def test_the_phase2_record_of_this_tree_checks_clean_and_names_an_edit(tmp_path:
     ]
     assert prereg_hashes.phase2_problems(record, tree, named) == []
     assert prereg_hashes.phase2_problems(record, tree, [{"kind": "budget_cut", "evidence": [views_path]}])
+
+
+#: The patterns the phase-2 record is posted with: the presenter's tree and the inputs of the report page's end-to-end
+#: cases (``web/e2e/eval-report.spec.ts`` runs ``tests/e2e_support/final_report.py``, which builds its synthetic
+#: finals with ``tests/helpers_final.py``), so that a later edit to what the spec checks is named by the check too.
+POSTED_PATTERNS = (
+    *prereg_hashes.PHASE2_PATTERNS,
+    "tests/e2e_support/final_report.py",
+    "tests/helpers_final.py",
+)
+
+
+def test_the_posted_phase2_record_pins_the_inputs_of_the_end_to_end_cases(tmp_path: Path) -> None:
+    """Written with ``--path`` for each posted pattern, the phase-2 record holds the end-to-end cases' script and the
+    synthetic finals it builds beside the presenter's tree and its Playwright spec."""
+    if shutil.which("git") is None or _git("rev-parse", "--verify", "HEAD").returncode != 0:
+        pytest.skip("not a git checkout")
+    assert "tests/e2e_support/final_report.py" in (hf.ROOT / "web" / "e2e" / "eval-report.spec.ts").read_text(
+        encoding="utf-8"
+    )
+    assert "helpers_final" in FINAL_REPORT.read_text(encoding="utf-8")
+    record_path = tmp_path / "phase2.json"
+    arguments = ["--phase2", str(record_path), "--write", "--root", str(hf.ROOT)]
+    for pattern in POSTED_PATTERNS:
+        arguments += ["--path", pattern]
+    assert prereg_hashes.main(arguments) == 0
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record["patterns"] == list(POSTED_PATTERNS)
+    assert {
+        "tests/e2e_support/final_report.py",
+        "tests/helpers_final.py",
+        "web/e2e/eval-report.spec.ts",
+        "evals/present/templates/views.json",
+    } <= set(record["files"])

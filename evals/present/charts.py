@@ -481,7 +481,9 @@ def _timeline_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]],
             else "not yet"
         )
         deadlines = str(split["scored_items"]) if split["recorded"] else "not yet"
-        score = fmt.of(split["ordnung"]) if split.get("ordnung") else "not a held-out number"
+        score = _final_score(doc, split) or (
+            fmt.of(split["ordnung"]) if split.get("ordnung") else "not a held-out number"
+        )
         short = _final_short(doc, split["split"]) or SPLIT_SHORT.get(split["split"], split["role"])
         if split["recorded"] and split.get("photos") is None:
             # a final split shown from the final analysis alone, which does not count photos and adversarial letters
@@ -505,6 +507,22 @@ def _final_short(doc: Mapping[str, Any], split: str) -> str | None:
     from evals.present import finalcharts
 
     return finalcharts.split_short(doc, split)
+
+
+def _final_score(doc: Mapping[str, Any], split: Mapping[str, Any]) -> str | None:
+    """Ordnung's exact dates on the final run's primary split, as the final analysis holds them: the mean over the
+    reads, in a view template's words (``None`` for any other split)."""
+    if doc.get("final") is None or split["split"] != doc["final"]["split"] or not split.get("ordnung"):
+        return None
+    from evals.present import views
+
+    value = fmt.pct(split["ordnung"]["value"])
+    return views.fill(doc["final"]["views"], "chart.timeline.mean", value=value)
+
+
+def _drawn_score(split: Mapping[str, Any], score: str) -> str:
+    """The score under a split's ring: a count as the table gives it, or the final run's mean alone."""
+    return score if "k" in split["ordnung"] else fmt.pct(split["ordnung"]["value"])
 
 
 def _timeline_footnote(doc: Mapping[str, Any]) -> str:
@@ -540,7 +558,8 @@ def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> s
             canvas.text(x, y + 47, row[1], size=11, role="text2", anchor="middle")
             below = canvas.lines(x, y + 64, _wrap(row[4], 18), size=11, gap=15, role="text2", anchor="middle")
             if split.get("ordnung"):
-                canvas.text(x, below + 2, f"Ordnung {row[5]}", size=11, anchor="middle", weight=600)
+                score = _drawn_score(split, row[5])
+                canvas.text(x, below + 2, f"Ordnung {score}", size=11, anchor="middle", weight=600)
         canvas.text(16, height - 10, footnote, size=11, role="text2")
         return canvas.render()
     gap = 76
@@ -558,7 +577,7 @@ def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> s
         canvas.text(40, y + 5, f"{row[0]} · {row[1]}", size=14, weight=600)
         canvas.text(40, y + 25, row[4], size=14, role="text2")
         if split.get("ordnung"):
-            canvas.text(40, y + 45, f"Ordnung {row[5]}", size=14)
+            canvas.text(40, y + 45, f"Ordnung {_drawn_score(split, row[5])}", size=14)
     canvas.lines(12, top + gap * len(splits) - 10, notes, size=14, gap=19, role="text2")
     return canvas.render()
 
