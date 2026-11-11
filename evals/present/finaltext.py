@@ -18,9 +18,12 @@ number; nothing here is worded in code. With a final run:
 * section 11 opens with the final run's failures by id, every late or missed date first; section 14 says the
   limitations a final run leaves; sections 16 and 17 list every deviation as recorded and where every number comes
   from;
-* the sections that show only the earlier held-out splits carry a note that they are as recorded, not pre-registered.
+* the sections that show only the earlier held-out splits carry a note that they are as recorded, not pre-registered;
+* the report page's tiles are the final run's mean accuracy for Ordnung and for the model alone and their late or
+  missed dates over the reads, its lede, description and timeline caption are the final run's, and its footer names
+  the hash of ``presentation.json`` (:func:`presentation_sha256`), the one section 17 lists.
 
-:mod:`evals.present.text` calls these only when ``doc["final"]`` is set.
+:mod:`evals.present.text` and :mod:`evals.present.site` call these only when ``doc["final"]`` is set.
 """
 
 from __future__ import annotations
@@ -700,14 +703,80 @@ def provenance(doc: Mapping[str, Any]) -> list[Block]:
             [view(doc, "provenance.phase2.head"), f"`{shown_['phase2']['head']}`"],
             [view(doc, "provenance.phase2.tree"), f"`{shown_['phase2']['tree_sha256']}`"],
         ]
-    rendered = json.dumps(doc, ensure_ascii=False, indent=1) + "\n"
-    digest = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
-    rows.append([view(doc, "provenance.presentation", file=PRESENTATION), f"`{digest}`"])
+    rows.append([view(doc, "provenance.presentation", file=PRESENTATION), f"`{presentation_sha256(doc)}`"])
     header = [view(doc, "provenance.col.what"), view(doc, "provenance.col.value")]
     return [
         Paragraph(view(doc, "provenance.lead")),
         Table(header, rows, view(doc, "provenance.caption")),
     ]
+
+
+def presentation_sha256(doc: Mapping[str, Any]) -> str:
+    """The sha256 of ``presentation.json`` as rendered from ``doc`` (``model.dumps``, ``site.dumps``): computed, never
+    stored in it."""
+    rendered = json.dumps(doc, ensure_ascii=False, indent=1) + "\n"
+    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+
+# --------------------------------------------------------------------------------------------------
+# The report page
+# --------------------------------------------------------------------------------------------------
+
+
+def page_lede(doc: Mapping[str, Any]) -> str:
+    """The report page's lede with a final run."""
+    return view(doc, "site.lede")
+
+
+def page_description(doc: Mapping[str, Any]) -> str:
+    """The report page's description (its ``<meta name="description">``) with a final run."""
+    return view(doc, "site.description")
+
+
+def _interval(doc: Mapping[str, Any], summary: Mapping[str, Any]) -> str:
+    low, high = summary["mean_accuracy"]["ci"]
+    return view(doc, "interval", level=_level(doc), lo=fmt.num(low), hi=fmt.num(high))
+
+
+def _late_or_missed(summary: Mapping[str, Any]) -> dict[str, int]:
+    """A condition's late or missed dates over the reads: ``k`` and ``n`` summed over every read."""
+    rates = summary["harmful_per_read"]
+    return {"k": sum(int(rate["k"]) for rate in rates), "n": sum(int(rate["n"]) for rate in rates)}
+
+
+def page_tiles(doc: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """The report page's three headline tiles with a final run, ``(value, what it is)``: Ordnung's mean accuracy over
+    the reads with its interval, its late or missed dates over the reads against the model alone's, and the model
+    alone's mean accuracy with its interval."""
+    conditions = _final(doc)["conditions"]
+    ordnung, alone = conditions["ordnung"], conditions["llm_only"]
+    return [
+        (
+            fmt.pct(ordnung["mean_accuracy"]["value"]),
+            view(doc, "site.tile.exact", interval=_interval(doc, ordnung)),
+        ),
+        (fmt.of(_late_or_missed(ordnung)), view(doc, "site.tile.harm", alone=_late_or_missed(alone)["k"])),
+        (
+            fmt.pct(alone["mean_accuracy"]["value"]),
+            view(doc, "site.tile.alone", interval=_interval(doc, alone)),
+        ),
+    ]
+
+
+def page_footer(doc: Mapping[str, Any]) -> str:
+    """The report page footer's sentence with a final run: the hash of ``presentation.json``, the one section 17
+    lists."""
+    return view(
+        doc,
+        "site.footer",
+        sha=presentation_sha256(doc),
+        anchor=_anchor(doc, "provenance.title", PROVENANCE_SECTION),
+    )
+
+
+def timeline_caption(doc: Mapping[str, Any]) -> str:
+    """The timeline's "What this shows" with a final run: the final run's splits read as pre-registered."""
+    return view(doc, "chart.timeline.caption")
 
 
 def kind(doc: Mapping[str, Any], name: str) -> str:

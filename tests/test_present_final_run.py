@@ -19,7 +19,9 @@ import html
 import json
 import re
 import subprocess
+import sys
 from collections.abc import Callable, Iterator
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
@@ -1719,3 +1721,276 @@ def test_the_pooled_numbers_carry_their_not_pre_registered_label_with_a_final(
     limitations = _section(report, "14. Limitations")
     assert f"`{doc['final']['model']}`" in limitations and "**not pre-registered**" in limitations
     assert "#17-provenance" in limitations and "\n## 17. Provenance\n" in report
+
+
+# --------------------------------------------------------------------------------------------------
+# The report page of the final run
+# --------------------------------------------------------------------------------------------------
+
+
+class _Seen(HTMLParser):
+    """A page's text as a reader sees it: no tags, no style, no chart's <title> or <desc>."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in ("style", "title", "desc"):
+            self._skip.append(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._skip and self._skip[-1] == tag:
+            self._skip.pop()
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip:
+            self.parts.append(data)
+
+
+def _seen(page: str) -> str:
+    parser = _Seen()
+    parser.feed(page)
+    return _flat("".join(parser.parts))
+
+
+def _plain(sentence: str) -> str:
+    """A registered sentence as the page shows it: its inline markup (code, bold, links) dropped."""
+    value = re.sub(r"\[([^\]]+)\]\([^)\s]+\)", r"\1", sentence)
+    value = re.sub(r"\*\*(.+?)\*\*", r"\1", value).replace("`", "")
+    return _flat(value)
+
+
+def _tiles(page: str) -> list[tuple[str, str]]:
+    return [
+        (html.unescape(value), html.unescape(label))
+        for value, label in re.findall(
+            r'<li class="tile"><span class="v">(.*?)</span><span class="l">(.*?)</span></li>', page
+        )
+    ]
+
+
+def _harm(summary: dict[str, Any]) -> tuple[int, int]:
+    """Late or missed over the reads: ``(k, n)`` summed over every read."""
+    rates = summary["harmful_per_read"]
+    return sum(int(rate["k"]) for rate in rates), sum(int(rate["n"]) for rate in rates)
+
+
+def _changed(shown: str) -> str:
+    """A sentence's HTML with the last letter a reader sees changed."""
+    depth = 0
+    for i in range(len(shown) - 1, -1, -1):
+        if shown[i] == ">":
+            depth += 1
+        elif shown[i] == "<":
+            depth -= 1
+        elif depth == 0 and shown[i].isalpha():
+            return shown[:i] + ("x" if shown[i] != "x" else "y") + shown[i + 1 :]
+    raise AssertionError("a sentence without a letter")
+
+
+def _captions(blocks: list[text.Block]) -> list[str]:
+    return [block.caption for block in blocks if isinstance(block, text.Table)]
+
+
+@pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
+def test_the_final_page_holds_every_sentence_chart_gallery_deviations_and_provenance(
+    made: Callable[[str], Made], name: str, tmp_path: Path
+) -> None:
+    """The report page of a final run: its tiles, lede and description are the final run's (view templates filled
+    with its numbers), every registered page sentence is there as a reader sees it, every final chart has its table
+    and CSV (the stability over the reads only with two reads or more), the gallery, the deviations and the
+    provenance follow with sections 16 and 17 in the contents, and the footer names ``presentation.json``'s hash."""
+    _, doc, outputs = made(name)
+    shown, templates = doc["final"], doc["final"]["views"]
+    out = tmp_path / "site"
+    site.build_site(doc, out)
+    assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
+    page = (out / "index.html").read_text(encoding="utf-8")
+    seen = _seen(page)
+
+    # every registered page sentence, decided or not, in the page's text
+    for i, sentence in enumerate(shown["sentences"]["page"], 1):
+        assert _plain(sentence["text"]) in seen, (i, sentence["slot"], sentence["code"])
+
+    # the tiles: the final run's mean accuracy for Ordnung and the model alone, and the late or missed dates over
+    # the reads against the model alone's
+    conditions = shown["conditions"]
+    o, alone = conditions["ordnung"], conditions["llm_only"]
+    level = final._formatted(shown["settings"]["level"], "percent_number", finalcharts.WHERE)
+
+    def interval(summary: dict[str, Any]) -> str:
+        low, high = summary["mean_accuracy"]["ci"]
+        return views.fill(templates, "interval", level=level, lo=fmt.num(low), hi=fmt.num(high))
+
+    k, n = _harm(o)
+    assert _tiles(page) == [
+        (
+            fmt.pct(o["mean_accuracy"]["value"]),
+            views.fill(templates, "site.tile.exact", interval=interval(o)),
+        ),
+        (f"{k} of {n}", views.fill(templates, "site.tile.harm", alone=_harm(alone)[0])),
+        (
+            fmt.pct(alone["mean_accuracy"]["value"]),
+            views.fill(templates, "site.tile.alone", interval=interval(alone)),
+        ),
+    ]
+    lede, description = views.fill(templates, "site.lede"), views.fill(templates, "site.description")
+    assert f'<p class="lede">{html.escape(lede, quote=False)}</p>' in page
+    assert f'<meta name="description" content="{html.escape(description)}">' in page
+    assert html.escape(site.DESCRIPTION) not in page and "held out)</span>" not in page
+
+    # every chart with its table and CSV; the stability over the reads with two reads or more only
+    for chart in charts.names(doc):
+        figure = page.split(f'<figure id="{chart}">', 1)[1].split("</figure>", 1)[0]
+        assert "<table" in figure and f'href="{chart}.csv"' in figure and (out / f"{chart}.csv").is_file(), (
+            chart
+        )
+    assert ('<figure id="final-stability">' in page) == (int(shown["reads"]) >= 2)
+    timeline = page.split('<figure id="timeline">', 1)[1].split("</figure>", 1)[0]
+    caption = html.unescape(timeline.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0])
+    assert caption == "What this shows: " + views.fill(templates, "chart.timeline.caption")
+
+    # every section in the contents, the deviations and the provenance last; the final run's tables
+    sections = text.sections(doc)
+    for section in sections:
+        assert f'<section id="{section.anchor}"' in page and f'href="#{section.anchor}"' in page, (
+            section.title
+        )
+    assert [section.title for section in sections[-2:]] == ["16. Deviations", "17. Provenance"]
+    tables = (
+        _captions(finaltext.summary(doc))
+        + _captions(finaltext.final_run(doc))
+        + _captions(finaltext.statistics(doc))
+        + _captions(finaltext.gallery(doc))
+        + _captions(finaltext.deviations(doc))
+        + _captions(finaltext.provenance(doc))
+    )
+    assert views.fill(templates, "provenance.caption") in tables
+    for table in tables:
+        assert f"<caption>{html.escape(table)}</caption>" in page, table
+
+    # the footer names the hash of presentation.json as built, the one the provenance lists
+    digest = hashlib.sha256(outputs["evals/present/presentation.json"].encode("utf-8")).hexdigest()
+    assert digest == hashlib.sha256((out / "data.json").read_bytes()).hexdigest()
+    footer = page.split("<footer>", 1)[1]
+    assert (
+        digest in footer
+        and digest in page.split('<section id="17-provenance"', 1)[1].split("</section>", 1)[0]
+    )
+    assert '<a href="#17-provenance">' in footer
+
+
+def test_the_final_page_passes_its_own_check_and_fails_on_each_mutation(
+    made: Callable[[str], Made], tmp_path: Path
+) -> None:
+    """``--check-site`` on a final run's page passes, and still fails on a picture without alt text, a final chart
+    without its table or its CSV, a link to nowhere, section 16 or 17 missing, a registered sentence missing or
+    changed, a number the presenter does not render and a sentence of a benchmark letter."""
+    _, doc, _ = made("good")
+    built = tmp_path / "site"
+    site.build_site(doc, built)
+    good = (built / "index.html").read_text(encoding="utf-8")
+    checked = iter(range(100))
+
+    def problems(page: str, *, forbidden: tuple[str, ...] = (), drop: str = "") -> list[str]:
+        out = tmp_path / f"check-{next(checked)}"
+        out.mkdir()
+        for path in built.iterdir():
+            if path.name != drop:
+                (out / path.name).write_bytes(path.read_bytes())
+        (out / "index.html").write_text(page, encoding="utf-8")
+        return site.check_site(out, doc, forbidden=forbidden)
+
+    def mutated(old: str, new: str, *, count: int = 1) -> str:
+        assert old in good, old
+        return good.replace(old, new, count)
+
+    assert problems(good) == []
+    assert any(
+        "alt text" in p for p in problems(mutated("</main>", '<img src="eval-final-light.svg"></main>'))
+    )
+    head, figure = good.split('<figure id="final-differences">', 1)
+    no_table = head + '<figure id="final-differences">' + figure.replace("<table", "<tabel", 1)
+    assert any("final-differences has no table" in p for p in problems(no_table))
+    assert any("final has no CSV" in p for p in problems(good, drop="final.csv"))
+    assert any("eval-final-dark.svg" in p for p in problems(good, drop="eval-final-dark.svg"))
+    assert any("#nowhere" in p for p in problems(mutated('href="#16-deviations"', 'href="#nowhere"')))
+    assert any("17-provenance" in p for p in problems(mutated("17-provenance", "seventeen", count=-1)))
+    assert any("16-deviations" in p for p in problems(mutated("16-deviations", "sixteen", count=-1)))
+    # a page-only sentence (the owner's checks, the provenance) left out, or a letter of it changed
+    for slot in ("owner", "provenance"):
+        sentence = next(s for s in doc["final"]["sentences"]["page"] if s["slot"] == slot)
+        shown = site.inline(sentence["text"])
+        gone = problems(mutated(shown, "", count=-1))
+        assert any(f"({slot}" in p and "registered sentence" in p for p in gone), (slot, gone)
+        assert any(f"({slot}" in p for p in problems(mutated(shown, _changed(shown), count=-1))), slot
+    assert any("12.3 %" in p for p in problems(mutated("</main>", "<p>Ordnung scored 12.3 %.</p></main>")))
+    assert any("77 of 168" in p for p in problems(mutated("</main>", "<p>77 of 168 right.</p></main>")))
+    secret = "Bitte zahlen Sie den Betrag bis zum Ende des Monats"
+    leaked = problems(mutated("</main>", f"<p>{secret}</p></main>"), forbidden=(secret,))
+    assert leaked and all(secret not in p for p in leaked)  # named without printing it
+
+
+def test_the_final_page_builds_from_presentation_json_with_the_standard_library_only(
+    made: Callable[[str], Made], tmp_path: Path
+) -> None:
+    """With a final run, ``--site`` still reads ``presentation.json`` alone, with the standard library only (the
+    Pages job installs nothing): neither ``ordnung`` nor the analysis is imported, and ``data.json`` is the file
+    byte for byte."""
+    _, _, outputs = made("bad")
+    root = tmp_path / "root"
+    presentation = root / build.PRESENTATION
+    presentation.parent.mkdir(parents=True)
+    presentation.write_text(outputs[build.PRESENTATION], encoding="utf-8")
+    out = tmp_path / "site"
+    script = (
+        "import sys\n"
+        "from evals.present.__main__ import main\n"
+        f"code = main(['--root', {str(root)!r}, '--site', {str(out)!r}, '--check-site'])\n"
+        "heavy = sorted(m for m in ('rapidfuzz', 'pydantic', 'ordnung', 'evals.metrics', 'evals.analysis', "
+        "'evals.stats', 'evals.present.model', 'evals.present.finalrun') if m in sys.modules)\n"
+        "print(','.join(heavy))\n"
+        "raise SystemExit(code)\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script], cwd=hf.ROOT, capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == ""
+    assert (out / "data.json").read_bytes() == presentation.read_bytes()
+    assert '<figure id="final">' in (out / "index.html").read_text(encoding="utf-8")
+
+
+#: The report page's end-to-end cases build their final run's ``presentation.json`` with this script.
+FINAL_REPORT = hf.ROOT / "tests" / "e2e_support" / "final_report.py"
+
+
+def test_the_report_page_s_end_to_end_cases_build_a_synthetic_final_in_their_own_folder(
+    tmp_path: Path,
+) -> None:
+    """``tests/e2e_support/final_report.py`` (``web/e2e/eval-report.spec.ts``'s final cases) writes a synthetic final
+    run's ``presentation.json`` into the folder it is given, and nothing outside it; the page built from it passes
+    its check."""
+    out = tmp_path / "one_read"
+    result = subprocess.run(
+        [sys.executable, str(FINAL_REPORT), "--scenario", "one_read", "--out", str(out)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["one_read"]
+    doc = json.loads((out / build.PRESENTATION).read_text(encoding="utf-8"))
+    assert doc["final"]["reads"] == 1
+    assert charts.names(doc) == (*charts.NAMES, "final", "final-differences")
+    assert main(["--root", str(out), "--site", str(tmp_path / "site"), "--check-site"]) == 0
+    refused = subprocess.run(
+        [sys.executable, str(FINAL_REPORT), "--scenario", "no such run", "--out", str(tmp_path / "x")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert refused.returncode == 2 and not (tmp_path / "x").exists()
