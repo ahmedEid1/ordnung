@@ -1908,7 +1908,7 @@ def test_the_final_run_s_protocol_words_name_the_deviations_recorded_at_the_time
         assert site.caption("timeline", doc) == views.fill(
             shown["views"], "chart.timeline.caption", count=count
         )
-        (held,) = [row for row in doc["splits"] if row["split"] == "holdout4"]
+        held = {row["split"]: row for row in doc["splits"]}[shown["split"]]
         assert held["role"] == views.fill(shown["views"], "split.role.holdout4", count=count)
         assert finaltext.page_lede(doc) == views.fill(shown["views"], "site.lede", count=count)
         for said in (site.caption("timeline", doc), held["role"], finaltext.page_lede(doc)):
