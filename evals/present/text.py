@@ -7,6 +7,11 @@ subset of Markdown: ``**bold**``, ```code```, and ``[text](target)`` where a tar
 
 Every sentence that judges a result is chosen by rule from the numbers (:func:`headline`), so a bad result is said in
 the same place and at the same size as a good one. Nothing here is typed by hand that a results file holds.
+
+Once ``presentation.json`` holds the final run (its ``final``), the final run is the headline: the README's block is the
+registered README sentences laid out as registered (:func:`evals.present.final.readme_block`), and the report's header,
+evaluation card, summary and section 6.1 are :mod:`evals.present.finaltext`'s, every word a registered sentence or a
+view template; section 6.1 holds the registered page sentences between the page's markers (:class:`Marker`).
 """
 
 from __future__ import annotations
@@ -18,6 +23,7 @@ from typing import Any
 from urllib.parse import quote
 
 from evals.present import BEGIN, END, MODEL, PAGES_URL, REPO_URL, charts, fmt, palette
+from evals.present import final as registered
 
 REPORT_TITLE = "Evaluation: reading German letters for deadlines"
 HISTORY_TITLE = "Evaluation history: every run, in the order it happened"
@@ -65,7 +71,15 @@ class Subheading:
     text: str
 
 
-Block = Paragraph | Bullets | Table | Chart | Code | Subheading
+@dataclass(frozen=True)
+class Marker:
+    """A line the Markdown page holds as it is (the comment that marks where a generated part begins or ends); the
+    report page leaves it out."""
+
+    line: str
+
+
+Block = Paragraph | Bullets | Table | Chart | Code | Subheading | Marker
 
 
 @dataclass(frozen=True)
@@ -302,6 +316,8 @@ def ask_line(doc: Mapping[str, Any]) -> str | None:
 
 def readme_block(doc: Mapping[str, Any]) -> str:
     """The README's generated block, markers included (Markdown, relative links)."""
+    if doc.get("final") is not None:
+        return _final_readme_block(doc)
     alt = charts.description("held-out", doc).replace('"', "'")
     picture = (
         '<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-held-out-dark.svg">'
@@ -318,25 +334,56 @@ def readme_block(doc: Mapping[str, Any]) -> str:
     return "\n".join([BEGIN, _wrap(headline(doc)), "", picture, "", *lines, END]) + "\n"
 
 
+def _final_readme_block(doc: Mapping[str, Any]) -> str:
+    """The README's block with a final run: the registered README sentences, laid out by the registered
+    ``readme_layout`` (:func:`evals.present.final.readme_block`), the final run's chart on its line."""
+    shown = doc["final"]
+    said = [registered.Sentence(**sentence) for sentence in shown["sentences"]["readme"]]
+    alt = charts.description("final", doc).replace('"', "'")
+    picture = (
+        '<picture><source media="(prefers-color-scheme: dark)" srcset="docs/assets/eval-final-dark.svg">'
+        f'<img src="docs/assets/eval-final-light.svg" width="{charts.WIDE}" alt="{alt}"></picture>'
+    )
+    return "\n".join([BEGIN, *registered.readme_block(said, shown["layout"], picture), END]) + "\n"
+
+
 # --------------------------------------------------------------------------------------------------
 # The report's sections
 # --------------------------------------------------------------------------------------------------
 
 
 def _card(doc: Mapping[str, Any]) -> Section:
+    common = {
+        "task": ["Task", "Find each deadline in a German letter and give its exact date"],
+        "model": ["Model", f"`{doc['model']}`, the same pinned model in every condition"],
+        "primary": ["Primary metric", "Exact date right: the deadline's date exactly, no tolerance"],
+        "safety": ["Safety metric", "Harmful: late or missed (the person would act too late, or never)"],
+        "replay": [
+            "Replay",
+            "Every number is checked against a replay of the recorded answers with no model call; where today's code "
+            "gives another value, the results index pins it and names the change ([Reproduce](#15-reproduce))",
+        ],
+    }
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        return Section(
+            "Evaluation card",
+            [Table(["About", "This evaluation"], finaltext.card_rows(doc, common), "The evaluation card")],
+        )
     h = _headline(doc)
     newest = max(h["inputs"], key=lambda row: row["date"])
     inputs = fmt.join([f"`{row['file']}`" for row in h["inputs"]])
     rows = [
-        ["Task", "Find each deadline in a German letter and give its exact date"],
-        ["Model", f"`{doc['model']}`, the same pinned model in every condition"],
+        common["task"],
+        common["model"],
         [
             "Data",
             f"{h['letters']} synthetic letters ({h['photos']} phone photos, {h['adversarial']} adversarial) in "
             f"{len(h['splits'])} held-out splits: {h['items']} dated deadlines",
         ],
-        ["Primary metric", "Exact date right: the deadline's date exactly, no tolerance"],
-        ["Safety metric", "Harmful: late or missed (the person would act too late, or never)"],
+        common["primary"],
+        common["safety"],
         [
             "Held-out protocol",
             "Each split written before any recording on it, recorded once, nothing tuned on it "
@@ -353,11 +400,7 @@ def _card(doc: Mapping[str, Any]) -> Section:
             "Clopper–Pearson for a rate; for paired comparisons, exact McNemar and a sign-flip test over letter "
             "clusters, each with Holm ([Statistics](#7-statistics))",
         ],
-        [
-            "Replay",
-            "Every number is checked against a replay of the recorded answers with no model call; where today's code "
-            "gives another value, the results index pins it and names the change ([Reproduce](#15-reproduce))",
-        ],
+        common["replay"],
         ["Sources", f"`{h['source']['file']}`, from {inputs}"],
         ["Newest recording", f"{newest['split']}, {newest['date']}, commit `{newest['commit']}`"],
     ]
@@ -368,6 +411,10 @@ def _card(doc: Mapping[str, Any]) -> Section:
 
 
 def _summary(doc: Mapping[str, Any]) -> Section:
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        return Section("1. Summary", finaltext.summary(doc))
     rows = []
     for condition in doc["order"]:
         c = _c(doc, condition)
@@ -569,15 +616,26 @@ def _metrics(_doc: Mapping[str, Any]) -> Section:
 
 def _results(doc: Mapping[str, Any]) -> Section:
     h = _headline(doc)
-    blocks: list[Block] = [
-        Subheading("6.1 The final run (three reads)"),
-        Paragraph(
-            "The final run on the version that ships has not been recorded yet: its split, holdout4, is written after "
-            "the code freeze, and the run will be pre-registered before it is recorded. When it is recorded, its "
-            "numbers take the headline by the rule the pre-registration sets, whatever they show."
-        ),
-        Subheading("6.2 The held-out splits pooled, as recorded"),
-    ]
+    blocks: list[Block]
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        # the final run says its registered sentences; the pooled splits, as recorded, keep their chart below it
+        blocks = [
+            *finaltext.final_run(doc),
+            Subheading("6.2 The held-out splits pooled, as recorded"),
+            Chart("held-out"),
+        ]
+    else:
+        blocks = [
+            Subheading("6.1 The final run (three reads)"),
+            Paragraph(
+                "The final run on the version that ships has not been recorded yet: its split, holdout4, is written "
+                "after the code freeze, and the run will be pre-registered before it is recorded. When it is "
+                "recorded, its numbers take the headline by the rule the pre-registration sets, whatever they show."
+            ),
+            Subheading("6.2 The held-out splits pooled, as recorded"),
+        ]
     rows = []
     for condition in doc["order"]:
         c = _c(doc, condition)
@@ -1225,6 +1283,8 @@ def _markdown_blocks(blocks: Sequence[Block], doc: Mapping[str, Any], prefix: st
             )
         elif isinstance(block, Code):
             out.append("```bash\n" + "\n".join(block.lines) + "\n```")
+        elif isinstance(block, Marker):
+            out.append(block.line)
         else:
             out.append(f"### {block.text}")
     return out
@@ -1233,14 +1293,17 @@ def _markdown_blocks(blocks: Sequence[Block], doc: Mapping[str, Any], prefix: st
 def report(doc: Mapping[str, Any]) -> str:
     """``docs/evals.md``."""
     h = _headline(doc)
-    parts = [
-        f"# {REPORT_TITLE}",
-        _wrap(
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        lede = finaltext.lede(doc)
+    else:
+        lede = (
             f"> Generated by `python -m evals.present` from `evals/results` (the headline: `{h['source']['file']}`, "
             f"{h['label'].lower()}, not pre-registered). Do not edit by hand: change `evals/present/` and run "
             f"`python -m evals.present --write`. The same report as a page: [{PAGES_URL}]({PAGES_URL})."
-        ).replace("\n", "\n> "),
-    ]
+        )
+    parts = [f"# {REPORT_TITLE}", _wrap(lede).replace("\n", "\n> ")]
     for section in sections(doc):
         parts.append(f"## {section.title}")
         parts += _markdown_blocks(section.blocks, doc, "docs/")
@@ -1301,7 +1364,7 @@ def history(doc: Mapping[str, Any], legacy: str) -> str:
             [
                 row["date"],
                 f"`{row['file']}`",
-                _KINDS[row["kind"]],
+                _KINDS[row["kind"]] if row["kind"] in _KINDS else _final_kind(doc, row["kind"]),
                 row["split"] or "",
                 row["role"],
                 ""
@@ -1345,6 +1408,14 @@ def history(doc: Mapping[str, Any], legacy: str) -> str:
         body.strip(),
     ]
     return "\n\n".join(parts) + "\n"
+
+
+def _final_kind(doc: Mapping[str, Any], kind: str) -> str:
+    """What a file of the final run is (the Ask set's file of runs, the stress test): a view template of the final
+    run's, as only a final run has such files."""
+    from evals.present import finaltext
+
+    return finaltext.kind(doc, kind)
 
 
 def site_link(value: str) -> str:

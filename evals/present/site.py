@@ -140,6 +140,10 @@ def csv_text(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
 
 def caption(name: str, doc: Mapping[str, Any]) -> str:
     """The chart's one-line "What this shows", generated from the numbers."""
+    if name in charts.FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.caption(name, doc)
     conditions = doc["headline"]["conditions"]
     o, alone, agent = (conditions[c] for c in ("ordnung", "llm_only", "llm_rules_tool"))
     if name == "held-out":
@@ -182,7 +186,7 @@ def _figure(name: str, doc: Mapping[str, Any]) -> str:
         f'<div class="narrow">{charts.svg(name, doc, "css", narrow=True)}</div>'
         f"<figcaption>What this shows: {escape(caption(name, doc))}</figcaption>"
         f"<details><summary>Show the numbers as a table</summary>"
-        f"{_table(header, rows, charts.title(name) + ' (table)')}"
+        f"{_table(header, rows, charts.title(name, doc) + ' (table)')}"
         f'<p><a href="{name}.csv" download>Download the numbers (CSV)</a></p></details></figure>'
     )
 
@@ -203,6 +207,8 @@ def _blocks(blocks: Sequence[text.Block], doc: Mapping[str, Any]) -> str:
                 '<div class="tablewrap" tabindex="0" role="region" aria-label="Commands">'
                 "<pre><code>" + escape("\n".join(block.lines)) + "</code></pre></div>"
             )
+        elif isinstance(block, text.Marker):
+            continue  # a line that marks a generated part of the Markdown page; the page shows the part alone
         else:
             out.append(f"<h3>{inline(block.text)}</h3>")
     return "".join(out)
@@ -262,10 +268,10 @@ def build_site(doc: Mapping[str, Any], out: Path, *, commit: str | None = None) 
     """Write the report page into ``out``; returns the files written."""
     out.mkdir(parents=True, exist_ok=True)
     files = {"index.html": page(doc, commit=commit), "data.json": dumps(doc)}
-    for name in charts.NAMES:
+    for name in charts.names(doc):
         header, rows = charts.table(name, doc)
         files[f"{name}.csv"] = csv_text(header, rows)
-    for name in charts.COMMITTED:
+    for name in charts.committed(doc):
         for theme in ("light", "dark"):
             files[f"eval-{name}-{theme}.svg"] = charts.svg(name, doc, theme)
     written = []
@@ -389,7 +395,7 @@ def check_site(out: Path, doc: Mapping[str, Any], *, forbidden: Sequence[str] = 
     for image in parsed.images:
         if not image.get("alt"):
             problems.append(f"a picture without alt text: {image.get('src')}")
-    for name in charts.NAMES:
+    for name in charts.names(doc):
         figure = parsed.figures.get(name)
         if figure is None:
             problems.append(f"the chart {name} is missing")
@@ -402,7 +408,7 @@ def check_site(out: Path, doc: Mapping[str, Any], *, forbidden: Sequence[str] = 
             problems.append(f"the chart {name} has no table")
         if f"{name}.csv" not in figure["csv"] or not (out / f"{name}.csv").is_file():
             problems.append(f"the chart {name} has no CSV beside it")
-    for name in charts.COMMITTED:
+    for name in charts.committed(doc):
         for theme in ("light", "dark"):
             if not (out / f"eval-{name}-{theme}.svg").is_file():
                 problems.append(f"eval-{name}-{theme}.svg is missing (the README's charts on PyPI load it)")

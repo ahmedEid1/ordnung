@@ -24,13 +24,16 @@ from typing import Any
 
 import pytest
 from evals import reproduce
-from evals.present import PresentError, build, final, model, text
+from evals.present import BEGIN, END, PresentError, build, charts, final, model, site, text
 from evals.present.__main__ import main
 
 import helpers_final as hf
 import test_present_final as builders
 
+#: what a path of the building computer starts with (as tests/test_present.py)
+PATH_MARKS = ("/home/", "/Users/", "/root/", "/tmp/", "\\Users\\")
 FINAL_SVGS = ("docs/assets/eval-final-light.svg", "docs/assets/eval-final-dark.svg")
+FINAL_OUTPUTS = (*build.OUTPUT_PATHS, *FINAL_SVGS)
 #: The fields of an error row the page may show (ids and codes, never a letter's words).
 ERROR_KEYS = {
     "condition",
@@ -96,6 +99,22 @@ def _flat(value: str) -> str:
     return " ".join(value.split())
 
 
+def _section(report: str, title: str) -> str:
+    """One ``##`` section of a Markdown page, its heading line included."""
+    start = report.index(f"\n## {title}\n")
+    end = report.find("\n## ", start + 1)
+    return report[start : end if end >= 0 else len(report)]
+
+
+def _block(readme: str) -> list[str]:
+    return readme.split(BEGIN + "\n", 1)[1].split("\n" + END, 1)[0].split("\n")
+
+
+def _card(report: str) -> dict[str, str]:
+    rows = [line for line in _section(report, "Evaluation card").splitlines() if line.startswith("| ")]
+    return {cells[0]: cells[1] for cells in (row.strip("| ").split(" | ") for row in rows[1:])}
+
+
 def _views() -> dict[str, Any]:
     from evals.present import views
 
@@ -105,6 +124,34 @@ def _views() -> dict[str, Any]:
 # --------------------------------------------------------------------------------------------------
 # The model: the final run found, checked and put into presentation.json
 # --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", hf.SCENARIO_IDS)
+def test_a_published_final_takes_the_headline_by_rule(made: Callable[[str], Made], name: str) -> None:
+    """Whatever the result, the final run is the headline: ``presentation.json``'s ``final`` holds it, the row order
+    is its mean accuracy's, the README's block says the registered README sentences and nothing of the pooled
+    re-analysis, and the report's summary is the registered paragraph with the final run's chart. The pooled
+    held-out splits stay in section 6.2, as recorded, with their chart."""
+    root, doc, outputs = made(name)
+    source, prereg, named = hf.published(root)
+    assert doc["final"] is not None and doc["final"]["source"]["file"] == hf.FINAL_NAME
+    means = {c: source["primary"]["conditions"][c]["mean_accuracy"]["value"] for c in final.CONDITIONS}
+    assert doc["order"] == sorted(final.CONDITIONS, key=lambda c: (-means[c], final.CONDITIONS.index(c)))
+    said = final.coded(source, prereg, block="readme", sources=named)
+    block = _block(outputs["README.md"])
+    picture = block[block.index("") + 1]
+    assert block == final.readme_block(said, prereg["sentences"], picture)
+    assert "Held out, read once" not in "\n".join(block) and "**Ask:**" not in "\n".join(block)
+    report = outputs["docs/evals.md"]
+    summary = _section(report, "1. Summary")
+    paragraph = [s.text for s in said if s.slot in prereg["sentences"]["readme_layout"]["paragraph"]]
+    assert _flat(" ".join(paragraph)) in _flat(summary)
+    assert "assets/eval-final-light.svg" in summary and "eval-held-out" not in summary
+    assert _flat(text.headline(doc)) not in _flat(report)
+    results = _section(report, "6. Results")
+    assert "### 6.2 The held-out splits pooled, as recorded" in results
+    assert "assets/eval-held-out-light.svg" in results.split("### 6.2 ", 1)[1]
+    assert "not pre-registered" not in report.split("\n## ", 1)[0]  # the header names the final run
 
 
 @pytest.mark.parametrize("name", ["good", "bad", "one_read", "realistic"])
@@ -492,6 +539,293 @@ def test_a_final_is_presented_from_a_checkout_only(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------------------
+# The README block
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", [*hf.SCENARIO_IDS, "realistic"])
+def test_the_readme_block_is_the_registered_layout(made: Callable[[str], Made], name: str) -> None:
+    """The README's block is ``final.readme_block`` of the README sentences under the registered templates, line for
+    line, within the registered budget, its chart line in the registered frame, and every README slot said whatever
+    its result."""
+    root, _, outputs = made(name)
+    source, prereg, named = hf.published(root)
+    said = final.coded(source, prereg, block="readme", sources=named)
+    readme = outputs["README.md"]
+    assert final.readme_problems(readme, said, prereg["sentences"]) == []
+    block = _block(readme)
+    assert len(block) <= final.README_BLOCK_MAX_LINES
+    (picture,) = [line for line in block if line.startswith("<picture>")]
+    assert final._is_picture(picture)
+    assert all(len(line) <= final.README_LINE_MAX for line in block if line != picture)
+    flat = _flat(" ".join(block))
+    for slot in prereg["sentences"]["readme_block"]:
+        texts = [s.text for s in said if s.slot == slot]
+        assert texts and all(_flat(t) in flat for t in texts), slot
+
+
+def test_the_final_chart_line_fits_its_frame_with_four_digit_numbers(made: Callable[[str], Made]) -> None:
+    """The README's chart is the final run's: light and dark SVGs under docs/assets (the PyPI rewrite's pattern), alt
+    text naming every value; with every number at four digits it stays in the frame and its maximum."""
+    for name in ("good", "one_read"):
+        (picture,) = [
+            line for line in _block(made(name).outputs["README.md"]) if line.startswith("<picture>")
+        ]
+        assert 'srcset="docs/assets/eval-final-dark.svg"' in picture
+        assert 'src="docs/assets/eval-final-light.svg"' in picture
+        assert re.fullmatch(r"eval-[a-z-]+-(?:light|dark)\.svg", "eval-final-light.svg")
+        worst = re.sub(r"\d+\.\d", "100.0", picture)
+        worst = re.sub(r"(?<![\d.])\d+(?![\d.])", "9999", worst)
+        assert final._is_picture(worst) and len(worst) <= final.README_PICTURE_MAX, len(worst)
+
+
+def test_the_readme_outside_the_block_is_unchanged_with_a_final(made: Callable[[str], Made]) -> None:
+    def outside(readme: str) -> tuple[str, str]:
+        before, rest = readme.split(BEGIN, 1)
+        return before, rest.split(END, 1)[1]
+
+    readme = made("bad").outputs["README.md"]
+    assert outside(readme) == outside((hf.ROOT / "README.md").read_text(encoding="utf-8"))
+    assert len(readme.splitlines()) < 250
+
+
+# --------------------------------------------------------------------------------------------------
+# docs/evals.md and the history page
+# --------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", [*hf.SCENARIO_IDS, "realistic"])
+def test_the_page_s_final_section_is_the_page_sentences_in_order(
+    made: Callable[[str], Made], name: str
+) -> None:
+    """docs/evals.md's final section, between ``final.PAGE_BEGIN`` and ``final.PAGE_END`` under "6.1 The final run",
+    is every registered page sentence in ``page_block`` order and nothing else."""
+    root, _, outputs = made(name)
+    source, prereg, named = hf.published(root)
+    coded = final.coded(source, prereg, block="page", sources=named)
+    report = outputs["docs/evals.md"]
+    assert final.page_problems(report, [s.text for s in coded]) == []
+    heading = report.index("\n### 6.1 The final run\n")
+    assert (
+        heading < report.index(final.PAGE_BEGIN) < report.index(final.PAGE_END) < report.index("\n### 6.2 ")
+    )
+    quiet = {"limitations.reads"} if source["primary"]["reads"] == 1 else set()
+    assert {s.slot for s in coded} == set(prereg["sentences"]["page_block"]) - quiet
+
+
+def test_the_card_says_pre_registered_with_file_and_hash(made: Callable[[str], Made]) -> None:
+    """With a final, the evaluation card names the pre-registration (its file and hash, the freeze), the reads used of
+    those registered, and the sources: the final analysis and every read it reads; it never says "not pre-registered"
+    nor that the run is still to be pre-registered."""
+    from evals.present import views
+
+    for name in ("good", "two_reads", "realistic"):
+        root, _, outputs = made(name)
+        source, prereg, _ = hf.published(root)
+        card = _card(outputs["docs/evals.md"])
+        digest = hashlib.sha256((root / hf.FILES["prereg"]).read_bytes()).hexdigest()
+        assert hf.FILES["prereg"] in card["Pre-registration"] and digest[:12] in card["Pre-registration"]
+        assert prereg["registered"]["freeze_sha"][:12] in card["Pre-registration"]
+        whole = " ".join(card.values())
+        assert "not pre-registered" not in whole and "pre-registered before it is recorded" not in whole
+        primary = source["primary"]
+        assert card["Reads"] == views.fill(
+            views.load(),
+            "card.reads",
+            used=len(primary["reads_used"]),
+            registered=primary["reads_registered"],
+        )
+        assert f"`{hf.FINAL_NAME}`" in card["Sources"]
+        for row in source["meta"]["inputs"]:
+            assert f"`{row['file']}`" in card["Sources"]
+        assert [key for key in card] == [
+            "Task",
+            "Model",
+            "Data",
+            "Primary metric",
+            "Safety metric",
+            "Held-out protocol",
+            "Pre-registration",
+            "Reads",
+            "Intervals",
+            "Replay",
+            "Sources",
+            "Newest recording",
+        ]
+
+
+def test_the_report_keeps_its_anchors_with_a_final(made: Callable[[str], Made]) -> None:
+    """Other pages link into docs/evals.md by its headings' anchors, and the registered README link names
+    ``#15-reproduce``: the report with a final keeps every section of today's, in order, and every in-page link
+    resolves."""
+    report = made("good").outputs["docs/evals.md"]
+    today = (hf.ROOT / "docs" / "evals.md").read_text(encoding="utf-8")
+
+    def headings(page: str) -> list[str]:
+        return [line for line in page.splitlines() if line.startswith("## ")]
+
+    assert headings(report)[: len(headings(today))] == headings(today)
+    anchors = {text.slug(line.lstrip("#").strip()) for line in report.splitlines() if line.startswith("#")}
+    for anchor in (
+        "15-reproduce",
+        "4-conditions-and-baselines",
+        "8-ablations",
+        "14-limitations",
+        "6-results",
+        "64-the-app-as-it-ships-without-the-senders-land",
+    ):
+        assert anchor in anchors, anchor
+    for target in re.findall(r"\]\(#([^)]+)\)", report):
+        assert target in anchors, target
+    assert "docs/evals.md#15-reproduce" in final.load_templates()["readme_layout"]["link"]
+
+
+@pytest.mark.parametrize(
+    ("owner", "code"),
+    [
+        ("pending", "owner.pending"),
+        ("labels", "owner.labels_done"),
+        ("kappa", "owner.kappa_done"),
+        ("done", "owner.done"),
+        (None, "owner.pending"),
+    ],
+)
+def test_the_owner_sentence_is_pending_until_the_files_say_done(
+    tmp_path: Path, owner: str | None, code: str
+) -> None:
+    """The owner's checks are said pending until their files say done; a file not there yet is pending."""
+    doc, src = hf.complete(builders.good(), builders.no_set_aside(builders.sources(owner=owner or "pending")))
+    if owner is None:
+        src["owner_labels"] = src["owner_kappa"] = None
+    root = hf.final_root(tmp_path, doc, sources=src, prereg=hf.complete_prereg(builders.prereg()))
+    built = model.build(root / "evals" / "results")
+    (sentence,) = [s for s in built["final"]["sentences"]["page"] if s["slot"] == "owner"]
+    assert sentence["code"] == code
+    status = {"labels": "pending", "kappa": "pending"}
+    if owner in ("labels", "done"):
+        status["labels"] = "done"
+    if owner in ("kappa", "done"):
+        status["kappa"] = "done"
+    assert built["final"]["owner"] == status
+    report = text.report(built)
+    between = report.split(final.PAGE_BEGIN, 1)[1].split(final.PAGE_END, 1)[0]
+    assert _flat(sentence["text"]) in _flat(between)
+
+
+def test_a_rescored_final_split_file_is_a_history_row_only(tmp_path: Path) -> None:
+    """A read of a final split replayed with later code (a fix after the run) is a re-scored row of the history page,
+    not held out; the final run, its order and its report stay as they are."""
+    doc, src, reads = hf.realistic()
+    prereg = hf.complete_prereg(builders.prereg())
+    rescored = json.loads(reads[0][1])
+    rescored["meta"]["backend"] = "replay"
+    name = "2027-01-09-claude-sonnet-5-holdout4-rescored.json"
+    plain = model.build(
+        hf.final_root(tmp_path / "a", doc, sources=src, prereg=prereg, reads=reads) / "evals" / "results"
+    )
+    root = hf.final_root(
+        tmp_path / "b", doc, sources=src, prereg=prereg, reads=[*reads, (name, hf._text(rescored))]
+    )
+    built = model.build(root / "evals" / "results")
+    assert built["final"] == plain["final"] and built["order"] == plain["order"]
+    assert [row["role"] for row in built["files"] if row["file"] == name] == ["re-scored"]
+    rows = [line for line in text.history(built, "# Legacy\n").splitlines() if f"`{name}`" in line]
+    assert len(rows) == 1 and "| re-scored |" in rows[0]
+    assert name not in text.report(built)
+    assert text.report(built) == text.report(plain)
+
+
+def test_the_history_lists_every_results_file_once_with_a_final(made: Callable[[str], Made]) -> None:
+    root, _, outputs = made("realistic")
+    rows = [line for line in outputs["docs/evals-history.md"].splitlines() if line.startswith("| 20")]
+    names = sorted(
+        path.name for path in (root / "evals" / "results").glob("*.json") if path.name != "INDEX.json"
+    )
+    assert sorted(re.search(r"`([^`]+)`", row).group(1) for row in rows) == names  # type: ignore[union-attr]
+    views = _views()["templates"]
+    for name, kind in ((hf.ASK_NAME, "ask-final"), (hf.STRESS_NAME, "stress")):
+        (row,) = [row for row in rows if f"`{name}`" in row]
+        assert f"| {views[f'history.kind.{kind}']['text']} |" in row and "| final |" in row
+
+
+# --------------------------------------------------------------------------------------------------
+# --check, determinism, the page
+# --------------------------------------------------------------------------------------------------
+
+
+def test_the_final_outputs_are_the_no_final_ones_and_the_final_chart(made: Callable[[str], Made]) -> None:
+    """With a final, ``--write`` writes today's outputs and the final run's chart; with none, exactly today's."""
+    _, doc, outputs = made("bad")
+    assert build.output_paths(doc) == FINAL_OUTPUTS and set(outputs) == set(FINAL_OUTPUTS)
+    assert charts.names(doc) == (*charts.NAMES, "final") and charts.committed(doc) == (
+        *charts.COMMITTED,
+        "final",
+    )
+    pooled = model.build(hf.RESULTS)
+    assert build.output_paths(pooled) == build.OUTPUT_PATHS
+    assert charts.names(pooled) == charts.NAMES and charts.committed(pooled) == charts.COMMITTED
+
+
+@pytest.fixture(scope="module")
+def written(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    root = hf.scenario_root(tmp_path_factory.mktemp("written"), "bad")
+    build.write(root)
+    return root
+
+
+@pytest.mark.parametrize("relative", FINAL_OUTPUTS)
+def test_check_covers_every_final_output_and_fails_after_a_one_character_edit(
+    written: Path, relative: str
+) -> None:
+    assert build.check(written) == []
+    path = written / relative
+    original = path.read_bytes()
+    middle = original.index(b"Final run, pre-registered") if relative == "README.md" else len(original) // 2
+    path.write_bytes(
+        original[:middle] + (b"x" if original[middle : middle + 1] != b"x" else b"y") + original[middle + 1 :]
+    )
+    try:
+        assert build.check(written) == [relative]
+    finally:
+        path.write_bytes(original)
+
+
+def test_two_final_renders_are_byte_identical_and_hold_no_machine_path(
+    made: Callable[[str], Made], tmp_path: Path
+) -> None:
+    root, _, outputs = made("realistic")
+    assert build.outputs(root) == outputs
+    elsewhere = hf.realistic_root(tmp_path)
+    assert build.outputs(elsewhere) == outputs
+    for relative, content in outputs.items():
+        for mark in (str(root), str(elsewhere), str(hf.ROOT), str(Path.home()) + "/"):
+            assert mark not in content, (relative, mark)
+        if (
+            relative != "docs/evals-history.md"
+        ):  # the page of 0.3.0 shows `--results-dir /tmp/holdout` as it was
+            for mark in PATH_MARKS:
+                assert mark not in content, (relative, mark)
+
+
+def test_the_page_with_a_final_draws_its_chart_and_passes_its_check(
+    made: Callable[[str], Made], tmp_path: Path
+) -> None:
+    """The report page of a final run holds the final chart with its table and CSV, keeps the pooled chart under
+    6.2, writes the README's final SVGs for PyPI, shows no marker line, and passes its own check."""
+    _, doc, outputs = made("good")
+    out = tmp_path / "site"
+    site.build_site(doc, out)
+    assert site.check_site(out, doc, forbidden=site.dataset_sentences()) == []
+    page = (out / "index.html").read_text(encoding="utf-8")
+    assert '<figure id="final">' in page and (out / "final.csv").is_file()
+    for theme in ("light", "dark"):
+        assert (out / f"eval-final-{theme}.svg").read_text(encoding="utf-8") == outputs[
+            f"docs/assets/eval-final-{theme}.svg"
+        ]
+    assert final.PAGE_BEGIN not in page and final.PAGE_END not in page
+
+
+# --------------------------------------------------------------------------------------------------
 # The templates, the code's own words, the synthetic finals
 # --------------------------------------------------------------------------------------------------
 
@@ -524,7 +858,7 @@ def test_the_views_templates_are_well_formed() -> None:
 
 
 #: The modules of the final path: every word they show is a template's.
-FINAL_MODULES = ("finalrun.py", "views.py")
+FINAL_MODULES = ("finalrun.py", "views.py", "finaltext.py", "finalcharts.py")
 _PROSE = re.compile(r"[A-Za-z]{3,} [A-Za-z]{3,}")
 
 

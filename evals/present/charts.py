@@ -9,6 +9,10 @@ end rounded down to 10, and its range is printed); one row order, the page's (``
 each condition's colour *and* shape, and its name on every row; text in text colours only; a ``<title>`` and a
 ``<desc>`` naming every value, a ``<title>`` on every mark (the native tooltip) and a table with the same numbers
 (:func:`table`).
+
+Once ``presentation.json`` holds the final run, its charts (:data:`FINAL_NAMES`, drawn by
+:mod:`evals.present.finalcharts` with these primitives) join the others: :func:`names` and :func:`committed` list them
+for that document, and :func:`svg`, :func:`table`, :func:`description` and :func:`title` dispatch to them.
 """
 
 from __future__ import annotations
@@ -24,6 +28,8 @@ from evals.present import fmt, palette
 NAMES = ("held-out", "timeline", "differences", "risk-coverage", "cost")
 #: Committed as ``docs/assets/eval-<name>-{light,dark}.svg`` (``docs/evals.md`` shows each; the README the first).
 COMMITTED = NAMES
+#: The final run's charts, once ``presentation.json`` holds it (:mod:`evals.present.finalcharts`).
+FINAL_NAMES = ("final",)
 WIDE, NARROW = 740, 320
 #: The protocol of each split, in a few words, for the timeline.
 SPLIT_SHORT = {
@@ -822,22 +828,61 @@ _CHARTS: dict[
 }
 
 
+def names(doc: Mapping[str, Any]) -> tuple[str, ...]:
+    """The charts of ``doc``, in the order the report shows them: :data:`NAMES`, and the final run's once it is
+    there."""
+    if doc.get("final") is None:
+        return NAMES
+    from evals.present import finalcharts
+
+    return (*NAMES, *finalcharts.names(doc))
+
+
+def committed(doc: Mapping[str, Any]) -> tuple[str, ...]:
+    """The charts of ``doc`` committed as ``docs/assets/eval-<name>-{light,dark}.svg``: :data:`COMMITTED`, and the
+    final run's once it is there."""
+    if doc.get("final") is None:
+        return COMMITTED
+    from evals.present import finalcharts
+
+    return (*COMMITTED, *finalcharts.committed(doc))
+
+
 def svg(name: str, doc: Mapping[str, Any], theme: str = "light", *, narrow: bool = False) -> str:
     """Chart ``name`` of the presentation ``doc``: ``theme`` is ``light``, ``dark`` or ``css``."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.svg(name, doc, theme, narrow=narrow)
     draw, _, _ = _CHARTS[name]
     return draw(doc, theme, narrow, f"{name}-{theme}-{'n' if narrow else 'w'}")
 
 
 def table(name: str, doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]]]:
     """The chart's numbers as a table: its header and rows, in the page's row order."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.table(name, doc)
     header, rows, _ = _CHARTS[name][1](doc)
     return header, rows
 
 
 def description(name: str, doc: Mapping[str, Any]) -> str:
     """Every value the chart shows, in words: its ``<desc>`` and the README picture's alt text."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        return finalcharts.description(name, doc)
     return _CHARTS[name][1](doc)[2]
 
 
-def title(name: str) -> str:
+def title(name: str, doc: Mapping[str, Any] | None = None) -> str:
+    """The chart's title (a final run's chart needs its ``doc``, whose view templates word it)."""
+    if name in FINAL_NAMES:
+        from evals.present import finalcharts
+
+        if doc is None:
+            raise ValueError(f"the chart {name} is titled from its presentation document")
+        return finalcharts.title(name, doc)
     return _CHARTS[name][2]
