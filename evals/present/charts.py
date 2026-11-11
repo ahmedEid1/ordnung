@@ -28,8 +28,9 @@ from evals.present import fmt, palette
 NAMES = ("held-out", "timeline", "differences", "risk-coverage", "cost")
 #: Committed as ``docs/assets/eval-<name>-{light,dark}.svg`` (``docs/evals.md`` shows each; the README the first).
 COMMITTED = NAMES
-#: The final run's charts, once ``presentation.json`` holds it (:mod:`evals.present.finalcharts`).
-FINAL_NAMES = ("final",)
+#: The final run's charts, once ``presentation.json`` holds it (:mod:`evals.present.finalcharts`): the headline, the
+#: differences and, with two reads or more, how steady the dates are over the reads.
+FINAL_NAMES = ("final", "final-differences", "final-stability")
 WIDE, NARROW = 740, 320
 #: The protocol of each split, in a few words, for the timeline.
 SPLIT_SHORT = {
@@ -481,7 +482,10 @@ def _timeline_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]],
         )
         deadlines = str(split["scored_items"]) if split["recorded"] else "not yet"
         score = fmt.of(split["ordnung"]) if split.get("ordnung") else "not a held-out number"
-        short = SPLIT_SHORT.get(split["split"], split["role"])
+        short = _final_short(doc, split["split"]) or SPLIT_SHORT.get(split["split"], split["role"])
+        if split["recorded"] and split.get("photos") is None:
+            # a final split shown from the final analysis alone, which does not count photos and adversarial letters
+            letters = str(split["entries"])
         rows.append([split["split"], recorded, letters, deadlines, short, score])
         said.append(
             f"{split['split']}: {short}; recorded {recorded}; letters (photos, adversarial) {letters}; dated "
@@ -493,11 +497,30 @@ def _timeline_parts(doc: Mapping[str, Any]) -> tuple[list[str], list[list[str]],
     return header, rows, description
 
 
+def _final_short(doc: Mapping[str, Any], split: str) -> str | None:
+    """A final split's part in the timeline once the final run is published (a view template's words), else
+    ``None``."""
+    if doc.get("final") is None:
+        return None
+    from evals.present import finalcharts
+
+    return finalcharts.split_short(doc, split)
+
+
+def _timeline_footnote(doc: Mapping[str, Any]) -> str:
+    if doc.get("final") is None:
+        return "Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run."
+    from evals.present import views
+
+    return views.fill(doc["final"]["views"], "chart.timeline.footnote")
+
+
 def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> str:
     _, rows, description = _timeline_parts(doc)
     splits = doc["splits"]
     title = "What was held out, and when"
     subtitle = "Each split in the order it was written; Ordnung's exact dates where it was held out"
+    footnote = _timeline_footnote(doc)
 
     def tip(split: Mapping[str, Any], row: Sequence[str]) -> str:
         return f"{row[0]}: {row[4]}; recorded {row[1]}; Ordnung {row[5]}"
@@ -518,18 +541,12 @@ def _timeline(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> s
             below = canvas.lines(x, y + 64, _wrap(row[4], 18), size=11, gap=15, role="text2", anchor="middle")
             if split.get("ordnung"):
                 canvas.text(x, below + 2, f"Ordnung {row[5]}", size=11, anchor="middle", weight=600)
-        canvas.text(
-            16,
-            height - 10,
-            "Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run.",
-            size=11,
-            role="text2",
-        )
+        canvas.text(16, height - 10, footnote, size=11, role="text2")
         return canvas.render()
     gap = 76
     title_lines, head = _wrap(title, 32), _wrap(subtitle, 38)
     top = 24 + 22 * len(title_lines) + 19 * len(head) + 20
-    notes = _wrap("Filled: held out, recorded once. Hollow: tuned, iterated on, or not yet run.", 38)
+    notes = _wrap(footnote, 38)
     height = int(top + gap * len(splits) + 19 * len(notes))
     canvas = Canvas(NARROW, height, theme, ident, title, description)
     y = canvas.lines(12, 24, title_lines, size=16, gap=22, weight=600)

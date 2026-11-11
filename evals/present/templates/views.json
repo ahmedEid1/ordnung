@@ -79,6 +79,91 @@
   "chart.final.caption": {
    "text": "Over the reads, Ordnung dates {ordnung_exact} exactly right with {ordnung_harm} late or missed; the model alone {alone_exact} with {alone_harm}; the agent given the engine as a tool {agent_exact} with {agent_harm}.",
    "fields": ["ordnung_exact", "ordnung_harm", "alone_exact", "alone_harm", "agent_exact", "agent_harm"]
-  }
+  },
+  "chart.final-differences.title": {"text": "Ordnung minus each baseline, over the reads", "fields": []},
+  "chart.final-differences.subtitle": {
+   "text": "Percentage points · {items} deadlines in {letters} synthetic letters · {reads} reads · {split} · {model} · {level} % CI, letter-cluster bootstrap ({method})",
+   "fields": ["items", "letters", "reads", "split", "model", "level", "method"]
+  },
+  "chart.final-differences.exact": {"text": "Exact dates", "fields": []},
+  "chart.final-differences.harm": {"text": "Late or missed", "fields": []},
+  "chart.final-differences.measure.exact": {"text": "Exact date right", "fields": []},
+  "chart.final-differences.measure.harm": {"text": "Late or missed", "fields": []},
+  "chart.final-differences.footnote": {
+   "text": "Right of the line: Ordnung has more exact dates, or more late or missed ones. An interval across the line is no clear difference.",
+   "fields": []
+  },
+  "chart.final-differences.same": {"text": "none differ", "fields": []},
+  "chart.final-differences.none": {"text": "{d}, no deadline differs", "fields": ["d"]},
+  "chart.final-differences.described": {"text": "described, not tested", "fields": []},
+  "chart.final-differences.description": {
+   "text": "Forest plot of the final run's paired differences over its {reads} reads, Ordnung minus each baseline, in percentage points with {level} % letter-cluster bootstrap intervals. {rows}.",
+   "fields": ["reads", "level", "rows"]
+  },
+  "chart.final-differences.row": {
+   "text": "Ordnung minus {baseline}, {measure}: {shown}; sign-flip p {p}; Holm p {holm}; power {power}; {code}",
+   "fields": ["baseline", "measure", "shown", "p", "holm", "power", "code"]
+  },
+  "chart.final-differences.tip": {
+   "text": "Ordnung minus {baseline}, {measure}: {shown} points; Holm p {holm}; {code}",
+   "fields": ["baseline", "measure", "shown", "holm", "code"]
+  },
+  "chart.final-differences.col.baseline": {"text": "Ordnung minus", "fields": []},
+  "chart.final-differences.col.measure": {"text": "Measure", "fields": []},
+  "chart.final-differences.col.points": {"text": "Points [{level} % CI]", "fields": ["level"]},
+  "chart.final-differences.col.p": {"text": "Sign-flip p", "fields": []},
+  "chart.final-differences.col.holm": {"text": "Holm p", "fields": []},
+  "chart.final-differences.col.power": {"text": "Power", "fields": []},
+  "chart.final-differences.col.code": {"text": "Decision", "fields": []},
+  "chart.final-differences.table": {"text": "Paired differences of the final run", "fields": []},
+  "chart.final-differences.caption": {
+   "text": "Ordnung minus the model alone: {alone_exact} points of exact dates and {alone_harm} of late or missed ones; minus the model with the rules pasted in: {text_exact} and {text_harm}; minus the agent given the engine as a tool: {agent_exact} and {agent_harm}.",
+   "fields": ["alone_exact", "alone_harm", "text_exact", "text_harm", "agent_exact", "agent_harm"]
+  },
+  "chart.final-stability.title": {"text": "How steady each condition's dates are over the reads", "fields": []},
+  "chart.final-stability.subtitle": {
+   "text": "{items} deadlines in {letters} synthetic letters · {reads} reads · {split} · {model} · {level} % CI ({method})",
+   "fields": ["items", "letters", "reads", "split", "model", "level", "method"]
+  },
+  "chart.final-stability.all": {"text": "Right in every read", "fields": []},
+  "chart.final-stability.unstable": {"text": "Date changed between reads", "fields": []},
+  "chart.final-stability.footnote": {
+   "text": "Right in every read: the exact date in each read. Changed: not the same date in every read, right or wrong.",
+   "fields": []
+  },
+  "chart.final-stability.description": {
+   "text": "Dot plot of how steady the dates of {items} deadlines are over {reads} reads, each rate with its {level} % interval. {rows}.",
+   "fields": ["items", "reads", "level", "rows"]
+  },
+  "chart.final-stability.row": {
+   "text": "{condition}: right in every read {all} ({all_kn}, {level} % CI {all_ci}); date changed between reads {unstable} ({unstable_kn}, {level} % CI {unstable_ci})",
+   "fields": ["condition", "all", "all_kn", "level", "all_ci", "unstable", "unstable_kn", "unstable_ci"]
+  },
+  "chart.final-stability.tip.all": {
+   "text": "{condition}: right in every read {value} ({kn}), {level} % CI {ci}",
+   "fields": ["condition", "value", "kn", "level", "ci"]
+  },
+  "chart.final-stability.tip.unstable": {
+   "text": "{condition}: date changed between reads {value} ({kn}), {level} % CI {ci}",
+   "fields": ["condition", "value", "kn", "level", "ci"]
+  },
+  "chart.final-stability.col.condition": {"text": "Condition", "fields": []},
+  "chart.final-stability.col.all": {"text": "Right in every read", "fields": []},
+  "chart.final-stability.col.all_kn": {"text": "Right in every read, of the deadlines", "fields": []},
+  "chart.final-stability.col.all_ci": {"text": "{level} % CI", "fields": ["level"]},
+  "chart.final-stability.col.unstable": {"text": "Date changed between reads", "fields": []},
+  "chart.final-stability.col.unstable_kn": {"text": "Changed, of the deadlines", "fields": []},
+  "chart.final-stability.col.unstable_ci": {"text": "{level} % CI", "fields": ["level"]},
+  "chart.final-stability.table": {"text": "How steady the dates are over the reads", "fields": []},
+  "chart.final-stability.caption": {
+   "text": "Right in every read: Ordnung {ordnung_all}, the model alone {alone_all}; a date changed between reads: Ordnung {ordnung_unstable}, the model alone {alone_unstable}. Deadlines that changed for only one of the two: {b} for Ordnung, {c} for the model alone (Holm mid-p {p}), said by `{code}`.",
+   "fields": ["ordnung_all", "alone_all", "ordnung_unstable", "alone_unstable", "b", "c", "p", "code"]
+  },
+  "chart.timeline.footnote": {
+   "text": "Filled: held out and recorded, once or as pre-registered. Hollow: tuned, iterated on, or not yet run.",
+   "fields": []
+  },
+  "split.short.holdout4": {"text": "final run, pre-registered", "fields": []},
+  "split.short.newkinds": {"text": "new kinds, described", "fields": []}
  }
 }

@@ -803,6 +803,10 @@ def _statistics(doc: Mapping[str, Any]) -> Section:
     if crossing:
         blocks.append(Paragraph(f"Weighing harm against early dates: {crossing['text']}."))
     blocks.append(Paragraph(f"{h['note']} Labelled **not pre-registered**."))
+    if doc.get("final") is not None:
+        from evals.present import finaltext
+
+        blocks = [*finaltext.statistics(doc), *blocks]
     return Section("7. Statistics", blocks)
 
 

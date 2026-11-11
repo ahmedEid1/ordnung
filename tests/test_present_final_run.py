@@ -15,6 +15,7 @@ from __future__ import annotations
 import ast
 import copy
 import hashlib
+import html
 import json
 import re
 import subprocess
@@ -24,7 +25,22 @@ from typing import Any
 
 import pytest
 from evals import reproduce
-from evals.present import BEGIN, END, PresentError, build, charts, final, model, site, text
+from evals.present import (
+    BEGIN,
+    END,
+    PresentError,
+    build,
+    charts,
+    final,
+    finalcharts,
+    finalrun,
+    fmt,
+    model,
+    palette,
+    site,
+    text,
+    views,
+)
 from evals.present.__main__ import main
 
 import helpers_final as hf
@@ -32,7 +48,11 @@ import test_present_final as builders
 
 #: what a path of the building computer starts with (as tests/test_present.py)
 PATH_MARKS = ("/home/", "/Users/", "/root/", "/tmp/", "\\Users\\")
-FINAL_SVGS = ("docs/assets/eval-final-light.svg", "docs/assets/eval-final-dark.svg")
+#: The final run's charts with three reads: the headline, the differences and the stability over the reads.
+FINAL_CHARTS = ("final", "final-differences", "final-stability")
+FINAL_SVGS = tuple(
+    f"docs/assets/eval-{name}-{theme}.svg" for name in FINAL_CHARTS for theme in ("light", "dark")
+)
 FINAL_OUTPUTS = (*build.OUTPUT_PATHS, *FINAL_SVGS)
 #: The fields of an error row the page may show (ids and codes, never a letter's words).
 ERROR_KEYS = {
@@ -753,14 +773,15 @@ def test_the_history_lists_every_results_file_once_with_a_final(made: Callable[[
 # --------------------------------------------------------------------------------------------------
 
 
-def test_the_final_outputs_are_the_no_final_ones_and_the_final_chart(made: Callable[[str], Made]) -> None:
-    """With a final, ``--write`` writes today's outputs and the final run's chart; with none, exactly today's."""
+def test_the_final_outputs_are_the_no_final_ones_and_the_final_charts(made: Callable[[str], Made]) -> None:
+    """With a final, ``--write`` writes today's outputs and the final run's charts (the stability over the reads only
+    with two reads or more); with none, exactly today's."""
     _, doc, outputs = made("bad")
     assert build.output_paths(doc) == FINAL_OUTPUTS and set(outputs) == set(FINAL_OUTPUTS)
-    assert charts.names(doc) == (*charts.NAMES, "final") and charts.committed(doc) == (
-        *charts.COMMITTED,
-        "final",
-    )
+    assert charts.names(doc) == (*charts.NAMES, *FINAL_CHARTS)
+    assert charts.committed(doc) == (*charts.COMMITTED, *FINAL_CHARTS)
+    one = made("one_read").doc
+    assert charts.names(one) == charts.committed(one) == (*charts.NAMES, "final", "final-differences")
     pooled = model.build(hf.RESULTS)
     assert build.output_paths(pooled) == build.OUTPUT_PATHS
     assert charts.names(pooled) == charts.NAMES and charts.committed(pooled) == charts.COMMITTED
@@ -1007,3 +1028,254 @@ def test_no_presenter_test_writes_under_evals_results_or_preregistration() -> No
     if result.returncode != 0:
         pytest.skip("not a git checkout")
     assert result.stdout == ""
+
+
+# --------------------------------------------------------------------------------------------------
+# The final run's charts: the differences (a forest) and how steady the dates are over the reads
+# --------------------------------------------------------------------------------------------------
+
+#: Each comparison of the forest, and the registered slot whose sentence prints its difference and interval.
+SLOTS = {
+    ("F1_accuracy", "llm_only"): "head",
+    ("F1_accuracy", "llm_rules_text"): "rules_text",
+    ("F1_accuracy", "llm_rules_tool"): "agent",
+    **{("F2_harm", baseline): f"f2.{baseline}" for baseline in final.BASELINES},
+}
+#: A difference or an interval's end in points, as the registered sentences print it (``final._formatted``).
+_POINTS = re.compile(r"[+−]\d+\.\d")
+#: The final charts a document draws beside today's.
+_DRAWN = ("final", "final-differences", "final-stability")
+
+
+def _points(value: float) -> str:
+    return final._formatted(value, "points", "test")
+
+
+def _slot_text(doc: dict[str, Any], slot: str) -> str:
+    return " ".join(s["text"] for s in doc["final"]["sentences"]["page"] if s["slot"] == slot)
+
+
+def _values(svg: str) -> str:
+    return html.unescape(re.search(r"<desc[^>]*>(.*?)</desc>", svg, re.S).group(1))  # type: ignore[union-attr]
+
+
+def _final_charts(doc: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(name for name in charts.names(doc) if name in charts.FINAL_NAMES)
+
+
+def _baselines(doc: dict[str, Any]) -> list[str]:
+    return [c for c in doc["order"] if c != "ordnung"]
+
+
+@pytest.mark.parametrize("name", ["good", "bad", "undecided", "not_confirmed", "realistic"])
+def test_the_forest_chart_s_numbers_are_the_sentences_numbers(made: Callable[[str], Made], name: str) -> None:
+    """The forest of the final run, Ordnung minus each baseline for exact dates and for late or missed ones, shows
+    each comparison's difference and bootstrap interval in the format its registered sentence prints them, beside
+    its sign-flip and Holm p; the agent's sentence prints the non-inferiority bound, which the statistics show."""
+    doc = made(name).doc
+    shown = doc["final"]
+    _, rows = charts.table("final-differences", doc)
+    pairs = [(family, b) for family in ("F1_accuracy", "F2_harm") for b in _baselines(doc)]
+    assert [row[0] for row in rows] == [palette.LABELS[b] for _, b in pairs]
+    for (family, baseline), row in zip(pairs, rows, strict=True):
+        pair = shown["families"][family][f"ordnung-vs-{baseline}"]
+        numbers = _POINTS.findall(row[2])
+        said = _POINTS.findall(_slot_text(doc, SLOTS[(family, baseline)]))
+        assert numbers[0] == said[0] == _points(pair["diff"]), (family, baseline)
+        if pair["lo"] == pair["hi"] == 0:
+            assert numbers == [_points(pair["diff"])]
+        else:
+            assert numbers == [_points(pair["diff"]), _points(pair["lo"]), _points(pair["hi"])]
+            if (family, baseline) != ("F1_accuracy", final.AGENT):
+                assert numbers == said[:3], (family, baseline)
+        assert row[3:5] == [fmt.p_value(pair["p"]), fmt.p_value(pair["holm"])]
+    bound = shown["noninferiority"][f"ordnung-vs-{final.AGENT}"]
+    assert _POINTS.findall(_slot_text(doc, "agent"))[1:3] == [_points(bound["lo"]), _points(bound["hi"])]
+    assert "[+0.0, +0.0]" not in " ".join(cell for row in rows for cell in row)
+
+
+def test_the_stability_chart_is_drawn_from_two_reads_and_never_from_one(made: Callable[[str], Made]) -> None:
+    """How steady the dates are over the reads (right in every read, and changed between reads, each with its
+    Clopper–Pearson interval) is drawn from two reads or more, with the analysis's numbers; with one read there is no
+    such chart, only the registered sentence that it was not measured."""
+    for name in ("good", "two_reads"):
+        _, doc, outputs = made(name)
+        assert "final-stability" in charts.names(doc) and "final-stability" in charts.committed(doc)
+        assert "docs/assets/eval-final-stability-light.svg" in build.output_paths(doc)
+        _, rows = charts.table("final-stability", doc)
+        for condition, row in zip(doc["order"], rows, strict=True):
+            summary = doc["final"]["conditions"][condition]
+            assert row[0] == palette.LABELS[condition]
+            for cells, rate in ((row[1:4], summary["pass_all"]), (row[4:7], summary["unstable"])):
+                assert cells == [fmt.pct(rate["value"]), fmt.kn(rate), fmt.ci(rate["ci"])]
+        final_run = _section(outputs["docs/evals.md"], "6. Results").split("\n### 6.2 ", 1)[0]
+        assert "assets/eval-final-stability-light.svg" in final_run
+    _, doc, outputs = made("one_read")
+    assert "final-stability" not in charts.names(doc) and "final-stability" not in charts.committed(doc)
+    assert "eval-final-stability" not in outputs["docs/evals.md"]
+    assert not [path for path in outputs if "final-stability" in path]
+    with pytest.raises(PresentError):
+        charts.svg("final-stability", doc)
+    (sentence,) = [s for s in doc["final"]["sentences"]["page"] if s["slot"] == "stability"]
+    assert sentence["code"] == "stability.not_run"
+
+
+@pytest.mark.parametrize("name", ["good", "two_reads", "realistic"])
+def test_the_hero_shows_each_read_and_the_mean_with_its_interval(
+    made: Callable[[str], Made], name: str
+) -> None:
+    """The headline chart shows, per condition, the mean over the reads with its interval (exact dates and late or
+    missed ones) and each read alone as a hollow ring, every value named in its description."""
+    doc = made(name).doc
+    shown = doc["final"]
+    svg = charts.svg("final", doc, "light")
+    rings = re.findall(r'<circle [^>]*style="fill:none;[^"]*"><title>[^<]+</title>', svg)
+    assert len(rings) == 2 * len(final.CONDITIONS) * len(shown["reads_used"])
+    assert len(re.findall(r"stroke-linecap:round", svg)) == 2 * len(final.CONDITIONS)
+    description = _values(svg)
+    for condition in doc["order"]:
+        summary = shown["conditions"][condition]
+        for mean, per_read in (("mean_accuracy", "exact_per_read"), ("mean_harmful", "harmful_per_read")):
+            assert fmt.pct(summary[mean]["value"]) in description
+            assert fmt.ci(summary[mean]["ci"]) in description
+            assert " · ".join(fmt.num(rate["value"]) for rate in summary[per_read]) in description
+
+
+@pytest.mark.parametrize("name", _DRAWN)
+@pytest.mark.parametrize("theme", ["light", "dark", "css"])
+@pytest.mark.parametrize("narrow", [False, True])
+def test_every_final_chart_names_itself_every_value_and_has_its_table(
+    made: Callable[[str], Made], name: str, theme: str, narrow: bool
+) -> None:
+    """Each final chart has a title, a description naming every condition and value, a title on every mark and a
+    table twin with the same numbers, in light, dark and the page's CSS colours, wide and narrow."""
+    doc = made("good").doc
+    svg = charts.svg(name, doc, theme, narrow=narrow)
+    assert svg.startswith("<svg ") and 'role="img"' in svg and "aria-labelledby=" in svg
+    title = re.search(r'<title id="[^"]+">([^<]+)</title>', svg)
+    assert title and html.unescape(title.group(1)) == charts.title(name, doc)
+    description = _values(svg)
+    assert description == charts.description(name, doc)
+    header, rows = charts.table(name, doc)
+    assert rows and all(len(row) == len(header) for row in rows)
+    unescaped = html.unescape(svg)
+    for row in rows:
+        assert row[0] in description, (name, row[0])
+        for cell in row[1:]:
+            plain = cell.replace("`", "")
+            assert plain in description or plain in unescaped, (name, cell)
+    titled = re.findall(r"<(?:circle|rect|polygon)[^>]*><title>[^<]+</title>", svg)
+    assert len(titled) >= len(rows)
+    series = {palette.LIGHT[c] for c in palette.CONDITIONS} | {palette.DARK[c] for c in palette.CONDITIONS}
+    assert not [fill for fill in re.findall(r'<text[^>]*style="fill:([^;"]+)', svg) if fill in series]
+    assert site.caption(name, doc) == finalcharts.caption(name, doc)
+
+
+def test_every_final_chart_follows_the_final_order_and_draws_ordnung_last_when_last(
+    made: Callable[[str], Made],
+) -> None:
+    """One row order on every chart, the final run's mean accuracy: when Ordnung's is the lowest, its row is the
+    last of every final chart, drawn last, its label bold and its markers the size of everyone's."""
+    doc = copy.deepcopy(made("bad").doc)
+    conditions = doc["final"]["conditions"]
+    lowest = min(summary["mean_accuracy"]["value"] for summary in conditions.values())
+    conditions["ordnung"]["mean_accuracy"]["value"] = lowest - 0.01
+    doc["order"] = finalrun.order(doc["final"])
+    assert doc["order"][-1] == "ordnung"
+    labels = [palette.LABELS[c] for c in doc["order"]]
+    ordnung = palette.LIGHT["ordnung"]
+    for name in _DRAWN:
+        _, rows = charts.table(name, doc)
+        expected = (
+            [label for label in labels if label != "Ordnung"] * 2 if name == "final-differences" else labels
+        )
+        assert [row[0] for row in rows] == expected, name
+        for narrow in (False, True):
+            svg = charts.svg(name, doc, "light", narrow=narrow)
+            drawn = [value for value in re.findall(r">([^<>]+)</text>", svg) if value in labels]
+            once = [label for label in labels if label in drawn]
+            assert once == [label for label in labels if label in set(expected)]
+            assert drawn == once * (len(drawn) // len(once)), (name, narrow)
+            markers = re.findall(
+                r'<(?:circle|rect|polygon) [^>]*style="fill:(#[0-9a-f]{6});stroke:[^"]*', svg
+            )
+            sizes = set(re.findall(r'<circle [^>]*r="([\d.]+)" style="fill:#', svg))
+            if name != "final-differences":
+                assert markers[-1] == ordnung, (name, narrow)
+                assert re.search(r'font-weight="600"[^>]*>Ordnung</text>', svg)
+            assert len(sizes) <= 1, (name, sizes)
+
+
+def test_no_interval_reads_plus_zero_to_plus_zero(made: Callable[[str], Made]) -> None:
+    """When no deadline differs between Ordnung and a baseline (an interval of 0 to 0), the forest draws no interval
+    and says so in words of its templates, never "[+0.0, +0.0]"."""
+    doc = copy.deepcopy(made("good").doc)
+    for family in ("F1_accuracy", "F2_harm"):
+        doc["final"]["families"][family]["ordnung-vs-llm_rules_text"].update(diff=0.0, lo=0.0, hi=0.0)
+    _, rows = charts.table("final-differences", doc)
+    same = [row for row in rows if row[0] == palette.LABELS["llm_rules_text"]]
+    assert len(same) == 2
+    for row in same:
+        assert row[2] == views.fill(doc["final"]["views"], "chart.final-differences.none", d=_points(0.0))
+    shown = [cell for row in rows for cell in row]
+    shown += [charts.description("final-differences", doc), finalcharts.caption("final-differences", doc)]
+    for theme in ("light", "dark", "css"):
+        for narrow in (False, True):
+            svg = charts.svg("final-differences", doc, theme, narrow=narrow)
+            shown.append(svg)
+            if theme == "light":
+                assert len(re.findall(r"stroke-linecap:round", svg)) == 2 * (len(final.BASELINES) - 1)
+    for value in shown:
+        assert "[+0.0, +0.0]" not in value and "+0.0 to +0.0" not in value
+
+
+@pytest.mark.parametrize("name", ["good", "one_read", "realistic"])
+def test_the_final_charts_are_small_and_byte_identical(made: Callable[[str], Made], name: str) -> None:
+    """Every final chart renders the same bytes twice (and from presentation.json as written), stays under 40 KB,
+    and keeps its narrow text at 12 px or more on a 288 px column."""
+    doc = made(name).doc
+    again = json.loads(model.dumps(doc))
+    for chart in _final_charts(doc):
+        for theme in ("light", "dark", "css"):
+            for narrow in (False, True):
+                svg = charts.svg(chart, doc, theme, narrow=narrow)
+                assert svg == charts.svg(chart, again, theme, narrow=narrow), (chart, theme, narrow)
+                assert len(svg.encode("utf-8")) <= 40_000, (chart, theme, narrow)
+        svg = charts.svg(chart, doc, "css", narrow=True)
+        width = float(re.search(r'viewBox="0 0 ([\d.]+) ', svg).group(1))  # type: ignore[union-attr]
+        smallest = min(float(size) for size in re.findall(r'font-size="([\d.]+)"', svg))
+        assert smallest * 288 / width >= 12, (chart, smallest)
+    for relative, content in made(name).outputs.items():
+        if relative.endswith(".svg"):
+            assert len(content.encode("utf-8")) <= 40_000, relative
+
+
+def _template_pattern(template: str) -> re.Pattern[str]:
+    """A template as a pattern whose groups are its placeholders' values."""
+    pattern, seen = "", set()
+    for i, part in enumerate(re.split(r"\{([^{}]*)\}", template)):
+        if i % 2 == 0:
+            pattern += re.escape(part)
+        elif part in seen:
+            pattern += f"(?P={part})"
+        else:
+            seen.add(part)
+            pattern += f"(?P<{part}>.+?)"
+    return re.compile(pattern, re.S)
+
+
+def test_every_final_caption_is_a_filled_view_template(made: Callable[[str], Made]) -> None:
+    """Each final chart's "What this shows" is its view template filled with values only: numbers, and the code of a
+    registered sentence, never a word chosen for the result."""
+    templates = _views()["templates"]
+    for name in ("good", "bad", "one_read", "realistic"):
+        doc = made(name).doc
+        for chart in _final_charts(doc):
+            caption = finalcharts.caption(chart, doc)
+            assert isinstance(caption, views.Filled) and caption.key == f"chart.{chart}.caption", chart
+            match = _template_pattern(templates[caption.key]["text"]).fullmatch(caption)
+            assert match, (chart, caption)
+            for value in match.groupdict().values():
+                assert not re.search(r"[A-Za-z]", value) or re.fullmatch(r"[a-z_]+(?:\.[a-z_]+)+", value), (
+                    value
+                )

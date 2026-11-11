@@ -1,23 +1,49 @@
 """The final run's charts (standard library only), drawn with :mod:`evals.present.charts`'s primitives from
 ``presentation.json``'s ``final`` alone.
 
-``final`` is the headline chart once the final run is published (the README's, the summary's and the page's): per
-condition, the mean over the reads of the exact dates right and of the late or missed ones, each with its
-letter-cluster bootstrap interval, and each read alone as a hollow ring. Every title, heading, column, tooltip,
-description and caption is a view template (:mod:`evals.present.views`) filled with values; the description, which is
-also the README picture's alt text, names every condition and value, and the table twin holds the same numbers. The
-rows follow the page's one order (``presentation.json``'s ``order``, the final run's mean accuracy).
+* ``final`` is the headline chart once the final run is published (the README's, the summary's and the page's): per
+  condition, the mean over the reads of the exact dates right and of the late or missed ones, each with its
+  letter-cluster bootstrap interval, and each read alone as a hollow ring.
+* ``final-differences`` is the forest of the pre-registered comparisons (the statistics section's): Ordnung minus
+  each baseline, for exact dates and for late or missed ones, each difference with its letter-cluster bootstrap
+  interval and a line at zero. A difference is printed as the registered sentences print it; when no deadline differs
+  (an interval of 0 to 0) no interval is drawn and the chart says so, never "[+0.0, +0.0]".
+* ``final-stability`` shows how steady the dates are over the reads (the final run's results section): right in every
+  read and changed between reads, each with its Clopper–Pearson interval. It is drawn only when the stability test
+  ran, that is with two reads or more; with one read the registered sentence says it was not measured.
+
+Every title, heading, column, tooltip, description, footnote and caption is a view template
+(:mod:`evals.present.views`) filled with values; the description (the README picture's alt text for ``final``) names
+every condition and value, and the table twin holds the same numbers. The rows follow the page's one order
+(``presentation.json``'s ``order``, the final run's mean accuracy).
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
-from evals.present import charts, fmt, palette, views
+from evals.present import PresentError, charts, final, fmt, palette, views
 from evals.present.charts import Panel, Row
 
 Parts = tuple[list[str], list[list[str]], str]
+#: The comparisons' families, each with its view keys' part.
+FAMILIES = (("F1_accuracy", "exact"), ("F2_harm", "harm"))
+#: The comparison each registered slot says, and the analysis's decision for it (harm against the agent is
+#: described, not decided).
+DECISIONS = {
+    ("F1_accuracy", "llm_only"): "beats_llm_only",
+    ("F1_accuracy", "llm_rules_text"): "vs_llm_rules_text",
+    ("F1_accuracy", "llm_rules_tool"): "vs_llm_rules_tool",
+    ("F2_harm", "llm_only"): "f2_vs_llm_only",
+    ("F2_harm", "llm_rules_text"): "f2_vs_llm_rules_text",
+}
+#: The final splits whose part in the timeline a view template words.
+SPLITS = ("holdout4", "newkinds")
+NONE = "—"
+#: Where a value comes from, when the registered formats refuse it.
+WHERE = "presentation.final"
 
 
 def _final(doc: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -35,6 +61,71 @@ def _level(doc: Mapping[str, Any]) -> str:
 
 def _each(rates: Sequence[Mapping[str, Any]]) -> str:
     return " · ".join(fmt.num(rate["value"]) for rate in rates)
+
+
+def points(value: float) -> str:
+    """A difference in percentage points, written as the registered sentences write it (``final``'s points)."""
+    return final._formatted(value, "points", WHERE)
+
+
+def p_value(value: float | None) -> str:
+    """A p-value as a table cell gives it."""
+    return NONE if value is None else fmt.p_value(float(value))
+
+
+def pair_key(baseline: str) -> str:
+    return f"{final.REFERENCE}-vs-{baseline}"
+
+
+def baselines(doc: Mapping[str, Any]) -> list[str]:
+    """The baselines in the page's row order."""
+    return [c for c in doc["order"] if c != final.REFERENCE]
+
+
+def same(row: Mapping[str, Any]) -> bool:
+    """Whether no deadline differs between the two sides: a bootstrap interval of 0 to 0."""
+    return bool(row["lo"] == 0 and row["hi"] == 0)
+
+
+def shown(doc: Mapping[str, Any], row: Mapping[str, Any]) -> str:
+    """A comparison's difference and interval in points, ``+d [lo, hi]``; when no deadline differs, the view
+    template that says so (never an interval of 0 to 0)."""
+    if same(row):
+        return _view(doc, "chart.final-differences.none", d=points(row["diff"]))
+    return f"{points(row['diff'])} [{points(row['lo'])}, {points(row['hi'])}]"
+
+
+def code(value: Any) -> str:
+    """A decision as the analysis records it, as a code (``true``/``false`` for a yes or no), or a dash for none."""
+    if value is None:
+        return NONE
+    return f"`{json.dumps(value) if isinstance(value, bool) else value}`"
+
+
+def decision(doc: Mapping[str, Any], family: str, baseline: str) -> str:
+    """The analysis's decision for a comparison, or the view template that says it is described, not tested."""
+    key = DECISIONS.get((family, baseline))
+    if key is None:
+        return _view(doc, "chart.final-differences.described")
+    return code(_final(doc)["decisions"][key])
+
+
+def power(doc: Mapping[str, Any], family: str, baseline: str) -> str:
+    """The pre-registered power of a comparison (the power file's), or a dash when there is none."""
+    powers = _final(doc).get("power") or {}
+    value = (powers.get(family) or {}).get(pair_key(baseline))
+    return NONE if value is None else final._formatted(value, "pct_whole", WHERE)
+
+
+def stable(doc: Mapping[str, Any]) -> bool:
+    """Whether the stability test ran (two reads or more): only then is the stability chart drawn."""
+    shown_ = _final(doc)
+    return shown_["families"]["F3_stability"] is not None and int(shown_["reads"]) >= 2
+
+
+def split_short(doc: Mapping[str, Any], split: str) -> str | None:
+    """A final split's part in the timeline, in a view template's words (``None`` for any other split)."""
+    return _view(doc, f"split.short.{split}") if split in SPLITS else None
 
 
 # --------------------------------------------------------------------------------------------------
@@ -204,6 +295,293 @@ def _hero_caption(doc: Mapping[str, Any]) -> str:
     )
 
 
+# --------------------------------------------------------------------------------------------------
+# The differences: Ordnung minus each baseline, for exact dates and for late or missed ones
+# --------------------------------------------------------------------------------------------------
+
+
+def _differences_rows(doc: Mapping[str, Any]) -> list[tuple[str, str, list[str]]]:
+    """``(family, baseline, cells)`` for each comparison, the accuracy family's first, baselines in the page's
+    order."""
+    shown_ = _final(doc)
+    rows: list[tuple[str, str, list[str]]] = []
+    for family, part in FAMILIES:
+        for baseline in baselines(doc):
+            row = shown_["families"][family][pair_key(baseline)]
+            cells = [
+                palette.LABELS[baseline],
+                _view(doc, f"chart.final-differences.measure.{part}"),
+                shown(doc, row),
+                p_value(row["p"]),
+                p_value(row["holm"]),
+                power(doc, family, baseline),
+                decision(doc, family, baseline),
+            ]
+            rows.append((family, baseline, cells))
+    return rows
+
+
+def _differences_parts(doc: Mapping[str, Any]) -> Parts:
+    shown_, level = _final(doc), _level(doc)
+    header: list[str] = [
+        _view(doc, "chart.final-differences.col.baseline"),
+        _view(doc, "chart.final-differences.col.measure"),
+        _view(doc, "chart.final-differences.col.points", level=level),
+        _view(doc, "chart.final-differences.col.p"),
+        _view(doc, "chart.final-differences.col.holm"),
+        _view(doc, "chart.final-differences.col.power"),
+        _view(doc, "chart.final-differences.col.code"),
+    ]
+    rows = [cells for _, _, cells in _differences_rows(doc)]
+    said = [
+        _view(
+            doc,
+            "chart.final-differences.row",
+            baseline=cells[0],
+            measure=cells[1],
+            shown=cells[2],
+            p=cells[3],
+            holm=cells[4],
+            power=cells[5],
+            code=cells[6].replace("`", ""),
+        )
+        for cells in rows
+    ]
+    description: str = _view(
+        doc,
+        "chart.final-differences.description",
+        reads=shown_["reads"],
+        level=level,
+        rows=". ".join(said),
+    )
+    return header, rows, description
+
+
+def _differences(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> str:
+    shown_ = _final(doc)
+    _, _, description = _differences_parts(doc)
+    by_family: dict[str, list[Row]] = {family: [] for family, _ in FAMILIES}
+    ends: dict[str, list[float]] = {family: [0.0] for family, _ in FAMILIES}
+    for family, baseline, cells in _differences_rows(doc):
+        row = shown_["families"][family][pair_key(baseline)]
+        ends[family] += [row["lo"], row["hi"], row["diff"]]
+        value = _view(doc, "chart.final-differences.same") if same(row) else points(row["diff"])
+        by_family[family].append(
+            Row(
+                baseline,
+                row["diff"],
+                None if same(row) else (row["lo"], row["hi"]),
+                value,
+                _view(
+                    doc,
+                    "chart.final-differences.tip",
+                    baseline=cells[0],
+                    measure=cells[1],
+                    shown=cells[2],
+                    holm=cells[4],
+                    code=cells[6].replace("`", ""),
+                ),
+            )
+        )
+    # each panel's axis takes in its intervals and the zero line, at least 5 points either side of it
+    panels = [
+        Panel(
+            _view(doc, f"chart.final-differences.{part}"),
+            min(charts._floor(min(ends[family]), 0.05), -0.05),
+            max(charts._ceil(max(ends[family]), 0.05), 0.05),
+            charts._signed_points,
+            by_family[family],
+            zero=True,
+        )
+        for family, part in FAMILIES
+    ]
+    first = shown_["families"]["F1_accuracy"][pair_key(final.BASELINES[0])]
+    subtitle = _view(
+        doc,
+        "chart.final-differences.subtitle",
+        items=shown_["items"],
+        letters=shown_["letters"],
+        reads=shown_["reads"],
+        split=shown_["split"],
+        model=shown_["model"],
+        level=_level(doc),
+        method=first["method"],
+    )
+    return charts._dot_chart(
+        ident,
+        theme,
+        narrow,
+        _view(doc, "chart.final-differences.title"),
+        subtitle,
+        description,
+        panels,
+        _view(doc, "chart.final-differences.footnote"),
+    )
+
+
+def _differences_caption(doc: Mapping[str, Any]) -> str:
+    families = _final(doc)["families"]
+
+    def diff(family: str, baseline: str) -> str:
+        return points(families[family][pair_key(baseline)]["diff"])
+
+    return _view(
+        doc,
+        "chart.final-differences.caption",
+        alone_exact=diff("F1_accuracy", "llm_only"),
+        alone_harm=diff("F2_harm", "llm_only"),
+        text_exact=diff("F1_accuracy", "llm_rules_text"),
+        text_harm=diff("F2_harm", "llm_rules_text"),
+        agent_exact=diff("F1_accuracy", "llm_rules_tool"),
+        agent_harm=diff("F2_harm", "llm_rules_tool"),
+    )
+
+
+# --------------------------------------------------------------------------------------------------
+# How steady the dates are: right in every read, and changed between reads
+# --------------------------------------------------------------------------------------------------
+
+#: The stability chart's two rates, each with its view keys' part.
+STEADINESS = (("pass_all", "all"), ("unstable", "unstable"))
+
+
+def _rate_cells(rate: Mapping[str, Any]) -> list[str]:
+    return [fmt.pct(rate["value"]), fmt.kn(rate), fmt.ci(rate["ci"])]
+
+
+def _stability_parts(doc: Mapping[str, Any]) -> Parts:
+    shown_, level = _final(doc), _level(doc)
+    header: list[str] = [_view(doc, "chart.final-stability.col.condition")]
+    for _, part in STEADINESS:
+        header += [
+            _view(doc, f"chart.final-stability.col.{part}"),
+            _view(doc, f"chart.final-stability.col.{part}_kn"),
+            _view(doc, f"chart.final-stability.col.{part}_ci", level=level),
+        ]
+    rows: list[list[str]] = []
+    said: list[str] = []
+    for condition in doc["order"]:
+        summary = shown_["conditions"][condition]
+        steady, changed = _rate_cells(summary["pass_all"]), _rate_cells(summary["unstable"])
+        cells = [palette.LABELS[condition], *steady, *changed]
+        rows.append(cells)
+        said.append(
+            _view(
+                doc,
+                "chart.final-stability.row",
+                condition=cells[0],
+                all=steady[0],
+                all_kn=steady[1],
+                level=level,
+                all_ci=steady[2],
+                unstable=changed[0],
+                unstable_kn=changed[1],
+                unstable_ci=changed[2],
+            )
+        )
+    description: str = _view(
+        doc,
+        "chart.final-stability.description",
+        items=shown_["items"],
+        reads=shown_["reads"],
+        level=level,
+        rows=". ".join(said),
+    )
+    return header, rows, description
+
+
+def _stability(doc: Mapping[str, Any], theme: str, narrow: bool, ident: str) -> str:
+    if not stable(doc):
+        raise PresentError("the stability chart needs the stability test, which needs two reads or more")
+    shown_, level = _final(doc), _level(doc)
+    _, _, description = _stability_parts(doc)
+    rows: dict[str, list[Row]] = {key: [] for key, _ in STEADINESS}
+    lowest, highest = 1.0, 0.0
+    for condition in doc["order"]:
+        summary = shown_["conditions"][condition]
+        label = palette.LABELS[condition]
+        for key, part in STEADINESS:
+            rate = summary[key]
+            value, (low, high) = float(rate["value"]), rate["ci"]
+            if key == "pass_all":
+                lowest = min(lowest, value, low)
+            else:
+                highest = max(highest, value, high)
+            rows[key].append(
+                Row(
+                    condition,
+                    value,
+                    (low, high),
+                    fmt.pct(value),
+                    _view(
+                        doc,
+                        f"chart.final-stability.tip.{part}",
+                        condition=label,
+                        value=fmt.pct(value),
+                        kn=fmt.kn(rate),
+                        level=level,
+                        ci=fmt.ci(rate["ci"]),
+                    ),
+                )
+            )
+    panels = [
+        Panel(
+            _view(doc, "chart.final-stability.all"),
+            min(charts._floor(lowest, 0.1), 0.9),
+            1.0,
+            charts._percent,
+            rows["pass_all"],
+        ),
+        Panel(
+            _view(doc, "chart.final-stability.unstable"),
+            0.0,
+            max(charts._ceil(highest, 0.05), 0.05),
+            charts._percent,
+            rows["unstable"],
+        ),
+    ]
+    subtitle = _view(
+        doc,
+        "chart.final-stability.subtitle",
+        items=shown_["items"],
+        letters=shown_["letters"],
+        reads=shown_["reads"],
+        split=shown_["split"],
+        model=shown_["model"],
+        level=level,
+        method=shown_["methods"]["single_rate"],
+    )
+    return charts._dot_chart(
+        ident,
+        theme,
+        narrow,
+        _view(doc, "chart.final-stability.title"),
+        subtitle,
+        description,
+        panels,
+        _view(doc, "chart.final-stability.footnote"),
+    )
+
+
+def _stability_caption(doc: Mapping[str, Any]) -> str:
+    shown_ = _final(doc)
+    conditions = shown_["conditions"]
+    row = shown_["families"]["F3_stability"][pair_key("llm_only")]
+    (said,) = [s["code"] for s in shown_["sentences"]["page"] if s["slot"] == "stability"]
+    return _view(
+        doc,
+        "chart.final-stability.caption",
+        ordnung_all=fmt.pct(conditions["ordnung"]["pass_all"]["value"]),
+        alone_all=fmt.pct(conditions["llm_only"]["pass_all"]["value"]),
+        ordnung_unstable=fmt.pct(conditions["ordnung"]["unstable"]["value"]),
+        alone_unstable=fmt.pct(conditions["llm_only"]["unstable"]["value"]),
+        b=row["b"],
+        c=row["c"],
+        p=p_value(row["holm"]),
+        code=said,
+    )
+
+
 #: Each chart: how it is drawn, its parts (header, rows, description), its title's view and its caption.
 _CHARTS: dict[
     str,
@@ -215,12 +593,20 @@ _CHARTS: dict[
     ],
 ] = {
     "final": (_hero, _hero_parts, "chart.final.title", _hero_caption),
+    "final-differences": (
+        _differences,
+        _differences_parts,
+        "chart.final-differences.title",
+        _differences_caption,
+    ),
+    "final-stability": (_stability, _stability_parts, "chart.final-stability.title", _stability_caption),
 }
 
 
 def names(doc: Mapping[str, Any]) -> tuple[str, ...]:
-    """The final run's charts, in the order the report shows them."""
-    return tuple(_CHARTS)
+    """The final run's charts, in the order the report shows them: the headline and the differences, and how steady
+    the dates are once there are two reads or more."""
+    return tuple(name for name in _CHARTS if name != "final-stability" or stable(doc))
 
 
 def committed(doc: Mapping[str, Any]) -> tuple[str, ...]:

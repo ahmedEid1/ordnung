@@ -14,9 +14,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from evals.present import PAGES_URL, fmt, views
+from evals.present import PAGES_URL, charts, finalcharts, fmt, views
 from evals.present.final import PAGE_BEGIN, PAGE_END
-from evals.present.text import Block, Chart, Marker, Paragraph, Subheading
+from evals.present.text import Block, Chart, Marker, Paragraph, Subheading, Table
 
 #: The evaluation card's rows with a final run, in order: the ones every card has (``text``'s) and the final run's.
 CARD = (
@@ -128,7 +128,20 @@ def final_run(doc: Mapping[str, Any]) -> list[Block]:
             slots.append((sentence["slot"], [sentence["text"]]))
     blocks += [Paragraph(" ".join(texts)) for _, texts in slots]
     blocks.append(Marker(PAGE_END))
+    if finalcharts.stable(doc):
+        blocks += _chart(doc, "final-stability")
     return blocks
+
+
+def _chart(doc: Mapping[str, Any], name: str) -> list[Block]:
+    """A final chart and its table twin (the page puts the table behind the chart; the Markdown report shows both)."""
+    header, rows = charts.table(name, doc)
+    return [Chart(name), Table(header, rows, view(doc, f"chart.{name}.table"))]
+
+
+def statistics(doc: Mapping[str, Any]) -> list[Block]:
+    """Section 7's final run: the forest of the pre-registered comparisons with its table."""
+    return _chart(doc, "final-differences")
 
 
 def kind(doc: Mapping[str, Any], name: str) -> str:
