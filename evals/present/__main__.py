@@ -1,13 +1,18 @@
 """``python -m evals.present [--write | --check] [--site DIR [--check-site]]``
 
 * ``--write``: render the committed outputs from the results files (``presentation.json``, the README block,
-  ``docs/evals.md``, ``docs/evals-history.md``, ``docs/assets/eval-*.svg``) and write those that differ.
+  ``docs/evals.md``, ``docs/evals-history.md``, ``docs/assets/eval-*.svg``, the final run's charts among them once
+  it is published) and write those that differ.
 * ``--check``: render them again and exit 1 when any committed file differs, is missing or is left over (CI).
 * ``--site DIR``: build the report page into ``DIR`` from ``presentation.json`` alone (standard library only);
-  ``--check-site`` then checks it. ``--commit`` names the commit in the page's footer.
+  ``--check-site`` then checks it (with a final run, also its charts, its sections 16 and 17 and every registered
+  page sentence). ``--commit`` names the commit in the page's footer.
+* ``--root DIR`` (not in ``--help``): the checkout to read and write instead of this one, as the tests' and the
+  report page's end-to-end cases' synthetic final runs are, each in a folder of its own.
 
 Exit codes: 0 ok; 1 a check found a difference or a problem; 2 the inputs do not fit (a results file of an unknown
-kind, an input whose bytes changed …).
+kind, an input whose bytes changed, a final read without its analysis, a sentence the registered rules refuse …),
+and nothing is written.
 """
 
 from __future__ import annotations

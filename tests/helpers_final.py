@@ -12,6 +12,9 @@ in a temporary folder that looks like a checkout.
   ``evals.analysis.final_analysis`` output.
 * :func:`realistic` runs the real analysis on synthetic reads written as results files, so the analysis names real
   files with their hashes.
+* :func:`calibration` runs it as ``scripts/prereg_calibration.py`` does, on the earlier held-out splits read as the
+  final run: real numbers of a realistic size. Its reads and its errors hold those splits' letter ids, so it is only
+  ever written into a temporary folder, and nothing of it is printed.
 """
 
 from __future__ import annotations
@@ -27,6 +30,7 @@ from typing import Any
 
 from evals import analysis
 from evals.present import final
+from scripts import prereg_calibration
 
 import test_present_final as builders
 
@@ -44,6 +48,8 @@ SCENARIOS = builders.SCENARIOS
 SCENARIO_IDS = [name.replace(" ", "_") for name, _, _ in SCENARIOS]
 N = builders.N
 PAIRS = {baseline: f"ordnung-vs-{baseline}" for baseline in final.BASELINES}
+#: How many synthetic letters each of :func:`realistic_reads`' splits has.
+READ_LETTERS = {"holdout4": 12, "newkinds": 6}
 
 
 def _hex(seed: str) -> str:
@@ -81,7 +87,7 @@ def realistic_reads() -> list[tuple[str, str]]:
         ("newkinds", 1): "2027-01-01-claude-sonnet-5-newkinds.json",
     }
     return [
-        (name, _text(synthetic_read(split, read, 12 if split == "holdout4" else 6)))
+        (name, _text(synthetic_read(split, read, READ_LETTERS[split])))
         for (split, read), name in names.items()
     ]
 
@@ -123,6 +129,54 @@ def realistic(
     reads = realistic_reads()
     named = as_written(copy.deepcopy(dict(src or builders.no_set_aside(builders.sources()))))
     return analyse(reads), named, reads
+
+
+def calibration_reads() -> list[tuple[str, str]]:
+    """The earlier held-out splits as the final run's reads (``scripts/prereg_calibration.py``): pooled and read as
+    holdout4 three times, the last of them as newkinds once, as results files ``(name, text)``."""
+    docs = [json.loads((RESULTS / name).read_bytes()) for name in analysis.HELD_OUT_AS_RECORDED]
+    pooled = dict(docs[0], entries=[entry for doc in docs for entry in doc["entries"]])
+    reads = [
+        (name, prereg_calibration._relabelled(pooled, "holdout4", read))
+        for read, name in enumerate(
+            (
+                "2027-01-01-claude-sonnet-5-holdout4.json",
+                "2027-01-02-claude-sonnet-5-holdout4-r2.json",
+                "2027-01-03-claude-sonnet-5-holdout4-r3.json",
+            ),
+            1,
+        )
+    ]
+    reads.append(
+        ("2027-01-01-claude-sonnet-5-newkinds.json", prereg_calibration._relabelled(docs[-1], "newkinds", 1))
+    )
+    return [(name, _text(data)) for name, data in reads]
+
+
+def calibration(
+    src: Mapping[str, Any] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], list[tuple[str, str]]]:
+    """The calibration's final analysis, with the earlier held-out splits pooled beside it as registered: the
+    analysis, the sources it renders with and the reads, to write beside it (:func:`final_root` with ``reads=``)."""
+    reads = calibration_reads()
+    registered = analysis.parse_prereg({"analysis": analysis.default_prereg_analysis()})
+    runs = [
+        analysis.load_run(
+            json.loads(text), name=name, sha256=hashlib.sha256(text.encode("utf-8")).hexdigest()
+        )
+        for name, text in reads
+    ]
+    document = analysis.final_analysis(
+        registered,
+        runs,
+        pooled_with=[analysis.read_run(RESULTS / name) for name in registered.pool_with],
+        prereg_record={"file": FILES["prereg"], "sha256": "ab" * 32},
+        ambiguous_slots=analysis.ambiguous_slots([], ("holdout4", "newkinds")),
+        date="2027-01-04",
+    )
+    named = as_written(copy.deepcopy(dict(src or builders.no_set_aside(builders.sources()))))
+    data: dict[str, Any] = json.loads(analysis.render(document))
+    return data, named, reads
 
 
 # --------------------------------------------------------------------------------------------------
@@ -472,6 +526,12 @@ def scenario_root(tmp_path: Path, name: str) -> Path:
 def realistic_root(tmp_path: Path) -> Path:
     """:func:`final_root` of :func:`realistic`: the final analysis names the reads written beside it."""
     doc, src, reads = realistic()
+    return final_root(tmp_path, doc, sources=src, prereg=complete_prereg(builders.prereg()), reads=reads)
+
+
+def calibration_root(tmp_path: Path) -> Path:
+    """:func:`final_root` of :func:`calibration`: its reads beside it, the earlier held-out splits linked."""
+    doc, src, reads = calibration()
     return final_root(tmp_path, doc, sources=src, prereg=complete_prereg(builders.prereg()), reads=reads)
 
 

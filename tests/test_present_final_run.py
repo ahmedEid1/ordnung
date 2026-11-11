@@ -17,7 +17,9 @@ import copy
 import hashlib
 import html
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable, Iterator
@@ -45,6 +47,7 @@ from evals.present import (
     views,
 )
 from evals.present.__main__ import main
+from scripts import prereg_hashes
 
 import helpers_final as hf
 import test_present_final as builders
@@ -1660,6 +1663,7 @@ def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Ma
     written"."""
     _, doc, outputs = made(name)
     shown = doc["final"]
+    assert shown["split"] == "holdout4"
     rows = {row["split"]: row for row in doc["splits"]}
     held = rows["holdout4"]
     assert held["role"] == views.fill(shown["views"], "split.role.holdout4")
@@ -1669,7 +1673,7 @@ def test_the_timeline_names_the_final_split_as_recorded(made: Callable[[str], Ma
         sum(rate["n"] for rate in exact),
     )
     assert held["recordings"] == len(shown["reads_used"])
-    dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == "holdout4")
+    dates = sorted(row["date"] for row in shown["inputs"] if row["split"] == shown["split"])
     assert held["recorded"] == (dates[0] if dates else shown["date"])
     newkinds = rows["newkinds"]
     assert newkinds["role"] == views.fill(shown["views"], "split.role.newkinds")
@@ -1994,3 +1998,159 @@ def test_the_report_page_s_end_to_end_cases_build_a_synthetic_final_in_their_own
         check=False,
     )
     assert refused.returncode == 2 and not (tmp_path / "x").exists()
+
+
+# --------------------------------------------------------------------------------------------------
+# End to end, on every synthetic final; the page with no final; the phase-2 record
+# --------------------------------------------------------------------------------------------------
+
+#: Every synthetic final: the hand-built ones, a real analysis of synthetic reads, and the calibration's (the pooled
+#: held-out splits read as the final run, ``scripts/prereg_calibration.py``), each in a temporary checkout.
+EVERY_FINAL = [*hf.SCENARIO_IDS, "realistic", "calibration"]
+#: README.md's limit, and the lines it keeps spare for the publish PR (``tests/test_readme.py``).
+README_MAX_LINES, PUBLISH_ROOM = 250, 2
+
+
+def _final_root(tmp_path: Path, name: str) -> Path:
+    if name == "realistic":
+        return hf.realistic_root(tmp_path)
+    if name == "calibration":
+        return hf.calibration_root(tmp_path)
+    return hf.scenario_root(tmp_path, name)
+
+
+@pytest.mark.parametrize("name", EVERY_FINAL)
+def test_every_synthetic_final_renders_through_the_whole_presenter(name: str, tmp_path: Path) -> None:
+    """Each synthetic final goes through the presenter as the publish PR's will: ``--write``, then ``--check`` finds
+    nothing; the README's block is the registered layout of the registered README sentences and the report's final
+    section the registered page sentences; the report page passes ``--check-site``; and README.md, with this block,
+    keeps under its limit with the room the largest block needs."""
+    root = _final_root(tmp_path / "checkout", name)
+    assert main(["--root", str(root), "--write"]) == 0
+    assert main(["--root", str(root), "--check"]) == 0
+    source, prereg, named = hf.published(root)
+    readme = (root / build.README).read_text(encoding="utf-8")
+    said = final.coded(source, prereg, block="readme", sources=named)
+    assert final.readme_problems(readme, said, prereg["sentences"]) == []
+    page = [s.text for s in final.coded(source, prereg, block="page", sources=named)]
+    assert final.page_problems((root / build.REPORT).read_text(encoding="utf-8"), page) == []
+    out = tmp_path / "site"
+    assert main(["--root", str(root), "--site", str(out), "--check-site"]) == 0
+    doc = json.loads((root / build.PRESENTATION).read_text(encoding="utf-8"))
+    assert doc["final"]["source"]["file"] == hf.FINAL_NAME
+    assert sorted(f"{name}.csv" for name in charts.names(doc)) == sorted(p.name for p in out.glob("*.csv"))
+    lines = readme.splitlines()
+    begin, end = lines.index(BEGIN), lines.index(END)
+    outside = len(lines) - (end - begin - 1)
+    assert len(lines) < README_MAX_LINES
+    assert outside + final.README_BLOCK_MAX_LINES + PUBLISH_ROOM < README_MAX_LINES
+    for relative in build.output_paths(doc):
+        content = (root / relative).read_text(encoding="utf-8")
+        assert str(tmp_path) not in content and str(hf.ROOT) not in content, relative
+
+
+#: The code at the freeze for the pre-registered final evaluation.
+FREEZE = "f2cacf64771a8736262f52a535d29b79032969c9"
+
+
+def _git(*args: str) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(["git", "-C", str(hf.ROOT), *args], capture_output=True, check=False)
+
+
+@pytest.mark.slow
+def test_the_site_with_no_final_is_the_freeze_s_byte_for_byte(tmp_path: Path) -> None:
+    """With no final run the report page this presenter builds is the freeze's, file for file and byte for byte: the
+    freeze's ``evals/present`` (from git) and this checkout's each build it from their own ``presentation.json``, in
+    folders of their own."""
+    if shutil.which("git") is None or _git("cat-file", "-e", f"{FREEZE}^{{commit}}").returncode != 0:
+        pytest.skip("the freeze commit is not in this clone (a shallow checkout)")
+    frozen, here = tmp_path / "freeze", tmp_path / "head"
+    archive = _git("archive", FREEZE, "evals/__init__.py", "evals/present")
+    assert archive.returncode == 0, archive.stderr
+    frozen.mkdir()
+    subprocess.run(["tar", "-x", "-C", str(frozen)], input=archive.stdout, check=True)
+    (here / "evals").mkdir(parents=True)
+    shutil.copyfile(hf.ROOT / "evals" / "__init__.py", here / "evals" / "__init__.py")
+    shutil.copytree(
+        hf.ROOT / "evals" / "present",
+        here / "evals" / "present",
+        ignore=shutil.ignore_patterns("__pycache__"),
+    )
+    environment = {key: value for key, value in os.environ.items() if key != "PYTHONPATH"}
+    built = {}
+    for side in (frozen, here):
+        out = tmp_path / f"site-{side.name}"
+        result = subprocess.run(
+            [sys.executable, "-B", "-m", "evals.present", "--site", str(out)],
+            cwd=side,
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        built[side.name] = {path.name: path.read_bytes() for path in sorted(out.iterdir())}
+    assert sorted(built["head"]) == sorted(built["freeze"])
+    for name, content in built["freeze"].items():
+        assert built["head"][name] == content, name
+
+
+def test_the_phase2_record_of_this_tree_checks_clean_and_names_an_edit(tmp_path: Path) -> None:
+    """The record the operator posts (``python -m scripts.prereg_hashes --phase2 FILE --write``) is written here to
+    a temporary file only, then checked against the presenter's tree as committed: it checks clean. A one-character
+    edit to a view template, to the Playwright spec or a new docs template is reported by path, and a
+    ``code_hash_changed`` deviation that names the path clears it."""
+    if shutil.which("git") is None or _git("rev-parse", "--verify", "HEAD").returncode != 0:
+        pytest.skip("not a git checkout")
+    record_path = tmp_path / "phase2.json"
+    assert prereg_hashes.main(["--phase2", str(record_path), "--write", "--root", str(hf.ROOT)]) == 0
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record["head"] == _git("rev-parse", "HEAD").stdout.decode().strip()
+    assert set(record["patterns"]) == set(prereg_hashes.PHASE2_PATTERNS)
+    views_path, spec_path = "evals/present/templates/views.json", "web/e2e/eval-report.spec.ts"
+    assert {views_path, spec_path, "evals/present/final.py"} <= set(record["files"])
+    assert build.PRESENTATION not in record["files"]
+    assert record["tree_sha256"] == prereg_hashes.tree_sha256(record["files"])
+    tree = tmp_path / "tree"
+    for relative in record["files"]:
+        blob = _git("show", f"{record['head']}:{relative}")
+        assert blob.returncode == 0, relative
+        (tree / relative).parent.mkdir(parents=True, exist_ok=True)
+        (tree / relative).write_bytes(blob.stdout)
+    assert prereg_hashes.phase2_problems(record, tree, []) == []
+    assert prereg_hashes.main(["--phase2", str(record_path), "--root", str(tree)]) == 0
+    dirty = _git("status", "--porcelain", "--", "evals/present", "docs/templates", spec_path).stdout
+    if not dirty:
+        assert prereg_hashes.phase2_problems(record, hf.ROOT, []) == []
+
+    edited = tree / views_path
+    original = edited.read_bytes()
+    assert b"Deviations" in original
+    edited.write_bytes(original.replace(b"Deviations", b"Deviatioms", 1))
+    (tree / spec_path).write_bytes((tree / spec_path).read_bytes() + b"\n")
+    (tree / "docs" / "templates").mkdir(parents=True)
+    (tree / "docs" / "templates" / "lede.md").write_text("A template written after the posting.\n")
+    found = prereg_hashes.phase2_problems(record, tree, [])
+    assert [problem.split(":", 1)[0] for problem in found] == [
+        "docs/templates/lede.md",
+        views_path,
+        spec_path,
+    ]
+    deviations = tmp_path / "deviations.json"
+    deviations.write_text(json.dumps([{"kind": "code_hash_changed", "evidence": [views_path]}]))
+    assert (
+        prereg_hashes.main(
+            ["--phase2", str(record_path), "--root", str(tree), "--with-deviations", str(deviations)]
+        )
+        == 1
+    )
+    named = [
+        {
+            "id": "dev-1",
+            "kind": "code_hash_changed",
+            "evidence": [views_path, f"{spec_path} (presentation only)"],
+        },
+        {"id": "dev-2", "kind": "code_hash_changed", "evidence": ["docs/templates/lede.md"]},
+    ]
+    assert prereg_hashes.phase2_problems(record, tree, named) == []
+    assert prereg_hashes.phase2_problems(record, tree, [{"kind": "budget_cut", "evidence": [views_path]}])
