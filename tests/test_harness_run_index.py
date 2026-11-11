@@ -502,6 +502,61 @@ def test_a_reading_is_counted_only_on_a_transcription_that_is_run_one_s_request(
     assert checks["built_on_answers_that_differ_from_run_1"] == 0
 
 
+def _page(image: Path, data: bytes, text: str = "page two") -> tuple[LLMRequest, Any]:
+    """A transcription of the photo's page ``image`` (written with ``data``; its key: their sha256) and its
+    transcript."""
+    image.write_bytes(data)
+    request = LLMRequest(
+        purpose="transcribe", prompt="Transcribe the page.", system="t",
+        attachments=[Attachment(path=image, media_type="image/jpeg")], doc_ids=[PHOTO],
+        cache_key=hashlib.sha256(data).hexdigest(), prompt_version="1.1",
+    )  # fmt: skip
+    return request, {"text": text}
+
+
+def test_a_transcription_sent_with_another_image_fails_though_its_reading_is_run_one_s(
+    tmp_path: Path,
+) -> None:
+    """A transcription's key is the sha256 of its page image: sent with other bytes (the page rendered by another
+    Pillow build, say), it is under another key, and run 1's is never asked again. The transcript reads as run 1's,
+    so the photo's reading is run 1's request byte for byte; the transcription still differs, and the smoke fails."""
+    other, _ = _page(tmp_path / "other.jpg", b"\xff\xd8 the page encoded otherwise")
+    checks = _smoke(tmp_path, transcribe={"attachments": other.attachments, "cache_key": other.cache_key})
+    assert checks["repeated"] == 4 and checks["follow_ups_run_1_did_not_make"] == 1
+    assert checks["run_1_transcriptions_not_asked_again"] == 1
+    assert not checks["requests_identical_to_run_1"]
+
+
+def _two_pages(tmp_path: Path, page_two_again: bytes) -> dict[str, Any]:
+    """:func:`_smoke` of a photo with two pages: run 2 asks page 1's transcription as run 1 did, answered otherwise
+    (the reading's prompt differs), and page 2's with ``page_two_again`` as its image."""
+    image = tmp_path / "page.jpg"
+    image.write_bytes(b"\xff\xd8 a photographed page")
+    first = [*_smoke_calls(image), _page(tmp_path / "page2.jpg", b"\xff\xd8 its second page")]
+    again = [
+        *_smoke_calls(image, reading=NEW_READING, answer={"kind": "other"}),
+        _page(tmp_path / "page2-again.jpg", page_two_again),
+    ]
+    committed = _record_smoke(tmp_path / "run1", first, repeat=1)
+    return harness.smoke_checks(_record_smoke(tmp_path / "run2", again, repeat=2), committed, cap=1.0)
+
+
+def test_a_reading_is_counted_when_every_transcription_of_its_letter_is_run_one_s(tmp_path: Path) -> None:
+    checks = _two_pages(tmp_path, b"\xff\xd8 its second page")
+    assert checks["requests_identical_to_run_1"] and checks["built_on_answers_that_differ_from_run_1"] == 1
+    assert checks["repeated"] == 6 and checks["run_1_transcriptions_not_asked_again"] == 0
+
+
+def test_a_reading_is_judged_when_another_page_s_transcription_is_not_run_one_s(tmp_path: Path) -> None:
+    """Page 1's transcription is run 1's request, answered otherwise; page 2's was sent with another image, so it
+    is under another key. The reading holds both transcripts, so page 1 explains nothing: it is judged."""
+    checks = _two_pages(tmp_path, b"\xff\xd8 its second page encoded otherwise")
+    assert checks["repeated"] == 5 and checks["follow_ups_run_1_did_not_make"] == 1
+    assert checks["built_on_answers_that_differ_from_run_1"] == 0
+    assert checks["run_1_transcriptions_not_asked_again"] == 1
+    assert not checks["requests_identical_to_run_1"]
+
+
 def test_a_smoke_that_judges_nothing_fails(tmp_path: Path) -> None:
     image = tmp_path / "page.jpg"
     image.write_bytes(b"\xff\xd8 a photographed page")
