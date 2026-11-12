@@ -1,0 +1,3 @@
+HIT src/ordnung/demo/samples/manifest.json:3 083a305846c0506b allowed
+HIT src/ordnung/demo/samples/manifest.json:2419 a01f75aab6608edc allowed
+summary: files 31, hit lines 2, allowed 2, outside allow-list 0, unused allow-list entries 0, allow-list sha256 cb4d1d53ada1439a5bb16b6be14da37be1d3053274add616433393ebb9e1a917

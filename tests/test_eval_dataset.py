@@ -4,8 +4,10 @@
 * the truth uses the product's vocabularies (DocumentKind as the generator copies it, which
   ``tests/test_eval_kinds.py`` holds to the product's; item kinds, natures, remedies);
 * template variants never leak across splits (A/B = dev, C/D = test, E/F = holdout, G/H = holdout2,
-  I/J = holdout3; adversarial letters in test, holdout, holdout2 and holdout3 only), and no deadline-bearing
-  sentence recurs in two splits;
+  I/J = holdout3, K–N = holdout4; adversarial letters in test, holdout, holdout2, holdout3 and holdout4 only; newkinds
+  has families of its own and no template variants), and no deadline-bearing sentence recurs in two splits;
+* the final splits (holdout4, newkinds) have the composition they were made with, and no sender of theirs appears in
+  any other split;
 * every dated label matches an independent re-derivation (``evals/verify_labels.py``);
 * every text PDF contains its key date phrases; invisible text exists only where it is expected;
 * regenerating into a temporary directory reproduces the committed dataset byte for byte; only where a
@@ -47,6 +49,9 @@ from gen import law  # noqa: E402
 from gen.common import DOCUMENT_KINDS  # noqa: E402
 
 SPLITS = ("dev", "test", "holdout", "holdout2", "holdout3")
+#: The final splits, from the plug-in ``evals/gen/final.py``.
+FINAL_SPLITS = ("holdout4", "newkinds")
+ALL_SPLITS = (*SPLITS, *FINAL_SPLITS)
 # fresh samples of the test split's families and attack classes
 HELD_OUT = ("holdout", "holdout2", "holdout3")
 ITEM_KINDS = {"deadline", "payment", "appointment", "task", "expiry"}
@@ -96,8 +101,9 @@ def test_manifest_loads(manifest: dict[str, Any]) -> None:
     entries = _entries(manifest)
     ids = [e["id"] for e in entries]
     assert len(ids) == len(set(ids))
+    assert {e["split"] for e in entries} == set(ALL_SPLITS)
     split = {name: [e for e in entries if e["split"] == name] for name in SPLITS}
-    assert sum(map(len, split.values())) == len(entries)
+    assert sum(map(len, split.values())) == sum(1 for e in entries if e["split"] in SPLITS)
     assert 20 <= len(split["dev"]) <= 35
     assert 50 <= len(split["test"]) <= 70
     for name in HELD_OUT:
@@ -116,8 +122,59 @@ def test_manifest_loads(manifest: dict[str, Any]) -> None:
     assert fits(manifest["total_bytes"])
     for name in SPLITS:
         assert manifest["counts"][name]["entries"] == len(split[name]), name
-    families = {e["family"] for e in entries}
+    families = {e["family"] for e in entries if e["split"] in SPLITS}
     assert len(families) == 13  # 12 template families + adversarial
+
+
+def _scored(entries: list[dict[str, Any]]) -> int:
+    """Scored items with a single date, counted over entries (a photo counts its letter's items again)."""
+    return sum(
+        1 for e in entries for item in e["truth"]["items"] if item["expected_due"] not in (None, "ambiguous")
+    )
+
+
+#: Each final split's composition: entries (photos included), photos, adversarial entries, scored items.
+FINAL_COMPOSITION = {
+    "holdout4": {"entries": 126, "photos": 22, "adversarial": 24, "scored": 112},
+    "newkinds": {"entries": 32, "photos": 4, "adversarial": 0, "scored": 28},
+}
+#: The newkinds split's seven families, four one-page letters each.
+NEWKINDS_FAMILIES = (
+    "betriebskosten",
+    "kuendigung_arbeit",
+    "kuendigung_miete",
+    "mahnbescheid",
+    "mieterhoehung",
+    "vollstreckungsbescheid",
+    "widerruf",
+)
+
+
+@pytest.mark.parametrize("name", FINAL_SPLITS)
+def test_final_split_composition(manifest: dict[str, Any], name: str) -> None:
+    entries = [e for e in _entries(manifest) if e["split"] == name]
+    want = FINAL_COMPOSITION[name]
+    got = {
+        "entries": len(entries),
+        "photos": sum(1 for e in entries if e["photo"]),
+        "adversarial": sum(1 for e in entries if e["family"] == "adversarial"),
+        "scored": _scored(entries),
+    }
+    assert got == want, name
+    assert manifest["counts"][name]["entries"] == want["entries"]
+    assert manifest["counts"][name]["photos"] == want["photos"]
+    for e in entries:
+        assert e["id"].startswith(f"{name}-"), e["id"]
+        assert (e["today"], e["final_day"], e["valid_until"]) == ("2026-11-24", "2026-11-24", "2026-12-01"), (
+            e["id"]
+        )
+
+
+def test_newkinds_has_four_one_page_letters_of_each_kind(manifest: dict[str, Any]) -> None:
+    letters = [e for e in _entries(manifest) if e["split"] == "newkinds" and not e["photo"]]
+    assert Counter(e["family"] for e in letters) == dict.fromkeys(NEWKINDS_FAMILIES, 4)
+    assert all(e["pages"] == 1 for e in letters)
+    assert not {e["family"] for e in _entries(manifest) if e["split"] != "newkinds"} & set(NEWKINDS_FAMILIES)
 
 
 def test_the_dataset_has_room_for_the_final_run_s_letters() -> None:
@@ -210,9 +267,20 @@ def test_splits_do_not_share_variants(manifest: dict[str, Any]) -> None:
     )
 
 
+def test_final_splits_take_no_sender_of_another_split(manifest: dict[str, Any]) -> None:
+    """No sender of holdout4 or newkinds appears in any other split (the two final splits included)."""
+    senders = {
+        name: {e["truth"]["sender_name"] for e in _entries(manifest) if e["split"] == name}
+        for name in ALL_SPLITS
+    }
+    for name in FINAL_SPLITS:
+        others = set().union(*(senders[other] for other in ALL_SPLITS if other != name))
+        assert senders[name] and not senders[name] & others, (name, sorted(senders[name] & others))
+
+
 def test_each_split_takes_only_its_own_template_variants() -> None:
     """``Case`` refuses a template variant of another split, and adversarial letters in dev."""
-    from gen.common import SPLIT_VARIANTS, Case, truth
+    from gen.common import SPLIT_VARIANTS, SPLITS_WITHOUT_VARIANTS, Case, truth
     from gen.pdf import Letter, Org
 
     letter = Letter(org=Org(name="Muster GmbH", kind="company", street="Weg 1", postcode="12345", city="Musterstadt"),
@@ -231,9 +299,11 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
         "holdout": ("E", "F"),
         "holdout2": ("G", "H"),
         "holdout3": ("I", "J"),
+        "holdout4": ("K", "L", "M", "N"),
     }
+    assert SPLITS_WITHOUT_VARIANTS == {"newkinds"} and "newkinds" not in SPLIT_VARIANTS
     for split, own in SPLIT_VARIANTS.items():
-        for variant in "ABCDEFGHIJ":
+        for variant in "ABCDEFGHIJKLMN":
             if variant in own:
                 case(split, "invoice_relative", variant)
             else:
@@ -242,6 +312,8 @@ def test_each_split_takes_only_its_own_template_variants() -> None:
     case("holdout", "adversarial", "scam")
     case("holdout2", "adversarial", "scam")
     case("holdout3", "adversarial", "scam")
+    case("holdout4", "adversarial", "scam")
+    case("newkinds", "widerruf", "1")  # a family of its own, numbered letters
     with pytest.raises(AssertionError):
         case("dev", "adversarial", "scam")
 
@@ -484,6 +556,8 @@ def test_labels_survive_the_independent_recheck() -> None:
     assert not report["shared_split_sentences"], report["shared_split_sentences"]
     assert not report["photo_problems"], report["photo_problems"]
     assert not report["land_window_problems"], report["land_window_problems"]
+    assert not report["land_rule_problems"], report["land_rule_problems"]
+    assert not report["window_problems"], report["window_problems"]
 
 
 @pytest.mark.parametrize(
@@ -715,7 +789,7 @@ def test_c03_and_c07_say_what_the_land_table_counts(manifest: dict[str, Any]) ->
 def test_generation_is_byte_identical(tmp_path: Path, manifest: dict[str, Any]) -> None:
     def generate(out: Path) -> dict[str, Any]:
         made = _generate(out)
-        assert {e["split"] for e in made["entries"]} == set(SPLITS) == set(made["counts"])
+        assert {e["split"] for e in made["entries"]} == set(ALL_SPLITS) == set(made["counts"])
         # The labels never depend on the environment.
         assert _without_bytes(made) == _without_bytes(manifest), (
             "dataset is stale — run `.venv/bin/python evals/generate.py`"

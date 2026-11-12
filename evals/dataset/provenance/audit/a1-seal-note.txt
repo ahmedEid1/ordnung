@@ -1,0 +1,6 @@
+sealed_at 2026-11-11T20:39:58Z
+audit_seal_sha256 b04943c74d0e495f41be49aac9c7ad790481f19edf5a3cecfdbd8aedc11fffb9
+audit_map_sha256 151e14cc8da9491471b2d66eed4d586bf661ee7800a421ccbb9898f52cffec59
+opaque: 158 items (26 photos), batches b1 40, b2 40, b3 39, b4 39, seed 20261029, from the outside render at ab35b4d2
+no comparison (audit_compare.py) had been run when the seal was written
+hook_proof_script_sha256 161b69a83b3188b9a84628a979fe01ca32faee0864b1117b7634940d65d00950 (kept in scratch: $F/audit-prep/hook_proof.py)

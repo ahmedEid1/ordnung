@@ -1,0 +1,3 @@
+HIT evals/perturb/templates.json:2 b868233bc5b857cf allowed
+HIT evals/dataset/provenance/w1c/writer-notes-templates.md:5 5d7a933b8ffaccf6 allowed
+summary: files 2, hit lines 2, allowed 2, outside allow-list 0, unused allow-list entries 20, allow-list sha256 a1215d1eb0450e1447712f699bb584ee037d9d4cb8d366f591c78d61a91ae7bc

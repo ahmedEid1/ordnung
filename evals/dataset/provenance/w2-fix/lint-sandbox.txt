@@ -1,0 +1,4 @@
+HIT evals/ask/heldout/NOTES.md:17 e4db8bd4218d3d0a allowed
+HIT src/ordnung/demo/samples/manifest.json:3 083a305846c0506b allowed
+HIT src/ordnung/demo/samples/manifest.json:2419 a01f75aab6608edc allowed
+summary: files 37, hit lines 3, allowed 3, outside allow-list 0, unused allow-list entries 0, allow-list sha256 2e50d5b2cb24be7008b0232d6db6c12acd4e65850007320ca1e0f3c263d8153e

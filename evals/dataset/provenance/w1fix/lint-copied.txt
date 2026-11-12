@@ -1,0 +1,1 @@
+summary: files 1, hit lines 0, allowed 0, outside allow-list 0, unused allow-list entries 20, allow-list sha256 77a3dcb63a52b2cc8034d1f24da6943d77e7a57ea8656da1f594a799149ca6ae

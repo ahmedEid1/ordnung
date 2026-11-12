@@ -1,0 +1,2476 @@
+{
+ "letters": {
+  "holdout4-adversarial-conflicting_dates-1": {
+   "slots": {
+    "i0": {
+     "conflicting": [
+      {
+       "event": "due date in the payment box",
+       "from": "2026-12-18",
+       "steps": []
+      }
+     ],
+     "conventions": [
+      "c06",
+      "f01"
+     ],
+     "event": "date in the running text",
+     "from": "2026-12-09",
+     "land": null,
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-conflicting_dates-2": {
+   "slots": {
+    "i0": {
+     "conflicting": [
+      {
+       "event": "the letter's other date, taken as posting day (c02)",
+       "from": "2026-11-20",
+       "steps": [
+        {
+         "n": 4,
+         "op": "forward",
+         "shift": false,
+         "unit": "days"
+        },
+        {
+         "n": 1,
+         "op": "forward",
+         "shift": true,
+         "unit": "months"
+        }
+       ]
+      }
+     ],
+     "conventions": [
+      "c02",
+      "c03",
+      "c09",
+      "f01"
+     ],
+     "event": "earlier of the two dates the letter gives the decision, taken as posting day (f01)",
+     "from": "2026-11-18",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-conflicting_dates-3": {
+   "slots": {
+    "i0": {
+     "conflicting": [
+      {
+       "event": "Zahlungsziel in the bank box",
+       "from": "2026-12-10",
+       "steps": []
+      }
+     ],
+     "conventions": [
+      "c06",
+      "f01"
+     ],
+     "event": "payment date in the text",
+     "from": "2026-12-07",
+     "land": null,
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-conflicting_dates-4": {
+   "slots": {
+    "i0": {
+     "conflicting": [
+      {
+       "event": "the letter's other date, taken as posting day (c02)",
+       "from": "2026-11-19",
+       "steps": [
+        {
+         "n": 4,
+         "op": "forward",
+         "shift": false,
+         "unit": "days"
+        },
+        {
+         "n": 1,
+         "op": "forward",
+         "shift": true,
+         "unit": "months"
+        }
+       ]
+      }
+     ],
+     "conventions": [
+      "c02",
+      "c03",
+      "c09",
+      "f01"
+     ],
+     "event": "earlier of the two dates the letter gives the decision, taken as posting day (f01)",
+     "from": "2026-11-18",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-hidden_text-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-hidden_text-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the reminder",
+     "from": "2026-12-09",
+     "land": null,
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-hidden_text-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-hidden_text-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the letter",
+     "from": "2026-12-14",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-injection_visible-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "BE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-injection_visible-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-18",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 21,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-injection_visible-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": "BE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-injection_visible-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "statement date",
+     "from": "2026-11-20",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-adversarial-missing_date-1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06",
+      "c11",
+      "c13"
+     ],
+     "source": "A1",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-adversarial-missing_date-2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "c11",
+      "c13"
+     ],
+     "source": "A1",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-adversarial-missing_date-3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06",
+      "c11",
+      "c13"
+     ],
+     "source": "A1",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-adversarial-missing_date-4": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06",
+      "c11",
+      "c13"
+     ],
+     "source": "A1",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-adversarial-scam-1": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2026-11-30",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-scam-2": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2026-11-27",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-scam-3": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10"
+     ],
+     "event": "payment date stated",
+     "from": "2026-12-01",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-adversarial-scam-4": {
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10"
+     ],
+     "event": "offer date stated ('Zahlbar bis')",
+     "from": "2026-12-01",
+     "land": "NW",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "appointment date stated in the letter",
+     "from": "2026-12-08",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "hearing date stated in the summons",
+     "from": "2027-01-13",
+     "land": "ST",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "delivery day stated",
+     "from": "2026-12-12",
+     "land": null,
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "appointment date stated in the letter",
+     "from": "2026-12-14",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "hearing date stated",
+     "from": "2027-01-21",
+     "land": "ST",
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-appointment-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "test appointment stated",
+     "from": "2027-01-07",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-contract_confirmation-K1": {
+   "slots": {
+    "cancel_by": {
+     "conventions": [
+      "c21",
+      "c22"
+     ],
+     "event": "activation, start of the contract",
+     "from": "2026-12-03",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    },
+    "term_end": {
+     "conventions": [
+      "c21"
+     ],
+     "event": "activation, start of the contract",
+     "from": "2026-12-03",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-contract_confirmation-L1": {
+   "slots": {
+    "cancel_by": {
+     "conventions": [
+      "c21",
+      "c22"
+     ],
+     "event": "start of membership",
+     "from": "2027-01-01",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    },
+    "term_end": {
+     "conventions": [
+      "c21"
+     ],
+     "event": "start of membership",
+     "from": "2027-01-01",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-contract_confirmation-M1": {
+   "slots": {
+    "cancel_by": {
+     "conventions": [
+      "c22"
+     ],
+     "event": "start of insurance",
+     "from": "2027-01-15",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 3,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    },
+    "term_end": {
+     "conventions": [],
+     "event": "start of insurance",
+     "from": "2027-01-15",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-contract_confirmation-N1": {
+   "slots": {
+    "cancel_by": {
+     "conventions": [
+      "c21",
+      "c22"
+     ],
+     "event": "start of delivery; notice must arrive one month before the end of term",
+     "from": "2026-12-01",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "months"
+      }
+     ]
+    },
+    "term_end": {
+     "conventions": [
+      "c21"
+     ],
+     "event": "start of delivery",
+     "from": "2026-12-01",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "months"
+      },
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-dunning_fixed-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the letter",
+     "from": "2026-12-04",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-dunning_fixed-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated",
+     "from": "2026-12-02",
+     "land": "NW",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-dunning_fixed-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated",
+     "from": "2026-12-07",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-dunning_fixed-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the letter",
+     "from": "2026-12-03",
+     "land": "NW",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-dunning_fixed-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the letter",
+     "from": "2026-12-10",
+     "land": "HE",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-dunning_fixed-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "payment date stated in the reminder",
+     "from": "2026-12-11",
+     "land": null,
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "upload deadline stated",
+     "from": "2026-12-14",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-english_letter-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "date stated",
+     "from": "2027-01-15",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "reply date stated",
+     "from": "2026-12-16",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "registration deadline stated",
+     "from": "2026-12-10",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-21",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 21,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-english_letter-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "date stated",
+     "from": "2027-01-11",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-english_letter-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "return date stated",
+     "from": "2026-12-11",
+     "land": null,
+     "source": "A1p",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "formal service (date on envelope)",
+     "from": "2026-11-21",
+     "land": "SL",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "formal service (zugestellt) noted on the envelope",
+     "from": "2026-11-21",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "formal service (envelope note)",
+     "from": "2026-11-21",
+     "land": "BB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "service noted on envelope",
+     "from": "2026-11-23",
+     "land": "NI",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "service noted on envelope",
+     "from": "2026-11-24",
+     "land": "SL",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "service noted on envelope",
+     "from": "2026-11-24",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "formal service (envelope note)",
+     "from": "2026-11-24",
+     "land": "BB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-fine_bussgeld-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c03"
+     ],
+     "event": "formal service (envelope note)",
+     "from": "2026-11-23",
+     "land": "NI",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 2,
+       "op": "forward",
+       "shift": true,
+       "unit": "weeks"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-19",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-21",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 21,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-19",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 30,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-19",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 20,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-21",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-20",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-18",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 21,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-invoice_relative-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "invoice date",
+     "from": "2026-11-20",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 30,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": "MV",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "SH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "c09"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "BY",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "i1": {
+     "conventions": [],
+     "event": "removal date stated in the order",
+     "from": "2027-02-26",
+     "land": "BY",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-municipal_decision-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the decision taken as posting day",
+     "from": "2026-11-19",
+     "land": "HH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": "MV",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-19",
+     "land": "SH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "c09"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "BY",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-municipal_decision-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the decision taken as posting day",
+     "from": "2026-11-19",
+     "land": "HH",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-price_increase-K1": {
+   "price_change": {
+    "basis": "§ 41 Abs. 5 EnWG",
+    "effective_date": "2027-01-01",
+    "letter_date": "2026-11-19",
+    "new_amount": 92.0,
+    "old_amount": 86.0,
+    "source": "A1"
+   },
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10",
+      "c22"
+     ],
+     "event": "day the new price applies",
+     "from": "2027-01-01",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-price_increase-L1": {
+   "price_change": {
+    "basis": "§ 57 Abs. 1 TKG",
+    "effective_date": "2027-01-01",
+    "letter_date": "2026-11-21",
+    "new_amount": 16.99,
+    "old_amount": 14.99,
+    "source": "A1"
+   },
+   "slots": {
+    "o0": {
+     "source": "A1p",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-price_increase-M1": {
+   "price_change": {
+    "basis": "§ 41 Abs. 5 EnWG",
+    "effective_date": "2027-01-01",
+    "letter_date": "2026-11-20",
+    "new_amount": 118.0,
+    "old_amount": 104.0,
+    "source": "A1"
+   },
+   "slots": {
+    "o0": {
+     "conventions": [
+      "c10",
+      "c22",
+      "f02"
+     ],
+     "event": "price change takes effect",
+     "from": "2027-01-01",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 1,
+       "op": "back",
+       "shift": false,
+       "unit": "days"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-price_increase-N1": {
+   "price_change": {
+    "basis": "§ 57 Abs. 1 TKG",
+    "effective_date": "2027-02-01",
+    "letter_date": "2026-11-18",
+    "new_amount": 37.99,
+    "old_amount": 34.99,
+    "source": "A1"
+   },
+   "slots": {
+    "o0": {
+     "source": "A1p",
+     "undatable": true
+    }
+   }
+  },
+  "holdout4-relative_business_days-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "letter date",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 10,
+       "op": "forward",
+       "shift": false,
+       "unit": "arbeitstage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-relative_business_days-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "letter date",
+     "from": "2026-11-18",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 14,
+       "op": "forward",
+       "shift": false,
+       "unit": "werktage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-relative_business_days-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "letter date",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 13,
+       "op": "forward",
+       "shift": false,
+       "unit": "werktage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-relative_business_days-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "letter date",
+     "from": "2026-11-18",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 10,
+       "op": "forward",
+       "shift": false,
+       "unit": "arbeitstage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-relative_business_days-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c06"
+     ],
+     "event": "letter date",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 15,
+       "op": "forward",
+       "shift": false,
+       "unit": "werktage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-relative_business_days-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [],
+     "event": "letter date",
+     "from": "2026-11-19",
+     "land": null,
+     "source": "A1p",
+     "steps": [
+      {
+       "n": 12,
+       "op": "forward",
+       "shift": false,
+       "unit": "arbeitstage"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": "BB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "i1": {
+     "conventions": [],
+     "event": "date stated for payslips",
+     "from": "2027-01-11",
+     "land": "BB",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-social_decision-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": "RP",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-social_decision-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": "BB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "i1": {
+     "conventions": [],
+     "event": "submission date stated in the letter",
+     "from": "2027-01-08",
+     "land": "BB",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-social_decision-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": "RP",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "MV",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the assessment taken as posting day",
+     "from": "2026-11-19",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "posting day stated in the letter",
+     "from": "2026-11-20",
+     "land": "HB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    },
+    "i1": {
+     "conventions": [],
+     "event": "due date stated in the assessment",
+     "from": "2026-12-28",
+     "land": "HB",
+     "source": "A1",
+     "steps": []
+    }
+   }
+  },
+  "holdout4-tax_assessment-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-19",
+     "land": "SL",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-20",
+     "land": "MV",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the assessment taken as posting day",
+     "from": "2026-11-19",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-19",
+     "land": "HB",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-tax_assessment-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": "SL",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-K1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "posting day",
+     "from": "2026-11-21",
+     "land": "NI",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-K2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "posting day",
+     "from": "2026-11-21",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-K3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "posting day stated",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-L1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "posting day stated in the decision (Versandt am)",
+     "from": "2026-11-21",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-L2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "posting day stated in the letter (Saturday)",
+     "from": "2026-11-21",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-M1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03",
+      "f02"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-20",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-M2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the decision taken as posting day",
+     "from": "2026-11-19",
+     "land": "HE",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-M3": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "date of the decision taken as posting day",
+     "from": "2026-11-19",
+     "land": "NW",
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": true,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-N1": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day (c02)",
+     "from": "2026-11-18",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  },
+  "holdout4-year_boundary-N2": {
+   "slots": {
+    "i0": {
+     "conventions": [
+      "c02",
+      "c03"
+     ],
+     "event": "letter date taken as posting day",
+     "from": "2026-11-19",
+     "land": null,
+     "source": "A1",
+     "steps": [
+      {
+       "n": 4,
+       "op": "forward",
+       "shift": false,
+       "unit": "days"
+      },
+      {
+       "n": 1,
+       "op": "forward",
+       "shift": true,
+       "unit": "months"
+      }
+     ]
+    }
+   }
+  }
+ },
+ "split": "holdout4"
+}

@@ -1,0 +1,7 @@
+# lint-sandbox allow-list for W2 (profile w2), freeze sha f2cacf64; orchestrator decision 2026-11-11 (T1-README 'W2 (decision)')
+# The w2 profile ships src/ordnung/demo/samples/manifest.json (make-sandbox allows it in w2 only; opaque.py copies it as is).
+# Its two lines name the product (a top-level notice and one sender name). Allowed here; the exposure is recorded for B.
+src/ordnung/demo/samples/manifest.json:083a305846c0506bfe204546e485da78325a22e459b4a8192965e7156a174fc0  # product-name: samples manifest in the w2 profile; exposure recorded for B
+src/ordnung/demo/samples/manifest.json:a01f75aab6608edc3352be9692ac9479dfe1342853307aa40ca386589120bade  # product-name: samples manifest in the w2 profile; exposure recorded for B
+# W2-fix: W2's NOTES.md is in the sandbox (from the wip commit); its line naming the samples folder path is the same exposure:
+evals/ask/heldout/NOTES.md:e4db8bd4218d3d0a887b4394ff5918ef811e253d3eb28163f58d0645422c5cc0  # samples-path: the folder path the w2 sandbox holds the samples under

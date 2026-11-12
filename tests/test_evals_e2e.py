@@ -867,13 +867,13 @@ def test_the_splits_are_the_registry_s_and_one_without_letters_is_refused_by_nam
     ]
     letters = [
         _entry(entry_id="test-tax_assessment-Z1"),
-        _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4"),
+        _entry(entry_id="holdout4-tax_assessment-Z1", split="holdout4"),
     ]
     monkeypatch.setattr(cli, "load_manifest", lambda _path: letters)
     with pytest.raises(SystemExit, match="newkinds has no letters yet"):
         cli._entries(["holdout4", "newkinds"], None, "claude-sonnet-5")
     assert [entry.id for entry in cli._entries(["holdout4"], None, "claude-sonnet-5")] == [
-        "holdout4-tax_assessment-K1"
+        "holdout4-tax_assessment-Z1"
     ]
 
 
@@ -888,8 +888,8 @@ def test_a_final_split_s_letter_runs_on_the_day_its_unit_was_recorded(tmp_path: 
     recordings); a letter it doesn't name, another read's day and every earlier split keep the manifest's day."""
     from evals.e2e import __main__ as cli
 
-    moved = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
-    kept = _entry(entry_id="holdout4-tax_assessment-K2", split="holdout4")
+    moved = _entry(entry_id="holdout4-tax_assessment-Z1", split="holdout4")
+    kept = _entry(entry_id="holdout4-tax_assessment-Z2", split="holdout4")
     earlier = _entry(entry_id="test-tax_assessment-Z1")
     unit = {"day": "2026-03-10", "cli": "2.0.0"}
     index = _day_index(
@@ -912,9 +912,9 @@ def test_the_run_and_the_runner_read_the_same_days_from_one_reader_of_the_day_in
     were made that day too), and it asks that reader rather than reading the file itself."""
     from evals.e2e import __main__ as cli
 
-    complete = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
-    unanswered = _entry(entry_id="holdout4-tax_assessment-K2", split="holdout4")
-    other_read = _entry(entry_id="holdout4-tax_assessment-K3", split="holdout4")
+    complete = _entry(entry_id="holdout4-tax_assessment-Z1", split="holdout4")
+    unanswered = _entry(entry_id="holdout4-tax_assessment-Z2", split="holdout4")
+    other_read = _entry(entry_id="holdout4-tax_assessment-Z3", split="holdout4")
     index = DayIndex(tmp_path / DAY_INDEX_FILE)
     index.put("holdout4", 1, complete.id, day="2026-03-10", cli="2.0.0")
     index.put("holdout4", 1, unanswered.id, day="2026-03-11", cli="2.0.0", unanswered={"ordnung": {}})
@@ -945,7 +945,7 @@ def test_the_run_reads_the_day_index_beside_the_model_s_recordings(
 ) -> None:
     from evals.e2e import __main__ as cli
 
-    letter = _entry(entry_id="holdout4-tax_assessment-K1", split="holdout4")
+    letter = _entry(entry_id="holdout4-tax_assessment-Z1", split="holdout4")
     monkeypatch.setattr(cli, "load_manifest", lambda _path: [letter])
     monkeypatch.setattr(cli, "RECORDED_DIR", tmp_path)
     (tmp_path / "claude-sonnet-5").mkdir()

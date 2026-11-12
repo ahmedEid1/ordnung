@@ -1,0 +1,2 @@
+HIT evals/ask/heldout/NOTES.md:17 e4db8bd4218d3d0a allowed
+summary: files 5, hit lines 1, allowed 1, outside allow-list 0, unused allow-list entries 0, allow-list sha256 379bf4f563f0762b194a5885a37c2216a9273c79f66f8f0616274f32db408c31

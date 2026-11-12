@@ -1,0 +1,9 @@
+letters 132; parts 147 (items 120, offered 23, contracts 4); changed 137; unchanged 10
+removed c01 127, c04 80, c06 34, c07 11
+added c02 1, c03 1, c06 3, c10 6, c11 4, c13 4, c22 2, f02 1
+disputed changes: items 12, offered 6, contracts 0
+demand 0; forbid 0
+lists 6, all []: holdout4-adversarial-scam-1 o0, holdout4-adversarial-scam-2 o0, holdout4-adversarial-scam-3 o0, holdout4-adversarial-scam-4 o0, holdout4-price_increase-K1 o0, holdout4-price_increase-M1 o0
+refusals 0
+offered parts without a fact: 8
+frozen _check_tags over the dated letter parts after K27: pass 133, fail 0

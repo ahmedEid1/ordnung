@@ -1,0 +1,10 @@
+HIT audit/derived-b2.json:109 19f5ac949eae9afd OUTSIDE
+HIT audit/derived-b2.json:123 2b16e2006daf388b OUTSIDE
+HIT audit/derived-b2.json:136 ae92f748a7341607 OUTSIDE
+HIT audit/derived-b2.json:150 2f652b05ca1ce6a7 OUTSIDE
+HIT audit/legal-notes.md:31 8f72815cc91ded27 OUTSIDE
+HIT audit/legal-notes.md:41 70dc92aae96f5000 OUTSIDE
+HIT audit/legal-notes.md:45 b04014797991ea13 OUTSIDE
+HIT audit/legal-notes.md:70 207f5d6b41bb6e5d OUTSIDE
+HIT audit/legal-notes.md:99 4add512a34b5718e OUTSIDE
+summary: files 2, hit lines 9, allowed 0, outside allow-list 9, unused allow-list entries 0, allow-list sha256 none

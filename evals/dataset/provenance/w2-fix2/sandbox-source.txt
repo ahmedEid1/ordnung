@@ -1,0 +1,14 @@
+commit aa2643a5763de2fe285d1bb53f0d080c3a732b1c
+profile w2
+path evals/ask/heldout/SCHEMA.md
+path evals/ask/heldout/household-facts.json
+path evals/ask/heldout/recurrence-rules.md
+path evals/ask/heldout_check.py
+path evals/ask/heldout/questions.json
+path evals/ask/heldout/attacks.json
+path evals/ask/heldout/recurrence.json
+path evals/ask/heldout/recurrence_gold.py
+path evals/ask/heldout/NOTES.md
+extra dir:74937ebbfdbe30203466df670c6e5155aab8c45b9430fd5e9a12037dfd10f70c $S/ev8/final/w2-in/samples -> src/ordnung/demo/samples
+extra 7370b651d53fdaa1f7c260d3673c7f56c2f90d60759609e6948e100c5d619396 $S/ev8/final/w2-fix2-in/fix-list.md -> fix-list.md
+anchor expect 1663d5c4c0feb83c64299695eb379b60a9c68ad7377625578a588f3a9eae876b $S/ev8/final/w2-in/samples.sha256

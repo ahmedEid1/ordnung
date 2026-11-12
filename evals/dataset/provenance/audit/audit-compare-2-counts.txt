@@ -1,0 +1,36 @@
+(a) A1 vs labels
+  holdout4/cancel_by: agree 3, agree_candidate 1, disagree 0, not_derivable 0
+  holdout4/i0: agree 71, agree_candidate 7, disagree 1, not_derivable 33
+  holdout4/i1: agree 4, agree_candidate 0, disagree 0, not_derivable 0
+  holdout4/o0: agree 13, agree_candidate 0, disagree 0, not_derivable 5
+  holdout4/term_end: agree 4, agree_candidate 0, disagree 0, not_derivable 0
+  newkinds/i0: agree 19, agree_candidate 5, disagree 0, not_derivable 4
+  newkinds/o0: agree 2, agree_candidate 1, disagree 0, not_derivable 5
+(b) A1c vs labels
+  holdout4/cancel_by: agree 4, agree_candidate 0, disagree 0, not_derivable 0
+  holdout4/i0: agree 97, agree_candidate 0, disagree 0, not_derivable 15
+  holdout4/i1: agree 4, agree_candidate 0, disagree 0, not_derivable 0
+  holdout4/o0: agree 13, agree_candidate 0, disagree 0, not_derivable 5
+  holdout4/term_end: agree 4, agree_candidate 0, disagree 0, not_derivable 0
+  newkinds/i0: agree 23, agree_candidate 1, disagree 0, not_derivable 4
+  newkinds/o0: agree 3, agree_candidate 0, disagree 0, not_derivable 5
+(a) non-agreements split
+  holdout4: convention 27, reading_or_arithmetic 20
+  newkinds: convention 5, reading_or_arithmetic 10
+(a) A1's procedure start vs the labels'
+  holdout4/cancel_by: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  holdout4/i0: same 4, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 108
+  holdout4/i1: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  holdout4/o0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 18
+  holdout4/term_end: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  newkinds/i0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 28
+  newkinds/o0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 8
+(b) A1c's procedure start vs the labels'
+  holdout4/cancel_by: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  holdout4/i0: same 4, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 108
+  holdout4/i1: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  holdout4/o0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 18
+  holdout4/term_end: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 4
+  newkinds/i0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 28
+  newkinds/o0: same 0, label_only 0, audit_only 0, differs 0, no_facts 0, not_counted 8
+extra audit slots: {'newkinds': 28, 'holdout4': 52}; slots for A1': 30 (0 for the procedure start alone); wrote $S/ev8/final/audit-compare-2.json

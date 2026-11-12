@@ -1,0 +1,3 @@
+HIT audit/derived-b1.json:168 40c4e4c0ca0feb2d OUTSIDE
+HIT audit/legal-notes.md:22 42e1d928aac5cc20 OUTSIDE
+summary: files 2, hit lines 2, allowed 0, outside allow-list 2, unused allow-list entries 0, allow-list sha256 none

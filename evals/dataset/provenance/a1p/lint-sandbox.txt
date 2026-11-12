@@ -1,0 +1,2 @@
+HIT @brief:102 66472c7d5756dab5 allowed
+summary: files 113, hit lines 1, allowed 1, outside allow-list 0, unused allow-list entries 0, allow-list sha256 46cc8652e416add63a3b6442df1d9d00b5029f529f96adcd54a6f8f654123b61

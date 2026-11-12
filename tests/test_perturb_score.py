@@ -462,15 +462,27 @@ def test_a_replay_needs_its_own_results_folder(capsys: pytest.CaptureFixture[str
 def test_the_base_listing_shows_ids_and_counts_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """On holdout4 (here its stand-in, tests/test_perturb_build.py): 48 letters, 16 per injection goal. Until
-    holdout4's letters exist, the listing says so in one line (no work, no letter)."""
+    """On holdout4 (here its stand-in, tests/test_perturb_build.py): 48 letters, 16 per injection goal. Without
+    holdout4's letters (the dataset's manifest with them left out, so the refusal is tested whether or not they exist)
+    the listing says so in one line (no work, no letter); the dataset's own listing names 48 of them by id and
+    counts, with no date."""
     from scripts import eval_perturb
 
-    from test_perturb_build import final_manifest
+    from test_perturb_build import final_manifest, manifest_without_holdout4
 
+    real_manifest = eval_perturb.build.DATASET_MANIFEST
+    before = manifest_without_holdout4(tmp_path / "before" / "manifest.json")
+    monkeypatch.setattr(eval_perturb.build, "DATASET_MANIFEST", before)
     assert eval_perturb.main(["--list-base"]) == 1
     said = capsys.readouterr()
     assert "holdout4" in said.err and not said.out
+    monkeypatch.setattr(eval_perturb.build, "DATASET_MANIFEST", real_manifest)
+    assert eval_perturb.main(["--list-base"]) == 0
+    said = capsys.readouterr()
+    assert not said.err
+    real = json.loads(said.out)
+    assert len(real["base"]) == 48 and real["letters"] == 48 and real["by_split"] == {"holdout4": 48}
+    assert not re.search(r"\d{4}-\d{2}-\d{2}|\d{1,2}\.\d{1,2}\.\d{4}", said.out)
     monkeypatch.setattr(eval_perturb.build, "DATASET_MANIFEST", final_manifest(tmp_path / "manifest.json"))
     assert eval_perturb.main(["--list-base"]) == 0
     listing = capsys.readouterr().out

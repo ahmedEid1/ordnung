@@ -1,0 +1,2 @@
+format ok: True | letters 158 of 158 | same letter names: True
+{'changed true': 32, 'distinct convention ids applied': 20, 'facts': 229, 'facts naming no slot of the letter': 0, 'facts with procedure_began': 0, 'slots': 221, 'slots with >=1 id applied': 204, 'status ambiguous': 14, 'status dated': 183, 'status undatable': 24}

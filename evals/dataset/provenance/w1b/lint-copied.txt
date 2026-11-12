@@ -1,0 +1,15 @@
+HIT evals/gen/common.py:1 b9c36b76631db208 allowed
+HIT tests/test_eval_dataset.py:3 34ec5947172b561b allowed
+HIT tests/test_eval_dataset.py:17 a6e6fb5c251d9db4 allowed
+HIT tests/test_eval_dataset.py:19 37ed061fe8a4eae8 allowed
+HIT tests/test_eval_dataset.py:543 f7898694cb840d13 allowed
+HIT tests/test_eval_dataset.py:705 95335632b2a0a626 allowed
+summary: files 6, hit lines 6, allowed 6, outside allow-list 0, unused allow-list entries 21, allow-list sha256 893888d7e109b2caec0f6f623b66c7ffa28a5201349e84723b6bae87adc5df96
+HIT evals/dataset/VERIFICATION.md:932 4b10139cae7cb8e0 allowed
+HIT evals/dataset/VERIFICATION.md:984 25c4a13da54381b8 allowed
+HIT evals/dataset/VERIFICATION.md:992 b097058843cd0e72 allowed
+HIT evals/dataset/VERIFICATION.md:1127 d9fb5820696156b3 allowed
+HIT evals/dataset/VERIFICATION.md:1128 3065606cc3c82b99 allowed
+HIT evals/dataset/VERIFICATION.md:1142 12d52bc26cc00e6e allowed
+HIT evals/dataset/VERIFICATION.md:1143 e4dd7fbfc80336a2 allowed
+summary: files 1, hit lines 7, allowed 7, outside allow-list 0, unused allow-list entries 20, allow-list sha256 893888d7e109b2caec0f6f623b66c7ffa28a5201349e84723b6bae87adc5df96

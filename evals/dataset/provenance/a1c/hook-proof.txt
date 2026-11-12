@@ -1,0 +1,1 @@
+a1c: sandbox files 22 {'sealed': 4, 'conventions.md': 1, 'law': 16, 'FACTS.md': 1, 'other': 0}; hook lines 29, denied 1; allowed calls: on a path outside /work 0, naming a letter/label/manifest/generator file 0, Write/Edit under sealed/ 0, shell writes to sealed/ 0, using the sandbox's private /tmp 5 -> PASS

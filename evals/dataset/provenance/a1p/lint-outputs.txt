@@ -1,0 +1,1 @@
+summary: files 1, hit lines 0, allowed 0, outside allow-list 0, unused allow-list entries 0, allow-list sha256 none

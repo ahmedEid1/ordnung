@@ -1,0 +1,15 @@
+{
+ "schema": "ask-heldout-recurrence/1",
+ "todos": [
+  {"id": "ho-rec-broadcast-quarter", "letter": "zahnarzt_terminkarte", "item": 0,
+   "rule": {"interval": 3, "unit": "months"}, "first": "2026-10-08"},
+  {"id": "ho-rec-semester-fee", "letter": "rueckmeldung_sose_2027", "item": 0,
+   "rule": {"interval": 6, "unit": "months", "day_of_month": 15}, "first": "2027-01-15"},
+  {"id": "ho-rec-meter-reading", "letter": "stipendium_zusage", "item": 0,
+   "rule": {"interval": 1, "unit": "months", "day_of_month": 15}, "first": "2026-12-15"},
+  {"id": "ho-rec-scholars-meeting", "letter": "stipendium_zusage", "item": 2,
+   "rule": {"interval": 1, "unit": "years"}, "first": "2026-11-07"},
+  {"id": "ho-rec-library-return", "letter": "stadtbibliothek_mahnung", "item": 1,
+   "rule": {"interval": 2, "unit": "weeks"}, "first": "2026-10-02"}
+ ]
+}

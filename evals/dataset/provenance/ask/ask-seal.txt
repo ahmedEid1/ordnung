@@ -1,0 +1,3 @@
+# W2v blind answers, sealed before heldout_check --blind-compare (runbook §2.4 step 7)
+# sealed at 2026-11-11T17:31:41Z
+fae13bc5f5c6f2456243758bcc5957887312c815e8edc82bdab2db6148c28dda  $S/ev8/final/w2v/work/answers.json

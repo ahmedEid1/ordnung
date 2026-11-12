@@ -1,0 +1,8 @@
+start 2026-11-11T22:03:13Z
+end 2026-11-11T22:07:46Z
+exit 0
+max_turns 150
+prompt_sha256 0c3d1ca8751193cfe05e1607b396a97ea95fd5dd0f102a946736f4e822e9731a
+sandbox_files_sha256 cf8bbcc8c4b00a7c858db77bc3b24d9fcf81e10439056dd039df91f007ed44d7
+writer_log_sha256 d9cb0bfcc1ef9f62a666475b075545301094ba88d17977389e545d349b38992e
+venv $S/ev8/final/sandbox-venv

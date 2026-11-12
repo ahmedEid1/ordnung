@@ -1,0 +1,2292 @@
+{
+ "schema": "ask-heldout/1",
+ "questions": [
+  {
+   "id": "ho-core-01-en",
+   "group": "core",
+   "category": "deadline",
+   "fact": "progress-report-due",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When is my first progress report for the scholarship due?",
+   "gold": {
+    "dates": [
+     "2026-12-15"
+    ],
+    "amounts": [],
+    "letters": [
+     "stipendium_zusage"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-01-en-paraphrase",
+   "group": "core",
+   "category": "deadline",
+   "fact": "progress-report-due",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What's the last day I can send the scholarship foundation my first report on how my studies are going?",
+   "gold": {
+    "dates": [
+     "2026-12-15"
+    ],
+    "amounts": [],
+    "letters": [
+     "stipendium_zusage"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-01-de",
+   "group": "core",
+   "category": "deadline",
+   "fact": "progress-report-due",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Bis wann muss ich den ersten Fortschrittsbericht für mein Stipendium abgeben?",
+   "gold": {
+    "dates": [
+     "2026-12-15"
+    ],
+    "amounts": [],
+    "letters": [
+     "stipendium_zusage"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-02-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "semester-fee-sose27",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much is the semester fee for summer 2027, and by when must it be paid?",
+   "gold": {
+    "dates": [
+     "2027-01-15"
+    ],
+    "amounts": [
+     312.4
+    ],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-02-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "semester-fee-sose27",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "To stay enrolled for the 2027 summer term, what sum do I owe the university and what is the latest day for it to arrive?",
+   "gold": {
+    "dates": [
+     "2027-01-15"
+    ],
+    "amounts": [
+     312.4
+    ],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-02-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "semester-fee-sose27",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie hoch ist der Semesterbeitrag für das Sommersemester 2027 und bis wann muss er eingegangen sein?",
+   "gold": {
+    "dates": [
+     "2027-01-15"
+    ],
+    "amounts": [
+     312.4
+    ],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-03-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "liability-premium",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When is my personal liability insurance premium taken next, and how much is it?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     59.9
+    ],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-03-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "liability-premium",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "My liability cover is billed once a year: on what date does the next charge come, and for what amount?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     59.9
+    ],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-03-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "liability-premium",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wann wird der nächste Beitrag für meine Privathaftpflicht abgebucht und wie viel ist es?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     59.9
+    ],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-04-en",
+   "group": "core",
+   "category": "contract",
+   "fact": "liability-cancel-by",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "If I want to cancel my personal liability insurance, by what date does my notice have to reach the insurer?",
+   "gold": {
+    "dates": [
+     "2027-08-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-04-en-paraphrase",
+   "group": "core",
+   "category": "contract",
+   "fact": "liability-cancel-by",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What's the latest day a cancellation of my liability policy can arrive at the insurance company and still count for the next possible end?",
+   "gold": {
+    "dates": [
+     "2027-08-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-04-de",
+   "group": "core",
+   "category": "contract",
+   "fact": "liability-cancel-by",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Bis zu welchem Tag muss meine Kündigung der Haftpflichtversicherung beim Versicherer eingehen?",
+   "gold": {
+    "dates": [
+     "2027-08-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "haftpflicht_versicherungsschein"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-05-en",
+   "group": "core",
+   "category": "contract",
+   "fact": "mobile-min-term-end",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "On what date did the minimum term of my mobile phone contract end?",
+   "gold": {
+    "dates": [
+     "2026-11-14"
+    ],
+    "amounts": [],
+    "letters": [
+     "mobilfunkvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-05-en-paraphrase",
+   "group": "core",
+   "category": "contract",
+   "fact": "mobile-min-term-end",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "My phone plan had a two-year commitment: which day was the last day of it?",
+   "gold": {
+    "dates": [
+     "2026-11-14"
+    ],
+    "amounts": [],
+    "letters": [
+     "mobilfunkvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-05-de",
+   "group": "core",
+   "category": "contract",
+   "fact": "mobile-min-term-end",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "An welchem Tag endete die Mindestlaufzeit meines Handyvertrags?",
+   "gold": {
+    "dates": [
+     "2026-11-14"
+    ],
+    "amounts": [],
+    "letters": [
+     "mobilfunkvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-06-en",
+   "group": "core",
+   "category": "contract",
+   "fact": "lease-number",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "What is the contract number of my rental agreement?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "numbers": [
+     "MV-2025-0412"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-06-en-paraphrase",
+   "group": "core",
+   "category": "contract",
+   "fact": "lease-number",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "Which reference number does my landlord use for my tenancy agreement?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "numbers": [
+     "MV-2025-0412"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-06-de",
+   "group": "core",
+   "category": "contract",
+   "fact": "lease-number",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Welche Vertragsnummer hat mein Mietvertrag?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "numbers": [
+     "MV-2025-0412"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-08-en",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "rent-now",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much is my total monthly rent now, after the change that came with the service-charge statement?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     670.0
+    ],
+    "letters": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "related": [
+     "mietvertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-08-en-paraphrase",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "rent-now",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "Taking the latest adjustment from my landlord into account, what do I pay for the flat each month in total?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     670.0
+    ],
+    "letters": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "related": [
+     "mietvertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-08-de",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "rent-now",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie hoch ist meine monatliche Gesamtmiete jetzt, nach der Anpassung aus der Nebenkostenabrechnung?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     670.0
+    ],
+    "letters": [
+     "nebenkostenabrechnung_2025"
+    ],
+    "related": [
+     "mietvertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-09-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "electricity-instalment-now",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much is my monthly electricity instalment since the price change?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     54.0
+    ],
+    "letters": [
+     "stadtwerke_preisanpassung"
+    ],
+    "related": [
+     "stadtwerke_vertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-09-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "electricity-instalment-now",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "After the power company raised its prices, what is the advance payment it takes from me every month?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     54.0
+    ],
+    "letters": [
+     "stadtwerke_preisanpassung"
+    ],
+    "related": [
+     "stadtwerke_vertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-09-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "electricity-instalment-now",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie hoch ist mein monatlicher Stromabschlag seit der Preiserhöhung?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     54.0
+    ],
+    "letters": [
+     "stadtwerke_preisanpassung"
+    ],
+    "related": [
+     "stadtwerke_vertrag"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-10-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "health-contribution",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much do I pay each month for health and long-term care insurance under the latest notice?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     156.55
+    ],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-10-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "health-contribution",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What's my monthly health insurance contribution now that the new rate applies?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     156.55
+    ],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-10-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "health-contribution",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie viel zahle ich laut dem neuen Bescheid monatlich für Kranken- und Pflegeversicherung?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     156.55
+    ],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-11-en",
+   "group": "core",
+   "category": "deadline",
+   "fact": "passport-expiry",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When does my passport expire?",
+   "gold": {
+    "dates": [
+     "2027-02-10"
+    ],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [
+     "auslaenderbehoerde_termin"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-11-en-paraphrase",
+   "group": "core",
+   "category": "deadline",
+   "fact": "passport-expiry",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What's the last day my passport is valid?",
+   "gold": {
+    "dates": [
+     "2027-02-10"
+    ],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [
+     "auslaenderbehoerde_termin"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-11-de",
+   "group": "core",
+   "category": "deadline",
+   "fact": "passport-expiry",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wann läuft mein Reisepass ab?",
+   "gold": {
+    "dates": [
+     "2027-02-10"
+    ],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [
+     "auslaenderbehoerde_termin"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-12-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "tax-refund",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much will I get back from the tax office for 2025?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     312.45
+    ],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-12-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "tax-refund",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What refund does my 2025 income tax assessment give me?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     312.45
+    ],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-12-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "tax-refund",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie viel bekomme ich laut Steuerbescheid 2025 vom Finanzamt erstattet?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     312.45
+    ],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-13-en",
+   "group": "core",
+   "category": "deadline",
+   "fact": "tax-objection",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "What was the last day to file an objection against my 2025 tax assessment?",
+   "gold": {
+    "dates": [
+     "2026-10-21"
+    ],
+    "amounts": [],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-13-en-paraphrase",
+   "group": "core",
+   "category": "deadline",
+   "fact": "tax-objection",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "By which date would I have had to contest the income tax decision for 2025?",
+   "gold": {
+    "dates": [
+     "2026-10-21"
+    ],
+    "amounts": [],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-13-de",
+   "group": "core",
+   "category": "deadline",
+   "fact": "tax-objection",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Bis wann hätte ich Einspruch gegen meinen Steuerbescheid 2025 einlegen können?",
+   "gold": {
+    "dates": [
+     "2026-10-21"
+    ],
+    "amounts": [],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-14-en",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "techmarkt-total",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "With the reminder fee added, how much did TechMarkt ask me to pay for the headphones, and by what date?",
+   "gold": {
+    "dates": [
+     "2026-09-30"
+    ],
+    "amounts": [
+     94.99
+    ],
+    "letters": [
+     "mahnung_techmarkt"
+    ],
+    "related": [
+     "rechnung_techmarkt"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-14-en-paraphrase",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "techmarkt-total",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "The shop that sold me headphones sent a reminder: what total did it demand including its fee, and what deadline did it set?",
+   "gold": {
+    "dates": [
+     "2026-09-30"
+    ],
+    "amounts": [
+     94.99
+    ],
+    "letters": [
+     "mahnung_techmarkt"
+    ],
+    "related": [
+     "rechnung_techmarkt"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-14-de",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "techmarkt-total",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie viel sollte ich TechMarkt für die Kopfhörer samt Mahngebühr zahlen und bis wann?",
+   "gold": {
+    "dates": [
+     "2026-09-30"
+    ],
+    "amounts": [
+     94.99
+    ],
+    "letters": [
+     "mahnung_techmarkt"
+    ],
+    "related": [
+     "rechnung_techmarkt"
+    ],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-15-en",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "broadcast-number",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "I have two letters about the broadcasting fee with different numbers on them. Which contribution number is really mine?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [
+     "rundfunk_zahlungszentrale"
+    ],
+    "numbers": [
+     "512 345 678"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-15-en-paraphrase",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "broadcast-number",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "Two letters about the TV and radio licence fee quote different account numbers: which one is my genuine contribution number?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [
+     "rundfunk_zahlungszentrale"
+    ],
+    "numbers": [
+     "512 345 678"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-15-de",
+   "group": "core",
+   "category": "cross_letter",
+   "fact": "broadcast-number",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Ich habe zwei Schreiben zum Rundfunkbeitrag mit unterschiedlichen Nummern. Welche Beitragsnummer ist wirklich meine?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [
+     "rundfunk_zahlungszentrale"
+    ],
+    "numbers": [
+     "512 345 678"
+    ]
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-16-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "broadcast-q4",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much was the broadcasting fee for October to December 2026, and when was it due?",
+   "gold": {
+    "dates": [
+     "2026-11-15"
+    ],
+    "amounts": [
+     55.08
+    ],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-16-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "broadcast-q4",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "For the last quarter of 2026, what did the licence-fee service ask me to pay, and on which date?",
+   "gold": {
+    "dates": [
+     "2026-11-15"
+    ],
+    "amounts": [
+     55.08
+    ],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-16-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "broadcast-q4",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie viel Rundfunkbeitrag war für Oktober bis Dezember 2026 fällig und an welchem Tag?",
+   "gold": {
+    "dates": [
+     "2026-11-15"
+    ],
+    "amounts": [
+     55.08
+    ],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-17-en",
+   "group": "core",
+   "category": "payment",
+   "fact": "bank-fee-new",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "What will my bank account cost per month under the new price list, and from when?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     6.9
+    ],
+    "letters": [
+     "bank_preisaenderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-17-en-paraphrase",
+   "group": "core",
+   "category": "payment",
+   "fact": "bank-fee-new",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "My bank is raising its account charge: what's the new monthly price and the day it starts?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     6.9
+    ],
+    "letters": [
+     "bank_preisaenderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-17-de",
+   "group": "core",
+   "category": "payment",
+   "fact": "bank-fee-new",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Was kostet mein Girokonto nach dem neuen Preisverzeichnis im Monat und ab wann?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [
+     6.9
+    ],
+    "letters": [
+     "bank_preisaenderung"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-18-en",
+   "group": "core",
+   "category": "contract",
+   "fact": "work-contract-end",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When does my working-student contract end?",
+   "gold": {
+    "dates": [
+     "2027-03-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "arbeitsvertrag_werkstudent"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-18-en-paraphrase",
+   "group": "core",
+   "category": "contract",
+   "fact": "work-contract-end",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "My student job is fixed-term: on what date does it run out?",
+   "gold": {
+    "dates": [
+     "2027-03-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "arbeitsvertrag_werkstudent"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-18-de",
+   "group": "core",
+   "category": "contract",
+   "fact": "work-contract-end",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wann endet mein Werkstudentenvertrag?",
+   "gold": {
+    "dates": [
+     "2027-03-31"
+    ],
+    "amounts": [],
+    "letters": [
+     "arbeitsvertrag_werkstudent"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-19-en",
+   "group": "core",
+   "category": "deadline",
+   "fact": "reregistration-opens",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "On what date does the re-registration period for summer semester 2027 open?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-19-en-paraphrase",
+   "group": "core",
+   "category": "deadline",
+   "fact": "reregistration-opens",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "From which day can I start re-enrolling at the university for the 2027 summer term?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-19-de",
+   "group": "core",
+   "category": "deadline",
+   "fact": "reregistration-opens",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Ab wann läuft die Rückmeldefrist für das Sommersemester 2027?",
+   "gold": {
+    "dates": [
+     "2026-12-01"
+    ],
+    "amounts": [],
+    "letters": [
+     "rueckmeldung_sose_2027"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-20-en",
+   "group": "core",
+   "category": "contract",
+   "fact": "rent-deposit",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "How much is the security deposit under my rental agreement?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     1560.0
+    ],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-20-en-paraphrase",
+   "group": "core",
+   "category": "contract",
+   "fact": "rent-deposit",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What sum did my lease set as the deposit for the flat?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     1560.0
+    ],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-core-20-de",
+   "group": "core",
+   "category": "contract",
+   "fact": "rent-deposit",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie hoch ist die Kaution laut meinem Mietvertrag?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     1560.0
+    ],
+    "letters": [
+     "mietvertrag"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-01",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-insurance-number",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What is Alex's health insurance number?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": [
+     "M472059139"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-02",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-passport-number",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Welche Passnummer hat Alex?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [],
+    "numbers": [
+     "C4703958"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-03",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-passport-expiry",
+   "phrasing": "en-paraphrase",
+   "ledger": "household",
+   "text": "Until what day is Alex's passport valid?",
+   "gold": {
+    "dates": [
+     "2027-02-10"
+    ],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-04",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-contribution",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "How much is Alex's monthly health and care insurance contribution under the new notice?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     156.55
+    ],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-05",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-old-contribution",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Wie viel hat Alex vor der Erhöhung monatlich an die Krankenkasse gezahlt?",
+   "gold": {
+    "dates": [],
+    "amounts": [
+     146.29
+    ],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-06",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-contribution-objection",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What was the last day for Alex to object to the contribution notice from the health insurer?",
+   "gold": {
+    "dates": [
+     "2026-10-14"
+    ],
+    "amounts": [],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-07",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-contribution-start",
+   "phrasing": "en-paraphrase",
+   "ledger": "household",
+   "text": "From which date does Alex's higher health insurance contribution apply?",
+   "gold": {
+    "dates": [
+     "2026-10-01"
+    ],
+    "amounts": [],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-08",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-passport-issued",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "When was Alex's passport issued?",
+   "gold": {
+    "dates": [
+     "2017-02-11"
+    ],
+    "amounts": [],
+    "letters": [
+     "reisepass"
+    ],
+    "related": [],
+    "numbers": []
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-hh-09",
+   "group": "household",
+   "category": "household",
+   "fact": "my-tax-id",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What's my tax identification number?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": [
+     "57 216 480 354"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-10",
+   "group": "household",
+   "category": "household",
+   "fact": "my-tax-number",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Wie lautet meine Steuernummer beim Finanzamt?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "steuerbescheid_2025"
+    ],
+    "related": [],
+    "numbers": [
+     "123/4567/8901"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-11",
+   "group": "household",
+   "category": "household",
+   "fact": "my-student-number",
+   "phrasing": "en-paraphrase",
+   "ledger": "household",
+   "text": "Which matriculation number does my university have me under?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "immatrikulationsbescheinigung_wise_2026"
+    ],
+    "related": [
+     "rueckmeldung_sose_2027"
+    ],
+    "numbers": [
+     "4711123"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-12",
+   "group": "household",
+   "category": "household",
+   "fact": "my-scholarship-id",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What ID does the scholarship foundation use for me?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "stipendium_zusage"
+    ],
+    "related": [],
+    "numbers": [
+     "GTSF-2026-0317"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-13",
+   "group": "household",
+   "category": "household",
+   "fact": "my-personnel-number",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Welche Personalnummer habe ich bei meinem Arbeitgeber?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "arbeitsvertrag_werkstudent"
+    ],
+    "related": [
+     "gehaltsabrechnung_2026_08"
+    ],
+    "numbers": [
+     "10482"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-14",
+   "group": "household",
+   "category": "household",
+   "fact": "my-broadcast-number",
+   "phrasing": "en-paraphrase",
+   "ledger": "household",
+   "text": "Under which contribution number am I registered for the broadcasting fee?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "rundfunkbeitrag_zahlungsaufforderung"
+    ],
+    "related": [],
+    "numbers": [
+     "512 345 678"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-15",
+   "group": "household",
+   "category": "household",
+   "fact": "my-library-number",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What is my user number at the city library?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "stadtbibliothek_mahnung"
+    ],
+    "related": [],
+    "numbers": [
+     "0481 1123 5"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139",
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-hh-16",
+   "group": "household",
+   "category": "household",
+   "fact": "alex-notice-reference",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Welches Zeichen der Krankenkasse steht auf Alex' Beitragsbescheid?",
+   "gold": {
+    "dates": [],
+    "amounts": [],
+    "letters": [
+     "krankenkasse_beitragsbescheid"
+    ],
+    "related": [],
+    "numbers": [
+     "BZ-S/2026/0917"
+    ]
+   },
+   "near_miss": false,
+   "member": "Alex Rivera",
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-rec-q01",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "dentist-next",
+   "phrasing": "en",
+   "ledger": "recurrence",
+   "text": "I booked my dental check-ups to come round every three months. When is the next one?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-broadcast-quarter",
+    "ask": "next"
+   }
+  },
+  {
+   "id": "ho-rec-q02",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "dentist-first-half-2027",
+   "phrasing": "de",
+   "ledger": "recurrence",
+   "text": "Wann habe ich zwischen Januar und Ende Juni 2027 meine Kontrolltermine beim Zahnarzt?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-broadcast-quarter",
+    "ask": "window",
+    "from": "2027-01-01",
+    "to": "2027-06-30"
+   }
+  },
+  {
+   "id": "ho-rec-q03",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "dentist-120d",
+   "phrasing": "en-paraphrase",
+   "ledger": "recurrence",
+   "text": "Looking about four months ahead (120 days from now), on what dates am I due at the dentist?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-broadcast-quarter",
+    "ask": "window",
+    "from": "today",
+    "to": "today+120"
+   }
+  },
+  {
+   "id": "ho-rec-q04",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "dentist-days-2027",
+   "phrasing": "en",
+   "ledger": "recurrence",
+   "text": "List every dentist check-up date I have across the whole of 2027.",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-broadcast-quarter",
+    "ask": "window",
+    "from": "2027-01-01",
+    "to": "2027-12-31"
+   }
+  },
+  {
+   "id": "ho-rec-q06",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "semester-fee-next",
+   "phrasing": "en-paraphrase",
+   "ledger": "recurrence",
+   "text": "When's the next semester fee due and what does it come to?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-semester-fee",
+    "ask": "next",
+    "with_amount": true
+   }
+  },
+  {
+   "id": "ho-rec-q07",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "semester-fee-year",
+   "phrasing": "en",
+   "ledger": "recurrence",
+   "text": "Which semester fee payments fall due within the next 365 days?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-semester-fee",
+    "ask": "window",
+    "from": "today",
+    "to": "today+365"
+   }
+  },
+  {
+   "id": "ho-rec-q08",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "semester-fee-2027",
+   "phrasing": "de",
+   "ledger": "recurrence",
+   "text": "Wie viel Semesterbeitrag zahle ich 2027 zusammen?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-semester-fee",
+    "ask": "year_total",
+    "year": 2027
+   }
+  },
+  {
+   "id": "ho-rec-q09",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "progress-report-next",
+   "phrasing": "en",
+   "ledger": "recurrence",
+   "text": "I send my scholarship progress report every month now. By when is the next one due?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-meter-reading",
+    "ask": "next"
+   }
+  },
+  {
+   "id": "ho-rec-q10",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "progress-report-dec-jan",
+   "phrasing": "de",
+   "ledger": "recurrence",
+   "text": "Bis zu welchen Tagen muss ich im Dezember 2026 und im Januar 2027 meinen Bericht für das Stipendium einreichen?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-meter-reading",
+    "ask": "window",
+    "from": "2026-12-01",
+    "to": "2027-01-31"
+   }
+  },
+  {
+   "id": "ho-rec-q11",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "scholars-meeting-next",
+   "phrasing": "en-paraphrase",
+   "ledger": "recurrence",
+   "text": "When's the next scholars' meeting of my foundation in Berlin?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-scholars-meeting",
+    "ask": "next"
+   }
+  },
+  {
+   "id": "ho-rec-q12",
+   "group": "recurrence",
+   "category": "recurrence",
+   "fact": "library-fees-holidays",
+   "phrasing": "en",
+   "ledger": "recurrence",
+   "text": "From mid-December 2026 to mid-January 2027 (15th to 15th), on which days are my library fees due?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null,
+   "recurrence": {
+    "todo": "ho-rec-library-return",
+    "ask": "window",
+    "from": "2026-12-15",
+    "to": "2027-01-15"
+   }
+  },
+  {
+   "id": "ho-un-01",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "my-own-passport-number",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "What is my own passport number?",
+   "gold": null,
+   "near_miss": true,
+   "member": "Alex Rivera",
+   "member_values": [
+    "C4703958"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-un-02",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "my-own-insurance-number",
+   "phrasing": "de",
+   "ledger": "household",
+   "text": "Wie lautet meine eigene Krankenversicherungsnummer?",
+   "gold": null,
+   "near_miss": true,
+   "member": "Alex Rivera",
+   "member_values": [
+    "M472059139"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-un-03",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "my-own-passport-expiry",
+   "phrasing": "en-paraphrase",
+   "ledger": "household",
+   "text": "Until when is my own passport valid?",
+   "gold": null,
+   "near_miss": true,
+   "member": "Alex Rivera",
+   "member_values": [
+    "2027-02-10"
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-un-04",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "my-own-contribution",
+   "phrasing": "en",
+   "ledger": "household",
+   "text": "How much do I myself pay each month to my health insurer?",
+   "gold": null,
+   "near_miss": true,
+   "member": "Alex Rivera",
+   "member_values": [
+    156.55
+   ],
+   "list": null
+  },
+  {
+   "id": "ho-un-05",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "meeting-time",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "What time does the scholars' autumn meeting in Berlin start?",
+   "gold": null,
+   "near_miss": true,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-06",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "refund-date",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "An welchem Tag überweist mir das Finanzamt die Erstattung für 2025?",
+   "gold": null,
+   "near_miss": true,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-07",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "mobile-debit-day",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "On which day of the month is my mobile phone bill debited from my account?",
+   "gold": null,
+   "near_miss": true,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-08",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "second-progress-report",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When is my second scholarship progress report due?",
+   "gold": null,
+   "near_miss": true,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-09",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "contents-insurance",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "What is the policy number of my household contents insurance?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-10",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "eye-doctor",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wann habe ich meinen nächsten Termin beim Augenarzt?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-11",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "dog-tax",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "How much dog tax does the city charge me this year?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-12",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "travel-health-cover",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "When does my travel health insurance run out?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-13",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "bike-insurance",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wie hoch ist der Jahresbeitrag meiner Fahrradversicherung?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-14",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "child-benefit",
+   "phrasing": "en",
+   "ledger": "base",
+   "text": "By when do I need to apply for child benefit?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-15",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "streaming-price",
+   "phrasing": "en-paraphrase",
+   "ledger": "base",
+   "text": "What do I pay per month for my video streaming subscription?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  },
+  {
+   "id": "ho-un-16",
+   "group": "unanswerable",
+   "category": "unanswerable",
+   "fact": "driving-licence",
+   "phrasing": "de",
+   "ledger": "base",
+   "text": "Wann muss ich meinen Führerschein umtauschen?",
+   "gold": null,
+   "near_miss": false,
+   "member": null,
+   "member_values": [],
+   "list": null
+  }
+ ]
+}

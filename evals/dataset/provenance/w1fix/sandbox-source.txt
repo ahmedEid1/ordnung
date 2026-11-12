@@ -1,0 +1,14 @@
+commit 873f1982bf85d67918e0008bdbda643934d29609
+profile w1
+path evals/gen
+path evals/generate.py
+path evals/verify_labels.py
+path tests/test_eval_dataset.py
+path constraints.txt
+path src/ordnung/drafts/fonts/DejaVuSans.ttf
+path src/ordnung/drafts/fonts/DejaVuSans-Bold.ttf
+path src/ordnung/drafts/fonts/LICENSE-DejaVu.txt
+path evals/law
+extra c581b215211d558c31ebf9e6a6efe70db96ac38d736cfa76b0303942971c1be3 $S/ev8/final/redacted/VERIFICATION-e51d5d07.md -> evals/dataset/VERIFICATION.md
+extra 86bdc14ca9b475cc86700d30a67f9e3d8c541ee4f4598e4853b0ca8d7c28739a $S/ev8/final/redacted/pyproject.toml -> pyproject.toml
+extra 74b6864d32a1d92a877b05dc6f987ee1fcf71da86a177b5294df19a5c8f7e8a9 $S/ev8/final/w1fix-in/fix-list.md -> fix-list.md

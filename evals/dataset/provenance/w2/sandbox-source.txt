@@ -1,0 +1,8 @@
+commit f2cacf64771a8736262f52a535d29b79032969c9
+profile w2
+path evals/ask/heldout/SCHEMA.md
+path evals/ask/heldout/household-facts.json
+path evals/ask/heldout/recurrence-rules.md
+path evals/ask/heldout_check.py
+extra dir:74937ebbfdbe30203466df670c6e5155aab8c45b9430fd5e9a12037dfd10f70c $S/ev8/final/w2-in/samples -> src/ordnung/demo/samples
+anchor expect 1663d5c4c0feb83c64299695eb379b60a9c68ad7377625578a588f3a9eae876b $S/ev8/final/w2-in/samples.sha256

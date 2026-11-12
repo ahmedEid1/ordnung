@@ -1,0 +1,12 @@
+HIT audit/derived-conv.json:2588 d1884298fa3c389a OUTSIDE
+HIT audit/derived-conv.json:2620 66c98aa5335ef394 OUTSIDE
+HIT audit/derived-conv.json:2948 bed84740829a0e0f OUTSIDE
+HIT audit/derived-conv.json:5346 b56aeaa6cd6417f2 OUTSIDE
+HIT audit/derived-conv.json:5366 71aab1e588af198a OUTSIDE
+HIT audit/derived-conv.json:5743 6c09ce7752bf6452 OUTSIDE
+HIT audit/derived-conv.json:6892 844007998e760a13 OUTSIDE
+HIT audit/derived-conv.json:7047 a59347e97337dd9e OUTSIDE
+HIT audit/derived-conv.json:7867 0669a66142567b2b OUTSIDE
+HIT audit/derived-conv.json:8862 5a9f23be5f9a82e4 OUTSIDE
+HIT audit/derived-conv.json:8883 71aab1e588af198a OUTSIDE
+summary: files 1, hit lines 11, allowed 0, outside allow-list 11, unused allow-list entries 0, allow-list sha256 none

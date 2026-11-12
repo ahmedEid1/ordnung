@@ -1,0 +1,8 @@
+commit 6cabd24e57e5c1ed806b07131cffae6fc78227c8
+profile w2v
+git-archive skipped
+from-commit evals/ask/heldout/household-facts.json -> household-facts.json
+from-commit evals/ask/heldout/recurrence-rules.md -> recurrence-rules.md
+extra dir:f101a56426690accd3dca5f03eeb85a9a0e2b8229266b0684d9e4390f5122014 $S/ev8/final/w2v-in/samples -> samples
+extra 5f3da83523a39e5fe4a2ae83bad2f02bc55ef392572ac966c683be825c68f81c $S/ev8/final/w2v-in/questions-blind.json -> questions-blind.json
+anchor expect 171cf11683aaec0b47990cdb6dbab05aac071194e4019cd5755e5241cff7e89c $S/ev8/final/w2v-in/expect.sha256

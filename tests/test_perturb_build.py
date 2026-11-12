@@ -3,8 +3,9 @@ re-rendered through the benchmark's own generator, once with an AI-addressed par
 legally inert sentence that names a date (cell D1). Truth never changes, and the stress manifest names no day.
 
 holdout4's letters are written after the code freeze, so these tests build from a stand-in: the letters of holdout,
-holdout2 and holdout3 relabelled as holdout4 (:func:`final_manifest`; ids, files and truth unchanged). The real
-templates are written blind; these tests use their own neutral ones. Nothing here prints letter text, a template or a
+holdout2 and holdout3 relabelled as holdout4 (:func:`final_manifest`; ids, files and truth unchanged; holdout4's own
+letters, once written, are left out of it, so the stand-in is the same before and after). The real templates are
+written blind; these tests use their own neutral ones. Nothing here prints letter text, a template or a
 prompt: ids, counts and hashes only.
 """
 
@@ -42,11 +43,27 @@ STAND_IN = ("holdout", "holdout2", "holdout3")
 
 def final_manifest(path: Path) -> Path:
     """The dataset's manifest with every letter of :data:`STAND_IN` relabelled as holdout4, written to ``path``. Ids,
-    truth and days stay; each file is named by its absolute path, so the letters are read where they are."""
+    truth and days stay; each file is named by its absolute path, so the letters are read where they are. holdout4's
+    own letters, once they exist, are left out: they have no recordings until the final run, and the stand-in must be
+    the stand-in alone."""
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    data["entries"] = [entry for entry in data["entries"] if entry["split"] != "holdout4"]
     for entry in data["entries"]:
         if entry["split"] in STAND_IN:
             entry["split"] = "holdout4"
+        entry["file"] = str((DATASET / entry["file"]).resolve())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def manifest_without_holdout4(path: Path) -> Path:
+    """The dataset's manifest with holdout4's own letters left out (the dataset as it was before they were written),
+    written to ``path`` with each file named by its absolute path: the builder's refusal is tested on it whether or
+    not holdout4's letters exist."""
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    data["entries"] = [entry for entry in data["entries"] if entry["split"] != "holdout4"]
+    for entry in data["entries"]:
         entry["file"] = str((DATASET / entry["file"]).resolve())
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
@@ -329,11 +346,15 @@ def test_a_family_short_of_letters_gives_them_all_and_the_others_fill_its_places
 
 def test_only_holdout4_is_perturbed(entries: list[Entry]) -> None:
     """The earlier splits were written for their own days and recorded once; holdout4 is written for the recording
-    window, so its letters can be read on any day of it. Until holdout4 exists, the builder says so."""
+    window, so its letters can be read on any day of it. Without holdout4's letters (the dataset's manifest with them
+    left out, so the refusal is tested whether or not they exist) the builder says so; the dataset's own base set is
+    48 of holdout4's letters and no other split's."""
     real = load_manifest(MANIFEST)
     with pytest.raises(build.BuildError) as refused:
-        build.base_set(real)
+        build.base_set([e for e in real if e.split != "holdout4"])
     assert "holdout4" in str(refused.value) and "48" in str(refused.value)
+    chosen = build.base_set(real)
+    assert len(chosen) == build.BASE_LETTERS and {e.split for e in chosen} == {"holdout4"}
     others = [e.model_copy(update={"split": "holdout3"}) for e in entries if e.split == "holdout4"]
     assert not any(e.split == "holdout3" for e in build.base_set([*entries, *others]))
     for split in ("holdout", "holdout2", "holdout3", "newkinds", "dev", "test"):

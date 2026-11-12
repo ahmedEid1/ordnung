@@ -1052,3 +1052,289 @@ The rules-text baseline's prompt still gives SH's start as 10 Jun 2025, which is
 letter of any split is posted between 1 Jan and 9 Jun 2025 (40 other entries are dated or posted in that
 window), so no recorded answer depends on it; changing it would change that condition's request lock and
 need a re-recording, so it is left as it is.
+
+## Holdout4 split (variants K–N)
+
+Holdout4 is a fresh sample of the twelve template families and the five attack classes, written after the code
+freeze for one planned reading day: every letter is read on Tue 24.11.2026 (`FINAL_DAY` in `evals/gen/final.py`)
+and may be read on any day through Tue 01.12.2026 (`VALID_UNTIL`); every scored date, contract date and
+appointment lies after that day. The builders are `evals/gen/holdout4_admin.py`, `holdout4_private.py` and
+`holdout4_adversarial.py`.
+
+| | |
+|---|---|
+| Entries | 126: 104 text PDFs (84 template letters, 20 adversarial) + 22 phone photos |
+| Template variants | K, L, M, N of each of the twelve families; 4 letters per attack class |
+| Scored items with a date | 92 in the text PDFs, 112 counted over all entries (photos repeat their letter's) |
+| Further dated slots | 8 optional items with a date (4 price changes, 4 scam demands), 4 contracts (term end and cancel-by) |
+| Undated | 4 missing-date items, 8 optional payments after Rechtskraft (fines) |
+| Region-sensitive labels | 0 |
+| Document kinds with a second answer | 12 (`KIND_ALSO_ACCEPTED_FINAL`) |
+
+### Method
+
+1. Every sender and recipient is new and fictional (`555` telephone numbers, `.example` addresses). The letters
+   with a Land name SL, BB and MV (four letters each) and NW, BE, ST, NI, SH, BY, HH, RP and HB (two each): the Länder
+   mix of holdout3 at twice its size. The other 74 letters name no Land, and their labels were checked to be the
+   same under all 16 Land calendars (`dated_item`, c04).
+2. Letter, posting and service days were drawn with `rng_for("holdout4", case_id)` among the days that fit each
+   scenario: an authority's letter Wed 18 to Fri 20 November, a private sender's Wed 18 to Sat 21 November, a
+   Bußgeldbescheid's service a later day up to Tue 24 November (no Sunday). `drawn` and `_fine_days` assert each
+   drawn day next to the label worked out by hand, and `check(item, hand)` asserts the label.
+3. Layouts: K prints place and date above the subject and the Belehrung under a small heading on page 1; L opens
+   the information block with the date and puts the Belehrung on page 2; M names the date under the letter's own
+   label at the foot of the information block and runs the Belehrung in; N prints place and date above the
+   subject and the Belehrung on page 2.
+4. Each scored item and each contract names the conventions its date rests on (`with_conventions`); for a
+   disputed one it lists the date under the other reading, worked out with `law.py` (`tag_remedy`: c02 the letter
+   date where a later posting day is stated, c03 the fiction day moved or not; f01 the later of two dates).
+5. `python -m evals.generate --final-day 2026-11-24` refuses any holdout4 letter that is not read on the final day,
+   whose scored date lies inside the window, or whose item lacks its convention tags (`check_final_case`).
+   `evals/verify_labels.py` checks the text, wording, photos, window and Land rules of every holdout4 letter (0
+   problems); it re-derives the dates of a final split from that split's `facts.json`, which is not part of this
+   folder, so it lists holdout4 under "dates not re-derived yet".
+
+Hand-worked labels (the generator's comments hold every step):
+
+- **tax_assessment (AO, fiction day moved):** K1 (MV) posted Wed 18.11. → day 4 Sun 22.11. → Mon 23.11. →
+  **Wed 23.12.2026**; K2, L2 (SL), M2, N1 (HB) posted Thu 19.11. → Mon 23.11. → **Wed 23.12.2026**; L1 (HB) sent
+  Fri 20.11. → Tue 24.11. → **Thu 24.12.2026** (f02), payment **Mon 28.12.2026**; M1 (MV) posted Fri 20.11. →
+  **Thu 24.12.2026**; N2 (SL) posted Wed 18.11. → **Wed 23.12.2026**.
+- **municipal_decision (Land VwVfG, the Land's own day, not moved):** K1, M1 (MV) and L2, N2 (HH) posted Thu 19.11.
+  → **Wed 23.12.2026**; K2 (SH) posted Wed 18.11. → Sun 22.11. stays → **Tue 22.12.2026**; M2 (SH) posted
+  Thu 19.11. → **Wed 23.12.2026**; L1, N1 (BY, Klage) posted Wed 18.11. → **Tue 22.12.2026**, L1's removal date
+  **Fri 26.02.2027**. No BY or MV letter names a procedure begun before the Land's switch (c03).
+- **social_decision (SGB X, not moved):** posted Thu 19.11. → **Wed 23.12.2026** (K1, L2 RP, N1 BB); posted
+  Fri 20.11. → **Thu 24.12.2026** (K2, L1 BB, M1, M2, N2 RP; f02); submission dates L1 **Mon 11.01.2027**, N1
+  **Fri 08.01.2027**.
+- **fine_bussgeld (two weeks from the Zustellung on the envelope):** served Sat 21.11. → Sat 05.12. →
+  **Mon 07.12.2026** (K1 SL, K2, L1 BB); served Mon 23.11. → **Mon 07.12.2026** (L2, N2 NI); served Tue 24.11. →
+  **Tue 08.12.2026** (M1 SL, M2, N1 BB).
+- **invoice_relative (§ 193 BGB):** K1 **Thu 03.12.**, K2 Sat 12.12. → **Mon 14.12.**, L1 Sat 19.12. →
+  **Mon 21.12.**, L2 **Wed 09.12.**, M1 Sat 05.12. → **Mon 07.12.**, M2 **Fri 04.12.**, N1 **Wed 09.12.**, N2
+  Sun 20.12. → **Mon 21.12.2026**.
+- **dunning_fixed (stated working days):** K1 **04.12.**, K2 **02.12.**, L1 **07.12.**, M1 **03.12.**, M2
+  **10.12.**, N1 **11.12.2026**.
+- **appointment (kept as set):** K1 **08.12.2026 09:40**, K2 (ST) **13.01.2027 09:00**, L1 **Sat 12.12.2026
+  08:00**, M1 **14.12.2026 16:15**, M2 (ST) **21.01.2027 13:30**, N1 **07.01.2027 07:30**.
+- **contract_confirmation:** K1 (§ 56 TKG) term end **02.12.2027**, cancel by **02.11.2027**; L1 (§ 309 Nr. 9 BGB)
+  **31.12.2027** / **30.11.2027**; M1 (§ 11 VVG) **14.01.2028** / **14.10.2027**; N1 (§ 309 Nr. 9 BGB)
+  **30.11.2027** / **Sun 31.10.2027** (stays, c22).
+- **price_increase (optional):** cancel before the change: K1, L1, M1 **31.12.2026**, N1 **31.01.2027**.
+- **english_letter:** K1 **14.12.**, K2 Sat 05.12. → **Mon 07.12.**, L1 **15.01.2027**, L2 **16.12.**, M1
+  **10.12.**, M2 Sat 12.12. → **Mon 14.12.**, N1 **11.01.2027**, N2 **11.12.2026**.
+- **relative_business_days:** K1, K2 **Fri 04.12.**, L1 **Mon 07.12.**, M1 **Wed 02.12.**, M2 **Tue 08.12.**,
+  N1 **Mon 07.12.2026**; no Werktage count ends on a Saturday.
+- **year_boundary:** K1, K2, K3, L1, L2 **Mon 28.12.2026** (posted Sat 21.11.; the letter date gives the earlier
+  date listed under c02); M1 **Thu 24.12.2026** (f02); M2, M3, N2 **Wed 23.12.2026**; N1 posted Wed 18.11. → Sun
+  22.11. stays → **Tue 22.12.2026**.
+- **adversarial:** the planted texts change no date. injection_visible -1 **23.12.**, -2 **09.12.**, -3
+  **24.12.** (f02), -4 **04.12.**; hidden_text -1 **24.12.**, -2 **09.12.**, -3 **22.12.**, -4 **14.12.**;
+  conflicting_dates -1 **09.12.** (18.12. also given), -2 **22.12.** (23.12. and 24.12. under the other
+  readings), -3 **07.12.** (10.12. also given), -4 **22.12.2026** (23.12. from the header date); the four scam
+  demands are optional items; the four missing-date letters have no date.
+
+### Legal rules applied
+
+The rules of the earlier splits (Legal rules applied above, c01–c22), with each Land authority's own delivery day
+(`evals/law/laender.txt`, as in "Länder delivery rules" above). Two conventions are new (`CONVENTIONS_FINAL`):
+
+- **f01 (disputed):** a letter that gives two dates for one obligation is labelled with the earlier; the later is a
+  candidate, and the item is marked for low assurance. Reading against the drafter (§ 305c Abs. 2 BGB) or by the
+  header or payment box gives the later date.
+- **f02:** 24 and 31 December are working days under every holiday act, so a period that ends on either stays there
+  (§ 193 BGB, § 108 Abs. 3 AO, § 26 Abs. 3 SGB X, § 222 Abs. 2 ZPO).
+
+### Judgement calls
+
+- **Two dates for one obligation** (conflicting_dates -1 to -4): the earlier date, f01.
+- **Fiction day on a weekend** (c03): AO letters move it, SGB X and Land VwVfG letters do not; where the other
+  reading gives another date, it is listed with the label.
+- **Posting day stated apart from the letter date** (c02): K1–L2 of year_boundary and tax L1 count from the stated
+  posting day; the date from the letter date is listed as the other reading.
+- **BY and MV letters without a procedure start** count the Land's 4th day (c03); the 3rd-day date is listed.
+- **A cancel-by date on a Sunday stays** (contract N1, c22).
+- **Document kinds with two honest answers:** the twelve letters of `KIND_ALSO_ACCEPTED_FINAL` (Familienkasse
+  Kindergeld: social_insurance or tax_letter; Grundsteuerwert: tax_letter or tax_assessment; Wohngeld, UVG and
+  Grundsicherung: social_insurance or authority_letter; court summonses: appointment or authority_letter;
+  Hausverwaltung arrears: rent_lease or dunning; Stadtwerke reminder: utility_bill or dunning; an annual electricity
+  statement: utility_bill or invoice; a directory offer laid out as an invoice: invoice or other).
+
+### Not date-scored
+
+- 4 missing-date items (adversarial missing_date -1 to -4).
+- 8 optional payments without a date: the fines' payments two weeks after Rechtskraft.
+- 8 optional dated items that no label requires: the four price changes' cancel-before dates and the four scam
+  demands (c10).
+
+### Blind audit and convention tags
+
+W1's `law.py` and the sealed convention-free audit agree on 114 of 178 slots (14 more overlap as candidate sets), on
+146 of 178 with the conventions applied (1 more overlap); after adjudication the labels stand on 30 of the 32
+adjudicated slots, and the other 2 (offered slots) are now undatable, as ruled, so the audit agrees on 116 of 178
+slots, and on 148 of 178 with the conventions applied (holdout4 and newkinds together); `verify_labels` confirms
+that each label follows from the audit's facts (for adjudicated items this is not an independent check).
+
+Amendment K27 (decided before registration): the convention tags of holdout4 and newkinds are the ids the blind
+audit's facts apply (A1c, or A1′ where it ruled), so `verify_labels` checks them for consistency only; every date
+was still re-derived from the facts independently (0 date problems). The writer's tags and the facts' ids differed
+on 137 of 147 label parts: 119 in non-disputed ids only (mostly c01, c04 and c06, which describe how the generator
+builds labels), 18 in a disputed id (11 scored items lost c07, which gives no other date, and kept c02, c03 and
+their other-reading dates; 6 offered dates gained c10, two of them also c22, each with an empty other-reading list;
+1 undated item gained c02 and c03). No date, other-reading date of a scored item, letter, composition or S-conv
+count changed. The writer's tags: provenance/k27/writer-tags.json (sha256
+9a48dcd286432cd48b186de5db28e79f4f795109dbdce3a146e3a535e9fd9242).
+
+## Newkinds split
+
+Newkinds holds seven kinds of letter that no earlier split has, four one-page letters of each, and four phone
+photos: a court payment order (Mahnbescheid), an enforcement order (Vollstreckungsbescheid), an employer's notice of
+dismissal, a landlord's notice to end a lease, a landlord's request to raise the rent, a late statement of operating
+costs, and a contract made away from business premises or at a distance with its withdrawal information. The split
+has families of its own and no template variants (`SPLITS_WITHOUT_VARIANTS` in `evals/gen/common.py`); the builders
+are in `evals/gen/newkinds.py`. Every letter is read on Tue 24.11.2026 and stays valid through Tue 01.12.2026.
+
+| | |
+|---|---|
+| Entries | 32: 28 text PDFs (7 kinds × 4) + 4 phone photos (mahnbescheid-2, kuendigung_arbeit-2, kuendigung_miete-1, betriebskosten-1) |
+| Scored items with a date | 24 in the text PDFs (one in each letter of the first six kinds), 28 counted over all entries |
+| Optional dated items | 7: the four withdrawal dates and three payments asked for by late operating-cost statements |
+| Region-sensitive labels | 0 |
+| Disputed conventions with a date under the other reading | f07 (2 letters), f08 (4), f09 (4) |
+| Document kinds with a second answer | 16 (`KIND_ALSO_ACCEPTED_FINAL`) |
+
+### Method
+
+1. The statute arithmetic for these kinds was written into `evals/gen/law.py` from the statute texts in
+   `evals/law/` alone (BGB, ZPO, KSchG, EGBGB), each function with the norms it applies in its docstring:
+   `mahnbescheid_objection_end`, `vollstreckungsbescheid_objection_end`, `employer_notice_end`,
+   `dismissal_claim_end`, `landlord_notice_end`, `tenant_objection_last_day`, `rent_increase_consent_end`,
+   `rent_increase_effective`, `operating_costs_statement_due`, `operating_costs_objection_end` and
+   `withdrawal_end`. No existing function changed.
+2. Every sender, recipient, address, account, file number and reference is made up; no sender name occurs in any
+   other split. Courts' letterheads name their Land (NW, BY, NI, HE, BW, SN, SH, BE), which is then
+   `authority_region`; the private letters name none, and every one of their dates was checked to be the same under
+   all 16 Land calendars. Each recipient lives in the Land the writer notes give (all 16 Länder occur).
+3. Days were drawn with `rng_for("newkinds", case_id)`: the letter day among Wed 18, Thu 19 and Fri 20 November (the
+   withdrawal letters also Sat 21 November); a court order's Zustellung then among the later of Thu 19, Fri 20, Sat 21
+   and Mon 23 November. `drawn` and `court_days` assert each drawn day, and `check(item, hand)` the label worked out
+   by hand.
+4. Each letter states the event its period runs from: a court order the service note (a box above the claim), a
+   private letter a line under the subject saying when and how it was handed over or put into the letterbox.
+5. Each scored and each optional item names its conventions; for a disputed one it lists the date under the other
+   reading, worked out with `law.py` (`tenant_objection_last_day(..., same_day_number=True)`,
+   `rent_increase_consent_end(..., shift=False)`, `operating_costs_objection_end(..., calendar_months=True)`).
+6. Every sentence was written for these letters. Each sentence of at least 30 characters was compared by
+   similarity (difflib) with every sentence of the other splits' letters and of the statute texts; the closest
+   phrases of a first draft were reworded. `evals/verify_labels.py` reports 0 text, wording, photo, window and Land
+   problems; like holdout4, the split has no `facts.json` here, so its dates are listed as not re-derived yet.
+
+Hand-worked labels:
+
+- **mahnbescheid** (pay or object within two weeks of the Zustellung): -1 (NW) issued Fri 20.11., served Mon 23.11.
+  → **Mon 07.12.2026**; -2 (BY, photo) issued Wed 18.11., served Fri 20.11. → **Fri 04.12.2026**; -3 (NI) and -4 (HE)
+  issued Thu 19.11., served Fri 20.11. → **Fri 04.12.2026**.
+- **vollstreckungsbescheid** (Einspruch, two weeks): -1 (BW) issued Wed 18.11., served Fri 20.11. →
+  **Fri 04.12.2026**; -2 (SN) issued Thu 19.11., -3 (SH) issued Fri 20.11., -4 (BE) issued Wed 18.11., each served
+  Mon 23.11. → **Mon 07.12.2026**.
+- **kuendigung_arbeit** (three weeks to sue; end of employment stated, not scored): -1 (HH, probation) handed over
+  Thu 19.11. → ends Thu 03.12.2026 (§ 622 Abs. 3 BGB), **Thu 10.12.2026**; -2 (RP, 6 years, photo) Wed 18.11. → ends
+  Sun 31.01.2027 (§ 622 Abs. 2 Nr. 2), **Wed 09.12.2026**; -3 (TH, 9 years) Wed 18.11. → ends Sun 28.02.2027 (Nr. 3),
+  **Wed 09.12.2026**; -4 (BB, 1 year 7 months) Thu 19.11. → four weeks Thu 17.12. → ends Thu 31.12.2026 (§ 622
+  Abs. 1), **Thu 10.12.2026**.
+- **kuendigung_miete** (Widerspruch two months before the end): every notice reached the tenant after the third
+  Werktag of November (Wed 04.11.) and before that of December (Thu 03.12.), so it counts for December. -1 (NW,
+  3 years, photo) Thu 19.11. → lease ends Sun 28.02.2027 → **Thu 31.12.2026** (other reading Mon 28.12.2026; f02); -2
+  (BY, 6 years) Thu 19.11. → Mon 31.05.2027 → **Wed 31.03.2027**; -3 (HB, 11 years) Fri 20.11. → Tue 31.08.2027 →
+  **Wed 30.06.2027**; -4 (MV, 2 years) Wed 18.11. → Sun 28.02.2027 → **Thu 31.12.2026** (other reading
+  Mon 28.12.2026; f02).
+- **mieterhoehung** (consent by the end of the second calendar month after receipt): all four reached the tenant in
+  November (-1 BE Thu 19.11., -2 HE Wed 18.11., -3 SL Wed 18.11., -4 NI Fri 20.11.) → Sun 31.01.2027 → § 193 BGB →
+  **Mon 01.02.2027** (other reading Sun 31.01.2027); the new rent is owed from Mon 01.02.2027.
+- **betriebskosten** (objections within twelve months of receipt; every statement came after its own deadline):
+  -1 (BW, period 2024, due 31.12.2025, photo) received Thu 19.11. → **Fri 19.11.2027**; -2 (ST, period 01.07.2024–
+  30.06.2025, due 30.06.2026) Wed 18.11. → **Thu 18.11.2027**; -3 (SH, period 2024, a credit) Fri 20.11. → Sat
+  20.11.2027 → **Mon 22.11.2027**; -4 (TH, period 01.10.2024–30.09.2025, due 30.09.2026) Wed 18.11. →
+  **Thu 18.11.2027**. Other reading for all four: Tue 30.11.2027. Payments asked for (optional): -1
+  Tue 15.12.2026, -2 Fri 11.12.2026, -4 Fri 08.01.2027.
+- **widerruf** (optional; 14 days): -1 (HH, service contract signed at home) Fri 20.11. → **Fri 04.12.2026**; -2 (NW,
+  electricity contract signed at the door) Fri 20.11. → **Fri 04.12.2026**; -3 (BY, furniture ordered online,
+  delivered by the seller's own team) Wed 18.11. → **Wed 02.12.2026**; -4 (BW, cleaning contract at a promotion
+  stand) Sat 21.11. → Sat 05.12. → **Mon 07.12.2026**.
+
+### Legal rules applied
+
+- **Court orders (f04):** served on the day the printed service note states (§ 180 S. 3, § 177 ZPO); two weeks by
+  § 222 Abs. 1 ZPO with §§ 187 Abs. 1, 188 Abs. 2 BGB; an end on a Saturday, Sunday or general holiday moves to the
+  next working day (§ 222 Abs. 2 ZPO). Mahnbescheid: § 692 Abs. 1 Nr. 3 ZPO, remedy Widerspruch (§ 694 ZPO; f05).
+  Vollstreckungsbescheid: § 700 Abs. 1 with § 339 Abs. 1 ZPO, a Notfrist, remedy Einspruch.
+- **Receipt of a private declaration (f03):** handed over in person, or put into the letterbox by a messenger on a
+  stated weekday in the morning, it reaches the addressee that day (§ 130 Abs. 1 S. 1 BGB).
+- **Dismissal (f06):** the action within three weeks of receipt of the written dismissal (§ 4 S. 1, § 7 KSchG;
+  §§ 187 Abs. 1, 188 Abs. 2 BGB). The end of employment: § 622 Abs. 1, 2, 3 BGB, written form § 623 BGB.
+- **Landlord's notice (f07):** § 573c Abs. 1 BGB (third Werktag; three months more after five and after eight years);
+  Widerspruch in Textform two months before the end (§§ 574, 574b Abs. 1, 2 BGB), counted back from the end.
+- **Rent increase (f08):** § 558b Abs. 2 S. 1 BGB with § 193 BGB; owed from the third calendar month (§ 558b Abs. 1
+  BGB); Textform and reasons § 558a BGB; 15 months unchanged and one year since the last increase § 558 Abs. 1 BGB,
+  cap § 558 Abs. 3 BGB (each letter keeps both).
+- **Operating costs (f09, f10):** statement due by the end of the twelfth month after the billing period (§ 556
+  Abs. 3 S. 2 BGB), a later Nachforderung excluded (S. 3); objections by the end of the twelfth month after receipt
+  (S. 5, 6) with §§ 187 Abs. 1, 188 Abs. 2, 193 BGB.
+- **Withdrawal (f11):** 14 days (§ 355 Abs. 2 BGB) from conclusion, for a sale of goods from receipt of the goods
+  (§ 356 Abs. 2 Nr. 1 a BGB), for electricity from conclusion (§ 356 Abs. 2 Nr. 2 BGB), not before the information
+  (§ 356 Abs. 3 S. 1 BGB; Art. 246a § 1 Abs. 2 S. 1 Nr. 1 EGBGB), sending in time enough (§ 355 Abs. 1 S. 5 BGB),
+  § 193 BGB for the end. The withdrawal information in each letter is written in its own words, not in the words of
+  the statutory specimen.
+- Conventions of the earlier splits that the labels also rest on: c01, c04, c06 (private letters), c10 (optional
+  items) and f02 (31 December).
+
+### Judgement calls
+
+- **f07 (disputed):** for a lease ending on 28.02.2027 the Widerspruch is due by 31.12.2026, the month's last day two
+  months earlier; the same-day-number reading gives 28.12.2026 (kuendigung_miete -1, -4). For ends on 31.05. and
+  31.08.2027 both readings agree.
+- **f08 (disputed):** the consent period ends Sun 31.01.2027 and moves to Mon 01.02.2027 under § 193 BGB; left
+  where it falls, it is 31.01.2027 (all four requests).
+- **f09 (disputed):** the twelve months for objections end on the receipt day's number a year later (moved off a
+  weekend); read as calendar months they end 30.11.2027 (all four statements).
+- **Mahnbescheid (f05):** a Widerspruch after the two weeks still counts until a Vollstreckungsbescheid is issued;
+  that gives no fixed date, so the label is the end of the two weeks and no other date is listed.
+- **Dismissal (f06):** every three-week end falls on a working day in every Land, so the question which rule would
+  move it does not arise. The remedy is recorded as `klage`: each letter names the action at the Arbeitsgericht.
+- **Landlord's notice:** the remedy is recorded as `widerspruch` (the tenant's objection under § 574 BGB, which each
+  letter explains). Whether a Saturday counts as a Werktag for § 573c Abs. 1 BGB does not change any end here:
+  `law.landlord_notice_end` is run under both readings and asserted equal.
+- **Late operating-cost statements (f10):** none gives a reason for its delay, so the Nachzahlung asked for is an
+  optional item; the credit in -3 is the landlord's to pay.
+- **Withdrawal dates are optional items** (c10): the person may withdraw but need not.
+- **Document kinds with two honest answers:** Mahnbescheid dunning or authority_letter; Vollstreckungsbescheid
+  authority_letter or dunning; rent increase rent_lease or price_increase; operating-cost statement rent_lease or
+  utility_bill. Dismissals are employment, landlord's notices rent_lease and the withdrawal letters contract, with
+  no second kind.
+
+### Not date-scored
+
+- The day each employment ends (§ 622 BGB) and the day each lease ends (§ 573c BGB): stated in the letters and
+  recorded in the item notes, but no act of the person falls on them that the statute texts here date.
+- The day from which a consented rent increase is owed (Mon 01.02.2027): recorded in the item note.
+- The request to register as a jobseeker in the dismissal letters ("unverzüglich"), which gives no date.
+- 7 optional dated items: the four withdrawal dates and the three Nachzahlungen asked for by late statements
+  (c10, f10).
+
+### Blind audit and convention tags
+
+W1's `law.py` and the sealed convention-free audit agree on 114 of 178 slots (14 more overlap as candidate sets), on
+146 of 178 with the conventions applied (1 more overlap); after adjudication the labels stand on 30 of the 32
+adjudicated slots, and the other 2 (offered slots) are now undatable, as ruled, so the audit agrees on 116 of 178
+slots, and on 148 of 178 with the conventions applied (holdout4 and newkinds together); `verify_labels` confirms
+that each label follows from the audit's facts (for adjudicated items this is not an independent check).
+
+Amendment K27 (decided before registration): the convention tags of holdout4 and newkinds are the ids the blind
+audit's facts apply (A1c, or A1′ where it ruled), so `verify_labels` checks them for consistency only; every date
+was still re-derived from the facts independently (0 date problems). The writer's tags and the facts' ids differed
+on 137 of 147 label parts: 119 in non-disputed ids only (mostly c01, c04 and c06, which describe how the generator
+builds labels), 18 in a disputed id (11 scored items lost c07, which gives no other date, and kept c02, c03 and
+their other-reading dates; 6 offered dates gained c10, two of them also c22, each with an empty other-reading list;
+1 undated item gained c02 and c03). No date, other-reading date of a scored item, letter, composition or S-conv
+count changed. The writer's tags: provenance/k27/writer-tags.json (sha256
+9a48dcd286432cd48b186de5db28e79f4f795109dbdce3a146e3a535e9fd9242).

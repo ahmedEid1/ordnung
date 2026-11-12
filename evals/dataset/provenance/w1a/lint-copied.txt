@@ -1,0 +1,3 @@
+HIT evals/gen/common.py:1 b9c36b76631db208 allowed
+HIT evals/dataset/provenance/w1a/writer-notes-holdout4.md:60 cf6a8df507c4c583 allowed
+summary: files 6, hit lines 2, allowed 2, outside allow-list 0, unused allow-list entries 19, allow-list sha256 08b79bb85189787d73527dd5c06c749034ec2facd702cda306b8e5108d856cb2

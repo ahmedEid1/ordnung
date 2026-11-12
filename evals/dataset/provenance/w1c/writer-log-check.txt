@@ -1,0 +1,2 @@
+tool calls in the run log: 5 {'Bash': 5}
+hook log lines: 5, denied: 0, mismatches: 0

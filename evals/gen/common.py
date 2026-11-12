@@ -66,7 +66,10 @@ SPLIT_VARIANTS = {
     "holdout": ("E", "F"),
     "holdout2": ("G", "H"),
     "holdout3": ("I", "J"),
+    "holdout4": ("K", "L", "M", "N"),
 }
+#: Final splits with families of their own and no template variants (they stay out of ``SPLIT_VARIANTS``).
+SPLITS_WITHOUT_VARIANTS = frozenset({"newkinds"})
 
 
 @dataclass
@@ -99,6 +102,8 @@ class Case:
         assert self.id.startswith(f"{self.split}-"), self.id
         if self.family == "adversarial":
             assert self.split != "dev", self.id
+        elif self.split in SPLITS_WITHOUT_VARIANTS:
+            assert self.variant, self.id  # its own families, each letter numbered within its family
         else:
             assert self.variant in SPLIT_VARIANTS[self.split], self.id
 
