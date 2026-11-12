@@ -590,23 +590,32 @@ def test_the_readme_media_fit_their_budget() -> None:
     assert total <= ASSETS_BYTES, total
 
 
-def test_the_evaluation_charts_are_the_ones_presentation_json_commits(tmp_path: Path) -> None:
+def test_the_evaluation_charts_are_the_ones_presentation_json_commits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The evaluation's charts in ``docs/assets`` are the ones ``presentation.json`` commits: today's while there is
-    no final run, and the final run's beside them once it is published (here a synthetic one, in a temporary
-    folder)."""
+    no final run, and the final run's beside them once it is published (the published one in this checkout once the
+    publish PR is merged, and a synthetic one, in a temporary folder, over the results with no final run)."""
+    from evals.present import final as final_sentences
     from evals.present import model
 
     import helpers_final
+    from helpers_publication import final_published, results_before_publication
 
-    assert (
-        eval_charts()
-        == EVAL_CHARTS
-        == {f"eval-{name}-{theme}.svg" for name in COMMITTED for theme in ("light", "dark")}
-    )
+    def charts(*names: str) -> set[str]:
+        return {f"eval-{name}-{theme}.svg" for name in names for theme in ("light", "dark")}
+
+    today = charts(*COMMITTED)
+    published: set[str] = set()
+    if final_published():
+        # the published final run's: its headline and differences, and the stability over its reads (two or more)
+        found = final_sentences.published(ROOT)
+        assert found is not None
+        stability = ("final-stability",) if found[0]["primary"]["reads"] >= 2 else ()
+        published = charts("final", "final-differences", *stability)
+        monkeypatch.setattr(helpers_final, "RESULTS", results_before_publication(tmp_path / "results-before"))
+    assert eval_charts() == EVAL_CHARTS == today | published
     root = helpers_final.scenario_root(tmp_path, "one_read")
     presentation = tmp_path / "presentation.json"
     presentation.write_text(model.dumps(model.build(root / "evals" / "results")), encoding="utf-8")
-    final = {
-        f"eval-{name}-{theme}.svg" for name in ("final", "final-differences") for theme in ("light", "dark")
-    }
-    assert eval_charts(presentation) == EVAL_CHARTS | final
+    assert eval_charts(presentation) == today | charts("final", "final-differences")
