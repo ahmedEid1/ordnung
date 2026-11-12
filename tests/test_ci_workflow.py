@@ -19,6 +19,7 @@ import pytest
 from ordnung.doctor import native_install, tesseract_install
 from ordnung.llm.claude_cli import MIN_CLAUDE_VERSION, version_text
 from test_docs_claims import WITHOUT_LAND
+from test_final_gates import FINAL, workflow_gates
 
 ROOT = Path(__file__).resolve().parents[1]
 #: The splits whose numbers the README and docs/evals.md publish as replayed on the current code (holdout3 is
@@ -178,11 +179,19 @@ def test_the_backend_legs_have_room_for_a_slow_runner() -> None:
     assert "pytest" in _script(backend)
 
 
+def _final_gate(line: str) -> bool:
+    """Whether ``line`` is a gate of the final run (a replay of one of its reads: a final split's, or a held-out Ask
+    run's), found as tests/test_final_gates.py finds them. That test, frozen with the pre-registration, holds each
+    to its own read's replay and INDEX.json; the checks here are of every other gate."""
+    return bool(workflow_gates({"jobs": {"backend-slow": {"steps": [{"run": line}]}}}))
+
+
 def _gates(script: str) -> dict[str, tuple[float, float]]:
-    """Each ``ordnung eval`` gate in ``script``: its split's minimum accuracy and maximum dangerous-late rate."""
+    """Each ``ordnung eval`` gate in ``script`` but the final run's: its split's minimum accuracy and maximum
+    dangerous-late rate."""
     gates = {}
     for line in script.splitlines():
-        if "ordnung eval" not in line:
+        if "ordnung eval" not in line or _final_gate(line):
             continue
         args = shlex.split(line.split("ordnung eval", 1)[1])
         option = {
@@ -215,6 +224,16 @@ def test_every_published_split_is_replayed_with_a_gate_at_its_published_number()
         assert late == 0 == published["dangerous_late_rate"]["k"], split
 
 
+def _ask_line() -> str:
+    """The development set's Ask gate: the one ``-m evals.ask`` line of backend-slow that is not the final run's."""
+    (line,) = [
+        line
+        for line in _script(_jobs()["backend-slow"]).splitlines()
+        if "-m evals.ask" in line and not _final_gate(line)
+    ]
+    return line
+
+
 def _newest_ask() -> Path:
     """The development set's newest Ask results file: a day's re-scoring (``-rescored``) after that day's live run."""
     from evals.ask.report import latest_results
@@ -228,8 +247,7 @@ def test_the_ask_benchmark_gates_the_household_group_at_its_recorded_number() ->
     """The Ask benchmark's household group (whose a number is) is gated at the share its newest recording
     measured, as each reading split is: a change that loses one of its answers fails the build. The headline
     thresholds hold for that recording too (its notes say why each is where it is)."""
-    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
-    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
     summary = json.loads(latest.read_text(encoding="utf-8"))["summary"]
@@ -245,8 +263,7 @@ def test_the_ask_benchmark_gates_strict_correctness_and_harm_at_their_recorded_n
     it measured, as the household group is: one more strictly wrong answer, or one more harmful answer (a date still
     open called passed, a later date or a wrong amount given as Ordnung's), fails the build. Never a gate the
     published numbers fail."""
-    (line,) = [line for line in _script(_jobs()["backend-slow"]).splitlines() if "-m evals.ask" in line]
-    args = shlex.split(line.split("-m evals.ask", 1)[1])
+    args = shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     option = {name: args[args.index(name) + 1] for name in args if name.startswith(("--min-", "--max-"))}
     latest = _newest_ask()
     data = json.loads(latest.read_text(encoding="utf-8"))
@@ -311,15 +328,13 @@ def test_reproduce_holds_the_replays_to_the_gates_this_workflow_runs() -> None:
 
     gates = reproduce.ci_gates(ROOT / ".github/workflows/ci.yml")
     parsed = _gates(_script(_jobs()["backend-slow"]))
+    # the final splits' gates are tests/test_final_gates.py's
     assert {
         name.split("/", 1)[1]: (gate["min_accuracy"], gate["max_dangerous_late"])
         for name, gate in gates.items()
-        if name.startswith("benchmark/")
+        if name.startswith("benchmark/") and name.split("/")[1] not in FINAL
     } == parsed
-    (ask,) = [
-        step["run"] for step in _jobs()["backend-slow"]["steps"] if "-m evals.ask" in step.get("run", "")
-    ]
-    assert gates["ask/dev"]["args"] == shlex.split(ask.split("-m evals.ask", 1)[1])
+    assert gates["ask/dev"]["args"] == shlex.split(_ask_line().split("-m evals.ask", 1)[1])
     (without_land,) = [
         step for step in _jobs()["backend-slow"]["steps"] if "eval_without_land" in step.get("run", "")
     ]
