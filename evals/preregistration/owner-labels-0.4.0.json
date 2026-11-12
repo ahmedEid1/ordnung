@@ -1,0 +1,258 @@
+{
+ "schema": "ordnung-owner-labels/1",
+ "status": "pending",
+ "about": "The owner's check of the final splits' labels: each slot's date worked out with an outside deadline calculator and compared with the label. It never blocks anything; until it is done the report says the labels are not yet checked by a person, and each verdict is published per id when it is.",
+ "sampler": "scripts/owner_label_sample.py",
+ "seed": 20261029,
+ "manifest_sha256": "7bf30e0b171222622a7a24fd321e4137fa18f3d87786d56a05e6d3ed668b9d02",
+ "plan": {
+  "holdout4": 20,
+  "newkinds": 10
+ },
+ "strata": "family",
+ "items": [
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-adversarial-hidden_text-1",
+   "slot": "i0",
+   "family": "adversarial",
+   "file": "holdout4/adversarial-hidden_text-1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-adversarial-hidden_text-4",
+   "slot": "i0",
+   "family": "adversarial",
+   "file": "holdout4/adversarial-hidden_text-4.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-adversarial-injection_visible-3",
+   "slot": "i0",
+   "family": "adversarial",
+   "file": "holdout4/adversarial-injection_visible-3.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-appointment-M1",
+   "slot": "i0",
+   "family": "appointment",
+   "file": "holdout4/appointment-M1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-dunning_fixed-N1",
+   "slot": "i0",
+   "family": "dunning_fixed",
+   "file": "holdout4/dunning_fixed-N1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-english_letter-K1",
+   "slot": "i0",
+   "family": "english_letter",
+   "file": "holdout4/english_letter-K1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-english_letter-M2",
+   "slot": "i0",
+   "family": "english_letter",
+   "file": "holdout4/english_letter-M2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-fine_bussgeld-L1",
+   "slot": "i0",
+   "family": "fine_bussgeld",
+   "file": "holdout4/fine_bussgeld-L1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-fine_bussgeld-M2",
+   "slot": "i0",
+   "family": "fine_bussgeld",
+   "file": "holdout4/fine_bussgeld-M2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-invoice_relative-L1",
+   "slot": "i0",
+   "family": "invoice_relative",
+   "file": "holdout4/invoice_relative-L1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-invoice_relative-N1",
+   "slot": "i0",
+   "family": "invoice_relative",
+   "file": "holdout4/invoice_relative-N1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-municipal_decision-L1",
+   "slot": "i0",
+   "family": "municipal_decision",
+   "file": "holdout4/municipal_decision-L1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-municipal_decision-L1",
+   "slot": "i1",
+   "family": "municipal_decision",
+   "file": "holdout4/municipal_decision-L1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-relative_business_days-N1",
+   "slot": "i0",
+   "family": "relative_business_days",
+   "file": "holdout4/relative_business_days-N1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-social_decision-M2",
+   "slot": "i0",
+   "family": "social_decision",
+   "file": "holdout4/social_decision-M2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-social_decision-N2",
+   "slot": "i0",
+   "family": "social_decision",
+   "file": "holdout4/social_decision-N2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-tax_assessment-L1",
+   "slot": "i0",
+   "family": "tax_assessment",
+   "file": "holdout4/tax_assessment-L1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-tax_assessment-N2",
+   "slot": "i0",
+   "family": "tax_assessment",
+   "file": "holdout4/tax_assessment-N2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-year_boundary-M2",
+   "slot": "i0",
+   "family": "year_boundary",
+   "file": "holdout4/year_boundary-M2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "holdout4",
+   "entry_id": "holdout4-year_boundary-M3",
+   "slot": "i0",
+   "family": "year_boundary",
+   "file": "holdout4/year_boundary-M3.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-betriebskosten-1",
+   "slot": "i0",
+   "family": "betriebskosten",
+   "file": "newkinds/betriebskosten-1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-betriebskosten-4",
+   "slot": "i0",
+   "family": "betriebskosten",
+   "file": "newkinds/betriebskosten-4.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-kuendigung_arbeit-1",
+   "slot": "i0",
+   "family": "kuendigung_arbeit",
+   "file": "newkinds/kuendigung_arbeit-1.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-kuendigung_arbeit-4",
+   "slot": "i0",
+   "family": "kuendigung_arbeit",
+   "file": "newkinds/kuendigung_arbeit-4.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-kuendigung_miete-2",
+   "slot": "i0",
+   "family": "kuendigung_miete",
+   "file": "newkinds/kuendigung_miete-2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-kuendigung_miete-3",
+   "slot": "i0",
+   "family": "kuendigung_miete",
+   "file": "newkinds/kuendigung_miete-3.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-mahnbescheid-2",
+   "slot": "i0",
+   "family": "mahnbescheid",
+   "file": "newkinds/mahnbescheid-2.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-mahnbescheid-3",
+   "slot": "i0",
+   "family": "mahnbescheid",
+   "file": "newkinds/mahnbescheid-3.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-mieterhoehung-3",
+   "slot": "i0",
+   "family": "mieterhoehung",
+   "file": "newkinds/mieterhoehung-3.pdf",
+   "verdict": null
+  },
+  {
+   "split": "newkinds",
+   "entry_id": "newkinds-vollstreckungsbescheid-3",
+   "slot": "i0",
+   "family": "vollstreckungsbescheid",
+   "file": "newkinds/vollstreckungsbescheid-3.pdf",
+   "verdict": null
+  }
+ ],
+ "checked": null,
+ "agree": null,
+ "source": null
+}

@@ -1,0 +1,303 @@
+{
+ "schema": "ordnung-prereg-power/1",
+ "about": "The power of the final run's pre-registered comparisons by simulation: how often the registered test and rule decide each comparison at the gap the held-out splits show (power), at half of it, and the smallest gap they decide in 80% of simulated runs (mdd). power, power_half_gap and mdd are for the first noise model (systematic); 'noise' gives every model's.",
+ "prereg": {
+  "file": "final-0.4.0-draft.json",
+  "sha256": "8d1805bd687a61ea1f0a01dd4655aad63a7eeb65e5cbdc42ada694e119fb5c30"
+ },
+ "inputs": [
+  {
+   "file": "evals/results/2026-09-30-claude-sonnet-5-holdout.json",
+   "sha256": "ad5cdee834c7ed4fbfb5234b28e76126e2bee35eb1685b823c2ea52f36c62c4c"
+  },
+  {
+   "file": "evals/results/2026-10-01-claude-sonnet-5-holdout2.json",
+   "sha256": "47a5aec4f07193fa8fcb5edaf01a17eb7ff69c04036142df344bfbd7e357b1c9"
+  },
+  {
+   "file": "evals/results/2026-10-06-claude-sonnet-5-holdout3.json",
+   "sha256": "f4ae7042ed6e59f8914c2a563f1638232a597190deb5d5f2b2218ef3a724ebf3"
+  }
+ ],
+ "structure": {
+  "source": "the manifest's holdout4 letters",
+  "clusters": 88,
+  "items": 112
+ },
+ "settings": {
+  "reps": 2000,
+  "draws": 10000,
+  "resamples": 2000,
+  "seed": 20261029,
+  "target": 0.8,
+  "step": 0.01,
+  "max_gap": 0.3,
+  "noise": [
+   "systematic",
+   "independent"
+  ],
+  "reads": 3,
+  "alpha": 0.05,
+  "level": 0.95,
+  "analysis_seed": 20261029,
+  "signflip_exact_max": 20,
+  "noninferiority_margin": 0.05
+ },
+ "model": {
+  "items": "Ordnung's outcome drawn with its observed rate; each baseline's given Ordnung's, so that the difference of the rates is the gap and the share of items where they differ is the observed one (at least the gap); items independent, also within a letter",
+  "systematic": "each item has one outcome in every read",
+  "independent": "every read draws each item again"
+ },
+ "comparisons": {
+  "F1_accuracy": {
+   "ordnung-vs-llm_only": {
+    "detected_as": "clear",
+    "observed": {
+     "reference": 0.9702380952,
+     "baseline": 0.8095238095,
+     "gap": 0.1607142857,
+     "discordance": 0.2083333333
+    },
+    "power": 0.9285,
+    "power_half_gap": 0.366,
+    "mdd": {
+     "gap": 0.14,
+     "power": 0.8195
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.0135,
+       "detected": 0.0035
+      },
+      "observed": 0.9285,
+      "half_gap": 0.366,
+      "mdd": {
+       "gap": 0.14,
+       "power": 0.8195
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.038,
+       "detected": 0.0085
+      },
+      "observed": 1.0,
+      "half_gap": 0.9555,
+      "mdd": {
+       "gap": 0.07,
+       "power": 0.905
+      }
+     }
+    }
+   },
+   "ordnung-vs-llm_rules_text": {
+    "detected_as": "clear",
+    "observed": {
+     "reference": 0.9702380952,
+     "baseline": 0.9166666667,
+     "gap": 0.05357142857,
+     "discordance": 0.1130952381
+    },
+    "power": 0.2055,
+    "power_half_gap": 0.053,
+    "mdd": {
+     "gap": 0.1,
+     "power": 0.848
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.011,
+       "detected": 0.0015
+      },
+      "observed": 0.2055,
+      "half_gap": 0.053,
+      "mdd": {
+       "gap": 0.1,
+       "power": 0.848
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.025,
+       "detected": 0.0065
+      },
+      "observed": 0.7715,
+      "half_gap": 0.24,
+      "mdd": {
+       "gap": 0.06,
+       "power": 0.8785
+      }
+     }
+    }
+   },
+   "ordnung-vs-llm_rules_tool": {
+    "detected_as": "non_inferior",
+    "observed": {
+     "reference": 0.9702380952,
+     "baseline": 0.994047619,
+     "gap": -0.02380952381,
+     "discordance": 0.03571428571
+    },
+    "power": 0.375,
+    "power_half_gap": 0.5875,
+    "mdd": {
+     "gap": 0.01,
+     "power": 0.904
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.002,
+       "detected": 0.766
+      },
+      "observed": 0.375,
+      "half_gap": 0.5875,
+      "mdd": {
+       "gap": 0.01,
+       "power": 0.904
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.025,
+       "detected": 0.9845
+      },
+      "observed": 0.436,
+      "half_gap": 0.869,
+      "mdd": {
+       "gap": -0.01,
+       "power": 0.9055
+      }
+     }
+    }
+   }
+  },
+  "F2_harm": {
+   "ordnung-vs-llm_only": {
+    "detected_as": "fewer",
+    "observed": {
+     "reference": 0.01785714286,
+     "baseline": 0.07738095238,
+     "gap": -0.05952380952,
+     "discordance": 0.09523809524
+    },
+    "power": 0.252,
+    "power_half_gap": 0.0505,
+    "mdd": {
+     "gap": -0.09,
+     "power": 0.814
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.0055,
+       "detected": 0.0005
+      },
+      "observed": 0.252,
+      "half_gap": 0.0505,
+      "mdd": {
+       "gap": -0.09,
+       "power": 0.814
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.0195,
+       "detected": 0.0035
+      },
+      "observed": 0.887,
+      "half_gap": 0.309,
+      "mdd": {
+       "gap": -0.06,
+       "power": 0.893
+      }
+     }
+    }
+   },
+   "ordnung-vs-llm_rules_text": {
+    "detected_as": "fewer",
+    "observed": {
+     "reference": 0.01785714286,
+     "baseline": 0.005952380952,
+     "gap": 0.0119047619,
+     "discordance": 0.02380952381
+    },
+    "power": 0.0,
+    "power_half_gap": 0.0,
+    "mdd": {
+     "gap": -0.09,
+     "power": 0.8795
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.0,
+       "detected": 0.0
+      },
+      "observed": 0.0,
+      "half_gap": 0.0,
+      "mdd": {
+       "gap": -0.09,
+       "power": 0.8795
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.014,
+       "detected": 0.004
+      },
+      "observed": 0.0,
+      "half_gap": 0.0,
+      "mdd": {
+       "gap": -0.03,
+       "power": 0.8565
+      }
+     }
+    }
+   },
+   "ordnung-vs-llm_rules_tool": {
+    "detected_as": "fewer",
+    "observed": {
+     "reference": 0.01785714286,
+     "baseline": 0.005952380952,
+     "gap": 0.0119047619,
+     "discordance": 0.02380952381
+    },
+    "power": 0.0,
+    "power_half_gap": 0.0,
+    "mdd": {
+     "gap": -0.09,
+     "power": 0.872
+    },
+    "noise": {
+     "systematic": {
+      "null": {
+       "rejects": 0.0025,
+       "detected": 0.0
+      },
+      "observed": 0.0,
+      "half_gap": 0.0,
+      "mdd": {
+       "gap": -0.09,
+       "power": 0.872
+      }
+     },
+     "independent": {
+      "null": {
+       "rejects": 0.0195,
+       "detected": 0.003
+      },
+      "observed": 0.0,
+      "half_gap": 0.0,
+      "mdd": {
+       "gap": -0.03,
+       "power": 0.8595
+      }
+     }
+    }
+   }
+  }
+ }
+}
