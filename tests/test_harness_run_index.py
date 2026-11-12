@@ -27,6 +27,7 @@ from evals import run as eval_run  # noqa: E402
 from evals.gen.common import SPLIT_VARIANTS  # noqa: E402
 from evals.records import load_manifest  # noqa: E402
 
+from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
 from ordnung.llm.base import Attachment, LLMRequest, LLMResponse, StreamEvent  # noqa: E402
 from ordnung.llm.claude_cli import ClaudeCLIBackend, build_user_message  # noqa: E402
 from ordnung.llm.fake import FakeBackend  # noqa: E402
@@ -663,7 +664,9 @@ def test_the_registry_declares_every_split_and_the_final_ones_before_their_lette
     assert eval_run.SPLITS == splits.recorded()
     split_option = next(a for a in eval_run.build_parser()._actions if a.dest == "split")
     assert tuple(split_option.choices or ()) == splits.names()
-    assert splits.recorded() == ("dev", "test", "holdout", "holdout2", "holdout3")
+    # the final splits once the final run is published (the publish PR adds their reads with its analysis)
+    earlier = ("dev", "test", "holdout", "holdout2", "holdout3")
+    assert splits.recorded() == earlier + (FINAL_SPLITS if final_published() else ())
     assert [s.name for s in splits.REGISTRY if s.role == "final"] == ["holdout4", "newkinds"]
     assert splits.get("holdout4").variants == ("K", "L", "M", "N")
     assert all(

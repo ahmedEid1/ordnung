@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 
 from evals import splits  # noqa: E402
 
+from helpers_publication import FINAL_SPLITS, final_published  # noqa: E402
+
 MODEL = "claude-sonnet-5"
 
 
@@ -34,7 +36,10 @@ def test_no_constant_says_whether_a_split_is_recorded() -> None:
 
 
 def test_the_checked_out_results_record_the_five_earlier_splits() -> None:
-    assert splits.recorded() == ("dev", "test", "holdout", "holdout2", "holdout3")
+    """And the final splits too once the final run is published: the publish PR adds their reads with its
+    analysis."""
+    earlier = ("dev", "test", "holdout", "holdout2", "holdout3")
+    assert splits.recorded() == earlier + (FINAL_SPLITS if final_published() else ())
 
 
 def test_a_split_is_recorded_once_a_live_results_file_of_it_is_published(tmp_path: Path) -> None:
